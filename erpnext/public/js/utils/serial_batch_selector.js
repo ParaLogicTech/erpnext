@@ -118,6 +118,25 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 		this.dialog.show();
 	},
 
+	load_all_batches: function () {
+		frappe.call({
+			method: "erpnext.stock.doctype.batch.batch.get_sufficient_batch_or_fifo",
+			args: {
+				qty: this.doc.qty,
+				item_code: this.doc.item_code,
+				warehouse: this.doc.warehouse,
+				conversion_factor: this.item.conversion_factor,
+				sales_order_item: this.item.sales_order_item,
+				include_unselected_batches: true,
+			},
+			callback: (r) => {
+				if (r.message) {
+					this.set_batch_nos(r.message, true);
+				}
+			}
+		});
+	},
+
 	get_fields: function () {
 		let fields = [
 			{
@@ -136,21 +155,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 				label: __("Warehouse"),
 				reqd: 1,
 				onchange: () => {
-					frappe.call({
-						method: "erpnext.stock.doctype.batch.batch.get_sufficient_batch_or_fifo",
-						args: {
-							qty: this.doc.qty,
-							item_code: this.doc.item_code,
-							warehouse: this.doc.warehouse,
-							conversion_factor: this.item.conversion_factor,
-							sales_order_item: this.item.sales_order_item,
-						},
-						callback: (r) => {
-							if (r.message) {
-								this.set_batch_nos(r.message, true);
-							}
-						}
-					});
+					this.load_all_batches()
 				},
 				get_query: () => {
 					return {
@@ -179,21 +184,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 					let qty = flt(this.doc.qty);
 
 					if (this.has_batch_no) {
-						frappe.call({
-							method: "erpnext.stock.doctype.batch.batch.get_sufficient_batch_or_fifo",
-							args: {
-								qty: qty,
-								item_code: this.doc.item_code,
-								warehouse: this.doc.warehouse,
-								conversion_factor: this.item.conversion_factor,
-								sales_order_item: this.item.sales_order_item,
-							},
-							callback: (r) => {
-								if (r.message) {
-									this.set_batch_nos(r.message, true);
-								}
-							}
-						});
+						this.load_all_batches()
 					} else {
 						frappe.call({
 							method: "erpnext.stock.doctype.serial_no.serial_no.auto_fetch_serial_number",

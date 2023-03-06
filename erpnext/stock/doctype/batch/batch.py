@@ -333,7 +333,7 @@ def round_down(value, decimals):
 
 @frappe.whitelist()
 def get_sufficient_batch_or_fifo(item_code, warehouse, qty=1.0, conversion_factor=1.0, batches_used=None,
-		include_empty_batch=False, precision=None):
+		include_empty_batch=False, precision=None, include_unselected_batches=False):
 	if not warehouse or not qty:
 		return []
 
@@ -362,13 +362,16 @@ def get_sufficient_batch_or_fifo(item_code, warehouse, qty=1.0, conversion_facto
 
 	for batch in batches:
 		if remaining_stock_qty <= 0:
-			selected_batches.append(frappe._dict({
-				'batch_no': batch.name,
-				'available_qty': batch.qty / conversion_factor,
-				'selected_qty': 0
-			}))
-			
-			continue
+			if include_unselected_batches:
+				selected_batches.append(frappe._dict({
+					'batch_no': batch.name,
+					'available_qty': batch.qty / conversion_factor,
+					'selected_qty': 0
+				}))
+				
+				continue
+			else:
+				break
 
 		selected_stock_qty = min(remaining_stock_qty, batch.qty)
 		selected_qty = round_down(selected_stock_qty / conversion_factor, precision)
