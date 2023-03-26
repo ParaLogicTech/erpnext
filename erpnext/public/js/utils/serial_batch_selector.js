@@ -147,7 +147,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 								warehouse: this.doc.warehouse,
 								conversion_factor: this.item.conversion_factor,
 								sales_order_item: this.item.sales_order_item,
-								include_unselected_batches: true,
+								include_unselected_batches: 1,
 							},
 							callback: (r) => {
 								if (r.message) {
