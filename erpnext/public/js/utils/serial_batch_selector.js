@@ -439,38 +439,54 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 		if (this.has_serial_no) {
 			this.map_row_values(this.item, this.values, 'serial_no', 'qty');
 		} else if (this.has_batch_no) {
-			for (let batch of this.doc.batches) {
-				if (!batch.batch_no) {
-					continue;
-				}
-
-				if (batch.selected_qty === 0) {
-					this.frm.doc.items = this.frm.doc.items.filter(d => d.batch_no != batch.batch_no || (d.batch_no === batch.batch_no && d.warehouse != this.doc.warehouse))
-				}
-
-				let items = this.frm.doc.items.filter(d => d.batch_no === batch.batch_no && d.warehouse === this.doc.warehouse);
-
-				if (items.length > 0) {
-					for (let item of items) {
-						item.qty = 0;
+			if ((this.frm.doc.doctype === "Delivery Note" || this.frm.doc.update_stock) && !this.frm.doc.is_return) {
+				var me = this;
+				frappe.call({
+					method: 'auto_select_batches',
+					doc: me.frm.doc,
+					args: {
+						selected_batches: this.doc.batches,
+						current_idx: me.item.idx
+					},
+					freeze: 1,
+					callback: function (r) {
+						refresh_field("items");
 					}
-
-					let item = frappe.model.copy_doc(this.item, true, this.frm.doc, 'items');
-					item.batch_no = batch.batch_no;
-					item.qty = batch.selected_qty;
-					item.warehouse = this.doc.warehouse;
-				} else {
-					let item = frappe.model.copy_doc(this.item, true, this.frm.doc, 'items');
-					item.batch_no = batch.batch_no;
-					item.qty = batch.selected_qty;
-					item.warehouse = this.doc.warehouse;
-				}
+				});
 			}
 
-			this.frm.doc.items = this.frm.doc.items.filter(i => i.qty > 0 && i.idx != this.item.idx);
-			this.frm.doc.items.forEach((item, index) => {
-				item.idx = index + 1;
-			});
+			// for (let batch of this.doc.batches) {
+			// 	if (!batch.batch_no) {
+			// 		continue;
+			// 	}
+
+			// 	if (batch.selected_qty === 0) {
+			// 		this.frm.doc.items = this.frm.doc.items.filter(d => d.batch_no != batch.batch_no || (d.batch_no === batch.batch_no && d.warehouse != this.doc.warehouse))
+			// 	}
+
+			// 	let items = this.frm.doc.items.filter(d => d.batch_no === batch.batch_no && d.warehouse === this.doc.warehouse);
+
+			// 	if (items.length > 0) {
+			// 		for (let item of items) {
+			// 			item.qty = 0;
+			// 		}
+
+			// 		let item = frappe.model.copy_doc(this.item, true, this.frm.doc, 'items');
+			// 		item.batch_no = batch.batch_no;
+			// 		item.qty = batch.selected_qty;
+			// 		item.warehouse = this.doc.warehouse;
+			// 	} else {
+			// 		let item = frappe.model.copy_doc(this.item, true, this.frm.doc, 'items');
+			// 		item.batch_no = batch.batch_no;
+			// 		item.qty = batch.selected_qty;
+			// 		item.warehouse = this.doc.warehouse;
+			// 	}
+			// }
+
+			// this.frm.doc.items = this.frm.doc.items.filter(i => i.qty > 0 && i.idx != this.item.idx);
+			// this.frm.doc.items.forEach((item, index) => {
+			// 	item.idx = index + 1;
+			// });
 		}
 
 		refresh_field("items");
