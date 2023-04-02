@@ -250,10 +250,7 @@ def auto_select_and_split_batches(doc, warehouse_field, selected_batches=[], add
 			if group_qty_map.get(key):
 				group_qty_map[key] += flt(d.get('qty'))
 			else:
-				# group_qty_map.setdefault(key, 0)
 				group_qty_map[key] = flt(d.get('qty'))
-
-	print(group_qty_map)
 
 	visited = set()
 	to_remove = []
@@ -264,7 +261,6 @@ def auto_select_and_split_batches(doc, warehouse_field, selected_batches=[], add
 			key = get_key(d)
 			if key not in visited:
 				visited.add(key)
-				# d.batch_no = None
 				d.qty = flt(group_qty_map.get(key))
 			else:
 				to_remove.append(d)
@@ -272,22 +268,15 @@ def auto_select_and_split_batches(doc, warehouse_field, selected_batches=[], add
 	for d in to_remove:
 		doc.remove(d)
 
-	print(doc.items)
-
-
 	for batch in selected_batches:
 		flag = False
 		for item in doc.items:
 			key = {
-				"item_code": current_row.item_code,
-				"warehouse": current_row.warehouse,
-				"uom": current_row.uom,
+				**current_row.as_dict(),
 				**batch,
 			}
 
 			if get_key(item) == get_key(key):
-				print(get_key(item), get_key(key))
-				print("Match", batch.get("selected_qty"))
 				item.qty = batch.get("selected_qty")
 				flag = True
 				break
@@ -297,38 +286,6 @@ def auto_select_and_split_batches(doc, warehouse_field, selected_batches=[], add
 			item.batch_no = batch.get("batch_no")
 			item.qty = batch.get("selected_qty")
 			doc.items.append(item)
-
-
-	# updated_rows = []
-	# batches_used = {}
-	# for d in doc.items:
-	# 	updated_rows.append(d)
-
-	# 	has_batch_no = d.get("item_code") and frappe.get_cached_value("Item", d.item_code, "has_batch_no")
-	# 	warehouse = d.get(warehouse_field)
-
-	# 	if has_batch_no and warehouse and not d.get("packing_slip"):
-	# 		if len(selected_batches) > 0:
-	# 			batches = selected_batches
-	# 		else:
-	# 			batches = get_sufficient_batch_or_fifo(d.item_code, warehouse, flt(d.qty), flt(d.conversion_factor),
-	# 				batches_used=batches_used, include_empty_batch=True, precision=d.precision('qty'))
-
-	# 		rows = [d]
-
-	# 		for i in range(1, len(batches)):
-	# 			new_row = frappe.copy_doc(d)
-	# 			rows.append(new_row)
-	# 			updated_rows.append(new_row)
-
-	# 		for row, batch in zip(rows, batches):
-	# 			row.qty = batch.get("selected_qty")
-	# 			row.batch_no = batch.get("batch_no")
-
-	# # Replace with updated list
-	# for i, row in enumerate(updated_rows):
-	# 	row.idx = i + 1
-	# doc.items = updated_rows
 
 	if doc.doctype == 'Stock Entry':
 		doc.run_method("set_transfer_qty")

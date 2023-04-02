@@ -454,39 +454,6 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 					}
 				});
 			}
-
-			// for (let batch of this.doc.batches) {
-			// 	if (!batch.batch_no) {
-			// 		continue;
-			// 	}
-
-			// 	if (batch.selected_qty === 0) {
-			// 		this.frm.doc.items = this.frm.doc.items.filter(d => d.batch_no != batch.batch_no || (d.batch_no === batch.batch_no && d.warehouse != this.doc.warehouse))
-			// 	}
-
-			// 	let items = this.frm.doc.items.filter(d => d.batch_no === batch.batch_no && d.warehouse === this.doc.warehouse);
-
-			// 	if (items.length > 0) {
-			// 		for (let item of items) {
-			// 			item.qty = 0;
-			// 		}
-
-			// 		let item = frappe.model.copy_doc(this.item, true, this.frm.doc, 'items');
-			// 		item.batch_no = batch.batch_no;
-			// 		item.qty = batch.selected_qty;
-			// 		item.warehouse = this.doc.warehouse;
-			// 	} else {
-			// 		let item = frappe.model.copy_doc(this.item, true, this.frm.doc, 'items');
-			// 		item.batch_no = batch.batch_no;
-			// 		item.qty = batch.selected_qty;
-			// 		item.warehouse = this.doc.warehouse;
-			// 	}
-			// }
-
-			// this.frm.doc.items = this.frm.doc.items.filter(i => i.qty > 0 && i.idx != this.item.idx);
-			// this.frm.doc.items.forEach((item, index) => {
-			// 	item.idx = index + 1;
-			// });
 		}
 
 		refresh_field("items");
