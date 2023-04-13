@@ -1,0 +1,1 @@
+import "./js/attendance_control_panel/attendance_control_panel"

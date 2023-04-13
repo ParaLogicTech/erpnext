@@ -1,6 +1,7 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import erpnext
 import frappe
 from frappe import msgprint, _, scrub
 from frappe.utils import cstr, cint, getdate, get_last_day, add_months, today, formatdate
@@ -8,15 +9,30 @@ from erpnext.hr.doctype.holiday_list.holiday_list import get_default_holiday_lis
 from erpnext.hr.utils import get_employee_leave_policy
 from erpnext.hr.doctype.shift_assignment.shift_assignment import get_employee_shift
 from calendar import monthrange
-import datetime
 from collections import OrderedDict
+import datetime
+import json
 
 
-def execute(filters=None):
-	filters = frappe._dict(filters)
+# API endpoint for getting attendance data for Attendance Control Panel
+@frappe.whitelist()
+def get_attendance_control_panel_data(year, month, company):
+	filters = {
+		"year": year,
+		"month": month,
+		"company": company
+	}
 
-	validate_filters(filters)
+	filters = validate_filters(filters)
+	data = get_attendance_data(filters)
 
+	return {
+		"data": data,
+		"meta": filters,
+	}
+
+# Main function that gets and builds attendance data
+def get_attendance_data(filters):
 	attendance_map = get_attendance_map(filters)
 	checkin_map = get_employee_checkin_map(filters)
 	late_deduction_leave_map = get_late_deduction_leave_map(filters)
@@ -30,11 +46,29 @@ def execute(filters=None):
 
 	leave_type_map, leave_types = get_leave_type_map()
 
-	data = []
+	data = {}
 	for employee in employees:
 		employee_details = employee_map.get(employee)
 		if not employee_details:
 			continue
+
+		# row = frappe._dict({
+		# 	'employee': employee,
+		# 	'employee_name': employee_details.employee_name,
+		# 	'department': employee_details.department,
+		# 	'designation': employee_details.designation,
+		# 	'from_date': filters.from_date,
+		# 	'to_date': filters.to_date,
+		# })
+
+		# row['total_present'] = 0
+		# row['total_absent'] = 0
+		# row['total_leave'] = 0
+		# row['total_half_day'] = 0
+		# row['total_late_entry'] = 0
+		# row['total_early_exit'] = 0
+		# row['total_lwp'] = 0
+		# row['total_deduction'] = 0
 
 		row = frappe._dict({
 			'employee': employee,
@@ -43,16 +77,16 @@ def execute(filters=None):
 			'designation': employee_details.designation,
 			'from_date': filters.from_date,
 			'to_date': filters.to_date,
+			'total_present': 0,
+			'total_absent': 0,
+			'total_leave': 0,
+			'total_half_day': 0,
+			'total_late_entry': 0,
+			'total_early_exit': 0,
+			'total_lwp': 0,
+			'total_deduction': 0,
+			"days": {}
 		})
-
-		row['total_present'] = 0
-		row['total_absent'] = 0
-		row['total_leave'] = 0
-		row['total_half_day'] = 0
-		row['total_late_entry'] = 0
-		row['total_early_exit'] = 0
-		row['total_lwp'] = 0
-		row['total_deduction'] = 0
 
 		for day in range(1, filters["total_days_in_month"] + 1):
 			attendance_date = datetime.date(year=filters.year, month=filters.month, day=day)
@@ -79,13 +113,27 @@ def execute(filters=None):
 			if not attendance_status and is_holiday:
 				attendance_status = "Holiday"
 
-			day_fieldname = "day_{0}".format(day)
-			row["status_" + day_fieldname] = attendance_status
-			row["attendance_" + day_fieldname] = attendance_details.name
+			# day_fieldname = "day_{0}".format(day)
+			# row["status_" + day_fieldname] = attendance_status
+			# row["attendance_" + day_fieldname] = attendance_details.name
 
-			attendance_status_abbr = get_attendance_status_abbr(attendance_status, attendance_details.late_entry,
-				attendance_details.early_exit, attendance_details.leave_type)
-			row[day_fieldname] = attendance_status_abbr
+			# attendance_status_abbr = get_attendance_status_abbr(attendance_status, attendance_details.late_entry,
+			# 	attendance_details.early_exit, attendance_details.leave_type)
+			# row[day_fieldname] = attendance_status_abbr
+
+			# row["attendance"][day] = frappe._dict({
+			# 	"status": attendance_status,
+			# 	"attendance": attendance_details.name,
+			# 	"status_abbr": get_attendance_status_abbr(attendance_status, attendance_details.late_entry,
+			# 		attendance_details.early_exit, attendance_details.leave_type)
+			# })
+
+			row["days"][day] = frappe._dict({
+				"status": attendance_status,
+				"status_abbr": get_attendance_status_abbr(attendance_status, attendance_details.late_entry,
+					attendance_details.early_exit, attendance_details.leave_type),
+				"attendance": attendance_details.name
+			})
 
 			if attendance_status == "Present":
 				row['total_present'] += 1
@@ -145,7 +193,31 @@ def execute(filters=None):
 				row['total_deduction'] += late_deduction_leave_count
 				row['total_lwp'] += late_deduction_leave_count
 
-		data.append(row)
+		data[row['employee']] = row
+
+	return data
+
+# ===============================================
+# REPORT
+# ===============================================
+
+# Report Execution
+def execute(filters=None):
+	filters = validate_filters(filters)
+
+	nested_data = get_attendance_data(filters)
+	data = []
+
+	for d in nested_data.values():
+		record_days = d.pop('days')
+		for day, day_data in record_days.items():
+			day_fieldname = "day_{0}".format(day)
+
+			d[day_fieldname] = day_data["status_abbr"]
+			d["status_" + day_fieldname] = day_data['status']
+			d["attendance_" + day_fieldname] = day_data['attendance']
+
+		data.append(d)
 
 	if data:
 		days_row = frappe._dict({})
@@ -158,10 +230,13 @@ def execute(filters=None):
 
 		data.insert(0, days_row)
 
+	leave_type_map, leave_types = get_leave_type_map()
 	columns = get_columns(filters, leave_types)
 	return columns, data
 
 
+
+# Report Columns
 def get_columns(filters, leave_types):
 	columns = [
 		{"fieldname": "employee", "label": _("Employee"), "fieldtype": "Link", "options": "Employee", "width": 80},
@@ -194,7 +269,9 @@ def get_columns(filters, leave_types):
 
 	return columns
 
-
+# ===============================================
+# Utilities
+# ===============================================
 def get_attendance_map(filters):
 	conditions = get_conditions(filters)
 
@@ -238,8 +315,16 @@ def get_employee_checkin_map(filters):
 
 
 def validate_filters(filters):
+	if isinstance(filters, str):
+		filters = json.loads(filters)
+
+	filters = frappe._dict(filters or {})
+
 	if not (filters.get("month") and filters.get("year")):
 		msgprint(_("Please select month and year"), raise_exception=1)
+
+	if not filters.company:
+		filters.company = erpnext.get_default_company()
 
 	if not filters.company:
 		frappe.throw(_("Please select Company"))
@@ -253,6 +338,8 @@ def validate_filters(filters):
 	filters["to_date"] = get_last_day(filters["from_date"])
 
 	filters["default_holiday_list"] = get_default_holiday_list(filters.company)
+
+	return filters
 
 
 def get_conditions(filters):
@@ -443,3 +530,5 @@ def get_late_deduction_leave_map(filters):
 		leave_map[d.employee][d.leave_type] = d.leaves
 
 	return leave_map
+
+

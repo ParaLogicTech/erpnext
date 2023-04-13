@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "creation": "2022-12-13 13:20:15.404876",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2022-12-13 14:32:03.000921",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "attendance-control-panel",
+ "owner": "Administrator",
+ "page_name": "attendance-control-panel",
+ "roles": [
+  {
+   "role": "HR User"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Attendance Control Panel"
+}
