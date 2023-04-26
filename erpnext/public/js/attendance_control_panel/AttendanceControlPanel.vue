@@ -53,92 +53,6 @@
 						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
 					</tr>
 				</tbody>
-				<tbody>
-					<tr v-for="obj, index in model.data">
-						<th>{{ index + 1 }}</th>
-						<th>{{ obj.employee }}</th>
-						<th style="width: 85px;">{{ obj.employee_name }}</th>
-						<AttendanceCell v-for="n in model.meta.total_days_in_month"
-							:att="obj['days'][n]" />
-						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
-						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
-						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
-						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
-						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
-						<td>{{ obj.total_lwp }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
-					</tr>
-				</tbody>
-				<tbody>
-					<tr v-for="obj, index in model.data">
-						<th>{{ index + 1 }}</th>
-						<th>{{ obj.employee }}</th>
-						<th style="width: 85px;">{{ obj.employee_name }}</th>
-						<AttendanceCell v-for="n in model.meta.total_days_in_month"
-							:att="obj['days'][n]" />
-						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
-						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
-						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
-						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
-						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
-						<td>{{ obj.total_lwp }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
-					</tr>
-				</tbody>
-				<tbody>
-					<tr v-for="obj, index in model.data">
-						<th>{{ index + 1 }}</th>
-						<th>{{ obj.employee }}</th>
-						<th style="width: 85px;">{{ obj.employee_name }}</th>
-						<AttendanceCell v-for="n in model.meta.total_days_in_month"
-							:att="obj['days'][n]" />
-						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
-						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
-						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
-						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
-						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
-						<td>{{ obj.total_lwp }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
-					</tr>
-				</tbody>
-				<tbody>
-					<tr v-for="obj, index in model.data">
-						<th>{{ index + 1 }}</th>
-						<th>{{ obj.employee }}</th>
-						<th style="width: 85px;">{{ obj.employee_name }}</th>
-						<AttendanceCell v-for="n in model.meta.total_days_in_month"
-							:att="obj['days'][n]" />
-						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
-						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
-						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
-						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
-						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
-						<td>{{ obj.total_lwp }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
-					</tr>
-				</tbody>
-				<tbody>
-					<tr v-for="obj, index in model.data">
-						<th>{{ index + 1 }}</th>
-						<th>{{ obj.employee }}</th>
-						<th style="width: 85px;">{{ obj.employee_name }}</th>
-						<AttendanceCell v-for="n in model.meta.total_days_in_month"
-							:att="obj['days'][n]" />
-						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
-						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
-						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
-						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
-						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
-						<td>{{ obj.total_lwp }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
-					</tr>
-				</tbody>
-
 			</table>
 		</div>
 	</div>
@@ -277,7 +191,7 @@ export default {
 	table thead {
 		position: sticky;
 		top: 0;
-		z-index: 5;
+		z-index: 3;
 		background: var(--gray-100);
 		text-align: center;
 		box-shadow: var(--shadow-base);
