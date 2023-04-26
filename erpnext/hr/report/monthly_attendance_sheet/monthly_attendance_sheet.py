@@ -16,13 +16,7 @@ import json
 
 # API endpoint for getting attendance data for Attendance Control Panel
 @frappe.whitelist()
-def get_attendance_control_panel_data(year, month, company):
-	filters = {
-		"year": year,
-		"month": month,
-		"company": company
-	}
-
+def get_attendance_control_panel_data(filters):
 	filters = validate_filters(filters)
 	data = get_attendance_data(filters)
 
@@ -51,24 +45,6 @@ def get_attendance_data(filters):
 		employee_details = employee_map.get(employee)
 		if not employee_details:
 			continue
-
-		# row = frappe._dict({
-		# 	'employee': employee,
-		# 	'employee_name': employee_details.employee_name,
-		# 	'department': employee_details.department,
-		# 	'designation': employee_details.designation,
-		# 	'from_date': filters.from_date,
-		# 	'to_date': filters.to_date,
-		# })
-
-		# row['total_present'] = 0
-		# row['total_absent'] = 0
-		# row['total_leave'] = 0
-		# row['total_half_day'] = 0
-		# row['total_late_entry'] = 0
-		# row['total_early_exit'] = 0
-		# row['total_lwp'] = 0
-		# row['total_deduction'] = 0
 
 		row = frappe._dict({
 			'employee': employee,
@@ -112,21 +88,6 @@ def get_attendance_data(filters):
 			attendance_status = attendance_details.get('status')
 			if not attendance_status and is_holiday:
 				attendance_status = "Holiday"
-
-			# day_fieldname = "day_{0}".format(day)
-			# row["status_" + day_fieldname] = attendance_status
-			# row["attendance_" + day_fieldname] = attendance_details.name
-
-			# attendance_status_abbr = get_attendance_status_abbr(attendance_status, attendance_details.late_entry,
-			# 	attendance_details.early_exit, attendance_details.leave_type)
-			# row[day_fieldname] = attendance_status_abbr
-
-			# row["attendance"][day] = frappe._dict({
-			# 	"status": attendance_status,
-			# 	"attendance": attendance_details.name,
-			# 	"status_abbr": get_attendance_status_abbr(attendance_status, attendance_details.late_entry,
-			# 		attendance_details.early_exit, attendance_details.leave_type)
-			# })
 
 			row["days"][day] = frappe._dict({
 				"status": attendance_status,

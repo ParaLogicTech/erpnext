@@ -1,104 +1,146 @@
 <template>
 
-<div style="border: 1px solid gray;">
-	<!-- Table -->
-	<div class="table-wrapper">
+<div v-if="error" class="d-flex justify-content-center align-items-center text-muted py-5">
+	{{ error }}
+</div>
 
-		<table>
-			<!-- Table Header -->
-			<thead>
-				<tr class="table-header">
-					<th rowspan="2">#</th>
-					<th rowspan="2">Employee Id</th>
-					<th rowspan="2">Employee Name</th>
-					<th v-for="n in model.meta.total_days_in_month" >{{ n }}</th>
-					<th rowspan="2">Total<br/>Present</th>
-					<th rowspan="2">Total<br/>Absents</th>
-					<th rowspan="2">Total<br/>Leaves</th>
-					<th rowspan="2">Total<br/>Half<br/>Days</th>
-					<th rowspan="2">Total<br/>Late<br/>Entry</th>
-					<th rowspan="2">Total<br/>Early<br/>Exit</th>
-					<th rowspan="2">Total<br/>LWP</th>
-					<th rowspan="2">Total<br/>Deduction</th>
-				</tr>
-				<tr>
-					<th v-for="day in get_day_range( model.meta )" >{{ day }}</th>
-				</tr>
-			</thead>
+<div v-else-if="model.data.length === 0" class="d-flex justify-content-center align-items-center text-muted py-5">
+	<div>Nothing to show</div>
+</div>
 
-			<!-- Table Body -->
-			<tbody>
-				<tr v-for="( obj, index ) in model.data">
-					<th> {{ index + 1 }}</th>
-					<th> {{ obj.employee }} </th>
-					<th style="width: 85px;">{{ obj.employee_name }}</th>
-					<AttendanceCell v-for="n in model.meta.total_days_in_month"
-						:att="{'status_abbr': obj['days'][n]['status_abbr']}" />
-					<td> {{ obj.total_present }}</td>
-					<td> {{ obj.total_absent }}</td>
-					<td> {{ obj.total_leave }}</td>
-					<td> {{ obj.total_half_day }}</td>
-					<td> {{ obj.total_late_entry }}</td>
-					<td> {{ obj.total_early_exit }}</td>
-					<td> {{ obj.total_lwp }}</td>
-					<td> {{ obj.total_deduction }}</td>
-				</tr>
-			</tbody>
+<div v-else>
+	<div style="border: 1px solid gray;">
+		<!-- Table -->
+		<div class="table-wrapper">
 
-			<tbody>
-				<tr v-for="( obj, index ) in model.data">
-					<th> {{ index + 1 }}</th>
-					<th> {{ obj.employee }} </th>
-					<th style="width: 85px;">{{ obj.employee_name }}</th>
-					<AttendanceCell v-for="n in model.meta.total_days_in_month"
-						:att="{'status_abbr': obj['days'][n]['status_abbr']}" />
-					<td> {{ obj.total_present }}</td>
-					<td> {{ obj.total_absent }}</td>
-					<td> {{ obj.total_leave }}</td>
-					<td> {{ obj.total_half_day }}</td>
-					<td> {{ obj.total_late_entry }}</td>
-					<td> {{ obj.total_early_exit }}</td>
-					<td> {{ obj.total_lwp }}</td>
-					<td> {{ obj.total_deduction }}</td>
-				</tr>
-			</tbody>
+			<table>
+				<!-- Table Header -->
+				<thead>
+					<tr class="table-header">
+						<th rowspan="2">#</th>
+						<th rowspan="2">ID</th>
+						<th rowspan="2">Name</th>
+						<th v-for="n in model.meta.total_days_in_month" >{{ n }}</th>
+						<th rowspan="2">Total<br/>Present</th>
+						<th rowspan="2">Total<br/>Absents</th>
+						<th rowspan="2">Total<br/>Leaves</th>
+						<th rowspan="2">Total<br/>Half<br/>Days</th>
+						<th rowspan="2">Total<br/>Late<br/>Entry</th>
+						<th rowspan="2">Total<br/>Early<br/>Exit</th>
+						<th rowspan="2">Total<br/>LWP</th>
+						<th rowspan="2">Total<br/>Deduction</th>
+					</tr>
+					<tr>
+						<th v-for="day in get_day_range( model.meta )" >{{ day }}</th>
+					</tr>
+				</thead>
 
-			<tbody>
-				<tr v-for="( obj, index ) in model.data">
-					<th> {{ index + 1 }}</th>
-					<th> {{ obj.employee }} </th>
-					<th style="width: 85px;">{{ obj.employee_name }}</th>
-					<AttendanceCell v-for="n in model.meta.total_days_in_month"
-						:att="{'status_abbr': obj['days'][n]['status_abbr']}" />
-					<td> {{ obj.total_present }}</td>
-					<td> {{ obj.total_absent }}</td>
-					<td> {{ obj.total_leave }}</td>
-					<td> {{ obj.total_half_day }}</td>
-					<td> {{ obj.total_late_entry }}</td>
-					<td> {{ obj.total_early_exit }}</td>
-					<td> {{ obj.total_lwp }}</td>
-					<td> {{ obj.total_deduction }}</td>
-				</tr>
-			</tbody>
+				<!-- Table Body -->
+				<tbody>
+					<tr v-for="obj, index in model.data">
+						<th>{{ index + 1 }}</th>
+						<th>{{ obj.employee }}</th>
+						<th style="width: 85px;">{{ obj.employee_name }}</th>
+						<AttendanceCell v-for="n in model.meta.total_days_in_month"
+							:att="obj['days'][n]" />
+						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
+						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
+						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
+						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
+						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
+						<td>{{ obj.total_lwp }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
+					</tr>
+				</tbody>
+				<tbody>
+					<tr v-for="obj, index in model.data">
+						<th>{{ index + 1 }}</th>
+						<th>{{ obj.employee }}</th>
+						<th style="width: 85px;">{{ obj.employee_name }}</th>
+						<AttendanceCell v-for="n in model.meta.total_days_in_month"
+							:att="obj['days'][n]" />
+						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
+						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
+						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
+						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
+						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
+						<td>{{ obj.total_lwp }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
+					</tr>
+				</tbody>
+				<tbody>
+					<tr v-for="obj, index in model.data">
+						<th>{{ index + 1 }}</th>
+						<th>{{ obj.employee }}</th>
+						<th style="width: 85px;">{{ obj.employee_name }}</th>
+						<AttendanceCell v-for="n in model.meta.total_days_in_month"
+							:att="obj['days'][n]" />
+						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
+						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
+						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
+						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
+						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
+						<td>{{ obj.total_lwp }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
+					</tr>
+				</tbody>
+				<tbody>
+					<tr v-for="obj, index in model.data">
+						<th>{{ index + 1 }}</th>
+						<th>{{ obj.employee }}</th>
+						<th style="width: 85px;">{{ obj.employee_name }}</th>
+						<AttendanceCell v-for="n in model.meta.total_days_in_month"
+							:att="obj['days'][n]" />
+						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
+						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
+						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
+						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
+						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
+						<td>{{ obj.total_lwp }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
+					</tr>
+				</tbody>
+				<tbody>
+					<tr v-for="obj, index in model.data">
+						<th>{{ index + 1 }}</th>
+						<th>{{ obj.employee }}</th>
+						<th style="width: 85px;">{{ obj.employee_name }}</th>
+						<AttendanceCell v-for="n in model.meta.total_days_in_month"
+							:att="obj['days'][n]" />
+						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
+						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
+						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
+						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
+						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
+						<td>{{ obj.total_lwp }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
+					</tr>
+				</tbody>
+				<tbody>
+					<tr v-for="obj, index in model.data">
+						<th>{{ index + 1 }}</th>
+						<th>{{ obj.employee }}</th>
+						<th style="width: 85px;">{{ obj.employee_name }}</th>
+						<AttendanceCell v-for="n in model.meta.total_days_in_month"
+							:att="obj['days'][n]" />
+						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
+						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
+						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
+						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
+						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
+						<td>{{ obj.total_lwp }}</td>
+						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
+					</tr>
+				</tbody>
 
-			<tbody>
-				<tr v-for="( obj, index ) in model.data">
-					<th> {{ index + 1 }}</th>
-					<th> {{ obj.employee }} </th>
-					<th style="width: 85px;">{{ obj.employee_name }}</th>
-					<AttendanceCell v-for="n in model.meta.total_days_in_month"
-						:att="{'status_abbr': obj['days'][n]['status_abbr']}" />
-					<td> {{ obj.total_present }}</td>
-					<td> {{ obj.total_absent }}</td>
-					<td> {{ obj.total_leave }}</td>
-					<td> {{ obj.total_half_day }}</td>
-					<td> {{ obj.total_late_entry }}</td>
-					<td> {{ obj.total_early_exit }}</td>
-					<td> {{ obj.total_lwp }}</td>
-					<td> {{ obj.total_deduction }}</td>
-				</tr>
-			</tbody>
-		</table>
+			</table>
+		</div>
 	</div>
 </div>
 
@@ -121,24 +163,52 @@ export default {
 				data: [],
 				meta: {},
 			},
+			error: '',
 		}
 	},
 
 
 	methods: {
 		fetch_model() {
-			var me = this;
+			let me = this;
+			this.error = null;
+			let filters = this.page.get_form_values();
+			let reqd_fields = Object.values(this.page.fields_dict).filter(d => d.df.reqd).map(d => d.df.fieldname);
+
+			for (let fieldname of reqd_fields) {
+				let field = this.page.fields_dict[fieldname];
+
+				if (!field.value) {
+					this.error = `Please set filters`
+				}
+			}
+
+			if (this.error) return;
+
 			frappe.call({
 				method: "erpnext.hr.report.monthly_attendance_sheet.monthly_attendance_sheet.get_attendance_control_panel_data",
 				args: {
-					year: "2022",
-					month: "Nov",
-					company: "ParaLogic",
+					filters: {
+						company: filters.company,
+						year: filters.year,
+						month: filters.month,
+						employee: filters.employee,
+					}
 				},
 				callback: function(r) {
 					if(!r.exc && r.message) {
-						console.log(r.message)
 						me.model = r.message;
+
+						let data = [];
+						let key_list = Object.keys(me.model.data);
+						key_list.sort();
+
+						for (let key of key_list) {
+							data.push(me.model.data[key]);
+						}
+
+						me.model.data = data;
+
 						me.loaded = true;
 					}
 				}
@@ -161,7 +231,12 @@ export default {
 	},
 
 	created() {
+		this.page = cur_page.page.page;
 		this.fetch_model();
+
+		$(this.page.parent).on("reload-attendance", () => {
+			this.fetch_model();
+		});
 	}
 };
 </script>
@@ -192,7 +267,7 @@ export default {
 	table td,
 	table th {
 		border: .5px solid var(--dark);
-		padding: 0.45rem;
+		padding: 0.3rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -202,7 +277,7 @@ export default {
 	table thead {
 		position: sticky;
 		top: 0;
-		z-index: 999;
+		z-index: 5;
 		background: var(--gray-100);
 		text-align: center;
 		box-shadow: var(--shadow-base);
@@ -229,6 +304,7 @@ export default {
 		position: sticky;
 		left: 0;
 		background: var(--gray-100);
+		font-weight: normal;
 		z-index: 2;
 	}
 

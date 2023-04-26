@@ -1,6 +1,6 @@
 
 <template>
-    <td :style="{color: get_color()}">{{ att.status_abbr }}</td>
+    <td :style="{color: get_color(), fontWeight: get_font_weight()}">{{ att.status_abbr }}</td>
 </template>
 
 <script>
@@ -14,24 +14,31 @@ export default {
 
 	methods: {
 
+		// for Colors
 		get_color() {
-			const status = this.att.status_abbr;
-			console.log(status)
+			const status = this.att.status;
 
-			if (status === "P") {
+			if (status === "Present") {
 				return "green";
-			}
-
-			else if (status === "A") {
+			} else if (status === "Absent") {
 				return "red";
-			}
-
-			else if (status === "HD") {
+			} else if (status === "Half Day") {
 				return "orange";
+			} else if (status === "On Leave") {
+				return "blue";
+			} else {
+				return "inherit";
 			}
+		},
 
-			else {
-				return "black";
+		// for Fonts
+		get_font_weight() {
+			const status = this.att.status;
+
+			if (status === "Holiday") {
+				return "bold";
+			} else {
+				return "normal";
 			}
 		}
 	}
