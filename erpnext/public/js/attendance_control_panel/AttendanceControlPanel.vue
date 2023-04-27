@@ -44,48 +44,48 @@
 						<AttendanceCell v-for="n in model.meta.total_days_in_month" :att="obj['days'][n]" />
 						<td>
 							<a :href="get_link_to_checkin_sheet(obj)"
-							:style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }"
-							target="_blank"
+								:style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }"
+								target="_blank"
 							>
 								{{ obj.total_present }}
 							</a>
 						</td>
 						<td>
 							<a :href="get_link_to_checkin_sheet(obj)"
-							:style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }"
-							target="_blank"
+								:style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }"
+								target="_blank"
 							>
 								{{ obj.total_absent }}
 							</a>
 						</td>
 						<td>
 							<a :href="get_link_to_checkin_sheet(obj)"
-							:style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }"
-							target="_blank"
+								:style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }"
+								target="_blank"
 							>
 								{{ obj.total_leave }}
 							</a>
 						</td>
 						<td>
 							<a :href="get_link_to_checkin_sheet(obj)"
-							:style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }"
-							target="_blank"
+								:style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }"
+								target="_blank"
 							>
 								{{ obj.total_half_day }}
 							</a>
 						</td>
 						<td>
 							<a :href="get_link_to_checkin_sheet(obj)"
-							:style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }"
-							target="_blank"
+								:style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }"
+								target="_blank"
 							>
 								{{ obj.total_late_entry }}
 							</a>
 						</td>
 						<td>
 							<a :href="get_link_to_checkin_sheet(obj)"
-							:style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }"
-							target="_blank"
+								:style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }"
+								target="_blank"
 							>
 								{{ obj.total_early_exit }}
 							</a>
