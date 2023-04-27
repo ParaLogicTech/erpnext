@@ -1,10 +1,19 @@
-
 <template>
-    <td :style="{color: get_color(), fontWeight: get_font_weight()}">{{ att.status_abbr }}</td>
+	<td>
+		<div v-if="att.status_abbr">
+			<a v-if="att.attendance"
+				:href="frappe.utils.get_form_link('Attendance', att.attendance)"
+				target="_blank"
+				:style="get_style()"
+			>
+				{{ att.status_abbr }}
+			</a>
+			<span v-else :style="get_style()">{{ att.status_abbr }}</span>
+		</div>
+	</td>
 </template>
 
 <script>
-
 export default {
 	name: "AttendanceCell",
 
@@ -13,11 +22,16 @@ export default {
 	},
 
 	methods: {
+		get_style() {
+			return {
+				color: this.get_color(),
+				fontWeight: this.get_font_weight(),
+				opacity: this.get_opacity(),
+			}
+		},
 
-		// for Colors
 		get_color() {
 			const status = this.att.status;
-
 			if (status === "Present") {
 				return "green";
 			} else if (status === "Absent") {
@@ -31,7 +45,6 @@ export default {
 			}
 		},
 
-		// for Fonts
 		get_font_weight() {
 			const status = this.att.status;
 
@@ -40,7 +53,15 @@ export default {
 			} else {
 				return "normal";
 			}
-		}
+		},
+
+		get_opacity() {
+			if (!this.att.attendance && this.att.status != "Holiday") {
+				return 0.6;
+			} else {
+				return 1;
+			}
+		},
 	}
 }
 </script>

@@ -440,9 +440,6 @@ def get_attendance_status_abbr(attendance_status, late_entry=0, early_exit=0, le
 	if attendance_status == "On Leave":
 		abbr = leave_type_abbr
 
-	# if attendance_status == "Half Day" and leave_type:
-	# 	abbr = "{0}({1})".format(abbr, leave_type_abbr)
-
 	if cint(late_entry):
 		abbr = ">{0}".format(abbr)
 	if cint(early_exit):

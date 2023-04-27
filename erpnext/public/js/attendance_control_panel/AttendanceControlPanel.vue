@@ -39,16 +39,57 @@
 				<tbody>
 					<tr v-for="obj, index in model.data">
 						<th>{{ index + 1 }}</th>
-						<th>{{ obj.employee }}</th>
+						<th><a href="" target="_blank">{{ obj.employee }}</a></th>
 						<th style="width: 85px;">{{ obj.employee_name }}</th>
-						<AttendanceCell v-for="n in model.meta.total_days_in_month"
-							:att="obj['days'][n]" />
-						<td :style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }">{{ obj.total_present }}</td>
-						<td :style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }">{{ obj.total_absent }}</td>
-						<td :style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }">{{ obj.total_leave }}</td>
-						<td :style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }">{{ obj.total_half_day }}</td>
-						<td :style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }">{{ obj.total_late_entry }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }">{{ obj.total_early_exit }}</td>
+						<AttendanceCell v-for="n in model.meta.total_days_in_month" :att="obj['days'][n]" />
+						<td>
+							<a :href="get_link_to_checkin_sheet(obj)"
+							:style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }"
+							target="_blank"
+							>
+								{{ obj.total_present }}
+							</a>
+						</td>
+						<td>
+							<a :href="get_link_to_checkin_sheet(obj)"
+							:style="{ color: obj.total_absent > 0 ? 'red' : 'inherit' }"
+							target="_blank"
+							>
+								{{ obj.total_absent }}
+							</a>
+						</td>
+						<td>
+							<a :href="get_link_to_checkin_sheet(obj)"
+							:style="{ color: obj.total_leave > 0 ? 'blue' : 'inherit' }"
+							target="_blank"
+							>
+								{{ obj.total_leave }}
+							</a>
+						</td>
+						<td>
+							<a :href="get_link_to_checkin_sheet(obj)"
+							:style="{ color: obj.total_half_day > 0 ? 'orange' : 'inherit' }"
+							target="_blank"
+							>
+								{{ obj.total_half_day }}
+							</a>
+						</td>
+						<td>
+							<a :href="get_link_to_checkin_sheet(obj)"
+							:style="{ color: obj.total_late_entry > 0 ? 'orange' : 'inherit' }"
+							target="_blank"
+							>
+								{{ obj.total_late_entry }}
+							</a>
+						</td>
+						<td>
+							<a :href="get_link_to_checkin_sheet(obj)"
+							:style="{ color: obj.total_early_exit > 0 ? 'orange' : 'inherit' }"
+							target="_blank"
+							>
+								{{ obj.total_early_exit }}
+							</a>
+						</td>
 						<td>{{ obj.total_lwp }}</td>
 						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
 					</tr>
@@ -80,7 +121,6 @@ export default {
 			error: '',
 		}
 	},
-
 
 	methods: {
 		fetch_model() {
@@ -122,7 +162,7 @@ export default {
 						}
 
 						me.model.data = data;
-
+						console.log(data)
 						me.loaded = true;
 					}
 				}
@@ -141,6 +181,10 @@ export default {
 			}
 
 			return day_list
+		},
+
+		get_link_to_checkin_sheet(data) {
+			return `/app/query-report/Employee Checkin Sheet?employee=${encodeURIComponent(data.employee)}&from_date=${data.from_date}&to_date=${data.to_date}`
 		}
 	},
 
@@ -224,6 +268,7 @@ export default {
 
 	table tbody th:nth-child(3) {
 		box-shadow: var(--shadow-base);
+		text-align: left;
 	}
 
 </style>
