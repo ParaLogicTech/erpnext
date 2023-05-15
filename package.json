@@ -10,5 +10,8 @@
   "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/frappe/erpnext/issues"
+  },
+  "dependencies": {
+    "bootstrap-vue": "^2.23.1"
   }
 }

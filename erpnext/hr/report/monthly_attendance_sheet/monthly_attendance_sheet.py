@@ -195,8 +195,6 @@ def execute(filters=None):
 	columns = get_columns(filters, leave_types)
 	return columns, data
 
-
-
 # Report Columns
 def get_columns(filters, leave_types):
 	columns = [
@@ -488,5 +486,3 @@ def get_late_deduction_leave_map(filters):
 		leave_map[d.employee][d.leave_type] = d.leaves
 
 	return leave_map
-
-

@@ -39,9 +39,18 @@
 				<tbody>
 					<tr v-for="obj, index in model.data">
 						<th>{{ index + 1 }}</th>
-						<th><a href="" target="_blank">{{ obj.employee }}</a></th>
+						<th>
+							<a :href="get_link_to_employee(obj)"
+								target="_blank"
+							>
+								{{ obj.employee }}
+							</a>
+						</th>
 						<th style="width: 85px;">{{ obj.employee_name }}</th>
-						<AttendanceCell v-for="n in model.meta.total_days_in_month" :att="obj['days'][n]" />
+						<AttendanceCell v-for="n in model.meta.total_days_in_month"
+							:employee_data="obj"
+							:attendance_data="obj['days'][n]"
+							:day_of_month="n" />
 						<td>
 							<a :href="get_link_to_checkin_sheet(obj)"
 								:style="{ color: obj.total_present > 0 ? 'green' : 'inherit' }"
@@ -91,7 +100,11 @@
 							</a>
 						</td>
 						<td>{{ obj.total_lwp }}</td>
-						<td :style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }">{{ obj.total_deduction }}</td>
+						<td 
+							:style="{ color: obj.total_early_exit > 0 ? 'red' : 'inherit' }"
+						>
+							{{ obj.total_deduction }}
+						</td>
 					</tr>
 				</tbody>
 			</table>
@@ -113,6 +126,7 @@ export default {
 
 	data() {
 		return {
+			popoverVisible: false,
 			loaded: false,
 			model: {
 				data: [],
@@ -123,6 +137,13 @@ export default {
 	},
 
 	methods: {
+		showPopover() {
+      		this.popoverVisible = true;
+    	},
+		hidePopover() {
+			this.popoverVisible = false;
+		},
+
 		fetch_model() {
 			let me = this;
 			this.error = null;
@@ -162,7 +183,7 @@ export default {
 						}
 
 						me.model.data = data;
-						console.log(data)
+
 						me.loaded = true;
 					}
 				}
@@ -185,7 +206,12 @@ export default {
 
 		get_link_to_checkin_sheet(data) {
 			return `/app/query-report/Employee Checkin Sheet?employee=${encodeURIComponent(data.employee)}&from_date=${data.from_date}&to_date=${data.to_date}`
+		},
+
+		get_link_to_employee(data) {
+			return `/app/employee/${encodeURIComponent(data.employee)}`
 		}
+
 	},
 
 	created() {
@@ -197,6 +223,7 @@ export default {
 		});
 	}
 };
+
 </script>
 
 <style>
