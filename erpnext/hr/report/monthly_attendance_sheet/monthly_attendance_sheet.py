@@ -65,7 +65,7 @@ def execute(filters=None):
 				checkins = checkin_shifts[first_shift] if first_shift else []
 
 				if checkins:
-					attendance_status, working_hours, late_entry, early_exit = get_attendance_from_checkins(checkins,
+					attendance_status, working_hours, late_entry, early_exit, late_entry_hours, early_exit_hours = get_attendance_from_checkins(checkins,
 						first_shift)
 					attendance_details.status = attendance_status
 					attendance_details.late_entry = late_entry

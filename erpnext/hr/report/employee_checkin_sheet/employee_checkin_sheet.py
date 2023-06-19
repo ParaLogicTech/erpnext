@@ -109,13 +109,14 @@ def execute(filters=None):
 
 						if not attendance_details and shift_type:
 							if checkins:
-								attendance_status, working_hours, late_entry, early_exit = get_attendance_from_checkins(checkins,
+								attendance_status, working_hours, late_entry, early_exit, late_entry_hours, early_exit_hours = get_attendance_from_checkins(checkins,
 									shift_type)
 
 								row['attendance_status'] = attendance_status
 								row['attendance_abbr'] = get_attendance_status_abbr(attendance_status, late_entry, early_exit)
 								row['late_entry'] = late_entry
-								row['early_exit'] = early_exit
+								row['late_entry_hours'] = late_entry_hours
+								row['early_exit_hours'] = early_exit_hours
 								if working_hours:
 									row['working_hours'] = working_hours
 							elif not is_holiday and shift_ended(shift_type, attendance_date=current_date):
@@ -216,8 +217,8 @@ def get_columns(filters, checkin_column_count):
 		{"fieldname": "attendance_status", "label": _("Status"), "fieldtype": "Data", "width": 75},
 		{"fieldname": "remarks", "label": _("Remarks"), "fieldtype": "Data", "width": 100},
 		{"fieldname": "working_hours", "label": _("Hours"), "fieldtype": "Float", "width": 60, "precision": 1},
-		{"fieldname": "late_entry", "label": _("Late Entry"), "fieldtype": "Check", "width": 80},
-		{"fieldname": "early_exit", "label": _("Early Exit"), "fieldtype": "Check", "width": 80},
+		{"fieldname": "late_entry_hours", "label": _("Late Entry"), "fieldtype": "Check", "width": 80},
+		{"fieldname": "early_exit_hours", "label": _("Early Exit"), "fieldtype": "Check", "width": 80},
 		{"fieldname": "attendance_marked", "label": _("Marked"), "fieldtype": "Check", "width": 65},
 		{"fieldname": "leave_application", "label": _("Leave Application"), "fieldtype": "Link", "options": "Leave Application", "width": 130},
 		{"fieldname": "attendance_request", "label": _("Attendance Request"), "fieldtype": "Link", "options": "Attendance Request", "width": 140},

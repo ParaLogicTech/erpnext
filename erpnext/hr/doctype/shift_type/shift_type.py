@@ -60,7 +60,7 @@ class ShiftType(Document):
 		completed_tasks = 0
 
 		for (employee, shift_start), single_shift_logs in grouped_logs.items():
-			attendance_status, working_hours, late_entry, early_exit = self.get_attendance(single_shift_logs)
+			attendance_status, working_hours, late_entry, early_exit, late_entry_hours, early_exit_hours = self.get_attendance(single_shift_logs)
 			mark_attendance_and_link_log(single_shift_logs, attendance_status, shift_start.date(),
 				working_hours, late_entry, early_exit, self.name)
 
@@ -116,6 +116,7 @@ class ShiftType(Document):
 		"""
 		status = 'Present'
 		late_entry = early_exit = False
+		late_entry_hours = early_exit_hours = 0.0
 		total_working_hours, in_time, out_time = calculate_working_hours(logs, self.determine_check_in_and_check_out, self.working_hours_calculation_based_on)
 
 		missing_checkin_no_absent = not out_time and self.missing_checkin_no_absent
@@ -127,10 +128,18 @@ class ShiftType(Document):
 				and in_time > logs[0].shift_start + timedelta(minutes=cint(self.late_entry_grace_period)):
 			late_entry = True
 
+		# Late Entry Hours
+		if in_time and in_time > logs[0].shift_start:
+			late_entry_hours = (in_time - logs[0].shift_start).seconds / 3600
+
 		# Early Exit
 		if cint(self.enable_exit_grace_period) and out_time\
 				and out_time < logs[0].shift_end - timedelta(minutes=cint(self.early_exit_grace_period)):
 			early_exit = True
+
+		# Early Exit Hours
+		if out_time and out_time < logs[0].shift_end:
+			early_exit_hours = (logs[0].shift_end - out_time).seconds / 3600
 
 		# Half Day if Late Minutes
 		if cint(self.half_day_if_late_minutes) and in_time and not missing_checkin_no_half_day\
@@ -158,7 +167,7 @@ class ShiftType(Document):
 					and not missing_checkin_no_absent:
 				status = 'Absent'
 
-		return status, total_working_hours, late_entry, early_exit
+		return status, total_working_hours, late_entry, early_exit, late_entry_hours, early_exit_hours
 
 	def is_half_day_on_multiple_early_exit_applicable(self, employee, log_date):
 		log_date = getdate(log_date)
