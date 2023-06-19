@@ -260,7 +260,7 @@ def get_loan_application(loan_application):
 def make_repayment_entry(payment_rows, loan, company, loan_account, applicant_type, applicant, \
 	payment_account=None, interest_income_account=None):
 
-	if isinstance(payment_rows, frappe.string_types):
+	if isinstance(payment_rows, str):
 		payment_rows_list = json.loads(payment_rows)
 	else:
 		frappe.throw(_("No repayments available for Journal Entry"))
