@@ -7,6 +7,7 @@ from frappe import _
 from frappe.utils import cint
 from erpnext.vehicles.vehicle_transaction_controller import VehicleTransactionController
 from erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule import schedule_project_templates_after_delivery
+from frappe.model.mapper import get_mapped_doc
 
 
 class VehicleDelivery(VehicleTransactionController):
@@ -73,3 +74,24 @@ class VehicleDelivery(VehicleTransactionController):
 				'contact_email': self.contact_email
 			})
 			schedule_project_templates_after_delivery(serial_no, args)
+
+@frappe.whitelist()
+def make_vehicle_delivery_gate_pass(source_name, target_doc=None):
+	def set_missing_values(source, target):
+		target.purpose = "Sales - Vehicle Delivery"
+		target.run_method("set_missing_values")
+
+	target_doc = get_mapped_doc("Vehicle Delivery", source_name, {
+		"Vehicle Delivery": {
+			"doctype": "Vehicle Gate Pass",
+			"field_map": {
+				"name" : "vehicle_delivery",
+				"vehicle_booking_order":"vehicle_booking_order",
+				"customer":"customer",
+				"contact_mobile":"contact_mobile",
+				"applies_to_vehicle":"vehicle",
+			}
+		},
+	}, target_doc, set_missing_values)
+
+	return target_doc

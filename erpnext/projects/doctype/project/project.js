@@ -205,7 +205,12 @@ erpnext.projects.ProjectController = class ProjectController extends erpnext.con
 				}
 
 				if (frappe.model.can_create("Vehicle Gate Pass") && me.frm.doc.vehicle_status == "In Workshop") {
-					me.frm.add_custom_button(__("Create Gate Pass"), () => me.make_vehicle_gate_pass(), __("Vehicle"));
+					if(me.frm.doc.ready_to_close == 1){
+						me.frm.add_custom_button(__("Create Gate Pass Vehicle Delivery"), () => me.make_vehicle_delivery_gate_pass(), __("Vehicle"));
+					}
+					if (me.frm.doc.__onload && me.frm.doc.__onload.vehicle_in_workshop) {
+						me.frm.add_custom_button(__("Create Gate Pass Test Drive"), () => me.make_vehicle_test_drive_gate_pass(), __("Vehicle"));
+					}
 				}
 
 				if (frappe.model.can_create("Vehicle Log")) {
@@ -863,20 +868,19 @@ erpnext.projects.ProjectController = class ProjectController extends erpnext.con
 		});
 	}
 
-	make_vehicle_gate_pass() {
-		this.frm.check_if_unsaved();
-		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.get_vehicle_gate_pass",
-			args: {
-				"project": this.frm.doc.name
-			},
-			callback: function (r) {
-				if (!r.exc) {
-					var doclist = frappe.model.sync(r.message);
-					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-				}
-			}
+	make_vehicle_test_drive_gate_pass() {
+		frappe.model.open_mapped_doc({
+			method: "erpnext.projects.doctype.project.project.make_vehicle_test_drive_gate_pass",
+			frm: this.frm
 		});
+
+	}
+	make_vehicle_delivery_gate_pass() {
+		frappe.model.open_mapped_doc({
+			method: "erpnext.projects.doctype.project.project.make_vehicle_delivery_gate_pass",
+			frm: this.frm
+		});
+
 	}
 
 	make_odometer_log() {

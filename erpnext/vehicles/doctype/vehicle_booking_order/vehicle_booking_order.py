@@ -11,6 +11,8 @@ from erpnext.vehicles.doctype.vehicle_allocation.vehicle_allocation import get_a
 from erpnext.vehicles.vehicle_booking_controller import VehicleBookingController
 from frappe.core.doctype.sms_settings.sms_settings import enqueue_template_sms
 from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
+from frappe.model.mapper import get_mapped_doc
+
 
 
 class VehicleBookingOrder(VehicleBookingController):
@@ -314,22 +316,17 @@ class VehicleBookingOrder(VehicleBookingController):
 			})
 
 	def set_delivery_status(self, update=False):
+		vehicle_delivery = frappe._dict()
 		vehicle_receipts = None
-		vehicle_deliveries = None
 
 		if self.docstatus != 0:
 			vehicle_receipts = self.get_vehicle_receipts()
-			vehicle_deliveries = frappe.db.get_all("Vehicle Delivery", {"vehicle_booking_order": self.name, "docstatus": 1},
-				['name', 'posting_date', 'is_return'], order_by="posting_date, posting_time, creation")
+			vehicle_delivery = get_vehicle_booking_delivery(self.name)
 
 		vehicle_receipt = frappe._dict()
-		vehicle_delivery = frappe._dict()
 
 		if vehicle_receipts and not vehicle_receipts[-1].get('is_return'):
 			vehicle_receipt = vehicle_receipts[-1]
-
-		if vehicle_deliveries and not vehicle_deliveries[-1].get('is_return'):
-			vehicle_delivery = vehicle_deliveries[-1]
 
 		if vehicle_delivery:
 			self.check_outstanding_payment_for_delivery()
@@ -613,6 +610,18 @@ class VehicleBookingOrder(VehicleBookingController):
 			self.set_onload('reserved_customer_name', reservation_details.reserved_customer_name)
 			self.set_onload('reserved_sales_person', reservation_details.reserved_sales_person)
 
+	def set_vehicle_gate_pass_onload(self):
+		if not self.vehicle:
+			return
+		filters = {
+			"purpose": "Sales - Vehicle Delivery",
+			"vehicle": self.vehicle,
+			"docstatus": 1,
+		}
+
+		vehicle_gate_pass = frappe.db.get_value("Vehicle Gate Pass", filters)
+		self.set_onload('vehicle_gate_pass', vehicle_gate_pass)
+
 	def get_sms_args(self, notification_type=None, child_doctype=None, child_name=None):
 		notification_customer = self.customer
 		notification_mobile = self.contact_mobile
@@ -752,6 +761,16 @@ class VehicleBookingOrder(VehicleBookingController):
 	def send_vehicle_anniversary_notification(self):
 		enqueue_template_sms(self, notification_type="Vehicle Anniversary", allow_if_already_sent=1)
 
+def get_vehicle_booking_delivery(vehicle_booking_order):
+	vehicle_deliveries = frappe.db.get_all("Vehicle Delivery",
+		filters={"vehicle_booking_order": vehicle_booking_order, "docstatus": 1},
+		fields=['name', 'posting_date', 'is_return'], order_by="posting_date, posting_time, creation")
+
+	if vehicle_deliveries and not vehicle_deliveries[-1].get('is_return'):
+		return vehicle_deliveries[-1]
+	else:
+		return None
+
 
 @frappe.whitelist()
 def get_next_document(vehicle_booking_order, doctype):
@@ -763,28 +782,50 @@ def get_next_document(vehicle_booking_order, doctype):
 	doc.check_cancelled(throw=True)
 
 	if doctype == "Vehicle Receipt":
-		return get_vehicle_receipt(doc)
+		return make_vehicle_receipt(doc)
 	elif doctype == "Vehicle Receipt Return":
-		return get_vehicle_receipt_return(doc)
+		return make_vehicle_receipt_return(doc)
 	elif doctype == "Vehicle Delivery":
-		return get_vehicle_delivery(doc)
+		return make_vehicle_delivery(doc)
 	elif doctype == "Vehicle Delivery Return":
-		return get_vehicle_delivery_return(doc)
+		return make_vehicle_delivery_return(doc)
 	elif doctype == "Vehicle Invoice":
-		return get_vehicle_invoice(doc)
+		return make_vehicle_invoice(doc)
 	elif doctype == "Vehicle Invoice Delivery":
-		return get_vehicle_invoice_delivery(doc)
+		return make_vehicle_invoice_delivery(doc)
 	elif doctype == "Vehicle Transfer Letter":
-		return get_vehicle_transfer_letter(doc)
+		return make_vehicle_transfer_letter(doc)
 	elif doctype == "Vehicle Registration Order":
-		return get_vehicle_registration_order(doc)
+		return make_vehicle_registration_order(doc)
 	elif doctype == "Project":
-		return get_pdi_repair_order(doc)
+		return make_pdi_repair_order(doc)
 	else:
 		frappe.throw(_("Invalid DocType"))
 
+@frappe.whitelist()
+def make_vehicle_delivery_gate_pass(source_name, target_doc=None):
+	def set_missing_values(source, target):
+		target.vehicle_delivery = frappe.db.get_value("Vehicle Delivery", {'vehicle_booking_order': source.name, 'docstatus': 1})
+		target.sales_person = source.sales_team[0].sales_person if source.sales_team else None
+		target.purpose = "Sales - Vehicle Delivery"
+		target.run_method("set_missing_values")
 
-def get_vehicle_receipt(source):
+	target_doc = get_mapped_doc("Vehicle Booking Order", source_name, {
+		"Vehicle Booking Order": {
+			"doctype": "Vehicle Gate Pass",
+			"field_map": {
+				"name" : "vehicle_booking_order",
+				"customer":"customer",
+				"contact_mobile":"contact_mobile",
+				"applies_to_vehicle":"vehicle",
+
+			}
+		},
+	}, target_doc, set_missing_values)
+
+	return target_doc
+
+def make_vehicle_receipt(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_receive_vehicle
 
 	can_receive_vehicle(source, throw=True)
@@ -796,7 +837,7 @@ def get_vehicle_receipt(source):
 	return target
 
 
-def get_vehicle_receipt_return(source):
+def make_vehicle_receipt_return(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_receive_vehicle
 
 	can_receive_vehicle(source, throw=True)
@@ -809,7 +850,7 @@ def get_vehicle_receipt_return(source):
 	return target
 
 
-def get_vehicle_delivery(source):
+def make_vehicle_delivery(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_deliver_vehicle
 
 	can_deliver_vehicle(source, throw=True)
@@ -822,7 +863,7 @@ def get_vehicle_delivery(source):
 	return target
 
 
-def get_vehicle_delivery_return(source):
+def make_vehicle_delivery_return(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_deliver_vehicle
 
 	can_deliver_vehicle(source, throw=True)
@@ -835,7 +876,7 @@ def get_vehicle_delivery_return(source):
 	return target
 
 
-def get_vehicle_transfer_letter(source):
+def make_vehicle_transfer_letter(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_transfer_vehicle
 
 	can_transfer_vehicle(source, throw=True)
@@ -847,7 +888,7 @@ def get_vehicle_transfer_letter(source):
 	return target
 
 
-def get_vehicle_registration_order(source):
+def make_vehicle_registration_order(source):
 	check_if_doc_exists("Vehicle Registration Order", source.name)
 	target = frappe.new_doc("Vehicle Registration Order")
 	set_next_document_values(source, target)
@@ -863,7 +904,7 @@ def get_vehicle_registration_order(source):
 	return target
 
 
-def get_vehicle_invoice(source):
+def make_vehicle_invoice(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_receive_invoice
 
 	can_receive_invoice(source, throw=True)
@@ -875,7 +916,7 @@ def get_vehicle_invoice(source):
 	return target
 
 
-def get_vehicle_invoice_delivery(source):
+def make_vehicle_invoice_delivery(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_deliver_invoice
 
 	can_deliver_invoice(source, throw=True)
@@ -890,7 +931,7 @@ def get_vehicle_invoice_delivery(source):
 	return target
 
 
-def get_pdi_repair_order(source):
+def make_pdi_repair_order(source):
 	from erpnext.projects.doctype.project_type.project_type import get_project_type_defaults
 	from erpnext.projects.doctype.project_workshop.project_workshop import get_project_workshop_details
 	from erpnext.projects.doctype.project_template.project_template import guess_project_template

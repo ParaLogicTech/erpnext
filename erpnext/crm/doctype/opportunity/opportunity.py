@@ -576,6 +576,38 @@ def make_vehicle_booking_order(source_name, target_doc=None):
 
 	return target_doc
 
+@frappe.whitelist()
+def make_opportunity_gate_pass(source_name, target_doc=None):
+	def set_missing_values(source, target):
+		target.purpose = "Sales - Test Drive"
+		if source.opportunity_from == "Lead":
+			target.lead = source.party_name
+		else:
+			target.customer = source.party_name
+
+		for d in source.items:
+			is_vehicle = frappe.db.get_value("Item", d.item_code, "is_vehicle")
+			if is_vehicle:
+				target.item_code = d.item_code
+				target.item_name = d.item_name
+				break
+		target.run_method("set_missing_values")
+
+	target_doc = get_mapped_doc("Opportunity", source_name, {
+		"Opportunity": {
+			"doctype": "Vehicle Gate Pass",
+			"field_map": {
+				"name": "opportunity",
+				"sales_person": "sales_person",
+				"contact_mobile":"contact_mobile",
+				"applies_to_item": "item_code",
+				"applies_to_vehicle": "vehicle",
+			}
+		},
+	}, target_doc, set_missing_values)
+
+	return target_doc
+
 
 @frappe.whitelist()
 def make_appointment(source_name, target_doc=None):

@@ -202,10 +202,13 @@ erpnext.vehicles.VehicleTransactionController = class VehicleTransactionControll
 					company: me.frm.doc.company,
 					customer: me.frm.doc.customer,
 					financer: me.frm.doc.financer,
+					lead: me.frm.doc.lead,
 					vehicle_owner: me.frm.doc.vehicle_owner,
 					registration_customer: me.frm.doc.registration_customer,
 					supplier: me.frm.doc.supplier,
 					vehicle_booking_order: me.frm.doc.vehicle_booking_order,
+					project: me.frm.doc.project,
+					opportunity: me.frm.doc.opportunity,
 					posting_date: me.frm.doc.posting_date || me.frm.doc.transaction_date
 				}
 			},

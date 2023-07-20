@@ -24,13 +24,92 @@ erpnext.vehicles.VehicleGatePass = class VehicleGatePass extends erpnext.vehicle
 		});
 
 		me.frm.set_query("sales_invoice", function() {
-			var filters = {"docstatus": ['<', 2]};
-
-			filters['project'] = me.frm.doc.project;
-
 			return {
-				filters: filters
+				filters: {
+					project: me.frm.doc.project,
+					docstatus:  ['<', 2]
+				}
 			};
+		});
+
+		me.frm.set_query("vehicle_delivery", function() {
+			return {
+				filters: {
+					item_code : me.frm.doc.item_code,
+					docstatus: ['=', 1]
+				}
+			};
+		});
+
+		me.frm.set_query("vehicle_booking_order", function() {
+			return {
+				filters: {
+					docstatus: ['=', 1],
+					status: ['!=', 'Cancelled Booking'],
+					item_code: me.frm.doc.item_code,
+				}
+			 };
+		});
+	}
+
+	opportunity() {
+		this.frm.set_value("customer", null);
+		this.frm.set_value("lead", null);
+		frappe.call({
+			method: "erpnext.vehicles.doctype.vehicle_gate_pass.vehicle_gate_pass.get_opportunity_details",
+			args: {
+				"opportunity": this.frm.doc.opportunity,
+			},
+			callback: function (r) {
+                if (r.message && !r.exc) {
+                    me.frm.set_value(r.message);
+                }
+            }
+		})
+	}
+	lead() {
+		frappe.call({
+			method: "erpnext.crm.doctype.lead.lead.get_lead_details",
+			args: {
+				"lead": this.frm.doc.lead,
+			},
+			callback: function (r) {
+                if (r.message && !r.exc) {
+                    me.frm.set_value(r.message);
+                }
+            }
+		})
+	}
+
+	vehicle_booking_order(doc) {
+		if (doc.purpose != "Sales - Vehicle Delivery") {
+			this.frm.set_value("vehicle_booking_order", null);
+			return;
+		}
+
+		var me = this;
+
+		return frappe.call({
+			method: "erpnext.vehicles.vehicle_transaction_controller.get_vehicle_booking_order_details",
+			args: {
+				args: {
+					doctype: me.frm.doc.doctype,
+					company: me.frm.doc.company,
+					customer: me.frm.doc.customer,
+					supplier: me.frm.doc.supplier,
+					vehicle_booking_order: doc.vehicle_booking_order,
+					project: doc.project,
+					vehicle: doc.vehicle,
+					get_vehicle_delivery: true,
+					posting_date: me.frm.doc.posting_date || me.frm.doc.transaction_date,
+					issued_for: me.frm.doc.issued_for,
+				}
+			},
+			callback: function (r) {
+				if (r.message && !r.exc) {
+					me.frm.set_value(r.message);
+				}
+			}
 		});
 	}
 };
