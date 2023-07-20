@@ -61,12 +61,13 @@ erpnext.vehicles.VehicleGatePass = class VehicleGatePass extends erpnext.vehicle
 				"opportunity": this.frm.doc.opportunity,
 			},
 			callback: function (r) {
-                if (r.message && !r.exc) {
-                    me.frm.set_value(r.message);
-                }
-            }
+				if (r.message && !r.exc) {
+					me.frm.set_value(r.message);
+				}
+			}
 		})
 	}
+
 	lead() {
 		frappe.call({
 			method: "erpnext.crm.doctype.lead.lead.get_lead_details",
@@ -74,10 +75,10 @@ erpnext.vehicles.VehicleGatePass = class VehicleGatePass extends erpnext.vehicle
 				"lead": this.frm.doc.lead,
 			},
 			callback: function (r) {
-                if (r.message && !r.exc) {
-                    me.frm.set_value(r.message);
-                }
-            }
+				if (r.message && !r.exc) {
+					me.frm.set_value(r.message);
+				}
+			}
 		})
 	}
 

@@ -172,19 +172,19 @@ class VehicleGatePass(VehicleTransactionController):
 
 @frappe.whitelist()
 def get_opportunity_details(opportunity):
-    doc = frappe.get_doc("Opportunity", opportunity)
+	doc = frappe.get_doc("Opportunity", opportunity)
 
-    out = frappe._dict()
-    if doc.opportunity_from == "Lead":
-        out.lead = doc.party_name
-    else:
-        out.customer = doc.party_name
+	out = frappe._dict()
+	if doc.opportunity_from == "Lead":
+		out.lead = doc.party_name
+	else:
+		out.customer = doc.party_name
 
-    for d in doc.items:
-        is_vehicle = frappe.db.get_value("Item", d.item_code, "is_vehicle")
-        if is_vehicle:
-            out.item_code = d.item_code
-            out.item_name = d.item_name
-            break
+	for d in doc.items:
+		is_vehicle = frappe.db.get_value("Item", d.item_code, "is_vehicle")
+		if is_vehicle:
+			out.item_code = d.item_code
+			out.item_name = d.item_name
+			break
 
-    return out
+	return out

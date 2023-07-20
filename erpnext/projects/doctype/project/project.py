@@ -1531,9 +1531,9 @@ def get_project_list(doctype, txt, filters, limit_start, limit_page_length=20, o
 			order by project.modified desc
 			limit {0}, {1}
 		'''.format(limit_start, limit_page_length),
-						 {'user': frappe.session.user},
-						 as_dict=True,
-						 update={'doctype': 'Project'})
+						{'user': frappe.session.user},
+						as_dict=True,
+						update={'doctype': 'Project'})
 
 
 def get_list_context(context=None):
@@ -1568,11 +1568,11 @@ def get_users_for_project(doctype, txt, searchfield, start, page_len, filters):
 		'fcond': get_filters_cond(doctype, filters, conditions),
 		'mcond': get_match_cond(doctype)
 	}), {
-							 'txt': "%%%s%%" % txt,
-							 '_txt': txt.replace("%", ""),
-							 'start': start,
-							 'page_len': page_len
-						 })
+							'txt': "%%%s%%" % txt,
+							'_txt': txt.replace("%", ""),
+							'start': start,
+							'page_len': page_len
+						})
 
 
 def hourly_reminder():
@@ -2223,11 +2223,11 @@ def make_vehicle_delivery_gate_pass(source_name, target_doc=None):
 		"Project": {
 			"doctype": "Vehicle Gate Pass",
 			"field_map": {
-				"name" : "project",
-				"project_workshop" : "project_workshop",
-				"customer":"customer",
-				"contact_mobile":"contact_mobile",
-				"applies_to_vehicle":"vehicle",
+				"name": "project",
+				"project_workshop": "project_workshop",
+				"customer": "customer",
+				"contact_mobile": "contact_mobile",
+				"applies_to_vehicle": "vehicle",
 			}
 		},
 	}, target_doc, set_missing_values)
