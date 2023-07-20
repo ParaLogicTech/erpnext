@@ -2198,7 +2198,7 @@ def make_vehicle_test_drive_gate_pass(source_name, target_doc=None):
 			"doctype": "Vehicle Gate Pass",
 			"field_map": {
 				"name" : "project",
-				"" : "project_workshop",
+				"project_workshop" : "project_workshop",
 				"customer":"customer",
 				"contact_mobile":"contact_mobile",
 				"applies_to_vehicle":"vehicle",
@@ -2224,7 +2224,7 @@ def make_vehicle_delivery_gate_pass(source_name, target_doc=None):
 			"doctype": "Vehicle Gate Pass",
 			"field_map": {
 				"name" : "project",
-				"" : "project_workshop",
+				"project_workshop" : "project_workshop",
 				"customer":"customer",
 				"contact_mobile":"contact_mobile",
 				"applies_to_vehicle":"vehicle",
@@ -2246,7 +2246,7 @@ def get_vehicle_service_receipt(project):
 
 
 @frappe.whitelist()
-def get_vehicle_gate_pass(project, sales_invoice=None): #TODO: need to work on it
+def get_vehicle_gate_pass(project, sales_invoice=None):
 	doc = frappe.get_doc("Project", project)
 	check_if_doc_exists("Vehicle Gate Pass", doc.name, {'docstatus': 0})
 	doc.validate_ready_to_close()
