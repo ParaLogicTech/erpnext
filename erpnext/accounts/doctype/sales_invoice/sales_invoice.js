@@ -227,6 +227,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 				method: "erpnext.projects.doctype.project.project.get_vehicle_gate_pass",
 				args: {
 					"project": this.frm.doc.project,
+					"purpose": "Service - Vehicle Delivery",
 					"sales_invoice": this.frm.doc.name
 				},
 				callback: function (r) {

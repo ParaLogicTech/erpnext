@@ -181,7 +181,7 @@ def get_opportunity_details(opportunity):
 		out.customer = doc.party_name
 
 	for d in doc.items:
-		is_vehicle = frappe.db.get_value("Item", d.item_code, "is_vehicle")
+		is_vehicle = frappe.get_cached_value("Item", d.item_code, "is_vehicle")
 		if is_vehicle:
 			out.item_code = d.item_code
 			out.item_name = d.item_name

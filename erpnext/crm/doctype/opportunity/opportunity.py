@@ -586,7 +586,7 @@ def make_opportunity_gate_pass(source_name, target_doc=None):
 			target.customer = source.party_name
 
 		for d in source.items:
-			is_vehicle = frappe.db.get_value("Item", d.item_code, "is_vehicle")
+			is_vehicle = frappe.get_cached_value("Item", d.item_code, "is_vehicle")
 			if is_vehicle:
 				target.item_code = d.item_code
 				target.item_name = d.item_name

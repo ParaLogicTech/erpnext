@@ -609,7 +609,7 @@ erpnext.vehicles.VehicleBookingOrder = class VehicleBookingOrder extends erpnext
 		}
 	}
 
-	make_vehicle_delivery_gate_pass(){
+	make_vehicle_delivery_gate_pass() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.vehicles.doctype.vehicle_booking_order.vehicle_booking_order.make_vehicle_delivery_gate_pass",
 			frm: this.frm

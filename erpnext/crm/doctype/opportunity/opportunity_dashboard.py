@@ -19,7 +19,7 @@ def get_data():
 		] + vehicle_domain_links + [
 			{
 				'label': _("Reference"),
-				'items': ['Appointment','Vehicle Gate Pass']
+				'items': ['Appointment', 'Vehicle Gate Pass'],
 			},
 		]
 	}

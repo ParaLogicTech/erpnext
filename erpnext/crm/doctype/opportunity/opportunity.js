@@ -90,8 +90,8 @@ erpnext.crm.Opportunity = class Opportunity extends frappe.ui.form.Controller {
 						__('Create'));
 
 					me.frm.add_custom_button(__("Test Drive Gate Pass"), () => me.make_opportunity_gate_pass(),
-					__('Create'));
-					}
+						__('Create'));
+				}
 
 				me.frm.add_custom_button(__('Quotation'), () => me.create_quotation(),
 					__('Create'));
