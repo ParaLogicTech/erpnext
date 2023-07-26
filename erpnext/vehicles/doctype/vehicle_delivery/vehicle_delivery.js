@@ -48,12 +48,12 @@ erpnext.vehicles.VehicleDeliveryController = class VehicleDeliveryController ext
 		});
 	}
 	setup_buttons() {
-				// vehicle_deliery_gate_pass Order button
+			// vehicle_deliery_gate_pass Order button
 			this.frm.add_custom_button(__("Vehicle Delivery Gate Pass"), () => this.make_vehicle_delivery_gate_pass(),
 				__('Create'));
 	}
 
-	make_vehicle_delivery_gate_pass(){
+	make_vehicle_delivery_gate_pass() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.vehicles.doctype.vehicle_delivery.vehicle_delivery.make_vehicle_delivery_gate_pass",
 			frm: this.frm

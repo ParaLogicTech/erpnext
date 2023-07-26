@@ -46,11 +46,39 @@ erpnext.vehicles.VehicleGatePass = class VehicleGatePass extends erpnext.vehicle
 				filters: {
 					docstatus: ['=', 1],
 					status: ['!=', 'Cancelled Booking'],
-					item_code: me.frm.doc.item_code,
 				}
 			 };
 		});
 	}
+
+	get_customer_details() {
+		var me = this;
+
+		let args = {
+			doctype: me.frm.doc.doctype,
+			company: me.frm.doc.company,
+			vehicle_owner: me.frm.doc.vehicle_owner,
+			posting_date: me.frm.doc.posting_date
+		}
+
+		if (me.frm.doc.purpose == "Service - Vehicle Delivery" && me.frm.doc.purpose == "Service - Test Drive" ) {
+			args = {
+				project: me.frm.doc.project
+			}
+		}
+		if (me.frm.doc.purpose == "Sales - Vehicle Delivery") {
+			args = {
+				vehicle_booking_order: me.frm.doc.vehicle_booking_order
+			}
+		}
+
+		if (me.frm.doc.purpose == "Sales - Test Drive") {
+			args = {
+				opportunity: me.frm.doc.opportunity
+			}
+		}
+	}
+
 
 	opportunity() {
 		this.frm.set_value("customer", null);
@@ -84,7 +112,7 @@ erpnext.vehicles.VehicleGatePass = class VehicleGatePass extends erpnext.vehicle
 
 	vehicle_booking_order(doc) {
 		if (doc.purpose != "Sales - Vehicle Delivery") {
-			this.frm.set_value("vehicle_booking_order", null);
+			this.frm.set_value("vehicle_booking_order", this.frm.doc.vehicle_booking_order = null);
 			return;
 		}
 

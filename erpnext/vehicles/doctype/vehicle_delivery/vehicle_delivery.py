@@ -86,10 +86,10 @@ def make_vehicle_delivery_gate_pass(source_name, target_doc=None):
 			"doctype": "Vehicle Gate Pass",
 			"field_map": {
 				"name" : "vehicle_delivery",
-				"vehicle_booking_order":"vehicle_booking_order",
-				"customer":"customer",
-				"contact_mobile":"contact_mobile",
-				"applies_to_vehicle":"vehicle",
+				"vehicle_booking_order": "vehicle_booking_order",
+				"customer": "customer",
+				"contact_person": "contact_person",
+				"applies_to_vehicle": "vehicle",
 			}
 		},
 	}, target_doc, set_missing_values)

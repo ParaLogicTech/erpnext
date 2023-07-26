@@ -13,7 +13,7 @@ def get_data():
 			},
 			{
 				'label': _('Delivery'),
-				'items': ['Vehicle Receipt', 'Vehicle Delivery', 'Project']
+				'items': ['Vehicle Receipt', 'Vehicle Delivery', 'Project', 'Vehicle Gate Pass']
 			},
 			{
 				'label': _('Invoice'),

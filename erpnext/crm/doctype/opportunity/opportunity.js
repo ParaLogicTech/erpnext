@@ -459,9 +459,17 @@ erpnext.crm.Opportunity = class Opportunity extends frappe.ui.form.Controller {
 	}
 
 	make_opportunity_gate_pass() {
-		frappe.model.open_mapped_doc({
+		return frappe.call ({
 			method: "erpnext.crm.doctype.opportunity.opportunity.make_opportunity_gate_pass",
-			frm: this.frm
+			args :{
+				"opportunity": this.frm.doc.name,
+			},
+			callback: function (r){
+				if (!r.exc) {
+					var doclist = frappe.model.sync(r.message);
+					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+				}
+			}
 		});
 	}
 

@@ -206,13 +206,13 @@ erpnext.projects.ProjectController = class ProjectController extends erpnext.con
 
 				if (frappe.model.can_create("Vehicle Gate Pass") && me.frm.doc.vehicle_status == "In Workshop") {
 					if (cint(me.frm.doc.ready_to_close)) {
-						me.frm.add_custom_button(__("Create Gate Pass Vehicle Delivery"), () => me.make_vehicle_gate_pass("Service - Vehicle Delivery")
-						, __("Vehicle"));
+						me.frm.add_custom_button(__("Create Vehicle Delivery Gate Pass"), () => me.make_vehicle_gate_pass("Service - Vehicle Delivery")
+							, __("Vehicle"));
 					}
-					if (me.frm.doc.__onload && me.frm.doc.__onload.vehicle_in_workshop) {
-						me.frm.add_custom_button(__("Create Gate Pass Test Drive"), () => me.make_vehicle_gate_pass("Service - Test Drive")
+
+					me.frm.add_custom_button(__("Create Test Drive Gate Pass"), () => me.make_vehicle_gate_pass("Service - Test Drive")
 						, __("Vehicle"));
-					}
+
 				}
 
 				if (frappe.model.can_create("Vehicle Log")) {
@@ -871,6 +871,7 @@ erpnext.projects.ProjectController = class ProjectController extends erpnext.con
 	}
 
 	make_vehicle_gate_pass(purpose) {
+		this.frm.check_if_unsaved();
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project.get_vehicle_gate_pass",
 			args: {

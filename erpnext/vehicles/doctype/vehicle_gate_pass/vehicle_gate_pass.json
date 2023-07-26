@@ -173,7 +173,7 @@
   {
    "fieldname": "customer_name",
    "fieldtype": "Data",
-   "label": "Customer Name\\Lead Name",
+   "label": "Customer / Lead Name",
    "no_copy": 1,
    "read_only": 1
   },
@@ -411,20 +411,17 @@
   {
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
-   "label": "Mobile No",
-   "no_copy": 1
+   "label": "Mobile No"
   },
   {
    "fieldname": "contact_phone",
    "fieldtype": "Data",
-   "label": "Phone No",
-   "no_copy": 1
+   "label": "Phone No"
   },
   {
    "fieldname": "contact_email",
    "fieldtype": "Data",
    "label": "Contact Email",
-   "no_copy": 1,
    "read_only": 1
   }
  ],
@@ -432,7 +429,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2023-07-19 17:51:23.071251",
+ "modified": "2023-07-24 13:57:07.720233",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle Gate Pass",

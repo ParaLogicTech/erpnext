@@ -785,6 +785,8 @@ def get_next_document(vehicle_booking_order, doctype):
 		return make_vehicle_receipt(doc)
 	elif doctype == "Vehicle Receipt Return":
 		return make_vehicle_receipt_return(doc)
+	elif doctype == "Vehicle Gate Pass":
+		return make_vehicle_delivery_gate_pass(doc)
 	elif doctype == "Vehicle Delivery":
 		return make_vehicle_delivery(doc)
 	elif doctype == "Vehicle Delivery Return":
@@ -803,27 +805,20 @@ def get_next_document(vehicle_booking_order, doctype):
 		frappe.throw(_("Invalid DocType"))
 
 @frappe.whitelist()
-def make_vehicle_delivery_gate_pass(source_name, target_doc=None):
-	def set_missing_values(source, target):
-		target.vehicle_delivery = frappe.db.get_value("Vehicle Delivery", {'vehicle_booking_order': source.name, 'docstatus': 1})
-		target.sales_person = source.sales_team[0].sales_person if source.sales_team else None
-		target.purpose = "Sales - Vehicle Delivery"
-		target.run_method("set_missing_values")
+def make_vehicle_delivery_gate_pass(source):
+	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_deliver_vehicle
 
-	target_doc = get_mapped_doc("Vehicle Booking Order", source_name, {
-		"Vehicle Booking Order": {
-			"doctype": "Vehicle Gate Pass",
-			"field_map": {
-				"name" : "vehicle_booking_order",
-				"customer":"customer",
-				"contact_mobile":"contact_mobile",
-				"applies_to_vehicle":"vehicle",
+	can_deliver_vehicle(source, throw=True)
+	check_if_doc_exists("Vehicle Gate Pass", source.name, {'docstatus': 0})
+	target = frappe.new_doc("Vehicle Gate Pass")
+	target.purpose = "Sales - Vehicle Delivery"
+	target.vehicle_delivery = frappe.db.get_value("Vehicle Delivery", {'vehicle_booking_order': source.name, 'docstatus': 1})
+	target.sales_person = source.sales_team[0].sales_person if source.sales_team else None
 
-			}
-		},
-	}, target_doc, set_missing_values)
+	set_next_document_values(source, target)
+	target.run_method("set_missing_values")
 
-	return target_doc
+	return target
 
 def make_vehicle_receipt(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_receive_vehicle

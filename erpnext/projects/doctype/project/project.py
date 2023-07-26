@@ -70,7 +70,6 @@ class Project(StatusUpdater):
 		self.set_onload('valid_manual_project_status_names', get_valid_manual_project_status_names(self))
 		self.set_onload('is_manual_project_status', is_manual_project_status(self.project_status))
 		self.set_onload('contact_nos', get_all_contact_nos('Customer', self.customer))
-		self.set_onload('vehicle_in_workshop', self.vehicle_status == "In Workshop")
 
 		if self.meta.has_field('applies_to_vehicle'):
 			self.set_onload('customer_vehicle_selector_data', get_customer_vehicle_selector_data(self.customer,
@@ -2166,20 +2165,21 @@ def get_vehicle_service_receipt(project):
 
 @frappe.whitelist()
 def get_vehicle_gate_pass(project, purpose, sales_invoice=None):
+	doc_exists_filter = {'purpose': purpose}
+	if purpose == "Service - Test Drive":
+		doc_exists_filter.update({'docstatus': 0})
+
+	check_if_doc_exists("Vehicle Gate Pass", project, doc_exists_filter)
+
 	doc = frappe.get_doc("Project", project)
 	target = frappe.new_doc("Vehicle Gate Pass")
 	target.purpose = purpose
 	set_vehicle_transaction_values(doc, target)
 
 	if purpose == "Service - Vehicle Delivery":
-		check_if_doc_exists("Vehicle Gate Pass", doc.name, {'docstatus': 0})
 		doc.validate_ready_to_close()
-
-	if purpose == "Service - Test Drive":
-		pass
-
-	sales_invoice = sales_invoice or doc.get_invoice_for_vehicle_gate_pass()
-	target.sales_invoice = sales_invoice
+		sales_invoice = sales_invoice or doc.get_invoice_for_vehicle_gate_pass()
+		target.sales_invoice = sales_invoice
 
 	target.run_method("set_missing_values")
 
@@ -2194,7 +2194,7 @@ def set_vehicle_transaction_values(source, target):
 	target.project = source.name
 	target.item_code = source.applies_to_item
 	target.vehicle = source.applies_to_vehicle
-	target.contact_mobile = source.contact_mobile
+	target.contact_person = source.contact_person
 
 	if target.doctype == "Vehicle Gate Pass":
 		target.project_workshop = source.project_workshop
