@@ -627,6 +627,29 @@ def get_customer_details(args):
 	args = frappe._dict(args)
 	out = frappe._dict()
 
+	contact_and_address_fields = ['contact_person', 'customer_address', 'contact_phone', 'contact_mobile', 'contact_email']
+
+	booking_details = frappe._dict()
+	if args.vehicle_booking_order:
+		fields = ['customer', 'territory'] + contact_and_address_fields
+		booking_details = frappe.db.get_value("Vehicle Booking Order", args.vehicle_booking_order, fields, as_dict=1)
+		args.customer = booking_details.customer
+
+	project_details = frappe._dict()
+	if args.project:
+		fields = ['customer'] + contact_and_address_fields
+		project_details = frappe.db.get_value("Project", args.project, fields, as_dict=1)
+		args.customer = project_details.customer
+
+	opportunity_details = frappe._dict()
+	if args.opportunity:
+		fields = ['party_name', 'opportunity_from'] + contact_and_address_fields
+		opportunity_details = frappe.db.get_value("Opportunity", args.opportunity, fields, as_dict=1)
+		if opportunity_details.opportunity_from == "Lead":
+			args.lead = opportunity_details.party_name
+		else:
+			args.customer = opportunity_details.party_name
+
 	customer = frappe._dict()
 	if args.customer:
 		customer = frappe.get_cached_doc("Customer", args.customer)
@@ -646,21 +669,6 @@ def get_customer_details(args):
 	registration_customer = frappe._dict()
 	if args.registration_customer:
 		registration_customer = frappe.get_cached_doc("Customer", args.registration_customer)
-
-	booking_details = frappe._dict()
-	if args.vehicle_booking_order:
-		booking_details = frappe.db.get_value("Vehicle Booking Order", args.vehicle_booking_order,
-			['customer', 'territory', 'contact_person', 'customer_address', 'contact_phone', 'contact_mobile'], as_dict=1)
-
-	project_details = frappe._dict()
-	if args.project:
-		project_details = frappe.db.get_value("Project", args.project,
-			['customer', 'contact_person', 'customer_address', 'contact_phone', 'contact_mobile'], as_dict=1)
-
-	opportunity_details = frappe._dict()
-	if args.opportunity:
-		opportunity_details = frappe.db.get_value("Opportunity", args.opportunity,
-			['party_name', 'opportunity_from', 'contact_person', 'customer_address', 'contact_phone', 'contact_mobile'], as_dict=1)
 
 	# Customer Name
 	out.customer_name = customer.customer_name
@@ -707,17 +715,14 @@ def get_customer_details(args):
 
 	out.update(get_contact_details(out.contact_person))
 
-	if booking_details and cstr(out.contact_person) == cstr(booking_details.get('contact_person')):
-		out.contact_mobile = booking_details.contact_mobile
-		out.contact_phone = booking_details.contact_phone
-	
-	if project_details and cstr(out.contact_person) == cstr(project_details.get('contact_person')):
-		out.contact_mobile = project_details.contact_mobile
-		out.contact_phone = project_details.contact_phone
-
-	if opportunity_details and cstr(out.contact_person) == cstr(opportunity_details.get('contact_person')):
-		out.contact_mobile = opportunity_details.contact_mobile
-		out.contact_phone = opportunity_details.contact_phone
+	for contact_source in [booking_details, project_details, opportunity_details]:
+		if contact_source and contact_source.get('contact_person') and cstr(out.contact_person) == cstr(contact_source.get('contact_person')):
+			if contact_source.contact_mobile:
+				out.contact_mobile = contact_source.contact_mobile
+			if contact_source.contact_phone:
+				out.contact_phone = contact_source.contact_phone
+			if contact_source.contact_email:
+				out.contact_email = contact_source.contact_email
 
 	out.receiver_contact = args.receiver_contact
 	out.update(get_contact_details(out.receiver_contact, prefix='receiver_'))

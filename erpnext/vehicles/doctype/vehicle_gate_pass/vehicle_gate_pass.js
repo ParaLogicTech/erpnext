@@ -61,22 +61,29 @@ erpnext.vehicles.VehicleGatePass = class VehicleGatePass extends erpnext.vehicle
 			posting_date: me.frm.doc.posting_date
 		}
 
-		if (me.frm.doc.purpose == "Service - Vehicle Delivery" && me.frm.doc.purpose == "Service - Test Drive" ) {
-			args = {
-				project: me.frm.doc.project
-			}
+		if (me.frm.doc.purpose == "Service - Vehicle Delivery" || me.frm.doc.purpose == "Service - Test Drive" ) {
+			args.project = me.frm.doc.project;
 		}
+
 		if (me.frm.doc.purpose == "Sales - Vehicle Delivery") {
-			args = {
-				vehicle_booking_order: me.frm.doc.vehicle_booking_order
-			}
+			args.vehicle_booking_order = me.frm.doc.vehicle_booking_order;
 		}
 
 		if (me.frm.doc.purpose == "Sales - Test Drive") {
-			args = {
-				opportunity: me.frm.doc.opportunity
-			}
+			args.opportunity = me.frm.doc.opportunity;
 		}
+
+		return frappe.call({
+			method: "erpnext.vehicles.vehicle_transaction_controller.get_customer_details",
+			args: {
+				args: args
+			},
+			callback: function (r) {
+				if (r.message && !r.exc) {
+					me.frm.set_value(r.message);
+				}
+			}
+		});
 	}
 
 
