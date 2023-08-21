@@ -1,0 +1,33 @@
+.workshop-cp {
+	.vehicle-table {
+		width: 100%;
+	}
+
+	.frappe-list {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		padding: 10px 15px;
+	}
+
+	.form-tabs-list {
+		border-top: 1px solid #DCE0E3;
+		position: relative;
+		z-index: 0;
+	}
+
+	td,
+	th {
+		border: 1px solid #E6E6E6;
+		padding: 4px;
+	}
+
+	tr:nth-child(even) {
+		background-color: #FFF;
+	}
+
+
+	.refresh-container {
+		font-size: 0.8rem;
+	}
+}
