@@ -48,7 +48,7 @@ def get_projects_data(filters, sort_by, sort_order):
 			p.customer, p.customer_name,
 			p.expected_delivery_date, p.expected_delivery_time
 		FROM `tabProject` p
-			LEFT JOIN `tabItem` i ON i.name = p.applies_to_item
+		LEFT JOIN `tabItem` i ON i.name = p.applies_to_item
 		WHERE p.vehicle_status = 'In Workshop'
 			{conditions}
 		ORDER BY {sort_by} {sort_order}

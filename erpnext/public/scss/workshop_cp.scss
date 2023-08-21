@@ -16,16 +16,12 @@
 		z-index: 0;
 	}
 
-	td,
-	th {
-		border: 1px solid #E6E6E6;
-		padding: 4px;
-	}
-
-	tr:nth-child(even) {
-		background-color: #FFF;
-	}
-
+	.vehicle-table {
+		td,th {
+			border: 1px solid #E6E6E6;
+			padding: 4px;
+		}
+}
 
 	.refresh-container {
 		font-size: 0.8rem;
