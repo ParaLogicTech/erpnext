@@ -1,0 +1,60 @@
+<tr>
+	<td>
+		<a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" target="_blank">
+			{{ doc.project }}
+		</a>
+	</td>
+
+	<td>
+		{% if doc.applies_to_variant_of_name %}
+			{{ doc.applies_to_variant_of_name }}
+		{% else %}
+			{{ doc.applies_to_item_name }}
+		{% endif %}
+	</td>
+
+	<td>
+		<a href="{{ frappe.utils.get_form_link('Vehicle', doc.applies_to_vehicle) }}" target="_blank">
+			{% if doc.vehicle_license_plate %}
+				{{ doc.vehicle_license_plate }}
+			{% else %}
+				{{ doc.vehicle_chassis_no }}
+			{% endif %}
+		</a>
+	</td>
+
+	<td>
+		<a href="{{ frappe.utils.get_form_link('Customer', doc.customer) }}" target="_blank">{{ doc.customer_name }}</a>
+	</td>
+
+	<td>{{ doc.project_name }}</td>
+
+	<td></td>
+
+	<td class="text-center"></td>
+
+	<td>
+		{% if (doc.expected_delivery_date && doc.expected_delivery_time) { %}
+			{{ frappe.datetime.str_to_user(doc.expected_delivery_date) }},
+			{{ moment('2000-01-01 ' + doc.expected_delivery_time).format('hh:mm A') }}
+		{% } else if (doc.expected_delivery_date) { %}
+			{{ frappe.datetime.str_to_user(doc.expected_delivery_date) }}
+		{% } else if (doc.expected_delivery_time) { %}
+			{{ moment('2000-01-01 ' + doc.expected_delivery_time).format('hh:mm A') }}
+		{% endif %}
+	</td>
+
+	<td class="text-center">
+		<div class="inner-group-button show">
+			<button type="button" class="btn btn-default btn-sm" data-toggle="dropdown">Actions
+				<svg class="icon  icon-xs">
+					<use class="" href="#icon-select"></use>
+				</svg>
+			</button>
+			<div role="menu" class="dropdown-menu dropdown-menu-right">
+				<a href="#" class="dropdown-item" onclick="return false;">{%= __("Create Template Task") %}</a>
+				<a href="#" class="dropdown-item" onclick="return false;">Create Task</a>
+			</div>
+		</div>
+	</td>
+</tr>
