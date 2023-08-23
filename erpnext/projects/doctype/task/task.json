@@ -133,7 +133,7 @@
    "no_copy": 1,
    "oldfieldname": "status",
    "oldfieldtype": "Select",
-   "options": "Open\nWorking\nPending Review\nOverdue\nCompleted\nCancelled"
+   "options": "Open\nWorking\nPending Review\nOn Hold\nOverdue\nCompleted\nCancelled"
   },
   {
    "default": "Medium",
@@ -455,7 +455,7 @@
  "is_tree": 1,
  "links": [],
  "max_attachments": 5,
- "modified": "2023-02-02 17:33:57.424287",
+ "modified": "2023-08-23 18:11:58.804734",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",

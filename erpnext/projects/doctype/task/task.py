@@ -44,6 +44,7 @@ class Task(NestedSet):
 			throw(_("Child Task exists for this Task. You can not delete this Task."))
 
 		self.update_nsm_model()
+		self.update_project()
 
 	def get_previous_status(self):
 		self._previous_status = self.get_db_value("status")
@@ -146,6 +147,7 @@ class Task(NestedSet):
 	def update_project(self):
 		if self.project and not self.flags.from_project:
 			doc = frappe.get_doc("Project", self.project)
+			doc.set_tasks_status(update=True)
 			doc.set_percent_complete(update=True)
 			doc.set_status(update=True)
 			doc.notify_update()

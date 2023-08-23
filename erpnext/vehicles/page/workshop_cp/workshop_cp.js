@@ -105,7 +105,7 @@ class WorkshopCP {
 			},
 			{
 				label: __("Project"),
-				fieldname: "project",
+				fieldname: "name",
 				fieldtype: "Link",
 				options: "Project",
 			},

@@ -29,9 +29,9 @@
 
 	<td>{{ doc.project_name }}</td>
 
-	<td></td>
+	<td>{{ doc.tasks_status }}</td>
 
-	<td class="text-center"></td>
+	<td class="text-center">{{ doc.completed_tasks }}/{{ doc.total_tasks }}</td>
 
 	<td>
 		{% if (doc.expected_delivery_date && doc.expected_delivery_time) { %}
@@ -53,7 +53,7 @@
 			</button>
 			<div role="menu" class="dropdown-menu dropdown-menu-right">
 				<a href="#" class="dropdown-item" onclick="return false;">{%= __("Create Template Task") %}</a>
-				<a href="#" class="dropdown-item" onclick="return false;">Create Task</a>
+				<a href="#" class="dropdown-item" onclick="return false;">{%= __("Create Task") %}</a>
 			</div>
 		</div>
 	</td>

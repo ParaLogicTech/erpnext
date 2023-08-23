@@ -176,7 +176,8 @@
   "column_break_121",
   "project_status",
   "indicator_color",
-  "status"
+  "status",
+  "tasks_status"
  ],
  "fields": [
   {
@@ -934,7 +935,7 @@
   {
    "collapsible": 1,
    "fieldname": "status_section",
-   "fieldtype": "Section Break",
+   "fieldtype": "Tab Break",
    "label": "Status"
   },
   {
@@ -1316,15 +1317,25 @@
    "options": "Company:company:default_currency",
    "permlevel": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "tasks_status",
+   "fieldtype": "Select",
+   "label": "Tasks Status",
+   "no_copy": 1,
+   "options": "\nNo Tasks\nNot Started\nIn Progress\nOn Hold\nCompleted",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
- "modified": "2023-06-01 18:39:01.413116",
+ "links": [],
+ "modified": "2023-08-23 17:23:26.163136",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {

@@ -101,6 +101,7 @@ class Project(StatusUpdater):
 		self.validate_warranty()
 		self.validate_vehicle_panels()
 
+		self.set_tasks_status()
 		self.set_percent_complete()
 		self.set_vehicle_status()
 		self.set_project_date()
@@ -385,6 +386,27 @@ class Project(StatusUpdater):
 				'gross_margin': self.gross_margin,
 				'per_gross_margin': self.per_gross_margin,
 			}, None, update_modified=update_modified)
+
+	def set_tasks_status(self, update=False, update_modified=False):
+		tasks_data = frappe.get_all("Task", fields=["name", "status"], filters={
+			"project": self.name,
+			"status": ["!=", "Cancelled"],
+		})
+
+		if tasks_data:
+			if all(d.status == "Completed" for d in tasks_data):
+				self.tasks_status = "Completed"
+			elif any(d.status in ["Working", "Pending Review"] for d in tasks_data):
+				self.tasks_status = "In Progress"
+			elif any(d.status == "On Hold" for d in tasks_data) and all(d.status != "Working" for d in tasks_data):
+				self.tasks_status = "On Hold"
+			elif all(d.status == "Open" for d in tasks_data):
+				self.tasks_status = "Not Started"
+		else:
+			self.tasks_status = "No Tasks"
+
+		if update:
+			self.db_set('tasks_status', self.tasks_status, update_modified=update_modified)
 
 	def set_percent_complete(self, update=False, update_modified=False):
 		if self.percent_complete_method == "Manual":
