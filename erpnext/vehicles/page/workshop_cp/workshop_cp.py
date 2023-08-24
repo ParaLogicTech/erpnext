@@ -7,7 +7,7 @@ allowed_sorting_fields = [
 	"vehicle_received_date",
 	"expected_delivery_date",
 	"name",
-	# "tasks_status",
+	"tasks_status",
 ]
 
 

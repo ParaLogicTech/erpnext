@@ -30,6 +30,7 @@ class Task(NestedSet):
 		self.validate_status()
 		self.set_completion_values()
 		self.update_depends_on()
+		self.set_is_overdue()
 
 	def on_update(self):
 		self.update_nsm_model()
@@ -164,7 +165,7 @@ class Task(NestedSet):
 					select {0}
 					from `tabTask Depends On`
 					where {1} = %s
-				""".format(d[0], d[1]), cstr(task_list[count]))
+			""".format(d[0], d[1]), cstr(task_list[count]))
 				count = count + 1
 				for b in tasks:
 					if b[0] == self.name:
@@ -198,12 +199,21 @@ class Task(NestedSet):
 		if project_user:
 			return True
 
-	def update_status(self):
-		if self.status not in ('Cancelled', 'Completed') and self.exp_end_date:
-			from datetime import datetime
-			if self.exp_end_date < datetime.now().date():
-				self.db_set('status', 'Overdue', update_modified=False)
-				self.update_project()
+	def set_is_overdue(self):
+		is_overdue = 1
+
+		if self.status in ('Cancelled', 'Completed'):
+			is_overdue = 0
+
+		if not self.exp_end_date or getdate(self.exp_end_date) >= getdate():
+			is_overdue = 0
+
+		if self.status == "Pending Review" and getdate(self.review_date) > getdate():
+			is_overdue = 0
+
+		self.db_set('is_overdue', is_overdue, update_modified=False)
+		self.update_project()
+		self.notify_update()
 
 
 @frappe.whitelist()
@@ -240,12 +250,10 @@ def set_multiple_status(names, status):
 
 
 def set_tasks_as_overdue():
-	tasks = frappe.get_all("Task", filters={"status": ["not in", ["Cancelled", "Completed"]]}, fields=["name", "status", "review_date"])
+	tasks = frappe.get_all("Task", filters={"status": ["not in", ["Cancelled", "Completed"]]})
 	for task in tasks:
-		if task.status == "Pending Review":
-			if getdate(task.review_date) > getdate(today()):
-				continue
-		frappe.get_doc("Task", task.name).update_status()
+		doc = frappe.get_doc("Task", task.name)
+		doc.set_is_overdue(update=False, update_modifed=False)
 
 
 @frappe.whitelist()

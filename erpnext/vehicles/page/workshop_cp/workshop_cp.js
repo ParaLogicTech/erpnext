@@ -86,7 +86,7 @@ class WorkshopCP {
 					{ fieldname: 'vehicle_received_date', label: __('Vehicle Received Date') },
 					{ fieldname: 'expected_delivery_date', label: __('Expected Delivery Date') },
 					{ fieldname: 'name', label: __('Project') },
-					{ fieldname: 'task_status', label: __('Status') },
+					{ fieldname: 'tasks_status', label: __('Status') },
 				]
 			},
 			change: () => {

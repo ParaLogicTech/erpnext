@@ -396,12 +396,12 @@ class Project(StatusUpdater):
 		if tasks_data:
 			if all(d.status == "Completed" for d in tasks_data):
 				self.tasks_status = "Completed"
-			elif any(d.status in ["Working", "Pending Review"] for d in tasks_data):
-				self.tasks_status = "In Progress"
-			elif any(d.status == "On Hold" for d in tasks_data) and all(d.status != "Working" for d in tasks_data):
+			elif any(d.status in ["On Hold", "Pending Review"]  for d in tasks_data) and all(d.status != "Working" for d in tasks_data):
 				self.tasks_status = "On Hold"
 			elif all(d.status == "Open" for d in tasks_data):
 				self.tasks_status = "Not Started"
+			else:
+				self.tasks_status = "In Progress"
 		else:
 			self.tasks_status = "No Tasks"
 
