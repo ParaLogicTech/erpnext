@@ -8,7 +8,7 @@ import frappe
 from frappe import _, throw
 from frappe.desk.form.assign_to import clear, close_all_assignments
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import add_days, cstr, date_diff, get_link_to_form, getdate, today
+from frappe.utils import add_days, cint, cstr, date_diff, get_link_to_form, getdate, today
 from frappe.utils.nestedset import NestedSet
 
 
@@ -165,7 +165,7 @@ class Task(NestedSet):
 					select {0}
 					from `tabTask Depends On`
 					where {1} = %s
-			""".format(d[0], d[1]), cstr(task_list[count]))
+			  """.format(d[0], d[1]), cstr(task_list[count]))
 				count = count + 1
 				for b in tasks:
 					if b[0] == self.name:
@@ -199,21 +199,14 @@ class Task(NestedSet):
 		if project_user:
 			return True
 
-	def set_is_overdue(self):
-		is_overdue = 1
+	def set_is_overdue(self, update=False):
+		self.is_overdue = cint(self.status == "Pending Review" and getdate(self.review_date) < getdate())
 
-		if self.status in ('Cancelled', 'Completed'):
-			is_overdue = 0
+		if not self.is_overdue and self.status != "Pending Review":
+			self.is_overdue = cint(self.exp_end_date and getdate(self.exp_end_date) < getdate())
 
-		if not self.exp_end_date or getdate(self.exp_end_date) >= getdate():
-			is_overdue = 0
-
-		if self.status == "Pending Review" and getdate(self.review_date) > getdate():
-			is_overdue = 0
-
-		self.db_set('is_overdue', is_overdue, update_modified=False)
-		self.update_project()
-		self.notify_update()
+		if update:
+			self.db_set('is_overdue', self.is_overdue, update_modified=False)
 
 
 @frappe.whitelist()
@@ -250,10 +243,14 @@ def set_multiple_status(names, status):
 
 
 def set_tasks_as_overdue():
-	tasks = frappe.get_all("Task", filters={"status": ["not in", ["Cancelled", "Completed"]]})
+	tasks = frappe.get_all("Task", filters={
+		"status": ["not in", ["Cancelled", "Completed"]],
+		"exp_end_date": ["<", today],
+	})
+
 	for task in tasks:
 		doc = frappe.get_doc("Task", task.name)
-		doc.set_is_overdue(update=False, update_modifed=False)
+		doc.set_is_overdue(update=True, update_modifed=False)
 
 
 @frappe.whitelist()
