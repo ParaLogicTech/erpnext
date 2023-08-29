@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2018-02-21 16:42:13.882879",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -15,7 +16,8 @@
   "validate_ready_to_close",
   "ignore_workstation_time_overlap",
   "ignore_user_time_overlap",
-  "ignore_employee_time_overlap"
+  "ignore_employee_time_overlap",
+  "validate_task_completed"
  ],
  "fields": [
   {
@@ -89,10 +91,17 @@
    "fieldname": "validate_ready_to_close",
    "fieldtype": "Check",
    "label": "Validate Project Must be Ready To Close for Billing"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_task_completed",
+   "fieldtype": "Check",
+   "label": "Validate Task Completed for Ready To Close"
   }
  ],
  "issingle": 1,
- "modified": "2023-04-10 14:27:55.985337",
+ "links": [],
+ "modified": "2023-08-29 12:20:50.648195",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
@@ -120,5 +129,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

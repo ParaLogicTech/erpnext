@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import get_link_to_form
 import json
 
 
@@ -48,7 +49,7 @@ def get_projects_data(filters, sort_by, sort_order):
 	projects_data = frappe.db.sql(f"""
 		SELECT
 			p.name AS project, p.project_name, p.project_workshop, p.tasks_status,
-			p.applies_to_variant_of, p.applies_to_variant_of_name,
+			p.applies_to_variant_of, p.applies_to_variant_of_name, p.ready_to_close,
 			p.applies_to_item, p.applies_to_item_name,
 			p.applies_to_vehicle, p.vehicle_chassis_no, p.vehicle_license_plate,
 			p.customer, p.customer_name,
@@ -64,6 +65,9 @@ def get_projects_data(filters, sort_by, sort_order):
 	project_task_count = get_project_task_count(projects)
 	for d in projects_data:
 		count_data = project_task_count.get(d.project, task_count_template.copy())
+		if count_data['completed_tasks'] and count_data['total_tasks'] == count_data['completed_tasks'] \
+			and d.ready_to_close == 1:
+			d.tasks_status = 'Ready'
 		d.update(count_data)
 
 	return projects_data
@@ -95,7 +99,7 @@ def get_project_conditions(filters):
 
 	if filters.get("project_workshop"):
 		conditions.append("p.project_workshop = %(project_workshop)s")
-	
+
 	if filters.get("name"):
 		conditions.append("p.name = %(name)s")
 	
@@ -112,4 +116,64 @@ def get_project_conditions(filters):
 	if filters.get("customer"):
 		conditions.append("p.customer = %(customer)s")
 
+	if filters.get("status"):
+			if filters.get("status") == 'Ready':
+				conditions.append("p.ready_to_close = 1")
+			else:
+				conditions.append("p.tasks_status = %(status)s")
+
 	return "and {0}".format(" and ".join(conditions)) if conditions else ""
+
+
+@frappe.whitelist()
+def create_template_task(project):
+	doc = frappe.get_doc("Project", project)
+
+	if not doc.project_templates:
+		frappe.throw(_("No Project Templates set in Project {0}".format(get_link_to_form("Project", project))))
+
+	task_created = 0
+
+	for template_task in doc.project_templates:
+		filters = {
+			"project_template": template_task.project_template,
+			"project_template_detail": template_task.name
+		}
+		if frappe.db.exists("Task", filters):
+			frappe.msgprint(_("Task already exist for Project Template: {0}".format(template_task.project_template)))
+			continue
+
+		task_doc = frappe.new_doc("Task")
+		task_doc.subject = template_task.project_template_name
+		task_doc.project = doc.name
+		task_doc.update(filters)
+		task_doc.save()
+		task_doc.notify_update()
+		task_created += 1
+
+	frappe.msgprint(_("{0} new tasks created".format(task_created)))
+
+
+@frappe.whitelist()
+def create_custom_task(subject, project, standard_time):
+		task_doc = frappe.new_doc("Task")
+		task_doc.subject = subject
+		task_doc.project = project
+		task_doc.save()
+		task_doc.notify_update()
+
+		frappe.msgprint(_("Task for {0} create".format(task_doc.subject)))
+
+
+@frappe.whitelist()
+def update_project_ready_to_close(project):
+	doc = frappe.get_doc("Project", project)
+	doc.set_ready_to_close(update=True)
+	doc.notify_update()
+
+
+@frappe.whitelist()
+def update_reopen_project_status(project):
+	doc = frappe.get_doc("Project", project)
+	doc.reopen_status(update=True)
+	doc.notify_update()

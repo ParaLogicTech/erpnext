@@ -445,6 +445,7 @@ class Project(StatusUpdater):
 			}, None, update_modified=update_modified)
 
 	def set_ready_to_close(self, update=True):
+		self.validate_task_complete()
 		previous_ready_to_close = self.ready_to_close
 
 		self.ready_to_close = 1
@@ -461,12 +462,17 @@ class Project(StatusUpdater):
 				'status': self.status,
 			}, None)
 
+	def validate_task_complete(self):
+		incomplete_task = frappe.db.get_value("Task", {'project':self.name, 'status': ['!=', 'Completed']})
+		if incomplete_task:
+			frappe.throw(_("{0} not completed").format(frappe.get_desk_link("Task", incomplete_task)))
+
 	def validate_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_ready_to_close"):
 			return
 
 		if not self.ready_to_close:
-			frappe.throw(_("{0} is not ready to close").format(frappe.get_desk_link(self.doctype, self.name)))
+			frappe.throw(_("{0}  not ready to close").format(frappe.get_desk_link(self.doctype, self.name)))
 
 	def validate_insurance_details(self):
 		if not self.get('insurance_company'):

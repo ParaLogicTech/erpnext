@@ -21,6 +21,8 @@
   "column_break0",
   "company",
   "status",
+  "project_template",
+  "project_template_detail",
   "progress",
   "priority",
   "task_weight",
@@ -457,6 +459,17 @@
    "label": "Overdue",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "project_template",
+   "fieldtype": "Link",
+   "label": "Project Template",
+   "options": "Project Template"
+  },
+  {
+   "fieldname": "project_template_detail",
+   "fieldtype": "Data",
+   "label": "Project Template Detail"
   }
  ],
  "icon": "fa fa-check",
@@ -465,7 +478,7 @@
  "is_tree": 1,
  "links": [],
  "max_attachments": 5,
- "modified": "2023-08-24 13:08:10.734911",
+ "modified": "2023-08-29 17:37:30.228515",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",

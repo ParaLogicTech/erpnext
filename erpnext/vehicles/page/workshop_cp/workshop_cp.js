@@ -159,6 +159,10 @@ class WorkshopCP {
 
 	bind_events() {
 		$(this.parent).on("click", ".clear-filters", () => this.clear_filters());
+		$(this.parent).on("click", ".create_template_task", (e) => this.create_template_task(e));
+		$(this.parent).on("click", ".create_task", (e) => this.create_task(e));
+		$(this.parent).on("click", ".mark_as_ready", (e) => this.update_project_ready_to_close(e));
+		$(this.parent).on("click", ".reopen", (e) => this.update_reopen_project_status(e));
 
 		this.setup_realtime_updates();
 
@@ -176,6 +180,79 @@ class WorkshopCP {
 		}
 		this._no_refresh = false;
 		await this.refresh();
+	}
+
+	async create_template_task(e) {
+		let project = $(e.target).attr('data-project');
+		frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.create_template_task",
+			args: {
+				"project": project,
+			},
+		})
+	}
+
+	async create_task(e) {
+			let project = $(e.target).attr('data-project');
+			var d = new frappe.ui.Dialog({
+				title: __('Create task'),
+				fields: [
+					{
+						"label" : "Subject",
+						"fieldname": "subject",
+						"fieldtype": "Data",
+						"options": "Task",
+						"reqd": 1,
+					},
+					{
+						"label": __("Project"),
+						"fieldname": "project",
+						"fieldtype": "Link",
+						"options": "Project",
+						"read_only": 1,
+						"default": project,
+						"reqd": 1,
+					},
+					{
+						"label" : "Standard Time",
+						"fieldname": "standard_time",
+						"fieldtype": "Int",
+					},
+				],
+				primary_action: function() {
+					let values = d.get_values();
+					frappe.call({
+						method: "erpnext.vehicles.page.workshop_cp.workshop_cp.create_custom_task",
+						args: {
+							subject: values.subject,
+							project: values.project,
+							standard_time: values.standard_time,
+						},
+					});
+					d.hide()
+				},
+				primary_action_label: __('Create')
+			});
+			d.show();
+	}
+
+	async update_project_ready_to_close(e) {
+		let project = $(e.target).attr('data-project');
+		frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.update_project_ready_to_close",
+			args: {
+				"project": project,
+			},
+		});
+	}
+	async update_reopen_project_status(e) {
+		let project = $(e.target).attr('data-project');
+		frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.update_reopen_project_status",
+			args: {
+				"project": project,
+			},
+		});
 	}
 
 	async refresh() {
