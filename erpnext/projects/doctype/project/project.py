@@ -472,7 +472,7 @@ class Project(StatusUpdater):
 			return
 
 		if not self.ready_to_close:
-			frappe.throw(_("{0}  not ready to close").format(frappe.get_desk_link(self.doctype, self.name)))
+			frappe.throw(_("{0} is not ready to close").format(frappe.get_desk_link(self.doctype, self.name)))
 
 	def validate_insurance_details(self):
 		if not self.get('insurance_company'):

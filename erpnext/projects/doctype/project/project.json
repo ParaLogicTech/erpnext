@@ -1323,7 +1323,7 @@
    "fieldtype": "Select",
    "label": "Tasks Status",
    "no_copy": 1,
-   "options": "\nNo Tasks\nNot Started\nIn Progress\nOn Hold\nCompleted\nReady",
+   "options": "\nNo Tasks\nNot Started\nIn Progress\nOn Hold\nCompleted",
    "read_only": 1
   }
  ],
@@ -1331,7 +1331,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2023-08-28 17:08:37.383995",
+ "modified": "2023-08-30 13:21:07.757093",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",
