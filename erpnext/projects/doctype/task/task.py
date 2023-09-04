@@ -165,7 +165,7 @@ class Task(NestedSet):
 					select {0}
 					from `tabTask Depends On`
 					where {1} = %s
-			""".format(d[0], d[1]), cstr(task_list[count]))
+				""".format(d[0], d[1]), cstr(task_list[count]))
 				count = count + 1
 				for b in tasks:
 					if b[0] == self.name:

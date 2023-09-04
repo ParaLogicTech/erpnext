@@ -1,7 +1,7 @@
 import frappe
 
 def execute():
-	frappe.reload_doc("projects", "doctype", "tasks_status")
+	frappe.reload_doc("projects", "doctype", "project")
 
 	projects = frappe.get_all("Project")
 	for d in projects:

@@ -102,14 +102,14 @@ def get_project_conditions(filters):
 
 	if filters.get("name"):
 		conditions.append("p.name = %(name)s")
-	
+
 	if filters.get("applies_to_item"):
 		is_template = frappe.db.get_value("Item", filters.get('applies_to_item'), 'has_variants')
 		if is_template:
 			conditions.append("i.variant_of=%(applies_to_item)s")
 		else:
 			conditions.append("i.name=%(applies_to_item)s")
-	
+
 	if filters.get("applies_to_vehicle"):
 		conditions.append("p.applies_to_vehicle = %(applies_to_vehicle)s")
 
@@ -156,13 +156,13 @@ def create_template_task(project):
 
 @frappe.whitelist()
 def create_custom_task(subject, project, standard_time):
-		task_doc = frappe.new_doc("Task")
-		task_doc.subject = subject
-		task_doc.project = project
-		task_doc.save()
-		task_doc.notify_update()
+	task_doc = frappe.new_doc("Task")
+	task_doc.subject = subject
+	task_doc.project = project
+	task_doc.save()
+	task_doc.notify_update()
 
-		frappe.msgprint(_("Task for {0} create".format(task_doc.subject)))
+	frappe.msgprint(_("Task for {0} created".format(task_doc.subject)))
 
 
 @frappe.whitelist()
