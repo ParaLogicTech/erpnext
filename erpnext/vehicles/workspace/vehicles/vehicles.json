@@ -198,70 +198,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Vehicle Service",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Project",
-   "link_count": 0,
-   "link_to": "Project",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "dependencies": "Vehicle",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Vehicle Tracking Sheet",
-   "link_count": 0,
-   "link_to": "Vehicle Tracking Sheet",
-   "link_type": "Report",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "dependencies": "Project",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Vehicle Service Summary",
-   "link_count": 0,
-   "link_to": "Vehicle Service Summary",
-   "link_type": "Report",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "dependencies": "Vehicle,Project",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Vehicle Service Receipt",
-   "link_count": 0,
-   "link_to": "Vehicle Service Receipt",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "Vehicle,Project",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Vehicle Gate Pass",
-   "link_count": 0,
-   "link_to": "Vehicle Gate Pass",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Vehicle Registration",
    "link_count": 0,
    "link_type": "DocType",
@@ -637,9 +573,82 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vehicle Service",
+   "link_count": 6,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Repair Order",
+   "link_count": 0,
+   "link_to": "Project",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Vehicle",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Vehicle Tracking Sheet",
+   "link_count": 0,
+   "link_to": "Vehicle Tracking Sheet",
+   "link_type": "Report",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Project",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Vehicle Service Summary",
+   "link_count": 0,
+   "link_to": "Vehicle Service Summary",
+   "link_type": "Report",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Vehicle,Project",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vehicle Service Receipt",
+   "link_count": 0,
+   "link_to": "Vehicle Service Receipt",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Vehicle,Project",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Vehicle Gate Pass",
+   "link_count": 0,
+   "link_to": "Vehicle Gate Pass",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Workshop Control Panel",
+   "link_count": 0,
+   "link_to": "workshop-cp",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2023-06-12 22:59:53.641812",
+ "modified": "2023-09-05 13:25:00.049965",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicles",
