@@ -150,10 +150,8 @@ class WorkshopCP {
 	}
 
 	setup_tabbed_layout() {
-		this.dashboard_tab = this.page.main.find("#dashboard-content");
 		this.vehicles_tab = this.page.main.find("#vehicles-content");
 
-		this.dashboard_tab.append(frappe.render_template("workshop_cp_dashboard"));
 		this.vehicles_tab.append(frappe.render_template("workshop_cp_vehicles"));
 	}
 
@@ -306,7 +304,6 @@ class WorkshopCP {
 
 	render() {
 		this.render_last_updated();
-		this.render_dashboard_tab();
 		this.render_vehicles_tab();
 	}
 
@@ -325,10 +322,6 @@ class WorkshopCP {
 
 		this.$last_updated_timestamp.attr('data-timestamp', this.last_updated);
 		this.$last_updated_timestamp.html(frappe.datetime.prettyDate(this.last_updated));
-	}
-
-	render_dashboard_tab() {
-
 	}
 
 	render_vehicles_tab() {

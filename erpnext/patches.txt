@@ -818,5 +818,5 @@ erpnext.patches.v14_0.delete_hub_docs
 erpnext.patches.v14_0.update_work_order_percentage_status #2
 execute:frappe.delete_doc_if_exists("Report", "Monthly Attendance Sheet")
 erpnext.patches.v14_0.set_order_line_no_in_work_order
-erpnext.patches.v14_0.set_task_is_overdue #1 #2
+erpnext.patches.v14_0.set_task_is_overdue
 erpnext.patches.v14_0.set_project_tasks_status
