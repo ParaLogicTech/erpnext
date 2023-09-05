@@ -398,10 +398,10 @@ class Project(StatusUpdater):
 				self.tasks_status = "Completed"
 			elif any(d.status in ["Working", "Pending Review"] for d in tasks_data):
 				self.tasks_status = "In Progress"
+			elif any(d.status == "On Hold" for d in tasks_data):
+				self.tasks_status = "On Hold"
 			elif all(d.status == "Open" for d in tasks_data):
 				self.tasks_status = "Not Started"
-			elif all(d.status == "On Hold" for d in tasks_data):
-				self.tasks_status = "On Hold"
 
 		else:
 			self.tasks_status = "No Tasks"
@@ -469,7 +469,7 @@ class Project(StatusUpdater):
 
 		incomplete_task = frappe.db.get_value("Task", filters={"project": self.name, "status": ["!=", "Completed"]})
 		if incomplete_task:
-			frappe.throw(_("Tasks are not completed: {0}").format(frappe.get_desk_link("Task", incomplete_task)))
+			frappe.throw(_("{0} not completed: ").format(frappe.get_desk_link("Task", incomplete_task)))
 
 	def validate_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_ready_to_close"):
