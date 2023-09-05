@@ -393,18 +393,18 @@ class Project(StatusUpdater):
 			"status": ["!=", "Cancelled"],
 		})
 
-		if tasks_data:
-			if all(d.status == "Completed" for d in tasks_data):
-				self.tasks_status = "Completed"
-			elif any(d.status in ["Working", "Pending Review"] for d in tasks_data):
-				self.tasks_status = "In Progress"
-			elif any(d.status == "On Hold" for d in tasks_data):
-				self.tasks_status = "On Hold"
-			elif all(d.status == "Open" for d in tasks_data):
-				self.tasks_status = "Not Started"
-
-		else:
+		if not tasks_data:
 			self.tasks_status = "No Tasks"
+		elif all(d.status == "Completed" for d in tasks_data):
+			self.tasks_status = "Completed"
+		elif all(d.status == "Open" for d in tasks_data):
+			self.tasks_status = "Not Started"
+		elif any(d.status in ["Working", "Pending Review"] for d in tasks_data):
+			self.tasks_status = "In Progress"
+		elif any(d.status == "On Hold" for d in tasks_data):
+			self.tasks_status = "On Hold"
+		else:
+			self.tasks_status = "In Progress"
 
 		if update:
 			self.db_set('tasks_status', self.tasks_status, update_modified=update_modified)

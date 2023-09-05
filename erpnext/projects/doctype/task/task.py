@@ -45,6 +45,8 @@ class Task(NestedSet):
 			throw(_("Child Task exists for this Task. You can not delete this Task."))
 
 		self.update_nsm_model()
+
+	def after_delete(self):
 		self.update_project()
 
 	def get_previous_status(self):
