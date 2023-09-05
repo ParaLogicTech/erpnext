@@ -117,10 +117,10 @@ def get_project_conditions(filters):
 		conditions.append("p.customer = %(customer)s")
 
 	if filters.get("status"):
-			if filters.get("status") == 'Ready':
-				conditions.append("p.ready_to_close = 1")
-			else:
-				conditions.append("p.tasks_status = %(status)s")
+		if filters.get("status") == 'Ready':
+			conditions.append("p.ready_to_close = 1")
+		else:
+			conditions.append("p.tasks_status = %(status)s")
 
 	return "and {0}".format(" and ".join(conditions)) if conditions else ""
 
@@ -133,7 +133,6 @@ def create_template_task(project):
 		frappe.throw(_("No Project Templates set in Project {0}".format(get_link_to_form("Project", project))))
 
 	task_created = 0
-
 	for template_task in doc.project_templates:
 		filters = {
 			"project_template": template_task.project_template,

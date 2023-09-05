@@ -137,7 +137,7 @@ class WorkshopCP {
 				label: "Status",
 				fieldname: "status",
 				fieldtype: "Select",
-				options: [' ', 'Unassigned', 'Not Started', 'In Progress', 'Paused', 'Completed', 'Ready']
+				options: [' ', 'No Tasks', 'Not Started', 'In Progress', 'Paused', 'Completed', 'Ready']
 
 			},
 		];
