@@ -96,7 +96,7 @@
    "default": "0",
    "fieldname": "validate_task_completed",
    "fieldtype": "Check",
-   "label": "Validate Task Completed for Ready To Close"
+   "label": "Validate Tasks Completed for Ready To Close"
   }
  ],
  "issingle": 1,

@@ -126,7 +126,7 @@ def get_project_conditions(filters):
 
 
 @frappe.whitelist()
-def create_template_task(project):
+def create_template_tasks(project):
 	doc = frappe.get_doc("Project", project)
 
 	if not doc.project_templates:
@@ -147,32 +147,17 @@ def create_template_task(project):
 		task_doc.project = doc.name
 		task_doc.update(filters)
 		task_doc.save()
-		task_doc.notify_update()
 		task_created += 1
 
 	frappe.msgprint(_("{0} new tasks created".format(task_created)))
 
 
 @frappe.whitelist()
-def create_custom_task(subject, project, standard_time):
+def create_custom_tasks(subject, project):
 	task_doc = frappe.new_doc("Task")
 	task_doc.subject = subject
 	task_doc.project = project
 	task_doc.save()
-	task_doc.notify_update()
 
-	frappe.msgprint(_("Task for {0} created".format(task_doc.subject)))
+	frappe.msgprint(_("The task '{0}' has been successfully created.".format(task_doc.subject)))
 
-
-@frappe.whitelist()
-def update_project_ready_to_close(project):
-	doc = frappe.get_doc("Project", project)
-	doc.set_ready_to_close(update=True)
-	doc.notify_update()
-
-
-@frappe.whitelist()
-def update_reopen_project_status(project):
-	doc = frappe.get_doc("Project", project)
-	doc.reopen_status(update=True)
-	doc.notify_update()
