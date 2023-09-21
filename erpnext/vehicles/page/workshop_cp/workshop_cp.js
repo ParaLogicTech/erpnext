@@ -150,9 +150,13 @@ class WorkshopCP {
 	}
 
 	setup_tabbed_layout() {
+		// this.dashboard_tab = this.page.main.find("#dashboard-content");
 		this.vehicles_tab = this.page.main.find("#vehicles-content");
+		this.tasks_tab = this.page.main.find("#tasks-content");
 
+		// this.dashboard_tab.append(frappe.render_template("workshop_cp_dashboard"));
 		this.vehicles_tab.append(frappe.render_template("workshop_cp_vehicles"));
+		this.tasks_tab.append(frappe.render_template("workshop_cp_tasks"));
 	}
 
 	bind_events() {
@@ -161,6 +165,14 @@ class WorkshopCP {
 		$(this.parent).on("click", ".create_tasks", (e) => this.create_tasks(e));
 		$(this.parent).on("click", ".mark_as_ready", (e) => this.update_project_ready_to_close(e));
 		$(this.parent).on("click", ".reopen", (e) => this.update_reopen_project_status(e));
+		$(this.parent).on("click", ".technician", (e) => this.assign_technician(e));
+		$(this.parent).on("click", ".unassigned_technician", (e) => this.reassign_technician(e));
+		$(this.parent).on("click", ".delete_task", (e) => this.delete_task(e));
+		$(this.parent).on("click", ".edit_task", (e) => this.edit_task(e));
+		$(this.parent).on("click", ".start_task", (e) => this.start_task(e));
+		$(this.parent).on("click", ".pause_task", (e) => this.pause_task(e));
+		$(this.parent).on("click", ".complete_task", (e) => this.complete_task(e));
+		$(this.parent).on("click", ".resume_task", (e) => this.resume_task(e));
 
 		this.setup_realtime_updates();
 
@@ -233,6 +245,221 @@ class WorkshopCP {
 			d.show();
 	}
 
+	assign_technician(e) {
+		let task = $(e.target).attr('data-task');
+		let subject = $(e.target).attr('data-subject');
+		var d = new frappe.ui.Dialog({
+			title: __('Assign Technician'),
+			fields: [
+				{
+					"label": "Task",
+					"fieldname": "name",
+					"fieldtype": "Link",
+					"options": "Task",
+					"default": task,
+					"read_only": 1,
+					"reqd": 1,
+				},
+				{
+					"label" : "Subject",
+					"fieldname": "subject",
+					"fieldtype": "Data",
+					"default": subject,
+					"read_only": 1,
+				},
+				{
+					"label" : "Technician",
+					"fieldname": "employee",
+					"fieldtype": "Link",
+					"options": "Employee",
+					"onchange": () => {
+						let employee = d.get_value('employee');
+						if (employee) {
+							frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
+								if (r) {
+									d.set_values(r);
+								}
+							});
+						} else {
+							d.set_value('employee_name', '');
+						}
+					}
+				},
+				{
+					"label" : "Technician Name",
+					"fieldname": "employee_name",
+					"fieldtype": "Data",
+					"read_only": 1,
+				},
+			],
+			primary_action: function() {
+				let values = d.get_values();
+				frappe.call({
+					method: "erpnext.vehicles.page.workshop_cp.workshop_cp.assign_technician_task",
+					args: {
+						task: values.name,
+						technician: values.employee,
+						subject: values.subject
+
+					},
+				});
+				d.hide()
+			},
+			primary_action_label: __('Assign')
+		});
+		d.show();
+}
+	reassign_technician(e) {
+		let task = $(e.target).attr('data-task');
+		let technician = $(e.target).attr('data-technician');
+		var d = new frappe.ui.Dialog({
+			title: __('Edit Task'),
+			fields: [
+				{
+					"label": "Task",
+					"fieldname": "name",
+					"fieldtype": "Link",
+					"options": "Task",
+					"default": task,
+					"read_only": 1,
+					"reqd": 1,
+				},
+				{
+					"label" : "Technician",
+					"fieldname": "employee",
+					"fieldtype": "Link",
+					"options": "Employee",
+					"default": technician,
+					"onchange": () => {
+						let employee = d.get_value('employee');
+						if (employee) {
+							frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
+								if (r) {
+									d.set_values(r);
+								}
+							});
+						} else {
+							d.set_value('employee_name', '');
+						}
+					}
+				},
+				{
+					"label" : "Technician Name",
+					"fieldname": "employee_name",
+					"fieldtype": "Data",
+					"read_only": 1,
+				},
+			],
+			primary_action: function() {
+				let values = d.get_values();
+				frappe.call({
+					method: "erpnext.vehicles.page.workshop_cp.workshop_cp.reassign_technician_task",
+					args: {
+						task: values.name,
+						technician: values.employee || '',
+					},
+				});
+				d.hide()
+			},
+			primary_action_label: __('Save')
+		});
+		d.show();
+
+	}
+
+	async delete_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.delete_task",
+			args: {
+				"task": task,
+			},
+		});
+	}
+
+	edit_task(e) {
+		let task = $(e.target).attr('data-task');
+		let subject = $(e.target).attr('data-subject');
+		var d = new frappe.ui.Dialog({
+			title: __('Edit Task'),
+			fields: [
+				{
+					"label": "Task",
+					"fieldname": "name",
+					"fieldtype": "Link",
+					"options": "Task",
+					"default": task,
+					"read_only": 1,
+					"reqd": 1,
+				},
+				{
+					"label" : "Subject",
+					"fieldname": "subject",
+					"fieldtype": "Data",
+					"default": subject,
+				},
+			],
+			primary_action: function() {
+				let values = d.get_values();
+				frappe.call({
+					method: "erpnext.vehicles.page.workshop_cp.workshop_cp.edit_task",
+					args: {
+						task: values.name,
+						subject: values.subject
+					},
+				});
+				d.hide()
+			},
+			primary_action_label: __('Save')
+		});
+		d.show();
+
+	}
+
+	async start_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.start_task",
+			args: {
+				task: task,
+			},
+		});
+
+	}
+
+	async pause_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.pause_task",
+			args: {
+				task: task,
+			},
+		});
+
+	}
+
+	async complete_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.complete_task",
+			args: {
+				task: task,
+			},
+		});
+
+	}
+
+	async resume_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.resume_task",
+			args: {
+				task: task,
+			},
+		});
+
+	}
+
 	async update_project_ready_to_close(e) {
 		let project = $(e.target).attr('data-project');
 		return frappe.call({
@@ -242,6 +469,7 @@ class WorkshopCP {
 			},
 		});
 	}
+
 	async update_reopen_project_status(e) {
 		let project = $(e.target).attr('data-project');
 		return frappe.call({
@@ -303,7 +531,9 @@ class WorkshopCP {
 
 	render() {
 		this.render_last_updated();
+		this.render_dashboard_tab();
 		this.render_vehicles_tab();
+		this.render_tasks_tab();
 	}
 
 	render_last_updated() {
@@ -323,6 +553,9 @@ class WorkshopCP {
 		this.$last_updated_timestamp.html(frappe.datetime.prettyDate(this.last_updated));
 	}
 
+	render_dashboard_tab() {
+	}
+
 	render_vehicles_tab() {
 		// clear rows
 		this.vehicles_tab.find(".vehicle-table tbody").empty();
@@ -338,8 +571,28 @@ class WorkshopCP {
 		}
 	}
 
+	render_tasks_tab() {
+		this.tasks_tab.find(".task-table tbody").empty();
+
+		if (this.data.tasks.length > 0) {
+
+			let rows_html = this.data.tasks.map((doc, i) => {
+				doc._idx = i;
+				return this.get_task_list_row_html(doc);
+			}).join("");
+
+			this.tasks_tab.find(".task-table tbody").append(rows_html);
+		}
+	}
+
 	get_list_row_html(doc) {
 		return frappe.render_template("workshop_cp_vehicle_row", {
+			"doc": doc,
+		});
+	}
+
+	get_task_list_row_html(doc) {
+		return frappe.render_template("workshop_cp_task_row", {
 			"doc": doc,
 		});
 	}
