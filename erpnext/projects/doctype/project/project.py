@@ -101,6 +101,7 @@ class Project(StatusUpdater):
 		self.validate_warranty()
 		self.validate_vehicle_panels()
 
+		self.set_tasks_status()
 		self.set_percent_complete()
 		self.set_vehicle_status()
 		self.set_project_date()
@@ -386,6 +387,28 @@ class Project(StatusUpdater):
 				'per_gross_margin': self.per_gross_margin,
 			}, None, update_modified=update_modified)
 
+	def set_tasks_status(self, update=False, update_modified=False):
+		tasks_data = frappe.get_all("Task", fields=["name", "status"], filters={
+			"project": self.name,
+			"status": ["!=", "Cancelled"],
+		})
+
+		if not tasks_data:
+			self.tasks_status = "No Tasks"
+		elif all(d.status == "Completed" for d in tasks_data):
+			self.tasks_status = "Completed"
+		elif all(d.status == "Open" for d in tasks_data):
+			self.tasks_status = "Not Started"
+		elif any(d.status in ["Working", "Pending Review"] for d in tasks_data):
+			self.tasks_status = "In Progress"
+		elif any(d.status == "On Hold" for d in tasks_data):
+			self.tasks_status = "On Hold"
+		else:
+			self.tasks_status = "In Progress"
+
+		if update:
+			self.db_set('tasks_status', self.tasks_status, update_modified=update_modified)
+
 	def set_percent_complete(self, update=False, update_modified=False):
 		if self.percent_complete_method == "Manual":
 			if self.status == "Completed":
@@ -423,6 +446,7 @@ class Project(StatusUpdater):
 			}, None, update_modified=update_modified)
 
 	def set_ready_to_close(self, update=True):
+		self.validate_tasks_complete()
 		previous_ready_to_close = self.ready_to_close
 
 		self.ready_to_close = 1
@@ -438,6 +462,14 @@ class Project(StatusUpdater):
 				'ready_to_close_dt': self.ready_to_close_dt,
 				'status': self.status,
 			}, None)
+
+	def validate_tasks_complete(self):
+		if not cint(frappe.db.get_single_value("Projects Settings", "validate_task_completed")):
+			return
+
+		incomplete_task = frappe.db.get_value("Task", filters={"project": self.name, "status": ["!=", "Completed"]})
+		if incomplete_task:
+			frappe.throw(_("{0} not completed ").format(frappe.get_desk_link("Task", incomplete_task)))
 
 	def validate_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_ready_to_close"):

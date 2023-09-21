@@ -9,21 +9,25 @@
  "field_order": [
   "naming_series",
   "subject",
-  "project",
   "issue",
-  "parent_task",
   "is_group",
   "column_break_5",
   "type",
   "department",
-  "color",
   "is_milestone",
+  "parent_task",
   "column_break0",
   "company",
   "status",
   "progress",
   "priority",
   "task_weight",
+  "color",
+  "is_overdue",
+  "sb_project_temp_details",
+  "project",
+  "project_template",
+  "project_template_detail",
   "sb_timeline",
   "exp_start_date",
   "act_start_date",
@@ -133,7 +137,8 @@
    "no_copy": 1,
    "oldfieldname": "status",
    "oldfieldtype": "Select",
-   "options": "Open\nWorking\nPending Review\nOverdue\nCompleted\nCancelled"
+   "options": "Open\nWorking\nPending Review\nOn Hold\nCompleted\nCancelled",
+   "search_index": 1
   },
   {
    "default": "Medium",
@@ -447,6 +452,35 @@
   {
    "fieldname": "column_break_33",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_overdue",
+   "fieldtype": "Check",
+   "label": "Overdue",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "project_template",
+   "fieldtype": "Link",
+   "label": "Project Template",
+   "no_copy": 1,
+   "options": "Project Template",
+   "read_only": 1
+  },
+  {
+   "fieldname": "project_template_detail",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Project Template Detail",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "sb_project_temp_details",
+   "fieldtype": "Section Break",
+   "label": "Project Template Details"
   }
  ],
  "icon": "fa fa-check",
@@ -454,7 +488,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2023-09-09 12:10:09.515925",
+ "modified": "2023-09-09 12:10:09.515926",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",
