@@ -50,7 +50,7 @@ frappe.ui.form.on("Customer", {
 		});
 
 		if (frm.doc.__islocal == 1) {
-			frm.set_value("represents_company", "");
+			frm.set_value("represents_company", null);
 		}
 
 		frm.set_query('customer_primary_contact', function(doc) {
@@ -107,15 +107,6 @@ frappe.ui.form.on("Customer", {
 					}
 				}
 			});
-		}
-	},
-
-	is_internal_customer: function(frm) {
-		if (frm.doc.is_internal_customer == 1) {
-			frm.toggle_reqd("represents_company", true);
-		}
-		else {
-			frm.toggle_reqd("represents_company", false);
 		}
 	},
 

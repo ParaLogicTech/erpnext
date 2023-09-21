@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "ACC-GLE-.YYYY.-.#####",
  "creation": "2013-01-10 16:34:06",
  "doctype": "DocType",
@@ -33,7 +34,6 @@
   "fiscal_year",
   "company",
   "finance_book",
-  "to_rename",
   "due_date"
  ],
  "fields": [
@@ -71,16 +71,14 @@
    "fieldname": "party_type",
    "fieldtype": "Link",
    "label": "Party Type",
-   "options": "DocType",
-   "search_index": 1
+   "options": "DocType"
   },
   {
    "fieldname": "party",
    "fieldtype": "Dynamic Link",
    "in_standard_filter": 1,
    "label": "Party",
-   "options": "party_type",
-   "search_index": 1
+   "options": "party_type"
   },
   {
    "fieldname": "cost_center",
@@ -140,8 +138,7 @@
    "label": "Against Voucher Type",
    "oldfieldname": "against_voucher_type",
    "oldfieldtype": "Data",
-   "options": "DocType",
-   "search_index": 1
+   "options": "DocType"
   },
   {
    "fieldname": "against_voucher",
@@ -150,8 +147,7 @@
    "label": "Against Voucher",
    "oldfieldname": "against_voucher",
    "oldfieldtype": "Data",
-   "options": "against_voucher_type",
-   "search_index": 1
+   "options": "against_voucher_type"
   },
   {
    "fieldname": "voucher_type",
@@ -160,8 +156,7 @@
    "label": "Voucher Type",
    "oldfieldname": "voucher_type",
    "oldfieldtype": "Select",
-   "options": "DocType",
-   "search_index": 1
+   "options": "DocType"
   },
   {
    "fieldname": "voucher_no",
@@ -171,8 +166,7 @@
    "label": "Voucher No",
    "oldfieldname": "voucher_no",
    "oldfieldtype": "Data",
-   "options": "voucher_type",
-   "search_index": 1
+   "options": "voucher_type"
   },
   {
    "fieldname": "voucher_detail_no",
@@ -238,14 +232,6 @@
    "options": "Finance Book"
   },
   {
-   "default": "1",
-   "fieldname": "to_rename",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "To Rename",
-   "search_index": 1
-  },
-  {
    "fieldname": "due_date",
    "fieldtype": "Date",
    "label": "Due Date"
@@ -266,24 +252,24 @@
    "fieldname": "original_against_voucher_type",
    "fieldtype": "Link",
    "label": "Original Against Voucher Type",
-   "options": "DocType",
-   "search_index": 1
+   "options": "DocType"
   },
   {
    "fieldname": "original_against_voucher",
    "fieldtype": "Dynamic Link",
    "label": "Original Against Voucher",
-   "options": "original_against_voucher_type",
-   "search_index": 1
+   "options": "original_against_voucher_type"
   }
  ],
  "icon": "fa fa-list",
  "idx": 1,
  "in_create": 1,
- "modified": "2021-01-28 14:34:41.422050",
+ "links": [],
+ "modified": "2023-09-12 13:06:06.397875",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "GL Entry",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -333,5 +319,6 @@
  "quick_entry": 1,
  "search_fields": "voucher_no,account,posting_date,against_voucher",
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

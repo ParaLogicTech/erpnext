@@ -420,7 +420,7 @@ def make_return_doc(doctype, source_name, target_doc=None):
 	def update_terms(source_doc, target_doc, source_parent, target_parent):
 		target_doc.payment_amount = -source_doc.payment_amount
 
-	doclist = get_mapped_doc(doctype, source_name,	{
+	mapper = {
 		doctype: {
 			"doctype": doctype,
 
@@ -445,6 +445,10 @@ def make_return_doc(doctype, source_name, target_doc=None):
 			"doctype": "Payment Schedule",
 			"postprocess": update_terms
 		}
-	}, target_doc, set_missing_values)
+	}
+
+	frappe.utils.call_hook_method("update_sales_purchase_return_mapper", mapper, doctype)
+
+	doclist = get_mapped_doc(doctype, source_name,	mapper, target_doc, set_missing_values)
 
 	return doclist

@@ -113,4 +113,11 @@ frappe.query_reports["Employee Checkin Sheet"] = {
 
 		return default_formatter(value, row, column, data, {css: style, link_href: link, link_target: "_blank"});
 	},
+
+	onload: function (query_report) {
+		let employee_user_permissions = frappe.defaults.get_user_permissions()['Employee'];
+		if (employee_user_permissions && employee_user_permissions.length == 1) {
+			query_report.set_filter_value("employee", employee_user_permissions[0].doc);
+		}
+	}
 }

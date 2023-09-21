@@ -190,7 +190,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 				item.net_amount = item.amount;
 				item.net_rate = item.qty ? flt(item.net_amount / item.qty, precision("net_rate", item)) : item.net_rate;
 
-				item.item_taxes_and_charges = 0;
+				item.item_taxes = 0;
 				item.tax_inclusive_amount = 0;
 				item.tax_inclusive_rate = 0;
 
@@ -273,7 +273,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 		$.each(this.frm.doc["items"] || [], function(i, item) {
 			item.item_tax_detail = {}
-			item.item_taxes_and_charges = 0;
+			item.item_taxes = 0;
 		});
 	}
 
@@ -682,8 +682,8 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		}
 		item.item_tax_detail[tax.name] += current_tax_amount;
 
-		if (!tax.exclude_from_item_tax_amount) {
-			item.item_taxes_and_charges += current_tax_amount;
+		if (!tax.exclude_from_item_tax_amount && tax.charge_type != "Actual") {
+			item.item_taxes += current_tax_amount;
 		}
 
 		let tax_detail = tax.item_wise_tax_detail;
@@ -739,10 +739,19 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 	calculate_tax_inclusive_rate() {
 		var me = this;
 		$.each(me.frm.doc.items || [], function(i, item) {
-			item.tax_inclusive_amount = flt(item.tax_exclusive_amount + item.item_taxes_and_charges);
+			item.tax_inclusive_amount = flt(item.tax_exclusive_amount + item.item_taxes);
 			item.tax_inclusive_rate = item.qty ? flt(item.tax_inclusive_amount / item.qty) : 0;
-			me.set_in_company_currency(item, ['item_taxes_and_charges', 'tax_inclusive_amount', 'tax_inclusive_rate'],
+			me.set_in_company_currency(item, ['item_taxes', 'tax_inclusive_amount', 'tax_inclusive_rate'],
 				!me.should_round_transaction_currency());
+
+			if (!me.discount_amount_applied) {
+				item.item_taxes_before_discount = item.item_taxes;
+				item.tax_inclusive_rate_before_discount = item.tax_inclusive_rate;
+				item.tax_inclusive_amount_before_discount = item.tax_inclusive_amount;
+				me.set_in_company_currency(item, [
+					'item_taxes_before_discount', 'tax_inclusive_rate_before_discount', 'tax_inclusive_amount_before_discount'
+				], !me.should_round_transaction_currency())
+			}
 		});
 	}
 

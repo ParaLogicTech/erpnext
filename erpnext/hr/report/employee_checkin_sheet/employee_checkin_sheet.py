@@ -149,9 +149,11 @@ def execute(filters=None):
 	if filters.get("employee"):
 		totals = calculate_totals(filters.get("employee"), data, filters)
 
+	totals_summary = get_totals_summary(totals)
+
 	columns = get_columns(filters, checkin_column_count, totals)
 
-	return columns, data
+	return columns, data, None, None, totals_summary
 
 
 def get_late_entry_hours(row, checkins):
@@ -378,3 +380,74 @@ def get_columns(filters, checkin_column_count, totals):
 	]
 
 	return columns
+
+
+def get_totals_summary(totals):
+	if not totals:
+		return None
+
+	return [
+		{
+			"label": _("Present"),
+			"value": totals.total_present,
+			"indicator": "green" if totals.total_present > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Half Days"),
+			"value": totals.total_half_day,
+			"indicator": "orange" if totals.total_half_day > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Absent"),
+			"value": totals.total_absent,
+			"indicator": "red" if totals.total_absent > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Leaves Taken"),
+			"value": totals.total_leave,
+			"indicator": "blue" if totals.total_leave > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Late Entries"),
+			"value": totals.total_late_entry,
+			"indicator": "orange" if totals.total_late_entry > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Early Exits"),
+			"value": totals.total_early_exit,
+			"indicator": "orange" if totals.total_early_exit > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Late Deduction"),
+			"value": totals.total_late_deduction,
+			"indicator": "orange" if totals.total_late_deduction > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Total Deduction"),
+			"value": totals.total_deduction,
+			"indicator": "red" if totals.total_deduction > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Total Working Hours"),
+			"value": totals.total_working_hours,
+			"indicator": "blue" if totals.total_working_hours > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+	]

@@ -531,13 +531,22 @@ def get_items_for_stock_report(filters):
 		if filters.get("item_group"):
 			conditions.append(get_item_group_condition(filters.get("item_group")))
 
+		if filters.get("customer"):
+			conditions.append("customer = %(customer)s")
+
+		if filters.get("customer_provided_items"):
+			if filters.get("customer_provided_items") == "Customer Provided Items Only":
+				conditions.append("item.is_customer_provided_item = 1")
+			elif filters.get("customer_provided_items") == "Exclude Customer Provided Items":
+				conditions.append("item.is_customer_provided_item = 0")
+
 	items = None
 	if conditions:
 		items = frappe.db.sql_list("""
 			select name
 			from `tabItem` item
-			where {0}
-		""".format(" and ".join(conditions)), filters)
+			where is_stock_item = 1 {0}
+		""".format(" and " + " and ".join(conditions) if conditions else ""), filters)
 
 	return items
 

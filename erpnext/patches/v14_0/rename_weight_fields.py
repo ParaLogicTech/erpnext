@@ -27,6 +27,7 @@ def execute():
 		"Packing Slip Packaging Material": [("weight_per_unit", "tare_weight_per_unit"), ("total_weight", "tare_weight")],
 		"Package Type Packaging Material": [("weight_per_unit", "tare_weight_per_unit"), ("total_weight", "tare_weight")],
 	}
+
 	for dt, fields in rename_map.items():
 		frappe.reload_doctype(dt, force=1)
 
@@ -36,3 +37,9 @@ def execute():
 				rename_field(dt, old_field, new_field)
 			else:
 				print("{0}: Old Field {1} not found".format(dt, old_field, new_field))
+
+	frappe.db.sql("""
+		update `tabLanded Cost Taxes and Charges`
+		set distribution_criteria = 'Net Weight'
+		where distribution_criteria = 'Weight'
+	""")

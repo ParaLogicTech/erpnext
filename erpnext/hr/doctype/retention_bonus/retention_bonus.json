@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "HR-RTB-.YYYY.-.#####",
@@ -100,10 +101,12 @@
   }
  ],
  "is_submittable": 1,
- "modified": "2020-03-03 15:36:49.199402",
+ "links": [],
+ "modified": "2023-08-30 23:05:46.751528",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Retention Bonus",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -150,7 +153,6 @@
   },
   {
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -161,5 +163,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

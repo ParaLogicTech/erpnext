@@ -2,11 +2,11 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.utils import cint, flt, cstr, comma_or
+from frappe.utils import cint, flt, cstr
 from frappe import _, throw
 from erpnext.stock.get_item_details import get_bin_details
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_conversion_factor, get_target_warehouse_validation
+from erpnext.stock.get_item_details import get_target_warehouse_validation, item_has_product_bundle
 from erpnext.stock.doctype.batch.batch import get_batch_qty, auto_select_and_split_batches
 from erpnext.setup.doctype.sales_person.sales_person import get_sales_person_commission_details
 
@@ -34,6 +34,9 @@ class SellingController(StockController):
 		super(SellingController, self).onload()
 
 		if self.doctype in ("Sales Order", "Delivery Note", "Sales Invoice"):
+			self.set_onload("is_internal_customer",
+				frappe.get_cached_value("Customer", self.customer, "is_internal_customer"))
+
 			for item in self.get("items"):
 				item.update(get_bin_details(item.item_code, item.warehouse))
 				if item.meta.has_field('actual_batch_qty'):
@@ -232,7 +235,7 @@ class SellingController(StockController):
 			if d.qty is None:
 				frappe.throw(_("Row {0}: Qty is mandatory").format(d.idx))
 
-			if self.has_product_bundle(d.item_code):
+			if item_has_product_bundle(d.item_code):
 				for p in self.get("packed_items"):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
@@ -282,16 +285,7 @@ class SellingController(StockController):
 				"sales_invoice", "sales_invoice_item",
 				"quotation",
 			])
-
-	def has_product_bundle(self, item_code):
-		return frappe.db.sql("""select name from `tabProduct Bundle`
-			where new_item_code=%s and docstatus != 2""", item_code)
-
-	def is_product_bundle_with_stock_item(self, item_code):
-		"""Returns true if product bundle has stock item"""
-		ret = len(frappe.db.sql("""select i.name from tabItem i, `tabProduct Bundle` pb, `tabProduct Bundle Item` pbi
-			where pb.new_item_code = %s and pbi.parent = pb.name and i.name = pbi.item_code and i.is_stock_item = 1""", item_code))
-		return ret
+			self.run_method("calculate_taxes_and_totals")
 
 	def get_already_delivered_qty(self, current_docname, so, sales_order_item):
 		delivered_via_dn = frappe.db.sql("""select sum(qty) from `tabDelivery Note Item`
@@ -352,10 +346,7 @@ class SellingController(StockController):
 
 		sl_entries = []
 		for d in self.get_item_list():
-			if frappe.get_cached_value("Item", d.item_code, "is_stock_item") == 1 and flt(d.qty):
-				if flt(d.conversion_factor)==0.0:
-					d.conversion_factor = get_conversion_factor(d.item_code, d.uom).get("conversion_factor") or 1.0
-
+			if frappe.db.get_value("Item", d.item_code, "is_stock_item", cache=1) and flt(d.qty):
 				return_rate = 0
 				return_dependency = []
 
@@ -470,7 +461,7 @@ class SellingController(StockController):
 
 			packing_slip = get_packing_slip_details(d.packing_slip)
 			if not packing_slip:
-				frappe.throw(_("Row #{0}: Packing Slip {1} does not exist").format(d.packing_slip))
+				frappe.throw(_("Row #{0}: Packing Slip {1} does not exist").format(d.idx, d.packing_slip))
 
 			if packing_slip.docstatus == 0:
 				frappe.throw(_("Row #{0}: {1} is in draft").format(
@@ -572,6 +563,8 @@ class SellingController(StockController):
 				""", [sales_orders])
 				if po_nos:
 					self.po_no = ', '.join(po_nos)
+					if len(self.po_no) > 140:
+						self.po_no = self.po_no[:137] + "..."
 
 	def set_gross_profit(self):
 		if self.doctype == "Sales Order":
@@ -601,7 +594,7 @@ class SellingController(StockController):
 				e = [d.item_code, d.description, d.warehouse, '']
 				f = [d.item_code, d.description]
 
-			if frappe.db.get_value("Item", d.item_code, "is_stock_item") == 1:
+			if frappe.get_cached_value("Item", d.item_code, "is_stock_item"):
 				if e in check_list:
 					frappe.throw(_("Note: Item {0} entered multiple times").format(d.item_code))
 				else:

@@ -89,12 +89,12 @@ def get_reserved_qty(item_code, warehouse):
 					(
 						select qty from `tabSales Order Item`
 						where name = dnpi.parent_detail_docname
-						and (delivered_by_supplier is null or delivered_by_supplier = 0)
+						and skip_delivery_note = 0
 					) as so_item_qty,
 					(
 						select delivered_qty from `tabSales Order Item`
 						where name = dnpi.parent_detail_docname
-						and delivered_by_supplier = 0
+						and skip_delivery_note = 0
 					) as so_item_delivered_qty,
 					parent, name
 				from
@@ -112,10 +112,10 @@ def get_reserved_qty(item_code, warehouse):
 					delivered_qty as so_item_delivered_qty, parent, name
 				from `tabSales Order Item` so_item
 				where item_code = %s and warehouse = %s
-				and (so_item.delivered_by_supplier is null or so_item.delivered_by_supplier = 0)
+				and so_item.skip_delivery_note = 0
 				and exists(select * from `tabSales Order` so
 					where so.name = so_item.parent and so.docstatus = 1
-					and so.status != 'Closed'))
+					and so.status != 'Closed' and so.skip_delivery_note = 0))
 			) tab
 		where
 			so_item_qty >= so_item_delivered_qty

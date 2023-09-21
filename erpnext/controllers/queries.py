@@ -537,8 +537,12 @@ def get_packing_slips_to_be_delivered(doctype, txt, searchfield, start, page_len
 def _get_packing_slips_to_be_delivered(doctype="Packing Slip", txt="", searchfield="name", start=0, page_len=0,
 		filters=None, as_dict=True):
 
-	fields = get_fields("Packing Slip",
-		["name", "package_type", "customer", "customer_name", "warehouse", "total_net_weight"])
+	fields = get_fields("Packing Slip", [
+		"name", "package_type", "warehouse", "posting_date",
+		"customer", "customer_name",
+		"total_net_weight", "total_qty", "total_stock_qty",
+		"packed_items",
+	])
 	select_fields = ", ".join(["`tabPacking Slip`.{0}".format(f) for f in fields])
 	limit = "limit {0}, {1}".format(start, page_len) if page_len else ""
 

@@ -1,8 +1,10 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:location_name",
  "creation": "2018-05-07 12:49:22.595974",
+ "default_view": "Tree",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -139,11 +141,13 @@
   }
  ],
  "is_tree": 1,
- "modified": "2020-03-18 18:25:59.283057",
+ "links": [],
+ "modified": "2023-09-09 12:09:04.876950",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Location",
  "name_case": "Title Case",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_location",
  "owner": "Administrator",
  "permissions": [
@@ -221,5 +225,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

@@ -131,26 +131,25 @@ erpnext.hr.ExpenseClaimController = class ExpenseClaimController extends frappe.
 		erpnext.toggle_naming_series();
 
 		if(me.frm.doc.docstatus === 1) {
-			me.frm.add_custom_button(__('Accounting Ledger'), function() {
-				frappe.route_options = {
-					voucher_no: me.frm.doc.name,
-					company: me.frm.doc.company,
-					from_date: me.frm.doc.posting_date,
-					to_date: me.frm.doc.posting_date,
-					merge_similar_entries: 0
-				};
-				frappe.set_route("query-report", "General Ledger");
-			}, __("View"));
+			if (frappe.model.can_read("GL Entry")) {
+				me.frm.add_custom_button(__('Accounting Ledger'), function() {
+					frappe.route_options = {
+						voucher_no: me.frm.doc.name,
+						company: me.frm.doc.company,
+						from_date: me.frm.doc.posting_date,
+						to_date: me.frm.doc.posting_date,
+						merge_similar_entries: 0
+					};
+					frappe.set_route("query-report", "General Ledger");
+				}, __("View"));
+			}
 
 			if (flt(me.frm.doc.outstanding_amount) > 0 && frappe.model.can_create("Payment Entry")) {
 				me.frm.add_custom_button(__('Payment'), function() {
 					me.make_payment_entry();
-				}, __("Make"));
+				}, __("Create"));
+				me.frm.page.set_inner_btn_group_as_primary(__("Create"));
 			}
-		}
-
-		if (!me.frm.doc.__islocal && me.frm.doc.docstatus==1) {
-			me.frm.page.set_inner_btn_group_as_primary(__("Make"));
 		}
 
 		this.set_help();

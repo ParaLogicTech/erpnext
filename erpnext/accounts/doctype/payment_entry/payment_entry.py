@@ -797,7 +797,7 @@ def get_orders_to_be_billed(posting_date, party_type, party,
 		where
 			{party_type} = %s
 			and docstatus = 1
-			and ifnull(status, "") != "Closed"
+			and status != 'Closed'
 			and {ref_field} > advance_paid
 			and abs(100 - per_billed) > 0.01
 			{condition}

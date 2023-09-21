@@ -37,6 +37,10 @@ class EmployeeAdvance(StatusUpdater):
 		if self.task and not self.project:
 			self.project = frappe.db.get_value("Task", self.task, "project")
 
+	def before_submit(self):
+		if not self.advance_account:
+			frappe.throw(_("Advance Account is mandatory"))
+
 	def on_cancel(self):
 		self.db_set('status', 'Cancelled')
 

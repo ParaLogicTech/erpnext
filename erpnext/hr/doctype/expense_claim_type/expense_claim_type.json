@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:expense_type",
@@ -47,10 +48,12 @@
  ],
  "icon": "fa fa-flag",
  "idx": 1,
- "modified": "2020-03-03 15:37:42.009050",
+ "links": [],
+ "modified": "2023-08-31 00:22:53.462725",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Expense Claim Type",
+ "naming_rule": "By fieldname",
  "owner": "harshada@webnotestech.com",
  "permissions": [
   {
@@ -69,5 +72,7 @@
   }
  ],
  "sort_field": "modified",
- "sort_order": "ASC"
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
 }

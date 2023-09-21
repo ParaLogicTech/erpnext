@@ -274,7 +274,7 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		let me = this;
 
 		let totals = {};
-		let item_total_fields = ['qty', 'amount', 'weight'];
+		let item_total_fields = ['qty', 'amount', 'net_weight'];
 		$.each(item_total_fields || [], function(i, f) {
 			totals[f] = flt(frappe.utils.sum((me.frm.doc.items || []).map(d => flt(d[f]))));
 		});

@@ -8,7 +8,7 @@ import unittest
 from erpnext.selling.doctype.sales_order.sales_order \
 	import make_material_request, make_delivery_note, make_sales_invoice, WarehouseRequired
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
-from erpnext.selling.doctype.sales_order.sales_order import make_work_orders
+from erpnext.manufacturing.doctype.work_order.work_order import create_work_orders
 from erpnext.controllers.accounts_controller import update_child_qty_rate
 from erpnext.selling.doctype.sales_order.sales_order import make_raw_material_request
 from erpnext.selling.doctype.product_bundle.test_product_bundle import make_product_bundle
@@ -755,7 +755,7 @@ class TestSalesOrder(unittest.TestCase):
 				"description": item.get("description")
 			})
 			so_item_name[item.get("sales_order_item")]= item.get("pending_qty")
-		make_work_orders(json.dumps({"items":po_items}), so.name, so.company)
+		create_work_orders(json.dumps({"items":po_items}), so.name, so.company)
 
 		# Check if Work Orders were raised
 		for item in so_item_name:

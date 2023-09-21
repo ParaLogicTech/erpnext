@@ -4,7 +4,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, cstr
+from frappe.utils import getdate
 from erpnext.vehicles.vehicle_transaction_controller import VehicleTransactionController
 from erpnext.vehicles.utils import format_vehicle_id
 

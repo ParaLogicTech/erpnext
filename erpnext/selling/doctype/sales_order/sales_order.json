@@ -1111,7 +1111,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:!doc.__islocal && !doc.skip_delivery_note_creation",
+   "depends_on": "eval:!doc.__islocal && !doc.skip_delivery_note",
    "fieldname": "per_delivered",
    "fieldtype": "Percent",
    "in_list_view": 1,
@@ -1746,7 +1746,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:!doc.__islocal && !doc.skip_delivery_note_creation",
+   "depends_on": "eval:!doc.__islocal && !doc.skip_delivery_note",
    "fieldname": "per_packed",
    "fieldtype": "Percent",
    "label": "% Packed",
@@ -1794,7 +1794,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-05-30 13:30:15.469775",
+ "modified": "2023-09-07 23:04:08.722438",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",
@@ -1908,6 +1908,10 @@
    "report": 1,
    "role": "Accounts User",
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Packing User"
   }
  ],
  "search_fields": "status,transaction_date,customer,customer_name, territory,order_type,company",

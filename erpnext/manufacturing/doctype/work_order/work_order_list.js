@@ -1,10 +1,10 @@
 frappe.listview_settings['Work Order'] = {
 	add_fields: [
-		"status", "docstatus", "production_status",
+		"status", "docstatus", "production_status", "per_produced",
 		"skip_transfer", "transfer_material_against",
 		"qty", "max_qty", "produced_qty", "material_transferred_for_manufacturing",
 		"production_item", "item_name", "stock_uom",
-		"packing_slip_required", "packed_qty", "packing_status",
+		"packing_slip_required", "packed_qty", "packing_status", "per_packed",
 		"order_line_no",
 	],
 

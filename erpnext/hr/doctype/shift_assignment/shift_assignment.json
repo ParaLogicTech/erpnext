@@ -121,7 +121,8 @@
  ],
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
- "modified": "2023-03-30 12:02:01.414021",
+ "links": [],
+ "modified": "2023-08-30 22:50:14.892700",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Shift Assignment",
@@ -130,7 +131,6 @@
  "permissions": [
   {
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,

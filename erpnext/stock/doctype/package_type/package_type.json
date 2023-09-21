@@ -145,7 +145,7 @@
    "link_fieldname": "package_type"
   }
  ],
- "modified": "2023-07-28 15:31:08.709979",
+ "modified": "2023-08-31 14:57:39.689640",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Package Type",
@@ -199,6 +199,10 @@
    "report": 1,
    "role": "Accounts User",
    "share": 1
+  },
+  {
+   "read": 1,
+   "role": "Packing User"
   }
  ],
  "sort_field": "idx",

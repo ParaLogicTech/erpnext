@@ -1055,7 +1055,7 @@
    "type": "Link"
   }
  ],
- "modified": "2023-08-21 01:52:21.162473",
+ "modified": "2023-08-30 22:29:35.270760",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
@@ -1070,6 +1070,9 @@
   },
   {
    "role": "Accounts User"
+  },
+  {
+   "role": "Employee"
   }
  ],
  "sequence_id": 170.0,

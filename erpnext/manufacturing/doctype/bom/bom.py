@@ -128,6 +128,9 @@ class BOM(WebsiteGenerator):
 		for item in self.get("items"):
 			self.validate_bom_currecny(item)
 
+			if item.do_not_explode:
+				item.bom_no = None
+
 			material_details = self.get_bom_material_detail({
 				"item_code": item.item_code,
 				"item_name": item.item_name,
@@ -138,7 +141,9 @@ class BOM(WebsiteGenerator):
 				"stock_uom": item.stock_uom,
 				"conversion_factor": item.conversion_factor,
 				"skip_transfer_for_manufacture": item.skip_transfer_for_manufacture,
+				"do_not_explode": item.do_not_explode,
 			})
+
 			for key in material_details:
 				if not item.get(key) or key in force_fields:
 					item.set(key, material_details[key])
@@ -177,7 +182,7 @@ class BOM(WebsiteGenerator):
 			'stock_uom': item.stock_uom,
 			'uom': args.get('uom') or item.get('stock_uom'),
 			'conversion_factor': args.get('conversion_factor') or 1,
-			'bom_no': args.get('bom_no'),
+			'bom_no': args.get('bom_no') if not args.get('do_not_explode') else None,
 			'rate': rate,
 			'qty': flt(args.get("qty")) or flt(args.get("stock_qty")) or 1,
 			'stock_qty': flt(args.get("stock_qty")) or flt(args.get("qty")) or 1,
@@ -575,7 +580,7 @@ class BOM(WebsiteGenerator):
 				continue
 
 			if d.bom_no:
-				self.get_child_exploded_items(d.bom_no, d.stock_qty)
+				self.get_child_exploded_items(d.bom_no, d.stock_qty, d.skip_transfer_for_manufacture)
 			else:
 				self.add_to_cur_exploded_items(frappe._dict({
 					'item_code': d.item_code,
@@ -603,7 +608,7 @@ class BOM(WebsiteGenerator):
 		else:
 			self.cur_exploded_items[key] = args
 
-	def get_child_exploded_items(self, bom_no, qty):
+	def get_child_exploded_items(self, bom_no, qty, skip_transfer_for_manufacture=0):
 		""" Add all items from Flat BOM of child BOM"""
 		# Did not use qty_consumed_per_unit in the query, as it leads to rounding loss
 		child_fb_items = frappe.db.sql("""
@@ -641,7 +646,7 @@ class BOM(WebsiteGenerator):
 				'stock_uom': d['stock_uom'],
 				'stock_qty': new_stock_qty,
 				'rate': flt(d['rate']),
-				'skip_transfer_for_manufacture': d.get('skip_transfer_for_manufacture', 0)
+				'skip_transfer_for_manufacture': 1 if cint(skip_transfer_for_manufacture) else d.get('skip_transfer_for_manufacture', 0)
 			}))
 
 	def add_exploded_items(self):
@@ -837,31 +842,28 @@ def get_children(doctype, parent=None, is_root=False, **filters):
 
 
 def get_boms_in_bottom_up_order(bom_no=None):
-	def _get_parent(bom_no):
-		return frappe.db.sql_list("""
-			select distinct bom_item.parent from `tabBOM Item` bom_item
-			where bom_item.bom_no = %s and bom_item.docstatus=1 and bom_item.parenttype='BOM'
-				and exists(select bom.name from `tabBOM` bom where bom.name=bom_item.parent and bom.is_active=1)
-		""", bom_no)
+	from erpnext.manufacturing.doctype.bom.bom_tree import BOMGraph
 
-	count = 0
-	bom_list = []
-	if bom_no:
-		bom_list.append(bom_no)
-	else:
-		# get all leaf BOMs
-		bom_list = frappe.db.sql_list("""select name from `tabBOM` bom
-			where docstatus=1 and is_active=1
-				and not exists(select bom_no from `tabBOM Item`
-					where parent=bom.name and ifnull(bom_no, '')!='')""")
+	bom_nos = frappe.db.sql_list("""
+		select name
+		from `tabBOM`
+		where docstatus = 1 and is_active = 1
+	""")
 
-	while(count < len(bom_list)):
-		for child_bom in _get_parent(bom_list[count]):
-			if child_bom not in bom_list:
-				bom_list.append(child_bom)
-		count += 1
+	bom_edges = frappe.db.sql("""
+		select bom.name as parent, i.bom_no as child
+		from `tabBOM Item` i
+		inner join `tabBOM` bom on bom.name = i.parent
+		where ifnull(i.bom_no, '') != '' and bom.docstatus = 1 and bom.is_active = 1
+	""", as_dict=1)
 
-	return bom_list
+	bom_graph = BOMGraph(bom_nos)
+	for d in bom_edges:
+		bom_graph.add_edge(d.parent, d.child)
+
+	sorted_boms = bom_graph.topological_sort(parent_bom=bom_no)
+
+	return sorted_boms
 
 
 def add_additional_cost(stock_entry, work_order):

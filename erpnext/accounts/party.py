@@ -576,6 +576,7 @@ def set_taxes(party, party_type, posting_date, company, customer_group=None, sup
 		transaction_type=None, cost_center=None, tax_id=None, tax_cnic=None, tax_strn=None, has_stin=None,
 		billing_address=None, shipping_address=None, use_for_shopping_cart=None):
 	from erpnext.accounts.doctype.tax_rule.tax_rule import get_tax_template, get_party_details
+
 	args = {
 		scrub(party_type): party,
 		"company": company
@@ -604,19 +605,22 @@ def set_taxes(party, party_type, posting_date, company, customer_group=None, sup
 		args['has_stin'] = "Yes" if cint(has_stin) else "No"
 
 	if billing_address or shipping_address:
-		args.update(get_party_details(party, party_type, {"billing_address": billing_address,
-			"shipping_address": shipping_address}))
+		args.update(get_party_details(party, party_type, {
+			"billing_address": billing_address,
+			"shipping_address": shipping_address
+		}))
 	else:
 		args.update(get_party_details(party, party_type))
 
 	if party_type in ("Customer", "Lead"):
 		args.update({"tax_type": "Sales"})
 
-		if party_type=='Lead':
+		if party_type == 'Lead':
 			args['customer'] = None
 			del args['lead']
 	else:
 		args.update({"tax_type": "Purchase"})
+
 	if use_for_shopping_cart:
 		args.update({"use_for_shopping_cart": use_for_shopping_cart})
 
@@ -857,7 +861,8 @@ def get_dashboard_info(party_type, party, loyalty_program=None):
 		select company, sum(debit_in_account_currency) - sum(credit_in_account_currency) as grand_total,
 			sum(debit) - sum(credit) as base_grand_total
 		from `tabGL Entry`
-		where party_type = %s and party=%s and voucher_type = '{0}' and ifnull(against_voucher, '') = ''
+		where party_type = %s and party=%s and voucher_type = '{0}'
+			and (against_voucher = '' or against_voucher is null)
 			and posting_date between %s and %s
 		group by company
 	""".format(doctype), [party_type, party, current_fiscal_year.year_start_date, current_fiscal_year.year_end_date], as_dict=1)
@@ -966,7 +971,9 @@ def get_partywise_advanced_payment_amount(party_type, posting_date=None):
 	data = frappe.db.sql("""
 		SELECT party, sum({dr_or_cr}) as amount
 		FROM `tabGL Entry`
-		WHERE party_type = %(party_type)s and ifnull(against_voucher, '') = '' and {advance_condition} {date_condition}
+		WHERE party_type = %(party_type)s
+			and (against_voucher = '' or against_voucher is null)
+			and {advance_condition} {date_condition}
 		GROUP BY party
 	""".format(dr_or_cr=dr_or_cr, advance_condition=advance_condition, date_condition=date_condition),  # nosec
 		{"party_type": party_type, "posting_date": posting_date})

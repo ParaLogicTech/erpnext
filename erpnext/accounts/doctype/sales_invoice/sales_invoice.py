@@ -4,7 +4,7 @@
 import frappe, erpnext
 import frappe.defaults
 from frappe.utils import cint, flt, getdate, add_days, cstr, nowdate
-from frappe import _, msgprint, throw
+from frappe import _
 from erpnext.accounts.party import get_party_account, get_due_date
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
 from frappe.model.mapper import get_mapped_doc
@@ -27,8 +27,6 @@ from erpnext.erpnext_integrations.fbr_pos_integration import validate_fbr_pos_in
 	on_submit_fbr_pos_invoice
 
 from erpnext.healthcare.utils import manage_invoice_submit_cancel
-
-from six import iteritems
 
 form_grid_templates = {
 	"items": "templates/form_grid/item_grid.html"
@@ -268,6 +266,32 @@ class SalesInvoice(SellingController):
 			doc.set_status(update=True)
 			doc.notify_update()
 
+		# Update Returned Against Sales Invoice
+		sales_invoice_row_names = set()
+		for d in self.items:
+			if d.sales_invoice_item:
+				sales_invoice_row_names.add(d.sales_invoice_item)
+
+		if self.is_return and self.return_against:
+			doc = frappe.get_doc("Sales Invoice", self.return_against)
+			doc.set_returned_status(update=True)
+
+			if self.update_stock:
+				doc.validate_returned_qty(from_doctype=self.doctype, row_names=sales_invoice_row_names)
+
+			if self.update_stock and self.reopen_order:
+				return_against_packing_slips = set([d.packing_slip for d in doc.items
+					if d.packing_slip and d.name in sales_invoice_row_names])
+				return_against_packing_slip_row_names = [d.packing_slip_item for d in doc.items
+					if d.packing_slip_item and d.name in sales_invoice_row_names]
+
+				for packing_slip in return_against_packing_slips:
+					ps_doc = frappe.get_doc("Packing Slip", packing_slip)
+					ps_doc.set_unpacked_return_status(update=True, row_names=return_against_packing_slip_row_names)
+					ps_doc.notify_update()
+
+			doc.notify_update()
+
 		# Update Sales Orders
 		sales_orders = set()
 		sales_order_row_names_without_dn = set()
@@ -285,6 +309,10 @@ class SalesInvoice(SellingController):
 			doc.validate_billed_qty(from_doctype=self.doctype, row_names=sales_order_row_names_without_dn)
 			if self.update_stock:
 				doc.validate_delivered_qty(from_doctype=self.doctype, row_names=sales_order_row_names_without_dn)
+
+			# Update packed qty for unpacked returns
+			if self.update_stock and self.is_return and self.reopen_order:
+				doc.set_production_packing_status(update=True)
 
 			doc.set_status(update=True)
 			doc.notify_update()
@@ -313,14 +341,6 @@ class SalesInvoice(SellingController):
 				doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
 
 			doc.set_status(update=True)
-			doc.notify_update()
-
-		# Update Returned Against Sales Invoice
-		if self.is_return and self.return_against:
-			doc = frappe.get_doc("Sales Invoice", self.return_against)
-			doc.set_returned_status(update=True)
-			if self.update_stock:
-				doc.validate_returned_qty(from_doctype=self.doctype)
 			doc.notify_update()
 
 		self.update_project_billing_and_sales()
@@ -677,7 +697,7 @@ class SalesInvoice(SellingController):
 			for item in self.get("items"):
 				if item.get('item_code'):
 					profile_details = get_pos_profile_item_details(pos, frappe._dict(item.as_dict()), pos)
-					for fname, val in iteritems(profile_details):
+					for fname, val in profile_details.items():
 						if (not for_validate) or (for_validate and not item.get(fname)):
 							item.set(fname, val)
 
@@ -847,44 +867,49 @@ class SalesInvoice(SellingController):
 	def validate_item_code(self):
 		for d in self.get('items'):
 			if not d.item_code and self.is_opening == "No":
-				msgprint(_("Item Code required at Row No {0}").format(d.idx), raise_exception=True)
+				frappe.msgprint(_("Item Code required at Row No {0}").format(d.idx), raise_exception=True)
 
 	def validate_warehouse(self):
 		super(SalesInvoice, self).validate_warehouse()
 
 		for d in self.get_item_list():
 			if not d.warehouse and d.item_code and frappe.get_cached_value("Item", d.item_code, "is_stock_item"):
-				frappe.throw(_("Warehouse required for stock Item {0}").format(d.item_code))
+				frappe.throw(_("Warehouse required for Stock Item {0}").format(d.item_code))
 
 	def validate_delivery_note_if_update_stock(self):
 		if not cint(self.is_return) and cint(self.update_stock):
 			for d in self.get("items"):
 				if d.delivery_note:
-					msgprint(_("Stock cannot be updated against Delivery Note {0}").format(d.delivery_note), raise_exception=1)
+					frappe.msgprint(_("Stock cannot be updated against Delivery Note {0}").format(d.delivery_note), raise_exception=1)
 
 	def validate_update_stock_mandatory(self):
-		if not cint(self.update_stock) and not self.return_against and not cint(frappe.get_cached_value("Accounts Settings", None, "allow_invoicing_without_updating_stock")):
-			packed_items = []
-			for p in self.get('packed_items'):
-				packed_items.append(p.parent_detail_docname)
+		from erpnext.stock.get_item_details import item_is_product_bundle_with_stock_item
 
-			for d in self.items:
-				if d.item_code:
-					is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")\
-						or self.is_product_bundle_with_stock_item(d.item_code)
-					if d.item_code and not d.delivery_note and is_stock_item:
-						frappe.throw(_("'Update Stock' must be enabled for stock items if Sales Invoice is not made from Delivery Note."))
+		if cint(self.update_stock):
+			return
+		if self.return_against:
+			return
+		if cint(frappe.get_cached_value("Accounts Settings", None, "allow_invoicing_without_updating_stock")):
+			return
+
+		for d in self.items:
+			if d.item_code and not d.delivery_note:
+				is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")\
+					or item_is_product_bundle_with_stock_item(d.item_code)
+				if is_stock_item:
+					if not d.sales_order_item or not frappe.db.get_value("Sales Order Item", d.sales_order_item, "skip_delivery_note"):
+						frappe.throw(_("'Update Stock' must be enabled for stock items if Sales Invoice is not against Delivery Note"))
 
 	def validate_write_off_account(self):
 		if flt(self.write_off_amount) and not self.write_off_account:
 			self.write_off_account = frappe.get_cached_value('Company',  self.company,  'write_off_account')
 
 		if flt(self.write_off_amount) and not self.write_off_account:
-			msgprint(_("Please enter Write Off Account"), raise_exception=1)
+			frappe.msgprint(_("Please enter Write Off Account"), raise_exception=1)
 
 	def validate_account_for_change_amount(self):
 		if flt(self.change_amount) and not self.account_for_change_amount:
-			msgprint(_("Please enter Account for Change Amount"), raise_exception=1)
+			frappe.msgprint(_("Please enter Account for Change Amount"), raise_exception=1)
 
 	def validate_c_form(self):
 		""" Blank C-form no if C-form applicable marked as 'No'"""
@@ -897,7 +922,7 @@ class SalesInvoice(SellingController):
 	def validate_c_form_on_cancel(self):
 		""" Display message if C-Form no exists on cancellation of Sales Invoice"""
 		if self.c_form_applicable == 'Yes' and self.c_form_no:
-			msgprint(_("Please remove this Invoice {0} from C-Form {1}")
+			frappe.msgprint(_("Please remove this Invoice {0} from C-Form {1}")
 				.format(self.name, self.c_form_no), raise_exception = 1)
 
 	def validate_dropship_item(self):
@@ -974,7 +999,7 @@ class SalesInvoice(SellingController):
 			if global_pos_profile:
 				warehouse = global_pos_profile[0][1]
 			elif not user_pos_profile:
-				msgprint(_("POS Profile required to make POS Entry"), raise_exception=True)
+				frappe.msgprint(_("POS Profile required to make POS Entry"), raise_exception=True)
 
 		return warehouse
 
@@ -1416,7 +1441,7 @@ class SalesInvoice(SellingController):
 		returned_amount = frappe.db.sql("""
 			select sum(grand_total)
 			from `tabSales Invoice`
-			where docstatus=1 and is_return=1 and ifnull(return_against, '')=%s
+			where docstatus = 1 and is_return = 1 and return_against = %s
 		""", self.name)
 		return abs(flt(returned_amount[0][0])) if returned_amount else 0
 

@@ -304,36 +304,7 @@ def remove_dimensions_not_allowed_for_bs_account(gle):
 
 
 def on_doctype_update():
-	frappe.db.add_index("GL Entry", ["against_voucher_type", "against_voucher"])
-	frappe.db.add_index("GL Entry", ["voucher_type", "voucher_no"])
-
-
-def rename_gle_sle_docs():
-	for doctype in ["GL Entry", "Stock Ledger Entry"]:
-		rename_temporarily_named_docs(doctype)
-
-
-def rename_temporarily_named_docs(doctype):
-	"""Rename temporarily named docs using autoname options"""
-	meta = frappe.get_meta(doctype)
-	table_fields = meta.get_table_fields()
-
-	docs_to_rename = frappe.get_all(doctype, {"to_rename": "1"}, order_by="creation", limit=50000)
-	for doc in docs_to_rename:
-		oldname = doc.name
-
-		set_name_from_naming_options(meta.autoname, doc)
-		newname = doc.name
-
-		frappe.db.sql("""
-			UPDATE `tab{0}`
-			SET name = %s, to_rename = 0
-			where name = %s
-		""".format(doctype), (newname, oldname))
-
-		for df in table_fields:
-			frappe.db.sql("""
-				UPDATE `tab{0}`
-				SET parent = %s
-				where parent = %s and parenttype = %s
-			""".format(df.options), (newname, oldname, doctype))
+	frappe.db.add_index("GL Entry", ["voucher_no", "voucher_type"])
+	frappe.db.add_index("GL Entry", ["against_voucher", "against_voucher_type"])
+	frappe.db.add_index("GL Entry", ["original_against_voucher", "original_against_voucher_type"])
+	frappe.db.add_index("GL Entry", ["party", "party_type"])

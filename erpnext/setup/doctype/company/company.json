@@ -945,7 +945,8 @@
  "idx": 1,
  "image_field": "company_logo",
  "is_tree": 1,
- "modified": "2023-02-28 14:23:15.584604",
+ "links": [],
+ "modified": "2023-08-30 22:44:54.203324",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
@@ -971,8 +972,8 @@
    "role": "Accounts User"
   },
   {
-   "read": 1,
-   "role": "Employee"
+   "role": "Employee",
+   "select": 1
   },
   {
    "read": 1,

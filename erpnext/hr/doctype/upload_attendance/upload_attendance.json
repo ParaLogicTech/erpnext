@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_copy": 1,
  "creation": "2013-01-25 11:34:53",
  "doctype": "DocType",
@@ -60,8 +61,8 @@
  "icon": "fa fa-upload-alt",
  "idx": 1,
  "issingle": 1,
- "max_attachments": 1,
- "modified": "2020-03-03 15:42:30.299858",
+ "links": [],
+ "modified": "2023-09-09 12:10:10.145189",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Upload Attendance",
@@ -81,5 +82,6 @@
   }
  ],
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

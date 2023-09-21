@@ -25,17 +25,26 @@ frappe.ui.form.on('Loan', {
 			};
 		});
 
-		$.each(["payment_account", "loan_account"], function (i, field) {
-			frm.set_query(field, function () {
-				return {
-					"filters": {
-						"company": frm.doc.company,
-						"root_type": "Asset",
-						"is_group": 0
-					}
-				};
-			});
-		})
+		frm.set_query("loan_account", function () {
+			return {
+				"filters": {
+					"company": frm.doc.company,
+					"root_type": "Asset",
+					"is_group": 0,
+					"account_type": ["in", ["Receivable", "Payable"]]
+				}
+			};
+		});
+
+		frm.set_query("payment_account", function () {
+			return {
+				"filters": {
+					"company": frm.doc.company,
+					"is_group": 0,
+					"account_type": ["in", ['Bank', 'Cash']]
+				}
+			};
+		});
 	},
 
 	refresh: function (frm) {

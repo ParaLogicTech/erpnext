@@ -127,24 +127,6 @@ def update_stock(args, out):
 			out.serial_no = get_serial_no(out, args.serial_no, sales_order=reserved_so)
 
 
-def set_valuation_rate(out, args):
-	if frappe.db.exists("Product Bundle", args.item_code, cache=True):
-		valuation_rate = 0.0
-		bundled_items = frappe.get_doc("Product Bundle", args.item_code)
-
-		for bundle_item in bundled_items.items:
-			valuation_rate += \
-				flt(get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate") \
-					* bundle_item.qty)
-
-		out.update({
-			"valuation_rate": valuation_rate
-		})
-
-	else:
-		out.update(get_valuation_rate(args.item_code, args.company, out.get("warehouse"), args.transaction_type_name))
-
-
 def process_args(args):
 	if isinstance(args, string_types):
 		args = json.loads(args)
@@ -251,6 +233,9 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 	if not args.get('uom'):
 		args.uom = default_uom
 
+	if not args.get('weight_uom'):
+		args.weight_uom = frappe.get_cached_value("Stock Settings", None, "weight_uom")
+
 	out = frappe._dict({
 		"item_code": item.name,
 		"item_name": item.item_name,
@@ -289,6 +274,9 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"transaction_date": args.get("transaction_date"),
 		"claim_customer": get_claim_customer(item, args),
 	})
+
+	if args.get("doctype") == "Sales Order":
+		out["skip_delivery_note"] = get_skip_delivery_note(item, delivered_by_supplier=out.delivered_by_supplier)
 
 	out.update(get_item_defaults_details(args))
 
@@ -1136,6 +1124,11 @@ def get_conversion_factor(item_code, uom):
 	})
 
 
+def is_item_uom_convertible(item_code, uom):
+	conversion = get_conversion_factor(item_code, uom)
+	return not conversion.get("not_convertible")
+
+
 @frappe.whitelist()
 def get_projected_qty(item_code, warehouse):
 	return {"projected_qty": frappe.db.get_value("Bin",
@@ -1144,9 +1137,15 @@ def get_projected_qty(item_code, warehouse):
 
 @frappe.whitelist()
 def get_bin_details(item_code, warehouse):
-	return frappe.db.get_value("Bin", {"item_code": item_code, "warehouse": warehouse},
-		["projected_qty", "actual_qty", "reserved_qty"], as_dict=True, cache=True) \
-			or {"projected_qty": 0, "actual_qty": 0, "reserved_qty": 0}
+	def generator():
+		return frappe.db.get_value(
+			"Bin",
+			{"item_code": item_code, "warehouse": warehouse},
+			["projected_qty", "actual_qty", "reserved_qty"],
+			as_dict=True
+		) or {"projected_qty": 0, "actual_qty": 0, "reserved_qty": 0}
+
+	return frappe.local_cache("get_bin_details", (item_code, warehouse), generator)
 
 
 @frappe.whitelist()
@@ -1297,6 +1296,25 @@ def get_default_bom(item_code=None):
 			return bom
 
 
+def set_valuation_rate(out, args):
+	if product_bundle := item_has_product_bundle(args.item_code):
+		valuation_rate = 0.0
+		product_bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+
+		for bundle_item in product_bundle_doc.get("items"):
+			bundle_item_valuation_rate = flt(
+				get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
+			)
+			valuation_rate += bundle_item_valuation_rate * flt(bundle_item.qty)
+
+		out.update({
+			"valuation_rate": valuation_rate
+		})
+
+	else:
+		out.update(get_valuation_rate(args.item_code, args.company, out.get("warehouse"), args.transaction_type_name))
+
+
 def get_valuation_rate(item_code, company, warehouse=None, transaction_type_name=None):
 	item = frappe.get_cached_doc("Item", item_code)
 	default_values = get_item_default_values(item, {"company": company, "transaction_type": transaction_type_name})
@@ -1384,6 +1402,37 @@ def get_blanket_order_details(args):
 
 		blanket_order_details = blanket_order_details[0] if blanket_order_details else ''
 	return blanket_order_details
+
+
+def get_skip_delivery_note(item, delivered_by_supplier=False):
+	if delivered_by_supplier:
+		return 1
+	elif not item.is_fixed_asset and not item.is_stock_item and not item_is_product_bundle_with_stock_item(item.name):
+		return 1
+	else:
+		return 0
+
+
+def item_has_product_bundle(item_code):
+	if not item_code:
+		return False
+
+	return frappe.local_cache("item_has_product_bundle", item_code,
+		lambda: frappe.db.get_value("Product Bundle", {"new_item_code": item_code}))
+
+
+def item_is_product_bundle_with_stock_item(item_code):
+	def generator():
+		return len(frappe.db.sql("""
+			select i.name
+			from tabItem i, `tabProduct Bundle` pb, `tabProduct Bundle Item` pbi
+			where pb.new_item_code = %s and pbi.parent = pb.name and i.name = pbi.item_code and i.is_stock_item = 1
+		""", item_code))
+
+	if not item_code:
+		return False
+
+	return frappe.local_cache("is_product_bundle_with_stock_item", item_code, generator)
 
 
 def get_so_reservation_for_item(args):

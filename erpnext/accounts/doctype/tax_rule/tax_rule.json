@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "ACC-TAX-RULE-.YYYY.-.#####",
  "creation": "2015-08-07 02:33:52.670866",
@@ -6,39 +7,45 @@
  "document_type": "Setup",
  "engine": "InnoDB",
  "field_order": [
+  "title",
   "tax_type",
   "use_for_shopping_cart",
+  "column_break_0v8l9",
+  "priority",
   "column_break_1",
   "sales_tax_template",
   "purchase_tax_template",
-  "priority",
   "filters",
   "customer",
   "supplier",
+  "customer_group",
+  "supplier_group",
+  "column_break_2",
   "item",
+  "item_group",
+  "column_break_24",
+  "company",
+  "tax_category",
+  "section_break_dqlmr",
+  "has_stin",
+  "transaction_type",
+  "cost_center",
+  "column_break_6foc3",
+  "tax_id",
+  "tax_cnic",
+  "tax_strn",
+  "section_break_sykeo",
   "billing_city",
   "billing_county",
   "billing_state",
   "billing_zipcode",
   "billing_country",
-  "column_break_2",
-  "customer_group",
-  "supplier_group",
-  "item_group",
+  "column_break_muvfh",
   "shipping_city",
   "shipping_county",
   "shipping_state",
   "shipping_zipcode",
   "shipping_country",
-  "column_break_24",
-  "company",
-  "transaction_type",
-  "cost_center",
-  "tax_category",
-  "has_stin",
-  "tax_id",
-  "tax_cnic",
-  "tax_strn",
   "section_break_4",
   "from_date",
   "column_break_7",
@@ -68,14 +75,18 @@
    "depends_on": "eval:doc.tax_type==\"Sales\"",
    "fieldname": "sales_tax_template",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Sales Tax Template",
+   "mandatory_depends_on": "eval:doc.tax_type==\"Sales\"",
    "options": "Sales Taxes and Charges Template"
   },
   {
    "depends_on": "eval:doc.tax_type==\"Purchase\"",
    "fieldname": "purchase_tax_template",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Purchase Tax Template",
+   "mandatory_depends_on": "eval:doc.tax_type==\"Purchase\"",
    "options": "Purchase Taxes and Charges Template"
   },
   {
@@ -111,6 +122,7 @@
   {
    "fieldname": "billing_county",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Billing County"
   },
   {
@@ -167,6 +179,7 @@
   {
    "fieldname": "shipping_county",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Shipping County"
   },
   {
@@ -208,14 +221,17 @@
    "default": "1",
    "fieldname": "priority",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Priority"
   },
   {
    "fieldname": "company",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Company",
    "options": "Company",
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "reqd": 1
   },
   {
    "fieldname": "column_break_24",
@@ -236,6 +252,7 @@
   {
    "fieldname": "has_stin",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Is Tax Invoice",
    "options": "\nNo\nYes"
   },
@@ -256,12 +273,41 @@
    "fieldtype": "Select",
    "label": "STRN",
    "options": "\nSet\nNot Set"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Title",
+   "no_copy": 1
+  },
+  {
+   "fieldname": "section_break_sykeo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_muvfh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_dqlmr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_6foc3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_0v8l9",
+   "fieldtype": "Column Break"
   }
  ],
- "modified": "2020-03-03 15:34:42.608368",
+ "links": [],
+ "modified": "2023-09-01 12:52:31.053700",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Tax Rule",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -279,5 +325,8 @@
  ],
  "show_name_in_global_search": 1,
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "track_changes": 1
 }

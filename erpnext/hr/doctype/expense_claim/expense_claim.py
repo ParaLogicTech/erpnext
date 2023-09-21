@@ -51,6 +51,10 @@ class ExpenseClaim(AccountsController):
 
 		self.set_status()
 
+	def before_submit(self):
+		if not self.payable_account:
+			frappe.throw(_("Payable Account is mandatory"))
+
 	def on_submit(self):
 		if self.approval_status=="Draft":
 			frappe.throw(_("""Approval Status must be 'Approved' or 'Rejected'"""))

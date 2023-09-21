@@ -3,52 +3,7 @@
 /* eslint-disable */
 
 frappe.query_reports["Stock Analytics"] = {
-	"filters": [
-		{
-			fieldname: "item_group",
-			label: __("Item Group"),
-			fieldtype: "Link",
-			options:"Item Group",
-			default: "",
-		},
-		{
-			fieldname: "item_code",
-			label: __("Item"),
-			fieldtype: "Link",
-			options:"Item",
-			get_query: function() {
-				return {
-					query: "erpnext.controllers.queries.item_query",
-					filters: {'include_disabled': 1}
-				}
-			},
-			default: "",
-		},
-		{
-			fieldname: "value_quantity",
-			label: __("Value Or Qty"),
-			fieldtype: "Select",
-			options: [
-				{ "value": "Value", "label": __("Value") },
-				{ "value": "Quantity", "label": __("Quantity") }
-			],
-			default: "Value",
-			reqd: 1
-		},
-		{
-			fieldname: "brand",
-			label: __("Brand"),
-			fieldtype: "Link",
-			options:"Brand",
-			default: "",
-		},
-		{
-			fieldname: "warehouse",
-			label: __("Warehouse"),
-			fieldtype: "Link",
-			options:"Warehouse",
-			default: "",
-		},
+	filters: [
 		{
 			fieldname: "from_date",
 			label: __("From Date"),
@@ -62,6 +17,47 @@ frappe.query_reports["Stock Analytics"] = {
 			fieldtype: "Date",
 			default: frappe.defaults.get_global_default("year_end_date"),
 			reqd: 1
+		},
+		{
+			fieldname: "value_quantity",
+			label: __("Value Or Qty"),
+			fieldtype: "Select",
+			options: [
+				{ "value": "Value", "label": __("Value") },
+				{ "value": "Quantity", "label": __("Quantity") }
+			],
+			default: "Quantity",
+			reqd: 1
+		},
+		{
+			fieldname: "item_code",
+			label: __("Item Code"),
+			fieldtype: "Link",
+			options: "Item",
+			get_query: function() {
+				return {
+					query: "erpnext.controllers.queries.item_query",
+					filters: {'include_disabled': 1}
+				}
+			},
+		},
+		{
+			fieldname: "item_group",
+			label: __("Item Group"),
+			fieldtype: "Link",
+			options:"Item Group",
+		},
+		{
+			fieldname: "brand",
+			label: __("Brand"),
+			fieldtype: "Link",
+			options:"Brand",
+		},
+		{
+			fieldname: "warehouse",
+			label: __("Warehouse"),
+			fieldtype: "Link",
+			options:"Warehouse",
 		},
 		{
 			fieldname: "range",

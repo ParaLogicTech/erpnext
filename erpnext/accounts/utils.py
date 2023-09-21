@@ -8,7 +8,6 @@ import frappe.defaults
 from frappe.utils import nowdate, cstr, flt, cint, now, getdate
 from frappe import throw, _
 from frappe.utils import formatdate, get_number_format_info
-from six import iteritems
 # imported to enable erpnext.accounts.utils.get_account_currency
 from erpnext.accounts.doctype.account.account import get_account_currency
 
@@ -16,11 +15,14 @@ from erpnext.stock.utils import get_stock_value_on
 from erpnext.stock import get_warehouse_account_map
 
 
-class FiscalYearError(frappe.ValidationError): pass
+class FiscalYearError(frappe.ValidationError):
+	pass
+
 
 @frappe.whitelist()
 def get_fiscal_year(date=None, fiscal_year=None, label="Date", verbose=1, company=None, as_dict=False):
 	return get_fiscal_years(date, fiscal_year, label, verbose, company, as_dict=as_dict)[0]
+
 
 def get_fiscal_years(transaction_date=None, fiscal_year=None, label="Date", verbose=1, company=None, as_dict=False):
 	fiscal_years = frappe.cache().hget("fiscal_years", company) or []
@@ -78,6 +80,7 @@ def get_fiscal_years(transaction_date=None, fiscal_year=None, label="Date", verb
 	if verbose==1: frappe.msgprint(error_msg)
 	raise FiscalYearError(error_msg)
 
+
 def validate_fiscal_year(date, fiscal_year, company, label="Date", doc=None):
 	years = [f[0] for f in get_fiscal_years(date, label=_(label), company=company)]
 	if fiscal_year not in years:
@@ -85,6 +88,7 @@ def validate_fiscal_year(date, fiscal_year, company, label="Date", doc=None):
 			doc.fiscal_year = years[0]
 		else:
 			throw(_("{0} '{1}' not in Fiscal Year {2}").format(label, formatdate(date), fiscal_year))
+
 
 @frappe.whitelist()
 def get_balance_on(account=None, date=None, party_type=None, party=None, company=None,
@@ -184,6 +188,7 @@ def get_balance_on(account=None, date=None, party_type=None, party=None, company
 		# if bal is None, return 0
 		return flt(bal)
 
+
 def get_balance_on_voucher(voucher_type, voucher_no, party_type, party, account, dr_or_cr=None, include_original_references=False):
 	if not dr_or_cr:
 		if erpnext.get_party_account_type(party_type) == 'Receivable':
@@ -211,6 +216,7 @@ def get_balance_on_voucher(voucher_type, voucher_no, party_type, party, account,
 	{"voucher_type": voucher_type, "voucher_no": voucher_no, "party_type": party_type, "party": party})
 
 	return flt(res[0][0]) if res else 0.0
+
 
 def get_count_on(account, fieldname, date):
 	cond = []
@@ -286,6 +292,7 @@ def get_count_on(account, fieldname, date):
 
 		return count
 
+
 @frappe.whitelist()
 def add_ac(args=None):
 	from frappe.desk.treeview import make_tree_args
@@ -317,6 +324,7 @@ def add_ac(args=None):
 
 	return ac.name
 
+
 @frappe.whitelist()
 def add_cc(args=None):
 	from frappe.desk.treeview import make_tree_args
@@ -340,6 +348,7 @@ def add_cc(args=None):
 	cc.old_parent = ""
 	cc.insert()
 	return cc.name
+
 
 def reconcile_against_document(args):
 	"""
@@ -367,6 +376,7 @@ def reconcile_against_document(args):
 
 		if d.voucher_type in ('Payment Entry', 'Journal Entry'):
 			doc.update_expense_claim()
+
 
 def check_if_advance_entry_modified(args):
 	"""
@@ -424,11 +434,13 @@ def check_if_advance_entry_modified(args):
 	if not ret:
 		throw(_("""Payment Entry has been modified after you pulled it. Please pull it again."""))
 
+
 def validate_allocated_amount(args):
 	if args.get("allocated_amount") < 0:
 		throw(_("Allocated amount cannot be negative"))
 	elif args.get("allocated_amount") > args.get("unadjusted_amount"):
 		throw(_("Allocated amount cannot be greater than unadjusted amount"))
+
 
 def update_reference_in_journal_entry(d, jv_doc):
 	"""
@@ -517,6 +529,7 @@ def update_reference_in_journal_entry(d, jv_doc):
 	jv_doc.flags.ignore_validate_update_after_submit = True
 	jv_doc.save(ignore_permissions=True)
 
+
 def update_reference_in_payment_entry(d, payment_entry, do_not_save=False):
 	reference_details = {
 		"reference_doctype": d.against_voucher_type,
@@ -571,6 +584,7 @@ def update_reference_in_payment_entry(d, payment_entry, do_not_save=False):
 	if not do_not_save:
 		payment_entry.save(ignore_permissions=True)
 
+
 def unlink_ref_doc_from_payment_entries(ref_doc, validate_permission=False):
 	if validate_permission:
 		allow_unlink_setting = cint(frappe.db.get_single_value("Accounts Settings", "unlink_payment_on_cancellation_of_invoice"))
@@ -602,6 +616,7 @@ def unlink_ref_doc_from_payment_entries(ref_doc, validate_permission=False):
 		frappe.db.sql("""delete from `tab{0} Advance` where parent = %s"""
 			.format(ref_doc.doctype), ref_doc.name)
 
+
 def remove_ref_doc_link_from_jv(ref_type, ref_no):
 	linked_jv = frappe.db.sql_list("""select parent from `tabJournal Entry Account`
 		where reference_type=%s and reference_name=%s and docstatus < 2""", (ref_type, ref_no))
@@ -628,6 +643,7 @@ def remove_ref_doc_link_from_jv(ref_type, ref_no):
 
 		msg_jv_list = [frappe.utils.get_link_to_form("Journal Entry", jv) for jv in list(set(linked_jv))]
 		frappe.msgprint(_("Journal Entries {0} are un-linked").format(", ".join(msg_jv_list)))
+
 
 def remove_ref_doc_link_from_pe(ref_type, ref_no):
 	linked_pe = frappe.db.sql_list("""select distinct parent from `tabPayment Entry Reference`
@@ -661,6 +677,7 @@ def remove_ref_doc_link_from_pe(ref_type, ref_no):
 		msg_pe_list = [frappe.utils.get_link_to_form("Payment Entry", jv) for jv in list(set(linked_pe))]
 		frappe.msgprint(_("Payment Entries {0} are un-linked").format(", ".join(msg_pe_list)))
 
+
 @frappe.whitelist()
 def get_company_default(company, fieldname):
 	value = frappe.get_cached_value('Company',  company,  fieldname)
@@ -670,6 +687,7 @@ def get_company_default(company, fieldname):
 			.format(frappe.get_meta("Company").get_label(fieldname), company))
 
 	return value
+
 
 def fix_total_debit_credit():
 	vouchers = frappe.db.sql("""select voucher_type, voucher_no,
@@ -686,6 +704,7 @@ def fix_total_debit_credit():
 				where voucher_type = %s and voucher_no = %s and %s > 0 limit 1""" %
 				(dr_or_cr, dr_or_cr, '%s', '%s', '%s', dr_or_cr),
 				(d.diff, d.voucher_type, d.voucher_no))
+
 
 def get_stock_and_account_balance(account=None, posting_date=None, company=None):
 	if not posting_date: posting_date = nowdate()
@@ -705,6 +724,7 @@ def get_stock_and_account_balance(account=None, posting_date=None, company=None)
 	precision = frappe.get_precision("Journal Entry Account", "debit_in_account_currency")
 	return flt(account_balance, precision), flt(total_stock_value, precision), related_warehouses
 
+
 def get_currency_precision():
 	precision = cint(frappe.db.get_default("currency_precision"))
 	if not precision:
@@ -712,6 +732,7 @@ def get_currency_precision():
 		precision = get_number_format_info(number_format)[2]
 
 	return precision
+
 
 def get_stock_rbnb_difference(posting_date, company):
 	stock_items = frappe.db.sql_list("""select distinct item_code
@@ -852,11 +873,13 @@ def get_account_name(account_type=None, root_type=None, is_group=None, account_c
 		"company": company or frappe.defaults.get_defaults().company
 	}, "name")
 
+
 @frappe.whitelist()
 def get_companies():
 	"""get a list of companies based on permission"""
 	return [d.name for d in frappe.get_list("Company", fields=["name"],
 		order_by="name")]
+
 
 @frappe.whitelist()
 def get_children(doctype, parent, company, is_root=False):
@@ -892,6 +915,7 @@ def get_children(doctype, parent, company, is_root=False):
 				each["balance_in_account_currency"] = flt(get_balance_on(each.get("value"), company=company))
 
 	return acc
+
 
 def create_payment_gateway_account(gateway):
 	from erpnext.setup.setup_wizard.operations.company_setup import create_bank_account
@@ -935,6 +959,7 @@ def create_payment_gateway_account(gateway):
 		# already exists, due to a reinstall?
 		pass
 
+
 @frappe.whitelist()
 def update_cost_center(docname, cost_center_name, cost_center_number, company, merge):
 	'''
@@ -955,6 +980,7 @@ def update_cost_center(docname, cost_center_name, cost_center_number, company, m
 		frappe.rename_doc("Cost Center", docname, new_name, force=1, merge=merge)
 		return new_name
 
+
 def validate_field_number(doctype_name, docname, number_value, company, field_name):
 	''' Validate if the number entered isn't already assigned to some other document. '''
 	if number_value:
@@ -968,6 +994,7 @@ def validate_field_number(doctype_name, docname, number_value, company, field_na
 			frappe.throw(_("{0} Number {1} is already used in {2} {3}")
 				.format(doctype_name, number_value, doctype_name.lower(), doctype_with_same_number))
 
+
 def get_autoname_with_number(number_value, doc_title, name, company):
 	''' append title with prefix as number and suffix as company's abbreviation separated by '-' '''
 	if name:
@@ -979,6 +1006,7 @@ def get_autoname_with_number(number_value, doc_title, name, company):
 	if cstr(number_value).strip():
 		parts.insert(0, cstr(number_value).strip())
 	return ' - '.join(parts)
+
 
 @frappe.whitelist()
 def get_coa(doctype, parent, is_root, chart=None):
@@ -996,15 +1024,18 @@ def get_coa(doctype, parent, is_root, chart=None):
 
 	return accounts
 
+
 def get_allow_cost_center_in_entry_of_bs_account():
 	def generator():
 		return cint(frappe.db.get_value('Accounts Settings', None, 'allow_cost_center_in_entry_of_bs_account'))
 	return frappe.local_cache("get_allow_cost_center_in_entry_of_bs_account", (), generator, regenerate_if_none=True)
 
+
 def get_allow_project_in_entry_of_bs_account():
 	def generator():
 		return cint(frappe.db.get_value('Accounts Settings', None, 'allow_project_in_entry_of_bs_account'))
 	return frappe.local_cache("get_allow_project_in_entry_of_bs_account", (), generator, regenerate_if_none=True)
+
 
 def get_stock_accounts(company):
 	filters = {
@@ -1014,3 +1045,11 @@ def get_stock_accounts(company):
 		filters["company"] = company
 
 	return frappe.get_all("Account", filters=filters)
+
+
+def parse_naming_series_variable(doc, variable):
+	if variable == "FY":
+		date = doc.get("posting_date") or doc.get("transaction_date") or getdate()
+		return get_fiscal_year(date=date, company=doc.get("company"))[0]
+	elif variable == "CO":
+		return frappe.get_cached_value('Company', doc.get('company'), 'abbr')

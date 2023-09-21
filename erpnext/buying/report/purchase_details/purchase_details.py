@@ -3,5 +3,6 @@
 
 from erpnext.selling.report.sales_details.sales_details import SalesPurchaseDetailsReport
 
+
 def execute(filters=None):
-	return SalesPurchaseDetailsReport(filters).run("Supplier")
+	return SalesPurchaseDetailsReport(filters).run()

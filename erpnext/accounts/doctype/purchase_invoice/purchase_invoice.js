@@ -160,16 +160,11 @@ erpnext.accounts.PurchaseInvoice = class PurchaseInvoice extends erpnext.buying.
 		this.frm.toggle_reqd("supplier_warehouse", this.frm.doc.is_subcontracted==="Yes");
 
 		if (doc.docstatus == 1 && !doc.inter_company_reference) {
-			frappe.model.with_doc("Supplier", me.frm.doc.supplier, function() {
-				var supplier = frappe.model.get_doc("Supplier", me.frm.doc.supplier);
-				var internal = supplier.is_internal_supplier;
-				var disabled = supplier.disabled;
-				if (internal == 1 && disabled == 0) {
-					me.frm.add_custom_button("Inter Company Invoice", function() {
-						me.make_inter_company_invoice(me.frm);
-					}, __('Create'));
-				}
-			});
+			if (me.frm.doc.__onload?.is_internal_supplier) {
+				me.frm.add_custom_button("Inter Company Invoice", function() {
+					me.make_inter_company_invoice(me.frm);
+				}, __('Create'));
+			}
 		}
 
 		// sales order

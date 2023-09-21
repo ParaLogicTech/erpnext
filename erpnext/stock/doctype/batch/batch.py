@@ -245,6 +245,10 @@ def auto_select_and_split_batches(doc, warehouse_field, additional_group_fields=
 			group_qty_map.setdefault(key, 0)
 			group_qty_map[key] += flt(d.get('qty'))
 
+	# no lines valid for batch no selection
+	if not group_qty_map:
+		return
+
 	visited = set()
 	to_remove = []
 	for d in doc.items:
@@ -289,11 +293,6 @@ def auto_select_and_split_batches(doc, warehouse_field, additional_group_fields=
 	for i, row in enumerate(updated_rows):
 		row.idx = i + 1
 	doc.items = updated_rows
-
-	if doc.doctype == 'Stock Entry':
-		doc.run_method("set_transfer_qty")
-	else:
-		doc.run_method("calculate_taxes_and_totals")
 
 
 @frappe.whitelist()

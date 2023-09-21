@@ -44,6 +44,10 @@ class BuyingController(StockController):
 			if self.doctype in ("Supplier Quotation", "Purchase Order", "Purchase Receipt", "Purchase Invoice"):
 				self.calculate_taxes_and_totals()
 
+			if self.doctype in ("Purchase Order", "Purchase Receipt", "Purchase Invoice"):
+				self.set_onload("is_internal_supplier",
+					frappe.get_cached_value("Supplier", self.supplier, "is_internal_supplier"))
+
 	def validate(self):
 		super(BuyingController, self).validate()
 		if getattr(self, "supplier", None) and not self.supplier_name:

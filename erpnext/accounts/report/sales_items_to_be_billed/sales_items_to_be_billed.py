@@ -128,7 +128,9 @@ class ItemsToBeBilled:
 				WHERE
 					o.docstatus = 1 AND o.status != 'Closed'
 					AND (i.billed_qty + i.returned_qty) < i.qty
-					AND (im.is_stock_item = 1 OR im.is_fixed_asset = 1 OR ifnull(i.{order_reference_field}, '') = '')
+					AND (im.is_stock_item = 1 OR im.is_fixed_asset = 1
+						OR (i.{order_reference_field} = '' or i.{order_reference_field} is null)
+					)
 					{conditions}
 				GROUP BY o.name, i.name
 			""".format(
@@ -208,7 +210,7 @@ class ItemsToBeBilled:
 			conditions.append("i.claim_customer = %(claim_customer)s")
 
 		if self.filters.claim_billing:
-			conditions.append("ifnull(i.claim_customer, '') != ''")
+			conditions.append("(i.claim_customer != '' and i.claim_customer is not null)")
 
 		if self.filters.claim_billing_type:
 			conditions.append("ptype.claim_billing_type = %(claim_billing_type)s")

@@ -87,12 +87,18 @@
   "tax_exclusive_total_discount",
   "base_tax_exclusive_total_discount",
   "tax_inclusive_amounts_section",
-  "item_taxes_and_charges",
-  "base_item_taxes_and_charges",
+  "item_taxes_before_discount",
+  "base_item_taxes_before_discount",
+  "item_taxes",
+  "base_item_taxes",
   "column_break_79",
+  "tax_inclusive_rate_before_discount",
+  "base_tax_inclusive_rate_before_discount",
   "tax_inclusive_rate",
   "base_tax_inclusive_rate",
   "column_break_82",
+  "tax_inclusive_amount_before_discount",
+  "base_tax_inclusive_amount_before_discount",
   "tax_inclusive_amount",
   "base_tax_inclusive_amount",
   "net_amounts_section",
@@ -1006,18 +1012,20 @@
    "read_only": 1
   },
   {
-   "fieldname": "item_taxes_and_charges",
+   "fieldname": "item_taxes",
    "fieldtype": "Currency",
-   "label": "Taxes",
+   "hidden": 1,
+   "label": "Taxes After Discount",
    "options": "currency",
    "print_hide": 1,
    "read_only": 1
   },
   {
-   "fieldname": "base_item_taxes_and_charges",
+   "fieldname": "base_item_taxes",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
-   "label": "Taxes and Charges (Company Currency)",
+   "hidden": 1,
+   "label": "Taxes After Discount (Company Currency)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -1029,15 +1037,18 @@
   {
    "fieldname": "tax_inclusive_rate",
    "fieldtype": "Currency",
-   "label": "Tax Inclusive Rate",
+   "hidden": 1,
+   "label": "Tax Inclusive Rate After Discount",
    "options": "currency",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "base_tax_inclusive_rate",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
-   "label": "Tax Inclusive Rate (Company Currency)",
+   "hidden": 1,
+   "label": "Tax Inclusive Rate After Discount (Company Currency)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -1049,15 +1060,18 @@
   {
    "fieldname": "tax_inclusive_amount",
    "fieldtype": "Currency",
-   "label": "Tax Inclusive Amount",
+   "hidden": 1,
+   "label": "Tax Inclusive Amount After Discount",
    "options": "currency",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "base_tax_inclusive_amount",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
-   "label": "Tax Inclusive Amount (Company Currency)",
+   "hidden": 1,
+   "label": "Tax Inclusive Amount After Discount (Company Currency)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -1179,8 +1193,8 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "item_taxes_and_charges",
-   "depends_on": "item_taxes_and_charges",
+   "collapsible_depends_on": "item_taxes",
+   "depends_on": "item_taxes",
    "fieldname": "tax_inclusive_amounts_section",
    "fieldtype": "Section Break",
    "label": "Tax Inclusive Amounts"
@@ -1295,12 +1309,61 @@
    "options": "Company:company_default_currency",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "item_taxes_before_discount",
+   "fieldtype": "Currency",
+   "label": "Taxes",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_item_taxes_before_discount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Taxes (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_inclusive_rate_before_discount",
+   "fieldtype": "Currency",
+   "label": "Tax Inclusive Rate",
+   "options": "currency",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "base_tax_inclusive_rate_before_discount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Tax Inclusive Rate (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_inclusive_amount_before_discount",
+   "fieldtype": "Currency",
+   "label": "Tax Inclusive Amount",
+   "options": "currency",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "base_tax_inclusive_amount_before_discount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Tax Inclusive Amount (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-03-02 17:54:13.211480",
+ "modified": "2023-09-05 13:10:54.015137",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice Item",

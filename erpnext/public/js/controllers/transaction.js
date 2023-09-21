@@ -91,43 +91,52 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			}
 		});
 
-		frappe.ui.form.on(this.frm.doctype + " Item", "tax_inclusive_amount", function(frm, cdt, cdn) {
+		frappe.ui.form.on(this.frm.doctype + " Item", "tax_inclusive_amount_before_discount", function(frm, cdt, cdn) {
 			var item = frappe.get_doc(cdt, cdn);
 
 			item.tax_inclusive_amount = flt(item.tax_inclusive_amount);
 			if (flt(item.qty)) {
-				frappe.model.set_value(cdt, cdn, 'tax_inclusive_rate', item.tax_inclusive_amount / flt(item.qty));
+				frappe.model.set_value(cdt, cdn, 'tax_inclusive_rate_before_discount',
+					item.tax_inclusive_amount_before_discount / flt(item.qty));
 			} else {
-				frappe.model.set_value(cdt, cdn, 'tax_inclusive_rate', item.tax_inclusive_amount);
+				frappe.model.set_value(cdt, cdn, 'tax_inclusive_rate_before_discount',
+					item.tax_inclusive_amount_before_discount);
 			}
 		});
 
-		frappe.ui.form.on(this.frm.doctype + " Item", "tax_inclusive_rate", function(frm, cdt, cdn) {
-			var tax_rows = (frm.doc.taxes || []).filter(tax => !tax.exclude_from_item_tax_amount);
+		frappe.ui.form.on(this.frm.doctype + " Item", "tax_inclusive_rate_before_discount", function(frm, cdt, cdn) {
+			let tax_rows = (frm.doc.taxes || []).filter(
+				tax => tax.charge_type != "Actual" && !tax.exclude_from_item_tax_amount
+			);
 
-			var invalid_charge_types = tax_rows.filter(tax => tax.charge_type != 'On Net Total');
+			let invalid_charge_types = tax_rows.filter(tax => tax.charge_type != 'On Net Total');
 			if (invalid_charge_types.length) {
 				frappe.msgprint(__('Cannot calculate Rate from Tax Inclusive Rate'));
 				frm.cscript.calculate_taxes_and_totals();
 				return
 			}
 
-			var item = frappe.get_doc(cdt, cdn);
-			var item_tax_map = frm.cscript._load_item_tax_rate(item.item_tax_rate);
+			let item = frappe.get_doc(cdt, cdn);
+			let item_tax_map = frm.cscript._load_item_tax_rate(item.item_tax_rate);
 
-			var tax_fraction = 0;
+			let tax_inclusive_rate = flt(item.tax_inclusive_rate_before_discount);
+
+			let tax_fraction = 0;
+			let inclusive_tax_fraction = 0;
 			$.each(tax_rows, function (i, tax) {
-				var tax_rate = frm.cscript._get_tax_rate(tax, item_tax_map);
+				let tax_rate = frm.cscript._get_tax_rate(tax, item_tax_map);
+
 				tax_fraction += tax_rate / 100;
+				if (tax.included_in_print_rate) {
+					inclusive_tax_fraction += tax_rate / 100
+				}
 			});
 
-			item.tax_inclusive_rate = flt(item.tax_inclusive_rate);
-
-			var rate;
+			let rate;
 			if (cint(item.apply_taxes_on_retail)) {
-				rate = item.tax_inclusive_rate - flt(item.taxable_rate) * tax_fraction;
+				rate = (tax_inclusive_rate - flt(item.taxable_rate) * tax_fraction) * (1 + inclusive_tax_fraction);
 			} else {
-				rate = item.tax_inclusive_rate / (1 + tax_fraction);
+				rate = tax_inclusive_rate / (1 + tax_fraction) * (1 + inclusive_tax_fraction);
 			}
 
 			frappe.model.set_value(cdt, cdn, 'rate', rate);
@@ -1623,7 +1632,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				"base_rate_with_margin", "base_tax_exclusive_price_list_rate",
 				"base_tax_exclusive_rate", "base_tax_exclusive_amount", "base_tax_exclusive_rate_with_margin",
 				"base_amount_before_discount", "base_tax_exclusive_amount_before_discount",
-				"base_item_taxes_and_charges", "base_tax_inclusive_amount", "base_tax_inclusive_rate",
+				"base_item_taxes_before_discount", "base_tax_inclusive_amount_before_discount", "base_tax_inclusive_rate_before_discount",
 				"base_total_discount", "base_tax_exclusive_total_discount",
 				"base_depreciation_amount", "base_amount_before_depreciation",
 				"base_tax_exclusive_depreciation_amount", "base_tax_exclusive_amount_before_depreciation",
@@ -1636,6 +1645,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				"discount_amount", "tax_exclusive_price_list_rate", "tax_exclusive_rate", "tax_exclusive_amount",
 				"tax_exclusive_discount_amount", "tax_exclusive_rate_with_margin",
 				"amount_before_discount", "tax_exclusive_amount_before_discount",
+				"item_taxes_before_discount", "tax_inclusive_amount_before_discount", "tax_inclusive_rate_before_discount",
 				"total_discount", "tax_exclusive_total_discount",
 				"depreciation_amount", "amount_before_depreciation",
 				"tax_exclusive_depreciation_amount", "tax_exclusive_amount_before_depreciation",
@@ -1701,7 +1711,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		let item_grid = this.frm.fields_dict["items"].grid;
 		$.each(["base_rate", "base_price_list_rate", "base_amount", "base_rate_with_margin",
 		"base_amount_before_discount", "base_total_discount", "base_depreciation_amount", "base_amount_before_depreciation",
-		"base_item_taxes_and_charges", "base_tax_inclusive_amount", "base_tax_inclusive_rate",
+		"base_item_taxes_before_discount", "base_tax_inclusive_amount_before_discount", "base_tax_inclusive_rate_before_discount",
 		"base_retail_rate", "base_retail_amount"], function(i, fname) {
 			if(frappe.meta.get_docfield(item_grid.doctype, fname))
 				item_grid.set_column_disp(fname, me.frm.doc.currency != company_currency, true);

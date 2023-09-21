@@ -560,8 +560,8 @@ def get_credit_limit(customer, company):
 	return flt(credit_limit)
 
 def make_contact(args, is_primary_contact=1):
-	contact = frappe.get_doc({
-		'doctype': 'Contact',
+	contact = frappe.new_doc("Contact")
+	contact.update({
 		'is_primary_contact': is_primary_contact,
 		'links': [{
 			'link_doctype': args.get('doctype'),
@@ -601,8 +601,8 @@ def make_address(args, is_primary_address=1):
 		frappe.throw("{0} <br><br> <ul>{1}</ul>".format(msg, '\n'.join(reqd_fields)),
 			title = _("Missing Values Required"))
 
-	address = frappe.get_doc({
-		'doctype': 'Address',
+	address = frappe.new_doc("Address")
+	address.update({
 		'address_title': args.get('customer_name') or args.get('name'),
 		'address_line1': args.get('address_line1'),
 		'address_line2': args.get('address_line2'),

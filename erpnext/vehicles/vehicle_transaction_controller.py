@@ -340,8 +340,10 @@ class VehicleTransactionController(StockController):
 
 			if self.meta.has_field('agent'):
 				if cstr(self.agent) != cstr(vro.agent):
-					frappe.throw(_("Agent does not match in {0}")
-						.format(frappe.get_desk_link("Vehicle Registration Order", doc.vehicle_registration_order)))
+					frappe.throw(_("Agent does not match in {0}. Agent should be {1}").format(
+						frappe.get_desk_link("Vehicle Registration Order", doc.vehicle_registration_order),
+						frappe.bold(vro.agent),
+					))
 
 			if doc.get('item_code'):
 				if doc.item_code != vro.item_code:
@@ -514,6 +516,8 @@ class VehicleTransactionController(StockController):
 				vro.set_invoice_status(update=True)
 			elif self.doctype == "Vehicle Registration Receipt":
 				vro.set_registration_receipt_details(update=True)
+			elif self.doctype in ["Vehicle Number Plate Receipt", "Vehicle Number Plate Delivery"]:
+				vro.set_number_plate_status(update=True)
 
 			vro.set_status(update=True)
 			vro.notify_update()
@@ -1008,6 +1012,9 @@ def get_vehicle_registration_order_details(args, get_customer=False):
 
 	get_registration = (args.doctype and frappe.get_meta(args.doctype).has_field('vehicle_registration_order')) \
 		or (args.doctype == 'Vehicle Invoice Movement' and args.issued_for == "Registration")
+
+	if args.doctype in ['Vehicle Number Plate Receipt', 'Vehicle Number Plate Delivery']:
+		get_registration = get_customer = True
 
 	if get_registration:
 		from erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order import get_vehicle_registration_order, \

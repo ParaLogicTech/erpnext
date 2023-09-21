@@ -31,10 +31,6 @@
   "tax_strn",
   "column_break_ll9qd",
   "tax_status",
-  "is_internal_customer",
-  "represents_company",
-  "allowed_to_transact_section",
-  "companies",
   "primary_contact_section",
   "mobile_no",
   "mobile_no_2",
@@ -92,6 +88,10 @@
   "linked_supplier",
   "customer_pos_id",
   "is_frozen",
+  "is_internal_customer",
+  "internal_customer_details_section",
+  "represents_company",
+  "companies",
   "accounting_defaults_section",
   "accounts",
   "credit_limit_section",
@@ -239,7 +239,6 @@
    "default": "0",
    "fieldname": "is_internal_customer",
    "fieldtype": "Check",
-   "hidden": 1,
    "label": "Is Internal Customer"
   },
   {
@@ -248,17 +247,12 @@
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
    "label": "Represents Company",
+   "mandatory_depends_on": "is_internal_customer",
    "options": "Company",
    "unique": 1
   },
   {
-   "depends_on": "represents_company",
-   "fieldname": "allowed_to_transact_section",
-   "fieldtype": "Section Break",
-   "label": "Allowed To Transact With"
-  },
-  {
-   "depends_on": "represents_company",
+   "depends_on": "is_internal_customer",
    "fieldname": "companies",
    "fieldtype": "Table",
    "label": "Allowed To Transact With",
@@ -680,13 +674,19 @@
   {
    "fieldname": "column_break_07btd",
    "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "is_internal_customer",
+   "fieldname": "internal_customer_details_section",
+   "fieldtype": "Section Break",
+   "label": "Internal Customer Details"
   }
  ],
  "icon": "fa fa-user",
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2023-04-10 16:21:11.488194",
+ "modified": "2023-09-07 14:04:47.901999",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",
@@ -787,6 +787,10 @@
    "read": 1,
    "report": 1,
    "role": "Support Team"
+  },
+  {
+   "role": "Packing User",
+   "select": 1
   }
  ],
  "quick_entry": 1,

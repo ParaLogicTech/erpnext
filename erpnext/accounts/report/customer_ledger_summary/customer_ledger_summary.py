@@ -246,8 +246,9 @@ class PartyLedgerSummaryReport(object):
 				gle.is_opening {join_field}
 			from `tabGL Entry` gle
 			{join}
-			where
-				gle.docstatus < 2 and gle.party_type=%(party_type)s and ifnull(gle.party, '') != ''
+			where gle.docstatus < 2
+				and gle.party_type = %(party_type)s
+				and (gle.party != '' and gle.party is not null)
 				and gle.posting_date <= %(to_date)s {conditions}
 			order by gle.posting_date
 		""".format(join=join, join_field=join_field, conditions=conditions), self.filters, as_dict=True)
@@ -391,8 +392,9 @@ class PartyLedgerSummaryReport(object):
 					and gle.posting_date between %(from_date)s and %(to_date)s
 				) and (voucher_type, voucher_no) in (
 					select voucher_type, voucher_no from `tabGL Entry` gle
-					where gle.party_type=%(party_type)s and ifnull(party, '') != ''
-					and gle.posting_date between %(from_date)s and %(to_date)s {conditions}
+					where gle.party_type = %(party_type)s
+						and (party != '' and party is not null)
+						and gle.posting_date between %(from_date)s and %(to_date)s {conditions}
 				)
 		""".format(conditions=conditions), self.filters, as_dict=True)
 

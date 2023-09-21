@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "naming_series:",
  "creation": "2013-01-10 16:34:12",
  "doctype": "DocType",
@@ -207,21 +208,21 @@
  "icon": "fa fa-thumbs-up",
  "idx": 1,
  "is_submittable": 1,
- "modified": "2020-09-29 14:45:42.665909",
+ "links": [],
+ "modified": "2023-08-30 22:56:22.650572",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Appraisal",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "ashwini@webnotestech.com",
  "permissions": [
   {
-   "create": 1,
    "email": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "Employee",
-   "share": 1,
-   "write": 1
+   "share": 1
   },
   {
    "amend": 1,
@@ -255,6 +256,7 @@
  "search_fields": "status, employee, employee_name",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "employee",
  "title_field": "employee_name"
 }

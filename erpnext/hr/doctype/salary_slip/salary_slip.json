@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "creation": "2013-01-10 16:34:15",
  "doctype": "DocType",
@@ -662,7 +663,8 @@
  "icon": "fa fa-file-text",
  "idx": 9,
  "is_submittable": 1,
- "modified": "2023-01-02 00:23:10.691109",
+ "links": [],
+ "modified": "2023-08-30 23:12:50.104297",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Salary Slip",
@@ -705,6 +707,7 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "employee",
  "title_field": "employee_name"
 }

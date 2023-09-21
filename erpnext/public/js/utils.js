@@ -561,7 +561,7 @@ $.extend(erpnext.utils, {
 
 	setup_remove_zero_qty_rows(frm) {
 		if (frm.doc.docstatus === 0) {
-			frm.fields_dict.items.grid.add_custom_button(__("Remove 0 Qty Rows"),  function () {
+			frm.fields_dict.items.grid.add_custom_button(__("Remove 0 Qty Rows"), function () {
 				let actions = [];
 				$.each(frm.doc.items || [], function(i, d) {
 					if (!flt(d.qty, precision('qty', d))) {

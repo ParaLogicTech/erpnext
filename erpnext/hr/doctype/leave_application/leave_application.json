@@ -21,12 +21,12 @@
   "column_break1",
   "from_date",
   "to_date",
-  "half_day",
-  "late_deduction",
   "half_day_date",
   "total_late_days",
   "total_late_deduction",
   "total_leave_days",
+  "half_day",
+  "late_deduction",
   "section_break_5",
   "description",
   "column_break_18",
@@ -67,6 +67,7 @@
    "search_index": 1
   },
   {
+   "depends_on": "eval:doc.employee && doc.employee_name != doc.employee",
    "fetch_from": "employee.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
@@ -199,6 +200,7 @@
    "fieldtype": "Date",
    "label": "Posting Date",
    "no_copy": 1,
+   "permlevel": 1,
    "reqd": 1
   },
   {
@@ -237,6 +239,7 @@
    "ignore_user_permissions": 1,
    "label": "Letter Head",
    "options": "Letter Head",
+   "permlevel": 1,
    "print_hide": 1
   },
   {
@@ -304,24 +307,13 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "max_attachments": 3,
- "modified": "2023-03-30 12:36:02.498636",
+ "modified": "2023-09-09 12:10:08.855803",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Leave Application",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
-  {
-   "create": 1,
-   "email": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Employee",
-   "share": 1,
-   "write": 1
-  },
   {
    "amend": 1,
    "cancel": 1,
@@ -339,11 +331,6 @@
    "write": 1
   },
   {
-   "permlevel": 1,
-   "read": 1,
-   "role": "All"
-  },
-  {
    "amend": 1,
    "cancel": 1,
    "create": 1,
@@ -359,6 +346,23 @@
    "write": 1
   },
   {
+   "permlevel": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "write": 1
+  },
+  {
    "amend": 1,
    "cancel": 1,
    "delete": 1,
@@ -375,15 +379,13 @@
    "permlevel": 1,
    "read": 1,
    "report": 1,
-   "role": "HR User",
+   "role": "Leave Approver",
    "write": 1
   },
   {
    "permlevel": 1,
    "read": 1,
-   "report": 1,
-   "role": "Leave Approver",
-   "write": 1
+   "role": "All"
   }
  ],
  "search_fields": "employee,employee_name,leave_type,from_date,to_date,total_leave_days",

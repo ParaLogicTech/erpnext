@@ -651,13 +651,13 @@ def get_items_for_material_requests(doc, ignore_existing_ordered_qty=None):
 		ignore_existing_ordered_qty = data.get('ignore_existing_ordered_qty') or ignore_existing_ordered_qty
 
 		item_details = {}
-		if data.get("bom") or data.get("bom_no"):
+		if data.get("bom_no") or data.get("bom"):
 			if data.get('required_qty'):
-				bom_no = data.get('bom')
+				bom_no = data.get("bom_no") or data.get("bom")
 				include_non_stock_items = 1
 				include_subcontracted_items = 1 if data.get('include_exploded_items') else 0
 			else:
-				bom_no = data.get('bom_no')
+				bom_no = data.get('bom_no') or data.get("bom")
 				include_subcontracted_items = doc.get('include_subcontracted_items')
 				include_non_stock_items = doc.get('include_non_stock_items')
 

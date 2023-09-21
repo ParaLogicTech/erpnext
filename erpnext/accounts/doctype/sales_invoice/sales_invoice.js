@@ -167,16 +167,11 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		this.set_default_print_format();
 
 		if (doc.docstatus == 1 && !doc.inter_company_reference) {
-			frappe.model.with_doc("Customer", me.frm.doc.customer, function() {
-				var customer = frappe.model.get_doc("Customer", me.frm.doc.customer);
-				var internal = customer.is_internal_customer;
-				var disabled = customer.disabled;
-				if (internal == 1 && disabled == 0) {
-					me.frm.add_custom_button("Inter Company Invoice", function() {
-						me.make_inter_company_invoice();
-					}, __('Create'));
-				}
-			});
+			if (me.frm.doc.__onload?.is_internal_customer) {
+				me.frm.add_custom_button("Inter Company Invoice", function() {
+					me.make_inter_company_invoice();
+				}, __('Create'));
+			}
 		}
 
 		this.frm.set_indicator_formatter('item_code', function(doc, parent) {
