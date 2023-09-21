@@ -19,7 +19,6 @@
  ],
  "content": "[{\"id\":\"riX7CSbNat\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Automotive / Vehicles Module</b></span>\",\"col\":12}},{\"id\":\"546Lzvak4b\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vehicle Booking Order\",\"col\":3}},{\"id\":\"dbat--tnir\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Repair Order\",\"col\":3}},{\"id\":\"ANqgLGC8Ln\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vehicle Quotation\",\"col\":3}},{\"id\":\"ROIfJ5JdUH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Appointment\",\"col\":3}},{\"id\":\"iZz7y3hpHS\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vehicle Stock\",\"col\":3}},{\"id\":\"mDVA6lR0Qq\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Vehicle Tracking Sheet\",\"col\":3}},{\"id\":\"6JI7J63jXX\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Opportunity\",\"col\":3}},{\"id\":\"0XDNkEKMUa\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Appointment Sheet\",\"col\":3}},{\"id\":\"NVuLIq2HoU\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mCJ5t8BwIx\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Booking Status Summary\",\"col\":6}},{\"id\":\"x2XOTSjBBA\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Top Vehicle Models\",\"col\":6}},{\"id\":\"mZfcY6_99d\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Vehicle Booking Timeline\",\"col\":6}},{\"id\":\"bKGNU7VqIR\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Vehicle Delivery Timeline\",\"col\":6}},{\"id\":\"EgliZkHFtN\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"A59YUxp1KJ\",\"type\":\"card\",\"data\":{\"card_name\":\"Booking\",\"col\":3}},{\"id\":\"axV6devO5G\",\"type\":\"card\",\"data\":{\"card_name\":\"Pre Sales\",\"col\":3}},{\"id\":\"mvl6xOaQkl\",\"type\":\"card\",\"data\":{\"card_name\":\"Stock\",\"col\":3}},{\"id\":\"J_HxIq5hLV\",\"type\":\"card\",\"data\":{\"card_name\":\"Vehicle Service\",\"col\":3}},{\"id\":\"9DFljhCz2G\",\"type\":\"card\",\"data\":{\"card_name\":\"Vehicle Pre Service\",\"col\":3}},{\"id\":\"3cHnBhXsas\",\"type\":\"card\",\"data\":{\"card_name\":\"Vehicle Registration\",\"col\":3}},{\"id\":\"4khyNm-xuQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Vehicle Documents\",\"col\":3}},{\"id\":\"Lq3zrMyIiM\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}},{\"id\":\"e5KQiwWna_\",\"type\":\"card\",\"data\":{\"card_name\":\"Vehicle Sales Masters\",\"col\":3}},{\"id\":\"Z4SiZNziWM\",\"type\":\"card\",\"data\":{\"card_name\":\"Vehicle Service Masters\",\"col\":3}},{\"id\":\"FCoHVejSLu\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}}]",
  "creation": "2022-11-16 04:31:56.203759",
- "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "hide_custom": 0,
@@ -257,6 +256,16 @@
    "link_count": 0,
    "link_to": "Vehicle Gate Pass",
    "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Workshop Control Panel",
+   "link_count": 0,
+   "link_to": "workshop-cp",
+   "link_type": "Page",
    "onboard": 0,
    "type": "Link"
   },
@@ -657,7 +666,7 @@
    "type": "Link"
   }
  ],
- "modified": "2023-09-11 23:16:02.929334",
+ "modified": "2023-09-21 14:15:32.473953",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicles",
