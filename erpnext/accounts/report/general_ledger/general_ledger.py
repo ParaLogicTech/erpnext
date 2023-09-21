@@ -87,7 +87,7 @@ def get_customer_linked_suppliers(filters):
 		linked_suppliers = frappe.db.sql("""
 			select 'Supplier', linked_supplier
 			from `tabCustomer`
-			where name in %s and ifnull(linked_supplier, '') != ''
+			where name in %s and (linked_supplier != '' and linked_supplier is not null)
 		""", [filters.party])
 
 		filters.party_list += linked_suppliers

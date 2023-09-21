@@ -7,6 +7,7 @@ from frappe import _
 
 from frappe.model.document import Document
 
+
 class ProductBundle(Document):
 	def autoname(self):
 		self.name = self.new_item_code

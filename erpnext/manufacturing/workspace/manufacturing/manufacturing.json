@@ -288,10 +288,11 @@
    "type": "Link"
   }
  ],
- "modified": "2023-03-08 13:53:33.414859",
+ "modified": "2023-08-21 01:52:23.893305",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Manufacturing",
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -308,7 +309,7 @@
    "role": "Accounts User"
   }
  ],
- "sequence_id": 11.0,
+ "sequence_id": 190.0,
  "shortcuts": [],
  "title": "Manufacturing"
 }

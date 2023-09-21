@@ -304,6 +304,11 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 			frappe.throw(__("Invalid Target DocType"))
 		}
 
+		let columns = ['customer', 'total_stock_qty', 'packed_items', 'posting_date'];
+		if (target_doctype == "Packing Slip") {
+			columns.push('package_type');
+		}
+
 		erpnext.utils.map_current_doc({
 			method: method,
 			source_doctype: "Packing Slip",
@@ -346,7 +351,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					get_query: () => erpnext.queries.item(),
 				},
 			],
-			columns: ['package_type', 'customer', 'warehouse', 'total_net_weight'],
+			columns: columns,
 			get_query: () => {
 				var filters = {
 					company: this.frm.doc.company,

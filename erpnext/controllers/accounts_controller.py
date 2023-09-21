@@ -41,12 +41,15 @@ force_applies_to_fields = ("vehicle_chassis_no", "vehicle_engine_no", "vehicle_l
 
 merge_items_sum_fields = ['qty', 'stock_qty', 'alt_uom_qty', 'net_weight',
 	'amount', 'taxable_amount', 'net_amount', 'total_discount', 'amount_before_discount',
-	'item_taxes_and_charges', 'tax_inclusive_amount',
+	'item_taxes', 'item_taxes_before_discount', 'tax_inclusive_amount', 'tax_inclusive_amount_before_discount',
 	'amount_before_depreciation', 'depreciation_amount']
 
 merge_items_rate_fields = [('rate', 'amount'), ('taxable_rate', 'taxable_amount'), ('net_rate', 'net_amount'),
 	('discount_amount', 'total_discount'), ('price_list_rate', 'amount_before_discount'),
-	('tax_inclusive_rate', 'tax_inclusive_amount'), ('net_weight_per_unit', 'net_weight')]
+	('tax_inclusive_rate', 'tax_inclusive_amount'),
+	('tax_inclusive_rate_before_discount', 'tax_inclusive_amount_before_discount'),
+	('net_weight_per_unit', 'net_weight'),
+]
 
 print_total_fields_from_items = [
 	('total_qty', 'qty'),
@@ -69,7 +72,9 @@ print_total_fields_from_items = [
 	('tax_exclusive_total_before_depreciation', 'tax_exclusive_amount_before_depreciation'),
 
 	('grand_total', 'tax_inclusive_amount'),
-	('total_taxes_and_charges', 'item_taxes_and_charges'),
+	('grand_total_before_discount', 'tax_inclusive_amount_before_discount'),
+	('total_taxes_and_charges', 'item_taxes'),
+	('total_taxes_and_charges_before_discount', 'item_taxes_before_discount'),
 
 	('total_net_weight', 'net_weight')
 ]
@@ -232,6 +237,7 @@ class AccountsController(TransactionBase):
 				self.group_similar_items()
 
 			self.uom = self.get_common_uom(self.get("items"))
+			self.stock_uom = self.get_common_uom(self.get("items"), "stock_uom")
 			self.items_by_item_group = self.group_items_by_item_group(self.items)
 			self.items_by_item_tax_and_item_group = self.group_items_by_item_tax_and_item_group()
 
@@ -1236,6 +1242,7 @@ class AccountsController(TransactionBase):
 	def group_items_by_postprocess(self, grouped):
 		for key_value, group_data in grouped.items():
 			group_data.uom = self.get_common_uom(group_data["items"])
+			group_data.stock_uom = self.get_common_uom(group_data["items"], "stock_uom")
 
 			for group_field, item_field in print_total_fields_from_items:
 				group_data[group_field] = sum([flt(d.get(item_field)) for d in group_data['items']])
@@ -1243,8 +1250,8 @@ class AccountsController(TransactionBase):
 
 			self.calculate_taxes_for_group(group_data)
 
-	def get_common_uom(self, items):
-		unique_group_uoms = list(set(row.get("uom") for row in items if row.get("uom")))
+	def get_common_uom(self, items, uom_field="uom"):
+		unique_group_uoms = list(set(row.get(uom_field) for row in items if row.get(uom_field)))
 		return unique_group_uoms[0] if len(unique_group_uoms) == 1 else ""
 
 	def get_item_group_print_heading(self, item):

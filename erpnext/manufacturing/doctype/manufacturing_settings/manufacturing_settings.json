@@ -16,10 +16,11 @@
   "default_wip_warehouse",
   "default_fg_warehouse",
   "default_rm_warehouse",
-  "scrap_remaining_by_default",
   "auto_submit_work_order",
   "auto_submit_material_transfer_entry",
   "auto_submit_manufacture_entry",
+  "auto_select_batches_in_stock_entry",
+  "scrap_remaining_by_default",
   "capacity_planning",
   "disable_capacity_planning",
   "allow_overtime",
@@ -87,7 +88,7 @@
    "label": "Overproduction Percentage For Work Order"
   },
   {
-   "default": "BOM",
+   "default": "Material Transferred for Manufacture",
    "fieldname": "backflush_raw_materials_based_on",
    "fieldtype": "Select",
    "label": "Backflush Raw Materials Based On",
@@ -133,7 +134,7 @@
    "default": "0",
    "fieldname": "scrap_remaining_by_default",
    "fieldtype": "Check",
-   "label": "Set Scrap Remaining default"
+   "label": "Allow Scrap Remaining Option"
   },
   {
    "default": "0",
@@ -157,12 +158,18 @@
    "fieldname": "under_production_allowance",
    "fieldtype": "Percent",
    "label": "Under Production Allowance (%)"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_select_batches_in_stock_entry",
+   "fieldtype": "Check",
+   "label": "Auto Select Batches in Stock Entry"
   }
  ],
  "icon": "icon-wrench",
  "issingle": 1,
  "links": [],
- "modified": "2023-05-29 19:58:10.829100",
+ "modified": "2023-09-06 22:44:53.779733",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Manufacturing Settings",

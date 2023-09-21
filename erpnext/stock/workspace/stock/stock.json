@@ -697,10 +697,11 @@
    "type": "Link"
   }
  ],
- "modified": "2023-01-23 12:13:55.006981",
+ "modified": "2023-08-31 14:50:57.517185",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock",
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -720,9 +721,12 @@
   },
   {
    "role": "Accounts User"
+  },
+  {
+   "role": "Packing User"
   }
  ],
- "sequence_id": 4.0,
+ "sequence_id": 130.0,
  "shortcuts": [
   {
    "color": "Blue",

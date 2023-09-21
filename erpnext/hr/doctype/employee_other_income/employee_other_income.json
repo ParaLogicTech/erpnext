@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "HR-INCOME-.######",
  "creation": "2020-03-18 15:04:40.767434",
  "doctype": "DocType",
@@ -74,10 +75,12 @@
   }
  ],
  "is_submittable": 1,
- "modified": "2020-05-18 17:17:38.883126",
+ "links": [],
+ "modified": "2023-08-30 23:04:34.269794",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Other Income",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -114,9 +117,7 @@
    "amend": 1,
    "cancel": 1,
    "create": 1,
-   "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -129,5 +130,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

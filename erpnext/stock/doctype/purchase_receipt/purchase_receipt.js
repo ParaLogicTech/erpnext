@@ -187,17 +187,11 @@ erpnext.stock.PurchaseReceiptController = class PurchaseReceiptController extend
 		}
 
 		if (me.frm.doc.docstatus === 1 && me.frm.doc.status != "Closed" && !me.frm.doc.inter_company_reference) {
-			let me = this;
-			frappe.model.with_doc("Supplier", me.frm.doc.supplier, () => {
-				let supplier = frappe.model.get_doc("Supplier", me.frm.doc.supplier);
-				let internal = supplier.is_internal_supplier;
-				let disabled = supplier.disabled;
-				if (internal === 1 && disabled === 0) {
-					me.frm.add_custom_button("Inter Company Delivery", function() {
-						me.make_inter_company_delivery(me.frm);
-					}, __('Create'));
-				}
-			});
+			if (me.frm.doc.__onload?.is_internal_supplier) {
+				me.frm.add_custom_button("Inter Company Delivery", function() {
+					me.make_inter_company_delivery(me.frm);
+				}, __('Create'));
+			}
 		}
 
 		if(this.frm.doc.docstatus==1 && this.frm.doc.status === "Closed" && this.frm.has_perm("submit")) {

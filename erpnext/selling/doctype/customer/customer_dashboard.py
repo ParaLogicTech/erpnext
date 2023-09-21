@@ -40,7 +40,7 @@ def get_data():
 			},
 			{
 				'label': _('Pre Sales'),
-				'items': vehicle_quotation + ['Quotation', 'Opportunity']
+				'items': vehicle_quotation + ['Quotation', 'Opportunity', 'Lead']
 			},
 			{
 				'label': _('Events'),
@@ -56,11 +56,7 @@ def get_data():
 			},
 			{
 				'label': _('Customer Provided Items'),
-				'items': ['Item', 'Material Request']
+				'items': ['Item', 'Stock Entry']
 			},
-			{
-				'label': _('From Lead'),
-				'items': ['Lead']
-			}
 		]
 	}

@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
- "creation": "2013-01-10 16:34:16",
+ "creation": "2023-08-05 15:20:34.428300",
  "doctype": "DocType",
  "document_type": "Setup",
  "engine": "InnoDB",
@@ -738,7 +738,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-08-05 14:58:56.197561",
+ "modified": "2023-08-31 15:17:32.238932",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Work Order",
@@ -766,6 +766,10 @@
    "read": 1,
    "report": 1,
    "role": "Stock User"
+  },
+  {
+   "read": 1,
+   "role": "Packing User"
   }
  ],
  "sort_field": "transaction_date",

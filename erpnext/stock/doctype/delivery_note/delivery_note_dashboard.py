@@ -27,7 +27,7 @@ def get_data():
 			},
 			{
 				'label': _('Reference'),
-				'items': ['Quality Inspection', 'Auto Repeat']
+				'items': ['Quality Inspection']
 			},
 			{
 				'label': _('Returns'),

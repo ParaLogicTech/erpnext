@@ -265,7 +265,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-12-20 15:41:08.639367",
+ "modified": "2023-08-30 23:13:04.422897",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Timesheet",
@@ -319,6 +319,7 @@
   {
    "create": 1,
    "read": 1,
+   "report": 1,
    "role": "Employee",
    "write": 1
   },

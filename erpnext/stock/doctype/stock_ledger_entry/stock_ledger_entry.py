@@ -189,5 +189,3 @@ def on_doctype_update():
 			index_name="posting_sort_index")
 
 	frappe.db.add_index("Stock Ledger Entry", ["voucher_no", "voucher_type"])
-	frappe.db.add_index("Stock Ledger Entry", ["batch_no", "item_code", "warehouse"])
-

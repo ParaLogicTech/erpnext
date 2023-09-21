@@ -46,6 +46,7 @@
   "unpack_against_row",
   "column_break_vb4pg",
   "work_order",
+  "unpacked_return_qty",
   "accounting_dimensions_section",
   "expense_account",
   "dimension_col_break",
@@ -287,7 +288,6 @@
    "columns": 1,
    "fieldname": "tare_weight",
    "fieldtype": "Float",
-   "in_list_view": 1,
    "label": "Tare Weight"
   },
   {
@@ -365,12 +365,22 @@
    "options": "Work Order",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "unpacked_return_qty",
+   "fieldname": "unpacked_return_qty",
+   "fieldtype": "Float",
+   "label": "Unpacked Return Qty",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-06-17 11:40:12.800766",
+ "modified": "2023-09-19 00:36:26.742139",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packing Slip Item",

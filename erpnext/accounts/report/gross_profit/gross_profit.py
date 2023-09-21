@@ -64,7 +64,10 @@ class GrossProfitGenerator(object):
 			left join `tabItem` i on i.name = si_item.item_code
 			left join `tabSales Team` sp on sp.parent = si.name and sp.parenttype = 'Sales Invoice'
 			where
-				si.docstatus = 1 and ifnull(si.return_against, '') = '' and si.is_opening != 'Yes' {conditions}
+				si.docstatus = 1
+				and (si.return_against = '' or si.return_against is null)
+				and si.is_opening != 'Yes'
+				{conditions}
 			group by si.name, si_item.name
 			order by si.posting_date desc, si.posting_time desc, si.name desc, si_item.idx asc
 		""".format(conditions=conditions), self.filters, as_dict=1)

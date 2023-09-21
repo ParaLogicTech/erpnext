@@ -34,7 +34,7 @@ def get_data():
 			},
 			{
 				'label': _('Reference'),
-				'items': vehicle_gate_pass + ['Packing Slip', 'Auto Repeat']
+				'items': vehicle_gate_pass + ['Packing Slip']
 			},
 			{
 				'label': _('Returns'),

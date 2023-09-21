@@ -8,6 +8,7 @@
  "hide_custom": 0,
  "icon": "support",
  "idx": 0,
+ "is_hidden": 0,
  "label": "Service",
  "links": [
   {
@@ -368,10 +369,11 @@
    "type": "Link"
   }
  ],
- "modified": "2022-12-18 15:27:06.101361",
+ "modified": "2023-08-21 01:52:20.034733",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Service",
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -382,12 +384,9 @@
   },
   {
    "role": "Projects User"
-  },
-  {
-   "role": "Support Team"
   }
  ],
- "sequence_id": 7.0,
+ "sequence_id": 160.0,
  "shortcuts": [],
  "title": "Service"
 }

@@ -8,6 +8,7 @@
  "hide_custom": 0,
  "icon": "quality",
  "idx": 0,
+ "is_hidden": 0,
  "label": "Quality",
  "links": [
   {
@@ -135,10 +136,11 @@
    "type": "Link"
   }
  ],
- "modified": "2022-12-18 15:27:51.062589",
+ "modified": "2023-08-31 00:52:22.609168",
  "modified_by": "Administrator",
  "module": "Quality Management",
  "name": "Quality",
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -148,7 +150,7 @@
    "role": "Quality Manager"
   }
  ],
- "sequence_id": 9.0,
+ "sequence_id": 180.0,
  "shortcuts": [],
  "title": "Quality"
 }

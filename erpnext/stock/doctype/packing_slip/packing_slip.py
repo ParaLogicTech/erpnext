@@ -49,7 +49,9 @@ class PackingSlip(StockController):
 		self.calculate_totals()
 		self.validate_weights()
 		self.set_cost_percentage()
+		self.set_packed_items()
 		self.set_title()
+		self.set_unpacked_return_status()
 		self.set_status(validate=False)
 
 	def on_submit(self):
@@ -67,6 +69,16 @@ class PackingSlip(StockController):
 		self.title = self.package_type
 		if self.get("customer"):
 			self.title += " for {0}".format(self.customer_name or self.customer)
+
+	def set_packed_items(self):
+		packed_item_names = []
+		for d in self.items:
+			if d.item_name not in packed_item_names:
+				packed_item_names.append(d.item_name)
+
+		self.packed_items = ", ".join(packed_item_names)
+		if len(self.packed_items) > 140:
+			self.packed_items = self.packed_items[:137] + "..."
 
 	def set_missing_values(self, for_validate=False):
 		self.set_missing_item_details(for_validate)
@@ -671,11 +683,7 @@ class PackingSlip(StockController):
 			if d.get("source_packing_slip"):
 				packing_slips.add(d.source_packing_slip)
 
-		for name in work_orders:
-			doc = frappe.get_doc("Work Order", name)
-			doc.set_packing_status(update=True)
-			doc.validate_overpacking()
-			doc.notify_update()
+		self.update_work_order_packing_status(work_orders)
 
 		for name in sales_orders:
 			doc = frappe.get_doc("Sales Order", name)
@@ -689,6 +697,13 @@ class PackingSlip(StockController):
 		for name in packing_slips:
 			doc = frappe.get_doc("Packing Slip", name)
 			doc.set_status(update=True)
+			doc.notify_update()
+
+	def update_work_order_packing_status(self, work_orders):
+		for name in work_orders:
+			doc = frappe.get_doc("Work Order", name)
+			doc.set_packing_status(update=True)
+			doc.validate_overpacking()
 			doc.notify_update()
 
 	def update_stock_ledger(self, allow_negative_stock=False):
@@ -954,9 +969,78 @@ class PackingSlip(StockController):
 	def group_items_by_postprocess(self, grouped):
 		for key_value, group_data in grouped.items():
 			group_data.uom = self.get_common_uom(group_data["items"])
+			group_data.stock_uom = self.get_common_uom(group_data["items"], "stock_uom")
 
 			for group_field, item_field in print_total_fields_from_items:
 				group_data[group_field] = sum([flt(d.get(item_field)) for d in group_data['items']])
+
+	def set_unpacked_return_status(self, update=False, update_modified=True,
+			update_work_orders=True, update_source_packing_slip=True, row_names=None):
+		if not row_names:
+			row_names = [d.name for d in self.items]
+
+		unpacked_return_qty_map = self.get_unpacked_return_qty_map()
+		for d in self.items:
+			d.unpacked_return_qty = flt(unpacked_return_qty_map.get(d.name))
+			if update:
+				d.db_set("unpacked_return_qty", d.unpacked_return_qty, update_modified=update_modified)
+
+		if update:
+			if update_work_orders:
+				work_orders = set([d.work_order for d in self.items if d.work_order and d.name in row_names])
+				self.update_work_order_packing_status(work_orders)
+
+			if update_source_packing_slip:
+				source_packing_slips = set([d.source_packing_slip for d in self.items if d.source_packing_slip and d.name in row_names])
+				source_row_names = [d.packing_slip_item for d in self.items if d.source_packing_slip and d.name in row_names]
+				for packing_slip in source_packing_slips:
+					packing_slip_doc = frappe.get_doc("Packing Slip", packing_slip)
+					packing_slip_doc.set_unpacked_return_status(update=update, update_modified=update_modified,
+						update_work_orders=update_work_orders, update_source_packing_slip=update_source_packing_slip,
+						row_names=source_row_names)
+
+	def get_unpacked_return_qty_map(self):
+		unpacked_return_qty_map = {}
+		if self.docstatus != 1:
+			return unpacked_return_qty_map
+
+		row_names = [d.name for d in self.items]
+		if not row_names:
+			return unpacked_return_qty_map
+
+		unpacked_returns_by_delivery_note = frappe.db.sql("""
+			select against_i.packing_slip_item, -1 * return_i.qty as qty
+			from `tabDelivery Note Item` return_i
+			inner join `tabDelivery Note Item` against_i on against_i.name = return_i.delivery_note_item
+			inner join `tabDelivery Note` return_p on return_p.name = return_i.parent
+			where return_p.docstatus = 1 and return_p.is_return = 1 and return_p.reopen_order = 1
+				and against_i.packing_slip_item in %s
+				and ifnull(return_i.packing_slip, '') = ''
+				and ifnull(against_i.packing_slip, '') != ''
+		""", [row_names], as_dict=1)
+
+		unpacked_returns_by_sales_invoice = frappe.db.sql("""
+			select against_i.packing_slip_item, -1 * return_i.qty as qty
+			from `tabSales Invoice Item` return_i
+			inner join `tabSales Invoice Item` against_i on against_i.name = return_i.sales_invoice_item
+			inner join `tabSales Invoice` return_p on return_p.name = return_i.parent
+			where return_p.docstatus = 1 and return_p.update_stock = 1 and return_p.is_return = 1 and return_p.reopen_order = 1
+				and against_i.packing_slip_item in %s
+				and ifnull(return_i.packing_slip, '') = ''
+				and ifnull(against_i.packing_slip, '') != ''
+		""", [row_names], as_dict=1)
+
+		unpacked_returns_by_packing_slip = frappe.db.sql("""
+			select nested_i.packing_slip_item, nested_i.unpacked_return_qty as qty
+			from `tabPacking Slip Item` nested_i
+			where nested_i.docstatus = 1 and nested_i.packing_slip_item in %s
+		""", [row_names], as_dict=1)
+
+		for d in unpacked_returns_by_delivery_note + unpacked_returns_by_sales_invoice + unpacked_returns_by_packing_slip:
+			unpacked_return_qty_map.setdefault(d.packing_slip_item, 0)
+			unpacked_return_qty_map[d.packing_slip_item] += d.qty
+
+		return unpacked_return_qty_map
 
 
 @frappe.whitelist()
@@ -1107,7 +1191,6 @@ def make_target_packing_slip(source_name, target_doc=None):
 			"name": "packing_slip_item",
 			"sales_order": "sales_order",
 			"sales_order_item": "sales_order_item",
-			"work_order": "work_order",
 			"batch_no": "batch_no",
 			"serial_no": "serial_no",
 		},
@@ -1203,8 +1286,10 @@ def make_delivery_note(source_name, target_doc=None):
 	so_item_mapper = get_item_mapper_for_delivery(allow_duplicate=True)
 	packing_slip_item_mapper = get_packing_slip_item_mapper("Delivery Note Item")
 
-	frappe.utils.call_hook_method("update_delivery_note_from_packing_slip_mapper", so_item_mapper, "Sales Order Item")
-	frappe.utils.call_hook_method("update_delivery_note_from_packing_slip_mapper", packing_slip_item_mapper, "Packing Slip Item")
+	frappe.utils.call_hook_method("update_delivery_note_from_packing_slip_mapper", so_item_mapper,
+		"Sales Order Item")
+	frappe.utils.call_hook_method("update_delivery_note_from_packing_slip_mapper", packing_slip_item_mapper,
+		"Packing Slip Item")
 
 	# Map Packing Slip Items
 	for ps_item in packing_slip.get("items"):
@@ -1239,9 +1324,14 @@ def make_sales_invoice(source_name, target_doc=None):
 	for sales_order in sales_orders:
 		sales_order_docs[sales_order] = frappe.get_doc("Sales Order", sales_order)
 		sales_order_mappers[sales_order] = get_item_mapper_for_invoice(sales_order, allow_duplicate=True)
+		frappe.utils.call_hook_method("update_sales_invoice_from_packing_slip_mapper",
+			sales_order_mappers[sales_order], "Sales Order Item")
+
 		target_doc = make_sales_invoice_from_sales_order(sales_order, target_doc, skip_item_mapping=True)
 
 	packing_slip_item_mapper = get_packing_slip_item_mapper("Sales Invoice Item")
+	frappe.utils.call_hook_method("update_sales_invoice_from_packing_slip_mapper",
+		packing_slip_item_mapper, "Packing Slip Item")
 
 	# Map Packing Slip Items
 	for ps_item in packing_slip.get("items"):

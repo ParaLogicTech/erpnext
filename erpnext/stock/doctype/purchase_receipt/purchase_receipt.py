@@ -38,7 +38,7 @@ class PurchaseReceipt(BuyingController):
 		self.validate_posting_time()
 		super(PurchaseReceipt, self).validate()
 
-		if self._action=="submit":
+		if self._action == "submit" and not self.is_return:
 			self.make_batches('warehouse')
 
 		self.validate_order_required()
@@ -223,7 +223,7 @@ class PurchaseReceipt(BuyingController):
 					select i.purchase_receipt_item, -1 * sum(i.qty)
 					from `tabPurchase Receipt Item` i
 					inner join `tabPurchase Receipt` p on p.name = i.parent
-					where p.docstatus = 1 and p.is_return = 1 and p.reopen_order = 0 and i.purchase_receipt_item in %s
+					where p.docstatus = 1 and p.is_return = 1 and i.purchase_receipt_item in %s
 					group by i.purchase_receipt_item
 				""", [row_names]))
 

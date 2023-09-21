@@ -60,6 +60,22 @@ frappe.query_reports["Stock Projected Qty"] = {
 			"options": "UOM"
 		},
 		{
+			fieldname: "customer_provided_items",
+			label: __("Customer Provided Items"),
+			fieldtype: "Select",
+			options: [
+				"",
+				"Customer Provided Items Only",
+				"Exclude Customer Provided Items",
+			]
+		},
+		{
+			fieldname: "customer",
+			label: __("Customer"),
+			fieldtype: "Link",
+			options: "Customer",
+		},
+		{
 			fieldname: "group_by_1",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",

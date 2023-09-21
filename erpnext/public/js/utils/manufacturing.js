@@ -416,6 +416,9 @@ $.extend(erpnext.manufacturing, {
 	},
 
 	can_start_work_order: function (doc) {
+		if (!erpnext.manufacturing.has_stock_entry_permission()) {
+			return false;
+		}
 		if (doc.docstatus != 1 || ["Completed", "Stopped"].includes(doc.status)) {
 			return false;
 		}
@@ -428,6 +431,9 @@ $.extend(erpnext.manufacturing, {
 	},
 
 	can_finish_work_order: function (doc) {
+		if (!erpnext.manufacturing.has_stock_entry_permission()) {
+			return false;
+		}
 		if (doc.docstatus != 1 || ["Completed", "Stopped"].includes(doc.status)) {
 			return false;
 		}
@@ -438,4 +444,8 @@ $.extend(erpnext.manufacturing, {
 			return flt(doc.produced_qty) < flt(doc.material_transferred_for_manufacturing);
 		}
 	},
+
+	has_stock_entry_permission: function () {
+		return frappe.model.can_write("Stock Entry");
+	}
 });

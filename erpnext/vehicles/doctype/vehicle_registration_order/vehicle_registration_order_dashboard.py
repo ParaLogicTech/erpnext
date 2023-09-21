@@ -21,6 +21,10 @@ def get_data():
 				'items': ['Vehicle Invoice Movement', 'Vehicle Invoice Delivery']
 			},
 			{
+				'label': _('Number Plate'),
+				'items': ['Vehicle Number Plate Receipt', 'Vehicle Number Plate Delivery']
+			},
+			{
 				'label': _('Registration Invoice'),
 				'items': ['Sales Invoice']
 			},

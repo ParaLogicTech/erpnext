@@ -318,27 +318,27 @@ def get_conditions(filters):
 	if filters.get("mode_of_payment"):
 		conditions += """ and exists(select name from `tabSales Invoice Payment`
 			 where parent=`tabSales Invoice`.name
-			 	and ifnull(`tabSales Invoice Payment`.mode_of_payment, '') = %(mode_of_payment)s)"""
+			 	and `tabSales Invoice Payment`.mode_of_payment = %(mode_of_payment)s)"""
 
 	if filters.get("cost_center"):
 		conditions +=  """ and exists(select name from `tabSales Invoice Item`
 			 where parent=`tabSales Invoice`.name
-			 	and ifnull(`tabSales Invoice Item`.cost_center, '') = %(cost_center)s)"""
+			 	and `tabSales Invoice Item`.cost_center = %(cost_center)s)"""
 
 	if filters.get("warehouse"):
 		conditions +=  """ and exists(select name from `tabSales Invoice Item`
 			 where parent=`tabSales Invoice`.name
-			 	and ifnull(`tabSales Invoice Item`.warehouse, '') = %(warehouse)s)"""
+			 	and `tabSales Invoice Item`.warehouse = %(warehouse)s)"""
 
 	if filters.get("brand"):
 		conditions +=  """ and exists(select name from `tabSales Invoice Item`
 			 where parent=`tabSales Invoice`.name
-			 	and ifnull(`tabSales Invoice Item`.brand, '') = %(brand)s)"""
+			 	and `tabSales Invoice Item`.brand = %(brand)s)"""
 
 	if filters.get("item_group"):
 		conditions +=  """ and exists(select name from `tabSales Invoice Item`
 			 where parent=`tabSales Invoice`.name
-			 	and ifnull(`tabSales Invoice Item`.item_group, '') = %(item_group)s)"""
+			 	and `tabSales Invoice Item`.item_group = %(item_group)s)"""
 
 	accounting_dimensions = get_accounting_dimensions(as_list=False)
 
@@ -404,10 +404,11 @@ def get_invoice_tax_map(invoice_list, invoice_income_map, income_accounts):
 	return invoice_income_map, invoice_tax_map
 
 def get_invoice_so_dn_map(invoice_list):
-	si_items = frappe.db.sql("""select parent, sales_order, delivery_note, sales_order_item
+	si_items = frappe.db.sql("""
+		select parent, sales_order, delivery_note, sales_order_item
 		from `tabSales Invoice Item` where parent in (%s)
-		and (ifnull(sales_order, '') != '' or ifnull(delivery_note, '') != '')""" %
-		', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]), as_dict=1)
+		and ((sales_order != '' and sales_order is not null) or (delivery_note != '' and delivery_note is not null))
+	""" % ', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]), as_dict=1)
 
 	invoice_so_dn_map = {}
 	for d in si_items:
@@ -428,10 +429,12 @@ def get_invoice_so_dn_map(invoice_list):
 	return invoice_so_dn_map
 
 def get_invoice_cc_wh_map(invoice_list):
-	si_items = frappe.db.sql("""select parent, cost_center, warehouse
-		from `tabSales Invoice Item` where parent in (%s)
-		and (ifnull(cost_center, '') != '' or ifnull(warehouse, '') != '')""" %
-		', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]), as_dict=1)
+	si_items = frappe.db.sql("""
+		select parent, cost_center, warehouse
+		from `tabSales Invoice Item`
+		where parent in (%s)
+			and ((cost_center != '' and cost_center is not null) or (warehouse != '' and warehouse is not null))
+	""" % ', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]), as_dict=1)
 
 	invoice_cc_wh_map = {}
 	for d in si_items:

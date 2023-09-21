@@ -132,22 +132,22 @@ def get_conditions(filters):
 	if filters.get("from_date"): conditions += " and posting_date>=%(from_date)s"
 	if filters.get("to_date"): conditions += " and posting_date<=%(to_date)s"
 
-	if filters.get("mode_of_payment"): conditions += " and ifnull(mode_of_payment, '') = %(mode_of_payment)s"
+	if filters.get("mode_of_payment"): conditions += " and mode_of_payment = %(mode_of_payment)s"
 
 	if filters.get("cost_center"):
 		conditions +=  """ and exists(select name from `tabPurchase Invoice Item`
 			 where parent=`tabPurchase Invoice`.name
-			 	and ifnull(`tabPurchase Invoice Item`.cost_center, '') = %(cost_center)s)"""
+			 	and `tabPurchase Invoice Item`.cost_center = %(cost_center)s)"""
 
 	if filters.get("warehouse"):
 		conditions +=  """ and exists(select name from `tabPurchase Invoice Item`
 			 where parent=`tabPurchase Invoice`.name
-			 	and ifnull(`tabPurchase Invoice Item`.warehouse, '') = %(warehouse)s)"""
+			 	and `tabPurchase Invoice Item`.warehouse = %(warehouse)s)"""
 
 	if filters.get("item_group"):
 		conditions +=  """ and exists(select name from `tabPurchase Invoice Item`
 			 where parent=`tabPurchase Invoice`.name
-			 	and ifnull(`tabPurchase Invoice Item`.item_group, '') = %(item_group)s)"""
+			 	and `tabPurchase Invoice Item`.item_group = %(item_group)s)"""
 
 	accounting_dimensions = get_accounting_dimensions(as_list=False)
 

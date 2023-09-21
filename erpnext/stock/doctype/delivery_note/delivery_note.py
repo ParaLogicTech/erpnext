@@ -7,12 +7,9 @@ import frappe.defaults
 from erpnext.controllers.selling_controller import SellingController
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 from frappe import _
-from frappe.contacts.doctype.address.address import get_company_address
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
-from frappe.model.utils import get_fetch_values
 from frappe.utils import cint, flt
-from six import string_types
 
 
 form_grid_templates = {
@@ -151,6 +148,26 @@ class DeliveryNote(SellingController):
 			if d.delivery_note_item:
 				delivery_note_row_names.add(d.delivery_note_item)
 
+		# Update Returned Against Delivery Note
+		if self.is_return and self.return_against:
+			doc = frappe.get_doc("Delivery Note", self.return_against)
+			doc.update_billing_status()
+			doc.validate_returned_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
+			doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
+
+			if self.reopen_order:
+				return_against_packing_slips = set([d.packing_slip for d in doc.items
+					if d.packing_slip and d.name in delivery_note_row_names])
+				return_against_packing_slip_row_names = [d.packing_slip_item for d in doc.items
+					if d.packing_slip_item and d.name in delivery_note_row_names]
+
+				for packing_slip in return_against_packing_slips:
+					ps_doc = frappe.get_doc("Packing Slip", packing_slip)
+					ps_doc.set_unpacked_return_status(update=True, row_names=return_against_packing_slip_row_names)
+					ps_doc.notify_update()
+
+			doc.notify_update()
+
 		# Update Sales Orders
 		for name in sales_orders:
 			doc = frappe.get_doc("Sales Order", name)
@@ -159,6 +176,10 @@ class DeliveryNote(SellingController):
 
 			if self.is_return:
 				doc.set_billing_status(update=True)
+
+			# Update packed qty for unpacked returns
+			if self.is_return and self.reopen_order:
+				doc.set_production_packing_status(update=True)
 
 			doc.set_status(update=True)
 			doc.notify_update()
@@ -169,14 +190,6 @@ class DeliveryNote(SellingController):
 			doc.set_delivery_status(update=True)
 			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=sales_invoice_row_names)
 			doc.set_status(update=True)
-			doc.notify_update()
-
-		# Update Returned Against Delivery Note
-		if self.is_return and self.return_against:
-			doc = frappe.get_doc("Delivery Note", self.return_against)
-			doc.update_billing_status()
-			doc.validate_returned_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
-			doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
 			doc.notify_update()
 
 		self.update_project_billing_and_sales()
@@ -278,7 +291,7 @@ class DeliveryNote(SellingController):
 					select i.delivery_note_item, -1 * sum(i.qty)
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` p on p.name = i.parent
-					where p.docstatus = 1 and p.is_return = 1 and p.reopen_order = 0 and i.delivery_note_item in %s
+					where p.docstatus = 1 and p.is_return = 1 and i.delivery_note_item in %s
 					group by i.delivery_note_item
 				""", [row_names]))
 
@@ -400,7 +413,7 @@ class DeliveryNote(SellingController):
 		for d in self.get_item_list():
 			if frappe.get_cached_value("Item", d['item_code'], "is_stock_item") == 1:
 				if not d['warehouse']:
-					frappe.throw(_("Warehouse required for stock Item {0}").format(d["item_code"]))
+					frappe.throw(_("Warehouse required for Stock Item {0}").format(d["item_code"]))
 
 	def update_current_stock(self):
 		if self.get("_action") and self._action != "update_after_submit":
@@ -480,7 +493,7 @@ def get_list_context(context=None):
 
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):
-	if isinstance(delivery_note, string_types):
+	if isinstance(delivery_note, str):
 		is_delivery_return = frappe.db.get_value("Delivery Note", delivery_note, "is_return", cache=1)
 	else:
 		is_delivery_return = delivery_note.get('is_return')

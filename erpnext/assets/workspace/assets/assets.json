@@ -8,6 +8,7 @@
  "hide_custom": 0,
  "icon": "assets",
  "idx": 0,
+ "is_hidden": 0,
  "label": "Assets",
  "links": [
   {
@@ -170,10 +171,11 @@
    "type": "Link"
   }
  ],
- "modified": "2022-12-18 15:26:34.836748",
+ "modified": "2023-08-21 01:52:17.726580",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Assets",
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -183,7 +185,7 @@
    "role": "Accounts User"
   }
  ],
- "sequence_id": 5.0,
+ "sequence_id": 140.0,
  "shortcuts": [],
  "title": "Assets"
 }

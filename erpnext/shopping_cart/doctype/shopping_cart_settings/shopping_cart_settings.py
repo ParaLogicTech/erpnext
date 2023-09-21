@@ -26,8 +26,7 @@ class ShoppingCartSettings(Document):
 			msgprint(_("Please specify currency in Company") + ": " + self.company,
 				raise_exception=ShoppingCartSetupError)
 
-		price_list_currency_map = frappe.db.get_values("Price List",
-			[self.price_list], "currency")
+		price_list_currency_map = frappe.db.get_values("Price List", self.price_list, ["name", "currency"])
 
 		price_list_currency_map = dict(price_list_currency_map)
 		

@@ -135,11 +135,18 @@ class StatusUpdater(Document):
 			return f"To {keyword}"
 
 	def validate_completed_qty(self, completed_field, reference_field, items=None,
-			allowance_type=None, max_qty_field=None, from_doctype=None, row_names=None):
+			allowance_type=None, max_qty_field=None, from_doctype=None, row_names=None, item_field="item_code"):
 		items = self.get_rows_for_qty_validation(items, row_names)
 		for row in items:
-			self.validate_completed_qty_for_row(row, completed_field, reference_field,
-				allowance_type, max_qty_field, from_doctype)
+			self.validate_completed_qty_for_row(
+				row,
+				completed_field=completed_field,
+				reference_field=reference_field,
+				allowance_type=allowance_type,
+				max_qty_field=max_qty_field,
+				from_doctype=from_doctype,
+				item_field=item_field,
+			)
 
 	def get_rows_for_qty_validation(self, items=None, row_names=None):
 		if items is None:
@@ -153,7 +160,7 @@ class StatusUpdater(Document):
 		return rows
 
 	def validate_completed_qty_for_row(self, row, completed_field, reference_field,
-			allowance_type=None, max_qty_field=None, from_doctype=None):
+			allowance_type=None, max_qty_field=None, from_doctype=None, item_field="item_code"):
 		# Allow both: single and multiple completed qty fieldnames
 		if not isinstance(completed_field, list):
 			completed_field = [completed_field]
@@ -170,7 +177,8 @@ class StatusUpdater(Document):
 			max_qty = flt(row.get(max_qty_field), row.precision(reference_field))
 			excess_qty = completed_qty - max_qty
 		else:
-			excess_qty = get_excess_qty_with_allowance(row, completed_field, reference_field, allowance_type)
+			excess_qty = get_excess_qty_with_allowance(row, completed_field, reference_field, allowance_type,
+				item_field=item_field)
 
 		if reference_qty < 0:
 			excess_qty = -1 * excess_qty
@@ -179,10 +187,10 @@ class StatusUpdater(Document):
 
 		if rounded_excess > 0:
 			self.limits_crossed_error(row, completed_field, reference_field, allowance_type, excess_qty,
-				from_doctype=from_doctype)
+				from_doctype=from_doctype, item_field=item_field)
 
 	def limits_crossed_error(self, row, completed_field, reference_field, allowance_type,
-			excess_qty=None, from_doctype=None):
+			excess_qty=None, from_doctype=None, item_field="item_code"):
 		"""Raise exception for limits crossed"""
 		reference_qty = flt(row.get(reference_field))
 
@@ -210,7 +218,7 @@ class StatusUpdater(Document):
 
 		over_limit_msg = _("{0} for Item {1} is over limit by {2}.").format(
 			frappe.bold(completed_field_label),
-			frappe.bold(row.get('item_code') or row.get('item_name')),
+			frappe.bold(row.get(item_field) or row.get('item_name')),
 			frappe.bold(formatted_excess)
 		)
 
@@ -276,7 +284,7 @@ def get_allowance_for(allowance_type, item_code=None):
 	return allowance
 
 
-def get_excess_qty_with_allowance(row, completed_field, reference_field, allowance_type):
+def get_excess_qty_with_allowance(row, completed_field, reference_field, allowance_type, item_field="item_code"):
 	"""
 		Checks if there is overflow condering a relaxation allowance
 	"""
@@ -295,7 +303,7 @@ def get_excess_qty_with_allowance(row, completed_field, reference_field, allowan
 	difference = completed_qty - reference_qty
 
 	# check if overflow is within allowance
-	allowance = get_allowance_for(allowance_type, item_code=row.get('item_code'))
+	allowance = get_allowance_for(allowance_type, item_code=row.get(item_field))
 	overflow_percent = difference / reference_qty * 100
 
 	excess_qty = 0

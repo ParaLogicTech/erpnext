@@ -245,10 +245,10 @@ class EmailDigest(Document):
 
 			if self.get(key):
 				cache_key = "email_digest:card:{0}:{1}:{2}:{3}".format(self.company, self.frequency, key, self.from_date)
-				card = cache.get(cache_key)
+				card = cache.get_value(cache_key)
 
 				if card:
-					card = eval(card)
+					card = frappe.safe_eval(card)
 
 				else:
 					card = frappe._dict(getattr(self, "get_" + key)())
@@ -283,7 +283,7 @@ class EmailDigest(Document):
 						card.value = card.value *-1
 					card.value = self.fmt_money(card.value,False if key in ("bank_balance", "credit_balance") else True)
 
-					cache.setex(cache_key, card, 24 * 60 * 60)
+					cache.set_value(cache_key, card, expires_in_sec=24 * 60 * 60)
 
 				context.cards.append(card)
 

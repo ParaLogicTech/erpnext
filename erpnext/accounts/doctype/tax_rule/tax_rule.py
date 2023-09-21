@@ -9,14 +9,13 @@ from frappe.utils import cstr, cint
 from frappe.contacts.doctype.address.address import get_default_address
 from frappe.utils.nestedset import get_root_of
 from erpnext.setup.doctype.customer_group.customer_group import get_parent_customer_groups
-
 import functools
 
-from six import iteritems
 
 class IncorrectCustomerGroup(frappe.ValidationError): pass
 class IncorrectSupplierType(frappe.ValidationError): pass
 class ConflictingTaxRule(frappe.ValidationError): pass
+
 
 class TaxRule(Document):
 	def __setup__(self):
@@ -27,16 +26,22 @@ class TaxRule(Document):
 		self.validate_date()
 		self.validate_filters()
 		self.validate_use_for_shopping_cart()
+		self.set_title()
+
+	def set_title(self):
+		if self.tax_type == "Sales":
+			self.title = self.sales_tax_template
+		elif self.tax_type == "Purchase":
+			self.title = self.purchase_tax_template
 
 	def validate_tax_template(self):
-		if self.tax_type== "Sales":
+		if self.tax_type == "Sales":
 			self.purchase_tax_template = self.supplier = self.supplier_group = None
 			if self.customer:
 				self.customer_group = None
 
 		else:
 			self.sales_tax_template = self.customer = self.customer_group = None
-
 			if self.supplier:
 				self.supplier_group = None
 
@@ -48,35 +53,40 @@ class TaxRule(Document):
 			frappe.throw(_("From Date cannot be greater than To Date"))
 
 	def validate_filters(self):
+		if self.customer_group and self.customer_group == get_root_of("Customer Group"):
+			self.customer_group = None
+		if self.supplier_group and self.supplier_group == get_root_of("Supplier Group"):
+			self.supplier_group = None
+
 		filters = {
-			"tax_type":			self.tax_type,
-			"customer": 		self.customer,
-			"customer_group": 	self.customer_group,
-			"supplier":			self.supplier,
-			"supplier_group":	self.supplier_group,
-			"item":				self.item,
-			"item_group":		self.item_group,
-			"billing_city":		self.billing_city,
-			"billing_county":	self.billing_county,
-			"billing_state": 	self.billing_state,
-			"billing_zipcode":	self.billing_zipcode,
-			"billing_country":	self.billing_country,
-			"shipping_city":	self.shipping_city,
-			"shipping_county":	self.shipping_county,
-			"shipping_state":	self.shipping_state,
+			"tax_type": self.tax_type,
+			"customer": self.customer,
+			"customer_group": self.customer_group,
+			"supplier": self.supplier,
+			"supplier_group": self.supplier_group,
+			"item": self.item,
+			"item_group": self.item_group,
+			"billing_city": self.billing_city,
+			"billing_county": self.billing_county,
+			"billing_state": self.billing_state,
+			"billing_zipcode": self.billing_zipcode,
+			"billing_country": self.billing_country,
+			"shipping_city": self.shipping_city,
+			"shipping_county": self.shipping_county,
+			"shipping_state": self.shipping_state,
 			"shipping_zipcode":	self.shipping_zipcode,
 			"shipping_country":	self.shipping_country,
-			"tax_category":		self.tax_category,
+			"tax_category": self.tax_category,
 			"transaction_type":	self.transaction_type,
-			"cost_center":		self.cost_center,
-			"tax_id":			self.tax_id,
-			"tax_cnic":			self.tax_cnic,
-			"tax_strn":			self.tax_strn,
-			"has_stin":			self.has_stin,
-			"company":			self.company
+			"cost_center": self.cost_center,
+			"tax_id": self.tax_id,
+			"tax_cnic": self.tax_cnic,
+			"tax_strn": self.tax_strn,
+			"has_stin": self.has_stin,
+			"company": self.company
 		}
 
-		conds=""
+		conds = ""
 		for d in filters:
 			if conds:
 				conds += " and "
@@ -94,8 +104,11 @@ class TaxRule(Document):
 		elif self.to_date and not self.from_date:
 			conds += """ and from_date < '{to_date}'""".format(to_date = self.to_date)
 
-		tax_rule = frappe.db.sql("select name, priority \
-			from `tabTax Rule` where {0} and name != '{1}'".format(conds, self.name), as_dict=1)
+		tax_rule = frappe.db.sql("""
+			select name, priority
+			from `tabTax Rule`
+			where {0} and name != {1}
+		""".format(conds, frappe.db.escape(self.name)), as_dict=1)
 
 		if tax_rule:
 			if tax_rule[0].priority == self.priority:
@@ -103,12 +116,14 @@ class TaxRule(Document):
 
 	def validate_use_for_shopping_cart(self):
 		'''If shopping cart is enabled and no tax rule exists for shopping cart, enable this one'''
-		if (not self.use_for_shopping_cart
+		if (
+			not self.use_for_shopping_cart
 			and cint(frappe.db.get_single_value('Shopping Cart Settings', 'enabled'))
-			and not frappe.db.get_value('Tax Rule', {'use_for_shopping_cart': 1, 'name': ['!=', self.name]})):
-
+			and not frappe.db.get_value('Tax Rule', {'use_for_shopping_cart': 1, 'name': ['!=', self.name]})
+		):
 			self.use_for_shopping_cart = 1
 			frappe.msgprint(_("Enabling 'Use for Shopping Cart', as Shopping Cart is enabled and there should be at least one Tax Rule for Shopping Cart"))
+
 
 @frappe.whitelist()
 def get_party_details(party, party_type, args=None):
@@ -128,43 +143,43 @@ def get_party_details(party, party_type, args=None):
 			shipping_address = frappe.get_doc('Address', shipping_address_name)
 
 	if billing_address:
-		out["billing_city"]= billing_address.city
-		out["billing_county"]= billing_address.county
-		out["billing_state"]= billing_address.state
-		out["billing_zipcode"]= billing_address.pincode
-		out["billing_country"]= billing_address.country
+		out["billing_city"] = billing_address.city
+		out["billing_county"] = billing_address.county
+		out["billing_state"] = billing_address.state
+		out["billing_zipcode"] = billing_address.pincode
+		out["billing_country"] = billing_address.country
 
 	if shipping_address:
-		out["shipping_city"]= shipping_address.city
-		out["shipping_county"]= shipping_address.county
-		out["shipping_state"]= shipping_address.state
-		out["shipping_zipcode"]= shipping_address.pincode
-		out["shipping_country"]= shipping_address.country
+		out["shipping_city"] = shipping_address.city
+		out["shipping_county"] = shipping_address.county
+		out["shipping_state"] = shipping_address.state
+		out["shipping_zipcode"] = shipping_address.pincode
+		out["shipping_country"] = shipping_address.country
 
 	return out
+
 
 def get_tax_template(posting_date, args):
 	"""Get matching tax rule"""
 	args = frappe._dict(args)
-	conditions = ["""(from_date is null or from_date <= '{0}')
-		and (to_date is null or to_date >= '{0}')""".format(posting_date)]
+	conditions = ["(from_date is null or from_date <= '{0}') and (to_date is null or to_date >= '{0}')".format(posting_date)]
 
-	#conditions.append("ifnull(tax_category, '') = {0}".format(frappe.db.escape(cstr(args.get("tax_category")))))
-	#if 'tax_category' in args.keys():
-	#	del args['tax_category']
-
-	for key, value in iteritems(args):
-		if key=="use_for_shopping_cart":
+	for key, value in args.items():
+		if key == "use_for_shopping_cart":
 			conditions.append("use_for_shopping_cart = {0}".format(1 if value else 0))
 		elif key == 'customer_group':
-			if not value: value = get_root_of("Customer Group")
+			if not value:
+				value = get_root_of("Customer Group")
 			customer_group_condition = get_customer_group_condition(value)
 			conditions.append("ifnull({0}, '') in ('', {1})".format(key, customer_group_condition))
 		else:
 			conditions.append("ifnull({0}, '') in ('', {1})".format(key, frappe.db.escape(cstr(value))))
 
-	tax_rule = frappe.db.sql("""select * from `tabTax Rule`
-		where {0}""".format(" and ".join(conditions)), as_dict = True)
+	tax_rule = frappe.db.sql("""
+		select *
+		from `tabTax Rule`
+		where {0}
+	""".format(" and ".join(conditions)), as_dict = True)
 
 	if not tax_rule:
 		return None
@@ -172,30 +187,30 @@ def get_tax_template(posting_date, args):
 	for rule in tax_rule:
 		rule.no_of_keys_matched = 0
 		for key in args:
-			if rule.get(key): rule.no_of_keys_matched += 1
+			if rule.get(key):
+				rule.no_of_keys_matched += 1
 
 	def cmp(a, b):
 		# reference: https://docs.python.org/3.0/whatsnew/3.0.html#ordering-comparisons
 		return int(a > b) - int(a < b)
 
-	rule = sorted(
-		tax_rule,
-		key=functools.cmp_to_key(
-			lambda b, a: cmp(a.no_of_keys_matched, b.no_of_keys_matched) or cmp(a.priority, b.priority)
-		),
-	)[0]
+	rule = sorted(tax_rule, key=functools.cmp_to_key(
+		lambda b, a: cmp(a.no_of_keys_matched, b.no_of_keys_matched) or cmp(a.priority, b.priority)
+	))[0]
 
 	tax_template = rule.sales_tax_template or rule.purchase_tax_template
 	doctype = "{0} Taxes and Charges Template".format(rule.tax_type)
 
-	if frappe.db.get_value(doctype, tax_template, 'disabled')==1:
+	if frappe.get_cached_value(doctype, tax_template, 'disabled') == 1:
 		return None
 
 	return tax_template
 
+
 def get_customer_group_condition(customer_group):
 	condition = ""
-	customer_groups = ["%s"%(frappe.db.escape(d.name)) for d in get_parent_customer_groups(customer_group)]
+	customer_groups = ["%s" % (frappe.db.escape(d.name)) for d in get_parent_customer_groups(customer_group)]
 	if customer_groups:
-		condition = ",".join(['%s'] * len(customer_groups))%(tuple(customer_groups))
+		condition = ",".join(['%s'] * len(customer_groups)) % (tuple(customer_groups))
+
 	return condition

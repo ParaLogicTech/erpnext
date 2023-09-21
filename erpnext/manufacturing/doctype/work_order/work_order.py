@@ -126,7 +126,6 @@ class WorkOrder(StatusUpdater):
 			left join `tabProduct Bundle Item` pk_item on so_item.item_code = pk_item.parent
 			where so.name = %s
 				and so.docstatus = 1
-				and so.skip_delivery_note = 0
 				and (so_item.item_code = %s or pk_item.item_code = %s)
 		""", (self.sales_order, self.production_item, self.production_item), as_dict=1)
 
@@ -137,7 +136,6 @@ class WorkOrder(StatusUpdater):
 				where so.name = %s
 					and so.name = so_item.parent
 					and so.name = packed_item.parent
-					and so.skip_delivery_note = 0
 					and so_item.item_code = packed_item.parent_item
 					and so.docstatus = 1
 					and packed_item.item_code=%s
@@ -483,13 +481,15 @@ class WorkOrder(StatusUpdater):
 
 		if self.docstatus == 1:
 			packing_data = frappe.db.sql("""
-				select sum(psi.stock_qty) as stock_qty, max(ps.posting_date) as max_posting_date
+				select
+					sum(psi.stock_qty - (psi.unpacked_return_qty * psi.conversion_factor)) as packed_qty,
+					max(ps.posting_date) as max_posting_date
 				from `tabPacking Slip Item` psi
 				inner join `tabPacking Slip` ps on ps.name = psi.parent
 				where psi.work_order = %s and ps.docstatus = 1 and ifnull(psi.source_packing_slip, '') = ''
 			""", self.name, as_dict=1)
 
-			self.packed_qty = flt(packing_data[0].stock_qty) if packing_data else 0
+			self.packed_qty = flt(packing_data[0].packed_qty) if packing_data else 0
 			self.last_packing_date = packing_data[0].max_posting_date if packing_data else None
 
 		self.per_packed = flt(self.packed_qty / self.qty * 100, 6)
@@ -550,7 +550,7 @@ class WorkOrder(StatusUpdater):
 		produced_qty = flt(self.produced_qty, self.precision("qty"))
 		packed_qty = flt(self.packed_qty, self.precision("qty"))
 		if packed_qty > produced_qty:
-			frappe.throw(_("Packed Qty cannot more than the Produced Qty {0} in {1}").format(
+			frappe.throw(_("Packed Qty cannot be more than the Produced Qty {0} in {1}").format(
 				frappe.bold(self.get_formatted("produced_qty")),
 				frappe.get_desk_link("Work Order", self.name)
 			), StockOverProductionError)
@@ -576,10 +576,10 @@ class WorkOrder(StatusUpdater):
 			self.status = 'Draft'
 
 		elif self.docstatus == 1:
-			if self.production_status == "Produced":
-				self.status = "Completed"
-			elif self.status == "Stopped":
+			if self.status == "Stopped":
 				self.status = "Stopped"
+			elif self.production_status == "Produced":
+				self.status = "Completed"
 			elif self.has_stock_entry():
 				self.status = "In Process"
 			else:
@@ -832,6 +832,68 @@ def make_work_order(bom_no, item, qty=0, project=None):
 
 
 @frappe.whitelist()
+def create_work_orders(items, company, ignore_version=True, ignore_feed=False):
+	'''Make Work Orders against the given Sales Order for the given `items`'''
+	if isinstance(items, str):
+		items = json.loads(items)
+
+	out = []
+
+	for d in items:
+		if not d.get("bom_no"):
+			frappe.throw(_("Please select BOM No against Item {0}").format(d.get("item_code")))
+		if not d.get("production_qty"):
+			frappe.throw(_("Please select Qty against Item {0}").format(d.get("item_code")))
+
+		sales_order = d.get("sales_order")
+		customer = d.get("customer")
+		customer_name = d.get("customer_name") if d.get("customer") else None
+
+		if not customer and sales_order:
+			customer = frappe.db.get_value("Sales Order", sales_order, "customer", cache=1)
+			customer_name = frappe.db.get_value("Sales Order", sales_order, "customer_name", cache=1)
+
+		if not customer_name and customer:
+			customer_name = frappe.get_cached_value("Customer", customer, "customer_name")
+
+		order_line_no = cint(d.get("order_line_no"))
+		if not order_line_no and d.get("sales_order_item"):
+			order_line_no = frappe.db.get_value("Sales Order Item", d.get("sales_order_item"), 'idx')
+
+		work_order = frappe.new_doc("Work Order")
+		work_order.flags.ignore_version = ignore_version
+		work_order.flags.ignore_feed = ignore_feed
+
+		work_order.update({
+			"production_item": d.get("item_code"),
+			"item_name": d.get("item_name"),
+			"description": d.get("description"),
+			"bom_no": d.get("bom_no"),
+			"qty": flt(d.get("production_qty")),
+			"fg_warehouse": d.get("warehouse"),
+			"company": company or d.get("company"),
+			"sales_order": sales_order,
+			"sales_order_item": d.get("sales_order_item"),
+			"customer": customer,
+			"customer_name": customer_name,
+			"project": d.get("project"),
+			"order_line_no": order_line_no,
+		})
+
+		frappe.utils.call_hook_method("update_work_order_on_create", work_order, d)
+
+		work_order.set_work_order_operations()
+		work_order.save()
+
+		if frappe.db.get_single_value("Manufacturing Settings", "auto_submit_work_order"):
+			work_order.submit()
+
+		out.append(work_order)
+
+	return [p.name for p in out]
+
+
+@frappe.whitelist()
 def check_if_scrap_warehouse_mandatory(bom_no):
 	res = {"set_scrap_wh_mandatory": False}
 	if bom_no:
@@ -900,10 +962,12 @@ def make_stock_entry(work_order_id, purpose, qty=None, scrap_remaining=False, au
 		args = {}
 
 	work_order = frappe.get_doc("Work Order", work_order_id)
-	if not frappe.db.get_value("Warehouse", work_order.wip_warehouse, "is_group") and not work_order.skip_transfer:
+	if not work_order.skip_transfer and not frappe.db.get_value("Warehouse", work_order.wip_warehouse, "is_group", cache=1):
 		wip_warehouse = work_order.wip_warehouse
 	else:
 		wip_warehouse = None
+
+	settings = frappe.get_cached_doc("Manufacturing Settings", None)
 
 	stock_entry = frappe.new_doc("Stock Entry")
 
@@ -936,7 +1000,7 @@ def make_stock_entry(work_order_id, purpose, qty=None, scrap_remaining=False, au
 		stock_entry.project = work_order.project
 
 	stock_entry.set_stock_entry_type()
-	stock_entry.get_items()
+	stock_entry.get_items(auto_select_batches=settings.auto_select_batches_in_stock_entry)
 
 	frappe.utils.call_hook_method("update_stock_entry_from_work_order", stock_entry, work_order)
 
@@ -944,17 +1008,20 @@ def make_stock_entry(work_order_id, purpose, qty=None, scrap_remaining=False, au
 		ste_copy = frappe.get_doc(copy.deepcopy(ste))
 		ste_copy.save()
 		ste_copy.submit()
-		frappe.msgprint(_("{0} {1} submitted successfully").format(
-			purpose, frappe.get_desk_link("Stock Entry", ste_copy.name)
+		frappe.msgprint(_("{0} submitted successfully ({1} {2}): {3}").format(
+			purpose,
+			stock_entry.get_formatted("fg_completed_qty"),
+			work_order.stock_uom,
+			frappe.get_desk_link("Stock Entry", ste_copy.name),
 		), indicator="green")
 		return ste_copy
 
 	try:
 		if purpose == "Material Transfer for Manufacture":
-			if auto_submit or frappe.db.get_single_value("Manufacturing Settings", "auto_submit_material_transfer_entry"):
+			if auto_submit or settings.auto_submit_material_transfer_entry:
 				stock_entry = submit_stock_entry(stock_entry)
 		else:
-			if auto_submit or frappe.db.get_single_value("Manufacturing Settings", "auto_submit_manufacture_entry"):
+			if auto_submit or settings.auto_submit_manufacture_entry:
 				stock_entry = submit_stock_entry(stock_entry)
 	except StockOverProductionError:
 		raise

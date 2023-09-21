@@ -66,7 +66,7 @@ class PurchaseInvoice(BuyingController):
 		# validate service stop date to lie in between start and end date
 		validate_service_stop_date(self)
 
-		if self._action=="submit" and self.update_stock:
+		if self._action == "submit" and self.update_stock and not self.is_return:
 			self.make_batches('warehouse')
 
 		self.validate_release_date()

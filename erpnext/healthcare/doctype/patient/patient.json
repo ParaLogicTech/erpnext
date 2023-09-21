@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_copy": 1,
  "allow_import": 1,
  "allow_rename": 1,
@@ -335,8 +336,8 @@
  ],
  "icon": "fa fa-user",
  "image_field": "image",
- "max_attachments": 50,
- "modified": "2021-11-03 13:09:22.286835",
+ "links": [],
+ "modified": "2023-09-09 12:10:09.704698",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient",
@@ -398,6 +399,7 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
+ "states": [],
  "title_field": "patient_name",
  "track_changes": 1
 }

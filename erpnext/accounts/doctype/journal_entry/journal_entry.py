@@ -1068,12 +1068,17 @@ def get_against_jv(doctype, txt, searchfield, start, page_len, filters):
 		res = get_outstanding_journal_entries(filters.get("account"), filters.get("party_type"), filters.get("party"), txt, start, page_len)
 		return [[jv.name, jv.posting_date, _("Balance: {0}").format(jv.balance), jv.user_remark] for jv in res]
 	else:
-		return frappe.db.sql("""select jv.name, jv.posting_date, jv.user_remark
+		return frappe.db.sql("""
+			select jv.name, jv.posting_date, jv.user_remark
 			from `tabJournal Entry` jv, `tabJournal Entry Account` jv_detail
 			where jv_detail.parent = jv.name and jv_detail.account = %s and ifnull(jv_detail.party, '') = %s
 			and (jv_detail.reference_type is null or jv_detail.reference_type = '')
-			and jv.docstatus = 1 and jv.`{0}` like %s order by jv.name desc limit %s, %s""".format(searchfield),
-			(filters.get("account"), cstr(filters.get("party")), "%{0}%".format(txt), start, page_len))
+			and jv.docstatus = 1 and jv.`{0}` like %s
+			order by jv.name desc
+			limit %s, %s
+		""".format(searchfield), (
+			filters.get("account"), cstr(filters.get("party")), "%{0}%".format(txt), start, page_len)
+		)
 
 @frappe.whitelist()
 def get_outstanding(args):

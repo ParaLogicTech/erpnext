@@ -6,7 +6,6 @@ import json
 import frappe.utils
 from frappe.utils import cstr, flt, getdate, cint, nowdate, add_days, get_link_to_form, round_up, round_down
 from frappe import _
-from six import string_types
 from frappe.model.mapper import get_mapped_doc
 from erpnext.stock.stock_balance import update_bin_qty, get_reserved_qty
 from frappe.desk.notifications import clear_doctype_notifications
@@ -16,6 +15,7 @@ from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty,
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
+from erpnext.stock.get_item_details import item_has_product_bundle, get_skip_delivery_note
 
 
 form_grid_templates = {
@@ -43,7 +43,6 @@ class SalesOrder(SellingController):
 
 	def validate(self):
 		super(SalesOrder, self).validate()
-		self.set_skip_delivery_note()
 		self.validate_delivery_date()
 		self.validate_po()
 		self.validate_project_customer()
@@ -73,6 +72,7 @@ class SalesOrder(SellingController):
 	def before_submit(self):
 		self.validate_delivery_date_required()
 		self.validate_item_code_mandatory()
+		self.validate_previous_docstatus()
 
 	def on_submit(self):
 		self.check_credit_limit()
@@ -142,6 +142,37 @@ class SalesOrder(SellingController):
 		self.notify_update()
 		clear_doctype_notifications(self)
 
+	def set_missing_values(self, for_validate=False):
+		super().set_missing_values(for_validate=for_validate)
+		self.set_skip_delivery_note()
+
+	def set_skip_delivery_note(self):
+		for d in self.get("items"):
+			self.set_skip_delivery_note_for_row(d)
+
+		self.set_skip_delivery_note_for_order()
+
+	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
+		if row.item_code:
+			item = frappe.get_cached_doc("Item", row.item_code)
+			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier))
+			if not row.skip_delivery_note:
+				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
+				if hooked_skip_delivery_note:
+					row.skip_delivery_note = 1
+		else:
+			row.skip_delivery_note = 1
+
+		if update:
+			row.db_set("skip_delivery_note", row.skip_delivery_note, update_modified=update_modified)
+
+	def set_skip_delivery_note_for_order(self, update=False, update_modified=True):
+		all_skip_delivery_note = all(d.skip_delivery_note for d in self.get("items"))
+		self.skip_delivery_note = cint(all_skip_delivery_note)
+
+		if update:
+			self.db_set("skip_delivery_note", self.skip_delivery_note, update_modified=update_modified)
+
 	def validate_with_previous_doc(self):
 		super(SalesOrder, self).validate_with_previous_doc({
 			"Quotation": {
@@ -149,6 +180,9 @@ class SalesOrder(SellingController):
 				"compare_fields": [["company", "="], ["order_type", "="]]
 			}
 		})
+
+	def validate_previous_docstatus(self):
+		pass
 
 	def update_previous_doc_status(self):
 		for quotation in list(set([d.quotation for d in self.get("items")])):
@@ -299,7 +333,8 @@ class SalesOrder(SellingController):
 		delivery_by_billing_row_names = []
 
 		for d in self.items:
-			if d.is_stock_item or d.is_fixed_asset:
+			is_deliverable = not d.skip_delivery_note or d.delivered_by_supplier
+			if is_deliverable:
 				out.deliverable_rows.append(d)
 
 				if d.delivered_by_supplier:
@@ -385,7 +420,7 @@ class SalesOrder(SellingController):
 		producible_row_names = []
 
 		for d in self.items:
-			if d.is_stock_item and not d.delivered_by_supplier:
+			if d.is_stock_item:
 				out.producible_rows.append(d)
 				producible_row_names.append(d.name)
 
@@ -408,9 +443,9 @@ class SalesOrder(SellingController):
 					if d.packing_status == "To Pack":
 						out.has_unpacked_work_orders = True
 
-				# Delivered By Delivery Note
+				# Packed by Packing Slip
 				packed_by_packing_slip = frappe.db.sql("""
-					select i.sales_order_item, i.qty
+					select i.sales_order_item, i.qty - i.unpacked_return_qty as qty
 					from `tabPacking Slip Item` i
 					inner join `tabPacking Slip` p on p.name = i.parent
 					where p.docstatus = 1 and i.sales_order_item in %s and ifnull(i.source_packing_slip, '') = ''
@@ -510,29 +545,26 @@ class SalesOrder(SellingController):
 			self.validate_completed_qty('billed_amt', 'amount', self.items,
 				allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
 
-	def set_skip_delivery_note(self):
-		has_deliverable = False
-		for d in self.items:
-			if d.item_code and (d.is_stock_item or d.is_fixed_asset):
-				has_deliverable = True
-				break
-
-		self.skip_delivery_note = cint(not has_deliverable)
-
 	def validate_po(self):
 		# validate p.o date v/s delivery date
 		if self.po_date and not self.skip_delivery_note:
 			for d in self.get("items"):
-				if d.delivery_date and getdate(self.po_date) > getdate(d.delivery_date):
+				if d.delivery_date and getdate(d.delivery_date) < getdate(self.po_date):
 					frappe.throw(_("Row #{0}: Expected Delivery Date cannot be before Purchase Order Date")
 						.format(d.idx))
 
-		if self.po_no and self.customer and not self.skip_delivery_note:
-			so = frappe.db.sql("select name from `tabSales Order` \
-				where ifnull(po_no, '') = %s and name != %s and docstatus < 2\
-				and customer = %s", (self.po_no, self.name, self.customer))
-			if so and so[0][0] and not cint(frappe.get_cached_value("Selling Settings", None, "allow_against_multiple_purchase_orders")):
-				frappe.msgprint(_("Warning: Sales Order {0} already exists against Customer's Purchase Order {1}").format(so[0][0], self.po_no))
+		if self.po_no and self.customer:
+			so = frappe.db.sql("""
+				select name
+				from `tabSales Order`
+				where po_no = %s and name != %s and docstatus < 2 and customer = %s
+			""", (self.po_no, self.name, self.customer))
+			so = so[0][0] if so else None
+
+			if so and not cint(frappe.get_cached_value("Selling Settings", None, "allow_against_multiple_purchase_orders")):
+				frappe.msgprint(_("Warning: {0} already exists against Customer's Purchase Order {1}").format(
+					frappe.get_desk_link("Sales Order", so), frappe.bold(self.po_no)
+				))
 
 	def validate_for_items(self):
 		for d in self.get('items'):
@@ -543,27 +575,27 @@ class SalesOrder(SellingController):
 				where item_code = %s and warehouse = %s", (d.item_code, d.warehouse))
 			d.projected_qty = tot_avail_qty and flt(tot_avail_qty[0][0]) or 0
 
-	def product_bundle_has_stock_item(self, product_bundle):
-		"""Returns true if product bundle has stock item"""
-		ret = len(frappe.db.sql("""select i.name from tabItem i, `tabProduct Bundle Item` pbi
-			where pbi.parent = %s and pbi.item_code = i.name and i.is_stock_item = 1""", product_bundle))
-		return ret
-
 	def validate_delivery_date(self):
-		if self.order_type == 'Sales' and not self.skip_delivery_note:
-			delivery_date_list = [getdate(d.delivery_date) for d in self.get("items") if d.delivery_date]
-			max_delivery_date = max(delivery_date_list) if delivery_date_list else None
-			if not self.delivery_date:
+		if self.skip_delivery_note or self.order_type != "Sales":
+			return
+
+		delivery_date_list = [getdate(d.delivery_date) for d in self.get("items") if d.delivery_date]
+		max_delivery_date = max(delivery_date_list) if delivery_date_list else None
+
+		if not self.delivery_date:
+			self.delivery_date = max_delivery_date
+
+		if self.delivery_date:
+			for d in self.get("items"):
+				if not d.delivery_date:
+					d.delivery_date = self.delivery_date
+
+				if getdate(self.transaction_date) > getdate(d.delivery_date):
+					frappe.msgprint(_("Expected Delivery Date should be after Sales Order Date"),
+						indicator='orange', title=_('Warning'))
+
+			if getdate(self.delivery_date) != getdate(max_delivery_date):
 				self.delivery_date = max_delivery_date
-			if self.delivery_date:
-				for d in self.get("items"):
-					if not d.delivery_date:
-						d.delivery_date = self.delivery_date
-					if getdate(self.transaction_date) > getdate(d.delivery_date):
-						frappe.msgprint(_("Expected Delivery Date should be after Sales Order Date"),
-							indicator='orange', title=_('Warning'))
-				if getdate(self.delivery_date) != getdate(max_delivery_date):
-					self.delivery_date = max_delivery_date
 
 	def validate_delivery_date_required(self):
 		if self.order_type == 'Sales' and not self.skip_delivery_note:
@@ -574,10 +606,11 @@ class SalesOrder(SellingController):
 		super(SalesOrder, self).validate_warehouse()
 
 		for d in self.get("items"):
-			if (d.item_code and frappe.get_cached_value("Item", d.item_code, "is_stock_item") == 1 or
-				(self.has_product_bundle(d.item_code) and self.product_bundle_has_stock_item(d.item_code))) \
-				and not d.warehouse and not cint(d.delivered_by_supplier):
-				frappe.throw(_("Delivery Warehouse required for Stock Item {0}").format(d.item_code),
+			if d.get("warehouse"):
+				continue
+
+			if d.is_stock_item and not cint(d.skip_delivery_note):
+				frappe.throw(_("Row #{0}: Delivery Warehouse required for Stock Item {0}").format(d.idx, d.item_code),
 					WarehouseRequired)
 
 	def validate_drop_ship(self):
@@ -636,22 +669,26 @@ class SalesOrder(SellingController):
 
 	def update_reserved_qty(self, so_item_rows=None):
 		"""update requested qty (before ordered_qty is updated)"""
-		item_wh_list = []
-		def _valid_for_reserve(item_code, warehouse):
-			if item_code and warehouse and [item_code, warehouse] not in item_wh_list \
-				and frappe.get_cached_value("Item", item_code, "is_stock_item"):
-					item_wh_list.append([item_code, warehouse])
+		def add_to_item_warehouse_list(item_code, warehouse):
+			if not item_code or not warehouse:
+				return
+			if (item_code, warehouse) in item_warehouse_list:
+				return
+			if frappe.db.get_value("Item", item_code, "is_stock_item", cache=1):
+				item_warehouse_list.append((item_code, warehouse))
+
+		item_warehouse_list = []
 
 		for d in self.get("items"):
-			if (not so_item_rows or d.name in so_item_rows) and not d.delivered_by_supplier:
-				if self.has_product_bundle(d.item_code):
+			if not so_item_rows or d.name in so_item_rows:
+				if item_has_product_bundle(d.item_code):
 					for p in self.get("packed_items"):
 						if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
-							_valid_for_reserve(p.item_code, p.warehouse)
+							add_to_item_warehouse_list(p.item_code, p.warehouse)
 				else:
-					_valid_for_reserve(d.item_code, d.warehouse)
+					add_to_item_warehouse_list(d.item_code, d.warehouse)
 
-		for item_code, warehouse in item_wh_list:
+		for item_code, warehouse in item_warehouse_list:
 			update_bin_qty(item_code, warehouse, {
 				"reserved_qty": get_reserved_qty(item_code, warehouse)
 			})
@@ -671,47 +708,64 @@ class SalesOrder(SellingController):
 			frappe.throw('\n'.join(exc_list))
 
 	@frappe.whitelist()
-	def get_work_order_items(self, for_raw_material_request=0):
-		'''Returns items with BOM that already do not have a linked work order'''
-		items = []
+	def get_work_order_items(self, for_raw_material_request=False, item_condition=None):
+		"""Returns items with BOM that already do not have a linked work order"""
+		work_order_items = []
 		item_codes = [i.item_code for i in self.items]
-		product_bundle_parents = [pb.new_item_code for pb in frappe.get_all("Product Bundle", {"new_item_code": ["in", item_codes]}, ["new_item_code"])]
+		product_bundle_parents = frappe.get_all("Product Bundle", {"new_item_code": ["in", item_codes]}, pluck="new_item_code")
 		default_rm_warehouse = frappe.get_cached_value("Manufacturing Settings", None, "default_rm_warehouse")
+		for_raw_material_request = cint(for_raw_material_request)
 
-		for table in [self.items, self.packed_items]:
-			for i in table:
-				bom = self.run_method("get_sales_order_item_bom", i)
-				if not bom:
-					bom = get_default_bom_item(i.item_code)
-				if bom:
-					stock_qty = i.qty if i.doctype == 'Packed Item' else i.stock_qty
-					if not for_raw_material_request:
-						total_work_order_qty = flt(frappe.db.sql("""
-							select sum(qty)
-							from `tabWork Order`
-							where production_item = %s and sales_order=%s and sales_order_item = %s and docstatus < 2
-						""", (i.item_code, self.name, i.name))[0][0])
-						pending_qty = stock_qty - total_work_order_qty
-					else:
-						pending_qty = stock_qty
+		for d in self.get("items") + self.get("packed_items", []):
+			if item_condition and not item_condition(d):
+				continue
 
-					work_order_precison = frappe.get_precision("Work Order", "qty")
-					pending_qty = round_up(pending_qty, work_order_precison)
+			bom_no = self.run_method("get_sales_order_item_bom", d)
+			if not bom_no:
+				bom_no = get_default_bom_item(d.item_code)
 
-					if pending_qty and i.item_code not in product_bundle_parents:
-						items.append({
-							'name': i.name,
-							'item_code': i.item_code,
-							'item_name': i.item_name,
-							'description': i.description,
-							'bom': bom,
-							'warehouse': default_rm_warehouse if for_raw_material_request else i.warehouse,
-							'pending_qty': pending_qty,
-							'required_qty': pending_qty if for_raw_material_request else 0,
-							'sales_order': self.name,
-							'sales_order_item': i.name
-						})
-		return items
+			if not bom_no:
+				continue
+
+			stock_qty = flt(d.qty) if d.doctype == "Packed Item" else flt(d.stock_qty)
+			if for_raw_material_request:
+				pending_qty = stock_qty
+			else:
+				work_order_data = frappe.db.sql("""
+					select sum(qty)
+					from `tabWork Order`
+					where production_item = %s and sales_order = %s and sales_order_item = %s and docstatus < 2
+				""", (d.item_code, self.name, d.name))
+				total_work_order_qty = flt(work_order_data[0][0]) if work_order_data else 0
+				pending_qty = stock_qty - total_work_order_qty
+
+			work_order_precison = frappe.get_precision("Work Order", "qty")
+			pending_qty = round_up(pending_qty, work_order_precison)
+
+			if pending_qty and d.item_code not in product_bundle_parents:
+				wo_item = {
+					"name": d.name,
+					"item_code": d.item_code,
+					"item_name": d.item_name,
+					"description": d.description,
+					"bom_no": bom_no,
+					"warehouse": default_rm_warehouse if for_raw_material_request else d.warehouse,
+					"stock_uom": d.get("stock_uom") or d.get("uom"),
+					"sales_order": self.name,
+					"sales_order_item": d.name,
+					"order_line_no": d.idx,
+					"project": self.project,
+				}
+
+				if for_raw_material_request:
+					wo_item["required_qty"] = pending_qty
+				else:
+					wo_item["pending_qty"] = pending_qty
+					wo_item["production_qty"] = pending_qty
+
+				work_order_items.append(wo_item)
+
+		return work_order_items
 
 	def on_recurring(self, reference_doc, auto_repeat_doc):
 		def _get_delivery_date(ref_doc_delivery_date, red_doc_transaction_date, transaction_date):
@@ -1029,10 +1083,7 @@ def get_item_mapper_for_delivery(allow_duplicate=False):
 			if source.name in [d.sales_order_item for d in target_parent.get('items') if d.sales_order_item]:
 				return False
 
-		if source.delivered_by_supplier:
-			return False
-
-		if not source.is_stock_item and not source.is_fixed_asset:
+		if source.skip_delivery_note:
 			return False
 
 		undelivered_qty, unpacked_qty = get_remaining_qty(source)
@@ -1134,10 +1185,7 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None):
 		if source.name in [d.sales_order_item for d in target_parent.get('items') if d.sales_order_item]:
 			return False
 
-		if source.delivered_by_supplier:
-			return False
-
-		if not source.is_stock_item:
+		if not source.is_stock_item or source.skip_delivery_note:
 			return False
 
 		undelivered_qty, unpacked_qty = get_remaining_qty(source)
@@ -1370,6 +1418,7 @@ def get_events(start, end, filters=None):
 			`tabSales Order`, `tabSales Order Item`
 		where `tabSales Order`.name = `tabSales Order Item`.parent
 			and `tabSales Order`.skip_delivery_note = 0
+			and `tabSales Order Item`.skip_delivery_note = 0
 			and (ifnull(`tabSales Order Item`.delivery_date, '0000-00-00')!= '0000-00-00') \
 			and (`tabSales Order Item`.delivery_date between %(start)s and %(end)s)
 			and `tabSales Order`.docstatus < 2
@@ -1383,7 +1432,7 @@ def get_events(start, end, filters=None):
 
 @frappe.whitelist()
 def make_purchase_order(source_name, for_supplier=None, selected_items=[], target_doc=None):
-	if isinstance(selected_items, string_types):
+	if isinstance(selected_items, str):
 		selected_items = json.loads(selected_items)
 
 	def item_condition(source, source_parent, target_parent):
@@ -1529,56 +1578,6 @@ def get_supplier(doctype, txt, searchfield, start, page_len, filters):
 		})
 
 
-@frappe.whitelist()
-def make_work_orders(items, company, sales_order=None, project=None, ignore_version=True, ignore_feed=True):
-	'''Make Work Orders against the given Sales Order for the given `items`'''
-	if isinstance(items, str):
-		items = json.loads(items)
-
-	out = []
-
-	for i in items:
-		if not i.get("bom"):
-			frappe.throw(_("Please select BOM against item {0}").format(i.get("item_code")))
-		if not i.get("pending_qty"):
-			frappe.throw(_("Please select Qty against item {0}").format(i.get("item_code")))
-
-		row_sales_order = sales_order or i.get('sales_order')
-		customer = frappe.db.get_value("Sales Order", row_sales_order, "customer", cache=1) if row_sales_order else None
-		customer_name = frappe.db.get_value("Sales Order", row_sales_order, "customer_name", cache=1) if row_sales_order else None
-
-		work_order = frappe.new_doc("Work Order")
-		work_order.flags.ignore_version = ignore_version
-		work_order.flags.ignore_feed = ignore_feed
-
-		work_order.update({
-			'order_line_no': frappe.db.get_value("Sales Order Item", i['sales_order_item'], 'idx'),
-			'production_item': i['item_code'],
-			'bom_no': i.get('bom'),
-			'qty': i['pending_qty'],
-			'company': company,
-			'sales_order': row_sales_order,
-			'sales_order_item': i['sales_order_item'],
-			'customer': customer,
-			'customer_name': customer_name,
-			'project': project,
-			'fg_warehouse': i['warehouse'],
-			'description': i['description']
-		})
-
-		frappe.utils.call_hook_method("update_work_order_from_sales_order", work_order)
-
-		work_order.set_work_order_operations()
-		work_order.save()
-
-		if frappe.db.get_single_value("Manufacturing Settings", "auto_submit_work_order"):
-			work_order.submit()
-
-		out.append(work_order)
-
-	return [p.name for p in out]
-
-
 def get_default_bom_item(item_code):
 	bom = frappe.get_all('BOM', dict(item=item_code, is_active=True),
 			order_by='is_default desc')
@@ -1592,17 +1591,17 @@ def make_raw_material_request(items, company, sales_order, project=None):
 	if not frappe.has_permission("Sales Order", "read"):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-	if isinstance(items, string_types):
+	if isinstance(items, str):
 		items = frappe._dict(json.loads(items))
 
 	for item in items.get('items'):
-		item["include_exploded_items"] = items.get('include_exploded_items')
-		item["ignore_existing_ordered_qty"] = items.get('ignore_existing_ordered_qty')
-		item["include_raw_materials_from_sales_order"] = items.get('include_raw_materials_from_sales_order')
+		item["include_exploded_items"] = items.get("include_exploded_items")
+		item["ignore_existing_ordered_qty"] = items.get("ignore_existing_ordered_qty")
+		item["include_raw_materials_from_sales_order"] = items.get("include_raw_materials_from_sales_order")
 
 	items.update({
-		'company': company,
-		'sales_order': sales_order
+		"company": company,
+		"sales_order": sales_order
 	})
 
 	raw_materials = get_items_for_material_requests(items)
@@ -1663,7 +1662,7 @@ def create_pick_list(source_name, target_doc=None):
 				'name': 'sales_order_item'
 			},
 			'postprocess': update_item_quantity,
-			'condition': lambda doc, source, target: abs(doc.delivered_qty) < abs(doc.qty) and doc.delivered_by_supplier!=1
+			'condition': lambda doc, source, target: abs(doc.delivered_qty) < abs(doc.qty) and not doc.skip_delivery_note
 		},
 	}, target_doc)
 

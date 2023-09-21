@@ -9,7 +9,7 @@ from frappe.desk.query_report import group_report_data
 
 def execute(filters=None):
 	filters = frappe._dict(filters)
-	filters.show_employee_name = frappe.get_cached_value("HR Settings", None, "emp_created_by") != "Full Name"
+	filters.show_employee_name = frappe.db.get_single_value("HR Settings", "emp_created_by") != "Full Name"
 
 	salary_slips = get_salary_slips(filters)
 	if not salary_slips:

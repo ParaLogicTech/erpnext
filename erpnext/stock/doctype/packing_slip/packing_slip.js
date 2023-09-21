@@ -251,6 +251,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 				status: ["not in", ["Closed", "On Hold"]],
 				delivery_status: "To Deliver",
 				packing_status: "To Pack",
+				skip_delivery_note: 0,
 				company: this.frm.doc.company,
 			}
 		});

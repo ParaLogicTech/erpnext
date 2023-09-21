@@ -385,10 +385,11 @@
    "type": "Link"
   }
  ],
- "modified": "2023-03-15 19:35:51.886260",
+ "modified": "2023-08-21 01:52:18.867345",
  "modified_by": "Administrator",
  "module": "CRM",
  "name": "CRM",
+ "number_cards": [],
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
@@ -404,7 +405,7 @@
    "role": "Accounts User"
   }
  ],
- "sequence_id": 6.0,
+ "sequence_id": 150.0,
  "shortcuts": [],
  "title": "CRM"
 }

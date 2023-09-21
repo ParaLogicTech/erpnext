@@ -172,17 +172,11 @@ erpnext.buying.PurchaseOrderController = class PurchaseOrderController extends e
 					}
 
 					if (doc.docstatus === 1 && !doc.inter_company_reference) {
-						let me = this;
-						frappe.model.with_doc("Supplier", me.frm.doc.supplier, () => {
-							let supplier = frappe.model.get_doc("Supplier", me.frm.doc.supplier);
-							let internal = supplier.is_internal_supplier;
-							let disabled = supplier.disabled;
-							if (internal === 1 && disabled === 0) {
-								me.frm.add_custom_button("Inter Company Order", function() {
-									me.make_inter_company_order(me.frm);
-								}, __('Create'));
-							}
-						});
+						if (me.frm.doc.__onload?.is_internal_supplier) {
+							me.frm.add_custom_button("Inter Company Order", function() {
+								me.make_inter_company_order(me.frm);
+							}, __('Create'));
+						}
 					}
 				}
 				if(flt(doc.per_billed) == 0) {
@@ -201,7 +195,11 @@ erpnext.buying.PurchaseOrderController = class PurchaseOrderController extends e
 		this.frm.set_indicator_formatter('item_code', function(doc) {
 			if (doc.docstatus === 1) {
 				if (!doc.received_qty) {
-					return "orange";
+					if (!doc.is_stock_item && !doc.is_fixed_asset) {
+						return "purple";
+					} else {
+						return "orange";
+					}
 				} else if (doc.received_qty < doc.qty) {
 					return "yellow";
 				} else {

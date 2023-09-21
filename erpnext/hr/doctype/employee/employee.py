@@ -115,8 +115,9 @@ class Employee(NestedSet):
 		user = frappe.get_doc("User", self.user_id)
 		user.flags.ignore_permissions = True
 
-		if "Employee" not in user.get("roles"):
-			user.append_roles("Employee")
+		if "Employee" not in [d.role for d in user.get("roles")]:
+			if not frappe.get_cached_value("Role", "Employee", "disabled"):
+				user.append_roles("Employee")
 
 		# copy details like Fullname, DOB and Image to User
 		if self.employee_name and not (user.first_name and user.last_name):

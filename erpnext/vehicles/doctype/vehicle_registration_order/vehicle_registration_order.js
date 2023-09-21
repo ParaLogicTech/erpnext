@@ -12,6 +12,8 @@ erpnext.vehicles.VehicleRegistrationOrderController = class VehicleRegistrationO
 			'Vehicle Registration Receipt': 'Registration Receipt',
 			'Vehicle Transfer Letter': 'Transfer Letter',
 			'Sales Invoice': 'Create Invoice',
+			'Vehicle Number Plate Receipt': 'Receive Number Plate',
+			'Vehicle Number Plate Delivery': 'Deliver Number Plate',
 		}
 	}
 
@@ -117,6 +119,10 @@ erpnext.vehicles.VehicleRegistrationOrderController = class VehicleRegistrationO
 				// Registration Receipt
 				if (!this.frm.doc.vehicle_license_plate) {
 					this.frm.add_custom_button(__('Registration Receipt'), () => this.make_registration_receipt());
+				} else if (this.frm.doc.number_plate_status == "Not Received") {
+					this.frm.add_custom_button(__('Receive Number Plate'), () => this.make_number_plate_receipt());
+				} else if (this.frm.doc.number_plate_status == "In Hand") {
+					this.frm.add_custom_button(__('Deliver Number Plate'), () => this.make_number_plate_delivery());
 				}
 			}
 
@@ -508,6 +514,36 @@ erpnext.vehicles.VehicleRegistrationOrderController = class VehicleRegistrationO
 	make_registration_receipt() {
 		return frappe.call({
 			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_registration_receipt",
+			args: {
+				"vehicle_registration_order": this.frm.doc.name,
+			},
+			callback: function (r) {
+				if (!r.exc) {
+					var doclist = frappe.model.sync(r.message);
+					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+				}
+			}
+		});
+	}
+
+	make_number_plate_receipt() {
+		return frappe.call({
+			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_number_plate_receipt",
+			args: {
+				"vehicle_registration_order": this.frm.doc.name,
+			},
+			callback: function (r) {
+				if (!r.exc) {
+					var doclist = frappe.model.sync(r.message);
+					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+				}
+			}
+		});
+	}
+
+	make_number_plate_delivery() {
+		return frappe.call({
+			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_number_plate_delivery",
 			args: {
 				"vehicle_registration_order": this.frm.doc.name,
 			},

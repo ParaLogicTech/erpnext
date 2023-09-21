@@ -3,28 +3,34 @@
 
 # For license information, please see license.txt
 
-import frappe, json
+import frappe
 from frappe.utils import cstr, flt
 from erpnext.stock.get_item_details import get_item_details, get_default_warehouse
 from frappe.model.document import Document
+import json
+
 
 class PackedItem(Document):
 	pass
+
 
 def get_product_bundle_items(item_code):
 	return frappe.db.sql("""select t1.item_code, t1.qty, t1.uom, t1.description
 		from `tabProduct Bundle Item` t1, `tabProduct Bundle` t2
 		where t2.new_item_code=%s and t1.parent = t2.name order by t1.idx""", item_code, as_dict=1)
 
+
 def get_packing_item_details(item, company):
 	item_details = frappe.get_cached_doc("Item", item).as_dict()
 	item_details.default_warehouse = get_default_warehouse(item, {'company': company})
 	return item_details
 
+
 def get_bin_qty(item, warehouse):
 	det = frappe.db.sql("""select actual_qty, projected_qty from `tabBin`
 		where item_code = %s and warehouse = %s""", (item, warehouse), as_dict = 1)
 	return det and det[0] or frappe._dict()
+
 
 def update_packing_list_item(doc, packing_item_code, qty, main_item_row, description):
 	if doc.amended_from:
@@ -67,6 +73,7 @@ def update_packing_list_item(doc, packing_item_code, qty, main_item_row, descrip
 		pi.serial_no = old_packed_items_map.get((packing_item_code, main_item_row.item_code))[0].serial_no
 		pi.warehouse = old_packed_items_map.get((packing_item_code, main_item_row.item_code))[0].warehouse
 
+
 def make_packing_list(doc):
 	"""make packing list for Product Bundle item"""
 	if doc.get("_action") and doc._action == "update_after_submit": return
@@ -81,6 +88,7 @@ def make_packing_list(doc):
 				parent_items.append([d.item_code, d.name])
 
 	cleanup_packing_list(doc, parent_items)
+
 
 def cleanup_packing_list(doc, parent_items):
 	"""Remove all those child items which are no longer present in main item table"""
@@ -99,6 +107,7 @@ def cleanup_packing_list(doc, parent_items):
 		if d not in delete_list:
 			doc.append("packed_items", d)
 
+
 @frappe.whitelist()
 def get_items_from_product_bundle(args):
 	args = json.loads(args)
@@ -113,8 +122,10 @@ def get_items_from_product_bundle(args):
 
 	return items
 
+
 def on_doctype_update():
 	frappe.db.add_index("Packed Item", ["item_code", "warehouse"])
+
 
 def get_old_packed_item_details(old_packed_items):
 	old_packed_items_map = {}

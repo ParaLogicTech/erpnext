@@ -57,7 +57,7 @@ def execute():
 		'taxable_amount',
 		'net_rate',
 		'net_amount',
-		'item_taxes_and_charges',
+		'item_taxes',
 		'tax_inclusive_amount',
 		'tax_inclusive_rate',
 	]

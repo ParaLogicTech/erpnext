@@ -155,12 +155,15 @@ class StockController(AccountsController):
 
 		return stock_ledger
 
-	def make_batches(self, warehouse_field):
+	def make_batches(self, warehouse_field, item_condition=None):
 		'''Create batches if required. Called before submit'''
 		for d in self.items:
 			if d.get(warehouse_field) and not d.batch_no:
 				has_batch_no, create_new_batch = frappe.db.get_value('Item', d.item_code, ['has_batch_no', 'create_new_batch'])
 				if has_batch_no and create_new_batch:
+					if item_condition and not item_condition(d):
+						continue
+
 					d.batch_no = frappe.get_doc({
 						"doctype": "Batch",
 						"item": d.item_code,
