@@ -36,7 +36,7 @@
 			</button>
 			<div role="menu" class="dropdown-menu dropdown-menu-right">
 				{% if  doc.assigned_to_name %}
-					<button class="dropdown-item unassigned_technician" data-task="{{doc.name}}" data-technician ="{{ doc.assigned_to }}">{{ __("Re-Assign Technician") }}</button>
+					<button class="dropdown-item unassigned_technician" data-task="{{doc.name}}" data-technician ="{{ doc.assigned_to }}" data-technician_name = "{{ doc.assigned_to_name }}">{{ __("Re-Assign Technician") }}</button>
 				{% else %}
 					<button class="dropdown-item technician" data-task="{{doc.name}}" data-subject="{{doc.subject}}">{{ __("Assign Technician") }}</button>
 				{% endif %}
