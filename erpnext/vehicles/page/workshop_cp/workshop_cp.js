@@ -308,10 +308,11 @@ class WorkshopCP {
 			primary_action_label: __('Assign')
 		});
 		d.show();
-}
+	}
 	reassign_technician(e) {
 		let task = $(e.target).attr('data-task');
 		let technician = $(e.target).attr('data-technician');
+		let technician_name = $(e.target).attr('data-technician_name');
 		var d = new frappe.ui.Dialog({
 			title: __('Edit Task'),
 			fields: [
@@ -347,6 +348,7 @@ class WorkshopCP {
 					"label" : "Technician Name",
 					"fieldname": "employee_name",
 					"fieldtype": "Data",
+					"default": technician_name,
 					"read_only": 1,
 				},
 			],

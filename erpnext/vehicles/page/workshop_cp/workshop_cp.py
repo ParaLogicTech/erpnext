@@ -147,7 +147,7 @@ def get_tasks_data(filters, sort_by, sort_order):
 		LEFT JOIN `tabItem` i ON i.name = p.applies_to_item
 		WHERE p.vehicle_status = 'In Workshop'
 			{conditions}
-		ORDER BY {sort_by} {sort_order}
+		ORDER BY {sort_by} {sort_order}, t.creation desc
 			""", filters, as_dict=1)
 	tasks = [d.name for d in tasks_data]
 	timesheet_data_map = get_task_time_data(tasks)
@@ -239,7 +239,6 @@ def assign_technician_task(task, technician, subject):
 def reassign_technician_task(task, technician):
 	task_doc = frappe.get_doc("Task", task)
 	task_doc.assigned_to = technician
-	task_doc.assigned_to_name = None
 	task_doc.save()
 
 
@@ -258,6 +257,18 @@ def edit_task(task, subject):
 
 
 @frappe.whitelist()
+def validate_technician_available(employee, throw=False):
+	technician_status = frappe.db.get_value("Task", {"assigned_to": employee, "status": "Working"})
+	if technician_status:
+		if throw:
+			frappe.throw(_("Technician is already working on {0}").format(frappe.get_desk_link("Task", technician_status)))
+
+		return True
+
+	return False
+
+
+@frappe.whitelist()
 def start_task(task):
 	task_doc = frappe.get_doc('Task', task)
 
@@ -267,11 +278,9 @@ def start_task(task):
 	task_doc.status = "Working"
 	task_doc.update_project()
 
-	technician_status = frappe.db.get_value("Task", {"assigned_to": task_doc.assigned_to, "status": "Working"})
-	if technician_status:
-		frappe.throw(_("Technician is already working on {0}").format(frappe.get_desk_link("Task", technician_status)))
 
 	employee = task_doc.assigned_to
+	validate_technician_available(employee, throw=True)
 	project = task_doc.project
 	today = getdate()
 
@@ -362,6 +371,7 @@ def resume_task(task):
 		frappe.throw(_("{0} status is not On Hold.").format(frappe.get_desk_link("Task", task_doc)))
 
 	employee = task_doc.assigned_to
+	validate_technician_available(employee, throw=True)
 	project = task_doc.project
 	today = getdate()
 
