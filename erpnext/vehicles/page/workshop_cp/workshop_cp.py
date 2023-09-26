@@ -237,9 +237,25 @@ def assign_technician_task(task, technician, subject):
 
 @frappe.whitelist()
 def reassign_technician_task(task, technician):
+	prev_technician = frappe.db.get_value("Task", task, 'assigned_to')
+
+	if prev_technician:
+		timesheet_data = frappe.db.sql("""
+			SELECT tsd.name FROM `tabTimesheet Detail` tsd
+			INNER JOIN tabTimesheet ts ON ts.name = tsd.parent
+			WHERE ifnull(tsd.to_time, '') = ''
+				AND ts.employee = %(prev_technician)s
+				AND tsd.task = %(task)s
+		""", {'prev_technician': prev_technician, 'task': task})
+
+		if timesheet_data:
+			pause_task(task)
+
 	task_doc = frappe.get_doc("Task", task)
 	task_doc.assigned_to = technician
 	task_doc.save()
+
+	frappe.msgprint("Technician reassigned successfully")
 
 
 @frappe.whitelist()
@@ -357,6 +373,7 @@ def complete_task(task):
 		ts_doc = frappe.get_doc("Timesheet", timesheet_data[0][0])
 		time_log = [d for d in ts_doc.time_logs if not d.to_time][0]
 		time_log.to_time = now_datetime()
+		time_log.completed = 1
 		ts_doc.save()
 
 	task_doc.status = "Completed"
