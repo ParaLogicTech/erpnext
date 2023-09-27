@@ -87,6 +87,7 @@ class Task(NestedSet):
 						.format(frappe.bold(self.name), frappe.get_desk_link("Task", d.task)))
 
 	def validate_technician(self):
+		self.assigned_to_name = frappe.db.get_value("Employee", self.assigned_to, "employee_name")
 		if self.status not in ['Open', 'Cancelled'] and not self.assigned_to:
 			frappe.throw(_("Technician is mandatory for task"))
 

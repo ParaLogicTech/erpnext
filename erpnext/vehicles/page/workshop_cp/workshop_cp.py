@@ -277,7 +277,7 @@ def validate_technician_available(employee, throw=False):
 	technician_status = frappe.db.get_value("Task", {"assigned_to": employee, "status": "Working"})
 	if technician_status:
 		if throw:
-			frappe.throw(_("Technician is already working on {0}").format(frappe.get_desk_link("Task", technician_status)))
+			frappe.throw(_("Technician is already working on {0}").format(frappe.bold(get_link_to_form("Task", technician_status))))
 
 		return True
 
@@ -289,7 +289,7 @@ def start_task(task):
 	task_doc = frappe.get_doc('Task', task)
 
 	if not task_doc.assigned_to:
-		frappe.throw(_("Technician is not assigned for {0}").format(frappe.get_desk_link("Task", task_doc)))
+		frappe.throw(_("Technician is not assigned for {0}").format(frappe.bold(get_link_to_form("Task", task_doc.name))))
 
 	task_doc.status = "Working"
 	task_doc.update_project()
@@ -304,7 +304,6 @@ def start_task(task):
 		filters={
 			"employee": employee,
 			"project": project,
-			"start_date": today,
 			"docstatus": 0,
 		},
 		fields=["name"]
@@ -334,7 +333,7 @@ def pause_task(task):
 	task_doc = frappe.get_doc('Task', task)
 
 	if task_doc.status != "Working":
-		frappe.throw(_("{0} status is not Working.").format(frappe.get_desk_link("Task", task_doc)))
+		frappe.throw(_("{0} status is not Working.").format(frappe.bold(get_link_to_form("Task", task_doc))))
 
 	timesheet_data = frappe.db.sql("""
 		SELECT ts.name FROM `tabTimesheet Detail` tsd
@@ -359,7 +358,7 @@ def complete_task(task):
 	task_doc = frappe.get_doc('Task', task)
 
 	if task_doc.status != "Working":
-		frappe.throw(_("{0} status is not Working.").format(frappe.get_desk_link("Task", task_doc)))
+		frappe.throw(_("{0} status is not Working.").format(frappe.bold(get_link_to_form("Task", task_doc))))
 
 	timesheet_data = frappe.db.sql("""
 		SELECT ts.name FROM `tabTimesheet Detail` tsd
@@ -385,7 +384,7 @@ def resume_task(task):
 	task_doc = frappe.get_doc('Task', task)
 
 	if task_doc.status != "On Hold":
-		frappe.throw(_("{0} status is not On Hold.").format(frappe.get_desk_link("Task", task_doc)))
+		frappe.throw(_("{0} status is not On Hold.").format(frappe.bold(get_link_to_form("Task", task_doc))))
 
 	employee = task_doc.assigned_to
 	validate_technician_available(employee, throw=True)
@@ -396,7 +395,6 @@ def resume_task(task):
 		filters= {
 			"employee": employee,
 			"project": project,
-			"start_date": today,
 			"docstatus": 0
 		},
 		fields=["name"]

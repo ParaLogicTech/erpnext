@@ -137,7 +137,7 @@ class WorkshopCP {
 				label: "Status",
 				fieldname: "status",
 				fieldtype: "Select",
-				options: [' ', 'No Tasks', 'Not Started', 'In Progress', 'On Hold', 'Completed', 'Ready']
+				options: ['', 'No Tasks', 'Not Started', 'In Progress', 'On Hold', 'Completed', 'Ready']
 
 			},
 		];
@@ -642,6 +642,7 @@ class WorkshopCP {
 
 	setup_realtime_updates() {
 		frappe.socketio.doctype_subscribe('Project');
+		frappe.socketio.doctype_subscribe('Task');
 		frappe.realtime.on("list_update", (data) => {
 			if (!this.is_visible()) {
 				return;

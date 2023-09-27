@@ -23,7 +23,7 @@
 	<td class="text-center">{{ doc.expected_time }}</td>
 	<td class="text-center">{{ frappe.datetime.str_to_user(doc.start_dt) }}</td>
 	<td class="text-center">{{ frappe.datetime.str_to_user(doc.end_dt) }}</td>
-	<td class="text-center">{{ typeof doc.time_elapsed === 'number' ? doc.time_elapsed.toFixed(2) : 'N/A' }}</td>
+	<td class="text-center">{{ flt(doc.time_elapsed) ? flt(doc.time_elapsed, 2) : 'N/A' }}</td>
 	<td><a href="{{ frappe.utils.get_form_link('Employee', doc.assigned_to) }}" target="_blank">{{ doc.assigned_to_name }}</a></td>
 	<td>{{ doc.status }}</td>
 
