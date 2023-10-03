@@ -266,8 +266,8 @@ class WorkshopCP {
 					},
 					{
 						"label" : "Standard Time",
-						"fieldname": "standard_time",
-						"fieldtype": "Int",
+						"fieldname": "standard_working_hours",
+						"fieldtype": "Float",
 					},
 				],
 				primary_action: function() {
@@ -275,8 +275,10 @@ class WorkshopCP {
 					frappe.call({
 						method: "erpnext.vehicles.page.workshop_cp.workshop_cp.create_custom_tasks",
 						args: {
-							subject: values.subject,
+							project_template: values.project_template || '',
 							project: values.project,
+							standard_time: values.standard_time
+
 						},
 					});
 					d.hide()
@@ -288,7 +290,7 @@ class WorkshopCP {
 
 	assign_technician(e) {
 		let task = $(e.target).attr('data-task');
-		let subject = $(e.target).attr('data-subject');
+		let task_data = this.get_row_data("Task", task);
 		var d = new frappe.ui.Dialog({
 			title: __('Assign Technician'),
 			fields: [
@@ -305,7 +307,7 @@ class WorkshopCP {
 					"label" : "Subject",
 					"fieldname": "subject",
 					"fieldtype": "Data",
-					"default": subject,
+					"default": task_data.subject,
 					"read_only": 1,
 				},
 				{
@@ -352,8 +354,8 @@ class WorkshopCP {
 	}
 	reassign_technician(e) {
 		let task = $(e.target).attr('data-task');
-		let technician = $(e.target).attr('data-technician');
-		let technician_name = $(e.target).attr('data-technician_name');
+		let task_data = this.get_row_data("Task", task);
+
 		var d = new frappe.ui.Dialog({
 			title: __('Edit Task'),
 			fields: [
@@ -371,7 +373,7 @@ class WorkshopCP {
 					"fieldname": "employee",
 					"fieldtype": "Link",
 					"options": "Employee",
-					"default": technician,
+					"default": task_data.assigned_to,
 					"onchange": () => {
 						let employee = d.get_value('employee');
 						if (employee) {
@@ -389,7 +391,7 @@ class WorkshopCP {
 					"label" : "Technician Name",
 					"fieldname": "employee_name",
 					"fieldtype": "Data",
-					"default": technician_name,
+					"default": task_data.assigned_to_name,
 					"read_only": 1,
 				},
 			],
@@ -422,7 +424,7 @@ class WorkshopCP {
 
 	edit_task(e) {
 		let task = $(e.target).attr('data-task');
-		let subject = $(e.target).attr('data-subject');
+		let task_data = this.get_row_data("Task", task);
 		var d = new frappe.ui.Dialog({
 			title: __('Edit Task'),
 			fields: [
@@ -439,7 +441,7 @@ class WorkshopCP {
 					"label" : "Subject",
 					"fieldname": "subject",
 					"fieldtype": "Data",
-					"default": subject,
+					"default": task_data.subject,
 				},
 			],
 			primary_action: function() {

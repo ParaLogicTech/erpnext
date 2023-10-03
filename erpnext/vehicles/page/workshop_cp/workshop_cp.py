@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import get_link_to_form, getdate, get_datetime, now_datetime
+from frappe.utils import get_link_to_form, getdate, get_datetime, now_datetime, flt
 import json
 
 
@@ -28,7 +28,7 @@ task_time_template = {
 def get_workshop_cp_data(filters, sort_by=None, sort_order=None):
 	if isinstance(filters, str):
 		filters = json.loads(filters)
-		
+
 	if not sort_by:
 		sort_by = "vehicle_received_date"
 	if not sort_order:
@@ -55,7 +55,7 @@ def get_projects_data(filters, sort_by, sort_order):
 
 	projects_data = frappe.db.sql(f"""
 		SELECT
-			p.name AS project, p.project_name, p.project_workshop, p.tasks_status,
+			p.name, p.project_name, p.project_workshop, p.tasks_status,
 			p.applies_to_variant_of, p.applies_to_variant_of_name, p.ready_to_close,
 			p.applies_to_item, p.applies_to_item_name,
 			p.applies_to_vehicle, p.vehicle_chassis_no, p.vehicle_license_plate,
@@ -68,10 +68,10 @@ def get_projects_data(filters, sort_by, sort_order):
 		ORDER BY {sort_by} {sort_order}
 	""", filters, as_dict=1)
 
-	projects = [d.project for d in projects_data]
+	projects = [d.name for d in projects_data]
 	project_task_count = get_project_task_count(projects)
 	for d in projects_data:
-		count_data = project_task_count.get(d.project, task_count_template.copy())
+		count_data = project_task_count.get(d.name, task_count_template.copy())
 		if count_data['completed_tasks'] and count_data['total_tasks'] == count_data['completed_tasks'] \
 			and d.ready_to_close == 1:
 			d.tasks_status = 'Ready'
@@ -138,10 +138,10 @@ def get_tasks_data(filters, sort_by, sort_order):
 
 	tasks_data = frappe.db.sql(f"""
 		SELECT
+			t.subject, t.assigned_to, t.assigned_to_name, t.name, t.status, t.expected_time,
 			p.applies_to_vehicle, t.project, p.applies_to_variant_of,
 			p.applies_to_variant_of_name, p.applies_to_item, p.applies_to_item_name,
-			p.vehicle_chassis_no, p.vehicle_license_plate,
-			t.subject, t.assigned_to, t.assigned_to_name, t.name, t.status, t.expected_time
+			p.vehicle_chassis_no, p.vehicle_license_plate
 		FROM tabTask t
 		LEFT JOIN tabProject p ON t.project = p.name
 		LEFT JOIN `tabItem` i ON i.name = p.applies_to_item
@@ -310,8 +310,6 @@ def start_task(task):
 
 	task_doc.status = "Working"
 	task_doc.update_project()
-
-
 	employee = task_doc.assigned_to
 	validate_technician_available(employee, throw=True)
 	project = task_doc.project
