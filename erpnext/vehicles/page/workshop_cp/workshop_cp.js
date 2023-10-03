@@ -165,8 +165,8 @@ class WorkshopCP {
 		$(this.parent).on("click", ".create_tasks", (e) => this.create_tasks(e));
 		$(this.parent).on("click", ".mark_as_ready", (e) => this.update_project_ready_to_close(e));
 		$(this.parent).on("click", ".reopen", (e) => this.update_reopen_project_status(e));
-		$(this.parent).on("click", ".technician", (e) => this.assign_technician(e));
-		$(this.parent).on("click", ".unassigned_technician", (e) => this.reassign_technician(e));
+		$(this.parent).on("click", ".assign_technician", (e) => this.assign_technician(e));
+		$(this.parent).on("click", ".reassign_technician", (e) => this.reassign_technician(e));
 		$(this.parent).on("click", ".delete_task", (e) => this.delete_task(e));
 		$(this.parent).on("click", ".edit_task", (e) => this.edit_task(e));
 		$(this.parent).on("click", ".start_task", (e) => this.start_task(e));
@@ -203,10 +203,10 @@ class WorkshopCP {
 	}
 
 	get_row_data(doctype, name) {
-		if (doctype == "Task"){
+		if (doctype == "Task") {
 			return this.data.tasks.find(d => d.name === name);
 		}
-		else if (doctype == "Project"){
+		else if (doctype == "Project") {
 			return this.data.projects.find(d => d.name === name);
 		}
 		else{
@@ -253,7 +253,6 @@ class WorkshopCP {
 						"fieldname": "project_template_name",
 						"fieldtype": "Data",
 						"read_only": 1,
-						"read_only": 1,
 					},
 					{
 						"label": __("Project"),
@@ -268,6 +267,8 @@ class WorkshopCP {
 						"label" : "Standard Time",
 						"fieldname": "standard_working_hours",
 						"fieldtype": "Float",
+						"read_only": 1,
+
 					},
 				],
 				primary_action: function() {
@@ -317,15 +318,11 @@ class WorkshopCP {
 					"options": "Employee",
 					"onchange": () => {
 						let employee = d.get_value('employee');
-						if (employee) {
 							frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
 								if (r) {
 									d.set_values(r);
 								}
 							});
-						} else {
-							d.set_value('employee_name', '');
-						}
 					}
 				},
 				{
@@ -376,15 +373,12 @@ class WorkshopCP {
 					"default": task_data.assigned_to,
 					"onchange": () => {
 						let employee = d.get_value('employee');
-						if (employee) {
+
 							frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
 								if (r) {
 									d.set_values(r);
 								}
 							});
-						} else {
-							d.set_value('employee_name', '');
-						}
 					}
 				},
 				{
@@ -412,7 +406,7 @@ class WorkshopCP {
 
 	}
 
-	async delete_task(e) {
+	delete_task(e) {
 		let task = $(e.target).attr('data-task');
 		return frappe.call({
 			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.delete_task",

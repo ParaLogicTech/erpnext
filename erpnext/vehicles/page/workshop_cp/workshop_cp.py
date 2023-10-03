@@ -215,7 +215,7 @@ def create_template_tasks(project):
 
 
 @frappe.whitelist()
-def create_custom_tasks(project_template, project):
+def create_custom_tasks(project, project_template):
 	task_doc = frappe.new_doc("Task")
 	task_doc.subject = frappe.db.get_value("Project Template", project_template, "project_template_name") or project_template
 	task_doc.project = project
@@ -288,6 +288,8 @@ def edit_task(task, subject):
 	task_doc.subject = subject
 	task_doc.save()
 
+	frappe.msgprint(_("Subject {0} is successfully changed".format(task_doc.name)))
+
 
 @frappe.whitelist()
 def validate_technician_available(employee, throw=False):
@@ -308,12 +310,11 @@ def start_task(task):
 	if not task_doc.assigned_to:
 		frappe.throw(_("Technician is not assigned for {0}").format(frappe.bold(get_link_to_form("Task", task_doc.name))))
 
+	validate_technician_available(employee, throw=True)
 	task_doc.status = "Working"
 	task_doc.update_project()
 	employee = task_doc.assigned_to
-	validate_technician_available(employee, throw=True)
 	project = task_doc.project
-	today = getdate()
 
 	existing_timesheet = frappe.get_all("Timesheet",
 		filters={
@@ -329,7 +330,6 @@ def start_task(task):
 	else:
 		ts_doc = frappe.new_doc("Timesheet")
 		ts_doc.employee = employee
-		ts_doc.start_date = today
 
 	ts_doc.append("time_logs", {
 		"from_time": get_datetime(),

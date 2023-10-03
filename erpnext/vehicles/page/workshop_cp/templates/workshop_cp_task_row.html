@@ -35,13 +35,6 @@
 				</svg>
 			</button>
 			<div role="menu" class="dropdown-menu dropdown-menu-right">
-				{% if  doc.assigned_to_name %}
-					<button class="dropdown-item unassigned_technician" data-task="{{doc.name}}">{{ __("Re-Assign Technician") }}</button>
-				{% else %}
-					<button class="dropdown-item technician" data-task="{{doc.name}}">{{ __("Assign Technician") }}</button>
-				{% endif %}
-				<button class="dropdown-item  delete_task" data-task="{{doc.name}}">{{ __("Delete Task") }}</button>
-				<button class="dropdown-item edit_task"  data-task="{{doc.name}}">{{ __("Edit Task") }}</button>
 				{% if  doc.status  == 'Open' %}
 					<button class="dropdown-item start_task" data-task="{{doc.name}}">{{ __("Start Task") }}</button>
 				{% endif %}
@@ -52,6 +45,15 @@
 				{% if  doc.status  == 'On Hold' %}
 					<button class="dropdown-item resume_task" data-task="{{doc.name}}">{{ __("Resume Task") }}</button>
 				{% endif %}
+				<div class="dropdown-divider user-action"></div>
+				{% if  doc.assigned_to_name %}
+					<button class="dropdown-item reassign_technician" data-task="{{doc.name}}">{{ __("Re-Assign Technician") }}</button>
+				{% else %}
+					<button class="dropdown-item assign_technician" data-task="{{doc.name}}">{{ __("Assign Technician") }}</button>
+				{% endif %}
+				<li class="dropdown-divider user-action"></li>
+				<button class="dropdown-item  delete_task" data-task="{{doc.name}}">{{ __("Delete Task") }}</button>
+				<button class="dropdown-item edit_task"  data-task="{{doc.name}}">{{ __("Edit Task") }}</button>
 			</div>
 		</div>
 	</td>

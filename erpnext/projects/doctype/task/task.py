@@ -92,7 +92,7 @@ class Task(NestedSet):
 			frappe.throw(_("Technician is mandatory for task"))
 
 	def set_completion_values(self):
-		if self._previous_status in ['Open', 'Working'] and self.status in ["Completed", "Pending Review"]:
+		if self._previous_status in ['Open', 'Working', 'overdue'] and self.status in ["Completed", "Pending Review"]:
 			if not self.finish_date:
 				self.finish_date = today()
 
