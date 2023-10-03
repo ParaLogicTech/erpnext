@@ -202,17 +202,58 @@ class WorkshopCP {
 		})
 	}
 
-	create_task(e) {
+	get_row_data(doctype, name) {
+		if (doctype == "Task"){
+			return this.data.tasks.find(d => d.name === name);
+		}
+		else if (doctype == "Project"){
+			return this.data.projects.find(d => d.name === name);
+		}
+		else{
+			return {}
+		}
+
+	}
+
+	create_tasks(e) {
 			let project = $(e.target).attr('data-project');
+			let project_data = this.get_row_data("Project", project);
+
 			var d = new frappe.ui.Dialog({
 				title: __('Create Task'),
 				fields: [
 					{
-						"label" : "Subject",
-						"fieldname": "subject",
+						"label": __("Project Template"),
+						"fieldname": "project_template",
+						"fieldtype": "Link",
+						"options": "Project Template",
+						get_query: () => erpnext.queries.project_template(project_data.applies_to_variant_of),
+						onchange: () => {
+							let project_template = d.get_value('project_template');
+							frappe.db.get_value("Project Template", project_template, ['project_template_name'], (r) => {
+								if (r) {
+									d.set_values(r);
+								}
+							});
+							frappe.call({
+								method: 'erpnext.vehicles.page.workshop_cp.workshop_cp.get_standard_working_hours',
+								args: {
+									project_template: project_template
+								},
+								callback: function (r) {
+									if (r.message) {
+										d.set_value('standard_working_hours', r.message);
+									}
+								}
+							});
+						}
+					},
+					{
+						"label": __("Project Template Name"),
+						"fieldname": "project_template_name",
 						"fieldtype": "Data",
-						"options": "Task",
-						"reqd": 1,
+						"read_only": 1,
+						"read_only": 1,
 					},
 					{
 						"label": __("Project"),

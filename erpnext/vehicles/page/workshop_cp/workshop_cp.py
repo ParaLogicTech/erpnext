@@ -215,13 +215,30 @@ def create_template_tasks(project):
 
 
 @frappe.whitelist()
-def create_custom_tasks(subject, project):
+def create_custom_tasks(project_template, project):
 	task_doc = frappe.new_doc("Task")
-	task_doc.subject = subject
+	task_doc.subject = frappe.db.get_value("Project Template", project_template, "project_template_name") or project_template
 	task_doc.project = project
+	task_doc.expected_time = get_standard_working_hours(project_template)
 	task_doc.save()
 
+	project_doc = frappe.get_doc("Project", project)
+	project_doc.append('project_templates', {'project_template': project_template})
+	project_doc.save()
+
 	frappe.msgprint(_("The task '{0}' has been successfully created.".format(task_doc.subject)))
+
+
+@frappe.whitelist()
+def get_standard_working_hours(project_template):
+	standard_working_hours = frappe.db.sql("""
+		SELECT item.item_code, item.standard_working_hours
+		FROM `tabProject Template Item` pti
+		INNER JOIN tabItem item  ON pti.applicable_item_code = item.item_code
+		WHERE pti.parent = %(project_template)s
+	""", {"project_template": project_template}, as_dict=1)
+
+	return sum(flt(d.standard_working_hours) for d in standard_working_hours)
 
 
 @frappe.whitelist()
