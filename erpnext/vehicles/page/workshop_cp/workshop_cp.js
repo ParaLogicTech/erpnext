@@ -354,7 +354,7 @@ class WorkshopCP {
 		let task_data = this.get_row_data("Task", task);
 
 		var d = new frappe.ui.Dialog({
-			title: __('Edit Task'),
+			title: __('Reassign Technician'),
 			fields: [
 				{
 					"label": "Task",

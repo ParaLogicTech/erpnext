@@ -11,7 +11,6 @@ allowed_sorting_fields = [
 	"tasks_status",
 ]
 
-
 task_count_template = {
 	"total_tasks": 0,
 	"completed_tasks": 0,
@@ -21,6 +20,14 @@ task_time_template = {
 	'start_dt': None,
 	'end_dt': None,
 	'time_elapsed': 0
+}
+
+status_color_map = {
+		'Open': 'orange',
+		'Working': 'purple',
+		'On Hold': 'red',
+		'Completed': 'green',
+		'Cancelled': 'grey'
 }
 
 
@@ -141,7 +148,7 @@ def get_tasks_data(filters, sort_by, sort_order):
 			t.subject, t.assigned_to, t.assigned_to_name, t.name, t.status, t.expected_time,
 			p.applies_to_vehicle, t.project, p.applies_to_variant_of,
 			p.applies_to_variant_of_name, p.applies_to_item, p.applies_to_item_name,
-			p.vehicle_chassis_no, p.vehicle_license_plate
+			p.vehicle_chassis_no, p.vehicle_license_plate, p.ready_to_close
 		FROM tabTask t
 		LEFT JOIN tabProject p ON t.project = p.name
 		LEFT JOIN `tabItem` i ON i.name = p.applies_to_item
@@ -152,6 +159,7 @@ def get_tasks_data(filters, sort_by, sort_order):
 	tasks = [d.name for d in tasks_data]
 	timesheet_data_map = get_task_time_data(tasks)
 	for d in tasks_data:
+		d.status_color = status_color_map.get(d.status, 'black')
 		d.update(timesheet_data_map.get(d.name, {}))
 
 	return tasks_data
@@ -207,6 +215,7 @@ def create_template_tasks(project):
 		task_doc = frappe.new_doc("Task")
 		task_doc.subject = template_task.project_template_name
 		task_doc.project = doc.name
+		task_doc.expected_time = get_standard_working_hours(template_task.project_template)
 		task_doc.update(filters)
 		task_doc.save()
 		task_created += 1
@@ -254,21 +263,24 @@ def assign_technician_task(task, technician, subject):
 
 @frappe.whitelist()
 def reassign_technician_task(task, technician):
-	prev_technician = frappe.db.get_value("Task", task, 'assigned_to')
+	task_doc = frappe.get_doc("Task", task)
+	check_ready_to_close = frappe.db.get_value("Project", task_doc.project, "ready_to_close")
 
-	if prev_technician:
+	if task_doc.status == "Completed" and check_ready_to_close == 1:
+		frappe.throw(_("The status of {0} is 'Ready to Close' ".format(frappe.bold(task_doc.project))))
+
+	if task_doc.assigned_to:
 		timesheet_data = frappe.db.sql("""
 			SELECT tsd.name FROM `tabTimesheet Detail` tsd
 			INNER JOIN tabTimesheet ts ON ts.name = tsd.parent
 			WHERE ifnull(tsd.to_time, '') = ''
 				AND ts.employee = %(prev_technician)s
 				AND tsd.task = %(task)s
-		""", {'prev_technician': prev_technician, 'task': task})
+		""", {'prev_technician': task_doc.assigned_to, 'task': task})
 
 		if timesheet_data:
 			pause_task(task)
 
-	task_doc = frappe.get_doc("Task", task)
 	task_doc.assigned_to = technician
 	task_doc.save()
 
@@ -277,6 +289,12 @@ def reassign_technician_task(task, technician):
 
 @frappe.whitelist()
 def delete_task(task):
+	task_doc = frappe.get_doc("Task", task)
+	check_ready_to_close = frappe.db.get_value("Project", task_doc.project, "ready_to_close")
+
+	if task_doc.status == "Completed" and check_ready_to_close == 1:
+		frappe.throw(_("The status of {0} is 'Ready to Close' ".format(frappe.bold(task_doc.project))))
+
 	frappe.delete_doc('Task', task)
 	frappe.msgprint(_("Task have been deleted".format(task)))
 
@@ -284,6 +302,11 @@ def delete_task(task):
 @frappe.whitelist()
 def edit_task(task, subject):
 	task_doc = frappe.get_doc("Task", task)
+	check_ready_to_close = frappe.db.get_value("Project", task_doc.project, "ready_to_close")
+
+	if task_doc.status == "Completed" and check_ready_to_close == 1:
+		frappe.throw(_("The status of {0} is 'Ready to Close' ".format(frappe.bold(task_doc.project))))
+
 	task_doc.name = task
 	task_doc.subject = subject
 	task_doc.save()
@@ -310,16 +333,14 @@ def start_task(task):
 	if not task_doc.assigned_to:
 		frappe.throw(_("Technician is not assigned for {0}").format(frappe.bold(get_link_to_form("Task", task_doc.name))))
 
-	validate_technician_available(employee, throw=True)
+	validate_technician_available(task_doc.assigned_to, throw=True)
 	task_doc.status = "Working"
 	task_doc.update_project()
-	employee = task_doc.assigned_to
-	project = task_doc.project
 
 	existing_timesheet = frappe.get_all("Timesheet",
 		filters={
-			"employee": employee,
-			"project": project,
+			"employee": task_doc.assigned_to,
+			"project": task_doc.project,
 			"docstatus": 0,
 		},
 		fields=["name"]
@@ -329,12 +350,12 @@ def start_task(task):
 		ts_doc = frappe.get_doc("Timesheet", existing_timesheet[0].name)
 	else:
 		ts_doc = frappe.new_doc("Timesheet")
-		ts_doc.employee = employee
+		ts_doc.employee = task_doc.assigned_to
 
 	ts_doc.append("time_logs", {
 		"from_time": get_datetime(),
 		"activity_type": "Working",
-		"project": project,
+		"project": task_doc.project,
 		"task": task,
 		"to_time": None,
 	})
@@ -401,15 +422,13 @@ def resume_task(task):
 	if task_doc.status != "On Hold":
 		frappe.throw(_("{0} status is not On Hold.").format(frappe.bold(get_link_to_form("Task", task_doc))))
 
-	employee = task_doc.assigned_to
-	validate_technician_available(employee, throw=True)
-	project = task_doc.project
+	validate_technician_available(task_doc.assigned_to, throw=True)
 	today = getdate()
 
 	timesheet_data = frappe.get_all("Timesheet",
 		filters= {
-			"employee": employee,
-			"project": project,
+			"employee": task_doc.assigned_to,
+			"project": task_doc.project,
 			"docstatus": 0
 		},
 		fields=["name"]
@@ -419,13 +438,13 @@ def resume_task(task):
 		ts_doc = frappe.get_doc("Timesheet", timesheet_data[0].name)
 	else:
 		ts_doc = frappe.new_doc("Timesheet")
-		ts_doc.employee = employee
+		ts_doc.employee = task_doc.assigned_to
 		ts_doc.start_date = today
 
 	ts_doc.append("time_logs", {
 		"from_time": get_datetime(),
 		"activity_type": "Working",
-		"project": project,
+		"project": task_doc.project,
 		"task": task,
 		"to_time": None,
 	})
