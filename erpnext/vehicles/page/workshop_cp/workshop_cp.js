@@ -209,7 +209,7 @@ class WorkshopCP {
 		else if (doctype == "Project") {
 			return this.data.projects.find(d => d.name === name);
 		}
-		else{
+		else {
 			return {}
 		}
 
@@ -318,11 +318,11 @@ class WorkshopCP {
 					"options": "Employee",
 					"onchange": () => {
 						let employee = d.get_value('employee');
-							frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
-								if (r) {
-									d.set_values(r);
-								}
-							});
+						frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
+							if (r) {
+								d.set_values(r);
+							}
+						});
 					}
 				},
 				{
@@ -340,7 +340,6 @@ class WorkshopCP {
 						task: values.name,
 						technician: values.employee,
 						subject: values.subject
-
 					},
 				});
 				d.hide()
@@ -373,12 +372,11 @@ class WorkshopCP {
 					"default": task_data.assigned_to,
 					"onchange": () => {
 						let employee = d.get_value('employee');
-
-							frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
-								if (r) {
-									d.set_values(r);
-								}
-							});
+						frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
+							if (r) {
+								d.set_values(r);
+							}
+						});
 					}
 				},
 				{
@@ -452,7 +450,6 @@ class WorkshopCP {
 			primary_action_label: __('Save')
 		});
 		d.show();
-
 	}
 
 	async start_task(e) {
@@ -463,7 +460,6 @@ class WorkshopCP {
 				task: task,
 			},
 		});
-
 	}
 
 	async pause_task(e) {
@@ -474,7 +470,6 @@ class WorkshopCP {
 				task: task,
 			},
 		});
-
 	}
 
 	async complete_task(e) {
@@ -485,7 +480,6 @@ class WorkshopCP {
 				task: task,
 			},
 		});
-
 	}
 
 	async resume_task(e) {
@@ -496,7 +490,6 @@ class WorkshopCP {
 				task: task,
 			},
 		});
-
 	}
 
 	async update_project_ready_to_close(e) {
