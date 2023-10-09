@@ -22,12 +22,21 @@ task_time_template = {
 	'time_elapsed': 0
 }
 
-status_color_map = {
+task_status_color_map = {
 		'Open': 'orange',
 		'Working': 'purple',
 		'On Hold': 'red',
 		'Completed': 'green',
 		'Cancelled': 'grey'
+}
+
+vehicle_status_color_map = {
+		'No Tasks': 'grey',
+		'Not Started': 'orange',
+		'In Progress': 'purple',
+		'On Hold': 'red',
+		'Completed': 'green',
+		'Ready': 'green'
 }
 
 
@@ -82,10 +91,10 @@ def get_projects_data(filters, sort_by, sort_order):
 		if count_data['completed_tasks'] and count_data['total_tasks'] == count_data['completed_tasks'] \
 			and d.ready_to_close == 1:
 			d.tasks_status = 'Ready'
+		d.vehicle_status_color = vehicle_status_color_map.get(d.tasks_status, 'black')
 		d.update(count_data)
 
 	return projects_data
-
 
 def get_project_task_count(projects):
 	tasks_data = []
@@ -159,7 +168,7 @@ def get_tasks_data(filters, sort_by, sort_order):
 	tasks = [d.name for d in tasks_data]
 	timesheet_data_map = get_task_time_data(tasks)
 	for d in tasks_data:
-		d.status_color = status_color_map.get(d.status, 'black')
+		d.status_color = task_status_color_map.get(d.status, 'black')
 		d.update(timesheet_data_map.get(d.name, {}))
 
 	return tasks_data
@@ -180,10 +189,8 @@ def get_task_time_data(tasks):
 	timesheet_data_map = frappe._dict()
 	for d in timesheet_data:
 		timesheet_data_map.setdefault(d.task, task_time_template.copy())
-
 		end_time = get_datetime(d.end_time)
 		timesheet_data_map[d.task]['time_elapsed'] += (end_time - get_datetime(d.start_time)).total_seconds() / 3600
-
 		timesheet_data_map[d.task]['start_dt'] = min(get_datetime(timesheet_data_map[d.task]['start_dt']), get_datetime(d.start_time))
 
 		if d.status == "Completed" and d.end_time:
@@ -329,7 +336,6 @@ def validate_technician_available(employee, throw=False):
 @frappe.whitelist()
 def start_task(task):
 	task_doc = frappe.get_doc('Task', task)
-
 	if not task_doc.assigned_to:
 		frappe.throw(_("Technician is not assigned for {0}").format(frappe.bold(get_link_to_form("Task", task_doc.name))))
 

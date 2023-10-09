@@ -319,8 +319,8 @@ class WorkshopCP {
 					"onchange": () => {
 						let employee = d.get_value('employee');
 						frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
-							if (r) {
-								d.set_values(r);
+							if (r){
+								d.set_value('employee_name',r.employee_name);
 							}
 						});
 					}
@@ -373,8 +373,8 @@ class WorkshopCP {
 					"onchange": () => {
 						let employee = d.get_value('employee');
 						frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
-							if (r) {
-								d.set_values(r);
+							if (r){
+								d.set_value('employee_name',r.employee_name);
 							}
 						});
 					}
@@ -452,7 +452,7 @@ class WorkshopCP {
 		d.show();
 	}
 
-	async start_task(e) {
+	start_task(e) {
 		let task = $(e.target).attr('data-task');
 		return frappe.call({
 			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.start_task",
@@ -462,7 +462,7 @@ class WorkshopCP {
 		});
 	}
 
-	async pause_task(e) {
+	pause_task(e) {
 		let task = $(e.target).attr('data-task');
 		return frappe.call({
 			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.pause_task",
@@ -472,7 +472,7 @@ class WorkshopCP {
 		});
 	}
 
-	async complete_task(e) {
+	complete_task(e) {
 		let task = $(e.target).attr('data-task');
 		return frappe.call({
 			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.complete_task",
@@ -482,7 +482,7 @@ class WorkshopCP {
 		});
 	}
 
-	async resume_task(e) {
+	resume_task(e) {
 		let task = $(e.target).attr('data-task');
 		return frappe.call({
 			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.resume_task",
@@ -492,7 +492,7 @@ class WorkshopCP {
 		});
 	}
 
-	async update_project_ready_to_close(e) {
+	update_project_ready_to_close(e) {
 		let project = $(e.target).attr('data-project');
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project.set_project_ready_to_close",
@@ -502,7 +502,7 @@ class WorkshopCP {
 		});
 	}
 
-	async update_reopen_project_status(e) {
+	update_reopen_project_status(e) {
 		let project = $(e.target).attr('data-project');
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project.reopen_project_status",

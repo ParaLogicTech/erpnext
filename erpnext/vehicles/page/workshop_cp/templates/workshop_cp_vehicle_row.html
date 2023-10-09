@@ -29,7 +29,7 @@
 
 	<td>{{ doc.project_name }}</td>
 
-	<td>{{ doc.tasks_status }}</td>
+	<td><span style="color: {{ doc.vehicle_status_color }}">{{ doc.tasks_status }}</span></td>
 
 	<td class="text-center">{{ doc.completed_tasks }}/{{ doc.total_tasks }}</td>
 
