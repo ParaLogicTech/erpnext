@@ -1,0 +1,63 @@
+<tr>
+	<td><a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" target="_blank">{{ doc.project }}</a></td>
+	<td><a href="{{ frappe.utils.get_form_link('Task', doc.name) }}" target="_blank">{{ doc.subject }}</a></td>
+
+	<td>
+		{% if doc.applies_to_variant_of_name %}
+			{{ doc.applies_to_variant_of_name }}
+		{% else %}
+			{{ doc.applies_to_item_name }}
+		{% endif %}
+	</td>
+
+	<td>
+		<a href="{{ frappe.utils.get_form_link('Vehicle', doc.applies_to_vehicle) }}" target="_blank">
+			{% if doc.vehicle_license_plate %}
+				{{ doc.vehicle_license_plate }}
+			{% else %}
+				{{ doc.vehicle_chassis_no }}
+			{% endif %}
+		</a>
+	</td>
+
+	<td class="text-center">{{ doc.expected_time }}</td>
+	<td class="text-center">{{ frappe.datetime.str_to_user(doc.start_dt) }}</td>
+	<td class="text-center">{{ frappe.datetime.str_to_user(doc.end_dt) }}</td>
+	<td class="text-center">{{ flt(doc.time_elapsed) ? flt(doc.time_elapsed, 2) : 'N/A' }}</td>
+	<td><a href="{{ frappe.utils.get_form_link('Employee', doc.assigned_to) }}" target="_blank">{{ doc.assigned_to_name }}</a></td>
+	<td>
+		<span style="color: {{ doc.status_color }}">{{ doc.status }}</span>
+	</td>
+
+	<td class="text-center">
+		<div class="inner-group-button show">
+			<button type="button" class="btn btn-default btn-sm" data-toggle="dropdown">Actions
+				<svg class="icon icon-xs">
+					<use class="" href="#icon-select"></use>
+				</svg>
+			</button>
+			<div role="menu" class="dropdown-menu dropdown-menu-right">
+				{% if  doc.assigned_to_name %}
+					<button class="dropdown-item reassign_technician" data-task="{{doc.name}}">{{ __("Re-Assign Technician") }}</button>
+				{% else %}
+					<button class="dropdown-item assign_technician" data-task="{{doc.name}}">{{ __("Assign Technician") }}</button>
+				{% endif %}
+				<li class="dropdown-divider user-action"></li>
+				{% if doc.assigned_to_name && doc.status  == 'Open' %}
+					<button class="dropdown-item start_task" data-task="{{doc.name}}">{{ __("Start Task") }}</button>
+				{% endif %}
+				{% if  doc.status  == 'Working' %}
+					<button class="dropdown-item pause_task" data-task="{{doc.name}}">{{ __("Pause Task") }}</button>
+					<button class="dropdown-item complete_task" data-task="{{doc.name}}">{{ __("Complete Task") }}</button>
+				{% endif %}
+				{% if  doc.status  == 'On Hold' %}
+					<button class="dropdown-item resume_task" data-task="{{doc.name}}">{{ __("Resume Task") }}</button>
+				{% endif %}
+				<div class="dropdown-divider user-action"></div>
+				<li class="dropdown-divider user-action"></li>
+				<button class="dropdown-item edit_task"  data-task="{{doc.name}}">{{ __("Edit Task") }}</button>
+				<button class="dropdown-item  delete_task" data-task="{{doc.name}}">{{ __("Delete Task") }}</button>
+			</div>
+		</div>
+	</td>
+</tr>

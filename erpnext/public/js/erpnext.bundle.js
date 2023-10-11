@@ -57,6 +57,8 @@ import "../../vehicles/page/workshop_cp/templates/workshop_cp_layout.html"
 import "../../vehicles/page/workshop_cp/templates/workshop_cp_dashboard.html"
 import "../../vehicles/page/workshop_cp/templates/workshop_cp_vehicles.html"
 import "../../vehicles/page/workshop_cp/templates/workshop_cp_vehicle_row.html"
+import "../../vehicles/page/workshop_cp/templates/workshop_cp_tasks.html"
+import "../../vehicles/page/workshop_cp/templates/workshop_cp_task_row.html"
 
 
 // Agriculture Domain

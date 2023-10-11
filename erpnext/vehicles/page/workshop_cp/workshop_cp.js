@@ -137,7 +137,7 @@ class WorkshopCP {
 				label: "Status",
 				fieldname: "status",
 				fieldtype: "Select",
-				options: [' ', 'No Tasks', 'Not Started', 'In Progress', 'On Hold', 'Completed', 'Ready']
+				options: ['', 'No Tasks', 'Not Started', 'In Progress', 'On Hold', 'Completed', 'Ready']
 
 			},
 		];
@@ -150,9 +150,13 @@ class WorkshopCP {
 	}
 
 	setup_tabbed_layout() {
+		// this.dashboard_tab = this.page.main.find("#dashboard-content");
 		this.vehicles_tab = this.page.main.find("#vehicles-content");
+		this.tasks_tab = this.page.main.find("#tasks-content");
 
+		// this.dashboard_tab.append(frappe.render_template("workshop_cp_dashboard"));
 		this.vehicles_tab.append(frappe.render_template("workshop_cp_vehicles"));
+		this.tasks_tab.append(frappe.render_template("workshop_cp_tasks"));
 	}
 
 	bind_events() {
@@ -161,6 +165,14 @@ class WorkshopCP {
 		$(this.parent).on("click", ".create_tasks", (e) => this.create_tasks(e));
 		$(this.parent).on("click", ".mark_as_ready", (e) => this.update_project_ready_to_close(e));
 		$(this.parent).on("click", ".reopen", (e) => this.update_reopen_project_status(e));
+		$(this.parent).on("click", ".assign_technician", (e) => this.assign_technician(e));
+		$(this.parent).on("click", ".reassign_technician", (e) => this.reassign_technician(e));
+		$(this.parent).on("click", ".delete_task", (e) => this.delete_task(e));
+		$(this.parent).on("click", ".edit_task", (e) => this.edit_task(e));
+		$(this.parent).on("click", ".start_task", (e) => this.start_task(e));
+		$(this.parent).on("click", ".pause_task", (e) => this.pause_task(e));
+		$(this.parent).on("click", ".complete_task", (e) => this.complete_task(e));
+		$(this.parent).on("click", ".resume_task", (e) => this.resume_task(e));
 
 		this.setup_realtime_updates();
 
@@ -190,17 +202,57 @@ class WorkshopCP {
 		})
 	}
 
-	create_task(e) {
+	get_row_data(doctype, name) {
+		if (doctype == "Task") {
+			return this.data.tasks.find(d => d.name === name);
+		}
+		else if (doctype == "Project") {
+			return this.data.projects.find(d => d.name === name);
+		}
+		else {
+			return {}
+		}
+
+	}
+
+	create_tasks(e) {
 			let project = $(e.target).attr('data-project');
+			let project_data = this.get_row_data("Project", project);
+
 			var d = new frappe.ui.Dialog({
 				title: __('Create Task'),
 				fields: [
 					{
-						"label" : "Subject",
-						"fieldname": "subject",
+						"label": __("Project Template"),
+						"fieldname": "project_template",
+						"fieldtype": "Link",
+						"options": "Project Template",
+						get_query: () => erpnext.queries.project_template(project_data.applies_to_variant_of),
+						onchange: () => {
+							let project_template = d.get_value('project_template');
+							frappe.db.get_value("Project Template", project_template, ['project_template_name'], (r) => {
+								if (r) {
+									d.set_values(r);
+								}
+							});
+							frappe.call({
+								method: 'erpnext.vehicles.page.workshop_cp.workshop_cp.get_standard_working_hours',
+								args: {
+									project_template: project_template
+								},
+								callback: function (r) {
+									if (r.message) {
+										d.set_value('standard_working_hours', r.message);
+									}
+								}
+							});
+						}
+					},
+					{
+						"label": __("Project Template Name"),
+						"fieldname": "project_template_name",
 						"fieldtype": "Data",
-						"options": "Task",
-						"reqd": 1,
+						"read_only": 1,
 					},
 					{
 						"label": __("Project"),
@@ -213,8 +265,10 @@ class WorkshopCP {
 					},
 					{
 						"label" : "Standard Time",
-						"fieldname": "standard_time",
-						"fieldtype": "Int",
+						"fieldname": "standard_working_hours",
+						"fieldtype": "Float",
+						"read_only": 1,
+
 					},
 				],
 				primary_action: function() {
@@ -222,8 +276,10 @@ class WorkshopCP {
 					frappe.call({
 						method: "erpnext.vehicles.page.workshop_cp.workshop_cp.create_custom_tasks",
 						args: {
-							subject: values.subject,
+							project_template: values.project_template || '',
 							project: values.project,
+							standard_time: values.standard_time
+
 						},
 					});
 					d.hide()
@@ -233,7 +289,210 @@ class WorkshopCP {
 			d.show();
 	}
 
-	async update_project_ready_to_close(e) {
+	assign_technician(e) {
+		let task = $(e.target).attr('data-task');
+		let task_data = this.get_row_data("Task", task);
+		var d = new frappe.ui.Dialog({
+			title: __('Assign Technician'),
+			fields: [
+				{
+					"label": "Task",
+					"fieldname": "name",
+					"fieldtype": "Link",
+					"options": "Task",
+					"default": task,
+					"read_only": 1,
+					"reqd": 1,
+				},
+				{
+					"label" : "Subject",
+					"fieldname": "subject",
+					"fieldtype": "Data",
+					"default": task_data.subject,
+					"read_only": 1,
+				},
+				{
+					"label" : "Technician",
+					"fieldname": "employee",
+					"fieldtype": "Link",
+					"options": "Employee",
+					"onchange": () => {
+						let employee = d.get_value('employee');
+						frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
+							if (r){
+								d.set_value('employee_name',r.employee_name);
+							}
+						});
+					}
+				},
+				{
+					"label" : "Technician Name",
+					"fieldname": "employee_name",
+					"fieldtype": "Data",
+					"read_only": 1,
+				},
+			],
+			primary_action: function() {
+				let values = d.get_values();
+				frappe.call({
+					method: "erpnext.vehicles.page.workshop_cp.workshop_cp.assign_technician_task",
+					args: {
+						task: values.name,
+						technician: values.employee,
+						subject: values.subject
+					},
+				});
+				d.hide()
+			},
+			primary_action_label: __('Assign')
+		});
+		d.show();
+	}
+	reassign_technician(e) {
+		let task = $(e.target).attr('data-task');
+		let task_data = this.get_row_data("Task", task);
+
+		var d = new frappe.ui.Dialog({
+			title: __('Reassign Technician'),
+			fields: [
+				{
+					"label": "Task",
+					"fieldname": "name",
+					"fieldtype": "Link",
+					"options": "Task",
+					"default": task,
+					"read_only": 1,
+					"reqd": 1,
+				},
+				{
+					"label" : "Technician",
+					"fieldname": "employee",
+					"fieldtype": "Link",
+					"options": "Employee",
+					"default": task_data.assigned_to,
+					"onchange": () => {
+						let employee = d.get_value('employee');
+						frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
+							if (r){
+								d.set_value('employee_name',r.employee_name);
+							}
+						});
+					}
+				},
+				{
+					"label" : "Technician Name",
+					"fieldname": "employee_name",
+					"fieldtype": "Data",
+					"default": task_data.assigned_to_name,
+					"read_only": 1,
+				},
+			],
+			primary_action: function() {
+				let values = d.get_values();
+				frappe.call({
+					method: "erpnext.vehicles.page.workshop_cp.workshop_cp.reassign_technician_task",
+					args: {
+						task: values.name,
+						technician: values.employee || '',
+					},
+				});
+				d.hide()
+			},
+			primary_action_label: __('Save')
+		});
+		d.show();
+
+	}
+
+	delete_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.delete_task",
+			args: {
+				"task": task,
+			},
+		});
+	}
+
+	edit_task(e) {
+		let task = $(e.target).attr('data-task');
+		let task_data = this.get_row_data("Task", task);
+		var d = new frappe.ui.Dialog({
+			title: __('Edit Task'),
+			fields: [
+				{
+					"label": "Task",
+					"fieldname": "name",
+					"fieldtype": "Link",
+					"options": "Task",
+					"default": task,
+					"read_only": 1,
+					"reqd": 1,
+				},
+				{
+					"label" : "Subject",
+					"fieldname": "subject",
+					"fieldtype": "Data",
+					"default": task_data.subject,
+				},
+			],
+			primary_action: function() {
+				let values = d.get_values();
+				frappe.call({
+					method: "erpnext.vehicles.page.workshop_cp.workshop_cp.edit_task",
+					args: {
+						task: values.name,
+						subject: values.subject
+					},
+				});
+				d.hide()
+			},
+			primary_action_label: __('Save')
+		});
+		d.show();
+	}
+
+	start_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.start_task",
+			args: {
+				task: task,
+			},
+		});
+	}
+
+	pause_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.pause_task",
+			args: {
+				task: task,
+			},
+		});
+	}
+
+	complete_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.complete_task",
+			args: {
+				task: task,
+			},
+		});
+	}
+
+	resume_task(e) {
+		let task = $(e.target).attr('data-task');
+		return frappe.call({
+			method: "erpnext.vehicles.page.workshop_cp.workshop_cp.resume_task",
+			args: {
+				task: task,
+			},
+		});
+	}
+
+	update_project_ready_to_close(e) {
 		let project = $(e.target).attr('data-project');
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project.set_project_ready_to_close",
@@ -242,7 +501,8 @@ class WorkshopCP {
 			},
 		});
 	}
-	async update_reopen_project_status(e) {
+
+	update_reopen_project_status(e) {
 		let project = $(e.target).attr('data-project');
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project.reopen_project_status",
@@ -303,7 +563,9 @@ class WorkshopCP {
 
 	render() {
 		this.render_last_updated();
+		this.render_dashboard_tab();
 		this.render_vehicles_tab();
+		this.render_tasks_tab();
 	}
 
 	render_last_updated() {
@@ -323,6 +585,9 @@ class WorkshopCP {
 		this.$last_updated_timestamp.html(frappe.datetime.prettyDate(this.last_updated));
 	}
 
+	render_dashboard_tab() {
+	}
+
 	render_vehicles_tab() {
 		// clear rows
 		this.vehicles_tab.find(".vehicle-table tbody").empty();
@@ -338,8 +603,28 @@ class WorkshopCP {
 		}
 	}
 
+	render_tasks_tab() {
+		this.tasks_tab.find(".task-table tbody").empty();
+
+		if (this.data.tasks.length > 0) {
+
+			let rows_html = this.data.tasks.map((doc, i) => {
+				doc._idx = i;
+				return this.get_task_list_row_html(doc);
+			}).join("");
+
+			this.tasks_tab.find(".task-table tbody").append(rows_html);
+		}
+	}
+
 	get_list_row_html(doc) {
 		return frappe.render_template("workshop_cp_vehicle_row", {
+			"doc": doc,
+		});
+	}
+
+	get_task_list_row_html(doc) {
+		return frappe.render_template("workshop_cp_task_row", {
 			"doc": doc,
 		});
 	}
@@ -387,6 +672,7 @@ class WorkshopCP {
 
 	setup_realtime_updates() {
 		frappe.socketio.doctype_subscribe('Project');
+		frappe.socketio.doctype_subscribe('Task');
 		frappe.realtime.on("list_update", (data) => {
 			if (!this.is_visible()) {
 				return;

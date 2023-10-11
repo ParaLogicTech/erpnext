@@ -28,6 +28,7 @@ class Task(NestedSet):
 		self.validate_parent_project_dates()
 		self.validate_progress()
 		self.validate_status()
+		self.validate_technician()
 		self.set_completion_values()
 		self.update_depends_on()
 		self.set_is_overdue()
@@ -85,8 +86,13 @@ class Task(NestedSet):
 					frappe.throw(_("Cannot complete task {0} as its dependant {1} is not completed / cancelled.")
 						.format(frappe.bold(self.name), frappe.get_desk_link("Task", d.task)))
 
+	def validate_technician(self):
+		self.assigned_to_name = frappe.db.get_value("Employee", self.assigned_to, "employee_name")
+		if self.status not in ['Open', 'Cancelled'] and not self.assigned_to:
+			frappe.throw(_("Technician is mandatory for task"))
+
 	def set_completion_values(self):
-		if self._previous_status in ['Open', 'Working'] and self.status in ["Completed", "Pending Review"]:
+		if self._previous_status in ['Open', 'Working', 'overdue'] and self.status in ["Completed", "Pending Review"]:
 			if not self.finish_date:
 				self.finish_date = today()
 
