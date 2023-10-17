@@ -30,7 +30,7 @@ task_status_color_map = {
 		'Cancelled': 'grey'
 }
 
-vehicle_status_color_map = {
+status_color_map = {
 		'No Tasks': 'grey',
 		'Not Started': 'orange',
 		'In Progress': 'purple',
@@ -92,7 +92,7 @@ def get_projects_data(filters, sort_by, sort_order):
 		if d.ready_to_close and count_data['total_tasks'] == count_data['completed_tasks']:
 			d.tasks_status = 'Ready'
 
-		d.vehicle_status_color = vehicle_status_color_map.get(d.tasks_status, 'black')
+		d.status_color = status_color_map.get(d.tasks_status, 'black')
 		d.update(count_data)
 
 	return projects_data

@@ -1,30 +1,55 @@
 <tr>
-	<td><a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" target="_blank">{{ doc.project }}</a></td>
-	<td><a href="{{ frappe.utils.get_form_link('Task', doc.name) }}" target="_blank">{{ doc.subject }}</a></td>
-
-	<td>
-		{% if doc.applies_to_variant_of_name %}
-			{{ doc.applies_to_variant_of_name }}
-		{% else %}
-			{{ doc.applies_to_item_name }}
-		{% endif %}
+	<td class="text-nowrap">
+		<a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" target="_blank">
+			{{ doc.project }}
+		</a>
 	</td>
 
 	<td>
-		<a href="{{ frappe.utils.get_form_link('Vehicle', doc.applies_to_vehicle) }}" target="_blank">
-			{% if doc.vehicle_license_plate %}
-				{{ doc.vehicle_license_plate }}
+		<div>
+			{% if doc.applies_to_variant_of_name %}
+				{{ doc.applies_to_variant_of_name }}
 			{% else %}
-				{{ doc.vehicle_chassis_no }}
+				{{ doc.applies_to_item_name }}
 			{% endif %}
+		</div>
+		<div>
+			<a href="{{ frappe.utils.get_form_link('Vehicle', doc.applies_to_vehicle) }}" target="_blank">
+				{% if doc.vehicle_license_plate %}
+					{{ doc.vehicle_license_plate }}
+				{% else %}
+					{{ doc.vehicle_chassis_no }}
+				{% endif %}
+			</a>
+		</div>
+	</td>
+
+	<td>
+		<a href="{{ frappe.utils.get_form_link('Task', doc.name) }}" target="_blank">
+			{{ doc.subject }}
 		</a>
 	</td>
 
 	<td class="text-center">{{ doc.expected_time }}</td>
-	<td class="text-center">{{ frappe.datetime.str_to_user(doc.start_dt) }}</td>
-	<td class="text-center">{{ frappe.datetime.str_to_user(doc.end_dt) }}</td>
+
+	<td class="text-center">
+		<div>{{ frappe.datetime.str_to_user(doc.start_dt, false, true) }}</div>
+		<div>{{ frappe.datetime.str_to_user(doc.start_dt, true, false) }}</div>
+	</td>
+
+	<td class="text-center">
+		<div>{{ frappe.datetime.str_to_user(doc.end_dt, false, true) }}</div>
+		<div>{{ frappe.datetime.str_to_user(doc.end_dt, true, false) }}</div>
+	</td>
+
 	<td class="text-center">{{ flt(doc.time_elapsed) ? flt(doc.time_elapsed, 2) : 'N/A' }}</td>
-	<td><a href="{{ frappe.utils.get_form_link('Employee', doc.assigned_to) }}" target="_blank">{{ doc.assigned_to_name }}</a></td>
+
+	<td>
+		<a href="{{ frappe.utils.get_form_link('Employee', doc.assigned_to) }}" target="_blank">
+			{{ doc.assigned_to_name }}
+		</a>
+	</td>
+
 	<td>
 		<span style="color: {{ doc.status_color }}">{{ doc.status }}</span>
 	</td>
