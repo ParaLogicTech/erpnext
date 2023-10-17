@@ -88,9 +88,10 @@ def get_projects_data(filters, sort_by, sort_order):
 	project_task_count = get_project_task_count(projects)
 	for d in projects_data:
 		count_data = project_task_count.get(d.name, task_count_template.copy())
-		if count_data['completed_tasks'] and count_data['total_tasks'] == count_data['completed_tasks'] \
-			and d.ready_to_close == 1:
+
+		if d.ready_to_close and count_data['total_tasks'] == count_data['completed_tasks']:
 			d.tasks_status = 'Ready'
+
 		d.vehicle_status_color = vehicle_status_color_map.get(d.tasks_status, 'black')
 		d.update(count_data)
 
@@ -360,7 +361,6 @@ def start_task(task):
 
 	ts_doc.append("time_logs", {
 		"from_time": get_datetime(),
-		"activity_type": "Working",
 		"project": task_doc.project,
 		"task": task,
 		"to_time": None,

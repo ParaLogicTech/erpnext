@@ -446,7 +446,8 @@ class Project(StatusUpdater):
 			}, None, update_modified=update_modified)
 
 	def set_ready_to_close(self, update=True):
-		self.validate_tasks_complete()
+		self.validate_tasks_completed()
+
 		previous_ready_to_close = self.ready_to_close
 
 		self.ready_to_close = 1
@@ -463,13 +464,19 @@ class Project(StatusUpdater):
 				'status': self.status,
 			}, None)
 
-	def validate_tasks_complete(self):
-		if not cint(frappe.db.get_single_value("Projects Settings", "validate_task_completed")):
+	def validate_tasks_completed(self):
+		if not frappe.get_cached_value("Projects Settings", None, "validate_tasks_completed"):
 			return
 
-		incomplete_task = frappe.db.get_value("Task", filters={"project": self.name, "status": ["!=", "Completed"]})
-		if incomplete_task:
-			frappe.throw(_("{0} not completed ").format(frappe.get_desk_link("Task", incomplete_task)))
+		incomplete_tasks = frappe.get_all("Task", filters={
+			"project": self.name,
+			"status": ["not in", ["Completed", "Cancelled"]]
+		}, fields=["name", "subject"])
+
+		if incomplete_tasks:
+			frappe.throw(_("Task not completed:<br><br><ul>{0}</ul>").format(
+				"".join([f"<li>{frappe.utils.get_link_to_form('Task', d.name)} ({d.subject})</li>" for d in incomplete_tasks])
+			))
 
 	def validate_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_ready_to_close"):
