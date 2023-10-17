@@ -69,6 +69,7 @@ class Project(StatusUpdater):
 		self.set_onload('valid_manual_project_status_names', get_valid_manual_project_status_names(self))
 		self.set_onload('is_manual_project_status', is_manual_project_status(self.project_status))
 		self.set_onload('contact_nos', get_all_contact_nos('Customer', self.customer))
+		self.set_onload('task_count', self.get_task_count())
 
 		if self.meta.has_field('applies_to_vehicle'):
 			self.set_onload('customer_vehicle_selector_data', get_customer_vehicle_selector_data(self.customer,
@@ -408,6 +409,19 @@ class Project(StatusUpdater):
 
 		if update:
 			self.db_set('tasks_status', self.tasks_status, update_modified=update_modified)
+
+	def get_task_count(self):
+		tasks_data = frappe.get_all("Task", pluck="status", filters={
+			"project": self.name,
+			"status": ["!=", "Cancelled"],
+		})
+
+		count = frappe._dict({
+			"total_tasks": len(tasks_data),
+			"completed_tasks": len([status for status in tasks_data if status == "Completed"]),
+		})
+
+		return count
 
 	def set_percent_complete(self, update=False, update_modified=False):
 		if self.percent_complete_method == "Manual":

@@ -263,6 +263,24 @@ erpnext.projects.ProjectController = class ProjectController extends erpnext.con
 			vehicle_status_color = "green";
 		}
 
+		var tasks_status_color;
+		if (me.frm.doc.tasks_status == "No Tasks") {
+			tasks_status_color = "light-gray";
+		} else if (me.frm.doc.tasks_status == "Not Started") {
+			tasks_status_color = "orange";
+		} else if (me.frm.doc.tasks_status == "In Progress") {
+			tasks_status_color = "yellow";
+		} else if (me.frm.doc.tasks_status == "On Hold") {
+			tasks_status_color = "red";
+		} else if (me.frm.doc.tasks_status == "Completed") {
+			tasks_status_color = "green";
+		}
+
+		var task_count = "";
+		if (me.frm.doc.__onload?.task_count && me.frm.doc.__onload.task_count.total_tasks) {
+			task_count = ` (${me.frm.doc.__onload.task_count.completed_tasks}/${me.frm.doc.__onload.task_count.total_tasks})`;
+		}
+
 		var delivery_status_color;
 		if (me.frm.doc.delivery_status == "Not Applicable") {
 			delivery_status_color = "light-gray";
@@ -275,6 +293,10 @@ erpnext.projects.ProjectController = class ProjectController extends erpnext.con
 		}
 
 		var status_items = [
+			{
+				contents: __('Tasks Status: {0}{1}', [me.frm.doc.tasks_status, task_count]),
+				indicator: tasks_status_color
+			},
 			{
 				contents: __('Material Status: {0}', [me.frm.doc.delivery_status]),
 				indicator: delivery_status_color
