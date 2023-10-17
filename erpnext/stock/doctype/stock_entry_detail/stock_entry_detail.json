@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "hash",
  "creation": "2013-03-29 18:22:12",
  "doctype": "DocType",
@@ -16,9 +17,10 @@
   "vehicle",
   "is_vehicle",
   "item_group",
+  "subcontracted_item",
   "col_break2",
   "item_name",
-  "subcontracted_item",
+  "subcontracted_item_name",
   "section_break_8",
   "hide_item_code",
   "description",
@@ -32,7 +34,7 @@
   "sample_quantity",
   "col_break3",
   "conversion_factor",
-  "transfer_qty",
+  "stock_qty",
   "stock_uom",
   "column_break_28",
   "alt_uom_size",
@@ -47,8 +49,8 @@
   "basic_amount",
   "amount",
   "cost_percentage",
-  "has_serial_no",
   "serial_no_batch",
+  "has_serial_no",
   "serial_no",
   "col_break4",
   "has_batch_no",
@@ -72,8 +74,10 @@
   "against_stock_entry",
   "ste_detail",
   "purchase_order_item",
+  "column_break_bq1dj",
+  "packing_slip",
+  "packing_slip_item",
   "column_break_51",
-  "reference_purchase_receipt",
   "project"
  ],
  "fields": [
@@ -271,17 +275,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "transfer_qty",
-   "fieldtype": "Float",
-   "label": "Qty as per Stock UOM",
-   "oldfieldname": "transfer_qty",
-   "oldfieldtype": "Currency",
-   "precision": "6",
-   "print_hide": 1,
-   "read_only": 1,
-   "reqd": 1
-  },
-  {
    "default": "0",
    "fetch_from": "item_code.retain_sample",
    "fieldname": "retain_sample",
@@ -371,8 +364,7 @@
    "oldfieldname": "actual_qty",
    "oldfieldtype": "Read Only",
    "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
+   "read_only": 1
   },
   {
    "description": "BOM No. for a Finished Good Item",
@@ -404,7 +396,8 @@
    "no_copy": 1,
    "options": "Material Request",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "material_request_item",
@@ -430,6 +423,7 @@
    "fieldname": "subcontracted_item",
    "fieldtype": "Link",
    "label": "Subcontracted Item",
+   "no_copy": 1,
    "options": "Item"
   },
   {
@@ -452,7 +446,8 @@
    "label": "Stock Entry Child",
    "no_copy": 1,
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_51",
@@ -482,13 +477,6 @@
    "hidden": 1,
    "label": "Item Group",
    "options": "Item Group"
-  },
-  {
-   "fieldname": "reference_purchase_receipt",
-   "fieldtype": "Link",
-   "label": "Reference Purchase Receipt",
-   "options": "Purchase Receipt",
-   "read_only": 1
   },
   {
    "fieldname": "project",
@@ -601,16 +589,64 @@
    "no_copy": 1,
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_bq1dj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "packing_slip",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Package",
+   "no_copy": 1,
+   "options": "Packing Slip",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "packing_slip_item",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Packing Slip Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:parent.purpose == 'Send to Subcontractor' && doc.subcontracted_item && doc.subcontracted_item_name != doc.subcontracted_item",
+   "fetch_from": "subcontracted_item.item_name",
+   "fieldname": "subcontracted_item_name",
+   "fieldtype": "Data",
+   "label": "Subcontracted Item Name",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "label": "Stock Qty",
+   "oldfieldname": "transfer_qty",
+   "oldfieldtype": "Currency",
+   "precision": "6",
+   "print_hide": 1,
+   "read_only": 1,
+   "reqd": 1
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2022-10-12 21:53:49.130492",
+ "links": [],
+ "modified": "2023-10-17 11:40:50.703021",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry Detail",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
- "sort_order": "ASC"
+ "sort_order": "ASC",
+ "states": []
 }

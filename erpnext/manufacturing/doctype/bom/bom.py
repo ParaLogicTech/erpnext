@@ -776,7 +776,7 @@ def get_bom_items(bom, company, qty=1, fetch_exploded=1):
 
 
 def validate_bom_no(item, bom_no):
-	"""Validate BOM No of sub-contracted items"""
+	"""Validate BOM No of subcontracted items"""
 	bom = frappe.get_doc("BOM", bom_no)
 
 	if not bom.is_active:

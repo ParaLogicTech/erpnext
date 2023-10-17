@@ -39,6 +39,9 @@ class SalarySlip(TransactionBase):
 	def autoname(self):
 		self.name = make_autoname(self.series)
 
+	def before_validate_links(self):
+		self.loans = []
+
 	def validate(self):
 		self.status = self.get_status()
 		self.validate_dates()

@@ -45,6 +45,10 @@ class SalesInvoice(SellingController):
 		super(SalesInvoice, self).onload()
 		self.set_can_make_vehicle_gate_pass()
 
+	def before_print(self, print_settings=None):
+		super().before_print(print_settings)
+		self.payments = self.get('payments', {'amount': ['!=', 0]})
+
 	def validate(self):
 		self.validate_posting_time()
 		super(SalesInvoice, self).validate()
@@ -58,9 +62,16 @@ class SalesInvoice(SellingController):
 		self.check_sales_order_on_hold_or_close()
 		self.validate_debit_to_acc()
 		self.validate_return_against()
-		self.clear_unallocated_advances("Sales Invoice Advance", "advances")
+
+		if not self.is_pos:
+			if cint(self.allocate_advances_automatically):
+				self.set_advances()
+			self.check_advance_payment_against_order("sales_order")
+
+		self.clear_unallocated_advances()
 		self.validate_write_off_account()
 		self.validate_account_for_change_amount()
+
 		self.validate_fixed_asset()
 		self.set_income_account_for_fixed_assets()
 		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
@@ -75,6 +86,7 @@ class SalesInvoice(SellingController):
 		self.validate_update_stock_mandatory()
 
 		# validate service stop date to lie in between start and end date
+		self.validate_deferred_start_and_end_date()
 		validate_service_stop_date(self)
 
 		if not self.is_opening:
@@ -183,9 +195,8 @@ class SalesInvoice(SellingController):
 		before_cancel_fbr_pos_invoice(self)
 
 	def on_cancel(self):
-		super(SalesInvoice, self).on_cancel()
+		self.unlink_payments_on_invoice_cancel()
 		self.update_status_on_cancel()
-
 		self.update_previous_doc_status()
 
 		if not self.is_return:
@@ -577,7 +588,12 @@ class SalesInvoice(SellingController):
 				transaction_type=self.get('transaction_type'))
 			self.party_account_currency = frappe.get_cached_value("Account", self.debit_to, "account_currency")
 		if not self.due_date and self.customer:
-			self.due_date = get_due_date(self.posting_date, "Customer", self.customer, self.company)
+			self.due_date = get_due_date(
+				self.posting_date, delivery_date=self.get("delivery_date"),
+				party_type="Customer", party=self.customer,
+				payment_terms_template=self.payment_terms_template,
+				company=self.company
+			)
 
 		super(SalesInvoice, self).set_missing_values(for_validate)
 
@@ -598,7 +614,7 @@ class SalesInvoice(SellingController):
 			if d.time_sheet:
 				timesheet = frappe.get_doc("Timesheet", d.time_sheet)
 				self.update_time_sheet_detail(timesheet, d, sales_invoice)
-				timesheet.calculate_total_amounts()
+				timesheet.calculate_totals()
 				timesheet.calculate_percentage_billed()
 				timesheet.flags.ignore_validate_update_after_submit = True
 				timesheet.set_status()
@@ -781,7 +797,7 @@ class SalesInvoice(SellingController):
 			},
 		})
 
-		self.validate_packing_slip()
+		self.validate_packing_slips()
 
 		if not self.get('project'):
 			super(SalesInvoice, self).validate_with_previous_doc({
@@ -969,12 +985,12 @@ class SalesInvoice(SellingController):
 	def add_timesheet_data(self):
 		self.set('timesheets', [])
 		if self.project:
-			for data in get_projectwise_timesheet_data(self.project):
+			for d in get_projectwise_timesheet_data(self.project):
 				self.append('timesheets', {
-						'time_sheet': data.parent,
-						'billing_hours': data.billing_hours,
-						'billing_amount': data.billing_amt,
-						'timesheet_detail': data.name
+						'time_sheet': d.timesheet,
+						'timesheet_detail': d.name,
+						'billing_hours': d.billing_hours,
+						'billing_amount': d.billing_amount,
 					})
 
 			self.calculate_billing_amount_for_timesheet()
@@ -1037,10 +1053,8 @@ class SalesInvoice(SellingController):
 		gl_entries = []
 
 		self.make_customer_gl_entry(gl_entries)
-
-		self.make_tax_gl_entries(gl_entries)
-
 		self.make_item_gl_entries(gl_entries)
+		self.make_tax_gl_entries(gl_entries)
 
 		# merge gl entries before adding pos entries
 		gl_entries = merge_similar_entries(gl_entries)
@@ -1058,7 +1072,7 @@ class SalesInvoice(SellingController):
 		grand_total = self.rounded_total or self.grand_total
 
 		if grand_total:
-			billing_party_type, billing_party = self.get_billing_party()
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 			# Didnot use base_grand_total to book rounding loss gle
 			grand_total_in_company_currency = flt(grand_total * self.conversion_rate,
@@ -1081,7 +1095,7 @@ class SalesInvoice(SellingController):
 			)
 
 	def make_tax_gl_entries(self, gl_entries):
-		billing_party_type, billing_party, billing_party_name = self.get_billing_party(with_name=True)
+		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 		for tax in self.get("taxes"):
 			if flt(tax.base_tax_amount_after_discount_amount):
@@ -1100,7 +1114,7 @@ class SalesInvoice(SellingController):
 				)
 
 	def make_item_gl_entries(self, gl_entries):
-		billing_party_type, billing_party, billing_party_name = self.get_billing_party(with_name=True)
+		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 		# income account gl entries
 		for item in self.get("items"):
@@ -1147,7 +1161,7 @@ class SalesInvoice(SellingController):
 
 	def make_loyalty_point_redemption_gle(self, gl_entries):
 		if cint(self.redeem_loyalty_points):
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party(with_name=True)
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 			gl_entries.append(
 				self.get_gl_dict({
@@ -1173,7 +1187,7 @@ class SalesInvoice(SellingController):
 
 	def make_pos_gl_entries(self, gl_entries):
 		if cint(self.is_pos):
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party(with_name=True)
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 			for payment_mode in self.payments:
 				if payment_mode.amount:
@@ -1209,7 +1223,7 @@ class SalesInvoice(SellingController):
 
 	def make_gle_for_change_amount(self, gl_entries):
 		if cint(self.is_pos) and self.change_amount:
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party(with_name=True)
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 			if self.account_for_change_amount:
 				gl_entries.append(
@@ -1242,7 +1256,7 @@ class SalesInvoice(SellingController):
 	def make_write_off_gl_entry(self, gl_entries):
 		# write off entries, applicable if only pos
 		if self.write_off_account and flt(self.write_off_amount, self.precision("write_off_amount")):
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party(with_name=True)
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 			write_off_account_currency = get_account_currency(self.write_off_account)
 			default_cost_center = frappe.get_cached_value('Company',  self.company,  'cost_center')
@@ -1277,7 +1291,7 @@ class SalesInvoice(SellingController):
 
 	def make_gle_for_rounding_adjustment(self, gl_entries):
 		if flt(self.rounding_adjustment, self.precision("rounding_adjustment")) and self.base_rounding_adjustment:
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party(with_name=True)
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 			round_off_account, round_off_cost_center = \
 				get_round_off_account_and_cost_center(self.company)

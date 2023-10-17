@@ -167,6 +167,7 @@ class SalesPurchaseDetailsReport(object):
 		# Rate and Amount
 		if not self.filters.qty_only:
 			select_fields += [f"i.{f}" for f in self.amount_fields]
+			select_fields += [f"i.{r[0]}" for r in self.rate_fields]
 			select_fields += ["i.item_tax_detail", "i.item_tax_rate"]
 
 		# Party
@@ -449,13 +450,13 @@ class SalesPurchaseDetailsReport(object):
 						totals[f] = v
 
 			if 'parent' in grouped_by:
-				fields_to_copy = ['date', 'sales_person', 'territory', 'party', 'party_name', 'bill_no', 'bill_date']
+				fields_to_copy = [
+					'date', 'party', 'party_name', 'sales_person', 'territory',
+					'stin', 'bill_no', 'bill_date'
+				]
 				for f in fields_to_copy:
 					if f in data[0]:
 						totals[f] = data[0][f]
-
-				totals['date'] = data[0].get('date')
-				totals['stin'] = data[0].get('stin')
 
 				projects = set([d.get('project') for d in data if d.get('project')])
 				totals['project'] = ", ".join(projects)
@@ -512,22 +513,21 @@ class SalesPurchaseDetailsReport(object):
 
 	def postprocess_row(self, row):
 		# Calculate rate
-		if flt(row["qty"]):
-			for d in self.rate_fields:
-				divisor_field = "qty"
-				multiplier = 1
+		for d in self.rate_fields:
+			divisor_field = "qty"
+			multiplier = 1
 
-				if len(d) == 2:
-					target, source = d
-				elif len(d) == 3:
-					target, source, divisor_field = d
-				else:
-					target, source, divisor_field, multiplier = d
+			if len(d) == 2:
+				target, source = d
+			elif len(d) == 3:
+				target, source, divisor_field = d
+			else:
+				target, source, divisor_field, multiplier = d
 
-				if flt(row[divisor_field]):
-					row[target] = flt(row[source]) / flt(row[divisor_field]) * flt(multiplier)
-				else:
-					row[target] = 0
+			if flt(row[divisor_field]):
+				row[target] = flt(row[source]) / flt(row[divisor_field]) * flt(multiplier)
+			else:
+				row[target] = flt(row.get(target)) or 0
 
 		# Calculate total taxes and grand total
 		if not self.filters.qty_only:
@@ -675,10 +675,9 @@ class SalesPurchaseDetailsReport(object):
 				"width": 110
 			},
 			{
-				"label": _("Discount Rate"),
+				"label": _("Discount (%)"),
 				"fieldname": "base_discount_rate",
 				"fieldtype": "Percent",
-				"options": "Company:company:default_currency",
 				"width": 60
 			},
 			{
@@ -717,10 +716,9 @@ class SalesPurchaseDetailsReport(object):
 				"width": 110
 			},
 			{
-				"label": _("Discount Rate"),
+				"label": _("Discount (%)"),
 				"fieldname": "base_tax_exclusive_discount_rate",
 				"fieldtype": "Percent",
-				"options": "Company:company:default_currency",
 				"width": 60
 			},
 			{
@@ -876,6 +874,18 @@ class SalesPurchaseDetailsReport(object):
 
 		if not self.filters.show_packing_slip:
 			columns = [c for c in columns if c.get('fieldname') != 'packing_slip']
+
+		if self.filters.totals_only:
+			if "item_code" not in self.group_by:
+				columns = [c for c in columns if c.get('fieldname') not in ('item_code', 'item_name')]
+
+			if "party" not in self.group_by and "parent" not in self.group_by:
+				columns = [c for c in columns if c.get('fieldname') not in ('party', 'party_name')]
+
+			if "parent" not in self.group_by:
+				columns = [c for c in columns if c.get('fieldname') not in (
+					'parent', 'date', 'sales_person', 'territory', 'stin',
+				)]
 
 		return columns
 

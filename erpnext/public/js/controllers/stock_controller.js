@@ -81,17 +81,6 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		}
 	}
 
-	autofill_warehouse (child_table, warehouse_field, warehouse, force) {
-		if ((warehouse || force) && child_table && child_table.length) {
-			let doctype = child_table[0].doctype;
-			$.each(child_table || [], function(i, item) {
-				if (force || !item.force_default_warehouse) {
-					frappe.model.set_value(doctype, item.name, warehouse_field, warehouse);
-				}
-			});
-		}
-	}
-
 	get_applicable_items(items_type) {
 		var me = this;
 
@@ -320,6 +309,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					fieldtype: 'Link',
 					options: 'Customer',
 					default: this.frm.doc.customer || undefined,
+					depends_on: "eval:!doc.no_customer",
 					get_query: () => erpnext.queries.customer(),
 				},
 				{
@@ -350,10 +340,17 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					options: 'Item',
 					get_query: () => erpnext.queries.item(),
 				},
+				{
+					fieldname: 'no_customer',
+					label: __('Without Customer'),
+					fieldtype: 'Check',
+					options: 'Item',
+					get_query: () => erpnext.queries.item(),
+				},
 			],
 			columns: columns,
 			get_query: () => {
-				var filters = {
+				let filters = {
 					company: this.frm.doc.company,
 				};
 

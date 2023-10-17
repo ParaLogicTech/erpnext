@@ -6,7 +6,6 @@ from frappe import _
 from frappe.utils import flt, cstr, cint
 from erpnext.hr.utils import set_employee_name
 from erpnext.accounts.general_ledger import make_gl_entries
-from erpnext.accounts.utils import unlink_ref_doc_from_payment_entries
 from erpnext.controllers.accounts_controller import AccountsController
 from erpnext.hr.doctype.employee_advance.employee_advance import get_unclaimed_advances
 
@@ -47,7 +46,7 @@ class ExpenseClaim(AccountsController):
 
 		if cint(self.allocate_advances_automatically):
 			self.set_advances()
-		self.clear_unallocated_advances("Expense Claim Advance", "advances")
+		self.clear_unallocated_advances()
 
 		self.set_status()
 
@@ -67,12 +66,13 @@ class ExpenseClaim(AccountsController):
 		self.update_against_document_in_jv()
 
 	def on_cancel(self):
+		self.unlink_payments_on_invoice_cancel()
 		self.update_task_and_project()
 		self.make_gl_entries(cancel=True)
+		self.set_status(update=True)
 
-		unlink_ref_doc_from_payment_entries(self, validate_permission=True)
-
-		self.set_status()
+	def get_party(self):
+		return "Employee", self.employee, self.employee_name
 
 	@frappe.whitelist()
 	def set_advances(self):

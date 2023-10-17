@@ -401,17 +401,8 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		});
 	}
 
-	set_warehouse(frm) {
-		this.autofill_warehouse(cur_frm.doc.items, "warehouse", cur_frm.doc.set_warehouse);
-	}
-
-	autofill_warehouse (child_table, warehouse_field, warehouse, force) {
-		if ((warehouse || force) && child_table && child_table.length) {
-			let doctype = child_table[0].doctype;
-			$.each(child_table || [], function(i, item) {
-				frappe.model.set_value(doctype, item.name, warehouse_field, warehouse);
-			});
-		}
+	set_warehouse() {
+		erpnext.utils.autofill_warehouse(this.frm.doc.items, "warehouse", this.frm.doc.set_warehouse);
 	}
 
 	items_add(doc, cdt, cdn) {

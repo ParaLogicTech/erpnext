@@ -39,15 +39,12 @@ class VehicleTransactionController(StockController):
 		if self.get("_action") and self._action != "update_after_submit":
 			self.set_missing_values(for_validate=True)
 
-		if self.get('supplier'):
-			self.ensure_supplier_is_not_blocked()
-
-		self.validate_date_with_fiscal_year()
-
 		self.validate_vehicle_booking_order()
 		self.validate_project()
 
 		self.validate_party()
+		self.ensure_supplier_is_not_blocked()
+
 		self.validate_vehicle_item()
 		self.validate_vehicle()
 
@@ -575,7 +572,7 @@ class VehicleTransactionController(StockController):
 			make_vehicle_log(self.vehicle,
 				odometer=cint(self.get('vehicle_odometer')),
 				customer=self.get('customer'),
-				vehicle_owner=self.get('financer'),
+				vehicle_owner=self.get('vehicle_owner') or self.get('financer'),
 				date=self.get('posting_date') or self.get('transaction_date'),
 				project=self.get('project'),
 				reference_type=self.doctype,

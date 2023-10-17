@@ -130,25 +130,30 @@ def get_batch_qty(batch_no=None, warehouse=None, item_code=None, posting_date=No
 
 	date_cond = ""
 	if posting_date and posting_time:
-		date_cond = " and timestamp(posting_date, posting_time) <= timestamp('{0}', '{1}')".format(posting_date, posting_time)
+		date_cond = " and (posting_date, posting_time) <= ('{0}', '{1}')".format(posting_date, posting_time)
 
 	if batch_no and warehouse:
-		out = flt(frappe.db.sql("""select sum(actual_qty)
+		out = flt(frappe.db.sql("""
+			select sum(actual_qty)
 			from `tabStock Ledger Entry`
-			where warehouse=%s and batch_no=%s {0}""".format(date_cond),
-			(warehouse, batch_no))[0][0] or 0)
+			where warehouse=%s and batch_no=%s {0}
+		""".format(date_cond), (warehouse, batch_no))[0][0] or 0)
 
 	if batch_no and not warehouse:
-		out = frappe.db.sql('''select warehouse, sum(actual_qty) as qty
+		out = frappe.db.sql("""
+			select warehouse, sum(actual_qty) as qty
 			from `tabStock Ledger Entry`
-			where batch_no=%s {0}
-			group by warehouse'''.format(date_cond), batch_no, as_dict=1)
+			where batch_no = %s {0}
+			group by warehouse
+		""".format(date_cond), batch_no, as_dict=1)
 
 	if not batch_no and item_code and warehouse:
-		out = frappe.db.sql('''select batch_no, sum(actual_qty) as qty
+		out = frappe.db.sql("""
+			select batch_no, sum(actual_qty) as qty
 			from `tabStock Ledger Entry`
 			where item_code = %s and warehouse=%s {0}
-			group by batch_no'''.format(date_cond), (item_code, warehouse), as_dict=1)
+			group by batch_no
+		""".format(date_cond), (item_code, warehouse), as_dict=1)
 
 	return out
 
@@ -157,9 +162,9 @@ def get_batch_qty_on(batch_no, warehouse, posting_date, posting_time):
 	res = frappe.db.sql("""
 		select sum(actual_qty)
 		from `tabStock Ledger Entry`
-		where timestamp(posting_date, posting_time) <= timestamp(%s, %s)
-			and ifnull(is_cancelled, 'No') = 'No' and warehouse=%s and batch_no=%s""",
-	(posting_date, posting_time, warehouse, batch_no))
+		where (posting_date, posting_time) <= (%s, %s)
+			and ifnull(is_cancelled, 'No') = 'No' and warehouse = %s and batch_no = %s
+	""", (posting_date, posting_time, warehouse, batch_no))
 
 	return flt(res[0][0]) if res else 0.0
 
@@ -240,7 +245,7 @@ def auto_select_and_split_batches(doc, warehouse_field, additional_group_fields=
 	for d in doc.items:
 		has_batch_no = d.get("item_code") and frappe.get_cached_value("Item", d.item_code, "has_batch_no")
 		warehouse = d.get(warehouse_field)
-		if has_batch_no and warehouse and not d.get("packing_slip"):
+		if has_batch_no and warehouse and not d.get("packing_slip") and not d.get("source_packing_slip"):
 			key = get_key(d)
 			group_qty_map.setdefault(key, 0)
 			group_qty_map[key] += flt(d.get('qty'))
@@ -254,7 +259,7 @@ def auto_select_and_split_batches(doc, warehouse_field, additional_group_fields=
 	for d in doc.items:
 		has_batch_no = d.get("item_code") and frappe.get_cached_value("Item", d.item_code, "has_batch_no")
 		warehouse = d.get(warehouse_field)
-		if has_batch_no and warehouse and not d.get("packing_slip"):
+		if has_batch_no and warehouse and not d.get("packing_slip") and not d.get("source_packing_slip"):
 			key = get_key(d)
 			if key not in visited:
 				visited.add(key)
@@ -274,7 +279,7 @@ def auto_select_and_split_batches(doc, warehouse_field, additional_group_fields=
 		has_batch_no = d.get("item_code") and frappe.get_cached_value("Item", d.item_code, "has_batch_no")
 		warehouse = d.get(warehouse_field)
 
-		if has_batch_no and warehouse and not d.get("packing_slip"):
+		if has_batch_no and warehouse and not d.get("packing_slip") and not d.get("source_packing_slip"):
 			batches = get_sufficient_batch_or_fifo(d.item_code, warehouse, flt(d.qty), flt(d.conversion_factor),
 				batches_used=batches_used, include_empty_batch=True, precision=d.precision('qty'))
 
@@ -392,9 +397,11 @@ def get_sufficient_batch_or_fifo(item_code, warehouse, qty=1.0, conversion_facto
 
 def get_batch_received_date(batch_no, warehouse):
 	date = frappe.db.sql("""
-		select min(timestamp(posting_date, posting_time))
+		select timestamp(posting_date, posting_time)
 		from `tabStock Ledger Entry`
 		where batch_no = %s and warehouse = %s
+		order by posting_date, posting_time, creation
+		limit 1
 	""", [batch_no, warehouse])
 
 	return date[0][0] if date else None
@@ -426,9 +433,11 @@ def get_batches(item_code, warehouse, posting_date=None, posting_time=None, qty_
 	batches = frappe.db.sql("""
 		select b.name, sum(sle.actual_qty) as qty, b.expiry_date,
 			min(timestamp(sle.posting_date, sle.posting_time)) received_date
-		from `tabBatch` b
-		join `tabStock Ledger Entry` sle ignore index (item_code, warehouse) on b.name = sle.batch_no
-		where sle.item_code = %(item_code)s and sle.warehouse = %(warehouse)s {0}
+		from `tabStock Ledger Entry` sle
+		join `tabBatch` b on b.name = sle.batch_no
+		where sle.item_code = %(item_code)s and sle.warehouse = %(warehouse)s
+			and (sle.packing_slip = '' or sle.packing_slip is null)
+			{0}
 		group by b.name
 		{1}
 	""".format(date_cond, having), args, as_dict=True)

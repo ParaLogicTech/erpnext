@@ -259,31 +259,6 @@ def add_sales_person_from_source(source, target):
 
 
 @frappe.whitelist()
-def get_lead_details(lead, posting_date=None, company=None):
-	if not lead: return frappe._dict()
-
-	from erpnext.accounts.party import set_address_details
-	out = frappe._dict()
-
-	lead_doc = frappe.get_doc("Lead", lead)
-	lead = lead_doc
-
-	out["customer_name"] = lead.company_name or lead.lead_name
-	out["territory"] = lead.territory
-
-	out.update(_get_lead_contact_details(lead))
-
-	set_address_details(out, lead, "Lead")
-
-	taxes_and_charges = set_taxes(None, 'Lead', posting_date, company,
-		billing_address=out.get('customer_address'), shipping_address=out.get('shipping_address_name'))
-	if taxes_and_charges:
-		out['taxes_and_charges'] = taxes_and_charges
-
-	return out
-
-
-@frappe.whitelist()
 def get_lead_contact_details(lead):
 	if not lead:
 		return frappe._dict()

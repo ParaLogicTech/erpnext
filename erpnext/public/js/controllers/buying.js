@@ -109,7 +109,7 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 		this.frm.set_query("item_code", "items", function(doc) {
 			var filters = {};
 
-			if (me.frm.doc.is_subcontracted == "Yes") {
+			if (me.frm.doc.is_subcontracted) {
 				filters['is_sub_contracted_item'] = 1;
 			} else {
 				filters['is_purchase_item'] = 1;
@@ -286,10 +286,13 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 	}
 
 	rejected_warehouse(doc, cdt) {
-		// trigger autofill_warehouse only if parent rejected_warehouse field is triggered
 		if (["Purchase Invoice", "Purchase Receipt"].includes(cdt)) {
-			this.autofill_warehouse(doc.items, "rejected_warehouse", doc.rejected_warehouse, true);
+			erpnext.utils.autofill_warehouse(doc.items, "rejected_warehouse", doc.rejected_warehouse, true);
 		}
+	}
+
+	set_reserve_warehouse() {
+		erpnext.utils.autofill_warehouse(this.frm.doc.supplied_items, "reserve_warehouse", this.frm.doc.set_reserve_warehouse);
 	}
 
 	category(doc, cdt, cdn) {
@@ -470,7 +473,7 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 
 erpnext.buying.get_default_bom = function(frm) {
 	$.each(frm.doc["items"] || [], function(i, d) {
-		if (d.item_code && d.bom === "") {
+		if (d.item_code && !d.bom) {
 			return frappe.call({
 				type: "GET",
 				method: "erpnext.stock.get_item_details.get_default_bom",
@@ -485,6 +488,15 @@ erpnext.buying.get_default_bom = function(frm) {
 			})
 		}
 	});
+}
+
+erpnext.buying.set_default_supplier_warehouse = function(frm) {
+	if (frm.doc.is_subcontracted && !frm.doc.supplier_warehouse && frm.fields_dict.supplier_warehouse) {
+		let default_supplier_warehouse = frappe.defaults.get_default("default_subcontracting_supplier_warehouse");
+		if (default_supplier_warehouse) {
+			frm.set_value("supplier_warehouse", default_supplier_warehouse);
+		}
+	}
 }
 
 erpnext.buying.get_items_from_product_bundle = function(frm) {

@@ -122,7 +122,8 @@ frappe.ui.form.on("Item", {
 		frm.set_df_property('alt_uom_size', 'read_only', alt_uom_readonly);
 
 		cant_change_fields.forEach((fieldname) => {
-			frm.set_df_property(fieldname, 'read_only', 1);
+			frm.set_df_property(fieldname, "read_only_depends_on", null);
+			frm.set_df_property(fieldname, "read_only", 1);
 		});
 
 		frm.toggle_reqd('customer', frm.doc.is_customer_provided_item ? 1:0);

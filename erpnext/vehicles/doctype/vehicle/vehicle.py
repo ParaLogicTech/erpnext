@@ -285,7 +285,7 @@ def get_reserved_vehicles(sales_order, additional_filters=None):
 			'purchase_document_type', 'purchase_document_no',
 		],
 		filters=filters,
-		order_by="timestamp(purchase_date, purchase_time) desc")  # desc because popping from list
+		order_by="purchase_date desc, purchase_time desc")  # desc because popping from list
 
 
 def set_reserved_vehicles_from_so(source, target):

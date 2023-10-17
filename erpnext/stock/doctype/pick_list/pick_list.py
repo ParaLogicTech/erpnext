@@ -444,7 +444,7 @@ def update_common_item_properties(item, location):
 	item.item_code = location.item_code
 	item.s_warehouse = location.warehouse
 	item.qty = location.picked_qty * location.conversion_factor
-	item.transfer_qty = location.picked_qty
+	item.stock_qty = location.picked_qty
 	item.uom = location.uom
 	item.conversion_factor = location.conversion_factor
 	item.stock_uom = location.stock_uom

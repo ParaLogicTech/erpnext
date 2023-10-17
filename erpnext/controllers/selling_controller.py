@@ -9,11 +9,10 @@ from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
 from erpnext.stock.get_item_details import get_target_warehouse_validation, item_has_product_bundle
 from erpnext.stock.doctype.batch.batch import get_batch_qty, auto_select_and_split_batches
 from erpnext.setup.doctype.sales_person.sales_person import get_sales_person_commission_details
+from erpnext.controllers.transaction_controller import TransactionController
 
-from erpnext.controllers.stock_controller import StockController
 
-
-class SellingController(StockController):
+class SellingController(TransactionController):
 	def __setup__(self):
 		if hasattr(self, "taxes"):
 			self.flags.print_taxes_with_zero_amount = cint(frappe.get_cached_value("Print Settings", None,
@@ -65,6 +64,17 @@ class SellingController(StockController):
 	def before_update_after_submit(self):
 		self.calculate_sales_team_contribution(self.get('base_net_total'))
 
+	def get_party(self):
+		party = self.get("customer")
+		party_name = self.get("customer_name") if party else None
+		return "Customer", party, party_name
+
+	def get_billing_party(self):
+		if self.get("bill_to"):
+			return "Customer", self.get("bill_to"), self.get("bill_to_name")
+
+		return super().get_billing_party()
+
 	def set_missing_values(self, for_validate=False):
 		super(SellingController, self).set_missing_values(for_validate)
 
@@ -87,52 +97,46 @@ class SellingController(StockController):
 			self.db_set(to_update)
 
 	def set_missing_lead_customer_details(self):
-		from erpnext.controllers.accounts_controller import force_party_fields
+		party_type, party = None, None
 
-		customer, lead = None, None
-		if getattr(self, "customer", None):
-			customer = self.customer
-		elif self.doctype == "Opportunity" and self.party_name:
-			if self.opportunity_from == "Customer":
-				customer = self.party_name
-			else:
-				lead = self.party_name
+		if self.get("customer"):
+			party_type = "Customer"
+			party = self.customer
 		elif self.doctype == "Quotation" and self.party_name:
-			if self.quotation_to == "Customer":
-				customer = self.party_name
-			else:
-				lead = self.party_name
+			party_type = self.quotation_to
+			party = self.party_name
 
-		if customer:
+		if party_type and party:
 			from erpnext.accounts.party import _get_party_details
-			fetch_payment_terms_template = False
-			if (self.get("__islocal") or
-				self.company != frappe.db.get_value(self.doctype, self.name, 'company')):
-				fetch_payment_terms_template = True
 
-			party_details = _get_party_details(customer,
+			party_details = _get_party_details(
+				party=party,
+				party_type=party_type,
 				bill_to=self.get("bill_to"),
 				ignore_permissions=self.flags.ignore_permissions,
 				doctype=self.doctype,
 				company=self.company,
 				project=self.get('project'),
-				fetch_payment_terms_template=fetch_payment_terms_template,
-				has_stin=self.get("has_stin"),
-				party_address=self.customer_address,
-				shipping_address=self.shipping_address_name,
+				payment_terms_template=self.get('payment_terms_template'),
+				party_address=self.get("customer_address"),
+				shipping_address=self.get("shipping_address_name"),
+				company_address=self.get("company_address"),
 				contact_person=self.get('contact_person'),
+				has_stin=self.get("has_stin"),
 				account=self.get('debit_to'),
-				posting_date=self.get('posting_date') or self.get('transaction_date')
+				cost_center=self.get('cost_center'),
+				posting_date=self.get('posting_date') or self.get('transaction_date'),
+				delivery_date=self.get('delivery_date'),
+				price_list=self.get('selling_price_list'),
+				currency=self.get("currency"),
+				transaction_type=self.get("transaction_type"),
+				pos_profile=self.get("pos_profile"),
 			)
-			if not self.meta.get_field("sales_team") and "sales_team" in party_details:
-				party_details.pop("sales_team")
-			self.update_if_missing(party_details, force_fields=force_party_fields)
 
-		elif lead:
-			from erpnext.crm.doctype.lead.lead import get_lead_details
-			self.update_if_missing(get_lead_details(lead,
-				posting_date=self.get('transaction_date') or self.get('posting_date'),
-				company=self.company), force_fields=force_party_fields)
+			if not self.meta.get_field("sales_team"):
+				party_details.pop("sales_team", None)
+
+			self.update_if_missing(party_details, force_fields=self.force_party_fields)
 
 	def set_sales_person_details(self):
 		sales_team = self.get("sales_team") or []
@@ -142,6 +146,11 @@ class SellingController(StockController):
 	def set_price_list_and_item_details(self, for_validate=False):
 		self.set_price_list_currency("Selling")
 		self.set_missing_item_details(for_validate=for_validate)
+
+	def calculate_taxes_and_totals(self):
+		super().calculate_taxes_and_totals()
+		self.calculate_commission()
+		self.calculate_sales_team_contribution(self.get('base_net_total'))
 
 	def remove_shipping_charge(self):
 		if self.shipping_rule:
@@ -155,18 +164,6 @@ class SellingController(StockController):
 			if existing_shipping_charge:
 				self.get("taxes").remove(existing_shipping_charge[-1])
 				self.calculate_taxes_and_totals()
-
-	def set_total_in_words(self):
-		from frappe.utils import money_in_words
-
-		if self.meta.get_field("base_in_words"):
-			base_amount = abs(self.base_grand_total
-				if self.is_rounded_total_disabled() else self.base_rounded_total)
-			self.base_in_words = money_in_words(base_amount, self.company_currency)
-
-		if self.meta.get_field("in_words"):
-			amount = abs(self.grand_total if self.is_rounded_total_disabled() else self.rounded_total)
-			self.in_words = money_in_words(amount, self.currency)
 
 	def calculate_commission(self):
 		if self.meta.get_field("commission_rate"):
@@ -439,84 +436,6 @@ class SellingController(StockController):
 						}))
 		self.make_sl_entries(sl_entries)
 
-	def validate_packing_slip(self):
-		def get_packing_slip_details(name):
-			if not packing_slip_map.get(name):
-				packing_slip_map[name] = frappe.db.get_value("Packing Slip", name,
-					["name", "docstatus", "status", "company", "customer", "project", "warehouse", "weight_uom"], as_dict=1)
-
-			return packing_slip_map[name]
-
-		is_delivery = self.doctype != "Sales Invoice" or self.get("update_stock")
-		if is_delivery:
-			required_packing_slip_status = "Delivered" if self.get("is_return") else "In Stock"
-		else:
-			required_packing_slip_status = None
-
-		# Validate Packing Slips
-		packing_slip_map = {}
-		for d in self.get("items"):
-			if not d.get("packing_slip"):
-				continue
-
-			packing_slip = get_packing_slip_details(d.packing_slip)
-			if not packing_slip:
-				frappe.throw(_("Row #{0}: Packing Slip {1} does not exist").format(d.idx, d.packing_slip))
-
-			if packing_slip.docstatus == 0:
-				frappe.throw(_("Row #{0}: {1} is in draft").format(
-					d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name)
-				))
-			if packing_slip.docstatus == 2:
-				frappe.throw(_("Row #{0}: {1} is cancelled").format(
-					d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name)
-				))
-
-			if required_packing_slip_status and packing_slip.status != required_packing_slip_status:
-				frappe.throw(_("Row #{0}: Cannot select {1} because its status is {2}").format(
-					d.idx,
-					frappe.get_desk_link("Packing Slip", packing_slip.name),
-					frappe.bold(packing_slip.status)
-				))
-
-			if self.company != packing_slip.company:
-				frappe.throw(_("Row #{0}: Company does not match with {1}. Company must be {2}").format(
-					d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), packing_slip.company
-				))
-
-			if cstr(self.project) != cstr(packing_slip.project):
-				frappe.throw(_("Row #{0}: Project does not match with {1}. Project must be {2}").format(
-					d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), packing_slip.project
-				))
-
-			if packing_slip.customer and self.customer != packing_slip.customer:
-				frappe.throw(_("Row #{0}: Customer does not match with {1}. Customer must be {2}").format(
-					d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), packing_slip.customer
-				))
-
-			if d.weight_uom != packing_slip.weight_uom:
-				frappe.throw(_("Row #{0}: Weight UOM does not match with {1}. Weight UOM must be {2}").format(
-					d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), packing_slip.weight_uom
-				))
-
-			if d.warehouse != packing_slip.warehouse:
-				frappe.throw(_("Row #{0}: Warehouse does not match with {1}. Warehouse must be {2}").format(
-					d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), packing_slip.warehouse
-				))
-
-			if not d.get("packing_slip_item"):
-				frappe.throw(_("Row #{0}: Missing Packing Slip Row Reference").format(d.idx))
-
-			if is_delivery and not self.get("is_return"):
-				packing_slip_qty = flt(frappe.db.get_value("Packing Slip Item", d.packing_slip_item, 'qty'))
-
-				if flt(d.qty) != packing_slip_qty:
-					frappe.throw(_("Row #{0}: Qty does not match with {1}. Qty must be {2}").format(
-						d.idx,
-						frappe.get_desk_link("Packing Slip", packing_slip.name),
-						frappe.bold(frappe.format(packing_slip_qty))
-					))
-
 	def remove_partial_packing_slip_for_return(self):
 		if not self.get("is_return"):
 			return
@@ -543,13 +462,6 @@ class SellingController(StockController):
 				if d.get("packing_slip") and d.packing_slip in to_remove:
 					d.packing_slip = None
 					d.packing_slip_item = None
-
-	def update_packing_slips(self):
-		packing_slips = list(set([d.packing_slip for d in self.get("items") if d.get("packing_slip")]))
-		for name in packing_slips:
-			doc = frappe.get_doc("Packing Slip", name)
-			doc.set_status(update=True)
-			doc.notify_update()
 
 	def set_po_nos(self):
 		if self.doctype in ("Delivery Note", "Sales Invoice") and hasattr(self, "items"):

@@ -6,6 +6,7 @@ from frappe.utils import flt, nowdate
 import frappe.defaults
 from frappe.model.document import Document
 
+
 class Bin(Document):
 	def before_save(self):
 		if self.get("__islocal") or not self.stock_uom:
@@ -80,13 +81,13 @@ class Bin(Document):
 	def update_reserved_qty_for_sub_contracting(self):
 		#reserved qty
 		reserved_qty_for_sub_contract = frappe.db.sql('''
-			select ifnull(sum(itemsup.required_qty),0)
+			select ifnull(sum(itemsup.required_qty), 0)
 			from `tabPurchase Order` po, `tabPurchase Order Item Supplied` itemsup
 			where
 				itemsup.rm_item_code = %s
 				and itemsup.parent = po.name
 				and po.docstatus = 1
-				and po.is_subcontracted = 'Yes'
+				and po.is_subcontracted = 1
 				and po.status != 'Closed'
 				and po.receipt_status = 'To Receive'
 				and itemsup.reserve_warehouse = %s''', (self.item_code, self.warehouse))[0][0]
@@ -94,18 +95,18 @@ class Bin(Document):
 		#Get Transferred Entries
 		materials_transferred = frappe.db.sql("""
 			select
-				ifnull(sum(transfer_qty),0)
+				ifnull(sum(sed.stock_qty), 0)
 			from
 				`tabStock Entry` se, `tabStock Entry Detail` sed, `tabPurchase Order` po
 			where
 				se.docstatus=1
 				and se.purpose='Send to Subcontractor'
-				and ifnull(se.purchase_order, '') !=''
+				and ifnull(se.purchase_order, '') != ''
 				and (sed.item_code = %(item)s or sed.original_item = %(item)s)
 				and se.name = sed.parent
 				and se.purchase_order = po.name
 				and po.docstatus = 1
-				and po.is_subcontracted = 'Yes'
+				and po.is_subcontracted = 1
 				and po.status != 'Closed'
 				and po.receipt_status = 'To Receive'
 		""", {'item': self.item_code})[0][0]

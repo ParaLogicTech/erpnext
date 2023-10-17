@@ -5,12 +5,19 @@ frappe.provide("erpnext.stock");
 frappe.ui.form.on('Stock Entry', {
 	setup: function(frm) {
 		frm.set_query('work_order', function() {
+			let filters = {
+				'docstatus': 1,
+				'company': frm.doc.company,
+				'status': ['!=', 'Completed']
+			};
+			if (frm.doc.purpose == "Material Transfer for Manufacture") {
+				filters['per_material_transferred'] = ['<', 100];
+				filters['skip_transfer'] = 0;
+			} else {
+				filters['per_produced'] = ['<', 100];
+			}
 			return {
-				filters: [
-					['Work Order', 'docstatus', '=', 1],
-					['Work Order', 'qty', '>','`tabWork Order`.produced_qty'],
-					['Work Order', 'company', '=', frm.doc.company]
-				]
+				filters: filters
 			}
 		});
 
@@ -246,7 +253,7 @@ frappe.ui.form.on('Stock Entry', {
 								d.uom = element.stock_uom;
 								d.conversion_factor = 1;
 								d.batch_no = element.batch_no;
-								d.transfer_qty = element.qty;
+								d.stock_qty = element.qty;
 								frm.refresh_fields();
 							});
 						}
@@ -307,7 +314,7 @@ frappe.ui.form.on('Stock Entry', {
 		var	args = {
 			'item_code'	: d.item_code,
 			'warehouse'	: cstr(d.s_warehouse),
-			'stock_qty'		: d.transfer_qty
+			'stock_qty'		: d.stock_qty
 		};
 		frappe.call({
 			method: "erpnext.stock.get_item_details.get_serial_no",
@@ -324,7 +331,7 @@ frappe.ui.form.on('Stock Entry', {
 	},
 
 	auto_select_batches: function(frm) {
-		return frappe.call({
+		return frm.call({
 			method: 'auto_select_batches',
 			doc: frm.doc,
 			freeze: 1,
@@ -361,12 +368,12 @@ frappe.ui.form.on('Stock Entry', {
 
 	set_basic_rate: function(frm, cdt, cdn) {
 		const item = locals[cdt][cdn];
-		item.transfer_qty = flt(item.qty) * flt(item.conversion_factor);
+		item.stock_qty = flt(item.qty) * flt(item.conversion_factor);
 
 		if (!item.alt_uom) {
 			item.alt_uom_size = 1.0;
 		}
-		item.alt_uom_qty = flt(flt(item.transfer_qty) * flt(item.alt_uom_size), precision("alt_uom_qty", item));
+		item.alt_uom_qty = flt(flt(item.stock_qty) * flt(item.alt_uom_size), precision("alt_uom_qty", item));
 
 		if (cint(frm.doc.customer_provided)) {
 			frappe.model.set_value(cdt, cdn, 'basic_rate', 0.0);
@@ -380,7 +387,7 @@ frappe.ui.form.on('Stock Entry', {
 				'batch_no': item.batch_no,
 				'serial_no': item.serial_no,
 				'company': frm.doc.company,
-				'qty': item.s_warehouse ? -1 * flt(item.transfer_qty) : flt(item.transfer_qty),
+				'qty': item.s_warehouse ? -1 * flt(item.stock_qty) : flt(item.stock_qty),
 				'voucher_type': frm.doc.doctype,
 				'voucher_no': item.name,
 				'allow_zero_valuation': 1,
@@ -411,9 +418,9 @@ frappe.ui.form.on('Stock Entry', {
 						'item_code': child.item_code,
 						'warehouse': cstr(child.s_warehouse) || cstr(child.t_warehouse),
 						'batch_no': child.batch_no,
-						'transfer_qty': child.transfer_qty,
+						'stock_qty': child.stock_qty,
 						'serial_no': child.serial_no,
-						'qty': child.s_warehouse ? -1* child.transfer_qty : child.transfer_qty,
+						'qty': child.s_warehouse ? -1* child.stock_qty : child.stock_qty,
 						'posting_date': frm.doc.posting_date,
 						'posting_time': frm.doc.posting_time,
 						'company': frm.doc.company,
@@ -434,7 +441,7 @@ frappe.ui.form.on('Stock Entry', {
 	},
 
 	calculate_basic_amount: function(frm, item) {
-		item.basic_amount = flt(flt(item.transfer_qty) * flt(item.basic_rate),
+		item.basic_amount = flt(flt(item.stock_qty) * flt(item.basic_rate),
 			precision("basic_amount", item));
 
 		frm.events.calculate_amount(frm);
@@ -459,8 +466,8 @@ frappe.ui.form.on('Stock Entry', {
 			item.amount = flt(item.basic_amount + flt(item.additional_cost),
 				precision("amount", item));
 
-			if (flt(item.transfer_qty)) {
-				item.valuation_rate = item.amount / flt(item.transfer_qty);
+			if (flt(item.stock_qty)) {
+				item.valuation_rate = item.amount / flt(item.stock_qty);
 			}
 		}
 
@@ -571,7 +578,7 @@ frappe.ui.form.on('Stock Entry Detail', {
 				'uom': d.uom,
 				'hide_item_code': d.hide_item_code,
 				'warehouse': cstr(d.s_warehouse) || cstr(d.t_warehouse),
-				'transfer_qty': d.transfer_qty,
+				'stock_qty': d.stock_qty,
 				'serial_no': d.serial_no,
 				'bom_no': d.bom_no,
 				'expense_account': d.expense_account,
@@ -639,7 +646,7 @@ var validate_sample_quantity = function(frm, cdt, cdn) {
 				batch_no: d.batch_no,
 				item_code: d.item_code,
 				sample_quantity: d.sample_quantity,
-				qty: d.transfer_qty
+				qty: d.stock_qty
 			},
 			callback: (r) => {
 				frappe.model.set_value(cdt, cdn, "sample_quantity", r.message);
@@ -681,7 +688,7 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 			return {
 				"filters": {
 					"docstatus": 1,
-					"is_subcontracted": "Yes",
+					"is_subcontracted": 1,
 					"company": me.frm.doc.company
 				}
 			};
@@ -707,15 +714,19 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 			return erpnext.queries.item_uom(item.item_code);
 		});
 
+		this.frm.set_query("subcontracted_item", "items", function() {
+			return erpnext.queries.subcontracted_item(me.frm.doc.purchase_order);
+		});
+
 		this.frm.add_fetch("purchase_order", "supplier", "supplier");
 
 		this.frm.set_query("supplier_address", function() {
 			frappe.dynamic_link = { doc: me.frm.doc, fieldname: 'supplier', doctype: 'Supplier' };
-			return erpnext.queries.address_query
+			return erpnext.queries.address_query(me.frm.doc);
 		});
 		this.frm.set_query("customer_address", function() {
 			frappe.dynamic_link = { doc: me.frm.doc, fieldname: 'customer', doctype: 'Customer' };
-			return erpnext.queries.address_query
+			return erpnext.queries.address_query(me.frm.doc);
 		});
 
 		let batch_no_field = this.frm.get_docfield("items", "batch_no");
@@ -762,7 +773,7 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 				if (doc.docstatus === 0) {
 					if (!doc.actual_qty) {
 						return "red";
-					} else if (doc.actual_qty < doc.transfer_qty) {
+					} else if (doc.actual_qty < doc.stock_qty) {
 						return "orange";
 					} else {
 						return "green";
@@ -960,7 +971,7 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 			method: "erpnext.stock.doctype.stock_entry.stock_entry.get_work_order_details",
 			args: {
 				work_order: me.frm.doc.work_order,
-				company: me.frm.doc.company
+				purpose: me.frm.doc.purpose,
 			},
 			callback: function(r) {
 				if (!r.exc) {
@@ -1015,7 +1026,7 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 	}
 
 	set_warehouse_in_children(child_table, warehouse_field, warehouse) {
-		this.autofill_warehouse(child_table, warehouse_field, warehouse);
+		erpnext.utils.autofill_warehouse(child_table, warehouse_field, warehouse);
 	}
 
 	items_on_form_rendered(doc, cdt, cdn) {

@@ -194,6 +194,25 @@ def tax_account_query(doctype, txt, searchfield, start, page_len, filters):
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
+def subcontracted_item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
+	if not filters:
+		filters = {}
+
+	filters["is_sub_contracted_item"] = 1
+
+	purchase_order = filters.pop("purchase_order", None)
+	if purchase_order:
+		po_item_codes = frappe.get_all("Purchase Order Item", {"parent": purchase_order}, pluck="item_code")
+		po_item_codes = list(set(po_item_codes))
+
+		if po_item_codes:
+			filters["name"] = ("in", po_item_codes)
+
+	return item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=as_dict)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
 	conditions = []
 
@@ -548,6 +567,10 @@ def _get_packing_slips_to_be_delivered(doctype="Packing Slip", txt="", searchfie
 
 	exists_conditions = []
 
+	if filters.get("no_customer"):
+		filters.pop("no_customer", None)
+		filters["customer"] = ["is", "not set"]
+
 	if filters.get("sales_order"):
 		exists_conditions.append("`tabPacking Slip Item`.sales_order = {0}".format(
 			frappe.db.escape(filters.pop("sales_order"))))
@@ -704,23 +727,20 @@ def get_batch_no(doctype, txt, searchfield, start, page_len, filters):
 			batch.manufacturing_date,
 			batch.expiry_date
 		from `tabStock Ledger Entry` sle
-			INNER JOIN `tabBatch` batch on sle.batch_no = batch.name
+		inner join `tabBatch` batch on sle.batch_no = batch.name
 		where
 			batch.disabled = 0
 			and sle.item_code = %(item_code)s
-			and (sle.batch_no like %(txt)s
-			or batch.expiry_date like %(txt)s
-			or batch.manufacturing_date like %(txt)s)
-			and batch.docstatus < 2
+			and sle.batch_no like %(txt)s
 			{cond}
-			{match_conditions}
-		group by batch_no {having_clause}
+		group by batch_no
+		{having_clause}
 		order by batch.expiry_date, received_dt, sle.batch_no desc
-		limit %(start)s, %(page_len)s""".format(
-			cond=cond,
-			match_conditions=get_match_cond(doctype),
-			having_clause = having_clause
-		), args, as_list=1)
+		limit %(start)s, %(page_len)s
+	""".format(
+		cond=cond,
+		having_clause=having_clause
+	), args, as_list=1)
 
 	for d in batch_nos:
 		d[1] = "{0} {1}".format(frappe.format(flt(d[1])), cstr(d[2]))  # Actual Qty

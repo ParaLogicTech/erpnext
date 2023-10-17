@@ -7,19 +7,15 @@ def get_data():
 		'transactions': [
 			{
 				'label': _('Fulfilment'),
-				'items': ['Stock Entry']
+				'items': ['Stock Entry', 'Job Card']
 			},
 			{
-				'label': _("Operations"),
-				'items': ['Job Card']
+				'label': _("Stock"),
+				'items': ['Packing Slip', 'Pick List']
 			},
 			{
-				'label': _("Packing"),
-				'items': ['Packing Slip']
-			},
-			{
-				'label': _('Stock'),
-				'items': ['Pick List']
+				'label': _("Subcontracting"),
+				'items': ['Purchase Order', 'Purchase Receipt']
 			},
 		]
 	}

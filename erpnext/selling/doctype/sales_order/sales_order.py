@@ -10,7 +10,7 @@ from frappe.model.mapper import get_mapped_doc
 from erpnext.stock.stock_balance import update_bin_qty, get_reserved_qty
 from frappe.desk.notifications import clear_doctype_notifications
 from erpnext.controllers.selling_controller import SellingController
-from erpnext.controllers.accounts_controller import get_default_taxes_and_charges
+from erpnext.controllers.transaction_controller import get_default_taxes_and_charges
 from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty, set_reserved_vehicles_from_so
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
@@ -89,7 +89,7 @@ class SalesOrder(SellingController):
 			update_coupon_code_count(self.coupon_code, 'used')
 
 	def on_cancel(self):
-		super(SalesOrder, self).on_cancel()
+		self.unlink_payments_on_order_cancel()
 		self.update_status_on_cancel()
 
 		# Cannot cancel closed SO
@@ -428,7 +428,7 @@ class SalesOrder(SellingController):
 			if producible_row_names:
 				# Work Order data
 				work_order_data = frappe.db.sql("""
-					select sales_order_item, qty, produced_qty, packing_status, packing_slip_required
+					select sales_order_item, qty, completed_qty, packing_status, packing_slip_required
 					from `tabWork Order`
 					where docstatus = 1 and sales_order_item in %s
 				""", [producible_row_names], as_dict=1)
@@ -438,7 +438,7 @@ class SalesOrder(SellingController):
 					out.work_order_qty_map[d.sales_order_item] += d.qty
 
 					out.produced_qty_map.setdefault(d.sales_order_item, 0)
-					out.produced_qty_map[d.sales_order_item] += d.produced_qty
+					out.produced_qty_map[d.sales_order_item] += d.completed_qty
 
 					if d.packing_status == "To Pack":
 						out.has_unpacked_work_orders = True
@@ -1118,7 +1118,7 @@ def update_items_based_on_purchase_against_sales_order(source, target):
 		has_batch_no, has_serial_no = frappe.get_cached_value("Item", target_item.item_code,
 			['has_batch_no', 'has_serial_no'], as_dict=1)
 
-		if target_item.sales_order and (has_batch_no or has_serial_no):
+		if target_item.sales_order and (has_batch_no or has_serial_no) and not target_item.get("packing_slip"):
 			purchase_receipt_items = frappe.db.sql("""
 				select pr_item.batch_no, pr_item.serial_no, pr_item.qty
 				from `tabPurchase Receipt Item` pr_item
@@ -1213,11 +1213,11 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None):
 		work_order = work_order_details.name if work_order_details else None
 
 		if work_order:
-			produced_qty = flt(work_order_details.produced_qty)
-			produced_qty_order_uom = produced_qty / source.conversion_factor
+			completed_qty = flt(work_order_details.completed_qty)
+			completed_qty_order_uom = completed_qty / source.conversion_factor
 
-			undelivered_qty = round_down(produced_qty_order_uom - flt(source.delivered_qty), source.precision("qty"))
-			unpacked_qty = round_down(produced_qty_order_uom - flt(source.packed_qty), source.precision("qty"))
+			undelivered_qty = round_down(completed_qty_order_uom - flt(source.delivered_qty), source.precision("qty"))
+			unpacked_qty = round_down(completed_qty_order_uom - flt(source.packed_qty), source.precision("qty"))
 		else:
 			undelivered_qty = flt(source.qty) - flt(source.delivered_qty)
 			unpacked_qty = flt(source.qty) - flt(source.packed_qty)
@@ -1231,7 +1231,7 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None):
 				"sales_order_item": source.name,
 				"docstatus": 1,
 				"packing_slip_required": 1,
-			}, fieldname=["name", "produced_qty"], as_dict=1)
+			}, fieldname=["name", "completed_qty"], as_dict=1)
 
 		return work_order_cache[source.name]
 
@@ -1472,7 +1472,6 @@ def make_purchase_order(source_name, for_supplier=None, selected_items=[], targe
 	def update_item(source, target, source_parent, target_parent):
 		target.schedule_date = source.delivery_date
 		target.qty = flt(source.qty) - flt(source.ordered_qty)
-		target.stock_qty = (flt(source.qty) - flt(source.ordered_qty)) * flt(source.conversion_factor)
 		target.project = source_parent.project
 
 	suppliers = []
@@ -1536,8 +1535,6 @@ def make_purchase_order(source_name, for_supplier=None, selected_items=[], targe
 			suppliers = []
 
 	if suppliers:
-		if not for_supplier:
-			frappe.db.commit()
 		return doc
 	else:
 		frappe.msgprint(_("Purchase Order already created for all Sales Order Items"))

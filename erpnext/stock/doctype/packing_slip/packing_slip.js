@@ -8,6 +8,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		this.frm.custom_make_buttons = {
 			'Delivery Note': __('Delivery Note'),
 			'Sales Invoice': __('Sales Invoice'),
+			'Stock Entry': __('Stock Entry'),
 		}
 
 		this.setup_posting_date_time_check();
@@ -28,6 +29,10 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 
 		me.frm.set_query("item_code", "packaging_items", function() {
 			return erpnext.queries.item({is_stock_item: 1});
+		});
+
+		me.frm.set_query("subcontracted_item", "items", function() {
+			return erpnext.queries.subcontracted_item(me.frm.doc.purchase_order);
 		});
 
 		me.setup_warehouse_query();
@@ -82,8 +87,12 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 
 		if (this.frm.doc.docstatus == 1) {
 			if (this.frm.doc.status == "In Stock") {
-				this.frm.add_custom_button(__('Delivery Note'), () => this.make_delivery_note(), __('Create'));
-				this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(), __('Create'));
+				if (this.frm.doc.purchase_order) {
+					this.frm.add_custom_button(__('Stock Entry'), () => this.make_stock_entry(), __('Create'));
+				} else {
+					this.frm.add_custom_button(__('Delivery Note'), () => this.make_delivery_note(), __('Create'));
+					this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(), __('Create'));
+				}
 				this.frm.add_custom_button(__('Unpack'), () => this.make_unpack_packing_slip(), __('Create'));
 
 				this.frm.page.set_inner_btn_group_as_primary(__('Create'));
@@ -195,6 +204,18 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		}
 	}
 
+	auto_select_batches() {
+		return this.frm.call({
+			method: 'auto_select_batches',
+			doc: this.frm.doc,
+			freeze: 1,
+			callback: () => {
+				this.frm.refresh_fields();
+				this.frm.dirty();
+			}
+		});
+	}
+
 	items_remove(doc, cdt, cdn) {
 		this.remove_packing_slips_without_items();
 		super.items_remove(doc, cdt, cdn);
@@ -276,6 +297,22 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 			method: "erpnext.stock.doctype.packing_slip.packing_slip.make_unpack_packing_slip",
 			frm: this.frm,
 		})
+	}
+
+	make_stock_entry() {
+		if (this.frm.doc.purchase_order) {
+			return frappe.call({
+				method: "erpnext.buying.doctype.purchase_order.purchase_order.make_rm_stock_entry",
+				args: {
+					purchase_order: this.frm.doc.purchase_order,
+					packing_slips: [this.frm.doc.name],
+				},
+				callback: function(r) {
+					let doclist = frappe.model.sync(r.message);
+					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+				}
+			});
+		}
 	}
 };
 

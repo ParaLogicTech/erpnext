@@ -1,321 +1,275 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
-frappe.ui.form.on("Timesheet", {
-	setup: function(frm) {
+frappe.provide("erpnext.projects");
+
+erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
+	setup() {
 		frappe.require("/assets/erpnext/js/projects/timer.js");
-		frm.add_fetch('employee', 'employee_name', 'employee_name');
-		frm.fields_dict.employee.get_query = function() {
-			return {
-				filters:{
-					'status': 'Active'
-				}
-			};
-		};
+		this.frm.ignore_doctypes_on_cancel_all = ['Sales Invoice'];
+		this.setup_queries();
+	}
 
-		frm.fields_dict['time_logs'].grid.get_field('task').get_query = function(frm, cdt, cdn) {
-			var child = locals[cdt][cdn];
-			return{
-				filters: {
-					'project': child.project,
-					'status': ["!=", "Cancelled"]
-				}
-			};
-		};
-
-		frm.fields_dict['time_logs'].grid.get_field('project').get_query = function() {
-			return{
-				filters: {
-					'company': frm.doc.company
-				}
-			};
-		};
-	},
-
-	onload: function(frm){
-		if (frm.doc.__islocal && frm.doc.time_logs) {
-			calculate_time_and_amount(frm);
+	onload() {
+		if (this.frm.is_new()) {
+			this.calculate_totals();
 		}
+	}
 
-		if (frm.is_new()) {
-			set_employee_and_company(frm);
-		}
-	},
-
-	refresh: function(frm) {
+	refresh() {
 		erpnext.hide_company();
-		if(frm.doc.docstatus==1) {
-			if(frm.doc.per_billed < 100 && frm.doc.total_billable_hours && frm.doc.total_billable_hours > frm.doc.total_billed_hours){
-				frm.add_custom_button(__('Create Sales Invoice'), function() { frm.trigger("make_invoice") },
-					"fa fa-file-text");
+		erpnext.toggle_naming_series();
+		this.setup_buttons();
+		this.update_dynamic_fields();
+	}
+
+	setup_queries() {
+		let me = this;
+
+		me.frm.set_query("employee", function() {
+			return {
+				filters: {
+					status: 'Active',
+				}
+			}
+		});
+
+		me.frm.set_query("task", "time_logs", function(frm, cdt, cdn) {
+			let row = frappe.get_doc(cdt, cdn);
+
+			let filters = {status: ['!=', 'Cancelled']}
+			if (row.project) {
+				filters.project = row.project;
 			}
 
-			if(!frm.doc.salary_slip && frm.doc.employee){
-				frm.add_custom_button(__('Create Salary Slip'), function() { frm.trigger("make_salary_slip") },
-					"fa fa-file-text");
+			return {
+				filters: filters
+			}
+		});
+
+		me.frm.set_query("project", "time_logs", function() {
+			let filters = {company: me.frm.doc.company}
+			if (me.frm.doc.customer) {
+				filters.customer = me.frm.doc.customer;
+			}
+
+			return {
+				filters: filters
+			}
+		});
+	}
+
+	setup_buttons() {
+		let me = this;
+		if (me.frm.doc.docstatus == 1) {
+			if (me.frm.doc.total_billable_hours && me.frm.doc.total_billable_hours > me.frm.doc.total_billed_hours) {
+				me.frm.add_custom_button(__('Create Sales Invoice'), () => me.make_invoice());
 			}
 		}
 
-		if (frm.doc.docstatus < 1) {
+		if (!me.frm.is_new() && me.frm.doc.docstatus == 0) {
+			let button = (me.frm.doc.time_logs || []).some(
+				d => d.from_time <= frappe.datetime.now_datetime() && !d.completed
+			) ? 'Resume Timer' : 'Start Timer';
 
-			let button = 'Start Timer';
-			$.each(frm.doc.time_logs || [], function(i, row) {
-				if ((row.from_time <= frappe.datetime.now_datetime()) && !row.completed) {
-					button = 'Resume Timer';
-				}
-			});
-
-			frm.add_custom_button(__(button), function() {
-				var flag = true;
-				$.each(frm.doc.time_logs || [], function(i, row) {
-					// Fetch the row for which from_time is not present
-					if (flag && row.activity_type && !row.from_time){
-						erpnext.timesheet.timer(frm, row);
-						row.from_time = frappe.datetime.now_datetime();
-						frm.refresh_fields("time_logs");
-						frm.save();
-						flag = false;
-					}
-					// Fetch the row for timer where activity is not completed and from_time is before now_time
-					if (flag && row.from_time <= frappe.datetime.now_datetime() && !row.completed) {
-						let timestamp = moment(frappe.datetime.now_datetime()).diff(moment(row.from_time),"seconds");
-						erpnext.timesheet.timer(frm, row, timestamp);
-						flag = false;
-					}
-				});
-				// If no activities found to start a timer, create new
-				if (flag) {
-					erpnext.timesheet.timer(frm);
-				}
-			}).addClass("btn-primary");
+			me.frm.add_custom_button(__(button), () => me.setup_timer()).addClass("btn-primary");
 		}
-		if(frm.doc.per_billed > 0) {
-			frm.fields_dict["time_logs"].grid.toggle_enable("billing_hours", false);
-			frm.fields_dict["time_logs"].grid.toggle_enable("billable", false);
+	}
+
+	setup_timer() {
+		let me = this;
+		let flag = true;
+		$.each(me.frm.doc.time_logs || [], function(i, row) {
+			// Fetch the row for which from_time is not present
+			if (flag && row.activity_type && !row.from_time){
+				erpnext.timesheet.timer(me.frm, row);
+				row.from_time = frappe.datetime.now_datetime();
+				me.frm.refresh_fields("time_logs");
+				me.frm.save();
+				flag = false;
+			}
+			// Fetch the row for timer where activity is not completed and from_time is before now_time
+			if (flag && row.from_time <= frappe.datetime.now_datetime() && !row.completed) {
+				let timestamp = moment(frappe.datetime.now_datetime()).diff(moment(row.from_time),"seconds");
+				erpnext.timesheet.timer(me.frm, row, timestamp);
+				flag = false;
+			}
+		});
+		// If no activities found to start a timer, create new
+		if (flag) {
+			erpnext.timesheet.timer(me.frm);
 		}
-	},
+	}
 
-	company: function(frm) {
-		frappe.db.get_value('Company', { 'company_name' : frm.doc.company }, 'standard_working_hours')
-			.then(({ message }) => {
-				(frappe.working_hours = message.standard_working_hours || 0);
-			});
-	},
+	update_dynamic_fields() {
+		this.frm.fields_dict.time_logs.grid.toggle_enable("billing_hours", flt(this.frm.doc.per_billed) == 0);
+		this.frm.fields_dict.time_logs.grid.toggle_enable("billable", flt(this.frm.doc.per_billed) == 0);
+	}
 
-	make_invoice: function(frm) {
-		let dialog = new frappe.ui.Dialog({
-			title: __("Select Item (optional)"),
-			fields: [
-				{"fieldtype": "Link", "label": __("Item Code"), "fieldname": "item_code", "options":"Item"},
-				{"fieldtype": "Link", "label": __("Customer"), "fieldname": "customer", "options":"Customer"}
-			]
-		});
+	time_logs_add() {
+		this.calculate_totals();
+	}
 
-		dialog.set_primary_action(__('Create Sales Invoice'), () => {
-			var args = dialog.get_values();
-			if(!args) return;
-			dialog.hide();
-			return frappe.call({
-				type: "GET",
-				method: "erpnext.projects.doctype.timesheet.timesheet.make_sales_invoice",
-				args: {
-					"source_name": frm.doc.name,
-					"item_code": args.item_code,
-					"customer": args.customer
-				},
-				freeze: true,
-				callback: function(r) {
-					if(!r.exc) {
-						frappe.model.sync(r.message);
-						frappe.set_route("Form", r.message.doctype, r.message.name);
-					}
-				}
-			});
-		});
-		dialog.show();
-	},
+	time_logs_remove() {
+		this.calculate_totals();
+	}
 
-	make_salary_slip: function(frm) {
-		frappe.model.open_mapped_doc({
-			method: "erpnext.projects.doctype.timesheet.timesheet.make_salary_slip",
-			frm: frm
-		});
-	},
-});
-
-frappe.ui.form.on("Timesheet Detail", {
-	time_logs_remove: function(frm) {
-		calculate_time_and_amount(frm);
-	},
-
-	task: (frm, cdt, cdn) => {
-		let row = frm.selected_doc;
-		if (row.task) {
-			frappe.db.get_value("Task", row.task, "project", (r) => {
-				frappe.model.set_value(cdt, cdn, "project", r.project);
-			});
-		}
-	},
-
-	from_time: function(frm, cdt, cdn) {
-		calculate_end_time(frm, cdt, cdn);
-	},
-
-	to_time: function(frm, cdt, cdn) {
-		var child = locals[cdt][cdn];
-		var time_diff = (moment(child.to_time).diff(moment(child.from_time),"seconds")) / ( 60 * 60 * 24);
-		var std_working_hours = 0;
-
-		if(frm._setting_hours) return;
-
-		var hours = moment(child.to_time).diff(moment(child.from_time), "seconds") / 3600;
-		std_working_hours = time_diff * frappe.working_hours;
-
-		if (std_working_hours < hours && std_working_hours > 0) {
-			frappe.model.set_value(cdt, cdn, "hours", std_working_hours);
-		} else {
-			frappe.model.set_value(cdt, cdn, "hours", hours);
-		}
-	},
-
-	time_logs_add: function(frm) {
-		var $trigger_again = $('.form-grid').find('.grid-row').find('.btn-open-row');
-		$trigger_again.on('click', () => {
-			$('.form-grid')
-				.find('[data-fieldname="timer"]')
-				.append(frappe.render_template("timesheet"));
-			frm.trigger("control_timer");
-		});
-	},
-	hours: function(frm, cdt, cdn) {
-		calculate_end_time(frm, cdt, cdn);
-	},
-
-	billing_hours: function(frm, cdt, cdn) {
-		calculate_billing_costing_amount(frm, cdt, cdn);
-	},
-
-	billing_rate: function(frm, cdt, cdn) {
-		calculate_billing_costing_amount(frm, cdt, cdn);
-	},
-
-	costing_rate: function(frm, cdt, cdn) {
-		calculate_billing_costing_amount(frm, cdt, cdn);
-	},
-
-	billable: function(frm, cdt, cdn) {
-		update_billing_hours(frm, cdt, cdn);
-		update_time_rates(frm, cdt, cdn);
-		calculate_billing_costing_amount(frm, cdt, cdn);
-	},
-
-	activity_type: function(frm, cdt, cdn) {
+	activity_type(doc, cdt, cdn) {
+		let me = this;
+		let row = frappe.get_doc(cdt, cdn);
 		frappe.call({
 			method: "erpnext.projects.doctype.timesheet.timesheet.get_activity_cost",
 			args: {
-				employee: frm.doc.employee,
-				activity_type: frm.selected_doc.activity_type
+				employee: me.frm.doc.employee,
+				activity_type: row.activity_type
 			},
 			callback: function(r){
 				if(r.message){
 					frappe.model.set_value(cdt, cdn, 'billing_rate', r.message['billing_rate']);
 					frappe.model.set_value(cdt, cdn, 'costing_rate', r.message['costing_rate']);
-					calculate_billing_costing_amount(frm, cdt, cdn);
+					me.calculate_totals();
 				}
 			}
 		});
 	}
-});
 
-var calculate_end_time = function(frm, cdt, cdn) {
-	let child = locals[cdt][cdn];
-
-	if(!child.from_time) {
-		// if from_time value is not available then set the current datetime
-		frappe.model.set_value(cdt, cdn, "from_time", frappe.datetime.get_datetime_as_string());
+	task(doc, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		frappe.db.get_value("Task", row.task, "project", (r) => {
+			frappe.model.set_value(cdt, cdn, "project", r.project);
+		});
 	}
 
-	let d = moment(child.from_time);
-	if(child.hours) {
-		var time_diff = (moment(child.to_time).diff(moment(child.from_time),"seconds")) / (60 * 60 * 24);
-		var std_working_hours = 0;
-		var hours = moment(child.to_time).diff(moment(child.from_time), "seconds") / 3600;
+	from_time(doc, cdt, cdn) {
+		this.calculate_end_time(cdt, cdn);
+	}
 
-		std_working_hours = time_diff * frappe.working_hours;
+	hours(doc, cdt, cdn) {
+		this.calculate_end_time(cdt, cdn);
+	}
 
-		if (std_working_hours < hours && std_working_hours > 0) {
-			frappe.model.set_value(cdt, cdn, "hours", std_working_hours);
-			frappe.model.set_value(cdt, cdn, "to_time", d.add(hours, "hours").format(frappe.defaultDatetimeFormat));
-		} else {
-			d.add(child.hours, "hours");
-			frm._setting_hours = true;
-			frappe.model.set_value(cdt, cdn, "to_time",
-				d.format(frappe.defaultDatetimeFormat)).then(() => {
-				frm._setting_hours = false;
+	to_time(doc, cdt, cdn) {
+		if (this.frm._setting_hours) return;
+
+		let row = frappe.get_doc(cdt, cdn);
+		let hours = moment(row.to_time).diff(moment(row.from_time), "seconds") / 3600;
+		frappe.model.set_value(cdt, cdn, "hours", hours);
+	}
+
+	billable() {
+		this.calculate_totals();
+	}
+
+	billing_hours() {
+		this.calculate_totals();
+	}
+
+	billing_rate() {
+		this.calculate_totals();
+	}
+
+	costing_rate() {
+		this.calculate_totals();
+	}
+
+	calculate_totals() {
+		this.frm.doc.total_hours = 0;
+		this.frm.doc.total_costing_amount = 0;
+		this.frm.doc.total_billable_hours = 0;
+		this.frm.doc.total_billable_amount = 0;
+
+		this.frm.doc.time_logs.forEach(d => {
+			frappe.model.round_floats_in(d);
+
+			d.costing_amount = flt(d.costing_rate * d.hours);
+
+			this.frm.doc.total_hours += d.hours;
+			this.frm.doc.total_costing_amount += d.costing_amount;
+
+			if (d.billable) {
+				d.billing_hours = d.hours;
+				d.billing_amount = flt(d.billing_rate * d.billing_hours);
+
+				this.frm.doc.total_billable_hours += d.billing_hours;
+				this.frm.doc.total_billable_amount += d.billing_amount;
+			} else {
+				d.billing_hours = 0.0;
+				d.billing_rate = 0.0;
+			}
+		})
+		this.frm.debounced_refresh_fields();
+	}
+
+	calculate_end_time(cdt, cdn) {
+		let me = this;
+		let row = frappe.get_doc(cdt, cdn);
+
+		if(!row.from_time) {
+			frappe.model.set_value(cdt, cdn, "from_time", frappe.datetime.get_datetime_as_string());
+		}
+
+		let d = moment(row.from_time);
+		if(row.hours) {
+			d.add(row.hours, "hours");
+			me.frm._setting_hours = true;
+			frappe.model.set_value(cdt, cdn, "to_time", d.format(frappe.defaultDatetimeFormat)).then(() => {
+				me.frm._setting_hours = false;
+				me.calculate_totals();
 			});
 		}
 	}
-};
 
-var update_billing_hours = function(frm, cdt, cdn){
-	var child = locals[cdt][cdn];
-	if(!child.billable) frappe.model.set_value(cdt, cdn, 'billing_hours', 0.0);
-};
+	make_invoice() {
+		let me = this;
 
-var update_time_rates = function(frm, cdt, cdn){
-	var child = locals[cdt][cdn];
-	if(!child.billable){
-		frappe.model.set_value(cdt, cdn, 'billing_rate', 0.0);
-	}
-};
+		let fields = [{
+			"fieldtype": "Link",
+			"label": __("Item Code"),
+			"fieldname": "item_code",
+			"options": "Item"
+		}];
 
-var calculate_billing_costing_amount = function(frm, cdt, cdn){
-	var child = locals[cdt][cdn];
-	var billing_amount = 0.0;
-	var costing_amount = 0.0;
+		if (!me.frm.doc.customer) {
+			fields.push({
+				"fieldtype": "Link",
+				"label": __("Customer"),
+				"fieldname": "customer",
+				"options": "Customer"
+			});
+		}
 
-	if(child.billing_hours && child.billable){
-		billing_amount = (child.billing_hours * child.billing_rate);
-	}
-	costing_amount = flt(child.costing_rate * child.hours);
-	frappe.model.set_value(cdt, cdn, 'billing_amount', billing_amount);
-	frappe.model.set_value(cdt, cdn, 'costing_amount', costing_amount);
-	calculate_time_and_amount(frm);
-};
-
-var calculate_time_and_amount = function(frm) {
-	var tl = frm.doc.time_logs || [];
-	var total_working_hr = 0;
-	var total_billing_hr = 0;
-	var total_billable_amount = 0;
-	var total_costing_amount = 0;
-	for(var i=0; i<tl.length; i++) {
-		if (tl[i].hours) {
-			total_working_hr += tl[i].hours;
-			total_billable_amount += tl[i].billing_amount;
-			total_costing_amount += tl[i].costing_amount;
-
-			if(tl[i].billable){
-				total_billing_hr += tl[i].billing_hours;
+		let dialog = new frappe.ui.Dialog({
+			title: __("Create Sales Invoice"),
+			fields: fields,
+			primary_action: function() {
+				let data = dialog.get_values();
+				frappe.call({
+					method: "erpnext.projects.doctype.timesheet.timesheet.make_sales_invoice",
+					args: {
+						"source_name": me.frm.doc.name,
+						"item_code": data.item_code,
+						"customer": data.customer || me.frm.doc.customer
+					},
+					freeze: true,
+					callback: function(r) {
+						if(!r.exc) {
+							frappe.model.sync(r.message);
+							frappe.set_route("Form", r.message.doctype, r.message.name);
+						}
+					}
+				});
+				dialog.hide();
 			}
-		}
+		});
+		dialog.show();
 	}
 
-	frm.set_value("total_billable_hours", total_billing_hr);
-	frm.set_value("total_hours", total_working_hr);
-	frm.set_value("total_billable_amount", total_billable_amount);
-	frm.set_value("total_costing_amount", total_costing_amount);
-};
+	make_salary_slip() {
+		frappe.model.open_mapped_doc({
+			method: "erpnext.projects.doctype.timesheet.timesheet.make_salary_slip",
+			frm: this.frm
+		});
+	}
+}
 
-// set employee (and company) to the one that's currently logged in
-const set_employee_and_company = function(frm) {
-	const options = { user_id: frappe.session.user };
-	const fields = ['name', 'company'];
-	frappe.db.get_value('Employee', options, fields).then(({ message }) => {
-		if (message) {
-			// there is an employee with the currently logged in user_id
-			frm.set_value("employee", message.name);
-			frm.set_value("company", message.company);
-		}
-	});
-};
+extend_cscript(cur_frm.cscript, new erpnext.projects.Timesheet({frm: cur_frm}));

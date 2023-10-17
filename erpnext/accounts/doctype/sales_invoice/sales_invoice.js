@@ -904,12 +904,17 @@ frappe.ui.form.on('Sales Invoice', {
 			'Auto Repeat': 'Subscription',
 			'Vehicle Gate Pass': 'Vehicle Gate Pass',
 		};
-		frm.fields_dict["timesheets"].grid.get_field("time_sheet").get_query = function(doc, cdt, cdn){
-			return{
-				query: "erpnext.projects.doctype.timesheet.timesheet.get_timesheet",
-				filters: {'project': doc.project}
+
+		frm.set_query("time_sheet", "timesheets", function(doc) {
+			let filters = {'docstatus': 1};
+			if (doc.project) {
+				filters.project = doc.project;
 			}
-		}
+
+			return {
+				filters: filters
+			};
+		});
 
 		// expense account
 		frm.fields_dict['items'].grid.get_field('expense_account').get_query = function(doc) {

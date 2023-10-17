@@ -67,9 +67,9 @@ def make_entry(args, allow_negative_stock=False, via_landed_cost_voucher=False):
 	args.update({"doctype": "Stock Ledger Entry"})
 	sle = frappe.get_doc(args)
 	sle.flags.ignore_permissions = 1
-	sle.allow_negative_stock=allow_negative_stock
+	sle.allow_negative_stock = allow_negative_stock
 	sle.via_landed_cost_voucher = via_landed_cost_voucher
-	sle.insert()
+	# sle.insert()
 	sle.submit()
 	return sle
 
@@ -139,7 +139,7 @@ class update_entries_after(object):
 		for key in ("qty_after_transaction", "valuation_rate", "stock_value"):
 			setattr(self, key, flt(self.previous_sle.get(key)))
 
-		self.company = frappe.db.get_value("Warehouse", self.warehouse, "company")
+		self.company = frappe.db.get_value("Warehouse", self.warehouse, "company", cache=1)
 		self.value_precision = get_field_precision(frappe.get_meta("Stock Ledger Entry").get_field("stock_value"),
 			currency=frappe.get_cached_value('Company',  self.company,  "default_currency"))
 
@@ -658,7 +658,7 @@ class update_entries_after(object):
 				and ifnull(is_cancelled, 'No')='No'
 				and is_processed = 1
 				{0}
-			order by timestamp(sle.posting_date, sle.posting_time), sle.creation
+			order by sle.posting_date, sle.posting_time, sle.creation
 			for update
 		""".format(date_condition), {
 			'posting_date': self.previous_sle.posting_date if self.previous_sle else "1900-01-01",
@@ -829,10 +829,12 @@ def get_stock_ledger_entries(previous_sle, operator=None,
 	"""get stock ledger entries filtered by specific posting datetime conditions"""
 	from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 
+	conditions = ""
+
 	if previous_sle.get('creation'):
-		conditions = " and (posting_date, posting_time, creation) {0} (%(posting_date)s, %(posting_time)s, %(creation)s)".format(operator)
+		conditions += " and (posting_date, posting_time, creation) {0} (%(posting_date)s, %(posting_time)s, %(creation)s)".format(operator)
 	else:
-		conditions = " and timestamp(posting_date, posting_time) {0} timestamp(%(posting_date)s, %(posting_time)s)".format(operator)
+		conditions += " and (posting_date, posting_time) {0} (%(posting_date)s, %(posting_time)s)".format(operator)
 
 	if previous_sle.get("warehouse"):
 		conditions += " and warehouse = %(warehouse)s"
@@ -872,9 +874,9 @@ def get_stock_ledger_entries(previous_sle, operator=None,
 		select *, timestamp(posting_date, posting_time) as timestamp
 		from `tabStock Ledger Entry`
 		where item_code = %(item_code)s
-		and ifnull(is_cancelled, 'No')='No'
-		{conditions}
-		order by timestamp(posting_date, posting_time) {order}, creation {order}
+			{conditions}
+			and ifnull(is_cancelled, 'No')='No'
+		order by posting_date {order}, posting_time {order}, creation {order}
 		{limit} {for_update}
 	""".format(
 		conditions=conditions,

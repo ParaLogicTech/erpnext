@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2013-06-25 11:04:03",
  "description": "Settings for Buying Module",
  "doctype": "DocType",
@@ -17,6 +18,7 @@
   "subcontract",
   "backflush_raw_materials_of_subcontract_based_on",
   "column_break_11",
+  "default_subcontracting_supplier_warehouse",
   "over_transfer_allowance"
  ],
  "fields": [
@@ -95,12 +97,19 @@
    "fieldname": "update_buying_prices_on_submission_of_purchase_order",
    "fieldtype": "Check",
    "label": "Update Prices on Submission of Purchase Order"
+  },
+  {
+   "fieldname": "default_subcontracting_supplier_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Subcontracting Supplier Warehouse",
+   "options": "Warehouse"
   }
  ],
  "icon": "fa fa-cog",
  "idx": 1,
  "issingle": 1,
- "modified": "2022-12-26 19:00:47.952638",
+ "links": [],
+ "modified": "2023-10-05 18:19:25.866535",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Buying Settings",
@@ -122,5 +131,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

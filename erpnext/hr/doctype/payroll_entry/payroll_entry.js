@@ -268,6 +268,10 @@ frappe.ui.form.on('Payroll Entry', {
 		frm.toggle_reqd(['payroll_frequency'], !frm.doc.salary_slip_based_on_timesheet);
 	},
 
+	posting_date: function(frm){
+		frm.trigger('set_start_end_dates');
+	},
+
 	set_start_end_dates: function (frm) {
 		if (!frm.doc.salary_slip_based_on_timesheet) {
 			frappe.call({

@@ -2,25 +2,23 @@
 # License: GNU General Public License v3. See license.txt
 
 
-import itertools
-import json
-import erpnext
 import frappe
-from erpnext.controllers.item_variant import (ItemVariantExistsError,
-		copy_attributes_to_variant, get_variant, make_variant_item_code, validate_item_variant_attributes)
+import erpnext
+from frappe import _, unscrub
+from frappe.utils import (
+	cint, cstr, flt, formatdate, get_timestamp, getdate, now_datetime, random_string, get_link_to_form, clean_whitespace
+)
+from erpnext.controllers.item_variant import (
+	ItemVariantExistsError, copy_attributes_to_variant, get_variant, make_variant_item_code, validate_item_variant_attributes
+)
 from erpnext.setup.doctype.item_group.item_group import (get_parent_item_groups, invalidate_cache_for)
 from erpnext.setup.doctype.uom_conversion_factor.uom_conversion_factor import UOMConversionGraph
-from frappe import _, msgprint, unscrub
-from frappe.utils import (cint, cstr, flt, formatdate, get_timestamp, getdate,
-						  now_datetime, random_string, strip, get_link_to_form, clean_whitespace)
 from frappe.utils.html_utils import clean_html
-from frappe.website.doctype.website_slideshow.website_slideshow import \
-	get_slideshow
-
+from frappe.website.doctype.website_slideshow.website_slideshow import get_slideshow
 from frappe.website.utils import clear_cache
 from frappe.website.website_generator import WebsiteGenerator
-
-from six import iteritems, string_types
+import itertools
+import json
 
 
 class DuplicateReorderRows(frappe.ValidationError):
@@ -47,11 +45,6 @@ class Item(WebsiteGenerator):
 		no_cache=1
 	)
 
-	_cant_change_fields_bin = ["is_stock_item"]
-	_cant_change_fields_sle = ["has_serial_no", "has_batch_no", "valuation_method", "is_vehicle"]
-	_cant_change_fields_trn = ["stock_uom", "alt_uom", "alt_uom_size", "is_vehicle"]
-	_cant_change_fields = _cant_change_fields_bin + _cant_change_fields_sle + _cant_change_fields_trn
-
 	def get_feed(self):
 		return self.get('item_name') or self.get('item_code') or self.get('name')
 
@@ -59,7 +52,7 @@ class Item(WebsiteGenerator):
 		super(Item, self).onload()
 
 		self.set_onload('stock_exists', self.stock_ledger_created())
-		self.set_onload('cant_change_fields', self.get_cant_change_fields())
+		self.set_onload('cant_change_fields', self.get_applicable_cant_change_fields())
 		self.set_asset_naming_series()
 
 	@frappe.whitelist()
@@ -134,11 +127,11 @@ class Item(WebsiteGenerator):
 		self.validate_auto_reorder_enabled_in_stock_settings()
 		self.validate_applicable_to()
 		self.validate_applicable_items()
-		self.cant_change()
+		self.validate_cant_change()
 		self.update_show_in_website()
 		self.validate_item_override_values()
 
-		if not self.get("__islocal"):
+		if not self.is_new():
 			self.old_item_group = frappe.db.get_value(self.doctype, self.name, "item_group")
 			self.old_website_item_groups = frappe.db.sql_list("""select item_group
 					from `tabWebsite Item Group`
@@ -512,7 +505,7 @@ class Item(WebsiteGenerator):
 			self.remove(d)
 
 		existing_uoms = [d.uom for d in self.uoms]
-		for from_uom, conversion_factor in iteritems(uom_conversion_factors):
+		for from_uom, conversion_factor in uom_conversion_factors.items():
 			if from_uom not in existing_uoms:
 				self.append('uoms', {'uom': from_uom, 'conversion_factor': conversion_factor})
 
@@ -572,7 +565,7 @@ class Item(WebsiteGenerator):
 				self.has_serial_no = 1
 
 		if self.has_serial_no == 1 and self.is_stock_item == 0 and not self.is_fixed_asset:
-			msgprint(_("'Has Serial No' can not be 'Yes' for non-stock item"), raise_exception=1)
+			frappe.msgprint(_("'Has Serial No' can not be 'Yes' for non-stock item"), raise_exception=1)
 
 		if self.has_serial_no == 0 and self.serial_no_series:
 			self.serial_no_series = None
@@ -692,10 +685,10 @@ class Item(WebsiteGenerator):
 			if not frappe.db.exists("Item", new_name):
 				frappe.throw(_("Item {0} does not exist").format(new_name))
 
-			new_properties = [cstr(d) for d in frappe.db.get_value("Item", new_name, self._cant_change_fields)]
-			if new_properties != [cstr(self.get(fld)) for fld in self._cant_change_fields]:
+			new_properties = [cstr(d) for d in frappe.db.get_value("Item", new_name, self.get_cant_change_fields())]
+			if new_properties != [cstr(self.get(fld)) for fld in self.get_cant_change_fields()]:
 				frappe.throw(_("To merge, following properties must be same for both items")
-									+ ": \n" + ", ".join([self.meta.get_label(fld) for fld in self._cant_change_fields]))
+									+ ": \n" + ", ".join([self.meta.get_label(fld) for fld in self.get_cant_change_fields()]))
 
 	def after_rename(self, old_name, new_name, merge):
 		if merge:
@@ -853,7 +846,7 @@ class Item(WebsiteGenerator):
 				frappe.throw(_("Variant Based On cannot be changed"))
 
 	def validate_uom(self):
-		if not self.get("__islocal"):
+		if not self.is_new():
 			check_stock_uom_with_bin(self.name, self.stock_uom)
 		if self.has_variants:
 			for d in frappe.db.get_all("Item", filters={"variant_of": self.name}):
@@ -948,16 +941,32 @@ class Item(WebsiteGenerator):
 				d.variant_of = self.variant_of
 
 	def get_cant_change_fields(self):
+		return (
+			self.get_cant_change_fields_based_on_bin()
+			+ self.get_cant_change_fields_based_on_sle()
+			+ self.get_cant_change_fields_based_on_transactions()
+		)
+
+	def get_cant_change_fields_based_on_bin(self):
+		return ["is_stock_item"]
+
+	def get_cant_change_fields_based_on_sle(self):
+		return ["has_serial_no", "has_batch_no", "valuation_method", "is_vehicle"]
+
+	def get_cant_change_fields_based_on_transactions(self):
+		return ["stock_uom", "alt_uom", "alt_uom_size", "is_vehicle"]
+
+	def get_applicable_cant_change_fields(self):
 		fieldnames = []
 
-		if not self.get("__islocal"):
-			for fieldname in self._cant_change_fields:
+		if not self.is_new():
+			for fieldname in self.get_cant_change_fields():
 				if self.check_if_cant_change_field(fieldname):
 					fieldnames.append(fieldname)
 
 		return fieldnames
 
-	def cant_change(self):
+	def validate_cant_change(self):
 		from frappe.model import numeric_fieldtypes
 
 		def has_changed(fieldname):
@@ -970,33 +979,36 @@ class Item(WebsiteGenerator):
 			else:
 				return self.get(field) != before_save_values.get(field)
 
-		if not self.get("__islocal"):
-			before_save_values = frappe.db.get_value("Item", self.name, self._cant_change_fields, as_dict=True)
+		if not self.is_new():
+			before_save_values = frappe.db.get_value("Item", self.name, self.get_cant_change_fields(), as_dict=True)
 			if not before_save_values.get('valuation_method') and self.get('valuation_method'):
 				before_save_values['valuation_method'] = frappe.db.get_single_value("Stock Settings", "valuation_method") or "FIFO"
 
 			if before_save_values:
-				for field in self._cant_change_fields:
+				for field in self.get_cant_change_fields():
 					if has_changed(field) and not self.flags.get('force_allow_change', {}).get(field) and self.check_if_cant_change_field(field):
 						frappe.throw(_("As there are existing transactions against item {0}, you can not change the value of {1}")
 							.format(self.name, frappe.bold(self.meta.get_label(field))))
 
 	def check_if_cant_change_field(self, field):
 		link_doctypes_bin = ["Sales Order Item", "Purchase Order Item", "Material Request Item", "Work Order"]
-		linked_doctypes = ["Delivery Note Item", "Sales Invoice Item", "Purchase Receipt Item",
-			"Purchase Invoice Item", "Stock Entry Detail", "Stock Reconciliation Item"] + link_doctypes_bin
+		linked_doctypes = [
+			"Delivery Note Item", "Sales Invoice Item",
+			"Purchase Receipt Item", "Purchase Invoice Item",
+			"Stock Entry Detail", "Stock Reconciliation Item"
+		] + link_doctypes_bin
 		linked_doctypes_vehicle = ["Vehicle Allocation", "Vehicle Booking Order"]
 
-		if field in self._cant_change_fields_sle or field in self._cant_change_fields_bin:
+		if field in self.get_cant_change_fields_based_on_sle() or field in self.get_cant_change_fields_based_on_bin():
 			if self.stock_ledger_created():
 				return True
 
-		if field in self._cant_change_fields_bin:
+		if field in self.get_cant_change_fields_based_on_bin():
 			for doctype in link_doctypes_bin:
 				if self.check_if_linked_doctype_exists(doctype):
 					return True
 
-		if field in self._cant_change_fields_trn:
+		if field in self.get_cant_change_fields_based_on_transactions():
 			for doctype in linked_doctypes:
 				if self.check_if_linked_doctype_exists(doctype):
 					return True
@@ -1013,14 +1025,16 @@ class Item(WebsiteGenerator):
 	def validate_item_override_values(self):
 		get_item_override_values(self.as_dict(), validate=True)
 
-	def check_if_linked_doctype_exists(self, doctype):
+	def check_if_linked_doctype_exists(self, doctype, fieldname=None):
 		if not hasattr(self, "_linked_doctype_exists"):
 			self._linked_doctype_exists = {}
 
 		if doctype in self._linked_doctype_exists:
 			return self._linked_doctype_exists[doctype]
 
-		fieldname = "production_item" if doctype == "Work Order" else "item_code"
+		if not fieldname:
+			fieldname = "production_item" if doctype == "Work Order" else "item_code"
+
 		self._linked_doctype_exists[doctype] = frappe.db.get_value(doctype, filters={fieldname: self.name, "docstatus": 1})
 		return self._linked_doctype_exists[doctype]
 
@@ -1057,7 +1071,7 @@ def get_timeline_data(doctype, name):
 			and posting_date > date_sub(curdate(), interval 1 year)
 			group by posting_date''', name))
 
-	for date, count in iteritems(items):
+	for date, count in items.items():
 		timestamp = get_timestamp(date)
 		out.update({timestamp: count})
 
@@ -1097,7 +1111,7 @@ def validate_cancelled_item(item_code, docstatus=None, verbose=1):
 
 def _msgprint(msg, verbose):
 	if verbose:
-		msgprint(msg, raise_exception=True)
+		frappe.msgprint(msg, raise_exception=True)
 	else:
 		raise frappe.ValidationError(msg)
 
@@ -1301,7 +1315,7 @@ def get_item_attribute(parent, attribute_value=''):
 
 @frappe.whitelist()
 def get_item_override_values(args, validate=False):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)

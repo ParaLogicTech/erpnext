@@ -54,30 +54,28 @@ def validate_accounting_period(gl_map):
 def process_gl_map(gl_map, merge_entries=True):
 	if merge_entries:
 		gl_map = merge_similar_entries(gl_map)
+
 	for entry in gl_map:
-		# toggle debit, credit if negative entry
+		# swap debit, credit if negative entry
 		if flt(entry.debit) < 0 and flt(entry.credit) < 0:
 			entry.debit, entry.credit = -flt(entry.credit), -flt(entry.debit)
-
 		if flt(entry.debit_in_account_currency) < 0 and flt(entry.credit_in_account_currency) < 0:
 			entry.debit_in_account_currency, entry.credit_in_account_currency = -flt(entry.credit_in_account_currency), -flt(entry.debit_in_account_currency)
 
+		# handle debit side negative
 		if flt(entry.debit) < 0:
 			entry.credit = flt(entry.credit) - flt(entry.debit)
 			entry.debit = 0.0
-
 		if flt(entry.debit_in_account_currency) < 0:
-			entry.credit_in_account_currency = \
-				flt(entry.credit_in_account_currency) - flt(entry.debit_in_account_currency)
+			entry.credit_in_account_currency = flt(entry.credit_in_account_currency) - flt(entry.debit_in_account_currency)
 			entry.debit_in_account_currency = 0.0
 
+		# handle credit side negative
 		if flt(entry.credit) < 0:
 			entry.debit = flt(entry.debit) - flt(entry.credit)
 			entry.credit = 0.0
-
 		if flt(entry.credit_in_account_currency) < 0:
-			entry.debit_in_account_currency = \
-				flt(entry.debit_in_account_currency) - flt(entry.credit_in_account_currency)
+			entry.debit_in_account_currency = flt(entry.debit_in_account_currency) - flt(entry.credit_in_account_currency)
 			entry.credit_in_account_currency = 0.0
 
 	return gl_map
@@ -110,7 +108,26 @@ def merge_similar_entries(gl_map):
 	precision = get_field_precision(frappe.get_meta("GL Entry").get_field("debit"), company_currency)
 
 	# filter zero debit and credit entries
-	merged_gle_list = [e for e in merged_gl_map.values() if flt(e.debit, precision) != 0 or flt(e.credit, precision) != 0]
+	merged_gle_list = []
+	for entry in merged_gl_map.values():
+		# handle both debit and credit set
+		if flt(entry.debit) and flt(entry.credit):
+			entry.debit = flt(entry.debit) - flt(entry.credit)
+			entry.credit = 0
+
+			if entry.debit < entry.credit:
+				entry.debit, entry.credit = entry.credit, entry.debit
+
+		if flt(entry.debit_in_account_currency) and flt(entry.credit_in_account_currency):
+			entry.debit_in_account_currency = flt(entry.debit_in_account_currency) - flt(entry.credit_in_account_currency)
+			entry.credit_in_account_currency = 0.0
+
+			if entry.debit_in_account_currency < entry.credit_in_account_currency:
+				entry.debit_in_account_currency, entry.credit_in_account_currency = entry.credit_in_account_currency, entry.debit_in_account_currency
+
+		if flt(entry.debit, precision) != 0 or flt(entry.credit, precision) != 0:
+			merged_gle_list.append(entry)
+
 	return merged_gle_list
 
 

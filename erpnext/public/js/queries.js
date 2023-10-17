@@ -21,9 +21,25 @@ $.extend(erpnext.queries, {
 	},
 
 	item: function(filters) {
-		var args = { query: "erpnext.controllers.queries.item_query" };
-		if(filters) args["filters"] = filters;
+		let args = { query: "erpnext.controllers.queries.item_query" };
+		if (filters) {
+			args["filters"] = filters;
+		}
 		return args;
+	},
+
+	subcontracted_item: function(purchase_order, filters) {
+		if (!filters) {
+			filters = {}
+		}
+		if (purchase_order) {
+			filters["purchase_order"] = purchase_order;
+		}
+
+		return {
+			query: "erpnext.controllers.queries.subcontracted_item_query",
+			filters: filters
+		};
 	},
 
 	item_uom: function(item_code) {

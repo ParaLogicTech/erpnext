@@ -8,7 +8,7 @@ QUnit.test("test: purchase order with get items", function(assert) {
 		() => {
 			return frappe.tests.make('Purchase Order', [
 				{supplier: 'Test Supplier'},
-				{is_subcontracted: 'No'},
+				{is_subcontracted: 0},
 				{buying_price_list: 'Test-Buying-USD'},
 				{currency: 'USD'},
 				{items: [

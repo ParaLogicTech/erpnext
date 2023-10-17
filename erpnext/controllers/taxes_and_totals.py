@@ -5,9 +5,10 @@ import frappe
 import erpnext
 from frappe import _, scrub
 from frappe.utils import cint, flt, round_based_on_smallest_currency_fraction
-from erpnext.controllers.accounts_controller import validate_conversion_rate, validate_taxes_and_charges,\
-	validate_inclusive_tax
+from erpnext.controllers.accounts_controller import validate_conversion_rate
+from erpnext.controllers.transaction_controller import validate_taxes_and_charges, validate_inclusive_tax
 from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
+from frappe.utils import money_in_words
 import json
 
 
@@ -47,6 +48,7 @@ class calculate_taxes_and_totals(object):
 		self.manipulate_grand_total_for_inclusive_tax()
 		self.calculate_tax_inclusive_rate()
 		self.calculate_totals()
+		self.set_total_in_words()
 		self._cleanup()
 
 	def validate_conversion_rate(self):
@@ -661,11 +663,21 @@ class calculate_taxes_and_totals(object):
 			self.doc.rounded_total = round_based_on_smallest_currency_fraction(self.doc.grand_total,
 				self.doc.currency, self.doc.precision("rounded_total"))
 
-			#if print_in_rate is set, we would have already calculated rounding adjustment
+			# if print_in_rate is set, we would have already calculated rounding adjustment
 			self.doc.rounding_adjustment += flt(self.doc.rounded_total - self.doc.grand_total,
 				self.doc.precision("rounding_adjustment"))
 
 			self._set_in_company_currency(self.doc, ["rounding_adjustment", "rounded_total"])
+
+	def set_total_in_words(self):
+		if self.doc.meta.get_field("base_in_words"):
+			company_currency = erpnext.get_company_currency(self.doc.company)
+			base_amount = abs(self.doc.base_grand_total if self.doc.is_rounded_total_disabled() else self.doc.base_rounded_total)
+			self.doc.base_in_words = money_in_words(base_amount, company_currency)
+
+		if self.doc.meta.get_field("in_words"):
+			amount = abs(self.doc.grand_total if self.doc.is_rounded_total_disabled() else self.doc.rounded_total)
+			self.doc.in_words = money_in_words(amount, self.doc.currency)
 
 	def _cleanup(self):
 		for tax in self.doc.get("taxes"):

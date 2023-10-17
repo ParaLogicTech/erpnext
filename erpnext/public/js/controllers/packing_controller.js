@@ -25,6 +25,7 @@ erpnext.stock.PackingController = class PackingController extends erpnext.stock.
 						name: me.frm.doc.name,
 						child_doctype: item.doctype,
 						default_source_warehouse: me.frm.doc.default_source_warehouse,
+						purchase_order: me.frm.doc.purchase_order,
 					}
 				},
 				callback: function(r) {
@@ -38,7 +39,7 @@ erpnext.stock.PackingController = class PackingController extends erpnext.stock.
 
 	default_source_warehouse() {
 		for (const table_field of this.item_table_fields) {
-			this.autofill_warehouse(this.frm.doc[table_field], "source_warehouse", this.frm.doc.default_source_warehouse);
+			erpnext.utils.autofill_warehouse(this.frm.doc[table_field], "source_warehouse", this.frm.doc.default_source_warehouse);
 		}
 	}
 

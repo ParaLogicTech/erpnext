@@ -1089,9 +1089,9 @@ class Project(StatusUpdater):
 
 	def set_project_date(self):
 		self.project_date = getdate(
-			self.get('vehicle_received_date')
-			or self.actual_start_date
+			self.actual_start_date
 			or self.expected_start_date
+			or self.get('vehicle_received_date')
 			or self.creation
 		)
 

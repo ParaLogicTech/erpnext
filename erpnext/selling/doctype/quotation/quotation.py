@@ -51,8 +51,6 @@ class Quotation(SellingController):
 		if self.lost_reasons:
 			self.lost_reasons = []
 
-		super(Quotation, self).on_cancel()
-
 		# update enquiry status
 		self.update_status_on_cancel()
 		self.update_opportunity()

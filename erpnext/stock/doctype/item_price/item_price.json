@@ -102,7 +102,8 @@
    "in_standard_filter": 1,
    "label": "Price List",
    "options": "Price List",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "bold": 1,
@@ -175,7 +176,8 @@
    "fieldname": "valid_from",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Valid From "
+   "label": "Valid From",
+   "search_index": 1
   },
   {
    "default": "0",
@@ -192,7 +194,8 @@
    "fieldname": "valid_upto",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Valid Upto "
+   "label": "Valid Upto",
+   "search_index": 1
   },
   {
    "fieldname": "section_break_24",
@@ -220,7 +223,7 @@
  "icon": "fa fa-flag",
  "idx": 1,
  "links": [],
- "modified": "2023-02-27 02:07:58.654698",
+ "modified": "2023-10-10 14:19:59.311528",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Price",

@@ -301,23 +301,22 @@ $.extend(erpnext.manufacturing, {
 	},
 
 	get_max_transferable_qty: (doc, purpose) => {
-		let max_qty_to_produce = flt(doc.max_qty) || flt(doc.qty);
-		let qty_with_allowance = erpnext.manufacturing.get_qty_with_allowance(doc);
+		let producible_qty_with_allowance = erpnext.manufacturing.get_qty_with_allowance(doc.producible_qty, doc);
 
 		let pending_qty = 0;
 		let pending_qty_with_allowance = 0;
 
 		if (doc.skip_transfer) {
-			pending_qty = flt(doc.qty) - flt(doc.produced_qty);
-			pending_qty_with_allowance = qty_with_allowance - flt(doc.produced_qty);
+			pending_qty = flt(doc.producible_qty) - flt(doc.produced_qty);
+			pending_qty_with_allowance = producible_qty_with_allowance - flt(doc.produced_qty);
 		} else {
 			if (purpose === 'Manufacture') {
 				let qty_to_produce = Math.min(flt(doc.material_transferred_for_manufacturing), flt(doc.qty));
 				pending_qty = qty_to_produce - flt(doc.produced_qty);
 				pending_qty_with_allowance = flt(doc.material_transferred_for_manufacturing) - flt(doc.produced_qty);
 			} else {
-				pending_qty = max_qty_to_produce - flt(doc.material_transferred_for_manufacturing);
-				pending_qty_with_allowance = qty_with_allowance - flt(doc.material_transferred_for_manufacturing);
+				pending_qty = flt(doc.producible_qty) - flt(doc.material_transferred_for_manufacturing);
+				pending_qty_with_allowance = producible_qty_with_allowance - flt(doc.material_transferred_for_manufacturing);
 			}
 		}
 
@@ -327,37 +326,39 @@ $.extend(erpnext.manufacturing, {
 		return [flt(pending_qty, qty_precision), flt(pending_qty_with_allowance, qty_precision)];
 	},
 
-	get_qty_with_allowance: function (doc) {
-		if (flt(doc.max_qty)) {
-			return flt(doc.max_qty, erpnext.manufacturing.get_work_order_precision());
-		} else {
-			let over_production_allowance = erpnext.manufacturing.get_over_production_allowance();
-			let qty_with_allowance = flt(doc.qty) + flt(doc.qty) * over_production_allowance / 100;
+	get_qty_with_allowance: function (qty, doc) {
+		let allowance_percentage = erpnext.manufacturing.get_over_production_allowance(doc);
+		let qty_with_allowance = flt(qty) + flt(qty) * allowance_percentage / 100;
+		return flt(qty_with_allowance, erpnext.manufacturing.get_work_order_precision())
+	},
 
-			return flt(qty_with_allowance, erpnext.manufacturing.get_work_order_precision());
+	get_over_production_allowance: function (doc) {
+		if (doc.max_qty && doc.qty) {
+			return flt(doc.max_qty) / flt(doc.qty) * 100 - 100
+		} else {
+			return flt(frappe.defaults.get_default('overproduction_percentage_for_work_order'))
 		}
 	},
 
-	get_work_order_precision: function () {
-		let qty_df = frappe.meta.get_docfield("Work Order", "qty");
-		return frappe.meta.get_field_precision(qty_df);
-	},
-
-	get_over_production_allowance: function () {
-		return flt(frappe.defaults.get_default('overproduction_percentage_for_work_order'));
+	get_subcontractable_qty: function (doc) {
+		let production_completed_qty = Math.max(flt(doc.produced_qty), flt(doc.material_transferred_for_manufacturing));
+		let subcontractable_qty = flt(doc.producible_qty) - flt(doc.scrap_qty) - production_completed_qty;
+		return flt(subcontractable_qty, erpnext.manufacturing.get_work_order_precision());
 	},
 
 	show_progress_for_production: function(doc, frm) {
 		let qty_precision = erpnext.manufacturing.get_work_order_precision();
-		let produced_qty = doc.produced_qty;
-		let pending_complete;
-		if (doc.skip_transfer) {
-			pending_complete = flt(doc.qty - doc.produced_qty, qty_precision);
-		} else {
-			pending_complete = flt(doc.material_transferred_for_manufacturing - doc.produced_qty, qty_precision);
-		}
 
-		pending_complete = Math.max(pending_complete, 0);
+		let pending_production;
+		if (doc.skip_transfer) {
+			pending_production = flt(doc.producible_qty - doc.produced_qty, qty_precision);
+		} else {
+			pending_production = flt(doc.material_transferred_for_manufacturing - doc.produced_qty, qty_precision);
+		}
+		pending_production = Math.max(pending_production, 0);
+
+		let pending_subcontract = flt(doc.subcontract_order_qty - doc.subcontract_received_qty, qty_precision);
+		pending_subcontract = Math.max(pending_subcontract, 0);
 
 		return erpnext.utils.show_progress_for_qty({
 			frm: frm,
@@ -368,18 +369,34 @@ $.extend(erpnext.manufacturing, {
 				{
 					title: __("<b>Produced:</b> {0} / {1} {2} ({3}%)", [
 						format_number(doc.produced_qty),
-						format_number(doc.qty),
+						format_number(doc.producible_qty),
 						doc.stock_uom,
-						format_number(produced_qty / doc.qty * 100, null, 1),
+						format_number(doc.producible_qty ? doc.produced_qty / doc.producible_qty * 100: 0, null, 1),
 					]),
-					completed_qty: produced_qty,
+					completed_qty: doc.produced_qty,
 					progress_class: "progress-bar-success",
-					add_min_width: 0.5,
+					add_min_width: doc.producible_qty ? 0.5 : 0,
 				},
 				{
-					title: __("<b>Remaining:</b> {0} {1}", [format_number(pending_complete), doc.stock_uom]),
-					completed_qty: pending_complete,
+					title: __("<b>Production Remaining:</b> {0} {1}", [format_number(pending_production), doc.stock_uom]),
+					completed_qty: pending_production,
 					progress_class: "progress-bar-warning",
+				},
+				{
+					title: __("<b>Subcontract Received:</b> {0} / {1} {2} ({3}%)", [
+						format_number(doc.subcontract_received_qty),
+						format_number(doc.subcontract_order_qty),
+						doc.stock_uom,
+						format_number(doc.subcontract_received_qty / doc.subcontract_order_qty * 100, null, 1),
+					]),
+					completed_qty: doc.subcontract_received_qty,
+					progress_class: "progress-bar-info",
+					add_min_width: doc.subcontract_order_qty && !doc.producible_qty ? 0.5 : 0,
+				},
+				{
+					title: __("<b>Subcontract Remaining:</b> {0} {1}", [format_number(pending_subcontract), doc.stock_uom]),
+					completed_qty: pending_subcontract,
+					progress_class: "progress-bar-yellow",
 				},
 			],
 		});
@@ -388,7 +405,7 @@ $.extend(erpnext.manufacturing, {
 	show_progress_for_packing: function (doc, frm) {
 		let qty_precision = erpnext.manufacturing.get_work_order_precision();
 		let packed_qty = doc.packed_qty;
-		let pending_complete = flt(flt(doc.produced_qty) - flt(doc.packed_qty), qty_precision);
+		let pending_complete = flt(flt(doc.completed_qty) - flt(doc.packed_qty), qty_precision);
 
 		return erpnext.utils.show_progress_for_qty({
 			frm: frm,
@@ -415,6 +432,11 @@ $.extend(erpnext.manufacturing, {
 		});
 	},
 
+	get_work_order_precision: function () {
+		let qty_df = frappe.meta.get_docfield("Work Order", "qty");
+		return frappe.meta.get_field_precision(qty_df);
+	},
+
 	can_start_work_order: function (doc) {
 		if (!erpnext.manufacturing.has_stock_entry_permission()) {
 			return false;
@@ -426,7 +448,8 @@ $.extend(erpnext.manufacturing, {
 		return (
 			!doc.skip_transfer
 			&& doc.transfer_material_against != 'Job Card'
-			&& flt(doc.material_transferred_for_manufacturing) < flt(doc.qty)
+			&& flt(doc.material_transferred_for_manufacturing) < flt(doc.producible_qty)
+			&& flt(doc.produced_qty) < flt(doc.qty)
 		);
 	},
 
@@ -439,7 +462,7 @@ $.extend(erpnext.manufacturing, {
 		}
 
 		if (doc.skip_transfer) {
-			return flt(doc.produced_qty) < flt(doc.qty);
+			return flt(doc.produced_qty) < flt(doc.producible_qty);
 		} else {
 			return flt(doc.produced_qty) < flt(doc.material_transferred_for_manufacturing);
 		}

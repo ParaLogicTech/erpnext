@@ -5,12 +5,11 @@ import frappe
 import erpnext
 from frappe import _, scrub
 from frappe.utils import flt, fmt_money
-from erpnext.controllers.accounts_controller import AccountsController
+from erpnext.controllers.accounts_controller import AccountsController, validate_conversion_rate
 from erpnext.accounts.general_ledger import make_gl_entries, delete_voucher_gl_entries
 from erpnext.accounts.doctype.account.account import get_account_currency
 from erpnext.accounts.party import get_party_account
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
-from six import string_types
 import json
 
 
@@ -32,8 +31,13 @@ class LandedCostVoucher(AccountsController):
 		self.validate_credit_to_account()
 		self.validate_purchase_receipts()
 		self.set_purchase_receipt_details()
+
+		if self.allocate_advances_automatically and self.is_payable:
+			self.set_advances()
 		self.clear_advances_table_if_not_payable()
-		self.clear_unallocated_advances("Landed Cost Voucher Advance", "advances")
+		self.clear_unallocated_advances()
+
+		self.validate_conversion_rate()
 		self.calculate_taxes_and_totals()
 		self.validate_manual_distribution_totals()
 		self.set_status()
@@ -49,8 +53,7 @@ class LandedCostVoucher(AccountsController):
 		self.make_gl_entries()
 
 	def on_cancel(self):
-		from erpnext.accounts.utils import unlink_ref_doc_from_payment_entries
-		unlink_ref_doc_from_payment_entries(self, validate_permission=True)
+		self.unlink_payments_on_invoice_cancel()
 		self.update_landed_cost()
 		self.make_gl_entries(cancel=True)
 
@@ -239,7 +242,7 @@ class LandedCostVoucher(AccountsController):
 
 		for item in self.items:
 			item_manual_distribution = item.manual_distribution or {}
-			if isinstance(item_manual_distribution, string_types):
+			if isinstance(item_manual_distribution, str):
 				item_manual_distribution = json.loads(item_manual_distribution)
 
 			for account_head in item_manual_distribution.keys():
@@ -272,6 +275,17 @@ class LandedCostVoucher(AccountsController):
 
 			if account.company != self.company:
 				frappe.throw(_("Credit To Account does not belong to Company {0}").format(self.company))
+
+	def validate_conversion_rate(self):
+		company_currency = erpnext.get_company_currency(self.company)
+		if not self.currency:
+			self.currency = company_currency
+
+		if self.currency == company_currency:
+			self.conversion_rate = 1.0
+		else:
+			self.conversion_rate = flt(self.conversion_rate)
+			validate_conversion_rate(self.currency, self.conversion_rate, self.meta.get_label("conversion_rate"), self.company)
 
 	def calculate_taxes_and_totals(self):
 		item_total_fields = ['qty', 'amount', 'net_weight']
@@ -314,7 +328,7 @@ class LandedCostVoucher(AccountsController):
 		for item in self.items:
 			item.item_tax_detail = {}
 			item_manual_distribution = item.manual_distribution or {}
-			if isinstance(item.manual_distribution, string_types):
+			if isinstance(item.manual_distribution, str):
 				item_manual_distribution = json.loads(item_manual_distribution)
 
 			for tax in self.taxes:

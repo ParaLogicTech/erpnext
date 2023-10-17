@@ -46,17 +46,6 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 		me.frm.set_query('customer_address', erpnext.queries.address_query);
 		me.frm.set_query('shipping_address_name', erpnext.queries.address_query);
 
-		if(this.frm.fields_dict.taxes_and_charges) {
-			this.frm.set_query("taxes_and_charges", function() {
-				return {
-					filters: [
-						['Sales Taxes and Charges Template', 'company', '=', me.frm.doc.company],
-						['Sales Taxes and Charges Template', 'docstatus', '!=', 2]
-					]
-				}
-			});
-		}
-
 		if(this.frm.fields_dict.selling_price_list) {
 			this.frm.set_query("selling_price_list", function() {
 				return { filters: { selling: 1 } };
@@ -568,7 +557,7 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 	auto_select_batches() {
 		if ((this.frm.doc.doctype === "Delivery Note" || this.frm.doc.update_stock) && !this.frm.doc.is_return) {
 			var me = this;
-			return frappe.call({
+			return me.frm.call({
 				method: 'auto_select_batches',
 				doc: me.frm.doc,
 				freeze: 1,

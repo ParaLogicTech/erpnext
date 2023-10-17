@@ -8,7 +8,7 @@ QUnit.test("test: purchase order with shipping rule", function(assert) {
 		() => {
 			return frappe.tests.make('Purchase Order', [
 				{supplier: 'Test Supplier'},
-				{is_subcontracted: 'No'},
+				{is_subcontracted: 0},
 				{buying_price_list: 'Test-Buying-USD'},
 				{currency: 'USD'},
 				{"schedule_date": frappe.datetime.add_days(frappe.datetime.now_date(), 1)},

@@ -69,7 +69,7 @@ class PaymentEntry(AccountsController):
 		self.set_title()
 		self.validate_duplicate_entry()
 		self.validate_allocated_amount()
-		self.ensure_supplier_is_not_blocked()
+		self.ensure_supplier_is_not_blocked(is_payment=True)
 		self.set_status()
 		self.set_original_reference()
 		self.validate_vehicle_accounting_dimensions()
@@ -1132,7 +1132,7 @@ def get_payment_entry(dt, dn, party_amount=None, bank_account=None, bank_amount=
 	pe.party = doc.get('bill_to') or doc.get(scrub(party_type)) or doc.get("party")
 	pe.contact_person = doc.get("contact_person")
 	pe.contact_email = doc.get("contact_email")
-	pe.ensure_supplier_is_not_blocked()
+	pe.ensure_supplier_is_not_blocked(is_payment=True)
 
 	pe.paid_from = party_account if payment_type=="Receive" else bank.account
 	pe.paid_to = party_account if payment_type=="Pay" else bank.account

@@ -73,8 +73,8 @@
   "column_break_72",
   "rejected_warehouse",
   "col_break_warehouse",
-  "is_subcontracted",
   "supplier_warehouse",
+  "is_subcontracted",
   "items_section",
   "scan_barcode",
   "items",
@@ -577,7 +577,6 @@
   },
   {
    "depends_on": "update_stock",
-   "description": "Warehouse where you are maintaining stock of rejected items",
    "fieldname": "rejected_warehouse",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -591,18 +590,19 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "No",
+   "default": "0",
    "fieldname": "is_subcontracted",
-   "fieldtype": "Select",
-   "label": "Raw Materials Supplied",
-   "options": "No\nYes",
-   "print_hide": 1
+   "fieldtype": "Check",
+   "label": "Is Subcontracted (Raw Materials Supplied)",
+   "print_hide": 1,
+   "read_only_depends_on": "eval:!doc.update_stock"
   },
   {
-   "depends_on": "eval:doc.is_subcontracted==\"Yes\"",
+   "depends_on": "eval:doc.is_subcontracted && doc.update_stock",
    "fieldname": "supplier_warehouse",
    "fieldtype": "Link",
    "label": "Supplier Warehouse",
+   "mandatory_depends_on": "eval:doc.is_subcontracted && doc.update_stock",
    "no_copy": 1,
    "options": "Warehouse",
    "print_hide": 1,
@@ -660,6 +660,7 @@
    "fieldname": "supplied_items",
    "fieldtype": "Table",
    "label": "Supplied Items",
+   "no_copy": 1,
    "options": "Purchase Receipt Item Supplied",
    "read_only": 1
   },
@@ -1882,7 +1883,7 @@
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-05-30 13:08:29.067761",
+ "modified": "2023-09-30 01:42:16.780088",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",

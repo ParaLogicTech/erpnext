@@ -12,5 +12,7 @@ def execute():
 	if frappe.db.has_index("tabGL Entry", "against_voucher_type_against_voucher_index"):
 		frappe.db.sql_ddl(f"ALTER TABLE `tabGL Entry` DROP INDEX `against_voucher_type_against_voucher_index`")
 
-	if frappe.db.has_index("tabStock Ledger Entry", "batch_no_item_code_warehouse_index"):
-		frappe.db.sql_ddl(f"ALTER TABLE `tabStock Ledger Entry` DROP INDEX `batch_no_item_code_warehouse_index`")
+	if frappe.db.has_index("tabGL Entry", "modified"):
+		frappe.db.sql_ddl(f"ALTER TABLE `tabGL Entry` DROP INDEX `modified`")
+	if frappe.db.has_index("tabStock Ledger Entry", "modified"):
+		frappe.db.sql_ddl(f"ALTER TABLE `tabStock Ledger Entry` DROP INDEX `modified`")

@@ -226,14 +226,16 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		this.calculate_taxes_and_totals();
 	}
 
-	weight() {
+	net_weight() {
 		this.calculate_taxes_and_totals();
 	}
 
 	calculate_taxes_and_totals() {
 		let me = this;
 
-		let item_total_fields = ['qty', 'amount', 'weight'];
+		me.validate_conversion_rate();
+
+		let item_total_fields = ['qty', 'amount', 'net_weight'];
 		$.each(item_total_fields || [], function(i, f) {
 			me.frm.doc['total_' + f] = flt(frappe.utils.sum((me.frm.doc.items || []).map(d => flt(d[f]))),
 				precision('total_' + f));
@@ -268,6 +270,16 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		me.distribute_applicable_charges_for_item();
 
 		me.frm.refresh_fields();
+	}
+
+	validate_conversion_rate() {
+		this.frm.doc.conversion_rate = flt(this.frm.doc.conversion_rate, precision("conversion_rate"));
+		if (!this.frm.doc.conversion_rate) {
+			let company_currency = this.get_company_currency();
+			if (this.frm.doc.currency == company_currency) {
+				this.frm.doc.conversion_rate = 1;
+			}
+		}
 	}
 
 	distribute_applicable_charges_for_item() {

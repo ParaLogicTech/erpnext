@@ -42,7 +42,7 @@ class VehicleDelivery(VehicleTransactionController):
 				select name
 				from `tabStock Ledger Entry`
 				where serial_no = %(vehicle)s and actual_qty > 0
-					and timestamp(posting_date, posting_time) < timestamp(%(posting_date)s, %(posting_time)s)
+					and (posting_date, posting_time) < (%(posting_date)s, %(posting_time)s)
 				limit 1
 			""", {
 				'vehicle': self.vehicle,

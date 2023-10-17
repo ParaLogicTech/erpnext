@@ -214,8 +214,10 @@ class SerialNo(StockController):
 			if last_customer_log:
 				self.customer = last_customer_log.get('customer')
 				self.customer_name = last_customer_log.get('customer_name')
-				self.vehicle_owner = last_customer_log.get('vehicle_owner')
-				self.vehicle_owner_name = last_customer_log.get('vehicle_owner_name')
+
+				if last_customer_log.vehicle_owner:
+					self.vehicle_owner = last_customer_log.get('vehicle_owner')
+					self.vehicle_owner_name = last_customer_log.get('vehicle_owner_name')
 
 	def get_last_sle(self, serial_no=None):
 		if not serial_no:
@@ -684,7 +686,7 @@ def update_serial_nos_after_submit(controller, parentfield):
 
 		if controller.doctype == "Stock Entry":
 			warehouse = d.t_warehouse
-			qty = d.transfer_qty
+			qty = d.stock_qty
 		else:
 			warehouse = d.warehouse
 			qty = (d.qty if controller.doctype == "Stock Reconciliation"

@@ -69,7 +69,7 @@ class TestMaterialRequest(unittest.TestCase):
 					"basic_rate": 100,
 					"qty": qty1,
 					"stock_uom": "_Test UOM 1",
-					"transfer_qty": qty1,
+					"stock_qty": qty1,
 					"uom": "_Test UOM 1",
 					"t_warehouse": warehouse or "_Test Warehouse 1 - _TC",
 					"cost_center": "_Test Cost Center - _TC"
@@ -82,7 +82,7 @@ class TestMaterialRequest(unittest.TestCase):
 					"basic_rate": 100,
 					"qty": qty2,
 					"stock_uom": "_Test UOM 1",
-					"transfer_qty": qty2,
+					"stock_qty": qty2,
 					"uom": "_Test UOM 1",
 					"t_warehouse": warehouse or "_Test Warehouse 1 - _TC",
 					"cost_center": "_Test Cost Center - _TC"
@@ -274,13 +274,13 @@ class TestMaterialRequest(unittest.TestCase):
 		})
 		se_doc.get("items")[0].update({
 			"qty": 27.0,
-			"transfer_qty": 27.0,
+			"stock_qty": 27.0,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
 			"basic_rate": 1.0
 		})
 		se_doc.get("items")[1].update({
 			"qty": 1.5,
-			"transfer_qty": 1.5,
+			"stock_qty": 1.5,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
 			"basic_rate": 1.0
 		})
@@ -351,13 +351,13 @@ class TestMaterialRequest(unittest.TestCase):
 		})
 		se_doc.get("items")[0].update({
 			"qty": 54.0,
-			"transfer_qty": 54.0,
+			"stock_qty": 54.0,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
 			"basic_rate": 1.0
 		})
 		se_doc.get("items")[1].update({
 			"qty": 3.0,
-			"transfer_qty": 3.0,
+			"stock_qty": 3.0,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
 			"basic_rate": 1.0
 		})
@@ -420,14 +420,14 @@ class TestMaterialRequest(unittest.TestCase):
 		})
 		se_doc.get("items")[0].update({
 			"qty": 60.0,
-			"transfer_qty": 60.0,
+			"stock_qty": 60.0,
 			"s_warehouse": "_Test Warehouse - _TC",
 			"t_warehouse": "_Test Warehouse 1 - _TC",
 			"basic_rate": 1.0
 		})
 		se_doc.get("items")[1].update({
 			"qty": 3.0,
-			"transfer_qty": 3.0,
+			"stock_qty": 3.0,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
 			"basic_rate": 1.0
 		})

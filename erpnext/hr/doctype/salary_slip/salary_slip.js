@@ -97,12 +97,33 @@ frappe.ui.form.on("Salary Slip", {
 	},
 
 	payroll_frequency: function(frm) {
-		frm.trigger("toggle_fields");
-		frm.set_value('end_date', '');
+		frm.trigger('set_start_end_dates');
 	},
 
 	employee: function(frm) {
 		frm.events.get_emp_and_leave_details(frm);
+	},
+
+	posting_date: function(frm){
+		frm.trigger('set_start_end_dates');
+	},
+
+	set_start_end_dates: function (frm) {
+		if (!frm.doc.salary_slip_based_on_timesheet) {
+			frappe.call({
+				method: 'erpnext.hr.doctype.payroll_entry.payroll_entry.get_start_end_dates',
+				args: {
+					payroll_frequency: frm.doc.payroll_frequency,
+					start_date: frm.doc.posting_date
+				},
+				callback: function (r) {
+					if (r.message) {
+						frm.set_value('start_date', r.message.start_date);
+						frm.set_value('end_date', r.message.end_date);
+					}
+				}
+			});
+		}
 	},
 
 	leave_without_pay: function(frm){
@@ -135,9 +156,6 @@ frappe.ui.form.on("Salary Slip", {
 
 	toggle_fields: function(frm) {
 		frm.toggle_display(['hourly_wages', 'timesheets'], cint(frm.doc.salary_slip_based_on_timesheet)===1);
-
-		frm.toggle_display(['payment_days', 'total_working_days', 'leave_without_pay'],
-			frm.doc.payroll_frequency!="");
 
 		frm.set_df_property('leave_without_pay', 'read_only', cint(frm.doc.set_lwp_manually) ? 0 : 1);
 		frm.set_df_property('late_days', 'read_only', cint(frm.doc.set_lwp_manually) ? 0 : 1);

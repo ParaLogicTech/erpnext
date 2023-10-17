@@ -11,16 +11,21 @@
   "title",
   "naming_series",
   "company",
+  "customer",
+  "customer_name",
+  "column_break_861eb",
   "sales_invoice",
-  "column_break_3",
   "salary_slip",
+  "column_break_3",
   "status",
+  "amended_from",
   "employee_detail",
   "employee",
   "employee_name",
-  "department",
   "column_break_9",
-  "user",
+  "department",
+  "designation",
+  "column_break_7nret",
   "start_date",
   "end_date",
   "section_break_5",
@@ -36,8 +41,7 @@
   "total_billed_amount",
   "per_billed",
   "section_break_18",
-  "note",
-  "amended_from"
+  "note"
  ],
  "fields": [
   {
@@ -55,7 +59,9 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Series",
+   "no_copy": 1,
    "options": "TS-",
+   "read_only": 1,
    "set_only_once": 1
   },
   {
@@ -113,6 +119,7 @@
   },
   {
    "depends_on": "employee",
+   "fetch_from": "employee.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
    "in_global_search": 1,
@@ -131,14 +138,6 @@
   {
    "fieldname": "column_break_9",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "user",
-   "fieldtype": "Link",
-   "in_global_search": 1,
-   "label": "User",
-   "options": "User",
-   "read_only": 1
   },
   {
    "fieldname": "start_date",
@@ -258,6 +257,37 @@
    "options": "Timesheet",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "depends_on": "eval:doc.customer && doc.customer_name != doc.customer",
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_7nret",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_861eb",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-clock-o",
@@ -265,7 +295,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-08-30 23:13:04.422897",
+ "modified": "2023-10-10 17:27:12.383427",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Timesheet",

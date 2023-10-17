@@ -28,7 +28,7 @@ def make_purchase_receipt():
 		for po in po_list:
 			pr = frappe.get_doc(make_purchase_receipt(po))
 
-			if pr.is_subcontracted=="Yes":
+			if pr.is_subcontracted:
 				pr.supplier_warehouse = "Supplier - WPL"
 
 			pr.posting_date = frappe.flags.current_date

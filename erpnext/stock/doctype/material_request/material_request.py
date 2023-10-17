@@ -130,7 +130,7 @@ class MaterialRequest(BuyingController):
 
 				elif self.material_request_type in ("Material Issue", "Material Transfer", "Customer Provided"):
 					data.ordered_qty_map = dict(frappe.db.sql("""
-						select i.material_request_item, sum(i.transfer_qty)
+						select i.material_request_item, sum(i.stock_qty)
 						from `tabStock Entry Detail` i
 						inner join `tabStock Entry` p on p.name = i.parent
 						where p.docstatus = 1 and i.material_request_item in %s
@@ -507,7 +507,7 @@ def make_stock_entry(source_name, target_doc=None):
 		qty = flt(flt(obj.stock_qty) - flt(obj.ordered_qty))/ target.conversion_factor \
 			if flt(obj.stock_qty) > flt(obj.ordered_qty) else 0
 		target.qty = qty
-		target.transfer_qty = qty * obj.conversion_factor
+		target.stock_qty = qty * obj.conversion_factor
 		target.conversion_factor = obj.conversion_factor
 
 		if source_parent.material_request_type == "Material Transfer" or source_parent.material_request_type == "Customer Provided":

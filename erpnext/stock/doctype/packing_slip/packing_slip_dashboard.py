@@ -15,7 +15,7 @@ def get_data():
 		'transactions': [
 			{
 				'label': _('Fulfilment'),
-				'items': ['Delivery Note', 'Sales Invoice']
+				'items': ['Delivery Note', 'Sales Invoice', 'Stock Entry']
 			},
 			{
 				'label': _('Previous Documents'),
