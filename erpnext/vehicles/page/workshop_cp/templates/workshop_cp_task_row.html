@@ -32,12 +32,12 @@
 
 	<td class="text-center">{{ doc.expected_time }}</td>
 
-	<td class="text-center">
+	<td class="text-center text-nowrap">
 		<div>{{ frappe.datetime.str_to_user(doc.start_dt, false, true) }}</div>
 		<div>{{ frappe.datetime.str_to_user(doc.start_dt, true, false) }}</div>
 	</td>
 
-	<td class="text-center">
+	<td class="text-center text-nowrap">
 		<div>{{ frappe.datetime.str_to_user(doc.end_dt, false, true) }}</div>
 		<div>{{ frappe.datetime.str_to_user(doc.end_dt, true, false) }}</div>
 	</td>
@@ -50,11 +50,11 @@
 		</a>
 	</td>
 
-	<td>
+	<td class="text-nowrap">
 		<span style="color: {{ doc.status_color }}">{{ doc.status }}</span>
 	</td>
 
-	<td class="text-center">
+	<td class="text-center text-nowrap actions-button-column">
 		<div class="inner-group-button show">
 			<button type="button" class="btn btn-default btn-sm" data-toggle="dropdown">Actions
 				<svg class="icon icon-xs">

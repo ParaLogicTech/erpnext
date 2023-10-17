@@ -20,6 +20,11 @@
 			vertical-align: top;
 		}
 
+		td.actions-button-column {
+			padding: 6px 8px;
+			vertical-align: middle;
+		}
+
 		tr:nth-child(even) td {
 			background-color: var(--gray-50);
 		}
