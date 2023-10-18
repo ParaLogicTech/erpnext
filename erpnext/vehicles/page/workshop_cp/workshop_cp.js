@@ -143,24 +143,32 @@ class WorkshopCP {
 		];
 
 		for (let field of filter_fields) {
-			field.onchange = () => this.debounced_refresh();
+			field.onchange = () => this.refresh();
 		}
 
 		return filter_fields;
 	}
 
 	setup_tabbed_layout() {
-		// this.dashboard_tab = this.page.main.find("#dashboard-content");
-		this.vehicles_tab = this.page.main.find("#vehicles-content");
-		this.tasks_tab = this.page.main.find("#tasks-content");
+		this.tabs = {
+			"vehicles": this.page.main.find("#vehicles-content"),
+			"tasks": this.page.main.find("#tasks-content"),
+		};
+		this.tab_btns = {
+			"vehicles": this.page.main.find("#vehicles-tab"),
+			"tasks": this.page.main.find("#tasks-tab"),
+		};
 
-		// this.dashboard_tab.append(frappe.render_template("workshop_cp_dashboard"));
-		this.vehicles_tab.append(frappe.render_template("workshop_cp_vehicles"));
-		this.tasks_tab.append(frappe.render_template("workshop_cp_tasks"));
+		this.tabs.vehicles.append(frappe.render_template("workshop_cp_vehicles"));
+		this.tabs.tasks.append(frappe.render_template("workshop_cp_tasks"));
+
+		let tab_hash = window.location.hash && window.location.hash.substring(1);
+		this.set_current_tab(tab_hash);
 	}
 
 	bind_events() {
 		$(this.parent).on("click", ".clear-filters", () => this.clear_filters());
+
 		$(this.parent).on("click", ".create_template_tasks", (e) => this.create_template_tasks(e));
 		$(this.parent).on("click", ".create_task", (e) => this.create_task(e));
 		$(this.parent).on("click", ".mark_as_ready", (e) => this.update_project_ready_to_close(e));
@@ -174,22 +182,56 @@ class WorkshopCP {
 		$(this.parent).on("click", ".complete_task", (e) => this.complete_task(e));
 		$(this.parent).on("click", ".resume_task", (e) => this.resume_task(e));
 
+		$(this.parent).on("click", ".show-project-tasks", (e) => {
+			let project = $(e.target).attr('data-project');
+			if (project) {
+				this.show_project_tasks(project);
+			}
+			e.preventDefault();
+		});
+
+		$(this.parent).on("click", ".show-project", (e) => {
+			let project = $(e.target).attr('data-project');
+			if (project) {
+				this.show_project(project);
+			}
+			e.preventDefault();
+		});
+
+		for (let [tab, tab_btn] of Object.entries(this.tab_btns)) {
+			tab_btn.on("show.bs.tab", (e) => this.on_tab_change(tab, e));
+		}
+
 		this.setup_realtime_updates();
 
 		$(this.parent).bind("show", () => {
 			if (this.initialized && this.is_visible()) {
-				this.refresh();
+				this.debounced_refresh();
 			}
 		});
 	}
 
-	async clear_filters() {
+	on_tab_change(tab, e) {
+		window.location.hash = "#" + tab;
+	}
+
+	set_current_tab(tab) {
+		if (tab && this.tab_btns[tab]) {
+			this.tab_btns[tab].tab("show");
+			this.on_tab_change(tab);
+		}
+	}
+
+	async clear_filters(no_refresh) {
 		this._no_refresh = true;
 		for (let field of Object.values(this.page.fields_dict)) {
 			await field.set_value(null);
 		}
 		this._no_refresh = false;
-		await this.refresh();
+
+		if (!no_refresh) {
+			await this.debounced_refresh();
+		}
 	}
 
 	async refresh() {
@@ -215,7 +257,7 @@ class WorkshopCP {
 				if (this.is_visible()) {
 					this.debounced_refresh();
 				}
-			}, 30000);
+			}, 60000);
 		}
 
 		this.render();	
@@ -270,7 +312,7 @@ class WorkshopCP {
 
 	render_vehicles_tab() {
 		// clear rows
-		this.vehicles_tab.find(".vehicle-table tbody").empty();
+		this.tabs.vehicles.find(".vehicle-table tbody").empty();
 
 		if (this.data.projects.length > 0) {
 			// append rows
@@ -279,12 +321,12 @@ class WorkshopCP {
 				return this.get_vehicle_row_html(doc);
 			}).join("");
 
-			this.vehicles_tab.find(".vehicle-table tbody").append(rows_html);
+			this.tabs.vehicles.find(".vehicle-table tbody").append(rows_html);
 		}
 	}
 
 	render_tasks_tab() {
-		this.tasks_tab.find(".task-table tbody").empty();
+		this.tabs.tasks.find(".task-table tbody").empty();
 
 		if (this.data.tasks.length > 0) {
 
@@ -293,7 +335,7 @@ class WorkshopCP {
 				return this.get_task_list_row_html(doc);
 			}).join("");
 
-			this.tasks_tab.find(".task-table tbody").append(rows_html);
+			this.tabs.tasks.find(".task-table tbody").append(rows_html);
 		}
 	}
 
@@ -311,6 +353,42 @@ class WorkshopCP {
 
 	get_filter_values() {
 		return this.page.get_form_values();
+	}
+
+	set_filter_value(fieldname, value, no_refresh) {
+		let field_value_map = {};
+		if (typeof fieldname === "string") {
+			field_value_map[fieldname] = value;
+		} else {
+			field_value_map = fieldname;
+		}
+
+		let promises = [];
+		promises.push(() => this._no_refresh = true);
+
+		Object.keys(field_value_map)
+			.forEach((fieldname, i, arr) => {
+				const value = field_value_map[fieldname];
+
+				if (i === arr.length - 1 && !no_refresh) {
+					promises.push(() => this._no_refresh = false);
+				}
+
+				promises.push(() => {
+					return this.get_filter(fieldname).set_value(value)
+				});
+			});
+
+		promises.push(() => this._no_refresh = false);
+		return frappe.run_serially(promises);
+	}
+
+	get_filter(fieldname) {
+		const field = (this.filters || []).find((f) => f.df.fieldname === fieldname);
+		if (!field) {
+			console.warn(`[Workshop CP] Invalid filter: ${fieldname}`);
+		}
+		return field;
 	}
 
 	setup_indicator() {
@@ -374,6 +452,24 @@ class WorkshopCP {
 
 	is_visible() {
 		return frappe.get_route_str() == this.page_name;
+	}
+
+	show_project_tasks(project) {
+		return frappe.run_serially([
+			() => this.clear_filters(true),
+			() => this.set_filter_value("project", project, true),
+			() => this.debounced_refresh(),
+			() => this.set_current_tab("tasks"),
+		]);
+	}
+
+	show_project(project) {
+		return frappe.run_serially([
+			() => this.clear_filters(true),
+			() => this.set_filter_value("project", project, true),
+			() => this.debounced_refresh(),
+			() => this.set_current_tab("vehicles"),
+		]);
 	}
 
 	async create_template_tasks(e) {

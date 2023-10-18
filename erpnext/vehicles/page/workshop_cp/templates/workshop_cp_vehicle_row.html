@@ -32,7 +32,11 @@
 
 	<td class="text-nowrap">
 		<div class="indicator {{ doc.project_status_color }}">{{ doc.tasks_status }}</div>
-		<div>({{ doc.completed_tasks }}/{{ doc.total_tasks }})</div>
+		<div>
+			<a href="#" class="show-project-tasks" data-project="{{ doc.project }}">
+				Tasks {{ doc.completed_tasks }}/{{ doc.total_tasks }}
+			</a>
+		</div>
 	</td>
 
 	<td class="text-nowrap">

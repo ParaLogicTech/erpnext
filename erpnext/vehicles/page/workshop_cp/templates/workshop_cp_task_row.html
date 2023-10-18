@@ -1,7 +1,7 @@
 <tr>
 	<td class="text-nowrap">
 		<div>
-			<a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" target="_blank">
+			<a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" class="show-project" data-project="{{ doc.project }}" target="_blank">
 				{{ doc.project }}
 			</a>
 		</div>
