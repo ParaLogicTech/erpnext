@@ -1,7 +1,7 @@
 <tr>
 	<td class="text-nowrap">
-		<a href="{{ frappe.utils.get_form_link('Project', doc.name) }}" target="_blank">
-			{{ doc.name }}
+		<a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" target="_blank">
+			{{ doc.project }}
 		</a>
 	</td>
 
@@ -31,35 +31,47 @@
 	<td>{{ doc.project_name }}</td>
 
 	<td class="text-nowrap">
-		<div style="color: {{ doc.status_color }}">{{ doc.tasks_status }}</div>
+		<div class="indicator {{ doc.project_status_color }}">{{ doc.tasks_status }}</div>
 		<div>({{ doc.completed_tasks }}/{{ doc.total_tasks }})</div>
 	</td>
 
 	<td class="text-nowrap">
-		{% if (doc.expected_delivery_date) { %}
+		{% if doc.expected_delivery_date %}
 			<div>{{ frappe.datetime.str_to_user(doc.expected_delivery_date) }}</div>
-		{% } %}
-		{% if (doc.expected_delivery_time) { %}
+		{% endif %}
+		{% if doc.expected_delivery_time %}
 			<div>{{ moment('2000-01-01 ' + doc.expected_delivery_time).format('hh:mm A') }}</div>
-		{% } %}
+		{% endif %}
 	</td>
 
 	<td class="text-center text-nowrap actions-button-column">
 		<div class="inner-group-button show">
 			<button type="button" class="btn btn-default btn-sm" data-toggle="dropdown">Actions
-				<svg class="icon  icon-xs">
+				<svg class="icon icon-xs">
 					<use class="" href="#icon-select"></use>
 				</svg>
 			</button>
 			<div role="menu" class="dropdown-menu dropdown-menu-right">
-				{% if doc.ready_to_close != 1 %}
-					<button class="dropdown-item create_tasks" data-project="{{ doc.name }}">{{ __("Create Task") }}</button>
-					<button class="dropdown-item create_template_tasks" data-project="{{doc.name}}">{%= __("Create Template Task") %}</button>
+				{% if !doc.ready_to_close %}
 					{% if doc.total_tasks && doc.completed_tasks == doc.total_tasks %}
-						<button class="dropdown-item mark_as_ready" data-project="{{ doc.name }}">{{ __("Mark as Ready") }}</button>
+						<button class="dropdown-item mark_as_ready" data-project="{{ doc.project }}">
+							{{ __("Mark as Ready") }}
+						</button>
 					{% endif %}
+
+					<div class="dropdown-divider"></div>
+
+					<button class="dropdown-item create_task" data-project="{{ doc.project }}">
+						{{ __("Create Task") }}
+					</button>
+
+					<button class="dropdown-item create_template_tasks" data-project="{{ doc.project }}">
+						{%= __("Create Template Task") %}
+					</button>
 				{% else %}
-					<button class="dropdown-item reopen" data-project="{{ doc.name }}">{{ __("Re-Open") }}</button>
+					<button class="dropdown-item reopen" data-project="{{ doc.project }}">
+						{{ __("Re-Open") }}
+					</button>
 				{% endif %}
 			</div>
 		</div>
