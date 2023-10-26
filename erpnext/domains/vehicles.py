@@ -321,6 +321,8 @@ item_fields = [
 	{"label": "Vehicle Allocation Required From Delivery Period", "fieldname": "vehicle_allocation_required_from_delivery_period",
 		"fieldtype": "Link", "options": "Vehicle Allocation Period",
 		"insert_after": "vehicle_allocation_required", "depends_on": "vehicle_allocation_required", "ignore_user_permissions": 1},
+	{"fieldname": "cb_commission_item", "fieldtype": "Column Break", "insert_after": "applicable_to_all"},
+	{"label": "Applicable Commission Item", "fieldname": "applicable_commission_item", "fieldtype": "Link", "options": "Items", "insert_after": "cb_commission_item"},
 ]
 
 # Set Translatable = 0
