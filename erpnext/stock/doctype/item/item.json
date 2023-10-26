@@ -159,6 +159,8 @@
   "applicable_to_section",
   "applicable_to",
   "applicable_to_all",
+  "column_break_uabq2",
+  "applicable_commission_item",
   "applicable_items_section",
   "applicable_items",
   "website_tab",
@@ -1360,6 +1362,16 @@
    "fieldname": "skip_transfer_for_manufacture",
    "fieldtype": "Check",
    "label": "Skip Transfer for Manufacture"
+  },
+  {
+   "fieldname": "column_break_uabq2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "applicable_commission_item",
+   "fieldtype": "Link",
+   "label": "Applicable Commission Item",
+   "options": "Item"
   }
  ],
  "has_web_view": 1,
@@ -1367,7 +1379,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2023-08-31 14:59:25.397460",
+ "modified": "2023-10-13 16:21:13.181422",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

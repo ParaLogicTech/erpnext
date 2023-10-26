@@ -3,6 +3,7 @@
 
 import frappe, erpnext
 import frappe.defaults
+import json
 from frappe.utils import cint, flt, getdate, add_days, cstr, nowdate
 from frappe import _
 from erpnext.accounts.party import get_party_account, get_due_date
@@ -1579,6 +1580,23 @@ class SalesInvoice(SellingController):
 			gate_pass_exists = frappe.db.get_value("Vehicle Gate Pass", {'sales_invoice': self.name, 'docstatus': 1})
 			self.set_onload('can_make_vehicle_gate_pass', project_vehicle_status == "In Workshop" and not gate_pass_exists)
 
+
+	@frappe.whitelist()
+	def add_vehicle_booking_commission_items(self, vehicle_booking_orders):
+		if isinstance(vehicle_booking_orders, str):
+			vehicle_booking_orders = json.load(vehicle_booking_orders)
+
+		for vbo in vehicle_booking_orders:
+			item_code = frappe.db.get_value("Vehicle Booking Order", vbo, "item_code")
+			applicable_commission_item = frappe.get_cached_value("Item", item_code, "applicable_commission_item")
+
+			row = self.append("items", frappe.new_doc("Sales Invoice Item"))
+			row.item_code = applicable_commission_item
+			row.vehicle_booking_order = vbo
+			row.qty = 1
+
+		self.set_missing_values()
+		self.calculate_taxes_and_totals()
 
 def get_discounting_status(sales_invoice):
 	status = None

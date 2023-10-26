@@ -974,6 +974,24 @@ def make_pdi_repair_order(source):
 	return target
 
 
+@frappe.whitelist()
+def get_vbos_for_sales_invoice(applies_to_item, from_date, to_date):
+
+	vbo_data = frappe.db.sql("""
+		SELECT name
+		FROM `tabVehicle Booking Order`
+		WHERE item_code = %(applies_to_item)s
+				AND delivery_status = 'Delivered'
+				AND transaction_date >= %(from_date)s
+				AND transaction_date <= %(to_date)s
+		""", {'applies_to_item': applies_to_item, 'from_date': from_date, 'to_date': to_date})
+
+	if not vbo_data:
+		frappe.throw("No vehicle booking order(s) have been located.")
+
+	return vbo_data
+
+
 def check_if_doc_exists(doctype, vehicle_booking_order, filters=None):
 	filter_args = filters or {}
 	filters = {"vehicle_booking_order": vehicle_booking_order, "docstatus": ["<", 2]}

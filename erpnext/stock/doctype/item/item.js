@@ -360,6 +360,12 @@ $.extend(erpnext.item, {
 			}
 		});
 
+		frm.set_query("applicable_commission_item", function(doc, cdt, cdn) {
+			return {
+				filters: { 'is_stock_item' : 0}
+			};
+		});
+
 		frm.set_query("applicable_item_code", "applicable_items", function (doc, cdt, cdn) {
 			var filters = {};
 			if (!doc.__islocal) {
