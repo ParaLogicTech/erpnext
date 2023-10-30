@@ -165,7 +165,8 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 
 			if (frappe.boot.active_domains.includes("Vehicles")) {
 				me.frm.add_custom_button(__('Vehicle Booking Order'), function() {
-					me.get_items_from_pbo();}, __("Get Items From"));
+					me.get_items_from_vehicle_booking_order();
+				}, __("Get Items From"));
 			}
 		}
 
@@ -433,89 +434,82 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		});
 	}
 
-	get_items_from_pbo() {
-		var me = this;
-		var tableData = {};
-		var data = [];
+	get_items_from_vehicle_booking_order() {
+		let me = this;
+		let doc = {orders: []};
 
 		var dialog = new frappe.ui.Dialog({
 			title: __("Get Vehicle Booking Orders"),
-			table_data: data,
+			doc: doc,
 			fields: [
 				{
+					label: __('From Date'),
+					fieldname: 'from_date',
+					fieldtype: 'Date',
+				},
+				{
+					label: __('To Date'),
+					fieldname: 'to_date',
+					fieldtype: 'Date',
+				},
+				{
+					fieldtype: "Column Break",
+				},
+				{
 					fieldtype: "Link",
-					label: __("Applies To Item Code"),
-					fieldname: "applies_to_item",
+					label: __("Vehicle Item Code"),
+					fieldname: "item_code",
 					options: "Item",
-					reqd: 1,
-					default: me.frm.doc.applies_to_item,
 					onchange: function () {
-						let itemCode = dialog.get_value('applies_to_item');
-						if (itemCode) {
-							frappe.db.get_value("Item", itemCode, 'item_name', function (result) {
-								if (result) {
-									dialog.set_value('applies_to_item_name', result.item_name);
+						let item_code = dialog.get_value('item_code');
+						if (item_code) {
+							frappe.db.get_value("Item", item_code, 'item_name', function (r) {
+								if (r) {
+									dialog.set_value('item_name', r.item_name);
 								}
 							});
 						} else {
-							dialog.set_value('applies_to_item_name', "");
+							dialog.set_value("item_name", "");
 						}
 					},
 					get_query: function () {
-						return erpnext.queries.item({ 'has_applicable_items': 1, 'include_templates': 1 });
+						return erpnext.queries.item({ 'is_vehicle': 1, 'include_in_vehicle_booking': 1, "include_templates": 1 });
 					}
 				},
 				{
-					fieldtype: "Column Break",
-				},
-				{
 					fieldtype: "Data",
-					label: __("Applies To Item Name"),
-					fieldname: "applies_to_item_name",
+					label: __("Vehicle Item Name"),
+					fieldname: "item_name",
 					read_only: 1,
-					default: me.frm.doc.applies_to_item ? me.frm.doc.applies_to_item_name : "",
-				},
-				{
-					fieldtype: "Section Break",
-				},
-				{
-					fieldtype: 'Date',
-					label: __('From Date'),
-					fieldname: 'from_date',
-				},
-				{
-					fieldtype: "Column Break",
-				},
-				{
-					fieldtype: 'Date',
-					label: __('To Date'),
-					fieldname: 'to_date',
 				},
 				{
 					fieldtype: "Button",
-					label: __("Fetch"),
-					fieldname: "update_vbo",
+					label: __("Get Vehicle Booking Orders"),
+					fieldname: "get_vbos",
 					click: function () {
-						data.splice(0, data.length);
-						let appliesToItem = dialog.get_value('applies_to_item');
-						let fromDate = dialog.get_value('from_date');
-						let toDate = dialog.get_value('to_date');
-						frappe.call({
+						let item_code = dialog.get_value('item_code');
+						let from_date = dialog.get_value('from_date');
+						let to_date = dialog.get_value('to_date');
+						if (!from_date || !to_date) {
+							frappe.throw(__("From Date and To Date is mandatory"));
+						}
+
+						return frappe.call({
 							method: "erpnext.vehicles.doctype.vehicle_booking_order.vehicle_booking_order.get_vbos_for_sales_invoice",
 							args: {
-								applies_to_item: appliesToItem,
-								from_date: fromDate,
-								to_date: toDate,
+								item_code: item_code,
+								from_date: from_date,
+								to_date: to_date,
 							},
-							callback: function (response) {
-								if (response.message) {
-									response.message.forEach(function (item) {
-										data.push({
-											"vehicle_booking_orders": item
+							callback: function (r) {
+								if (r.message) {
+									doc.orders = [];
+									for (let vbo of r.message) {
+										doc.orders.push({
+											"vehicle_booking_order": vbo
 										});
-									});
-									dialog.fields_dict.data.get_query = function () { return data; };
-									dialog.fields_dict.data.refresh();
+									}
+									dialog.fields_dict.orders.refresh();
 								}
 							}
 						});
@@ -525,41 +519,45 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 					fieldtype: "Section Break",
 				},
 				{
+					label: __("Vehicle Booking Orders"),
+					fieldname: "orders",
 					fieldtype: "Table",
-					fieldname: "data",
 					reqd: 1,
-					data: data,
-					get_data: function () { return data; },
 					fields: [
 						{
-							fieldtype: "Link",
 							label: __("Vehicle Booking Order"),
-							fieldname: "vehicle_booking_orders",
+							fieldname: "vehicle_booking_order",
+							fieldtype: "Link",
 							options: "Vehicle Booking Order",
 							reqd: 1,
 							in_list_view: 1,
+							get_query: function () {
+								return {
+									filters: {docstatus: 1}
+								};
+							}
 						},
 					],
+					get_data: function() {
+						return doc.orders;
+					}
 				},
 			],
 			primary_action: function () {
 				let values = dialog.get_values();
-				let vboArray = values.data.map(row => row.vehicle_booking_orders);
-				let Vbos = [].concat(...vboArray);
-				me.frm.call({
+				let vbos = values.orders.map(row => row.vehicle_booking_order);
+				return me.frm.call({
 					doc: me.frm.doc,
 					method: "add_vehicle_booking_commission_items",
 					args: {
-						vehicle_booking_orders: Vbos,
+						vehicle_booking_orders: vbos,
 					},
-					callback: function (response) {
-						if (response.message) {
-						}
+					callback: function(r) {
+						dialog.hide();
 					}
 				});
-				dialog.hide();
 			},
-			primary_action_label: __('Import VBO')
+			primary_action_label: __('Get Commission Items')
 		});
 
 		dialog.show();

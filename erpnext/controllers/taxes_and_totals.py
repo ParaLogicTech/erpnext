@@ -563,7 +563,7 @@ class calculate_taxes_and_totals(object):
 		if not tax.get('exclude_from_item_tax_amount') and tax.charge_type != "Actual":
 			item.item_taxes += current_tax_amount
 
-		key = item.item_code or item.item_name
+		key = item.item_code or item.item_name or ""
 		item_wise_tax_amount = current_tax_amount*self.doc.conversion_rate
 		if tax.item_wise_tax_detail.get(key):
 			item_wise_tax_amount += tax.item_wise_tax_detail[key][1]
@@ -1080,7 +1080,7 @@ def get_itemised_tax(taxes, with_tax_account=False):
 def get_itemised_taxable_amount(items):
 	itemised_taxable_amount = frappe._dict()
 	for item in items:
-		item_code = item.item_code or item.item_name
+		item_code = item.item_code or item.item_name or ""
 		itemised_taxable_amount.setdefault(item_code, 0)
 		itemised_taxable_amount[item_code] += item.taxable_amount
 
@@ -1090,7 +1090,7 @@ def get_itemised_taxable_amount(items):
 def get_itemised_net_amount(items):
 	itemised_net_amount = frappe._dict()
 	for item in items:
-		item_code = item.item_code or item.item_name
+		item_code = item.item_code or item.item_name or ""
 		itemised_net_amount.setdefault(item_code, 0)
 		itemised_net_amount[item_code] += item.net_amount
 
@@ -1100,7 +1100,7 @@ def get_itemised_net_amount(items):
 def get_itemised_qty(items):
 	itemised_qty = frappe._dict()
 	for item in items:
-		item_code = item.item_code or item.item_name
+		item_code = item.item_code or item.item_name or ""
 		itemised_qty.setdefault(item_code, 0)
 		itemised_qty[item_code] += item.qty
 

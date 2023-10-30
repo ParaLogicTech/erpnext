@@ -1586,9 +1586,22 @@ class SalesInvoice(SellingController):
 		if isinstance(vehicle_booking_orders, str):
 			vehicle_booking_orders = json.load(vehicle_booking_orders)
 
+		# remove empty row
+		if self.get('items') and not self.items[0].item_code and not self.items[0].item_name:
+			self.remove(self.items[0])
+
 		for vbo in vehicle_booking_orders:
 			item_code = frappe.db.get_value("Vehicle Booking Order", vbo, "item_code")
+
 			applicable_commission_item = frappe.get_cached_value("Item", item_code, "applicable_commission_item")
+			if not applicable_commission_item:
+				frappe.throw(_("Applicable Commission Item is not set for {0}").format(
+					frappe.get_desk_link("Item", item_code)
+				))
+			for row in self.items:
+				if row.vehicle_booking_order == vbo:
+					frappe.throw(_("An item for {0} already exists")
+				  .format(frappe.get_desk_link('Vehicle Booking Order', vbo)))
 
 			row = self.append("items", frappe.new_doc("Sales Invoice Item"))
 			row.item_code = applicable_commission_item
