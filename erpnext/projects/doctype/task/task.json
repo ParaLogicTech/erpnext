@@ -10,20 +10,19 @@
   "naming_series",
   "subject",
   "project",
+  "project_template",
   "issue",
-  "parent_task",
   "is_group",
   "column_break_5",
   "type",
+  "project_template_detail",
   "department",
-  "color",
-  "is_milestone",
+  "parent_task",
   "column_break0",
   "company",
   "status",
   "progress",
   "priority",
-  "task_weight",
   "sb_timeline",
   "exp_start_date",
   "act_start_date",
@@ -33,6 +32,7 @@
   "column_break_21",
   "expected_time",
   "actual_time",
+  "is_overdue",
   "completion_section",
   "assigned_to",
   "assigned_to_name",
@@ -44,6 +44,11 @@
   "review_date",
   "sb_details",
   "description",
+  "more_information_section",
+  "task_weight",
+  "column_break_fcnk7",
+  "color",
+  "is_milestone",
   "sb_depends_on",
   "depends_on",
   "depends_on_tasks",
@@ -133,7 +138,8 @@
    "no_copy": 1,
    "oldfieldname": "status",
    "oldfieldtype": "Select",
-   "options": "Open\nWorking\nPending Review\nOverdue\nCompleted\nCancelled"
+   "options": "Open\nWorking\nPending Review\nOn Hold\nCompleted\nCancelled",
+   "search_index": 1
   },
   {
    "default": "Medium",
@@ -447,6 +453,40 @@
   {
    "fieldname": "column_break_33",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_overdue",
+   "fieldtype": "Check",
+   "label": "Overdue",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "project_template",
+   "fieldtype": "Link",
+   "label": "Project Template",
+   "no_copy": 1,
+   "options": "Project Template",
+   "read_only": 1
+  },
+  {
+   "fieldname": "project_template_detail",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Project Template Detail",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "more_information_section",
+   "fieldtype": "Section Break",
+   "label": "More Information"
+  },
+  {
+   "fieldname": "column_break_fcnk7",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-check",
@@ -454,7 +494,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2023-09-09 12:10:09.515925",
+ "modified": "2023-10-17 14:20:38.782233",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",

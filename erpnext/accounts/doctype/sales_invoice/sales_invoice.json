@@ -58,14 +58,16 @@
   "sec_insurance",
   "insurance_company",
   "insurance_company_name",
-  "default_depreciation_percentage",
   "col_break_insurance",
   "insurance_policy_no",
   "insurance_loss_no",
-  "depreciation_type",
   "col_break_insurance2",
   "insurance_surveyor",
   "insurance_surveyor_company",
+  "column_break_97n2q",
+  "depreciation_type",
+  "default_depreciation_percentage",
+  "default_underinsurance_percentage",
   "section_break2",
   "sales_team",
   "currency_and_price_list",
@@ -111,6 +113,8 @@
   "column_break_96",
   "total_depreciation",
   "base_total_depreciation",
+  "total_underinsurance",
+  "base_total_underinsurance",
   "total_discount",
   "base_total_discount",
   "taxes_section",
@@ -134,6 +138,8 @@
   "column_break_111",
   "tax_exclusive_total_depreciation",
   "base_tax_exclusive_total_depreciation",
+  "tax_exclusive_total_underinsurance",
+  "base_tax_exclusive_total_underinsurance",
   "tax_exclusive_total_discount",
   "base_tax_exclusive_total_discount",
   "net_totals_section",
@@ -1976,7 +1982,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "total_depreciation",
+   "depends_on": "eval:doc.depreciation_type && doc.total_before_depreciation != doc.total_before_discount",
    "fieldname": "total_before_depreciation",
    "fieldtype": "Currency",
    "label": "Total Before Depreciation",
@@ -1985,7 +1991,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "total_depreciation",
+   "depends_on": "eval:doc.depreciation_type && doc.total_before_depreciation != doc.total_before_discount",
    "fieldname": "base_total_before_depreciation",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -1995,7 +2001,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "total_depreciation",
+   "depends_on": "eval:doc.depreciation_type && doc.total_depreciation",
    "fieldname": "total_depreciation",
    "fieldtype": "Currency",
    "label": "Total Depreciation",
@@ -2004,7 +2010,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "total_depreciation",
+   "depends_on": "eval:doc.depreciation_type && doc.total_depreciation",
    "fieldname": "base_total_depreciation",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -2014,7 +2020,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "total_depreciation",
+   "depends_on": "eval:doc.depreciation_type && doc.total_before_depreciation != doc.total_before_discount",
    "fieldname": "tax_exclusive_total_before_depreciation",
    "fieldtype": "Currency",
    "label": "Tax Exclusive Total Before Depreciation",
@@ -2023,7 +2029,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "total_depreciation",
+   "depends_on": "eval:doc.depreciation_type && doc.total_before_depreciation != doc.total_before_discount",
    "fieldname": "base_tax_exclusive_total_before_depreciation",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -2033,7 +2039,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "total_depreciation",
+   "depends_on": "eval:doc.depreciation_type && doc.total_depreciation",
    "fieldname": "tax_exclusive_total_depreciation",
    "fieldtype": "Currency",
    "label": "Tax Exclusive Total Depreciation",
@@ -2042,7 +2048,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "total_depreciation",
+   "depends_on": "eval:doc.depreciation_type && doc.total_depreciation",
    "fieldname": "base_tax_exclusive_total_depreciation",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -2052,7 +2058,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:doc.depreciation_type || doc.total_depreciation",
+   "depends_on": "eval:doc.depreciation_type || doc.insurance_company",
    "fieldname": "depreciation_type",
    "fieldtype": "Select",
    "label": "Depreciation Type",
@@ -2085,7 +2091,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "insurance_company",
+   "depends_on": "depreciation_type",
    "fieldname": "default_depreciation_percentage",
    "fieldtype": "Percent",
    "label": "Default Depreciation (%)"
@@ -2257,13 +2263,61 @@
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "depends_on": "depreciation_type",
+   "fieldname": "default_underinsurance_percentage",
+   "fieldtype": "Percent",
+   "label": "Default Underinsurance (%)"
+  },
+  {
+   "depends_on": "eval:doc.depreciation_type && doc.total_underinsurance",
+   "fieldname": "total_underinsurance",
+   "fieldtype": "Currency",
+   "label": "Total Underinsurance",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.depreciation_type && doc.total_underinsurance",
+   "fieldname": "base_total_underinsurance",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Total Underinsurance (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.depreciation_type && doc.total_underinsurance",
+   "fieldname": "tax_exclusive_total_underinsurance",
+   "fieldtype": "Currency",
+   "label": "Tax Exclusive Total Underinsurance",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.depreciation_type && doc.total_underinsurance",
+   "fieldname": "base_tax_exclusive_total_underinsurance",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Tax Exclusive Total Underinsurance (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_97n2q",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-06-10 12:46:18.514556",
+ "modified": "2023-10-20 16:56:19.131644",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

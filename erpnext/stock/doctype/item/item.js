@@ -125,8 +125,6 @@ frappe.ui.form.on("Item", {
 			frm.set_df_property(fieldname, "read_only_depends_on", null);
 			frm.set_df_property(fieldname, "read_only", 1);
 		});
-
-		frm.toggle_reqd('customer', frm.doc.is_customer_provided_item ? 1:0);
 	},
 
 	validate: function(frm){
@@ -138,7 +136,18 @@ frappe.ui.form.on("Item", {
 	},
 
 	is_customer_provided_item: function(frm) {
-		frm.toggle_reqd('customer', frm.doc.is_customer_provided_item ? 1:0);
+		frm.set_value("is_purchase_item", frm.doc.is_customer_provided_item ? 0 : 1);
+		frm.events.set_customer_provided_material_request_type(frm);
+	},
+
+	is_sub_contracted_item: function (frm) {
+		frm.events.set_customer_provided_material_request_type(frm);
+	},
+
+	set_customer_provided_material_request_type: function (frm) {
+		if (frm.doc.is_customer_provided_item) {
+			frm.set_value("default_material_request_type", frm.doc.is_sub_contracted_item ? "Purchase" : "Customer Provided");
+		}
 	},
 
 	is_fixed_asset: function(frm) {

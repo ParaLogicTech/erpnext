@@ -10,7 +10,7 @@ from frappe.model.mapper import get_mapped_doc
 from erpnext.stock.stock_balance import update_bin_qty, get_reserved_qty
 from frappe.desk.notifications import clear_doctype_notifications
 from erpnext.controllers.selling_controller import SellingController
-from erpnext.controllers.accounts_controller import get_default_taxes_and_charges
+from erpnext.controllers.transaction_controller import get_default_taxes_and_charges
 from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty, set_reserved_vehicles_from_so
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
@@ -89,7 +89,7 @@ class SalesOrder(SellingController):
 			update_coupon_code_count(self.coupon_code, 'used')
 
 	def on_cancel(self):
-		super(SalesOrder, self).on_cancel()
+		self.unlink_payments_on_order_cancel()
 		self.update_status_on_cancel()
 
 		# Cannot cancel closed SO

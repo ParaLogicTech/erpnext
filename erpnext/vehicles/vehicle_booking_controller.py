@@ -47,7 +47,6 @@ class VehicleBookingController(AccountsController):
 		if self.get("_action") != "update_after_submit":
 			self.set_missing_values(for_validate=True)
 
-		self.validate_date_with_fiscal_year()
 		self.validate_customer()
 		self.validate_vehicle_item()
 		self.validate_vehicle()
@@ -215,6 +214,9 @@ class VehicleBookingController(AccountsController):
 
 		self.set_grand_total_in_words()
 
+	def get_payable_amount(self):
+		return flt(self.get("invoice_total"))
+
 	def set_total_in_words(self):
 		from frappe.utils import money_in_words
 		self.in_words = money_in_words(self.invoice_total, self.company_currency)
@@ -243,16 +245,17 @@ class VehicleBookingController(AccountsController):
 			self.validate_value('total_discount', '>=', 0)
 
 	def validate_payment_schedule(self):
-		self.set_payment_schedule()
+		self.set_payment_schedule(exclude_bill_date=True)
 		self.validate_payment_schedule_dates()
-		self.set_due_date()
 		self.validate_payment_schedule_amount()
-		self.validate_due_date()
+		self.set_due_date()
+		self.validate_due_date(exclude_bill_date=True)
 
 	def get_terms_and_conditions(self):
 		if self.get('tc_name'):
 			doc = self.as_dict()
 			self.terms = get_terms_and_conditions(self.tc_name, doc)
+
 
 @frappe.whitelist()
 def get_customer_details(args, get_withholding_tax=True):

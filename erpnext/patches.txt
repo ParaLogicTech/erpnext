@@ -162,7 +162,6 @@ erpnext.patches.v4_2.fix_recurring_orders
 erpnext.patches.v4_2.delete_gl_entries_for_cancelled_invoices
 erpnext.patches.v5_0.project_costing
 erpnext.patches.v5_0.update_temporary_account
-erpnext.patches.v5_0.update_advance_paid
 erpnext.patches.v5_0.link_warehouse_with_account
 execute:frappe.delete_doc("Page", "stock-ledger")
 execute:frappe.delete_doc("Page","stock-level")
@@ -809,6 +808,7 @@ erpnext.patches.v14_0.set_sales_order_item_skip_delivery_note
 erpnext.patches.v14_0.clean_ledger_indexes #1
 erpnext.patches.v14_0.refactor_subcontracting
 erpnext.patches.v14_0.set_work_order_subcontracting_fields
+erpnext.patches.v14_0.rename_ste_transfer_qty_stock_qty
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay
@@ -827,3 +827,5 @@ erpnext.patches.v14_0.delete_hub_docs
 erpnext.patches.v14_0.update_work_order_percentage_status #2
 execute:frappe.delete_doc_if_exists("Report", "Monthly Attendance Sheet")
 erpnext.patches.v14_0.set_order_line_no_in_work_order
+erpnext.patches.v14_0.set_task_is_overdue
+erpnext.patches.v14_0.set_project_tasks_status

@@ -46,17 +46,6 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 		me.frm.set_query('customer_address', erpnext.queries.address_query);
 		me.frm.set_query('shipping_address_name', erpnext.queries.address_query);
 
-		if(this.frm.fields_dict.taxes_and_charges) {
-			this.frm.set_query("taxes_and_charges", function() {
-				return {
-					filters: [
-						['Sales Taxes and Charges Template', 'company', '=', me.frm.doc.company],
-						['Sales Taxes and Charges Template', 'docstatus', '!=', 2]
-					]
-				}
-			});
-		}
-
 		if(this.frm.fields_dict.selling_price_list) {
 			this.frm.set_query("selling_price_list", function() {
 				return { filters: { selling: 1 } };
@@ -243,7 +232,26 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 		}
 	}
 
+	default_underinsurance_percentage() {
+		let me = this;
+		$.each(me.frm.doc.items || [], function (i, d) {
+			d.underinsurance_percentage = flt(me.frm.doc.default_underinsurance_percentage);
+		});
+
+		if (this.frm.doc.docstatus === 0) {
+			me.calculate_taxes_and_totals();
+		} else {
+			me.frm.refresh_field('items');
+		}
+	}
+
 	depreciation_percentage() {
+		if (this.frm.doc.docstatus === 0) {
+			this.calculate_taxes_and_totals();
+		}
+	}
+
+	underinsurance_percentage() {
 		if (this.frm.doc.docstatus === 0) {
 			this.calculate_taxes_and_totals();
 		}

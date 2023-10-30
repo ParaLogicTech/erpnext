@@ -39,15 +39,12 @@ class VehicleTransactionController(StockController):
 		if self.get("_action") and self._action != "update_after_submit":
 			self.set_missing_values(for_validate=True)
 
-		if self.get('supplier'):
-			self.ensure_supplier_is_not_blocked()
-
-		self.validate_date_with_fiscal_year()
-
 		self.validate_vehicle_booking_order()
 		self.validate_project()
 
 		self.validate_party()
+		self.ensure_supplier_is_not_blocked()
+
 		self.validate_vehicle_item()
 		self.validate_vehicle()
 

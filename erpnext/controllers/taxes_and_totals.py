@@ -5,9 +5,10 @@ import frappe
 import erpnext
 from frappe import _, scrub
 from frappe.utils import cint, flt, round_based_on_smallest_currency_fraction
-from erpnext.controllers.accounts_controller import validate_conversion_rate, validate_taxes_and_charges,\
-	validate_inclusive_tax
+from erpnext.controllers.accounts_controller import validate_conversion_rate
+from erpnext.controllers.transaction_controller import validate_taxes_and_charges, validate_inclusive_tax
 from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
+from frappe.utils import money_in_words
 import json
 
 
@@ -47,6 +48,7 @@ class calculate_taxes_and_totals(object):
 		self.manipulate_grand_total_for_inclusive_tax()
 		self.calculate_tax_inclusive_rate()
 		self.calculate_totals()
+		self.set_total_in_words()
 		self._cleanup()
 
 	def validate_conversion_rate(self):
@@ -104,36 +106,45 @@ class calculate_taxes_and_totals(object):
 					item.retail_amount = flt(item.retail_rate * item.qty, item.precision("retail_amount"))
 					item.amount_before_discount = flt(rate_before_discount * item.qty, item.precision("amount_before_discount"))
 					item.amount = flt(item.rate * item.qty,	item.precision("amount"))
-				item.total_discount = flt(item.amount_before_discount - item.amount, item.precision("total_discount"))
 
-				has_depreciation_field = item.meta.has_field('depreciation_amount')
-				if has_depreciation_field:
-					item.depreciation_amount = flt(item.amount_before_discount * flt(item.depreciation_percentage) / 100,
-						item.precision("depreciation_amount"))
-					self._set_in_company_currency(item, ['depreciation_amount'])
-
+				# Depreciation
 				if self.doc.doctype == "Sales Invoice":
 					item.amount_before_depreciation = item.amount_before_discount
-					self._set_in_company_currency(item, ['amount_before_depreciation'])
+
+					item.depreciation_amount = flt(item.amount_before_depreciation * flt(item.depreciation_percentage) / 100,
+						item.precision("depreciation_amount"))
+					item.underinsurance_amount = flt(
+						(item.amount_before_depreciation - item.depreciation_amount) * flt(item.underinsurance_percentage) / 100,
+						item.precision("underinsurance_amount")
+					)
+
+					self._set_in_company_currency(item, [
+						'amount_before_depreciation', 'depreciation_amount', 'underinsurance_amount'
+					])
 
 					if self.doc.depreciation_type:
-						depreciation_on_discount = flt(item.total_discount * flt(item.depreciation_percentage) / 100,
-							item.precision("amount"))
-						depreciation_adjusted_discount = item.total_discount - depreciation_on_discount
-
 						if self.doc.depreciation_type == "After Depreciation Amount":
-							item.amount_before_discount = flt(item.amount_before_discount - item.depreciation_amount,
-								item.precision("amount_before_discount"))
-							item.amount = flt(item.amount_before_discount - depreciation_adjusted_discount, item.precision("amount"))
+							item.amount_before_discount = flt(
+								item.amount_before_discount - item.depreciation_amount - item.underinsurance_amount,
+								item.precision("amount_before_discount")
+							)
 						else:
-							item.amount_before_discount = flt(item.depreciation_amount, item.precision("amount_before_discount"))
-							item.amount = flt(item.amount_before_discount - depreciation_on_discount, item.precision("amount"))
+							item.amount_before_discount = flt(
+								item.depreciation_amount + item.underinsurance_amount,
+								item.precision("amount_before_discount")
+							)
 
-						item.total_discount = flt(item.amount_before_discount - item.amount, item.precision("total_discount"))
+						item.amount = flt(item.amount_before_discount * (1.0 - (item.discount_percentage / 100.0)),
+							item.precision("amount"))
 
-					item.tax_exclusive_depreciation_amount = item.depreciation_amount
 					item.tax_exclusive_amount_before_depreciation = item.amount_before_depreciation
+					item.tax_exclusive_depreciation_amount = item.depreciation_amount
+					item.tax_exclusive_underinsurance_amount = item.underinsurance_amount
 
+				# Total Discount
+				item.total_discount = flt(item.amount_before_discount - item.amount, item.precision("total_discount"))
+
+				# Net / Taxable Amount
 				if cint(item.apply_taxes_on_retail):
 					item.taxable_rate = item.retail_rate if item.retail_rate else rate_before_discount
 					item.taxable_amount = item.retail_amount if item.retail_rate else item.amount_before_discount
@@ -151,6 +162,7 @@ class calculate_taxes_and_totals(object):
 				item.tax_inclusive_amount = 0
 				item.tax_inclusive_rate = 0
 
+				# Tax Exclusive Values
 				item.tax_exclusive_price_list_rate = item.price_list_rate
 				item.tax_exclusive_rate = item.rate
 				item.tax_exclusive_amount = item.amount
@@ -163,14 +175,16 @@ class calculate_taxes_and_totals(object):
 
 				item.item_tax_amount = 0.0
 
+				# Stock Qty
 				if item.meta.has_field("stock_qty") and item.meta.has_field("conversion_factor"):
 					item.stock_qty = item.qty * flt(item.conversion_factor)
-
 				stock_qty = item.stock_qty if item.meta.has_field("stock_qty") else item.qty
 
+				# Net Weight
 				if item.meta.has_field("net_weight") and item.meta.has_field("net_weight_per_unit"):
 					item.net_weight = flt(flt(item.net_weight_per_unit) * flt(stock_qty), item.precision("net_weight"))
 
+				# Contents Qty
 				item.alt_uom_size = item.alt_uom_size if item.alt_uom else 1.0
 				item.alt_uom_qty = flt(stock_qty * item.alt_uom_size, item.precision('alt_uom_qty'))
 
@@ -245,8 +259,11 @@ class calculate_taxes_and_totals(object):
 
 			if item.cumulated_tax_fraction and not self.discount_amount_applied:
 				item.tax_exclusive_amount = flt(item.amount / (1 + item.cumulated_tax_fraction))
-				item.tax_exclusive_rate = flt(item.rate / (1 + item.cumulated_tax_fraction))\
-					if not item.qty or item.get('depreciation_percentage') else flt(item.tax_exclusive_amount / item.qty)
+				item.tax_exclusive_rate = (
+					flt(item.rate / (1 + item.cumulated_tax_fraction))
+					if not item.qty or item.get('depreciation_percentage') or item.get('underinsurance_percentage') else
+					flt(item.tax_exclusive_amount / item.qty)
+				)
 
 				item.tax_exclusive_amount_before_discount = flt(item.amount_before_discount / (1 + item.cumulated_tax_fraction))
 				item.tax_exclusive_total_discount = flt(item.tax_exclusive_amount_before_discount - item.tax_exclusive_amount,
@@ -254,10 +271,20 @@ class calculate_taxes_and_totals(object):
 
 				if self.doc.doctype == "Sales Invoice":
 					item.tax_exclusive_amount_before_depreciation = flt(item.amount_before_depreciation / (1 + item.cumulated_tax_fraction))
-					item.tax_exclusive_depreciation_amount = flt(item.tax_exclusive_amount_before_depreciation * flt(item.depreciation_percentage) / 100,
-						item.precision("tax_exclusive_depreciation_amount"))
+					item.tax_exclusive_depreciation_amount = flt(
+						item.tax_exclusive_amount_before_depreciation * flt(item.depreciation_percentage) / 100,
+						item.precision("tax_exclusive_depreciation_amount")
+					)
+					item.tax_exclusive_underinsurance_amount = flt(
+						(item.tax_exclusive_amount_before_depreciation - item.tax_exclusive_depreciation_amount) * flt(item.underinsurance_percentage) / 100,
+						item.precision("tax_exclusive_underinsurance_amount")
+					)
 
-					self._set_in_company_currency(item, ["tax_exclusive_amount_before_depreciation", "tax_exclusive_depreciation_amount"])
+					self._set_in_company_currency(item, [
+						"tax_exclusive_amount_before_depreciation",
+						"tax_exclusive_depreciation_amount",
+						"tax_exclusive_underinsurance_amount",
+					])
 
 				if item.qty:
 					item.tax_exclusive_price_list_rate = flt((item.get('tax_exclusive_amount_before_depreciation') or item.tax_exclusive_amount_before_discount) / item.qty)
@@ -331,15 +358,13 @@ class calculate_taxes_and_totals(object):
 		if self.doc.meta.has_field('total_net_weight'):
 			self.doc.total_net_weight = 0.0
 
-		has_depreciation_field = self.doc.meta.has_field('total_depreciation')
-		if has_depreciation_field:
-			self.doc.base_total_depreciation = self.doc.total_depreciation = 0.0
-
-		has_depreciation_adjustment = self.doc.doctype == "Sales Invoice"
-		if has_depreciation_adjustment:
+		if self.doc.doctype == "Sales Invoice":
 			self.doc.base_total_before_depreciation = self.doc.total_before_depreciation = 0.0
+			self.doc.base_total_depreciation = self.doc.total_depreciation = 0.0
+			self.doc.base_total_underinsurance = self.doc.total_underinsurance = 0.0
 			self.doc.base_tax_exclusive_total_before_depreciation = self.doc.tax_exclusive_total_before_depreciation = 0.0
 			self.doc.base_tax_exclusive_total_depreciation = self.doc.tax_exclusive_total_depreciation = 0.0
+			self.doc.base_tax_exclusive_total_underinsurance = self.doc.tax_exclusive_total_underinsurance = 0.0
 
 		for item in self.doc.get("items"):
 			self.doc.total_qty += item.qty
@@ -373,19 +398,24 @@ class calculate_taxes_and_totals(object):
 			self.doc.net_total += item.net_amount
 			self.doc.base_net_total += item.base_net_amount
 
-			if has_depreciation_field:
+			if self.doc.doctype == "Sales Invoice":
+				self.doc.total_before_depreciation += item.amount_before_depreciation
+				self.doc.base_total_before_depreciation += item.base_amount_before_depreciation
+
 				self.doc.total_depreciation += item.depreciation_amount
 				self.doc.base_total_depreciation += item.base_depreciation_amount
 
-			if has_depreciation_adjustment:
-				self.doc.total_before_depreciation += item.amount_before_depreciation
-				self.doc.base_total_before_depreciation += item.base_amount_before_depreciation
+				self.doc.total_underinsurance += item.underinsurance_amount
+				self.doc.base_total_underinsurance += item.base_underinsurance_amount
 
 				self.doc.tax_exclusive_total_before_depreciation += item.tax_exclusive_amount_before_depreciation
 				self.doc.base_tax_exclusive_total_before_depreciation += item.base_tax_exclusive_amount_before_depreciation
 
 				self.doc.tax_exclusive_total_depreciation += item.tax_exclusive_depreciation_amount
 				self.doc.base_tax_exclusive_total_depreciation += item.base_tax_exclusive_depreciation_amount
+
+				self.doc.tax_exclusive_total_underinsurance += item.tax_exclusive_underinsurance_amount
+				self.doc.base_tax_exclusive_total_underinsurance += item.base_tax_exclusive_underinsurance_amount
 
 		self.doc.total_discount_after_taxes = self.doc.taxable_total - self.doc.net_total
 		self.doc.base_total_discount_after_taxes = self.doc.base_taxable_total - self.doc.base_net_total
@@ -661,11 +691,21 @@ class calculate_taxes_and_totals(object):
 			self.doc.rounded_total = round_based_on_smallest_currency_fraction(self.doc.grand_total,
 				self.doc.currency, self.doc.precision("rounded_total"))
 
-			#if print_in_rate is set, we would have already calculated rounding adjustment
+			# if print_in_rate is set, we would have already calculated rounding adjustment
 			self.doc.rounding_adjustment += flt(self.doc.rounded_total - self.doc.grand_total,
 				self.doc.precision("rounding_adjustment"))
 
 			self._set_in_company_currency(self.doc, ["rounding_adjustment", "rounded_total"])
+
+	def set_total_in_words(self):
+		if self.doc.meta.get_field("base_in_words"):
+			company_currency = erpnext.get_company_currency(self.doc.company)
+			base_amount = abs(self.doc.base_grand_total if self.doc.is_rounded_total_disabled() else self.doc.base_rounded_total)
+			self.doc.base_in_words = money_in_words(base_amount, company_currency)
+
+		if self.doc.meta.get_field("in_words"):
+			amount = abs(self.doc.grand_total if self.doc.is_rounded_total_disabled() else self.doc.rounded_total)
+			self.doc.in_words = money_in_words(amount, self.doc.currency)
 
 	def _cleanup(self):
 		for tax in self.doc.get("taxes"):

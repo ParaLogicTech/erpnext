@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "creation": "2023-10-20 16:00:57.108743",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "underinsurance_item_code",
+  "underinsurance_item_name",
+  "underinsurance_percentage"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "underinsurance_item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "columns": 5,
+   "fetch_from": "underinsurance_item_code.item_name",
+   "fieldname": "underinsurance_item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "default": "0",
+   "fieldname": "underinsurance_percentage",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Underinsurance (%)",
+   "reqd": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2023-10-20 16:02:52.307780",
+ "modified_by": "Administrator",
+ "module": "Projects",
+ "name": "Project Item Underinsurance",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -238,7 +238,6 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 			frappe.model.round_floats_in(item, ["qty", "conversion_factor"]);
 			item.stock_qty = flt(item.qty * item.conversion_factor, precision("stock_qty", item));
 			refresh_field("stock_qty", item.name, item.parentfield);
-			this.toggle_conversion_factor(item);
 			this.frm.events.update_cost(this.frm);
 		}
 	}

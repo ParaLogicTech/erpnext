@@ -34,7 +34,7 @@
   "sample_quantity",
   "col_break3",
   "conversion_factor",
-  "transfer_qty",
+  "stock_qty",
   "stock_uom",
   "column_break_28",
   "alt_uom_size",
@@ -255,12 +255,13 @@
   {
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
-   "label": "Conversion Factor",
+   "label": "UOM Conversion Factor",
    "oldfieldname": "conversion_factor",
    "oldfieldtype": "Currency",
    "precision": "9",
    "print_hide": 1,
    "read_only": 1,
+   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom",
    "reqd": 1
   },
   {
@@ -270,17 +271,6 @@
    "oldfieldname": "stock_uom",
    "oldfieldtype": "Link",
    "options": "UOM",
-   "print_hide": 1,
-   "read_only": 1,
-   "reqd": 1
-  },
-  {
-   "fieldname": "transfer_qty",
-   "fieldtype": "Float",
-   "label": "Qty as per Stock UOM",
-   "oldfieldname": "transfer_qty",
-   "oldfieldtype": "Currency",
-   "precision": "6",
    "print_hide": 1,
    "read_only": 1,
    "reqd": 1
@@ -634,12 +624,23 @@
    "no_copy": 1,
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "label": "Stock Qty",
+   "oldfieldname": "transfer_qty",
+   "oldfieldtype": "Currency",
+   "precision": "6",
+   "print_hide": 1,
+   "read_only": 1,
+   "reqd": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-10-10 17:06:55.190127",
+ "modified": "2023-10-23 23:15:43.337008",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry Detail",

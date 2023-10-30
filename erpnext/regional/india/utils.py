@@ -4,7 +4,7 @@ import erpnext
 from frappe.utils import cstr, flt, date_diff, nowdate, round_based_on_smallest_currency_fraction, money_in_words
 from erpnext.regional.india import states, state_numbers
 from erpnext.controllers.taxes_and_totals import get_itemised_tax, get_itemised_taxable_amount
-from erpnext.controllers.accounts_controller import get_taxes_and_charges
+from erpnext.controllers.transaction_controller import get_taxes_and_charges
 from erpnext.hr.utils import get_salary_assignment
 from erpnext.hr.doctype.salary_structure.salary_structure import make_salary_slip
 from erpnext.regional.india import number_state_mapping

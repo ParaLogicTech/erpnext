@@ -8,7 +8,7 @@ import frappe
 from frappe import _, throw
 from frappe.desk.form.assign_to import clear, close_all_assignments
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import add_days, cstr, date_diff, get_link_to_form, getdate, today
+from frappe.utils import add_days, cint, cstr, date_diff, get_link_to_form, getdate, today
 from frappe.utils.nestedset import NestedSet
 
 
@@ -28,7 +28,9 @@ class Task(NestedSet):
 		self.validate_parent_project_dates()
 		self.validate_progress()
 		self.validate_status()
+		self.validate_assignment()
 		self.set_completion_values()
+		self.set_is_overdue()
 		self.update_depends_on()
 
 	def on_update(self):
@@ -44,6 +46,9 @@ class Task(NestedSet):
 			throw(_("Child Task exists for this Task. You can not delete this Task."))
 
 		self.update_nsm_model()
+
+	def after_delete(self):
+		self.update_project()
 
 	def get_previous_status(self):
 		self._previous_status = self.get_db_value("status")
@@ -80,6 +85,13 @@ class Task(NestedSet):
 				if frappe.db.get_value("Task", d.task, "status") not in ("Completed", "Cancelled"):
 					frappe.throw(_("Cannot complete task {0} as its dependant {1} is not completed / cancelled.")
 						.format(frappe.bold(self.name), frappe.get_desk_link("Task", d.task)))
+
+	def validate_assignment(self):
+		if not self.assigned_to:
+			self.assigned_to_name = None
+
+		if self.status not in ['Open', 'Cancelled'] and not self.assigned_to:
+			frappe.throw(_("'Assigned To' is required for status {0}").format(self.status))
 
 	def set_completion_values(self):
 		if self._previous_status in ['Open', 'Working'] and self.status in ["Completed", "Pending Review"]:
@@ -146,6 +158,7 @@ class Task(NestedSet):
 	def update_project(self):
 		if self.project and not self.flags.from_project:
 			doc = frappe.get_doc("Project", self.project)
+			doc.set_tasks_status(update=True)
 			doc.set_percent_complete(update=True)
 			doc.set_status(update=True)
 			doc.notify_update()
@@ -196,12 +209,19 @@ class Task(NestedSet):
 		if project_user:
 			return True
 
-	def update_status(self):
-		if self.status not in ('Cancelled', 'Completed') and self.exp_end_date:
-			from datetime import datetime
-			if self.exp_end_date < datetime.now().date():
-				self.db_set('status', 'Overdue', update_modified=False)
-				self.update_project()
+	def set_is_overdue(self, update=False, update_modified=False):
+		self.is_overdue = 0
+
+		if self.status not in ["Completed", "Cancelled"]:
+			if self.status == "Pending Review":
+				if self.review_date and getdate(self.review_date) < getdate():
+					self.is_overdue = 1
+			else:
+				if self.exp_end_date and getdate(self.exp_end_date) < getdate():
+					self.is_overdue = 1
+
+		if update:
+			self.db_set('is_overdue', self.is_overdue, update_modified=update_modified)
 
 
 @frappe.whitelist()
@@ -238,12 +258,14 @@ def set_multiple_status(names, status):
 
 
 def set_tasks_as_overdue():
-	tasks = frappe.get_all("Task", filters={"status": ["not in", ["Cancelled", "Completed"]]}, fields=["name", "status", "review_date"])
+	tasks = frappe.get_all("Task", filters={
+		"status": ["not in", ["Cancelled", "Completed"]],
+		"exp_end_date": ["<", today()],
+	})
+
 	for task in tasks:
-		if task.status == "Pending Review":
-			if getdate(task.review_date) > getdate(today()):
-				continue
-		frappe.get_doc("Task", task.name).update_status()
+		doc = frappe.get_doc("Task", task.name)
+		doc.set_is_overdue(update=True)
 
 
 @frappe.whitelist()

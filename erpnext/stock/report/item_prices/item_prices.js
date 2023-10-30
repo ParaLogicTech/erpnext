@@ -11,6 +11,34 @@ frappe.query_reports["Item Prices"] = {
 			reqd: 1
 		},
 		{
+			fieldname: "filter_price_list_by",
+			label: __("Filter Price List By"),
+			fieldtype: "Select",
+			options:"Enabled\nDisabled\nAll",
+			default:"Enabled"
+		},
+		{
+			fieldname: "buying_selling",
+			label: __("Buying Or Selling Prices"),
+			fieldtype: "Select",
+			options:"Selling\nBuying\nBoth",
+			default:"Selling"
+		},
+		{
+			fieldname: "selected_price_list",
+			label: __("Selected Price List"),
+			fieldtype: "Link",
+			options:"Price List",
+			get_query: () => frappe.query_reports["Item Prices"].price_list_query(),
+		},
+		{
+			fieldname: "price_list_1",
+			label: __("Comparison Price List"),
+			fieldtype: "Link",
+			options: "Price List",
+			get_query: () => frappe.query_reports["Item Prices"].price_list_query(),
+		},
+		{
 			fieldname: "item_code",
 			label: __("Item"),
 			fieldtype: "Link",
@@ -41,7 +69,7 @@ frappe.query_reports["Item Prices"] = {
 			fieldtype: "Link",
 			options:"Customer",
 			on_change: function () {
-				var customer = frappe.query_report.get_filter_value('customer');
+				let customer = frappe.query_report.get_filter_value('customer');
 				if(customer) {
 					frappe.db.get_value("Customer", customer, "default_price_list", function(value) {
 						frappe.query_report.set_filter_value('selected_price_list', value["default_price_list"]);
@@ -57,7 +85,7 @@ frappe.query_reports["Item Prices"] = {
 			fieldtype: "Link",
 			options:"Supplier",
 			on_change: function () {
-				var customer = frappe.query_report.get_filter_value('supplier');
+				let customer = frappe.query_report.get_filter_value('supplier');
 				if(customer) {
 					frappe.db.get_value("Supplier", customer, "default_price_list", function(value) {
 						frappe.query_report.set_filter_value('selected_price_list', value["default_price_list"]);
@@ -66,44 +94,6 @@ frappe.query_reports["Item Prices"] = {
 					frappe.query_report.set_filter_value('selected_price_list', '');
 				}
 			}
-		},
-		{
-			fieldname: "selected_price_list",
-			label: __("Selected Price List"),
-			fieldtype: "Link",
-			options:"Price List"
-		},
-		{
-			fieldname: "filter_price_list_by",
-			label: __("Filter Price List By"),
-			fieldtype: "Select",
-			options:"Enabled\nDisabled\nAll",
-			default:"Enabled"
-		},
-		{
-			fieldname: "buying_selling",
-			label: __("Buying Or Selling Prices"),
-			fieldtype: "Select",
-			options:"Selling\nBuying\nBoth",
-			default:"Selling"
-		},
-		{
-			fieldname: "price_list_1",
-			label: __("Additional Price List 1"),
-			fieldtype: "Link",
-			options:"Price List"
-		},
-		{
-			fieldname: "price_list_2",
-			label: __("Additional Price List 2"),
-			fieldtype: "Link",
-			options:"Price List"
-		},
-		{
-			fieldname: "price_list_3",
-			label: __("Additional Price List 3"),
-			fieldtype: "Link",
-			options:"Price List"
 		},
 		{
 			fieldname: "uom",
@@ -129,13 +119,27 @@ frappe.query_reports["Item Prices"] = {
 			fieldtype: "Check"
 		},
 	],
+
+	price_list_query: function () {
+		let buying_selling = frappe.query_report.get_filter_value('buying_selling');
+		if (buying_selling == "Selling") {
+			return {
+				filters: {selling: 1}
+			}
+		} else if (buying_selling == "Buying") {
+			return {
+				filters: {buying: 1}
+			}
+		}
+	},
+
 	formatter: function(value, row, column, data, default_formatter) {
-		var original_value = value;
-		var style = {};
-		var link;
+		let original_value = value;
+		let style = {};
+		let link;
 
 		if (column.price_list) {
-			var old_rate_field = "rate_old_" + frappe.scrub(column.price_list);
+			let old_rate_field = "rate_old_" + frappe.scrub(column.price_list);
 			if (data.hasOwnProperty(old_rate_field)) {
 				if (flt(original_value) < flt(data[old_rate_field])) {
 					style['color'] = 'green';
@@ -144,7 +148,7 @@ frappe.query_reports["Item Prices"] = {
 				}
 			}
 
-			var item_price_field = "item_price_" + frappe.scrub(column.price_list);
+			let item_price_field = "item_price_" + frappe.scrub(column.price_list);
 			if (data.hasOwnProperty(item_price_field) && data[item_price_field]) {
 				link = "/app/item-price/" + data[item_price_field];
 			}
@@ -160,9 +164,10 @@ frappe.query_reports["Item Prices"] = {
 
 		return default_formatter(value, row, column, data, {css: style, link_href: link, link_target: "_blank"});
 	},
+
 	onChange: function(new_value, column, data, rowIndex) {
-		var method;
-		var args;
+		let method;
+		let args;
 
 		if (column.fieldname === "print_in_price_list") {
 			method = "frappe.client.set_value";

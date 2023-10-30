@@ -7,7 +7,6 @@ from frappe.utils import flt, nowdate, getdate, cstr, cint
 from erpnext.stock.report.stock_ledger.stock_ledger import get_item_group_condition
 from erpnext.stock.utils import has_valuation_read_permission
 from erpnext.stock.doctype.item.item import convert_item_uom_for
-from six import iteritems, string_types
 from frappe.model.meta import get_field_precision
 from frappe.desk.reportview import build_match_conditions
 import json
@@ -45,23 +44,6 @@ def execute(filters=None):
 
 	return columns, res
 
-
-def get_printable_data(columns, data, filters):
-	item_groups = {}
-
-	data = list(filter(lambda d: d.print_in_price_list, data))
-
-	for i in range(len(data)):
-		if not data[i].item_code:
-			continue
-
-		group = item_groups.setdefault(data[i].item_group, [])
-		group.append(data[i])
-
-	for item_group, items in iteritems(item_groups):
-		item_groups[item_group] = sorted(items, key=lambda d: d.item_name)
-
-	return item_groups
 
 def get_data(filters):
 	conditions = get_item_conditions(filters, for_item_dt=False)
@@ -112,12 +94,14 @@ def get_data(filters):
 		select p.price_list, p.item_code, p.price_list_rate, ifnull(p.valid_from, '2000-01-01') as valid_from, p.uom
 		from `tabItem Price` as p
 		inner join `tabItem` item on item.name = p.item_code
-		where ifnull(p.valid_upto, '0000-00-00') != '0000-00-00' and p.valid_upto < %(date)s {0} {1}
+		where p.valid_upto is not null and p.valid_upto < %(date)s {0} {1}
 		order by p.valid_upto desc
 	""".format(item_conditions, price_lists_cond), filters, as_dict=1)
 
 	items_map = {}
 	for d in item_data:
+		d["disable_item_formatter"] = 1
+
 		default_uom = d.purchase_uom if filters.buying_selling == "Buying" else d.sales_uom
 		if filters.uom:
 			d['uom'] = filters.uom
@@ -180,7 +164,7 @@ def get_data(filters):
 			if 'previous_price' not in price and d.valid_from < price.valid_from:
 				price.previous_price = d.price_list_rate
 
-	for item_code, d in iteritems(items_map):
+	for item_code, d in items_map.items():
 		d.actual_qty = convert_item_uom_for(flt(d.actual_qty), d.item_code, d.stock_uom, d.uom)
 		d.po_qty = convert_item_uom_for(flt(d.po_qty), d.item_code, d.stock_uom, d.uom)
 
@@ -191,7 +175,7 @@ def get_data(filters):
 		d.avg_lc_rate = (flt(d.stock_value) + flt(d.po_lc_amount)) / d.balance_qty if d.balance_qty else 0
 		d.margin_rate = (d.standard_rate - d.avg_lc_rate) * 100 / d.standard_rate if d.standard_rate else None
 
-		for price_list, price in iteritems(item_price_map.get(item_code, {})):
+		for price_list, price in item_price_map.get(item_code, {}).items():
 			d["rate_" + scrub(price_list)] = price.current_price
 			d["currency_" + scrub(price_list)] = price.currency
 			if d.standard_rate is not None:
@@ -203,11 +187,18 @@ def get_data(filters):
 			if price.valid_from:
 				d["valid_from_" + scrub(price_list)] = price.valid_from
 
+		if filters.standard_price_list and filters.price_list_1:
+			standard_rate = d.get("rate_" + scrub(filters.standard_price_list))
+			comparison_rate = d.get("rate_" + scrub(filters.price_list_1))
+			if standard_rate and comparison_rate:
+				ratio_field = get_comparison_ratio_field(filters.standard_price_list, filters.price_list_1)
+				d[ratio_field] = standard_rate / comparison_rate
+
 		d['print_rate'] = d.get("rate_" + scrub(selected_price_list)) if selected_price_list else d.standard_rate
 
 	if filters.filter_items_without_price:
 		to_remove = []
-		for item_code, d in iteritems(items_map):
+		for item_code, d in items_map.items():
 			if not d.get('print_rate'):
 				to_remove.append(item_code)
 		for item_code in to_remove:
@@ -219,7 +210,7 @@ def get_data(filters):
 def get_price_lists(filters):
 	def get_additional_price_lists():
 		res = []
-		for i in range(3):
+		for i in range(1):
 			if filters.get('price_list_' + str(i+1)):
 				res.append(filters.get('price_list_' + str(i+1)))
 		return res
@@ -302,9 +293,14 @@ def get_item_conditions(filters, for_item_dt):
 
 
 def get_columns(filters, price_lists):
+	show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+
 	columns = [
-		{"fieldname": "item_code", "label": _("Item"), "fieldtype": "Link", "options": "Item", "width": 200,
-			"price_list_note": frappe.db.get_single_value("Price List Settings", "price_list_note")},
+		{"fieldname": "item_code", "label": _("Item Code"), "fieldtype": "Link", "options": "Item",
+			"width": 100 if show_item_name else 200,
+			"price_list_note": frappe.db.get_single_value("Price List Settings", "price_list_note")
+		},
+		{"fieldname": "item_name", "label": _("Item Name"), "fieldtype": "Data", "width": 150},
 		{"fieldname": "print_in_price_list", "label": _("Print"), "fieldtype": "Check", "width": 50, "editable": 1},
 		{"fieldname": "uom", "label": _("UOM"), "fieldtype": "Data", "width": 50},
 		{"fieldname": "alt_uom_size", "label": _("Per Unit"), "fieldtype": "Float", "width": 68},
@@ -323,7 +319,7 @@ def get_columns(filters, price_lists):
 			})
 
 		columns += [
-			{"fieldname": "standard_rate", "label": _("Standard Rate"), "fieldtype": "Currency", "width": 110,
+			{"fieldname": "standard_rate", "label": filters.standard_price_list, "fieldtype": "Currency", "width": 110,
 				"editable": 1, "price_list": filters.standard_price_list,
 				"force_currency_symbol": 1, "options": "currency_" + scrub(filters.standard_price_list)},
 			{"fieldname": "margin_rate", "label": _("Margin"), "fieldtype": "Percent", "width": 60, "restricted": 1},
@@ -347,6 +343,14 @@ def get_columns(filters, price_lists):
 				"force_currency_symbol": 1
 			})
 
+	if filters.standard_price_list and filters.price_list_1:
+		columns.append({
+			"fieldname": get_comparison_ratio_field(filters.standard_price_list, filters.price_list_1),
+			"label": _("{0}/{1}").format(filters.standard_price_list, filters.price_list_1),
+			"fieldtype": "Float",
+			"width": 130,
+		})
+
 	show_amounts = has_valuation_read_permission()
 	if not show_amounts:
 		columns = list(filter(lambda d: not d.get('restricted'), columns))
@@ -354,12 +358,19 @@ def get_columns(filters, price_lists):
 			if c.get('editable'):
 				del c['editable']'''
 
+	if not show_item_name:
+		columns = [c for c in columns if c.get('fieldname') != 'item_name']
+
 	return columns
+
+
+def get_comparison_ratio_field(numerator_price_list, divisor_price_list):
+	return "ratio_" + scrub(numerator_price_list) + "_" + scrub(divisor_price_list)
 
 
 @frappe.whitelist()
 def set_multiple_item_pl_rate(effective_date, price_list, items):
-	if isinstance(items, string_types):
+	if isinstance(items, str):
 		items = json.loads(items)
 
 	for item in items:
@@ -373,7 +384,7 @@ def set_item_pl_rate(effective_date, item_code, price_list, price_list_rate, uom
 	_set_item_pl_rate(effective_date, item_code, price_list, price_list_rate, uom, conversion_factor)
 
 	if filters is not None:
-		if isinstance(filters, string_types):
+		if isinstance(filters, str):
 			filters = json.loads(filters)
 
 		filters['item_code'] = item_code

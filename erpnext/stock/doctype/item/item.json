@@ -29,6 +29,7 @@
   "stock_uom",
   "alt_uom",
   "alt_uom_size",
+  "default_material_request_type",
   "standard_rate",
   "standard_working_hours",
   "valuation_rate",
@@ -49,9 +50,9 @@
   "is_purchase_item",
   "is_packaging_material",
   "column_break_40",
-  "skip_transfer_for_manufacture",
+  "is_sub_contracted_item",
   "allow_alternative_item",
-  "hide_in_price_list",
+  "skip_transfer_for_manufacture",
   "vehicle_details_section",
   "vehicle_engine_capacity",
   "quotation_validity_days",
@@ -92,10 +93,9 @@
   "description",
   "show_item_code",
   "inventory_tab",
-  "default_material_request_type",
+  "valuation_method",
   "over_delivery_receipt_allowance",
   "column_break1",
-  "valuation_method",
   "safety_stock",
   "end_of_life",
   "reorder_section",
@@ -121,6 +121,7 @@
   "selling_tab",
   "max_discount",
   "column_break_93",
+  "hide_in_price_list",
   "customer_item_specifications_section",
   "customer_code",
   "customer_items",
@@ -147,8 +148,6 @@
   "no_of_months_exp",
   "enable_deferred_expense",
   "manufacturing",
-  "is_sub_contracted_item",
-  "manufacturing_defaults_section",
   "manufacturer",
   "manufacturer_part_no",
   "default_item_manufacturer",
@@ -390,7 +389,7 @@
    "fieldname": "default_material_request_type",
    "fieldtype": "Select",
    "label": "Default Material Request Type",
-   "options": "Purchase\nMaterial Transfer\nMaterial Issue\nManufacture\nCustomer Provided",
+   "options": "\nPurchase\nManufacture\nCustomer Provided",
    "read_only_depends_on": "eval: doc.is_customer_provided_item"
   },
   {
@@ -566,7 +565,8 @@
    "default": "1",
    "fieldname": "is_purchase_item",
    "fieldtype": "Check",
-   "label": "Is Purchase Item"
+   "label": "Is Purchase Item",
+   "read_only_depends_on": "eval:doc.is_customer_provided_item"
   },
   {
    "depends_on": "is_purchase_item",
@@ -626,6 +626,7 @@
    "fieldname": "customer",
    "fieldtype": "Link",
    "label": "Customer",
+   "mandatory_depends_on": "eval:doc.is_customer_provided_item",
    "options": "Customer"
   },
   {
@@ -798,10 +799,9 @@
   },
   {
    "default": "0",
-   "description": "If subcontracted to a vendor",
    "fieldname": "is_sub_contracted_item",
    "fieldtype": "Check",
-   "label": "Supply Raw Materials for Purchase",
+   "label": "Is Subcontracted Item",
    "oldfieldname": "is_sub_contracted_item",
    "oldfieldtype": "Select"
   },
@@ -1268,11 +1268,6 @@
    "label": "Customer Item Specifications"
   },
   {
-   "fieldname": "manufacturing_defaults_section",
-   "fieldtype": "Section Break",
-   "label": "Manufacturing Defaults"
-  },
-  {
    "fieldname": "column_break_129",
    "fieldtype": "Column Break"
   },
@@ -1367,7 +1362,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2023-10-26 17:16:40.063921",
+ "modified": "2023-10-24 14:33:27.959772",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

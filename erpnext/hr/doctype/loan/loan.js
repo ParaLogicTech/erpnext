@@ -54,7 +54,9 @@ frappe.ui.form.on('Loan', {
 				frm.add_custom_button(__('Create Disbursement Entry'), function() {
 					frm.trigger("make_jv");
 				}).addClass("btn-primary");
-			} else if (frm.doc.status == "Disbursed" && frm.doc.repayment_start_date) {
+			}
+
+			if (frm.doc.repayment_start_date) {
 				frm.add_custom_button(__('Create Repayment Entry'), function() {
 					frm.trigger("make_repayment_entry");
 				}).addClass("btn-primary");

@@ -9,7 +9,7 @@ def execute():
 
 	for name in pinvs:
 		doc = frappe.get_doc("Purchase Invoice", name)
-		party_type, party = doc.get_billing_party()
+		party_type, party, party_name = doc.get_billing_party()
 
 		supplier_bal = frappe.db.sql("""
 			select sum(credit-debit)

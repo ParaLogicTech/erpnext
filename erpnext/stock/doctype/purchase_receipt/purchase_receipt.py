@@ -36,7 +36,7 @@ class PurchaseReceipt(BuyingController):
 		super(PurchaseReceipt, self).validate()
 
 		if self._action == "submit" and not self.is_return:
-			self.make_batches('warehouse')
+			self.auto_create_batches('warehouse')
 
 		self.validate_order_required()
 		self.validate_with_previous_doc()

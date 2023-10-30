@@ -88,6 +88,7 @@ class Item(WebsiteGenerator):
 
 	def before_insert(self):
 		self.set_item_override_values()
+		self.validate_customer_provided_part()
 
 	def after_insert(self):
 		'''set opening stock and item price'''
@@ -155,7 +156,11 @@ class Item(WebsiteGenerator):
 		if self.is_customer_provided_item:
 			self.is_purchase_item = 0
 			self.valuation_rate = 0
-			self.default_material_request_type = "Customer Provided"
+
+			if self.is_sub_contracted_item:
+				self.default_material_request_type = "Purchase"
+			else:
+				self.default_material_request_type = "Customer Provided"
 
 	def add_price(self, price_list=None):
 		'''Add a new price'''

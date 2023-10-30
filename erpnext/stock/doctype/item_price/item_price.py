@@ -76,3 +76,7 @@ class ItemPrice(Document):
 		if self.buying and not self.selling:
 			# if only buying then remove customer
 			self.customer = None
+
+
+def on_doctype_update():
+	frappe.db.add_index("Item Price", ["item_code", "price_list"])

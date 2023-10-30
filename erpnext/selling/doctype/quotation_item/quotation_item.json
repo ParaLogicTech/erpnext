@@ -248,6 +248,7 @@
    "precision": "9",
    "print_hide": 1,
    "read_only": 1,
+   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom",
    "reqd": 1
   },
   {
@@ -1123,7 +1124,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-09-05 00:14:56.530094",
+ "modified": "2023-10-23 23:16:14.632831",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation Item",

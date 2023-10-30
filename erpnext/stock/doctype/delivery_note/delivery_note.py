@@ -79,7 +79,6 @@ class DeliveryNote(SellingController):
 		self.make_gl_entries()
 
 	def on_cancel(self):
-		super(DeliveryNote, self).on_cancel()
 		self.check_next_docstatus()
 		self.update_status_on_cancel()
 

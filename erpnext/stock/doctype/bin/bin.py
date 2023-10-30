@@ -6,6 +6,7 @@ from frappe.utils import flt, nowdate
 import frappe.defaults
 from frappe.model.document import Document
 
+
 class Bin(Document):
 	def before_save(self):
 		if self.get("__islocal") or not self.stock_uom:
@@ -94,7 +95,7 @@ class Bin(Document):
 		#Get Transferred Entries
 		materials_transferred = frappe.db.sql("""
 			select
-				ifnull(sum(transfer_qty), 0)
+				ifnull(sum(sed.stock_qty), 0)
 			from
 				`tabStock Entry` se, `tabStock Entry Detail` sed, `tabPurchase Order` po
 			where

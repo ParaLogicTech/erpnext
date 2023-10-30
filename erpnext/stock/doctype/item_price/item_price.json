@@ -47,8 +47,7 @@
    "oldfieldname": "price_list_name",
    "oldfieldtype": "Select",
    "options": "Item",
-   "reqd": 1,
-   "search_index": 1
+   "reqd": 1
   },
   {
    "fieldname": "uom",
@@ -223,7 +222,7 @@
  "icon": "fa fa-flag",
  "idx": 1,
  "links": [],
- "modified": "2023-10-10 14:19:59.311528",
+ "modified": "2023-10-24 14:02:44.739721",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Price",

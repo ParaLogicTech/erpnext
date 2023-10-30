@@ -293,7 +293,7 @@ class WorkOrder(StatusUpdater):
 
 		if self.docstatus == 1:
 			ste_data = frappe.db.sql("""
-				select ste.purpose, i.item_code, i.original_item, i.qty * i.conversion_factor as transfer_qty
+				select ste.purpose, i.item_code, i.original_item, i.qty * i.conversion_factor as stock_qty
 				from `tabStock Entry` ste
 				inner join `tabStock Entry Detail` i on i.parent = ste.name
 				where ste.work_order = %s
@@ -303,11 +303,11 @@ class WorkOrder(StatusUpdater):
 
 			for d in ste_data:
 				item_ste_map.setdefault(d.item_code, {}).setdefault(d.purpose, 0)
-				item_ste_map[d.item_code][d.purpose] += d.transfer_qty
+				item_ste_map[d.item_code][d.purpose] += d.stock_qty
 
 				if d.original_item:
 					original_item_ste_map.setdefault(d.original_item, {}).setdefault(d.purpose, 0)
-					original_item_ste_map[d.original_item][d.purpose] += d.transfer_qty
+					original_item_ste_map[d.original_item][d.purpose] += d.stock_qty
 
 		for d in self.required_items:
 			ste_qty_map = item_ste_map.get(d.item_code, {}) or original_item_ste_map.get(d.item_code, {})

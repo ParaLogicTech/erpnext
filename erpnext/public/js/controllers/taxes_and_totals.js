@@ -142,40 +142,48 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 					item.amount_before_discount = flt(rate_before_discount * item.qty, precision("amount_before_discount", item));
 					item.amount = flt(item.rate * item.qty, precision("amount", item));
 				}
-				item.total_discount = flt(item.amount_before_discount - item.amount, precision("total_discount", item));
 
-				var has_depreciation_field = frappe.meta.has_field(item.doctype, 'depreciation_amount');
-				if (has_depreciation_field) {
-					item.depreciation_amount = flt(item.amount_before_discount * flt(item.depreciation_percentage) / 100,
-						precision("depreciation_amount", item));
-					me.set_in_company_currency(item, ['depreciation_amount']);
-				}
-
+				// Depreciation
 				if (me.frm.doc.doctype === "Sales Invoice") {
 					item.amount_before_depreciation = item.amount_before_discount;
-					me.set_in_company_currency(item, ['amount_before_depreciation']);
+
+					item.depreciation_amount = flt(item.amount_before_depreciation * flt(item.depreciation_percentage) / 100,
+						precision("depreciation_amount", item));
+					item.underinsurance_amount = flt(
+						(item.amount_before_depreciation - item.depreciation_amount) * flt(item.underinsurance_percentage) / 100,
+						precision("underinsurance_amount", item)
+					);
+
+					me.set_in_company_currency(item, [
+						'amount_before_depreciation', 'depreciation_amount', 'underinsurance_amount'
+					]);
 
 					if (me.frm.doc.depreciation_type) {
-						var depreciation_on_discount = flt(item.total_discount * flt(item.depreciation_percentage) / 100,
-							precision("amount", item));
-						var depreciation_adjusted_discount = item.total_discount - depreciation_on_discount;
-
-						if (me.frm.doc.depreciation_type === "After Depreciation Amount") {
-							item.amount_before_discount = flt(item.amount_before_discount - item.depreciation_amount,
-								precision("amount_before_discount", item));
-							item.amount = flt(item.amount_before_discount - depreciation_adjusted_discount, precision("amount", item));
+						if (me.frm.doc.depreciation_type == "After Depreciation Amount") {
+							item.amount_before_discount = flt(
+								item.amount_before_discount - item.depreciation_amount - item.underinsurance_amount,
+								precision("amount_before_discount", item)
+							);
 						} else {
-							item.amount_before_discount = flt(item.depreciation_amount, precision("amount_before_discount", item));
-							item.amount = flt(item.amount_before_discount - depreciation_on_discount, precision("amount", item));
+							item.amount_before_discount = flt(
+								item.depreciation_amount + item.underinsurance_amount,
+								precision("amount_before_discount", item)
+							);
 						}
 
-						item.total_discount = flt(item.amount_before_discount - item.amount, precision("total_discount", item));
+						item.amount = flt(item.amount_before_discount * (1.0 - (item.discount_percentage / 100.0)),
+							precision("amount", item));
 					}
 
-					item.tax_exclusive_depreciation_amount = item.depreciation_amount;
 					item.tax_exclusive_amount_before_depreciation = item.amount_before_depreciation;
+					item.tax_exclusive_depreciation_amount = item.depreciation_amount;
+					item.tax_exclusive_underinsurance_amount = item.underinsurance_amount;
 				}
 
+				// Total Discount
+				item.total_discount = flt(item.amount_before_discount - item.amount, precision("total_discount", item));
+
+				// Net / Taxable Amount
 				if (cint(item.apply_taxes_on_retail)) {
 					item.taxable_rate = item.retail_rate ? item.retail_rate : rate_before_discount;
 					item.taxable_amount = item.retail_rate ? item.retail_amount : item.amount_before_discount;
@@ -194,6 +202,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 				item.tax_inclusive_amount = 0;
 				item.tax_inclusive_rate = 0;
 
+				// Tax Exclusive Values
 				item.tax_exclusive_price_list_rate = item.price_list_rate;
 				item.tax_exclusive_rate = item.rate;
 				item.tax_exclusive_amount = item.amount;
@@ -207,16 +216,18 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 				item.item_tax_amount = 0.0;
 
+				// Stock Qty
 				if (frappe.meta.has_field(item.doctype, "stock_qty") && frappe.meta.has_field(item.doctype, "conversion_factor")) {
 					item.stock_qty = item.qty * flt(item.conversion_factor);
 				}
-
 				let stock_qty = frappe.meta.has_field(item.doctype, "stock_qty") ? item.stock_qty : item.qty;
 
+				// Net Weight
 				if (frappe.meta.has_field(item.doctype, "net_weight") && frappe.meta.has_field(item.doctype, "net_weight_per_unit")) {
 					item.net_weight = flt(flt(item.net_weight_per_unit) * flt(stock_qty), precision("net_weight", item));
 				}
 
+				// Contents Qty
 				item.alt_uom_size = item.alt_uom ? item.alt_uom_size : 1.0;
 				item.alt_uom_qty = flt(stock_qty * item.alt_uom_size, precision('alt_uom_qty', item));
 
@@ -310,7 +321,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 			if(item.cumulated_tax_fraction && !me.discount_amount_applied) {
 				item.tax_exclusive_amount = flt(item.amount / (1 + item.cumulated_tax_fraction));
-				item.tax_exclusive_rate = !item.qty || item.depreciation_percentage
+				item.tax_exclusive_rate = !item.qty || item.depreciation_percentage || item.underinsurance_percentage
 					? flt(item.rate / (1 + item.cumulated_tax_fraction))
 					: flt(item.tax_exclusive_amount / item.qty);
 
@@ -320,10 +331,20 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 				if (me.frm.doc.doctype === "Sales Invoice") {
 					item.tax_exclusive_amount_before_depreciation = flt(item.amount_before_depreciation / (1 + item.cumulated_tax_fraction));
-					item.tax_exclusive_depreciation_amount = flt(item.tax_exclusive_amount_before_depreciation * flt(item.depreciation_percentage) / 100,
-						precision("tax_exclusive_depreciation_amount", item));
+					item.tax_exclusive_depreciation_amount = flt(
+						item.tax_exclusive_amount_before_depreciation * flt(item.depreciation_percentage) / 100,
+						precision("tax_exclusive_depreciation_amount", item)
+					);
+					item.tax_exclusive_underinsurance_amount = flt(
+						(item.tax_exclusive_amount_before_depreciation - item.tax_exclusive_depreciation_amount) * flt(item.underinsurance_percentage) / 100,
+						precision("tax_exclusive_underinsurance_amount", item)
+					);
 
-					me.set_in_company_currency(item, ["tax_exclusive_amount_before_depreciation", "tax_exclusive_depreciation_amount"]);
+					me.set_in_company_currency(item, [
+						"tax_exclusive_amount_before_depreciation",
+						"tax_exclusive_depreciation_amount",
+						"tax_exclusive_underinsurance_amount",
+					]);
 				}
 
 				if (item.qty) {
@@ -400,19 +421,17 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		this.frm.doc.base_tax_exclusive_total_before_discount = this.frm.doc.tax_exclusive_total_before_discount = 0.0;
 		this.frm.doc.base_tax_exclusive_total_discount = this.frm.doc.tax_exclusive_total_discount = 0.0;
 
-		var has_depreciation_field = frappe.meta.has_field(this.frm.doc.doctype, 'total_depreciation');
-		if (has_depreciation_field) {
-			this.frm.doc.base_total_depreciation = this.frm.doc.total_depreciation = 0.0;
-		}
-		var has_depreciation_adjustment = this.frm.doc.doctype === "Sales Invoice";
-		if (has_depreciation_adjustment) {
-			this.frm.doc.base_total_before_depreciation = this.frm.doc.total_before_depreciation = 0.0;
-			this.frm.doc.base_tax_exclusive_total_before_depreciation = this.frm.doc.tax_exclusive_total_before_depreciation = 0.0;
-			this.frm.doc.base_tax_exclusive_total_depreciation = this.frm.doc.tax_exclusive_total_depreciation = 0.0;
-		}
-
 		if (frappe.meta.has_field(this.frm.doc.doctype, "total_net_weight")) {
 			this.frm.doc.total_net_weight = 0.0
+		}
+
+		if (this.frm.doc.doctype === "Sales Invoice") {
+			this.frm.doc.base_total_before_depreciation = this.frm.doc.total_before_depreciation = 0.0;
+			this.frm.doc.base_total_depreciation = this.frm.doc.total_depreciation = 0.0;
+			this.frm.doc.base_total_underinsurance = this.frm.doc.total_underinsurance = 0.0;
+			this.frm.doc.base_tax_exclusive_total_before_depreciation = this.frm.doc.tax_exclusive_total_before_depreciation = 0.0;
+			this.frm.doc.base_tax_exclusive_total_depreciation = this.frm.doc.tax_exclusive_total_depreciation = 0.0;
+			this.frm.doc.base_tax_exclusive_total_underinsurance = this.frm.doc.tax_exclusive_total_underinsurance = 0.0;
 		}
 
 		$.each(this.frm.doc["items"] || [], function(i, item) {
@@ -448,19 +467,24 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			me.frm.doc.net_total += item.net_amount;
 			me.frm.doc.base_net_total += item.base_net_amount;
 
-			if (has_depreciation_field) {
-				me.frm.doc.total_depreciation += item.depreciation_amount;
-				me.frm.doc.base_total_depreciation += item.base_depreciation_amount;
-			}
-			if (has_depreciation_adjustment) {
+			if (me.frm.doc.doctype === "Sales Invoice") {
 				me.frm.doc.total_before_depreciation += item.amount_before_depreciation;
 				me.frm.doc.base_total_before_depreciation += item.base_amount_before_depreciation;
+
+				me.frm.doc.total_depreciation += item.depreciation_amount;
+				me.frm.doc.base_total_depreciation += item.base_depreciation_amount;
+
+				me.frm.doc.total_underinsurance += item.underinsurance_amount;
+				me.frm.doc.base_total_underinsurance += item.base_underinsurance_amount;
 
 				me.frm.doc.tax_exclusive_total_before_depreciation += item.tax_exclusive_amount_before_depreciation;
 				me.frm.doc.base_tax_exclusive_total_before_depreciation += item.base_tax_exclusive_amount_before_depreciation;
 
 				me.frm.doc.tax_exclusive_total_depreciation += item.tax_exclusive_depreciation_amount;
 				me.frm.doc.base_tax_exclusive_total_depreciation += item.base_tax_exclusive_depreciation_amount;
+
+				me.frm.doc.tax_exclusive_total_underinsurance += item.tax_exclusive_underinsurance_amount;
+				me.frm.doc.base_tax_exclusive_total_underinsurance += item.base_tax_exclusive_underinsurance_amount;
 			}
 		});
 

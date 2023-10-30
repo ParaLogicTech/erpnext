@@ -1,7 +1,8 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
+import erpnext
 from frappe.utils import cint, flt, cstr
 from frappe import _
 import frappe.defaults
@@ -12,7 +13,6 @@ from erpnext.stock.stock_ledger import get_valuation_rate
 from erpnext.stock import get_warehouse_account_map
 from frappe.model.meta import get_field_precision
 import json
-from six import string_types
 
 
 class QualityInspectionRequiredError(frappe.ValidationError): pass
@@ -23,8 +23,7 @@ class QualityInspectionNotSubmittedError(frappe.ValidationError): pass
 class StockController(AccountsController):
 	def validate(self):
 		super(StockController, self).validate()
-		if not self.get('is_return'):
-			self.validate_inspection()
+		self.validate_inspection()
 		self.validate_serialized_batch()
 		self.validate_customer_provided_item()
 		self.validate_vehicle_item()
@@ -118,32 +117,32 @@ class StockController(AccountsController):
 						"please mention the account in the Warehouse or "
 						"set default inventory account in company {1}.").format(wh, self.company))
 
-	def update_stock_ledger_entries(self, sle):
-		sle.valuation_rate = get_valuation_rate(sle.item_code, sle.warehouse,
-			self.doctype, self.name, sle.batch_no, currency=self.company_currency, company=self.company)
+	def get_stock_items(self, item_codes=None):
+		stock_items = []
 
-		sle.stock_value = flt(sle.qty_after_transaction) * flt(sle.valuation_rate)
-		sle.stock_value_difference = flt(sle.actual_qty) * flt(sle.valuation_rate)
+		if item_codes is None:
+			item_codes = [item.item_code for item in self.get("items") if item.item_code]
 
-		incoming_rate_field = ""
-		if flt(sle.actual_qty) > 0:
-			sle.incoming_rate = sle.valuation_rate
-			incoming_rate_field = ", incoming_rate = %(incoming_rate)s"
+		if item_codes:
+			item_codes = list(set(item_codes))
 
-		if sle.name:
-			frappe.db.sql("""
-				update
-					`tabStock Ledger Entry`
-				set
-					stock_value = %(stock_value)s,
-					valuation_rate = %(valuation_rate)s,
-					stock_value_difference = %(stock_value_difference)s
-					{0}
-				where
-					name = %(name)s
-			""".format(incoming_rate_field), sle)  # nosec
+			stock_items = frappe.db.sql_list("""
+				select name
+				from `tabItem`
+				where name in %s and is_stock_item = 1
+			""", [item_codes])
 
-		return sle
+		return stock_items
+
+	def get_serialized_items(self):
+		serialized_items = []
+		item_codes = list(set([d.item_code for d in self.get("items")]))
+		if item_codes:
+			serialized_items = frappe.db.sql_list("""select name from `tabItem`
+				where has_serial_no=1 and name in ({})""".format(", ".join(["%s"]*len(item_codes))),
+				tuple(item_codes))
+
+		return serialized_items
 
 	def get_stock_voucher_items(self, sle_map):
 		return self.get("items")
@@ -164,7 +163,7 @@ class StockController(AccountsController):
 
 		return stock_ledger
 
-	def make_batches(self, warehouse_field, item_condition=None):
+	def auto_create_batches(self, warehouse_field, item_condition=None):
 		'''Create batches if required. Called before submit'''
 		for d in self.items:
 			if d.get(warehouse_field) and not d.batch_no:
@@ -182,6 +181,14 @@ class StockController(AccountsController):
 						"reference_name": self.name,
 						"auto_created": 1,
 					}).insert().name
+
+	def unlink_auto_created_batches(self):
+		auto_created_batches = frappe.get_all("Batch", filters={
+			"reference_doctype": self.doctype, "reference_name": self.name
+		}, pluck="name")
+
+		for batch_no in auto_created_batches:
+			frappe.db.set_value("Batch", batch_no, {"reference_doctype": None, "reference_name": None}, notify=1)
 
 	def check_expense_account(self, item):
 		if not item.get("expense_account"):
@@ -203,14 +210,6 @@ class StockController(AccountsController):
 				frappe.throw(_("{0} {1}: Cost Center is mandatory for Item {2}").format(
 					_(self.doctype), self.name, item.get("item_code")))
 
-	def unlink_auto_created_batches(self):
-		auto_created_batches = frappe.get_all("Batch", filters={
-			"reference_doctype": self.doctype, "reference_name": self.name
-		}, pluck="name")
-
-		for batch_no in auto_created_batches:
-			frappe.db.set_value("Batch", batch_no, {"reference_doctype": None, "reference_name": None}, notify=1)
-
 	def get_sl_entries(self, d, args):
 		from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 
@@ -224,7 +223,7 @@ class StockController(AccountsController):
 			"voucher_no": self.name,
 			"voucher_detail_no": d.name,
 			"actual_qty": (self.docstatus==1 and 1 or -1)*flt(d.get("stock_qty")),
-			"stock_uom": frappe.db.get_value("Item", args.get("item_code") or d.get("item_code"), "stock_uom"),
+			"stock_uom": frappe.db.get_value("Item", args.get("item_code") or d.get("item_code"), "stock_uom", cache=1),
 			"incoming_rate": 0,
 			"company": self.company,
 			"batch_no": cstr(d.get("batch_no")).strip(),
@@ -253,25 +252,13 @@ class StockController(AccountsController):
 		sl_dict.update(args)
 		return sl_dict
 
-	def make_sl_entries(self, sl_entries, is_amended=None, allow_negative_stock=False,
-			via_landed_cost_voucher=False):
+	def make_sl_entries(self, sl_entries, is_amended=None, allow_negative_stock=False, via_landed_cost_voucher=False):
 		from erpnext.stock.stock_ledger import make_sl_entries
 		make_sl_entries(sl_entries, is_amended, allow_negative_stock, via_landed_cost_voucher)
 
 	def make_gl_entries_on_cancel(self, repost_future_gle=True):
-		if frappe.db.sql("""select name from `tabGL Entry` where voucher_type=%s
-			and voucher_no=%s""", (self.doctype, self.name)):
-				self.make_gl_entries(repost_future_gle=repost_future_gle)
-
-	def get_serialized_items(self):
-		serialized_items = []
-		item_codes = list(set([d.item_code for d in self.get("items")]))
-		if item_codes:
-			serialized_items = frappe.db.sql_list("""select name from `tabItem`
-				where has_serial_no=1 and name in ({})""".format(", ".join(["%s"]*len(item_codes))),
-				tuple(item_codes))
-
-		return serialized_items
+		if frappe.db.exists("GL Entry", {"voucher_type": self.doctype, "voucher_no": self.name}):
+			self.make_gl_entries(repost_future_gle=repost_future_gle)
 
 	def get_incoming_rate_for_sales_return(self, item_code=None, warehouse=None, batch_no=None, voucher_detail_no=None,
 			against_document_type=None, against_document=None):
@@ -301,16 +288,16 @@ class StockController(AccountsController):
 
 	def validate_warehouse(self):
 		from erpnext.stock.utils import validate_warehouse_company
-
-		warehouses = list(set([d.warehouse for d in
-			self.get("items") if getattr(d, "warehouse", None)]))
-
+		warehouses = list(set([d.warehouse for d in self.get("items") if d.get("warehouse")]))
 		for w in warehouses:
 			validate_warehouse_company(w, self.company)
 
 	def validate_inspection(self):
 		'''Checks if quality inspection is set for Items that require inspection.
 		On submit, throw an exception'''
+		if self.get("is_return"):
+			return
+
 		inspection_required_fieldname = None
 		if self.doctype in ["Purchase Receipt", "Purchase Invoice"]:
 			inspection_required_fieldname = "inspection_required_before_purchase"
@@ -325,7 +312,7 @@ class StockController(AccountsController):
 		for d in self.get('items'):
 			qa_required = False
 			if (inspection_required_fieldname and not d.quality_inspection and
-				frappe.db.get_value("Item", d.item_code, inspection_required_fieldname)):
+				frappe.get_cached_value("Item", d.item_code, inspection_required_fieldname)):
 				qa_required = True
 			elif self.doctype == "Stock Entry" and not d.quality_inspection and d.t_warehouse:
 				qa_required = True
@@ -405,7 +392,7 @@ class StockController(AccountsController):
 						.format(row.item_code, self.purchase_order))
 
 				total_supplied = frappe.db.sql("""
-					select sum(transfer_qty)
+					select sum(stock_qty)
 					from `tabStock Entry Detail`, `tabStock Entry`
 					where `tabStock Entry`.purchase_order = %s
 						and `tabStock Entry`.docstatus = 1
@@ -661,7 +648,7 @@ def get_voucherwise_gl_entries(stock_vouchers):
 
 @frappe.whitelist()
 def update_item_qty_from_availability(items):
-	if isinstance(items, string_types):
+	if isinstance(items, str):
 		items = json.loads(items)
 
 	out = {}

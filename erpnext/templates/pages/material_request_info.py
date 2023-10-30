@@ -41,7 +41,7 @@ def get_more_items_info(items, material_request):
 				and wo.status not in ('Completed', 'Cancelled', 'Stopped')
 			order by
 				wo.name asc""", item.item_code, as_dict=1)
-		item.delivered_qty = flt(frappe.db.sql("""select sum(transfer_qty)
+		item.delivered_qty = flt(frappe.db.sql("""select sum(stock_qty)
 						from `tabStock Entry Detail` where material_request = %s
 						and item_code = %s and docstatus = 1""",
 						(material_request, item.item_code))[0][0])				

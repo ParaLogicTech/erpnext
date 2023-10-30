@@ -262,9 +262,9 @@ def get_projectwise_timesheet_data(project=None, timesheet=None):
 		FROM `tabTimesheet Detail` tsd
 		INNER JOIN `tabTimesheet` ts ON ts.name = tsd.parent
 		WHERE ts.docstatus = 1 AND tsd.billable = 1
-			AND tsd.sales_invoice is NULL {condition}
+			AND tsd.sales_invoice is NULL {0}
 		ORDER BY tsd.from_time ASC
-	""", {"project": project, "timesheet": timesheet}, as_dict=1)
+	""".format(condition), {"project": project, "timesheet": timesheet}, as_dict=1)
 
 
 @frappe.whitelist()

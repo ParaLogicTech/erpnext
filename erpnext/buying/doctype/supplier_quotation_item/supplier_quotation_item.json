@@ -272,6 +272,7 @@
    "precision": "9",
    "print_hide": 1,
    "read_only": 1,
+   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom",
    "reqd": 1
   },
   {
@@ -1066,7 +1067,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-09-05 13:10:48.529675",
+ "modified": "2023-10-23 23:16:10.860771",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Supplier Quotation Item",

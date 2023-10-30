@@ -1,5 +1,6 @@
 from frappe import _
 
+
 def get_data():
 	return {
 		'heatmap': False,
@@ -20,11 +21,7 @@ def get_data():
 			},
 			{
 				'label': _('Tasks'),
-				'items': ['Task', 'Issue', 'Project Update']
-			},
-			{
-				'label': _('Work Done'),
-				'items': ['Timesheet', 'Maintenance Visit', 'Quality Inspection']
+				'items': ['Task', 'Issue', 'Timesheet']
 			},
 			{
 				'label': _('Material'),
@@ -32,7 +29,7 @@ def get_data():
 			},
 			{
 				'label': _('Expenses'),
-				'items': ['Employee Advance', 'Expense Claim', 'Landed Cost Voucher']
+				'items': ['Employee Advance', 'Expense Claim']
 			},
 			{
 				'label': _('Accounting'),

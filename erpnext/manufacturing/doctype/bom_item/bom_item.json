@@ -173,7 +173,9 @@
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
    "label": "Conversion Factor",
-   "precision": "9"
+   "precision": "9",
+   "read_only": 1,
+   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom"
   },
   {
    "fieldname": "rate_amount_section",
@@ -280,7 +282,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-09-12 12:17:31.467367",
+ "modified": "2023-10-23 23:16:06.808639",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM Item",

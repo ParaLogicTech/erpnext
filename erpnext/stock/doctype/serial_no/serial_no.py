@@ -686,7 +686,7 @@ def update_serial_nos_after_submit(controller, parentfield):
 
 		if controller.doctype == "Stock Entry":
 			warehouse = d.t_warehouse
-			qty = d.transfer_qty
+			qty = d.stock_qty
 		else:
 			warehouse = d.warehouse
 			qty = (d.qty if controller.doctype == "Stock Reconciliation"

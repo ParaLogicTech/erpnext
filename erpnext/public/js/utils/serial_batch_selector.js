@@ -479,7 +479,6 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 
 	map_row_values: function(row, values, serial_batch_field, qty_field, warehouse) {
 		row.qty = values[qty_field];
-		row.transfer_qty = flt(values[qty_field]) * flt(row.conversion_factor);
 		row.stock_qty = flt(values[qty_field]) * flt(row.conversion_factor);
 		row[serial_batch_field] = values[serial_batch_field];
 		row[this.warehouse_field] = values.warehouse || warehouse;

@@ -526,7 +526,7 @@ erpnext.vehicles.VehicleBookingController = class VehicleBookingController exten
 		const doc = this.frm.doc;
 		if(doc.payment_terms_template) {
 			frappe.call({
-				method: "erpnext.controllers.accounts_controller.get_payment_terms",
+				method: "erpnext.accounts.doctype.payment_terms_template.payment_terms_template.get_payment_terms",
 				args: {
 					terms_template: doc.payment_terms_template,
 					posting_date: doc.transaction_date,
@@ -554,7 +554,7 @@ erpnext.vehicles.VehicleBookingController = class VehicleBookingController exten
 		var row = locals[cdt][cdn];
 		if(row.payment_term) {
 			frappe.call({
-				method: "erpnext.controllers.accounts_controller.get_payment_term_details",
+				method: "erpnext.accounts.doctype.payment_terms_template.payment_terms_template.get_payment_term_details",
 				args: {
 					term: row.payment_term,
 					posting_date: this.frm.doc.transaction_date,

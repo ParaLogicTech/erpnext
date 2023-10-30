@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, cstr, combine_datetime
 from frappe.model.mapper import map_child_doc, get_mapped_doc
-from erpnext.controllers.stock_controller import StockController
+from erpnext.controllers.transaction_controller import TransactionController
 from erpnext.stock.get_item_details import get_conversion_factor, get_hide_item_code, get_weight_per_unit,\
 	get_default_expense_account, get_default_cost_center, get_item_default_values, get_force_default_warehouse,\
 	get_global_default_warehouse
@@ -17,14 +17,8 @@ import json
 
 force_item_fields = ["stock_uom", "has_batch_no", "has_serial_no", "force_default_warehouse", "item_group"]
 
-print_total_fields_from_items = [
-	('total_net_weight', 'net_weight'),
-	('total_qty', 'qty'),
-	('total_stock_qty', 'stock_qty'),
-]
 
-
-class PackingSlip(StockController):
+class PackingSlip(TransactionController):
 	item_table_fields = ["items", "packaging_items"]
 
 	def get_feed(self):
@@ -1057,14 +1051,6 @@ class PackingSlip(StockController):
 			past=_(past),
 			present=_(present),
 		))
-
-	def group_items_by_postprocess(self, grouped):
-		for key_value, group_data in grouped.items():
-			group_data.uom = self.get_common_uom(group_data["items"])
-			group_data.stock_uom = self.get_common_uom(group_data["items"], "stock_uom")
-
-			for group_field, item_field in print_total_fields_from_items:
-				group_data[group_field] = sum([flt(d.get(item_field)) for d in group_data['items']])
 
 	def set_unpacked_return_status(self, update=False, update_modified=True,
 			update_work_orders=True, update_source_packing_slip=True, row_names=None):

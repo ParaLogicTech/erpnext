@@ -47,6 +47,7 @@
   "price_list_rate",
   "base_price_list_rate",
   "depreciation_percentage",
+  "underinsurance_percentage",
   "column_break_32",
   "margin_type",
   "margin_rate_or_amount",
@@ -72,6 +73,8 @@
   "column_break_52",
   "depreciation_amount",
   "base_depreciation_amount",
+  "underinsurance_amount",
+  "base_underinsurance_amount",
   "total_discount",
   "base_total_discount",
   "tax_exclusive_amounts_section",
@@ -95,6 +98,8 @@
   "column_break_71",
   "tax_exclusive_depreciation_amount",
   "base_tax_exclusive_depreciation_amount",
+  "tax_exclusive_underinsurance_amount",
+  "base_tax_exclusive_underinsurance_amount",
   "tax_exclusive_total_discount",
   "base_tax_exclusive_total_discount",
   "tax_inclusive_amounts_section",
@@ -286,6 +291,7 @@
    "precision": "9",
    "print_hide": 1,
    "read_only": 1,
+   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom",
    "reqd": 1
   },
   {
@@ -1021,7 +1027,7 @@
    "fieldname": "base_tax_exclusive_amount_before_discount",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
-   "label": "Tax Exclusive Amount before Discount (Company Currency)",
+   "label": "Tax Exclusive Amount Before Discount (Company Currency)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -1226,12 +1232,13 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:parent.depreciation_type",
    "fieldname": "depreciation_percentage",
    "fieldtype": "Percent",
    "label": "Depreciation (%)"
   },
   {
-   "depends_on": "depreciation_percentage",
+   "depends_on": "eval:parent.depreciation_type && doc.depreciation_percentage",
    "fieldname": "depreciation_amount",
    "fieldtype": "Currency",
    "label": "Depreciation Amount",
@@ -1239,7 +1246,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "depreciation_percentage",
+   "depends_on": "eval:parent.depreciation_type && doc.depreciation_percentage",
    "fieldname": "base_depreciation_amount",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -1248,7 +1255,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "depreciation_percentage",
+   "depends_on": "eval:parent.depreciation_type && doc.amount_before_depreciation != doc.amount_before_discount",
    "fieldname": "amount_before_depreciation",
    "fieldtype": "Currency",
    "label": "Amount Before Depreciation",
@@ -1256,7 +1263,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "depreciation_percentage",
+   "depends_on": "eval:parent.depreciation_type && doc.amount_before_depreciation != doc.amount_before_discount",
    "fieldname": "base_amount_before_depreciation",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -1265,7 +1272,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "depreciation_percentage",
+   "depends_on": "eval:parent.depreciation_type && doc.depreciation_percentage",
    "fieldname": "tax_exclusive_depreciation_amount",
    "fieldtype": "Currency",
    "label": "Tax Exclusive Depreciation Amount",
@@ -1273,7 +1280,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "depreciation_percentage",
+   "depends_on": "eval:parent.depreciation_type && doc.depreciation_percentage",
    "fieldname": "base_tax_exclusive_depreciation_amount",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -1282,7 +1289,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "depreciation_percentage",
+   "depends_on": "eval:parent.depreciation_type && doc.amount_before_depreciation != doc.amount_before_discount",
    "fieldname": "tax_exclusive_amount_before_depreciation",
    "fieldtype": "Currency",
    "label": "Tax Exclusive Amount Before Depreciation",
@@ -1290,7 +1297,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "depreciation_percentage",
+   "depends_on": "eval:parent.depreciation_type && doc.amount_before_depreciation != doc.amount_before_discount",
    "fieldname": "base_tax_exclusive_amount_before_depreciation",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -1559,12 +1566,52 @@
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "depends_on": "eval:parent.depreciation_type",
+   "fieldname": "underinsurance_percentage",
+   "fieldtype": "Percent",
+   "label": "Underinsurance (%)"
+  },
+  {
+   "depends_on": "eval:parent.depreciation_type && doc.underinsurance_percentage",
+   "fieldname": "underinsurance_amount",
+   "fieldtype": "Currency",
+   "label": "Underinsurance Amount",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:parent.depreciation_type && doc.underinsurance_percentage",
+   "fieldname": "base_underinsurance_amount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Underinsurance Amount (Company Currency)",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:parent.depreciation_type && doc.underinsurance_percentage",
+   "fieldname": "tax_exclusive_underinsurance_amount",
+   "fieldtype": "Currency",
+   "label": "Tax Exclusive Underinsurance Amount",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:parent.depreciation_type && doc.underinsurance_percentage",
+   "fieldname": "base_tax_exclusive_underinsurance_amount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Tax Exclusive Underinsurance Amount (Company Currency)",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-10-10 14:11:32.478894",
+ "modified": "2023-10-23 23:14:54.367025",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice Item",

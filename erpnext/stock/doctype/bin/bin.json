@@ -1,11 +1,12 @@
 {
+ "actions": [],
  "autoname": "MAT-BIN-.YYYY.-.#####",
  "creation": "2013-01-10 16:34:25",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "warehouse",
   "item_code",
+  "warehouse",
   "reserved_qty",
   "actual_qty",
   "ordered_qty",
@@ -44,8 +45,7 @@
    "oldfieldname": "item_code",
    "oldfieldtype": "Link",
    "options": "Item",
-   "read_only": 1,
-   "search_index": 1
+   "read_only": 1
   },
   {
    "default": "0.00",
@@ -166,10 +166,12 @@
  "hide_toolbar": 1,
  "idx": 1,
  "in_create": 1,
- "modified": "2021-03-09 18:49:56.821514",
+ "links": [],
+ "modified": "2023-10-17 12:37:23.523205",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Bin",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -208,5 +210,6 @@
  "quick_entry": 1,
  "search_fields": "item_code,warehouse",
  "sort_field": "modified",
- "sort_order": "ASC"
+ "sort_order": "ASC",
+ "states": []
 }

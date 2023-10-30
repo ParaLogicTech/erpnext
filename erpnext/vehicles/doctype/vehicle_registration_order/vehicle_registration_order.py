@@ -41,6 +41,9 @@ class VehicleRegistrationOrder(VehicleAdditionalServiceController):
 		self.validate_common()
 
 	def validate_common(self):
+		if self.get("agent"):
+			self.ensure_supplier_is_not_blocked(supplier=self.get("agent"))
+
 		self.validate_registration_party()
 		self.validate_pricing_components()
 		self.calculate_totals()
@@ -988,7 +991,7 @@ def get_number_plate_delivery(vehicle_registration_order):
 
 @frappe.whitelist()
 def make_sales_invoice(vehicle_registration_order):
-	from erpnext.controllers.accounts_controller import get_taxes_and_charges, get_default_taxes_and_charges
+	from erpnext.controllers.transaction_controller import get_taxes_and_charges, get_default_taxes_and_charges
 
 	vro = frappe.get_doc("Vehicle Registration Order", vehicle_registration_order)
 
