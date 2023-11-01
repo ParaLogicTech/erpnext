@@ -5,7 +5,7 @@
 import frappe
 import erpnext
 from frappe import _
-from frappe.utils import flt, nowdate
+from frappe.utils import flt, nowdate, cint
 from erpnext.controllers.status_updater import StatusUpdater
 from six import string_types
 import json
@@ -133,6 +133,8 @@ def make_bank_entry(dt, dn, is_advance_return=False):
 
 	if not frappe.has_permission("Journal Entry", "write"):
 		frappe.throw(_("Not Permitted"), frappe.PermissionError)
+
+	is_advance_return = cint(is_advance_return)
 
 	doc = frappe.get_doc(dt, dn)
 	payment_account = get_default_bank_cash_account(doc.company, account_type="Cash",

@@ -41,6 +41,7 @@ class SalarySlip(TransactionBase):
 
 	def before_validate_links(self):
 		self.loans = []
+		self.advances = []
 
 	def validate(self):
 		self.status = self.get_status()
