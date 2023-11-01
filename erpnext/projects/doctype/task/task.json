@@ -494,7 +494,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2023-10-17 14:20:38.782233",
+ "modified": "2023-10-31 17:15:25.721671",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",
@@ -510,6 +510,15 @@
    "read": 1,
    "report": 1,
    "role": "Projects User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User (Read Only)",
    "share": 1,
    "write": 1
   }

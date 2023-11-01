@@ -587,10 +587,17 @@ class WorkshopCP {
 					"fieldtype": "Link",
 					"options": "Employee",
 					"reqd": 1,
+					"get_query": function() {
+						return {
+							filters: {
+								"is_technician": 1
+							}
+						};
+					},
 					"onchange": () => {
 						let employee = dialog.get_value('employee');
 						if (employee) {
-							frappe.db.get_value("Employee", employee, ['employee_name'], (r) => {
+							frappe.db.get_value("Employee", employee, ['employee_name',], (r) => {
 								if (r) {
 									dialog.set_value('employee_name', r.employee_name);
 								}
@@ -642,6 +649,13 @@ class WorkshopCP {
 					"fieldtype": "Link",
 					"options": "Employee",
 					"default": task_data.assigned_to,
+					"get_query": function() {
+						return {
+							filters: {
+								"is_technician": 1
+							}
+						};
+					},
 					"onchange": () => {
 						let employee = dialog.get_value('employee');
 						if (employee) {

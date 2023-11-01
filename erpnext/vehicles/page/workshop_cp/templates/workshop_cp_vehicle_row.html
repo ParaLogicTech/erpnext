@@ -56,26 +56,30 @@
 				</svg>
 			</button>
 			<div role="menu" class="dropdown-menu dropdown-menu-right">
-				{% if !doc.ready_to_close %}
-					{% if doc.total_tasks && doc.completed_tasks == doc.total_tasks %}
-						<button class="dropdown-item mark_as_ready" data-project="{{ doc.project }}">
-							{{ __("Mark as Ready") }}
-						</button>
-					{% endif %}
-
-					<div class="dropdown-divider"></div>
-
-					<button class="dropdown-item create_task" data-project="{{ doc.project }}">
-						{{ __("Create Task") }}
+				{% if doc.actions.mark_as_ready %}
+					<button class="dropdown-item mark_as_ready" data-project="{{ doc.project }}">
+						{{ __("Mark as Ready") }}
 					</button>
+				{% endif %}
 
-					<button class="dropdown-item create_template_tasks" data-project="{{ doc.project }}">
-						{%= __("Create Template Task") %}
-					</button>
-				{% else %}
-					<button class="dropdown-item reopen" data-project="{{ doc.project }}">
-						{{ __("Re-Open") }}
-					</button>
+				<div class="dropdown-divider"></div>
+
+				{% if doc.actions.create_task %}
+				<button class="dropdown-item create_task" data-project="{{ doc.project }}">
+					{{ __("Create Task") }}
+				</button>
+				{% endif %}
+
+				{% if doc.actions.create_template_tasks %}
+				<button class="dropdown-item create_template_tasks" data-project="{{ doc.project }}">
+					{%= __("Create Template Task") %}
+				</button>
+				{% endif %}
+
+				{% if doc.actions.reopen %}
+				<button class="dropdown-item reopen" data-project="{{ doc.project }}">
+					{{ __("Re-Open") }}
+				</button>
 				{% endif %}
 			</div>
 		</div>

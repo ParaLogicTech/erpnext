@@ -1,7 +1,8 @@
 <tr>
 	<td class="text-nowrap">
 		<div>
-			<a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" class="show-project" data-project="{{ doc.project }}" target="_blank">
+			<a href="{{ frappe.utils.get_form_link('Project', doc.project) }}" class="show-project"
+				data-project="{{ doc.project }}" target="_blank">
 				{{ doc.project }}
 			</a>
 		</div>
@@ -11,17 +12,17 @@
 	<td>
 		<div>
 			{% if doc.applies_to_variant_of_name %}
-				{{ doc.applies_to_variant_of_name }}
+			{{ doc.applies_to_variant_of_name }}
 			{% else %}
-				{{ doc.applies_to_item_name }}
+			{{ doc.applies_to_item_name }}
 			{% endif %}
 		</div>
 		<div>
 			<a href="{{ frappe.utils.get_form_link('Vehicle', doc.applies_to_vehicle) }}" target="_blank">
 				{% if doc.vehicle_license_plate %}
-					{{ doc.vehicle_license_plate }}
+				{{ doc.vehicle_license_plate }}
 				{% else %}
-					{{ doc.vehicle_chassis_no }}
+				{{ doc.vehicle_chassis_no }}
 				{% endif %}
 			</a>
 		</div>
@@ -39,7 +40,7 @@
 	{% if doc.start_dt %}
 		<div>{{ frappe.datetime.str_to_user(doc.start_dt, false, true) }}</div>
 		<div>{{ moment(doc.start_dt).format('hh:mm A') }}</div>
-	{% endif %}
+		{% endif %}
 	</td>
 
 	<td class="text-center text-nowrap">
@@ -67,54 +68,54 @@
 				</svg>
 			</button>
 			<div role="menu" class="dropdown-menu dropdown-menu-right">
-				{% if doc.assigned_to_name && doc.status == "Open" %}
-					<button class="dropdown-item start_task" data-task="{{ doc.task }}">
-						{{ __("Start Task") }}
-					</button>
+				{% if doc.actions.start_task %}
+				<button class="dropdown-item start_task" data-task="{{ doc.task }}">
+					{{ __("Start Task") }}
+				</button>
 				{% endif %}
 
-				{% if ["On Hold", "Working", "Pending Review"].includes(doc.status) %}
-					<button class="dropdown-item complete_task" data-task="{{ doc.task }}">
-						{{ __("Complete Task") }}
-					</button>
+				{% if doc.actions.complete_task %}
+				<button class="dropdown-item complete_task" data-task="{{ doc.task }}">
+					{{ __("Complete Task") }}
+				</button>
 				{% endif %}
 
-				{% if doc.status == "Working" %}
-					<button class="dropdown-item pause_task" data-task="{{ doc.task }}">
-						{{ __("Pause Task") }}
-					</button>
+				{% if doc.actions.pause_task %}
+				<button class="dropdown-item pause_task" data-task="{{ doc.task }}">
+					{{ __("Pause Task") }}
+				</button>
 				{% endif %}
 
-				{% if ["On Hold", "Completed"].includes(doc.status) && !doc.ready_to_close %}
-					<button class="dropdown-item resume_task" data-task="{{ doc.task }}">
-						{{ __("Resume Task") }}
-					</button>
+				{% if doc.actions.resume_task %}
+				<button class="dropdown-item resume_task" data-task="{{ doc.task }}">
+					{{ __("Resume Task") }}
+				</button>
 				{% endif %}
 
 				<div class="dropdown-divider"></div>
 
-				{% if (!doc.assigned_to_name) { %}
+				{% if (doc.actions.assign_technician) { %}
 					<button class="dropdown-item assign_technician" data-task="{{ doc.task }}">
 						{{ __("Assign Technician") }}
 					</button>
-				{% } else if (!["Completed", "Cancelled"].includes(doc.status)) { %}
+				{% } else if (doc.actions.reassign_technician) { %}
 					<button class="dropdown-item reassign_technician" data-task="{{ doc.task }}">
 						{{ __("Re-Assign Technician") }}
 					</button>
-				{% } %}
+				{% endif %}
 
 				<div class="dropdown-divider"></div>
 
-				{% if doc.status != "Completed" %}
-					<button class="dropdown-item edit_task" data-task="{{ doc.task }}">
-						{{ __("Edit Task") }}
-					</button>
+				{% if doc.actions.edit_task %}
+				<button class="dropdown-item edit_task" data-task="{{ doc.task }}">
+					{{ __("Edit Task") }}
+				</button>
 				{% endif %}
 
-				{% if doc.status == "Open" %}
-					<button class="dropdown-item cancel_task" data-task="{{ doc.task }}">
-						{{ __("Cancel Task") }}
-					</button>
+				{% if doc.actions.cancel_task %}
+				<button class="dropdown-item cancel_task" data-task="{{ doc.task }}">
+					{{ __("Cancel Task") }}
+				</button>
 				{% endif %}
 			</div>
 		</div>

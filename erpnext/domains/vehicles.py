@@ -326,12 +326,18 @@ item_fields = [
 		"insert_after": "cb_commission_item"},
 ]
 
+# Employee Fields
+employee_fields = [
+	{"label": "Is Technician", "fieldname": "is_Technician", "fieldtype": "Check",
+		"insert_after": "designation"},
+]
+
 # Set Translatable = 0
 field_lists = [
 	applies_to_fields, applies_to_transaction_fields, applies_to_project_fields, applies_to_appointment_fields,
 	project_vehicle_reading_fields, vehicle_owner_fields, sales_invoice_vehicle_owner_fields, service_person_fields,
 	material_request_service_person_fields, accounting_dimension_fields, accounting_dimension_table_fields,
-	item_fields, project_fields, project_type_fields, project_change_vehicle_details_fields,
+	item_fields, employee_fields, project_fields, project_type_fields, project_change_vehicle_details_fields,
 	project_template_fields, project_template_category_fields, project_template_detail_fields,
 	customer_vehicle_selector_fields, project_customer_vehicle_selector, appointment_customer_vehicle_selector,
 	customer_customer_vehicle_selector, opportunity_fields, applies_to_opportunity_fields,
@@ -438,6 +444,7 @@ data = {
 		"Customer": customer_customer_vehicle_selector,
 		"Opportunity": opportunity_fields + applies_to_opportunity_fields,
 		"Customer Feedback": applies_to_transaction_fields,
+		"Employee": employee_fields
 	},
 	'default_portal_role': 'Customer'
 }

@@ -4,7 +4,7 @@
  "docstatus": 0,
  "doctype": "Page",
  "idx": 0,
- "modified": "2023-08-03 17:39:54.325897",
+ "modified": "2023-10-31 15:33:05.645451",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "workshop-cp",
@@ -14,6 +14,9 @@
  "roles": [
   {
    "role": "Projects User"
+  },
+  {
+   "role": "Projects User (Read Only)"
   }
  ],
  "script": null,
