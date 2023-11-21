@@ -140,6 +140,13 @@ class WorkshopCP {
 				options: ['', 'No Tasks', 'Not Started', 'In Progress', 'On Hold', 'Completed', 'Ready']
 
 			},
+			{
+				label: "Service Advisor",
+				fieldname: "service_advisor",
+				fieldtype: "Link",
+				options: "Sales Person",
+
+			},
 		];
 
 		for (let field of filter_fields) {

@@ -136,7 +136,7 @@ def get_projects_data(filters):
 		SELECT
 			p.name as project, p.project_name, p.project_workshop, p.tasks_status,
 			p.applies_to_variant_of, p.applies_to_variant_of_name, p.ready_to_close,
-			p.applies_to_item, p.applies_to_item_name,
+			p.applies_to_item, p.applies_to_item_name, p.service_advisor,
 			p.applies_to_vehicle, p.vehicle_chassis_no, p.vehicle_license_plate,
 			p.customer, p.customer_name,
 			p.expected_delivery_date, p.expected_delivery_time, p.vehicle_received_date, p.vehicle_delivered_date
@@ -249,6 +249,9 @@ def get_project_conditions(filters):
 		else:
 			conditions.append("p.tasks_status = %(status)s")
 			conditions.append("p.ready_to_close = 0")
+
+	if filters.get("service_advisor"):
+		conditions.append("p.service_advisor = %(service_advisor)s")
 
 	return " and ".join(conditions)
 
