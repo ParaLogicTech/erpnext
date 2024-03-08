@@ -235,8 +235,8 @@ class DeliveryNote(SellingController):
 
 		# update percentage in parent
 		self.per_returned = flt(self.calculate_status_percentage('returned_qty', 'qty', self.items))
-		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', self.items)
-		self.per_completed = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty', self.items)
+		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', self.items, 2)
+		self.per_completed = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty', self.items, 2)
 		if self.per_completed is None:
 			total_billed_qty = flt(sum([flt(d.billed_qty) for d in self.items]), self.precision('total_qty'))
 			self.per_billed = 100 if total_billed_qty else 0
@@ -630,11 +630,15 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 			else:
 				if not source.claim_customer:
 					return False
-
+		
+		if source.skip_sales_invoice:
+			return False
+		
 		if source_parent.get('is_return'):
 			return get_pending_qty(source) <= 0
 		else:
 			return get_pending_qty(source) > 0
+		
 
 	def update_item(source, target, source_parent, target_parent):
 		target.project = source_parent.get('project')
