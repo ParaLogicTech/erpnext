@@ -14,6 +14,7 @@ import "./controllers/taxes_and_totals.js"
 import "./controllers/transaction.js"
 import "./controllers/applies_to_common.js"
 import "./utils/manufacturing.js"
+import "./utils/projects.js"
 
 // Item Selector
 import "./templates/item_selector.html"
