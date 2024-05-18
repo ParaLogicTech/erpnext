@@ -182,7 +182,9 @@ class DeliveryNote(SellingController):
 			doc = frappe.get_doc("Delivery Note", self.return_against)
 			doc.update_billing_status()
 			doc.validate_returned_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
-			doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
+
+			if not frappe.get_cached_value("Stock Settings", None, "allow_delivery_returns_after_billing"):
+				doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
 
 			if self.reopen_order:
 				return_against_packing_slips = set([d.packing_slip for d in doc.items

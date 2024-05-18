@@ -1045,6 +1045,14 @@ class PackingSlip(TransactionController):
 			delivered_qty_map.setdefault(d.packing_slip_item, 0)
 			delivered_qty_map[d.packing_slip_item] += d.delivered_qty
 
+		to_remove = []
+		for key, value in delivered_qty_map.items():
+			if not flt(value, 9):
+				to_remove.append(key)
+
+		for key in to_remove:
+			del delivered_qty_map[key]
+
 		return delivered_qty_map
 
 	def get_nested_qty_map(self):

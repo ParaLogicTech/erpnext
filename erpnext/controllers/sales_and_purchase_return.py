@@ -388,8 +388,12 @@ def make_return_doc(doctype, source_name, target_doc=None):
 			target_doc.sales_invoice_item = source_doc.sales_invoice_item
 
 		elif doctype == "Delivery Note":
-			target_doc.qty = -1 * flt(source_doc.qty - source_doc.billed_qty - source_doc.returned_qty,
-				target_doc.precision("qty"))
+			if frappe.get_cached_value("Stock Settings", None, "allow_delivery_returns_after_billing"):
+				target_doc.qty = -1 * flt(source_doc.qty - source_doc.returned_qty)
+			else:
+				target_doc.qty = -1 * flt(source_doc.qty - source_doc.billed_qty - source_doc.returned_qty)
+			target_doc.qty = flt(target_doc.qty, target_doc.precision("qty"))
+
 			target_doc.delivery_note_item = source_doc.name
 			target_doc.sales_order = source_doc.sales_order
 			target_doc.sales_order_item = source_doc.sales_order_item
