@@ -178,6 +178,24 @@ class PurchaseInvoice(BuyingController):
 			if d.work_order:
 				work_orders.add(d.work_order)
 
+		# Update Returned Against Purchase Invoice
+		if self.is_return and self.return_against:
+			doc = frappe.get_doc("Purchase Invoice", self.return_against)
+			doc.set_returned_status(update=True)
+			if self.update_stock:
+				doc.validate_returned_qty(from_doctype=self.doctype)
+			doc.notify_update()
+
+		# Update Purchase Receipts
+		for name in purchase_receipts:
+			doc = frappe.get_doc("Purchase Receipt", name)
+			doc.set_billing_status(update=True)
+
+			doc.validate_billed_qty(from_doctype=self.doctype, row_names=purchase_receipt_row_names)
+
+			doc.set_status(update=True)
+			doc.notify_update()
+
 		# Update Purchase Orders
 		for name in purchase_orders:
 			doc = frappe.get_doc("Purchase Order", name)
@@ -191,30 +209,12 @@ class PurchaseInvoice(BuyingController):
 			doc.set_status(update=True)
 			doc.notify_update()
 
-		# Update Purchase Receipts
-		for name in purchase_receipts:
-			doc = frappe.get_doc("Purchase Receipt", name)
-			doc.set_billing_status(update=True)
-
-			doc.validate_billed_qty(from_doctype=self.doctype, row_names=purchase_receipt_row_names)
-
-			doc.set_status(update=True)
-			doc.notify_update()
-
 		# Update Work Orders
 		if self.update_stock:
 			for name in work_orders:
 				doc = frappe.get_doc("Work Order", name)
 				doc.run_method("update_status", from_doctype=self.doctype)
 				doc.notify_update()
-
-		# Update Returned Against Purchase Invoice
-		if self.is_return and self.return_against:
-			doc = frappe.get_doc("Purchase Invoice", self.return_against)
-			doc.set_returned_status(update=True)
-			if self.update_stock:
-				doc.validate_returned_qty(from_doctype=self.doctype)
-			doc.notify_update()
 
 	def set_returned_status(self, update=False, update_modified=True):
 		data = self.get_returned_status_data()

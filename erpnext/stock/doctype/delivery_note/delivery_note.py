@@ -204,9 +204,7 @@ class DeliveryNote(SellingController):
 			doc = frappe.get_doc("Sales Order", name)
 			doc.set_delivery_status(update=True)
 			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=sales_order_row_names)
-
-			if self.is_return:
-				doc.set_billing_status(update=True)
+			doc.set_billing_status(update=True)
 
 			# Update packed qty for unpacked returns
 			if self.is_return and self.reopen_order:
@@ -225,6 +223,14 @@ class DeliveryNote(SellingController):
 
 		self.update_project_billing_and_sales()
 		self.update_packing_slips()
+
+	def update_sales_order_billing_status(self):
+		sales_orders = set([d.sales_order for d in self.items if d.sales_order])
+		for name in sales_orders:
+			doc = frappe.get_doc("Sales Order", name)
+			doc.set_billing_status(update=True)
+			doc.set_status(update=True)
+			doc.notify_update()
 
 	def update_billing_status(self, update_modified=True):
 		updated_delivery_notes = [self.name]
@@ -366,6 +372,7 @@ class DeliveryNote(SellingController):
 		self.set_installation_status(update=True)
 		self.set_billing_status(update=True)
 		self.set_status(update=True, status=status)
+		self.update_sales_order_billing_status()
 		self.update_project_billing_and_sales()
 		self.notify_update()
 		clear_doctype_notifications(self)

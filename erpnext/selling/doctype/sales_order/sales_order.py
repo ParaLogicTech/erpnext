@@ -289,19 +289,18 @@ class SalesOrder(SellingController):
 		# update percentage in parent
 		self.per_returned = flt(self.calculate_status_percentage('returned_qty', 'qty', self.items))
 		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', self.items)
-
-		self.per_completed, within_allowance = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty',
-			self.items, under_delivery_allowance=True)
+		self.per_completed = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty', self.items)
 		if self.per_completed is None:
 			total_billed_qty = flt(sum([flt(d.billed_qty) for d in self.items]), self.precision('total_qty'))
 			self.per_billed = 100 if total_billed_qty else 0
 			self.per_completed = 100 if total_billed_qty else 0
 
 		# update billing_status
+		deliveries_not_billable = self.delivery_status == "Delivered" and not data.has_unbilled_delivery
 		self.billing_status = self.get_completion_status('per_completed', 'Bill',
-			not_applicable=self.status == "Closed" or self.per_returned == 100,
+			not_applicable=self.status == "Closed" or self.per_returned == 100 or (deliveries_not_billable and not self.per_billed),
 			not_applicable_based_on='per_billed',
-			within_allowance=self.delivery_status == "Delivered" and within_allowance)
+			within_allowance=self.per_billed and deliveries_not_billable)
 
 		if update:
 			self.db_set({
@@ -466,6 +465,7 @@ class SalesOrder(SellingController):
 		out.billed_amount_map = {}
 		out.delivery_return_qty_map = {}
 		out.depreciation_type_qty = {}
+		out.has_unbilled_delivery = False
 
 		if self.docstatus == 1:
 			row_names = [d.name for d in self.items]
@@ -505,13 +505,20 @@ class SalesOrder(SellingController):
 							out.billed_qty_map[so_item] = 0
 
 				# Returned By Delivery Note
-				out.delivery_return_qty_map = dict(frappe.db.sql("""
-					select i.sales_order_item, -1 * sum(i.qty)
+				delivered_by_dn = frappe.db.sql("""
+					select i.sales_order_item, i.qty, p.is_return, p.reopen_order, p.billing_status
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` p on p.name = i.parent
-					where p.docstatus = 1 and p.is_return = 1 and p.reopen_order = 0 and i.sales_order_item in %s
-					group by i.sales_order_item
-				""", [row_names]))
+					where p.docstatus = 1 and i.sales_order_item in %s
+				""", [row_names], as_dict=1)
+
+				for d in delivered_by_dn:
+					if d.is_return and not d.reopen_order:
+						out.delivery_return_qty_map.setdefault(d.sales_order_item, 0)
+						out.delivery_return_qty_map[d.sales_order_item] -= d.qty
+
+					if d.billing_status == "To Bill":
+						out.has_unbilled_delivery = True
 
 		return out
 

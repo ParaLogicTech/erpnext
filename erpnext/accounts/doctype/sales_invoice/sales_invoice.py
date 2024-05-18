@@ -304,31 +304,6 @@ class SalesInvoice(SellingController):
 
 			doc.notify_update()
 
-		# Update Sales Orders
-		sales_orders = set()
-		sales_order_row_names_without_dn = set()
-		for d in self.items:
-			if d.sales_order:
-				sales_orders.add(d.sales_order)
-			if d.sales_order_item and not d.delivery_note:
-				sales_order_row_names_without_dn.add(d.sales_order_item)
-
-		for name in sales_orders:
-			doc = frappe.get_doc("Sales Order", name)
-			doc.set_delivery_status(update=True)
-			doc.set_billing_status(update=True)
-
-			doc.validate_billed_qty(from_doctype=self.doctype, row_names=sales_order_row_names_without_dn)
-			if self.update_stock:
-				doc.validate_delivered_qty(from_doctype=self.doctype, row_names=sales_order_row_names_without_dn)
-
-			# Update packed qty for unpacked returns
-			if self.update_stock and self.is_return and self.reopen_order:
-				doc.set_production_packing_status(update=True)
-
-			doc.set_status(update=True)
-			doc.notify_update()
-
 		# Update Delivery Notes
 		delivery_notes = set()
 		delivery_note_row_names = set()
@@ -351,6 +326,31 @@ class SalesInvoice(SellingController):
 
 			if doc.name in delivery_notes:
 				doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
+
+			doc.set_status(update=True)
+			doc.notify_update()
+
+		# Update Sales Orders
+		sales_orders = set()
+		sales_order_row_names_without_dn = set()
+		for d in self.items:
+			if d.sales_order:
+				sales_orders.add(d.sales_order)
+			if d.sales_order_item and not d.delivery_note:
+				sales_order_row_names_without_dn.add(d.sales_order_item)
+
+		for name in sales_orders:
+			doc = frappe.get_doc("Sales Order", name)
+			doc.set_delivery_status(update=True)
+			doc.set_billing_status(update=True)
+
+			doc.validate_billed_qty(from_doctype=self.doctype, row_names=sales_order_row_names_without_dn)
+			if self.update_stock:
+				doc.validate_delivered_qty(from_doctype=self.doctype, row_names=sales_order_row_names_without_dn)
+
+			# Update packed qty for unpacked returns
+			if self.update_stock and self.is_return and self.reopen_order:
+				doc.set_production_packing_status(update=True)
 
 			doc.set_status(update=True)
 			doc.notify_update()
