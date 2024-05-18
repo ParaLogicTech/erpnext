@@ -642,7 +642,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-01-23 17:11:50.044567",
+ "modified": "2024-05-18 18:22:59.872872",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling",
@@ -668,6 +668,15 @@
  "sequence_id": 110.0,
  "shortcuts": [
   {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} To Deliver",
+   "label": "Sales Order",
+   "link_to": "Sales Order",
+   "stats_filter": "[[\"Sales Order\",\"delivery_status\",\"=\",\"To Deliver\",false],[\"Sales Order\",\"docstatus\",\"=\",\"1\",false],[\"Sales Order\",\"status\",\"!=\",\"Closed\",false]]",
+   "type": "DocType"
+  },
+  {
    "color": "Grey",
    "doc_view": "List",
    "label": "Sales Details Report",
@@ -685,6 +694,15 @@
    "type": "DocType"
   },
   {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} To Bill",
+   "label": "Delivery Note",
+   "link_to": "Delivery Note",
+   "stats_filter": "[[\"Delivery Note\",\"docstatus\",\"=\",\"1\",false],[\"Delivery Note\",\"billing_status\",\"=\",\"To Bill\",false],[\"Delivery Note\",\"status\",\"!=\",\"Closed\",false]]",
+   "type": "DocType"
+  },
+  {
    "color": "Grey",
    "doc_view": "List",
    "label": "Sales Analytics Report",
@@ -699,24 +717,6 @@
    "label": "Quotation",
    "link_to": "Quotation",
    "stats_filter": "{\"docstatus\":[\"=\",\"1\"],\"status\":[\"=\",\"Open\"]}",
-   "type": "DocType"
-  },
-  {
-   "color": "Orange",
-   "doc_view": "List",
-   "format": "{} To Deliver",
-   "label": "Sales Order",
-   "link_to": "Sales Order",
-   "stats_filter": "{\"per_delivered\":[\"<\",100],\"docstatus\":[\"=\",\"1\"],\"status\":[\"!=\",\"Closed\"]}",
-   "type": "DocType"
-  },
-  {
-   "color": "Orange",
-   "doc_view": "List",
-   "format": "{} To Bill",
-   "label": "Delivery Note",
-   "link_to": "Delivery Note",
-   "stats_filter": "{\"status\":[\"not in\",[\"Completed\",\"Return\",\"Closed\",\"\"]],\"docstatus\":[\"=\",\"1\"]}",
    "type": "DocType"
   },
   {

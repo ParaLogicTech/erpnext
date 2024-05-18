@@ -543,7 +543,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-01-23 17:11:57.562503",
+ "modified": "2024-05-18 18:23:39.827314",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Buying",
@@ -577,7 +577,16 @@
    "format": "{} To Receive",
    "label": "Purchase Order",
    "link_to": "Purchase Order",
-   "stats_filter": "{\"status\":[\"!=\",\"Closed\"],\"docstatus\":[\"=\",\"1\"],\"per_received\":[\"<\",100]}",
+   "stats_filter": "[[\"Purchase Order\",\"status\",\"!=\",\"Closed\",false],[\"Purchase Order\",\"docstatus\",\"=\",\"1\",false],[\"Purchase Order\",\"receipt_status\",\"=\",\"To Receive\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} To Bill",
+   "label": "Purchase Receipt",
+   "link_to": "Purchase Receipt",
+   "stats_filter": "[[\"Purchase Receipt\",\"docstatus\",\"=\",\"1\",false],[\"Purchase Receipt\",\"status\",\"!=\",\"Closed\",false],[\"Purchase Receipt\",\"billing_status\",\"=\",\"To Bill\",false]]",
    "type": "DocType"
   },
   {
@@ -587,15 +596,6 @@
    "label": "Supplier Quotation",
    "link_to": "Supplier Quotation",
    "stats_filter": "{\"docstatus\":[\"=\",\"0\"]}",
-   "type": "DocType"
-  },
-  {
-   "color": "Orange",
-   "doc_view": "List",
-   "format": "{} To Bill",
-   "label": "Purchase Receipt",
-   "link_to": "Purchase Receipt",
-   "stats_filter": "{\"docstatus\":[\"=\",\"1\"],\"status\":[\"not in\",[\"Completed\",\"Return\",\"Closed\",\"\"]]}",
    "type": "DocType"
   },
   {
