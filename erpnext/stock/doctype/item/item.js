@@ -838,3 +838,59 @@ frappe.ui.form.on('Item Applicable Item', {
 		}
 	},
 });
+
+frappe.ui.form.on('Item', {
+	refresh: function(frm) {
+		frm.fields_dict['invoice_documents'].grid.add_custom_button(__('Add Documents'), function() {
+			get_default_documents(frm);
+		});
+
+		frm.fields_dict['invoice_documents'].grid.wrapper.on('render_complete', function() {
+			frm.fields_dict['invoice_documents'].grid.wrapper.find('.grid-buttons .btn-grid-add-row')
+				.before(frm.fields_dict['invoice_documents'].grid.wrapper.find('.btn-custom'));
+		});
+	},
+});
+
+function get_default_documents(frm) {
+	frappe.call({
+		method: 'erpnext.stock.doctype.item.item.get_default_documents',
+		args: {
+			item: frm.doc.name
+		},
+		callback: function(r) {
+			if (r.message) {
+				frm.fields_dict['invoice_documents'].grid.remove_all();
+
+				r.message.forEach(function(doc) {
+					var row = frappe.model.add_child(frm.doc, 'Invoice Document', 'invoice_documents');
+					row.document_name = doc.document_name;
+					row.is_included = doc.is_included;
+					row.if_registered = doc.if_registered;
+				});
+
+				frm.refresh_field('invoice_documents');
+			}
+		}
+	});
+}
+
+function sync_invoice_documents_with_vehicle_invoice_delivery(frm) {
+	let invoice_documents = frm.doc.invoice_documents.map(doc => ({
+		document_name: doc.document_name,
+		is_included: doc.is_included,
+		if_registered: doc.if_registered
+	}));
+
+	frappe.call({
+		method: 'erpnext.stock.doctype.item.item.sync_invoice_documents',
+		args: {
+			item_code: frm.doc.item_code,
+		},
+		callback: function(r) {
+			if (r.message) {
+				frappe.msgprint(__('Vehicle Invoice Delivery documents updated successfully.'));
+			}
+		}
+	});
+}
