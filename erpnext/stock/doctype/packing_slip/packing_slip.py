@@ -99,6 +99,21 @@ class PackingSlip(TransactionController):
 						if f in self.force_item_fields or item.get(f) in ("", None):
 							item.set(f, item_details.get(f))
 
+	def set_package_type_details(self):
+		if not self.get("package_type"):
+			return
+
+		package_type_details = get_package_type_details(self.package_type, self.as_dict())
+		if package_type_details.weight_uom:
+			self.weight_uom = package_type_details.weight_uom
+
+		if package_type_details.packaging_items:
+			self.set("packaging_items", [])
+			for d in package_type_details.packaging_items:
+				row = frappe.new_doc("Packing Slip Packaging Material")
+				row.update(d)
+				self.append("packaging_items", row)
+
 	def set_source_packing_slips(self):
 		# Packing Slips from items table
 		contents_packing_slips = []
@@ -1175,7 +1190,7 @@ def get_package_type_details(package_type, args):
 	packaging_items_copy_fields = [
 		"item_code", "item_name", "description",
 		"qty", "uom", "conversion_factor", "stock_qty",
-		"tare_weight_per_unit"
+		"tare_weight_per_unit", "source_warehouse",
 	]
 
 	package_type_doc = frappe.get_cached_doc("Package Type", package_type)
@@ -1197,10 +1212,10 @@ def get_package_type_details(package_type, args):
 
 			packaging_items.append(item_row)
 
-	return {
+	return frappe._dict({
 		"packaging_items": packaging_items,
 		"weight_uom": package_type_doc.weight_uom,
-	}
+	})
 
 
 @frappe.whitelist()

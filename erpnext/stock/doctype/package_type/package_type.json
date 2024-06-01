@@ -10,6 +10,7 @@
  "field_order": [
   "package_type_name",
   "package_uom",
+  "disabled",
   "column_break_vo7vy",
   "default_packaging_material_section",
   "packaging_items",
@@ -135,6 +136,12 @@
   {
    "fieldname": "column_break_vo7vy",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -145,7 +152,7 @@
    "link_fieldname": "package_type"
   }
  ],
- "modified": "2023-08-31 14:57:39.689640",
+ "modified": "2024-06-01 16:58:36.203916",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Package Type",

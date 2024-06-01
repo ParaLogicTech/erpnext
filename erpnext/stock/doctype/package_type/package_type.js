@@ -11,6 +11,8 @@ erpnext.stock.PackageTypeController = class PackageTypeController extends erpnex
 	}
 
 	setup_queries() {
+		this.setup_warehouse_query();
+
 		this.frm.set_query("item_code", "packaging_items", function() {
 			return erpnext.queries.item({is_stock_item: 1});
 		});
