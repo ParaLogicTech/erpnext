@@ -222,13 +222,12 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 								}
 							},
 							() => {
+								me.frm.clear_table("packaging_items");
 								if (r.message.packaging_items && r.message.packaging_items.length) {
-									me.frm.clear_table("packaging_items");
 									for (let d of r.message.packaging_items) {
 										me.frm.add_child("packaging_items", d);
 									}
 								}
-
 								me.calculate_totals();
 							}
 						]);
