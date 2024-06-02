@@ -276,7 +276,7 @@ class StockBalanceReport:
 			for field in self.balance_value_fields:
 				val = flt(stock_balance.get(field), 9)
 				stock_balance[field] = val
-				if val and not self.is_package_included():
+				if val and not self.is_package_included() and field != "val_rate":
 					is_empty_balance = False
 
 			if is_empty_balance and (not self.filters.get("show_zero_qty_rows") or item_details.get('disabled')):
