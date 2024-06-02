@@ -119,3 +119,5 @@ frappe.query_reports["Stock Projected Qty"] = {
 	},
 	"initial_depth": 0
 }
+
+erpnext.utils.add_additional_sle_filters("Stock Projected Qty");

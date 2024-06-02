@@ -80,12 +80,12 @@ frappe.query_reports["Stock Balance"] = {
 			fieldtype: "Link",
 			options: "Batch"
 		},
-		{
-			fieldname: "packing_slip",
-			label: __("Package"),
-			fieldtype: "Link",
-			options: "Packing Slip"
-		},
+		// {
+		// 	fieldname: "packing_slip",
+		// 	label: __("Package"),
+		// 	fieldtype: "Link",
+		// 	options: "Packing Slip"
+		// },
 		{
 			fieldname: "item_group",
 			label: __("Item Group"),
@@ -197,3 +197,5 @@ frappe.query_reports["Stock Balance"] = {
 		return default_formatter(value, row, column, data, {css: style});
 	}
 };
+
+erpnext.utils.add_additional_sle_filters("Stock Balance");

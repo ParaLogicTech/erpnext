@@ -126,3 +126,5 @@ frappe.query_reports["Stock Ageing"] = {
 		return default_formatter(value, row, column, data, {css: style});
 	},
 }
+
+erpnext.utils.add_additional_sle_filters("Stock Ageing");

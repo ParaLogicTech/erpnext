@@ -5,6 +5,7 @@ import frappe
 from frappe import _, scrub
 from frappe.utils import cint, flt
 from erpnext.stock.utils import update_included_uom_in_dict_report, has_valuation_read_permission
+from erpnext.stock.report.stock_balance.stock_balance import get_items_for_stock_report
 from erpnext.accounts.party import set_party_name_in_list
 from frappe.desk.query_report import group_report_data
 from frappe.desk.reportview import build_match_conditions
@@ -16,7 +17,7 @@ def execute(filters=None):
 	show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
 
 	include_uom = filters.get("include_uom")
-	items = get_items(filters)
+	items = get_items_for_stock_report(filters)
 	sl_entries = get_stock_ledger_entries(filters, items)
 	item_details = get_item_details(items, sl_entries, include_uom)
 	opening_row = get_opening_balance(filters.item_code, filters.warehouse, filters.from_date)
@@ -176,31 +177,8 @@ def get_stock_ledger_entries(filters, items):
 			order by posting_date asc, posting_time asc, creation asc"""\
 		.format(
 			sle_conditions=get_sle_conditions(filters),
-			item_conditions_sql = item_conditions_sql
+			item_conditions_sql=item_conditions_sql
 		), filters, as_dict=1)
-
-
-def get_items(filters):
-	conditions = []
-	if filters.get("item_code"):
-		is_template = frappe.db.get_value("Item", filters.get('item_code'), 'has_variants')
-		if is_template:
-			conditions.append("item.variant_of=%(item_code)s")
-		else:
-			conditions.append("item.name=%(item_code)s")
-	else:
-		if filters.get("brand"):
-			conditions.append("item.brand=%(brand)s")
-		if filters.get("item_source"):
-			conditions.append("item.item_source=%(item_source)s")
-		if filters.get("item_group"):
-			conditions.append(get_item_group_condition(filters.get("item_group")))
-
-	items = []
-	if conditions:
-		items = frappe.db.sql_list("""select name from `tabItem` item where {}"""
-			.format(" and ".join(conditions)), filters)
-	return items
 
 
 def get_item_details(items, sl_entries=None, include_uom=None):
