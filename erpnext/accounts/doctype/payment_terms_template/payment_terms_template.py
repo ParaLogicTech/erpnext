@@ -81,6 +81,8 @@ def get_payment_term_details(term, posting_date=None, grand_total=None, bill_dat
 	else:
 		# is from child payment terms template table
 		term_details.payment_term = term.payment_term
+		if term_details.payment_term:
+			term = frappe.get_cached_doc("Payment Term", term_details.payment_term)
 
 	term_details.description = term.description
 	term_details.invoice_portion = term.invoice_portion

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2017-08-10 15:34:09.409562",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -16,6 +17,7 @@
  ],
  "fields": [
   {
+   "bold": 1,
    "columns": 2,
    "fieldname": "payment_term",
    "fieldtype": "Link",
@@ -25,13 +27,17 @@
   },
   {
    "columns": 2,
+   "fetch_from": "payment_term.description",
+   "fetch_if_empty": 1,
    "fieldname": "description",
    "fieldtype": "Small Text",
    "label": "Description"
   },
   {
-   "columns": 2,
+   "columns": 1,
    "default": "0",
+   "fetch_from": "payment_term.invoice_portion",
+   "fetch_if_empty": 1,
    "fieldname": "invoice_portion",
    "fieldtype": "Percent",
    "in_list_view": 1,
@@ -40,51 +46,69 @@
   },
   {
    "columns": 2,
+   "fetch_from": "payment_term.due_date_based_on",
    "fieldname": "due_date_based_on",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Due Date Based On",
    "options": "Day(s) after invoice date\nDay(s) before delivery date\nDay(s) after the end of the invoice month\nMonth(s) after the end of the invoice month",
+   "read_only_depends_on": "payment_term",
    "reqd": 1
   },
   {
-   "columns": 2,
+   "columns": 1,
    "default": "0",
    "depends_on": "eval:in_list(['Day(s) after invoice date', 'Day(s) after the end of the invoice month'], doc.due_date_based_on)",
+   "fetch_from": "payment_term.credit_days",
    "fieldname": "credit_days",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Credit Days"
+   "label": "Credit Days",
+   "read_only_depends_on": "payment_term"
   },
   {
+   "columns": 1,
    "default": "0",
    "depends_on": "eval:doc.due_date_based_on=='Month(s) after the end of the invoice month'",
+   "fetch_from": "payment_term.credit_months",
    "fieldname": "credit_months",
    "fieldtype": "Int",
-   "label": "Credit Months"
+   "in_list_view": 1,
+   "label": "Credit Months",
+   "read_only_depends_on": "payment_term"
   },
   {
+   "fetch_from": "payment_term.mode_of_payment",
+   "fetch_if_empty": 1,
    "fieldname": "mode_of_payment",
    "fieldtype": "Link",
    "label": "Mode of Payment",
    "options": "Mode of Payment"
   },
   {
+   "columns": 2,
+   "fetch_from": "payment_term.payment_amount_type",
+   "fetch_if_empty": 1,
    "fieldname": "payment_amount_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Payment Amount Type",
    "options": "Percentage\nAmount\nRemaining Amount"
   },
   {
+   "columns": 1,
    "depends_on": "eval:doc.payment_amount_type == \"Amount\"",
+   "fetch_from": "payment_term.payment_amount",
+   "fetch_if_empty": 1,
    "fieldname": "payment_amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Payment Amount"
+   "label": "Amount"
   }
  ],
  "istable": 1,
- "modified": "2020-12-08 01:22:27.695448",
+ "links": [],
+ "modified": "2024-06-03 08:20:24.461041",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Terms Template Detail",
@@ -93,5 +117,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
