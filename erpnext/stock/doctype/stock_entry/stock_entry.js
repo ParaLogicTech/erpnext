@@ -163,23 +163,18 @@ frappe.ui.form.on('Stock Entry', {
 			});
 		}
 
-		if(frm.doc.items) {
-			const has_alternative = frm.doc.items.find(i => i.allow_alternative_item === 1);
-
-			if (frm.doc.docstatus == 0 && has_alternative) {
-				frm.add_custom_button(__('Alternate Item'), () => {
-					erpnext.utils.select_alternate_items({
-						frm: frm,
-						child_docname: "items",
-						warehouse_field: "s_warehouse",
-						child_doctype: "Stock Entry Detail",
-						original_item_field: "original_item",
-						condition: (d) => {
-							if (d.s_warehouse && d.allow_alternative_item) {return true;}
-						}
-					})
-				});
-			}
+		const has_alternative_items = (frm.doc.items || []).find(d => d.has_alternative_item);
+		if (frm.doc.docstatus == 0 && has_alternative_items) {
+			frm.add_custom_button(__('Alternate Item'), () => {
+				erpnext.utils.select_alternate_items({
+					frm: frm,
+					child_docname: "items",
+					warehouse_field: "s_warehouse",
+					child_doctype: "Stock Entry Detail",
+					original_item_field: "original_item",
+					condition: (d) => d.s_warehouse && d.has_alternative_item,
+				})
+			});
 		}
 
 		if (frm.doc.docstatus === 1 && frm.doc.purpose == 'Send to Warehouse') {

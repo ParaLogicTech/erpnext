@@ -144,9 +144,9 @@ def get_latest_stock_qty(item_code, warehouse=None):
 		select sum(actual_qty)
 		from tabBin
 		where item_code=%s {0}
-	""".format(condition), values)[0][0]
+	""".format(condition), values)
 
-	return flt(actual_qty)
+	return flt(actual_qty[0][0]) if actual_qty else 0
 
 
 def get_latest_stock_balance():

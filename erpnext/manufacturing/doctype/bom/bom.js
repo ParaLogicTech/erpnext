@@ -74,14 +74,11 @@ frappe.ui.form.on("BOM", {
 		frm.toggle_enable("item", frm.doc.__islocal);
 		toggle_operations(frm);
 
-		frm.set_indicator_formatter('item_code',
-			function(doc) {
-				if (doc.original_item){
-					return (doc.item_code != doc.original_item) ? "orange" : ""
-				}
-				return ""
+		frm.set_indicator_formatter('item_code', function(doc) {
+			if (doc.original_item) {
+				return (doc.item_code != doc.original_item) ? "orange" : ""
 			}
-		)
+		})
 
 		if (!frm.doc.__islocal && frm.doc.docstatus<2) {
 			frm.add_custom_button(__("Update Cost"), function() {
@@ -109,22 +106,18 @@ frappe.ui.form.on("BOM", {
 			frm.page.set_inner_btn_group_as_primary(__('Create'));
 		}
 
-		if(frm.doc.items && frm.doc.allow_alternative_item) {
-			const has_alternative = frm.doc.items.find(i => i.allow_alternative_item === 1);
-			if (frm.doc.docstatus == 0 && has_alternative) {
-				frm.add_custom_button(__('Alternate Item'), () => {
-					erpnext.utils.select_alternate_items({
-						frm: frm,
-						child_docname: "items",
-						warehouse_field: "source_warehouse",
-						child_doctype: "BOM Item",
-						original_item_field: "original_item",
-						condition: (d) => {
-							if (d.allow_alternative_item) {return true;}
-						}
-					})
-				});
-			}
+		const has_alternative_items = (frm.doc.items || []).find(d => d.has_alternative_item);
+		if(has_alternative_items && frm.doc.docstatus == 0) {
+			frm.add_custom_button(__('Alternate Item'), () => {
+				erpnext.utils.select_alternate_items({
+					frm: frm,
+					child_docname: "items",
+					warehouse_field: "source_warehouse",
+					child_doctype: "BOM Item",
+					original_item_field: "original_item",
+					condition: (d) => d.has_alternative_item,
+				})
+			});
 		}
 	},
 
@@ -494,14 +487,6 @@ frappe.ui.form.on("BOM Item", {
 		get_bom_material_detail(frm.doc, cdt, cdn, false);
 	}
 })
-
-frappe.ui.form.on("BOM Item", "item_code", function(frm, cdt, cdn) {
-	var d = locals[cdt][cdn];
-	frappe.db.get_value('Item', {name: d.item_code}, 'allow_alternative_item', (r) => {
-		d.allow_alternative_item = r.allow_alternative_item
-	})
-	refresh_field("allow_alternative_item", d.name, d.parentfield);
-});
 
 frappe.ui.form.on("BOM Operation", "operations_remove", function(frm) {
 	erpnext.bom.calculate_op_cost(frm.doc);

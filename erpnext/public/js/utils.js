@@ -510,137 +510,162 @@ $.extend(erpnext.utils, {
 erpnext.utils.select_alternate_items = function(opts) {
 	const frm = opts.frm;
 	const warehouse_field = opts.warehouse_field || 'warehouse';
-	const item_field = opts.item_field || 'item_code';
+	const item_code_field = opts.item_field || opts.item_code_field || 'item_code';
+	const item_name_field = opts.item_name_field || 'item_name';
+	let qty_field = opts.qty_field || (frm.doctype === 'Work Order' ? 'required_qty' : 'qty');
 
 	this.data = [];
 	const dialog = new frappe.ui.Dialog({
 		title: __("Select Alternate Item"),
+		size: "extra-large",
 		fields: [
-			{fieldtype:'Section Break', label: __('Items')},
 			{
-				fieldname: "alternative_items", fieldtype: "Table", cannot_add_rows: true,
-				in_place_edit: true, data: this.data,
+				label: __("Items"),
+				fieldname: "alternative_items",
+				fieldtype: "Table",
+				cannot_add_rows: true,
+				in_place_edit: true,
+				data: this.data,
 				get_data: () => {
 					return this.data;
 				},
-				fields: [{
-					fieldtype:'Data',
-					fieldname:"docname",
-					hidden: 1
-				}, {
-					fieldtype:'Link',
-					fieldname:"item_code",
-					options: 'Item',
-					in_list_view: 1,
-					read_only: 1,
-					label: __('Item Code')
-				}, {
-					fieldtype:'Link',
-					fieldname:"alternate_item",
-					options: 'Item',
-					default: "",
-					in_list_view: 1,
-					label: __('Alternate Item'),
-					onchange: function() {
-						const item_code = this.get_value();
-						const warehouse = this.grid_row.on_grid_fields_dict.warehouse.get_value();
-						if (item_code && warehouse) {
-							frappe.call({
-								method: "erpnext.stock.utils.get_latest_stock_qty",
-								args: {
-									item_code: item_code,
-									warehouse: warehouse
-								},
-								callback: (r) => {
-									this.grid_row.on_grid_fields_dict
-										.actual_qty.set_value(r.message || 0);
-								}
-							})
-						}
+				fields: [
+					{
+						fieldtype: "Link",
+						fieldname: "item_code",
+						options: "Item",
+						in_list_view: 1,
+						columns: 2,
+						read_only: 1,
+						bold: 1,
+						label: __("Original Item")
 					},
-					get_query: (e) => {
-						return {
-							query: "erpnext.stock.doctype.item_alternative.item_alternative.get_alternative_items",
-							filters: {
-								item_code: e.item_code
+					{
+						fieldtype: "Data",
+						fieldname: "item_name",
+						in_list_view: 1,
+						columns: 2,
+						read_only: 1,
+						label: __("Original Item Name"),
+					},
+					{
+						fieldtype: "Link",
+						fieldname: "alternate_item",
+						options: "Item",
+						in_list_view: 1,
+						label: __("Alternate Item"),
+						onchange: function() {
+							const alternate_item = this.grid_row.doc.alternate_item;
+							const stock_item = alternate_item || this.grid_row.doc.item_code;
+							const warehouse = this.grid_row.doc.warehouse;
+							if (stock_item && warehouse) {
+								frappe.call({
+									method: "erpnext.stock.utils.get_latest_stock_qty",
+									args: {
+										item_code: stock_item,
+										warehouse: warehouse
+									},
+									callback: (r) => {
+										this.grid_row.doc.actual_qty = r.message || 0;
+										dialog.refresh();
+									}
+								});
 							}
-						};
-					}
-				}, {
-					fieldtype:'Link',
-					fieldname:"warehouse",
-					options: 'Warehouse',
-					default: "",
-					in_list_view: 1,
-					label: __('Warehouse'),
-					onchange: function() {
-						const warehouse = this.get_value();
-						const item_code = this.grid_row.on_grid_fields_dict.item_code.get_value();
-						if (item_code && warehouse) {
-							frappe.call({
-								method: "erpnext.stock.utils.get_latest_stock_qty",
-								args: {
-									item_code: item_code,
-									warehouse: warehouse
-								},
-								callback: (r) => {
-									this.grid_row.on_grid_fields_dict
-										.actual_qty.set_value(r.message || 0);
+
+							if (alternate_item) {
+								frappe.db.get_value("Item", alternate_item, 'item_name', (r) => {
+									if (r) {
+										this.grid_row.doc.alternate_item_name = r.item_name || "";
+									} else {
+										this.grid_row.doc.alternate_item_name = "";
+									}
+									dialog.refresh();
+								});
+							} else {
+								this.grid_row.doc.alternate_item_name = "";
+								dialog.refresh();
+							}
+						},
+						get_query: (e) => {
+							return {
+								query: "erpnext.stock.doctype.item_alternative.item_alternative.alternative_item_query",
+								filters: {
+									item_code: e.item_code
 								}
-							})
+							};
 						}
 					},
-				}, {
-					fieldtype:'Float',
-					fieldname:"actual_qty",
-					default: 0,
-					read_only: 1,
-					in_list_view: 1,
-					label: __('Available Qty')
-				}]
+					{
+						fieldtype: "Data",
+						fieldname: "alternate_item_name",
+						in_list_view: 1,
+						columns: 2,
+						read_only: 1,
+						label: __("Alternate Item Name"),
+					},
+					{
+						fieldtype: "Link",
+						fieldname: "warehouse",
+						options: 'Warehouse',
+						read_only: 1,
+						label: __('Warehouse'),
+					},
+					{
+						fieldtype: "Float",
+						fieldname: "actual_qty",
+						default: 0,
+						read_only: 1,
+						in_list_view: 1,
+						columns: 2,
+						label: __('In Stock'),
+					},
+					{
+						fieldtype: "Data",
+						fieldname: "docname",
+						hidden: 1
+					},
+				]
 			},
 		],
 		primary_action: function() {
 			const args = this.get_values()["alternative_items"];
-			const alternative_items = args.filter(d => {
-				if (d.alternate_item && d.item_code != d.alternate_item) {
-					return true;
-				}
-			});
+			const alternative_items = args.filter(d => d.alternate_item && d.item_code != d.alternate_item);
 
-			alternative_items.forEach(d => {
+			for (const d of alternative_items) {
 				let row = frappe.get_doc(opts.child_doctype, d.docname);
-				let qty = null;
-				if (row.doctype === 'Work Order Item') {
-					qty = row.required_qty;
-				} else {
-					qty = row.qty;
-				}
-				row[item_field] = d.alternate_item;
-				frm.script_manager.trigger(item_field, row.doctype, row.name)
-					.then(() => {
-						frappe.model.set_value(row.doctype, row.name, 'qty', qty);
-						frappe.model.set_value(row.doctype, row.name,
-							opts.original_item_field, d.item_code);
-					});
-			});
+				let qty = row[qty_field];
+				row[item_code_field] = d.alternate_item;
 
-			refresh_field(opts.child_docname);
-			this.hide();
+				frappe.model.set_value(row.doctype, row.name, item_name_field, d.alternate_item_name);
+				frm.script_manager.trigger(item_code_field, row.doctype, row.name).then(() => {
+					if (qty != null) {
+						frappe.model.set_value(row.doctype, row.name, qty_field, flt(qty));
+					}
+
+					if (opts.original_item_field) {
+						frappe.model.set_value(row.doctype, row.name, opts.original_item_field, d.item_code);
+					}
+				});
+			}
+
+			frm.refresh_field(opts.child_docname);
+			dialog.hide();
 		},
 		primary_action_label: __('Update')
 	});
 
-	frm.doc[opts.child_docname].forEach(d => {
+	for (const d of frm.doc[opts.child_docname] || []) {
 		if (!opts.condition || opts.condition(d)) {
 			dialog.fields_dict.alternative_items.df.data.push({
 				"docname": d.name,
-				"item_code": d[item_field],
+				"item_code": d[item_code_field],
+				"item_name": d[item_name_field],
 				"warehouse": d[warehouse_field],
-				"actual_qty": d.actual_qty
+				"actual_qty": d.actual_qty,
+				"disable_item_formatter": 1,
 			});
 		}
-	})
+	}
 
 	this.data = dialog.fields_dict.alternative_items.df.data;
 	dialog.fields_dict.alternative_items.grid.refresh();

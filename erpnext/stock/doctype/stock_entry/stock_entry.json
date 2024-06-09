@@ -36,6 +36,7 @@
   "job_card",
   "bom_no",
   "use_multi_level_bom",
+  "use_alternative_item",
   "column_break_qp2v9",
   "fg_completed_qty",
   "scrap_qty",
@@ -737,13 +738,21 @@
    "fieldtype": "Float",
    "label": "Total Contents Qty",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "from_bom",
+   "fieldname": "use_alternative_item",
+   "fieldtype": "Check",
+   "label": "Use Alternative Item for Out of Stock Materials",
+   "print_hide": 1
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-04-01 16:37:23.089006",
+ "modified": "2024-06-08 18:38:08.380604",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry",

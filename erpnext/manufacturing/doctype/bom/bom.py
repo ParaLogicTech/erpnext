@@ -7,13 +7,12 @@ from frappe.utils import cint, cstr, flt
 from frappe import _
 from erpnext.setup.utils import get_exchange_rate
 from frappe.website.website_generator import WebsiteGenerator
-from erpnext.stock.get_item_details import get_conversion_factor
-from erpnext.stock.get_item_details import get_price_list_data
-from erpnext.stock.get_item_details import get_default_warehouse, get_default_cost_center
+from erpnext.stock.get_item_details import (get_conversion_factor, get_price_list_data, get_default_warehouse,
+	get_default_cost_center)
+from erpnext.stock.doctype.item_alternative.item_alternative import has_alternative_item
 from frappe.core.doctype.version.version import get_diff
 from frappe.model.utils import get_fetch_values
 import functools
-from six import string_types
 from operator import itemgetter
 
 
@@ -156,7 +155,7 @@ class BOM(WebsiteGenerator):
 		if not args:
 			args = frappe.form_dict.get('args')
 
-		if isinstance(args, string_types):
+		if isinstance(args, str):
 			import json
 			args = json.loads(args)
 
@@ -189,7 +188,8 @@ class BOM(WebsiteGenerator):
 			'qty': flt(args.get("qty")) or flt(args.get("stock_qty")) or 1,
 			'stock_qty': flt(args.get("stock_qty")) or flt(args.get("qty")) or 1,
 			'base_rate': flt(rate) * (flt(self.conversion_rate) or 1),
-			'skip_transfer_for_manufacture': args.get('skip_transfer_for_manufacture')
+			'skip_transfer_for_manufacture': args.get('skip_transfer_for_manufacture'),
+			'has_alternative_item': has_alternative_item(item.name)
 		}
 
 		return ret_item
@@ -716,31 +716,39 @@ def get_list_context(context):
 	# context.introduction = _('Boms')
 
 
-def get_bom_items_as_dict(bom, company, qty=1, fetch_exploded=1, fetch_scrap_items=0, include_non_stock_items=False, fetch_qty_in_stock_uom=True):
-	item_dict = {}
+def get_bom_items_as_dict(
+	bom,
+	company,
+	qty=1,
+	fetch_exploded=1,
+	fetch_scrap_items=0,
+	include_non_stock_items=False,
+	fetch_qty_in_stock_uom=True
+):
+	items_dict = {}
 
 	# Did not use qty_consumed_per_unit in the query, as it leads to rounding loss
-	query = """select
-				bom_item.item_code,
-				bom_item.idx,
-				item.item_name,
-				sum(bom_item.{qty_field}/ifnull(bom.quantity, 1)) * %(qty)s as qty,
-				item.image,
-				bom.project,
-				item.stock_uom,
-				item.allow_alternative_item
-				{select_columns}
-			from
-				`tab{table}` bom_item
-				JOIN `tabBOM` bom ON bom_item.parent = bom.name
-				JOIN `tabItem` item ON item.name = bom_item.item_code
-			where
-				bom_item.docstatus < 2
-				and bom.name = %(bom)s
-				and item.is_stock_item in (1, {is_stock_item})
-				{where_conditions}
-				group by item_code, stock_uom
-				order by idx"""
+	query = """
+		SELECT
+			bom_item.item_code,
+			item.item_name,
+			sum(bom_item.{qty_field}/ifnull(bom.quantity, 1)) * %(qty)s as qty,
+			bom_item.idx,
+			item.image,
+			bom.project,
+			item.stock_uom
+			{select_columns}
+		FROM `tab{table}` bom_item
+		INNER JOIN `tabBOM` bom ON bom_item.parent = bom.name
+		INNER JOIN `tabItem` item ON item.name = bom_item.item_code
+		WHERE
+			bom_item.docstatus < 2
+			and bom.name = %(bom)s
+			and item.is_stock_item in (1, {is_stock_item})
+			{where_conditions}
+		GROUP BY item_code, stock_uom
+		ORDER BY idx
+	"""
 
 	is_stock_item = 0 if include_non_stock_items else 1
 	if cint(fetch_exploded):
@@ -748,44 +756,54 @@ def get_bom_items_as_dict(bom, company, qty=1, fetch_exploded=1, fetch_scrap_ite
 		if not fetch_qty_in_stock_uom:
 			uom_fields = ", bom_item.stock_qty / bom_item.qty as conversion_factor, bom_item.uom"
 
-		query = query.format(table="BOM Explosion Item",
+		query = query.format(
+			table="BOM Explosion Item",
 			where_conditions="",
 			is_stock_item=is_stock_item,
 			qty_field="stock_qty" if fetch_qty_in_stock_uom else "qty",
-			select_columns = """, bom_item.source_warehouse, bom_item.operation,
+			select_columns=""", bom_item.source_warehouse, bom_item.operation,
 				bom_item.skip_transfer_for_manufacture, bom_item.description, bom_item.rate,
 				(Select idx from `tabBOM Item` where item_code = bom_item.item_code and parent = %(parent)s limit 1) as idx
-				{0}
-			""".format(uom_fields))
-
+				{0}""".format(uom_fields)
+		)
 		items = frappe.db.sql(query, { "parent": bom, "qty": qty, "bom": bom, "company": company }, as_dict=True)
 	elif fetch_scrap_items:
-		query = query.format(table="BOM Scrap Item", where_conditions="",
-			select_columns=", bom_item.idx, item.description", is_stock_item=is_stock_item, qty_field="stock_qty")
-
+		query = query.format(
+			table="BOM Scrap Item",
+			where_conditions="",
+			select_columns=", bom_item.idx, item.description",
+			is_stock_item=is_stock_item,
+			qty_field="stock_qty"
+		)
 		items = frappe.db.sql(query, { "qty": qty, "bom": bom, "company": company }, as_dict=True)
 	else:
-		query = query.format(table="BOM Item", where_conditions="", is_stock_item=is_stock_item,
+		query = query.format(
+			table="BOM Item",
+			where_conditions="",
+			is_stock_item=is_stock_item,
 			qty_field="stock_qty" if fetch_qty_in_stock_uom else "qty",
 			select_columns = """, bom_item.uom, bom_item.conversion_factor, bom_item.source_warehouse,
 				bom_item.idx, bom_item.operation, bom_item.skip_transfer_for_manufacture,
-				bom_item.description, bom_item.base_rate as rate """)
+				bom_item.description, bom_item.base_rate as rate """
+		)
 		items = frappe.db.sql(query, { "qty": qty, "bom": bom, "company": company }, as_dict=True)
 
+	# Create dict
 	for item in items:
-		if item.item_code in item_dict:
-			item_dict[item.item_code]["qty"] += flt(item.qty)
+		if item.item_code in items_dict:
+			items_dict[item.item_code]["qty"] += flt(item.qty)
 		else:
-			item_dict[item.item_code] = item
+			items_dict[item.item_code] = item
 
-	for item, item_details in item_dict.items():
+	# Set additional values
+	for item, item_details in items_dict.items():
 		item_doc = frappe.get_cached_doc("Item", item)
 		defaults_args = frappe._dict({"company": company})
 
 		item_details.default_warehouse = get_default_warehouse(item_doc, defaults_args)
 		item_details.cost_center = get_default_cost_center(item_doc, defaults_args)
 
-	return item_dict
+	return items_dict
 
 
 @frappe.whitelist()

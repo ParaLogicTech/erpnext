@@ -930,15 +930,6 @@ def get_pending_raw_materials_to_transfer(purchase_order):
 	return supplied_items
 
 
-def get_item_details(items):
-	item_details = {}
-	for d in frappe.db.sql("""select item_code, description, allow_alternative_item from `tabItem`
-		where name in ({0})""".format(", ".join(["%s"] * len(items))), items, as_dict=1):
-		item_details[d.item_code] = d
-
-	return item_details
-
-
 def get_list_context(context=None):
 	from erpnext.controllers.website_list_for_contact import get_list_context
 	list_context = get_list_context(context)

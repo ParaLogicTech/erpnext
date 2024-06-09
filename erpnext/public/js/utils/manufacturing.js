@@ -258,8 +258,9 @@ $.extend(erpnext.manufacturing, {
 				args: {
 					"work_order_id": doc.name,
 					"purpose": purpose,
-					"scrap_remaining": r.data.scrap_remaining,
 					"qty": r.data.qty,
+					"use_alternative_item": r.data.use_alternative_item,
+					"scrap_remaining": r.data.scrap_remaining,
 					"args": r.args,
 				},
 				freeze: 1,
@@ -293,6 +294,11 @@ $.extend(erpnext.manufacturing, {
 						description: __('Max: {0}', [format_number(max)]),
 						reqd: 1,
 						default: max
+					},
+					{
+						fieldtype: 'Check',
+						label: __('Use Alternative Item for Out of Stock Materials'),
+						fieldname: 'use_alternative_item',
 					}
 				];
 
