@@ -11,5 +11,3 @@ erpnext.projects.create_task = function(project, subject, standard_time, project
 		frappe.msgprint(_("{0} created").format(frappe.get_link(task_doc)), { indicator: "green" });
 	});
 };
-
-erpnext.projects.create_task
