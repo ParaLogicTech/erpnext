@@ -249,10 +249,12 @@ class PurchaseOrder(BuyingController):
 			self.per_completed = 100 if total_billed_qty else 0
 
 		receipts_not_billable = self.receipt_status == "Received" and not data.has_unbilled_receipt
+		unreceivable_rows_billed = all(d.billed_qty >= d.qty for d in data.unreceivable_rows)
+		not_billable = receipts_not_billable and unreceivable_rows_billed
 		self.billing_status = self.get_completion_status('per_completed', 'Bill',
-			not_applicable=self.status == "Closed" or self.per_returned == 100 or (receipts_not_billable and not self.per_billed),
+			not_applicable=self.status == "Closed" or self.per_returned == 100 or (not_billable and not self.per_billed),
 			not_applicable_based_on='per_billed',
-			within_allowance=self.per_billed and receipts_not_billable)
+			within_allowance=self.per_billed and not_billable)
 
 		if update:
 			self.db_set({
@@ -274,7 +276,8 @@ class PurchaseOrder(BuyingController):
 		received_by_billing_row_names = []
 
 		for d in self.items:
-			if d.is_stock_item or d.is_fixed_asset:
+			is_receivable = d.is_stock_item or d.is_fixed_asset
+			if is_receivable:
 				out.receivable_rows.append(d)
 
 				if d.delivered_by_supplier:
@@ -336,10 +339,16 @@ class PurchaseOrder(BuyingController):
 
 	def get_billing_status_data(self):
 		out = frappe._dict()
+		out.unreceivable_rows = []
 		out.billed_qty_map = {}
 		out.billed_amount_map = {}
 		out.receipt_return_qty_map = {}
 		out.has_unbilled_receipt = False
+
+		for d in self.items:
+			is_receivable = d.is_stock_item or d.is_fixed_asset
+			if not is_receivable:
+				out.unreceivable_rows.append(d)
 
 		if self.docstatus == 1:
 			row_names = [d.name for d in self.items]

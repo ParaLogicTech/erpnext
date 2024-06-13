@@ -297,10 +297,12 @@ class SalesOrder(SellingController):
 
 		# update billing_status
 		deliveries_not_billable = self.delivery_status == "Delivered" and not data.has_unbilled_delivery
+		undeliverable_rows_billed = all(d.billed_qty >= d.qty for d in data.undeliverable_rows)
+		not_billable = deliveries_not_billable and undeliverable_rows_billed
 		self.billing_status = self.get_completion_status('per_completed', 'Bill',
-			not_applicable=self.status == "Closed" or self.per_returned == 100 or (deliveries_not_billable and not self.per_billed),
+			not_applicable=self.status == "Closed" or self.per_returned == 100 or (not_billable and not self.per_billed),
 			not_applicable_based_on='per_billed',
-			within_allowance=self.per_billed and deliveries_not_billable)
+			within_allowance=self.per_billed and not_billable)
 
 		if update:
 			self.db_set({
@@ -461,11 +463,17 @@ class SalesOrder(SellingController):
 
 	def get_billing_status_data(self):
 		out = frappe._dict()
+		out.undeliverable_rows = []
 		out.billed_qty_map = {}
 		out.billed_amount_map = {}
 		out.delivery_return_qty_map = {}
 		out.depreciation_type_qty = {}
 		out.has_unbilled_delivery = False
+
+		for d in self.items:
+			is_deliverable = not d.skip_delivery_note or d.delivered_by_supplier
+			if not is_deliverable:
+				out.undeliverable_rows.append(d)
 
 		if self.docstatus == 1:
 			row_names = [d.name for d in self.items]
