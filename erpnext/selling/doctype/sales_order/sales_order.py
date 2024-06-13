@@ -207,8 +207,8 @@ class SalesOrder(SellingController):
 		# update values in rows
 		for d in self.items:
 			d.delivered_qty = flt(data.delivered_qty_map.get(d.name))
-			# if not d.delivered_qty:
-			# 	d.delivered_qty = flt(data.service_billed_qty_map.get(d.name))
+			if not d.delivered_qty:
+				d.delivered_qty = flt(data.service_billed_qty_map.get(d.name))
 
 			d.total_returned_qty = flt(data.total_returned_qty_map.get(d.name))
 
@@ -328,11 +328,11 @@ class SalesOrder(SellingController):
 		out.deliverable_rows = []
 		out.delivered_qty_map = {}
 		out.total_returned_qty_map = {}
-		# out.service_billed_qty_map = {}
+		out.service_billed_qty_map = {}
 
 		delivery_by_supplier_row_names = []
 		delivery_by_stock_row_names = []
-		# delivery_by_billing_row_names = []
+		delivery_by_billing_row_names = []
 
 		for d in self.items:
 			is_deliverable = not d.skip_delivery_note or d.delivered_by_supplier
@@ -343,8 +343,8 @@ class SalesOrder(SellingController):
 					delivery_by_supplier_row_names.append(d.name)
 				else:
 					delivery_by_stock_row_names.append(d.name)
-			# else:
-			# 	delivery_by_billing_row_names.append(d.name)
+			else:
+				delivery_by_billing_row_names.append(d.name)
 
 		# Get Delivered Qty
 		if self.docstatus == 1:
@@ -398,15 +398,15 @@ class SalesOrder(SellingController):
 					out.delivered_qty_map[d.sales_order_item] += d.qty
 
 			# Get Service Items Billed Qty as Delivered Qty
-			# if delivery_by_billing_row_names:
-			# 	out.service_billed_qty_map = dict(frappe.db.sql("""
-			# 		select i.sales_order_item, sum(i.qty)
-			# 		from `tabSales Invoice Item` i
-			# 		inner join `tabSales Invoice` p on p.name = i.parent
-			# 		where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
-			# 			and i.sales_order_item in %s
-			# 		group by i.sales_order_item
-			# 	""", [delivery_by_billing_row_names]))
+			if delivery_by_billing_row_names:
+				out.service_billed_qty_map = dict(frappe.db.sql("""
+					select i.sales_order_item, sum(i.qty)
+					from `tabSales Invoice Item` i
+					inner join `tabSales Invoice` p on p.name = i.parent
+					where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
+						and i.sales_order_item in %s
+					group by i.sales_order_item
+				""", [delivery_by_billing_row_names]))
 
 		return out
 

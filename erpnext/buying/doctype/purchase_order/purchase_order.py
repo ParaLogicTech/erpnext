@@ -198,8 +198,8 @@ class PurchaseOrder(BuyingController):
 		# update values in rows
 		for d in self.items:
 			d.received_qty = flt(data.received_qty_map.get(d.name))
-			# if not d.received_qty:
-			# 	d.received_qty = flt(data.service_billed_qty_map.get(d.name))
+			if not d.received_qty:
+				d.received_qty = flt(data.service_billed_qty_map.get(d.name))
 
 			d.total_returned_qty = flt(data.total_returned_qty_map.get(d.name))
 
@@ -268,7 +268,7 @@ class PurchaseOrder(BuyingController):
 		out.receivable_rows = []
 		out.received_qty_map = {}
 		out.total_returned_qty_map = {}
-		# out.service_billed_qty_map = {}
+		out.service_billed_qty_map = {}
 
 		reveived_by_prec_row_names = []
 		received_by_billing_row_names = []
@@ -281,8 +281,8 @@ class PurchaseOrder(BuyingController):
 					out.received_qty_map[d.name] = d.qty
 				else:
 					reveived_by_prec_row_names.append(d.name)
-			# else:
-			# 	received_by_billing_row_names.append(d.name)
+			else:
+				received_by_billing_row_names.append(d.name)
 
 		# Get Received Qty
 		if self.docstatus == 1:
@@ -322,15 +322,15 @@ class PurchaseOrder(BuyingController):
 						out.total_returned_qty_map[d.purchase_order_item] -= d.received_qty
 
 			# Get Service Items Billed Qty as Delivered Qty
-			# if received_by_billing_row_names:
-			# 	out.service_billed_qty_map = dict(frappe.db.sql("""
-			# 		select i.purchase_order_item, sum(i.qty)
-			# 		from `tabPurchase Invoice Item` i
-			# 		inner join `tabPurchase Invoice` p on p.name = i.parent
-			# 		where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
-			# 			and i.purchase_order_item in %s
-			# 		group by i.purchase_order_item
-			# 	""", [received_by_billing_row_names]))
+			if received_by_billing_row_names:
+				out.service_billed_qty_map = dict(frappe.db.sql("""
+					select i.purchase_order_item, sum(i.qty)
+					from `tabPurchase Invoice Item` i
+					inner join `tabPurchase Invoice` p on p.name = i.parent
+					where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
+						and i.purchase_order_item in %s
+					group by i.purchase_order_item
+				""", [received_by_billing_row_names]))
 
 		return out
 
