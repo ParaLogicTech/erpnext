@@ -140,6 +140,9 @@ class DeliveryNote(SellingController):
 		if update:
 			row.db_set("skip_sales_invoice", row.skip_sales_invoice, update_modified=update_modified)
 
+	def get_skip_sales_invoice(self, row):
+		return None
+
 	def set_skip_sales_invoice_for_delivery_note(self, update=False, update_modified=True):
 		all_skip_sales_invoice = all(d.skip_sales_invoice for d in self.get("items"))
 		self.skip_sales_invoice = cint(all_skip_sales_invoice)

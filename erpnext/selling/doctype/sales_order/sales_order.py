@@ -169,6 +169,9 @@ class SalesOrder(SellingController):
 		if update:
 			row.db_set("skip_delivery_note", row.skip_delivery_note, update_modified=update_modified)
 
+	def get_skip_delivery_note(self, row):
+		return None
+
 	def set_skip_delivery_note_for_order(self, update=False, update_modified=True):
 		all_skip_delivery_note = all(d.skip_delivery_note for d in self.get("items"))
 		self.skip_delivery_note = cint(all_skip_delivery_note)
@@ -785,6 +788,9 @@ class SalesOrder(SellingController):
 				work_order_items.append(wo_item)
 
 		return work_order_items
+
+	def get_sales_order_item_bom(self, row):
+		return None
 
 	def on_recurring(self, reference_doc, auto_repeat_doc):
 		def _get_delivery_date(ref_doc_delivery_date, red_doc_transaction_date, transaction_date):
