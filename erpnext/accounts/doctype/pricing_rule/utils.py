@@ -283,7 +283,7 @@ def filter_pricing_rules_for_qty_amount(qty, rate, pricing_rules, args=None):
 
 		item_code = rule.get("item_code") or args.get("item_code")
 		if item_code and rule.get("uom"):
-			conversion_factor = get_conversion_factor(item_code, rule.uom).get("conversion_factor", 1)
+			conversion_factor = get_conversion_factor(item_code, rule.uom).get("conversion_factor") or 1
 
 		if (flt(qty) >= (flt(rule.min_qty) * conversion_factor)
 			and (flt(qty)<= (rule.max_qty * conversion_factor) if rule.max_qty else True)):

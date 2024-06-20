@@ -79,14 +79,14 @@ class Attendance(Document):
 			for d in request_record:
 				self.attendance_request = d.name
 
-				if d.half_day_date == getdate(self.attendance_date):
+				if d.half_day and d.half_day_date == getdate(self.attendance_date):
 					if self.status != 'Half Day':
 						frappe.msgprint(_("Employee {0} is on Half Day on {1} based on Attendance Request")
 							.format(self.employee, self.attendance_date))
 					self.status = 'Half Day'
 				else:
 					if self.status != 'Present':
-						frappe.msgprint(_("Employee {0} is Presnet on {1} based on Attendance Request")
+						frappe.msgprint(_("Employee {0} is Present on {1} based on Attendance Request")
 							.format(self.employee, self.attendance_date))
 					self.status = 'Present'
 		else:

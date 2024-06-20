@@ -33,6 +33,7 @@
   "column_break_23",
   "show_barcode_field",
   "clean_description_html",
+  "allow_delivery_returns_after_billing",
   "column_break_25",
   "enable_dynamic_bundling",
   "auto_material_request",
@@ -293,13 +294,19 @@
    "fieldtype": "Link",
    "label": "Default Rejected Warehouse",
    "options": "Warehouse"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_delivery_returns_after_billing",
+   "fieldtype": "Check",
+   "label": "Allow Delivery Returns after Billing"
   }
  ],
  "icon": "icon-cog",
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-05-01 16:51:11.371629",
+ "modified": "2024-05-18 16:35:04.600002",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Settings",

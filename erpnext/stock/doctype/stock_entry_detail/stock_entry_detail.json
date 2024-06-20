@@ -62,16 +62,16 @@
   "cost_center",
   "more_info",
   "actual_qty",
-  "transferred_qty",
-  "bom_no",
-  "allow_alternative_item",
   "allow_zero_valuation_rate",
   "col_break6",
+  "bom_no",
   "original_item",
+  "has_alternative_item",
   "reference_section",
   "material_request",
   "material_request_item",
   "against_stock_entry",
+  "transferred_qty",
   "ste_detail",
   "purchase_order_item",
   "column_break_bq1dj",
@@ -374,15 +374,6 @@
    "print_hide": 1
   },
   {
-   "default": "0",
-   "depends_on": "s_warehouse",
-   "fieldname": "allow_alternative_item",
-   "fieldtype": "Check",
-   "label": "Allow Alternative Item",
-   "print_hide": 1,
-   "read_only": 1
-  },
-  {
    "fieldname": "col_break6",
    "fieldtype": "Column Break"
   },
@@ -631,12 +622,22 @@
    "print_hide": 1,
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_alternative_item",
+   "fieldtype": "Check",
+   "is_virtual": 1,
+   "label": "Has Alternative Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-03-21 17:10:23.222096",
+ "modified": "2024-06-07 16:44:26.543005",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry Detail",

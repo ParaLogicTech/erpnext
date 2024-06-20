@@ -17,6 +17,10 @@ class SalesPersonERP(SalesPerson):
 		self.validate_targets()
 
 	def set_employee_details(self, update=False, update_modified=True):
+		if not self.employee:
+			self.employee_name = None
+			return
+
 		employee_details = get_employee_details(self.employee)
 
 		self.update(employee_details)

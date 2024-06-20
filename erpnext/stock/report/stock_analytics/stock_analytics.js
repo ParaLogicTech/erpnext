@@ -127,3 +127,5 @@ frappe.query_reports["Stock Analytics"] = {
 		});
 	}
 }
+
+erpnext.utils.add_additional_sle_filters("Stock Analytics");

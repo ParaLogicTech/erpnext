@@ -180,20 +180,18 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 		}
 
 		// Alternate Item
-		if (doc.docstatus == 0 && doc.allow_alternative_item && doc.required_items?.length) {
-			const has_alternative = doc.required_items.some(d => d.allow_alternative_item);
-			if (has_alternative) {
-				this.frm.add_custom_button(__('Alternate Item'), () => {
-					erpnext.utils.select_alternate_items({
-						frm: this.frm,
-						child_docname: "required_items",
-						warehouse_field: "source_warehouse",
-						child_doctype: "Work Order Item",
-						original_item_field: "original_item",
-						condition: (d) => d.allow_alternative_item,
-					});
+		const has_alternative_items = (doc.required_items || []).find(d => d.has_alternative_item);
+		if (doc.docstatus == 0 && has_alternative_items) {
+			this.frm.add_custom_button(__('Alternate Item'), () => {
+				erpnext.utils.select_alternate_items({
+					frm: this.frm,
+					child_docname: "required_items",
+					warehouse_field: "source_warehouse",
+					child_doctype: "Work Order Item",
+					original_item_field: "original_item",
+					condition: (d) => d.has_alternative_item,
 				});
-			}
+			});
 		}
 
 		if (doc.docstatus == 1 && doc.status != "Stopped") {
@@ -351,7 +349,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 					if (r.message) {
 						this.frm.in_production_item_onchange = true;
 
-						$.each(["item_name", "description", "stock_uom", "project", "bom_no", "allow_alternative_item",
+						$.each(["item_name", "description", "stock_uom", "project", "bom_no",
 							"transfer_material_against"], (i, field) => {
 							this.frm.set_value(field, r.message[field]);
 						});

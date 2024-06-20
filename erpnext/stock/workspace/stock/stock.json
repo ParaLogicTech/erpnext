@@ -1,7 +1,8 @@
 {
  "charts": [],
- "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Module</b></span>\",\"col\":12}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entry\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Balance\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Request\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Ledger\",\"col\":3}},{\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Projected Qty\",\"col\":3}},{\"type\":\"spacer\",\"data\":{\"col\":12}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Documents</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Stock Transactions\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Items\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Stock Reports\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Pricing\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Serial No and Batch\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Key Reports\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Other Reports\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}}]",
+ "content": "[{\"id\":\"kFTnwwYdJ9\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Module</b></span>\",\"col\":12}},{\"id\":\"ylo1emjYZr\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}},{\"id\":\"x6q-EJ-ZEk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entry\",\"col\":3}},{\"id\":\"c1Y7ZwwygW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"Bgffr0xvRA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Balance\",\"col\":3}},{\"id\":\"O66TsGMXHH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"My2Jx5kIiE\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Request\",\"col\":3}},{\"id\":\"BbfYg4JlXS\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Ledger\",\"col\":3}},{\"id\":\"PPLTvvWkQc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Projected Qty\",\"col\":3}},{\"id\":\"Xd67bPQB7G\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"YltketDgMM\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Documents</b></span>\",\"col\":12}},{\"id\":\"2zCFZ-zlSF\",\"type\":\"card\",\"data\":{\"card_name\":\"Stock Transactions\",\"col\":3}},{\"id\":\"_X8VJZ23NA\",\"type\":\"card\",\"data\":{\"card_name\":\"Items\",\"col\":3}},{\"id\":\"fmxsBD39u1\",\"type\":\"card\",\"data\":{\"card_name\":\"Stock Reports\",\"col\":3}},{\"id\":\"hZSFAO6-eX\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"TZyMKxPoPY\",\"type\":\"card\",\"data\":{\"card_name\":\"Pricing\",\"col\":3}},{\"id\":\"W3vpYcGbVD\",\"type\":\"card\",\"data\":{\"card_name\":\"Serial No and Batch\",\"col\":3}},{\"id\":\"Ua0S2MSBUL\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":3}},{\"id\":\"x6iHoqtrrQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Key Reports\",\"col\":3}},{\"id\":\"ftEO8b9yto\",\"type\":\"card\",\"data\":{\"card_name\":\"Other Reports\",\"col\":3}},{\"id\":\"TNwubQ-Hyo\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}}]",
  "creation": "2022-11-16 04:31:57.035484",
+ "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -697,7 +698,7 @@
    "type": "Link"
   }
  ],
- "modified": "2023-08-31 14:50:57.517185",
+ "modified": "2024-05-18 18:26:19.328903",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock",
@@ -729,6 +730,15 @@
  "sequence_id": 130.0,
  "shortcuts": [
   {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} To Bill",
+   "label": "Delivery Note",
+   "link_to": "Delivery Note",
+   "stats_filter": "[[\"Delivery Note\",\"docstatus\",\"=\",\"1\",false],[\"Delivery Note\",\"status\",\"!=\",\"Closed\",false],[\"Delivery Note\",\"billing_status\",\"=\",\"To Bill\",false]]",
+   "type": "DocType"
+  },
+  {
    "color": "Blue",
    "doc_view": "List",
    "format": "{} Enabled",
@@ -741,9 +751,9 @@
    "color": "Orange",
    "doc_view": "List",
    "format": "{} To Bill",
-   "label": "Delivery Note",
-   "link_to": "Delivery Note",
-   "stats_filter": "{\"docstatus\":[\"=\",\"1\"],\"status\":[\"not in\",[\"Completed\",\"Return\",\"Closed\",\"\"]]}",
+   "label": "Purchase Receipt",
+   "link_to": "Purchase Receipt",
+   "stats_filter": "[[\"Purchase Receipt\",\"status\",\"!=\",\"Closed\",false],[\"Purchase Receipt\",\"docstatus\",\"=\",\"1\",false],[\"Purchase Receipt\",\"billing_status\",\"=\",\"To Bill\",false]]",
    "type": "DocType"
   },
   {
@@ -770,15 +780,6 @@
    "link_to": "Stock Ledger",
    "stats_filter": "",
    "type": "Report"
-  },
-  {
-   "color": "Orange",
-   "doc_view": "List",
-   "format": "{} To Bill",
-   "label": "Purchase Receipt",
-   "link_to": "Purchase Receipt",
-   "stats_filter": "{\"status\":[\"not in\",[\"Completed\",\"Return\",\"Closed\",\"\"]],\"docstatus\":[\"=\",\"1\"]}",
-   "type": "DocType"
   },
   {
    "color": "Orange",

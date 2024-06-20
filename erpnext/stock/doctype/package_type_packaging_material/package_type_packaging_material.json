@@ -9,8 +9,9 @@
  "engine": "InnoDB",
  "field_order": [
   "item_code",
-  "column_break_2",
   "item_name",
+  "column_break_2",
+  "source_warehouse",
   "desc_section",
   "description",
   "quantity_section",
@@ -138,11 +139,19 @@
    "label": "Tare Weight",
    "print_width": "100px",
    "width": "100px"
+  },
+  {
+   "columns": 2,
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Default Source Warehouse",
+   "options": "Warehouse"
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2023-01-12 01:04:38.117043",
+ "modified": "2024-06-01 16:08:52.180229",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Package Type Packaging Material",

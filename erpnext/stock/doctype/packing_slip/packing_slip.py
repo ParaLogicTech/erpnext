@@ -99,6 +99,21 @@ class PackingSlip(TransactionController):
 						if f in self.force_item_fields or item.get(f) in ("", None):
 							item.set(f, item_details.get(f))
 
+	def set_package_type_details(self):
+		if not self.get("package_type"):
+			return
+
+		package_type_details = get_package_type_details(self.package_type, self.as_dict())
+		if package_type_details.weight_uom:
+			self.weight_uom = package_type_details.weight_uom
+
+		if package_type_details.packaging_items:
+			self.set("packaging_items", [])
+			for d in package_type_details.packaging_items:
+				row = frappe.new_doc("Packing Slip Packaging Material")
+				row.update(d)
+				self.append("packaging_items", row)
+
 	def set_source_packing_slips(self):
 		# Packing Slips from items table
 		contents_packing_slips = []
@@ -665,11 +680,12 @@ class PackingSlip(TransactionController):
 				self.round_floats_in(item,
 					excluding=['net_weight_per_unit', 'tare_weight_per_unit', 'gross_weight_per_unit'])
 
-				if self.is_unpack or item.source_packing_slip:
+				if self.is_unpack or item.get("source_packing_slip"):
 					item.rejected_qty = 0
 
 				item.stock_qty = flt(item.qty * item.conversion_factor, 6)
-				item.stock_rejected_qty = flt(item.rejected_qty * item.conversion_factor, 6)
+				if item.meta.has_field("rejected_qty"):
+					item.stock_rejected_qty = flt(item.rejected_qty * item.conversion_factor, 6)
 
 				if item.meta.has_field("net_weight_per_unit"):
 					item.net_weight = flt(item.net_weight_per_unit * item.stock_qty, item.precision("net_weight"))
@@ -682,8 +698,10 @@ class PackingSlip(TransactionController):
 
 				self.total_qty += item.qty
 				self.total_stock_qty += item.stock_qty
-				self.total_rejected_qty += item.rejected_qty
-				self.total_stock_rejected_qty += item.stock_rejected_qty
+
+				if item.meta.has_field("rejected_qty"):
+					self.total_rejected_qty += item.rejected_qty
+					self.total_stock_rejected_qty += item.stock_rejected_qty
 
 				if not item.get("source_packing_slip"):
 					self.total_net_weight += flt(item.get("net_weight"))
@@ -1045,6 +1063,14 @@ class PackingSlip(TransactionController):
 			delivered_qty_map.setdefault(d.packing_slip_item, 0)
 			delivered_qty_map[d.packing_slip_item] += d.delivered_qty
 
+		to_remove = []
+		for key, value in delivered_qty_map.items():
+			if not flt(value, 9):
+				to_remove.append(key)
+
+		for key in to_remove:
+			del delivered_qty_map[key]
+
 		return delivered_qty_map
 
 	def get_nested_qty_map(self):
@@ -1164,7 +1190,7 @@ def get_package_type_details(package_type, args):
 	packaging_items_copy_fields = [
 		"item_code", "item_name", "description",
 		"qty", "uom", "conversion_factor", "stock_qty",
-		"tare_weight_per_unit"
+		"tare_weight_per_unit", "source_warehouse",
 	]
 
 	package_type_doc = frappe.get_cached_doc("Package Type", package_type)
@@ -1186,10 +1212,10 @@ def get_package_type_details(package_type, args):
 
 			packaging_items.append(item_row)
 
-	return {
+	return frappe._dict({
 		"packaging_items": packaging_items,
 		"weight_uom": package_type_doc.weight_uom,
-	}
+	})
 
 
 @frappe.whitelist()

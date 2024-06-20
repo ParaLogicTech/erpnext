@@ -12,9 +12,9 @@
   "column_break_3",
   "bom_no",
   "source_warehouse",
+  "has_alternative_item",
   "do_not_explode",
   "skip_transfer_for_manufacture",
-  "allow_alternative_item",
   "section_break_5",
   "description",
   "col_break1",
@@ -35,9 +35,10 @@
   "base_amount",
   "section_break_18",
   "scrap",
+  "original_item",
+  "column_break_r5htq",
   "qty_consumed_per_unit",
-  "section_break_27",
-  "original_item"
+  "section_break_27"
  ],
  "fields": [
   {
@@ -241,7 +242,6 @@
   {
    "fieldname": "qty_consumed_per_unit",
    "fieldtype": "Float",
-   "hidden": 1,
    "label": "Qty Consumed Per Unit",
    "oldfieldname": "qty_consumed_per_unit",
    "oldfieldtype": "Float",
@@ -254,20 +254,6 @@
   },
   {
    "default": "0",
-   "fieldname": "allow_alternative_item",
-   "fieldtype": "Check",
-   "label": "Allow Alternative Item"
-  },
-  {
-   "fieldname": "original_item",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Original Item",
-   "options": "Item",
-   "read_only": 1
-  },
-  {
-   "default": "0",
    "fieldname": "skip_transfer_for_manufacture",
    "fieldtype": "Check",
    "label": "Skip Transfer for Manufacture"
@@ -277,12 +263,35 @@
    "fieldname": "do_not_explode",
    "fieldtype": "Check",
    "label": "Do Not Explode"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_alternative_item",
+   "fieldtype": "Check",
+   "is_virtual": 1,
+   "label": "Has Alternative Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "original_item",
+   "fieldtype": "Link",
+   "label": "Original Item",
+   "no_copy": 1,
+   "options": "Item",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_r5htq",
+   "fieldtype": "Column Break"
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-10-23 23:16:06.808639",
+ "modified": "2024-06-08 00:11:36.549150",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM Item",

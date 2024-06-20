@@ -5,7 +5,6 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, getdate, today, cstr, combine_datetime
 from erpnext.stock.utils import update_included_uom_in_dict_report, has_valuation_read_permission
-from erpnext.stock.report.stock_ledger.stock_ledger import get_item_group_condition
 from frappe.desk.reportview import build_match_conditions
 from collections import OrderedDict
 
@@ -15,6 +14,34 @@ def execute(filters=None):
 
 
 class StockBalanceReport:
+	balance_qty_fields = [
+		"opening_qty",
+		"in_qty",
+		"purchase_qty",
+		"purchase_return_qty",
+		"out_qty",
+		"sales_qty",
+		"sales_return_qty",
+		"reconcile_qty",
+		"consumed_qty",
+		"bal_qty",
+		"ordered_qty",
+		"projected_qty",
+	]
+	balance_value_fields = [
+		"opening_val",
+		"in_val",
+		"purchase_val",
+		"purchase_return_val",
+		"out_val",
+		"sales_val",
+		"sales_return_val",
+		"reconcile_val",
+		"consumed_val",
+		"bal_val",
+		"val_rate",
+	]
+
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.filters.from_date = getdate(self.filters.from_date or today())
@@ -239,10 +266,17 @@ class StockBalanceReport:
 			item_details = self.item_map.get(stock_balance.item_code) or {}
 
 			is_empty_balance = True
+
+			for field in self.balance_qty_fields:
+				val = flt(stock_balance.get(field), 9)
+				stock_balance[field] = val
+				if val:
+					is_empty_balance = False
+
 			for field in self.balance_value_fields:
 				val = flt(stock_balance.get(field), 9)
 				stock_balance[field] = val
-				if field != "val_rate" and val:
+				if val and not self.is_package_included() and field != "val_rate":
 					is_empty_balance = False
 
 			if is_empty_balance and (not self.filters.get("show_zero_qty_rows") or item_details.get('disabled')):
@@ -348,26 +382,11 @@ class StockBalanceReport:
 			balance_key_fields = self.get_balance_fields()
 			balance_key_dict = dict(zip(balance_key_fields, key))
 
-			empty_balance = {f: 0 for f in self.balance_value_fields}
+			empty_balance = {f: 0 for f in self.balance_qty_fields + self.balance_value_fields}
 			self.stock_balance_map[key] = frappe._dict(empty_balance)
 			self.stock_balance_map[key].update(balance_key_dict)
 
 		return self.stock_balance_map[key]
-
-	balance_value_fields = [
-		"opening_qty", "opening_val",
-		"in_qty", "in_val",
-		"purchase_qty", "purchase_val",
-		"purchase_return_qty", "purchase_return_val",
-		"out_qty", "out_val",
-		"sales_qty", "sales_val",
-		"sales_return_qty", "sales_return_val",
-		"reconcile_qty", "reconcile_val",
-		"consumed_qty", "consumed_val",
-		"bal_qty", "bal_val",
-		"ordered_qty", "projected_qty",
-		"val_rate"
-	]
 
 	def get_balance_key(self, d):
 		return get_key(d,
@@ -408,7 +427,7 @@ class StockBalanceReport:
 			{"label": _("Item Name"), "fieldname": "item_name", "fieldtype": "Data",
 				"width": 150},
 			{"label": _("Package"), "fieldname": "packing_slip", "fieldtype": "Link", "options": "Packing Slip",
-				"width": 120},
+				"width": 100},
 			{"label": _("Package Type"), "fieldname": "package_type", "fieldtype": "Link", "options": "Package Type",
 				"width": 100},
 			{"label": _("Warehouse"), "fieldname": "warehouse", "fieldtype": "Link", "options": "Warehouse",
@@ -516,6 +535,8 @@ class StockBalanceReport:
 
 
 def get_items_for_stock_report(filters):
+	from erpnext.stock.report.stock_ledger.stock_ledger import get_item_group_condition
+
 	conditions = []
 	if filters.get("item_code"):
 		is_template = frappe.db.get_value("Item", filters.get('item_code'), 'has_variants')
@@ -532,13 +553,17 @@ def get_items_for_stock_report(filters):
 			conditions.append(get_item_group_condition(filters.get("item_group")))
 
 		if filters.get("customer"):
-			conditions.append("customer = %(customer)s")
+			conditions.append("item.customer = %(customer)s")
 
 		if filters.get("customer_provided_items"):
 			if filters.get("customer_provided_items") == "Customer Provided Items Only":
 				conditions.append("item.is_customer_provided_item = 1")
 			elif filters.get("customer_provided_items") == "Exclude Customer Provided Items":
 				conditions.append("item.is_customer_provided_item = 0")
+
+	hooks = frappe.get_hooks('set_sle_item_conditions')
+	for method in hooks:
+		frappe.get_attr(method)(filters, conditions, alias="item")
 
 	items = None
 	if conditions:

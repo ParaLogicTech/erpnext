@@ -24,6 +24,10 @@ class AppointmentERP(Appointment):
 				self.get('applies_to_vehicle')
 			))
 
+	def validate(self):
+		self.validate_duplicate_appointment()
+		super().validate()
+
 	@classmethod
 	def get_allowed_party_types(cls):
 		return super().get_allowed_party_types() + ["Customer"]
@@ -35,6 +39,26 @@ class AppointmentERP(Appointment):
 	def set_missing_values_after_submit(self):
 		super().set_missing_values_after_submit()
 		self.set_applies_to_details()
+
+	def validate_duplicate_appointment(self):
+		if not frappe.get_cached_value("Appointment Type", self.appointment_type, "validate_duplicate_appointment"):
+			return
+
+		existing_appointment = frappe.db.get_value("Appointment", {
+			'scheduled_date': self.scheduled_date,
+			'appointment_type': self.appointment_type,
+			'applies_to_serial_no': self.applies_to_serial_no,
+			'docstatus': ['=', 1],
+			'name': ['!=', self.name]
+		})
+		if existing_appointment:
+			frappe.throw(_("{0} {1} already scheduled for {2} against {3} {4}").format(
+				self.appointment_type,
+				frappe.get_desk_link("Appointment", existing_appointment),
+				self.get_formatted("scheduled_date"),
+				_("Vehicle") if self.applies_to_vehicle else _("Serial No"),
+				self.applies_to_serial_no,
+			))
 
 	def validate_next_document_on_cancel(self):
 		super().validate_next_document_on_cancel()

@@ -138,7 +138,9 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 				}
 
 				item.stock_qty = flt(item.qty * item.conversion_factor, 6);
-				item.stock_rejected_qty = flt(item.rejected_qty * item.conversion_factor, 6);
+				if (frappe.meta.has_field(item.doctype, "rejected_qty")) {
+					item.stock_rejected_qty = flt(item.rejected_qty * item.conversion_factor, 6);
+				}
 
 				if (frappe.meta.has_field(item.doctype, "net_weight_per_unit")) {
 					item.net_weight = flt(item.net_weight_per_unit * item.stock_qty, precision("net_weight", item));
@@ -155,8 +157,11 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 
 				this.frm.doc.total_qty += item.qty;
 				this.frm.doc.total_stock_qty += item.stock_qty;
-				this.frm.doc.total_rejected_qty += item.rejected_qty;
-				this.frm.doc.total_stock_rejected_qty += item.stock_rejected_qty;
+
+				if (frappe.meta.has_field(item.doctype, "rejected_qty")) {
+					this.frm.doc.total_rejected_qty += item.rejected_qty;
+					this.frm.doc.total_stock_rejected_qty += item.stock_rejected_qty;
+				}
 
 				if (!item.source_packing_slip) {
 					this.frm.doc.total_net_weight += flt(item.net_weight);
@@ -217,13 +222,12 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 								}
 							},
 							() => {
+								me.frm.clear_table("packaging_items");
 								if (r.message.packaging_items && r.message.packaging_items.length) {
-									me.frm.clear_table("packaging_items");
 									for (let d of r.message.packaging_items) {
 										me.frm.add_child("packaging_items", d);
 									}
 								}
-
 								me.calculate_totals();
 							}
 						]);

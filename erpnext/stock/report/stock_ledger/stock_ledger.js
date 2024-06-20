@@ -188,8 +188,4 @@ frappe.query_reports["Stock Ledger"] = {
 	},
 }
 
-// $(function() {
-// 	$(wrapper).bind("show", function() {
-// 		frappe.query_report.load();
-// 	});
-// });
+erpnext.utils.add_additional_sle_filters("Stock Ledger");

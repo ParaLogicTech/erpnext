@@ -367,8 +367,8 @@ def get_items(args):
 		args = json.loads(args)
 	args = frappe._dict(args)
 
-	if not args.warehouse:
-		frappe.throw(_("Please select Warehouse"))
+	# if not args.warehouse:
+	# 	frappe.throw(_("Please select Warehouse"))
 	if not args.company:
 		args.company = frappe.get_cached_value("Warehouse", args.warehouse, 'company')
 	if not args.company:

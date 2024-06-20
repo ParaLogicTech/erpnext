@@ -2307,8 +2307,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					item.margin_type = margin_df['default'] || 'Amount';
 				}
 				if (item.margin_type === 'Amount') {
-					item.margin_rate_or_amount = flt(item.rate - item.price_list_rate,
-						precision("margin_rate_or_amount", item));
+					item.margin_rate_or_amount = flt(item.rate - item.price_list_rate);
 				} else {
 					item.margin_rate_or_amount = (item.rate / item.price_list_rate - 1) * 100;
 				}

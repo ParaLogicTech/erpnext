@@ -5,8 +5,10 @@
 
 import frappe
 from frappe import _
+from frappe.utils import cint
 from frappe.model.document import Document
 from frappe.utils.html_utils import clean_html
+
 
 class StockSettings(Document):
 	def validate(self):
@@ -17,7 +19,7 @@ class StockSettings(Document):
 		self.cant_change_valuation_method()
 		self.validate_clean_description_html()
 
-		if self.enable_dynamic_bundling:
+		if cint(self.enable_dynamic_bundling):
 			make_bundling_fields()
 
 	def update_global_defaults(self):

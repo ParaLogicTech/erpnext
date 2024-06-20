@@ -152,9 +152,10 @@ class PurchaseOrder(BuyingController):
 
 	def update_status(self, status):
 		self.check_modified_date()
-		self.set_status(update=True, status=status)
+		self.set_status(status=status)
 		self.set_receipt_status(update=True)
 		self.set_billing_status(update=True)
+		self.set_status(update=True, status=status)
 		self.update_requested_qty()
 		self.update_ordered_qty()
 		if self.is_subcontracted:
@@ -247,9 +248,13 @@ class PurchaseOrder(BuyingController):
 			self.per_billed = 100 if total_billed_qty else 0
 			self.per_completed = 100 if total_billed_qty else 0
 
+		receipts_not_billable = self.receipt_status == "Received" and not data.has_unbilled_receipt
+		unreceivable_rows_billed = all(d.billed_qty >= d.qty for d in data.unreceivable_rows)
+		not_billable = receipts_not_billable and unreceivable_rows_billed
 		self.billing_status = self.get_completion_status('per_completed', 'Bill',
-			not_applicable=self.status == "Closed" or self.per_returned == 100,
-			not_applicable_based_on='per_billed')
+			not_applicable=self.status == "Closed" or self.per_returned == 100 or (not_billable and not self.per_billed),
+			not_applicable_based_on='per_billed',
+			within_allowance=self.per_billed and not_billable)
 
 		if update:
 			self.db_set({
@@ -271,7 +276,8 @@ class PurchaseOrder(BuyingController):
 		received_by_billing_row_names = []
 
 		for d in self.items:
-			if d.is_stock_item or d.is_fixed_asset:
+			is_receivable = d.is_stock_item or d.is_fixed_asset
+			if is_receivable:
 				out.receivable_rows.append(d)
 
 				if d.delivered_by_supplier:
@@ -333,9 +339,16 @@ class PurchaseOrder(BuyingController):
 
 	def get_billing_status_data(self):
 		out = frappe._dict()
+		out.unreceivable_rows = []
 		out.billed_qty_map = {}
 		out.billed_amount_map = {}
 		out.receipt_return_qty_map = {}
+		out.has_unbilled_receipt = False
+
+		for d in self.items:
+			is_receivable = d.is_stock_item or d.is_fixed_asset
+			if not is_receivable:
+				out.unreceivable_rows.append(d)
 
 		if self.docstatus == 1:
 			row_names = [d.name for d in self.items]
@@ -357,13 +370,20 @@ class PurchaseOrder(BuyingController):
 					out.billed_qty_map[d.purchase_order_item] += d.qty
 
 				# Returned By Purchase Receipt
-				out.receipt_return_qty_map = dict(frappe.db.sql("""
-					select i.purchase_order_item, -1 * sum(i.qty)
+				received_by_prec = frappe.db.sql("""
+					select i.purchase_order_item, i.qty, p.is_return, p.reopen_order, p.billing_status
 					from `tabPurchase Receipt Item` i
 					inner join `tabPurchase Receipt` p on p.name = i.parent
-					where p.docstatus = 1 and p.is_return = 1 and p.reopen_order = 0 and i.purchase_order_item in %s
-					group by i.purchase_order_item
-				""", [row_names]))
+					where p.docstatus = 1 and i.purchase_order_item in %s
+				""", [row_names], as_dict=1)
+
+				for d in received_by_prec:
+					if d.is_return and not d.reopen_order:
+						out.receipt_return_qty_map.setdefault(d.purchase_order_item, 0)
+						out.receipt_return_qty_map[d.purchase_order_item] -= d.qty
+
+					if d.billing_status == "To Bill":
+						out.has_unbilled_receipt = True
 
 		return out
 
@@ -917,15 +937,6 @@ def get_pending_raw_materials_to_transfer(purchase_order):
 		frappe.throw(_("No raw materials to transfer"))
 
 	return supplied_items
-
-
-def get_item_details(items):
-	item_details = {}
-	for d in frappe.db.sql("""select item_code, description, allow_alternative_item from `tabItem`
-		where name in ({0})""".format(", ".join(["%s"] * len(items))), items, as_dict=1):
-		item_details[d.item_code] = d
-
-	return item_details
 
 
 def get_list_context(context=None):

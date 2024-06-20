@@ -249,10 +249,12 @@ class WorkOrder(StatusUpdaterERP):
 
 		if reset_only_qty:
 			for row in self.get("required_items"):
-				if not item_dict.get(row.item_code):
-					continue
-
 				item = item_dict.get(row.item_code)
+				if not item and row.original_item:
+					item = item_dict.get(row.original_item)
+
+				if not item:
+					continue
 
 				row.total_qty = flt(item.qty)
 				row.uom = item.uom
@@ -268,7 +270,6 @@ class WorkOrder(StatusUpdaterERP):
 					'item_code': item.item_code,
 					'item_name': item.item_name,
 					'description': item.description,
-					'allow_alternative_item': item.allow_alternative_item,
 					'total_qty': flt(item.qty),
 					'uom': item.uom,
 					'stock_uom': item.stock_uom,
@@ -1118,7 +1119,7 @@ def get_item_details(item, project=None):
 		frappe.throw(_("Active BOM for Item {0} not found").format(frappe.bold(item)))
 
 	bom_data = frappe.db.get_value('BOM', res['bom_no'],
-		['project', 'allow_alternative_item', 'transfer_material_against', 'item_name'], as_dict=1)
+		['project', 'transfer_material_against', 'item_name'], as_dict=1)
 
 	res['project'] = project or bom_data.pop("project")
 	res.update(bom_data)
@@ -1332,7 +1333,16 @@ def make_stock_entry_against_multiple_work_orders(work_orders, args=None):
 
 
 @frappe.whitelist()
-def make_stock_entry(work_order_id, purpose, qty=None, scrap_remaining=False, job_card=None, auto_submit=False, args=None):
+def make_stock_entry(
+	work_order_id,
+	purpose,
+	qty=None,
+	use_alternative_item=False,
+	scrap_remaining=False,
+	job_card=None,
+	auto_submit=False,
+	args=None
+):
 	if args and isinstance(args, str):
 		args = json.loads(args)
 
@@ -1369,6 +1379,9 @@ def make_stock_entry(work_order_id, purpose, qty=None, scrap_remaining=False, jo
 		stock_entry.fg_completed_qty = max(0.0, stock_entry.fg_completed_qty)
 	else:
 		stock_entry.fg_completed_qty = flt(qty)
+
+	use_alternative_item = cint(use_alternative_item)
+	stock_entry.use_alternative_item = use_alternative_item
 
 	scrap_remaining = cint(scrap_remaining)
 	stock_entry.scrap_qty = flt(work_order.qty) - flt(work_order.produced_qty) - flt(qty) if scrap_remaining and qty else 0

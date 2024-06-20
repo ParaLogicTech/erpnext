@@ -80,7 +80,6 @@
   "transfer_material_against",
   "column_break_18",
   "use_multi_level_bom",
-  "allow_alternative_item",
   "update_consumed_material_cost_in_project",
   "skip_transfer",
   "from_wip_warehouse",
@@ -185,12 +184,6 @@
    "oldfieldtype": "Link",
    "options": "BOM",
    "reqd": 1
-  },
-  {
-   "default": "0",
-   "fieldname": "allow_alternative_item",
-   "fieldtype": "Check",
-   "label": "Allow Alternative Item"
   },
   {
    "default": "1",
@@ -639,6 +632,7 @@
    "fieldname": "max_qty",
    "fieldtype": "Float",
    "label": "Maximum Quantity",
+   "no_copy": 1,
    "oldfieldname": "qty",
    "oldfieldtype": "Currency",
    "read_only": 1
@@ -879,7 +873,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-02-15 07:01:38.071702",
+ "modified": "2024-06-08 18:40:14.185722",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Work Order",

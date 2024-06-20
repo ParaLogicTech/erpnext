@@ -5,11 +5,12 @@ import frappe, erpnext
 import frappe.defaults
 from frappe import _
 from frappe.utils import cstr, cint, flt, comma_or, getdate, nowdate
-from erpnext.stock.utils import get_incoming_rate
+from erpnext.stock.utils import get_incoming_rate, get_latest_stock_qty
 from erpnext.stock.stock_ledger import get_previous_sle, get_valuation_rate
 from erpnext.stock.get_item_details import get_bin_details, get_default_cost_center, get_conversion_factor,\
 	get_reserved_qty_for_so, get_hide_item_code, get_default_warehouse
 from erpnext.stock.doctype.batch.batch import get_batch_qty, auto_select_and_split_batches
+from erpnext.stock.doctype.item_alternative.item_alternative import has_alternative_item, get_available_alternative_items
 from erpnext.manufacturing.doctype.bom.bom import validate_bom_no, add_additional_cost
 from erpnext.manufacturing.doctype.work_order.work_order import get_qty_with_allowance
 from frappe.model.mapper import get_mapped_doc
@@ -881,11 +882,9 @@ class StockEntry(TransactionController):
 			'is_vehicle': item.is_vehicle,
 			'has_batch_no': item.has_batch_no,
 			'sample_quantity': item.sample_quantity,
-			'allow_zero_valuation_rate': item.is_customer_provided_item
+			'allow_zero_valuation_rate': item.is_customer_provided_item,
+			'has_alternative_item': has_alternative_item(item.name),
 		})
-
-		if self.purpose == 'Send to Subcontractor':
-			out["allow_alternative_item"] = item.allow_alternative_item
 
 		# update uom
 		if args.get("uom"):
@@ -1219,20 +1218,33 @@ class StockEntry(TransactionController):
 
 		fg_total_qty = flt(self.fg_completed_qty) + flt(self.scrap_qty)
 		items_dict = self.get_bom_raw_materials(fg_total_qty)
-		required_items_dict = self.pro_doc.get_required_items_dict() if self.pro_doc else frappe._dict()
+		wo_required_items_dict = self.pro_doc.get_required_items_dict() if self.pro_doc else frappe._dict()
+
+		wo_alternative_items = {
+			d.original_item: d.item_code
+			for d in wo_required_items_dict.values()
+			if d.original_item and d.original_item != d.item_code
+		}
 
 		if self.purpose == "Material Consumption for Manufacture" and self.job_card:
 			allowed_item_codes = self.get_job_card_item_codes()
 			items_dict = {item_code: item_dict for item_code, item_dict in items_dict.items() if item_code in allowed_item_codes}
 
 		for item in items_dict.values():
-			# Set Warehouse from Work Order
+			alternative_item_code = wo_alternative_items.get(item.item_code)
+			alternative_required_item = wo_required_items_dict.get(alternative_item_code) if alternative_item_code else None
+
+			if alternative_item_code and alternative_required_item:
+				required_item_row = alternative_required_item
+				self.modify_row_for_alternative_item(item, alternative_required_item)
+			else:
+				required_item_row = wo_required_items_dict.get(item.item_code)
+
+			source_row = required_item_row or item
+
+			# Set values from Work Order
 			if self.pro_doc:
-				required_item_row = required_items_dict.get(item.item_code)
-				source_row = required_item_row or item
-
 				item["skip_transfer_for_manufacture"] = source_row.skip_transfer_for_manufacture
-
 				if (
 					(self.pro_doc.from_wip_warehouse or not self.pro_doc.skip_transfer)
 					and not source_row.skip_transfer_for_manufacture
@@ -1262,7 +1274,48 @@ class StockEntry(TransactionController):
 
 			item["to_warehouse"] = self.to_warehouse if self.purpose == "Send to Subcontractor" else ""
 
+		if self.use_alternative_item:
+			self.apply_available_alternative_items(items_dict)
+
 		return items_dict
+
+	def apply_available_alternative_items(self, items_dict):
+		for item in items_dict.values():
+			original_item_code = item.item_code
+			warehouse = item.get("from_warehouse") or self.from_warehouse
+
+			original_item_stock_qty = get_latest_stock_qty(original_item_code, warehouse)
+			original_item_required_qty = flt(item.qty) * (flt(item.conversion_factor) or 1)
+			if flt(original_item_stock_qty, 6) >= flt(original_item_required_qty, 6):
+				continue
+
+			available_alternative_items = get_available_alternative_items(item.item_code, warehouse, item.qty, item.uom)
+			if len(available_alternative_items) == 1:
+				original_item_code = item.get("item_code")
+				alternative_item_code = available_alternative_items[0]
+				self.modify_row_for_alternative_item(item, alternative_item_code)
+				frappe.msgprint(
+					_("Using Alternative Item {0} because {1} is not sufficiently available in Warehouse {2}").format(
+						frappe.utils.get_link_to_form("Item", alternative_item_code),
+						frappe.utils.get_link_to_form("Item", original_item_code),
+						warehouse
+					))
+			elif len(available_alternative_items) > 1:
+				frappe.msgprint(
+					_("Could not determine Alternative Item of {0} because there are multiple alternative items available in {1}. Please select Alternative Item manually.").format(
+						frappe.bold(original_item_code),
+						warehouse
+					), indicator="orange")
+			else:
+				pass
+
+	def modify_row_for_alternative_item(self, row, alternative_item_code):
+		alternative_item = frappe.get_cached_doc("Item", alternative_item_code)
+		row["item_code"] = alternative_item_code
+		row["item_name"] = alternative_item.item_name
+		row["description"] = alternative_item.description
+		row["uom"] = row.get("uom") or alternative_item.manufacture_uom or alternative_item.stock_uom
+		row["conversion_factor"] = get_conversion_factor(alternative_item_code, row.get("uom")).get("conversion_factor") or 1
 
 	def get_job_card_item_codes(self):
 		if not self.job_card:
@@ -1339,10 +1392,6 @@ class StockEntry(TransactionController):
 
 		used_alternative_items = get_used_alternative_items(work_order=self.work_order)
 		for item in item_dict.values():
-			# if source warehouse presents in BOM set from_warehouse as bom source_warehouse
-			if item["allow_alternative_item"]:
-				item["allow_alternative_item"] = cint(self.pro_doc.allow_alternative_item)
-
 			item.from_warehouse = self.from_warehouse or item.source_warehouse or item.default_warehouse
 			if item.item_code in used_alternative_items:
 				alternative_item_data = used_alternative_items.get(item.item_code)
@@ -1430,8 +1479,6 @@ class StockEntry(TransactionController):
 				item_row["from_warehouse"] = d.source_warehouse
 
 			item_row["to_warehouse"] = wip_warehouse
-			if item_row["allow_alternative_item"]:
-				item_row["allow_alternative_item"] = self.pro_doc.allow_alternative_item
 
 			items_dict.setdefault(d.item_code, item_row)
 
@@ -1455,7 +1502,6 @@ class StockEntry(TransactionController):
 
 			row.expense_account = item.get("expense_account")
 			row.cost_center = item.get("cost_center")
-			row.allow_alternative_item = item.get("allow_alternative_item", 0)
 			row.subcontracted_item = item.get("subcontracted_item") or item.get("main_item_code")
 
 			for field in ["purchase_order_item", "original_item", "description", "item_name"]:
@@ -1690,8 +1736,10 @@ def get_used_alternative_items(purchase_order=None, work_order=None):
 	if not cond: return {}
 
 	used_alternative_items = {}
-	data = frappe.db.sql(""" select sted.original_item, sted.uom, sted.conversion_factor,
-			sted.item_code, sted.item_name, sted.conversion_factor,sted.stock_uom, sted.description
+	data = frappe.db.sql("""
+		select
+			sted.item_code, sted.item_name, sted.original_item,
+			sted.uom, sted.conversion_factor, sted.stock_uom, sted.description
 		from
 			`tabStock Entry` ste, `tabStock Entry Detail` sted
 		where

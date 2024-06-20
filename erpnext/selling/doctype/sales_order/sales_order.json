@@ -185,6 +185,7 @@
   "language",
   "section_break_78",
   "status",
+  "column_break_dekbz",
   "delivery_section",
   "delivery_status",
   "per_delivered",
@@ -1791,6 +1792,10 @@
   {
    "fieldname": "column_break_744sz",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_dekbz",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-file-text",
@@ -1798,7 +1803,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-03-20 16:25:32.433292",
+ "modified": "2024-05-02 13:09:15.726607",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",

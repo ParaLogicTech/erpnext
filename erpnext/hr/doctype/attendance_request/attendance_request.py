@@ -15,8 +15,10 @@ class AttendanceRequest(Document):
 		validate_dates(self, self.from_date, self.to_date, allow_future_date=True)
 		validate_overlap(self, self.from_date, self.to_date, self.company)
 		if self.half_day:
-			if not getdate(self.from_date)<=getdate(self.half_day_date)<=getdate(self.to_date):
+			if not getdate(self.from_date) <= getdate(self.half_day_date) <= getdate(self.to_date):
 				frappe.throw(_("Half Day date should be in between from date and to date"))
+		else:
+			self.half_day_date = None
 
 	def on_submit(self):
 		self.update_attendance()

@@ -129,14 +129,20 @@ class PurchaseReceipt(BuyingController):
 			if d.work_order:
 				work_orders.add(d.work_order)
 
+		# Update Returned Against Purchase Receipt
+		if self.is_return and self.return_against:
+			doc = frappe.get_doc("Purchase Receipt", self.return_against)
+			doc.set_billing_status(update=True)
+			doc.validate_returned_qty(from_doctype=self.doctype, row_names=purchase_receipt_row_names)
+			doc.validate_billed_qty(from_doctype=self.doctype, row_names=purchase_receipt_row_names)
+			doc.notify_update()
+
 		# Update Purchase Orders
 		for name in purchase_orders:
 			doc = frappe.get_doc("Purchase Order", name)
 			doc.set_receipt_status(update=True)
 			doc.validate_received_qty(from_doctype=self.doctype, row_names=purchase_order_row_names)
-
-			if self.is_return:
-				doc.set_billing_status(update=True)
+			doc.set_billing_status(update=True)
 
 			doc.set_status(update=True)
 			doc.notify_update()
@@ -154,12 +160,12 @@ class PurchaseReceipt(BuyingController):
 			doc.run_method("update_status", from_doctype=self.doctype)
 			doc.notify_update()
 
-		# Update Returned Against Purchase Receipt
-		if self.is_return and self.return_against:
-			doc = frappe.get_doc("Purchase Receipt", self.return_against)
+	def update_purchase_order_billing_status(self):
+		purchase_orders = set([d.purchase_order for d in self.items if d.purchase_order])
+		for name in purchase_orders:
+			doc = frappe.get_doc("Purchase Order", name)
 			doc.set_billing_status(update=True)
-			doc.validate_returned_qty(from_doctype=self.doctype, row_names=purchase_receipt_row_names)
-			doc.validate_billed_qty(from_doctype=self.doctype, row_names=purchase_receipt_row_names)
+			doc.set_status(update=True)
 			doc.notify_update()
 
 	def set_billing_status(self, update=False, update_modified=True):
@@ -248,8 +254,10 @@ class PurchaseReceipt(BuyingController):
 				allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
 
 	def update_status(self, status):
-		self.set_status(update=True, status=status)
+		self.set_status(status=status)
 		self.set_billing_status(update=True)
+		self.set_status(update=True, status=status)
+		self.update_purchase_order_billing_status()
 		self.notify_update()
 		clear_doctype_notifications(self)
 
