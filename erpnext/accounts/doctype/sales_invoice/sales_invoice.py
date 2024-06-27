@@ -55,6 +55,7 @@ class SalesInvoice(SellingController):
 		super(SalesInvoice, self).validate()
 
 		self.validate_order_required()
+		self.check_unpaid_invoices()
 		self.validate_stin()
 		self.validate_project_customer()
 		self.validate_pos_return()
@@ -133,6 +134,29 @@ class SalesInvoice(SellingController):
 	def before_submit(self):
 		if self.update_stock:
 			self.remove_partial_packing_slip_for_return()
+
+	def check_unpaid_invoices(self):
+		unpaid_invoices = frappe.db.sql("""
+				SELECT name, due_date FROM `tabSales Invoice`
+				WHERE customer = %s AND docstatus = 1 AND outstanding_amount > 0
+			""", (self.customer,), as_dict=True)
+
+		overdue_invoices = [inv.name for inv in unpaid_invoices if getdate(inv.due_date) < getdate(nowdate())]
+
+		if unpaid_invoices and overdue_invoices:
+			message = _("{0} has both unpaid and overdue invoices.").format(frappe.get_desk_link('Customer', self.customer))
+		elif unpaid_invoices:
+			message = _("{0} has unpaid invoices.").format(frappe.get_desk_link('Customer', self.customer))
+		elif overdue_invoices:
+			message = _("{0} has overdue invoices.").format(frappe.get_desk_link('Customer', self.customer))
+		else:
+			message = ""
+
+		if message:
+			frappe.msgprint(
+				msg=message,
+				title=_("Sales Invoice Status"),
+			)
 
 	def on_submit(self):
 		self.validate_pos_paid_amount()
