@@ -6,7 +6,7 @@ import erpnext
 from frappe import _
 from email_reply_parser import EmailReplyParser
 from frappe.utils import flt, cint, get_url, cstr, nowtime, get_time, today, get_datetime, add_days, ceil, getdate,\
-	clean_whitespace
+	clean_whitespace, nowdate
 from erpnext.controllers.queries import get_filters_cond
 from frappe.desk.reportview import get_match_cond
 from erpnext.hr.doctype.daily_work_summary.daily_work_summary import get_users_email
@@ -1832,6 +1832,33 @@ def create_kanban_board_if_not_exists(project):
 def set_project_ready_to_close(project):
 	project = frappe.get_doc('Project', project)
 	project.check_permission('write')
+
+	vehicles = frappe.get_all('Vehicle')
+	message = ""
+
+	for vehicle in vehicles:
+		unpaid_invoices_vehicle = frappe.db.sql("""
+			SELECT name, due_date, customer FROM `tabSales Invoice`
+			WHERE applies_to_vehicle = %s AND docstatus = 1 AND outstanding_amount > 0
+		""", (vehicle.name,), as_dict=True)
+
+		overdue_invoices_vehicle = [inv.name for inv in unpaid_invoices_vehicle if getdate(inv.due_date) < getdate(nowdate())]
+
+		if unpaid_invoices_vehicle and overdue_invoices_vehicle:
+			message = _("{0} has unpaid and overdue invoices.").format(frappe.get_desk_link('Customer', unpaid_invoices_vehicle[0].customer))
+			break
+		elif unpaid_invoices_vehicle:
+			message = _("{0} has unpaid invoices.").format(frappe.get_desk_link('Customer', unpaid_invoices_vehicle[0].customer))
+			break
+		elif overdue_invoices_vehicle:
+			message = _("{0} has overdue invoices.").format(frappe.get_desk_link('Customer', unpaid_invoices_vehicle[0].customer))
+			break
+
+	if message:
+		frappe.msgprint(
+			msg=message,
+			title=_("Sales Invoices Status"),
+		)
 
 	project.set_ready_to_close(update=True)
 	project.validate_insurance_details()
