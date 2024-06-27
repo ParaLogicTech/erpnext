@@ -56,6 +56,7 @@ class SalesInvoice(SellingController):
 
 		self.validate_order_required()
 		self.validate_stin()
+		self.check_unpaid_invoices()
 		self.validate_project_customer()
 		self.validate_pos_return()
 		self.validate_uom_is_integer("stock_uom", "stock_qty")
@@ -609,6 +610,29 @@ class SalesInvoice(SellingController):
 				"allow_edit_discount": pos.get("allow_user_to_edit_discount"),
 				"campaign": pos.get("campaign")
 			}
+
+	def check_unpaid_invoices(self):
+		unpaid_invoices = frappe.db.sql("""
+			SELECT name, due_date FROM `tabSales Invoice`
+			WHERE customer = %s AND docstatus = 1 AND outstanding_amount > 0
+		""", (self.customer,), as_dict=True)
+
+		overdue_invoices = [inv.name for inv in unpaid_invoices if getdate(inv.due_date) < getdate(nowdate())]
+
+		if unpaid_invoices and overdue_invoices:
+			message = _("{0} has both unpaid and overdue invoices.").format(frappe.get_desk_link('Customer', self.customer))
+		elif unpaid_invoices:
+			message = _("{0} has unpaid invoices.").format(frappe.get_desk_link('Customer', self.customer))
+		elif overdue_invoices:
+			message = _("{0} has overdue invoices.").format(frappe.get_desk_link('Customer', self.customer))
+		else:
+			message = ""
+
+		if message:
+			frappe.msgprint(
+				msg=message,
+				title=_("Sales Invoice Status"),
+			)
 
 	def update_time_sheet(self, sales_invoice):
 		for d in self.timesheets:
