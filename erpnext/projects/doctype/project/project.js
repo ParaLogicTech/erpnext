@@ -179,6 +179,17 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			}
 
 			// Task Buttons
+			me.frm.add_custom_button(__('Create Task'), ()=> {
+				erpnext.projects.create_task()
+			}, __("Tasks"));
+
+			this.frm.add_custom_button(__('Create Template Tasks'), () => {
+				frappe.call({
+					method: 'erpnext.vehicles.page.workshop_cp.workshop_cp.create_template_tasks',
+					args: { project: this.frm.doc.name },
+				});
+			}, __("Tasks"));
+
 			if (frappe.model.can_read("Task")) {
 				me.frm.add_custom_button(__("Gantt Chart"), function () {
 					frappe.route_options = {
