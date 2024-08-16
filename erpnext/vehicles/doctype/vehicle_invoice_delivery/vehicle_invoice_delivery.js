@@ -40,3 +40,28 @@ erpnext.vehicles.VehicleInvoiceDeliveryController = class VehicleInvoiceDelivery
 };
 
 extend_cscript(cur_frm.cscript, new erpnext.vehicles.VehicleInvoiceDeliveryController({frm: cur_frm}));
+
+frappe.ui.form.on('Vehicle Invoice Delivery', {
+
+	refresh: function(frm) {
+        frm.add_custom_button(__('Update'), function() {
+            update_variants(frm);
+        });
+    }
+
+});
+
+function update_variants(frm) {
+	frappe.call({
+		method: 'erpnext.vehicles.doctype.vehicle_invoice_delivery.vehicle_invoice_delivery.update_vehicle_invoice_delivery',
+		args: {
+			vehicle_invoice_delivery: frm.doc.name,
+			item_code: frm.doc.item_code
+		},
+		callback: function(r) {
+			if (r.message) {
+				frappe.msgprint(__('Variants updated successfully.'));
+			}
+		}
+	});
+}

@@ -28,7 +28,48 @@ from frappe.utils.html_utils import clean_html
 from frappe.model.document import Document
 import json
 
+@frappe.whitelist()
+def get_default_documents(vehicle_details=None):
+	out = []
 
+	settings = frappe.get_cached_doc("Vehicles Settings", None)
+	for d in settings.get('invoice_documents'):
+		row = frappe._dict({
+			'document_name': d.document_name,
+			'is_included': d.is_included,
+			'if_registered': d.if_registered,
+		})
+
+		if isinstance(vehicle_details, str):
+			row.is_included = 0
+		elif vehicle_details and not vehicle_details.license_plate:
+			row.is_included = 0
+
+		out.append(row)
+
+	return out
+
+def update_invoice_documents(vehicle_invoice_delivery, item_template_doc):
+	if item_template_doc.invoice_documents:
+		for i, doc in enumerate(item_template_doc.invoice_documents):
+			vehicle_invoice_delivery.documents[i].is_included = 1 if doc.get('is_included') else 0
+			vehicle_invoice_delivery.documents[i].if_registered = 1 if doc.get('if_registered') else 0
+
+	vehicle_invoice_delivery.save()
+	frappe.db.commit()
+	frappe.msgprint(_('Vehicle Invoice Delivery updated successfully.'))
+
+@frappe.whitelist()
+def sync_invoice_documents(item_code):
+	vehicle_doc = frappe.get_doc("Item", item_code)
+	template_doc = frappe.get_doc("Item", vehicle_doc.variant_of)
+	vehicle_invoices = frappe.get_all('Vehicle Invoice Delivery', filters={'item_code': vehicle_doc.item_code, 'docstatus': 0})
+
+	for vehicle_invoice in vehicle_invoices:
+		delivery_doc = frappe.get_doc("Vehicle Invoice Delivery", vehicle_invoice.name)
+		update_invoice_documents(delivery_doc, template_doc)
+
+	return True
 class DuplicateReorderRows(frappe.ValidationError):
 	pass
 

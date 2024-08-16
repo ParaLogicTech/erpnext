@@ -45,6 +45,21 @@ class VehicleInvoiceDelivery(VehicleTransactionController):
 			self.update_vehicle_booking_order_invoice()
 			self.update_vehicle_registration_order()
 
+
+	def update_vehicle_invoice_delivery(self, variant_doc):
+		if variant_doc.invoice_documents:
+			for i, doc in enumerate(variant_doc.invoice_documents):
+				self.documents[i].is_included = 1 if doc.get('is_included') else 0
+				self.documents[i].if_registered = 1 if doc.get('if_registered') else 0
+		else:
+			settings = frappe.get_cached_doc("Vehicles Settings", None)
+			for i, doc in enumerate(settings.invoice_documents):
+				self.documents[i].is_included = doc.is_included
+				self.documents[i].if_registered = doc.if_registered
+
+		self.save()
+		frappe.msgprint(_('Vehicle Invoice Delivery updated successfully.'))
+
 	def set_title(self):
 		self.title = "{0} - {1}".format(self.get('customer_name') or self.get('customer'), self.get('bill_no'))
 
@@ -103,3 +118,9 @@ def get_default_documents(vehicle_details):
 		out.append(row)
 
 	return out
+
+@frappe.whitelist()
+def update_vehicle_invoice_delivery(vehicle_invoice_delivery, item_code):
+    doc = frappe.get_doc('Vehicle Invoice Delivery', vehicle_invoice_delivery)
+    item_doc = frappe.get_doc('Item', item_code)
+    doc.update_vehicle_invoice_delivery(item_doc)

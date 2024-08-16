@@ -266,8 +266,11 @@ def copy_attributes_to_variant(item, variant):
 		exclude_fields += ['manufacturer', 'manufacturer_part_no']
 
 	allow_fields = [d.field_name for d in frappe.get_all("Variant Field", fields = ['field_name'])]
-	if "variant_based_on" not in allow_fields:
-		allow_fields.append("variant_based_on")
+
+	for field_name in ["variant_based_on", "invoice_documents"]:
+		if field_name not in allow_fields:
+			allow_fields.append(field_name)
+
 	for field in item.meta.fields:
 		# "Table" is part of `no_value_field` but we shouldn't ignore tables
 		if (field.reqd or field.fieldname in allow_fields) and field.fieldname not in exclude_fields:
