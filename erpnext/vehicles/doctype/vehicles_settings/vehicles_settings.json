@@ -74,6 +74,7 @@
   "invoice_documents",
   "vehicle_checklist_section",
   "vehicle_checklist",
+  "document_checklist",
   "column_break_44",
   "customer_request_checklist"
  ],
@@ -454,12 +455,19 @@
   {
    "fieldname": "column_break_2tuh9",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "document_checklist",
+   "fieldtype": "Table",
+   "label": "Document Checklist",
+   "options": "Vehicle Checklist Item",
+   "reqd": 1
   }
  ],
  "icon": "fa fa-cog",
  "issingle": 1,
  "links": [],
- "modified": "2023-08-13 17:23:59.712050",
+ "modified": "2024-08-28 13:17:04.507101",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicles Settings",

@@ -6,7 +6,7 @@ from six import string_types
 
 @frappe.whitelist()
 def get_default_vehicle_checklist_items(parentfield):
-	if parentfield not in ['vehicle_checklist', 'customer_request_checklist']:
+	if parentfield not in ['vehicle_checklist', 'customer_request_checklist', 'document_checklist']:
 		frappe.throw(_("Invalid parent field"))
 
 	vehicles_settings = frappe.get_cached_doc("Vehicles Settings", None)

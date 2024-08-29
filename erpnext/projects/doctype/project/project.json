@@ -90,6 +90,7 @@
   "default_underinsurance_percentage",
   "col_break_insurance2",
   "insurance_surveyor",
+  "insurance_surveyor_contact",
   "insurance_surveyor_company",
   "non_standard_depreciation_section",
   "non_standard_depreciation",
@@ -1368,13 +1369,20 @@
   {
    "fieldname": "column_break_tc8eq",
    "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "insurance_surveyor.mobile_no",
+   "fieldname": "insurance_surveyor_contact",
+   "fieldtype": "Data",
+   "label": "Insurance Surveyor Contact",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2024-03-31 10:13:55.064217",
+ "modified": "2024-08-26 15:50:43.687466",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

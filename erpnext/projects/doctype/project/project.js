@@ -30,6 +30,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		this.toggle_vehicle_odometer_fields();
 		this.make_vehicle_checklist();
 		this.make_customer_request_checklist();
+		this.make_document_checklist();
 		this.make_customer_vehicle_selector();
 		this.set_sales_data_html();
 		this.set_service_advisor_from_user();
@@ -577,9 +578,28 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		}
 	}
 
+	make_document_checklist() {
+		if (this.frm.fields_dict.document_checklist_html) {
+			var is_read_only = cint(this.frm.doc.__onload && this.frm.doc.__onload.cant_change_fields && this.frm.doc.__onload.cant_change_fields.document_checklist);
+
+			this.frm.document_checklist_editor = erpnext.vehicles.make_vehicle_checklist(this.frm,
+				'document_checklist',
+				this.frm.fields_dict.document_checklist_html.wrapper,
+				this.frm.doc.__onload && this.frm.doc.__onload.default_documents_checklist_items,
+				is_read_only,
+				__("Document Checklist"));
+		}
+	}
+
 	refresh_customer_request_checklist() {
 		if (this.frm.customer_request_checklist_editor) {
 			this.frm.customer_request_checklist_editor.refresh();
+		}
+	}
+
+	refresh_document_checklist() {
+		if (this.frm.document_checklist_editor) {
+			this.frm.document_checklist_editor.refresh();
 		}
 	}
 

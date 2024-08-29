@@ -6,6 +6,7 @@ erpnext.vehicles.make_vehicle_checklist = function (frm, parentfield, wrapper, d
 		$(`<label class="control-label">${title}</label>`).appendTo(wrapper);
 	}
 	var checklist_area = $('<div></div>').appendTo(wrapper);
+	$(`<div class="m-3"></div>`).appendTo(wrapper)
 	return new erpnext.vehicles.VehicleChecklistEditor(frm, parentfield, checklist_area, default_items, read_only);
 };
 
