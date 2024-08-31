@@ -558,6 +558,9 @@ def get_default_cost_center(item, args, selling_or_buying=None):
 	if not cost_center and args.get('project'):
 		cost_center = frappe.db.get_value("Project", args.get("project"), "cost_center", cache=True)
 
+	if not cost_center and item.get("cost_center"):
+		cost_center = item.get("cost_center")
+
 	if not cost_center:
 		default_values = get_item_default_values(item, args)
 
