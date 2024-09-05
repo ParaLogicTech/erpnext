@@ -2,7 +2,7 @@
 // License: GNU General Public License v3. See license.txt
 
 erpnext.taxes_and_totals_hooks = [];
-
+ 
 erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 	apply_pricing_rule_on_item(item) {
 		let effective_item_rate = item.price_list_rate;
@@ -694,11 +694,44 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			current_tax_amount = (tax_rate / 100.0) * taxable_amount;
 		} else if (tax.charge_type == "On Item Quantity") {
 			current_tax_amount = tax_rate * item.qty;
+		} else if (tax.charge_type == "On HS Code") {
+			let items_net_total = [];
+			// totalling of items prices based on their HS codes
+			if ((this.frm.doc["customs_tariff_tax"] || []).length > 0) {
+					(this.frm.doc["items"] || []).forEach((item) => {
+						let index = items_net_total.findIndex(d => d.customs_tariff_number === item.customs_tariff_number);
+
+						if (index !== -1) {
+							items_net_total[index].total += item.amount;
+						} else {
+							items_net_total.push({
+								customs_tariff_number: item.customs_tariff_number,
+								total: item.amount,
+							});
+						}
+					});
+			}
+
+			// tax distribution according to the item qty & HS code
+			$.each(this.frm.doc["customs_tariff_tax"] || [], function(j, tariff_tax_table) {
+				if (tariff_tax_table.account_head == tax.account_head && item.customs_tariff_number == tariff_tax_table.customs_tariff_number) {
+					let HS_code_tax_amount = tariff_tax_table.amount;
+					let HS_code_net_total = items_net_total[items_net_total.findIndex(d => d.customs_tariff_number == item.customs_tariff_number)].total
+					current_tax_amount = (HS_code_tax_amount / HS_code_net_total) * item.amount;
+				}
+			});
+			this.frm.refresh_field("taxes");
+			this.frm.refresh_field("total_taxes_and_charges");
+
 		}
 
 		this.set_item_wise_tax(item, tax, tax_rate, current_tax_amount);
 
 		return current_tax_amount;
+	}
+
+	amount = function(doc, cdt, cdn) {	
+		this._calculate_taxes_and_totals();
 	}
 
 	set_item_wise_tax(item, tax, tax_rate, current_tax_amount) {
@@ -825,6 +858,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		this.frm.doc.total_taxes_and_charges = this.frm.doc.total_after_taxes - this.frm.doc.taxable_total - flt(this.frm.doc.rounding_adjustment);
 		if (this.should_round_transaction_currency()) {
 			this.frm.doc.total_taxes_and_charges = flt(this.frm.doc.total_taxes_and_charges, precision("total_taxes_and_charges"));
+			
 		}
 
 		this.set_in_company_currency(this.frm.doc, ["total_taxes_and_charges", "rounding_adjustment"],

@@ -168,13 +168,16 @@ cur_frm.cscript.account_head = function(doc, cdt, cdn) {
 			args: {
 				account_head: d.account_head
 			},
-			callback: function(r) {
+			callback: (r) => {
 				if (r.message) {
 					frappe.model.set_value(cdt, cdn, "description", r.message.account_name);
 					frappe.model.set_value(cdt, cdn, "exclude_from_item_tax_amount", cint(r.message.exclude_from_item_tax_amount));
 
 					if (["Actual", "Manual"].includes(d.charge_type)) {
 						frappe.model.set_value(cdt, cdn, "rate", flt(r.message.tax_rate) || 0);
+					} else if (d.charge_type == "On HS Code") {
+						this.update_customs_tariff_table();
+						frappe.model.set_value(cdt, cdn, "rate", 0);
 					} else {
 						frappe.model.set_value(cdt, cdn, "rate", 0);
 					}
@@ -182,6 +185,51 @@ cur_frm.cscript.account_head = function(doc, cdt, cdn) {
 			}
 		});
 	}
+}
+
+cur_frm.cscript.update_customs_tariff_table = function() {
+	let account_heads = (this.frm.doc.taxes || []).filter(tax => tax.charge_type === "On HS Code" && tax.account_head).map(tax => tax.account_head);
+	account_heads = [...new Set(account_heads)];
+
+	let customs_tariff_nos = (this.frm.doc.items || []).filter(d => d.customs_tariff_number).map(d => d.customs_tariff_number);
+	customs_tariff_nos = [...new Set(customs_tariff_nos)];
+
+	let item_account_tariff_nos = [];
+	for (let account_head of account_heads) {
+		for (let customs_tariff_number of customs_tariff_nos) {
+			item_account_tariff_nos.push({
+				account_head: account_head,
+				customs_tariff_number: customs_tariff_number,
+			});
+		}
+	}
+
+	let ui_account_tariff_nos = [];
+	for (let d of this.frm.doc.customs_tariff_tax || []) {
+		if (d.customs_tariff_number && d.account_head) {
+			ui_account_tariff_nos.push({
+				account_head: d.account_head,
+				customs_tariff_number: d.customs_tariff_number,
+			});
+		}
+	}
+
+	// Add missing
+	for (let item_data of item_account_tariff_nos) {
+		if (!ui_account_tariff_nos.find(ui_data => ui_data.account_head == item_data.account_head && ui_data.customs_tariff_number == item_data.customs_tariff_number)) {
+			let row = this.frm.add_child('customs_tariff_tax');
+			row.account_head = item_data.account_head;
+			row.customs_tariff_number = item_data.customs_tariff_number
+			this.frm.refresh_field('customs_tariff_tax');
+		}
+	}
+
+	// Remove extra
+	this.frm.doc.customs_tariff_tax = (this.frm.doc.customs_tariff_tax || []).filter(ui_data => {
+		return item_account_tariff_nos.find(item_data => ui_data.account_head == item_data.account_head && ui_data.customs_tariff_number == item_data.customs_tariff_number);
+	});
+
+	this.frm.refresh_field("customs_tariff_tax");
 }
 
 cur_frm.cscript.validate_taxes_and_charges = function(cdt, cdn) {

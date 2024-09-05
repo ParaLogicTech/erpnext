@@ -263,6 +263,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"has_serial_no": item.has_serial_no,
 		"has_batch_no": item.has_batch_no,
 		"is_vehicle": item.is_vehicle,
+		"customs_tariff_number": item.customs_tariff_number,
 		"batch_no": args.get("batch_no") if args.get("batch_no") and frappe.db.get_value("Batch", args.get("batch_no"), 'item') == item.name else "",
 		"stock_uom": item.stock_uom,
 		"uom": default_uom,

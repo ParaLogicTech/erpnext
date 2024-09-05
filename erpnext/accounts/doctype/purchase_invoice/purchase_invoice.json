@@ -105,6 +105,8 @@
   "shipping_rule",
   "section_break_51",
   "taxes",
+  "section_break_idyjv",
+  "customs_tariff_tax",
   "sec_tax_breakup",
   "other_charges_calculation",
   "tax_exclusive_totals_section",
@@ -1878,13 +1880,24 @@
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_idyjv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:(doc.taxes || []).filter(d => d.charge_type == \"On HS Code\").length",
+   "fieldname": "customs_tariff_tax",
+   "fieldtype": "Table",
+   "label": "Customs Tariff Tax",
+   "options": "Customs Tariff Tax"
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-02-12 16:23:06.891238",
+ "modified": "2024-08-12 18:36:30.556478",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",

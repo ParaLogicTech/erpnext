@@ -143,8 +143,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 		frappe.ui.form.on(this.frm.cscript.tax_table, {
 			taxes_remove: function(frm, cdt, cdn) {
-				cur_frm.cscript.set_dynamic_labels();
-				cur_frm.cscript.calculate_taxes_and_totals();
+				frm.cscript.set_dynamic_labels();
+				frm.cscript.update_customs_tariff_table();
+				frm.cscript.calculate_taxes_and_totals();
 			}
 		});
 
@@ -201,6 +202,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			},
 
 			items_remove: function (frm) {
+				frm.cscript.update_customs_tariff_table();
 				frm.cscript.calculate_taxes_and_totals();
 			},
 
@@ -775,7 +777,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 										let key = item.name;
 										me.apply_rule_on_other_items({key: item});
 									}
-								}
+								},
+								() => me.update_customs_tariff_table(),
 							]);
 						}
 					}
