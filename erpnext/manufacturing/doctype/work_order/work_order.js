@@ -282,13 +282,13 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 			erpnext.manufacturing.has_stock_entry_permission()
 			&& (
 				(doc.skip_transfer && flt(doc.produced_qty) < qty_with_allowance)
-				|| (!doc.skip_transfer && flt(doc.produced_qty) < flt(doc.material_transferred_for_manufacturing))
+				|| (!doc.skip_transfer && flt(doc.produced_qty) + flt(doc.process_loss_qty) < flt(doc.material_transferred_for_manufacturing))
 			)
 		)
 
-		let finish_button_default = (
+		let finish_button_primary = (
 			(doc.skip_transfer && flt(doc.produced_qty) < flt(doc.producible_qty)) ||
-			(!doc.skip_transfer && flt(doc.material_transferred_for_manufacturing) >= flt(doc.produced_qty))
+			(!doc.skip_transfer && flt(doc.material_transferred_for_manufacturing) > flt(doc.produced_qty) + flt(doc.process_loss_qty))
 		)
 
 		if (show_finish_button) {
@@ -296,7 +296,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 				erpnext.manufacturing.finish_work_order(doc);
 			});
 
-			if (finish_button_default) {
+			if (finish_button_primary) {
 				finish_btn.removeClass("btn-default").addClass("btn-primary");
 			}
 		}
@@ -305,7 +305,8 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 		let show_consumption_button = (
 			erpnext.manufacturing.has_stock_entry_permission()
 			&& !doc.skip_transfer
-			&& flt(doc.produced_qty) < flt(doc.material_transferred_for_manufacturing)
+			&& doc.allow_material_consumption
+			&& flt(doc.produced_qty) + flt(doc.process_loss_qty) < flt(doc.material_transferred_for_manufacturing)
 			&& (doc.required_items || []).some(d => flt(d.consumed_qty) < flt(d.required_qty))
 		)
 
@@ -319,13 +320,15 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 	setup_progressbars() {
 		if (this.frm.doc.docstatus == 1) {
 			this.show_progress_for_production();
-			this.show_progress_for_packing();
 			this.show_progress_for_operations();
+			this.show_progress_for_packing();
 		}
 	}
 
 	show_progress_for_production() {
-		erpnext.manufacturing.show_progress_for_production(this.frm.doc, this.frm, !this.frm.doc.packing_slip_required);
+		erpnext.manufacturing.show_progress_for_production(this.frm.doc, this.frm, {
+			show_rejection_reconciliation: !this.frm.doc.packing_slip_required,
+		});
 	}
 
 	show_progress_for_packing() {

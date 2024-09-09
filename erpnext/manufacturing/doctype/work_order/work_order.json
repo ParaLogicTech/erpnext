@@ -83,8 +83,10 @@
   "update_consumed_material_cost_in_project",
   "skip_transfer",
   "from_wip_warehouse",
-  "packing_slip_required",
   "produce_fg_in_wip_warehouse",
+  "packing_slip_required",
+  "allow_material_consumption",
+  "allow_process_loss",
   "status_tab",
   "production_section",
   "production_status",
@@ -895,6 +897,18 @@
    "fieldtype": "Float",
    "label": "Rejected Qty",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_process_loss",
+   "fieldtype": "Check",
+   "label": "Allow Process Loss"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_material_consumption",
+   "fieldtype": "Check",
+   "label": "Allow Material Consumption Entries"
   }
  ],
  "icon": "fa fa-cogs",
@@ -903,7 +917,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-23 10:15:58.391307",
+ "modified": "2024-09-05 23:22:04.739126",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Work Order",

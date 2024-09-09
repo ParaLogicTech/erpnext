@@ -24,9 +24,11 @@ $.extend(erpnext.manufacturing, {
 
 		// get full doc instead of relying on argument which may have incomplete doc (like from list view without operations table)
 		return frappe.model.with_doc("Work Order", doc.name).then(r => {
-			let has_pending_operation = (r.operations || []).filter(d => d.completed_qty < r.producible_qty).length;
+			let producible_qty = flt(r.skip_transfer ? r.producible_qty : r.material_transferred_for_manufacturing);
+
+			let has_pending_operation = (r.operations || []).filter(d => d.completed_qty < producible_qty).length;
 			let min_operation_completed_qty = Math.min(...r.operations.map(d => flt(d.completed_qty)));
-			let can_backflush = r.produced_qty < min_operation_completed_qty;
+			let can_backflush = flt(r.produced_qty) < min_operation_completed_qty;
 
 			if (has_pending_operation && can_backflush) {
 				return erpnext.manufacturing.show_finish_operation_or_work_order_dialog(r);
@@ -261,8 +263,8 @@ $.extend(erpnext.manufacturing, {
 					"work_order_id": doc.name,
 					"purpose": purpose,
 					"qty": r.data.qty,
+					"process_loss_qty": r.data.process_loss_qty,
 					"use_alternative_item": r.data.use_alternative_item,
-					"process_loss_remaining": r.data.process_loss_remaining,
 					"args": r.args,
 				},
 				freeze: 1,
@@ -288,6 +290,22 @@ $.extend(erpnext.manufacturing, {
 			return frappe.model.with_doctype("Work Order", () => {
 				let [max, max_with_allowance] = erpnext.manufacturing.get_max_transferable_qty(doc, purpose);
 
+				const calculate_process_loss_qty = () => {
+					let [max_qty, max_qty_with_allowance] = erpnext.manufacturing.get_max_transferable_qty(doc, purpose, true);
+
+					let values = dialog.get_values();
+					if (!values.process_loss_remaining || !doc.allow_process_loss) {
+						return;
+					}
+
+					let production_qty = flt(values.qty);
+					if (production_qty >= max_qty) {
+						return dialog.set_value("process_loss_qty", 0);
+					} else if (production_qty > 0) {
+						return dialog.set_value("process_loss_qty", max_qty - production_qty);
+					}
+				};
+
 				let fields = [
 					{
 						fieldtype: 'Float',
@@ -295,25 +313,33 @@ $.extend(erpnext.manufacturing, {
 						fieldname: 'qty',
 						description: __('Max: {0}', [frappe.format(max, {"fieldtype": "Float"}, {"inline": 1})]),
 						reqd: 1,
-						default: max
+						default: max,
+						onchange: () => calculate_process_loss_qty(),
 					},
-					{
-						fieldtype: 'Check',
-						label: __('Use Alternative Item for Out of Stock Materials'),
-						fieldname: 'use_alternative_item',
-					}
 				];
 
-				if (purpose === "Manufacture" && frappe.defaults.get_default('process_loss_remaining_by_default')) {
+				if (purpose === "Manufacture" && doc.allow_process_loss) {
 					fields.push({
 						fieldtype: 'Check',
 						label: __('Consider Remaining as Process Loss'),
 						fieldname: 'process_loss_remaining',
 						default: cint(frappe.defaults.get_default('process_loss_remaining_by_default')),
+						onchange: () => calculate_process_loss_qty(),
 					})
+					fields.push({
+						fieldtype: 'Float',
+						label: __('Process Loss Qty'),
+						fieldname: 'process_loss_qty',
+						default: 0,
+					});
 				}
 
 				fields = fields.concat([
+					{
+						fieldtype: 'Check',
+						label: __('Use Alternative Item for Out of Stock Materials'),
+						fieldname: 'use_alternative_item',
+					},
 					{
 						fieldtype: 'Section Break',
 					},
@@ -566,7 +592,7 @@ $.extend(erpnext.manufacturing, {
 		});
 	},
 
-	get_max_transferable_qty: (doc, purpose) => {
+	get_max_transferable_qty: (doc, purpose, get_max_operation_qty) => {
 		let producible_qty_with_allowance = erpnext.manufacturing.get_qty_with_allowance(doc.producible_qty, doc);
 
 		let pending_qty = 0;
@@ -580,15 +606,21 @@ $.extend(erpnext.manufacturing, {
 				pending_qty = flt(doc.producible_qty) - flt(doc.material_transferred_for_manufacturing);
 				pending_qty_with_allowance = producible_qty_with_allowance - flt(doc.material_transferred_for_manufacturing);
 			} else {
-				let qty_to_produce = Math.min(flt(doc.material_transferred_for_manufacturing), flt(doc.qty));
-				pending_qty = qty_to_produce - flt(doc.produced_qty);
-				pending_qty_with_allowance = flt(doc.material_transferred_for_manufacturing) - flt(doc.produced_qty);
+				pending_qty = flt(doc.material_transferred_for_manufacturing) - flt(doc.produced_qty) - flt(doc.process_loss_qty);
+				pending_qty_with_allowance = pending_qty;
 			}
 		}
 
-		if (["Manufacture", "Material Consumption for Manufacture"].includes(purpose) && doc.operations && doc.operations.length) {
-			let min_operation_completed_qty = Math.min(...doc.operations.map(d => flt(d.completed_qty)));
-			pending_qty = Math.min(pending_qty, min_operation_completed_qty - flt(doc.produced_qty));
+		// Operation completion adjustment
+		if (["Manufacture", "Material Consumption for Manufacture"].includes(purpose) && doc.operations?.length) {
+			let operation_completed_qty;
+			if (get_max_operation_qty) {
+				operation_completed_qty = Math.max(...doc.operations.map(d => flt(d.completed_qty)));
+			} else {
+				operation_completed_qty = Math.min(...doc.operations.map(d => flt(d.completed_qty)));
+			}
+
+			pending_qty = Math.min(pending_qty, operation_completed_qty - flt(doc.produced_qty));
 		}
 
 		pending_qty = Math.max(pending_qty, 0);
@@ -607,9 +639,8 @@ $.extend(erpnext.manufacturing, {
 			pending_qty = flt(doc.producible_qty) - flt(operation_row.completed_qty);
 			pending_qty_with_allowance = producible_qty_with_allowance - flt(operation_row.completed_qty);
 		} else {
-			let qty_to_produce = Math.min(flt(doc.material_transferred_for_manufacturing), flt(doc.qty));
-			pending_qty = qty_to_produce - flt(operation_row.completed_qty);
-			pending_qty_with_allowance = flt(doc.material_transferred_for_manufacturing) - flt(operation_row.completed_qty);
+			pending_qty = flt(doc.material_transferred_for_manufacturing) - flt(operation_row.completed_qty);
+			pending_qty_with_allowance = pending_qty;
 		}
 
 		pending_qty = Math.max(pending_qty, 0);
@@ -634,7 +665,7 @@ $.extend(erpnext.manufacturing, {
 
 	get_subcontractable_qty: function (doc) {
 		let production_completed_qty = Math.max(flt(doc.produced_qty), flt(doc.material_transferred_for_manufacturing));
-		let subcontractable_qty = flt(doc.producible_qty) - flt(doc.process_loss_qty) - production_completed_qty;
+		let subcontractable_qty = flt(doc.producible_qty) - production_completed_qty;
 		return flt(subcontractable_qty, erpnext.manufacturing.get_work_order_precision());
 	},
 
@@ -757,7 +788,9 @@ $.extend(erpnext.manufacturing, {
 		dialog.show();
 	},
 
-	show_progress_for_production: function(doc, frm, show_rejection_reconciliation) {
+	show_progress_for_production: function(doc, frm, opts) {
+		opts = opts || {};
+
 		let qty_precision = erpnext.manufacturing.get_work_order_precision();
 
 		let pending_production;
@@ -771,8 +804,10 @@ $.extend(erpnext.manufacturing, {
 		let pending_subcontract = flt(doc.subcontract_order_qty - doc.subcontract_received_qty, qty_precision);
 		pending_subcontract = Math.max(pending_subcontract, 0);
 
-		let rejected_qty = show_rejection_reconciliation ? flt(doc.rejected_qty) : 0;
-		let reconciled_qty = show_rejection_reconciliation ? flt(doc.reconciled_qty) : 0;
+		let rejected_qty = opts.show_rejection_reconciliation ? flt(doc.rejected_qty) : 0;
+		let reconciled_qty = opts.show_rejection_reconciliation ? flt(doc.reconciled_qty) : 0;
+
+		let process_loss_label = opts.process_loss_label || __("Process Loss");
 
 		return erpnext.utils.show_progress_for_qty({
 			frm: frm,
@@ -792,7 +827,7 @@ $.extend(erpnext.manufacturing, {
 					add_min_width: doc.producible_qty ? 0.5 : 0,
 				},
 				{
-					title: __("<b>Process Loss:</b> {0} {1} ({2}%)", [
+					title: `<b>${process_loss_label}:</b> ` + __("{0} {1} ({2}%)", [
 						frappe.format(doc.process_loss_qty, {'fieldtype': 'Float'}, { inline: 1 }),
 						doc.stock_uom,
 						format_number(doc.producible_qty ? doc.process_loss_qty / doc.producible_qty * 100: 0, null, 1),
@@ -966,7 +1001,7 @@ $.extend(erpnext.manufacturing, {
 		if (doc.skip_transfer) {
 			return flt(doc.produced_qty) < flt(doc.producible_qty);
 		} else {
-			return flt(doc.produced_qty) < flt(doc.material_transferred_for_manufacturing);
+			return flt(doc.produced_qty) + flt(doc.process_loss_qty) < flt(doc.material_transferred_for_manufacturing);
 		}
 	},
 

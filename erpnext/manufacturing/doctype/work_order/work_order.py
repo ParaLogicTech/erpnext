@@ -405,7 +405,7 @@ class WorkOrder(StatusUpdaterERP):
 				d.status = "Completed"
 			elif not d.completed_qty:
 				d.status = "Pending"
-			elif flt(d.completed_qty) < min_production_qty:
+			elif flt(d.completed_qty) < min_production_qty and self.production_status != "Produced":
 				d.status = "Work in Progress"
 			else:
 				d.status = "Completed"
@@ -530,6 +530,7 @@ class WorkOrder(StatusUpdaterERP):
 		ste_qty_map = self.get_ste_qty_map()
 
 		self.set_production_status(update=True, ste_qty_map=ste_qty_map)
+		self.set_operation_status(update=True)
 		self.set_actual_dates(update=True, ste_qty_map=ste_qty_map)
 		self.set_completed_qty(update=True)
 		self.set_packing_status(update=True)
@@ -816,11 +817,11 @@ class WorkOrder(StatusUpdaterERP):
 					frappe.get_desk_link("Work Order", self.name)
 				), StockOverProductionError)
 
-		produced_qty = flt(self.produced_qty, self.precision("qty"))
+		produced_qty = flt(self.produced_qty + self.process_loss_qty, self.precision("qty"))
 		transferred_qty = flt(self.material_transferred_for_manufacturing, self.precision("qty"))
 		if not self.skip_transfer and produced_qty > transferred_qty:
-			frappe.throw(_("Produced Qty {0} {1} cannot be more than the Material Transferred for Manufacturing {2} {1} in {3}").format(
-				frappe.bold(self.get_formatted("produced_qty")),
+			frappe.throw(_("Production Completion Qty {0} {1} cannot be more than the Material Transferred for Manufacturing {2} {1} in {3}").format(
+				frappe.bold(frappe.format(produced_qty, df=self.meta.get_field("produced_qty"))),
 				self.stock_uom,
 				frappe.bold(self.get_formatted("material_transferred_for_manufacturing")),
 				frappe.get_desk_link("Work Order", self.name)
@@ -884,7 +885,8 @@ class WorkOrder(StatusUpdaterERP):
 		if self.skip_transfer:
 			return max(flt(self.producible_qty) - flt(self.produced_qty), 0)
 		else:
-			return max(flt(self.material_transferred_for_manufacturing) - flt(self.produced_qty), 0)
+			material_remaining = flt(self.material_transferred_for_manufacturing) - flt(self.produced_qty) - flt(self.process_loss_qty)
+			return max(material_remaining, 0)
 
 	def get_transfer_balance_qty(self):
 		return max(flt(self.producible_qty) - flt(self.material_transferred_for_manufacturing), 0)
@@ -894,7 +896,6 @@ class WorkOrder(StatusUpdaterERP):
 			self.producible_qty,
 			self.material_transferred_for_manufacturing,
 			self.produced_qty,
-			self.process_loss_qty
 		)
 
 	def set_status(self, status=None, update=False, update_modified=True):
@@ -1375,8 +1376,8 @@ def make_stock_entry(
 	work_order_id,
 	purpose,
 	qty=None,
+	process_loss_qty=0,
 	use_alternative_item=False,
-	process_loss_remaining=False,
 	job_card=None,
 	auto_submit=False,
 	args=None
@@ -1421,9 +1422,8 @@ def make_stock_entry(
 	use_alternative_item = cint(use_alternative_item)
 	stock_entry.use_alternative_item = use_alternative_item
 
-	process_loss_remaining = cint(process_loss_remaining)
-	stock_entry.process_loss_qty = flt(work_order.qty) - flt(work_order.produced_qty) - flt(qty) if process_loss_remaining and qty else 0
-	stock_entry.process_loss_qty = max(0.0, stock_entry.process_loss_qty)
+	process_loss_qty = flt(process_loss_qty)
+	stock_entry.process_loss_qty = max(0.0, process_loss_qty)
 
 	if work_order.bom_no:
 		stock_entry.inspection_required = frappe.db.get_value('BOM', work_order.bom_no, 'inspection_required')
@@ -1576,9 +1576,9 @@ def _make_job_card(work_order, row, qty):
 	return doc
 
 
-def get_subcontractable_qty(producible_qty, material_transferred_for_manufacturing, produced_qty, process_loss_qty):
+def get_subcontractable_qty(producible_qty, material_transferred_for_manufacturing, produced_qty):
 	production_completed_qty = max(flt(produced_qty), flt(material_transferred_for_manufacturing))
-	subcontractable_qty = flt(producible_qty) - flt(process_loss_qty) - production_completed_qty
+	subcontractable_qty = flt(producible_qty) - production_completed_qty
 	return subcontractable_qty
 
 

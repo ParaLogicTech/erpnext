@@ -1116,8 +1116,11 @@ class StockEntry(TransactionController):
 			frappe.throw(_("Production Quantity is mandatory"))
 		if not transferred_qty:
 			frappe.throw(_("Work Order does not have transferred materials"))
+		if not remaining_qty:
+			frappe.throw(_("Work Order does not have remaining materials"))
 
-		completed_to_remaining_ratio = flt(self.fg_completed_qty) / remaining_qty
+		fg_total_qty = flt(self.fg_completed_qty) + flt(self.process_loss_qty)
+		completed_to_remaining_ratio = fg_total_qty / remaining_qty
 
 		transferred_materials_data = frappe.db.sql("""
 			select
@@ -1195,9 +1198,13 @@ class StockEntry(TransactionController):
 			total_to_consume = min(total_required_qty, total_pending_qty)
 
 			# adjust for material consumptions
-			if self.purpose == "Manufacture" and pending_item_dict.total_consumed_qty:
+			if (
+				self.purpose == "Manufacture"
+				and pending_item_dict.total_consumed_qty
+				and self.pro_doc.allow_material_consumption
+			):
 				material_per_fg = flt(pending_item_dict.total_transferred_qty / transferred_qty)
-				expected_consumed_qty = flt(self.pro_doc.produced_qty) * material_per_fg
+				expected_consumed_qty = completed_qty * material_per_fg
 				excess_consumption = flt(pending_item_dict.total_consumed_qty) - expected_consumed_qty
 				if flt(excess_consumption, qty_precision) > 0:
 					total_to_consume -= excess_consumption
@@ -1235,18 +1242,23 @@ class StockEntry(TransactionController):
 				pending_iwb.pending_qty -= consumed_qty
 
 		# add skip transfer items from bom
-		bom_materials = self.get_raw_materials_to_backflush_based_on_bom()
+		bom_materials = self.get_raw_materials_to_backflush_based_on_bom(
+			ignore_process_loss=self.pro_doc.allow_material_consumption
+		)
 		bom_materials_skipped_transfer = {k: v for k, v in bom_materials.items() if v.get("skip_transfer_for_manufacture")}
 		if bom_materials_skipped_transfer:
 			self.add_to_stock_entry_detail(bom_materials_skipped_transfer)
 
-	def get_raw_materials_to_backflush_based_on_bom(self):
+	def get_raw_materials_to_backflush_based_on_bom(self, ignore_process_loss=False):
 		if not self.fg_completed_qty:
 			frappe.throw(_("Production Qty is mandatory"))
 
 		self.get_work_order()
 
-		fg_total_qty = flt(self.fg_completed_qty) + flt(self.process_loss_qty)
+		fg_total_qty = flt(self.fg_completed_qty)
+		if not ignore_process_loss:
+			fg_total_qty += flt(self.process_loss_qty)
+
 		items_dict = self.get_bom_raw_materials(fg_total_qty)
 		wo_required_items_dict = self.pro_doc.get_required_items_dict() if self.pro_doc else frappe._dict()
 
@@ -1284,9 +1296,18 @@ class StockEntry(TransactionController):
 					item["from_warehouse"] = source_row.get('source_warehouse') or None
 
 				# adjust for material consumptions
-				if self.purpose == 'Manufacture' and required_item_row and flt(required_item_row.consumed_qty):
+				if (
+					self.purpose == 'Manufacture'
+					and required_item_row
+					and flt(required_item_row.consumed_qty)
+					and self.pro_doc.allow_material_consumption
+				):
+					completed_qty = flt(self.pro_doc.produced_qty)
+					if not ignore_process_loss:
+						completed_qty += flt(self.pro_doc.process_loss_qty)
+
 					material_per_fg = flt(item.get("qty")) / fg_total_qty
-					expected_consumed_qty = flt(self.pro_doc.produced_qty) * material_per_fg
+					expected_consumed_qty = completed_qty * material_per_fg
 					to_consume_qty = flt(item.get("qty"))
 					excess_consumption = flt(required_item_row.consumed_qty) - expected_consumed_qty
 					if flt(excess_consumption, self.precision("qty", "items")) > 0:

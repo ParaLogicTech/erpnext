@@ -36,9 +36,14 @@ class JobCard(Document):
 		self.cancel_material_consumption_entry()
 
 	def set_missing_values(self):
+		work_order_details = frappe._dict()
 		if self.work_order:
 			work_order_details = get_work_order_details(self.work_order)
 			self.update(work_order_details)
+
+		operation_material_consumption_required = frappe.get_cached_value("Operation", self.operation,
+			"material_consumption_required")
+		self.material_consumption_required = cint(bool(work_order_details.allow_material_consumption and operation_material_consumption_required))
 
 		if not self.get("items"):
 			self.set_required_items()
@@ -341,7 +346,7 @@ def make_material_transfer(source_name, target_doc=None):
 def get_work_order_details(work_order):
 	details = frappe.db.get_value("Work Order", work_order, [
 		"production_item", "item_name", "bom_no", "stock_uom",
-		"skip_transfer", "transfer_material_against",
+		"skip_transfer", "transfer_material_against", "allow_material_consumption",
 		"wip_warehouse", "project", "company",
 	], as_dict=1) if work_order else {}
 
@@ -355,6 +360,7 @@ def get_work_order_details(work_order):
 		"stock_uom": details.stock_uom,
 		"wip_warehouse": details.wip_warehouse,
 		"project": details.project,
+		"allow_material_consumption": details.allow_material_consumption,
 		"material_transfer_required": cint(details.transfer_material_against == "Job Card" and not details.skip_transfer),
 	})
 

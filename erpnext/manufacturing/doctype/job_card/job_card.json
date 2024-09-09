@@ -373,7 +373,6 @@
   },
   {
    "default": "0",
-   "fetch_from": "operation.material_consumption_required",
    "fieldname": "material_consumption_required",
    "fieldtype": "Check",
    "label": "Consume Materials against Job Card",
@@ -423,7 +422,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-11-20 18:03:46.538166",
+ "modified": "2024-09-09 18:21:52.323364",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Job Card",

@@ -634,7 +634,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:doc.from_bom && cint(frappe.defaults.get_default('process_loss_remaining_by_default'))",
+   "depends_on": "eval:doc.from_bom",
    "fieldname": "process_loss_qty",
    "fieldtype": "Float",
    "label": "Process Loss Qty"
@@ -752,7 +752,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-07-11 18:38:08.380604",
+ "modified": "2024-09-05 01:45:02.023543",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry",
