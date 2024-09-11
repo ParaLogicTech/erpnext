@@ -433,8 +433,8 @@ def send_employee_birthday_notification():
 	today = getdate()
 
 	employees = get_employees_who_have_birthday_today(today)
-	for names in employees:
-		doc = frappe.get_doc("Employee", names)
+	for name in employees:
+		doc = frappe.get_doc("Employee", name)
 		if doc.date_of_birth:
 			date_of_birth = getdate(doc.date_of_birth)
 			doc.age = today.year - date_of_birth.year
@@ -460,8 +460,8 @@ def send_employee_anniversary_notification():
 	today = getdate()
 
 	employees = get_employees_who_have_anniversary_today(today)
-	for names in employees:
-		doc = frappe.get_doc("Employee", names)
+	for name in employees:
+		doc = frappe.get_doc("Employee", name)
 		if doc.date_of_joining:
 			date_of_joining = getdate(doc.date_of_joining)
 			doc.number_of_years = today.year - date_of_joining.year
