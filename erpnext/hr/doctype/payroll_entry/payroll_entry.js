@@ -31,7 +31,7 @@ frappe.ui.form.on('Payroll Entry', {
 					}
 				).toggleClass('btn-primary', !(frm.doc.employees || []).length);
 			}
-			if ((frm.doc.employees || []).length) {
+			if ((frm.doc.employees || []).length && !frm.doc.__islocal) {
 				frm.page.set_primary_action(__('Create Salary Slips'), () => {
 					frm.save('Submit').then(()=>{
 						frm.page.clear_primary_action();

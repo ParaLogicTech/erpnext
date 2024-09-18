@@ -104,6 +104,7 @@ class PayrollEntry(Document):
 			employee_condition += self.get_joining_relieving_condition()
 			employee_condition += " and ssa.salary_structure IN %(salary_structures)s "
 			employee_condition += " and ssa.from_date <= %(end_date)s"
+			employee_condition += " and emp.status != 'Inactive'"
 
 			employees = frappe.db.sql("""
 				select distinct emp.name as employee, emp.employee_name, emp.department, emp.designation
