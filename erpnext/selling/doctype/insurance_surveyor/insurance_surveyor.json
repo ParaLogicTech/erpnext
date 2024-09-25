@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_rename": 1,
  "autoname": "field:insurance_surveyor_name",
  "creation": "2020-11-01 22:21:47.907549",
@@ -27,10 +28,12 @@
    "options": "Insurance Surveyor Company"
   }
  ],
- "modified": "2021-12-05 01:04:58.661443",
+ "links": [],
+ "modified": "2024-09-24 11:47:34.478624",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Insurance Surveyor",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -97,5 +100,6 @@
  "search_fields": "insurance_surveyor_company",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

@@ -332,6 +332,17 @@ employee_fields = [
 		"insert_after": "designation"},
 ]
 
+#Insurace Details
+project_sec_insurance = [
+	{"label": "Insurance Surveyor Contact", "fieldname": "insurance_surveyor_contact", "fieldtype": "Data", "read_only": "1",
+	"fetch_from": "insurance_surveyor.insurance_surveyor_contact" }
+]
+
+#Insurance Surveyor Contact
+insurance_surveyor_contact = [
+	{"label": "Insurance Surveyor Contact", "fieldname": "insurance_surveyor_contact", "fieldtype": "Data"}
+]
+
 # Set Translatable = 0
 field_lists = [
 	applies_to_fields, applies_to_transaction_fields, applies_to_project_fields, applies_to_appointment_fields,
@@ -432,7 +443,7 @@ data = {
 		"Purchase Invoice": applies_to_transaction_fields,
 		"Material Request": applies_to_transaction_fields + material_request_service_person_fields,
 		"Project": project_fields + applies_to_project_fields + project_change_vehicle_details_fields +
-			project_vehicle_reading_fields + project_customer_vehicle_selector,
+			project_vehicle_reading_fields + project_customer_vehicle_selector + project_sec_insurance,
 		"Appointment": applies_to_appointment_fields + appointment_customer_vehicle_selector,
 		"Journal Entry": accounting_dimension_fields,
 		"Journal Entry Account": accounting_dimension_table_fields,
@@ -444,7 +455,8 @@ data = {
 		"Customer": customer_customer_vehicle_selector,
 		"Opportunity": opportunity_fields + applies_to_opportunity_fields,
 		"Customer Feedback": applies_to_transaction_fields,
-		"Employee": employee_fields
+		"Employee": employee_fields,
+		"Insurance Surveyor": insurance_surveyor_contact
 	},
 	'default_portal_role': 'Customer'
 }
