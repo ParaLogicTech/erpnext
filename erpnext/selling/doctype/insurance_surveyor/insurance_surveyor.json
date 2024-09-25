@@ -8,7 +8,8 @@
  "engine": "InnoDB",
  "field_order": [
   "insurance_surveyor_name",
-  "insurance_surveyor_company"
+  "insurance_surveyor_company",
+  "insurance_surveyor_contact"
  ],
  "fields": [
   {
@@ -26,10 +27,15 @@
    "in_standard_filter": 1,
    "label": "Insurance Surveyor Company",
    "options": "Insurance Surveyor Company"
+  },
+  {
+   "fieldname": "insurance_surveyor_contact",
+   "fieldtype": "Data",
+   "label": "Insurance Surveyor Contact"
   }
  ],
  "links": [],
- "modified": "2024-09-24 11:47:34.478624",
+ "modified": "2024-09-25 16:38:08.339447",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Insurance Surveyor",
