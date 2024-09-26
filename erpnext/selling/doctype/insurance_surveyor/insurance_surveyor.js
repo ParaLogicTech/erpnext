@@ -14,11 +14,11 @@ frappe.ui.form.on('Insurance Surveyor', {
 	},
 
 	validate: function(frm) {
-		frappe.regional.pakistan.format_mobile_no(frm, "insurance_surveyor_contact");
+		frappe.regional.pakistan.format_mobile_no(frm, "insurance_surveyor_mobile_no");
 	},
 
-	insurance_surveyor_contact: function (frm) {
-		frappe.regional.pakistan.format_mobile_no(frm, "insurance_surveyor_contact");
+	insurance_surveyor_mobile_no: function (frm) {
+		frappe.regional.pakistan.format_mobile_no(frm, "insurance_surveyor_mobile_no");
 	},
 
 });

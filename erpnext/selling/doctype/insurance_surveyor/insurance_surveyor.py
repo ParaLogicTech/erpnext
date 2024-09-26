@@ -11,4 +11,4 @@ class InsuranceSurveyor(Document):
 
 	def validate_contact_no(self):
 		from frappe.regional.pakistan import validate_mobile_pakistan
-		validate_mobile_pakistan(self.insurance_surveyor_contact)
+		validate_mobile_pakistan(self.insurance_surveyor_mobile_no)
