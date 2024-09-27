@@ -29,13 +29,16 @@
    "options": "Insurance Surveyor Company"
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "insurance_surveyor_mobile_no",
    "fieldtype": "Data",
-   "label": "Insurance Surveyor Contact"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Mobile No"
   }
  ],
  "links": [],
- "modified": "2024-09-26 12:32:18.748235",
+ "modified": "2024-09-27 15:10:34.559044",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Insurance Surveyor",
@@ -103,7 +106,7 @@
   }
  ],
  "quick_entry": 1,
- "search_fields": "insurance_surveyor_company",
+ "search_fields": "insurance_surveyor_company, insurance_surveyor_mobile_no",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
