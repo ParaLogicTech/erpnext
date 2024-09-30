@@ -2,7 +2,6 @@
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate, add_days
@@ -10,7 +9,7 @@ from frappe.model.utils import get_fetch_values
 from erpnext.accounts.party import get_address_display
 from frappe.contacts.doctype.address.address import get_default_address
 from frappe.contacts.doctype.contact.contact import get_contact_details, get_default_contact
-from erpnext.crm.doctype.lead.lead import get_lead_contact_details
+from crm.crm.doctype.lead.lead import get_lead_contact_details
 from erpnext.stock.get_item_details import get_default_warehouse, get_item_price, get_default_supplier, get_default_terms
 from erpnext.setup.doctype.item_default_rule.item_default_rule import get_item_default_values
 from erpnext.vehicles.doctype.vehicle_allocation_period.vehicle_allocation_period import get_delivery_period
@@ -18,7 +17,6 @@ from erpnext.vehicles.doctype.vehicle_withholding_tax_rule.vehicle_withholding_t
 from erpnext.vehicles.utils import validate_vehicle_item
 from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import get_terms_and_conditions
 from erpnext.controllers.accounts_controller import AccountsController
-from six import string_types
 import json
 
 
@@ -31,7 +29,7 @@ force_fields = [
 	'address_display', 'contact_display', 'financer_contact_display',
 	'contact_email', 'contact_mobile', 'contact_phone', 'contact_designation',
 	'father_name', 'husband_name',
-	'tax_id', 'tax_cnic', 'tax_strn', 'tax_status', 'tax_overseas_cnic', 'passport_no',
+	'tax_id', 'tax_cnic', 'tax_strn', 'tax_status', 'passport_no',
 	'withholding_tax_amount', 'exempt_from_vehicle_withholding_tax'
 ]
 force_fields += address_fields
@@ -48,7 +46,6 @@ class VehicleBookingController(AccountsController):
 		if self.get("_action") != "update_after_submit":
 			self.set_missing_values(for_validate=True)
 
-		self.validate_date_with_fiscal_year()
 		self.validate_customer()
 		self.validate_vehicle_item()
 		self.validate_vehicle()
@@ -216,6 +213,9 @@ class VehicleBookingController(AccountsController):
 
 		self.set_grand_total_in_words()
 
+	def get_payable_amount(self):
+		return flt(self.get("invoice_total"))
+
 	def set_total_in_words(self):
 		from frappe.utils import money_in_words
 		self.in_words = money_in_words(self.invoice_total, self.company_currency)
@@ -225,8 +225,15 @@ class VehicleBookingController(AccountsController):
 		self.total_in_words = money_in_words(self.grand_total, self.company_currency)
 
 	def get_withholding_tax_amount(self, tax_status):
-		return get_withholding_tax_amount(self.delivery_date or self.transaction_date, self.item_code, tax_status, self.company)
+		return get_withholding_tax_amount(
+			self.delivery_date or self.transaction_date,
+			self.item_code,
+			flt(self.vehicle_amount) + flt(self.fni_amount),
+			tax_status,
+			self.company
+		)
 
+	@frappe.whitelist()
 	def get_party_tax_status(self):
 		party_type, customer, financer = get_party_doc(self.as_dict())
 		return get_party_tax_status(self.as_dict(), customer, financer)
@@ -243,20 +250,21 @@ class VehicleBookingController(AccountsController):
 			self.validate_value('total_discount', '>=', 0)
 
 	def validate_payment_schedule(self):
-		self.set_payment_schedule()
+		self.set_payment_schedule(exclude_bill_date=True)
 		self.validate_payment_schedule_dates()
-		self.set_due_date()
 		self.validate_payment_schedule_amount()
-		self.validate_due_date()
+		self.set_due_date()
+		self.validate_due_date(exclude_bill_date=True)
 
 	def get_terms_and_conditions(self):
 		if self.get('tc_name'):
 			doc = self.as_dict()
 			self.terms = get_terms_and_conditions(self.tc_name, doc)
 
+
 @frappe.whitelist()
 def get_customer_details(args, get_withholding_tax=True):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)
@@ -307,8 +315,13 @@ def get_customer_details(args, get_withholding_tax=True):
 
 		out.exempt_from_vehicle_withholding_tax = cint(frappe.get_cached_value("Item", args.item_code, "exempt_from_vehicle_withholding_tax"))
 		if not cint(args.do_not_apply_withholding_tax):
-			out.withholding_tax_amount = get_withholding_tax_amount(args.delivery_date or args.transaction_date,
-				args.item_code, tax_status, args.company)
+			out.withholding_tax_amount = get_withholding_tax_amount(
+				args.delivery_date or args.transaction_date,
+				args.item_code,
+				flt(args.vehicle_amount) + flt(args.fni_amount),
+				tax_status,
+				args.company
+			)
 		else:
 			out.withholding_tax_amount = 0
 
@@ -401,7 +414,6 @@ def get_party_tax_ids(args, party, financer):
 	out.tax_strn = financer.get('tax_strn') if financer else party.get('tax_strn')
 
 	out.tax_cnic = party.get('tax_cnic')
-	out.tax_overseas_cnic = party.get('tax_overseas_cnic')
 	out.passport_no = party.get('passport_no')
 
 	return out
@@ -414,7 +426,7 @@ def get_party_tax_status(args, party, financer):
 
 @frappe.whitelist()
 def get_customer_contact_details(args, customer_contact=None, financer_contact=None):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)
@@ -440,9 +452,10 @@ def get_customer_contact_details(args, customer_contact=None, financer_contact=N
 
 	return out
 
+
 @frappe.whitelist()
 def get_address_details(address, lead=None):
-	from erpnext.crm.doctype.lead.lead import get_lead_address_details
+	from crm.crm.doctype.lead.lead import get_lead_address_details
 
 	out = frappe._dict()
 
@@ -462,7 +475,7 @@ def get_address_details(address, lead=None):
 
 @frappe.whitelist()
 def get_item_details(args):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)
@@ -629,22 +642,28 @@ def get_vehicle_price(company, item_code, vehicle_price_list, fni_price_list=Non
 	}
 
 	vehicle_item_price = get_item_price(vehicle_price_args, item_code, ignore_party=True)
-	vehicle_item_price = vehicle_item_price[0][1] if vehicle_item_price else 0
+	vehicle_item_price = vehicle_item_price.price_list_rate if vehicle_item_price else 0
 	out.vehicle_amount = flt(vehicle_item_price)
-
-	if not cint(do_not_apply_withholding_tax):
-		out.withholding_tax_amount = get_withholding_tax_amount(price_date, item_code, tax_status, company)
-	else:
-		out.withholding_tax_amount = 0
 
 	if fni_price_list:
 		fni_price_args = vehicle_price_args.copy()
 		fni_price_args['price_list'] = fni_price_list
 		fni_item_price = get_item_price(fni_price_args, item_code, ignore_party=True)
-		fni_item_price = fni_item_price[0][1] if fni_item_price else 0
+		fni_item_price = fni_item_price.price_list_rate if fni_item_price else 0
 		out.fni_amount = flt(fni_item_price)
 	else:
 		out.fni_amount = 0
+
+	if not cint(do_not_apply_withholding_tax):
+		out.withholding_tax_amount = get_withholding_tax_amount(
+			price_date,
+			item_code,
+			out.vehicle_amount + out.fni_amount,
+			tax_status,
+			company
+		)
+	else:
+		out.withholding_tax_amount = 0
 
 	return out
 

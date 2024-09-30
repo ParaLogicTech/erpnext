@@ -20,25 +20,27 @@ frappe.views.calendar["Sales Order"] = {
 		{
 			"fieldtype": "Select",
 			"fieldname": "delivery_status",
-			"options": "Not Delivered\nFully Delivered\nPartly Delivered\nClosed\nNot Applicable",
+			"options": "\nNot Applicable\To Deliver\nDelivered",
 			"label": __("Delivery Status")
 		},
 		{
 			"fieldtype": "Select",
 			"fieldname": "billing_status",
-			"options": "Not Billed\nFully Billed\nPartly Billed\nClosed",
+			"options": "Not Applicable\nTo Bill\nBilled",
 			"label": __("Billing Status")
 		},
 	],
 	get_events_method: "erpnext.selling.doctype.sales_order.sales_order.get_events",
 	get_css_class: function(data) {
-		if(data.status=="Closed") {
+		if (data.status=="Closed") {
 			return "success";
-		} if(data.delivery_status=="Not Delivered") {
-			return "danger";
-		} else if(data.delivery_status=="Partly Delivered") {
-			return "warning";
-		} else if(data.delivery_status=="Fully Delivered") {
+		} else if(data.delivery_status == "To Deliver") {
+			if (data.per_delivered) {
+				return "warning";
+			} else {
+				return "danger"
+			}
+		} else if (data.delivery_status == "Delivered") {
 			return "success";
 		}
 	}

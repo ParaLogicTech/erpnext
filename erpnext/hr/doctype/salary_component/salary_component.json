@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:salary_component",
@@ -233,10 +234,12 @@
   }
  ],
  "icon": "fa fa-flag",
- "modified": "2020-12-17 16:07:34.622863",
- "modified_by": "furqan.790@outlook.com",
+ "links": [],
+ "modified": "2023-08-30 23:06:39.962794",
+ "modified_by": "Administrator",
  "module": "HR",
  "name": "Salary Component",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -252,10 +255,11 @@
    "write": 1
   },
   {
-   "read": 1,
-   "role": "Employee"
+   "role": "Employee",
+   "select": 1
   }
  ],
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

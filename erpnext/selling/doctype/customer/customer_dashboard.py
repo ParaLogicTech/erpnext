@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 import frappe
 from frappe import _
@@ -26,6 +25,7 @@ def get_data():
 			'Appointment': 'party_name',
 			'Opportunity': 'party_name',
 			'Vehicle Quotation': 'party_name',
+			'Customer Feedback': 'party_name',
 		},
 		'dynamic_links': {
 			'party_name': ['Customer', 'quotation_to']
@@ -41,7 +41,7 @@ def get_data():
 			},
 			{
 				'label': _('Pre Sales'),
-				'items': vehicle_quotation + ['Quotation', 'Opportunity']
+				'items': vehicle_quotation + ['Quotation', 'Opportunity', 'Lead']
 			},
 			{
 				'label': _('Events'),
@@ -56,8 +56,8 @@ def get_data():
 				'items': ['Pricing Rule', 'Item Price']
 			},
 			{
-				'label': _('From Lead'),
-				'items': ['Lead']
-			}
+				'label': _('Customer Provided Items'),
+				'items': ['Item', 'Stock Entry']
+			},
 		]
 	}

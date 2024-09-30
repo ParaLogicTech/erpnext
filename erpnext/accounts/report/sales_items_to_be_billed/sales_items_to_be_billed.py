@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _, scrub
 from frappe.utils import flt, cint, cstr, getdate
@@ -73,7 +72,8 @@ class ItemsToBeBilled:
 			i.{qty_field} as qty, i.uom, i.stock_uom, i.alt_uom,
 			i.conversion_factor, i.alt_uom_size,
 			i.billed_qty, i.returned_qty, i.billed_amt,
-			i.rate, i.amount, im.item_group, im.brand
+			i.rate, i.amount, im.item_group, im.brand,
+			i.discount_percentage, i.amount_before_discount
 			{sales_person_field} {project_fields} {claim_customer_field}
 		""".format(
 			party_field=fieldnames.party,
@@ -88,6 +88,11 @@ class ItemsToBeBilled:
 		if not self.filters.doctype or self.filters.doctype == order_doctype:
 			conditions = self.get_conditions(order_doctype)
 
+			if order_doctype == "Sales Order":
+				skip_delivery_condition = " AND i.skip_delivery_note = 1"
+			else:
+				skip_delivery_condition = " AND im.is_stock_item = 0 AND im.is_fixed_asset = 0"
+
 			order_data = frappe.db.sql("""
 				SELECT '{doctype}' as doctype, o.transaction_date, {common_fields}
 				FROM `tab{doctype}` o
@@ -100,8 +105,7 @@ class ItemsToBeBilled:
 				WHERE
 					o.docstatus = 1 AND o.status != 'Closed'
 					AND (i.billed_qty + i.returned_qty) < i.qty
-					AND (im.is_stock_item = 0 AND im.is_fixed_asset = 0)
-					{conditions}
+					{conditions} {skip_delivery_condition}
 				GROUP BY o.name, i.name
 			""".format(
 				doctype=order_doctype,
@@ -111,6 +115,7 @@ class ItemsToBeBilled:
 				project_join=project_join,
 				project_type_join=project_type_join,
 				conditions=conditions,
+				skip_delivery_condition=skip_delivery_condition
 			), self.filters, as_dict=1)
 
 		delivery_data = []
@@ -129,7 +134,11 @@ class ItemsToBeBilled:
 				WHERE
 					o.docstatus = 1 AND o.status != 'Closed'
 					AND (i.billed_qty + i.returned_qty) < i.qty
-					AND (im.is_stock_item = 1 OR im.is_fixed_asset = 1 OR ifnull(i.{order_reference_field}, '') = '')
+					AND (
+						im.is_stock_item = 1
+						OR im.is_fixed_asset = 1
+						OR (i.{order_reference_field} = '' or i.{order_reference_field} is null)
+					)
 					{conditions}
 				GROUP BY o.name, i.name
 			""".format(
@@ -209,7 +218,7 @@ class ItemsToBeBilled:
 			conditions.append("i.claim_customer = %(claim_customer)s")
 
 		if self.filters.claim_billing:
-			conditions.append("ifnull(i.claim_customer, '') != ''")
+			conditions.append("(i.claim_customer != '' and i.claim_customer is not null)")
 
 		if self.filters.claim_billing_type:
 			conditions.append("ptype.claim_billing_type = %(claim_billing_type)s")
@@ -269,9 +278,16 @@ class ItemsToBeBilled:
 		if self.filters.project_type:
 			conditions.append("proj.project_type = %(project_type)s")
 
+		if frappe.get_meta(doctype).has_field("skip_sales_invoice"):
+			conditions.append("o.skip_sales_invoice = 0")
+		if frappe.get_meta(doctype + " Item").has_field("skip_sales_invoice"):
+			conditions.append("i.skip_sales_invoice = 0")
+
 		return "AND {}".format(" AND ".join(conditions)) if conditions else ""
 
 	def prepare_data(self):
+		self.has_project = False
+
 		for d in self.data:
 			# Set UOM based on qty field
 			if self.filters.qty_field == "Contents Qty":
@@ -282,6 +298,12 @@ class ItemsToBeBilled:
 				d.uom = d.stock_uom
 				d.billed_qty = d.billed_qty * d.conversion_factor
 				d.returned_qty = d.returned_qty * d.conversion_factor
+
+			if d.get("project"):
+				self.has_project = True
+
+			if d.get("claim_customer") and d.get("discount_percentage"):
+				d.amount = d.amount_before_discount
 
 			d['rate'] = d['amount'] / d['qty'] if d['qty'] else d['rate']
 			d["remaining_qty"] = d["qty"] - d["billed_qty"] - d['returned_qty']
@@ -339,18 +361,25 @@ class ItemsToBeBilled:
 				"options": "Project",
 				"width": 100
 			},
-			{
-				"label": _("Denied"),
-				"fieldname": "warranty_claim_denied",
-				"fieldtype": "Check",
-				"width": 60
-			},
-			{
-				"label": _("Chassis #"),
-				"fieldname": "vehicle_chassis_no",
-				"fieldtype": "Data",
-				"width": 150
-			},
+		]
+
+		if 'Vehicles' in frappe.get_active_domains() and self.filters.claim_billing:
+			columns += [
+				{
+					"label": _("Denied"),
+					"fieldname": "warranty_claim_denied",
+					"fieldtype": "Check",
+					"width": 60
+				},
+				{
+					"label": _("Chassis #"),
+					"fieldname": "vehicle_chassis_no",
+					"fieldtype": "Data",
+					"width": 150
+				},
+			]
+
+		columns += [
 			{
 				"label": _(self.filters.party_type),
 				"fieldname": "party",
@@ -480,5 +509,8 @@ class ItemsToBeBilled:
 
 		if not self.filters.claim_billing:
 			columns = [c for c in columns if c['fieldname'] != 'project_type']
+
+		if not self.has_project:
+			columns = [c for c in columns if c['fieldname'] != 'project']
 
 		self.columns = columns

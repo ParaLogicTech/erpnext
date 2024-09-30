@@ -1,15 +1,15 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _, scrub
 from frappe.utils import cint, flt
 from erpnext.stock.utils import update_included_uom_in_dict_report, has_valuation_read_permission
+from erpnext.stock.report.stock_balance.stock_balance import get_items_for_stock_report
 from erpnext.accounts.party import set_party_name_in_list
-from frappe.desk.query_report import group_report_data, hide_columns_if_filtered
+from frappe.desk.query_report import group_report_data
 from frappe.desk.reportview import build_match_conditions
-from six import iteritems
+
 
 def execute(filters=None):
 	show_amounts = has_valuation_read_permission()
@@ -17,7 +17,7 @@ def execute(filters=None):
 	show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
 
 	include_uom = filters.get("include_uom")
-	items = get_items(filters)
+	items = get_items_for_stock_report(filters)
 	sl_entries = get_stock_ledger_entries(filters, items)
 	item_details = get_item_details(items, sl_entries, include_uom)
 	opening_row = get_opening_balance(filters.item_code, filters.warehouse, filters.from_date)
@@ -56,13 +56,18 @@ def execute(filters=None):
 			"actual_qty": sle.actual_qty * alt_uom_size,
 			"qty_after_transaction": sle.qty_after_transaction * alt_uom_size,
 			"batch_qty_after_transaction": sle.batch_qty_after_transaction * alt_uom_size,
+			"packed_qty_after_transaction": sle.packed_qty_after_transaction * alt_uom_size,
 			"voucher_type": sle.voucher_type,
 			"voucher_no": sle.voucher_no,
 			"batch_no": sle.batch_no,
 			"serial_no": sle.serial_no,
+			"packing_slip": sle.packing_slip,
 			"project": sle.project,
 			"company": sle.company
 		})
+
+		if row.get("packing_slip"):
+			filters.has_packing_slip = True
 
 		if show_amounts:
 			row.update({
@@ -104,12 +109,14 @@ def get_columns(filters, item_details, show_amounts=True, show_item_name=True):
 		{"label": _("Voucher #"), "fieldname": "voucher_no", "fieldtype": "Dynamic Link", "options": "voucher_type", "width": 100},
 		{"label": _("Item Code"), "fieldname": "item_code", "fieldtype": "Link", "options": "Item", "width": 100 if show_item_name else 150, "hide_if_filtered": 1},
 		{"label": _("Item Name"), "fieldname": "item_name", "fieldtype": "Data", "width": 150, "hide_if_filtered": 1},
-		{"label": _("Item Group"), "fieldname": "item_group", "fieldtype": "Link", "options": "Item Group", "width": 100, "hide_if_filtered": 1, "filter_fieldname": "item_code"},
 		{"label": _("Warehouse"), "fieldname": "warehouse", "fieldtype": "Link", "options": "Warehouse", "width": 100, "hide_if_filtered": 1},
 		{"label": _("UOM"), "fieldname": "uom", "fieldtype": "Link", "options": "UOM", "width": 50},
 		{"label": _("Qty"), "fieldname": "actual_qty", "fieldtype": "Float", "width": 60, "convertible": "qty"},
 		{"label": _("Balance Qty"), "fieldname": "qty_after_transaction", "fieldtype": "Float", "width": 90, "convertible": "qty"},
+		{"label": _("Batch"), "fieldname": "batch_no", "fieldtype": "Link", "options": "Batch", "width": 100, "is_batch": 1},
 		{"label": _("Batch Qty"), "fieldname": "batch_qty_after_transaction", "fieldtype": "Float", "width": 90, "convertible": "qty", "is_batch": 1},
+		{"label": _("Package"), "fieldname": "packing_slip", "fieldtype": "Link", "options": "Packing Slip", "width": 95, "is_packing_slip": 1},
+		# {"label": _("Packed Qty"), "fieldname": "packed_qty_after_transaction", "fieldtype": "Float", "width": 90, "convertible": "qty", "is_packing_slip": 1},
 	]
 
 	if show_amounts:
@@ -131,9 +138,9 @@ def get_columns(filters, item_details, show_amounts=True, show_item_name=True):
 	columns += [
 		{"label": _("Party Type"), "fieldname": "party_type", "fieldtype": "Data", "width": 70, "hide_if_filtered": 1},
 		{"label": _("Party"), "fieldname": "party", "fieldtype": "Dynamic Link", "options": "party_type", "width": 150, "hide_if_filtered": 1},
-		{"label": _("Batch"), "fieldname": "batch_no", "fieldtype": "Link", "options": "Batch", "width": 100, "is_batch": 1},
 		{"label": _("Serial #"), "fieldname": "serial_no", "fieldtype": "Link", "options": "Serial No", "width": 100},
 		{"label": _("Project"), "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 100, "hide_if_filtered": 1},
+		{"label": _("Item Group"), "fieldname": "item_group", "fieldtype": "Link", "options": "Item Group", "width": 100, "hide_if_filtered": 1, "filter_fieldname": "item_code"},
 		{"label": _("Brand"), "fieldname": "brand", "fieldtype": "Link", "options": "Brand", "width": 100, "hide_if_filtered": 1, "filter_fieldname": "item_code"},
 		{"label": _("Company"), "fieldname": "company", "fieldtype": "Link", "options": "Company", "width": 110}
 	]
@@ -142,10 +149,14 @@ def get_columns(filters, item_details, show_amounts=True, show_item_name=True):
 	if not has_batch_no:
 		columns = [c for c in columns if not c.get('is_batch')]
 
+	if not filters.has_packing_slip:
+		columns = [c for c in columns if not c.get('is_packing_slip')]
+
 	if not show_item_name:
 		columns = [c for c in columns if c.get('fieldname') != 'item_name']
 
 	return columns
+
 
 def get_stock_ledger_entries(filters, items):
 	item_conditions_sql = ''
@@ -157,7 +168,8 @@ def get_stock_ledger_entries(filters, items):
 			item_code, warehouse, actual_qty, qty_after_transaction, incoming_rate, valuation_rate,
 			stock_value, voucher_type, voucher_no, batch_no, serial_no, company, project, stock_value_difference,
 			party_type, party,
-			batch_qty_after_transaction, batch_stock_value, batch_valuation_rate
+			batch_qty_after_transaction, batch_stock_value, batch_valuation_rate,
+			packing_slip, packed_qty_after_transaction
 		from `tabStock Ledger Entry`
 		where posting_date between %(from_date)s and %(to_date)s
 			{sle_conditions}
@@ -165,34 +177,13 @@ def get_stock_ledger_entries(filters, items):
 			order by posting_date asc, posting_time asc, creation asc"""\
 		.format(
 			sle_conditions=get_sle_conditions(filters),
-			item_conditions_sql = item_conditions_sql
+			item_conditions_sql=item_conditions_sql
 		), filters, as_dict=1)
 
-def get_items(filters):
-	conditions = []
-	if filters.get("item_code"):
-		is_template = frappe.db.get_value("Item", filters.get('item_code'), 'has_variants')
-		if is_template:
-			conditions.append("item.variant_of=%(item_code)s")
-		else:
-			conditions.append("item.name=%(item_code)s")
-	else:
-		if filters.get("brand"):
-			conditions.append("item.brand=%(brand)s")
-		if filters.get("item_source"):
-			conditions.append("item.item_source=%(item_source)s")
-		if filters.get("item_group"):
-			conditions.append(get_item_group_condition(filters.get("item_group")))
 
-	items = []
-	if conditions:
-		items = frappe.db.sql_list("""select name from `tabItem` item where {}"""
-			.format(" and ".join(conditions)), filters)
-	return items
-
-def get_item_details(items, sl_entries, include_uom):
+def get_item_details(items, sl_entries=None, include_uom=None):
 	item_details = {}
-	if not items:
+	if not items and sl_entries:
 		items = list(set([d.item_code for d in sl_entries]))
 
 	if not items:
@@ -220,6 +211,7 @@ def get_item_details(items, sl_entries, include_uom):
 
 	return item_details
 
+
 def get_sle_conditions(filters):
 	conditions = []
 
@@ -234,6 +226,8 @@ def get_sle_conditions(filters):
 		conditions.append("voucher_no=%(voucher_no)s")
 	if filters.get("batch_no"):
 		conditions.append("batch_no=%(batch_no)s")
+	if filters.get("packing_slip"):
+		conditions.append("(packing_slip=%(packing_slip)s or (voucher_type='Packing Slip' and voucher_no=%(packing_slip)s))")
 	if filters.get("project"):
 		conditions.append("project=%(project)s")
 	if filters.get("party_type"):
@@ -250,6 +244,7 @@ def get_sle_conditions(filters):
 		conditions.append(match_conditions)
 
 	return "and {}".format(" and ".join(conditions)) if conditions else ""
+
 
 def get_opening_balance(item_code, warehouse, from_date, from_time="00:00:00"):
 	if not (item_code and warehouse and from_date):
@@ -269,8 +264,9 @@ def get_opening_balance(item_code, warehouse, from_date, from_time="00:00:00"):
 
 	return row
 
+
 def get_grouped_data(filters, data):
-	if not filters.get("group_by") or filters.get("group_by") == "Ungrouped":
+	if not filters.get("group_by"):
 		return data
 
 	group_by = []
@@ -302,7 +298,7 @@ def get_grouped_data(filters, data):
 		if 'party' in grouped_by:
 			group_object.party_name = group_object.rows[0].get('party_name')
 
-		for f, g in iteritems(grouped_by):
+		for f, g in grouped_by.items():
 			group_header[f] = g
 
 		group_header._bold = True
@@ -310,6 +306,7 @@ def get_grouped_data(filters, data):
 		group_object.rows.insert(0, group_header)
 
 	return group_report_data(data, group_by, postprocess_group=postprocess_group)
+
 
 def get_warehouse_condition(warehouse):
 	warehouse_details = frappe.db.get_value("Warehouse", warehouse, ["lft", "rgt"], as_dict=1)
@@ -319,6 +316,7 @@ def get_warehouse_condition(warehouse):
 			warehouse_details.rgt)
 
 	return ''
+
 
 def get_item_group_condition(item_group):
 	item_group_details = frappe.db.get_value("Item Group", item_group, ["lft", "rgt"], as_dict=1)

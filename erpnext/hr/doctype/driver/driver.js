@@ -13,13 +13,6 @@ frappe.ui.form.on("Driver", {
 	},
 
 	refresh: function(frm) {
-		frm.set_query("address", function() {
-			return {
-				filters: {
-					is_your_company_address: !frm.doc.transporter ? 1 : 0
-				}
-			};
-		});
 	},
 
 	transporter: function(frm, cdt, cdn) {

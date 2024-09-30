@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt, cint
@@ -104,9 +103,10 @@ def get_opening_balances(filters):
 	gle = frappe.db.sql("""
 		select party, sum(debit) as opening_debit, sum(credit) as opening_credit
 		from `tabGL Entry`
-		where company=%(company)s
-			and ifnull(party_type, '') = %(party_type)s and ifnull(party, '') != ''
-			and (posting_date < %(from_date)s or ifnull(is_opening, 'No') = 'Yes')
+		where company = %(company)s
+			and party_type = %(party_type)s
+			and (party != '' and party is not null)
+			and (posting_date < %(from_date)s or is_opening = 'Yes')
 			{account_filter}
 		group by party""".format(account_filter=account_filter), {
 			"company": filters.company,
@@ -131,9 +131,10 @@ def get_balances_within_period(filters):
 		select party, sum(debit) as debit, sum(credit) as credit
 		from `tabGL Entry`
 		where company=%(company)s
-			and ifnull(party_type, '') = %(party_type)s and ifnull(party, '') != ''
+			and party_type = %(party_type)s
+			and (party != '' and party is not null)
 			and posting_date >= %(from_date)s and posting_date <= %(to_date)s
-			and ifnull(is_opening, 'No') = 'No'
+			and is_opening != 'Yes'
 			{account_filter}
 		group by party""".format(account_filter=account_filter), {
 			"company": filters.company,

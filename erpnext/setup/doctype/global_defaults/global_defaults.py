@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 """Global Defaults"""
 import frappe
 import frappe.defaults
@@ -50,6 +49,7 @@ class GlobalDefaults(Document):
 		# clear cache
 		frappe.clear_cache()
 
+	@frappe.whitelist()
 	def get_defaults(self):
 		return frappe.defaults.get_defaults()
 

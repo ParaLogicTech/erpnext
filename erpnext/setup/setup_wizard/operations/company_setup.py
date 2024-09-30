@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import cstr, getdate
@@ -30,17 +29,6 @@ def create_fiscal_year_and_company(args):
 			'chart_of_accounts': args.get('chart_of_accounts'),
 			'domain': args.get('domains')[0]
 		}).insert()
-
-def enable_shopping_cart(args):
-	# Needs price_lists
-	frappe.get_doc({
-		"doctype": "Shopping Cart Settings",
-		"enabled": 1,
-		'company': args.get('company_name')	,
-		'price_list': frappe.db.get_value("Price List", {"selling": 1}),
-		'default_customer_group': _("Individual"),
-		'quotation_series': "QTN-",
-	}).insert()
 
 def create_bank_account(args):
 	if args.get("bank_account"):

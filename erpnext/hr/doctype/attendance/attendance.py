@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 
 from frappe.utils import getdate, nowdate
@@ -38,7 +37,7 @@ class Attendance(Document):
 		leave_record = frappe.db.sql("""
 			select name, leave_type, half_day, half_day_date
 			from `tabLeave Application`
-			where employee = %s and %s between from_date and to_date and status = 'Approved' and docstatus = 1
+			where employee = %s and %s between from_date and to_date and status = 'Approved' and late_deduction = 0 and docstatus = 1
 		""", (self.employee, self.attendance_date), as_dict=True)
 
 		if leave_record:
@@ -80,14 +79,14 @@ class Attendance(Document):
 			for d in request_record:
 				self.attendance_request = d.name
 
-				if d.half_day_date == getdate(self.attendance_date):
+				if d.half_day and d.half_day_date == getdate(self.attendance_date):
 					if self.status != 'Half Day':
 						frappe.msgprint(_("Employee {0} is on Half Day on {1} based on Attendance Request")
 							.format(self.employee, self.attendance_date))
 					self.status = 'Half Day'
 				else:
 					if self.status != 'Present':
-						frappe.msgprint(_("Employee {0} is Presnet on {1} based on Attendance Request")
+						frappe.msgprint(_("Employee {0} is Present on {1} based on Attendance Request")
 							.format(self.employee, self.attendance_date))
 					self.status = 'Present'
 		else:
@@ -155,3 +154,13 @@ def mark_absent(employee, attendance_date, shift=None):
 		attendance = frappe.get_doc(doc_dict).insert()
 		attendance.submit()
 		return attendance.name
+
+
+def get_marked_attendance_dates_between(employee, start_date, end_date):
+	return frappe.db.sql_list("""
+		select attendance_date
+		from `tabAttendance`
+		where docstatus = 1 and employee = %(employee)s
+			and attendance_date between %(start_date)s and %(end_date)s
+		order by attendance_date
+	""", {"employee": employee, "start_date": start_date, "end_date": end_date})

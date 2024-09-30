@@ -1,0 +1,98 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-11-11 15:47:38.953522",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "stock_entry",
+  "ste_detail",
+  "material_item_code",
+  "material_item_name",
+  "total_qty",
+  "qty",
+  "uom",
+  "amount",
+  "cost_percentage"
+ ],
+ "fields": [
+  {
+   "columns": 1,
+   "fieldname": "stock_entry",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Stock Entry",
+   "options": "Stock Entry",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "ste_detail",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Stock Entry Item",
+   "search_index": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "material_item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Material Item Code",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "columns": 3,
+   "fieldname": "material_item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Material Item Name"
+  },
+  {
+   "columns": 1,
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty"
+  },
+  {
+   "columns": 1,
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "columns": 2,
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "options": "Company:company:default_currency"
+  },
+  {
+   "fieldname": "total_qty",
+   "fieldtype": "Float",
+   "label": "Total Qty"
+  },
+  {
+   "fieldname": "cost_percentage",
+   "fieldtype": "Percent",
+   "label": "Cost Percentage"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-11-15 12:43:58.753078",
+ "modified_by": "Administrator",
+ "module": "Stock",
+ "name": "Stock Entry Consumed Material",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

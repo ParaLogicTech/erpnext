@@ -2,7 +2,6 @@
 # Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 import erpnext
 from frappe import _
@@ -42,6 +41,9 @@ class VehicleRegistrationOrder(VehicleAdditionalServiceController):
 		self.validate_common()
 
 	def validate_common(self):
+		if self.get("agent"):
+			self.ensure_supplier_is_not_blocked(supplier=self.get("agent"))
+
 		self.validate_registration_party()
 		self.validate_pricing_components()
 		self.calculate_totals()
@@ -53,6 +55,7 @@ class VehicleRegistrationOrder(VehicleAdditionalServiceController):
 		self.set_payment_status()
 		self.set_invoice_status()
 		self.set_registration_receipt_details()
+		self.set_number_plate_status()
 		self.set_status()
 		self.set_title()
 
@@ -66,8 +69,8 @@ class VehicleRegistrationOrder(VehicleAdditionalServiceController):
 	def on_cancel(self):
 		self.update_vehicle_booking_order_registration()
 
-	def before_print(self):
-		super(VehicleRegistrationOrder, self).before_print()
+	def before_print(self, print_settings=None):
+		super(VehicleRegistrationOrder, self).before_print(print_settings=print_settings)
 		self.customer_total_in_words = frappe.utils.money_in_words(self.customer_total, erpnext.get_company_currency(self.company))
 		self.get_customer_payments()
 
@@ -574,6 +577,24 @@ class VehicleRegistrationOrder(VehicleAdditionalServiceController):
 				"title": self.title,
 			})
 
+	def set_number_plate_status(self, update=False, update_modified=True):
+		filters = {
+			"vehicle": self.vehicle,
+			"docstatus": 1
+		}
+
+		if frappe.db.get_value("Vehicle Number Plate Delivery", filters=filters):
+			self.number_plate_status = "Delivered"
+		elif frappe.db.get_value("Vehicle Number Plate Receipt Detail", filters=filters):
+			self.number_plate_status = "In Hand"
+		else:
+			self.number_plate_status = "Not Received"
+
+		if update:
+			self.db_set({
+				"number_plate_status": self.number_plate_status
+			}, update_modified=update_modified)
+
 	def set_status(self, update=False, status=None, update_modified=True):
 		if self.is_new():
 			if self.get('amended_from'):
@@ -932,8 +953,45 @@ def get_registration_receipt(vehicle_registration_order):
 
 
 @frappe.whitelist()
+def get_number_plate_receipt(vehicle_registration_order):
+	vro = frappe.get_doc("Vehicle Registration Order", vehicle_registration_order)
+
+	if vro.docstatus != 1:
+		frappe.throw(_("Vehicle Registration Order must be submitted"))
+
+	receipt = frappe.new_doc("Vehicle Number Plate Receipt")
+	receipt.company = vro.company
+	receipt.agent = vro.agent
+
+	row = receipt.append('number_plates')
+	row.vehicle = vro.vehicle
+	row.vehicle_registration_order = vro.name
+	row.vehicle_booking_order = vro.vehicle_booking_order
+
+	receipt.run_method("set_missing_values")
+	return receipt
+
+
+@frappe.whitelist()
+def get_number_plate_delivery(vehicle_registration_order):
+	vro = frappe.get_doc("Vehicle Registration Order", vehicle_registration_order)
+
+	if vro.docstatus != 1:
+		frappe.throw(_("Vehicle Registration Order must be submitted"))
+
+	delivery = frappe.new_doc("Vehicle Number Plate Delivery")
+	delivery.company = vro.company
+	delivery.vehicle = vro.vehicle
+	delivery.vehicle_registration_order = vro.name
+	delivery.vehicle_booking_order = vro.vehicle_booking_order
+
+	delivery.run_method("set_missing_values")
+	return delivery
+
+
+@frappe.whitelist()
 def make_sales_invoice(vehicle_registration_order):
-	from erpnext.controllers.accounts_controller import get_taxes_and_charges, get_default_taxes_and_charges
+	from erpnext.controllers.transaction_controller import get_taxes_and_charges, get_default_taxes_and_charges
 
 	vro = frappe.get_doc("Vehicle Registration Order", vehicle_registration_order)
 

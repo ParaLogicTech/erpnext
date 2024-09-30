@@ -2,16 +2,17 @@
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
-from frappe.utils import cint, getdate
+from frappe.utils import cint, getdate, flt
 from frappe.model.document import Document
+
 
 class VehicleWithholdingTaxRule(Document):
 	def validate(self):
 		self.check_date_overlap()
 		self.validate_from_to_values()
+		self.validate_rate_or_amount()
 		self.sort_slabs()
 		self.validate_overlapping_slabs()
 
@@ -40,11 +41,21 @@ class VehicleWithholdingTaxRule(Document):
 			elif not d.to_capacity:
 				zero_to_capacities.append(d)
 			elif d.from_capacity >= d.to_capacity:
-				frappe.throw(_("From Capacity must be less than To Capacity in row {0}").format(d.idx))
+				frappe.throw(_("Row #{0}: From Capacity must be less than To Capacity").format(d.idx))
 
 		# check if more than two or more rows has To Value = 0
 		if len(zero_from_capacities) >= 2:
 			frappe.throw(_('There can only be one Engine Capacity Slab with 0 or blank value for "From Capacity"'))
+
+	def validate_rate_or_amount(self):
+		for d in self.engine_capacity_slabs:
+			if (d.filer_rate and d.filer_amount) or (d.nonfiler_rate and d.nonfiler_amount):
+				frappe.throw(_("Row #{0}: Please set either Tax Rate or Tax Amount but not both").format(d.idx))
+
+			self.validate_value("filer_rate", ">=", 0, d)
+			self.validate_value("filer_amount", ">=", 0, d)
+			self.validate_value("nonfiler_rate", ">=", 0, d)
+			self.validate_value("nonfiler_amount", ">=", 0, d)
 
 	def sort_slabs(self):
 		engine_capacity_slabs = sorted(self.engine_capacity_slabs, key=lambda d: cint(d.from_capacity))
@@ -77,8 +88,9 @@ class VehicleWithholdingTaxRule(Document):
 
 			frappe.throw("<br>".join(messages))
 
-	def get_tax_amount(self, engine_capacity, tax_status):
+	def get_tax_amount(self, engine_capacity, taxable_amount, tax_status):
 		engine_capacity = cint(engine_capacity)
+		taxable_amount = flt(taxable_amount)
 
 		applicable_slab = None
 		for slab in self.engine_capacity_slabs:
@@ -91,14 +103,24 @@ class VehicleWithholdingTaxRule(Document):
 				frappe.msgprint(_("Cannot determine Withholding Tax amount because Income Tax Status is not provided"),
 					indicator="orange")
 				return 0.0
+
+			if tax_status == "Filer":
+				fixed_amount = flt(applicable_slab.filer_amount)
+				tax_rate = flt(applicable_slab.filer_rate)
 			else:
-				return applicable_slab.filer_amount if tax_status == "Filer" else applicable_slab.nonfiler_amount
+				fixed_amount = flt(applicable_slab.nonfiler_amount)
+				tax_rate = flt(applicable_slab.nonfiler_rate)
+
+			if fixed_amount:
+				return fixed_amount
+			else:
+				return flt(taxable_amount * tax_rate / 100, applicable_slab.precision("filer_amount"))
 
 		return 0.0
 
 
 @frappe.whitelist()
-def get_withholding_tax_amount(date, item_code, tax_status, company):
+def get_withholding_tax_amount(date, item_code, taxable_amount, tax_status, company):
 	if tax_status == "Exempt":
 		return 0
 
@@ -114,7 +136,7 @@ def get_withholding_tax_amount(date, item_code, tax_status, company):
 		return 0
 
 	doc = frappe.get_cached_doc("Vehicle Withholding Tax Rule", name)
-	return doc.get_tax_amount(engine_capacity, tax_status)
+	return doc.get_tax_amount(engine_capacity, taxable_amount, tax_status)
 
 
 def get_applicable_rules(company, date, to_date=None, exclude=None):

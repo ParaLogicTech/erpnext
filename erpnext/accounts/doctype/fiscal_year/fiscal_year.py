@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import msgprint, _
 from frappe.utils import getdate, add_days, add_years, cstr
@@ -12,6 +11,7 @@ from frappe.model.document import Document
 class FiscalYearIncorrectDate(frappe.ValidationError): pass
 
 class FiscalYear(Document):
+	@frappe.whitelist()
 	def set_as_default(self):
 		frappe.db.set_value("Global Defaults", None, "current_fiscal_year", self.name)
 		global_defaults = frappe.get_doc("Global Defaults")

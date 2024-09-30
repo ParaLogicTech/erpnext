@@ -1,11 +1,13 @@
 {
- "creation": "2016-04-18 07:38:26.314642",
+ "actions": [],
+ "creation": "2023-08-05 15:20:38.479028",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "item_code",
   "item_name",
+  "original_item",
   "column_break_3",
   "operation",
   "source_warehouse",
@@ -16,18 +18,18 @@
   "transferred_qty",
   "consumed_qty",
   "column_break_11",
-  "available_qty_at_source_warehouse",
-  "available_qty_at_wip_warehouse",
-  "column_break_16",
+  "total_qty",
   "uom",
-  "allow_alternative_item",
-  "include_item_in_manufacturing",
-  "section_break_19",
+  "skip_transfer_for_manufacture",
+  "has_alternative_item",
+  "column_break_16",
   "stock_required_qty",
-  "column_break_21",
   "conversion_factor",
-  "column_break_23",
-  "stock_uom"
+  "stock_uom",
+  "section_break_19",
+  "available_qty_at_source_warehouse",
+  "column_break_21",
+  "available_qty_at_wip_warehouse"
  ],
  "fields": [
   {
@@ -41,7 +43,7 @@
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Item Code",
+   "label": "Material Item",
    "options": "Item",
    "read_only": 1
   },
@@ -61,7 +63,7 @@
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "label": "Item Name",
+   "label": "Material Item Name",
    "read_only": 1
   },
   {
@@ -92,18 +94,6 @@
    "read_only": 1
   },
   {
-   "default": "0",
-   "fieldname": "allow_alternative_item",
-   "fieldtype": "Check",
-   "label": "Allow Alternative Item"
-  },
-  {
-   "default": "0",
-   "fieldname": "include_item_in_manufacturing",
-   "fieldtype": "Check",
-   "label": "Include Item In Manufacturing"
-  },
-  {
    "fieldname": "column_break_11",
    "fieldtype": "Column Break"
   },
@@ -117,12 +107,14 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "available_qty_at_source_warehouse",
    "fieldtype": "Float",
    "label": "Available Qty at Source Warehouse",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "available_qty_at_wip_warehouse",
    "fieldtype": "Float",
    "label": "Available Qty at WIP Warehouse",
@@ -165,7 +157,7 @@
   {
    "fieldname": "stock_required_qty",
    "fieldtype": "Float",
-   "label": "Required Qty (as per Stock UOM)",
+   "label": "Required Stock Qty",
    "precision": "6",
    "read_only": 1
   },
@@ -178,12 +170,42 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "column_break_23",
-   "fieldtype": "Column Break"
+   "default": "0",
+   "fieldname": "skip_transfer_for_manufacture",
+   "fieldtype": "Check",
+   "label": "Skip Transfer for Manufacture"
+  },
+  {
+   "columns": 1,
+   "depends_on": "eval:doc.total_qty != doc.required_qty",
+   "fieldname": "total_qty",
+   "fieldtype": "Float",
+   "label": "Total Quantity",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_alternative_item",
+   "fieldtype": "Check",
+   "is_virtual": 1,
+   "label": "Has Alternative Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "original_item",
+   "fieldtype": "Link",
+   "label": "Original Item",
+   "no_copy": 1,
+   "options": "Item",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "istable": 1,
- "modified": "2021-05-27 22:49:53.241487",
+ "links": [],
+ "modified": "2024-06-08 00:18:01.905634",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Work Order Item",
@@ -192,5 +214,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

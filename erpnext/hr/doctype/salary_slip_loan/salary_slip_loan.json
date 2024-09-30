@@ -1,18 +1,29 @@
 {
+ "actions": [],
  "creation": "2017-11-08 12:51:12.834479",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "loan_repayment_date",
   "loan",
-  "loan_account",
-  "interest_income_account",
-  "loan_repayment_detail",
+  "loan_type",
   "column_break_4",
+  "disbursement_date",
+  "loan_repayment_date",
+  "section_break_qtz1f",
+  "total_loan_amount",
+  "pending_loan_amount",
+  "column_break_f6gdu",
   "principal_amount",
   "interest_amount",
-  "total_payment"
+  "column_break_fvknw",
+  "repayment_amount",
+  "balance_amount",
+  "loan_repayment_detail",
+  "section_break_x5omk",
+  "loan_account",
+  "column_break_yg1az",
+  "interest_income_account"
  ],
  "fields": [
   {
@@ -45,22 +56,15 @@
   {
    "fieldname": "principal_amount",
    "fieldtype": "Currency",
-   "in_list_view": 1,
    "label": "Principal Amount",
+   "options": "Company:company:default_currency",
    "read_only": 1
   },
   {
    "fieldname": "interest_amount",
    "fieldtype": "Currency",
-   "in_list_view": 1,
    "label": "Interest Amount",
-   "read_only": 1
-  },
-  {
-   "fieldname": "total_payment",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Total Payment",
+   "options": "Company:company:default_currency",
    "read_only": 1
   },
   {
@@ -74,13 +78,78 @@
    "bold": 1,
    "fieldname": "loan_repayment_date",
    "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Loan Repayment Date",
+   "label": "Repayment Date",
    "read_only": 1
+  },
+  {
+   "fieldname": "total_loan_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Loan Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loan_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Loan Type",
+   "options": "Loan Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "disbursement_date",
+   "fieldtype": "Date",
+   "label": "Disbursement Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pending_loan_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Pending Loan Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_qtz1f",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_f6gdu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_fvknw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "repayment_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Repayment Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "balance_amount",
+   "fieldtype": "Currency",
+   "label": "Balance Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_x5omk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_yg1az",
+   "fieldtype": "Column Break"
   }
  ],
  "istable": 1,
- "modified": "2022-04-05 14:01:46.257239",
+ "links": [],
+ "modified": "2023-11-21 13:24:00.652754",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Salary Slip Loan",
@@ -89,5 +158,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

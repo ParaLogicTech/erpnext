@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.utils import flt, cint, cstr
 from frappe import _
@@ -11,7 +10,6 @@ from erpnext.setup.utils import get_exchange_rate
 from erpnext import get_company_currency
 from erpnext.stock.get_item_details import get_item_tax_map
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
-from six import string_types
 import json
 
 
@@ -305,7 +303,6 @@ class ExpenseEntry(Document):
 			doc.cancel()
 
 
-
 @frappe.whitelist()
 def has_duplicate_bill_no(bill_no, supplier):
 	data = frappe.db.sql_list("""
@@ -324,7 +321,7 @@ def get_default_expense_account(supplier):
 
 @frappe.whitelist()
 def get_exchange_rates(bill_dates, from_currency, to_currency):
-	if isinstance(bill_dates, string_types):
+	if isinstance(bill_dates, str):
 		bill_dates = json.loads(bill_dates)
 
 	bill_dates = set(bill_dates)

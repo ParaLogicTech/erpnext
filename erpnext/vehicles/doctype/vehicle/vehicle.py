@@ -2,7 +2,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from erpnext.vehicles.doctype.vehicle_log.vehicle_log import get_vehicle_odometer, get_customer_vehicle_selector_data
 from frappe import _
@@ -286,7 +285,7 @@ def get_reserved_vehicles(sales_order, additional_filters=None):
 			'purchase_document_type', 'purchase_document_no',
 		],
 		filters=filters,
-		order_by="timestamp(purchase_date, purchase_time) desc")  # desc because popping from list
+		order_by="purchase_date desc, purchase_time desc")  # desc because popping from list
 
 
 def set_reserved_vehicles_from_so(source, target):

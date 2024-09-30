@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "Prompt",
@@ -8,7 +9,9 @@
  "engine": "InnoDB",
  "field_order": [
   "workstation",
-  "section_break_4",
+  "column_break_vyjno",
+  "material_consumption_required",
+  "section_break_yhimi",
   "description"
  ],
  "fields": [
@@ -21,32 +24,34 @@
    "options": "Workstation"
   },
   {
-   "fieldname": "section_break_4",
-   "fieldtype": "Section Break"
-  },
-  {
    "fieldname": "description",
    "fieldtype": "Text",
    "label": "Description"
+  },
+  {
+   "fieldname": "column_break_vyjno",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "material_consumption_required",
+   "fieldtype": "Check",
+   "label": "Consume Materials against Job Card"
+  },
+  {
+   "fieldname": "section_break_yhimi",
+   "fieldtype": "Section Break"
   }
  ],
  "icon": "fa fa-wrench",
- "modified": "2020-03-03 15:44:57.147810",
+ "links": [],
+ "modified": "2024-03-19 18:07:10.885871",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Operation",
+ "naming_rule": "Set by user",
  "owner": "Administrator",
  "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "export": 1,
-   "import": 1,
-   "read": 1,
-   "role": "Manufacturing User",
-   "share": 1,
-   "write": 1
-  },
   {
    "create": 1,
    "delete": 1,
@@ -57,9 +62,17 @@
    "role": "Manufacturing Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "share": 1
   }
  ],
  "quick_entry": 1,
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

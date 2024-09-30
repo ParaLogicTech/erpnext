@@ -1,6 +1,5 @@
 # coding=utf-8
 
-from __future__ import unicode_literals
 from frappe import _
 
 def get_data():
@@ -70,15 +69,6 @@ def get_data():
 			"icon": "octicon octicon-rocket",
 			"type": "module",
 			"description": "Updates, Timesheets and Activities."
-		},
-		{
-			"module_name": "CRM",
-			"category": "Modules",
-			"label": _("CRM"),
-			"color": "#EF4DB6",
-			"icon": "octicon octicon-broadcast",
-			"type": "module",
-			"description": "Sales pipeline, leads, opportunities and customers."
 		},
 		{
 			"module_name": "Support",

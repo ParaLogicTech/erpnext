@@ -2,14 +2,22 @@
 // For license information, please see license.txt
 
 frappe.provide("erpnext.vehicles");
-erpnext.vehicles.VehicleDeliveryController = erpnext.vehicles.VehicleTransactionController.extend({
-	refresh: function () {
-		this._super();
-		this.show_stock_ledger()
-	},
+erpnext.vehicles.VehicleDeliveryController = class VehicleDeliveryController extends erpnext.vehicles.VehicleTransactionController {
+	setup() {
+		super.setup();
+		this.frm.custom_make_buttons = {
+			'Vehicle Gate Pass': 'Delivery Gate Pass',
+		}
+	}
 
-	setup_queries: function () {
-		this._super();
+	refresh() {
+		super.refresh();
+		this.show_stock_ledger();
+		this.setup_buttons();
+	}
+
+	setup_queries() {
+		super.setup_queries();
 
 		var me = this;
 		this.frm.set_query("vehicle", function () {
@@ -46,6 +54,19 @@ erpnext.vehicles.VehicleDeliveryController = erpnext.vehicles.VehicleTransaction
 			};
 		});
 	}
-});
+	setup_buttons() {
+		if (this.frm.doc.docstatus == 1) {
+			this.frm.add_custom_button(__("Delivery Gate Pass"), () => this.make_vehicle_delivery_gate_pass(),
+				__('Create'));
+		}
+	}
 
-$.extend(cur_frm.cscript, new erpnext.vehicles.VehicleDeliveryController({frm: cur_frm}));
+	make_vehicle_delivery_gate_pass() {
+		frappe.model.open_mapped_doc({
+			method: "erpnext.vehicles.doctype.vehicle_delivery.vehicle_delivery.make_vehicle_delivery_gate_pass",
+			frm: this.frm
+		});
+	}
+};
+
+extend_cscript(cur_frm.cscript, new erpnext.vehicles.VehicleDeliveryController({frm: cur_frm}));

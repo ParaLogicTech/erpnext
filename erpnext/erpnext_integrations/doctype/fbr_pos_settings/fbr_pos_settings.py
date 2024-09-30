@@ -2,7 +2,6 @@
 # Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import cint
@@ -60,7 +59,7 @@ invoice_custom_fields = [
 
 	# FBR POS Item Details Section
 	{"label": "FBR POS Item Details", "fieldname": "sec_fbr_pos_item_details", "fieldtype": "Section Break",
-		"insert_after": "fbr_pos_json_data", "collapsible": 1,
+		"insert_after": "fbr_pos_json_data", "collapsible": 0,
 		"depends_on": "eval:doc.has_stin && doc.is_fbr_pos_invoice"},
 
 	{"label": "FBR POS Items", "fieldname": "fbr_pos_items", "fieldtype": "Table",

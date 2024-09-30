@@ -2,7 +2,6 @@
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe, json
 from frappe import msgprint, _
 from six import string_types, iteritems
@@ -29,6 +28,7 @@ class ProductionPlan(Document):
 			if not flt(d.planned_qty):
 				frappe.throw(_("Please enter Planned Qty for Item {0} at row {1}").format(d.item_code, d.idx))
 
+	@frappe.whitelist()
 	def get_open_sales_orders(self):
 		""" Pull sales orders  which are pending to deliver based on criteria selected"""
 		open_so = get_sales_orders(self)
@@ -50,6 +50,7 @@ class ProductionPlan(Document):
 				'grand_total': data.grand_total
 			})
 
+	@frappe.whitelist()
 	def get_pending_material_requests(self):
 		""" Pull Material Requests that are pending based on criteria selected"""
 		mr_filter = item_filter = ""
@@ -92,6 +93,7 @@ class ProductionPlan(Document):
 				'material_request_date': data.transaction_date
 			})
 
+	@frappe.whitelist()
 	def get_items(self):
 		if self.get_items_from == "Sales Order":
 			self.get_so_items()
@@ -219,6 +221,7 @@ class ProductionPlan(Document):
 			filters = {'docstatus': 0, 'production_plan': ("=", self.name)}):
 			frappe.delete_doc('Work Order', d.name)
 
+	@frappe.whitelist()
 	def set_status(self):
 		self.status = {
 			0: 'Draft',
@@ -295,6 +298,7 @@ class ProductionPlan(Document):
 
 		return item_dict
 
+	@frappe.whitelist()
 	def make_work_order(self):
 		wo_list = []
 		self.validate_data()
@@ -312,10 +316,9 @@ class ProductionPlan(Document):
 		frappe.flags.mute_messages = False
 
 		if wo_list:
-			wo_list = ["""<a href="#Form/Work Order/%s" target="_blank">%s</a>""" % \
-				(p, p) for p in wo_list]
+			wo_list = [frappe.utils.get_link_to_form("Work Order", p, target="_blank") for p in wo_list]
 			msgprint(_("{0} created").format(comma_and(wo_list)))
-		else :
+		else:
 			msgprint(_("No Work Orders created"))
 
 	def make_work_order_for_sub_assembly_items(self, item):
@@ -359,6 +362,7 @@ class ProductionPlan(Document):
 		except OverProductionError:
 			pass
 
+	@frappe.whitelist()
 	def make_material_request(self):
 		'''Create Material Requests grouped by Sales Order and Material Request Type'''
 		material_request_list = []
@@ -416,10 +420,9 @@ class ProductionPlan(Document):
 		frappe.flags.mute_messages = False
 
 		if material_request_list:
-			material_request_list = ["""<a href="#Form/Material Request/{0}">{1}</a>""".format(m.name, m.name) \
-				for m in material_request_list]
+			material_request_list = [frappe.utils.get_link_to_form("Material Request", m.name) for m in material_request_list]
 			msgprint(_("{0} created").format(comma_and(material_request_list)))
-		else :
+		else:
 			msgprint(_("No material request created"))
 
 @frappe.whitelist()
@@ -648,13 +651,13 @@ def get_items_for_material_requests(doc, ignore_existing_ordered_qty=None):
 		ignore_existing_ordered_qty = data.get('ignore_existing_ordered_qty') or ignore_existing_ordered_qty
 
 		item_details = {}
-		if data.get("bom") or data.get("bom_no"):
+		if data.get("bom_no") or data.get("bom"):
 			if data.get('required_qty'):
-				bom_no = data.get('bom')
+				bom_no = data.get("bom_no") or data.get("bom")
 				include_non_stock_items = 1
 				include_subcontracted_items = 1 if data.get('include_exploded_items') else 0
 			else:
-				bom_no = data.get('bom_no')
+				bom_no = data.get('bom_no') or data.get("bom")
 				include_subcontracted_items = doc.get('include_subcontracted_items')
 				include_non_stock_items = doc.get('include_non_stock_items')
 

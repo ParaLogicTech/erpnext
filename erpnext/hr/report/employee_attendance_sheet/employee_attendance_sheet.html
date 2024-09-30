@@ -1,0 +1,64 @@
+<style>
+.print-format th,
+.print-format td {
+	padding: 3px !important;
+	font-size: 8pt;
+}
+</style>
+
+<h2 class="text-center">
+	{%= __("Employee Attendance Sheet") %}
+</h2>
+<h4 class="text-center">
+	{%= moment(filters.from_date).format('MMMM YYYY') %}
+	{% if (moment(filters.from_date).format('MMMM YYYY') != moment(filters.to_date).format('MMMM YYYY')) { %}
+		- {%= moment(filters.to_date).format('MMMM YYYY') %}
+	{% } %}
+</h4>
+<table class="table table-bordered" style="width: 100%;">
+	<thead>
+		<tr>
+			<th style="width: 3%;" class="text-center">S.No</th>
+			<th>Employee</th>
+
+			{% for (const [i, column] of columns.entries()) { %}
+				{% if (column.date) { %}
+					<th class="text-center">{%= column.label %}</th>
+				{% } %}
+			{% } %}
+		</tr>
+		<tr>
+			<th></th>
+			<th></th>
+			{% for (const [i, column] of columns.entries()) { %}
+				{% if (column.day_of_the_week) { %}
+					<th class="text-center">{%= column.day_of_the_week %}</th>
+				{% } %}
+			{% } %}
+		</tr>
+	</thead>
+	<tbody>
+		{% for(var i = 1; i < data.length; i++) { %}
+		<tr>
+			<td class="text-center">{%= i %}</td>
+			<td class="text-left">{%= data[i].employee_name %}</td>
+
+			{% let current_date = columns[0].from_date %}
+
+			{% while (current_date <= columns[0].to_date) { %}
+				{% let attendance_abbr_key = 'date_' + current_date %}
+				{% let attendance_status_key = 'status_date_' + current_date %}
+
+				{% let attendance_abbr = data[i][attendance_abbr_key] %}
+				{% let attendance_status = data[i][attendance_status_key] %}
+
+				<td class="text-center"{% if (attendance_status === 'Holiday') { %} style="font-weight: bold;"{% } %}>
+					{%= attendance_abbr %}
+				</td>
+				{% current_date = frappe.datetime.add_days(current_date, 1) %}
+			{% } %}
+
+		</tr>
+		{% } %}
+	</tbody>
+</table>

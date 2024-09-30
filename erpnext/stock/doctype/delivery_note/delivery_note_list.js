@@ -1,27 +1,25 @@
 frappe.listview_settings['Delivery Note'] = {
 	add_fields: [
-		"customer", "customer_name", "transporter_name",
-		"base_grand_total", "grand_total", "currency",
-		"per_installed", "per_billed", "per_completed",
-		"is_return", "status",
+		"customer", "customer_name",
+		"billing_status", "is_return", "status",
 	],
 
 	get_indicator: function(doc) {
 		// Return
 		if(cint(doc.is_return)) {
-			return [__("Return"), "darkgrey", "is_return,=,Yes"];
+			return [__("Return"), "grey", "is_return,=,Yes|docstatus,=,1"];
 
 		// Closed
 		} else if (doc.status === "Closed") {
 			return [__("Closed"), "green", "status,=,Closed"];
 
 		// To Bill
-		} else if (flt(doc.per_completed, 2) < 100) {
-			return [__("To Bill"), "orange", "per_completed,<,100|status,!=,Closed|docstatus,=,1"];
+		} else if (doc.billing_status == "To Bill") {
+			return [__("To Bill"), "orange", "billing_status,=,To Bill|docstatus,=,1"];
 
 		// Completed
-		} else if (flt(doc.per_completed, 2) == 100) {
-			return [__("Completed"), "green", "per_completed,=,100|docstatus,=,1"];
+		} else if (doc.billing_status != "To Bill") {
+			return [__("Completed"), "green", "billing_status,!=,To Bill|docstatus,=,1"];
 		}
 	},
 
@@ -35,7 +33,7 @@ frappe.listview_settings['Delivery Note'] = {
 					if (!doc.docstatus) {
 						frappe.throw(__("Cannot create a Delivery Trip from Draft documents."));
 					}
-				};
+				}
 
 				frappe.new_doc("Delivery Trip")
 					.then(() => {
@@ -62,7 +60,7 @@ frappe.listview_settings['Delivery Note'] = {
 							}
 						});
 					})
-			};
+			}
 		};
 
 		doclist.page.add_actions_menu_item(__('Create Delivery Trip'), action, false);

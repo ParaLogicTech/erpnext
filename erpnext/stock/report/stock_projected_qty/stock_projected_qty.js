@@ -60,17 +60,33 @@ frappe.query_reports["Stock Projected Qty"] = {
 			"options": "UOM"
 		},
 		{
+			fieldname: "customer_provided_items",
+			label: __("Customer Provided Items"),
+			fieldtype: "Select",
+			options: [
+				"",
+				"Customer Provided Items Only",
+				"Exclude Customer Provided Items",
+			]
+		},
+		{
+			fieldname: "customer",
+			label: __("Customer"),
+			fieldtype: "Link",
+			options: "Customer",
+		},
+		{
 			fieldname: "group_by_1",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Item", "Group by Warehouse", "Group by Item Group", "Group by Brand"],
-			default: "Ungrouped"
+			options: ["", "Group by Item", "Group by Warehouse", "Group by Item Group", "Group by Brand"],
+			default: ""
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Item", "Group by Warehouse", "Group by Item Group", "Group by Brand"],
+			options: ["", "Group by Item", "Group by Warehouse", "Group by Item Group", "Group by Brand"],
 			default: "Group by Item"
 		},
 	],
@@ -103,3 +119,5 @@ frappe.query_reports["Stock Projected Qty"] = {
 	},
 	"initial_depth": 0
 }
+
+erpnext.utils.add_additional_sle_filters("Stock Projected Qty");

@@ -2,7 +2,6 @@
 # Copyright (c) 2016, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext, math, json
 from frappe import _
 from six import string_types
@@ -538,6 +537,7 @@ class Asset(AccountsController):
 			make_gl_entries(gl_entries)
 			self.db_set('booked_fixed_asset', 1)
 
+	@frappe.whitelist()
 	def get_depreciation_rate(self, args, on_validate=False):
 		if isinstance(args, string_types):
 			args = json.loads(args)
@@ -641,7 +641,8 @@ def transfer_asset(args):
 
 	frappe.db.commit()
 
-	frappe.msgprint(_("Asset Movement record {0} created").format("<a href='#Form/Asset Movement/{0}'>{0}</a>".format(movement_entry.name)))
+	frappe.msgprint(_("Asset Movement record {0} created")
+		.format(frappe.utils.get_link_to_form("Asset Movement", movement_entry.name)))
 
 @frappe.whitelist()
 def get_item_details(item_code, asset_category):

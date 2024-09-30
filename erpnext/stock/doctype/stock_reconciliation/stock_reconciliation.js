@@ -17,26 +17,18 @@ frappe.ui.form.on("Stock Reconciliation", {
 			}
 		});
 
-		var me = this;
-
 		frm.set_query("batch_no", "items", function(doc, cdt, cdn) {
 			var item = frappe.get_doc(cdt, cdn);
 			let filters = {
 				'item_code': item.item_code,
 				'posting_date': doc.posting_date || frappe.datetime.nowdate(),
 				'posting_time': doc.posting_time,
-				'show_negative': 1
+				// 'show_all': 1,
 			};
 			if (item.warehouse) filters["warehouse"] = item.warehouse;
 			return {
 				query : "erpnext.controllers.queries.get_batch_no",
 				filters: filters
-			}
-		});
-
-		frm.set_query("default_warehouse", function() {
-			return {
-				filters: ["Warehouse", "company", "in", ["", cstr(frm.doc.company)]]
 			}
 		});
 
@@ -61,22 +53,6 @@ frappe.ui.form.on("Stock Reconciliation", {
 	reset_rate: function (frm) {
 		frm.events.update_item_details(frm);
 	},
-
-	// loose_uom: function (frm) {
-	// 	frm.events.update_conversion_factor(frm);
-	// },
-	//
-	// update_conversion_factor: function(frm) {
-	// 	frappe.call({
-	// 		method: "update_conversion_factor",
-	// 		doc: frm.doc,
-	// 		freeze: true,
-	// 		callback: function (r) {
-	// 			frm.dirty();
-	// 			frm.refresh_fields();
-	// 		}
-	// 	});
-	// },
 
 	get_items: function(frm) {
 		frappe.call({
@@ -264,11 +240,13 @@ frappe.ui.form.on("Stock Reconciliation Item", {
 	},
 });
 
-erpnext.stock.StockReconciliation = erpnext.stock.StockController.extend({
-	setup: function() {
+erpnext.stock.StockReconciliation = class StockReconciliation extends erpnext.stock.StockController {
+	setup() {
+		super.setup();
+
 		var me = this;
 
-		this.remove_sidebar();
+		this.frm.page.toggle_sidebar(false);
 
 		this.setup_posting_date_time_check();
 
@@ -295,21 +273,32 @@ erpnext.stock.StockReconciliation = erpnext.stock.StockController.extend({
 				}
 			}
 		}
-	},
+	}
 
-	refresh: function() {
-		if(this.frm.doc.docstatus==1) {
+	refresh() {
+		if (this.frm.doc.docstatus == 0) {
+			this.frm.add_custom_button(__("Set Qty as Packed Qty"), () => {
+				this.set_qty_zero();
+			}, __("Tools"));
+		}
+
+		if (this.frm.doc.docstatus == 1) {
 			this.show_stock_ledger();
 			if (erpnext.is_perpetual_inventory_enabled(this.frm.doc.company)) {
 				this.show_general_ledger();
 			}
 		}
-	},
+	}
 
-	conversion_factor: function(doc, cdt, cdn) {
+	conversion_factor(doc, cdt, cdn) {
 		this.frm.events.set_amount_quantity(doc, cdt, cdn);
-	},
+	}
 
-});
+	set_qty_zero() {
+		for (let d of this.frm.doc.items || []) {
+			frappe.model.set_value(d.doctype, d.name, "qty", flt(d.packed_qty) || 0);
+		}
+	}
+};
 
 cur_frm.cscript = new erpnext.stock.StockReconciliation({frm: cur_frm});

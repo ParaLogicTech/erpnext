@@ -2,15 +2,14 @@
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
-from erpnext.controllers.status_updater import StatusUpdater
+from erpnext.controllers.status_updater import StatusUpdaterERP
 from frappe.utils import flt
 from six.moves import reduce
 from frappe import _
 
 
-class BankTransaction(StatusUpdater):
+class BankTransaction(StatusUpdaterERP):
 	def __init__(self, *args, **kwargs):
 		super(BankTransaction, self).__init__(*args, **kwargs)
 		self.status_map = [

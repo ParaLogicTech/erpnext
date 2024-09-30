@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 
 import frappe
 from frappe import _
@@ -43,7 +43,7 @@ def convert_deferred_expense_to_expense(start_date=None, end_date=None):
 	invoices = frappe.db.sql_list('''
 		select distinct parent from `tabPurchase Invoice Item`
 		where service_start_date<=%s and service_end_date>=%s
-		and enable_deferred_expense = 1 and docstatus = 1 and ifnull(amount, 0) > 0
+		and enable_deferred_expense = 1 and docstatus = 1 and amount > 0
 	''', (end_date, start_date))
 
 	# For each invoice, book deferred expense
@@ -62,7 +62,7 @@ def convert_deferred_revenue_to_income(start_date=None, end_date=None):
 	invoices = frappe.db.sql_list('''
 		select distinct parent from `tabSales Invoice Item`
 		where service_start_date<=%s and service_end_date>=%s
-		and enable_deferred_revenue = 1 and docstatus = 1 and ifnull(amount, 0) > 0
+		and enable_deferred_revenue = 1 and docstatus = 1 and amount > 0
 	''', (end_date, start_date))
 
 	for invoice in invoices:
@@ -211,5 +211,5 @@ def make_gl_entries(doc, credit_account, debit_account, against,
 			frappe.db.rollback()
 			title = _("Error while processing deferred accounting for {0}").format(doc.name)
 			traceback = frappe.get_traceback()
-			frappe.log_error(message=traceback , title=title)
+			doc.log_error(message=traceback , title=title)
 			sendmail_to_system_managers(title, traceback)

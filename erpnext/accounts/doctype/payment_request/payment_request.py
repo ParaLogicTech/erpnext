@@ -2,18 +2,18 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, nowdate, get_url
+from frappe.utils import flt, nowdate
 from erpnext.accounts.party import get_party_account, get_party_bank_account
 from erpnext.accounts.utils import get_account_currency
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry, get_company_defaults
-from frappe.integrations.utils import get_payment_gateway_controller
+from payments.utils import get_payment_gateway_controller
 from frappe.utils.background_jobs import enqueue
 from erpnext.erpnext_integrations.stripe_integration import create_stripe_subscription
 from erpnext.accounts.doctype.subscription_plan.subscription_plan import get_plan_rate
+
 
 class PaymentRequest(Document):
 	def validate(self):
@@ -247,31 +247,16 @@ class PaymentRequest(Document):
 		if not status:
 			return
 
-		shopping_cart_settings = frappe.get_doc("Shopping Cart Settings")
-
 		if status in ["Authorized", "Completed"]:
 			redirect_to = None
 			self.set_as_paid()
-
-			# if shopping cart enabled and in session
-			if (shopping_cart_settings.enabled and hasattr(frappe.local, "session")
-				and frappe.local.session.user != "Guest"):
-
-				success_url = shopping_cart_settings.payment_success_url
-				if success_url:
-					redirect_to = ({
-						"Orders": "/orders",
-						"Invoices": "/invoices",
-						"My Account": "/me"
-					}).get(success_url, "/me")
-				else:
-					redirect_to = get_url("/orders/{0}".format(self.reference_name))
 
 			return redirect_to
 
 	def create_subscription(self, payment_provider, gateway_controller, data):
 		if payment_provider == "stripe":
 			return create_stripe_subscription(gateway_controller, data)
+
 
 @frappe.whitelist(allow_guest=True)
 def make_payment_request(**args):
@@ -344,6 +329,7 @@ def make_payment_request(**args):
 
 	return pr.as_dict()
 
+
 def get_amount(ref_doc):
 	"""get amount based on doctype"""
 	dt = ref_doc.doctype
@@ -365,6 +351,7 @@ def get_amount(ref_doc):
 	else:
 		frappe.throw(_("Payment Entry is already created"))
 
+
 def get_existing_payment_request_amount(ref_dt, ref_dn):
 	existing_payment_request_amount = frappe.db.sql("""
 		select sum(grand_total)
@@ -377,23 +364,22 @@ def get_existing_payment_request_amount(ref_dt, ref_dn):
 	""", (ref_dt, ref_dn))
 	return flt(existing_payment_request_amount[0][0]) if existing_payment_request_amount else 0
 
+
 def get_gateway_details(args):
 	"""return gateway and payment account of default payment gateway"""
 	if args.get("payment_gateway"):
 		return get_payment_gateway_account(args.get("payment_gateway"))
 
-	if args.order_type == "Shopping Cart":
-		payment_gateway_account = frappe.get_doc("Shopping Cart Settings").payment_gateway_account
-		return get_payment_gateway_account(payment_gateway_account)
-
 	gateway_account = get_payment_gateway_account({"is_default": 1})
 
 	return gateway_account
+
 
 def get_payment_gateway_account(args):
 	return frappe.db.get_value("Payment Gateway Account", args,
 		["name", "payment_gateway", "payment_account", "message"],
 			as_dict=1)
+
 
 @frappe.whitelist()
 def get_print_format_list(ref_doctype):
@@ -406,14 +392,17 @@ def get_print_format_list(ref_doctype):
 		"print_format": print_format_list
 	}
 
+
 @frappe.whitelist(allow_guest=True)
 def resend_payment_email(docname):
 	return frappe.get_doc("Payment Request", docname).send_email()
+
 
 @frappe.whitelist()
 def make_payment_entry(docname):
 	doc = frappe.get_doc("Payment Request", docname)
 	return doc.create_payment_entry(submit=False).as_dict()
+
 
 def update_payment_req_status(doc, method):
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_reference_details
@@ -441,6 +430,7 @@ def update_payment_req_status(doc, method):
 			pay_req_doc.db_set('status', status)
 			frappe.db.commit()
 
+
 def get_dummy_message(doc):
 	return frappe.render_template("""{% if doc.contact_person -%}
 <p>Dear {{ doc.contact_person }},</p>
@@ -456,6 +446,7 @@ def get_dummy_message(doc):
 <p>{{ _("Thank you for your business!") }}</p>
 """, dict(doc=doc, payment_url = '{{ payment_url }}'))
 
+
 @frappe.whitelist()
 def get_subscription_details(reference_doctype, reference_name):
 	if reference_doctype == "Sales Invoice":
@@ -466,6 +457,7 @@ def get_subscription_details(reference_doctype, reference_name):
 			for plan in plans:
 				subscription_plans.append(plan)
 		return subscription_plans
+
 
 @frappe.whitelist()
 def make_payment_order(source_name, target_doc=None):

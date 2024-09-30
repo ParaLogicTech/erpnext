@@ -4,10 +4,13 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from frappe.utils import cint, getdate, today, add_days
+from frappe.utils import today, add_days
 from dateutil.relativedelta import relativedelta
 from frappe.contacts.doctype.contact.contact import get_default_contact
+from erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule  import automated_maintenance_reminder_enabled, \
+	  get_reminder_date_from_schedule_date, get_maintenance_schedules_for_reminder_notification,get_maintenance_reminder_scheduled_time
 import json
+from frappe.utils import getdate, cint, format_datetime
 
 
 def execute(filters=None):
@@ -32,6 +35,7 @@ class VehicleMaintenanceSchedule:
 
 	def run(self):
 		self.get_data()
+		self.get_reminder_data()
 		self.get_communication_map()
 		self.get_follow_up_map()
 		self.get_appointment_map()
@@ -49,7 +53,8 @@ class VehicleMaintenanceSchedule:
 				v.name as vehicle, v.item_code, v.delivery_date, v.chassis_no,
 				v.engine_no, v.license_plate, v.unregistered, v.variant_of_name,
 				v.customer as vehicle_customer, v.customer_name as vehicle_customer_name,
-				pt.project_template_name, opp.name as opportunity, opp.status
+				pt.project_template_name, opp.name as opportunity, opp.status,
+				max(nc.last_sent_dt) as last_sent_dt
 			FROM `tabMaintenance Schedule Detail` msd
 			LEFT JOIN `tabProject Template` pt ON pt.name = msd.project_template
 			LEFT JOIN `tabMaintenance Schedule` ms ON ms.name = msd.parent
@@ -57,8 +62,35 @@ class VehicleMaintenanceSchedule:
 			LEFT JOIN `tabCustomer` c ON c.name = ms.customer
 			LEFT JOIN `tabItem` im ON im.name = v.item_code
 			LEFT JOIN `tabOpportunity` opp ON opp.maintenance_schedule = msd.parent AND opp.maintenance_schedule_row = msd.name
+			LEFT JOIN `tabNotification Count` nc on nc.reference_doctype = 'Maintenance Schedule' and nc.reference_name = ms.name
+				and nc.child_name = msd.name
+				and nc.notification_type = 'Maintenance Reminder' and nc.notification_medium = 'SMS'
 			WHERE ifnull(ms.serial_no, '') != '' AND {conditions}
+			GROUP BY msd.name
 		""".format(conditions=conditions), self.filters, as_dict=1)
+
+	def get_reminder_data(self):
+		if automated_maintenance_reminder_enabled():
+			today_date = getdate()
+			scheduled_dates = set([d.due_date for d in self.data if d.due_date and get_reminder_date_from_schedule_date(d.due_date) >= today_date and not d.last_sent_dt])
+
+			for current_date in scheduled_dates:
+				reminder_date = get_reminder_date_from_schedule_date(current_date)
+				scheduled_reminder_dt = get_maintenance_reminder_scheduled_time(reminder_date)
+				schedules_for_reminder = get_maintenance_schedules_for_reminder_notification(reminder_date)
+				schedules_for_reminder = [d.row_name for d in schedules_for_reminder]
+
+				for d in self.data:
+					if d.maintenance_schedule_row in schedules_for_reminder:
+						d.scheduled_reminder_dt = scheduled_reminder_dt
+
+		datetime_format = "d/MM/y, hh:mm a"
+
+		for d in self.data:
+			if d.last_sent_dt:
+				d.reminder = "Last Sent: {0}".format(format_datetime(d.last_sent_dt, datetime_format))
+			elif d.scheduled_reminder_dt:
+				d.reminder = "Scheduled: {0}".format(format_datetime(d.scheduled_reminder_dt, datetime_format))
 
 	def get_conditions(self):
 		conditions = []
@@ -363,6 +395,12 @@ class VehicleMaintenanceSchedule:
 				"options": "Appointment",
 				"width": 90
 			},
+			{
+				"label": _("Reminder"),
+				"fieldname": "reminder",
+				"fieldtype": "Data",
+				"width": 200
+			},
 		]
 
 		if self.filters.date_type != "Follow Up Date":
@@ -374,11 +412,19 @@ class VehicleMaintenanceSchedule:
 @frappe.whitelist()
 def submit_communication_with_action(remarks, action, opportunity=None, follow_up_date=None, lost_reason=None,
 		maintenance_schedule=None, maintenance_schedule_row=None, filters=None):
-	from erpnext.crm.doctype.opportunity.opportunity import submit_communication_with_action
+	from crm.crm.doctype.opportunity.opportunity import submit_communication_with_action
+	from erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule import get_maintenance_schedule_opportunity
+
+	opp = None
+	if opportunity and frappe.db.exists('Opportunity', opportunity):
+		opp = frappe.get_doc('Opportunity', opportunity)
+	elif maintenance_schedule and maintenance_schedule_row:
+		opp = get_maintenance_schedule_opportunity(maintenance_schedule, maintenance_schedule_row)
+	else:
+		frappe.throw(_('Opportunity/Maintenance Schedule not provided'))
 
 	out = submit_communication_with_action(remarks, action,
-		opportunity=opportunity, follow_up_date=follow_up_date, lost_reason=lost_reason,
-		maintenance_schedule=maintenance_schedule, maintenance_schedule_row=maintenance_schedule_row)
+		opportunity=opp, follow_up_date=follow_up_date, lost_reason=lost_reason)
 
 	if filters is not None:
 		if isinstance(filters, str):

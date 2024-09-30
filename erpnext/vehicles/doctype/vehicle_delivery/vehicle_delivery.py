@@ -2,7 +2,6 @@
 # Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import cint
@@ -43,7 +42,7 @@ class VehicleDelivery(VehicleTransactionController):
 				select name
 				from `tabStock Ledger Entry`
 				where serial_no = %(vehicle)s and actual_qty > 0
-					and timestamp(posting_date, posting_time) < timestamp(%(posting_date)s, %(posting_time)s)
+					and (posting_date, posting_time) < (%(posting_date)s, %(posting_time)s)
 				limit 1
 			""", {
 				'vehicle': self.vehicle,
@@ -74,3 +73,22 @@ class VehicleDelivery(VehicleTransactionController):
 				'contact_email': self.contact_email
 			})
 			schedule_project_templates_after_delivery(serial_no, args)
+
+
+@frappe.whitelist()
+def make_vehicle_delivery_gate_pass(vehicle_delivery):
+	if not vehicle_delivery:
+		frappe.throw(_("Vehicle Delivery not provided"))
+
+	doc = frappe.get_doc("Vehicle Delivery", vehicle_delivery)
+
+	target = frappe.new_doc("Vehicle Gate Pass")
+	target.purpose = "Sales - Vehicle Delivery"
+
+	target.vehicle_delivery = doc.name
+	target.customer = doc.customer
+	target.vehicle = doc.vehicle
+
+	target.run_method("set_missing_values")
+
+	return target

@@ -3,21 +3,21 @@
 
 frappe.provide("erpnext.maintenance");
 
-erpnext.maintenance.MaintenanceSchedule = frappe.ui.form.Controller.extend({
-	onload: function() {
+erpnext.maintenance.MaintenanceSchedule = class MaintenanceSchedule extends frappe.ui.form.Controller {
+	onload() {
 		this.setup_queries();
-	},
+	}
 
-	refresh: function() {
+	refresh() {
 		erpnext.hide_company();
 		this.set_dynamic_link();
-	},
+	}
 
-	set_dynamic_link: function () {
+	set_dynamic_link() {
 		frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'customer', doctype: 'Customer'};
-	},
+	}
 
-	setup_queries: function() {
+	setup_queries() {
 		this.frm.set_query('customer', erpnext.queries.customer);
 		this.frm.set_query('contact_person', erpnext.queries.contact_query);
 
@@ -27,9 +27,9 @@ erpnext.maintenance.MaintenanceSchedule = frappe.ui.form.Controller.extend({
 				filters: {'is_sales_item': 1}
 			};
 		});
-	},
+	}
 
-	serial_no: function() {
+	serial_no() {
 		var me = this;
 
 		if (me.frm.doc.serial_no) {
@@ -45,18 +45,17 @@ erpnext.maintenance.MaintenanceSchedule = frappe.ui.form.Controller.extend({
 				}
 			});
 		}
-	},
+	}
 
-	customer: function() {
-		return erpnext.utils.get_party_details(this.frm)
-	},
+	customer() {
+		return erpnext.utils.get_party_details(this.frm);
+	}
 
-	contact_person: function() {
+	contact_person() {
 		return erpnext.utils.get_contact_details(this.frm);
-	},
+	}
 
-	create_opportunity: function(doc, cdt, cdn) {
-		var me = this;
+	create_opportunity(doc, cdt, cdn) {
 		frappe.call({
 			method: "erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.create_maintenance_opportunity",
 			args: {
@@ -72,7 +71,7 @@ erpnext.maintenance.MaintenanceSchedule = frappe.ui.form.Controller.extend({
 				}
 			}
 		});
-	},
-});
+	}
+}
 
-$.extend(cur_frm.cscript, new erpnext.maintenance.MaintenanceSchedule({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.maintenance.MaintenanceSchedule({frm: cur_frm}));

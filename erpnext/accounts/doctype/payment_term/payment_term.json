@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:payment_term_name",
@@ -9,14 +10,15 @@
  "field_order": [
   "payment_term_name",
   "payment_amount_type",
+  "payment_amount",
   "invoice_portion",
-  "mode_of_payment",
   "column_break_3",
   "due_date_based_on",
   "credit_days",
   "credit_months",
   "section_break_6",
-  "description"
+  "description",
+  "mode_of_payment"
  ],
  "fields": [
   {
@@ -28,8 +30,9 @@
   },
   {
    "bold": 1,
+   "depends_on": "eval:doc.payment_amount_type == \"Percentage\"",
    "fieldname": "invoice_portion",
-   "fieldtype": "Float",
+   "fieldtype": "Percent",
    "label": "Invoice Portion"
   },
   {
@@ -80,12 +83,21 @@
    "label": "Payment Amount Type",
    "options": "Percentage\nAmount\nRemaining Amount",
    "reqd": 1
+  },
+  {
+   "bold": 1,
+   "depends_on": "eval:doc.payment_amount_type == \"Amount\"",
+   "fieldname": "payment_amount",
+   "fieldtype": "Float",
+   "label": "Payment Amount"
   }
  ],
- "modified": "2020-12-08 00:52:48.217040",
+ "links": [],
+ "modified": "2024-06-03 08:16:26.175591",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Term",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -128,5 +140,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

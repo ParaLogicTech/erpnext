@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import unittest
 import frappe
 import json
@@ -16,7 +15,7 @@ from erpnext.stock.doctype.material_request.test_material_request import make_ma
 from erpnext.stock.doctype.material_request.material_request import make_purchase_order
 from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
 from erpnext.controllers.accounts_controller import update_child_qty_rate
-from erpnext.controllers.status_updater import OverAllowanceError
+from frappe.utils.status_updater import OverAllowanceError
 from erpnext.stock.doctype.batch.test_batch import make_new_batch
 from erpnext.controllers.buying_controller import get_backflushed_subcontracted_raw_materials
 
@@ -322,7 +321,7 @@ class TestPurchaseOrder(unittest.TestCase):
 		self.assertEqual(getdate(pi.payment_schedule[1].due_date), add_days(getdate(po.transaction_date), 30))
 
 	def test_subcontracting(self):
-		po = create_purchase_order(item_code="_Test FG Item", is_subcontracted="Yes")
+		po = create_purchase_order(item_code="_Test FG Item", is_subcontracted=1)
 		self.assertEqual(len(po.get("supplied_items")), 2)
 
 	def test_warehouse_company_validation(self):
@@ -355,7 +354,7 @@ class TestPurchaseOrder(unittest.TestCase):
 			"doctype": "Purchase Order",
 			"company": "_Test Company",
 			"supplier" : "_Test Supplier",
-			"is_subcontracted" : "No",
+			"is_subcontracted": 0,
 			"schedule_date": add_days(nowdate(), 1),
 			"currency" : frappe.get_cached_value('Company',  "_Test Company",  "default_currency"),
 			"conversion_factor" : 1,
@@ -478,7 +477,7 @@ class TestPurchaseOrder(unittest.TestCase):
 			fieldname=["reserved_qty_for_sub_contract", "projected_qty"], as_dict=1)
 
 		# Submit PO
-		po = create_purchase_order(item_code="_Test FG Item", is_subcontracted="Yes")
+		po = create_purchase_order(item_code="_Test FG Item", is_subcontracted=1)
 
 		bin2 = frappe.db.get_value("Bin",
 			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
@@ -585,7 +584,7 @@ class TestPurchaseOrder(unittest.TestCase):
 		make_subcontracted_item(item_code=item_code)
 
 		po = create_purchase_order(item_code=item_code, qty=1,
-			is_subcontracted="Yes", supplier_warehouse="_Test Warehouse 1 - _TC")
+			is_subcontracted=1, supplier_warehouse="_Test Warehouse 1 - _TC")
 
 		name = frappe.db.get_value('BOM', {'item': item_code}, 'name')
 		bom = frappe.get_doc('BOM', name)
@@ -595,7 +594,7 @@ class TestPurchaseOrder(unittest.TestCase):
 		self.assertEquals(exploded_items, supplied_items)
 
 		po1 = create_purchase_order(item_code=item_code, qty=1,
-			is_subcontracted="Yes", supplier_warehouse="_Test Warehouse 1 - _TC", include_exploded_items=0)
+			is_subcontracted=1, supplier_warehouse="_Test Warehouse 1 - _TC", include_exploded_items=0)
 
 		supplied_items1 = sorted([d.rm_item_code for d in po1.supplied_items])
 		bom_items = sorted([d.item_code for d in bom.items])
@@ -614,7 +613,7 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		order_qty = 5
 		po = create_purchase_order(item_code=item_code, qty=order_qty,
-			is_subcontracted="Yes", supplier_warehouse="_Test Warehouse 1 - _TC")
+			is_subcontracted=1, supplier_warehouse="_Test Warehouse 1 - _TC")
 
 		make_stock_entry(target="_Test Warehouse - _TC",
 			item_code="_Test Item Home Desktop 100", qty=10, basic_rate=100)
@@ -677,7 +676,7 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		order_qty = 500
 		po = create_purchase_order(item_code=item_code, qty=order_qty,
-			is_subcontracted="Yes", supplier_warehouse="_Test Warehouse 1 - _TC")
+			is_subcontracted=1, supplier_warehouse="_Test Warehouse 1 - _TC")
 
 		make_stock_entry(target="_Test Warehouse - _TC",
 			item_code = "Sub Contracted Raw Material 2", qty=552, basic_rate=100)
@@ -844,7 +843,7 @@ def create_purchase_order(**args):
 	po.schedule_date = add_days(nowdate(), 1)
 	po.company = args.company or "_Test Company"
 	po.supplier = args.customer or "_Test Supplier"
-	po.is_subcontracted = args.is_subcontracted or "No"
+	po.is_subcontracted = args.is_subcontracted or 0
 	po.currency = args.currency or frappe.get_cached_value('Company',  po.company,  "default_currency")
 	po.conversion_factor = args.conversion_factor or 1
 	po.supplier_warehouse = args.supplier_warehouse or None
@@ -860,7 +859,7 @@ def create_purchase_order(**args):
 	if not args.do_not_save:
 		po.insert()
 		if not args.do_not_submit:
-			if po.is_subcontracted == "Yes":
+			if po.is_subcontracted:
 				supp_items = po.get("supplied_items")
 				for d in supp_items:
 					d.reserve_warehouse = args.warehouse or "_Test Warehouse - _TC"

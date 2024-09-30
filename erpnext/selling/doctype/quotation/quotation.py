@@ -1,12 +1,11 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, nowdate, getdate, cint
+from frappe.utils import flt, nowdate, getdate, cint, add_days, date_diff
 from frappe import _
-from erpnext.crm.doctype.lead.lead import get_customer_from_lead
+from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
 
 from erpnext.controllers.selling_controller import SellingController
 
@@ -31,6 +30,7 @@ class Quotation(SellingController):
 		super(Quotation, self).validate()
 		self.validate_uom_is_integer("stock_uom", "qty")
 		self.validate_quotation_valid_till()
+		self.validate_delivery_date()
 		self.set_customer_name()
 
 		if self.items:
@@ -46,18 +46,16 @@ class Quotation(SellingController):
 
 		# update enquiry status
 		self.update_opportunity()
-		self.update_lead()
+		self.update_lead_status()
 
 	def on_cancel(self):
 		if self.lost_reasons:
 			self.lost_reasons = []
 
-		super(Quotation, self).on_cancel()
-
 		# update enquiry status
-		self.set_status(update=True)
+		self.update_status_on_cancel()
 		self.update_opportunity()
-		self.update_lead()
+		self.update_lead_status(status="Interested")
 
 	def onload(self):
 		super(Quotation, self).onload()
@@ -66,13 +64,20 @@ class Quotation(SellingController):
 		elif self.quotation_to == "Lead":
 			self.set_onload('customer', get_customer_from_lead(self.party_name))
 
-	def set_indicator(self):
-		if self.docstatus == 1:
-			self.indicator_color = 'blue'
-			self.indicator_title = 'Submitted'
-		if self.valid_till and getdate(self.valid_till) < getdate(nowdate()):
-			self.indicator_color = 'darkgrey'
-			self.indicator_title = 'Expired'
+	def validate_delivery_date(self):
+		if cint(self.lead_time_days) < 0:
+			frappe.throw(_("{0} cannot be negative").format(self.meta.get_label("lead_time_days")))
+
+		if cint(self.lead_time_days):
+			self.delivery_date = add_days(getdate(self.transaction_date), cint(self.lead_time_days))
+
+		if not cint(self.lead_time_days) and self.delivery_date:
+			self.lead_time_days = date_diff(self.delivery_date, self.transaction_date)
+			if self.lead_time_days < 0:
+				self.lead_time_days = 0
+
+		if self.delivery_date and getdate(self.delivery_date) < getdate(self.transaction_date):
+			frappe.throw(_("Expected Delivery Date must be after Quotation Date"))
 
 	def set_ordered_status(self, update=False, update_modified=True):
 		ordered_qty_map = self.get_ordered_qty_map()
@@ -114,10 +119,10 @@ class Quotation(SellingController):
 
 		return ordered_qty_map
 
-	def update_lead(self):
+	def update_lead_status(self, status=None):
 		if self.quotation_to == "Lead" and self.party_name:
 			doc = frappe.get_doc("Lead", self.party_name)
-			doc.set_status(update=True)
+			doc.set_status(update=True, status=status)
 			doc.notify_update()
 
 	def update_opportunity(self):
@@ -154,7 +159,7 @@ class Quotation(SellingController):
 			opp = frappe.get_doc("Opportunity", self.opportunity)
 			opp.set_is_lost(is_lost, lost_reasons_list, detailed_reason)
 
-		self.update_lead()
+		self.update_lead_status()
 		self.notify_update()
 
 	def set_customer_name(self):
@@ -177,37 +182,30 @@ class Quotation(SellingController):
 		self.valid_till = None
 
 
-def get_list_context(context=None):
-	from erpnext.controllers.website_list_for_contact import get_list_context
-	list_context = get_list_context(context)
-	list_context.update({
-		'show_sidebar': True,
-		'show_search': True,
-		'no_breadcrumbs': True,
-		'title': _('Quotations'),
-	})
-
-	return list_context
-
-
 @frappe.whitelist()
 def make_sales_order(source_name, target_doc=None):
 	quotation = frappe.db.get_value("Quotation", source_name, ["transaction_date", "valid_till"], as_dict = 1)
 	if quotation.valid_till and (quotation.valid_till < quotation.transaction_date or quotation.valid_till < getdate(nowdate())):
 		frappe.throw(_("Validity period of this quotation has ended."))
-	return _make_sales_order(source_name, target_doc)
+	return _make_sales_order(source_name, target_doc=target_doc)
 
 
-def _make_sales_order(source_name, target_doc=None, ignore_permissions=False):
-	def set_missing_values(source, target):
+def _make_sales_order(
+	source_name,
+	target_doc=None,
+	ignore_permissions=False,
+	skip_item_mapping=False,
+	skip_postprocess=False,
+):
+	def postprocess(source, target):
 		customer = get_customer_from_quotation(source)
 		if customer:
 			target.customer = customer.name
 			target.customer_name = customer.customer_name
 
 		if source.referral_sales_partner:
-			target.sales_partner=source.referral_sales_partner
-			target.commission_rate=frappe.get_value('Sales Partner', source.referral_sales_partner, 'commission_rate')
+			target.sales_partner = source.referral_sales_partner
+			target.commission_rate = frappe.get_value('Sales Partner', source.referral_sales_partner, 'commission_rate')
 
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions
@@ -215,45 +213,51 @@ def _make_sales_order(source_name, target_doc=None, ignore_permissions=False):
 		target.run_method("calculate_taxes_and_totals")
 		target.run_method("set_payment_schedule")
 
-	def update_item(obj, target, source_parent, target_parent):
-		target.stock_qty = flt(obj.qty) * flt(obj.conversion_factor)
-
-	doclist = get_mapped_doc("Quotation", source_name, {
-			"Quotation": {
-				"doctype": "Sales Order",
-				"validation": {
-					"docstatus": ["=", 1]
-				},
-				"field_map": {
-					"remarks": "remarks"
-				}
+	mapping = {
+		"Quotation": {
+			"doctype": "Sales Order",
+			"validation": {
+				"docstatus": ["=", 1]
 			},
-			"Quotation Item": {
-				"doctype": "Sales Order Item",
-				"field_map": {
-					"parent": "quotation",
-					"name": "quotation_item",
-					"project_template": "project_template",
-				},
-				"postprocess": update_item
-			},
-			"Sales Taxes and Charges": {
-				"doctype": "Sales Taxes and Charges",
-				"add_if_empty": True
-			},
-			"Sales Team": {
-				"doctype": "Sales Team",
-				"add_if_empty": True
-			},
-			"Payment Schedule": {
-				"doctype": "Payment Schedule",
-				"add_if_empty": True
+			"field_map": {
+				"remarks": "remarks"
 			}
-		}, target_doc, set_missing_values, ignore_permissions=ignore_permissions)
+		},
+		"Sales Taxes and Charges": {
+			"doctype": "Sales Taxes and Charges",
+			"add_if_empty": True
+		},
+		"Sales Team": {
+			"doctype": "Sales Team",
+			"add_if_empty": True
+		},
+		"Payment Schedule": {
+			"doctype": "Payment Schedule",
+			"add_if_empty": True
+		}
+	}
 
-	# postprocess: fetch shipping address, set missing values
+	if not skip_item_mapping:
+		mapping["Quotation Item"] = get_item_mapper_for_sales_order()
 
-	return doclist
+	return get_mapped_doc("Quotation", source_name, mapping, target_doc,
+		postprocess=postprocess if not skip_postprocess else None,
+		ignore_permissions=ignore_permissions)
+
+
+def get_item_mapper_for_sales_order():
+	def update_item(obj, target, source_parent, target_parent):
+		pass
+
+	return {
+		"doctype": "Sales Order Item",
+		"field_map": {
+			"parent": "quotation",
+			"name": "quotation_item",
+			"project_template": "project_template",
+		},
+		"postprocess": update_item,
+	}
 
 
 def set_expired_status():
@@ -280,6 +284,7 @@ def _make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions
 		target.run_method("set_missing_values")
+		target.run_method("reset_taxes_and_charges")
 		target.run_method("calculate_taxes_and_totals")
 		target.run_method("set_payment_schedule")
 		target.run_method("set_due_date")
@@ -287,11 +292,10 @@ def _make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 	def update_item(source, target, source_parent, target_parent):
 		target.project = source_parent.get('project')
 		target.cost_center = None
-		target.stock_qty = flt(source.qty) * flt(source.conversion_factor)
 		target.depreciation_percentage = None
 
 		if target_parent:
-			target_parent.set_rate_zero_for_claim_item(source, target)
+			target_parent.adjust_rate_for_claim_item(source, target)
 
 	doclist = get_mapped_doc("Quotation", source_name, {
 			"Quotation": {

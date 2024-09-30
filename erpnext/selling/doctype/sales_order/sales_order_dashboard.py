@@ -1,17 +1,12 @@
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 
 def get_data():
-	reference_list = ['Quotation', 'Auto Repeat']
-	if 'Vehicles' in frappe.get_active_domains():
-		reference_list.append('Vehicle')
-
 	return {
 		'fieldname': 'sales_order',
 		'non_standard_fieldnames': {
-			'Journal Entry': 'reference_name',
-			'Payment Entry': 'reference_name',
+			'Journal Entry': 'original_reference_name',
+			'Payment Entry': 'original_reference_name',
 			'Payment Request': 'reference_name',
 			'Auto Repeat': 'reference_document',
 		},
@@ -21,11 +16,11 @@ def get_data():
 		'transactions': [
 			{
 				'label': _('Fulfillment'),
-				'items': ['Delivery Note', 'Sales Invoice', 'Pick List']
+				'items': ['Delivery Note', 'Sales Invoice', 'Packing Slip']
 			},
 			{
 				'label': _('Reference'),
-				'items': reference_list
+				'items': ['Quotation', 'Pick List']
 			},
 			{
 				'label': _('Procurement'),
@@ -33,7 +28,7 @@ def get_data():
 			},
 			{
 				'label': _('Payment'),
-				'items': ['Payment Entry', 'Payment Request', 'Journal Entry']
+				'items': ['Payment Entry', 'Journal Entry', 'Payment Request']
 			},
 		]
 	}

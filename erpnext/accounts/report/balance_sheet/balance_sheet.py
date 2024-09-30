@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt, cint
@@ -152,5 +151,7 @@ def get_chart_data(filters, columns, asset, liability, equity):
 		chart["type"] = "bar"
 	else:
 		chart["type"] = "line"
+
+	chart["fieldtype"] = "Currency"
 
 	return chart

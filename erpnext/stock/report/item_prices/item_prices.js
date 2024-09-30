@@ -11,6 +11,34 @@ frappe.query_reports["Item Prices"] = {
 			reqd: 1
 		},
 		{
+			fieldname: "filter_price_list_by",
+			label: __("Filter Price List By"),
+			fieldtype: "Select",
+			options:"Enabled\nDisabled\nAll",
+			default:"Enabled"
+		},
+		{
+			fieldname: "buying_selling",
+			label: __("Buying Or Selling Prices"),
+			fieldtype: "Select",
+			options:"Selling\nBuying\nBoth",
+			default:"Selling"
+		},
+		{
+			fieldname: "selected_price_list",
+			label: __("Selected Price List"),
+			fieldtype: "Link",
+			options:"Price List",
+			get_query: () => frappe.query_reports["Item Prices"].price_list_query(),
+		},
+		{
+			fieldname: "price_list_1",
+			label: __("Comparison Price List"),
+			fieldtype: "Link",
+			options: "Price List",
+			get_query: () => frappe.query_reports["Item Prices"].price_list_query(),
+		},
+		{
 			fieldname: "item_code",
 			label: __("Item"),
 			fieldtype: "Link",
@@ -41,7 +69,7 @@ frappe.query_reports["Item Prices"] = {
 			fieldtype: "Link",
 			options:"Customer",
 			on_change: function () {
-				var customer = frappe.query_report.get_filter_value('customer');
+				let customer = frappe.query_report.get_filter_value('customer');
 				if(customer) {
 					frappe.db.get_value("Customer", customer, "default_price_list", function(value) {
 						frappe.query_report.set_filter_value('selected_price_list', value["default_price_list"]);
@@ -57,7 +85,7 @@ frappe.query_reports["Item Prices"] = {
 			fieldtype: "Link",
 			options:"Supplier",
 			on_change: function () {
-				var customer = frappe.query_report.get_filter_value('supplier');
+				let customer = frappe.query_report.get_filter_value('supplier');
 				if(customer) {
 					frappe.db.get_value("Supplier", customer, "default_price_list", function(value) {
 						frappe.query_report.set_filter_value('selected_price_list', value["default_price_list"]);
@@ -66,44 +94,6 @@ frappe.query_reports["Item Prices"] = {
 					frappe.query_report.set_filter_value('selected_price_list', '');
 				}
 			}
-		},
-		{
-			fieldname: "selected_price_list",
-			label: __("Selected Price List"),
-			fieldtype: "Link",
-			options:"Price List"
-		},
-		{
-			fieldname: "filter_price_list_by",
-			label: __("Filter Price List By"),
-			fieldtype: "Select",
-			options:"Enabled\nDisabled\nAll",
-			default:"Enabled"
-		},
-		{
-			fieldname: "buying_selling",
-			label: __("Buying Or Selling Prices"),
-			fieldtype: "Select",
-			options:"Selling\nBuying\nBoth",
-			default:"Selling"
-		},
-		{
-			fieldname: "price_list_1",
-			label: __("Additional Price List 1"),
-			fieldtype: "Link",
-			options:"Price List"
-		},
-		{
-			fieldname: "price_list_2",
-			label: __("Additional Price List 2"),
-			fieldtype: "Link",
-			options:"Price List"
-		},
-		{
-			fieldname: "price_list_3",
-			label: __("Additional Price List 3"),
-			fieldtype: "Link",
-			options:"Price List"
 		},
 		{
 			fieldname: "uom",
@@ -119,6 +109,16 @@ frappe.query_reports["Item Prices"] = {
 			default: "Default UOM"
 		},
 		{
+			fieldname: "customer_provided_items",
+			label: __("Customer Provided Items"),
+			fieldtype: "Select",
+			options: [
+				"",
+				"Customer Provided Items Only",
+				"Exclude Customer Provided Items",
+			]
+		},
+		{
 			fieldname: "filter_items_without_price",
 			label: __("Filter Items Without Price"),
 			fieldtype: "Check"
@@ -129,40 +129,62 @@ frappe.query_reports["Item Prices"] = {
 			fieldtype: "Check"
 		},
 	],
+
+	price_list_query: function () {
+		let buying_selling = frappe.query_report.get_filter_value('buying_selling');
+		if (buying_selling == "Selling") {
+			return {
+				filters: {selling: 1}
+			}
+		} else if (buying_selling == "Buying") {
+			return {
+				filters: {buying: 1}
+			}
+		}
+	},
+
 	formatter: function(value, row, column, data, default_formatter) {
-		var original_value = value;
-		var style = {};
-		var link;
+		let original_value = value;
+
+		let options = {
+			link_target: "_blank",
+			css: {},
+		};
 
 		if (column.price_list) {
-			var old_rate_field = "rate_old_" + frappe.scrub(column.price_list);
+			let old_rate_field = "rate_old_" + frappe.scrub(column.price_list);
 			if (data.hasOwnProperty(old_rate_field)) {
 				if (flt(original_value) < flt(data[old_rate_field])) {
-					style['color'] = 'green';
+					options.css['color'] = 'green';
 				} else if (flt(original_value) > flt(data[old_rate_field])) {
-					style['color'] = 'red';
+					options.css['color'] = 'red';
 				}
 			}
 
-			var item_price_field = "item_price_" + frappe.scrub(column.price_list);
+			let item_price_field = "item_price_" + frappe.scrub(column.price_list);
 			if (data.hasOwnProperty(item_price_field) && data[item_price_field]) {
-				link = "desk#Form/Item Price/" + data[item_price_field];
+				options.link_href = "/app/item-price/" + data[item_price_field];
 			}
 		}
 
 		if (column.fieldname == "po_qty") {
-			link = "desk#query-report/Purchase Items To Be Received?item_code=" + data.item_code;
+			options.link_href = "/app/query-report/Purchase Items To Be Received?item_code=" + data.item_code;
 		}
 
 		if (['po_qty', 'actual_qty', 'standard_rate', 'avg_lc_rate'].includes(column.fieldname)) {
-			style['font-weight'] = 'bold';
+			options.css['font-weight'] = 'bold';
 		}
 
-		return default_formatter(value, row, column, data, {css: style, link_href: link, link_target: "_blank"});
+		if (column.fieldname == "alt_uom_size") {
+			options.always_show_decimals = 0;
+		}
+
+		return default_formatter(value, row, column, data, options);
 	},
+
 	onChange: function(new_value, column, data, rowIndex) {
-		var method;
-		var args;
+		let method;
+		let args;
 
 		if (column.fieldname === "print_in_price_list") {
 			method = "frappe.client.set_value";

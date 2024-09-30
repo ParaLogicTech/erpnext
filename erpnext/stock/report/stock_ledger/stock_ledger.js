@@ -73,6 +73,18 @@ frappe.query_reports["Stock Ledger"] = {
 			"options": "Item Group"
 		},
 		{
+			"fieldname":"brand",
+			"label": __("Brand"),
+			"fieldtype": "Link",
+			"options": "Brand"
+		},
+		{
+			fieldname: "item_source",
+			label: __("Item Source"),
+			fieldtype: "Link",
+			options: "Item Source"
+		},
+		{
 			"fieldname":"batch_no",
 			"label": __("Batch No"),
 			"fieldtype": "Link",
@@ -85,16 +97,10 @@ frappe.query_reports["Stock Ledger"] = {
 			"options": "Serial No"
 		},
 		{
-			"fieldname":"brand",
-			"label": __("Brand"),
+			"fieldname": "packing_slip",
+			"label": __("Packing Slip"),
 			"fieldtype": "Link",
-			"options": "Brand"
-		},
-		{
-			fieldname: "item_source",
-			label: __("Item Source"),
-			fieldtype: "Link",
-			options: "Item Source"
+			"options": "Packing Slip"
 		},
 		{
 			"fieldname":"voucher_no",
@@ -147,7 +153,7 @@ frappe.query_reports["Stock Ledger"] = {
 			"fieldname":"group_by",
 			"label": __("Group By"),
 			"fieldtype": "Select",
-			"options": "Ungrouped\nGroup by Item-Warehouse\nGroup by Item\nGroup by Warehouse\nGroup by Item Group\nGroup by Brand\nGroup by Party\nGroup by Voucher",
+			"options": "\nGroup by Item-Warehouse\nGroup by Item\nGroup by Warehouse\nGroup by Item Group\nGroup by Brand\nGroup by Party\nGroup by Voucher",
 			"default": "Group by Item-Warehouse"
 		},
 		{
@@ -182,8 +188,4 @@ frappe.query_reports["Stock Ledger"] = {
 	},
 }
 
-// $(function() {
-// 	$(wrapper).bind("show", function() {
-// 		frappe.query_report.load();
-// 	});
-// });
+erpnext.utils.add_additional_sle_filters("Stock Ledger");

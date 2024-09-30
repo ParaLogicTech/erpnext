@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2013-06-25 11:04:03",
  "description": "Settings for Buying Module",
  "doctype": "DocType",
@@ -11,13 +12,17 @@
   "column_break_3",
   "po_required",
   "pr_required",
-  "maintain_same_rate",
-  "update_buying_prices_on_submission_of_purchase_order",
   "allow_multiple_items",
   "subcontract",
   "backflush_raw_materials_of_subcontract_based_on",
   "column_break_11",
-  "over_transfer_allowance"
+  "default_subcontracting_supplier_warehouse",
+  "over_transfer_allowance",
+  "pricing_section",
+  "update_buying_prices_based_on",
+  "update_buying_prices_on_submission_of_purchase_order",
+  "column_break_qrkq3",
+  "maintain_same_rate"
  ],
  "fields": [
   {
@@ -46,23 +51,23 @@
   {
    "fieldname": "po_required",
    "fieldtype": "Select",
-   "label": "Purchase Order Required",
+   "label": "Purchase Order Mandatory",
    "options": "No\nYes"
   },
   {
    "fieldname": "pr_required",
    "fieldtype": "Select",
-   "label": "Purchase Receipt Required",
+   "label": "Purchase Receipt Mandatory",
    "options": "No\nYes"
   },
   {
    "default": "0",
    "fieldname": "maintain_same_rate",
    "fieldtype": "Check",
-   "label": "Maintain same rate throughout purchase cycle"
+   "label": "Maintain Same Rate Throughout Purchase Cycle"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "allow_multiple_items",
    "fieldtype": "Check",
    "label": "Allow Item to be added multiple times in a transaction"
@@ -95,12 +100,36 @@
    "fieldname": "update_buying_prices_on_submission_of_purchase_order",
    "fieldtype": "Check",
    "label": "Update Prices on Submission of Purchase Order"
+  },
+  {
+   "fieldname": "default_subcontracting_supplier_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Subcontracting Supplier Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "pricing_section",
+   "fieldtype": "Section Break",
+   "label": "Pricing"
+  },
+  {
+   "default": "Price List Rate",
+   "depends_on": "update_buying_prices_on_submission_of_purchase_order",
+   "fieldname": "update_buying_prices_based_on",
+   "fieldtype": "Select",
+   "label": "Update Prices on Submission Based On",
+   "options": "Price List Rate\nActual Rate"
+  },
+  {
+   "fieldname": "column_break_qrkq3",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-cog",
  "idx": 1,
  "issingle": 1,
- "modified": "2022-12-26 19:00:47.952638",
+ "links": [],
+ "modified": "2024-07-07 23:11:36.983765",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Buying Settings",
@@ -122,5 +151,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "hash",
  "creation": "2013-05-24 19:29:10",
  "doctype": "DocType",
@@ -41,11 +42,17 @@
   "alt_uom_qty",
   "alt_uom",
   "column_break_52",
-  "weight_per_unit",
-  "total_weight",
+  "net_weight_per_unit",
+  "net_weight",
   "weight_uom",
   "sample_quantity",
   "retain_sample",
+  "retail_price_section",
+  "retail_rate",
+  "base_retail_rate",
+  "column_break_k8fjg",
+  "retail_amount",
+  "base_retail_amount",
   "rate_and_amount",
   "price_list_rate",
   "base_price_list_rate",
@@ -55,7 +62,7 @@
   "col_break3",
   "pricing_rules",
   "is_free_item",
-  "apply_discount_after_taxes",
+  "apply_taxes_on_retail",
   "is_fixed_asset",
   "sec_break1",
   "rate",
@@ -87,12 +94,18 @@
   "tax_exclusive_total_discount",
   "base_tax_exclusive_total_discount",
   "tax_inclusive_amounts_section",
-  "item_taxes_and_charges",
-  "base_item_taxes_and_charges",
+  "item_taxes_before_discount",
+  "base_item_taxes_before_discount",
+  "item_taxes",
+  "base_item_taxes",
   "column_break_86",
+  "tax_inclusive_rate_before_discount",
+  "base_tax_inclusive_rate_before_discount",
   "tax_inclusive_rate",
   "base_tax_inclusive_rate",
   "column_break_89",
+  "tax_inclusive_amount_before_discount",
+  "base_tax_inclusive_amount_before_discount",
   "tax_inclusive_amount",
   "base_tax_inclusive_amount",
   "net_amounts_section",
@@ -126,6 +139,7 @@
   "purchase_order_item",
   "delivery_note_item",
   "column_break_40",
+  "work_order",
   "quality_inspection",
   "asset_location",
   "asset_category",
@@ -165,7 +179,8 @@
   {
    "fieldname": "barcode",
    "fieldtype": "Data",
-   "label": "Barcode"
+   "label": "Barcode",
+   "options": "Barcode"
   },
   {
    "fieldname": "section_break_2",
@@ -173,7 +188,6 @@
   },
   {
    "bold": 1,
-   "columns": 3,
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_global_search": 1,
@@ -185,7 +199,6 @@
    "options": "Item",
    "print_width": "100px",
    "reqd": 1,
-   "search_index": 1,
    "width": "100px"
   },
   {
@@ -250,7 +263,7 @@
    "width": "100px"
   },
   {
-   "columns": 2,
+   "columns": 1,
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -271,8 +284,10 @@
    "width": "100px"
   },
   {
+   "columns": 1,
    "fieldname": "uom",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "UOM",
    "oldfieldname": "uom",
    "oldfieldtype": "Link",
@@ -297,12 +312,14 @@
   {
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
-   "label": "Conversion Factor",
+   "label": "UOM Conversion Factor",
    "oldfieldname": "conversion_factor",
    "oldfieldtype": "Currency",
    "precision": "9",
    "print_hide": 1,
    "print_width": "100px",
+   "read_only": 1,
+   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom",
    "reqd": 1,
    "width": "100px"
   },
@@ -366,7 +383,7 @@
   },
   {
    "bold": 1,
-   "columns": 3,
+   "columns": 1,
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -378,6 +395,7 @@
    "width": "100px"
   },
   {
+   "columns": 2,
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -451,7 +469,6 @@
    "columns": 2,
    "fieldname": "net_amount",
    "fieldtype": "Currency",
-   "in_list_view": 1,
    "label": "Net Amount",
    "options": "currency",
    "print_hide": 1,
@@ -485,12 +502,12 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "weight_per_unit",
+   "fieldname": "net_weight_per_unit",
    "fieldtype": "Float",
    "label": "Weight Per Unit"
   },
   {
-   "fieldname": "total_weight",
+   "fieldname": "net_weight",
    "fieldtype": "Float",
    "label": "Total Weight",
    "read_only": 1
@@ -512,17 +529,16 @@
   },
   {
    "bold": 1,
+   "columns": 2,
    "fieldname": "warehouse",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Accepted Warehouse",
    "oldfieldname": "warehouse",
    "oldfieldtype": "Link",
    "options": "Warehouse",
    "print_hide": 1,
    "print_width": "100px",
-   "search_index": 1,
    "width": "100px"
   },
   {
@@ -603,8 +619,6 @@
    "depends_on": "eval:!doc.is_fixed_asset",
    "fieldname": "serial_no",
    "fieldtype": "Small Text",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Serial No",
    "no_copy": 1,
    "oldfieldname": "serial_no",
@@ -614,8 +628,6 @@
    "depends_on": "eval:!doc.is_fixed_asset",
    "fieldname": "batch_no",
    "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Batch No",
    "no_copy": 1,
    "oldfieldname": "batch_no",
@@ -693,8 +705,8 @@
    "print_hide": 1
   },
   {
-   "default": "0",
-   "depends_on": "eval:parent.is_subcontracted == 'Yes'",
+   "default": "1",
+   "depends_on": "eval:parent.is_subcontracted",
    "fieldname": "include_exploded_items",
    "fieldtype": "Check",
    "label": "Include Exploded Items",
@@ -821,12 +833,18 @@
    "fieldname": "material_request",
    "fieldtype": "Link",
    "label": "Material Request",
-   "options": "Material Request"
+   "no_copy": 1,
+   "options": "Material Request",
+   "read_only": 1
   },
   {
    "fieldname": "material_request_item",
    "fieldtype": "Data",
-   "label": "Material Request Item"
+   "hidden": 1,
+   "label": "Material Request Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "expense_account",
@@ -941,10 +959,10 @@
   },
   {
    "default": "0",
-   "depends_on": "price_list_rate",
-   "fieldname": "apply_discount_after_taxes",
+   "depends_on": "eval:doc.price_list_rate || doc.retail_rate",
+   "fieldname": "apply_taxes_on_retail",
    "fieldtype": "Check",
-   "label": "Apply Discount After Taxes",
+   "label": "Apply Taxes on Retail Price",
    "print_hide": 1
   },
   {
@@ -1108,25 +1126,27 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "item_taxes_and_charges",
-   "depends_on": "item_taxes_and_charges",
+   "collapsible_depends_on": "item_taxes",
+   "depends_on": "item_taxes",
    "fieldname": "tax_inclusive_amounts_section",
    "fieldtype": "Section Break",
    "label": "Tax Inclusive Amounts"
   },
   {
-   "fieldname": "item_taxes_and_charges",
+   "fieldname": "item_taxes",
    "fieldtype": "Currency",
-   "label": "Taxes",
+   "hidden": 1,
+   "label": "Taxes After Discount",
    "options": "currency",
    "print_hide": 1,
    "read_only": 1
   },
   {
-   "fieldname": "base_item_taxes_and_charges",
+   "fieldname": "base_item_taxes",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
-   "label": "Taxes and Charges (Company Currency)",
+   "hidden": 1,
+   "label": "Taxes After Discount (Company Currency)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -1138,15 +1158,18 @@
   {
    "fieldname": "tax_inclusive_rate",
    "fieldtype": "Currency",
-   "label": "Tax Inclusive Rate",
+   "hidden": 1,
+   "label": "Tax Inclusive Rate After Discount",
    "options": "currency",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "base_tax_inclusive_rate",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
-   "label": "Tax Inclusive Rate (Company Currency)",
+   "hidden": 1,
+   "label": "Tax Inclusive Rate After Discount (Company Currency)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -1158,15 +1181,18 @@
   {
    "fieldname": "tax_inclusive_amount",
    "fieldtype": "Currency",
-   "label": "Tax Inclusive Amount",
+   "hidden": 1,
+   "label": "Tax Inclusive Amount After Discount",
    "options": "currency",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "base_tax_inclusive_amount",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
-   "label": "Tax Inclusive Amount (Company Currency)",
+   "hidden": 1,
+   "label": "Tax Inclusive Amount After Discount (Company Currency)",
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
@@ -1363,17 +1389,121 @@
    "print_width": "150px",
    "read_only": 1,
    "width": "150px"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "retail_rate",
+   "fieldname": "retail_price_section",
+   "fieldtype": "Section Break",
+   "label": "Retail Price"
+  },
+  {
+   "fieldname": "retail_rate",
+   "fieldtype": "Currency",
+   "label": "Retail Rate",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_retail_rate",
+   "fieldtype": "Float",
+   "label": "Retail Rate (Company Currency)",
+   "options": "Company:company_default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_k8fjg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "retail_amount",
+   "fieldtype": "Currency",
+   "label": "Retail Amount",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_retail_amount",
+   "fieldtype": "Currency",
+   "label": "Retail Amount (Company Currency)",
+   "options": "Company:company_default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_taxes_before_discount",
+   "fieldtype": "Currency",
+   "label": "Taxes",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_item_taxes_before_discount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Taxes (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_inclusive_rate_before_discount",
+   "fieldtype": "Currency",
+   "label": "Tax Inclusive Rate",
+   "options": "currency",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "base_tax_inclusive_rate_before_discount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Tax Inclusive Rate (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_inclusive_amount_before_discount",
+   "fieldtype": "Currency",
+   "label": "Tax Inclusive Amount",
+   "options": "currency",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "base_tax_inclusive_amount_before_discount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Tax Inclusive Amount (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "work_order",
+   "fieldtype": "Link",
+   "label": "Work Order",
+   "no_copy": 1,
+   "options": "Work Order",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2023-02-26 16:52:20.576397",
+ "links": [],
+ "modified": "2024-03-21 17:07:14.176015",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt Item",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

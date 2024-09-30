@@ -39,6 +39,4 @@ frappe.ui.form.on("Item Group", {
 			frm.set_intro(__("This is a root item group and cannot be edited."), true);
 		}
 	},
-
-	page_name: frappe.utils.warn_page_name_change
 });

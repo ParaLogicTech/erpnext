@@ -3,7 +3,7 @@
 /* eslint-disable */
 
 frappe.query_reports["Sales Details"] = {
-	"filters": [
+	filters: [
 		{
 			fieldname: "company",
 			label: __("Company"),
@@ -154,17 +154,17 @@ frappe.query_reports["Sales Details"] = {
 			fieldname: "group_by_1",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Customer", "Group by Customer Group", "Group by Transaction",
+			options: ["", "Group by Customer", "Group by Customer Group", "Group by Transaction",
 				"Group by Item", "Group by Item Group", "Group by Brand",
 				"Group by Applies To Item", "Group by Applies To Variant Of",
 				"Group by Territory", "Group by Sales Person"],
-			default: "Ungrouped"
+			default: ""
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Customer", "Group by Customer Group", "Group by Transaction",
+			options: ["", "Group by Customer", "Group by Customer Group", "Group by Transaction",
 				"Group by Item", "Group by Item Group", "Group by Brand",
 				"Group by Applies To Item", "Group by Applies To Variant Of",
 				"Group by Territory", "Group by Sales Person"],
@@ -174,22 +174,22 @@ frappe.query_reports["Sales Details"] = {
 			fieldname: "group_by_3",
 			label: __("Group By Level 3"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Customer", "Group by Customer Group", "Group by Transaction",
+			options: ["", "Group by Customer", "Group by Customer Group", "Group by Transaction",
 				"Group by Item", "Group by Item Group", "Group by Brand",
 				"Group by Applies To Item", "Group by Applies To Variant Of",
 				"Group by Territory", "Group by Sales Person"],
 			default: "Group by Transaction"
 		},
 		{
+			fieldname: "totals_only",
+			label: __("Group Totals Only"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "group_same_items",
 			label: __("Group Same Items"),
 			fieldtype: "Check",
 			default: 1
-		},
-		{
-			fieldname: "totals_only",
-			label: __("Group Totals Only"),
-			fieldtype: "Check",
 		},
 		{
 			fieldname: "show_basic_values",
@@ -212,18 +212,20 @@ frappe.query_reports["Sales Details"] = {
 			fieldtype: "Check"
 		},
 	],
+
 	formatter: function(value, row, column, data, default_formatter) {
-		var style = {};
+		let style = {};
 
 		if (['qty', 'net_amount', 'base_net_amount', 'grand_total', 'base_grand_total'].includes(column.fieldname)) {
 			if (flt(value) < 0) {
-				style['color'] = 'red';
+				style['color'] = 'var(--red-500)';
 			}
 		}
 
 		return default_formatter(value, row, column, data, {css: style});
 	},
-	"initial_depth": 1
+
+	initial_depth: 1
 }
 
 

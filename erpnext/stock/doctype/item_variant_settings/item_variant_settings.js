@@ -4,8 +4,7 @@
 frappe.ui.form.on('Item Variant Settings', {
 	setup: function(frm) {
 		const allow_fields = [];
-		const exclude_fields = ["naming_series", "item_code", "item_name", "show_in_website",
-		"show_variant_in_website", "opening_stock", "variant_of", "valuation_rate"];
+		const exclude_fields = ["naming_series", "item_code", "item_name", "opening_stock", "variant_of", "valuation_rate"];
 
 		frappe.model.with_doctype('Item', () => {
 			frappe.get_meta('Item').fields.forEach(d => {

@@ -33,7 +33,7 @@ frappe.ui.form.on('Leave Encashment', {
 				doc: frm.doc,
 				callback: function(r) {
 					frm.refresh_fields();
-					}
+				}
 			});
 		}
 	}

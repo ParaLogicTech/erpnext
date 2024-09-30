@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext
 import datetime, math
 
@@ -40,6 +39,10 @@ class SalarySlip(TransactionBase):
 	def autoname(self):
 		self.name = make_autoname(self.series)
 
+	def before_validate_links(self):
+		self.loans = []
+		self.advances = []
+
 	def validate(self):
 		self.status = self.get_status()
 		self.validate_dates()
@@ -69,8 +72,14 @@ class SalarySlip(TransactionBase):
 				frappe.msgprint(_("Total working hours should not be greater than max working hours {0}").
 								format(max_working_hours), alert=True)
 
-	def before_print(self):
+	def before_print(self, print_settings=None):
 		self.company_address_doc = erpnext.get_company_address(self)
+
+		self.total_loan_repayment = sum([flt(d.repayment_amount) for d in self.loans])
+		self.total_loan_balance = sum([flt(d.balance_amount) for d in self.loans])
+
+		self.total_advance_repayment = sum([flt(d.allocated_amount) for d in self.advances])
+		self.total_advance_balance = sum([flt(d.balance_amount) for d in self.advances])
 
 	def on_submit(self):
 		if self.net_pay < 0:
@@ -131,6 +140,7 @@ class SalarySlip(TransactionBase):
 			self.start_date = date_details.start_date
 			self.end_date = date_details.end_date
 
+	@frappe.whitelist()
 	def get_emp_and_leave_details(self):
 		'''First time, load all the components from salary structure'''
 		if self.employee:
@@ -452,7 +462,8 @@ class SalarySlip(TransactionBase):
 
 		if self.advances:
 			for d in self.advances:
-				d.allocated_amount = min(d.balance_amount, self.net_pay) if self.net_pay > 0 else 0
+				d.allocated_amount = min(d.advance_amount, self.net_pay) if self.net_pay > 0 else 0
+				d.balance_amount = flt(d.advance_amount) - flt(d.allocated_amount)
 				self.net_pay -= d.allocated_amount
 
 		self.total_advance_amount = sum([d.allocated_amount for d in self.advances])
@@ -1010,13 +1021,18 @@ class SalarySlip(TransactionBase):
 		for loan in self.get_loan_details():
 			self.append('loans', {
 				'loan': loan.name,
-				'total_payment': loan.total_payment,
+				'repayment_amount': loan.total_payment,
 				'interest_amount': loan.interest_amount,
 				'principal_amount': loan.principal_amount,
 				'loan_account': loan.loan_account,
 				'interest_income_account': loan.interest_income_account,
 				'loan_repayment_detail': loan.loan_repayment_detail,
 				'loan_repayment_date': loan.payment_date,
+				'loan_type': loan.loan_type,
+				'disbursement_date': loan.disbursement_date,
+				'total_loan_amount': loan.total_loan_amount,
+				'pending_loan_amount': flt(loan.total_loan_amount) - flt(loan.total_amount_paid),
+				'balance_amount': flt(loan.total_loan_amount) - flt(loan.total_amount_paid) - flt(loan.total_payment),
 			})
 
 			self.total_loan_repayment += loan.total_payment
@@ -1024,21 +1040,54 @@ class SalarySlip(TransactionBase):
 			self.total_principal_amount += loan.principal_amount
 
 	def get_loan_details(self):
+		loan_filters = {
+			'employee': self.employee,
+			'start_date': self.start_date,
+			'end_date': self.end_date
+		}
+
+		if frappe.db.get_single_value("HR Settings", "show_upcoming_loans_in_salary_slips"):
+			return frappe.db.sql("""
+				WITH loan_repayment_details AS (
+					SELECT loan.name, loan.total_payment as total_loan_amount, loan.creation,
+						loan.loan_type, loan.disbursement_date, loan.total_amount_paid,
+						rps.name as loan_repayment_detail, rps.principal_amount, rps.interest_amount,
+						rps.total_payment, rps.payment_date, loan.loan_account, loan.interest_income_account,
+						RANK() OVER (PARTITION BY loan.name ORDER BY rps.payment_date ASC) AS r
+					FROM
+						`tabRepayment Schedule` as rps, `tabLoan` as loan
+					WHERE
+						loan.name = rps.parent
+						and loan.docstatus = 1
+						and rps.payment_date >= %(start_date)s
+						and rps.paid = 0
+						and loan.repay_from_salary = 1
+						and loan.applicant_type = 'Employee'
+						and loan.applicant = %(employee)s
+					)
+				SELECT name, total_loan_amount, loan_type, disbursement_date, total_amount_paid,
+					loan_repayment_detail, principal_amount, interest_amount, payment_date, total_payment,
+					CASE WHEN payment_date between %(start_date)s and %(end_date)s THEN total_payment ELSE 0 END AS total_payment
+				FROM loan_repayment_details lrd
+				WHERE r = 1
+				order by payment_date, creation
+			""", loan_filters, as_dict=1)
+
 		return frappe.db.sql("""
 			select loan.name, rps.name as loan_repayment_detail,
 				rps.principal_amount, rps.interest_amount, rps.total_payment,
-				rps.payment_date,
-				loan.loan_account, loan.interest_income_account
+				rps.payment_date, loan.loan_account, loan.interest_income_account,
+				loan.loan_type, loan.disbursement_date, loan.total_payment as total_loan_amount, loan.total_amount_paid
 			from
 				`tabRepayment Schedule` as rps, `tabLoan` as loan
 			where
 				loan.name = rps.parent
 				and loan.docstatus = 1
-				and rps.payment_date between %s and %s
+				and rps.payment_date between %(start_date)s and %(end_date)s
 				and rps.paid = 0
 				and loan.repay_from_salary = 1
-				and loan.applicant_type = 'Employee' and loan.applicant = %s
-		""", (self.start_date, self.end_date, self.employee), as_dict=True) or []
+				and loan.applicant_type = 'Employee' and loan.applicant = %(employee)s
+		""", loan_filters, as_dict=True)
 
 	def update_salary_slip_in_additional_salary(self):
 		salary_slip = self.name if self.docstatus==1 else None
@@ -1083,13 +1132,16 @@ class SalarySlip(TransactionBase):
 				timesheet.save()
 
 	def update_loans(self):
+		loans = set()
+		is_paid = 1 if self.docstatus == 1 else 0
+
 		for loan in self.loans:
-			# setting repayment schedule and updating total amount to pay
-			is_paid = 1 if self.docstatus == 1 else 0
-			if loan.loan_repayment_detail:
+			if loan.loan_repayment_detail and loan.repayment_amount > 0:
+				loans.add(loan.loan)
 				frappe.db.set_value("Repayment Schedule", loan.loan_repayment_detail, "paid", is_paid)
 
-			doc = frappe.get_doc("Loan", loan.loan)
+		for loan in loans:
+			doc = frappe.get_doc("Loan", loan)
 			doc.update_total_amount_paid()
 			doc.set_status(update=True)
 
@@ -1135,6 +1187,7 @@ class SalarySlip(TransactionBase):
 			if department_cost_center:
 				self.cost_center = department_cost_center
 
+	@frappe.whitelist()
 	def process_salary_based_on_leave(self, lwp=0, late_days=0):
 		self.get_leave_details(lwp=lwp, late_days=late_days)
 		self.calculate_net_pay()
@@ -1143,17 +1196,16 @@ class SalarySlip(TransactionBase):
 		self.advances = []
 
 		pending_advances = frappe.db.sql("""
-			select name as employee_advance, paid_amount as total_advance, balance_amount, posting_date, advance_account
+			select name as employee_advance, posting_date, advance_account, balance_amount as advance_amount
 			from `tabEmployee Advance`
 			where docstatus=1 and employee=%s and posting_date <= %s and deduct_from_salary = 1 and balance_amount > 0
 			order by posting_date
 		""", [self.employee, self.end_date], as_dict=1)
 
-		total_pending_advance = 0
 		for data in pending_advances:
 			self.append('advances', data)
-			total_pending_advance += data.total_advance
 
+	@frappe.whitelist()
 	def calculate_mode_of_payment(self):
 		total = self.net_pay if self.is_rounding_total_disabled() else self.rounded_total
 

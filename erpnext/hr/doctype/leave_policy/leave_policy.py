@@ -2,10 +2,9 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, flt
 from frappe.model.document import Document
 
 
@@ -22,9 +21,11 @@ class LeavePolicy(Document):
 					frappe.throw(_("Maximum leave allowed in the leave type {0} is {1}").format(lp_detail.leave_type, max_leaves_allowed))
 
 	def validate_late_deduction_policy(self):
-		if self.late_deduction_policy == "n Late Days = 1 Leave Without Pay":
+		if self.late_deduction_policy == "No of Late Days as Leave Without Pay":
 			if cint(self.lwp_per_late_days) <= 0:
-				frappe.throw(_("Please enter 'No of Late Days as One Leave Without Pay'"))
+				frappe.throw(_("Please enter 'No of Late Days as Leave Without Pay'"))
+			if flt(self.late_lwp_multiplier) <= 0:
+				frappe.throw(_("Please enter 'Late Leave Days Multiplier'"))
 
 		elif self.late_deduction_policy == "Late Days Threshold Rules":
 			if not self.late_days_threshold:
@@ -39,8 +40,10 @@ class LeavePolicy(Document):
 	def get_lwp_from_late_days(self, late_days):
 		late_days = cint(late_days)
 
-		if self.late_deduction_policy == "n Late Days = 1 Leave Without Pay":
-			return late_days // self.lwp_per_late_days if self.lwp_per_late_days else 0
+		if self.late_deduction_policy == "No of Late Days as Leave Without Pay":
+			lwp = late_days // self.lwp_per_late_days if self.lwp_per_late_days else 0
+			lwp *= self.late_lwp_multiplier
+			return flt(lwp, 1)
 		elif self.late_deduction_policy == "Late Days Threshold Rules":
 			applicable_rows = [d for d in self.late_days_threshold if d.late_days <= late_days]
 			if applicable_rows:

@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe, json
 from frappe import _
 from frappe.utils import flt, formatdate, now_datetime, getdate
@@ -738,7 +737,6 @@ def get_rate_and_tax_details(row, gstin):
 
 def get_company_gstin_number(company):
 	filters = [
-		["is_your_company_address", "=", 1],
 		["Dynamic Link", "link_doctype", "=", "Company"],
 		["Dynamic Link", "link_name", "=", company],
 		["Dynamic Link", "parenttype", "=", "Address"],

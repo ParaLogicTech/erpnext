@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext
 from frappe import _
 from frappe.utils import flt, cint
@@ -202,7 +201,7 @@ def get_data(companies, root_type, balance_must_be, fiscal_year, filters=None, i
 
 	gl_entries_by_account = {}
 	for root in frappe.db.sql("""select lft, rgt from tabAccount
-			where root_type=%s and ifnull(parent_account, '') = ''""", root_type, as_dict=1):
+			where root_type=%s and (parent_account = '' or parent_account is null)""", root_type, as_dict=1):
 
 		set_gl_entries_by_account(fiscal_year.year_start_date,
 			fiscal_year.year_end_date, root.lft, root.rgt, filters,
@@ -382,7 +381,7 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 	additional_conditions = []
 
 	if ignore_closing_entries:
-		additional_conditions.append("ifnull(gl.voucher_type, '')!='Period Closing Voucher'")
+		additional_conditions.append("gl.voucher_type != 'Period Closing Voucher'")
 
 	if from_date:
 		additional_conditions.append("gl.posting_date >= %(from_date)s")

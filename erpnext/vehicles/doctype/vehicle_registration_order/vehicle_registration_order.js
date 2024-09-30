@@ -3,26 +3,28 @@
 
 frappe.provide("erpnext.vehicles");
 
-erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAdditionalServiceController.extend({
-	setup: function () {
-		this._super();
+erpnext.vehicles.VehicleRegistrationOrderController = class VehicleRegistrationOrderController extends erpnext.vehicles.VehicleAdditionalServiceController {
+	setup() {
+		super.setup();
 		this.frm.custom_make_buttons = {
 			'Vehicle Invoice Movement': 'Issue Invoice',
 			'Vehicle Invoice Delivery': 'Deliver Invoice',
 			'Vehicle Registration Receipt': 'Registration Receipt',
 			'Vehicle Transfer Letter': 'Transfer Letter',
 			'Sales Invoice': 'Create Invoice',
+			'Vehicle Number Plate Receipt': 'Receive Number Plate',
+			'Vehicle Number Plate Delivery': 'Deliver Number Plate',
 		}
-	},
+	}
 
-	refresh: function () {
-		this._super();
+	refresh() {
+		super.refresh();
 		this.setup_buttons();
 		this.frm.trigger('set_disallow_on_submit_fields_read_only');
-	},
+	}
 
-	setup_queries: function () {
-		this._super();
+	setup_queries() {
+		super.setup_queries();
 
 		this.frm.set_query("vehicle_booking_order", function() {
 			var filters = {
@@ -46,10 +48,10 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 
 		this.frm.set_query("component", "agent_charges",
 			() => erpnext.vehicles.pricing.pricing_component_query('Registration'));
-	},
+	}
 
-	setup_route_options: function () {
-		this._super();
+	setup_route_options() {
+		super.setup_route_options();
 
 		var customer_component_field = this.frm.get_docfield("customer_charges", "component");
 		customer_component_field.get_route_options_for_new_doc = () => {
@@ -65,9 +67,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 		agent_component_field.get_route_options_for_new_doc = () => {
 			return erpnext.vehicles.pricing.pricing_component_route_options('Registration');
 		}
-	},
+	}
 
-	setup_buttons: function () {
+	setup_buttons() {
 		if (this.frm.doc.docstatus == 1) {
 			// Payment
 			if (!cint(this.frm.doc.use_sales_invoice)) {
@@ -117,6 +119,10 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 				// Registration Receipt
 				if (!this.frm.doc.vehicle_license_plate) {
 					this.frm.add_custom_button(__('Registration Receipt'), () => this.make_registration_receipt());
+				} else if (this.frm.doc.number_plate_status == "Not Received") {
+					this.frm.add_custom_button(__('Receive Number Plate'), () => this.make_number_plate_receipt());
+				} else if (this.frm.doc.number_plate_status == "In Hand") {
+					this.frm.add_custom_button(__('Deliver Number Plate'), () => this.make_number_plate_delivery());
 				}
 			}
 
@@ -140,9 +146,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 			}
 
 		}
-	},
+	}
 
-	item_code: function () {
+	item_code() {
 		var me = this;
 		if (me.frm.doc.item_code) {
 			return erpnext.vehicles.pricing.get_pricing_components({
@@ -160,9 +166,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 				}
 			});
 		}
-	},
+	}
 
-	component: function (doc, cdt, cdn) {
+	component(doc, cdt, cdn) {
 		var me = this;
 		var row = frappe.get_doc(cdt, cdn);
 		if (row.component) {
@@ -184,9 +190,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 				}
 			});
 		}
-	},
+	}
 
-	choice_number_required: function () {
+	choice_number_required() {
 		var me = this;
 		if (cint(me.frm.doc.choice_number_required)) {
 			return erpnext.vehicles.pricing.get_pricing_components({
@@ -211,9 +217,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 			erpnext.vehicles.pricing.remove_components(me.frm, 'authority_charges', filters);
 			erpnext.vehicles.pricing.remove_components(me.frm, 'agent_charges', filters);
 		}
-	},
+	}
 
-	ownership_transfer_required: function () {
+	ownership_transfer_required() {
 		var me = this;
 		if (cint(me.frm.doc.ownership_transfer_required)) {
 			return erpnext.vehicles.pricing.get_pricing_components({
@@ -238,9 +244,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 			erpnext.vehicles.pricing.remove_components(me.frm, 'authority_charges', filters);
 			erpnext.vehicles.pricing.remove_components(me.frm, 'agent_charges', filters);
 		}
-	},
+	}
 
-	custom_license_plate_required: function () {
+	custom_license_plate_required() {
 		var me = this;
 		if (cint(me.frm.doc.custom_license_plate_required)) {
 			return erpnext.vehicles.pricing.get_pricing_components({
@@ -263,9 +269,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 			erpnext.vehicles.pricing.remove_components(me.frm, 'authority_charges', filters);
 			erpnext.vehicles.pricing.remove_components(me.frm, 'agent_charges', filters);
 		}
-	},
+	}
 
-	custom_license_plate_by_agent: function () {
+	custom_license_plate_by_agent() {
 		var me = this;
 
 		if (!cint(me.frm.doc.custom_license_plate_required)) {
@@ -289,9 +295,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 			var filters = d => cint(d.component_type == "License Plate");
 			erpnext.vehicles.pricing.remove_components(me.frm, 'agent_charges', filters);
 		}
-	},
+	}
 
-	tax_status: function () {
+	tax_status() {
 		var me = this;
 		if (me.frm.doc.tax_status == "Non Filer") {
 			return erpnext.vehicles.pricing.get_pricing_components({
@@ -316,10 +322,10 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 			erpnext.vehicles.pricing.remove_components(me.frm, 'authority_charges', filters);
 			erpnext.vehicles.pricing.remove_components(me.frm, 'agent_charges', filters);
 		}
-	},
+	}
 
-	financer: function () {
-		this._super();
+	financer() {
+		super.financer();
 
 		var me = this;
 		if (me.frm.doc.financer) {
@@ -345,39 +351,39 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 			erpnext.vehicles.pricing.remove_components(me.frm, 'authority_charges', filters);
 			erpnext.vehicles.pricing.remove_components(me.frm, 'agent_charges', filters);
 		}
-	},
+	}
 
-	component_amount: function () {
+	component_amount() {
 		this.calculate_totals();
-	},
+	}
 
-	customer_charges_remove: function () {
+	customer_charges_remove() {
 		this.calculate_totals();
-	},
+	}
 
-	authority_charges_remove: function () {
+	authority_charges_remove() {
 		this.calculate_totals();
-	},
+	}
 
-	instrument_amount: function () {
+	instrument_amount() {
 		this.calculate_totals();
-	},
+	}
 
-	customer_authority_instruments_remove: function () {
+	customer_authority_instruments_remove() {
 		this.calculate_totals();
-	},
+	}
 
-	sales_team_add: function () {
+	sales_team_add() {
 		this.calculate_sales_team_contribution();
-	},
-	allocated_percentage: function () {
+	}
+	allocated_percentage() {
 		this.calculate_sales_team_contribution();
-	},
-	sales_person: function() {
+	}
+	sales_person() {
 		this.calculate_sales_team_contribution();
-	},
+	}
 
-	calculate_totals: function () {
+	calculate_totals() {
 		var me = this;
 
 		erpnext.vehicles.pricing.calculate_total_price(me.frm, 'customer_charges', 'customer_total');
@@ -399,17 +405,17 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 		this.reset_outstanding_amount();
 
 		this.frm.refresh_fields();
-	},
+	}
 
-	calculate_sales_team_contribution: function (do_not_refresh) {
+	calculate_sales_team_contribution(do_not_refresh) {
 		erpnext.vehicles.pricing.calculate_sales_team_contribution(this.frm, this.frm.doc.customer_total);
 
 		if (!do_not_refresh) {
 			refresh_field('sales_team');
 		}
-	},
+	}
 
-	reset_outstanding_amount: function () {
+	reset_outstanding_amount() {
 		if (this.frm.doc.docstatus === 0) {
 			this.frm.doc.customer_payment = 0;
 			this.frm.doc.customer_closed_amount = 0;
@@ -423,21 +429,21 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 		this.frm.doc.customer_outstanding = flt(this.frm.doc.customer_total) - flt(this.frm.doc.customer_payment) - flt(this.frm.doc.customer_authority_payment);
 		this.frm.doc.authority_outstanding = flt(this.frm.doc.authority_total) - flt(this.frm.doc.authority_payment) - flt(this.frm.doc.customer_authority_payment);
 		this.frm.doc.agent_outstanding = flt(this.frm.doc.agent_total) - flt(this.frm.doc.agent_payment);
-	},
+	}
 
-	get_unclosed_customer_amount: function () {
+	get_unclosed_customer_amount() {
 		var customer_margin = flt(flt(this.frm.doc.customer_total) - flt(this.frm.doc.authority_total),
 			precision('customer_total'));
 		return flt(customer_margin - flt(this.frm.doc.customer_closed_amount),
 			precision('customer_total'));
-	},
+	}
 
-	get_unclosed_agent_amount: function () {
+	get_unclosed_agent_amount() {
 		return flt(flt(this.frm.doc.agent_total) - flt(this.frm.doc.agent_closed_amount),
 			precision('agent_total'));
-	},
+	}
 
-	make_journal_entry: function(purpose) {
+	make_journal_entry(purpose) {
 		if (!purpose)
 			return;
 
@@ -454,9 +460,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 				}
 			}
 		});
-	},
+	}
 
-	make_invoice_movement: function(purpose) {
+	make_invoice_movement(purpose) {
 		if (!purpose)
 			return;
 
@@ -473,9 +479,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 				}
 			}
 		});
-	},
+	}
 
-	make_invoice_delivery: function() {
+	make_invoice_delivery() {
 		return frappe.call({
 			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_invoice_delivery",
 			args: {
@@ -488,9 +494,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 				}
 			}
 		});
-	},
+	}
 
-	make_transfer_letter: function() {
+	make_transfer_letter() {
 		return frappe.call({
 			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_transfer_letter",
 			args: {
@@ -503,9 +509,9 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 				}
 			}
 		});
-	},
+	}
 
-	make_registration_receipt: function () {
+	make_registration_receipt() {
 		return frappe.call({
 			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_registration_receipt",
 			args: {
@@ -518,9 +524,39 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 				}
 			}
 		});
-	},
+	}
 
-	make_sales_invoice: function () {
+	make_number_plate_receipt() {
+		return frappe.call({
+			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_number_plate_receipt",
+			args: {
+				"vehicle_registration_order": this.frm.doc.name,
+			},
+			callback: function (r) {
+				if (!r.exc) {
+					var doclist = frappe.model.sync(r.message);
+					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+				}
+			}
+		});
+	}
+
+	make_number_plate_delivery() {
+		return frappe.call({
+			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_number_plate_delivery",
+			args: {
+				"vehicle_registration_order": this.frm.doc.name,
+			},
+			callback: function (r) {
+				if (!r.exc) {
+					var doclist = frappe.model.sync(r.message);
+					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+				}
+			}
+		});
+	}
+
+	make_sales_invoice() {
 		return frappe.call({
 			method: "erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.make_sales_invoice",
 			args: {
@@ -534,6 +570,6 @@ erpnext.vehicles.VehicleRegistrationOrderController = erpnext.vehicles.VehicleAd
 			}
 		});
 	}
-});
+};
 
-$.extend(cur_frm.cscript, new erpnext.vehicles.VehicleRegistrationOrderController({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.vehicles.VehicleRegistrationOrderController({frm: cur_frm}));

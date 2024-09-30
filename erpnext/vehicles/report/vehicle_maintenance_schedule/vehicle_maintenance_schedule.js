@@ -264,8 +264,6 @@ frappe.query_reports["Vehicle Maintenance Schedule"] = {
 				},
 			],
 			primary_action: (dialog_data) => {
-				dialog.hide();
-
 				return frappe.call({
 					method: "erpnext.vehicles.report.vehicle_maintenance_schedule.vehicle_maintenance_schedule.submit_communication_with_action",
 					args: {
@@ -280,6 +278,7 @@ frappe.query_reports["Vehicle Maintenance Schedule"] = {
 					},
 					callback: function(r) {
 						if (r.message && !r.exc) {
+							dialog.hide();
 							if (r.message.updated_row) {
 								frappe.query_report.datatable.datamanager.data[rowIndex] = r.message.updated_row;
 								erpnext.utils.query_report_local_refresh();
@@ -322,12 +321,19 @@ frappe.query_reports["Vehicle Maintenance Schedule"] = {
 				style['color'] = "purple";
 			} else if (value == "Converted") {
 				style['color'] = "green";
+			}	}
+		if (column.fieldname == 'reminder') {
+			if (data.last_sent_dt) {
+				style['color'] = 'green';}
+				else if (data.scheduled_reminder_dt) {
+					style['color'] = 'blue';
+				}
 			}
 
 			if (data.appointment) {
 				link = frappe.utils.get_form_link("Appointment", data.appointment);
 			}
-		}
+
 
 		return default_formatter(value, row, column, data, {css: style, link_href: link, link_target: "_blank"});
 	},

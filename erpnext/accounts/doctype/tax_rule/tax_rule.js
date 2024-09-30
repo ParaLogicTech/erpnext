@@ -9,12 +9,6 @@ frappe.ui.form.on("Tax Rule", "tax_type", function(frm) {
 	frm.toggle_reqd("purchase_tax_template", frm.doc.tax_type=="Purchase");
 })
 
-frappe.ui.form.on("Tax Rule", "onload", function(frm) {
-	if(frm.doc.__islocal) {
-		frm.set_value("use_for_shopping_cart", 1);
-	}
-})
-
 frappe.ui.form.on("Tax Rule", "refresh", function(frm) {
 	frappe.ui.form.trigger("Tax Rule", "tax_type");
 })

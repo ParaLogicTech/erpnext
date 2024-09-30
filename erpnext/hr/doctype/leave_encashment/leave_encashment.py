@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -30,11 +29,11 @@ class LeaveEncashment(Document):
 		}
 
 	def validate(self):
-		set_employee_name(self)
-		self.get_leave_details_for_encashment()
-
 		if not self.encashment_date:
 			self.encashment_date = getdate(nowdate())
+
+		set_employee_name(self)
+		self.get_leave_details_for_encashment()
 
 	def before_submit(self):
 		if self.encashment_amount <= 0:
@@ -68,6 +67,7 @@ class LeaveEncashment(Document):
 
 		self.create_leave_ledger_entry(submit=False)
 
+	@frappe.whitelist()
 	def get_leave_details_for_encashment(self):
 		self.salary_structure = get_assigned_salary_structure(self.employee, self.encashment_date or getdate(nowdate()))
 		if not self.salary_structure:

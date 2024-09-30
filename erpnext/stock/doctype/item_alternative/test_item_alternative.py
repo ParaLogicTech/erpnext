@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
-from __future__ import unicode_literals
 import frappe, json
 from frappe.utils import flt
 from erpnext.stock.doctype.item.test_item import create_item
@@ -28,7 +27,7 @@ class TestItemAlternative(unittest.TestCase):
 
 		supplier_warehouse = "Test Supplier Warehouse - _TC"
 		po = create_purchase_order(item = "Test Finished Goods - A",
-			is_subcontracted='Yes', qty=5, rate=3000, supplier_warehouse=supplier_warehouse)
+			is_subcontracted=1, qty=5, rate=3000, supplier_warehouse=supplier_warehouse)
 
 		rm_item = [{"item_code": "Test Finished Goods - A", "rm_item_code": "Test FG A RW 1", "item_name":"Test FG A RW 1",
 					"qty":5, "warehouse":"_Test Warehouse - _TC", "rate":2000, "amount":10000, "stock_uom":"Nos"},

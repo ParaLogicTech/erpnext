@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 
@@ -91,7 +90,7 @@ def get_data(data, filters):
 
 def get_po(filters):
 	record_filters = [
-			["is_subcontracted", "=", "Yes"],
+			["is_subcontracted", "=", 1],
 			["supplier", "=", filters.supplier],
 			["transaction_date", "<=", filters.to_date],
 			["transaction_date", ">=", filters.from_date],

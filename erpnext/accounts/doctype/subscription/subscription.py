@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 
 import frappe
 from frappe import _
@@ -498,7 +497,7 @@ def process(data):
 		except frappe.ValidationError:
 			frappe.db.rollback()
 			frappe.db.begin()
-			frappe.log_error(frappe.get_traceback())
+			subscription.log_error(message=frappe.get_traceback())
 			frappe.db.commit()
 
 

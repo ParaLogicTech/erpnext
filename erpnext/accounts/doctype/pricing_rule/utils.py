@@ -1,20 +1,14 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
 
-# For license information, please see license.txt
-
-from __future__ import unicode_literals
-
-import copy
-import json
-
 import frappe
-from erpnext.accounts.doctype.pricing_rule.pricing_rule import set_transaction_type
-from erpnext.setup.doctype.item_group.item_group import get_child_item_groups
+from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
 from erpnext.stock.doctype.warehouse.warehouse import get_child_warehouses
-from erpnext.stock.get_item_details import get_conversion_factor, get_default_income_account
+from erpnext.stock.get_item_details import get_conversion_factor, get_default_income_account, determine_selling_or_buying
 from frappe import _
 from frappe.utils import cint, flt, cstr, get_link_to_form, getdate, today
+import copy
+import json
 
 
 class MultiplePricingRuleConflict(frappe.ValidationError): pass
@@ -90,14 +84,14 @@ def _get_pricing_rules(apply_on, args, values):
 			and `tabPricing Rule`.{apply_on_other_field}=%({apply_on_field})s) {item_variant_condition})
 			and {child_doc}.parent = `tabPricing Rule`.name
 			and `tabPricing Rule`.disable = 0 and
-			`tabPricing Rule`.{transaction_type} = 1 {warehouse_cond} {conditions}
+			`tabPricing Rule`.{selling_or_buying} = 1 {warehouse_cond} {conditions}
 		order by `tabPricing Rule`.priority desc,
 			`tabPricing Rule`.name desc""".format(
 			child_doc = child_doc,
 			apply_on_field = apply_on_field,
 			item_conditions = item_conditions,
 			item_variant_condition = item_variant_condition,
-			transaction_type = args.transaction_type,
+			selling_or_buying = args.selling_or_buying,
 			warehouse_cond = warehouse_conditions,
 			apply_on_other_field = "other_{0}".format(apply_on_field),
 			conditions = conditions), values, as_dict=1) or []
@@ -204,7 +198,7 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 				if not d.threshold_percentage: continue
 
 				msg = validate_quantity_and_amount_for_suggestion(d, stock_qty,
-					amount, args.get('item_code'), args.get('transaction_type'))
+					amount, args.get('item_code'), args.get('selling_or_buying'))
 
 				if msg:
 					return {'suggestion': msg, 'item_code': args.get('item_code')}
@@ -249,9 +243,9 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 	elif pricing_rules:
 		return pricing_rules[0]
 
-def validate_quantity_and_amount_for_suggestion(args, qty, amount, item_code, transaction_type):
+def validate_quantity_and_amount_for_suggestion(args, qty, amount, item_code, selling_or_buying):
 	fieldname, msg = '', ''
-	type_of_transaction = 'purchase' if transaction_type == 'buying' else 'sale'
+	type_of_transaction = 'purchase' if selling_or_buying == 'buying' else 'sale'
 
 	for field, value in {'min_qty': qty, 'min_amt': amount}.items():
 		if (args.get(field) and value < args.get(field)
@@ -284,7 +278,7 @@ def filter_pricing_rules_for_qty_amount(qty, rate, pricing_rules, args=None):
 
 		item_code = rule.get("item_code") or args.get("item_code")
 		if item_code and rule.get("uom"):
-			conversion_factor = get_conversion_factor(item_code, rule.uom).get("conversion_factor", 1)
+			conversion_factor = get_conversion_factor(item_code, rule.uom).get("conversion_factor") or 1
 
 		if (flt(qty) >= (flt(rule.min_qty) * conversion_factor)
 			and (flt(qty)<= (rule.max_qty * conversion_factor) if rule.max_qty else True)):
@@ -417,10 +411,11 @@ def apply_pricing_rule_on_transaction(doc):
 
 	args = frappe._dict({
 		'doctype': doc.doctype,
-		'transaction_type': None,
+		'selling_or_buying': None,
 	})
-	set_transaction_type(args)
-	tran_type_condition = '{} = 1'.format(args.transaction_type)
+
+	determine_selling_or_buying(args)
+	tran_type_condition = '{} = 1'.format(args.selling_or_buying)
 
 	sql = """
 		SELECT
@@ -554,7 +549,7 @@ def get_pricing_rule_items(pr_doc):
 
 	for d in pr_doc.get(pricing_rule_apply_on):
 		if apply_on == 'item_group':
-			apply_on_data.extend(get_child_item_groups(d.get(apply_on)))
+			apply_on_data.extend(get_item_group_subtree(d.get(apply_on)))
 		else:
 			apply_on_data.append(d.get(apply_on))
 

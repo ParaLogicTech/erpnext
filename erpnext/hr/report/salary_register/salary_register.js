@@ -41,8 +41,8 @@ frappe.query_reports["Salary Register"] = {
 			"fieldname": "group_by_1",
 			"label": __("Group By Level 1"),
 			"fieldtype": "Select",
-			"options": ["Ungrouped", "Group by Department", "Group by Designation", "Group by Branch"],
-			"default": "Ungrouped"
+			"options": ["", "Group by Department", "Group by Designation", "Group by Branch"],
+			"default": ""
 		},
 		{
 			"fieldname": "show_date_of_joining",
@@ -82,7 +82,7 @@ frappe.query_reports["Salary Register"] = {
 		}
 
 		if (data && ['leave_without_pay', 'late_days'].includes(column.fieldname) && data.employee && data.start_date && data.end_date) {
-			link = `desk#query-report/Employee Checkin Sheet?employee=${encodeURIComponent(data.employee)}&from_date=${data.start_date}&to_date=${data.end_date}`
+			link = `/app/query-report/Employee Checkin Sheet?employee=${encodeURIComponent(data.employee)}&from_date=${data.start_date}&to_date=${data.end_date}`
 		}
 
 		if (column.is_earning || ['gross_pay', 'net_pay', 'rounded_total'].includes(column.fieldname)) {

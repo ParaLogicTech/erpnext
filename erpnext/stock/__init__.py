@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 
@@ -11,6 +10,7 @@ install_docs = [
 	{"doctype":"Item Group", "item_group_name":"Default",
 		"parent_item_group":"All Item Groups", "is_group": 0},
 ]
+
 
 def get_warehouse_account_map(company=None):
 	company_warehouse_account_map = company and frappe.flags.setdefault('warehouse_account_map', {}).get(company)
@@ -40,6 +40,7 @@ def get_warehouse_account_map(company=None):
 			frappe.flags.warehouse_account_map = warehouse_account
 	
 	return frappe.flags.warehouse_account_map.get(company) or frappe.flags.warehouse_account_map
+
 
 def get_warehouse_account(warehouse, warehouse_account=None):
 	account = warehouse.account

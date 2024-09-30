@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2020-12-06 21:16:08.840232",
  "description": "Settings for Vehicles Module",
  "doctype": "DocType",
@@ -23,6 +24,7 @@
   "notification_section",
   "payment_due_notification_time",
   "cb_15",
+  "vehicle_anniversary_time",
   "registration_section",
   "registration_customer_account",
   "registration_agent_account",
@@ -37,6 +39,9 @@
   "registration_transaction_type",
   "vehicle_service_section",
   "pdi_project_type",
+  "license_plate_required_for_service_receipt",
+  "fuel_level_required_for_service_receipt",
+  "odometer_reading_required_for_service_receipt",
   "column_break_28",
   "pdi_vehicle_workshop",
   "column_break_29",
@@ -53,6 +58,12 @@
   "column_break_14",
   "minimum_lead_time_days",
   "maximum_payment_adjustment",
+  "vehicle_gate_pass_permissions_section",
+  "restrict_sales_test_drive_gate_pass_to_role",
+  "restrict_sales_delivery_gate_pass_to_role",
+  "column_break_2tuh9",
+  "restrict_service_test_drive_gate_pass_to_role",
+  "restrict_service_delivery_gate_pass_to_role",
   "section_break_47",
   "opp_required_for_quotation",
   "role_skip_opportunity_for_quotation",
@@ -387,11 +398,68 @@
    "fieldtype": "Data",
    "label": "Default Service CR Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "vehicle_anniversary_time",
+   "fieldtype": "Time",
+   "label": "Vehicle Anniversary Notification Time of Day"
+  },
+  {
+   "default": "0",
+   "fieldname": "license_plate_required_for_service_receipt",
+   "fieldtype": "Check",
+   "label": "License Plate Mandatory For Vehicle Service Receipt"
+  },
+  {
+   "default": "0",
+   "fieldname": "fuel_level_required_for_service_receipt",
+   "fieldtype": "Check",
+   "label": "Fuel Level Mandatory For Vehicle Service Receipt"
+  },
+  {
+   "default": "0",
+   "fieldname": "odometer_reading_required_for_service_receipt",
+   "fieldtype": "Check",
+   "label": "Odometer Reading Mandatory For Vehicle Service Receipt"
+  },
+  {
+   "fieldname": "vehicle_gate_pass_permissions_section",
+   "fieldtype": "Section Break",
+   "label": "Vehicle Gate Pass Permissions"
+  },
+  {
+   "fieldname": "restrict_sales_test_drive_gate_pass_to_role",
+   "fieldtype": "Link",
+   "label": "Restrict Sales - Test Drive Gate Pass to Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "restrict_sales_delivery_gate_pass_to_role",
+   "fieldtype": "Link",
+   "label": "Restrict Sales - Delivery Gate Pass to Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "restrict_service_test_drive_gate_pass_to_role",
+   "fieldtype": "Link",
+   "label": "Restrict Service - Test Drive Gate Pass to Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "restrict_service_delivery_gate_pass_to_role",
+   "fieldtype": "Link",
+   "label": "Restrict Service - Delivery Gate Pass to Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "column_break_2tuh9",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-cog",
  "issingle": 1,
- "modified": "2023-03-09 15:59:04.041198",
+ "links": [],
+ "modified": "2023-08-13 17:23:59.712050",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicles Settings",
@@ -414,5 +482,6 @@
  "restrict_to_domain": "Vehicles",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

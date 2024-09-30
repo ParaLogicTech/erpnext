@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "creation": "2013-05-02 16:29:48",
  "description": "Multiple Item prices.",
@@ -8,7 +9,6 @@
  "field_order": [
   "item_code",
   "uom",
-  "packing_unit",
   "column_break_17",
   "item_name",
   "item_group",
@@ -16,23 +16,26 @@
   "item_description",
   "price_list_details",
   "price_list",
+  "column_break_swqcl",
   "customer",
   "supplier",
   "column_break_3",
   "buying",
   "selling",
   "item_details",
-  "currency",
-  "col_br_1",
   "price_list_rate",
+  "col_br_1",
+  "currency",
   "section_break_15",
   "valid_from",
-  "lead_time_days",
   "column_break_18",
   "valid_upto",
   "section_break_24",
   "note",
-  "reference"
+  "column_break_7l9ba",
+  "reference",
+  "lead_time_days",
+  "packing_unit"
  ],
  "fields": [
   {
@@ -46,8 +49,7 @@
    "oldfieldname": "price_list_name",
    "oldfieldtype": "Select",
    "options": "Item",
-   "reqd": 1,
-   "search_index": 1
+   "reqd": 1
   },
   {
    "fieldname": "uom",
@@ -101,7 +103,8 @@
    "in_standard_filter": 1,
    "label": "Price List",
    "options": "Price List",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "bold": 1,
@@ -168,14 +171,14 @@
   },
   {
    "fieldname": "section_break_15",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Validity"
   },
   {
-   "default": "Today",
    "fieldname": "valid_from",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Valid From "
+   "label": "Valid From"
   },
   {
    "default": "0",
@@ -192,11 +195,14 @@
    "fieldname": "valid_upto",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "Valid Upto "
+   "label": "Valid Upto",
+   "search_index": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_24",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "More Information"
   },
   {
    "fieldname": "note",
@@ -215,11 +221,20 @@
    "label": "Item Group",
    "options": "Item Group",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_swqcl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_7l9ba",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-flag",
  "idx": 1,
- "modified": "2020-10-03 14:12:24.801156",
+ "links": [],
+ "modified": "2024-08-25 03:32:22.132684",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Price",
@@ -289,6 +304,7 @@
  "quick_entry": 1,
  "sort_field": "valid_from",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "item_name",
  "track_changes": 1
 }

@@ -130,21 +130,21 @@ erpnext.vehicles.CustomerVehicleSelector = Class.extend({
 				image_html = `<img src="${vehicle.image}" style="max-height: 60px;" alt="Vehicle Image">`;
 			}
 
-			var indicator_color = vehicle.is_current ? "blue" : "darkgrey";
+			var indicator_color = vehicle.is_current ? "blue" : "grey";
 
 			var selected_class = vehicle.name == me.get_selected_vehicle() ? "selected" : "";
 
 			var vehicle_html = `
 			<div class="customer-vehicle-col">
-				<div class="panel panel-default customer-vehicle-card ${selected_class}" data-vehicle="${vehicle.name}">
+				<div class="card customer-vehicle-card ${selected_class}" data-vehicle="${vehicle.name}">
 
-					<div class="panel-heading">
+					<div class="card-header">
 						<span class="indicator ${indicator_color} ellipsis">
 							<b>${vehicle.item_name}</b>
 						</span>
 					</div>
 
-					<div class="panel-body">
+					<div class="card-body">
 						<div style="display: flex; align-items: center;">
 							<div style="width: 79%;">
 								<div><b>Reg #:</b> ${vehicle.license_plate || 'N/A'}</div>
@@ -164,7 +164,7 @@ erpnext.vehicles.CustomerVehicleSelector = Class.extend({
 			`;
 			var $vehicle_html = $(vehicle_html).appendTo(container);
 			if (me.is_master_document_view()) {
-				$('.panel', $vehicle_html).wrap(`<a href='#Form/Vehicle/${encodeURIComponent(vehicle.name)}'></a>`);
+				$('.card', $vehicle_html).wrap(`<a href='/app/vehicle/${encodeURIComponent(vehicle.name)}'></a>`);
 			}
 		});
 	},
@@ -178,21 +178,21 @@ erpnext.vehicles.CustomerVehicleSelector = Class.extend({
 		}
 
 		$.each(me.customers || [], function (i, customer) {
-			var indicator_color = customer.is_current ? "blue" : "darkgrey";
+			var indicator_color = customer.is_current ? "blue" : "grey";
 
 			var selected_class = customer.name == me.get_selected_customer() ? "selected" : "";
 
 			var customer_html = `
 			<div class="customer-vehicle-col">
-				<div class="panel panel-default customer-vehicle-card ${selected_class}" data-customer="${customer.name}">
+				<div class="card customer-vehicle-card ${selected_class}" data-customer="${customer.name}">
 
-					<div class="panel-heading">
+					<div class="card-header">
 						<span class="indicator ${indicator_color} ellipsis">
 							<b>${customer.customer_name}</b>
 						</span>
 					</div>
 
-					<div class="panel-body">
+					<div class="card-body">
 						<div><b>CNIC/NTN:</b> ${customer.tax_cnic || customer.tax_id || 'N/A'}</div>
 						<div><b>Contact #:</b> ${customer.mobile_no || customer.mobile_no_2 || customer.phone_no || 'N/A'}</div>
 					</div>
@@ -203,7 +203,7 @@ erpnext.vehicles.CustomerVehicleSelector = Class.extend({
 
 			var $customer_html = $(customer_html).appendTo(container);
 			if (me.is_master_document_view()) {
-				$('.panel', $customer_html).wrap(`<a href='#Form/Customer/${encodeURIComponent(customer.name)}'></a>`);
+				$('.card', $customer_html).wrap(`<a href='/app/customer/${encodeURIComponent(customer.name)}'></a>`);
 			}
 		});
 	},

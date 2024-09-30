@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd.
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext
 from frappe import _, scrub
 from frappe.utils import getdate, nowdate, flt, cint, formatdate, cstr
@@ -67,11 +66,11 @@ class ReceivablePayableReport(object):
 				"fieldname": "party",
 				"filter_fieldname": scrub(self.filters.get("party_type")),
 				"options": self.filters.get("party_type"),
-				"width": party_column_width if self.filters.get("group_by", "Ungrouped") == "Ungrouped" else 300
+				"width": party_column_width if not self.filters.get("group_by") else 300
 			}
 		]
 
-		if self.filters.get("group_by", "Ungrouped") != "Ungrouped":
+		if self.filters.get("group_by"):
 			columns = list(reversed(columns))
 
 		if self.party_naming_by == "Naming Series":
@@ -383,7 +382,7 @@ class ReceivablePayableReport(object):
 				temp_outstanding_amt = outstanding_amount
 				temp_credit_note_amt = credit_note_amount
 
-				if abs(outstanding_amount) >= 0.1/10**self.currency_precision:
+				if abs(outstanding_amount) >= 1.0/10**self.currency_precision:
 					if self.filters.based_on_payment_terms and self.payment_term_map.get(gle.voucher_no):
 						for d in self.payment_term_map.get(gle.voucher_no):
 							# Allocate payment amount based on payment terms(FIFO order)
@@ -421,7 +420,7 @@ class ReceivablePayableReport(object):
 					outstanding_amount, return_amount, payment_amount = self.get_employee_advance_outstanding(gle,
 						self.filters.report_date)
 
-					if abs(outstanding_amount) > 0.1 / 10 ** self.currency_precision:
+					if abs(outstanding_amount) >= 1.0 / 10 ** self.currency_precision:
 						ea = gle.copy()
 
 						ea.credit = 0
@@ -444,10 +443,10 @@ class ReceivablePayableReport(object):
 
 		group_by = [None]
 		group_by_labels = {}
-		if level1 and level1 != "Ungrouped":
+		if level1:
 			group_by.append(level1_fieldname)
 			group_by_labels[level1_fieldname] = level1
-		if level2 and level2 != "Ungrouped":
+		if level2:
 			group_by.append(level2_fieldname)
 			group_by_labels[level2_fieldname] = level2
 

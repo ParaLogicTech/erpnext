@@ -2,7 +2,7 @@
 // License: GNU General Public License v3. See license.txt
 
 const group_by_options_gp = [
-	"Ungrouped", "Group by Invoice", "Group by Customer", "Group by Customer Group",
+	"", "Group by Invoice", "Group by Customer", "Group by Customer Group",
 	"Group by Item", "Group by Item Group", "Group by Brand", "Group by Warehouse",
 	"Group by Territory", "Group by Sales Person", "Group by Item Source",
 	"Group by Applies To Item", "Group by Applies To Variant Of",
@@ -151,21 +151,21 @@ frappe.query_reports["Gross Profit"] = {
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
 			options: group_by_options_gp,
-			default: "Ungrouped"
+			default: ""
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
 			options: group_by_options_gp,
-			default: "Ungrouped"
+			default: ""
 		},
 		{
 			fieldname: "group_by_3",
 			label: __("Group By Level 3"),
 			fieldtype: "Select",
 			options: group_by_options_gp,
-			default: "Ungrouped"
+			default: ""
 		},
 		{
 			fieldname: "totals_only",
@@ -183,6 +183,10 @@ frappe.query_reports["Gross Profit"] = {
 			} else if (flt(value) < 0) {
 				style['color'] = 'red';
 			}
+		}
+
+		if (['gross_profit'].includes(column.fieldname)) {
+			style['font-weight'] = 'bold';
 		}
 
 		return default_formatter(value, row, column, data, {css: style});

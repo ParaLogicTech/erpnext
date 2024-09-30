@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 
 
@@ -18,6 +17,10 @@ def get_notification_config():
 			"Quotation": {"docstatus": 0},
 			"Sales Order": {
 				"status": ("not in", ("Completed", "Closed")),
+				"docstatus": ("<", 2)
+			},
+			"Packing Slip": {
+				"status": ("in", ("In Stock", "Draft")),
 				"docstatus": ("<", 2)
 			},
 			"Journal Entry": {"docstatus": 0},

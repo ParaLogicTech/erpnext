@@ -2,7 +2,6 @@
 # Copyright (c) 2017, sathishpy@gmail.com and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -102,6 +101,7 @@ class BankStatementTransactionEntry(Document):
 			if (len(vouchers) == 1):
 				entry.reference_name = vouchers[0].name
 
+	@frappe.whitelist()
 	def populate_matching_invoices(self):
 		self.payment_invoice_items = []
 		self.map_unknown_transactions()
@@ -224,6 +224,7 @@ class BankStatementTransactionEntry(Document):
 				break
 
 
+	@frappe.whitelist()
 	def create_payment_entries(self):
 		for payment_entry in self.new_transaction_items:
 			if (not payment_entry.party): continue
@@ -319,6 +320,7 @@ class BankStatementTransactionEntry(Document):
 			except:
 				frappe.throw(_("Exception occurred while reconciling {0}".format(payment.reference_name)))
 
+	@frappe.whitelist()
 	def submit_payment_entries(self):
 		for payment in self.new_transaction_items:
 			if payment.reference_name is None: continue

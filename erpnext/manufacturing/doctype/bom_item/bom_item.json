@@ -1,5 +1,6 @@
 {
- "creation": "2013-02-22 01:27:49",
+ "actions": [],
+ "creation": "2023-06-01 23:50:15.946950",
  "doctype": "DocType",
  "document_type": "Setup",
  "editable_grid": 1,
@@ -11,7 +12,9 @@
   "column_break_3",
   "bom_no",
   "source_warehouse",
-  "allow_alternative_item",
+  "has_alternative_item",
+  "do_not_explode",
+  "skip_transfer_for_manufacture",
   "section_break_5",
   "description",
   "col_break1",
@@ -32,10 +35,10 @@
   "base_amount",
   "section_break_18",
   "scrap",
+  "original_item",
+  "column_break_r5htq",
   "qty_consumed_per_unit",
-  "section_break_27",
-  "include_item_in_manufacturing",
-  "original_item"
+  "section_break_27"
  ],
  "fields": [
   {
@@ -44,7 +47,8 @@
    "fieldtype": "Link",
    "in_filter": 1,
    "in_list_view": 1,
-   "label": "Item Code",
+   "in_standard_filter": 1,
+   "label": "Material Item",
    "oldfieldname": "item_code",
    "oldfieldtype": "Link",
    "options": "Item",
@@ -55,12 +59,12 @@
    "columns": 3,
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "label": "Item Name"
+   "label": "Material Item Name"
   },
   {
    "fieldname": "operation",
    "fieldtype": "Link",
-   "label": "Item operation",
+   "label": "Item Operation",
    "options": "Operation"
   },
   {
@@ -68,10 +72,12 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:!doc.do_not_explode",
    "fieldname": "bom_no",
    "fieldtype": "Link",
    "in_filter": 1,
-   "label": "BOM No",
+   "in_standard_filter": 1,
+   "label": "Child BOM",
    "oldfieldname": "bom_no",
    "oldfieldtype": "Link",
    "options": "BOM",
@@ -155,6 +161,7 @@
    "read_only": 1
   },
   {
+   "fetch_from": "item_code.stock_uom",
    "fieldname": "stock_uom",
    "fieldtype": "Link",
    "label": "Stock UOM",
@@ -167,7 +174,9 @@
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
    "label": "Conversion Factor",
-   "precision": "9"
+   "precision": "9",
+   "read_only": 1,
+   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom"
   },
   {
    "fieldname": "rate_amount_section",
@@ -233,7 +242,6 @@
   {
    "fieldname": "qty_consumed_per_unit",
    "fieldtype": "Float",
-   "hidden": 1,
    "label": "Qty Consumed Per Unit",
    "oldfieldname": "qty_consumed_per_unit",
    "oldfieldtype": "Float",
@@ -246,34 +254,50 @@
   },
   {
    "default": "0",
-   "fieldname": "allow_alternative_item",
+   "fieldname": "skip_transfer_for_manufacture",
    "fieldtype": "Check",
-   "label": "Allow Alternative Item"
+   "label": "Skip Transfer for Manufacture"
   },
   {
    "default": "0",
-   "fetch_from": "item_code.include_item_in_manufacturing",
-   "fieldname": "include_item_in_manufacturing",
+   "fieldname": "do_not_explode",
    "fieldtype": "Check",
-   "label": "Include Item In Manufacturing"
+   "label": "Do Not Explode"
+  },
+  {
+   "default": "0",
+   "fieldname": "has_alternative_item",
+   "fieldtype": "Check",
+   "is_virtual": 1,
+   "label": "Has Alternative Item",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "original_item",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "Original Item",
+   "no_copy": 1,
    "options": "Item",
+   "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_r5htq",
+   "fieldtype": "Column Break"
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2021-05-27 22:31:28.386908",
+ "links": [],
+ "modified": "2024-06-08 00:11:36.549150",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM Item",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

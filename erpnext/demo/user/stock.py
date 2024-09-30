@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import print_function, unicode_literals
 
 import frappe, random, erpnext
 from frappe.desk import query_report
@@ -29,7 +28,7 @@ def make_purchase_receipt():
 		for po in po_list:
 			pr = frappe.get_doc(make_purchase_receipt(po))
 
-			if pr.is_subcontracted=="Yes":
+			if pr.is_subcontracted:
 				pr.supplier_warehouse = "Supplier - WPL"
 
 			pr.posting_date = frappe.flags.current_date

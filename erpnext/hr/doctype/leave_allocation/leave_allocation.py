@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.utils import flt, date_diff, formatdate, add_days, today, getdate
 from frappe import _
@@ -85,8 +84,8 @@ class LeaveAllocation(Document):
 			frappe.msgprint(_("{0} already allocated for Employee {1} for period {2} to {3}")
 				.format(self.leave_type, self.employee, formatdate(self.from_date), formatdate(self.to_date)))
 
-			frappe.throw(_('Reference') + ': <a href="#Form/Leave Allocation/{0}">{0}</a>'
-				.format(leave_allocation[0][0]), OverlapError)
+			frappe.throw(_('Reference') + ': ' + frappe.utils.get_link_to_form("Leave Allocation", leave_allocation[0][0]),
+				OverlapError)
 
 	def validate_back_dated_allocation(self):
 		future_allocation = frappe.db.sql("""select name, from_date from `tabLeave Allocation`
@@ -98,6 +97,7 @@ class LeaveAllocation(Document):
 				.format(formatdate(future_allocation[0].from_date), future_allocation[0].name),
 					BackDatedAllocationError)
 
+	@frappe.whitelist()
 	def set_total_leaves_allocated(self):
 		self.unused_leaves = get_carry_forwarded_leaves(self.employee,
 			self.leave_type, self.from_date, self.carry_forward)

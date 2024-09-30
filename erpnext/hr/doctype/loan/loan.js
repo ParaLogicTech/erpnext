@@ -25,17 +25,26 @@ frappe.ui.form.on('Loan', {
 			};
 		});
 
-		$.each(["payment_account", "loan_account"], function (i, field) {
-			frm.set_query(field, function () {
-				return {
-					"filters": {
-						"company": frm.doc.company,
-						"root_type": "Asset",
-						"is_group": 0
-					}
-				};
-			});
-		})
+		frm.set_query("loan_account", function () {
+			return {
+				"filters": {
+					"company": frm.doc.company,
+					"root_type": "Asset",
+					"is_group": 0,
+					"account_type": ["in", ["Receivable", "Payable"]]
+				}
+			};
+		});
+
+		frm.set_query("payment_account", function () {
+			return {
+				"filters": {
+					"company": frm.doc.company,
+					"is_group": 0,
+					"account_type": ["in", ['Bank', 'Cash']]
+				}
+			};
+		});
 	},
 
 	refresh: function (frm) {
@@ -45,7 +54,9 @@ frappe.ui.form.on('Loan', {
 				frm.add_custom_button(__('Create Disbursement Entry'), function() {
 					frm.trigger("make_jv");
 				}).addClass("btn-primary");
-			} else if (frm.doc.status == "Disbursed" && frm.doc.repayment_start_date) {
+			}
+
+			if (frm.doc.repayment_start_date) {
 				frm.add_custom_button(__('Create Repayment Entry'), function() {
 					frm.trigger("make_repayment_entry");
 				}).addClass("btn-primary");
@@ -74,62 +85,61 @@ frappe.ui.form.on('Loan', {
 		})
 	},
 	make_repayment_entry: function(frm) {
-		var repayment_schedule = $.map(frm.doc.repayment_schedule, function(d) { return d.paid ? d.payment_date : false; });
-		if(repayment_schedule.length >= 1){
-			frm.repayment_data = [];
-			frm.show_dialog = 1;
-			let title = "Select Repayment Schedule";
-			let fields = [
-			{fieldtype:'Section Break', label: __('Repayment Schedule')},
-			{fieldname: 'payments', fieldtype: 'Table',
-				fields: [
-					{
-						fieldtype:'Data',
-						fieldname:'payment_date',
-						label: __('Date'),
-						read_only:1,
-						in_list_view: 1,
-						columns: 2
-					},
-					{
-						fieldtype:'Currency',
-						fieldname:'principal_amount',
-						label: __('Principal Amount'),
-						read_only:1,
-						in_list_view: 1,
-						columns: 3
-					},
-					{
-						fieldtype:'Currency',
-						fieldname:'interest_amount',
-						label: __('Interest'),
-						read_only:1,
-						in_list_view: 1,
-						columns: 2
-					},
-					{
-						fieldtype:'Currency',
-						read_only:1,
-						fieldname:'total_payment',
-						label: __('Total Payment'),
-						in_list_view: 1,
-						columns: 3
-					},
-				],
-				data: frm.repayment_data,
-				get_data: function() {
-					return frm.repayment_data;
-				}
-			}
-		]
+		let doc = {
+			repayment_data: [],
+		};
 
-		var dialog = new frappe.ui.Dialog({
-			title: title, fields: fields,
+		let fields = [{
+			fieldname: 'payments',
+			fieldtype: 'Table',
+			in_place_edit: true,
+			cannot_add_rows: true,
+			read_only: 1,
+			data: doc.repayment_data,
+			fields: [
+				{
+					fieldtype: 'Date',
+					fieldname: 'payment_date',
+					label: __('Repayment Date'),
+					read_only: 1,
+					in_list_view: 1,
+					columns: 2
+				},
+				{
+					fieldtype: 'Currency',
+					fieldname: 'principal_amount',
+					label: __('Principal Amount'),
+					read_only: 1,
+					in_list_view: 1,
+					columns: 3
+				},
+				{
+					fieldtype: 'Currency',
+					fieldname: 'interest_amount',
+					label: __('Interest'),
+					read_only: 1,
+					in_list_view: 1,
+					columns: 2
+				},
+				{
+					fieldtype: 'Currency',
+					read_only: 1,
+					fieldname: 'total_payment',
+					label: __('Total Payment'),
+					in_list_view: 1,
+					columns: 3
+				},
+			],
+		}];
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Select Repayment Schedule"), fields: fields, doc: doc, size: "large",
 		});
+
 		if (frm.doc['repayment_schedule']) {
 			frm.doc['repayment_schedule'].forEach((payment, index) => {
-			if (payment.paid == 0 && payment.payment_date <= frappe.datetime.now_date()) {
-					frm.repayment_data.push ({
+			if (!payment.paid) {
+					doc.repayment_data.push({
 						'id': index,
 						'name': payment.name,
 						'payment_date': payment.payment_date,
@@ -138,25 +148,17 @@ frappe.ui.form.on('Loan', {
 						'total_payment': payment.total_payment
 					});
 					dialog.fields_dict.payments.grid.refresh();
-					$(dialog.wrapper.find(".grid-buttons")).hide();
-					$(`.octicon.octicon-triangle-down`).hide();
 				}
-
 			})
 		}
 
-		dialog.show()
+		dialog.show();
 		dialog.set_primary_action(__('Create Repayment Entry'), function() {
-			frm.values = dialog.get_values();
-			if(frm.values) {
+			let values = dialog.get_values();
+			if (values) {
 				_make_repayment_entry(frm, dialog.fields_dict.payments.grid.get_selected_children());
 				dialog.hide()
-				}
-			});
-		}
-
-		dialog.get_close_btn().on('click', () => {
-			dialog.hide();
+			}
 		});
 	},
 
@@ -243,7 +245,7 @@ frappe.ui.form.on('Repayment Schedule', {
 
 var _make_repayment_entry = function(frm, payment_rows) {
 	frappe.call({
-		method:"erpnext.hr.doctype.loan.loan.make_repayment_entry",
+		method: "erpnext.hr.doctype.loan.loan.make_repayment_entry",
 		args: {
 			payment_rows: payment_rows,
 			"loan": frm.doc.name,

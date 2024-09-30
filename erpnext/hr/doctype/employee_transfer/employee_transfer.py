@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -50,8 +49,8 @@ class EmployeeTransfer(Document):
 		employee = frappe.get_doc("Employee", self.employee)
 		if self.create_new_employee_id:
 			if self.new_employee_id:
-				frappe.throw(_("Please delete the Employee <a href='#Form/Employee/{0}'>{0}</a>\
-					to cancel this document").format(self.new_employee_id))
+				frappe.throw(_("Please delete the {0} to cancel this document")
+					.format(frappe.get_desk_link("Employee", self.new_employee_id)))
 			#mark the employee as active
 			employee.status = "Active"
 			employee.relieving_date = ''

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2017-10-09 14:26:29.612365",
@@ -10,20 +11,19 @@
   "naming_series",
   "employee",
   "employee_name",
+  "designation",
+  "department",
   "column_break_5",
   "purpose",
   "deduct_from_salary",
   "column_break_4",
-  "amended_from",
   "company",
   "posting_date",
-  "department",
+  "amended_from",
   "section_break_account",
   "project",
   "column_break_16",
   "task",
-  "column_break_10",
-  "cost_center",
   "column_break_20",
   "mode_of_payment",
   "section_break_8",
@@ -36,10 +36,11 @@
   "salary_deduction_amount",
   "balance_amount",
   "section_break_7",
+  "status",
   "advance_account",
-  "due_advance_amount",
   "column_break_18",
-  "status"
+  "due_advance_amount",
+  "cost_center"
  ],
  "fields": [
   {
@@ -77,6 +78,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Date",
+   "permlevel": 1,
    "reqd": 1
   },
   {
@@ -144,10 +146,13 @@
    "read_only": 1
   },
   {
+   "fetch_from": "employee.company",
+   "fetch_if_empty": 1,
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company",
+   "permlevel": 1,
    "reqd": 1
   },
   {
@@ -164,12 +169,14 @@
    "fieldtype": "Column Break"
   },
   {
+   "fetch_from": "company.default_employee_advance_account",
+   "fetch_if_empty": 1,
    "fieldname": "advance_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
    "label": "Advance Account",
    "options": "Account",
-   "reqd": 1
+   "permlevel": 1
   },
   {
    "fieldname": "mode_of_payment",
@@ -196,11 +203,8 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Cost Center",
-   "options": "Cost Center"
-  },
-  {
-   "fieldname": "column_break_10",
-   "fieldtype": "Column Break"
+   "options": "Cost Center",
+   "permlevel": 1
   },
   {
    "fieldname": "project",
@@ -274,19 +278,28 @@
   {
    "fieldname": "column_break_20",
    "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
- "modified": "2021-11-03 13:09:23.421208",
+ "links": [],
+ "modified": "2023-09-01 22:47:08.850914",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Advance",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
    "create": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -332,11 +345,23 @@
    "role": "HR User",
    "submit": 1,
    "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "All"
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Accounts User",
+   "write": 1
   }
  ],
  "search_fields": "employee,employee_name,advance_amount,status,balance_amount",
  "sort_field": "posting_date",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "title",
  "track_changes": 1
 }

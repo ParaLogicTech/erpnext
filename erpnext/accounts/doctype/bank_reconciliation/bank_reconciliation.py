@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.utils import flt, getdate, nowdate, fmt_money
 from frappe import msgprint, _
@@ -12,6 +11,7 @@ form_grid_templates = {
 }
 
 class BankReconciliation(Document):
+	@frappe.whitelist()
 	def get_payment_entries(self):
 		if not (self.from_date and self.to_date):
 			frappe.throw(_("From Date and To Date are Mandatory"))
@@ -111,6 +111,7 @@ class BankReconciliation(Document):
 			row.update(d)
 			self.total_amount += flt(amount)
 
+	@frappe.whitelist()
 	def update_clearance_date(self):
 		clearance_date_updated = False
 		for d in self.get('payment_entries'):

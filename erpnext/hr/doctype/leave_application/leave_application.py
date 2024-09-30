@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import cint, cstr, flt, date_diff, formatdate, getdate, add_days, nowdate
@@ -301,7 +300,7 @@ class LeaveApplication(Document):
 	def throw_overlap_error(self, d):
 		msg = _("Employee {0} has already applied for {1} between {2} and {3} : ").format(self.employee,
 			d['leave_type'], formatdate(d['from_date']), formatdate(d['to_date'])) \
-			+ """ <b><a href="#Form/Leave Application/{0}">{0}</a></b>""".format(d["name"])
+			+ frappe.get_desk_link("Leave Application", d["name"])
 		frappe.throw(msg, OverlapError)
 
 	def get_total_leaves_on_half_day(self):
@@ -328,9 +327,13 @@ class LeaveApplication(Document):
 		if self.late_deduction:
 			return
 
-		attendance = frappe.db.sql("""select name from `tabAttendance` where employee = %s and (attendance_date between %s and %s)
-					and (status = 'Present' or ifnull(attendance_request, '') != '') and docstatus = 1""",
-			(self.employee, self.from_date, self.to_date))
+		attendance = frappe.db.sql("""
+			select name from `tabAttendance`
+			where employee = %s and (attendance_date between %s and %s)
+				and (status = 'Present' or ifnull(attendance_request, '') != '')
+				and docstatus = 1
+		""", (self.employee, self.from_date, self.to_date))
+
 		if attendance:
 			frappe.throw(_("Attendance for employee {0} is already marked for this day").format(
 				self.employee_name or self.employee), AttendanceAlreadyMarkedError)
@@ -690,7 +693,7 @@ def skip_expiry_leaves(leave_entry, date):
 	''' Checks whether the expired leaves coincide with the to_date of leave balance check.
 		This allows backdated leave entry creation for non carry forwarded allocation '''
 	end_date = frappe.db.get_value("Leave Allocation", {'name': leave_entry.transaction_name}, ['to_date'])
-	return True if end_date == date and not leave_entry.is_carry_forward else False
+	return True if getdate(end_date) == getdate(date) and not leave_entry.is_carry_forward else False
 
 def get_leave_entries(employee, leave_type, from_date, to_date):
 	''' Returns leave entries between from_date and to_date. '''

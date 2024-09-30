@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2013-01-10 16:34:14",
@@ -11,13 +12,16 @@
   "employee",
   "employee_name",
   "email_id",
+  "designation",
   "department",
-  "column_break_5",
-  "amended_from",
-  "company",
-  "posting_date",
+  "branch",
+  "column_break_pegxa",
   "expense_approver",
   "approval_status",
+  "column_break_5",
+  "company",
+  "posting_date",
+  "amended_from",
   "expense_details",
   "expenses",
   "sb1",
@@ -26,6 +30,7 @@
   "cb1",
   "total_amount_reimbursed",
   "total_advance",
+  "column_break_lsbwk",
   "outstanding_amount",
   "advance_payments",
   "get_advances",
@@ -34,10 +39,10 @@
   "accounting_dimensions_section",
   "cost_center",
   "dimension_col_break_column",
-  "more_details",
-  "payable_account",
+  "more_information",
+  "status",
   "column_break_24",
-  "status"
+  "payable_account"
  ],
  "fields": [
   {
@@ -55,7 +60,7 @@
    "fieldtype": "Link",
    "in_global_search": 1,
    "in_standard_filter": 1,
-   "label": "From Employee",
+   "label": "Employee",
    "oldfieldname": "employee",
    "oldfieldtype": "Link",
    "options": "Employee",
@@ -99,6 +104,7 @@
    "label": "Approval Status",
    "no_copy": 1,
    "options": "Draft\nApproved\nRejected",
+   "permlevel": 1,
    "search_index": 1
   },
   {
@@ -151,6 +157,7 @@
    "label": "Posting Date",
    "oldfieldname": "posting_date",
    "oldfieldtype": "Date",
+   "permlevel": 2,
    "reqd": 1
   },
   {
@@ -179,19 +186,21 @@
    "fieldname": "email_id",
    "fieldtype": "Data",
    "hidden": 1,
-   "label": "Employee Email Id",
+   "label": "Employee Email Address",
    "oldfieldname": "email_id",
    "oldfieldtype": "Data",
    "print_hide": 1
   },
   {
    "fetch_from": "employee.company",
+   "fetch_if_empty": 1,
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
    "oldfieldname": "company",
    "oldfieldtype": "Link",
    "options": "Company",
+   "permlevel": 2,
    "remember_last_selected_value": 1,
    "reqd": 1
   },
@@ -204,15 +213,10 @@
    "fetch_if_empty": 1,
    "fieldname": "payable_account",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Payable Account",
    "options": "Account",
-   "reqd": 1
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "more_details",
-   "fieldtype": "Section Break",
-   "label": "More Details"
+   "permlevel": 2
   },
   {
    "default": "Draft",
@@ -269,6 +273,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.docstatus == 0",
    "fieldname": "get_advances",
    "fieldtype": "Button",
    "label": "Get Advances and Allocate"
@@ -289,21 +294,54 @@
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "label": "Cost Center",
-   "options": "Cost Center"
+   "options": "Cost Center",
+   "permlevel": 2
   },
   {
    "fieldname": "dimension_col_break_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.designation",
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "employee.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lsbwk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "more_information",
+   "fieldtype": "Section Break",
+   "label": "More Information"
+  },
+  {
+   "fieldname": "column_break_pegxa",
    "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-money",
  "idx": 1,
  "is_submittable": 1,
- "modified": "2022-07-28 22:57:02.267437",
+ "links": [],
+ "modified": "2024-02-06 15:14:06.642938",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Expense Claim",
  "name_case": "Title Case",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "harshada@webnotestech.com",
  "permissions": [
   {
@@ -316,19 +354,15 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager",
+   "role": "HR User",
    "share": 1,
    "submit": 1,
    "write": 1
   },
   {
-   "create": 1,
-   "email": 1,
-   "print": 1,
+   "permlevel": 1,
    "read": 1,
-   "report": 1,
-   "role": "Employee",
-   "share": 1,
+   "role": "HR User",
    "write": 1
   },
   {
@@ -346,24 +380,60 @@
    "write": 1
   },
   {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Expense Approver",
+   "write": 1
+  },
+  {
    "amend": 1,
    "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
+   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR User",
+   "role": "Accounts User",
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "permlevel": 2,
+   "read": 1,
+   "role": "Accounts User",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "All"
+  },
+  {
+   "permlevel": 2,
+   "read": 1,
+   "role": "All"
   }
  ],
  "search_fields": "employee,employee_name, outstanding_amount",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "employee",
- "title_field": "title"
+ "title_field": "title",
+ "track_changes": 1,
+ "track_seen": 1
 }

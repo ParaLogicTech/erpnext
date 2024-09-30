@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import getdate
@@ -77,3 +76,8 @@ class ItemPrice(Document):
 		if self.buying and not self.selling:
 			# if only buying then remove customer
 			self.customer = None
+
+
+def on_doctype_update():
+	frappe.db.add_index("Item Price", ["item_code", "price_list"])
+	frappe.db.add_index("Item Price", ["valid_from", "valid_upto"])

@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.utils import flt
 from frappe import _
@@ -57,6 +56,7 @@ class CForm(Document):
 		total = sum([flt(d.grand_total) for d in self.get('invoices')])
 		frappe.db.set(self, 'total_invoiced_amount', total)
 
+	@frappe.whitelist()
 	def get_invoice_details(self, invoice_no):
 		"""	Pull details from invoices for referrence """
 		if invoice_no:

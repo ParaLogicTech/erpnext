@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_rename": 1,
  "autoname": "field:project_template_code",
  "creation": "2019-02-18 17:23:11.708371",
@@ -124,10 +125,12 @@
    "fieldtype": "Column Break"
   }
  ],
- "modified": "2022-12-06 15:19:48.606564",
+ "links": [],
+ "modified": "2023-10-31 15:28:40.701819",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project Template",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -149,6 +152,15 @@
    "read": 1,
    "report": 1,
    "role": "Projects User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User (Read Only)",
    "share": 1
   },
   {
@@ -191,6 +203,7 @@
  "search_fields": "project_template_name, project_template_category, applies_to_item_name",
  "sort_field": "idx",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "project_template_name",
  "track_changes": 1
 }

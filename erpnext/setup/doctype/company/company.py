@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe, os, json
 from frappe import _
 from frappe.utils import get_timestamp
@@ -9,13 +8,9 @@ from frappe.utils import get_timestamp
 from frappe.utils import cint, today, formatdate
 import frappe.defaults
 from frappe.cache_manager import clear_defaults_cache
-
-from frappe.model.document import Document
 from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.utils.nestedset import NestedSet
 
-from past.builtins import cmp
-import functools
 
 class Company(NestedSet):
 	nsm_parent_field = 'parent_company'
@@ -63,6 +58,7 @@ class Company(NestedSet):
 		if frappe.db.sql("select abbr from tabCompany where name!=%s and abbr=%s", (self.name, self.abbr)):
 			frappe.throw(_("Abbreviation already used for another company"))
 
+	@frappe.whitelist()
 	def create_default_tax_template(self):
 		from erpnext.setup.setup_wizard.operations.taxes_setup import create_sales_tax
 		create_sales_tax({
@@ -155,9 +151,9 @@ class Company(NestedSet):
 		frappe.local.flags.ignore_root_company_validation = True
 		create_charts(self.name, self.chart_of_accounts, self.existing_company)
 
-		frappe.db.set(self, "default_receivable_account", frappe.db.get_value("Account",
+		self.db_set("default_receivable_account", frappe.db.get_value("Account",
 			{"company": self.name, "account_type": "Receivable", "is_group": 0}))
-		frappe.db.set(self, "default_payable_account", frappe.db.get_value("Account",
+		self.db_set("default_payable_account", frappe.db.get_value("Account",
 			{"company": self.name, "account_type": "Payable", "is_group": 0}))
 
 	def validate_coa_input(self):
@@ -315,12 +311,12 @@ class Company(NestedSet):
 				cc_doc.flags.ignore_mandatory = True
 			cc_doc.insert()
 
-		frappe.db.set(self, "cost_center", _("Main") + " - " + self.abbr)
-		frappe.db.set(self, "round_off_cost_center", _("Main") + " - " + self.abbr)
-		frappe.db.set(self, "depreciation_cost_center", _("Main") + " - " + self.abbr)
+		self.db_set("cost_center", _("Main") + " - " + self.abbr)
+		self.db_set("round_off_cost_center", _("Main") + " - " + self.abbr)
+		self.db_set("depreciation_cost_center", _("Main") + " - " + self.abbr)
 
 	def after_rename(self, olddn, newdn, merge=False):
-		frappe.db.set(self, "company_name", newdn)
+		self.db_set("company_name", newdn)
 
 		frappe.db.sql("""update `tabDefaultValue` set defvalue=%s
 			where defkey='Company' and defvalue=%s""", (newdn, olddn))
@@ -384,9 +380,10 @@ class Company(NestedSet):
 		frappe.db.sql("delete from `tabSales Taxes and Charges Template` where company=%s", self.name)
 		frappe.db.sql("delete from `tabPurchase Taxes and Charges Template` where company=%s", self.name)
 
+
 @frappe.whitelist()
 def enqueue_replace_abbr(company, old, new):
-	kwargs = dict(company=company, old=old, new=new)
+	kwargs = dict(company=company, old=old, new=new, queue="long")
 	frappe.enqueue('erpnext.setup.doctype.company.company.replace_abbr', **kwargs)
 
 
@@ -415,6 +412,7 @@ def replace_abbr(company, old, new):
 			"Sales Taxes and Charges Template", "Purchase Taxes and Charges Template"]:
 		_rename_records(dt)
 
+
 def get_name_with_abbr(name, company):
 	company_abbr = frappe.get_cached_value('Company',  company,  "abbr")
 	parts = name.split(" - ")
@@ -424,12 +422,15 @@ def get_name_with_abbr(name, company):
 
 	return " - ".join(parts)
 
-def install_country_fixtures(company):
+def install_country_fixtures(company, country=None):
 	company_doc = frappe.get_doc("Company", company)
-	path = frappe.get_app_path('erpnext', 'regional', frappe.scrub(company_doc.country))
+	if not country:
+		country = company_doc.country
+
+	path = frappe.get_app_path('erpnext', 'regional', frappe.scrub(country))
 	if os.path.exists(path.encode("utf-8")):
 		try:
-			module_name = "erpnext.regional.{0}.setup.setup".format(frappe.scrub(company_doc.country))
+			module_name = "erpnext.regional.{0}.setup.setup".format(frappe.scrub(country))
 			frappe.get_attr(module_name)(company_doc, False)
 		except Exception as e:
 			frappe.log_error(title=str(e), message=frappe.get_traceback())
@@ -581,25 +582,30 @@ def get_timeline_data(doctype, name):
 
 	return date_to_value_dict
 
+
 @frappe.whitelist()
-def get_default_company_address(name, sort_key='is_primary_address', existing_address=None):
-	if sort_key not in ['is_shipping_address', 'is_primary_address']:
+def get_default_company_address(name, sort_key="is_primary_address", existing_address=None):
+	if sort_key not in ["is_shipping_address", "is_primary_address"]:
 		return None
 
-	out = frappe.db.sql(""" SELECT
+	out = frappe.db.sql(
+		""" SELECT
 			addr.name, addr.%s
 		FROM
 			`tabAddress` addr, `tabDynamic Link` dl
 		WHERE
 			dl.parent = addr.name and dl.link_doctype = 'Company' and
 			dl.link_name = %s and ifnull(addr.disabled, 0) = 0
-		""" %(sort_key, '%s'), (name)) #nosec
+		"""
+		% (sort_key, "%s"),
+		(name),
+	)  # nosec
 
 	if existing_address:
 		if existing_address in [d[0] for d in out]:
 			return existing_address
 
 	if out:
-		return sorted(out, key = functools.cmp_to_key(lambda x,y: cmp(y[1], x[1])))[0][0]
+		return min(out, key=lambda x: x[1])[0]  # find min by sort_key
 	else:
 		return None

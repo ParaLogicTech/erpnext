@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2013-08-02 13:45:23",
  "doctype": "DocType",
  "document_type": "Other",
@@ -6,10 +7,9 @@
  "engine": "InnoDB",
  "field_order": [
   "employee_settings",
-  "retirement_age",
   "emp_created_by",
   "column_break_4",
-  "stop_birthday_reminders",
+  "retirement_age",
   "expense_approver_mandatory_in_expense_claim",
   "payroll_settings",
   "include_holidays_in_total_working_days",
@@ -20,6 +20,7 @@
   "email_salary_slip_to_employee",
   "encrypt_salary_slips_in_emails",
   "consider_lwp_as_deduction",
+  "show_upcoming_loans_in_salary_slips",
   "password_policy",
   "leave_settings",
   "leave_approval_notification_template",
@@ -28,6 +29,8 @@
   "leave_approver_mandatory_in_leave_application",
   "show_leaves_of_all_department_members_in_calendar",
   "auto_leave_encashment",
+  "allow_leave_allocation_cancellation",
+  "allow_leave_allocation_cancellation_role",
   "hiring_settings",
   "check_vacancies"
  ],
@@ -54,13 +57,6 @@
   {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"
-  },
-  {
-   "default": "0",
-   "description": "Don't send Employee Birthday Reminders",
-   "fieldname": "stop_birthday_reminders",
-   "fieldtype": "Check",
-   "label": "Stop Birthday Reminders"
   },
   {
    "default": "1",
@@ -113,7 +109,6 @@
    "label": "Password Policy"
   },
   {
-   "collapsible": 1,
    "fieldname": "leave_settings",
    "fieldtype": "Section Break",
    "label": "Leave Settings"
@@ -147,7 +142,6 @@
    "label": "Show Leaves Of All Department Members In Calendar"
   },
   {
-   "collapsible": 1,
    "fieldname": "hiring_settings",
    "fieldtype": "Section Break",
    "label": "Hiring Settings"
@@ -183,12 +177,31 @@
    "fieldname": "consider_lwp_as_deduction",
    "fieldtype": "Check",
    "label": "Consider LWP as Deduction"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_leave_allocation_cancellation",
+   "fieldtype": "Check",
+   "label": "Allow Cancelling Leave Allocation When Leave Applications Exists"
+  },
+  {
+   "fieldname": "allow_leave_allocation_cancellation_role",
+   "fieldtype": "Link",
+   "label": "Restrict Leave Allocation Cancellation to Role",
+   "options": "Role"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_upcoming_loans_in_salary_slips",
+   "fieldtype": "Check",
+   "label": "Show Upcoming Loans in Salary Slips"
   }
  ],
  "icon": "fa fa-cog",
  "idx": 1,
  "issingle": 1,
- "modified": "2022-12-26 12:16:08.306059",
+ "links": [],
+ "modified": "2024-08-15 17:46:22.981145",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR Settings",
@@ -215,5 +228,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "ASC",
+ "states": [],
  "track_changes": 1
 }

@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 
 import frappe, os, json
 
@@ -11,12 +10,9 @@ from frappe.utils import cstr, getdate
 from erpnext.accounts.doctype.account.account import RootNotEditable
 from frappe.desk.doctype.global_search_settings.global_search_settings import update_global_search_doctypes
 
-default_lead_sources = ["Existing Customer", "Reference", "Advertisement",
-	"Cold Calling", "Exhibition", "Supplier Reference", "Mass Mailing",
-	"Customer's Vendor", "Campaign", "Walk In"]
-
 default_sales_partner_type = ["Channel Partner", "Distributor", "Dealer", "Agent",
 	"Retailer", "Implementation Partner", "Reseller"]
+
 
 def install(country=None):
 	records = [
@@ -38,7 +34,7 @@ def install(country=None):
 		{'doctype': 'Item Group', 'item_group_name': _('All Item Groups'),
 			'is_group': 1, 'parent_item_group': ''},
 		{'doctype': 'Item Group', 'item_group_name': _('Products'),
-			'is_group': 0, 'parent_item_group': _('All Item Groups'), "show_in_website": 1 },
+			'is_group': 0, 'parent_item_group': _('All Item Groups') },
 		{'doctype': 'Item Group', 'item_group_name': _('Raw Material'),
 			'is_group': 0, 'parent_item_group': _('All Item Groups') },
 		{'doctype': 'Item Group', 'item_group_name': _('Services'),
@@ -114,11 +110,6 @@ def install(country=None):
 		{'doctype': 'Designation', 'designation_name': _('Designer')},
 		{'doctype': 'Designation', 'designation_name': _('Researcher')},
 
-		# territory: with two default territories, one for home country and one named Rest of the World
-		{'doctype': 'Territory', 'territory_name': _('All Territories'), 'is_group': 1, 'name': _('All Territories'), 'parent_territory': ''},
-		{'doctype': 'Territory', 'territory_name': country.replace("'", ""), 'is_group': 0, 'parent_territory': _('All Territories')},
-		{'doctype': 'Territory', 'territory_name': _("Rest Of The World"), 'is_group': 0, 'parent_territory': _('All Territories')},
-
 		# customer group
 		{'doctype': 'Customer Group', 'customer_group_name': _('All Customer Groups'), 'is_group': 1, 	'name': _('All Customer Groups'), 'parent_customer_group': ''},
 		{'doctype': 'Customer Group', 'customer_group_name': _('Individual'), 'is_group': 0, 'parent_customer_group': _('All Customer Groups')},
@@ -135,9 +126,6 @@ def install(country=None):
 		{'doctype': 'Supplier Group', 'supplier_group_name': _('Hardware'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
 		{'doctype': 'Supplier Group', 'supplier_group_name': _('Pharmaceutical'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
 		{'doctype': 'Supplier Group', 'supplier_group_name': _('Distributor'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
-
-		# Sales Person
-		{'doctype': 'Sales Person', 'sales_person_name': _('Sales Team'), 'is_group': 1, "parent_sales_person": ""},
 
 		# Mode of Payment
 		{'doctype': 'Mode of Payment',
@@ -198,11 +186,6 @@ def install(country=None):
 		{'doctype': "Party Type", "party_type": "Shareholder", "account_type": "Payable"},
 		{'doctype': "Party Type", "party_type": "Student", "account_type": "Receivable"},
 
-		{'doctype': "Opportunity Type", "name": "Hub"},
-		{'doctype': "Opportunity Type", "name": _("Sales")},
-		{'doctype': "Opportunity Type", "name": _("Support")},
-		{'doctype': "Opportunity Type", "name": _("Maintenance")},
-
 		{'doctype': "Project Type", "project_type": "Internal"},
 		{'doctype': "Project Type", "project_type": "External"},
 		{'doctype': "Project Type", "project_type": "Other"},
@@ -230,27 +213,9 @@ def install(country=None):
 		# Share Management
 		{"doctype": "Share Type", "title": _("Equity")},
 		{"doctype": "Share Type", "title": _("Preference")},
-
-		# Market Segments
-		{"doctype": "Market Segment", "market_segment": _("Lower Income")},
-		{"doctype": "Market Segment", "market_segment": _("Middle Income")},
-		{"doctype": "Market Segment", "market_segment": _("Upper Income")},
-
-		# Sales Stages
-		{"doctype": "Sales Stage", "stage_name": _("Prospecting")},
-		{"doctype": "Sales Stage", "stage_name": _("Qualification")},
-		{"doctype": "Sales Stage", "stage_name": _("Needs Analysis")},
-		{"doctype": "Sales Stage", "stage_name": _("Value Proposition")},
-		{"doctype": "Sales Stage", "stage_name": _("Identifying Decision Makers")},
-		{"doctype": "Sales Stage", "stage_name": _("Perception Analysis")},
-		{"doctype": "Sales Stage", "stage_name": _("Proposal/Price Quote")},
-		{"doctype": "Sales Stage", "stage_name": _("Negotiation/Review")}
 	]
 
-	from erpnext.setup.setup_wizard.data.industry_type import get_industry_types
-	records += [{"doctype":"Industry Type", "industry": d} for d in get_industry_types()]
 	# records += [{"doctype":"Operation", "operation": d} for d in get_operations()]
-	records += [{'doctype': 'Lead Source', 'source_name': _(d)} for d in default_lead_sources]
 
 	records += [{'doctype': 'Sales Partner Type', 'sales_partner_type': _(d)} for d in default_sales_partner_type]
 
@@ -316,26 +281,34 @@ def set_more_defaults():
 	hr_settings.leave_status_notification_template = _("Leave Status Notification")
 	hr_settings.save()
 
+
 def add_uom_data():
 	# add UOMs
 	uoms = json.loads(open(frappe.get_app_path("erpnext", "setup", "setup_wizard", "data", "uom_data.json")).read())
 	for d in uoms:
-		if not frappe.db.exists('UOM', _(d.get("uom_name"))):
-			uom_doc = frappe.get_doc({
-				"doctype": "UOM",
-				"uom_name": _(d.get("uom_name")),
-				"name": _(d.get("uom_name")),
-				"must_be_whole_number": d.get("must_be_whole_number")
-			}).insert(ignore_permissions=True)
+		if d.get("category"):
+			create_missing_uom_category(d.get("category"))
+
+		if frappe.db.exists('UOM', _(d.get("uom_name"))):
+			uom_doc = frappe.get_doc("UOM", _(d.get("uom_name")))
+		else:
+			uom_doc = frappe.new_doc("UOM")
+
+		uom_doc.update({
+			"uom_name": _(d.get("uom_name")),
+			"name": _(d.get("uom_name")),
+			"category": _(d.get("category")),
+			"disabled": d.get("disabled"),
+			"must_be_whole_number": d.get("must_be_whole_number")
+		})
+
+		uom_doc.save(ignore_permissions=True)
 
 	# bootstrap uom conversion factors
 	uom_conversions = json.loads(open(frappe.get_app_path("erpnext", "setup", "setup_wizard", "data", "uom_conversion_data.json")).read())
 	for d in uom_conversions:
-		if not frappe.db.exists("UOM Category", _(d.get("category"))):
-			frappe.get_doc({
-				"doctype": "UOM Category",
-				"category_name": _(d.get("category"))
-			}).insert(ignore_permissions=True)
+		if d.get("category"):
+			create_missing_uom_category(d.get("category"))
 
 		if not frappe.db.exists("UOM Conversion Factor", {"from_uom": _(d.get("from_uom")), "to_uom": _(d.get("to_uom"))}):
 			uom_conversion = frappe.get_doc({
@@ -346,30 +319,14 @@ def add_uom_data():
 				"value": d.get("value")
 			}).insert(ignore_permissions=True)
 
-def add_market_segments():
-	records = [
-		# Market Segments
-		{"doctype": "Market Segment", "market_segment": _("Lower Income")},
-		{"doctype": "Market Segment", "market_segment": _("Middle Income")},
-		{"doctype": "Market Segment", "market_segment": _("Upper Income")}
-	]
 
-	make_records(records)
+def create_missing_uom_category(category):
+	if not frappe.db.exists("UOM Category", _(category)):
+		frappe.get_doc({
+			"doctype": "UOM Category",
+			"category_name": _(category),
+		}).insert(ignore_permissions=True)
 
-def add_sale_stages():
-	# Sale Stages
-	records = [
-		{"doctype": "Sales Stage", "stage_name": _("Prospecting")},
-		{"doctype": "Sales Stage", "stage_name": _("Qualification")},
-		{"doctype": "Sales Stage", "stage_name": _("Needs Analysis")},
-		{"doctype": "Sales Stage", "stage_name": _("Value Proposition")},
-		{"doctype": "Sales Stage", "stage_name": _("Identifying Decision Makers")},
-		{"doctype": "Sales Stage", "stage_name": _("Perception Analysis")},
-		{"doctype": "Sales Stage", "stage_name": _("Proposal/Price Quote")},
-		{"doctype": "Sales Stage", "stage_name": _("Negotiation/Review")}
-	]
-
-	make_records(records)
 
 def install_company(args):
 	records = [
@@ -429,6 +386,14 @@ def install_defaults(args=None):
 
 	make_records(records)
 
+	selling_settings = frappe.get_doc("Selling Settings")
+	selling_settings.selling_price_list = _("Standard Selling")
+	selling_settings.save()
+
+	buying_settings = frappe.get_doc("Buying Settings")
+	buying_settings.buying_price_list = _("Standard Buying")
+	buying_settings.save()
+
 	# enable default currency
 	frappe.db.set_value("Currency", args.get("currency"), "enabled", 1)
 
@@ -456,6 +421,7 @@ def install_defaults(args=None):
 	stock_settings.valuation_method = "FIFO"
 	stock_settings.default_warehouse = frappe.db.get_value('Warehouse', {'warehouse_name': _('Stores')})
 	stock_settings.stock_uom = _("Nos")
+	stock_settings.weight_uom = _("Kg")
 	stock_settings.auto_indent = 1
 	stock_settings.auto_insert_price_list_rate_if_missing = 1
 	stock_settings.automatically_set_serial_nos_based_on_fifo = 1
@@ -487,46 +453,6 @@ def install_defaults(args=None):
 			except frappe.DuplicateEntryError:
 				# bank account same as a CoA entry
 				pass
-
-	add_dashboards()
-
-	# Now, with fixtures out of the way, onto concrete stuff
-	records = [
-
-		# Shopping cart: needs price lists
-		{
-			"doctype": "Shopping Cart Settings",
-			"enabled": 1,
-			'company': args.company_name,
-			# uh oh
-			'price_list': frappe.db.get_value("Price List", {"selling": 1}),
-			'default_customer_group': _("Individual"),
-			'quotation_series': "QTN-",
-		},
-	]
-
-	make_records(records)
-
-def add_dashboards():
-	from erpnext.setup.setup_wizard.data.dashboard_charts import get_company_for_dashboards
-
-	if not get_company_for_dashboards():
-		return
-
-	from erpnext.setup.setup_wizard.data.dashboard_charts import get_default_dashboards
-	from frappe.modules.import_file import import_file_by_path
-
-	dashboard_data = get_default_dashboards()
-
-	# create account balance timeline before creating dashbaord charts
-	doctype = "dashboard_chart_source"
-	docname = "account_balance_timeline"
-	folder = os.path.dirname(frappe.get_module("erpnext.accounts").__file__)
-	doc_path = os.path.join(folder, doctype, docname, docname) + ".json"
-	import_file_by_path(doc_path, force=0, for_sync=True)
-
-	make_records(dashboard_data["Charts"])
-	make_records(dashboard_data["Dashboards"])
 
 
 def get_fy_details(fy_start_date, fy_end_date):

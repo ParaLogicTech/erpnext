@@ -2,7 +2,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 import calendar
 from frappe import _
@@ -13,6 +12,7 @@ from erpnext.education.utils import OverlapError
 
 class CourseSchedulingTool(Document):
 
+	@frappe.whitelist()
 	def schedule_course(self):
 		"""Creates course schedules as per specified parameters"""
 

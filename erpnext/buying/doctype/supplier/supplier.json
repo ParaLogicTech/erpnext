@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_events_in_timeline": 1,
  "allow_import": 1,
  "allow_rename": 1,
@@ -13,28 +14,28 @@
   "naming_series",
   "supplier_type",
   "supplier_name",
+  "reference",
+  "disabled",
+  "column_break_7",
   "supplier_group",
   "country",
-  "column_break_7",
+  "column_break0",
   "default_currency",
   "default_price_list",
-  "payment_terms",
   "image",
-  "column_break0",
+  "section_break_drzz2",
   "tax_id",
+  "column_break_35xwp",
   "tax_cnic",
+  "column_break_fxf2z",
   "tax_strn",
   "pan",
-  "disabled",
   "column_break2",
   "supplier_details",
   "column_break_13",
-  "is_internal_supplier",
-  "represents_company",
   "is_transporter",
   "po_not_required",
   "pr_not_required",
-  "column_break_26",
   "warn_rfqs",
   "warn_pos",
   "prevent_rfqs",
@@ -42,24 +43,28 @@
   "column_break_30",
   "language",
   "website",
-  "allowed_to_transact_section",
-  "companies",
   "address_contacts",
   "address_html",
   "column_break1",
   "contact_html",
-  "default_payable_accounts",
+  "accounting_tab",
   "expense_account",
+  "payment_terms",
+  "column_break_47",
   "tax_category",
   "tax_withholding_category",
+  "column_break_cnhyz",
   "default_bank_account",
   "is_frozen",
   "on_hold",
+  "is_internal_supplier",
   "hold_type",
   "release_date",
-  "column_break_47",
-  "accounts",
-  "default_tax_withholding_config"
+  "allowed_to_transact_section",
+  "represents_company",
+  "companies",
+  "accounting_defaults_section",
+  "accounts"
  ],
  "fields": [
   {
@@ -111,7 +116,7 @@
    "fieldname": "tax_id",
    "fieldtype": "Data",
    "in_standard_filter": 1,
-   "label": "NTN"
+   "label": "Tax ID"
   },
   {
    "allow_in_quick_entry": 1,
@@ -229,13 +234,13 @@
    "read_only": 1
   },
   {
-   "depends_on": "represents_company",
+   "depends_on": "is_internal_supplier",
    "fieldname": "allowed_to_transact_section",
    "fieldtype": "Section Break",
    "label": "Allowed To Transact With"
   },
   {
-   "depends_on": "represents_company",
+   "depends_on": "is_internal_supplier",
    "fieldname": "companies",
    "fieldtype": "Table",
    "label": "Allowed To Transact With",
@@ -309,13 +314,6 @@
    "read_only": 1
   },
   {
-   "collapsible": 1,
-   "collapsible_depends_on": "accounts",
-   "fieldname": "default_payable_accounts",
-   "fieldtype": "Section Break",
-   "label": "Accounting"
-  },
-  {
    "description": "Mention if non-standard payable account",
    "fieldname": "accounts",
    "fieldtype": "Table",
@@ -323,14 +321,6 @@
    "options": "Party Account"
   },
   {
-   "collapsible": 1,
-   "fieldname": "default_tax_withholding_config",
-   "fieldtype": "Section Break",
-   "label": "Default Tax Withholding Config"
-  },
-  {
-   "collapsible": 1,
-   "collapsible_depends_on": "supplier_details",
    "fieldname": "column_break2",
    "fieldtype": "Section Break",
    "label": "More Information",
@@ -344,9 +334,8 @@
    "oldfieldtype": "Data"
   },
   {
-   "description": "Statutory info and other general information about your Supplier",
    "fieldname": "supplier_details",
-   "fieldtype": "Text",
+   "fieldtype": "Small Text",
    "label": "Supplier Details",
    "oldfieldname": "supplier_details",
    "oldfieldtype": "Code"
@@ -388,19 +377,17 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "column_break_26",
-   "fieldtype": "Column Break"
-  },
-  {
    "default": "0",
    "fieldname": "po_not_required",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Allow Purchase Invoice Creation Without Purchase Order"
   },
   {
    "default": "0",
    "fieldname": "pr_not_required",
    "fieldtype": "Check",
+   "hidden": 1,
    "label": "Allow Purchase Invoice Creation Without Purchase Receipt"
   },
   {
@@ -408,16 +395,51 @@
    "fieldtype": "Link",
    "label": "Default Expense Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "section_break_drzz2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_35xwp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_fxf2z",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "bold": 1,
+   "fieldname": "reference",
+   "fieldtype": "Data",
+   "label": "Reference"
+  },
+  {
+   "fieldname": "accounting_tab",
+   "fieldtype": "Tab Break",
+   "label": "Accounting"
+  },
+  {
+   "fieldname": "accounting_defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting Defaults"
+  },
+  {
+   "fieldname": "column_break_cnhyz",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-user",
  "idx": 370,
  "image_field": "image",
- "modified": "2022-07-29 14:28:14.092620",
+ "links": [],
+ "modified": "2024-06-23 22:22:45.180213",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Supplier",
  "name_case": "Title Case",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -478,10 +500,11 @@
   }
  ],
  "quick_entry": 1,
- "search_fields": "supplier_name, supplier_group",
+ "search_fields": "supplier_name, reference, supplier_group",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "supplier_name",
  "track_changes": 1,
  "track_seen": 1

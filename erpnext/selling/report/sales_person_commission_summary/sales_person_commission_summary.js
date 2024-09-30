@@ -3,7 +3,7 @@
 /* eslint-disable */
 
 const group_by_options_spcs = [
-	"Ungrouped", "Group by Sales Person", "Group by Territory", "Group by Sales Commission Category",
+	"", "Group by Sales Person", "Group by Territory", "Group by Sales Commission Category",
 	"Group by Invoice", "Group by Customer"
 ]
 
@@ -97,14 +97,14 @@ frappe.query_reports["Sales Person Commission Summary"] = {
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
 			options: group_by_options_spcs,
-			default: "Ungrouped"
+			default: ""
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
 			options: group_by_options_spcs,
-			default: "Ungrouped"
+			default: ""
 		},
 		{
 			fieldname: "totals_only",

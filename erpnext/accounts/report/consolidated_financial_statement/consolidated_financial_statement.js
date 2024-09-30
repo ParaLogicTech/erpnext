@@ -39,7 +39,7 @@ frappe.query_reports["Consolidated Financial Statement"] = {
 			"label": __("Report"),
 			"fieldtype": "Select",
 			"options": ["Profit and Loss Statement", "Balance Sheet", "Cash Flow"],
-			"default": "Balance Sheet",
+			"default": "Profit and Loss Statement",
 			"reqd": 1
 		},
 		{

@@ -34,8 +34,8 @@ frappe.ui.form.on("Payment Reconciliation Payment", {
 	}
 });
 
-erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.extend({
-	onload: function() {
+erpnext.accounts.PaymentReconciliationController = class PaymentReconciliationController extends frappe.ui.form.Controller {
+	onload() {
 		var me = this;
 		this.frm.set_query("party_type", function() {
 			return {
@@ -77,19 +77,19 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 		this.frm.set_value('party_type', '');
 		this.frm.set_value('party', '');
 		this.frm.set_value('receivable_payable_account', '');
-	},
+	}
 
-	refresh: function() {
+	refresh() {
 		erpnext.hide_company();
 		this.frm.disable_save();
 		this.toggle_primary_action();
-	},
+	}
 
-	onload_post_render: function() {
+	onload_post_render() {
 		this.toggle_primary_action();
-	},
+	}
 
-	party: function() {
+	party() {
 		var me = this
 		if(!me.frm.doc.receivable_payable_account && me.frm.doc.party_type && me.frm.doc.party) {
 			return frappe.call({
@@ -106,9 +106,9 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 				}
 			});
 		}
-	},
+	}
 
-	get_unreconciled_entries: function() {
+	get_unreconciled_entries() {
 		var me = this;
 		return this.frm.call({
 			doc: me.frm.doc,
@@ -119,9 +119,9 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 			}
 		});
 
-	},
+	}
 
-	reconcile: function() {
+	reconcile() {
 		var me = this;
 		var show_dialog = me.frm.doc.payments.filter(d => d.difference_amount && !d.difference_account);
 
@@ -203,9 +203,9 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 		} else {
 			this.reconcile_payment_entries();
 		}
-	},
+	}
 
-	reconcile_payment_entries: function() {
+	reconcile_payment_entries() {
 		var me = this;
 
 		return this.frm.call({
@@ -216,9 +216,9 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 				me.toggle_primary_action();
 			}
 		});
-	},
+	}
 
-	set_invoice_options: function() {
+	set_invoice_options() {
 		var me = this;
 		var invoices = [];
 
@@ -228,8 +228,8 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 		});
 
 		if (invoices) {
-			frappe.meta.get_docfield("Payment Reconciliation Payment", "invoice_number",
-				me.frm.doc.name).options = "\n" + invoices.join("\n");
+			me.frm.fields_dict.payments.grid.update_docfield_property("invoice_number", "options",
+				"\n" + invoices.join("\n"));
 
 			$.each(me.frm.doc.payments || [], function(i, p) {
 				if(!in_list(invoices, cstr(p.invoice_number))) p.invoice_number = null;
@@ -237,9 +237,9 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 		}
 
 		refresh_field("payments");
-	},
+	}
 
-	toggle_primary_action: function() {
+	toggle_primary_action() {
 		if ((this.frm.doc.payments || []).length) {
 			this.frm.fields_dict.reconcile.$input
 				&& this.frm.fields_dict.reconcile.$input.addClass("btn-primary");
@@ -253,6 +253,6 @@ erpnext.accounts.PaymentReconciliationController = frappe.ui.form.Controller.ext
 		}
 	}
 
-});
+};
 
-$.extend(cur_frm.cscript, new erpnext.accounts.PaymentReconciliationController({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.accounts.PaymentReconciliationController({frm: cur_frm}));

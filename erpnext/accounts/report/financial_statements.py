@@ -3,10 +3,7 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
-
 import re
-from past.builtins import cmp
 import functools
 import math
 
@@ -143,7 +140,7 @@ def get_data(company, root_type, balance_must_be, period_list, filters=None,
 	for root in frappe.db.sql("""
 			select lft, rgt
 			from tabAccount
-			where root_type=%s and ifnull(parent_account, '') = ''
+			where root_type=%s and (parent_account = '' or parent_account is null)
 	""", root_type, as_dict=1):
 
 		set_gl_entries_by_account(
@@ -354,7 +351,7 @@ def sort_accounts(accounts, is_root=False, key="name"):
 	def compare_accounts(a, b):
 		if re.split('\W+', a[key])[0].isdigit():
 			# if chart of accounts is numbered, then sort by number
-			return cmp(a[key], b[key])
+			return int(a[key] > b[key]) - int(a[key] < b[key])
 		elif is_root:
 			if a.report_type != b.report_type and a.report_type == "Balance Sheet":
 				return -1
@@ -366,7 +363,7 @@ def sort_accounts(accounts, is_root=False, key="name"):
 				return -1
 		else:
 			# sort by key (number) or name
-			return cmp(a[key], b[key])
+			return int(a[key] > b[key]) - int(a[key] < b[key])
 		return 1
 
 	accounts.sort(key = functools.cmp_to_key(compare_accounts))
@@ -427,7 +424,7 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 	accounting_dimensions = get_accounting_dimensions(as_list=False)
 
 	if ignore_closing_entries:
-		additional_conditions.append("ifnull(voucher_type, '')!='Period Closing Voucher'")
+		additional_conditions.append("voucher_type != 'Period Closing Voucher'")
 
 	if from_date:
 		additional_conditions.append("posting_date >= %(from_date)s")

@@ -3,8 +3,8 @@
 
 frappe.provide("erpnext.hr");
 
-erpnext.hr.ExpenseClaimController = frappe.ui.form.Controller.extend({
-	setup: function() {
+erpnext.hr.ExpenseClaimController = class ExpenseClaimController extends frappe.ui.form.Controller {
+	setup() {
 		var me = this;
 
 		me.frm.custom_make_buttons = {
@@ -105,9 +105,9 @@ erpnext.hr.ExpenseClaimController = frappe.ui.form.Controller.extend({
 				}
 			}
 		});
-	},
+	}
 
-	onload: function() {
+	onload() {
 		var me = this;
 		if (me.frm.doc.docstatus == 0) {
 			return frappe.call({
@@ -122,41 +122,40 @@ erpnext.hr.ExpenseClaimController = frappe.ui.form.Controller.extend({
 				}
 			});
 		}
-	},
+	}
 
-	refresh: function() {
+	refresh() {
 		var me = this;
 
 		erpnext.hide_company();
 		erpnext.toggle_naming_series();
 
 		if(me.frm.doc.docstatus === 1) {
-			me.frm.add_custom_button(__('Accounting Ledger'), function() {
-				frappe.route_options = {
-					voucher_no: me.frm.doc.name,
-					company: me.frm.doc.company,
-					from_date: me.frm.doc.posting_date,
-					to_date: me.frm.doc.posting_date,
-					merge_similar_entries: 0
-				};
-				frappe.set_route("query-report", "General Ledger");
-			}, __("View"));
+			if (frappe.model.can_read("GL Entry")) {
+				me.frm.add_custom_button(__('Accounting Ledger'), function() {
+					frappe.route_options = {
+						voucher_no: me.frm.doc.name,
+						company: me.frm.doc.company,
+						from_date: me.frm.doc.posting_date,
+						to_date: me.frm.doc.posting_date,
+						merge_similar_entries: 0
+					};
+					frappe.set_route("query-report", "General Ledger");
+				}, __("View"));
+			}
 
 			if (flt(me.frm.doc.outstanding_amount) > 0 && frappe.model.can_create("Payment Entry")) {
 				me.frm.add_custom_button(__('Payment'), function() {
 					me.make_payment_entry();
-				}, __("Make"));
+				}, __("Create"));
+				me.frm.page.set_inner_btn_group_as_primary(__("Create"));
 			}
 		}
 
-		if (!me.frm.doc.__islocal && me.frm.doc.docstatus==1) {
-			me.frm.page.set_inner_btn_group_as_primary(__("Make"));
-		}
-
 		this.set_help();
-	},
+	}
 
-	calculate_totals: function() {
+	calculate_totals() {
 		var me = this;
 
 		me.frm.doc.total_claimed_amount = 0;
@@ -180,9 +179,9 @@ erpnext.hr.ExpenseClaimController = frappe.ui.form.Controller.extend({
 			precision("outstanding_amount"));
 
 		me.frm.refresh_fields();
-	},
+	}
 
-	expense_type: function(doc, cdt, cdn) {
+	expense_type(doc, cdt, cdn) {
 		var d = locals[cdt][cdn];
 		if(!doc.company) {
 			d.expense_type = "";
@@ -206,9 +205,9 @@ erpnext.hr.ExpenseClaimController = frappe.ui.form.Controller.extend({
 				}
 			}
 		});
-	},
+	}
 
-	purchase_invoice: function(doc, cdt, cdn) {
+	purchase_invoice(doc, cdt, cdn) {
 		var d = locals[cdt][cdn];
 		if(!doc.company) {
 			frappe.model.set_value(cdt, cdn, 'purchase_invoice', "");
@@ -234,40 +233,40 @@ erpnext.hr.ExpenseClaimController = frappe.ui.form.Controller.extend({
 				}
 			});
 		}
-	},
+	}
 
-	employee: function() {
+	employee() {
 		this.get_advances();
-	},
+	}
 
-	payable_account: function() {
+	payable_account() {
 		this.get_advances();
-	},
+	}
 
-	claim_amount: function(doc, cdt, cdn) {
+	claim_amount(doc, cdt, cdn) {
 		var child = locals[cdt][cdn];
 		child.sanctioned_amount = child.claim_amount;
 
 		this.calculate_totals(doc, cdt, cdn);
-	},
+	}
 
-	sanctioned_amount: function(doc, cdt, cdn) {
+	sanctioned_amount(doc, cdt, cdn) {
 		this.calculate_totals(doc, cdt, cdn);
-	},
+	}
 
-	allocated_amount: function(doc, cdt, cdn) {
+	allocated_amount(doc, cdt, cdn) {
 		this.calculate_totals(doc, cdt, cdn);
-	},
+	}
 
-	advances_remove: function(doc, cdt, cdn) {
+	advances_remove(doc, cdt, cdn) {
 		this.calculate_totals(doc, cdt, cdn);
-	},
+	}
 
-	expenses_remove: function(doc, cdt, cdn) {
+	expenses_remove(doc, cdt, cdn) {
 		this.calculate_totals(doc, cdt, cdn);
-	},
+	}
 
-	get_advances: function() {
+	get_advances() {
 		var me = this;
 		return me.frm.call({
 			method: "set_advances",
@@ -278,9 +277,9 @@ erpnext.hr.ExpenseClaimController = frappe.ui.form.Controller.extend({
 				me.frm.dirty();
 			}
 		})
-	},
+	}
 
-	make_payment_entry: function() {
+	make_payment_entry() {
 		var me = this;
 
 		var method = "erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry";
@@ -298,14 +297,14 @@ erpnext.hr.ExpenseClaimController = frappe.ui.form.Controller.extend({
 				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 			}
 		});
-	},
+	}
 
-	set_help: function() {
+	set_help() {
 		this.frm.set_intro("");
 		if(this.frm.doc.__islocal && !in_list(frappe.user_roles, "HR User")) {
 			this.frm.set_intro(__("Fill the form and save it"));
 		}
-	},
-});
+	}
+};
 
-$.extend(cur_frm.cscript, new erpnext.hr.ExpenseClaimController({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.hr.ExpenseClaimController({frm: cur_frm}));

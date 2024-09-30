@@ -1,18 +1,20 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 
 from frappe.utils import cstr, cint
 from frappe import msgprint, throw, _
 
 from frappe.model.document import Document
-from frappe.permissions import get_doctypes_with_read
+from frappe.core.doctype.doctype.doctype import validate_series
+
 
 class NamingSeriesNotSetError(frappe.ValidationError): pass
 
+
 class NamingSeries(Document):
+	@frappe.whitelist()
 	def get_transactions(self, arg=None):
 		doctypes = list(set(frappe.db.sql_list("""select parent
 				from `tabDocField` df where fieldname='naming_series'""")
@@ -30,6 +32,7 @@ class NamingSeries(Document):
 		options = list(filter(lambda x: x, [cstr(n).strip() for n in ol]))
 		return options
 
+	@frappe.whitelist()
 	def update_series(self, arg=None):
 		"""update series list"""
 		self.validate_series_set()
@@ -104,7 +107,7 @@ class NamingSeries(Document):
 		dt = frappe.get_doc("DocType", self.select_doc_for_series)
 		options = self.scrub_options_list(self.set_options.split("\n"))
 		for series in options:
-			dt.validate_series(series)
+			validate_series(dt, "naming_series:" + series)
 			for i in sr:
 				if i[0]:
 					existing_series = [d.split('.')[0] for d in i[0].split("\n")]
@@ -116,6 +119,7 @@ class NamingSeries(Document):
 		if not re.match("^[\w\- /.#{}]*$", n, re.UNICODE):
 			throw(_('Special Characters except "-", "#", ".", "/", "{" and "}" not allowed in naming series'))
 
+	@frappe.whitelist()
 	def get_options(self, arg=None):
 		dt = arg or self.select_doc_for_series
 		if dt:
@@ -125,6 +129,7 @@ class NamingSeries(Document):
 	def get_prefix(self):
 		return self.prefix or self.new_prefix
 
+	@frappe.whitelist()
 	def get_current(self, arg=None):
 		"""get series current"""
 		prefix = self.get_prefix()
@@ -141,6 +146,7 @@ class NamingSeries(Document):
 		if frappe.db.get_value('Series', series, 'name', order_by="name") == None:
 			frappe.db.sql("insert into tabSeries (name, current) values (%s, 0)", (series))
 
+	@frappe.whitelist()
 	def update_series_start(self):
 		prefix = self.get_prefix()
 		if prefix:
@@ -159,6 +165,7 @@ class NamingSeries(Document):
 		else:
 			msgprint(_("Please select prefix first"))
 			return 1
+
 
 def set_by_naming_series(doctype, fieldname, naming_series, hide_name_field=True):
 	from frappe.custom.doctype.property_setter.property_setter import make_property_setter
@@ -194,6 +201,7 @@ def set_by_naming_series(doctype, fieldname, naming_series, hide_name_field=True
 			# set values for mandatory
 			frappe.db.sql("""update `tab{doctype}` set `{fieldname}`=`name` where
 				ifnull({fieldname}, '')=''""".format(doctype=doctype, fieldname=fieldname))
+
 
 def get_default_naming_series(doctype):
 	naming_series = frappe.get_meta(doctype).get_field("naming_series").options or ""

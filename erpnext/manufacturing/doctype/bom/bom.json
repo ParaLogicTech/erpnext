@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "creation": "2013-01-22 15:11:38",
  "doctype": "DocType",
@@ -15,7 +16,6 @@
   "image",
   "is_active",
   "is_default",
-  "allow_alternative_item",
   "set_rate_of_sub_assembly_item_based_on_bom",
   "more_information",
   "project",
@@ -66,16 +66,6 @@
   "description",
   "section_break0",
   "exploded_items",
-  "website_section",
-  "show_in_website",
-  "route",
-  "column_break_52",
-  "website_image",
-  "thumbnail",
-  "sb_web_spec",
-  "show_items",
-  "show_operations",
-  "web_long_description",
   "amended_from"
  ],
  "fields": [
@@ -97,7 +87,7 @@
    "fieldname": "item_name",
    "fieldtype": "Data",
    "in_global_search": 1,
-   "label": "Item Name",
+   "label": "Production Item Name",
    "read_only": 1
   },
   {
@@ -115,7 +105,7 @@
    "fetch_from": "item.stock_uom",
    "fieldname": "uom",
    "fieldtype": "Link",
-   "label": "Item UOM",
+   "label": "Production UOM",
    "options": "UOM",
    "read_only": 1
   },
@@ -123,7 +113,7 @@
    "default": "1",
    "fieldname": "quantity",
    "fieldtype": "Float",
-   "label": "Quantity",
+   "label": "Production Qty",
    "oldfieldname": "quantity",
    "oldfieldtype": "Currency",
    "reqd": 1
@@ -171,17 +161,11 @@
    "label": "Quality Inspection Required"
   },
   {
-   "default": "0",
-   "fieldname": "allow_alternative_item",
-   "fieldtype": "Check",
-   "label": "Allow Alternative Item"
-  },
-  {
    "allow_on_submit": 1,
    "default": "1",
    "fieldname": "set_rate_of_sub_assembly_item_based_on_bom",
    "fieldtype": "Check",
-   "label": "Set rate of sub-assembly item based on BOM"
+   "label": "Set Rate of Sub-Assembly Item Based on BOM"
   },
   {
    "depends_on": "inspection_required",
@@ -426,71 +410,6 @@
   },
   {
    "collapsible": 1,
-   "fieldname": "website_section",
-   "fieldtype": "Section Break",
-   "label": "Website"
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "fieldname": "show_in_website",
-   "fieldtype": "Check",
-   "label": "Show in Website"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "route",
-   "fieldtype": "Small Text",
-   "label": "Route"
-  },
-  {
-   "allow_on_submit": 1,
-   "depends_on": "show_in_website",
-   "description": "Item Image (if not slideshow)",
-   "fieldname": "website_image",
-   "fieldtype": "Attach Image",
-   "label": "Image"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "thumbnail",
-   "fieldtype": "Data",
-   "label": "Thumbnail",
-   "read_only": 1
-  },
-  {
-   "collapsible": 1,
-   "collapsible_depends_on": "website_items",
-   "depends_on": "show_in_website",
-   "fieldname": "sb_web_spec",
-   "fieldtype": "Section Break",
-   "label": "Website Specifications"
-  },
-  {
-   "allow_on_submit": 1,
-   "depends_on": "show_in_website",
-   "fieldname": "web_long_description",
-   "fieldtype": "Text Editor",
-   "label": "Website Description"
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "depends_on": "show_in_website",
-   "fieldname": "show_items",
-   "fieldtype": "Check",
-   "label": "Show Items"
-  },
-  {
-   "allow_on_submit": 1,
-   "default": "0",
-   "depends_on": "eval:(doc.show_in_website && doc.with_operations)",
-   "fieldname": "show_operations",
-   "fieldtype": "Check",
-   "label": "Show Operations"
-  },
-  {
-   "collapsible": 1,
    "collapsible_depends_on": "with_operations",
    "fieldname": "section_break_21",
    "fieldtype": "Section Break",
@@ -498,10 +417,6 @@
   },
   {
    "fieldname": "column_break_23",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_52",
    "fieldtype": "Column Break"
   },
   {
@@ -597,7 +512,8 @@
  "idx": 1,
  "image_field": "image",
  "is_submittable": 1,
- "modified": "2022-10-21 17:35:04.812919",
+ "links": [],
+ "modified": "2024-06-07 16:00:55.307819",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM",
@@ -636,6 +552,7 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "item",
  "title_field": "item_name",
  "track_changes": 1

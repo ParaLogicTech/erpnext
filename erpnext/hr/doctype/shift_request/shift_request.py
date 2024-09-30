@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -87,5 +86,5 @@ class ShiftRequest(Document):
 	def throw_overlap_error(self, d):
 		msg = _("Employee {0} has already applied for {1} between {2} and {3} : ").format(self.employee,
 			d['shift_type'], formatdate(d['from_date']), formatdate(d['to_date'])) \
-			+ """ <b><a href="#Form/Shift Request/{0}">{0}</a></b>""".format(d["name"])
+			+ frappe.utils.get_link_to_form("Shift Request", d["name"])
 		frappe.throw(msg, OverlapError)

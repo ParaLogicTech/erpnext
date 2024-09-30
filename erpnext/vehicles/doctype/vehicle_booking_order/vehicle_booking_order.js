@@ -3,8 +3,8 @@
 
 frappe.provide("erpnext.vehicles");
 
-erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController.extend({
-	setup: function () {
+erpnext.vehicles.VehicleBookingOrder = class VehicleBookingOrder extends erpnext.vehicles.VehicleBookingController {
+	setup() {
 		this.frm.custom_make_buttons = {
 			'Vehicle Booking Payment': 'Customer Payment',
 			'Vehicle Receipt': 'Receive Vehicle',
@@ -14,20 +14,21 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			'Vehicle Transfer Letter': 'Transfer Letter',
 			'Vehicle Registration Order': 'Registration Order',
 			'Vehicle Invoice Movement': 'Invoice Movement',
+			'Vehicle Gate Pass': 'Delivery Gate Pass',
 			'Project': 'Create PDI Repair Order',
 		}
-	},
+	}
 
-	refresh: function () {
-		this._super();
+	refresh() {
+		super.refresh();
 		this.set_customer_is_company_label();
 		this.set_dynamic_link();
 		this.setup_buttons();
 		this.setup_dashboard();
-	},
+	}
 
-	setup_queries: function () {
-		this._super();
+	setup_queries() {
+		super.setup_queries();
 
 		var me = this;
 
@@ -48,18 +49,18 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 		if (this.frm.fields_dict.vehicle_allocation) {
 			this.frm.set_query("vehicle_allocation", () => me.allocation_query());
 		}
-	},
+	}
 
-	setup_route_options: function () {
-		this._super();
+	setup_route_options() {
+		super.setup_route_options();
 
 		var allocation_field = this.frm.get_docfield("vehicle_allocation");
 		if (allocation_field) {
 			allocation_field.get_route_options_for_new_doc = () => this.allocation_route_options();
 		}
-	},
+	}
 
-	allocation_route_options: function(dialog) {
+	allocation_route_options(dialog) {
 		return {
 			"company": this.frm.doc.company,
 			"item_code": this.frm.doc.item_code,
@@ -68,9 +69,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			"allocation_period": dialog ? dialog.get_value('delivery_period') : this.frm.doc.allocation_period || this.frm.doc.delivery_period,
 			"delivery_period": dialog ? dialog.get_value('delivery_period') : this.frm.doc.delivery_period
 		}
-	},
+	}
 
-	allocation_query: function(ignore_allocation_period, dialog) {
+	allocation_query(ignore_allocation_period, dialog) {
 		var filters = {
 			item_code: this.frm.doc.item_code,
 			supplier: this.frm.doc.supplier,
@@ -96,9 +97,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			query: "erpnext.controllers.queries.vehicle_allocation_query",
 			filters: filters
 		};
-	},
+	}
 
-	setup_buttons: function () {
+	setup_buttons() {
 		// Customer Payment Button (allowed on draft too)
 		if (this.frm.doc.docstatus < 2) {
 			if (flt(this.frm.doc.customer_outstanding) > 0) {
@@ -131,6 +132,12 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				} else if (this.frm.doc.delivery_status === "In Stock") {
 					if (this.can_change('vehicle_delivery')) {
 						this.frm.add_custom_button(__('Deliver Vehicle'), () => this.make_next_document('Vehicle Delivery'));
+					}
+				}
+				else if (this.frm.doc.delivery_status === "Delivered") {
+					if (this.frm.doc.__onload && !this.frm.doc.__onload.vehicle_gate_pass) {
+						this.frm.add_custom_button(__("Delivery Gate Pass"), () => this.make_next_document('Vehicle Gate Pass'),
+							__('Create'));
 					}
 				}
 
@@ -277,9 +284,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				this.frm.custom_buttons[__('Deliver Invoice')] && this.frm.custom_buttons[__('Deliver Invoice')].addClass('btn-primary');
 			}
 		}
-	},
+	}
 
-	setup_dashboard: function() {
+	setup_dashboard() {
 		if (this.frm.doc.docstatus !== 1) {
 			return;
 		}
@@ -287,9 +294,8 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 		var me = this;
 		var company_currency = erpnext.get_currency(me.frm.doc.company);
 
-		me.frm.dashboard.stats_area.removeClass('hidden');
-		me.frm.dashboard.stats_area_row.addClass('flex');
-		me.frm.dashboard.stats_area_row.css('flex-wrap', 'wrap');
+		me.frm.dashboard.stats_area_row.empty();
+		me.frm.dashboard.stats_area.show();
 
 		// Payment Status
 		var customer_outstanding_color = me.frm.doc.customer_outstanding ? "orange" : "green";
@@ -305,7 +311,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 
 		var payment_adjustment_color;
 		if (!me.frm.doc.payment_adjustment) {
-			payment_adjustment_color = 'grey';
+			payment_adjustment_color = 'light-gray';
 		} else if (me.frm.doc.payment_adjustment > 0) {
 			payment_adjustment_color = 'blue';
 		} else {
@@ -340,7 +346,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 		} else if (me.frm.doc.delivery_status == "Delivered") {
 			delivery_status_color = "green";
 		} else if (me.frm.doc.delivery_status == "Not Applicable") {
-			delivery_status_color = "grey";
+			delivery_status_color = "light-gray";
 		}
 
 		var overdue_warning = ["Not Received", "In Stock"].includes(me.frm.doc.delivery_status) && cint(me.frm.doc.delivery_overdue);
@@ -370,7 +376,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 
 		var registration_status_color;
 		if (me.frm.doc.registration_status == "Not Ordered") {
-			registration_status_color = "grey";
+			registration_status_color = "light-gray";
 		} else if (me.frm.doc.registration_status == "Ordered") {
 			registration_status_color = "blue";
 		} else if (me.frm.doc.registration_status == "In Process") {
@@ -381,7 +387,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 
 		var pdi_status_color;
 		if (me.frm.doc.pdi_status == "Not Requested") {
-			pdi_status_color = "grey";
+			pdi_status_color = "light-gray";
 		} else if (me.frm.doc.pdi_status == "Requested") {
 			pdi_status_color = "blue";
 		} else if (me.frm.doc.pdi_status == "In Process") {
@@ -401,7 +407,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 		if (me.frm.doc.__onload && me.frm.doc.__onload.vehicle_warehouse_name) {
 			fulfilment_items.push({
 				contents: __('Location: {0}', [me.frm.doc.__onload.vehicle_warehouse_name]),
-				indicator: 'lightblue'
+				indicator: 'light-blue'
 			});
 		}
 
@@ -458,41 +464,47 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 		// Notification Status
 		var booking_confirmation_count = frappe.get_notification_count(me.frm, 'Booking Confirmation', 'SMS');
 		var booking_confirmation_color = booking_confirmation_count ? "green"
-			: this.can_notify('Booking Confirmation') ? "yellow" : "grey";
+			: this.can_notify('Booking Confirmation') ? "yellow" : "light-gray";
 		var booking_confirmation_status = booking_confirmation_count ? __("{0} SMS", [booking_confirmation_count])
 			: __("Not Sent");
 
 		var balance_payment_count = frappe.get_notification_count(me.frm, 'Balance Payment Due', 'SMS');
 		var balance_payment_color = balance_payment_count ? "green"
-			: this.can_notify('Balance Payment Due') ? "yellow" : "grey";
+			: this.can_notify('Balance Payment Due') ? "yellow" : "light-gray";
 		var balance_payment_status = balance_payment_count ? __("{0} SMS", [balance_payment_count])
 			: __("Not Sent");
 
 		var payment_confirmation_count = frappe.get_notification_count(me.frm, 'Balance Payment Confirmation', 'SMS');
 		var payment_confirmation_color = payment_confirmation_count ? "green"
-			: this.can_notify('Balance Payment Confirmation') ? "yellow" : "grey";
+			: this.can_notify('Balance Payment Confirmation') ? "yellow" : "light-gray";
 		var payment_confirmation_status = payment_confirmation_count ? __("{0} SMS", [payment_confirmation_count])
 			: __("Not Sent");
 
 		var ready_for_delivery_count = frappe.get_notification_count(me.frm, 'Ready For Delivery', 'SMS');
 		var ready_for_delivery_color = ready_for_delivery_count ? "green"
-			: this.can_notify('Ready For Delivery') ? "yellow" : "grey";
+			: this.can_notify('Ready For Delivery') ? "yellow" : "light-gray";
 		var ready_for_delivery_status = ready_for_delivery_count ? __("{0} SMS", [ready_for_delivery_count])
 			: __("Not Sent");
 
 		var congratulations_count = frappe.get_notification_count(me.frm, 'Congratulations', 'SMS');
 		var congratulations_color = congratulations_count ? "green"
-			: this.can_notify('Congratulations') ? "yellow" : "grey";
+			: this.can_notify('Congratulations') ? "yellow" : "light-gray";
 		var congratulations_status = congratulations_count ? __("{0} SMS", [congratulations_count])
 			: __("Not Sent");
 
 		var booking_cancellation_count = frappe.get_notification_count(me.frm, 'Booking Cancellation', 'SMS');
 		var booking_cancellation_color = booking_cancellation_count ? "green"
-			: this.can_notify('Booking Cancellation') ? "yellow" : "grey";
+			: this.can_notify('Booking Cancellation') ? "yellow" : "light-gray";
 		var booking_cancellation_status = booking_cancellation_count ? __("{0} SMS", [booking_cancellation_count])
 			: __("Not Sent");
 
-		var indicator_items = [
+		var vehicle_anniversary_count = frappe.get_notification_count(me.frm, 'Vehicle Anniversary', 'SMS');
+		var vehicle_anniversary_color = vehicle_anniversary_count ? "green"
+			: this.can_notify('Vehicle Anniversary') ? "yellow" : "light-gray";
+		var vehicle_anniversary_status = vehicle_anniversary_count ? __("{0} SMS", [vehicle_anniversary_count])
+			: __("Not Sent");
+
+		var notification_items = [
 			{
 				contents: __('Booking Confirmation: {0}', [booking_confirmation_status]),
 				indicator: booking_confirmation_color
@@ -516,34 +528,39 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 		];
 
 		if (this.frm.doc.status == "Cancelled Booking") {
-			indicator_items.push({
+			notification_items.push({
 				contents: __('Booking Cancellation: {0}', [booking_cancellation_status]),
 				indicator: booking_cancellation_color
 			});
 		}
 
-		// me.add_indicator_section(__("Notification"), indicator_items);
-	},
+		if (this.frm.doc.delivery_status == "Delivered") {
+			notification_items.push({
+				contents: __('Vehicle Anniversary: {0}', [vehicle_anniversary_status]),
+				indicator: vehicle_anniversary_color
+			});
+		}
 
-	add_indicator_section: function (title, items) {
+		// me.add_indicator_section(__("Notification"), notification_items);
+	}
+
+	add_indicator_section(title, items) {
 		var items_html = '';
 		$.each(items || [], function (i, d) {
-			items_html += `<div class="badge-link small">
-				<span class="indicator ${d.indicator}">${d.contents}</span>
-			</div>`
+			items_html += `<span class="indicator ${d.indicator}">${d.contents}</span>`
 		});
 
 		var html = $(`<div class="flex-column col-sm-4 col-md-4">
-			<div><h6>${title}</h6></div>
+			<div><h5>${title}</h5></div>
 			${items_html}
 		</div>`);
 
 		html.appendTo(this.frm.dashboard.stats_area_row);
 
 		return html
-	},
+	}
 
-	setup_notification_buttons: function() {
+	setup_notification_buttons() {
 		var me = this;
 		if(this.frm.doc.docstatus === 1) {
 			if (this.can_notify("Booking Cancellation")) {
@@ -581,32 +598,46 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 					__("Notify"));
 			}
 
+			if (this.can_notify("Vehicle Anniversary")) {
+				var anniversary_count = frappe.get_notification_count(this.frm, 'Vehicle Anniversary', 'SMS');
+				let label = __("Vehicle Anniversary{0}", [anniversary_count ? " (Resend)" : ""]);
+				this.frm.add_custom_button(label, () => this.send_sms('Vehicle Anniversary'),
+					__("Notify"));
+			}
+
 			this.frm.add_custom_button(__("Custom Message"), () => this.send_sms('Custom Message'),
 				__("Notify"));
 		}
-	},
+	}
 
-	send_sms: function(notification_type) {
+	send_sms(notification_type) {
+		let customer = this.frm.doc.customer;
+		let mobile_no = this.frm.doc.contact_mobile;
+		if (notification_type == "Vehicle Anniversary" && this.frm.doc.transfer_customer) {
+			customer = this.frm.doc.transfer_customer;
+			mobile_no = null;
+		}
+
 		new frappe.SMSManager(this.frm.doc, {
 			notification_type: notification_type,
-			mobile_no: this.frm.doc.contact_mobile,
+			mobile_no: mobile_no,
 			party_doctype: 'Customer',
-			party: this.frm.doc.customer
+			party: customer,
 		});
-	},
+	}
 
-	company: function () {
+	company() {
 		this.set_customer_is_company_label();
 		if (this.frm.doc.customer_is_company) {
 			this.get_customer_details();
 		}
-	},
+	}
 
-	customer: function () {
+	customer() {
 		this.get_customer_details();
-	},
+	}
 
-	customer_is_company: function () {
+	customer_is_company() {
 		if (this.frm.doc.customer_is_company) {
 			this.frm.doc.customer = "";
 			this.frm.refresh_field('customer');
@@ -616,23 +647,23 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 		}
 
 		this.get_customer_details();
-	},
+	}
 
-	item_code: function () {
+	item_code() {
 		var me = this;
 		this.get_item_details(r => {
 			me.frm.set_value("vehicle_allocation", null);
 		});
-	},
+	}
 
-	vehicle_allocation_required: function () {
+	vehicle_allocation_required() {
 		if (!this.frm.doc.vehicle_allocation_required) {
 			this.frm.set_value("vehicle_allocation", null);
 			this.frm.set_value("allocation_period", null);
 		}
-	},
+	}
 
-	vehicle_allocation: function () {
+	vehicle_allocation() {
 		var me = this;
 		if (me.frm.doc.vehicle_allocation) {
 			frappe.call({
@@ -657,30 +688,30 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 		} else {
 			me.frm.set_value("allocation_title", "");
 		}
-	},
+	}
 
-	allocation_period: function () {
+	allocation_period() {
 		var me = this;
 
 		if (me.frm.doc.allocation_period) {
 			me.frm.set_value("vehicle_allocation", null);
 		}
-	},
+	}
 
-	delivery_period: function () {
-		this._super();
+	delivery_period() {
+		super.delivery_period();
 
 		if (this.frm.doc.delivery_period) {
 			this.frm.set_value("vehicle_allocation", null);
 			this.frm.set_value("allocation_period", null);
 		}
-	},
+	}
 
-	vehicle: function () {
+	vehicle() {
 		this.warn_vehicle_reserved();
-	},
+	}
 
-	make_payment_entry: function(party_type) {
+	make_payment_entry(party_type) {
 		if (['Customer', 'Supplier', 'Company'].includes(party_type)) {
 			return frappe.call({
 				method: "erpnext.vehicles.doctype.vehicle_booking_payment.vehicle_booking_payment.get_payment_entry",
@@ -694,9 +725,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				}
 			});
 		}
-	},
+	}
 
-	make_next_document: function(doctype) {
+	make_next_document(doctype) {
 		if (!doctype)
 			return;
 
@@ -713,9 +744,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				}
 			}
 		});
-	},
+	}
 
-	change_vehicle: function () {
+	change_vehicle() {
 		var me = this;
 
 		var call_change_vehicle = function (vehicle) {
@@ -766,9 +797,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			call_change_vehicle(dialog.get_value('vehicle'));
 		});
 		dialog.show();
-	},
+	}
 
-	change_allocation: function () {
+	change_allocation() {
 		var me = this;
 
 		var call_change_allocation = function (vehicle_allocation) {
@@ -816,9 +847,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			call_change_allocation(dialog.get_value('vehicle_allocation'));
 		});
 		dialog.show();
-	},
+	}
 
-	change_delivery_period: function () {
+	change_delivery_period() {
 		var me = this;
 		var dialog = new frappe.ui.Dialog({
 			title: __("Select Delivery Period"),
@@ -844,9 +875,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			});
 		});
 		dialog.show();
-	},
+	}
 
-	change_outstation_delivery: function () {
+	change_outstation_delivery() {
 		var me = this;
 
 		var new_outstation_delivery = cint(me.frm.doc.outstation_delivery) ? 0 : 1;
@@ -868,9 +899,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				});
 			}
 		);
-	},
+	}
 
-	change_color: function () {
+	change_color() {
 		var me = this;
 		var dialog = new frappe.ui.Dialog({
 			title: __("Select Color"),
@@ -902,9 +933,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			});
 		});
 		dialog.show();
-	},
+	}
 
-	change_customer_details: function () {
+	change_customer_details() {
 		var me = this;
 
 		var get_customer_details = function (keep_contact) {
@@ -979,14 +1010,14 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			fields: [
 				{label: __("Customer is {0}", [me.frm.doc.company]), fieldname: "customer_is_company", fieldtype: "Check",
 					default: me.frm.doc.customer_is_company, depends_on: "eval:!doc.customer",
-					change: () => get_customer_details()
+					onchange: () => get_customer_details()
 				},
 
 				{label: __("Customer (User)"), fieldname: "customer", fieldtype: "Link", options: "Customer",
 					default: me.frm.doc.customer, bold: 1,
 					depends_on: "eval:!doc.customer_is_company",
 					get_query: () => erpnext.queries.customer(),
-					change: () => get_customer_details()
+					onchange: () => get_customer_details()
 				},
 
 				{label: __("Lessee/User Name"), fieldname: "lessee_name", fieldtype: "Data",
@@ -1000,7 +1031,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				{label: __("Financer"), fieldname: "financer", fieldtype: "Link", options: "Customer",
 					default: me.frm.doc.financer,
 					get_query: () => erpnext.queries.customer(),
-					change: () => get_customer_details()
+					onchange: () => get_customer_details()
 				},
 
 				{label: __("Financer Name"), fieldname: "financer_name", fieldtype: "Data",
@@ -1009,7 +1040,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				{label: __("Finance Type"), fieldname: "finance_type", fieldtype: "Select", options: "\nFinanced\nLeased",
 					default: me.frm.doc.finance_type,
 					depends_on: "financer",
-					change: () => get_customer_details()
+					onchange: () => get_customer_details()
 				},
 
 				{fieldtype: 'Section Break'},
@@ -1021,7 +1052,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 						me.set_dynamic_link(values);
 						return erpnext.queries.address_query(values);
 					},
-					change: () => get_address_display()
+					onchange: () => get_address_display()
 				},
 
 				{fieldtype: 'Column Break'},
@@ -1038,7 +1069,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 						me.set_customer_dynamic_link(values);
 						return erpnext.queries.contact_query(values);
 					},
-					change: () => get_contact_details()
+					onchange: () => get_contact_details()
 				},
 
 				{label: __("Customer Contact Name"), fieldname: "contact_display", fieldtype: "Data",
@@ -1052,7 +1083,7 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 						me.set_financer_dynamic_link(values);
 						return erpnext.queries.contact_query(values);
 					},
-					change: () => get_contact_details()
+					onchange: () => get_contact_details()
 				},
 
 				{label: __("Financer Contact Name"), fieldname: "financer_contact_display", fieldtype: "Data",
@@ -1096,9 +1127,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 
 		get_customer_details(true);
 		dialog.show();
-	},
+	}
 
-	change_item: function () {
+	change_item() {
 		var me = this;
 
 		frappe.db.get_value("Item", me.frm.doc.item_code, 'variant_of', (r) => {
@@ -1146,9 +1177,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			});
 			dialog.show();
 		});
-	},
+	}
 
-	change_payment_adjustment: function () {
+	change_payment_adjustment() {
 		var me = this;
 		var dialog = new frappe.ui.Dialog({
 			title: __("Change Payment Adjustment"),
@@ -1175,9 +1206,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 			});
 		});
 		dialog.show();
-	},
+	}
 
-	change_vehicle_price: function () {
+	change_vehicle_price() {
 		var me = this;
 
 		var update_invoice_total_in_dialog = function () {
@@ -1246,9 +1277,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				}
 			}
 		});
-	},
+	}
 
-	change_priority: function () {
+	change_priority() {
 		var me = this;
 
 		var new_priority = cint(me.frm.doc.priority) ? 0 : 1;
@@ -1270,9 +1301,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				});
 			}
 		)
-	},
+	}
 
-	change_vehicle_transfer_required: function () {
+	change_vehicle_transfer_required() {
 		var me = this;
 
 		var new_vehicle_transfer_required = cint(me.frm.doc.vehicle_transfer_required) ? 0 : 1;
@@ -1294,9 +1325,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				});
 			}
 		);
-	},
+	}
 
-	change_cancellation: function () {
+	change_cancellation() {
 		var me = this;
 
 		var cancelled = cint(me.frm.doc.status === "Cancelled Booking") ? 0 : 1;
@@ -1318,9 +1349,9 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				});
 			}
 		)
-	},
+	}
 
-	change_pdi_requested: function () {
+	change_pdi_requested() {
 		var me = this;
 
 		var new_pdi_requested = cint(me.frm.doc.pdi_requested) ? 0 : 1;
@@ -1342,23 +1373,23 @@ erpnext.vehicles.VehicleBookingOrder = erpnext.vehicles.VehicleBookingController
 				});
 			}
 		)
-	},
+	}
 
-	can_change: function (what) {
+	can_change(what) {
 		if (this.frm.doc.__onload && this.frm.doc.__onload.can_change) {
 			return this.frm.doc.__onload.can_change[what];
 		} else {
 			return false;
 		}
-	},
+	}
 
-	can_notify: function (what) {
+	can_notify(what) {
 		if (this.frm.doc.__onload && this.frm.doc.__onload.can_notify) {
 			return this.frm.doc.__onload.can_notify[what];
 		} else {
 			return false;
 		}
 	}
-});
+};
 
-$.extend(cur_frm.cscript, new erpnext.vehicles.VehicleBookingOrder({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.vehicles.VehicleBookingOrder({frm: cur_frm}));

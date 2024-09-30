@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 import erpnext
 import json
@@ -117,7 +116,7 @@ def create_material_request(material_requests):
 		else:
 			exceptions_list.append(frappe.get_traceback())
 
-		frappe.log_error(frappe.get_traceback())
+		frappe.log_error(message=frappe.get_traceback())
 
 	for request_type in material_requests:
 		for company in material_requests[request_type]:

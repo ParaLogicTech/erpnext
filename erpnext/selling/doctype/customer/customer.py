@@ -1,12 +1,11 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.model.naming import set_name_by_naming_series
 from frappe import _, msgprint, throw
 import frappe.defaults
-from frappe.utils import flt, cint, cstr, today, clean_whitespace
+from frappe.utils import flt, cint, cstr, today, clean_whitespace, getdate, now_datetime, get_time, combine_datetime, add_years
 from frappe.desk.reportview import build_match_conditions, get_filters_cond
 from erpnext.utilities.transaction_base import TransactionBase
 from erpnext.accounts.party import validate_party_accounts, get_dashboard_info, get_address_display
@@ -16,10 +15,12 @@ from frappe.contacts.doctype.address.address import get_default_address
 from erpnext.vehicles.doctype.vehicle_log.vehicle_log import get_customer_vehicle_selector_data
 from frappe.model.rename_doc import update_linked_doctypes
 from frappe.model.mapper import get_mapped_doc
+from frappe.core.doctype.sms_settings.sms_settings import enqueue_template_sms
 
 primary_address_fields = [
 	{'customer_field': 'address_line1', 'address_field': 'address_line1'},
 	{'customer_field': 'address_line2', 'address_field': 'address_line2'},
+	{'customer_field': 'address_line3', 'address_field': 'address_line3'},
 	{'customer_field': 'city', 'address_field': 'city'},
 	{'customer_field': 'state', 'address_field': 'state'},
 	{'customer_field': 'country', 'address_field': 'country'},
@@ -119,7 +120,7 @@ class Customer(TransactionBase):
 				frappe.throw(_("{0} is not a company bank account").format(frappe.bold(self.default_bank_account)))
 
 	def validate_tax_id(self):
-		from erpnext.accounts.party import validate_ntn_cnic_strn, validate_duplicate_tax_id
+		from frappe.regional.pakistan import validate_ntn_cnic_strn, validate_duplicate_tax_id
 		validate_ntn_cnic_strn(self.tax_id, self.tax_cnic, self.tax_strn)
 
 		cnic_throw = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_cnic')
@@ -150,7 +151,7 @@ class Customer(TransactionBase):
 			return True
 
 	def validate_mobile_no(self):
-		from erpnext.accounts.party import validate_mobile_pakistan
+		from frappe.regional.pakistan import validate_mobile_pakistan
 		validate_mobile_pakistan(self.mobile_no)
 		validate_mobile_pakistan(self.mobile_no_2)
 
@@ -164,7 +165,7 @@ class Customer(TransactionBase):
 		push_or_pull = None
 
 		if not self.customer_primary_contact:
-			self.customer_primary_contact = get_default_contact("Customer", self.name, is_primary=1)
+			self.customer_primary_contact = get_default_contact("Customer", self.name)
 			push_or_pull = "pull"
 
 		contact = None
@@ -181,29 +182,37 @@ class Customer(TransactionBase):
 
 		if contact:
 			if self.flags.pull_contact or push_or_pull == "pull":
-				to_set = {'customer_primary_contact': contact.name}
-				for d in primary_contact_fields:
-					to_set[d['customer_field']] = contact.get(d['contact_field'])
-
-				self.update(to_set)
-				frappe.db.set_value("Customer", self.name, to_set, None,
-					notify=cint(self.flags.pull_contact), update_modified=cint(self.flags.pull_contact))
+				self.pull_primary_contact(contact)
 
 			elif push_or_pull == "push":
-				data_changed = any([cstr(self.get(d['customer_field'])) != cstr(contact.get(d['contact_field']))
-					for d in primary_contact_fields])
+				self.push_primary_contact(contact)
+				self.pull_primary_contact(contact)
 
-				if data_changed:
-					for field in primary_contact_fields:
-						if not field.get('custom_setter'):
-							value = self.get(field['customer_field'])
-							if not value and field.get('default_from'):
-								value = self.get(field.get('default_from'))
+	def pull_primary_contact(self, contact):
+		to_set = {'customer_primary_contact': contact.name}
+		for d in primary_contact_fields:
+			if self.meta.has_field(d['customer_field']):
+				to_set[d['customer_field']] = contact.get(d['contact_field'])
 
-							contact.set(field['contact_field'], value)
+		self.update(to_set)
+		frappe.db.set_value("Customer", self.name, to_set, None,
+			notify=cint(self.flags.pull_contact), update_modified=cint(self.flags.pull_contact))
 
-					contact.flags.from_linked_document = ("Customer", self.name)
-					contact.save(ignore_permissions=True)
+	def push_primary_contact(self, contact):
+		data_changed = any([cstr(self.get(d['customer_field'])) != cstr(contact.get(d['contact_field']))
+			for d in primary_contact_fields])
+
+		if data_changed:
+			for field in primary_contact_fields:
+				if not field.get('custom_setter'):
+					value = self.get(field['customer_field'])
+					if not value and field.get('default_from'):
+						value = self.get(field.get('default_from'))
+
+					contact.set(field['contact_field'], value)
+
+			contact.flags.from_linked_document = ("Customer", self.name)
+			contact.save(ignore_permissions=True)
 
 	def update_primary_address(self):
 		push_or_pull = None
@@ -226,33 +235,37 @@ class Customer(TransactionBase):
 
 		if address:
 			if self.flags.pull_address or push_or_pull == "pull":
-				to_set = {'customer_primary_address': address.name, 'primary_address': get_address_display(address.as_dict())}
-				for d in primary_address_fields:
-					to_set[d['customer_field']] = address.get(d['address_field'])
-
-				self.update(to_set)
-				frappe.db.set_value("Customer", self.name, to_set, None,
-					notify=cint(self.flags.pull_address), update_modified=cint(self.flags.pull_address))
+				self.pull_primary_address(address)
 
 			elif push_or_pull == "push":
-				data_changed = any([cstr(self.get(d['customer_field'])) != cstr(address.get(d['address_field']))
-					for d in primary_address_fields])
+				self.push_primary_address(address)
+				self.pull_primary_address(address)
 
-				if data_changed:
-					for field in primary_address_fields:
-						if not field.get('custom_setter'):
-							value = self.get(field['customer_field'])
-							if not value and field.get('default_from'):
-								value = self.get(field.get('default_from'))
+	def pull_primary_address(self, address):
+		to_set = {'customer_primary_address': address.name, 'primary_address': get_address_display(address.as_dict())}
+		for d in primary_address_fields:
+			if self.meta.has_field(d['customer_field']):
+				to_set[d['customer_field']] = address.get(d['address_field'])
 
-							address.set(field['address_field'], value)
+		self.update(to_set)
+		frappe.db.set_value("Customer", self.name, to_set, None,
+			notify=cint(self.flags.pull_address), update_modified=cint(self.flags.pull_address))
 
-					address.flags.from_linked_document = ("Customer", self.name)
-					address.save(ignore_permissions=True)
+	def push_primary_address(self, address):
+		data_changed = any([cstr(self.get(d['customer_field'])) != cstr(address.get(d['address_field']))
+			for d in primary_address_fields])
 
-				self.primary_address = get_address_display(address.as_dict())
-				frappe.db.set_value("Customer", self.name, 'primary_address', self.primary_address,
-					notify=cint(self.flags.pull_address), update_modified=cint(self.flags.pull_address))
+		if data_changed:
+			for field in primary_address_fields:
+				if not field.get('custom_setter'):
+					value = self.get(field['customer_field'])
+					if not value and field.get('default_from'):
+						value = self.get(field.get('default_from'))
+
+					address.set(field['address_field'], value)
+
+			address.flags.from_linked_document = ("Customer", self.name)
+			address.save(ignore_permissions=True)
 
 	def update_customer_in_lead(self):
 		'''If Customer created from Lead, update lead status to "Converted"
@@ -349,6 +362,29 @@ class Customer(TransactionBase):
 		else:
 			frappe.msgprint(_("Multiple Loyalty Program found for the Customer. Please select manually."))
 
+	def get_sms_args(self, notification_type=None, child_doctype=None, child_name=None):
+		return frappe._dict({
+			'receiver_list': [self.mobile_no],
+		})
+
+	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
+		if not notification_type:
+			if throw:
+				frappe.throw(_("Notification Type is mandatory"))
+			return False
+
+		if notification_type == "Customer Birthday":
+			if not self.date_of_birth:
+				if throw:
+					frappe.throw(_("Cannot send Customer Birthday notification because Customer Date of Birth is not set"))
+				return False
+
+		return True
+
+	def send_customer_birthday_notification(self):
+		enqueue_template_sms(self, notification_type="Customer Birthday", allow_if_already_sent=1)
+
+
 @frappe.whitelist()
 def make_quotation(source_name, target_doc=None):
 
@@ -375,6 +411,7 @@ def make_quotation(source_name, target_doc=None):
 		target_doc.currency = currency
 
 	return target_doc
+
 
 @frappe.whitelist()
 def make_opportunity(source_name, target_doc=None):
@@ -411,6 +448,7 @@ def _set_missing_values(source, target):
 	if contact:
 		target.contact_person = contact[0].parent
 
+
 @frappe.whitelist()
 def get_loyalty_programs(doc):
 	''' returns applicable loyalty programs for a customer '''
@@ -432,38 +470,6 @@ def get_loyalty_programs(doc):
 
 	return lp_details
 
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_customer_list(doctype, txt, searchfield, start, page_len, filters=None):
-	from erpnext.controllers.queries import get_fields
-
-	if frappe.db.get_default("cust_master_name") == "Customer Name":
-		fields = ["name", "customer_group", "territory"]
-	else:
-		fields = ["name", "customer_name", "customer_group", "territory"]
-
-	fields = get_fields("Customer", fields)
-
-	match_conditions = build_match_conditions("Customer")
-	match_conditions = "and {}".format(match_conditions) if match_conditions else ""
-
-	if filters:
-		filter_conditions = get_filters_cond(doctype, filters, [])
-		match_conditions += "{}".format(filter_conditions)
-
-	return frappe.db.sql("""
-			select %s
-			from `tabCustomer`
-			where docstatus < 2
-				and (%s like %s or customer_name like %s)
-					{match_conditions}
-			order by
-				case when name like %s then 0 else 1 end,
-				case when customer_name like %s then 0 else 1 end,
-				name, customer_name limit %s, %s
-		""".format(match_conditions=match_conditions) % (", ".join(fields), searchfield, "%s", "%s", "%s", "%s", "%s", "%s"),
-			("%%%s%%" % txt, "%%%s%%" % txt, "%%%s%%" % txt, "%%%s%%" % txt, start, page_len))
-
 
 def check_credit_limit(customer, company, ignore_outstanding_sales_order=False, extra_amount=0):
 	customer_outstanding = get_customer_outstanding(customer, company, ignore_outstanding_sales_order)
@@ -480,6 +486,7 @@ def check_credit_limit(customer, company, ignore_outstanding_sales_order=False, 
 		if not credit_controller or credit_controller not in frappe.get_roles():
 			throw(_("Please contact to the user who have Sales Master Manager {0} role")
 				.format(" / " + credit_controller if credit_controller else ""))
+
 
 def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=False, cost_center=None):
 	# Outstanding based on GL Entries
@@ -506,10 +513,10 @@ def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=F
 	# we should not consider outstanding Sales Orders, when customer credit balance report is run
 	if not ignore_outstanding_sales_order:
 		outstanding_based_on_so = frappe.db.sql("""
-			select sum(base_grand_total*(100 - per_billed)/100)
+			select sum(base_grand_total*(100 - per_completed)/100)
 			from `tabSales Order`
 			where customer=%s and docstatus = 1 and company=%s
-			and per_billed < 100 and status != 'Closed'""", (customer, company))
+			and billing_status = 'To Bill' and status != 'Closed'""", (customer, company))
 
 		outstanding_based_on_so = flt(outstanding_based_on_so[0][0]) if outstanding_based_on_so else 0.0
 
@@ -556,9 +563,10 @@ def get_credit_limit(customer, company):
 
 	return flt(credit_limit)
 
+
 def make_contact(args, is_primary_contact=1):
-	contact = frappe.get_doc({
-		'doctype': 'Contact',
+	contact = frappe.new_doc("Contact")
+	contact.update({
 		'is_primary_contact': is_primary_contact,
 		'links': [{
 			'link_doctype': args.get('doctype'),
@@ -587,6 +595,7 @@ def make_contact(args, is_primary_contact=1):
 
 	return contact
 
+
 def make_address(args, is_primary_address=1):
 	reqd_fields = []
 	for field in ['city', 'country']:
@@ -598,9 +607,9 @@ def make_address(args, is_primary_address=1):
 		frappe.throw("{0} <br><br> <ul>{1}</ul>".format(msg, '\n'.join(reqd_fields)),
 			title = _("Missing Values Required"))
 
-	address = frappe.get_doc({
-		'doctype': 'Address',
-		'address_title': args.get('name'),
+	address = frappe.new_doc("Address")
+	address.update({
+		'address_title': args.get('customer_name') or args.get('name'),
 		'address_line1': args.get('address_line1'),
 		'address_line2': args.get('address_line2'),
 		'city': args.get('city'),
@@ -618,19 +627,19 @@ def make_address(args, is_primary_address=1):
 
 	return address
 
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_customer_primary_contact(doctype, txt, searchfield, start, page_len, filters):
-	customer = filters.get('customer')
-	return frappe.db.sql("""
-		select `tabContact`.name from `tabContact`, `tabDynamic Link`
-			where `tabContact`.name = `tabDynamic Link`.parent and `tabDynamic Link`.link_name = %(customer)s
-			and `tabDynamic Link`.link_doctype = 'Customer'
-			and `tabContact`.name like %(txt)s
-		""", {
-			'customer': customer,
-			'txt': '%%%s%%' % txt
-		})
+	from frappe.contacts.doctype.contact.contact import contact_query
+
+	if not filters:
+		filters = {}
+
+	filters["link_doctype"] = "Customer"
+	filters["link_name"] = filters.pop("customer", None)
+
+	return contact_query(doctype, txt, searchfield, start, page_len, filters)
 
 
 @frappe.whitelist()
@@ -641,6 +650,7 @@ def get_primary_address_details(address_name):
 		out[field['customer_field']] = doc.get(field['address_field'])
 
 	return out
+
 
 @frappe.whitelist()
 def get_primary_contact_details(contact_name):
@@ -655,3 +665,70 @@ def get_primary_contact_details(contact_name):
 def get_timeline_data(*args, **kwargs):
 	from erpnext.accounts.party import get_timeline_data
 	return get_timeline_data(*args, **kwargs)
+
+
+def send_customer_birthday_notifications():
+	if not automated_customer_birthday_enabled():
+		return
+
+	now_dt = now_datetime()
+	date_today = getdate(now_dt)
+
+	notification_dt = get_customer_birthday_scheduled_time(date_today)
+	if now_dt < notification_dt:
+		return
+
+	notification_last_sent_date = frappe.db.get_global("customer_birthday_notification_last_sent_date")
+	if notification_last_sent_date and getdate(notification_last_sent_date) >= date_today:
+		return
+
+	customer_birthday_data = get_customers_for_birthday_notifications(date_today)
+	for d in customer_birthday_data:
+		doc = frappe.get_doc("Customer", d.name)
+		doc.send_customer_birthday_notification()
+
+	frappe.db.set_global("customer_birthday_notification_last_sent_date", date_today)
+
+
+def automated_customer_birthday_enabled():
+	from frappe.core.doctype.sms_settings.sms_settings import is_automated_sms_enabled
+	from frappe.core.doctype.sms_template.sms_template import has_automated_sms_template
+
+	if is_automated_sms_enabled() and has_automated_sms_template("Customer", "Customer Birthday"):
+		return True
+	else:
+		return False
+
+
+def get_customer_birthday_scheduled_time(notification_date=None):
+	crm_settings = frappe.get_cached_doc("CRM Settings", None)
+
+	notification_date = getdate(notification_date)
+	notification_time = crm_settings.customer_birthday_notification_time or get_time("00:00:00")
+	notification_dt = combine_datetime(notification_date, notification_time)
+
+	return notification_dt
+
+
+def get_customers_for_birthday_notifications(notification_date=None):
+	notification_date = getdate(notification_date)
+
+	customer_birthday_data = frappe.db.sql("""
+		SELECT c.name, c.customer_name, c.mobile_no
+		FROM `tabCustomer` c
+		LEFT JOIN `tabNotification Count` nc
+			ON nc.reference_doctype = 'Customer'
+			AND nc.reference_name = c.name
+			AND nc.notification_type = 'Customer Birthday'
+			AND nc.notification_medium = 'SMS'
+		WHERE day(c.date_of_birth) = %(day)s
+			AND month(c.date_of_birth)= %(month)s
+			AND (nc.last_scheduled_dt is null OR DATE(nc.last_scheduled_dt) != %(date_today)s)
+			AND (nc.last_sent_dt is null OR DATE(nc.last_sent_dt) != %(date_today)s)
+	""", {
+		"day": notification_date.day,
+		"month": notification_date.month,
+		"date_today": notification_date
+	}, as_dict=1)
+
+	return customer_birthday_data

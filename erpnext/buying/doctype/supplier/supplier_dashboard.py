@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 from frappe import _
 
@@ -24,11 +23,7 @@ def get_data():
 			},
 			{
 				'label': _('Payments and Vouchers'),
-				'items': ['Payment Entry', 'Journal Entry']
-			},
-			{
-				'label': _('Bank'),
-				'items': ['Bank Account']
+				'items': ['Payment Entry', 'Journal Entry', 'Bank Account']
 			},
 			{
 				'label': _('Pricing'),

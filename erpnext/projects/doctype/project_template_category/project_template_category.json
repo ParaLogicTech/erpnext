@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_rename": 1,
  "autoname": "field:project_template_category",
  "creation": "2022-04-07 00:25:56.715772",
@@ -24,10 +25,12 @@
    "label": "Description"
   }
  ],
- "modified": "2022-04-07 00:25:56.715772",
+ "links": [],
+ "modified": "2023-10-31 15:30:58.755807",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project Template Category",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -49,6 +52,15 @@
    "read": 1,
    "report": 1,
    "role": "Projects User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User (Read Only)",
    "share": 1
   },
   {
@@ -92,5 +104,6 @@
  "search_fields": "description",
  "sort_field": "idx",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

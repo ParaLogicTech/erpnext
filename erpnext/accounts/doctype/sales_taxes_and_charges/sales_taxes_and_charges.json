@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2013-04-24 11:39:32",
  "doctype": "DocType",
  "document_type": "Setup",
@@ -68,6 +69,7 @@
    "default": ":Company",
    "fieldname": "cost_center",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Cost Center",
    "oldfieldname": "cost_center_other_charges",
    "oldfieldtype": "Link",
@@ -106,7 +108,7 @@
   {
    "columns": 2,
    "fieldname": "rate",
-   "fieldtype": "Float",
+   "fieldtype": "Percent",
    "in_list_view": 1,
    "label": "Rate",
    "oldfieldname": "rate",
@@ -233,12 +235,14 @@
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2021-08-20 00:49:02.625306",
+ "links": [],
+ "modified": "2024-09-08 16:59:18.854544",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Taxes and Charges",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
- "sort_order": "ASC"
+ "sort_order": "ASC",
+ "states": []
 }

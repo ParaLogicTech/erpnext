@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe, unittest
 import frappe.defaults
 from frappe.utils import flt, nowdate, nowtime
@@ -514,7 +513,7 @@ class TestStockEntry(unittest.TestCase):
 		se = frappe.copy_doc(test_records[0])
 		se.get("items")[0].item_code = "_Test Serialized Item"
 		se.get("items")[0].qty = 2
-		se.get("items")[0].transfer_qty = 2
+		se.get("items")[0].stock_qty = 2
 		se.set_stock_entry_type()
 		se.insert()
 		self.assertRaises(SerialNoRequiredError, se.submit)
@@ -524,7 +523,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].item_code = "_Test Serialized Item"
 		se.get("items")[0].qty = 2
 		se.get("items")[0].serial_no = "ABCD\nEFGH\nXYZ"
-		se.get("items")[0].transfer_qty = 2
+		se.get("items")[0].stock_qty = 2
 		se.set_stock_entry_type()
 		se.insert()
 		self.assertRaises(SerialNoQtyError, se.submit)
@@ -534,7 +533,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].item_code = "_Test Serialized Item"
 		se.get("items")[0].qty = 2
 		se.get("items")[0].serial_no = "ABCD"
-		se.get("items")[0].transfer_qty = 2
+		se.get("items")[0].stock_qty = 2
 		se.set_stock_entry_type()
 		se.insert()
 		self.assertRaises(SerialNoQtyError, se.submit)
@@ -544,7 +543,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].item_code = "_Test Serialized Item"
 		se.get("items")[0].qty = 2
 		se.get("items")[0].serial_no = "ABCD\nEFGH"
-		se.get("items")[0].transfer_qty = 2
+		se.get("items")[0].stock_qty = 2
 		se.set_stock_entry_type()
 		se.insert()
 		se.submit()
@@ -565,7 +564,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].s_warehouse = "_Test Warehouse 1 - _TC"
 		se.get("items")[0].t_warehouse = None
 		se.get("items")[0].serial_no = "ABCD\nEFGH"
-		se.get("items")[0].transfer_qty = 2
+		se.get("items")[0].stock_qty = 2
 		se.set_stock_entry_type()
 		se.insert()
 
@@ -578,7 +577,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].item_code = "_Test Serialized Item With Series"
 		se.get("items")[0].qty = 1
 		se.get("items")[0].serial_no = serial_nos[0]
-		se.get("items")[0].transfer_qty = 1
+		se.get("items")[0].stock_qty = 1
 		se.set_stock_entry_type()
 		se.insert()
 		self.assertRaises(SerialNoDuplicateError, se.submit)
@@ -602,7 +601,7 @@ class TestStockEntry(unittest.TestCase):
 		se.purpose = "Material Transfer"
 		se.get("items")[0].item_code = "_Test Serialized Item"
 		se.get("items")[0].qty = 1
-		se.get("items")[0].transfer_qty = 1
+		se.get("items")[0].stock_qty = 1
 		se.get("items")[0].serial_no = serial_nos[0]
 		se.get("items")[0].s_warehouse = "_Test Warehouse - _TC"
 		se.get("items")[0].t_warehouse = "_Test Warehouse 1 - _TC"
@@ -618,7 +617,7 @@ class TestStockEntry(unittest.TestCase):
 		se.purpose = "Material Transfer"
 		se.get("items")[0].item_code = "_Test Serialized Item With Series"
 		se.get("items")[0].qty = 1
-		se.get("items")[0].transfer_qty = 1
+		se.get("items")[0].stock_qty = 1
 		se.get("items")[0].serial_no = serial_no
 		se.get("items")[0].s_warehouse = "_Test Warehouse - _TC"
 		se.get("items")[0].t_warehouse = "_Test Warehouse 1 - _TC"
@@ -640,7 +639,7 @@ class TestStockEntry(unittest.TestCase):
 		se.purpose = "Material Transfer"
 		se.get("items")[0].item_code = "_Test Serialized Item With Series"
 		se.get("items")[0].qty = 1
-		se.get("items")[0].transfer_qty = 1
+		se.get("items")[0].stock_qty = 1
 		se.get("items")[0].serial_no = serial_nos[0]
 		se.get("items")[0].s_warehouse = "_Test Warehouse 1 - _TC"
 		se.get("items")[0].t_warehouse = "_Test Warehouse - _TC"
@@ -1105,7 +1104,7 @@ def make_serialized_item(item_code=None, serial_no=None, target_warehouse=None):
 	se.get("items")[0].item_code = item_code or "_Test Serialized Item With Series"
 	se.get("items")[0].serial_no = serial_no
 	se.get("items")[0].qty = 2
-	se.get("items")[0].transfer_qty = 2
+	se.get("items")[0].stock_qty = 2
 
 	if target_warehouse:
 		se.get("items")[0].t_warehouse = target_warehouse
@@ -1137,7 +1136,7 @@ def get_multiple_items():
 				"qty": 50.0,
 				"s_warehouse": "Stores - TCP1",
 				"stock_uom": "_Test UOM",
-				"transfer_qty": 50.0,
+				"stock_qty": 50.0,
 				"uom": "_Test UOM"
 			},
 			{
@@ -1150,7 +1149,7 @@ def get_multiple_items():
 				"qty": 1,
 				"stock_uom": "_Test UOM",
 				"t_warehouse": "Stores - TCP1",
-				"transfer_qty": 1,
+				"stock_qty": 1,
 				"uom": "_Test UOM"
 			}
 		]

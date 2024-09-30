@@ -105,7 +105,7 @@ frappe.query_reports["Vehicle Booking Summary"] = {
 			fieldname: "group_by_1",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Allocation Period", "Group by Delivery Period", "Group by Variant", "Group by Model",
+			options: ["", "Group by Allocation Period", "Group by Delivery Period", "Group by Variant", "Group by Model",
 				"Group by Item Group", "Group by Brand"],
 			default: "Group by Delivery Period"
 		},
@@ -113,7 +113,7 @@ frappe.query_reports["Vehicle Booking Summary"] = {
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Allocation Period", "Group by Delivery Period", "Group by Variant", "Group by Model",
+			options: ["", "Group by Allocation Period", "Group by Delivery Period", "Group by Variant", "Group by Model",
 				"Group by Item Group", "Group by Brand"],
 			default: "Group by Model"
 		},
@@ -121,7 +121,7 @@ frappe.query_reports["Vehicle Booking Summary"] = {
 			fieldname: "group_by_3",
 			label: __("Group By Level 3"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Allocation Period", "Group by Delivery Period", "Group by Variant", "Group by Model",
+			options: ["", "Group by Allocation Period", "Group by Delivery Period", "Group by Variant", "Group by Model",
 				"Group by Item Group", "Group by Brand"],
 			default: "Group by Variant"
 		}

@@ -2,7 +2,6 @@
 # License: GNU General Public License v3. See license.txt
 
 
-from __future__ import unicode_literals
 import unittest
 import frappe, erpnext
 import frappe.model
@@ -11,7 +10,7 @@ from frappe.utils import cint, flt, today, nowdate, add_days
 import frappe.defaults
 from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import set_perpetual_inventory, \
 	test_records as pr_test_records, make_purchase_receipt, get_taxes
-from erpnext.controllers.accounts_controller import get_payment_terms
+from erpnext.accounts.doctype.payment_terms_template.payment_terms_template import get_payment_terms
 from erpnext.exceptions import InvalidCurrency
 from erpnext.stock.doctype.stock_entry.test_stock_entry import get_qty_after_transaction
 from erpnext.accounts.doctype.account.test_account import get_inventory_account
@@ -413,7 +412,7 @@ class TestPurchaseInvoice(unittest.TestCase):
 
 		pi.update({
 			"payment_schedule": get_payment_terms("_Test Payment Term Template",
-				pi.posting_date, pi.grand_total)
+				pi.posting_date, grand_total=pi.grand_total)
 		})
 
 		pi.save()
@@ -641,7 +640,7 @@ class TestPurchaseInvoice(unittest.TestCase):
 			qty=100, basic_rate=100)
 
 		pi = make_purchase_invoice(item_code="_Test FG Item", qty=10, rate=500,
-			update_stock=1, is_subcontracted="Yes")
+			update_stock=1, is_subcontracted=1)
 
 		self.assertEqual(len(pi.get("supplied_items")), 2)
 
@@ -993,7 +992,7 @@ def make_purchase_invoice(**args):
 	pi.conversion_rate = args.conversion_rate or 1
 	pi.is_return = args.is_return
 	pi.return_against = args.return_against
-	pi.is_subcontracted = args.is_subcontracted or "No"
+	pi.is_subcontracted = args.is_subcontracted or 0
 	pi.supplier_warehouse = args.supplier_warehouse or "_Test Warehouse 1 - _TC"
 
 	pi.append("items", {
@@ -1046,7 +1045,7 @@ def make_purchase_invoice_against_cost_center(**args):
 	pi.is_return = args.is_return
 	pi.is_return = args.is_return
 	pi.credit_to = args.return_against or "Creditors - _TC"
-	pi.is_subcontracted = args.is_subcontracted or "No"
+	pi.is_subcontracted = args.is_subcontracted or 0
 	pi.supplier_warehouse = "_Test Warehouse 1 - _TC"
 
 	pi.append("items", {

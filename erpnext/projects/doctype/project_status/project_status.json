@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_rename": 1,
  "autoname": "field:project_status",
  "creation": "2022-04-08 00:51:50.091071",
@@ -92,10 +93,12 @@
    "label": "User Can Set Manually"
   }
  ],
- "modified": "2022-04-24 00:57:38.961553",
+ "links": [],
+ "modified": "2023-10-31 15:30:34.573181",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project Status",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -129,6 +132,15 @@
    "read": 1,
    "report": 1,
    "role": "Projects User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User (Read Only)",
    "share": 1
   },
   {
@@ -189,5 +201,6 @@
  "quick_entry": 1,
  "sort_field": "sorting_index",
  "sort_order": "ASC",
+ "states": [],
  "track_changes": 1
 }

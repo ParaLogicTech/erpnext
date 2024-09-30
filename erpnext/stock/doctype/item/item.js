@@ -17,8 +17,6 @@ frappe.ui.form.on("Item", {
 			frm.fields_dict["attributes"].grid.set_column_disp("attribute_value", true);
 		}
 
-		// should never check Private
-		frm.fields_dict["website_image"].df.is_private = 0;
 		if (frm.doc.is_fixed_asset) {
 			frm.trigger("set_asset_naming_series");
 		}
@@ -94,10 +92,9 @@ frappe.ui.form.on("Item", {
 		}
 		if (frm.doc.variant_of) {
 			frm.set_intro(__('This Item is a Variant of {0} (Template).',
-				[`<a href="#Form/Item/${frm.doc.variant_of}">${frm.doc.variant_of}</a>`]), true);
+				[`<a href="/app/item/${encodeURIComponent(frm.doc.variant_of)}">${frm.doc.variant_of}</a>`]), true);
 		}
 
-		erpnext.item.toggle_naming_fields(frm);
 		erpnext.item.edit_prices_button(frm);
 		erpnext.item.toggle_attributes(frm);
 
@@ -122,10 +119,9 @@ frappe.ui.form.on("Item", {
 		frm.set_df_property('alt_uom_size', 'read_only', alt_uom_readonly);
 
 		cant_change_fields.forEach((fieldname) => {
-			frm.set_df_property(fieldname, 'read_only', 1);
+			frm.set_df_property(fieldname, "read_only_depends_on", null);
+			frm.set_df_property(fieldname, "read_only", 1);
 		});
-
-		frm.toggle_reqd('customer', frm.doc.is_customer_provided_item ? 1:0);
 	},
 
 	validate: function(frm){
@@ -137,7 +133,18 @@ frappe.ui.form.on("Item", {
 	},
 
 	is_customer_provided_item: function(frm) {
-		frm.toggle_reqd('customer', frm.doc.is_customer_provided_item ? 1:0);
+		frm.set_value("is_purchase_item", frm.doc.is_customer_provided_item ? 0 : 1);
+		frm.events.set_customer_provided_material_request_type(frm);
+	},
+
+	is_sub_contracted_item: function (frm) {
+		frm.events.set_customer_provided_material_request_type(frm);
+	},
+
+	set_customer_provided_material_request_type: function (frm) {
+		if (frm.doc.is_customer_provided_item) {
+			frm.set_value("default_material_request_type", frm.doc.is_sub_contracted_item ? "Purchase" : "Customer Provided");
+		}
 	},
 
 	is_fixed_asset: function(frm) {
@@ -170,8 +177,6 @@ frappe.ui.form.on("Item", {
 		frm.toggle_display(['asset_naming_series'], frm.doc.auto_create_assets);
 	},
 
-	page_name: frappe.utils.warn_page_name_change,
-
 	brand: function(frm) {
 		erpnext.utils.set_item_overrides(frm);
 	},
@@ -180,10 +185,6 @@ frappe.ui.form.on("Item", {
 	},
 	item_source: function(frm) {
 		erpnext.utils.set_item_overrides(frm);
-	},
-
-	item_naming_by: function(frm) {
-		erpnext.item.toggle_naming_fields(frm);
 	},
 
 	item_code: function(frm) {
@@ -201,25 +202,41 @@ frappe.ui.form.on("Item", {
 		}
 	},
 
-	copy_from_item_group: function(frm) {
-		return frm.call({
-			doc: frm.doc,
-			method: "copy_specification_from_item_group"
-		});
-	},
-
 	has_variants: function(frm) {
 		erpnext.item.toggle_attributes(frm);
 	},
 
-	show_in_website: function(frm) {
-		if (frm.doc.default_warehouse && !frm.doc.website_warehouse){
-			frm.set_value("website_warehouse", frm.doc.default_warehouse);
+	net_weight_per_unit: function (frm) {
+		frm.events.calculate_gross_weight(frm);
+	},
+	tare_weight_per_unit: function (frm) {
+		frm.events.calculate_gross_weight(frm);
+	},
+	gross_weight_per_unit: function (frm) {
+		if (flt(frm.doc.net_weight_per_unit)) {
+			let new_tare_weight = flt(flt(frm.doc.gross_weight_per_unit) - flt(frm.doc.net_weight_per_unit),
+				precision("tare_weight_per_unit"));
+			frm.set_value("tare_weight_per_unit", new_tare_weight);
 		}
 	},
 
-	set_meta_tags(frm) {
-		frappe.utils.set_meta_tag(frm.doc.route);
+	calculate_gross_weight: function (frm) {
+		let weight_fields = ["net_weight_per_unit", "tare_weight_per_unit", "gross_weight_per_unit"];
+		frappe.model.round_floats_in(frm.doc, weight_fields);
+
+		if (!frm.doc.is_packaging_material) {
+			if (flt(frm.doc.net_weight_per_unit)) {
+				frm.doc.gross_weight_per_unit = flt(flt(frm.doc.net_weight_per_unit) + flt(frm.doc.tare_weight_per_unit),
+					precision("gross_weight_per_unit"));
+
+				frm.refresh_field("gross_weight_per_unit");
+			} else if (flt(frm.doc.gross_weight_per_unit) && flt(frm.doc.tare_weight_per_unit)) {
+				frm.doc.net_weight_per_unit = flt(flt(frm.doc.gross_weight_per_unit) - flt(frm.doc.tare_weight_per_unit),
+					precision("gross_weight_per_unit"));
+
+				frm.refresh_field("net_weight_per_unit");
+			}
+		}
 	}
 });
 
@@ -326,6 +343,13 @@ $.extend(erpnext.item, {
 			}
 		});
 
+		frm.set_query("applicable_commission_item", function(doc, cdt, cdn) {
+			var filters = {
+				"is_stock_item": 0
+			  };
+			  return erpnext.queries.item(filters);
+		});
+
 		frm.set_query("applicable_item_code", "applicable_items", function (doc, cdt, cdn) {
 			var filters = {};
 			if (!doc.__islocal) {
@@ -335,13 +359,8 @@ $.extend(erpnext.item, {
 		});
 
 		frm.set_query("applicable_uom", "applicable_items", function(doc, cdt, cdn) {
-			var d = locals[cdt][cdn];
-			return {
-				query : "erpnext.controllers.queries.item_uom_query",
-				filters: {
-					item_code: d.applicable_item_code
-				}
-			}
+			let item = frappe.get_doc(cdt, cdn);
+			return erpnext.queries.item_uom(item.applicable_item_code);
 		});
 	},
 
@@ -351,9 +370,8 @@ $.extend(erpnext.item, {
 
 		// Show Stock Levels only if is_stock_item
 		if (frm.doc.is_stock_item) {
-			frappe.require('assets/js/item-dashboard.min.js', function() {
-				var section = frm.dashboard.add_section('<h5 style="margin-top: 0px;">\
-					<a href="#stock-balance">' + __("Stock Levels") + '</a></h5>');
+			frappe.require('item-dashboard.bundle.js', function() {
+				var section = frm.dashboard.add_section("", "Stock Levels");
 				erpnext.item.item_dashboard = new erpnext.stock.ItemDashboard({
 					parent: section,
 					item_code: frm.doc.name
@@ -367,13 +385,6 @@ $.extend(erpnext.item, {
 		frm.add_custom_button(__("Add / Edit Prices"), function() {
 			frappe.set_route("query-report", "Item Prices", {"item_code": frm.doc.name});
 		}, __("View"));
-	},
-
-	toggle_naming_fields: function(frm) {
-		if (frm.doc.__islocal) {
-			frm.toggle_reqd("item_code", frm.doc.item_naming_by == "Item Code" ? 1 : 0);
-			frm.toggle_reqd("naming_series", frm.doc.item_naming_by == "Naming Series" ? 1 : 0);
-		}
 	},
 
 	weight_to_validate: function(frm){
@@ -422,23 +433,29 @@ $.extend(erpnext.item, {
 	},
 
 	show_multiple_variants_dialog: function(frm) {
-		var me = this;
+		let me = this;
 
 		let promises = [];
 		let attr_val_fields = {};
 
 		function make_fields_from_attribute_values(attr_dict) {
 			let fields = [];
-			Object.keys(attr_dict).forEach((name, i) => {
-				if(i % 3 === 0){
+			for (let [i, attribute_name] of Object.keys(attr_dict).entries()) {
+				// Section Break after 3 columns
+				if (i % 3 === 0) {
 					fields.push({fieldtype: 'Section Break'});
 				}
-				fields.push({fieldtype: 'Column Break', label: name});
-				attr_dict[name].forEach(value => {
+
+				// Column Label
+				fields.push({fieldtype: 'Column Break', label: attribute_name});
+
+				for (let attribute_value of attr_dict[attribute_name]) {
 					fields.push({
 						fieldtype: 'Check',
-						label: value,
-						fieldname: value,
+						label: attribute_value,
+						fieldname: attribute_value,
+						attribute_name: attribute_name,
+						attribute_value: attribute_value,
 						default: 0,
 						onchange: function() {
 							let selected_attributes = get_selected_attributes();
@@ -446,7 +463,7 @@ $.extend(erpnext.item, {
 							Object.keys(selected_attributes).map(key => {
 								lengths.push(selected_attributes[key].length);
 							});
-							if(lengths.includes(0)) {
+							if (lengths.includes(0)) {
 								me.multiple_variant_dialog.get_primary_btn().html(__('Create Variants'));
 								me.multiple_variant_dialog.disable_primary_action();
 							} else {
@@ -459,8 +476,8 @@ $.extend(erpnext.item, {
 							}
 						}
 					});
-				});
-			});
+				}
+			}
 			return fields;
 		}
 
@@ -514,17 +531,19 @@ $.extend(erpnext.item, {
 
 		function get_selected_attributes() {
 			let selected_attributes = {};
-			me.multiple_variant_dialog.$wrapper.find('.form-column').each((i, col) => {
-				if(i===0) return;
-				let attribute_name = $(col).find('label').html();
-				selected_attributes[attribute_name] = [];
-				let checked_opts = $(col).find('.checkbox input');
-				checked_opts.each((i, opt) => {
-					if($(opt).is(':checked')) {
-						selected_attributes[attribute_name].push($(opt).attr('data-fieldname'));
-					}
-				});
-			});
+
+			let value_fields = me.multiple_variant_dialog.fields.filter(f => f.attribute_name && f.attribute_value);
+			for (let df of value_fields) {
+				if (!me.multiple_variant_dialog.get_value(df.fieldname)) {
+					continue;
+				}
+
+				if (!selected_attributes[df.attribute_name]) {
+					selected_attributes[df.attribute_name] = [];
+				}
+
+				selected_attributes[df.attribute_name].push(df.attribute_value);
+			}
 
 			return selected_attributes;
 		}
@@ -629,7 +648,7 @@ $.extend(erpnext.item, {
 					if (r.message) {
 						var variant = r.message;
 						frappe.msgprint_dialog = frappe.msgprint(__("Item Variant {0} already exists with same attributes",
-							[repl('<a href="#Form/Item/%(item_encoded)s" class="strong variant-click">%(item)s</a>', {
+							[repl('<a href="/app/item/%(item_encoded)s" class="strong variant-click">%(item)s</a>', {
 								item_encoded: encodeURIComponent(variant),
 								item: variant
 							})]
@@ -698,42 +717,9 @@ $.extend(erpnext.item, {
 	},
 
 	toggle_attributes: function(frm) {
-		if((frm.doc.has_variants || frm.doc.variant_of)
-			&& frm.doc.variant_based_on==='Item Attribute') {
-			frm.toggle_display("attributes", true);
-
-			var grid = frm.fields_dict.attributes.grid;
-
-			if(frm.doc.variant_of) {
-				// variant
-
-				// value column is displayed but not editable
-				grid.set_column_disp("attribute_value", true);
-				grid.toggle_enable("attribute_value", false);
-
-				grid.toggle_enable("attribute", false);
-
-				// can't change attributes since they are
-				// saved when the variant was created
-				frm.toggle_enable("attributes", false);
-			} else {
-				// template - values not required!
-
-				// make the grid editable
-				frm.toggle_enable("attributes", true);
-
-				// value column is hidden
-				grid.set_column_disp("attribute_value", false);
-
-				// enable the grid so you can add more attributes
-				grid.toggle_enable("attribute", true);
-			}
-
-		} else {
-			// nothing to do with attributes, hide it
-			frm.toggle_display("attributes", false);
-		}
-		frm.layout.refresh_sections();
+		let grid = frm.fields_dict.attributes.grid;
+		grid.update_docfield_property("attribute_value", "in_list_view", cint(!!frm.doc.variant_of));
+		grid.reset_grid();
 	},
 
 	change_uom: function (frm) {

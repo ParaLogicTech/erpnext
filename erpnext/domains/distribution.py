@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 data = {
 	'desktop_icons': [
@@ -10,7 +9,6 @@ data = {
 		'Purchase Order',
 		'Task',
 		'Sales Invoice',
-		'CRM',
 		'ToDo'
 	],
 	'set_value': [

@@ -88,10 +88,9 @@
    "label": "Enable Admission Application"
   }
  ],
- "has_web_view": 1,
  "is_published_field": "published",
  "links": [],
- "modified": "2020-06-15 20:18:38.591626",
+ "modified": "2024-03-31 11:23:40.758060",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Student Admission",
@@ -115,5 +114,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "title"
 }

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2018-02-21 16:42:13.882879",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -10,31 +11,20 @@
   "lubricants_item_group",
   "sublet_item_group",
   "sales_order_print_heading",
+  "default_sales_transaction_type",
   "column_break_2",
   "appointment_required",
   "validate_ready_to_close",
-  "ignore_workstation_time_overlap",
-  "ignore_user_time_overlap",
-  "ignore_employee_time_overlap"
+  "validate_tasks_completed",
+  "ignore_employee_time_overlap",
+  "auto_schedule_next_project_templates"
  ],
  "fields": [
   {
    "default": "0",
-   "fieldname": "ignore_workstation_time_overlap",
-   "fieldtype": "Check",
-   "label": "Ignore Workstation Time Overlap"
-  },
-  {
-   "default": "0",
-   "fieldname": "ignore_user_time_overlap",
-   "fieldtype": "Check",
-   "label": "Ignore User Time Overlap"
-  },
-  {
-   "default": "0",
    "fieldname": "ignore_employee_time_overlap",
    "fieldtype": "Check",
-   "label": "Ignore Employee Time Overlap"
+   "label": "Ignore Employee Time Overlap in Timesheets"
   },
   {
    "default": "Project Name",
@@ -89,10 +79,29 @@
    "fieldname": "validate_ready_to_close",
    "fieldtype": "Check",
    "label": "Validate Project Must be Ready To Close for Billing"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_tasks_completed",
+   "fieldtype": "Check",
+   "label": "Validate Tasks Completed for Ready To Close"
+  },
+  {
+   "fieldname": "default_sales_transaction_type",
+   "fieldtype": "Link",
+   "label": "Default Sales Transaction Type",
+   "options": "Transaction Type"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_schedule_next_project_templates",
+   "fieldtype": "Check",
+   "label": "Auto Schedule Next Maintenance Template if Missed"
   }
  ],
  "issingle": 1,
- "modified": "2023-04-10 14:27:55.985337",
+ "links": [],
+ "modified": "2024-09-01 23:39:52.575222",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
@@ -120,5 +129,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

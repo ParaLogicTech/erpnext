@@ -1,5 +1,6 @@
 {
- "creation": "2013-06-24 16:37:54",
+ "actions": [],
+ "creation": "2023-03-01 14:29:10.928420",
  "description": "Settings",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -9,12 +10,16 @@
   "valuation_method",
   "defaults_section",
   "item_group",
+  "column_break_6",
   "stock_uom",
+  "weight_uom",
   "column_break_9",
   "default_warehouse",
+  "default_rejected_warehouse",
   "sample_retention_warehouse",
   "section_break_7",
   "over_delivery_receipt_allowance",
+  "under_delivery_allowance",
   "column_break_12",
   "restrict_stock_valuation_to_role",
   "action_if_quality_inspection_is_not_submitted",
@@ -28,6 +33,7 @@
   "column_break_23",
   "show_barcode_field",
   "clean_description_html",
+  "allow_delivery_returns_after_billing",
   "column_break_25",
   "enable_dynamic_bundling",
   "auto_material_request",
@@ -52,7 +58,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Item Naming By",
-   "options": "Item Code\nItem Name\nNaming Series"
+   "options": "Item Code\nItem Name\nNaming Series\nSystem Generated"
   },
   {
    "fieldname": "item_group",
@@ -78,7 +84,8 @@
    "fieldname": "sample_retention_warehouse",
    "fieldtype": "Link",
    "label": "Sample Retention Warehouse",
-   "options": "Warehouse"
+   "options": "Warehouse",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_4",
@@ -265,12 +272,41 @@
    "fieldtype": "Link",
    "label": "Restrict Stock Valuation Amounts to Role",
    "options": "Role"
+  },
+  {
+   "fieldname": "column_break_6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "weight_uom",
+   "fieldtype": "Link",
+   "label": "Default Weight UOM",
+   "options": "UOM"
+  },
+  {
+   "description": "Percentage you are allowed to deliver less against the quantity ordered. If within allowance, Sales Order will be considered as Delivered.",
+   "fieldname": "under_delivery_allowance",
+   "fieldtype": "Float",
+   "label": "Under Delivery Allowance (%)"
+  },
+  {
+   "fieldname": "default_rejected_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Rejected Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_delivery_returns_after_billing",
+   "fieldtype": "Check",
+   "label": "Allow Delivery Returns after Billing"
   }
  ],
  "icon": "icon-cog",
  "idx": 1,
  "issingle": 1,
- "modified": "2022-12-26 12:15:26.279333",
+ "links": [],
+ "modified": "2024-05-18 16:35:04.600002",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Settings",
@@ -298,5 +334,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
+ "states": [],
  "track_changes": 1
 }

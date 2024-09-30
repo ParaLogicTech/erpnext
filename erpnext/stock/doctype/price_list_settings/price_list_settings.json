@@ -1,27 +1,36 @@
 {
+ "actions": [],
  "creation": "2019-07-22 03:35:59.456132",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "price_list_note",
-  "item_group_order"
+  "item_group_order",
+  "brand_order"
  ],
  "fields": [
   {
    "fieldname": "item_group_order",
    "fieldtype": "Table",
    "label": "Item Group Order",
-   "options": "Price List Item Group"
+   "options": "Item Group Order"
   },
   {
    "fieldname": "price_list_note",
    "fieldtype": "Text",
    "label": "Price List Note"
+  },
+  {
+   "fieldname": "brand_order",
+   "fieldtype": "Table",
+   "label": "Brand Order",
+   "options": "Brand Order"
   }
  ],
  "issingle": 1,
- "modified": "2020-08-15 20:23:29.020092",
+ "links": [],
+ "modified": "2024-08-24 07:02:51.754320",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Price List Settings",
@@ -55,5 +64,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

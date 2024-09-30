@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt, cint, cstr, getdate
@@ -63,8 +62,9 @@ class OrderItemFulfilmentTracker:
 			INNER JOIN `tabItem` im on im.name = i.item_code
 			{party_join}
 			{sales_person_join}
-			WHERE
-				o.docstatus = 1 AND o.status != 'Closed' AND i.{completed_qty_field} < i.qty
+			WHERE o.docstatus = 1
+				AND o.status != 'Closed'
+				AND i.{completed_qty_field} < i.qty
 				AND (im.is_stock_item = 1 OR im.is_fixed_asset = 1)
 				{conditions}
 			GROUP BY o.name, i.name
@@ -179,6 +179,11 @@ class OrderItemFulfilmentTracker:
 			lft, rgt = frappe.db.get_value("Warehouse", self.filters.warehouse, ["lft", "rgt"])
 			conditions.append("""i.warehouse in (select name from `tabWarehouse`
 				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
+
+		if frappe.get_meta(self.filters.doctype).has_field("skip_delivery_note"):
+			conditions.append("o.skip_delivery_note = 0")
+		if frappe.get_meta(self.filters.doctype + " Item").has_field("skip_delivery_note"):
+			conditions.append("i.skip_delivery_note = 0")
 
 		return "AND {}".format(" AND ".join(conditions)) if conditions else ""
 

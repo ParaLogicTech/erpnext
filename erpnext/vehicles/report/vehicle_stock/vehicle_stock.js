@@ -14,6 +14,7 @@ frappe.query_reports["Vehicle Stock"] = {
 				'Dispatched Vehicles',
 				'In Stock and Dispatched Vehicles',
 				'Delivered Vehicles',
+				'To Transfer'
 			],
 			default: 'All Vehicles'
 		},
@@ -195,15 +196,15 @@ frappe.query_reports["Vehicle Stock"] = {
 			fieldname: "group_by_1",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Model", "Group by Variant", "Group by Item Group", "Group by Brand", "Group by Warehouse"],
-			default: "Ungrouped"
+			options: ["", "Group by Model", "Group by Variant", "Group by Item Group", "Group by Brand", "Group by Warehouse"],
+			default: ""
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Model", "Group by Variant", "Group by Item Group", "Group by Brand", "Group by Warehouse"],
-			default: "Ungrouped"
+			options: ["", "Group by Model", "Group by Variant", "Group by Item Group", "Group by Brand", "Group by Warehouse"],
+			default: ""
 		},
 		{
 			fieldname: "show_customer_in_print",

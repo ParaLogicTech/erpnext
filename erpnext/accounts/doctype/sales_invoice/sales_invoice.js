@@ -1,45 +1,19 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
-// print heading
-cur_frm.pformat.print_heading = 'Invoice';
-
 {% include 'erpnext/selling/sales_common.js' %};
 
-
 frappe.provide("erpnext.accounts");
-erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.extend({
-	setup: function(doc) {
-		this.setup_posting_date_time_check();
-		this._super(doc);
 
-		this.frm.set_indicator_formatter('item_code', function(doc, parent) {
-			if (doc.docstatus === 0) {
-				if (parent.update_stock && !parent.is_return) {
-					if (!doc.is_stock_item) {
-						return "blue";
-					} else if (!doc.actual_qty) {
-						return "red";
-					} else if (doc.actual_qty < doc.stock_qty) {
-						return "orange";
-					} else {
-						return "green";
-					}
-				}
-			} else {
-				if (!parent.is_return) {
-					if (doc.returned_qty) {
-						return "yellow";
-					} else if (doc.base_returned_amount) {
-						return "darkgrey";
-					}
-				}
-			}
-		});
-	},
-	onload: function() {
+erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends erpnext.selling.SellingController {
+	setup(doc) {
+		this.setup_posting_date_time_check();
+		super.setup(doc);
+	}
+
+	onload() {
 		var me = this;
-		this._super();
+		super.onload();
 
 		if(!this.frm.doc.__islocal && !this.frm.doc.customer && this.frm.doc.debit_to) {
 			// show debit_to in print format
@@ -49,6 +23,7 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 		erpnext.queries.setup_queries(this.frm, "Warehouse", function() {
 			return erpnext.queries.warehouse(me.frm.doc);
 		});
+		erpnext.queries.setup_warehouse_qty_query(this.frm);
 
 		if(this.frm.doc.__islocal && this.frm.doc.is_pos) {
 			//Load pos profile data on the invoice if the default value of Is POS is 1
@@ -56,12 +31,11 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 			me.frm.script_manager.trigger("is_pos");
 			me.frm.refresh_fields();
 		}
-		erpnext.queries.setup_warehouse_query(this.frm);
-	},
+	}
 
-	refresh: function(doc, dt, dn) {
+	refresh(doc, dt, dn) {
 		const me = this;
-		this._super();
+		super.refresh();
 		if(cur_frm.msgbox && cur_frm.msgbox.$wrapper.is(":visible")) {
 			// hide new msgbox
 			cur_frm.msgbox.hide();
@@ -79,7 +53,12 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 			});
 		}
 
-		if (doc.docstatus == 1 && doc.project && doc.__onload && doc.__onload.can_make_vehicle_gate_pass) {
+		if (
+			doc.docstatus == 1
+			&& doc.project
+			&& doc.__onload?.can_make_vehicle_gate_pass
+			&& frappe.model.can_create("Vehicle Gate Pass")
+		) {
 			this.frm.add_custom_button(__('Vehicle Gate Pass'), function () {
 				me.make_vehicle_gate_pass();
 			});
@@ -104,59 +83,53 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 			me.add_update_price_list_button();
 		}
 
-		if (doc.docstatus == 1 && doc.outstanding_amount!=0
-			&& !(cint(doc.is_return) && doc.return_against)) {
-			cur_frm.add_custom_button(__('Payment'),
-				this.make_payment_entry, __('Create'));
-			cur_frm.page.set_inner_btn_group_as_primary(__('Create'));
+		if (
+			doc.docstatus == 1
+			&& doc.outstanding_amount != 0
+			&& (!doc.is_return || !doc.return_against)
+			&& (frappe.model.can_create("Payment Entry") || frappe.model.can_create("Journal Entry"))
+		) {
+			me.frm.add_custom_button(__('Payment'), () => this.make_payment_entry(),
+				__('Create'));
+			me.frm.page.set_inner_btn_group_as_primary(__('Create'));
 		}
 
-		if(doc.docstatus==1 && !doc.is_return) {
+		if (doc.docstatus == 1 && !doc.is_return) {
+			let is_delivered_by_supplier = me.frm.doc.items.some((item) => item.is_delivered_by_supplier);
 
-			var is_delivered_by_supplier = false;
-
-			is_delivered_by_supplier = cur_frm.doc.items.some(function(item){
-				return item.is_delivered_by_supplier ? true : false;
-			})
-
-			if(doc.outstanding_amount >= 0 || Math.abs(flt(doc.outstanding_amount)) < flt(doc.grand_total)) {
-				cur_frm.add_custom_button(__('Return / Credit Note'),
+			if (
+				(doc.outstanding_amount >= 0 || Math.abs(flt(doc.outstanding_amount)) < flt(doc.grand_total))
+				&& frappe.model.can_create("Sales Invoice")
+			) {
+				me.frm.add_custom_button(__('Return / Credit Note'),
 					() => this.make_sales_return(), __('Create'));
-				cur_frm.page.set_inner_btn_group_as_primary(__('Create'));
+				me.frm.page.set_inner_btn_group_as_primary(__('Create'));
 			}
 
-			if(cint(doc.update_stock)!=1) {
+			if (!doc.update_stock) {
 				// show Make Delivery Note button only if Sales Invoice is not created from Delivery Note
-				var from_delivery_note = false;
-				from_delivery_note = cur_frm.doc.items
-					.some(function(item) {
-						return item.delivery_note ? true : false;
-					});
+				let from_delivery_note = me.frm.doc.items.some((item) => item.delivery_note);
 
-				if(!from_delivery_note && !is_delivered_by_supplier) {
-					cur_frm.add_custom_button(__('Delivery'),
-						cur_frm.cscript['Make Delivery Note'], __('Create'));
+				if (!from_delivery_note && !is_delivered_by_supplier && frappe.model.can_create("Delivery Note")) {
+					me.frm.add_custom_button(__('Delivery'), me.frm.cscript['Make Delivery Note'],
+						__('Create'));
 				}
 			}
 
-			if (doc.outstanding_amount>0) {
-				cur_frm.add_custom_button(__('Payment Request'), function() {
+			if (doc.outstanding_amount > 0 && frappe.model.can_create("Payment Request")) {
+				me.frm.add_custom_button(__('Payment Request'), function() {
 					me.make_payment_request();
 				}, __('Create'));
+			}
 
-				cur_frm.add_custom_button(__('Invoice Discounting'), function() {
-					cur_frm.events.create_invoice_discounting(cur_frm);
+			if (doc.docstatus === 1 && frappe.model.can_create("Maintenance Schedule")) {
+				me.frm.add_custom_button(__('Maintenance Schedule'), function () {
+					me.frm.cscript.make_maintenance_schedule();
 				}, __('Create'));
 			}
 
-			if (doc.docstatus === 1) {
-				cur_frm.add_custom_button(__('Maintenance Schedule'), function () {
-					cur_frm.cscript.make_maintenance_schedule();
-				}, __('Create'));
-			}
-
-			if(!doc.auto_repeat) {
-				cur_frm.add_custom_button(__('Subscription'), function() {
+			if (!doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
+				me.frm.add_custom_button(__('Subscription'), function() {
 					erpnext.utils.make_subscription(doc.doctype, doc.name)
 				}, __('Create'))
 			}
@@ -164,45 +137,84 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 
 		// Show buttons only when pos view is active
 		if (doc.docstatus == 0 && this.frm.page.current_view_name != "pos") {
-			me.frm.add_custom_button(__('Delivery Note'), function() {
-				me.get_items_from_delivery_note();
-			}, __("Get Items From"));
-
-			if (!doc.is_return) {
-				me.frm.add_custom_button(__('Sales Order'), function() {
-					me.get_items_from_sales_order();
-				}, __("Get Items From"));
-
-				me.frm.add_custom_button(__('Quotation'), function() {
-					me.get_items_from_quotation();
+			if (frappe.model.can_read("Delivery Note")) {
+				me.frm.add_custom_button(__('Delivery Note'), function () {
+					me.get_items_from_delivery_note();
 				}, __("Get Items From"));
 			}
 
-			me.frm.add_custom_button(__('Projects'), function() {
-				me.get_items_from_project();
-			}, __("Get Items From"));
+			if (!doc.is_return) {
+				if (frappe.model.can_read("Sales Order")) {
+					me.frm.add_custom_button(__('Sales Order'), function () {
+						me.get_items_from_sales_order();
+					}, __("Get Items From"));
+				}
+
+				if (frappe.model.can_read("Quotation")) {
+					me.frm.add_custom_button(__('Quotation'), function () {
+						me.get_items_from_quotation();
+					}, __("Get Items From"));
+				}
+
+				if (frappe.model.can_read("Packing Slip")) {
+					me.frm.add_custom_button(__('Packing Slip'), function () {
+						me.get_items_from_packing_slip("Sales Invoice");
+					}, __("Get Items From"));
+				}
+			}
+
+			if (frappe.model.can_read("Project")) {
+				me.frm.add_custom_button(__('Projects'), function () {
+					me.get_items_from_project();
+				}, __("Get Items From"));
+			}
 
 			this.add_get_applicable_items_button();
 			this.add_get_project_template_items_button();
+
+			if (frappe.boot.active_domains.includes("Vehicles") && frappe.model.can_read("Vehicle Booking Order")) {
+				me.frm.add_custom_button(__('Vehicle Booking Order'), function() {
+					me.get_items_from_vehicle_booking_order();
+				}, __("Get Items From"));
+			}
 		}
 
 		this.set_default_print_format();
 
 		if (doc.docstatus == 1 && !doc.inter_company_reference) {
-			frappe.model.with_doc("Customer", me.frm.doc.customer, function() {
-				var customer = frappe.model.get_doc("Customer", me.frm.doc.customer);
-				var internal = customer.is_internal_customer;
-				var disabled = customer.disabled;
-				if (internal == 1 && disabled == 0) {
-					me.frm.add_custom_button("Inter Company Invoice", function() {
-						me.make_inter_company_invoice();
-					}, __('Create'));
-				}
-			});
+			if (me.frm.doc.__onload?.is_internal_customer) {
+				me.frm.add_custom_button("Inter Company Invoice", function() {
+					me.make_inter_company_invoice();
+				}, __('Create'));
+			}
 		}
-	},
 
-	sync_fbr_pos_invoice: function () {
+		this.frm.set_indicator_formatter('item_code', function(doc, parent) {
+			if (doc.docstatus === 0) {
+				if (parent.update_stock && !parent.is_return) {
+					if (!doc.is_stock_item) {
+						return "blue";
+					} else if (!doc.actual_qty) {
+						return "red";
+					} else if (doc.actual_qty < doc.stock_qty) {
+						return "orange";
+					} else {
+						return "green";
+					}
+				}
+			} else {
+				if (!parent.is_return) {
+					if (doc.returned_qty) {
+						return "yellow";
+					} else if (doc.base_returned_amount) {
+						return "grey";
+					}
+				}
+			}
+		});
+	}
+
+	sync_fbr_pos_invoice() {
 		var me = this;
 		frappe.call({
 			"method": "erpnext.erpnext_integrations.fbr_pos_integration.sync_fbr_pos_invoice",
@@ -217,14 +229,15 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				}
 			}
 		});
-	},
+	}
 
-	make_vehicle_gate_pass: function () {
+	make_vehicle_gate_pass() {
 		if (this.frm.doc.project) {
 			return frappe.call({
 				method: "erpnext.projects.doctype.project.project.get_vehicle_gate_pass",
 				args: {
 					"project": this.frm.doc.project,
+					"purpose": "Service - Vehicle Delivery",
 					"sales_invoice": this.frm.doc.name
 				},
 				callback: function (r) {
@@ -235,16 +248,16 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				}
 			});
 		}
-	},
+	}
 
-	make_maintenance_schedule: function() {
+	make_maintenance_schedule() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.make_maintenance_schedule",
 			frm: cur_frm
 		})
-	},
+	}
 
-	add_view_gross_profit_button: function () {
+	add_view_gross_profit_button() {
 		if (this.frm.doc.docstatus === 1) {
 			this.frm.add_custom_button(__("Gross Profit"), () => {
 				frappe.route_options = {
@@ -256,9 +269,9 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				frappe.set_route("query-report", "Gross Profit");
 			}, __("View"));
 		}
-	},
+	}
 
-	on_submit: function(doc, dt, dn) {
+	on_submit(doc, dt, dn) {
 		var me = this;
 
 		if (frappe.get_route()[0] != 'Form') {
@@ -268,9 +281,9 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 		$.each(doc["items"], function(i, row) {
 			if(row.delivery_note) frappe.model.clear_doc("Delivery Note", row.delivery_note)
 		})
-	},
+	}
 
-	set_default_print_format: function() {
+	set_default_print_format() {
 		// set default print format to POS type or Credit Note
 		if(cur_frm.doc.is_pos) {
 			if(cur_frm.pos_print_format) {
@@ -291,16 +304,15 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				cur_frm.meta._default_print_format = null;
 			}
 		}
-	},
+	}
 
-	get_items_from_quotation: function() {
+	get_items_from_quotation() {
 		var me = this;
 
 		erpnext.utils.map_current_doc({
 			method: "erpnext.selling.doctype.quotation.quotation.make_sales_invoice",
 			source_doctype: "Quotation",
 			target: me.frm,
-			date_field: "transaction_date",
 			setters: [
 				{
 					fieldtype: 'Link',
@@ -315,9 +327,14 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 					options: 'Project',
 					fieldname: 'project',
 					default: me.frm.doc.project || undefined,
+				},
+				{
+					fieldtype: 'DateRange',
+					label: __('Date Range'),
+					fieldname: 'transaction_date',
 				}
 			],
-			columns: ['customer_name', 'project'],
+			columns: ['customer_name', 'transaction_date', 'project'],
 			get_query_filters: {
 				docstatus: 1,
 				status: ["!=", "Lost"],
@@ -325,21 +342,37 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				quotation_to: 'Customer',
 			}
 		});
-	},
+	}
 
-	get_items_from_sales_order: function() {
+	get_items_from_sales_order() {
 		var me = this;
 
 		erpnext.utils.map_current_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice",
 			source_doctype: "Sales Order",
 			target: me.frm,
-			date_field: "transaction_date",
-			setters: {
-				customer: me.frm.doc.customer || undefined,
-				project: me.frm.doc.project || undefined,
-			},
-			columns: ['customer_name', 'project'],
+			setters: [
+				{
+					fieldtype: 'Link',
+					label: __('Customer'),
+					options: 'Customer',
+					fieldname: 'customer',
+					default: me.frm.doc.customer || undefined,
+				},
+				{
+					fieldtype: 'Link',
+					label: __('Project'),
+					options: 'Project',
+					fieldname: 'project',
+					default: me.frm.doc.project || undefined,
+				},
+				{
+					fieldtype: 'DateRange',
+					label: __('Date Range'),
+					fieldname: 'transaction_date',
+				}
+			],
+			columns: ['customer_name', 'transaction_date', 'project'],
 			get_query: function() {
 				var filters = {
 					company: me.frm.doc.company,
@@ -358,21 +391,37 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				only_items: cint(me.frm.doc.claim_billing)
 			}
 		});
-	},
+	}
 
-	get_items_from_delivery_note: function() {
+	get_items_from_delivery_note() {
 		var me = this;
 
 		erpnext.utils.map_current_doc({
 			method: "erpnext.stock.doctype.delivery_note.delivery_note.make_sales_invoice",
 			source_doctype: "Delivery Note",
 			target: me.frm,
-			date_field: "posting_date",
-			setters: {
-				customer: me.frm.doc.customer || undefined,
-				project: me.frm.doc.project || undefined,
-			},
-			columns: ['customer_name', 'project'],
+			setters: [
+				{
+					fieldtype: 'Link',
+					label: __('Customer'),
+					options: 'Customer',
+					fieldname: 'customer',
+					default: me.frm.doc.customer || undefined,
+				},
+				{
+					fieldtype: 'Link',
+					label: __('Project'),
+					options: 'Project',
+					fieldname: 'project',
+					default: me.frm.doc.project || undefined,
+				},
+				{
+					fieldtype: 'DateRange',
+					label: __('Date Range'),
+					fieldname: 'posting_date',
+				}
+			],
+			columns: ['customer_name', 'posting_date', 'project'],
 			get_query: function() {
 				var filters = {
 					company: me.frm.doc.company,
@@ -392,9 +441,136 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				only_items: cint(me.frm.doc.claim_billing)
 			}
 		});
-	},
+	}
 
-	get_items_from_project: function() {
+	get_items_from_vehicle_booking_order() {
+		let me = this;
+		let doc = {orders: []};
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Get Vehicle Booking Orders"),
+			doc: doc,
+			fields: [
+				{
+					label: __('From Date'),
+					fieldname: 'from_date',
+					fieldtype: 'Date',
+				},
+				{
+					label: __('To Date'),
+					fieldname: 'to_date',
+					fieldtype: 'Date',
+				},
+				{
+					fieldtype: "Column Break",
+				},
+				{
+					fieldtype: "Link",
+					label: __("Vehicle Item Code"),
+					fieldname: "item_code",
+					options: "Item",
+					onchange: function () {
+						let item_code = dialog.get_value('item_code');
+						if (item_code) {
+							frappe.db.get_value("Item", item_code, 'item_name', function (r) {
+								if (r) {
+									dialog.set_value('item_name', r.item_name);
+								}
+							});
+						} else {
+							dialog.set_value("item_name", "");
+						}
+					},
+					get_query: function () {
+						return erpnext.queries.item({ 'is_vehicle': 1, 'include_in_vehicle_booking': 1, "include_templates": 1 });
+					}
+				},
+				{
+					fieldtype: "Data",
+					label: __("Vehicle Item Name"),
+					fieldname: "item_name",
+					read_only: 1,
+				},
+				{
+					fieldtype: "Button",
+					label: __("Get Vehicle Booking Orders"),
+					fieldname: "get_vbos",
+					click: function () {
+						let item_code = dialog.get_value('item_code');
+						let from_date = dialog.get_value('from_date');
+						let to_date = dialog.get_value('to_date');
+						if (!from_date || !to_date) {
+							frappe.throw(__("From Date and To Date is mandatory"));
+						}
+
+						return frappe.call({
+							method: "erpnext.vehicles.doctype.vehicle_booking_order.vehicle_booking_order.get_vbos_for_sales_invoice",
+							args: {
+								item_code: item_code,
+								from_date: from_date,
+								to_date: to_date,
+							},
+							callback: function (r) {
+								if (r.message) {
+									doc.orders.length = 0;
+									for (let vbo of r.message) {
+										doc.orders.push({
+											"vehicle_booking_order": vbo
+										});
+									}
+									dialog.fields_dict.orders.refresh();
+								}
+							}
+						});
+					}
+				},
+				{
+					fieldtype: "Section Break",
+				},
+				{
+					label: __("Vehicle Booking Orders"),
+					fieldname: "orders",
+					fieldtype: "Table",
+					reqd: 1,
+					fields: [
+						{
+							label: __("Vehicle Booking Order"),
+							fieldname: "vehicle_booking_order",
+							fieldtype: "Link",
+							options: "Vehicle Booking Order",
+							reqd: 1,
+							in_list_view: 1,
+							get_query: function () {
+								return {
+									filters: {docstatus: 1}
+								};
+							}
+						},
+					],
+					data: doc.orders,
+				},
+			],
+			primary_action: function () {
+				let values = dialog.get_values();
+				let vbos = values.orders.map(row => row.vehicle_booking_order);
+				return me.frm.call({
+					doc: me.frm.doc,
+					method: "add_vehicle_booking_commission_items",
+					args: {
+						vehicle_booking_orders: vbos,
+					},
+					callback: function(r) {
+						dialog.hide();
+					}
+				});
+			},
+			primary_action_label: __('Get Commission Items')
+		});
+
+		dialog.show();
+	}
+
+	get_items_from_project() {
 		var me = this;
 
 		me.frm.set_value('claim_billing', 1);
@@ -403,7 +579,6 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 			method: "erpnext.projects.doctype.project.project.make_sales_invoice",
 			source_doctype: "Project",
 			target: me.frm,
-			date_field: "project_date",
 			setters: [
 				{
 					label: __("Customer"),
@@ -417,9 +592,14 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 					fieldname: 'project_type',
 					fieldtype: 'Link',
 					options: 'Project Type',
+				},
+				{
+					fieldtype: 'DateRange',
+					label: __('Date Range'),
+					fieldname: 'project_date',
 				}
 			],
-			columns: ['customer_name', 'project_type'],
+			columns: ['customer_name', 'project_date', 'project_type'],
 			get_query: function() {
 				var filters = {
 					company: me.frm.doc.company,
@@ -438,13 +618,13 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				claim_billing: 1
 			}
 		});
-	},
+	}
 
-	tc_name: function() {
+	tc_name() {
 		this.get_terms();
-	},
+	}
 
-	customer: function () {
+	customer() {
 		var me = this;
 
 		if(this.frm.doc.customer) {
@@ -462,9 +642,9 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 		}
 
 		return this.frm.set_value("bill_to", this.frm.doc.customer);
-	},
+	}
 
-	bill_to: function() {
+	bill_to() {
 		if (this.frm.doc.is_pos){
 			var pos_profile = this.frm.doc.pos_profile;
 		}
@@ -485,16 +665,16 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 			}, function() {
 				me.apply_pricing_rule();
 			});
-	},
+	}
 
-	make_inter_company_invoice: function() {
+	make_inter_company_invoice() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.make_inter_company_purchase_invoice",
 			frm: this.frm
 		});
-	},
+	}
 
-	debit_to: function() {
+	debit_to() {
 		var me = this;
 		if(this.frm.doc.debit_to) {
 			me.frm.call({
@@ -512,14 +692,14 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				}
 			});
 		}
-	},
+	}
 
-	allocated_amount: function() {
+	allocated_amount() {
 		this.calculate_total_advance();
 		this.frm.refresh_fields();
-	},
+	}
 
-	write_off_outstanding_amount_automatically: function() {
+	write_off_outstanding_amount_automatically() {
 		var grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
 		if(cint(this.frm.doc.write_off_outstanding_amount_automatically)) {
 			frappe.model.round_floats_in(this.frm.doc, ["grand_total", "paid_amount"]);
@@ -535,42 +715,42 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 
 		this.calculate_outstanding_amount(false);
 		this.frm.refresh_fields();
-	},
+	}
 
-	write_off_amount: function() {
+	write_off_amount() {
 		this.set_in_company_currency(this.frm.doc, ["write_off_amount"]);
 		this.write_off_outstanding_amount_automatically();
-	},
+	}
 
-	items_add: function(doc, cdt, cdn) {
+	items_add(doc, cdt, cdn) {
 		var row = frappe.get_doc(cdt, cdn);
 		this.frm.script_manager.copy_from_first_row("items", row, ["income_account"]);
 
 		if (!this.frm.doc.claim_billing) {
 			row.project = this.frm.doc.project;
 		}
-	},
+	}
 
-	set_dynamic_labels: function() {
+	set_dynamic_labels() {
 		this.hide_fields(this.frm.doc);
 		this.set_project_read_only();
-		this._super();
-	},
+		super.set_dynamic_labels();
+	}
 
-	claim_billing: function () {
+	claim_billing() {
 		this.set_project_read_only();
 		if (this.frm.doc.claim_billing) {
 			this.frm.set_value("project", null);
 		} else {
 			this.copy_project_in_items();
 		}
-	},
+	}
 
-	set_project_read_only: function () {
+	set_project_read_only() {
 		this.frm.set_df_property('project', 'read_only', cint(this.frm.doc.claim_billing));
-	},
+	}
 
-	copy_project_in_items: function () {
+	copy_project_in_items() {
 		var me = this;
 		if (!me.frm.doc.claim_billing) {
 			$.each(me.frm.doc.items || [], function (i, item) {
@@ -578,17 +758,17 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				refresh_field("project", item.name, "items");
 			});
 		}
-	},
+	}
 
-	items_on_form_rendered: function() {
+	items_on_form_rendered() {
 		erpnext.setup_serial_no();
-	},
+	}
 
-	packed_items_on_form_rendered: function(doc, grid_row) {
+	packed_items_on_form_rendered() {
 		erpnext.setup_serial_no();
-	},
+	}
 
-	make_sales_return: function() {
+	make_sales_return() {
 		var me = this;
 		var has_stock_item = me.frm.doc.items.some(d => d.is_stock_item);
 		var has_order = me.frm.doc.items.some(d => d.sales_order || d.delivery_note);
@@ -629,17 +809,17 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 		} else {
 			this._make_sales_return();
 		}
-	},
+	}
 
-	_make_sales_return: function (options) {
+	_make_sales_return(options) {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.make_sales_return",
 			frm: this.frm,
 			args: options,
 		});
-	},
+	}
 
-	asset: function(frm, cdt, cdn) {
+	asset(frm, cdt, cdn) {
 		var row = locals[cdt][cdn];
 		if(row.asset) {
 			frappe.call({
@@ -653,18 +833,18 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 				}
 			})
 		}
-	},
+	}
 
-	is_pos: function(frm){
+	is_pos(frm) {
 		this.set_pos_data();
-	},
+	}
 
-	pos_profile: function() {
+	pos_profile() {
 		this.frm.doc.taxes = []
 		this.set_pos_data();
-	},
+	}
 
-	set_pos_data: function() {
+	set_pos_data() {
 		if(this.frm.doc.is_pos) {
 			this.frm.set_value("allocate_advances_automatically", 0);
 			if(!this.frm.doc.company) {
@@ -694,13 +874,13 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 			}
 		}
 		else this.frm.trigger("refresh");
-	},
+	}
 
-	amount: function(){
+	amount() {
 		this.write_off_outstanding_amount_automatically()
-	},
+	}
 
-	change_amount: function(){
+	change_amount() {
 		if(this.frm.doc.paid_amount > this.frm.doc.grand_total){
 			this.calculate_write_off_amount();
 		}else {
@@ -709,18 +889,18 @@ erpnext.accounts.SalesInvoiceController = erpnext.selling.SellingController.exte
 		}
 
 		this.frm.refresh_fields();
-	},
+	}
 
-	loyalty_amount: function(){
+	loyalty_amount() {
 		this.calculate_outstanding_amount();
 		this.frm.refresh_field("outstanding_amount");
 		this.frm.refresh_field("paid_amount");
 		this.frm.refresh_field("base_paid_amount");
 	}
-});
+};
 
 // for backward compatibility: combine new and previous states
-$.extend(cur_frm.cscript, new erpnext.accounts.SalesInvoiceController({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.accounts.SalesInvoiceController({frm: cur_frm}));
 
 // Hide Fields
 // ------------
@@ -866,12 +1046,17 @@ frappe.ui.form.on('Sales Invoice', {
 			'Auto Repeat': 'Subscription',
 			'Vehicle Gate Pass': 'Vehicle Gate Pass',
 		};
-		frm.fields_dict["timesheets"].grid.get_field("time_sheet").get_query = function(doc, cdt, cdn){
-			return{
-				query: "erpnext.projects.doctype.timesheet.timesheet.get_timesheet",
-				filters: {'project': doc.project}
+
+		frm.set_query("time_sheet", "timesheets", function(doc) {
+			let filters = {'docstatus': 1};
+			if (doc.project) {
+				filters.project = doc.project;
 			}
-		}
+
+			return {
+				filters: filters
+			};
+		});
 
 		// expense account
 		frm.fields_dict['items'].grid.get_field('expense_account').get_query = function(doc) {
@@ -895,20 +1080,6 @@ frappe.ui.form.on('Sales Invoice', {
 				}
 			}
 		}
-
-		frm.set_query('company_address', function(doc) {
-			if(!doc.company) {
-				frappe.throw(__('Please set Company'));
-			}
-
-			return {
-				query: 'frappe.contacts.doctype.address.address.address_query',
-				filters: {
-					link_doctype: 'Company',
-					link_name: doc.company
-				}
-			};
-		});
 
 		frm.set_query('pos_profile', function(doc) {
 			if(!doc.company) {

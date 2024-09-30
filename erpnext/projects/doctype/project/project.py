@@ -1,28 +1,21 @@
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 import erpnext
 from frappe import _
-from email_reply_parser import EmailReplyParser
-from frappe.utils import flt, cint, get_url, cstr, nowtime, get_time, today, get_datetime, add_days, ceil, getdate,\
-	clean_whitespace, combine_datetime
-from erpnext.controllers.queries import get_filters_cond
-from frappe.desk.reportview import get_match_cond
-from erpnext.hr.doctype.daily_work_summary.daily_work_summary import get_users_email
-from erpnext.hr.doctype.holiday_list.holiday_list import is_holiday
+from frappe.utils import flt, cint, get_url, cstr, today, add_days, ceil, getdate,\
+	clean_whitespace
 from erpnext.stock.get_item_details import get_applies_to_details
 from frappe.model.naming import set_name_by_naming_series
 from frappe.model.utils import get_fetch_values
 from frappe.contacts.doctype.address.address import get_default_address
 from frappe.contacts.doctype.contact.contact import get_default_contact, get_all_contact_nos
 from erpnext.accounts.party import get_contact_details, get_address_display
-from erpnext.controllers.status_updater import StatusUpdater
+from erpnext.controllers.status_updater import StatusUpdaterERP
 from erpnext.projects.doctype.project_status.project_status import get_auto_project_status, set_manual_project_status,\
 	get_valid_manual_project_status_names, is_manual_project_status, validate_project_status_for_transaction
-from erpnext.projects.doctype.project_workshop.project_workshop import get_project_workshop_details
-from six import string_types
+from erpnext.projects.doctype.project_workshop.project_workshop import get_project_workshop_details, get_project_workshop_document_checklist_items
 from erpnext.vehicles.vehicle_checklist import get_default_vehicle_checklist_items, set_missing_checklist
 from erpnext.vehicles.doctype.vehicle_log.vehicle_log import get_customer_vehicle_selector_data
 from frappe.model.meta import get_field_precision
@@ -46,7 +39,7 @@ vehicle_change_fields = [
 ]
 
 
-class Project(StatusUpdater):
+class Project(StatusUpdaterERP):
 	def __init__(self, *args, **kwargs):
 		super(Project, self).__init__(*args, **kwargs)
 		self.sales_data = frappe._dict()
@@ -66,10 +59,12 @@ class Project(StatusUpdater):
 		self.set_onload('activity_summary', self.get_activity_summary())
 		self.set_onload('default_vehicle_checklist_items', get_default_vehicle_checklist_items('vehicle_checklist'))
 		self.set_onload('default_customer_request_checklist_items', get_default_vehicle_checklist_items('customer_request_checklist'))
+		self.set_onload('default_documents_checklist_items', get_project_workshop_document_checklist_items(self.project_workshop))
 		self.set_onload('cant_change_fields', self.get_cant_change_fields())
 		self.set_onload('valid_manual_project_status_names', get_valid_manual_project_status_names(self))
 		self.set_onload('is_manual_project_status', is_manual_project_status(self.project_status))
 		self.set_onload('contact_nos', get_all_contact_nos('Customer', self.customer))
+		self.set_onload('task_count', self.get_task_count())
 
 		if self.meta.has_field('applies_to_vehicle'):
 			self.set_onload('customer_vehicle_selector_data', get_customer_vehicle_selector_data(self.customer,
@@ -81,7 +76,7 @@ class Project(StatusUpdater):
 		self.sales_data = self.get_project_sales_data(get_sales_invoice=True)
 		self.set_sales_data_html_onload(self.sales_data)
 
-	def before_print(self):
+	def before_print(self, print_settings=None):
 		self.company_address_doc = erpnext.get_company_address(self)
 		self.sales_data = self.get_project_sales_data(get_sales_invoice=True)
 		self.get_sales_invoice_names()
@@ -102,6 +97,7 @@ class Project(StatusUpdater):
 		self.validate_warranty()
 		self.validate_vehicle_panels()
 
+		self.set_tasks_status()
 		self.set_percent_complete()
 		self.set_vehicle_status()
 		self.set_project_date()
@@ -113,8 +109,6 @@ class Project(StatusUpdater):
 		self.set_title()
 
 		self.validate_cant_change()
-
-		self.send_welcome_email()
 
 		self._previous_appointment = self.db_get('appointment')
 
@@ -147,10 +141,10 @@ class Project(StatusUpdater):
 		self.customer_billable_amount = sales_data.totals.customer_grand_total
 		self.total_billed_amount = self.get_billed_amount()
 
-		sales_orders = frappe.get_all("Sales Order", fields=['per_completed', 'per_delivered', 'status', 'skip_delivery_note'], filters={
+		sales_orders = frappe.get_all("Sales Order", fields=['billing_status', 'delivery_status', 'status', 'skip_delivery_note'], filters={
 			"project": self.name, "docstatus": 1
 		})
-		delivery_notes = frappe.get_all("Delivery Note", fields=['per_completed', 'status'], filters={
+		delivery_notes = frappe.get_all("Delivery Note", fields=['billing_status', 'status'], filters={
 			"project": self.name, "docstatus": 1, "is_return": 0,
 		})
 		sales_invoices = self.get_sales_invoices()
@@ -177,7 +171,7 @@ class Project(StatusUpdater):
 		for d in sales_orders + delivery_notes:
 			if d.status != "Closed":
 				has_billables = True
-				if d.per_completed < 99.99:
+				if d.billing_status == "To Bill":
 					has_unbilled = True
 
 		if sales_invoices:
@@ -219,7 +213,7 @@ class Project(StatusUpdater):
 		for d in sales_orders:
 			if d.status != 'Closed' and not d.skip_delivery_note:
 				has_deliverables = True
-				if d.per_delivered < 99.99:
+				if d.delivery_status == "To Deliver":
 					has_undelivered = True
 
 		if has_deliverables:
@@ -387,6 +381,41 @@ class Project(StatusUpdater):
 				'per_gross_margin': self.per_gross_margin,
 			}, None, update_modified=update_modified)
 
+	def set_tasks_status(self, update=False, update_modified=False):
+		tasks_data = frappe.get_all("Task", fields=["name", "status"], filters={
+			"project": self.name,
+			"status": ["!=", "Cancelled"],
+		})
+
+		if not tasks_data:
+			self.tasks_status = "No Tasks"
+		elif all(d.status == "Completed" for d in tasks_data):
+			self.tasks_status = "Completed"
+		elif all(d.status == "Open" for d in tasks_data):
+			self.tasks_status = "Not Started"
+		elif any(d.status in ["Working", "Pending Review"] for d in tasks_data):
+			self.tasks_status = "In Progress"
+		elif any(d.status == "On Hold" for d in tasks_data):
+			self.tasks_status = "On Hold"
+		else:
+			self.tasks_status = "In Progress"
+
+		if update:
+			self.db_set('tasks_status', self.tasks_status, update_modified=update_modified)
+
+	def get_task_count(self):
+		tasks_data = frappe.get_all("Task", pluck="status", filters={
+			"project": self.name,
+			"status": ["!=", "Cancelled"],
+		})
+
+		count = frappe._dict({
+			"total_tasks": len(tasks_data),
+			"completed_tasks": len([status for status in tasks_data if status == "Completed"]),
+		})
+
+		return count
+
 	def set_percent_complete(self, update=False, update_modified=False):
 		if self.percent_complete_method == "Manual":
 			if self.status == "Completed":
@@ -424,6 +453,8 @@ class Project(StatusUpdater):
 			}, None, update_modified=update_modified)
 
 	def set_ready_to_close(self, update=True):
+		self.validate_tasks_completed()
+
 		previous_ready_to_close = self.ready_to_close
 
 		self.ready_to_close = 1
@@ -440,12 +471,42 @@ class Project(StatusUpdater):
 				'status': self.status,
 			}, None)
 
+	def validate_tasks_completed(self):
+		if not frappe.get_cached_value("Projects Settings", None, "validate_tasks_completed"):
+			return
+
+		incomplete_tasks = frappe.get_all("Task", filters={
+			"project": self.name,
+			"status": ["not in", ["Completed", "Cancelled"]]
+		}, fields=["name", "subject"])
+
+		if incomplete_tasks:
+			frappe.throw(_("Task not completed:<br><br><ul>{0}</ul>").format(
+				"".join([f"<li>{frappe.utils.get_link_to_form('Task', d.name)} ({d.subject})</li>" for d in incomplete_tasks])
+			))
+
 	def validate_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_ready_to_close"):
 			return
 
 		if not self.ready_to_close:
 			frappe.throw(_("{0} is not ready to close").format(frappe.get_desk_link(self.doctype, self.name)))
+
+	def validate_insurance_details(self):
+		if not self.get('insurance_company'):
+			return
+
+		if not self.get('insurance_loss_no') and self.ready_to_close == 1:
+			frappe.throw(_("Insurance Loss # is missing"))
+
+	def set_mandatory_items_check(self):
+		unchecked_items = [
+			d.checklist_item for d in self.document_checklist
+			if d.is_mandatory and not d.checklist_item_checked
+		]
+
+		if unchecked_items and self.ready_to_close == 1:
+			frappe.throw(_("These mandatory items are not checked: {}").format(', '.join(unchecked_items)))
 
 	def reopen_status(self, update=True):
 		self.ready_to_close = 0
@@ -615,9 +676,9 @@ class Project(StatusUpdater):
 		if self.get('appointment'):
 			return
 
-		appointment_required = frappe.get_cached_value("Projects Settings", None, "appointment_required")
-		appointment_bypassed = self.project_type and frappe.get_cached_value("Project Type", self.project_type,
-			"appointment_not_required")
+		project_type = frappe.get_cached_doc("Project Type", self.project_type)
+		appointment_required = project_type.is_internal != "Yes" and frappe.get_cached_value("Projects Settings", None, "appointment_required")
+		appointment_bypassed = self.project_type and frappe.get_cached_value("Project Type", self.project_type, "appointment_not_required")
 
 		if appointment_required and not appointment_bypassed:
 			frappe.throw(_("Appointment is mandatory, please select an Appointment first"))
@@ -763,8 +824,8 @@ class Project(StatusUpdater):
 		if not self.get('applies_to_item'):
 			format_vehicle_fields(self)
 
-		if self.get('applies_to_item') and not self.get('project_workshop'):
-			frappe.throw(_("Project Workshop is mandatory when Applies to Item is set"))
+		if self.get('applies_to_vehicle') and not self.get('project_workshop'):
+			frappe.throw(_("Project Workshop is mandatory when Applies to Vehicle is set"))
 
 	def set_project_in_sales_order_and_quotation(self):
 		if self.sales_order:
@@ -844,13 +905,20 @@ class Project(StatusUpdater):
 	def validate_depreciation(self):
 		if not self.insurance_company:
 			self.default_depreciation_percentage = 0
+			self.default_underinsurance_percentage = 0
 			self.non_standard_depreciation = []
+			self.non_standard_underinsurance = []
 			return
 
 		if flt(self.default_depreciation_percentage) > 100:
 			frappe.throw(_("Default Depreciation Rate cannot be greater than 100%"))
 		elif flt(self.default_depreciation_percentage) < 0:
 			frappe.throw(_("Default Depreciation Rate cannot be negative"))
+
+		if flt(self.default_underinsurance_percentage) > 100:
+			frappe.throw(_("Default Underinsurance Rate cannot be greater than 100%"))
+		elif flt(self.default_underinsurance_percentage) < 0:
+			frappe.throw(_("Default Underinsurance Rate cannot be negative"))
 
 		item_codes_visited = set()
 		for d in self.non_standard_depreciation:
@@ -863,7 +931,18 @@ class Project(StatusUpdater):
 				frappe.throw(_("Row #{0}: Duplicate Non Standard Depreciation row for Item {1}")
 					.format(d.idx, frappe.bold(d.depreciation_item_code)))
 
-			item_codes_visited.add(d.depreciation_item_code)
+		item_codes_visited = set()
+		for d in self.non_standard_underinsurance:
+			if flt(d.underinsurance_percentage) > 100:
+				frappe.throw(_("Row #{0}: Underinsurance Rate cannot be greater than 100%").format(d.idx))
+			elif flt(d.underinsurance_percentage) < 0:
+				frappe.throw(_("Row #{0}: Underinsurance Rate cannot be negative").format(d.idx))
+
+			if d.underinsurance_item_code in item_codes_visited:
+				frappe.throw(_("Row #{0}: Duplicate Non Standard Underinsurance row for Item {1}")
+					.format(d.idx, frappe.bold(d.underinsurance_item_code)))
+
+			item_codes_visited.add(d.underinsurance_item_code)
 
 	def validate_warranty(self):
 		if self.get('warranty_claim_denied'):
@@ -995,14 +1074,18 @@ class Project(StatusUpdater):
 		vehicle_gate_passes = None
 
 		if self.get('applies_to_vehicle'):
-			vehicle_service_receipts = frappe.db.get_all("Vehicle Service Receipt",
-				{"project": self.name, "vehicle": self.applies_to_vehicle, "docstatus": 1},
-				['name', 'posting_date', 'posting_time'],
-				order_by="posting_date, posting_time, creation")
-			vehicle_gate_passes = frappe.db.get_all("Vehicle Gate Pass",
-				{"project": self.name, "vehicle": self.applies_to_vehicle, "docstatus": 1},
-				['name', 'posting_date', 'posting_time'],
-				order_by="posting_date, posting_time, creation")
+			vehicle_service_receipts = frappe.db.get_all("Vehicle Service Receipt", {
+				"project": self.name,
+				"vehicle": self.applies_to_vehicle,
+				"docstatus": 1
+			}, ['name', 'posting_date', 'posting_time'], order_by="posting_date, posting_time, creation")
+
+			vehicle_gate_passes = frappe.db.get_all("Vehicle Gate Pass", {
+				"project": self.name,
+				"vehicle": self.applies_to_vehicle,
+				"docstatus": 1,
+				"purpose": "Service - Vehicle Delivery"
+			}, ['name', 'posting_date', 'posting_time'], order_by="posting_date, posting_time, creation")
 
 		vehicle_service_receipt = frappe._dict()
 		vehicle_gate_pass = frappe._dict()
@@ -1047,9 +1130,9 @@ class Project(StatusUpdater):
 
 	def set_project_date(self):
 		self.project_date = getdate(
-			self.get('vehicle_received_date')
-			or self.actual_start_date
+			self.actual_start_date
 			or self.expected_start_date
+			or self.get('vehicle_received_date')
 			or self.creation
 		)
 
@@ -1057,24 +1140,6 @@ class Project(StatusUpdater):
 		if old_name == self.copied_from:
 			frappe.db.set_value('Project', new_name, 'copied_from', new_name)
 
-	def send_welcome_email(self):
-		url = get_url("/project/?name={0}".format(self.name))
-		messages = (
-			_("You have been invited to collaborate on the project: {0}".format(self.name)),
-			url,
-			_("Join")
-		)
-
-		content = """
-		<p>{0}.</p>
-		<p><a href="{1}">{2}</a></p>
-		"""
-
-		for user in self.users:
-			if user.welcome_email_sent == 0:
-				frappe.sendmail(user.user, subject=_("Project Collaboration Invitation"),
-								content=content.format(*messages))
-				user.welcome_email_sent = 1
 
 	def get_item_groups_subtree(self, item_group):
 		if (self.get('_item_group_subtree') or {}).get(item_group):
@@ -1108,6 +1173,7 @@ def get_stock_items(project, get_sales_invoice=True):
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
+			i.base_total_discount as total_discount,
 			i.item_tax_detail, i.claim_customer, p.conversion_rate
 		from `tabDelivery Note Item` i
 		inner join `tabDelivery Note` p on p.name = i.parent
@@ -1127,6 +1193,7 @@ def get_stock_items(project, get_sales_invoice=True):
 			if(i.is_stock_item = 1, i.base_net_amount * (i.qty - i.delivered_qty) / i.qty, i.base_net_amount) as net_amount,
 			i.base_net_rate as net_rate,
 			if(i.is_stock_item = 1, i.base_taxable_amount * (i.qty - i.delivered_qty) / i.qty, i.base_taxable_amount) as taxable_amount,
+			if(i.is_stock_item = 1, i.base_total_discount * (i.qty - i.delivered_qty) / i.qty, i.base_total_discount) as total_discount,
 			i.item_tax_detail, i.claim_customer, p.conversion_rate
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
@@ -1150,12 +1217,13 @@ def get_stock_items(project, get_sales_invoice=True):
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
+			i.base_total_discount as total_discount,
 			i.item_tax_detail, p.conversion_rate
 		from `tabSales Invoice Item` i
 		inner join `tabSales Invoice` p on p.name = i.parent
 		where p.docstatus = 1 and {0} and ifnull(i.sales_order, '') = '' and ifnull(i.delivery_note, '') = ''
-			and (p.project = %s or i.project = %s)
-	""".format(is_material_condition), [project.name, project.name], as_dict=1)
+			and i.project = %s
+	""".format(is_material_condition), project.name, as_dict=1)
 	set_sales_data_customer_amounts(sinv_data, project)
 
 	stock_data = get_items_data_template()
@@ -1202,6 +1270,7 @@ def get_service_items(project, get_sales_invoice=True):
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
+			i.base_total_discount as total_discount,
 			i.item_tax_detail, i.claim_customer, p.conversion_rate
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
@@ -1226,13 +1295,14 @@ def get_service_items(project, get_sales_invoice=True):
 				i.base_net_amount as net_amount,
 				i.base_net_rate as net_rate,
 				i.base_taxable_amount as taxable_amount,
+				i.base_total_discount as total_discount,
 				i.item_tax_detail, p.conversion_rate
 			from `tabSales Invoice Item` i
 			inner join `tabSales Invoice` p on p.name = i.parent
 			where p.docstatus = 1 and {0} and ifnull(i.sales_order, '') = ''
-				and (p.project = %s or i.project = %s)
+				and i.project = %s
 			order by p.posting_date, p.creation, i.idx
-		""".format(is_service_condition), [project.name, project.name], as_dict=1)
+		""".format(is_service_condition), project.name, as_dict=1)
 	set_sales_data_customer_amounts(sinv_data, project)
 
 	service_data = get_items_data_template()
@@ -1295,15 +1365,30 @@ def set_sales_data_customer_amounts(data, project):
 
 		if d.get('claim_customer') and project.customer and d.get('claim_customer') != project.customer:
 			d.is_claim_item = 1
-			d.customer_net_amount = 0
-			d.customer_net_rate = 0
+
+			if d.total_discount:
+				d.customer_net_amount = d.net_amount
+				d.customer_net_rate = d.net_rate
+				d.net_amount = d.customer_net_amount + d.total_discount
+				d.net_rate = d.net_amount / d.qty if d.qty else d.net_amount
+			else:
+				d.customer_net_amount = 0
+				d.customer_net_rate = 0
 		else:
 			d.is_claim_item = 0
 
 			if project.insurance_company and project.bill_to and project.bill_to != project.customer:
 				d.has_customer_depreciation = 1
-				d.customer_net_amount = d.net_amount * flt(d.depreciation_percentage) / 100
-				d.customer_net_rate = d.net_rate * flt(d.depreciation_percentage) / 100
+
+				depreciation_amount = d.net_amount * flt(d.depreciation_percentage) / 100
+				underinsurance_amount = (d.net_amount - depreciation_amount) * flt(d.underinsurance_percentage) / 100
+				d.customer_net_amount = depreciation_amount + underinsurance_amount
+
+				depreciation_rate = d.net_rate * flt(d.depreciation_percentage) / 100
+				underinsurance_rate = (d.net_rate - depreciation_rate) * flt(d.underinsurance_percentage) / 100
+				d.customer_net_rate = depreciation_rate + underinsurance_rate
+
+				d.cumulative_depreciation_percentage = d.customer_net_amount / d.net_amount * 100 if d.net_amount else 0
 			else:
 				d.customer_net_amount = d.net_amount
 				d.customer_net_rate = d.net_rate
@@ -1336,9 +1421,9 @@ def get_item_taxes(project, data, company):
 					tax_amount = flt(amount)
 					tax_amount *= conversion_rate
 
-					customer_tax_amount = 0 if d.get('is_claim_item') else flt(amount)
+					customer_tax_amount = 0 if d.get('is_claim_item') and not d.get('total_discount') else flt(amount)
 					if d.has_customer_depreciation:
-						customer_tax_amount *= d.depreciation_percentage / 100
+						customer_tax_amount *= d.cumulative_depreciation_percentage / 100
 
 					customer_tax_amount *= conversion_rate
 
@@ -1481,121 +1566,6 @@ def get_timeline_data(doctype, name):
 			group by date(from_time)''', name))
 
 
-def get_project_list(doctype, txt, filters, limit_start, limit_page_length=20, order_by="modified"):
-	return frappe.db.sql('''select distinct project.*
-		from tabProject project, `tabProject User` project_user
-		where
-			(project_user.user = %(user)s
-			and project_user.parent = project.name)
-			or project.owner = %(user)s
-			order by project.modified desc
-			limit {0}, {1}
-		'''.format(limit_start, limit_page_length),
-						 {'user': frappe.session.user},
-						 as_dict=True,
-						 update={'doctype': 'Project'})
-
-
-def get_list_context(context=None):
-	return {
-		"show_sidebar": True,
-		"show_search": True,
-		'no_breadcrumbs': True,
-		"title": _("Projects"),
-		"get_list": get_project_list,
-		"row_template": "templates/includes/projects/project_row.html"
-	}
-
-
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_users_for_project(doctype, txt, searchfield, start, page_len, filters):
-	conditions = []
-	return frappe.db.sql("""select name, concat_ws(' ', first_name, middle_name, last_name)
-		from `tabUser`
-		where enabled=1
-			and name not in ("Guest", "Administrator")
-			and ({key} like %(txt)s
-				or full_name like %(txt)s)
-			{fcond} {mcond}
-		order by
-			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
-			if(locate(%(_txt)s, full_name), locate(%(_txt)s, full_name), 99999),
-			idx desc,
-			name, full_name
-		limit %(start)s, %(page_len)s""".format(**{
-		'key': searchfield,
-		'fcond': get_filters_cond(doctype, filters, conditions),
-		'mcond': get_match_cond(doctype)
-	}), {
-							 'txt': "%%%s%%" % txt,
-							 '_txt': txt.replace("%", ""),
-							 'start': start,
-							 'page_len': page_len
-						 })
-
-
-def hourly_reminder():
-	fields = ["from_time", "to_time"]
-	projects = get_projects_for_collect_progress("Hourly", fields)
-
-	for project in projects:
-		if (get_time(nowtime()) >= get_time(project.from_time) or
-			get_time(nowtime()) <= get_time(project.to_time)):
-			send_project_update_email_to_users(project.name)
-
-
-def project_status_update_reminder():
-	daily_reminder()
-	twice_daily_reminder()
-	weekly_reminder()
-
-
-def daily_reminder():
-	fields = ["daily_time_to_send"]
-	projects =  get_projects_for_collect_progress("Daily", fields)
-
-	for project in projects:
-		if allow_to_make_project_update(project.name, project.get("daily_time_to_send"), "Daily"):
-			send_project_update_email_to_users(project.name)
-
-
-def twice_daily_reminder():
-	fields = ["first_email", "second_email"]
-	projects =  get_projects_for_collect_progress("Twice Daily", fields)
-	fields.remove("name")
-
-	for project in projects:
-		for d in fields:
-			if allow_to_make_project_update(project.name, project.get(d), "Twicely"):
-				send_project_update_email_to_users(project.name)
-
-
-def weekly_reminder():
-	fields = ["day_to_send", "weekly_time_to_send"]
-	projects =  get_projects_for_collect_progress("Weekly", fields)
-
-	current_day = get_datetime().strftime("%A")
-	for project in projects:
-		if current_day != project.day_to_send:
-			continue
-
-		if allow_to_make_project_update(project.name, project.get("weekly_time_to_send"), "Weekly"):
-			send_project_update_email_to_users(project.name)
-
-
-def allow_to_make_project_update(project, time, frequency):
-	data = frappe.db.sql(""" SELECT name from `tabProject Update`
-		WHERE project = %s and date = %s """, (project, today()))
-
-	# len(data) > 1 condition is checked for twicely frequency
-	if data and (frequency in ['Daily', 'Weekly'] or len(data) > 1):
-		return False
-
-	if get_time(nowtime()) >= get_time(time):
-		return True
-
-
 @frappe.whitelist()
 def create_duplicate_project(prev_doc, project_name):
 	''' Create duplicate project based on the old project '''
@@ -1627,93 +1597,6 @@ def create_duplicate_project(prev_doc, project_name):
 	project.db_set('project_template', prev_doc.get('project_template'))
 
 
-def get_projects_for_collect_progress(frequency, fields):
-	fields.extend(["name"])
-
-	return frappe.get_all("Project", fields = fields,
-		filters = {'collect_progress': 1, 'frequency': frequency, 'status': 'Open'})
-
-
-def send_project_update_email_to_users(project):
-	doc = frappe.get_doc('Project', project)
-
-	if is_holiday(doc.holiday_list) or not doc.users: return
-
-	project_update = frappe.get_doc({
-		"doctype" : "Project Update",
-		"project" : project,
-		"sent": 0,
-		"date": today(),
-		"time": nowtime(),
-		"naming_series": "UPDATE-.project.-.YY.MM.DD.-",
-	}).insert()
-
-	subject = "For project %s, update your status" % (project)
-
-	incoming_email_account = frappe.db.get_value('Email Account',
-		dict(enable_incoming=1, default_incoming=1), 'email_id')
-
-	frappe.sendmail(recipients=get_users_email(doc),
-		message=doc.message,
-		subject=_(subject),
-		reference_doctype=project_update.doctype,
-		reference_name=project_update.name,
-		reply_to=incoming_email_account
-	)
-
-
-def collect_project_status():
-	for data in frappe.get_all("Project Update",
-		{'date': today(), 'sent': 0}):
-		replies = frappe.get_all('Communication',
-			fields=['content', 'text_content', 'sender'],
-			filters=dict(reference_doctype="Project Update",
-				reference_name=data.name,
-				communication_type='Communication',
-				sent_or_received='Received'),
-			order_by='creation asc')
-
-		for d in replies:
-			doc = frappe.get_doc("Project Update", data.name)
-			user_data = frappe.db.get_values("User", {"email": d.sender},
-				["full_name", "user_image", "name"], as_dict=True)[0]
-
-			doc.append("users", {
-				'user': user_data.name,
-				'full_name': user_data.full_name,
-				'image': user_data.user_image,
-				'project_status': frappe.utils.md_to_html(
-					EmailReplyParser.parse_reply(d.text_content) or d.content
-				)
-			})
-
-			doc.save(ignore_permissions=True)
-
-
-def send_project_status_email_to_users():
-	yesterday = add_days(today(), -1)
-
-	for d in frappe.get_all("Project Update",
-		{'date': yesterday, 'sent': 0}):
-		doc = frappe.get_doc("Project Update", d.name)
-
-		project_doc = frappe.get_doc('Project', doc.project)
-
-		args = {
-			"users": doc.users,
-			"title": _("Project Summary for {0}").format(yesterday)
-		}
-
-		frappe.sendmail(recipients=get_users_email(project_doc),
-			template='daily_project_summary',
-			args=args,
-			subject=_("Daily Project Summary for {0}").format(d.name),
-			reference_doctype="Project Update",
-			reference_name=d.name)
-
-		doc.db_set('sent', 1)
-
-
 @frappe.whitelist()
 def create_kanban_board_if_not_exists(project):
 	from frappe.desk.doctype.kanban_board.kanban_board import quick_kanban_board
@@ -1730,6 +1613,8 @@ def set_project_ready_to_close(project):
 	project.check_permission('write')
 
 	project.set_ready_to_close(update=True)
+	project.validate_insurance_details()
+	project.set_mandatory_items_check()
 	project.set_status(update=True)
 	project.update_vehicle_booking_order_pdi_status()
 	project.notify_update()
@@ -1759,7 +1644,7 @@ def set_project_status(project, project_status):
 
 @frappe.whitelist()
 def get_customer_details(args):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)
@@ -1803,7 +1688,7 @@ def get_customer_details(args):
 
 @frappe.whitelist()
 def get_project_details(project, doctype):
-	if isinstance(project, string_types):
+	if isinstance(project, str):
 		project = frappe.get_doc("Project", project)
 
 	sales_doctypes = ['Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice']
@@ -1820,11 +1705,14 @@ def get_project_details(project, doctype):
 		'service_advisor', 'service_manager',
 		'insurance_company', 'insurance_loss_no', 'insurance_policy_no',
 		'insurance_surveyor', 'insurance_surveyor_company',
-		'has_stin', 'default_depreciation_percentage',
+		'has_stin', 'default_depreciation_percentage', 'default_underinsurance_percentage',
 		'campaign'
 	]
-	sales_only_fields = ['customer', 'bill_to', 'vehicle_owner', 'has_stin', 'default_depreciation_percentage',
-		'contact_person', 'contact_mobile', 'contact_phone']
+	sales_only_fields = [
+		'customer', 'bill_to', 'vehicle_owner', 'has_stin',
+		'default_depreciation_percentage', 'default_underinsurance_percentage',
+		'contact_person', 'contact_mobile', 'contact_phone'
+	]
 
 	for f in fieldnames:
 		if f in sales_only_fields and doctype not in sales_doctypes:
@@ -1930,7 +1818,14 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, cl
 				target_doc.set(k, v)
 
 	def set_depreciation_type_and_customer():
-		if depreciation_type and (project.default_depreciation_percentage or project.non_standard_depreciation):
+		has_depreciation_rate = (
+			project.default_depreciation_percentage
+			or project.default_underinsurance_percentage
+			or project.non_standard_depreciation
+			or project.non_standard_underinsurance
+		)
+
+		if depreciation_type and has_depreciation_rate:
 			target_doc.depreciation_type = depreciation_type
 			if depreciation_type == "Depreciation Amount Only":
 				target_doc.bill_to = target_doc.customer
@@ -1989,7 +1884,7 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, cl
 	project_details = get_project_details(project, "Sales Invoice")
 
 	# Make Sales Invoice Target Document
-	if target_doc and isinstance(target_doc, string_types):
+	if target_doc and isinstance(target_doc, str):
 		target_doc = json.loads(target_doc)
 
 	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Sales Invoice")
@@ -2007,6 +1902,7 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, cl
 		set_cash_or_credit()
 		unset_different_customer_details()
 		set_fetch_values()
+		set_sales_person_in_target_doc(target_doc, project)
 
 		target_doc.run_method("set_missing_values")
 
@@ -2040,10 +1936,14 @@ def get_delivery_note(project_name):
 
 	project_details = get_project_details(project, "Delivery Note")
 
-	# Create Sales Invoice
+	# Create Delivery Note
 	target_doc = frappe.new_doc("Delivery Note")
 	target_doc.company = project.company
 	target_doc.project = project.name
+
+	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
+	if default_transaction_type:
+		target_doc.transaction_type = default_transaction_type
 
 	# Set Project Details
 	for k, v in project_details.items():
@@ -2054,7 +1954,7 @@ def get_delivery_note(project_name):
 	sales_order_filters = {
 		"docstatus": 1,
 		"status": ["not in", ["Closed", "On Hold"]],
-		"per_delivered": ["<", 99.99],
+		"delivery_status": ["=", "To Deliver"],
 		"project": project.name,
 		"company": project.company,
 		"skip_delivery_note": 0,
@@ -2071,6 +1971,8 @@ def get_delivery_note(project_name):
 	for k, v in project_details.items():
 		if target_doc.meta.has_field(k):
 			target_doc.set(k, v)
+
+	set_sales_person_in_target_doc(target_doc, project)
 
 	# Missing Values and Forced Values
 	target_doc.run_method("set_missing_values")
@@ -2097,6 +1999,10 @@ def get_sales_order(project_name, items_type=None):
 	if sales_order_print_heading:
 		target_doc.select_print_heading = sales_order_print_heading
 
+	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
+	if default_transaction_type:
+		target_doc.transaction_type = default_transaction_type
+
 	# Set Project Details
 	for k, v in project_details.items():
 		if target_doc.meta.has_field(k):
@@ -2107,6 +2013,8 @@ def get_sales_order(project_name, items_type=None):
 		if not d.get('sales_order'):
 			target_doc = add_project_template_items(target_doc, d.project_template, project.applies_to_item,
 				check_duplicate=False, project_template_detail=d, items_type=items_type)
+
+	set_sales_person_in_target_doc(target_doc, project)
 
 	# Remove already ordered items
 	project_template_ordered_set = get_project_template_ordered_set(project)
@@ -2132,6 +2040,15 @@ def get_sales_order(project_name, items_type=None):
 	return target_doc
 
 
+def set_sales_person_in_target_doc(target_doc, project):
+	if project.service_advisor:
+		target_doc.sales_team = []
+		target_doc.append("sales_team", {
+			"sales_person": project.service_advisor,
+			"allocated_percentage": 100
+		})
+
+
 def get_project_template_ordered_set(project):
 	project_template_ordered_set = []
 
@@ -2154,26 +2071,34 @@ def get_vehicle_service_receipt(project):
 	target = frappe.new_doc("Vehicle Service Receipt")
 	set_vehicle_transaction_values(doc, target)
 	target.run_method("set_missing_values")
+	target.validate_project_mandatory_values()
 	return target
 
 
 @frappe.whitelist()
-def get_vehicle_gate_pass(project, sales_invoice=None):
-	doc = frappe.get_doc("Project", project)
-	check_if_doc_exists("Vehicle Gate Pass", doc.name, {'docstatus': 0})
-	doc.validate_ready_to_close()
+def get_vehicle_gate_pass(project, purpose, sales_invoice=None):
+	if purpose not in ("Service - Vehicle Delivery", "Service - Test Drive"):
+		frappe.throw(_("Invalid Purpose {0}").format(purpose))
 
+	filters = {"purpose": purpose}
+	if purpose == "Service - Test Drive":
+		filters["docstatus"] = 0
+	elif purpose == "Service - Vehicle Delivery":
+		filters["docstatus"] = ["<", 2]
+
+	check_if_doc_exists("Vehicle Gate Pass", project, filters)
+
+	doc = frappe.get_doc("Project", project)
 	target = frappe.new_doc("Vehicle Gate Pass")
+	target.purpose = purpose
 	set_vehicle_transaction_values(doc, target)
 
-	if sales_invoice:
+	if purpose == "Service - Vehicle Delivery":
+		doc.validate_ready_to_close()
 		target.sales_invoice = sales_invoice
-	else:
-		sales_invoice = doc.get_invoice_for_vehicle_gate_pass()
-		if sales_invoice:
-			target.sales_invoice = sales_invoice
 
 	target.run_method("set_missing_values")
+
 	return target
 
 
@@ -2185,6 +2110,22 @@ def set_vehicle_transaction_values(source, target):
 	target.project = source.name
 	target.item_code = source.applies_to_item
 	target.vehicle = source.applies_to_vehicle
+
+	if target.meta.has_field("customer"):
+		target.customer = source.customer
+
+	if target.meta.has_field("contact_person"):
+		target.contact_person = source.contact_person
+		target.contact_mobile = source.contact_mobile
+		target.contact_mobile_2 = source.contact_mobile
+		target.contact_phone = source.contact_phone
+		target.contact_email = source.contact_email
+
+	if target.meta.has_field("project_workshop"):
+		target.project_workshop = source.project_workshop
+
+	if target.meta.has_field("service_advisor"):
+		target.service_advisor = source.service_advisor
 
 
 def check_if_doc_exists(doctype, project, filters=None):
@@ -2203,9 +2144,16 @@ def set_depreciation_in_invoice_items(items_list, project, force=False):
 		if d.depreciation_item_code:
 			non_standard_depreciation_items[d.depreciation_item_code] = flt(d.depreciation_percentage)
 
+	non_standard_underinsurance_items = {}
+	for d in project.non_standard_underinsurance:
+		if d.underinsurance_item_code:
+			non_standard_underinsurance_items[d.underinsurance_item_code] = flt(d.underinsurance_percentage)
+
 	materials_item_groups = project.get_item_groups_subtree(project.materials_item_group)
+
 	for d in items_list:
-		if d.is_stock_item or d.item_group in materials_item_groups or d.item_code in non_standard_depreciation_items:
+		is_material = d.is_stock_item or d.item_group in materials_item_groups
+		if is_material or d.item_code in non_standard_depreciation_items:
 			if force or not flt(d.depreciation_percentage):
 				if d.item_code in non_standard_depreciation_items:
 					d.depreciation_percentage = non_standard_depreciation_items[d.item_code]
@@ -2214,10 +2162,16 @@ def set_depreciation_in_invoice_items(items_list, project, force=False):
 		else:
 			d.depreciation_percentage = 0
 
+		if force or not flt(d.underinsurance_percentage):
+			if d.item_code in non_standard_underinsurance_items:
+				d.underinsurance_percentage = non_standard_underinsurance_items[d.item_code]
+			else:
+				d.underinsurance_percentage = flt(project.default_underinsurance_percentage)
+
 
 @frappe.whitelist()
 def set_warranty_claim_denied(projects, denied, reason=None):
-	if isinstance(projects, string_types):
+	if isinstance(projects, str):
 		projects = json.loads(projects)
 
 	denied = cint(denied)

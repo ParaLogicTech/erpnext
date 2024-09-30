@@ -122,7 +122,7 @@ frappe.treeview_settings["Account"] = {
 			} else {
 				treeview.new_node();
 			}
-		}, "octicon octicon-plus");
+		}, "add");
 	},
 	onrender: function(node) {
 		if(frappe.boot.user.can_read.indexOf("GL Entry") !== -1){
@@ -152,7 +152,7 @@ frappe.treeview_settings["Account"] = {
 					&& node.expandable && !node.hide_add;
 			},
 			click: function() {
-				var me = frappe.treeview_settings['Account'].treeview;
+				var me = frappe.views.trees['Account'];
 				me.new_node();
 			},
 			btnClass: "hidden-xs"

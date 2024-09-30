@@ -126,8 +126,13 @@ def get_component_details(component_name, args, selling_or_buying="selling"):
 	if component_doc.component_type == "Booking" and component_doc.booking_component_type == "Withholding Tax":
 		out.component.price_list = None
 		if not cint(args.do_not_apply_withholding_tax):
-			out.component.component_amount = get_withholding_tax_amount(args.transaction_date, args.item_code,
-				args.tax_status, args.company)
+			out.component.component_amount = get_withholding_tax_amount(
+				args.transaction_date,
+				args.item_code,
+				0,  # Todo implement taxable amount
+				args.tax_status,
+				args.company
+			)
 		else:
 			out.component.component_amount = 0
 	else:
@@ -217,7 +222,7 @@ def get_item_price(item_code, price_list, transaction_date=None):
 	}
 	item_price = get_item_price(price_args, item_code, ignore_party=True)
 
-	return flt(item_price[0][1]) if item_price else 0
+	return flt(item_price.price_list_rate) if item_price else 0
 
 
 def validate_args(args):

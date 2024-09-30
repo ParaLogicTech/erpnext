@@ -331,13 +331,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "customer.tax_overseas_cnic",
-   "fieldname": "tax_overseas_cnic",
-   "fieldtype": "Data",
-   "label": "Overseas CNIC Number",
-   "read_only": 1
-  },
-  {
    "fetch_from": "customer.passport_no",
    "fieldname": "passport_no",
    "fieldtype": "Data",

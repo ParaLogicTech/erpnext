@@ -1,6 +1,5 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -73,5 +72,5 @@ def check_mandate(data, reference_doctype, reference_docname):
 		return {"redirect_to": redirect_flow.redirect_url}
 
 	except Exception as e:
-		frappe.log_error(e, "GoCardless Payment Error")
+		frappe.log_error(message=e, title="GoCardless Payment Error")
 		return {"redirect_to": '/integrations/payment-failed'}

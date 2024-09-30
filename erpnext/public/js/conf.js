@@ -10,8 +10,6 @@ $(document).bind('toolbar_setup', function() {
 	frappe.help_feedback_link = '<p><a class="text-muted" \
 		href="https://discuss.erpnext.com">Feedback</a></p>'
 
-	$('.navbar-home').html(frappe.defaults.get_global_default('company'));
-
 	$('[data-link="docs"]').attr("href", "https://erpnext.com/docs")
 	$('[data-link="issues"]').attr("href", "https://github.com/frappe/erpnext/issues")
 

@@ -2,12 +2,11 @@
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 import erpnext
 from frappe import _
-from frappe.utils import flt, nowdate
-from erpnext.controllers.status_updater import StatusUpdater
+from frappe.utils import flt, nowdate, cint
+from erpnext.controllers.status_updater import StatusUpdaterERP
 from six import string_types
 import json
 
@@ -16,7 +15,7 @@ class EmployeeAdvanceOverPayment(frappe.ValidationError):
 	pass
 
 
-class EmployeeAdvance(StatusUpdater):
+class EmployeeAdvance(StatusUpdaterERP):
 	def __init__(self, *args, **kwargs):
 		super(EmployeeAdvance, self).__init__(*args, **kwargs)
 		self.status_map = [
@@ -38,10 +37,17 @@ class EmployeeAdvance(StatusUpdater):
 		if self.task and not self.project:
 			self.project = frappe.db.get_value("Task", self.task, "project")
 
+	def before_submit(self):
+		if not self.advance_account:
+			frappe.throw(_("Advance Account is mandatory"))
+
 	def on_cancel(self):
 		self.db_set('status', 'Cancelled')
 
 	def validate_employee_advance_account(self):
+		if not self.advance_account and self.company:
+			self.advance_account = frappe.get_cached_value("Company", self.company, "default_employee_advance_account")
+
 		company_currency = erpnext.get_company_currency(self.company)
 		if (self.advance_account and
 			company_currency != frappe.db.get_value('Account', self.advance_account, 'account_currency')):
@@ -130,6 +136,8 @@ def make_bank_entry(dt, dn, is_advance_return=False):
 
 	if not frappe.has_permission("Journal Entry", "write"):
 		frappe.throw(_("Not Permitted"), frappe.PermissionError)
+
+	is_advance_return = cint(is_advance_return)
 
 	doc = frappe.get_doc(dt, dn)
 	payment_account = get_default_bank_cash_account(doc.company, account_type="Cash",

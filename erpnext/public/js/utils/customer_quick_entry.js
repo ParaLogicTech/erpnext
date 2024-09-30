@@ -1,60 +1,60 @@
 frappe.provide('frappe.ui.form');
 
-frappe.ui.form.CustomerQuickEntryForm = frappe.ui.form.QuickEntryForm.extend({
-	init: function(doctype, after_insert) {
+frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends frappe.ui.form.QuickEntryForm {
+	init(doctype, after_insert) {
 		this.skip_redirect_on_error = true;
-		this._super(doctype, after_insert);
-	},
+		super.init(doctype, after_insert);
+	}
 
-	render_dialog: function() {
+	render_dialog() {
 		this.mandatory = this.mandatory.concat(this.get_variant_fields());
-		this._super();
+		super.render_dialog();
 		this.init_post_render_dialog_operations();
-	},
+	}
 
-	init_post_render_dialog_operations: function () {
+	init_post_render_dialog_operations() {
 		var me = this;
 
 		me.dialog.fields_dict["tax_id"].df.onchange = () => {
 			var value = me.dialog.get_value('tax_id');
-			value = erpnext.utils.get_formatted_ntn(value);
+			value = frappe.regional.pakistan.get_formatted_ntn(value);
 			me.dialog.doc.tax_id = value;
 			me.dialog.get_field('tax_id').refresh();
-			erpnext.utils.validate_duplicate_tax_id(me.dialog.doc, "tax_id");
+			frappe.regional.pakistan.validate_duplicate_tax_id(me.dialog.doc, "tax_id");
 		};
 
 		me.dialog.fields_dict["tax_cnic"].df.onchange = () => {
 			var value = me.dialog.get_value('tax_cnic');
-			value = erpnext.utils.get_formatted_cnic(value);
+			value = frappe.regional.pakistan.get_formatted_cnic(value);
 			me.dialog.doc.tax_cnic = value;
 			me.dialog.get_field('tax_cnic').refresh();
-			erpnext.utils.validate_duplicate_tax_id(me.dialog.doc, "tax_cnic");
+			frappe.regional.pakistan.validate_duplicate_tax_id(me.dialog.doc, "tax_cnic");
 		};
 
 		me.dialog.fields_dict["tax_strn"].df.onchange = () => {
 			var value = me.dialog.get_value('tax_strn');
-			value = erpnext.utils.get_formatted_strn(value);
+			value = frappe.regional.pakistan.get_formatted_strn(value);
 			me.dialog.doc.tax_strn = value;
 			me.dialog.get_field('tax_strn').refresh();
-			erpnext.utils.validate_duplicate_tax_id(me.dialog.doc, "tax_strn");
+			frappe.regional.pakistan.validate_duplicate_tax_id(me.dialog.doc, "tax_strn");
 		};
 
 		me.dialog.fields_dict["mobile_no"].df.onchange = () => {
 			var value = me.dialog.get_value('mobile_no');
-			value = erpnext.utils.get_formatted_mobile_pakistan(value);
+			value = frappe.regional.pakistan.get_formatted_mobile_no(value);
 			me.dialog.doc.mobile_no = value;
 			me.dialog.get_field('mobile_no').refresh();
 		};
 
 		me.dialog.fields_dict["mobile_no_2"].df.onchange = () => {
 			var value = me.dialog.get_value('mobile_no_2');
-			value = erpnext.utils.get_formatted_mobile_pakistan(value);
+			value = frappe.regional.pakistan.get_formatted_mobile_no(value);
 			me.dialog.doc.mobile_no_2 = value;
 			me.dialog.get_field('mobile_no_2').refresh();
 		};
-	},
+	}
 
-	get_variant_fields: function() {
+	get_variant_fields() {
 		var variant_fields = [{
 			fieldtype: "Section Break",
 			label: __("Identification & Tax Id"),
@@ -167,5 +167,5 @@ frappe.ui.form.CustomerQuickEntryForm = frappe.ui.form.QuickEntryForm.extend({
 		}];
 
 		return variant_fields;
-	},
-})
+	}
+};

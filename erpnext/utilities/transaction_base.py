@@ -1,18 +1,17 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 import frappe.share
 from frappe import _
-from frappe.utils import cstr, now_datetime, cint, flt, get_time, get_link_to_form
-from erpnext.controllers.status_updater import StatusUpdater
+from frappe.utils import cstr, now_datetime, cint, flt, get_time, get_link_to_form, date_diff, add_days, getdate
+from erpnext.controllers.status_updater import StatusUpdaterERP
 
-from six import string_types
 
 class UOMMustBeIntegerError(frappe.ValidationError): pass
 
-class TransactionBase(StatusUpdater):
+
+class TransactionBase(StatusUpdaterERP):
 	def validate_posting_time(self):
 		# set Edit Posting Date and Time to 1 while data import
 		if frappe.flags.in_import and self.posting_date:
@@ -49,7 +48,6 @@ class TransactionBase(StatusUpdater):
 
 				frappe.db.sql("delete from `tabEvent Participants` where name='%s'" % participation.name)
 
-
 	def _add_calendar_event(self, opts):
 		opts = frappe._dict(opts)
 
@@ -79,28 +77,31 @@ class TransactionBase(StatusUpdater):
 	def validate_uom_is_integer(self, uom_field, qty_fields):
 		validate_uom_is_integer(self, uom_field, qty_fields)
 
-	def validate_with_previous_doc(self, ref):
+	def validate_with_previous_doc(self, ref, table_doctype=None):
 		self.exclude_fields = ["conversion_factor", "uom"] if self.get('is_return') else []
 
-		for key, val in ref.items():
-			is_child = val.get("is_child_table")
-			ref_doc = {}
-			item_ref_dn = []
-			for d in self.get_all_children(self.doctype + " Item"):
-				ref_dn = d.get(val["ref_dn_field"])
-				if ref_dn:
-					if is_child:
-						self.compare_values({key: [ref_dn]}, val["compare_fields"], d)
-						if ref_dn not in item_ref_dn:
-							item_ref_dn.append(ref_dn)
-						elif not val.get("allow_duplicate_prev_row_id"):
-							frappe.throw(_("Duplicate row {0} with same {1}").format(d.idx, key))
-					elif ref_dn:
-						ref_doc.setdefault(key, [])
-						if ref_dn not in ref_doc[key]:
-							ref_doc[key].append(ref_dn)
-			if ref_doc:
-				self.compare_values(ref_doc, val["compare_fields"])
+		for prev_doctype, validator in ref.items():
+			prev_is_child = validator.get("is_child_table")
+			prev_parent_docs = []
+			item_prev_docname_visited = []
+
+			for row in self.get_all_children(table_doctype or self.doctype + " Item"):
+				prev_docname = row.get(validator["ref_dn_field"])
+				if prev_docname:
+					if prev_is_child:
+						self.compare_values({prev_doctype: [prev_docname]}, validator["compare_fields"], row)
+
+						if prev_docname not in item_prev_docname_visited:
+							item_prev_docname_visited.append(prev_docname)
+						elif not validator.get("allow_duplicate_prev_row_id"):
+							frappe.throw(_("Duplicate row {0} with same {1}").format(row.idx, prev_doctype))
+
+					elif prev_docname:
+						if prev_docname not in prev_parent_docs:
+							prev_parent_docs.append(prev_docname)
+
+			if prev_parent_docs:
+				self.compare_values({prev_doctype: prev_parent_docs}, validator["compare_fields"])
 
 	def compare_values(self, ref_doc, fields, doc=None):
 		for reference_doctype, ref_dn_list in ref_doc.items():
@@ -114,7 +115,6 @@ class TransactionBase(StatusUpdater):
 				for field, condition in fields:
 					if prevdoc_values[field] is not None and field not in self.exclude_fields:
 						self.validate_value(field, condition, prevdoc_values[field], doc)
-
 
 	def validate_rate_with_reference_doc(self, ref_details):
 		buying_doctypes = ["Purchase Order", "Purchase Invoice", "Purchase Receipt"]
@@ -157,6 +157,41 @@ class TransactionBase(StatusUpdater):
 
 		return ret
 
+	def validate_quotation_valid_till(self):
+		if cint(self.quotation_validity_days) < 0:
+			frappe.throw(_("Quotation Validity Days cannot be negative"))
+
+		if cint(self.quotation_validity_days):
+			self.valid_till = add_days(getdate(self.transaction_date), cint(self.quotation_validity_days) - 1)
+		if not cint(self.quotation_validity_days) and self.valid_till:
+			self.quotation_validity_days = date_diff(self.valid_till, self.transaction_date) + 1
+
+		if self.valid_till and getdate(self.valid_till) < getdate(self.transaction_date):
+			frappe.throw(_("Valid Till Date cannot be before transaction date"))
+
+	def calculate_sales_team_contribution(self, net_total):
+		if not self.meta.get_field("sales_team"):
+			return
+
+		net_total = flt(net_total)
+		total_allocated_percentage = 0.0
+		sales_team = self.get("sales_team") or []
+
+		for sales_person in sales_team:
+			self.round_floats_in(sales_person)
+
+			sales_person.allocated_amount = flt(net_total * sales_person.allocated_percentage / 100.0,
+				sales_person.precision("allocated_amount"))
+
+			sales_person.incentives = flt(sales_person.allocated_amount * sales_person.commission_rate / 100.0,
+				sales_person.precision("incentives"))
+
+			total_allocated_percentage += sales_person.allocated_percentage
+
+		if sales_team and total_allocated_percentage != 100.0:
+			frappe.throw(_("Total allocated percentage for Sales Team should be 100%"))
+
+
 def delete_events(ref_type, ref_name):
 	events = frappe.db.sql_list(""" SELECT
 			distinct `tabEvent`.name
@@ -171,8 +206,9 @@ def delete_events(ref_type, ref_name):
 	if events:
 		frappe.delete_doc("Event", events, for_reload=True)
 
+
 def validate_uom_is_integer(doc, uom_field, qty_fields, child_dt=None):
-	if isinstance(qty_fields, string_types):
+	if isinstance(qty_fields, str):
 		qty_fields = [qty_fields]
 
 	distinct_uoms = list(set([d.get(uom_field) for d in doc.get_all_children() if d.get(uom_field)]))

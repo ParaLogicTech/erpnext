@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 
@@ -21,20 +20,21 @@ def get_data():
 			'Sales Order': ['items', 'sales_order'],
 			'Delivery Note': ['items', 'delivery_note'],
 			'Quotation': ['items', 'quotation'],
+			'Packing Slip': ['items', 'packing_slip'],
 			'Vehicle': ['items', 'vehicle']
 		},
 		'transactions': [
 			{
 				'label': _('Payment'),
-				'items': ['Payment Entry', 'Payment Request', 'Journal Entry']
+				'items': ['Payment Entry', 'Journal Entry', 'Payment Request']
 			},
 			{
-				'label': _('Reference'),
+				'label': _('Previous Documents'),
 				'items': ['Delivery Note', 'Sales Order', 'Quotation']
 			},
 			{
 				'label': _('Reference'),
-				'items': vehicle_gate_pass + ['Timesheet', 'Auto Repeat']
+				'items': vehicle_gate_pass + ['Packing Slip']
 			},
 			{
 				'label': _('Returns'),

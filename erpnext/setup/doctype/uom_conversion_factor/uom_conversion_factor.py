@@ -2,13 +2,11 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt, cstr
 from frappe.model.document import Document
 from collections import defaultdict
-import json
 from six import string_types
 
 
@@ -192,6 +190,9 @@ def make_conversion_graph():
 
 @frappe.whitelist()
 def get_uom_conv_factor(from_uom, to_uom):
+	if from_uom == to_uom:
+		return 1
+
 	conversion_map = get_conversion_map()
 	conversion_factor = flt(conversion_map.get(from_uom, {}).get(to_uom))
 
@@ -200,4 +201,4 @@ def get_uom_conv_factor(from_uom, to_uom):
 		if conversion_factor:
 			conversion_factor = 1/conversion_factor
 
-	return conversion_factor
+	return flt(conversion_factor, 9)

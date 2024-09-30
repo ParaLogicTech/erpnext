@@ -4,7 +4,6 @@
 # ERPNext - web based ERP (http://erpnext.com)
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 
 from frappe.utils import cstr, flt, getdate, new_line_sep, nowdate, ceil
@@ -131,12 +130,12 @@ class MaterialRequest(BuyingController):
 
 				elif self.material_request_type in ("Material Issue", "Material Transfer", "Customer Provided"):
 					data.ordered_qty_map = dict(frappe.db.sql("""
-						select i.material_request_item, sum(i.transfer_qty)
+						select i.material_request_item, sum(i.stock_qty)
 						from `tabStock Entry Detail` i
 						inner join `tabStock Entry` p on p.name = i.parent
-						where p.docstatus = 1 and i.material_request_item in %s
+						where p.docstatus = 1 and i.material_request = %s and i.material_request_item in %s
 						group by i.material_request_item
-					""", [row_names]))
+					""", [self.name, row_names]))
 
 					data.received_qty_map = data.ordered_qty_map
 
@@ -259,6 +258,7 @@ class MaterialRequest(BuyingController):
 		self.total_alt_uom_qty = sum([flt(d.alt_uom_qty) for d in self.items])
 		self.total_alt_uom_qty = flt(self.total_alt_uom_qty, self.precision("total_alt_uom_qty"))
 
+	@frappe.whitelist()
 	def get_bom_items(self, bom, company, qty=1, fetch_exploded=1, warehouse=None):
 		from erpnext.manufacturing.doctype.bom.bom import get_bom_items
 
@@ -270,25 +270,13 @@ class MaterialRequest(BuyingController):
 		self.set_missing_item_details(for_validate=True)
 		self.calculate_totals()
 
+	@frappe.whitelist()
 	def round_up_qty(self):
 		for d in self.items:
 			d.qty = ceil(flt(d.qty))
 
 		self.set_missing_item_details(for_validate=True)
 		self.calculate_totals()
-
-
-def get_list_context(context=None):
-	from erpnext.controllers.website_list_for_contact import get_list_context
-	list_context = get_list_context(context)
-	list_context.update({
-		'show_sidebar': True,
-		'show_search': True,
-		'no_breadcrumbs': True,
-		'title': _('Material Request'),
-	})
-
-	return list_context
 
 
 def set_missing_values(source, target_doc):
@@ -302,7 +290,7 @@ def set_missing_values(source, target_doc):
 def update_item(obj, target, source_parent, target_parent):
 	target.conversion_factor = obj.conversion_factor
 	target.qty = flt(flt(obj.stock_qty) - flt(obj.ordered_qty))/ target.conversion_factor
-	target.stock_qty = (target.qty * target.conversion_factor)
+	target.stock_qty = flt(target.qty * target.conversion_factor, 6)
 	if getdate(target.schedule_date) < getdate(nowdate()):
 		target.schedule_date = None
 
@@ -311,7 +299,7 @@ def update_item(obj, target, source_parent, target_parent):
 def update_status(name, status):
 	material_request = frappe.get_doc('Material Request', name)
 	material_request.check_permission('write')
-	material_request.update_status(status)
+	material_request.run_method("update_status", status)
 
 
 @frappe.whitelist()
@@ -506,7 +494,7 @@ def make_stock_entry(source_name, target_doc=None):
 		qty = flt(flt(obj.stock_qty) - flt(obj.ordered_qty))/ target.conversion_factor \
 			if flt(obj.stock_qty) > flt(obj.ordered_qty) else 0
 		target.qty = qty
-		target.transfer_qty = qty * obj.conversion_factor
+		target.stock_qty = flt(qty * obj.conversion_factor, 6)
 		target.conversion_factor = obj.conversion_factor
 
 		if source_parent.material_request_type == "Material Transfer" or source_parent.material_request_type == "Customer Provided":
@@ -525,6 +513,7 @@ def make_stock_entry(source_name, target_doc=None):
 		if source.material_request_type == "Customer Provided":
 			target.purpose = "Material Receipt"
 
+		target.run_method("set_missing_values")
 		target.run_method("calculate_rate_and_amount")
 		target.set_stock_entry_type()
 		target.set_job_card_data()
@@ -589,8 +578,7 @@ def raise_work_orders(material_request):
 				errors.append(_("Row {0}: Bill of Materials not found for the Item {1}").format(d.idx, d.item_code))
 
 	if work_orders:
-		message = ["""<a href="#Form/Work Order/%s" target="_blank">%s</a>""" % \
-			(p, p) for p in work_orders]
+		message = [frappe.utils.get_link_to_form("Work Order", p, target="_blank") for p in work_orders]
 		msgprint(_("The following Work Orders were created:") + '\n' + new_line_sep(message))
 
 	if errors:

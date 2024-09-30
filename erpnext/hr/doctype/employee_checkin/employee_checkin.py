@@ -2,9 +2,8 @@
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
-from frappe.utils import now, cint, get_datetime
+from frappe.utils import cint, get_datetime
 from frappe.model.document import Document
 from frappe import _
 
@@ -13,28 +12,62 @@ from erpnext.hr.doctype.shift_assignment.shift_assignment import get_actual_star
 
 class EmployeeCheckin(Document):
 	def validate(self):
+		self.validate_mandatory()
+		self.fetch_employee_from_attendance_device_id()
 		self.validate_duplicate_log()
 		self.fetch_shift()
 
+	def validate_mandatory(self):
+		if not self.employee and not self.attendance_device_id:
+			frappe.throw(_("Please enter Employee or Attendance Device User ID"))
+
 	def validate_duplicate_log(self):
-		doc = frappe.db.exists('Employee Checkin', {
-			'employee': self.employee,
-			'time': self.time,
-			'name': ['!=', self.name]})
-		if doc:
-			doc_link = frappe.get_desk_link('Employee Checkin', doc)
-			frappe.throw(_('This employee already has a log with the same timestamp.{0}')
-				.format("<br>" + doc_link))
+		employee_condition = "and employee = %(employee)s"
+		if not self.employee:
+			employee_condition = "and attendance_device_id = %(attendance_device_id)s"
+
+		exclude_condition = "and name != %(name)s" if not self.is_new() else ""
+
+		existing_checkin = frappe.db.sql_list(f"""
+			select name
+			from `tabEmployee Checkin`
+			where time = %(time)s
+				{exclude_condition}
+				{employee_condition}
+			limit 1
+		""", {
+			"name": self.name,
+			"time": self.time,
+			"employee": self.employee,
+			"attendance_device_id": self.attendance_device_id,
+		})
+		existing_checkin = existing_checkin[0] if existing_checkin else None
+
+		if existing_checkin:
+			frappe.throw(_("This employee already has a log with the same timestamp.{0}").format(
+				"<br>" + frappe.get_desk_link("Employee Checkin", existing_checkin)
+			))
 
 	def fetch_shift(self):
 		if self.attendance:
 			return
 
-		shift_actual_timings = get_actual_start_end_datetime_of_shift(self.employee, get_datetime(self.time), True)
-		if shift_actual_timings[0] and shift_actual_timings[1]:
-			if shift_actual_timings[2].shift_type.determine_check_in_and_check_out == 'Strictly based on Log Type in Employee Checkin' and not self.log_type and not self.skip_auto_attendance:
-				frappe.throw(_('Log Type is required for check-ins falling in the shift: {0}.').format(shift_actual_timings[2].shift_type.name))
+		has_shift = False
+		if self.employee:
+			shift_actual_timings = get_actual_start_end_datetime_of_shift(self.employee, get_datetime(self.time), True, True)
+			has_shift = shift_actual_timings[0] and shift_actual_timings[1]
 
+		# Log Type validation
+		if (has_shift
+			and shift_actual_timings[2].shift_type.determine_check_in_and_check_out == "Strictly based on Log Type in Employee Checkin"
+			and not self.log_type
+			and not self.skip_auto_attendance
+		):
+			frappe.throw(_('Log Type is required for check-ins falling in the shift: {0}.').format(
+				shift_actual_timings[2].shift_type.name)
+			)
+
+		if has_shift:
 			self.shift = shift_actual_timings[2].shift_type.name
 			self.shift_actual_start = shift_actual_timings[0]
 			self.shift_actual_end = shift_actual_timings[1]
@@ -47,9 +80,23 @@ class EmployeeCheckin(Document):
 			self.shift_start = None
 			self.shift_end = None
 
+	def fetch_employee_from_attendance_device_id(self, force=False):
+		if not self.attendance_device_id:
+			return
+		if self.employee and not force:
+			return
+
+		employee = frappe.db.get_value("Employee", filters={
+			"attendance_device_id": self.attendance_device_id
+		}, fieldname=["name as employee", "employee_name", "department", "designation"], as_dict=1)
+
+		if employee:
+			self.update(employee)
+
 
 @frappe.whitelist()
-def add_log_based_on_employee_field(employee_field_value, timestamp, device_id=None, log_type=None, skip_auto_attendance=0, employee_fieldname='attendance_device_id'):
+def add_log_based_on_employee_field(employee_field_value, timestamp, device_id=None, log_type=None,
+		skip_auto_attendance=0, employee_fieldname="attendance_device_id"):
 	"""Finds the relevant Employee using the employee field value and creates a Employee Checkin.
 
 	:param employee_field_value: The value to look for in employee field.
@@ -63,24 +110,35 @@ def add_log_based_on_employee_field(employee_field_value, timestamp, device_id=N
 	if not employee_field_value or not timestamp:
 		frappe.throw(_("'employee_field_value' and 'timestamp' are required."))
 
-	employee = frappe.db.get_values("Employee", {employee_fieldname: employee_field_value}, ["name", "employee_name", employee_fieldname], as_dict=True)
-	if employee:
-		employee = employee[0]
-	else:
-		frappe.throw(_("No Employee found for the given employee field value. '{}': {}").format(employee_fieldname,employee_field_value))
+	employee = None
+	if employee_fieldname != "attendance_device_id":
+		employee = frappe.db.get_value("Employee", {employee_fieldname: employee_field_value},
+			["name", "employee_name", employee_fieldname], as_dict=True)
+
+		if not employee:
+			frappe.throw(_("No Employee found for the given employee field value. '{}': {}").format(
+				employee_fieldname, employee_field_value
+			))
 
 	doc = frappe.new_doc("Employee Checkin")
-	doc.employee = employee.name
-	doc.employee_name = employee.employee_name
 	doc.time = timestamp
 	doc.device_id = device_id
 	doc.log_type = log_type
 
-	if cint(skip_auto_attendance) == 1:
-		doc.skip_auto_attendance = '1'
+	if employee:
+		doc.employee = employee.name
+		doc.employee_name = employee.employee_name
 
+	if employee_fieldname == "attendance_device_id":
+		doc.attendance_device_id = employee_field_value
+
+	if cint(skip_auto_attendance) == 1:
+		doc.skip_auto_attendance = 1
+
+	doc.flags.ignore_version = True
 	doc.insert()
 
+	frappe.db.commit()
 	return doc
 
 
@@ -190,3 +248,25 @@ def time_diff_in_hours(start, end):
 def find_index_in_dict(dict_list, key, value):
 	return next((index for (index, d) in enumerate(dict_list) if d[key] == value), None)
 
+
+def update_employee_for_attendance_device_id(attendance_device_id, employee):
+	if not attendance_device_id:
+		return
+
+	checkins = frappe.get_all("Employee Checkin", filters={
+		"attendance_device_id": attendance_device_id,
+		"attendance": ("is", "not set"),
+	}, pluck="name")
+
+	for name in checkins:
+		doc = frappe.get_doc("Employee Checkin", name)
+		doc.employee = employee
+
+		if not doc.employee:
+			doc.employee_name = None
+			doc.department = None
+			doc.designation = None
+
+		doc.save(ignore_permissions=True)
+
+	return len(checkins)

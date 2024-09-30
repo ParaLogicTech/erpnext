@@ -21,12 +21,12 @@
 			<th class="text-center">{{ count++ }}</th>
 			<td>{{ frappe.datetime.str_to_user(schedule.scheduled_date) }}</td>
 			<td>{{ schedule.project_template }}</td>
-			<td>{{ schedule.reference_doctype }}</td>
+			<td>{{ __(schedule.reference_doctype) }}</td>
 			<td>
-				{% var doctype = encodeURIComponent(schedule.reference_doctype) %}
+				{% var doctype = encodeURIComponent(frappe.router.slug(schedule.reference_doctype)) %}
 				{% var docname = encodeURIComponent(schedule.reference_name) %}
 
-				<a href="#Form/{%= doctype %}/{%= docname %}">
+				<a href="/app/{%= frappe.router.slug(doctype) %}/{%= encodeURIComponent(docname) %}">
 					{{ schedule.reference_name }}
 				</a>
 			</td>

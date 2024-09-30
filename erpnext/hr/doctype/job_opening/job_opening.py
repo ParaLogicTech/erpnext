@@ -3,23 +3,14 @@
 
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
-
-from frappe.website.website_generator import WebsiteGenerator
 from frappe import _
+from frappe.model.document import Document
 from erpnext.hr.doctype.staffing_plan.staffing_plan import get_designation_counts, get_active_staffing_plan_details
 
-class JobOpening(WebsiteGenerator):
-	website = frappe._dict(
-		template = "templates/generators/job_opening.html",
-		condition_field = "publish",
-		page_title_field = "job_title",
-	)
 
+class JobOpening(Document):
 	def validate(self):
-		if not self.route:
-			self.route = frappe.scrub(self.job_title).replace('_', '-')
 		self.validate_current_vacancies()
 
 	def validate_current_vacancies(self):
@@ -46,33 +37,3 @@ class JobOpening(WebsiteGenerator):
 				frappe.throw(_("Job Openings for designation {0} already open \
 					or hiring completed as per Staffing Plan {1}"
 					.format(self.designation, self.staffing_plan)))
-
-	def get_context(self, context):
-		context.parents = [{'route': 'jobs', 'title': _('All Jobs') }]
-
-def get_list_context(context):
-	context.title = _("Jobs")
-	context.introduction = _('Current Job Openings')
-	context.get_list = get_job_openings
-
-def get_job_openings(doctype, txt=None, filters=None, limit_start=0, limit_page_length=20, order_by=None):
-	fields = ['name', 'status', 'job_title', 'description']
-
-	filters = filters or {}
-	filters.update({
-		'status': 'Open'
-	})
-
-	if txt:
-		filters.update({
-			'job_title': ['like', '%{0}%'.format(txt)],
-			'description': ['like', '%{0}%'.format(txt)]
-		})
-
-	return frappe.get_all(doctype,
-		filters,
-		fields,
-		start=limit_start,
-		page_length=limit_page_length,
-		order_by=order_by
-	)

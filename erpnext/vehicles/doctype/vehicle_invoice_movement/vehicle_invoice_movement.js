@@ -2,18 +2,18 @@
 // For license information, please see license.txt
 
 frappe.provide("erpnext.vehicles");
-erpnext.vehicles.VehicleInvoiceMovementController = erpnext.vehicles.VehicleTransactionController.extend({
-	refresh: function () {
-		this._super();
+erpnext.vehicles.VehicleInvoiceMovementController = class VehicleInvoiceMovementController extends erpnext.vehicles.VehicleTransactionController {
+	refresh() {
+		super.refresh();
 		this.frm.trigger('set_fields_read_only');
-	},
+	}
 
-	purpose: function () {
+	purpose() {
 		this.frm.trigger('set_fields_read_only');
-	},
+	}
 
-	setup_queries: function () {
-		this._super();
+	setup_queries() {
+		super.setup_queries();
 
 		var me = this;
 		me.frm.set_query("vehicle", "invoices", function () {
@@ -42,9 +42,9 @@ erpnext.vehicles.VehicleInvoiceMovementController = erpnext.vehicles.VehicleTran
 				filters: filters
 			};
 		});
-	},
+	}
 
-	set_invoice_filter: function (filters) {
+	set_invoice_filter(filters) {
 		if (this.frm.doc.purpose == "Receive") {
 			filters['invoice_status'] = 'Not Received';
 		} else if (this.frm.doc.purpose == "Return") {
@@ -55,17 +55,16 @@ erpnext.vehicles.VehicleInvoiceMovementController = erpnext.vehicles.VehicleTran
 		} else {
 			filters['invoice_status'] = 'In Hand';
 		}
-	},
-
-	set_fields_read_only: function (doc, cdt, cdn) {
-		var reqd = cint(this.frm.doc.purpose == "Receive");
-		var read_only = cint(!reqd);
-		this.frm.set_df_property('bill_no', 'read_only', read_only, cdn, 'invoices');
-		this.frm.set_df_property('bill_no', 'reqd', reqd, cdn, 'invoices');
-		this.frm.set_df_property('bill_date', 'read_only', read_only, cdn, 'invoices');
-		this.frm.set_df_property('bill_date', 'reqd', reqd, cdn, 'invoices');
-		this.frm.refresh_field('invoices');
 	}
-});
 
-$.extend(cur_frm.cscript, new erpnext.vehicles.VehicleInvoiceMovementController({frm: cur_frm}));
+	set_fields_read_only() {
+		let enabled = reqd = cint(this.frm.doc.purpose == "Receive");
+
+		for (let fn of ['bill_no', 'bill_date']) {
+			this.frm.fields_dict.invoices.grid.toggle_reqd(fn, reqd);
+			this.frm.fields_dict.invoices.grid.toggle_enable(fn, enabled);
+		}
+	}
+};
+
+extend_cscript(cur_frm.cscript, new erpnext.vehicles.VehicleInvoiceMovementController({frm: cur_frm}));

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "hash",
  "creation": "2013-03-07 11:42:57",
  "doctype": "DocType",
@@ -11,6 +12,7 @@
   "cb",
   "source_warehouse",
   "operation",
+  "skip_transfer_for_manufacture",
   "section_break_3",
   "description",
   "column_break_2",
@@ -27,9 +29,8 @@
   "stock_qty_consumed_per_unit",
   "section_break_20",
   "rate",
-  "amount",
   "column_break_8",
-  "include_item_in_manufacturing"
+  "amount"
  ],
  "fields": [
   {
@@ -156,13 +157,6 @@
    "read_only": 1
   },
   {
-   "default": "0",
-   "fieldname": "include_item_in_manufacturing",
-   "fieldtype": "Check",
-   "label": "Include Item In Manufacturing",
-   "read_only": 1
-  },
-  {
    "columns": 1,
    "fieldname": "qty",
    "fieldtype": "Float",
@@ -197,17 +191,27 @@
   {
    "fieldname": "section_break_20",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "skip_transfer_for_manufacture",
+   "fieldtype": "Check",
+   "label": "Skip Transfer for Manufacture",
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2021-03-10 16:59:56.428725",
+ "links": [],
+ "modified": "2023-06-01 17:16:13.120517",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM Explosion Item",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

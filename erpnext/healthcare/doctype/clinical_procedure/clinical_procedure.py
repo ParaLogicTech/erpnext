@@ -2,7 +2,6 @@
 # Copyright (c) 2017, ESS LLP and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -98,6 +97,7 @@ class ClinicalProcedure(Document):
 
 		return allow_start
 
+	@frappe.whitelist()
 	def make_material_transfer(self):
 		stock_entry = frappe.new_doc("Stock Entry")
 

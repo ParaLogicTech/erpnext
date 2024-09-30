@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_events_in_timeline": 1,
  "allow_import": 1,
  "allow_rename": 1,
@@ -222,7 +223,7 @@
    "label": "Status",
    "oldfieldname": "status",
    "oldfieldtype": "Select",
-   "options": "\nActive\nLeft",
+   "options": "\nActive\nInactive\nLeft",
    "reqd": 1,
    "search_index": 1
   },
@@ -759,7 +760,7 @@
    "fieldname": "attendance_device_id",
    "fieldtype": "Data",
    "in_standard_filter": 1,
-   "label": "Attendance Device ID (Biometric/RF tag ID)",
+   "label": "Attendance Device User ID",
    "no_copy": 1,
    "unique": 1
   },
@@ -878,19 +879,19 @@
    "fieldname": "shift_request_approver",
    "fieldtype": "Link",
    "label": "Shift Request Approver",
-   "options": "User",
-   "show_days": 1,
-   "show_seconds": 1
+   "options": "User"
   }
  ],
  "icon": "fa fa-user",
  "idx": 24,
  "image_field": "image",
- "modified": "2022-08-05 15:52:43.766989",
+ "links": [],
+ "modified": "2023-10-31 17:12:11.509299",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
  "name_case": "Title Case",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -932,8 +933,17 @@
    "role": "Accounts User"
   },
   {
+   "role": "Projects User",
+   "select": 1
+  },
+  {
    "read": 1,
-   "role": "Projects User"
+   "role": "Projects User (Read Only)",
+   "write": 1
+  },
+  {
+   "role": "Stock User",
+   "select": 1
   }
  ],
  "quick_entry": 1,
@@ -941,6 +951,7 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "employee_name",
  "track_changes": 1
 }

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "field:barcode",
  "creation": "2017-12-09 18:54:50.562438",
  "doctype": "DocType",
@@ -6,35 +7,51 @@
  "engine": "InnoDB",
  "field_order": [
   "barcode",
-  "barcode_type"
+  "barcode_type",
+  "uom"
  ],
  "fields": [
   {
+   "columns": 6,
    "fieldname": "barcode",
    "fieldtype": "Data",
    "in_global_search": 1,
    "in_list_view": 1,
    "label": "Barcode",
    "no_copy": 1,
+   "options": "Barcode",
+   "reqd": 1,
    "unique": 1
   },
   {
+   "columns": 2,
    "fieldname": "barcode_type",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Barcode Type",
    "options": "\nEAN\nUPC-A"
+  },
+  {
+   "columns": 2,
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM"
   }
  ],
  "istable": 1,
- "modified": "2020-03-03 15:38:03.778854",
+ "links": [],
+ "modified": "2024-01-30 03:12:23.911096",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Barcode",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

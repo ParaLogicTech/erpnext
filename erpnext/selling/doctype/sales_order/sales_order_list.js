@@ -1,8 +1,7 @@
 frappe.listview_settings['Sales Order'] = {
 	add_fields: [
 		"name", "customer_name", "currency", "delivery_date",
-		"per_delivered", "per_billed", "per_completed",
-		"status", "skip_delivery_note"
+		"delivery_status", "billing_status", "status"
 	],
 	get_indicator: function (doc) {
 		// Closed
@@ -18,35 +17,23 @@ frappe.listview_settings['Sales Order'] = {
 			return [__("Completed"), "green", "status,=,Completed"];
 
 		// Undelivered
-		} else if (flt(doc.per_delivered, 6) < 100 && !doc.skip_delivery_note) {
+		} else if (doc.delivery_status == "To Deliver") {
 			if (frappe.datetime.get_diff(doc.delivery_date) < 0) {
 			// Overdue
-				return [__("Overdue"), "red",
-					"per_delivered,<,100|delivery_date,<,Today|status,!=,Closed|docstatus,=,1"];
+				return [__("Overdue"), "red", "delivery_date,<,Today|delivery_status,=,To Deliver|docstatus,=,1"];
 
 			// Not Delivered & Not Billed
-			} else if (flt(doc.per_completed, 6) < 100) {
-				return [__("To Deliver and Bill"), "orange",
-					"per_delivered,<,100|per_completed,<,100|status,!=,Closed|docstatus,=,1"];
+			} else if (doc.billing_status == "To Bill") {
+				return [__("To Deliver and Bill"), "orange", "delivery_status,=,To Deliver|billing_status,=,To Bill|docstatus,=,1"];
 
 			// Billed but not delivered
 			} else {
-				return [__("To Deliver"), "orange",
-					"per_delivered,<,100|per_completed,=,100|status,!=,Closed|docstatus,=,1"];
+				return [__("To Deliver"), "orange", "delivery_status,=,To Deliver|billing_status,!=,To Bill|docstatus,=,1"];
 			}
 
 		// To Bill
-		} else if (flt(doc.per_completed, 6) < 100 && (flt(doc.per_delivered, 6) === 100 || doc.skip_delivery_note)) {
-			// No Delivery Required
-			if (doc.skip_delivery_note) {
-				return [__("To Bill"), "orange",
-					"per_completed,<,100|status,!=,Closed|docstatus,=,1"];
-
-			// Delivered but not billed
-			} else {
-				return [__("To Bill"), "orange",
-					"per_delivered,=,100|per_completed,<,100|status,!=,Closed|docstatus,=,1"];
-			}
+		} else if (doc.billing_status == "To Bill") {
+			return [__("To Bill"), "orange", "delivery_status,!=,To Deliver|billing_status,=,To Bill|docstatus,=,1"];
 		}
 	},
 	onload: function(listview) {

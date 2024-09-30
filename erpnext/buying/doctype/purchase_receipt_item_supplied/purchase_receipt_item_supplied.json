@@ -1,57 +1,52 @@
 {
+ "actions": [],
  "creation": "2013-02-22 01:27:42",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "main_item_code",
+  "main_item_name",
+  "column_break_axuvy",
   "rm_item_code",
-  "description",
-  "batch_no",
-  "serial_no",
-  "col_break1",
+  "rm_item_name",
+  "section_break_hquw3",
   "required_qty",
   "consumed_qty",
-  "stock_uom",
-  "rate",
-  "amount",
+  "column_break_on7ec",
   "conversion_factor",
-  "current_stock",
-  "reference_name",
-  "bom_detail_no"
+  "stock_uom",
+  "col_break1",
+  "batch_no",
+  "serial_no",
+  "section_break_ovoxx",
+  "rate",
+  "column_break_qmmaf",
+  "amount",
+  "reference_name"
  ],
  "fields": [
   {
+   "columns": 1,
    "fieldname": "main_item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Item Code",
+   "label": "Production Item",
    "oldfieldname": "main_item_code",
    "oldfieldtype": "Data",
    "options": "Item",
    "read_only": 1
   },
   {
+   "columns": 1,
    "fieldname": "rm_item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Raw Material Item Code",
+   "label": "Material Item",
    "oldfieldname": "rm_item_code",
    "oldfieldtype": "Data",
    "options": "Item",
    "read_only": 1
-  },
-  {
-   "fieldname": "description",
-   "fieldtype": "Text Editor",
-   "in_global_search": 1,
-   "in_list_view": 1,
-   "label": "Description",
-   "oldfieldname": "description",
-   "oldfieldtype": "Data",
-   "print_width": "300px",
-   "read_only": 1,
-   "width": "300px"
   },
   {
    "fieldname": "batch_no",
@@ -71,6 +66,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "columns": 1,
    "fieldname": "required_qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -80,8 +76,10 @@
    "read_only": 1
   },
   {
+   "columns": 1,
    "fieldname": "consumed_qty",
    "fieldtype": "Float",
+   "in_list_view": 1,
    "label": "Consumed Qty",
    "oldfieldname": "consumed_qty",
    "oldfieldtype": "Currency",
@@ -91,7 +89,7 @@
   {
    "fieldname": "stock_uom",
    "fieldtype": "Link",
-   "label": "Stock Uom",
+   "label": "Stock UOM",
    "oldfieldname": "stock_uom",
    "oldfieldtype": "Data",
    "options": "UOM",
@@ -118,7 +116,6 @@
   {
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
-   "hidden": 1,
    "label": "Conversion Factor",
    "oldfieldname": "conversion_factor",
    "oldfieldtype": "Currency",
@@ -126,38 +123,57 @@
    "read_only": 1
   },
   {
-   "fieldname": "current_stock",
-   "fieldtype": "Float",
-   "in_list_view": 1,
-   "label": "Current Stock",
-   "oldfieldname": "current_stock",
-   "oldfieldtype": "Currency",
-   "read_only": 1
-  },
-  {
    "fieldname": "reference_name",
    "fieldtype": "Data",
    "hidden": 1,
-   "in_list_view": 1,
    "label": "Reference Name",
    "oldfieldname": "reference_name",
    "oldfieldtype": "Data",
    "read_only": 1
   },
   {
-   "fieldname": "bom_detail_no",
+   "columns": 2,
+   "fetch_from": "main_item_code.item_name",
+   "fieldname": "main_item_name",
    "fieldtype": "Data",
-   "hidden": 1,
    "in_list_view": 1,
-   "label": "BOM Detail No",
-   "oldfieldname": "bom_detail_no",
-   "oldfieldtype": "Data",
+   "label": "Production Item Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_axuvy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 2,
+   "fetch_from": "rm_item_code.item_name",
+   "fieldname": "rm_item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Material Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_hquw3",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_on7ec",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_ovoxx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_qmmaf",
+   "fieldtype": "Column Break"
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2020-03-03 15:50:31.877104",
+ "links": [],
+ "modified": "2023-09-28 14:54:02.339599",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Purchase Receipt Item Supplied",
@@ -165,5 +181,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

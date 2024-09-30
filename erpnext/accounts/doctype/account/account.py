@@ -1,32 +1,27 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.utils import cint, cstr
 from frappe import throw, _
 from frappe.utils.nestedset import NestedSet, get_ancestors_of, get_descendants_of
 
+
 class RootNotEditable(frappe.ValidationError): pass
 class BalanceMismatchError(frappe.ValidationError): pass
 
+
 class Account(NestedSet):
 	nsm_parent_field = 'parent_account'
-	def on_update(self):
-		if frappe.local.flags.ignore_on_update:
-			return
-		else:
-			super(Account, self).on_update()
-
-	def onload(self):
-		frozen_accounts_modifier = frappe.db.get_value("Accounts Settings", "Accounts Settings",
-			"frozen_accounts_modifier")
-		if not frozen_accounts_modifier or frozen_accounts_modifier in frappe.get_roles():
-			self.set_onload("can_freeze_account", True)
 
 	def autoname(self):
 		from erpnext.accounts.utils import get_autoname_with_number
 		self.name = get_autoname_with_number(self.account_number, self.account_name, None, self.company)
+
+	def onload(self):
+		frozen_accounts_modifier = frappe.db.get_single_value("Accounts Settings", "frozen_accounts_modifier")
+		if not frozen_accounts_modifier or frozen_accounts_modifier in frappe.get_roles():
+			self.set_onload("can_freeze_account", True)
 
 	def validate(self):
 		from erpnext.accounts.utils import validate_field_number
@@ -42,6 +37,19 @@ class Account(NestedSet):
 		self.validate_balance_must_be_debit_or_credit()
 		self.validate_account_currency()
 		self.validate_root_company_and_sync_account_to_children()
+
+	def on_update(self):
+		if frappe.local.flags.ignore_on_update:
+			return
+		else:
+			super(Account, self).on_update()
+
+	def on_trash(self):
+		# checks gl entries and if child exists
+		if self.check_gle_exists():
+			throw(_("Account with existing transaction can not be deleted"))
+
+		super(Account, self).on_trash(True)
 
 	def validate_parent(self):
 		"""Fetch Parent Details and validate parent account"""
@@ -202,6 +210,7 @@ class Account(NestedSet):
 				if parent_value_changed:
 					doc.save()
 
+	@frappe.whitelist()
 	def convert_group_to_ledger(self):
 		if self.check_if_child_exists():
 			throw(_("Account with child nodes cannot be converted to ledger"))
@@ -212,6 +221,7 @@ class Account(NestedSet):
 			self.save()
 			return 1
 
+	@frappe.whitelist()
 	def convert_ledger_to_group(self):
 		if self.check_gle_exists():
 			throw(_("Account with existing transaction can not be converted to group."))
@@ -237,12 +247,6 @@ class Account(NestedSet):
 		if not self.report_type:
 			throw(_("Report Type is mandatory"))
 
-	def on_trash(self):
-		# checks gl entries and if child exists
-		if self.check_gle_exists():
-			throw(_("Account with existing transaction can not be deleted"))
-
-		super(Account, self).on_trash(True)
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
@@ -253,10 +257,12 @@ def get_parent_account(doctype, txt, searchfield, start, page_len, filters):
 		("%s", searchfield, "%s", "%s", "%s"),
 		(filters["company"], "%%%s%%" % txt, start, page_len), as_list=1)
 
+
 def get_account_currency(account):
 	"""Helper function to get account currency"""
 	if not account:
 		return
+
 	def generator():
 		account_currency, company = frappe.get_cached_value("Account", account, ["account_currency", "company"])
 		if not account_currency:
@@ -266,8 +272,10 @@ def get_account_currency(account):
 
 	return frappe.local_cache("account_currency", account, generator)
 
+
 def on_doctype_update():
 	frappe.db.add_index("Account", ["lft", "rgt"])
+
 
 def get_account_autoname(account_number, account_name, company):
 	# first validate if company exists
@@ -280,6 +288,7 @@ def get_account_autoname(account_number, account_name, company):
 		parts.insert(0, cstr(account_number).strip())
 	return ' - '.join(parts)
 
+
 def validate_account_number(name, account_number, company):
 	if account_number:
 		account_with_same_number = frappe.db.get_value("Account",
@@ -287,6 +296,7 @@ def validate_account_number(name, account_number, company):
 		if account_with_same_number:
 			frappe.throw(_("Account Number {0} already used in account {1}")
 				.format(account_number, account_with_same_number))
+
 
 @frappe.whitelist()
 def update_account_number(name, account_name, account_number=None):
@@ -304,6 +314,7 @@ def update_account_number(name, account_name, account_number=None):
 	if name != new_name:
 		frappe.rename_doc("Account", name, new_name, force=1)
 		return new_name
+
 
 @frappe.whitelist()
 def merge_account(old, new, is_group, root_type, company):
@@ -324,6 +335,14 @@ def merge_account(old, new, is_group, root_type, company):
 	frappe.rename_doc("Account", old, new, merge=1, force=1)
 
 	return new
+
+
+@frappe.whitelist()
+def get_tax_account_details(account_head):
+	return frappe.db.get_value("Account", account_head, [
+		"account_name", "tax_rate", "exclude_from_item_tax_amount"
+	], as_dict=True)
+
 
 @frappe.whitelist()
 def get_root_company(company):

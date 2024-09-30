@@ -2,7 +2,6 @@
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
@@ -52,6 +51,7 @@ class FeeSchedule(Document):
 		self.grand_total = no_of_students*self.total_amount
 		self.grand_total_in_words = money_in_words(self.grand_total)
 
+	@frappe.whitelist()
 	def create_fees(self):
 		self.db_set("fee_creation_status", "In Process")
 		frappe.publish_realtime("fee_schedule_progress",

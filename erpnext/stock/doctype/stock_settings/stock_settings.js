@@ -12,6 +12,7 @@ frappe.ui.form.on('Stock Settings', {
 		};
 
 		frm.set_query("default_warehouse", filters);
+		frm.set_query("default_rejected_warehouse", filters);
 		frm.set_query("sample_retention_warehouse", filters);
 	}
 });

@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _, scrub, unscrub
 from frappe.utils import flt, cstr, getdate, nowdate, cint
@@ -65,7 +64,10 @@ class GrossProfitGenerator(object):
 			left join `tabItem` i on i.name = si_item.item_code
 			left join `tabSales Team` sp on sp.parent = si.name and sp.parenttype = 'Sales Invoice'
 			where
-				si.docstatus = 1 and ifnull(si.return_against, '') = '' and si.is_opening != 'Yes' {conditions}
+				si.docstatus = 1
+				and (si.return_against = '' or si.return_against is null)
+				and si.is_opening != 'Yes'
+				{conditions}
 			group by si.name, si_item.name
 			order by si.posting_date desc, si.posting_time desc, si.name desc, si_item.idx asc
 		""".format(conditions=conditions), self.filters, as_dict=1)
@@ -111,7 +113,7 @@ class GrossProfitGenerator(object):
 		for i in range(3):
 			group_label = self.filters.get("group_by_" + str(i + 1), "").replace("Group by ", "")
 
-			if not group_label or group_label == "Ungrouped":
+			if not group_label:
 				continue
 
 			if group_label == "Invoice":

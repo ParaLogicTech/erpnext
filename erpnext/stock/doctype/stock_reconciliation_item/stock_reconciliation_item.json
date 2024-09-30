@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2015-02-17 01:06:05.072764",
  "doctype": "DocType",
  "document_type": "Other",
@@ -26,6 +27,7 @@
   "amount",
   "section_break_3",
   "current_qty",
+  "packed_qty",
   "column_break_9",
   "current_valuation_rate",
   "column_break_23",
@@ -47,6 +49,7 @@
    "fieldname": "barcode",
    "fieldtype": "Data",
    "label": "Barcode",
+   "options": "Barcode",
    "print_hide": 1
   },
   {
@@ -266,10 +269,20 @@
   {
    "fieldname": "dimension_col_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "packed_qty",
+   "fieldtype": "Float",
+   "label": "Packed Qty",
+   "precision": "6",
+   "read_only": 1
   }
  ],
  "istable": 1,
- "modified": "2021-07-29 23:55:45.014893",
+ "links": [],
+ "modified": "2024-07-06 16:01:37.308588",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Reconciliation Item",
@@ -278,5 +291,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

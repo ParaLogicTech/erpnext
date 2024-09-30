@@ -1,14 +1,15 @@
 {
+ "actions": [],
  "creation": "2018-02-26 17:39:11.249778",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "item_code",
-  "alternative_item_code",
+  "item_name",
   "two_way",
   "column_break_4",
-  "item_name",
+  "alternative_item_code",
   "alternative_item_name"
  ],
  "fields": [
@@ -16,21 +17,23 @@
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Item Code",
-   "options": "Item"
+   "label": "Original Item Code",
+   "options": "Item",
+   "reqd": 1
   },
   {
    "fieldname": "alternative_item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Alternative Item Code",
-   "options": "Item"
+   "options": "Item",
+   "reqd": 1
   },
   {
    "default": "0",
    "fieldname": "two_way",
    "fieldtype": "Check",
-   "label": "Two-way"
+   "label": "Two-Way"
   },
   {
    "fieldname": "column_break_4",
@@ -39,17 +42,22 @@
   {
    "fetch_from": "item_code.item_name",
    "fieldname": "item_name",
-   "fieldtype": "Read Only",
-   "label": "Item Name"
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Original Item Name",
+   "read_only": 1
   },
   {
    "fetch_from": "alternative_item_code.item_name",
    "fieldname": "alternative_item_name",
-   "fieldtype": "Read Only",
-   "label": "Alternative Item Name"
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Alternative Item Name",
+   "read_only": 1
   }
  ],
- "modified": "2020-03-03 15:42:05.212940",
+ "links": [],
+ "modified": "2024-06-10 00:58:44.754793",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Alternative",
@@ -94,6 +102,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "item_code",
  "track_changes": 1
 }

@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -85,7 +84,8 @@ def get_chart_data(filters, columns, income, expense, net_profit_loss):
 		"data": {
 			'labels': labels,
 			'datasets': datasets
-		}
+		},
+		"colors": ["blue", "orange", "green"]
 	}
 
 	if not filters.accumulated_values:

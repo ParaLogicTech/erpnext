@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2013-04-09 11:43:55",
@@ -15,12 +16,8 @@
   "from_bom",
   "customer_provided",
   "inspection_required",
-  "work_order",
   "purchase_order",
-  "delivery_note_no",
-  "sales_invoice_no",
   "pick_list",
-  "purchase_receipt_no",
   "column_break_14",
   "remarks",
   "col2",
@@ -33,14 +30,16 @@
   "project",
   "more_info_cb_1",
   "cost_center",
-  "sb1",
-  "bom_no",
+  "production_section",
+  "work_order",
   "column_break_26",
-  "fg_completed_qty",
-  "column_break_28",
-  "scrap_qty",
-  "cb1",
+  "job_card",
+  "bom_no",
   "use_multi_level_bom",
+  "use_alternative_item",
+  "column_break_qp2v9",
+  "fg_completed_qty",
+  "process_loss_qty",
   "get_items",
   "contact_section",
   "customer",
@@ -54,27 +53,37 @@
   "section_break_12",
   "from_warehouse",
   "source_warehouse_type",
-  "source_warehouse_address",
-  "source_address_display",
   "auto_select_batches",
   "cb0",
   "to_warehouse",
   "target_warehouse_type",
-  "target_warehouse_address",
-  "target_address_display",
   "sb0",
-  "scan_barcode",
   "items",
+  "scan_barcode",
   "get_stock_and_rate",
+  "section_break_vjbig",
+  "total_qty",
+  "column_break_phxuw",
+  "total_stock_qty",
+  "column_break_yiunb",
+  "total_alt_uom_qty",
   "section_break_19",
   "total_outgoing_value",
   "column_break_22",
   "total_incoming_value",
   "column_break_61",
   "value_difference",
+  "consumed_materials_section",
+  "consumed_materials",
   "additional_costs_section",
   "additional_costs",
   "total_additional_costs",
+  "warehouse_address_section",
+  "source_warehouse_address",
+  "source_address_display",
+  "column_break_7nzxf",
+  "target_warehouse_address",
+  "target_address_display",
   "accounting_dimensions_section",
   "dimension_col_break",
   "is_opening",
@@ -86,7 +95,6 @@
   "per_transferred",
   "col5",
   "total_amount",
-  "job_card",
   "credit_note"
  ],
  "fields": [
@@ -159,6 +167,7 @@
    "depends_on": "eval:in_list([\"Material Transfer for Manufacture\", \"Manufacture\", \"Material Consumption for Manufacture\"], doc.purpose)",
    "fieldname": "work_order",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Work Order",
    "oldfieldname": "production_order",
    "oldfieldtype": "Link",
@@ -171,39 +180,7 @@
    "fieldname": "purchase_order",
    "fieldtype": "Link",
    "label": "Purchase Order",
-   "options": "Purchase Order"
-  },
-  {
-   "depends_on": "eval:doc.purpose==\"Sales Return\"",
-   "fieldname": "delivery_note_no",
-   "fieldtype": "Link",
-   "label": "Delivery Note No",
-   "no_copy": 1,
-   "oldfieldname": "delivery_note_no",
-   "oldfieldtype": "Link",
-   "options": "Delivery Note",
-   "print_hide": 1,
-   "search_index": 1
-  },
-  {
-   "depends_on": "eval:doc.purpose==\"Sales Return\"",
-   "fieldname": "sales_invoice_no",
-   "fieldtype": "Link",
-   "label": "Sales Invoice No",
-   "no_copy": 1,
-   "options": "Sales Invoice",
-   "print_hide": 1
-  },
-  {
-   "depends_on": "eval:doc.purpose==\"Purchase Return\"",
-   "fieldname": "purchase_receipt_no",
-   "fieldtype": "Link",
-   "label": "Purchase Receipt No",
-   "no_copy": 1,
-   "oldfieldname": "purchase_receipt_no",
-   "oldfieldtype": "Link",
-   "options": "Purchase Receipt",
-   "print_hide": 1,
+   "options": "Purchase Order",
    "search_index": 1
   },
   {
@@ -258,11 +235,6 @@
    "print_hide": 1
   },
   {
-   "depends_on": "eval: doc.from_bom && (doc.purpose!==\"Sales Return\" && doc.purpose!==\"Purchase Return\")",
-   "fieldname": "sb1",
-   "fieldtype": "Section Break"
-  },
-  {
    "depends_on": "from_bom",
    "fieldname": "bom_no",
    "fieldtype": "Link",
@@ -271,29 +243,23 @@
   },
   {
    "depends_on": "from_bom",
-   "description": "As per Stock UOM",
    "fieldname": "fg_completed_qty",
    "fieldtype": "Float",
-   "label": "For Quantity",
+   "label": "Production Qty",
    "oldfieldname": "fg_completed_qty",
    "oldfieldtype": "Currency",
    "print_hide": 1
   },
   {
-   "fieldname": "cb1",
-   "fieldtype": "Column Break"
-  },
-  {
    "default": "1",
    "depends_on": "from_bom",
-   "description": "Including items for sub assemblies",
    "fieldname": "use_multi_level_bom",
    "fieldtype": "Check",
    "label": "Use Multi-Level BOM",
    "print_hide": 1
   },
   {
-   "depends_on": "from_bom",
+   "depends_on": "eval:doc.from_bom && doc.docstatus == 0",
    "fieldname": "get_items",
    "fieldtype": "Button",
    "label": "Get Items",
@@ -362,7 +328,9 @@
   {
    "fieldname": "scan_barcode",
    "fieldtype": "Data",
-   "label": "Scan Barcode"
+   "hidden": 1,
+   "label": "Scan Barcode",
+   "options": "Barcode"
   },
   {
    "allow_bulk_edit": 1,
@@ -666,10 +634,10 @@
    "read_only": 1
   },
   {
-   "depends_on": "from_bom",
-   "fieldname": "scrap_qty",
+   "depends_on": "eval:doc.from_bom",
+   "fieldname": "process_loss_qty",
    "fieldtype": "Float",
-   "label": "Scrap Qty"
+   "label": "Process Loss Qty"
   },
   {
    "default": "0",
@@ -684,10 +652,6 @@
    "fieldname": "auto_select_batches",
    "fieldtype": "Button",
    "label": "Auto Select Batches (FIFO)"
-  },
-  {
-   "fieldname": "column_break_28",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "column_break_61",
@@ -709,15 +673,90 @@
    "fieldtype": "Section Break",
    "label": "Status",
    "oldfieldtype": "Section Break"
+  },
+  {
+   "fieldname": "production_section",
+   "fieldtype": "Section Break",
+   "label": "Production"
+  },
+  {
+   "fieldname": "column_break_qp2v9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "warehouse_address_section",
+   "fieldtype": "Section Break",
+   "label": "Warehouse Address"
+  },
+  {
+   "fieldname": "column_break_7nzxf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "consumed_materials",
+   "fieldname": "consumed_materials_section",
+   "fieldtype": "Section Break",
+   "label": "Consumed Materials"
+  },
+  {
+   "fieldname": "consumed_materials",
+   "fieldtype": "Table",
+   "label": "Consumed Materials",
+   "no_copy": 1,
+   "options": "Stock Entry Consumed Material",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_vjbig",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "total_qty",
+   "fieldtype": "Float",
+   "label": "Total Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_phxuw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_stock_qty",
+   "fieldtype": "Float",
+   "label": "Total Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_yiunb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.total_alt_uom_qty != doc.total_qty",
+   "fieldname": "total_alt_uom_qty",
+   "fieldtype": "Float",
+   "label": "Total Contents Qty",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "from_bom",
+   "fieldname": "use_alternative_item",
+   "fieldtype": "Check",
+   "label": "Use Alternative Item for Out of Stock Materials",
+   "print_hide": 1
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 1,
  "is_submittable": 1,
- "modified": "2022-08-05 15:04:29.154512",
+ "links": [],
+ "modified": "2024-09-05 01:45:02.023543",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -750,35 +789,12 @@
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Manufacturing Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
-   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Stock Manager",
-   "set_user_permissions": 1,
-   "share": 1,
-   "submit": 1,
-   "write": 1
+   "role": "Accounts User"
   },
   {
    "export": 1,
@@ -786,14 +802,6 @@
    "read": 1,
    "role": "Accounts User",
    "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Accounts User"
   },
   {
    "export": 1,
@@ -807,6 +815,7 @@
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "title",
  "track_changes": 1,
  "track_seen": 1

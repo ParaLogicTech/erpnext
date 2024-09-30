@@ -1,22 +1,24 @@
 {
+ "actions": [],
  "creation": "2018-07-09 17:20:44.737289",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "item_code",
-  "source_warehouse",
-  "uom",
-  "column_break_3",
   "item_name",
+  "column_break_3",
+  "source_warehouse",
+  "description_section",
   "description",
   "qty_section",
   "required_qty",
   "column_break_9",
-  "allow_alternative_item"
+  "uom"
  ],
  "fields": [
   {
+   "columns": 5,
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -25,6 +27,7 @@
    "read_only": 1
   },
   {
+   "columns": 2,
    "fieldname": "source_warehouse",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -33,8 +36,10 @@
    "options": "Warehouse"
   },
   {
+   "columns": 1,
    "fieldname": "uom",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "UOM",
    "options": "UOM"
   },
@@ -60,6 +65,7 @@
    "label": "Qty"
   },
   {
+   "columns": 1,
    "fieldname": "required_qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -71,14 +77,15 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
-   "fieldname": "allow_alternative_item",
-   "fieldtype": "Check",
-   "label": "Allow Alternative Item"
+   "collapsible": 1,
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
   }
  ],
  "istable": 1,
- "modified": "2020-03-03 15:41:14.629923",
+ "links": [],
+ "modified": "2024-06-07 16:00:26.311503",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Job Card Item",
@@ -87,5 +94,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

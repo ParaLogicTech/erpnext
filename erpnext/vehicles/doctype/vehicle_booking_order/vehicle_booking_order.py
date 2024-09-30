@@ -2,11 +2,10 @@
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from erpnext.vehicles.utils import get_booking_payments, separate_customer_and_supplier_payments, separate_advance_and_balance_payments
 from frappe import _
-from frappe.utils import cint, flt, getdate, today, combine_datetime, now_datetime
+from frappe.utils import cint, flt, getdate, today, combine_datetime, now_datetime, get_time, add_years
 from frappe.model.naming import set_name_by_naming_series
 from erpnext.vehicles.doctype.vehicle_allocation.vehicle_allocation import get_allocation_title
 from erpnext.vehicles.vehicle_booking_controller import VehicleBookingController
@@ -76,9 +75,10 @@ class VehicleBookingOrder(VehicleBookingController):
 			self.set_can_notify_onload()
 			self.set_vehicle_warehouse_onload()
 			self.set_vehicle_reservation_details()
+			self.set_vehicle_gate_pass_onload()
 
-	def before_print(self):
-		super(VehicleBookingOrder, self).before_print()
+	def before_print(self, print_settings=None):
+		super(VehicleBookingOrder, self).before_print(print_settings=print_settings)
 		self.get_payment_details()
 
 	def set_title(self):
@@ -315,22 +315,11 @@ class VehicleBookingOrder(VehicleBookingController):
 			})
 
 	def set_delivery_status(self, update=False):
-		vehicle_receipts = None
-		vehicle_deliveries = None
-
-		if self.docstatus != 0:
-			vehicle_receipts = self.get_vehicle_receipts()
-			vehicle_deliveries = frappe.db.get_all("Vehicle Delivery", {"vehicle_booking_order": self.name, "docstatus": 1},
-				['name', 'posting_date', 'is_return'], order_by="posting_date, posting_time, creation")
-
-		vehicle_receipt = frappe._dict()
 		vehicle_delivery = frappe._dict()
-
-		if vehicle_receipts and not vehicle_receipts[-1].get('is_return'):
-			vehicle_receipt = vehicle_receipts[-1]
-
-		if vehicle_deliveries and not vehicle_deliveries[-1].get('is_return'):
-			vehicle_delivery = vehicle_deliveries[-1]
+		vehicle_receipt = frappe._dict()
+		if self.docstatus != 0:
+			vehicle_receipt = get_vehicle_booking_receipt(self.name, self.vehicle) or frappe._dict()
+			vehicle_delivery = get_vehicle_booking_delivery(self.name) or frappe._dict()
 
 		if vehicle_delivery:
 			self.check_outstanding_payment_for_delivery()
@@ -368,19 +357,6 @@ class VehicleBookingOrder(VehicleBookingController):
 				"delivery_status": self.delivery_status,
 				"delivery_overdue": self.delivery_overdue
 			})
-
-	def get_vehicle_receipts(self):
-		fields = ['name', 'posting_date', 'is_return', 'lr_no', 'supplier', 'vehicle_booking_order']
-
-		vehicle_receipts = frappe.db.get_all("Vehicle Receipt", {"vehicle_booking_order": self.name, "docstatus": 1}, fields,
-			order_by='posting_date, posting_time, creation')
-
-		# open stock
-		if not vehicle_receipts and self.vehicle:
-			vehicle_receipts = frappe.db.get_all("Vehicle Receipt", {"vehicle": self.vehicle, "docstatus": 1}, fields,
-				order_by='posting_date, posting_time, creation')
-
-		return vehicle_receipts
 
 	def check_outstanding_payment_for_delivery(self):
 		if flt(self.customer_outstanding):
@@ -514,19 +490,18 @@ class VehicleBookingOrder(VehicleBookingController):
 				"transfer_lessee_name": self.transfer_lessee_name,
 			})
 
-	def set_transfer_status(self, update=False):
-		if self.vehicle_transfer_required:
-			if frappe.db.exists("Vehicle Transfer Letter", {"vehicle_booking_order": self.name, "docstatus": 1}):
-				self.transfer_status = "Transferred"
-			else:
-				self.transfer_status = "To Transfer"
+	def set_transfer_status(self, update=False, update_modified=True):
+		if frappe.db.exists("Vehicle Transfer Letter", {"vehicle_booking_order": self.name, "docstatus": 1}):
+			self.transfer_status = "Transferred"
+		elif self.vehicle_transfer_required:
+			self.transfer_status = "To Transfer"
 		else:
 			self.transfer_status = "Not Applicable"
 
 		if update:
 			self.db_set({
-				'transfer_status': self.transfer_status
-			})
+				'transfer_status': self.transfer_status,
+			}, update_modified=update_modified)
 
 	def set_status(self, update=False, status=None, update_modified=True):
 		if self.is_new():
@@ -564,14 +539,14 @@ class VehicleBookingOrder(VehicleBookingController):
 			elif self.invoice_status == "Not Received":
 				self.status = "To Receive Invoice"
 
+			elif self.transfer_status == "To Transfer":
+				self.status = "To Transfer"
+
 			elif self.delivery_status == "In Stock":
 				self.status = "To Deliver Vehicle"
 
 			elif self.invoice_status != "Delivered":
 				self.status = "To Deliver Invoice"
-
-			elif self.transfer_status == "To Transfer":
-				self.status = "To Transfer"
 
 			else:
 				self.status = "Completed"
@@ -615,11 +590,31 @@ class VehicleBookingOrder(VehicleBookingController):
 			self.set_onload('reserved_customer_name', reservation_details.reserved_customer_name)
 			self.set_onload('reserved_sales_person', reservation_details.reserved_sales_person)
 
-	def get_sms_args(self, notification_type=None):
+	def set_vehicle_gate_pass_onload(self):
+		if not self.vehicle:
+			return
+
+		filters = {
+			"purpose": "Sales - Vehicle Delivery",
+			"vehicle": self.vehicle,
+			"docstatus": 1,
+		}
+
+		vehicle_gate_pass = frappe.db.get_value("Vehicle Gate Pass", filters)
+		self.set_onload('vehicle_gate_pass', vehicle_gate_pass)
+
+	def get_sms_args(self, notification_type=None, child_doctype=None, child_name=None):
+		notification_customer = self.customer
+		notification_mobile = self.contact_mobile
+
+		if notification_type == "Vehicle Anniversary":
+			notification_customer = self.transfer_customer if self.transfer_customer else self.customer
+			notification_mobile = frappe.db.get_value("Customer", self.transfer_customer, "mobile_no") if self.transfer_customer else self.contact_mobile
+
 		return frappe._dict({
-			'receiver_list': [self.contact_mobile],
+			'receiver_list': [notification_mobile],
 			'party_doctype': 'Customer',
-			'party': self.customer
+			'party': notification_customer
 		})
 
 	def set_can_notify_onload(self):
@@ -629,7 +624,8 @@ class VehicleBookingOrder(VehicleBookingController):
 			'Balance Payment Confirmation',
 			'Ready For Delivery',
 			'Congratulations',
-			'Booking Cancellation'
+			'Booking Cancellation',
+			'Vehicle Anniversary',
 		]
 
 		can_notify = frappe._dict()
@@ -638,7 +634,7 @@ class VehicleBookingOrder(VehicleBookingController):
 
 		self.set_onload('can_notify', can_notify)
 
-	def validate_notification(self, notification_type=None, throw=False):
+	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
 		if not notification_type:
 			if throw:
 				frappe.throw(_("Notification Type is mandatory"))
@@ -696,6 +692,18 @@ class VehicleBookingOrder(VehicleBookingController):
 					frappe.throw(_("Cannot send Congratulations notification because Vehicle has not been delivered yet"))
 				return False
 
+		if notification_type == "Vehicle Anniversary":
+			if not self.vehicle_delivered_date:
+				if throw:
+					frappe.throw(_("Cannot send Vehicle Anniversary notification because Vehicle has not been delivered yet"))
+				return False
+
+			vehicle_anniversary_date = add_years(getdate(self.vehicle_delivered_date), 1)
+			if getdate(today()) < vehicle_anniversary_date:
+				if throw:
+					frappe.throw(_("Cannot send Vehicle Anniversary notification because 1 year has not passed since delivery"))
+				return False
+
 		return True
 
 	def send_notification_on_payment(self, payment):
@@ -731,6 +739,37 @@ class VehicleBookingOrder(VehicleBookingController):
 	def send_notification_on_cancellation(self):
 		enqueue_template_sms(self, notification_type="Booking Cancellation")
 
+	def send_vehicle_anniversary_notification(self):
+		enqueue_template_sms(self, notification_type="Vehicle Anniversary", allow_if_already_sent=1)
+
+
+def get_vehicle_booking_receipt(vehicle_booking_order, vehicle):
+	fields = ['name', 'posting_date', 'is_return', 'lr_no', 'supplier', 'vehicle_booking_order']
+
+	vehicle_receipts = frappe.db.get_all("Vehicle Receipt", {"vehicle_booking_order": vehicle_booking_order, "docstatus": 1}, fields,
+		order_by='posting_date, posting_time, creation')
+
+	# open stock
+	if not vehicle_receipts and vehicle:
+		vehicle_receipts = frappe.db.get_all("Vehicle Receipt", {"vehicle": vehicle, "docstatus": 1}, fields,
+			order_by='posting_date, posting_time, creation')
+
+	if vehicle_receipts and not vehicle_receipts[-1].get('is_return'):
+		return vehicle_receipts[-1]
+	else:
+		return None
+
+
+def get_vehicle_booking_delivery(vehicle_booking_order):
+	vehicle_deliveries = frappe.db.get_all("Vehicle Delivery",
+		filters={"vehicle_booking_order": vehicle_booking_order, "docstatus": 1},
+		fields=['name', 'posting_date', 'is_return'], order_by="posting_date, posting_time, creation")
+
+	if vehicle_deliveries and not vehicle_deliveries[-1].get('is_return'):
+		return vehicle_deliveries[-1]
+	else:
+		return None
+
 
 @frappe.whitelist()
 def get_next_document(vehicle_booking_order, doctype):
@@ -742,28 +781,30 @@ def get_next_document(vehicle_booking_order, doctype):
 	doc.check_cancelled(throw=True)
 
 	if doctype == "Vehicle Receipt":
-		return get_vehicle_receipt(doc)
+		return make_vehicle_receipt(doc)
 	elif doctype == "Vehicle Receipt Return":
-		return get_vehicle_receipt_return(doc)
+		return make_vehicle_receipt_return(doc)
+	elif doctype == "Vehicle Gate Pass":
+		return make_vehicle_delivery_gate_pass(doc)
 	elif doctype == "Vehicle Delivery":
-		return get_vehicle_delivery(doc)
+		return make_vehicle_delivery(doc)
 	elif doctype == "Vehicle Delivery Return":
-		return get_vehicle_delivery_return(doc)
+		return make_vehicle_delivery_return(doc)
 	elif doctype == "Vehicle Invoice":
-		return get_vehicle_invoice(doc)
+		return make_vehicle_invoice(doc)
 	elif doctype == "Vehicle Invoice Delivery":
-		return get_vehicle_invoice_delivery(doc)
+		return make_vehicle_invoice_delivery(doc)
 	elif doctype == "Vehicle Transfer Letter":
-		return get_vehicle_transfer_letter(doc)
+		return make_vehicle_transfer_letter(doc)
 	elif doctype == "Vehicle Registration Order":
-		return get_vehicle_registration_order(doc)
+		return make_vehicle_registration_order(doc)
 	elif doctype == "Project":
-		return get_pdi_repair_order(doc)
+		return make_pdi_repair_order(doc)
 	else:
 		frappe.throw(_("Invalid DocType"))
 
 
-def get_vehicle_receipt(source):
+def make_vehicle_receipt(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_receive_vehicle
 
 	can_receive_vehicle(source, throw=True)
@@ -775,7 +816,7 @@ def get_vehicle_receipt(source):
 	return target
 
 
-def get_vehicle_receipt_return(source):
+def make_vehicle_receipt_return(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_receive_vehicle
 
 	can_receive_vehicle(source, throw=True)
@@ -788,7 +829,7 @@ def get_vehicle_receipt_return(source):
 	return target
 
 
-def get_vehicle_delivery(source):
+def make_vehicle_delivery(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_deliver_vehicle
 
 	can_deliver_vehicle(source, throw=True)
@@ -801,7 +842,22 @@ def get_vehicle_delivery(source):
 	return target
 
 
-def get_vehicle_delivery_return(source):
+@frappe.whitelist()
+def make_vehicle_delivery_gate_pass(source):
+	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_deliver_vehicle
+
+	can_deliver_vehicle(source, throw=True)
+	check_if_doc_exists("Vehicle Gate Pass", source.name, {'docstatus': 0})
+
+	target = frappe.new_doc("Vehicle Gate Pass")
+	target.purpose = "Sales - Vehicle Delivery"
+	set_next_document_values(source, target)
+	target.run_method("set_missing_values")
+
+	return target
+
+
+def make_vehicle_delivery_return(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_deliver_vehicle
 
 	can_deliver_vehicle(source, throw=True)
@@ -814,7 +870,7 @@ def get_vehicle_delivery_return(source):
 	return target
 
 
-def get_vehicle_transfer_letter(source):
+def make_vehicle_transfer_letter(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_transfer_vehicle
 
 	can_transfer_vehicle(source, throw=True)
@@ -826,7 +882,7 @@ def get_vehicle_transfer_letter(source):
 	return target
 
 
-def get_vehicle_registration_order(source):
+def make_vehicle_registration_order(source):
 	check_if_doc_exists("Vehicle Registration Order", source.name)
 	target = frappe.new_doc("Vehicle Registration Order")
 	set_next_document_values(source, target)
@@ -842,7 +898,7 @@ def get_vehicle_registration_order(source):
 	return target
 
 
-def get_vehicle_invoice(source):
+def make_vehicle_invoice(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_receive_invoice
 
 	can_receive_invoice(source, throw=True)
@@ -854,7 +910,7 @@ def get_vehicle_invoice(source):
 	return target
 
 
-def get_vehicle_invoice_delivery(source):
+def make_vehicle_invoice_delivery(source):
 	from erpnext.vehicles.doctype.vehicle_booking_order.change_booking import can_deliver_invoice
 
 	can_deliver_invoice(source, throw=True)
@@ -869,7 +925,7 @@ def get_vehicle_invoice_delivery(source):
 	return target
 
 
-def get_pdi_repair_order(source):
+def make_pdi_repair_order(source):
 	from erpnext.projects.doctype.project_type.project_type import get_project_type_defaults
 	from erpnext.projects.doctype.project_workshop.project_workshop import get_project_workshop_details
 	from erpnext.projects.doctype.project_template.project_template import guess_project_template
@@ -916,6 +972,36 @@ def get_pdi_repair_order(source):
 
 	target.run_method("set_missing_values")
 	return target
+
+
+@frappe.whitelist()
+def get_vbos_for_sales_invoice(from_date, to_date, item_code=None):
+	if not from_date or not to_date:
+		frappe.throw(_("From Date and To Date is mandatory"))
+
+	item_condition = ""
+
+	if item_code:
+		if cint(frappe.db.get_value("Item", item_code, 'has_variants')):
+			item_condition = "AND i.variant_of = %(item_code)s"
+		else:
+			item_condition = "AND i.item_code = %(item_code)s"
+
+	vbo_names = frappe.db.sql_list("""
+		SELECT vbo.name
+		FROM `tabVehicle Booking Order` vbo
+		INNER JOIN `tabItem` i ON i.item_code = vbo.item_code
+		WHERE vbo.delivery_status = 'Delivered'
+			AND vbo.vehicle_delivered_date >= %(from_date)s
+			AND vbo.vehicle_delivered_date <= %(to_date)s
+			AND vbo.docstatus = 1
+			{item_condition}
+		""".format(item_condition=item_condition), {'item_code': item_code, 'from_date': from_date, 'to_date': to_date}, as_dict=1)
+
+	if not vbo_names:
+		frappe.throw(_("No Vehicle Booking Orders found"))
+
+	return vbo_names
 
 
 def check_if_doc_exists(doctype, vehicle_booking_order, filters=None):
@@ -995,23 +1081,20 @@ def update_overdue_status():
 
 
 def send_payment_overdue_notifications():
-	from frappe.core.doctype.sms_settings.sms_settings import is_automated_sms_enabled
-	from frappe.core.doctype.sms_template.sms_template import has_automated_sms_template
-
 	if 'Vehicles' not in frappe.get_active_domains():
 		return
-	if not is_automated_sms_enabled():
-		return
-	if not has_automated_sms_template("Vehicle Booking Order", "Balance Payment Due"):
+	if not automated_payment_overdue_notification_enabled():
 		return
 
-	today_date = getdate(today())
+	now_dt = now_datetime()
+	reminder_date = getdate(now_dt)
+	reminder_dt = get_payment_overdue_reminder_scheduled_time(reminder_date)
+	if now_dt < reminder_dt:
+		return
 
-	payment_due_notification_time = frappe.get_cached_value("Vehicles Settings", None, "payment_due_notification_time")
-	if payment_due_notification_time:
-		run_after = combine_datetime(today_date, payment_due_notification_time)
-		if now_datetime() < run_after:
-			return
+	notification_last_sent_date = frappe.db.get_global("vehicle_booking_payment_overdue_notification_last_sent_date")
+	if notification_last_sent_date and getdate(notification_last_sent_date) >= reminder_date:
+		return
 
 	overdue_bookings_to_notify = frappe.db.sql_list("""
 		select vbo.name
@@ -1025,11 +1108,33 @@ def send_payment_overdue_notifications():
 			and vbo.due_date > vbo.transaction_date
 			and n.last_scheduled_dt is null
 			and n.last_sent_dt is null
-	""", today_date)
+	""", reminder_date)
 
 	for name in overdue_bookings_to_notify:
 		doc = frappe.get_doc("Vehicle Booking Order", name)
 		doc.send_notification_on_payment_due()
+
+	frappe.db.set_global("vehicle_booking_payment_overdue_notification_last_sent_date", reminder_date)
+
+
+def get_payment_overdue_reminder_scheduled_time(reminder_date=None):
+	vehicles_settings = frappe.get_cached_doc("Vehicles Settings", None)\
+
+	reminder_date = getdate(reminder_date)
+	reminder_time = vehicles_settings.payment_due_notification_time or get_time("00:00:00")
+	reminder_dt = combine_datetime(reminder_date, reminder_time)
+
+	return reminder_dt
+
+
+def automated_payment_overdue_notification_enabled():
+	from frappe.core.doctype.sms_settings.sms_settings import is_automated_sms_enabled
+	from frappe.core.doctype.sms_template.sms_template import has_automated_sms_template
+
+	if is_automated_sms_enabled() and has_automated_sms_template("Vehicle Booking Order", "Balance Payment Due"):
+		return True
+	else:
+		return False
 
 
 def update_vehicle_booked(vehicle, is_booked):
@@ -1042,3 +1147,76 @@ def update_allocation_booked(vehicle_allocation, is_booked, is_cancelled):
 	is_cancelled = cint(is_cancelled)
 	frappe.db.set_value("Vehicle Allocation", vehicle_allocation, {"is_booked": is_booked, "is_cancelled": is_cancelled},
 		notify=True)
+
+
+def send_vehicle_anniversary_notifications():
+	if 'Vehicles' not in frappe.get_active_domains():
+		return
+	if not automated_vehicle_anniversary_notification_enabled():
+		return
+
+	now_dt = now_datetime()
+	date_today = getdate(now_dt)
+	reminder_dt = get_vehicle_anniversary_scheduled_time(date_today)
+	if now_dt < reminder_dt:
+		return
+
+	notification_last_sent_date = frappe.db.get_global("vehicle_anniversary_notification_last_sent_date")
+	if notification_last_sent_date and getdate(notification_last_sent_date) >= date_today:
+		return
+
+	vehicle_anniversary_data = get_bookings_for_vehicle_anniversary_notification(date_today)
+
+	for d in vehicle_anniversary_data:
+		doc = frappe.get_doc("Vehicle Booking Order", d.name)
+		doc.send_vehicle_anniversary_notification()
+
+	frappe.db.set_global("vehicle_anniversary_notification_last_sent_date", date_today)
+
+
+def automated_vehicle_anniversary_notification_enabled():
+	from frappe.core.doctype.sms_settings.sms_settings import is_automated_sms_enabled
+	from frappe.core.doctype.sms_template.sms_template import has_automated_sms_template
+
+	if is_automated_sms_enabled() and has_automated_sms_template("Vehicle Booking Order", "Vehicle Anniversary"):
+		return True
+	else:
+		return False
+
+
+def get_vehicle_anniversary_scheduled_time(date_today=None):
+	vehicle_settings = frappe.get_cached_doc("Vehicles Settings", None)
+
+	reminder_date = getdate(date_today)
+	reminder_time = vehicle_settings.vehicle_anniversary_time or get_time("00:00:00")
+	reminder_dt = combine_datetime(reminder_date, reminder_time)
+
+	return reminder_dt
+
+
+def get_bookings_for_vehicle_anniversary_notification(date_today=None):
+	date_today = getdate(date_today)
+
+	vehicle_anniversary_data = frappe.db.sql("""
+		SELECT vbo.name
+		FROM `tabVehicle Booking Order` vbo
+		LEFT JOIN `tabNotification Count` nc
+			ON nc.reference_doctype = 'Vehicle Booking Order'
+			AND nc.reference_name = vbo.name
+			AND nc.notification_type = 'Vehicle Anniversary'
+			AND nc.notification_medium = 'SMS'
+		WHERE vbo.docstatus = 1
+			AND vbo.status != 'Cancelled Booking'
+			AND day(vbo.vehicle_delivered_date) = %(day)s
+			AND month(vbo.vehicle_delivered_date) = %(month)s
+			AND year(vbo.vehicle_delivered_date) < %(year)s
+			AND (nc.last_scheduled_dt is null OR DATE(nc.last_scheduled_dt) != %(date_today)s)
+			AND (nc.last_sent_dt is null OR DATE(nc.last_sent_dt) != %(date_today)s)
+	""", {
+		"day": date_today.day,
+		"month": date_today.month,
+		"year": date_today.year,
+		"date_today": date_today
+	}, as_dict=1)
+
+	return vehicle_anniversary_data

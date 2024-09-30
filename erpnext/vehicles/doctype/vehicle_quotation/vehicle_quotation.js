@@ -5,22 +5,22 @@ frappe.provide("erpnext.vehicles");
 
 {% include 'erpnext/selling/quotation_common.js' %}
 
-erpnext.vehicles.VehicleQuotation = erpnext.vehicles.VehicleBookingController.extend({
-	setup: function () {
+erpnext.vehicles.VehicleQuotation = class VehicleQuotation extends erpnext.vehicles.VehicleBookingController {
+	setup() {
 		this.frm.custom_make_buttons = {
 			'Vehicle Booking Order': 'Vehicle Booking Order',
 			'Customer': 'Customer'
 		}
-	},
+	}
 
-	refresh: function () {
-		this._super();
+	refresh() {
+		super.refresh();
 		this.set_dynamic_field_label();
 		this.add_create_buttons();
-	},
+	}
 
-	setup_queries: function () {
-		this._super();
+	setup_queries() {
+		super.setup_queries();
 
 		var me = this;
 
@@ -36,12 +36,12 @@ erpnext.vehicles.VehicleQuotation = erpnext.vehicles.VehicleBookingController.ex
 			if (me.frm.doc.quotation_to === "Customer") {
 				return erpnext.queries.customer();
 			} else if (me.frm.doc.quotation_to === "Lead") {
-				return erpnext.queries.lead();
+				return crm.queries.lead({"status": ["!=", "Converted"]});
 			}
 		});
-	},
+	}
 
-	add_create_buttons: function () {
+	add_create_buttons() {
 		var is_valid = !this.frm.doc.valid_till || frappe.datetime.get_diff(this.frm.doc.valid_till, frappe.datetime.get_today()) >= 0;
 
 		var customer;
@@ -54,7 +54,7 @@ erpnext.vehicles.VehicleQuotation = erpnext.vehicles.VehicleBookingController.ex
 		if(this.frm.doc.docstatus == 1 && this.frm.doc.status !== 'Lost') {
 			if(this.frm.doc.status !== "Ordered") {
 				this.frm.add_custom_button(__('Mark As Lost'), () => {
-					this.frm.events.set_as_lost_dialog(this.frm);
+					crm.utils.set_as_lost_dialog(this.frm);
 				}, __("Status"));
 			}
 
@@ -72,23 +72,23 @@ erpnext.vehicles.VehicleQuotation = erpnext.vehicles.VehicleBookingController.ex
 		}
 
 		if (this.frm.doc.status == "Lost") {
-			me.frm.add_custom_button(__("Reopen"), () => {
-				me.frm.events.update_lost_status(me.frm, false);
+			this.frm.add_custom_button(__("Reopen"), () => {
+				crm.utils.update_lost_status(this.frm, false);
 			}, __("Status"));
 		}
 
-	},
+	}
 
-	quotation_to: function () {
+	quotation_to() {
 		this.set_dynamic_field_label();
 		this.frm.set_value("party_name", null);
-	},
+	}
 
-	party_name: function () {
+	party_name() {
 		this.get_customer_details();
-	},
+	}
 
-	set_dynamic_field_label: function() {
+	set_dynamic_field_label() {
 		if (this.frm.doc.quotation_to) {
 			this.frm.set_df_property("party_name", "label", __(this.frm.doc.quotation_to));
 			this.frm.set_df_property("customer_address", "label", __(this.frm.doc.quotation_to + " Address"));
@@ -98,14 +98,14 @@ erpnext.vehicles.VehicleQuotation = erpnext.vehicles.VehicleBookingController.ex
 			this.frm.set_df_property("customer_address", "label", __("Party Address"));
 			this.frm.set_df_property("contact_person", "label", __("Party Contact Person"));
 		}
-	},
+	}
 
-	make_vehicle_booking_order: function () {
+	make_vehicle_booking_order() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.vehicles.doctype.vehicle_quotation.vehicle_quotation.make_vehicle_booking_order",
 			frm: this.frm
 		});
-	},
-});
+	}
+}
 
-$.extend(cur_frm.cscript, new erpnext.vehicles.VehicleQuotation({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.vehicles.VehicleQuotation({frm: cur_frm}));

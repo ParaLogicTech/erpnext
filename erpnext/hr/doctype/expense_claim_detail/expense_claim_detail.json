@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2013-02-22 01:27:46",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -9,15 +10,19 @@
   "expense_date",
   "section_break_1",
   "expense_account",
+  "column_break_7",
   "party_type",
   "party",
-  "column_break_7",
+  "section_break_nid2v",
   "project",
+  "column_break_2vbbs",
   "task",
+  "column_break_nhxrl",
   "requires_purchase_invoice",
   "purchase_invoice",
   "section_break_4",
   "description",
+  "attachment",
   "section_break_6",
   "claim_amount",
   "column_break_8",
@@ -58,7 +63,7 @@
    "fieldtype": "Section Break"
   },
   {
-   "columns": 2,
+   "columns": 5,
    "fieldname": "description",
    "fieldtype": "Small Text",
    "in_list_view": 1,
@@ -77,12 +82,15 @@
    "fieldtype": "Column Break"
   },
   {
+   "columns": 1,
    "fieldname": "sanctioned_amount",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "Sanctioned",
    "oldfieldname": "sanctioned_amount",
    "oldfieldtype": "Currency",
    "options": "Company:company:default_currency",
+   "permlevel": 1,
    "print_width": "150px",
    "width": "150px"
   },
@@ -90,7 +98,8 @@
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "label": "Cost Center",
-   "options": "Cost Center"
+   "options": "Cost Center",
+   "permlevel": 2
   },
   {
    "fieldname": "section_break_1",
@@ -100,9 +109,9 @@
    "columns": 2,
    "fieldname": "expense_account",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Expense Account",
-   "options": "Account"
+   "options": "Account",
+   "permlevel": 2
   },
   {
    "fieldname": "party_type",
@@ -124,11 +133,10 @@
    "fieldtype": "Column Break"
   },
   {
-   "columns": 1,
+   "columns": 2,
    "fetch_from": "task.project",
    "fieldname": "project",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Project",
    "options": "Project"
   },
@@ -151,10 +159,10 @@
    "columns": 2,
    "fieldname": "purchase_invoice",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Purchase Invoice",
    "no_copy": 1,
-   "options": "Purchase Invoice"
+   "options": "Purchase Invoice",
+   "permlevel": 2
   },
   {
    "columns": 1,
@@ -177,16 +185,37 @@
   {
    "fieldname": "dimension_col_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_nid2v",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_2vbbs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_nhxrl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "attachment",
+   "fieldtype": "Attach",
+   "in_list_view": 1,
+   "label": "Attachment"
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2020-11-07 23:26:24.775791",
+ "links": [],
+ "modified": "2024-02-06 15:14:32.964887",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Expense Claim Detail",
  "owner": "harshada@webnotestech.com",
  "permissions": [],
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

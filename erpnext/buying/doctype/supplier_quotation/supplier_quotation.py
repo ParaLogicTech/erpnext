@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt, nowdate, add_days
@@ -36,7 +35,7 @@ class SupplierQuotation(BuyingController):
 		self.update_rfq_supplier_status(1)
 
 	def on_cancel(self):
-		frappe.db.set(self, "status", "Cancelled")
+		self.update_status_on_cancel()
 		self.update_rfq_supplier_status(0)
 
 	def on_trash(self):
@@ -68,7 +67,7 @@ class SupplierQuotation(BuyingController):
 			doc_sup = doc_sup[0] if doc_sup else None
 			if not doc_sup:
 				frappe.throw(_("Supplier {0} not found in {1}").format(self.supplier,
-					"<a href='desk#Form/Request for Quotation/{0}'> Request for Quotation {0} </a>".format(doc.name)))
+					frappe.get_desk_link("Request for Quotation", doc.name)))
 
 			quote_status = _('Received')
 			for item in doc.items:
@@ -95,19 +94,6 @@ class SupplierQuotation(BuyingController):
 				frappe.db.set_value('Request for Quotation Supplier', doc_sup.name, 'no_quote', 0)
 			elif doc_sup.quote_status != _('No Quote'):
 				frappe.db.set_value('Request for Quotation Supplier', doc_sup.name, 'quote_status', quote_status)
-
-
-def get_list_context(context=None):
-	from erpnext.controllers.website_list_for_contact import get_list_context
-	list_context = get_list_context(context)
-	list_context.update({
-		'show_sidebar': True,
-		'show_search': True,
-		'no_breadcrumbs': True,
-		'title': _('Supplier Quotation'),
-	})
-
-	return list_context
 
 
 @frappe.whitelist()

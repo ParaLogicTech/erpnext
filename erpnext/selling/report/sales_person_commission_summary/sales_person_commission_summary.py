@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _, scrub, unscrub
 from frappe.utils import getdate, nowdate, flt, cint, date_diff, cstr
@@ -247,7 +246,7 @@ class SalesPersonCommissionSummary(object):
 		for i in range(2):
 			group_label = self.filters.get("group_by_" + str(i + 1), "").replace("Group by ", "")
 
-			if not group_label or group_label == "Ungrouped":
+			if not group_label:
 				continue
 
 			if group_label == "Invoice":

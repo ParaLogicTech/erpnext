@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 
@@ -84,8 +83,8 @@ def get_data(filters):
 		cond += " and name = '%s'" % filters.get('work_order')
 
 	results = []
-	for d in frappe.db.sql(""" select name as work_order, qty, produced_qty, production_item, bom_no
-		from `tabWork Order` where produced_qty > qty and docstatus = 1 and {0}""".format(cond), as_dict=1):
+	for d in frappe.db.sql(""" select name as work_order, qty, completed_qty, production_item, bom_no
+		from `tabWork Order` where completed_qty > qty and docstatus = 1 and {0}""".format(cond), as_dict=1):
 		results.append(d)
 
 		for data in frappe.get_all('Work Order Item', fields=["item_code as raw_material_code",
@@ -102,7 +101,7 @@ def get_work_orders(doctype, txt, searchfield, start, page_len, filters):
 		cond += " and bom_no = '%s'" % filters.get('bom_no')
 
 	return frappe.db.sql("""select name from `tabWork Order`
-		where name like %(name)s and {0} and produced_qty > qty and docstatus = 1
+		where name like %(name)s and {0} and completed_qty > qty and docstatus = 1
 		order by name limit {1}, {2}""".format(cond, start, page_len),{
 			'name': "%%%s%%" % txt
 		}, as_list=1)

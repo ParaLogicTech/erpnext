@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_guest_to_view": 1,
  "allow_rename": 1,
  "autoname": "prompt",
@@ -85,9 +86,9 @@
    "options": "Chapter Member"
   }
  ],
- "has_web_view": 1,
  "is_published_field": "published",
- "modified": "2020-03-03 15:42:22.750918",
+ "links": [],
+ "modified": "2024-03-31 11:23:40.993746",
  "modified_by": "Administrator",
  "module": "Non Profit",
  "name": "Chapter",
@@ -112,5 +113,6 @@
  "route": "chapters",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

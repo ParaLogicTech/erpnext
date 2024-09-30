@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "naming_series:",
  "creation": "2017-10-23 16:58:44.424309",
  "doctype": "DocType",
@@ -180,10 +181,12 @@
   }
  ],
  "is_submittable": 1,
- "modified": "2021-11-03 13:09:21.960681",
+ "links": [],
+ "modified": "2024-03-19 18:06:35.406024",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Asset Maintenance Log",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -196,7 +199,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Manufacturing User",
+   "role": "Quality Manager",
    "share": 1,
    "submit": 1,
    "write": 1
@@ -204,6 +207,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1,
  "track_seen": 1
 }

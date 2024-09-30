@@ -3,23 +3,23 @@
 
 frappe.provide("erpnext.stock");
 
-erpnext.stock.StockController = frappe.ui.form.Controller.extend({
-	onload: function() {
+erpnext.stock.StockController = class StockController extends frappe.ui.form.Controller {
+	setup() {
 		// warehouse query if company
 		if (this.frm.fields_dict.company) {
 			this.setup_warehouse_query();
 		}
-	},
+	}
 
-	setup_warehouse_query: function() {
+	setup_warehouse_query() {
 		var me = this;
 		erpnext.queries.setup_queries(this.frm, "Warehouse", function(fieldname) {
 			return erpnext.queries.warehouse(me.frm.doc,
 				me.get_warehouse_filters && me.get_warehouse_filters.bind(me, fieldname));
 		});
-	},
+	}
 
-	setup_posting_date_time_check: function() {
+	setup_posting_date_time_check() {
 		// make posting date default and read only unless explictly checked
 		frappe.ui.form.on(this.frm.doctype, 'set_posting_date_and_time_read_only', function(frm) {
 			if(frm.doc.docstatus == 0 && frm.doc.set_posting_time) {
@@ -47,9 +47,9 @@ erpnext.stock.StockController = frappe.ui.form.Controller.extend({
 				frm.trigger('set_posting_date_and_time_read_only');
 			}
 		});
-	},
+	}
 
-	show_stock_ledger: function() {
+	show_stock_ledger() {
 		var me = this;
 		if (this.frm.doc.docstatus === 1) {
 			this.frm.add_custom_button(__("Stock Ledger"), function() {
@@ -58,14 +58,14 @@ erpnext.stock.StockController = frappe.ui.form.Controller.extend({
 					from_date: me.frm.doc.posting_date,
 					to_date: me.frm.doc.posting_date,
 					company: me.frm.doc.company,
-					group_by: "Ungrouped"
+					group_by: ""
 				};
 				frappe.set_route("query-report", "Stock Ledger");
 			}, __("View"));
 		}
-	},
+	}
 
-	show_general_ledger: function() {
+	show_general_ledger() {
 		var me = this;
 		if (this.frm.doc.docstatus === 1) {
 			this.frm.add_custom_button(__('Accounting Ledger'), function() {
@@ -79,9 +79,9 @@ erpnext.stock.StockController = frappe.ui.form.Controller.extend({
 				frappe.set_route("query-report", "General Ledger");
 			}, __("View"));
 		}
-	},
+	}
 
-	get_applicable_items: function(items_type) {
+	get_applicable_items(items_type) {
 		var me = this;
 
 		var item_groups = [{
@@ -172,9 +172,9 @@ erpnext.stock.StockController = frappe.ui.form.Controller.extend({
 		});
 
 		dialog.show();
-	},
+	}
 
-	get_project_template_items: function(items_type) {
+	get_project_template_items(items_type) {
 		var me = this;
 		var dialog = new frappe.ui.Dialog({
 			title: __("Get Project Template Items"),
@@ -265,19 +265,125 @@ erpnext.stock.StockController = frappe.ui.form.Controller.extend({
 		});
 
 		dialog.show();
-	},
+	}
 
-	add_get_applicable_items_button: function(items_type) {
+	add_get_applicable_items_button(items_type) {
 		var me = this;
 		me.frm.add_custom_button(__("Applicable Items"), function() {
 			me.get_applicable_items(items_type);
 		}, __("Get Items From"));
-	},
+	}
 
-	add_get_project_template_items_button: function(items_type) {
+	add_get_project_template_items_button(items_type) {
 		var me = this;
 		me.frm.add_custom_button(__("Project Template"), function() {
 			me.get_project_template_items(items_type);
 		}, __("Get Items From"));
-	},
-});
+	}
+
+	get_items_from_packing_slip(target_doctype, packing_slip_id) {
+		let method;
+		if (target_doctype == "Delivery Note") {
+			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_delivery_note";
+		} else if (target_doctype == "Sales Invoice") {
+			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_sales_invoice";
+		} else if (target_doctype == "Packing Slip") {
+			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_target_packing_slip";
+		} else if (target_doctype == "Stock Entry") {
+			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_stock_entry";
+		} else {
+			return;
+		}
+
+		if (packing_slip_id) {
+			erpnext.utils.remove_empty_first_row(this.frm, "items");
+
+			return frappe.call({
+				method: method,
+				args: {
+					source_name: packing_slip_id,
+					target_doc: this.frm.doc,
+				},
+				freeze: true,
+				callback: (r) => {
+					if (r.message) {
+						frappe.model.sync(r.message);
+						this.frm.refresh_fields();
+					}
+				}
+			});
+		} else {
+			let columns = ['customer', 'total_stock_qty', 'packed_items', 'posting_date'];
+			if (target_doctype == "Packing Slip") {
+				columns.push('package_type');
+			}
+
+			erpnext.utils.map_current_doc({
+				method: method,
+				source_doctype: "Packing Slip",
+				target: this.frm,
+				setters: [
+					{
+						fieldname: 'customer',
+						label: __('Customer'),
+						fieldtype: 'Link',
+						options: 'Customer',
+						default: this.frm.doc.customer || undefined,
+						depends_on: "eval:!doc.no_customer",
+						get_query: () => erpnext.queries.customer(),
+					},
+					{
+						fieldname: 'warehouse',
+						label: __('Warehouse'),
+						fieldtype: 'Link',
+						options: 'Warehouse',
+						default: this.frm.doc.set_warehouse || undefined,
+						get_query: () => erpnext.queries.warehouse(this.frm.doc),
+					},
+					{
+						fieldname: 'sales_order',
+						label: __('Sales Order'),
+						fieldtype: 'Link',
+						options: 'Sales Order',
+						get_query: () => {
+							return {
+								filters: {
+									docstatus: 1
+								}
+							}
+						}
+					},
+					{
+						fieldname: 'item_code',
+						label: __('Has Item'),
+						fieldtype: 'Link',
+						options: 'Item',
+						get_query: () => erpnext.queries.item(),
+					},
+					{
+						fieldname: 'no_customer',
+						label: __('Without Customer'),
+						fieldtype: 'Check',
+						options: 'Item',
+						get_query: () => erpnext.queries.item(),
+					},
+				],
+				columns: columns,
+				get_query: () => {
+					let filters = {
+						company: this.frm.doc.company,
+					};
+
+					if (this.frm.doc.customer) {
+						filters["customer"] = this.frm.doc.customer;
+					}
+
+					return {
+						query: "erpnext.controllers.queries.get_packing_slips_to_be_delivered",
+						filters: filters
+					};
+				},
+			});
+		}
+	}
+};

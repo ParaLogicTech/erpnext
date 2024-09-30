@@ -1,19 +1,20 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
-from frappe.utils import cint, flt, cstr, comma_or
-from frappe import _, throw
+from frappe.utils import cint, flt, cstr
+from frappe import _
 from erpnext.stock.get_item_details import get_bin_details
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_conversion_factor, get_target_warehouse_validation
+from erpnext.stock.get_item_details import get_target_warehouse_validation, item_has_product_bundle
 from erpnext.stock.doctype.batch.batch import get_batch_qty, auto_select_and_split_batches
-from erpnext.setup.doctype.sales_person.sales_person import get_sales_person_commission_details
+from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
+from erpnext.controllers.transaction_controller import TransactionController
 
-from erpnext.controllers.stock_controller import StockController
 
-class SellingController(StockController):
+class SellingController(TransactionController):
+	selling_or_buying = "selling"
+
 	def __setup__(self):
 		if hasattr(self, "taxes"):
 			self.flags.print_taxes_with_zero_amount = cint(frappe.get_cached_value("Print Settings", None,
@@ -34,6 +35,9 @@ class SellingController(StockController):
 		super(SellingController, self).onload()
 
 		if self.doctype in ("Sales Order", "Delivery Note", "Sales Invoice"):
+			self.set_onload("is_internal_customer",
+				frappe.get_cached_value("Customer", self.get("bill_to") or self.customer, "is_internal_customer"))
+
 			for item in self.get("items"):
 				item.update(get_bin_details(item.item_code, item.warehouse))
 				if item.meta.has_field('actual_batch_qty'):
@@ -41,6 +45,9 @@ class SellingController(StockController):
 						item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
 					else:
 						item.actual_batch_qty = 0
+
+		if self.docstatus == 0 and self.meta.get_field("currency"):
+			self.calculate_taxes_and_totals()
 
 	def validate(self):
 		super(SellingController, self).validate()
@@ -58,6 +65,17 @@ class SellingController(StockController):
 	def before_update_after_submit(self):
 		self.calculate_sales_team_contribution(self.get('base_net_total'))
 
+	def get_party(self):
+		party = self.get("customer")
+		party_name = self.get("customer_name") if party else None
+		return "Customer", party, party_name
+
+	def get_billing_party(self):
+		if self.get("bill_to"):
+			return "Customer", self.get("bill_to"), self.get("bill_to_name")
+
+		return super().get_billing_party()
+
 	def set_missing_values(self, for_validate=False):
 		super(SellingController, self).set_missing_values(for_validate)
 
@@ -66,53 +84,60 @@ class SellingController(StockController):
 		self.set_sales_person_details()
 		self.set_price_list_and_item_details(for_validate=for_validate)
 
+	def update_status_on_cancel(self):
+		to_update = {}
+		if self.meta.has_field("status"):
+			to_update["status"] = "Cancelled"
+
+		not_applicable_fields = ["billing_status", "delivery_status", "packing_status", "installation_status"]
+		for f in not_applicable_fields:
+			if self.meta.has_field(f):
+				to_update[f] = "Not Applicable"
+
+		if to_update:
+			self.db_set(to_update)
+
 	def set_missing_lead_customer_details(self):
-		from erpnext.controllers.accounts_controller import force_party_fields
+		party_type, party = None, None
 
-		customer, lead = None, None
-		if getattr(self, "customer", None):
-			customer = self.customer
-		elif self.doctype == "Opportunity" and self.party_name:
-			if self.opportunity_from == "Customer":
-				customer = self.party_name
-			else:
-				lead = self.party_name
+		if self.get("customer"):
+			party_type = "Customer"
+			party = self.customer
 		elif self.doctype == "Quotation" and self.party_name:
-			if self.quotation_to == "Customer":
-				customer = self.party_name
-			else:
-				lead = self.party_name
+			party_type = self.quotation_to
+			party = self.party_name
 
-		if customer:
+		if party_type and party:
 			from erpnext.accounts.party import _get_party_details
-			fetch_payment_terms_template = False
-			if (self.get("__islocal") or
-				self.company != frappe.db.get_value(self.doctype, self.name, 'company')):
-				fetch_payment_terms_template = True
 
-			party_details = _get_party_details(customer,
+			party_details = _get_party_details(
+				party=party,
+				party_type=party_type,
 				bill_to=self.get("bill_to"),
 				ignore_permissions=self.flags.ignore_permissions,
 				doctype=self.doctype,
 				company=self.company,
 				project=self.get('project'),
-				fetch_payment_terms_template=fetch_payment_terms_template,
-				has_stin=self.get("has_stin"),
-				party_address=self.customer_address,
-				shipping_address=self.shipping_address_name,
+				payment_terms_template=self.get('payment_terms_template'),
+				party_address=self.get("customer_address"),
+				shipping_address=self.get("shipping_address_name"),
+				company_address=self.get("company_address"),
 				contact_person=self.get('contact_person'),
+				has_stin=self.get("has_stin"),
 				account=self.get('debit_to'),
-				posting_date=self.get('posting_date') or self.get('transaction_date')
+				cost_center=self.get('cost_center'),
+				posting_date=self.get('posting_date') or self.get('transaction_date'),
+				delivery_date=self.get('delivery_date'),
+				price_list=self.get('selling_price_list'),
+				currency=self.get("currency"),
+				transaction_type=self.get("transaction_type"),
+				pos_profile=self.get("pos_profile"),
 			)
-			if not self.meta.get_field("sales_team") and "sales_team" in party_details:
-				party_details.pop("sales_team")
-			self.update_if_missing(party_details, force_fields=force_party_fields)
 
-		elif lead:
-			from erpnext.crm.doctype.lead.lead import get_lead_details
-			self.update_if_missing(get_lead_details(lead,
-				posting_date=self.get('transaction_date') or self.get('posting_date'),
-				company=self.company), force_fields=force_party_fields)
+			if not self.meta.get_field("sales_team"):
+				party_details.pop("sales_team", None)
+
+			self.update_if_missing(party_details, force_fields=self.force_party_fields)
 
 	def set_sales_person_details(self):
 		sales_team = self.get("sales_team") or []
@@ -122,6 +147,11 @@ class SellingController(StockController):
 	def set_price_list_and_item_details(self, for_validate=False):
 		self.set_price_list_currency("Selling")
 		self.set_missing_item_details(for_validate=for_validate)
+
+	def calculate_taxes_and_totals(self):
+		super().calculate_taxes_and_totals()
+		self.calculate_commission()
+		self.calculate_sales_team_contribution(self.get('base_net_total'))
 
 	def remove_shipping_charge(self):
 		if self.shipping_rule:
@@ -136,23 +166,11 @@ class SellingController(StockController):
 				self.get("taxes").remove(existing_shipping_charge[-1])
 				self.calculate_taxes_and_totals()
 
-	def set_total_in_words(self):
-		from frappe.utils import money_in_words
-
-		if self.meta.get_field("base_in_words"):
-			base_amount = abs(self.base_grand_total
-				if self.is_rounded_total_disabled() else self.base_rounded_total)
-			self.base_in_words = money_in_words(base_amount, self.company_currency)
-
-		if self.meta.get_field("in_words"):
-			amount = abs(self.grand_total if self.is_rounded_total_disabled() else self.rounded_total)
-			self.in_words = money_in_words(amount, self.currency)
-
 	def calculate_commission(self):
 		if self.meta.get_field("commission_rate"):
 			self.round_floats_in(self, ["base_net_total", "commission_rate"])
 			if self.commission_rate > 100.0:
-				throw(_("Commission rate cannot be greater than 100"))
+				frappe.throw(_("Commission rate cannot be greater than 100"))
 
 			self.total_commission = flt(self.base_net_total * self.commission_rate / 100.0,
 				self.precision("total_commission"))
@@ -168,9 +186,9 @@ class SellingController(StockController):
 	def set_qty_as_per_stock_uom(self):
 		for d in self.get("items"):
 			if d.meta.get_field("stock_qty"):
-				if not d.conversion_factor:
+				if not d.conversion_factor and d.item_code:
 					frappe.throw(_("Row {0}: Conversion Factor is mandatory").format(d.idx))
-				d.stock_qty = flt(d.qty) * flt(d.conversion_factor)
+				d.stock_qty = flt(flt(d.qty) * flt(d.conversion_factor), 6)
 
 	def set_alt_uom_qty(self):
 		for d in self.get("items"):
@@ -215,7 +233,7 @@ class SellingController(StockController):
 			if d.qty is None:
 				frappe.throw(_("Row {0}: Qty is mandatory").format(d.idx))
 
-			if self.has_product_bundle(d.item_code):
+			if item_has_product_bundle(d.item_code):
 				for p in self.get("packed_items"):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
@@ -225,6 +243,7 @@ class SellingController(StockController):
 							'qty': flt(p.qty),
 							'uom': p.uom,
 							'batch_no': cstr(p.batch_no).strip(),
+							'packing_slip': p.get("packing_slip"),
 							'serial_no': cstr(p.serial_no).strip(),
 							'name': d.name,
 							'target_warehouse': p.target_warehouse,
@@ -242,6 +261,7 @@ class SellingController(StockController):
 					'stock_uom': d.stock_uom,
 					'conversion_factor': d.conversion_factor,
 					'batch_no': cstr(d.get("batch_no")).strip(),
+					'packing_slip': d.get("packing_slip"),
 					'serial_no': cstr(d.get("serial_no")).strip(),
 					'name': d.name,
 					'target_warehouse': d.target_warehouse,
@@ -254,19 +274,16 @@ class SellingController(StockController):
 				}))
 		return il
 
+	@frappe.whitelist()
 	def auto_select_batches(self):
 		if (self.doctype == "Delivery Note" or self.get('update_stock')) and not self.get('is_return'):
-			auto_select_and_split_batches(self, 'warehouse')
-
-	def has_product_bundle(self, item_code):
-		return frappe.db.sql("""select name from `tabProduct Bundle`
-			where new_item_code=%s and docstatus != 2""", item_code)
-
-	def is_product_bundle_with_stock_item(self, item_code):
-		"""Returns true if product bundle has stock item"""
-		ret = len(frappe.db.sql("""select i.name from tabItem i, `tabProduct Bundle` pb, `tabProduct Bundle Item` pbi
-			where pb.new_item_code = %s and pbi.parent = pb.name and i.name = pbi.item_code and i.is_stock_item = 1""", item_code))
-		return ret
+			auto_select_and_split_batches(self, 'warehouse', additional_group_fields=[
+				"sales_order", "sales_order_item",
+				"delivery_note", "delivery_note_item",
+				"sales_invoice", "sales_invoice_item",
+				"quotation",
+			])
+			self.run_method("calculate_taxes_and_totals")
 
 	def get_already_delivered_qty(self, current_docname, so, sales_order_item):
 		delivered_via_dn = frappe.db.sql("""select sum(qty) from `tabDelivery Note Item`
@@ -327,10 +344,7 @@ class SellingController(StockController):
 
 		sl_entries = []
 		for d in self.get_item_list():
-			if frappe.get_cached_value("Item", d.item_code, "is_stock_item") == 1 and flt(d.qty):
-				if flt(d.conversion_factor)==0.0:
-					d.conversion_factor = get_conversion_factor(d.item_code, d.uom).get("conversion_factor") or 1.0
-
+			if frappe.db.get_value("Item", d.item_code, "is_stock_item", cache=1) and flt(d.qty):
 				return_rate = 0
 				return_dependency = []
 
@@ -366,7 +380,8 @@ class SellingController(StockController):
 					or (cint(self.is_return) and self.docstatus==2)):
 						sl_entries.append(self.get_sl_entries(d, {
 							"actual_qty": -1*flt(d.qty),
-							"incoming_rate": return_rate
+							"incoming_rate": return_rate,
+							"is_transfer": cint(bool(d.get("target_warehouse"))),
 						}))
 
 				target_warehouse_dependency = []
@@ -387,7 +402,8 @@ class SellingController(StockController):
 					target_warehouse_sle = self.get_sl_entries(d, {
 						"actual_qty": flt(d.qty),
 						"warehouse": d.target_warehouse,
-						"dependencies": target_warehouse_dependency
+						"dependencies": target_warehouse_dependency,
+						"is_transfer": 1,
 					})
 
 					if self.docstatus == 1:
@@ -419,9 +435,37 @@ class SellingController(StockController):
 						sl_entries.append(self.get_sl_entries(d, {
 							"actual_qty": -1*flt(d.qty),
 							"incoming_rate": return_rate,
-							"dependencies": return_dependency
+							"dependencies": return_dependency,
+							"is_transfer": cint(bool(d.get("target_warehouse"))),
 						}))
 		self.make_sl_entries(sl_entries)
+
+	def remove_partial_packing_slip_for_return(self):
+		if not self.get("is_return"):
+			return
+
+		packing_slip_map = {}
+		for d in self.get("items"):
+			if d.get("packing_slip") and d.get("packing_slip_item"):
+				packing_slip_map.setdefault(d.packing_slip, {}).setdefault(d.packing_slip_item, 0)
+				packing_slip_map[d.packing_slip][d.packing_slip_item] += -1 * d.qty
+
+		to_remove = []
+		for packing_slip, returned_qty_map in packing_slip_map.items():
+			packed_qty_map = dict(frappe.db.sql("""
+				select name, qty
+				from `tabPacking Slip Item`
+				where parent = %s and docstatus = 1 and qty != 0
+			""", packing_slip))
+
+			if returned_qty_map != packed_qty_map:
+				to_remove.append(packing_slip)
+
+		if to_remove:
+			for d in self.get("items"):
+				if d.get("packing_slip") and d.packing_slip in to_remove:
+					d.packing_slip = None
+					d.packing_slip_item = None
 
 	def set_po_nos(self):
 		if self.doctype in ("Delivery Note", "Sales Invoice") and hasattr(self, "items"):
@@ -435,6 +479,8 @@ class SellingController(StockController):
 				""", [sales_orders])
 				if po_nos:
 					self.po_no = ', '.join(po_nos)
+					if len(self.po_no) > 140:
+						self.po_no = self.po_no[:137] + "..."
 
 	def set_gross_profit(self):
 		if self.doctype == "Sales Order":
@@ -464,7 +510,7 @@ class SellingController(StockController):
 				e = [d.item_code, d.description, d.warehouse, '']
 				f = [d.item_code, d.description]
 
-			if frappe.db.get_value("Item", d.item_code, "is_stock_item") == 1:
+			if frappe.get_cached_value("Item", d.item_code, "is_stock_item"):
 				if e in check_list:
 					frappe.throw(_("Note: Item {0} entered multiple times").format(d.item_code))
 				else:
@@ -488,7 +534,8 @@ class SellingController(StockController):
 					validate_end_of_life(d.item_code, end_of_life=item.end_of_life, disabled=item.disabled)
 
 				if cint(item.has_variants):
-					throw(_("Item {0} is a template, please select one of its variants").format(item.name))
+					frappe.throw(_("Row #{0}: {1} is a template Item, please select one of its variants")
+						.format(d.idx, frappe.bold(d.item_code)))
 
 	def validate_target_warehouse(self):
 		if frappe.get_meta(self.doctype + " Item").has_field("target_warehouse"):

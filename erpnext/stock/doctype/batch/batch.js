@@ -23,6 +23,14 @@ frappe.ui.form.on('Batch', {
 				};
 				frappe.set_route("query-report", "Stock Ledger");
 			});
+			frm.add_custom_button(__("View Balance"), () => {
+				frappe.route_options = {
+					batch_no: frm.doc.name,
+					from_date: frappe.defaults.get_user_default("year_start_date"),
+					to_date: frappe.defaults.get_user_default("year_end_date")
+				};
+				frappe.set_route("query-report", "Stock Balance");
+			});
 			frm.trigger('make_dashboard');
 		}
 	},
@@ -49,7 +57,7 @@ frappe.ui.form.on('Batch', {
 						return;
 					}
 
-					var section = frm.dashboard.add_section(`<h5 style="margin-top: 0px;">
+					var section = frm.dashboard.add_section(`<h5 style="margin-top: var(--margin-md);">
 						${ __("Stock Levels") }</a></h5>`);
 
 					// sort by qty
@@ -60,7 +68,7 @@ frappe.ui.form.on('Batch', {
 					// show
 					(r.message || []).forEach(function(d) {
 						if(d.qty > 0) {
-							$(`<div class='row' style='margin-bottom: 10px;'>
+							$(`<div class='row' style='margin-bottom: 5px;'>
 								<div class='col-sm-3 small' style='padding-top: 3px;'>${d.warehouse}</div>
 								<div class='col-sm-3 small text-right' style='padding-top: 3px;'>${d.qty}</div>
 								<div class='col-sm-6'>
@@ -105,7 +113,7 @@ frappe.ui.form.on('Batch', {
 									},
 									callback: (r) => {
 										frappe.show_alert(__('Stock Entry {0} created',
-											['<a href="#Form/Stock Entry/'+r.message.name+'">' + r.message.name+ '</a>']));
+											['<a href="/app/stock-entry/'+r.message.name+'">' + r.message.name+ '</a>']));
 										frm.refresh();
 									},
 								});

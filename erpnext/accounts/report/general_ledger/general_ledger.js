@@ -9,7 +9,27 @@ frappe.query_reports["General Ledger"] = {
 			"fieldtype": "Link",
 			"options": "Company",
 			"default": frappe.defaults.get_user_default("Company"),
-			"bold": 1
+			"bold": 1,
+			on_change: function () {
+				let account = frappe.query_report.get_filter_value("account");
+				let company = frappe.query_report.get_filter_value("company");
+				if (!account || !company) {
+					return;
+				}
+
+				frappe.call({
+					method: "erpnext.accounts.doctype.journal_entry.journal_entry.get_other_company_account",
+					args: {
+						source_account: account,
+						target_company: company,
+					},
+					callback: (r) => {
+						if (r.message) {
+							frappe.query_report.set_filter_value("account", r.message);
+						}
+					}
+				})
+			},
 		},
 		{
 			"fieldname":"finance_book",
@@ -38,13 +58,13 @@ frappe.query_reports["General Ledger"] = {
 			"label": __("Group by"),
 			"fieldtype": "Select",
 			"options": [
-				__("Ungrouped"),
+				"",
 				__("Group by Voucher"),
 				__("Group by Account"),
 				__("Group by Party"),
 				__("Group by Sales Person"),
 			],
-			"default": __("Ungrouped")
+			"default": ""
 		},
 		{
 			"fieldname": "presentation_currency",
@@ -123,7 +143,7 @@ frappe.query_reports["General Ledger"] = {
 			"label": __("Voucher No"),
 			"fieldtype": "Data",
 			on_change: function() {
-				frappe.query_report.set_filter_value('group_by', __("Ungrouped"));
+				frappe.query_report.set_filter_value('group_by', "");
 				frappe.query_report.set_filter_value('merge_similar_entries', 0);
 			}
 		},

@@ -9,7 +9,6 @@ from frappe.model.document import Document
 from frappe.utils import time_diff_in_hours, now_datetime, getdate, get_weekdays, add_to_date, get_time, get_datetime
 from datetime import datetime
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils.user import is_website_user
 from erpnext.support.doctype.service_level_agreement.service_level_agreement import get_active_service_level_agreement_for
 from frappe.email.inbox import link_communication_to_document
 from frappe.contacts.doctype.contact.contact import get_contact_details
@@ -340,42 +339,6 @@ def set_service_level_agreement_variance(issue=None):
 				frappe.db.set_value(dt="Issue", dn=doc.name, field="agreement_fulfilled", val="Failed", update_modified=False)
 
 
-def get_list_context(context=None):
-	return {
-		"title": _("Issues"),
-		"get_list": get_issue_list,
-		"row_template": "templates/includes/issue_row.html",
-		"show_sidebar": True,
-		"show_search": True,
-		'no_breadcrumbs': True
-	}
-
-
-def get_issue_list(doctype, txt, filters, limit_start, limit_page_length=20, order_by=None):
-	from frappe.www.list import get_list
-
-	user = frappe.session.user
-	contact = frappe.db.get_value('Contact', {'user': user}, 'name')
-	customer = None
-
-	if contact:
-		contact_doc = frappe.get_doc('Contact', contact)
-		customer = contact_doc.get_link_for('Customer')
-
-	ignore_permissions = False
-	if is_website_user():
-		if not filters: filters = {}
-
-		if customer:
-			filters["customer"] = customer
-		else:
-			filters["raised_by"] = user
-
-		ignore_permissions = True
-
-	return get_list(doctype, txt, filters, limit_start, limit_page_length, ignore_permissions=ignore_permissions)
-
-
 @frappe.whitelist()
 def set_multiple_status(names, status):
 	names = json.loads(names)
@@ -406,16 +369,9 @@ def auto_close_tickets():
 			doc.save()
 
 
-def has_website_permission(doc, ptype, user, verbose=False):
-	from erpnext.controllers.website_list_for_contact import has_website_permission
-	permission_based_on_customer = has_website_permission(doc, ptype, user, verbose)
-
-	return permission_based_on_customer or doc.raised_by == user
-
-
 def update_issue(contact, method):
 	"""Called when Contact is deleted"""
-	frappe.db.sql("""UPDATE `tabIssue` set contact='' where contact=%s""", contact.name)
+	frappe.db.sql("""UPDATE `tabIssue` set contact_person = '' where contact_person = %s""", contact.name)
 
 
 def get_holidays(holiday_list_name):

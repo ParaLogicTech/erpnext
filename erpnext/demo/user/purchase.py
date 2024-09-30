@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 
 import frappe, random, json, erpnext
 from frappe.utils.make_random import how_many, get_random
@@ -131,7 +130,7 @@ def make_subcontract():
 	if item_code:
 		# make sub-contract PO
 		po = frappe.new_doc("Purchase Order")
-		po.is_subcontracted = "Yes"
+		po.is_subcontracted = 1
 		po.supplier = get_random("Supplier")
 		po.transaction_date = frappe.flags.current_date # added
 		po.schedule_date = frappe.utils.add_days(frappe.flags.current_date, 7)

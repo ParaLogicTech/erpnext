@@ -25,6 +25,10 @@ def validate_fbr_pos_invoice(invoice):
 	if not invoice.meta.has_field('is_fbr_pos_invoice'):
 		return
 
+	# For manual editing
+	if invoice.get("fbr_pos_invoice_no") and invoice.amended_from:
+		return
+
 	# Reset values for draft
 	if invoice.docstatus == 0:
 		reset_values_for_draft_invoice(invoice)
@@ -107,9 +111,17 @@ def reset_values_for_not_fbr_pos(invoice):
 def before_cancel_fbr_pos_invoice(invoice):
 	if not invoice.meta.has_field('is_fbr_pos_invoice'):
 		return
+
 	if cint(invoice.get('is_fbr_pos_invoice')) and invoice.get('fbr_pos_invoice_no'):
-		if frappe.conf.get('allow_fbr_pos_cancellation') and not check_fbr_pos_enabled() and frappe.conf.get("developer_mode"):
-			# Allow cancelling ONLY if explicity allowed to cancel and FBR POS not enabled and in developer mode
+		# Allow cancelling ONLY if explicity allowed to cancel and FBR POS not enabled and in developer mode
+		if (
+			invoice.flags.allow_fbr_pos_cancellation
+			or (
+				frappe.conf.get('allow_fbr_pos_cancellation')
+				and not check_fbr_pos_enabled()
+				and frappe.conf.get("developer_mode")
+			)
+		):
 			pass
 		else:
 			frappe.throw(_("Cannot cancel FBR POS Invoice because it is already posted. Please make a Credit Note instead."))
@@ -117,6 +129,10 @@ def before_cancel_fbr_pos_invoice(invoice):
 
 def on_submit_fbr_pos_invoice(invoice):
 	if not check_fbr_pos_enabled():
+		return
+
+	# For manual editing
+	if invoice.get("fbr_pos_invoice_no") and invoice.amended_from:
 		return
 
 	ignore_connection_error = cint(frappe.get_cached_value("FBR POS Settings", None, "ignore_connection_error_on_submit"))
@@ -150,7 +166,8 @@ def post_fbr_pos_invoices_without_number():
 		except FBRPOSRequestError:
 			pass
 		except Exception:
-			frappe.log_error(frappe.as_unicode(frappe.get_traceback()), get_error_title(invoice.name))
+			frappe.log_error(message=frappe.as_unicode(frappe.get_traceback()), title=get_error_title(invoice.name),
+				reference_doctype="Sales Invoice", reference_name=name)
 
 
 def calculate_fbr_pos_values(invoice):
@@ -376,9 +393,9 @@ def get_item_invoice_type(item, invoice, as_str=False):
 	})
 
 	if cint(invoice.is_return):
-		key = 'CREDIT_3RD' if cint(item.apply_discount_after_taxes) else 'CREDIT'
+		key = 'CREDIT_3RD' if cint(item.apply_taxes_on_retail) else 'CREDIT'
 	else:
-		key = 'NEW_3RD' if cint(item.apply_discount_after_taxes) else 'NEW'
+		key = 'NEW_3RD' if cint(item.apply_taxes_on_retail) else 'NEW'
 
 	if as_str:
 		return key

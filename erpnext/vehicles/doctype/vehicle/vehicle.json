@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2016-09-03 03:33:27.680331",
@@ -752,10 +753,12 @@
   }
  ],
  "image_field": "image",
- "modified": "2023-05-10 12:33:55.131459",
+ "links": [],
+ "modified": "2023-12-12 17:25:17.082516",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -847,6 +850,24 @@
    "report": 1,
    "role": "Purchase User",
    "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User (Read Only)",
+   "share": 1
   }
  ],
  "quick_entry": 1,
@@ -855,6 +876,7 @@
  "show_preview_popup": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "item_name",
  "track_changes": 1,
  "track_seen": 1

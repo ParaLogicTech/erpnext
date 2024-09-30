@@ -1,0 +1,45 @@
+{
+ "aggregate_function_based_on": "allocated_amount",
+ "based_on": "",
+ "chart_name": "Top Sales Persons",
+ "chart_type": "Group By",
+ "color": "#761ACB",
+ "creation": "2022-12-17 13:36:32.235974",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart",
+ "document_type": "Sales Team",
+ "dynamic_filters_json": "[]",
+ "filters_json": "[[\"Sales Invoice\",\"docstatus\",\"=\",\"1\",false],[\"Sales Invoice\",\"is_opening\",\"=\",\"No\",false]]",
+ "group_by_based_on": "sales_person",
+ "group_by_type": "Sum",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "last_synced_on": "2022-12-18 14:36:07.625202",
+ "modified": "2022-12-18 14:45:21.475366",
+ "modified_by": "Administrator",
+ "module": "Selling",
+ "name": "Top Sales Persons",
+ "number_of_groups": 10,
+ "owner": "Administrator",
+ "parent_document_type": "Sales Invoice",
+ "roles": [
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Sales User (Read Only)"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ],
+ "source": "",
+ "time_interval": "Yearly",
+ "timeseries": 0,
+ "timespan": "Last Year",
+ "type": "Bar",
+ "use_report_chart": 0,
+ "value_based_on": "",
+ "y_axis": []
+}

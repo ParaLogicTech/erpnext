@@ -2,7 +2,6 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -12,6 +11,7 @@ from erpnext.stock.report.item_prices.item_prices import _set_item_pl_rate
 
 
 class BulkPriceUpdate(Document):
+	@frappe.whitelist()
 	def update_prices(self):
 		self._validate_mandatory()
 		self.validate_rows()
@@ -55,6 +55,7 @@ class BulkPriceUpdate(Document):
 
 				visited.add(key)
 
+	@frappe.whitelist()
 	def get_current_rates(self, row=None, unset_missing_items=True):
 		missing_item_codes = []
 
@@ -92,7 +93,7 @@ class BulkPriceUpdate(Document):
 			'price_list': price_list
 		})
 
-		price_list_rate = get_price_list_rate_for(price_args, d.get('item_code'))
+		price_list_rate = get_price_list_rate_for(d.item_code, price_list, price_args)
 		return price_list_rate
 
 	def get_price_list(self, d):

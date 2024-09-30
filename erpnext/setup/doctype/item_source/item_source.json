@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:item_source_name",
@@ -9,6 +10,7 @@
  "field_order": [
   "item_source_name",
   "item_override_settings_section",
+  "stock_uom",
   "item_naming_by",
   "item_naming_series",
   "column_break_6",
@@ -17,6 +19,12 @@
   "column_break_9",
   "has_serial_no",
   "has_batch_no",
+  "column_break_11",
+  "is_sales_item",
+  "is_purchase_item",
+  "column_break_14",
+  "is_packaging_material",
+  "is_customer_provided_item",
   "column_break_12",
   "is_vehicle",
   "has_variants"
@@ -42,7 +50,7 @@
    "fieldname": "item_naming_by",
    "fieldtype": "Select",
    "label": "Item Naming By",
-   "options": "\nItem Code\nItem Name\nNaming Series"
+   "options": "\nItem Code\nItem Name\nNaming Series\nSystem Generated"
   },
   {
    "depends_on": "eval:doc.item_naming_by == \"Naming Series\"",
@@ -98,13 +106,53 @@
    "fieldtype": "Select",
    "label": "Has Variants",
    "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "column_break_11",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "is_sales_item",
+   "fieldtype": "Select",
+   "label": "Is Sales Item",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "is_purchase_item",
+   "fieldtype": "Select",
+   "label": "Is Purchase Item",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "column_break_14",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "is_packaging_material",
+   "fieldtype": "Select",
+   "label": "Is Packaging Material",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "is_customer_provided_item",
+   "fieldtype": "Select",
+   "label": "Is Customer Provided Item",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Default Unit of Measure",
+   "options": "UOM"
   }
  ],
  "icon": "fa fa-certificate",
- "modified": "2022-06-14 14:32:13.446005",
+ "links": [],
+ "modified": "2024-02-06 21:19:53.756497",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Item Source",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -149,6 +197,11 @@
   {
    "read": 1,
    "report": 1,
+   "role": "Sales Master (Read Only)"
+  },
+  {
+   "read": 1,
+   "report": 1,
    "role": "Auditor"
   },
   {
@@ -161,5 +214,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
+ "states": [],
  "track_changes": 1
 }

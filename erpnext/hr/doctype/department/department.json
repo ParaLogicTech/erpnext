@@ -1,7 +1,9 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "creation": "2013-02-05 11:48:26",
+ "default_view": "Tree",
  "doctype": "DocType",
  "document_type": "Setup",
  "engine": "InnoDB",
@@ -143,21 +145,34 @@
    "fieldname": "shift_request_approver",
    "fieldtype": "Table",
    "label": "Shift Request Approver",
-   "options": "Department Approver",
-   "show_days": 1,
-   "show_seconds": 1
+   "options": "Department Approver"
   }
  ],
  "icon": "fa fa-sitemap",
  "idx": 1,
  "is_tree": 1,
- "modified": "2022-12-05 11:25:51.180504",
+ "links": [],
+ "modified": "2023-08-30 22:52:30.455168",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Department",
  "nsm_parent_field": "parent_department",
  "owner": "Administrator",
  "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "import": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "set_user_permissions": 1,
+   "share": 1,
+   "write": 1
+  },
   {
    "create": 1,
    "delete": 1,
@@ -182,22 +197,13 @@
    "write": 1
   },
   {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "import": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "HR Manager",
-   "set_user_permissions": 1,
-   "share": 1,
-   "write": 1
+   "role": "Employee",
+   "select": 1
   }
  ],
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
+ "states": [],
  "track_changes": 1
 }

@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
-from __future__ import unicode_literals
 
 import unittest
 
 import frappe
 from frappe.utils import nowdate
 from erpnext.stock.doctype.item.test_item import make_item
-from erpnext.templates.pages.rfq import check_supplier_has_docname_access
 from erpnext.buying.doctype.request_for_quotation.request_for_quotation import make_supplier_quotation
 from erpnext.buying.doctype.request_for_quotation.request_for_quotation import create_supplier_quotation
 
@@ -65,11 +63,6 @@ class TestRequestforQuotation(unittest.TestCase):
 
 		frappe.form_dict = frappe.local("form_dict")
 		frappe.form_dict.name = rfq.name
-
-		self.assertEqual(
-			check_supplier_has_docname_access(supplier_wt_appos[0].get('supplier')),
-			True
-		)
 
 		# reset form_dict
 		frappe.form_dict.name = None

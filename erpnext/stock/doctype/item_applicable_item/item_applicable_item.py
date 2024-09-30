@@ -2,7 +2,6 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import strip_html, cstr
@@ -90,7 +89,7 @@ def append_applicable_items(target_doc, applicable_items, check_duplicate=True, 
 				continue
 
 			# add item
-			trn_item = target_doc.append('items')
+			trn_item = target_doc.append('items', frappe.new_doc(target_doc.meta.get_options("items")))
 			trn_item.item_code = applicable_item.applicable_item_code
 			trn_item.qty = applicable_item.applicable_qty
 			trn_item.uom = applicable_item.applicable_uom

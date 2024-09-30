@@ -113,7 +113,7 @@ frappe.ui.form.on("Company", {
 
 	onload_post_render: function(frm) {
 		if(frm.get_field("delete_company_transactions").$input)
-			frm.get_field("delete_company_transactions").$input.addClass("btn-danger");
+			frm.get_field("delete_company_transactions").$input.removeClass("btn-default").addClass("btn-danger");
 	},
 
 	country: function(frm) {
@@ -151,7 +151,7 @@ frappe.ui.form.on("Company", {
 			},
 			__("Delete all the Transactions for this Company"), __("Delete")
 			);
-			d.get_primary_btn().addClass("btn-danger");
+			d.get_primary_btn().removeClass("btn-primary").addClass("btn-danger");
 		});
 	}
 });

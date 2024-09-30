@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "field:title",
  "creation": "2014-02-21 15:02:51",
@@ -7,10 +8,10 @@
  "field_order": [
   "applicability_section",
   "title",
-  "disable",
   "apply_on",
   "price_or_product_discount",
-  "warehouse",
+  "currency",
+  "disable",
   "column_break_7",
   "items",
   "item_groups",
@@ -29,6 +30,7 @@
   "buying",
   "column_break_11",
   "applicable_for",
+  "column_break_z6ucm",
   "customer",
   "customer_group",
   "territory",
@@ -37,17 +39,17 @@
   "supplier",
   "supplier_group",
   "section_break_19",
+  "valid_from",
+  "valid_upto",
+  "col_break1",
   "min_qty",
   "max_qty",
   "column_break_21",
   "min_amt",
   "max_amt",
-  "section_break_23",
-  "valid_from",
-  "valid_upto",
-  "col_break1",
+  "column_break_rwing",
+  "warehouse",
   "company",
-  "currency",
   "margin",
   "margin_type",
   "column_break_33",
@@ -59,17 +61,21 @@
   "rate",
   "discount_amount",
   "discount_percentage",
+  "column_break_6hwj1",
   "for_price_list",
   "product_discount_scheme_section",
-  "same_item",
   "free_item",
   "free_qty",
+  "same_item",
   "column_break_51",
   "free_item_uom",
   "free_item_rate",
   "section_break_13",
-  "threshold_percentage",
   "priority",
+  "threshold_percentage",
+  "column_break_11xu4",
+  "claim_customer",
+  "claim_customer_name",
   "column_break_66",
   "apply_multiple_pricing_rules",
   "apply_discount_on_rate",
@@ -98,7 +104,7 @@
    "default": "0",
    "fieldname": "disable",
    "fieldtype": "Check",
-   "label": "Disable"
+   "label": "Disabled"
   },
   {
    "default": "Item Code",
@@ -122,8 +128,7 @@
    "fieldname": "warehouse",
    "fieldtype": "Link",
    "label": "Warehouse",
-   "options": "Warehouse",
-   "search_index": 1
+   "options": "Warehouse"
   },
   {
    "fieldname": "column_break_7",
@@ -288,7 +293,7 @@
   {
    "fieldname": "section_break_19",
    "fieldtype": "Section Break",
-   "label": "Quantity and Amount"
+   "label": "Validity"
   },
   {
    "fieldname": "min_qty",
@@ -308,20 +313,15 @@
    "default": "0",
    "fieldname": "min_amt",
    "fieldtype": "Currency",
-   "label": "Min Amt",
+   "label": "Min Amount",
    "options": "currency"
   },
   {
    "default": "0",
    "fieldname": "max_amt",
    "fieldtype": "Currency",
-   "label": "Max Amt",
+   "label": "Max Amount",
    "options": "currency"
-  },
-  {
-   "fieldname": "section_break_23",
-   "fieldtype": "Section Break",
-   "label": "Period Settings"
   },
   {
    "default": "Today",
@@ -332,7 +332,8 @@
   {
    "fieldname": "valid_upto",
    "fieldtype": "Date",
-   "label": "Valid Upto"
+   "label": "Valid Upto",
+   "search_index": 1
   },
   {
    "fieldname": "col_break1",
@@ -549,14 +550,46 @@
    "fieldtype": "Link",
    "label": "Promotional Scheme",
    "options": "Promotional Scheme"
+  },
+  {
+   "fieldname": "column_break_z6ucm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rwing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_11xu4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_6hwj1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "claim_customer",
+   "fieldtype": "Link",
+   "label": "Claim Customer",
+   "options": "Customer"
+  },
+  {
+   "depends_on": "claim_customer",
+   "fetch_from": "claim_customer.customer_name",
+   "fieldname": "claim_customer_name",
+   "fieldtype": "Data",
+   "label": "Claim Customer Name",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-gift",
  "idx": 1,
- "modified": "2020-10-03 14:12:26.964704",
+ "links": [],
+ "modified": "2024-08-25 06:53:01.253504",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Pricing Rule",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -642,5 +675,7 @@
  ],
  "show_name_in_global_search": 1,
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
 }

@@ -1,6 +1,6 @@
-from __future__ import unicode_literals
 import frappe
 from frappe import _
+
 
 def get_data():
 	return {
@@ -16,24 +16,25 @@ def get_data():
 		'internal_links': {
 			'Purchase Order': ['items', 'purchase_order'],
 			'Purchase Receipt': ['items', 'purchase_receipt'],
+			'Work Order': ['items', 'work_order'],
 			'Vehicle': ['items', 'vehicle']
 		},
 		'transactions': [
 			{
 				'label': _('Payment'),
-				'items': ['Payment Entry', 'Journal Entry', 'Payment Request', 'Expense Claim']
+				'items': ['Payment Entry', 'Journal Entry', 'Expense Claim']
+			},
+			{
+				'label': _('Previous Document'),
+				'items': ['Purchase Order', 'Purchase Receipt', 'Work Order']
 			},
 			{
 				'label': _('Reference'),
-				'items': ['Purchase Order', 'Purchase Receipt', 'Asset', 'Landed Cost Voucher']
+				'items': ['Asset', 'Landed Cost Voucher']
 			},
 			{
 				'label': _('Returns'),
 				'items': ['Purchase Invoice']
-			},
-			{
-				'label': _('Subscription'),
-				'items': ['Auto Repeat']
 			},
 		]
 	}

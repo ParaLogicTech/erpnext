@@ -1,27 +1,33 @@
 {
+ "actions": [],
  "creation": "2014-11-27 14:12:07.542534",
  "doctype": "DocType",
  "document_type": "Document",
  "engine": "InnoDB",
  "field_order": [
+  "section_break_6",
+  "overproduction_percentage_for_sales_order",
+  "overproduction_percentage_for_work_order",
+  "under_production_allowance",
+  "backflush_raw_materials_based_on",
+  "update_bom_costs_automatically",
+  "column_break_11",
+  "default_wip_warehouse",
+  "default_fg_warehouse",
+  "default_rm_warehouse",
+  "auto_submit_work_order",
+  "auto_submit_material_transfer_entry",
+  "auto_submit_job_card",
+  "auto_submit_manufacture_entry",
+  "auto_select_batches_in_stock_entry",
+  "process_loss_remaining_by_default",
   "capacity_planning",
   "disable_capacity_planning",
   "allow_overtime",
   "allow_production_on_holidays",
   "column_break_3",
   "capacity_planning_for_days",
-  "mins_between_operations",
-  "section_break_6",
-  "overproduction_percentage_for_sales_order",
-  "overproduction_percentage_for_work_order",
-  "backflush_raw_materials_based_on",
-  "material_consumption",
-  "update_bom_costs_automatically",
-  "column_break_11",
-  "default_wip_warehouse",
-  "default_fg_warehouse",
-  "default_rm_warehouse",
-  "scrap_remaining_by_default"
+  "mins_between_operations"
  ],
  "fields": [
   {
@@ -31,7 +37,7 @@
   },
   {
    "default": "0",
-   "description": "Disables creation of time logs against Work Orders. Operations shall not be tracked against Work Order",
+   "description": "Disables creation of time logs against Work Orders and Job Cards",
    "fieldname": "disable_capacity_planning",
    "fieldtype": "Check",
    "label": "Disable Capacity Planning and Time Tracking"
@@ -82,18 +88,11 @@
    "label": "Overproduction Percentage For Work Order"
   },
   {
-   "default": "BOM",
+   "default": "Material Transferred for Manufacture",
    "fieldname": "backflush_raw_materials_based_on",
    "fieldtype": "Select",
    "label": "Backflush Raw Materials Based On",
    "options": "BOM\nMaterial Transferred for Manufacture"
-  },
-  {
-   "default": "0",
-   "description": "Allow multiple Material Consumption against a Work Order",
-   "fieldname": "material_consumption",
-   "fieldtype": "Check",
-   "label": "Allow Multiple Material Consumption"
   },
   {
    "default": "0",
@@ -126,14 +125,50 @@
   },
   {
    "default": "0",
-   "fieldname": "scrap_remaining_by_default",
+   "fieldname": "process_loss_remaining_by_default",
    "fieldtype": "Check",
-   "label": "Set Scrap Remaining default"
+   "label": "Allow Process Loss Remaining Option"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_submit_work_order",
+   "fieldtype": "Check",
+   "label": "Auto Submit Work Order"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_submit_material_transfer_entry",
+   "fieldtype": "Check",
+   "label": "Auto Submit Material Transfer Entry"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_submit_manufacture_entry",
+   "fieldtype": "Check",
+   "label": "Auto Submit Manufacture Entry"
+  },
+  {
+   "fieldname": "under_production_allowance",
+   "fieldtype": "Percent",
+   "label": "Under Production Allowance (%)"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_select_batches_in_stock_entry",
+   "fieldtype": "Check",
+   "label": "Auto Select Batches in Stock Entry"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_submit_job_card",
+   "fieldtype": "Check",
+   "label": "Auto Submit Job Card"
   }
  ],
  "icon": "icon-wrench",
  "issingle": 1,
- "modified": "2021-03-31 22:27:44.226038",
+ "links": [],
+ "modified": "2024-07-11 00:09:01.740827",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Manufacturing Settings",
@@ -149,5 +184,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

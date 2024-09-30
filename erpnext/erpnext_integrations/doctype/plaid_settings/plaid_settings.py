@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 import json
 from frappe import _
@@ -150,7 +149,7 @@ def sync_transactions(bank, bank_account):
 			frappe.db.set_value("Bank Account", bank_account, "last_integration_date", last_transaction_date)
 
 	except Exception:
-		frappe.log_error(frappe.get_traceback(), _("Plaid transactions sync error"))
+		frappe.log_error(message=frappe.get_traceback(), title=_("Plaid transactions sync error"))
 
 def get_transactions(bank, bank_account=None, start_date=None, end_date=None):
 	access_token = None

@@ -1,20 +1,23 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 import json
 from frappe.utils import cint, getdate, formatdate, today
 from frappe import throw, _
 from frappe.model.document import Document
 
-class OverlapError(frappe.ValidationError): pass
+
+class OverlapError(frappe.ValidationError):
+	pass
+
 
 class HolidayList(Document):
 	def validate(self):
 		self.validate_days()
 		self.total_holidays = len(self.holidays)
 
+	@frappe.whitelist()
 	def get_weekly_off_dates(self):
 		self.validate_values()
 		date_list = self.get_weekly_off_date_list(self.from_date, self.to_date)
@@ -28,7 +31,6 @@ class HolidayList(Document):
 	def validate_values(self):
 		if not self.weekly_off:
 			throw(_("Please select weekly off day"))
-
 
 	def validate_days(self):
 		if self.from_date > self.to_date:
@@ -62,6 +64,7 @@ class HolidayList(Document):
 	def clear_table(self):
 		self.set('holidays', [])
 
+
 @frappe.whitelist()
 def get_events(start, end, filters=None):
 	"""Returns events for Gantt / Calendar view rendering.
@@ -89,15 +92,32 @@ def get_events(start, end, filters=None):
 def is_holiday(holiday_list, date=None):
 	"""Returns true if the given date is a holiday in the given holiday list
 	"""
-	if not date:
-		date = today()
+	def generator():
+		return frappe.db.get_value("Holiday", filters={"parent": holiday_list, "holiday_date": date}, fieldname='description')
+
+	if not holiday_list:
+		return False
 
 	date = getdate(date)
+	return frappe.local_cache("is_holiday", (holiday_list, date), generator)
 
-	if holiday_list:
-		return frappe.db.get_value("Holiday", filters={"parent": holiday_list, "holiday_date": date}, fieldname='description')
-	else:
-		return False
+
+def get_holiday_dates_between(holiday_list, start_date, end_date):
+	if not holiday_list:
+		return []
+
+	start_date = getdate(start_date)
+	end_date = getdate(end_date)
+
+	doc = frappe.get_cached_doc("Holiday List", holiday_list)
+
+	dates = []
+	for d in doc.get("holidays"):
+		holiday_date = getdate(d.holiday_date)
+		if start_date <= holiday_date <= end_date:
+			dates.append(holiday_date)
+
+	return sorted(dates)
 
 
 def get_default_holiday_list(company):

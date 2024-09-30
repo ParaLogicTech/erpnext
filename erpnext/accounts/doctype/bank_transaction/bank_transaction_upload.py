@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 import json
 from frappe.utils import getdate
@@ -56,7 +55,7 @@ def create_bank_entries(columns, data, bank_account):
 			bank_transaction.submit()
 			success += 1
 		except Exception:
-			frappe.log_error(frappe.get_traceback())
+			frappe.log_error(message=frappe.get_traceback())
 			errors += 1
 
 	return {"success": success, "errors": errors}

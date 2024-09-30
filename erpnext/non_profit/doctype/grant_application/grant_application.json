@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_guest_to_view": 1,
  "creation": "2017-09-21 12:02:01.206913",
  "doctype": "DocType",
@@ -177,9 +178,9 @@
    "read_only": 1
   }
  ],
- "has_web_view": 1,
  "is_published_field": "published",
- "modified": "2020-03-03 15:42:25.802050",
+ "links": [],
+ "modified": "2024-03-31 11:23:40.888199",
  "modified_by": "Administrator",
  "module": "Non Profit",
  "name": "Grant Application",
@@ -202,6 +203,7 @@
  "route": "grant-application",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "applicant_name",
  "track_changes": 1
 }

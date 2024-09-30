@@ -24,11 +24,5 @@ frappe.ui.form.on('Sales Partner', {
 				}
 			}
 		};
-	},
-	referral_code:function(frm){
-		if (frm.doc.referral_code) {
-			frm.doc.referral_code=frm.doc.referral_code.toUpperCase();
-			frm.refresh_field('referral_code');
-		}
 	}
 });

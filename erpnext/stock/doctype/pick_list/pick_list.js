@@ -138,7 +138,7 @@ frappe.ui.form.on('Pick List', {
 		if (purpose != 'Delivery' || frm.doc.docstatus !== 0) return;
 		let get_query_filters = {
 			docstatus: 1,
-			per_delivered: ['<', 100],
+			delivery_status: "To Deliver",
 			status: ['!=', ''],
 			customer: frm.doc.customer
 		};

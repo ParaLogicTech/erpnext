@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from erpnext.accounts.report.utils import get_currency, convert_to_presentation_currency
 from erpnext import get_default_company
@@ -88,7 +87,7 @@ def get_customer_linked_suppliers(filters):
 		linked_suppliers = frappe.db.sql("""
 			select 'Supplier', linked_supplier
 			from `tabCustomer`
-			where name in %s and ifnull(linked_supplier, '') != ''
+			where name in %s and (linked_supplier != '' and linked_supplier is not null)
 		""", [filters.party])
 
 		filters.party_list += linked_suppliers
@@ -193,6 +192,10 @@ def get_gl_entries(filters, accounting_dimensions):
 		sales_person_join = "inner join `tabSales Team` steam on steam.parenttype = party_type and steam.parent = party"
 		sales_person_field = ", steam.sales_person"
 
+	order_by = "gle.posting_date, gle.account, gle.creation"
+	if filters.get("voucher_no"):
+		order_by = "gle.posting_date, gle.creation"
+
 	gl_entries = frappe.db.sql("""
 		select
 			gle.posting_date, gle.account, gle.party_type, gle.party,
@@ -206,12 +209,13 @@ def get_gl_entries(filters, accounting_dimensions):
 		from `tabGL Entry` gle
 		{sales_person_join}
 		where {conditions}
-		order by gle.posting_date, gle.account, gle.creation
+		order by {order_by}
 	""".format(
 		conditions=get_conditions(filters, accounting_dimensions),
 		dimensions_fields=dimensions_fields,
 		sales_person_field=sales_person_field,
 		sales_person_join=sales_person_join,
+		order_by=order_by,
 	), filters, as_dict=1)
 
 	if filters.get('presentation_currency'):

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2022-04-04 00:04:02.295581",
@@ -10,11 +11,18 @@
   "image",
   "title",
   "naming_series",
+  "purpose",
   "project",
   "project_workshop",
+  "vehicle_booking_order",
+  "opportunity",
   "column_break_8",
-  "sales_invoice",
+  "sales_person",
   "service_advisor",
+  "sales_invoice",
+  "invoice_is_unpaid",
+  "technician",
+  "vehicle_delivery",
   "column_break_11",
   "company",
   "posting_date",
@@ -23,14 +31,15 @@
   "amended_from",
   "customer_details_section",
   "customer",
+  "lead",
   "customer_name",
-  "column_break_17",
-  "project_contact_mobile",
-  "project_contact_phone",
-  "project_contact_email",
   "column_break_16",
-  "vehicle_owner",
-  "vehicle_owner_name",
+  "contact_person",
+  "contact_display",
+  "column_break_17",
+  "contact_mobile",
+  "contact_phone",
+  "contact_email",
   "vehicle_details_section",
   "vehicle",
   "variant_of",
@@ -83,20 +92,22 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:[\"Service - Vehicle Delivery\", \"Service - Test Drive\"].includes(doc.purpose)",
    "fieldname": "project",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Project",
+   "mandatory_depends_on": "eval:[\"Service - Vehicle Delivery\", \"Service - Test Drive\"].includes(doc.purpose)",
    "no_copy": 1,
-   "options": "Project",
-   "reqd": 1
+   "options": "Project"
   },
   {
    "fieldname": "column_break_8",
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:[\"Service - Vehicle Delivery\", \"Service - Test Drive\"].includes(doc.purpose)",
    "fieldname": "service_advisor",
    "fieldtype": "Link",
    "in_standard_filter": 1,
@@ -122,7 +133,7 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Delivery Date",
+   "label": "Posting Date",
    "no_copy": 1,
    "reqd": 1,
    "search_index": 1
@@ -131,7 +142,7 @@
    "default": "Now",
    "fieldname": "posting_time",
    "fieldtype": "Time",
-   "label": "Delivery Time",
+   "label": "Posting Time",
    "no_copy": 1,
    "print_hide": 1,
    "reqd": 1
@@ -151,19 +162,19 @@
    "label": "Customer Details"
   },
   {
+   "depends_on": "eval:doc.purpose != \"Sales - Test Drive\" || !doc.lead",
    "fieldname": "customer",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Customer (User)",
+   "mandatory_depends_on": "eval:doc.purpose != \"Sales - Test Drive\"",
    "no_copy": 1,
-   "options": "Customer",
-   "reqd": 1
+   "options": "Customer"
   },
   {
-   "depends_on": "eval:doc.customer && doc.customer_name != doc.customer",
    "fieldname": "customer_name",
    "fieldtype": "Data",
-   "label": "Customer Name",
+   "label": "Customer / Lead Name",
    "no_copy": 1,
    "read_only": 1
   },
@@ -172,44 +183,8 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "project_contact_mobile",
-   "fieldtype": "Data",
-   "label": "Mobile No",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
-   "fieldname": "project_contact_phone",
-   "fieldtype": "Data",
-   "label": "Phone No",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
-   "fieldname": "project_contact_email",
-   "fieldtype": "Data",
-   "label": "Contact Email",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
    "fieldname": "column_break_16",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "vehicle_owner",
-   "fieldtype": "Link",
-   "label": "Vehicle Owner",
-   "no_copy": 1,
-   "options": "Customer"
-  },
-  {
-   "depends_on": "eval:doc.vehicle_owner && doc.vehicle_owner_name != doc.vehicle_owner",
-   "fieldname": "vehicle_owner_name",
-   "fieldtype": "Data",
-   "label": "Vehicle Owner Name",
-   "no_copy": 1,
-   "read_only": 1
   },
   {
    "fieldname": "vehicle_details_section",
@@ -248,7 +223,6 @@
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Variant Item Code",
    "options": "Item",
@@ -342,6 +316,7 @@
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.purpose == \"Service - Vehicle Delivery\"",
    "fieldname": "sales_invoice",
    "fieldtype": "Link",
    "label": "Sales Invoice",
@@ -349,22 +324,128 @@
    "options": "Sales Invoice"
   },
   {
+   "depends_on": "eval:[\"Service - Vehicle Delivery\", \"Service - Test Drive\"].includes(doc.purpose)",
    "fieldname": "project_workshop",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Project Workshop",
+   "mandatory_depends_on": "eval:[\"Service - Vehicle Delivery\", \"Service - Test Drive\"].includes(doc.purpose)",
+   "options": "Project Workshop"
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Purpose",
+   "options": "\nService - Vehicle Delivery\nService - Test Drive\nSales - Vehicle Delivery\nSales - Test Drive",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.purpose == \"Sales - Test Drive\" && !doc.customer",
+   "fieldname": "lead",
+   "fieldtype": "Link",
+   "label": "Lead",
+   "no_copy": 1,
+   "options": "Lead"
+  },
+  {
+   "depends_on": "eval:doc.purpose == \"Service - Test Drive\"",
+   "fieldname": "technician",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_standard_filter": 1,
+   "label": "Technician",
+   "no_copy": 1,
+   "options": "Employee"
+  },
+  {
+   "depends_on": "eval:doc.purpose == \"Sales - Vehicle Delivery\"",
+   "fieldname": "vehicle_delivery",
+   "fieldtype": "Link",
+   "label": "Vehicle Delivery",
+   "mandatory_depends_on": "eval:doc.purpose == \"Sales - Vehicle Delivery\"",
+   "no_copy": 1,
+   "options": "Vehicle Delivery"
+  },
+  {
+   "depends_on": "eval:doc.purpose == \"Sales - Vehicle Delivery\"",
+   "fieldname": "vehicle_booking_order",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Project Workshop",
-   "options": "Project Workshop",
-   "reqd": 1
+   "label": "Vehicle Booking Order",
+   "no_copy": 1,
+   "options": "Vehicle Booking Order"
+  },
+  {
+   "depends_on": "eval:doc.purpose == \"Sales - Test Drive\"",
+   "fieldname": "opportunity",
+   "fieldtype": "Link",
+   "label": "Opportunity",
+   "no_copy": 1,
+   "options": "Opportunity"
+  },
+  {
+   "depends_on": "eval:[\"Sales - Vehicle Delivery\", \"Sales - Test Drive\"].includes(doc.purpose)",
+   "fieldname": "sales_person",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Sales Person",
+   "options": "Sales Person"
+  },
+  {
+   "fieldname": "contact_mobile",
+   "fieldtype": "Data",
+   "label": "Mobile No",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_phone",
+   "fieldtype": "Data",
+   "label": "Phone No",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_email",
+   "fieldtype": "Data",
+   "label": "Email Address",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "label": "Customer Contact Person",
+   "no_copy": 1,
+   "options": "Contact"
+  },
+  {
+   "fieldname": "contact_display",
+   "fieldtype": "Data",
+   "label": "Customer Contact Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "invoice_is_unpaid",
+   "fieldtype": "Check",
+   "label": "Unpaid Invoice",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
  "image_field": "image",
  "is_submittable": 1,
- "modified": "2022-08-05 15:08:29.678143",
+ "links": [],
+ "modified": "2024-08-13 13:32:21.821631",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle Gate Pass",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -398,6 +479,51 @@
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Admin",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Vehicle Stock User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
    "email": 1,
    "export": 1,
    "print": 1,
@@ -412,15 +538,16 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Vehicle Stock User",
+   "role": "Projects User (Read Only)",
    "share": 1
   }
  ],
  "restrict_to_domain": "Vehicles",
- "search_fields": "project,item_code,item_name,posting_date,vehicle_license_plate,vehicle_chassis_no,vehicle_engine_no,vehicle_license_plate",
+ "search_fields": "item_code,item_name,posting_date,vehicle_license_plate,vehicle_chassis_no,vehicle_engine_no,vehicle_license_plate",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "customer",
  "title_field": "title",
  "track_changes": 1,

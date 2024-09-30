@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "ACC-LOAP-.YYYY.-.#####",
  "creation": "2016-12-02 12:35:56.046811",
  "doctype": "DocType",
@@ -8,14 +9,16 @@
   "applicant_type",
   "applicant",
   "applicant_name",
-  "column_break_2",
-  "posting_date",
+  "column_break_zdz1j",
   "status",
+  "amended_from",
+  "column_break_2",
   "company",
+  "posting_date",
+  "required_by_date",
   "section_break_4",
   "loan_type",
   "loan_amount",
-  "required_by_date",
   "column_break_7",
   "description",
   "repayment_info",
@@ -25,8 +28,7 @@
   "column_break_11",
   "repayment_amount",
   "repayment_periods",
-  "total_payable_amount",
-  "amended_from"
+  "total_payable_amount"
  ],
  "fields": [
   {
@@ -46,10 +48,9 @@
    "reqd": 1
   },
   {
-   "depends_on": "applicant",
+   "depends_on": "eval:doc.applicant && doc.applicant_name != doc.applicant",
    "fieldname": "applicant_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Applicant Name",
    "read_only": 1
   },
@@ -61,7 +62,8 @@
    "default": "Today",
    "fieldname": "posting_date",
    "fieldtype": "Date",
-   "label": "Posting Date"
+   "label": "Posting Date",
+   "permlevel": 1
   },
   {
    "allow_on_submit": 1,
@@ -78,6 +80,7 @@
    "in_list_view": 1,
    "label": "Company",
    "options": "Company",
+   "permlevel": 1,
    "reqd": 1
   },
   {
@@ -104,7 +107,8 @@
   {
    "fieldname": "required_by_date",
    "fieldtype": "Date",
-   "label": "Required by Date"
+   "label": "Required by Date",
+   "no_copy": 1
   },
   {
    "fieldname": "column_break_7",
@@ -171,16 +175,23 @@
    "options": "Loan Application",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_zdz1j",
+   "fieldtype": "Column Break"
   }
  ],
  "is_submittable": 1,
- "modified": "2020-03-03 15:41:16.439774",
+ "links": [],
+ "modified": "2023-08-31 00:55:29.089371",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Loan Application",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
    "cancel": 1,
    "create": 1,
    "delete": 1,
@@ -189,16 +200,20 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager",
+   "role": "HR User",
    "share": 1,
    "submit": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "HR Manager",
    "write": 1
   },
   {
    "create": 1,
-   "delete": 1,
    "email": 1,
-   "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
@@ -208,32 +223,22 @@
    "write": 1
   },
   {
-   "delete": 1,
    "email": 1,
    "export": 1,
    "permlevel": 1,
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "HR Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "permlevel": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Employee",
+   "role": "All",
    "share": 1
   }
  ],
  "search_fields": "applicant_type, applicant, loan_type, loan_amount",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "applicant",
  "title_field": "applicant",
- "track_changes": 1
+ "track_changes": 1,
+ "track_seen": 1
 }

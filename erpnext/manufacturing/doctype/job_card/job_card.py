@@ -2,22 +2,62 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
-from frappe.utils import flt, time_diff_in_hours, get_datetime, time_diff, get_link_to_form
+from frappe.utils import cint, flt, time_diff_in_hours, get_datetime, get_link_to_form
 from frappe.model.mapper import get_mapped_doc
 from frappe.model.document import Document
 
+
 class OperationMismatchError(frappe.ValidationError): pass
+
 
 class JobCard(Document):
 	def validate(self):
+		self.set_missing_values()
+		self.validate_qty()
 		self.validate_time_logs()
-		self.set_status()
 		self.validate_operation_id()
+		self.set_status()
+
+	def before_submit(self):
+		self.set_actual_dates()
+
+	def on_submit(self):
+		self.validate_job_card()
+		self.update_work_order()
+		self.set_transferred_qty()
+		self.create_material_consumption_entry()
+
+	def on_cancel(self):
+		self.db_set("status", "Cancelled")
+		self.update_work_order()
+		self.set_transferred_qty()
+		self.cancel_material_consumption_entry()
+
+	def set_missing_values(self):
+		work_order_details = frappe._dict()
+		if self.work_order:
+			work_order_details = get_work_order_details(self.work_order)
+			self.update(work_order_details)
+
+		operation_material_consumption_required = frappe.get_cached_value("Operation", self.operation,
+			"material_consumption_required")
+		self.material_consumption_required = cint(bool(work_order_details.allow_material_consumption and operation_material_consumption_required))
+
+		if not self.get("items"):
+			self.set_required_items()
+
+	def validate_qty(self):
+		if flt(self.for_quantity) <= 0:
+			frappe.throw(_("Qty to Produce must be greater than 0"))
 
 	def validate_time_logs(self):
+		if cint(frappe.get_cached_value("Manufacturing Settings", None, "disable_capacity_planning")):
+			self.time_logs = []
+			self.total_completed_qty = flt(self.for_quantity) if self.docstatus == 1 else 0
+			return
+
 		self.total_completed_qty = 0.0
 		self.total_time_in_mins = 0.0
 
@@ -59,97 +99,91 @@ class JobCard(Document):
 
 		return existing[0] if existing else None
 
-	def get_required_items(self):
+	def validate_operation_id(self):
+		if (self.get("operation_id") and self.get("operation_row_number") and self.operation and self.work_order and
+			frappe.get_cached_value("Work Order Operation", self.operation_row_number, "name") != self.operation_id):
+			work_order = frappe.bold(get_link_to_form("Work Order", self.work_order))
+			frappe.throw(_("Operation {0} does not belong to the work order {1}")
+				.format(frappe.bold(self.operation), work_order), OperationMismatchError)
+
+	def set_status(self, update_status=False):
+		if self.status == "On Hold":
+			return
+
+		self.status = {
+			0: "Open",
+			1: "Submitted",
+			2: "Cancelled"
+		}[self.docstatus or 0]
+
+		if self.time_logs:
+			self.status = 'Work In Progress'
+
+		if self.docstatus == 1 and (self.for_quantity == self.transferred_qty or not self.material_transfer_required):
+			self.status = 'Completed'
+
+		if self.status != 'Completed':
+			if self.for_quantity == self.transferred_qty:
+				self.status = 'Material Transferred'
+
+		if update_status:
+			self.db_set('status', self.status)
+
+	@frappe.whitelist()
+	def set_required_items(self):
+		self.items = []
+
 		if not self.get('work_order'):
 			return
 
 		doc = frappe.get_doc('Work Order', self.get('work_order'))
-		if doc.transfer_material_against == 'Work Order' or doc.skip_transfer:
+		material_transfer_required = doc.transfer_material_against == 'Job Card' and not doc.skip_transfer
+		if not material_transfer_required and not self.material_consumption_required:
 			return
 
 		for d in doc.required_items:
-			if not d.operation:
-				frappe.throw(_("Row {0} : Operation is required against the raw material item {1}")
-					.format(d.idx, d.item_code))
+			if material_transfer_required and not d.operation and not d.skip_transfer_for_manufacture:
+				frappe.throw(_("Row {0}: Operation is not set against Raw Material {1} in {2}").format(
+					d.idx,
+					frappe.get_desk_link("Item", d.item_code),
+					frappe.get_desk_link("Work Order", self.work_order)
+				))
 
 			if self.get('operation') == d.operation:
 				self.append('items', {
 					'item_code': d.item_code,
-					'source_warehouse': d.source_warehouse,
-					'uom': frappe.db.get_value("Item", d.item_code, 'stock_uom'),
 					'item_name': d.item_name,
 					'description': d.description,
-					'required_qty': (d.required_qty * flt(self.for_quantity)) / doc.qty
+					'source_warehouse': d.source_warehouse,
+					'required_qty': (d.required_qty * flt(self.for_quantity)) / doc.qty,
+					'uom': d.uom,
 				})
 
-	def on_submit(self):
-		self.validate_job_card()
-		self.update_work_order()
-		self.set_transferred_qty()
-
-	def on_cancel(self):
-		self.update_work_order()
-		self.set_transferred_qty()
-
 	def validate_job_card(self):
-		if not self.time_logs:
+		if not self.time_logs and not cint(frappe.get_cached_value("Manufacturing Settings", None, "disable_capacity_planning")):
 			frappe.throw(_("Time logs are required for {0} {1}")
 				.format(frappe.bold("Job Card"), get_link_to_form("Job Card", self.name)))
 
 		if self.for_quantity and self.total_completed_qty != self.for_quantity:
 			total_completed_qty = frappe.bold(_("Total Completed Qty"))
-			qty_to_manufacture = frappe.bold(_("Qty to Manufacture"))
+			qty_to_manufacture = frappe.bold(_("Qty to Produce"))
 
 			frappe.throw(_("The {0} ({1}) must be equal to {2} ({3})"
 				.format(total_completed_qty, frappe.bold(self.total_completed_qty), qty_to_manufacture,frappe.bold(self.for_quantity))))
 
 	def update_work_order(self):
-		if not self.work_order:
-			return
-
-		for_quantity, time_in_mins = 0, 0
-		from_time_list, to_time_list = [], []
-
-		field = "operation_id"
-		data = frappe.get_all('Job Card',
-			fields = ["sum(total_time_in_mins) as time_in_mins", "sum(total_completed_qty) as completed_qty"],
-			filters = {"docstatus": 1, "work_order": self.work_order, field: self.get(field)})
-
-		if data and len(data) > 0:
-			for_quantity = data[0].completed_qty
-			time_in_mins = data[0].time_in_mins
-
-		if self.get(field):
-			time_data = frappe.db.sql("""
-				SELECT
-					min(from_time) as start_time, max(to_time) as end_time
-				FROM `tabJob Card` jc, `tabJob Card Time Log` jctl
-				WHERE
-					jctl.parent = jc.name and jc.work_order = %s
-					and jc.{0} = %s and jc.docstatus = 1
-			""".format(field), (self.work_order, self.get(field)), as_dict=1)
-
-			wo = frappe.get_doc('Work Order', self.work_order)
-
-			for data in wo.operations:
-				if data.get("name") == self.get(field):
-					data.completed_qty = for_quantity
-					data.actual_operation_time = time_in_mins
-					data.actual_start_time = time_data[0].start_time if time_data else None
-					data.actual_end_time = time_data[0].end_time if time_data else None
-
-			wo.flags.ignore_validate_update_after_submit = True
-			wo.update_operation_status()
-			wo.calculate_operating_cost()
-			wo.set_actual_dates()
-			wo.save()
+		if self.work_order:
+			doc = frappe.get_doc("Work Order", self.work_order)
+			doc.set_operation_status(update=True)
+			doc.validate_completed_qty_in_operations(from_doctype=self.doctype)
+			doc.set_actual_dates(update=True)
+			doc.notify_update()
 
 	def set_transferred_qty(self, update_status=False):
 		if not self.items:
 			self.transferred_qty = self.for_quantity if self.docstatus == 1 else 0
 
-		doc = frappe.get_doc('Work Order', self.get('work_order'))
-		if doc.transfer_material_against == 'Work Order' or doc.skip_transfer:
+		if not self.material_transfer_required:
 			return
 
 		if self.items:
@@ -182,59 +216,68 @@ class JobCard(Document):
 
 		self.set_status(update_status)
 
-	def set_status(self, update_status=False):
-		if self.status == "On Hold": return
+	def create_material_consumption_entry(self):
+		from erpnext.manufacturing.doctype.work_order.work_order import make_stock_entry
+		if not self.material_consumption_required or not self.items:
+			return
 
-		self.status = {
-			0: "Open",
-			1: "Submitted",
-			2: "Cancelled"
-		}[self.docstatus or 0]
+		make_stock_entry(
+			self.work_order,
+			purpose="Material Consumption for Manufacture",
+			qty=self.for_quantity,
+			job_card=self.name,
+			auto_submit=True
+		)
 
+	def cancel_material_consumption_entry(self):
+		if not self.material_consumption_required or not self.items:
+			return
+
+		stock_entry = frappe.db.get_value("Stock Entry", {
+			"job_card": self.name, "purpose": "Material Consumption for Manufacture", "docstatus": 1,
+		})
+
+		if stock_entry:
+			frappe.get_doc("Stock Entry", stock_entry).cancel()
+
+	def set_actual_dates(self):
 		if self.time_logs:
-			self.status = 'Work In Progress'
-
-		if (self.docstatus == 1 and
-			(self.for_quantity == self.transferred_qty or not self.items)):
-			self.status = 'Completed'
-
-		if self.status != 'Completed':
-			if self.for_quantity == self.transferred_qty:
-				self.status = 'Material Transferred'
-
-		if update_status:
-			self.db_set('status', self.status)
-
-	def validate_operation_id(self):
-		if (self.get("operation_id") and self.get("operation_row_number") and self.operation and self.work_order and
-			frappe.get_cached_value("Work Order Operation", self.operation_row_number, "name") != self.operation_id):
-			work_order = frappe.bold(get_link_to_form("Work Order", self.work_order))
-			frappe.throw(_("Operation {0} does not belong to the work order {1}")
-				.format(frappe.bold(self.operation), work_order), OperationMismatchError)
+			self.actual_start_dt = min(get_datetime(d.from_time) for d in self.time_logs)
+			self.actual_end_dt = max(get_datetime(d.to_time) for d in self.time_logs)
+		else:
+			self.actual_start_dt = self.actual_end_dt = get_datetime()
 
 @frappe.whitelist()
 def get_operation_details(work_order, operation):
 	if work_order and operation:
-		return frappe.get_all("Work Order Operation", fields = ["name", "idx"],
-			filters = {
+		return frappe.get_all("Work Order Operation",
+			fields=["name", "idx"],
+			filters={
 				"parent": work_order,
 				"operation": operation
 			}
 		)
 
+
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def get_operations(doctype, txt, searchfield, start, page_len, filters):
-	if filters.get("work_order"):
+	if filters and filters.get("work_order"):
 		args = {"parent": filters.get("work_order")}
 		if txt:
 			args["operation"] = ("like", "%{0}%".format(txt))
 
 		return frappe.get_all("Work Order Operation",
-			filters = args,
-			fields = ["distinct operation as operation"],
-			limit_start = start,
-			limit_page_length = page_len,
-			order_by="idx asc", as_list=1)
+			filters=args,
+			fields=["distinct operation as operation"],
+			limit_start=start,
+			limit_page_length=page_len,
+			order_by="idx asc",
+			as_list=1
+		)
+	else:
+		return []
+
 
 @frappe.whitelist()
 def make_material_request(source_name, target_doc=None):
@@ -263,8 +306,9 @@ def make_material_request(source_name, target_doc=None):
 
 	return doclist
 
+
 @frappe.whitelist()
-def make_stock_entry(source_name, target_doc=None):
+def make_material_transfer(source_name, target_doc=None):
 	def update_item(obj, target, source_parent, target_parent):
 		target.t_warehouse = source_parent.wip_warehouse
 
@@ -272,9 +316,9 @@ def make_stock_entry(source_name, target_doc=None):
 		target.purpose = "Material Transfer for Manufacture"
 		target.from_bom = 1
 		target.fg_completed_qty = source.get('for_quantity', 0) - source.get('transferred_qty', 0)
+		target.set_stock_entry_type()
 		target.calculate_rate_and_amount()
 		target.set_missing_values()
-		target.set_stock_entry_type()
 
 	doclist = get_mapped_doc("Job Card", source_name, {
 		"Job Card": {
@@ -289,7 +333,7 @@ def make_stock_entry(source_name, target_doc=None):
 			"field_map": {
 				"source_warehouse": "s_warehouse",
 				"required_qty": "qty",
-				"uom": "stock_uom"
+				"uom": "uom"
 			},
 			"postprocess": update_item,
 		}
@@ -297,8 +341,31 @@ def make_stock_entry(source_name, target_doc=None):
 
 	return doclist
 
-def time_diff_in_minutes(string_ed_date, string_st_date):
-	return time_diff(string_ed_date, string_st_date).total_seconds() / 60
+
+@frappe.whitelist()
+def get_work_order_details(work_order):
+	details = frappe.db.get_value("Work Order", work_order, [
+		"production_item", "item_name", "bom_no", "stock_uom",
+		"skip_transfer", "transfer_material_against", "allow_material_consumption",
+		"wip_warehouse", "project", "company",
+	], as_dict=1) if work_order else {}
+
+	if not details:
+		frappe.throw(_("Work Order {0} does not exist").format(work_order))
+
+	out = frappe._dict({
+		"production_item": details.production_item,
+		"item_name": details.item_name,
+		"bom_no": details.bom_no,
+		"stock_uom": details.stock_uom,
+		"wip_warehouse": details.wip_warehouse,
+		"project": details.project,
+		"allow_material_consumption": details.allow_material_consumption,
+		"material_transfer_required": cint(details.transfer_material_against == "Job Card" and not details.skip_transfer),
+	})
+
+	return out
+
 
 @frappe.whitelist()
 def get_job_details(start, end, filters=None):

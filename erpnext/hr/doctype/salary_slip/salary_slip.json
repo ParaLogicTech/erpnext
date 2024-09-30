@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "creation": "2013-01-10 16:34:15",
  "doctype": "DocType",
@@ -337,7 +338,6 @@
   {
    "fieldname": "earning",
    "fieldtype": "Column Break",
-   "label": "Earning",
    "oldfieldtype": "Column Break",
    "width": "50%"
   },
@@ -352,7 +352,6 @@
   {
    "fieldname": "deduction",
    "fieldtype": "Column Break",
-   "label": "Deduction",
    "oldfieldtype": "Column Break",
    "width": "50%"
   },
@@ -496,7 +495,7 @@
   {
    "fieldname": "advances_section",
    "fieldtype": "Section Break",
-   "label": "Total Advance Adjustment",
+   "label": "Advance Repayment",
    "read_only": 1
   },
   {
@@ -662,7 +661,8 @@
  "icon": "fa fa-file-text",
  "idx": 9,
  "is_submittable": 1,
- "modified": "2023-01-02 00:23:10.691109",
+ "links": [],
+ "modified": "2023-11-21 13:21:15.578691",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Salary Slip",
@@ -705,6 +705,7 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "employee",
  "title_field": "employee_name"
 }

@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
 from erpnext.stock.doctype.quality_inspection_template.quality_inspection_template \
@@ -13,6 +12,7 @@ class QualityInspection(Document):
 		if not self.readings and self.item_code:
 			self.get_item_specification_details()
 
+	@frappe.whitelist()
 	def get_item_specification_details(self):
 		if not self.quality_inspection_template:
 			self.quality_inspection_template = frappe.db.get_value('Item',
@@ -28,6 +28,7 @@ class QualityInspection(Document):
 			child.value = d.value
 			child.status = "Accepted"
 
+	@frappe.whitelist()
 	def get_quality_inspection_template(self):
 		template = ''
 		if self.bom_no:

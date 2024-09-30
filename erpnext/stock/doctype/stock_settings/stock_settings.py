@@ -3,11 +3,12 @@
 
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
+from frappe.utils import cint
 from frappe.model.document import Document
 from frappe.utils.html_utils import clean_html
+
 
 class StockSettings(Document):
 	def validate(self):
@@ -18,13 +19,23 @@ class StockSettings(Document):
 		self.cant_change_valuation_method()
 		self.validate_clean_description_html()
 
-		if self.enable_dynamic_bundling:
+		if cint(self.enable_dynamic_bundling):
 			make_bundling_fields()
 
 	def update_global_defaults(self):
-		for key in ["item_naming_by", "item_group", "stock_uom", "restrict_stock_valuation_to_role",
-			"allow_negative_stock", "default_warehouse", "set_qty_in_transactions_based_on_serial_no_input"]:
-				frappe.db.set_default(key, self.get(key, ""))
+		global_default_fields = [
+			"item_naming_by",
+			"item_group",
+			"stock_uom",
+			"weight_uom",
+			"restrict_stock_valuation_to_role",
+			"allow_negative_stock",
+			"default_warehouse",
+			"default_rejected_warehouse",
+			"set_qty_in_transactions_based_on_serial_no_input",
+		]
+		for key in global_default_fields:
+			frappe.db.set_default(key, self.get(key, ""))
 
 	def validate_freeze_date(self):
 		stock_frozen_limit = 356
@@ -35,7 +46,7 @@ class StockSettings(Document):
 
 	def make_property_setters(self):
 		# show/hide barcode field
-		for name in ["barcode", "barcodes", "scan_barcode"]:
+		for name in ["scan_barcode"]:
 			frappe.make_property_setter({'fieldname': name, 'property': 'hidden',
 				'value': 0 if self.show_barcode_field else 1})
 

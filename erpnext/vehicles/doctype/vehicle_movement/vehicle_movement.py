@@ -2,7 +2,6 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from erpnext.vehicles.vehicle_transaction_controller import VehicleTransactionController
@@ -44,13 +43,15 @@ class VehicleMovement(VehicleTransactionController):
 		source_sle = self.get_sl_entries(self, {
 			"warehouse": self.warehouse,
 			"actual_qty": -1,
-			"incoming_rate": 0
+			"incoming_rate": 0,
+			"is_transfer": 1,
 		})
 
 		target_sle = self.get_sl_entries(self, {
 			"warehouse": self.target_warehouse,
 			"actual_qty": 1,
-			"incoming_rate": 0
+			"incoming_rate": 0,
+			"is_transfer": 1,
 		})
 
 		# SLE Dependency

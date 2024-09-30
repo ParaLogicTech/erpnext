@@ -1,8 +1,10 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:item_group_name",
  "creation": "2013-03-28 10:35:29",
+ "default_view": "Tree",
  "description": "Item Classification",
  "doctype": "DocType",
  "document_type": "Setup",
@@ -14,8 +16,10 @@
   "is_group",
   "image",
   "column_break_5",
+  "abbreviation",
   "is_print_heading",
   "override_item_settings_section",
+  "stock_uom",
   "item_naming_by",
   "item_naming_series",
   "column_break_11",
@@ -25,15 +29,14 @@
   "has_serial_no",
   "has_batch_no",
   "column_break_18",
+  "is_sales_item",
+  "is_purchase_item",
+  "column_break_22",
+  "is_packaging_material",
+  "is_customer_provided_item",
+  "column_break_23",
   "is_vehicle",
   "has_variants",
-  "sb9",
-  "show_in_website",
-  "route",
-  "weightage",
-  "slideshow",
-  "description",
-  "website_specifications",
   "lft",
   "rgt",
   "old_parent"
@@ -72,6 +75,7 @@
    "fieldname": "is_group",
    "fieldtype": "Check",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Is Group",
    "oldfieldname": "is_group",
    "oldfieldtype": "Select"
@@ -85,52 +89,6 @@
   {
    "fieldname": "column_break_5",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "sb9",
-   "fieldtype": "Section Break",
-   "label": "Website Settings"
-  },
-  {
-   "default": "0",
-   "description": "Check this if you want to show in website",
-   "fieldname": "show_in_website",
-   "fieldtype": "Check",
-   "label": "Show in Website"
-  },
-  {
-   "depends_on": "show_in_website",
-   "fieldname": "route",
-   "fieldtype": "Data",
-   "label": "Route",
-   "unique": 1
-  },
-  {
-   "fieldname": "weightage",
-   "fieldtype": "Int",
-   "label": "Weightage"
-  },
-  {
-   "depends_on": "show_in_website",
-   "description": "Show this slideshow at the top of the page",
-   "fieldname": "slideshow",
-   "fieldtype": "Link",
-   "label": "Slideshow",
-   "options": "Website Slideshow"
-  },
-  {
-   "depends_on": "show_in_website",
-   "description": "HTML / Banner that will show on the top of product list.",
-   "fieldname": "description",
-   "fieldtype": "Text Editor",
-   "label": "Description"
-  },
-  {
-   "depends_on": "show_in_website",
-   "fieldname": "website_specifications",
-   "fieldtype": "Table",
-   "label": "Website Specifications",
-   "options": "Item Website Specification"
   },
   {
    "fieldname": "lft",
@@ -171,7 +129,7 @@
    "fieldname": "item_naming_by",
    "fieldtype": "Select",
    "label": "Item Naming By",
-   "options": "\nItem Code\nItem Name\nNaming Series"
+   "options": "\nItem Code\nItem Name\nNaming Series\nSystem Generated"
   },
   {
    "depends_on": "eval:doc.item_naming_by == \"Naming Series\"",
@@ -238,18 +196,63 @@
    "fieldname": "is_print_heading",
    "fieldtype": "Check",
    "label": "Is Print Heading"
+  },
+  {
+   "fieldname": "is_packaging_material",
+   "fieldtype": "Select",
+   "label": "Is Packaging Material",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "is_sales_item",
+   "fieldtype": "Select",
+   "label": "Is Sales Item",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "is_purchase_item",
+   "fieldtype": "Select",
+   "label": "Is Purchase Item",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "is_customer_provided_item",
+   "fieldtype": "Select",
+   "label": "Is Customer Provided Item",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "column_break_22",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_23",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "abbreviation",
+   "fieldtype": "Data",
+   "label": "Abbreviation"
+  },
+  {
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Default Unit of Measure",
+   "options": "UOM"
   }
  ],
  "icon": "fa fa-sitemap",
  "idx": 1,
  "image_field": "image",
  "is_tree": 1,
- "max_attachments": 3,
- "modified": "2022-06-14 14:31:58.184265",
+ "links": [],
+ "make_attachments_public": 1,
+ "modified": "2024-07-21 05:03:30.104552",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Item Group",
  "name_case": "Title Case",
+ "naming_rule": "By fieldname",
  "nsm_parent_field": "parent_item_group",
  "owner": "Administrator",
  "permissions": [
@@ -303,6 +306,11 @@
   {
    "read": 1,
    "report": 1,
+   "role": "Sales Master (Read Only)"
+  },
+  {
+   "read": 1,
+   "report": 1,
    "role": "Auditor"
   },
   {
@@ -315,5 +323,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

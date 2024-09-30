@@ -3,21 +3,20 @@
 
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 import json
 import copy
 from frappe import throw, _
-from frappe.utils import flt, cint, getdate
-
+from frappe.utils import flt, getdate
 from frappe.model.document import Document
-
+from erpnext.stock.doctype.item.item import convert_item_uom_for
 from six import string_types
 
 apply_on_dict = {"Item Code": "items",
 	"Item Group": "item_groups", "Brand": "brands"}
 
 other_fields = ["other_item_code", "other_item_group", "other_brand"]
+
 
 class PricingRule(Document):
 	def validate(self):
@@ -149,6 +148,8 @@ class PricingRule(Document):
 
 @frappe.whitelist()
 def apply_pricing_rule(args, doc=None):
+	from erpnext.stock.get_item_details import determine_selling_or_buying
+
 	"""
 		args = {
 			"items": [{"doctype": "", "name": "", "item_code": "", "brand": "", "item_group": ""}, ...],
@@ -174,8 +175,8 @@ def apply_pricing_rule(args, doc=None):
 
 	args = frappe._dict(args)
 
-	if not args.transaction_type:
-		set_transaction_type(args)
+	if not args.selling_or_buying:
+		determine_selling_or_buying(args)
 
 	# list of dictionaries
 	out = []
@@ -194,7 +195,7 @@ def apply_pricing_rule(args, doc=None):
 		data = get_pricing_rule_for_item(args_copy, item.get('price_list_rate'), doc=doc)
 		out.append(data)
 		if not item.get("serial_no") and set_serial_nos_based_on_fifo and not args.get('is_return'):
-			out[0].update(get_serial_no_for_item(args_copy))
+			data.update(get_serial_no_for_item(args_copy))
 
 	return out
 
@@ -259,6 +260,9 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 			item_details.validate_applied_rule = pricing_rule.get("validate_applied_rule", 0)
 			item_details.price_or_product_discount = pricing_rule.get("price_or_product_discount")
 
+			if pricing_rule.get("claim_customer"):
+				item_details.claim_customer = pricing_rule.get("claim_customer")
+
 			rules.append(get_pricing_rule_details(args, pricing_rule))
 
 			if pricing_rule.mixed_conditions or pricing_rule.apply_rule_on_other:
@@ -300,7 +304,7 @@ def update_args_for_pricing_rule(args):
 		if not args.item_group:
 			frappe.throw(_("Item Group not mentioned in item master for item {0}").format(args.item_code))
 
-	if args.transaction_type=="selling":
+	if args.selling_or_buying == "selling":
 		if args.customer and not (args.customer_group and args.territory):
 
 			if args.quotation_to and args.quotation_to != 'Customer':
@@ -323,7 +327,8 @@ def get_pricing_rule_details(args, pricing_rule):
 		'rate_or_discount': pricing_rule.rate_or_discount,
 		'margin_type': pricing_rule.margin_type,
 		'item_code': args.get("item_code"),
-		'child_docname': args.get('child_docname')
+		'child_docname': args.get('child_docname'),
+		'claim_customer': pricing_rule.claim_customer,
 	})
 
 def apply_price_discount_rule(pricing_rule, item_details, args):
@@ -333,6 +338,10 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 			or (pricing_rule.margin_type == 'Percentage')):
 		item_details.margin_type = pricing_rule.margin_type
 		item_details.margin_rate_or_amount = pricing_rule.margin_rate_or_amount
+
+		if pricing_rule.margin_type == "Amount" and args.item_code and args.uom:
+			item_details.margin_rate_or_amount = convert_item_uom_for(item_details.margin_rate_or_amount, args.item_code,
+				args.stock_uom, args.uom, conversion_factor=args.conversion_factor, is_rate=True)
 	else:
 		item_details.margin_type = None
 		item_details.margin_rate_or_amount = 0.0
@@ -357,8 +366,12 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 			if field not in item_details:
 				item_details.setdefault(field, 0)
 
-			item_details[field] += (pricing_rule.get(field, 0)
-				if pricing_rule else args.get(field, 0))
+			rule_value = pricing_rule.get(field, 0) if pricing_rule else args.get(field, 0)
+			if apply_on == "Discount Amount" and args.item_code and args.uom:
+				rule_value = convert_item_uom_for(rule_value, args.item_code,
+					args.stock_uom, args.uom, conversion_factor=args.conversion_factor, is_rate=True)
+
+			item_details[field] += rule_value
 
 def set_discount_amount(rate, item_details):
 	for field in ['discount_percentage_on_rate', 'discount_amount_on_rate']:
@@ -416,18 +429,6 @@ def remove_pricing_rules(item_list):
 
 	return out
 
-def set_transaction_type(args):
-	if args.transaction_type:
-		return
-	if args.doctype in ("Opportunity", "Quotation", "Sales Order", "Delivery Note", "Sales Invoice"):
-		args.transaction_type = "selling"
-	elif args.doctype in ("Material Request", "Supplier Quotation", "Purchase Order",
-		"Purchase Receipt", "Purchase Invoice"):
-			args.transaction_type = "buying"
-	elif args.customer:
-		args.transaction_type = "selling"
-	else:
-		args.transaction_type = "buying"
 
 @frappe.whitelist()
 def make_pricing_rule(doctype, docname):
@@ -451,3 +452,7 @@ def get_item_uoms(doctype, txt, searchfield, start, page_len, filters):
 			'parent': ('in', items),
 			'uom': ("like", "{0}%".format(txt))
 		}, fields = ["distinct uom"], as_list=1)
+
+
+def on_doctype_update():
+	frappe.db.add_index("Pricing Rule", ["valid_from", "valid_upto"])

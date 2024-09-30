@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 from copy import deepcopy
 
 
@@ -322,6 +321,15 @@ item_fields = [
 	{"label": "Vehicle Allocation Required From Delivery Period", "fieldname": "vehicle_allocation_required_from_delivery_period",
 		"fieldtype": "Link", "options": "Vehicle Allocation Period",
 		"insert_after": "vehicle_allocation_required", "depends_on": "vehicle_allocation_required", "ignore_user_permissions": 1},
+	{"fieldname": "cb_commission_item", "fieldtype": "Column Break", "insert_after": "applicable_to_all"},
+	{"label": "Applicable Commission Item", "fieldname": "applicable_commission_item", "fieldtype": "Link","options": "Item",
+		"insert_after": "cb_commission_item"},
+]
+
+# Employee Fields
+employee_fields = [
+	{"label": "Is Technician", "fieldname": "is_Technician", "fieldtype": "Check",
+		"insert_after": "designation"},
 ]
 
 # Set Translatable = 0
@@ -329,7 +337,7 @@ field_lists = [
 	applies_to_fields, applies_to_transaction_fields, applies_to_project_fields, applies_to_appointment_fields,
 	project_vehicle_reading_fields, vehicle_owner_fields, sales_invoice_vehicle_owner_fields, service_person_fields,
 	material_request_service_person_fields, accounting_dimension_fields, accounting_dimension_table_fields,
-	item_fields, project_fields, project_type_fields, project_change_vehicle_details_fields,
+	item_fields, employee_fields, project_fields, project_type_fields, project_change_vehicle_details_fields,
 	project_template_fields, project_template_category_fields, project_template_detail_fields,
 	customer_vehicle_selector_fields, project_customer_vehicle_selector, appointment_customer_vehicle_selector,
 	customer_customer_vehicle_selector, opportunity_fields, applies_to_opportunity_fields,
@@ -362,6 +370,12 @@ common_properties = [
 		{"fieldname": "applies_to_variant_of", "property": "label", "value": "Applies to Model"}],
 	[('Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice', 'Purchase Order', 'Purchase Receipt', 'Purchase Invoice', 'Project', 'Material Request', 'Appointment', 'Opportunity'),
 		{"fieldname": "applies_to_variant_of_name", "property": "label", "value": "Applies to Model Name"}],
+
+	# Applies To Item/Variant in standard filter
+	[('Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice', 'Purchase Order', 'Purchase Receipt', 'Purchase Invoice', 'Project', 'Material Request', 'Appointment', 'Opportunity'),
+		{"fieldname": "applies_to_variant_of", "property": "in_standard_filter", "value": 1}],
+	[('Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice', 'Purchase Order', 'Purchase Receipt', 'Purchase Invoice', 'Project', 'Material Request', 'Appointment', 'Opportunity'),
+		{"fieldname": "applies_to_item", "property": "in_standard_filter", "value": 1}],
 
 	# Customer (User) Label
 	[('Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice', 'Project', 'Material Request'),
@@ -396,6 +410,7 @@ data = {
 	'properties': [
 		{"doctype": "Item", "fieldname": "is_vehicle", "property": "in_standard_filter", "value": 1},
 		{"doctype": "Customer", "fieldname": "is_insurance_company", "property": "in_standard_filter", "value": 1},
+		{"doctype": "Customer", "fieldname": "is_insurance_company", "property": "hidden", "value": 0},
 		{"doctype": "Sales Invoice", "fieldname": "bill_to", "property": "hidden", "value": 0},
 		{"doctype": "Sales Invoice", "fieldname": "claim_billing", "property": "hidden", "value": 0},
 		{"doctype": "Project", "fieldname": "bill_to", "property": "hidden", "value": 0},
@@ -429,6 +444,7 @@ data = {
 		"Customer": customer_customer_vehicle_selector,
 		"Opportunity": opportunity_fields + applies_to_opportunity_fields,
 		"Customer Feedback": applies_to_transaction_fields,
+		"Employee": employee_fields
 	},
 	'default_portal_role': 'Customer'
 }

@@ -1,24 +1,24 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
-import frappe, erpnext
+import frappe
+import erpnext
 import frappe.defaults
 from frappe import msgprint, _
 from frappe.utils import cstr, flt, cint, get_datetime
 from erpnext.stock.doctype.batch.batch import get_batches, get_batch_received_date
 from erpnext.controllers.stock_controller import StockController
 from erpnext.accounts.utils import get_company_default
-from erpnext.stock.utils import get_stock_balance, get_incoming_rate
+from erpnext.stock.utils import get_stock_balance, get_unpacked_balance_qty, get_incoming_rate
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos, validate_serial_no_ledger
-from erpnext.stock.doctype.batch.batch import get_batch_qty_on
 from erpnext.stock.get_item_details import get_default_cost_center, get_conversion_factor, get_default_warehouse
 from frappe.model.meta import get_field_precision
 import json
-from six import string_types
+
 
 class OpeningEntryAccountError(frappe.ValidationError): pass
 class EmptyStockReconciliationItemsError(frappe.ValidationError): pass
+
 
 class StockReconciliation(StockController):
 	def __init__(self, *args, **kwargs):
@@ -54,6 +54,7 @@ class StockReconciliation(StockController):
 		self.update_stock_ledger()
 		self.make_gl_entries_on_cancel()
 
+	@frappe.whitelist()
 	def update_item_details(self):
 		self.validate_posting_time()
 		self.set_loose_qty()
@@ -79,10 +80,12 @@ class StockReconciliation(StockController):
 			if not item.item_code:
 				continue
 
-			qty, rate, amount, serial_nos = get_stock_balance_for(item.item_code, item.warehouse,
-				self.posting_date, self.posting_time, item.batch_no)
+			qty, unpacked_qty, rate, amount, serial_nos = get_stock_balance_for(
+				item.item_code, item.warehouse, self.posting_date, self.posting_time, item.batch_no
+			)
 
 			item.current_qty = qty
+			item.packed_qty = item.current_qty - unpacked_qty
 			item.current_valuation_rate = rate
 			item.current_amount = amount
 			item.current_serial_no = serial_nos
@@ -294,9 +297,18 @@ class StockReconciliation(StockController):
 		if sle["actual_qty"]:
 			sl_entries.append(self.get_sl_entries(d, sle))
 
-	def get_gl_entries(self, warehouse_account=None):
-		return super(StockReconciliation, self).get_gl_entries(warehouse_account,
-			self.expense_account, self.cost_center)
+	def get_stock_voucher_items(self, sle_map):
+		is_opening = "Yes" if self.purpose == "Opening Stock" else "No"
+		details = []
+		for item_code, voucher_detail_no in sle_map:
+			details.append(frappe._dict({
+				"name": voucher_detail_no,
+				"item_code": item_code,
+				"expense_account": self.expense_account,
+				"cost_center": self.cost_center,
+				"is_opening": is_opening
+			}))
+		return details
 
 	def validate_expense_account(self):
 		if not cint(erpnext.is_perpetual_inventory_enabled(self.company)):
@@ -350,14 +362,15 @@ class StockReconciliation(StockController):
 		else:
 			self._cancel()
 
+
 @frappe.whitelist()
 def get_items(args):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 	args = frappe._dict(args)
 
-	if not args.warehouse:
-		frappe.throw(_("Please select Warehouse"))
+	# if not args.warehouse:
+	# 	frappe.throw(_("Please select Warehouse"))
 	if not args.company:
 		args.company = frappe.get_cached_value("Warehouse", args.warehouse, 'company')
 	if not args.company:
@@ -443,9 +456,10 @@ def get_items(args):
 
 	return res
 
+
 @frappe.whitelist()
 def get_item_details(args):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)
@@ -475,8 +489,15 @@ def get_item_details(args):
 	out.cost_center = get_default_cost_center(item, args)
 
 	if args.item_code and args.warehouse:
-		out.current_qty, out.current_valuation_rate, out.current_amount, out.current_serial_no = get_stock_balance_for(args.item_code,
-			args.warehouse, args.posting_date, args.posting_time, args.batch_no)
+		out.current_qty, unpacked_qty, out.current_valuation_rate, out.current_amount, out.current_serial_no = get_stock_balance_for(
+			args.item_code,
+			args.warehouse,
+			args.posting_date,
+			args.posting_time,
+			args.batch_no
+		)
+
+		out.packed_qty = out.current_qty - unpacked_qty
 
 	if not item.has_batch_no or args.batch_no:
 		qty_precision = frappe.get_precision("Stock Reconciliation Item", "qty")
@@ -527,19 +548,31 @@ def get_stock_balance_for(item_code, warehouse, posting_date, posting_time, batc
 	with_serial_no = cint(item_dict.get("has_serial_no"))
 	batch_no = batch_no if cint(item_dict.get("has_batch_no")) else None
 
-	data = get_stock_balance(item_code, warehouse,
-		posting_date, posting_time, batch_no=batch_no,
-		with_valuation_rate=with_valuation_rate, with_serial_no=with_serial_no)
+	balance = get_stock_balance(
+		item_code,
+		warehouse,
+		batch_no=batch_no,
+		posting_date=posting_date,
+		posting_time=posting_time,
+		with_valuation_rate=with_valuation_rate,
+		with_serial_no=with_serial_no,
+	)
 
+	unpacked_qty = get_unpacked_balance_qty(
+		item_code,
+		warehouse,
+		batch_no=batch_no,
+		posting_date=posting_date,
+		posting_time=posting_time,
+	)
+
+	qty = balance.batch_qty_after_transaction if batch_no else balance.qty_after_transaction
+	rate = balance.valuation_rate
+	amount = balance.stock_value
 	if with_serial_no:
-		qty, rate, amount, serial_nos = data
-	else:
-		qty, rate, amount = data
+		serial_nos = balance.serial_nos
 
-	if batch_no:
-		qty = flt(get_batch_qty_on(batch_no, warehouse, posting_date, posting_time))
-
-	return qty, rate, amount, serial_nos
+	return qty, unpacked_qty, rate, amount, serial_nos
 
 
 @frappe.whitelist()

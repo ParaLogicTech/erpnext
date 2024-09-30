@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext
 from frappe import _
 from frappe.utils import flt, getdate, formatdate, cstr
@@ -112,7 +111,7 @@ def get_rootwise_opening_balances(filters, report_type):
 		additional_conditions.append("posting_date >= %(year_start_date)s")
 
 	if not flt(filters.with_period_closing_entry):
-		additional_conditions.append("ifnull(voucher_type, '') != 'Period Closing Voucher'")
+		additional_conditions.append("voucher_type != 'Period Closing Voucher'")
 
 	if filters.cost_center:
 		lft, rgt = frappe.db.get_value('Cost Center', filters.cost_center, ['lft', 'rgt'])
@@ -168,7 +167,7 @@ def get_rootwise_opening_balances(filters, report_type):
 		where
 			company = %(company)s
 			{additional_conditions}
-			and (posting_date < %(from_date)s or ifnull(is_opening, 'No') = 'Yes')
+			and (posting_date < %(from_date)s or is_opening = 'Yes')
 			and account in (select name from `tabAccount` where report_type=%(report_type)s)
 		group by account
 	""".format(additional_conditions=additional_conditions), query_filters, as_dict=True)

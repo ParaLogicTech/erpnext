@@ -2,7 +2,6 @@
 # Copyright (c) 2015, Frappe Technologies and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 from frappe.model.document import Document
 import frappe, erpnext
 from frappe import _
@@ -108,25 +107,3 @@ class Fees(AccountsController):
 		from erpnext.accounts.general_ledger import make_gl_entries
 		make_gl_entries([student_gl_entries, fee_gl_entry], cancel=(self.docstatus == 2),
 			update_outstanding="Yes", merge_entries=False)
-
-def get_fee_list(doctype, txt, filters, limit_start, limit_page_length=20, order_by="modified"):
-	user = frappe.session.user
-	student = frappe.db.sql("select name from `tabStudent` where student_email_id= %s", user)
-	if student:
-		return frappe. db.sql('''
-			select name, program, due_date, grand_total - outstanding_amount as paid_amount,
-			outstanding_amount, grand_total, currency
-			from `tabFees`
-			where student= %s and docstatus=1
-			order by due_date asc limit {0} , {1}'''
-			.format(limit_start, limit_page_length), student, as_dict = True)
-
-def get_list_context(context=None):
-	return {
-		"show_sidebar": True,
-		"show_search": True,
-		'no_breadcrumbs': True,
-		"title": _("Fees"),
-		"get_list": get_fee_list,
-		"row_template": "templates/includes/fee/fee_row.html"
-	}

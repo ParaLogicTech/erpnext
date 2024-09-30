@@ -11,5 +11,6 @@ frappe.listview_settings['Job Card'] = {
 		} else {
 			return [__("Open"), "red", "status,=,Open"];
 		}
-	}
+	},
+	has_indicator_for_draft: 1,
 };

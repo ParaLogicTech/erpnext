@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _, scrub, unscrub
 from frappe.utils import cint, cstr, flt
@@ -146,7 +145,7 @@ class VehicleAllocationRegisterReport(object):
 		for i in range(3):
 			group_label = self.filters.get("group_by_" + str(i + 1), "").replace("Group by ", "")
 
-			if not group_label or group_label == "Ungrouped":
+			if not group_label:
 				continue
 			elif group_label == "Variant":
 				group_field = "original_item_code"

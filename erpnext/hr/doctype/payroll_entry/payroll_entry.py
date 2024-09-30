@@ -2,7 +2,6 @@
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
 from dateutil.relativedelta import relativedelta
@@ -27,7 +26,7 @@ class PayrollEntry(Document):
 
 		self.set_onload('has_bank_entries', self.payroll_entry_has_bank_entries())
 
-	def before_print(self):
+	def before_print(self, print_settings=None):
 		bank_details = self.get_bank_details()
 		self.bank_details = bank_details
 
@@ -105,6 +104,7 @@ class PayrollEntry(Document):
 			employee_condition += self.get_joining_relieving_condition()
 			employee_condition += " and ssa.salary_structure IN %(salary_structures)s "
 			employee_condition += " and ssa.from_date <= %(end_date)s"
+			employee_condition += " and emp.status != 'Inactive'"
 
 			employees = frappe.db.sql("""
 				select distinct emp.name as employee, emp.employee_name, emp.department, emp.designation
@@ -118,6 +118,7 @@ class PayrollEntry(Document):
 
 			return employees
 
+	@frappe.whitelist()
 	def fill_employee_details(self):
 		self.set('employees', [])
 
@@ -156,6 +157,7 @@ class PayrollEntry(Document):
 			if not self.get(fieldname):
 				frappe.throw(_("Please set {0}").format(self.meta.get_label(fieldname)))
 
+	@frappe.whitelist()
 	def create_salary_slips(self):
 		"""
 			Creates salary slip for selected employees if already not created
@@ -211,6 +213,7 @@ class PayrollEntry(Document):
 		self.db_set("salary_slips_created", 1)
 		self.notify_update()
 
+	@frappe.whitelist()
 	def update_salary_slips(self):
 		"""
 			Creates salary slip for selected employees if already not created
@@ -234,6 +237,7 @@ class PayrollEntry(Document):
 			if publish_progress:
 				frappe.publish_progress((count + 1) * 100 / len(salary_slips), title=_("Updating Salary Slips..."))
 
+	@frappe.whitelist()
 	def submit_salary_slips(self):
 		self.check_permission('write')
 		salary_slips = self.get_salary_slips(docstatus=0)
@@ -289,7 +293,7 @@ class PayrollEntry(Document):
 		conditions = self.get_filter_condition()
 		return frappe.db.sql("""
 			select ss.employee, eld.loan, eld.loan_account, eld.interest_income_account,
-				eld.principal_amount, eld.interest_amount, eld.total_payment
+				eld.principal_amount, eld.interest_amount, eld.repayment_amount
 			from `tabSalary Slip` ss, `tabSalary Slip Loan` eld
 			where ss.name = eld.parent and ss.docstatus = 1 and ss.start_date >= %s and ss.end_date <= %s {0}
 		""".format(conditions), (self.start_date, self.end_date), as_dict=True) or []
@@ -451,7 +455,7 @@ class PayrollEntry(Document):
 						"party_type": "Employee",
 						"party": data.employee
 					})
-				payable_amount -= flt(data.total_payment, precision)
+				payable_amount -= flt(data.repayment_amount, precision)
 
 			for data in advance_details:
 				allocated_amount = flt(data.allocated_amount, precision)
@@ -548,6 +552,7 @@ class PayrollEntry(Document):
 
 		return salary_slips
 
+	@frappe.whitelist()
 	def get_disbursement_mode_details(self):
 		salary_slips = self.get_salary_slips_for_payment()
 		salary_modes = set([ss.salary_mode for ss in salary_slips if ss.salary_mode])
@@ -577,6 +582,7 @@ class PayrollEntry(Document):
 
 		return bank_employee_map
 
+	@frappe.whitelist()
 	def make_payment_entry(self, payment_account, salary_mode=None, bank_name=None, employee=None):
 		from erpnext.accounts.utils import get_currency_precision
 
@@ -659,6 +665,7 @@ class PayrollEntry(Document):
 	def set_start_end_dates(self):
 		self.update(get_start_end_dates(self.payroll_frequency, self.start_date or self.posting_date, self.company))
 
+	@frappe.whitelist()
 	def validate_employee_attendance(self):
 		employees_to_mark_attendance = []
 		days_in_payroll, days_holiday, days_attendance_marked = 0, 0, 0

@@ -107,15 +107,15 @@ frappe.query_reports["Employees Receivable"] = {
 			"fieldname":"group_by",
 			"label": __("Group By Level 1"),
 			"fieldtype": "Select",
-			"options": "Ungrouped\nGroup by Employee\nGroup by Department\nGroup by Designation\nGroup by Branch\nGroup by Cost Center\nGroup by Project",
-			"default": "Ungrouped"
+			"options": "\nGroup by Employee\nGroup by Department\nGroup by Designation\nGroup by Branch\nGroup by Cost Center\nGroup by Project",
+			"default": ""
 		},
 		{
 			"fieldname":"group_by_2",
 			"label": __("Group By Level 2"),
 			"fieldtype": "Select",
-			"options": "Ungrouped\nGroup by Employee\nGroup by Department\nGroup by Designation\nGroup by Branch\nGroup by Cost Center\nGroup by Project",
-			"default": "Ungrouped"
+			"options": "\nGroup by Employee\nGroup by Department\nGroup by Designation\nGroup by Branch\nGroup by Cost Center\nGroup by Project",
+			"default": ""
 		},
 	],
 	onload: function(report) {

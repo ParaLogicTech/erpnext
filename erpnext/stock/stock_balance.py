@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import print_function, unicode_literals
 import frappe
 from frappe.utils import flt, cstr, nowdate, nowtime
 from erpnext.stock.utils import update_bin
@@ -90,12 +89,12 @@ def get_reserved_qty(item_code, warehouse):
 					(
 						select qty from `tabSales Order Item`
 						where name = dnpi.parent_detail_docname
-						and (delivered_by_supplier is null or delivered_by_supplier = 0)
+						and skip_delivery_note = 0
 					) as so_item_qty,
 					(
 						select delivered_qty from `tabSales Order Item`
 						where name = dnpi.parent_detail_docname
-						and delivered_by_supplier = 0
+						and skip_delivery_note = 0
 					) as so_item_delivered_qty,
 					parent, name
 				from
@@ -113,10 +112,10 @@ def get_reserved_qty(item_code, warehouse):
 					delivered_qty as so_item_delivered_qty, parent, name
 				from `tabSales Order Item` so_item
 				where item_code = %s and warehouse = %s
-				and (so_item.delivered_by_supplier is null or so_item.delivered_by_supplier = 0)
+				and so_item.skip_delivery_note = 0
 				and exists(select * from `tabSales Order` so
 					where so.name = so_item.parent and so.docstatus = 1
-					and so.status != 'Closed'))
+					and so.status != 'Closed' and so.skip_delivery_note = 0))
 			) tab
 		where
 			so_item_qty >= so_item_delivered_qty
@@ -175,9 +174,13 @@ def get_ordered_qty(item_code, warehouse):
 
 def get_planned_qty(item_code, warehouse):
 	planned_qty = frappe.db.sql("""
-		select sum(qty - produced_qty) from `tabWork Order`
-		where production_item = %s and fg_warehouse = %s and status not in ("Stopped", "Completed")
-		and docstatus=1 and qty > produced_qty""", (item_code, warehouse))
+		select sum(producible_qty - produced_qty - process_loss_qty)
+		from `tabWork Order`
+		where production_item = %s and fg_warehouse = %s
+			and docstatus = 1
+			and producible_qty > (produced_qty + process_loss_qty)
+			and status not in ('Stopped', 'Completed')
+	""", (item_code, warehouse))
 
 	return flt(planned_qty[0][0]) if planned_qty else 0
 
@@ -372,7 +375,7 @@ def repost_all_stock_vouchers():
 			doc = frappe.get_doc(voucher_type, voucher_no)
 			if voucher_type == "Stock Entry":
 				doc.calculate_rate_and_amount()
-			elif voucher_type=="Purchase Receipt" and doc.is_subcontracted == "Yes":
+			elif voucher_type == "Purchase Receipt" and doc.is_subcontracted:
 				doc.validate()
 
 			doc.update_stock_ledger()

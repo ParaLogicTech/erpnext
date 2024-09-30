@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, formatdate, cstr
@@ -178,7 +177,7 @@ def set_gl_entries_by_account(company, from_date, to_date, based_on, gl_entries_
 	additional_conditions = []
 
 	if ignore_closing_entries:
-		additional_conditions.append("and ifnull(voucher_type, '')!='Period Closing Voucher'")
+		additional_conditions.append("and voucher_type != 'Period Closing Voucher'")
 
 	if from_date:
 		additional_conditions.append("and posting_date >= %(from_date)s")

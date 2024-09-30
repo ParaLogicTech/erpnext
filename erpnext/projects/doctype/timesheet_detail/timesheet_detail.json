@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2013-03-05 09:11:06",
  "doctype": "DocType",
  "document_type": "Document",
@@ -12,12 +13,6 @@
   "hours",
   "to_time",
   "completed",
-  "section_break_7",
-  "completed_qty",
-  "workstation",
-  "column_break_12",
-  "operation",
-  "operation_id",
   "project_details",
   "project",
   "column_break_2",
@@ -78,43 +73,6 @@
    "label": "Completed"
   },
   {
-   "fieldname": "section_break_7",
-   "fieldtype": "Section Break"
-  },
-  {
-   "depends_on": "eval:parent.work_order",
-   "fieldname": "completed_qty",
-   "fieldtype": "Float",
-   "label": "Completed Qty"
-  },
-  {
-   "depends_on": "eval:parent.work_order",
-   "fieldname": "workstation",
-   "fieldtype": "Link",
-   "label": "Workstation",
-   "options": "Workstation",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_12",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "eval:parent.work_order",
-   "fieldname": "operation",
-   "fieldtype": "Link",
-   "label": "Operation",
-   "options": "Operation",
-   "read_only": 1
-  },
-  {
-   "depends_on": "eval:parent.work_order",
-   "fieldname": "operation_id",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Operation Id"
-  },
-  {
    "fieldname": "project_details",
    "fieldtype": "Section Break"
   },
@@ -148,7 +106,7 @@
    "fieldname": "billable",
    "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Bill",
+   "label": "Is Billable",
    "print_hide": 1
   },
   {
@@ -220,7 +178,8 @@
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2020-03-03 15:37:48.766841",
+ "links": [],
+ "modified": "2023-10-06 16:12:22.686440",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Timesheet Detail",
@@ -228,5 +187,6 @@
  "permissions": [],
  "quick_entry": 1,
  "sort_field": "modified",
- "sort_order": "ASC"
+ "sort_order": "ASC",
+ "states": []
 }

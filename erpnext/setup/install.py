@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import print_function, unicode_literals
 
 import frappe
 from erpnext.accounts.doctype.cash_flow_mapper.default_cash_flow_mapper import DEFAULT_MAPPERS
@@ -11,12 +10,9 @@ from frappe.desk.page.setup_wizard.setup_wizard import add_all_roles_to
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
 from erpnext.setup.default_energy_point_rules import get_default_energy_point_rules
 
-default_mail_footer = """<div style="padding: 7px; text-align: right; color: #888"><small>Sent via
-	<a style="color: #888" href="http://erpnext.org">ERPNext</a></div>"""
-
 
 def after_install():
-	frappe.get_doc({'doctype': "Role", "role_name": "Analytics"}).insert()
+	# frappe.get_doc({'doctype': "Role", "role_name": "Analytics"}).insert()
 	set_single_defaults()
 	create_compact_item_print_custom_field()
 	create_print_zero_amount_taxes_custom_field()

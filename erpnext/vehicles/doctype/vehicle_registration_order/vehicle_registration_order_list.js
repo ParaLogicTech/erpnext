@@ -6,9 +6,9 @@ frappe.listview_settings['Vehicle Registration Order'] = {
 		if(doc.status === "Completed") {
 			indicator = [__("Completed"), "green", "status,=,Completed"];
 		} else if (["To Receive Invoice"].includes(doc.status)) {
-			indicator = [__(doc.status), "darkgrey", `status,=,${doc.status}`];
+			indicator = [__(doc.status), "grey", `status,=,${doc.status}`];
 		} else if (["To Retrieve Invoice", "To Pay Agent"].includes(doc.status)) {
-			indicator = [__(doc.status), "lightblue", `status,=,${doc.status}`];
+			indicator = [__(doc.status), "light-blue", `status,=,${doc.status}`];
 		} else if (["To Receive Payment", "To Receive Receipt"].includes(doc.status)) {
 			indicator = [__(doc.status), "yellow", `status,=,${doc.status}`];
 		} else if(["To Close Accounts", "To Bill"].includes(doc.status)) {
@@ -57,12 +57,12 @@ frappe.listview_settings['Vehicle Registration Order'] = {
 			}
 		});
 
-		var get_vehicle_registration_details = function (df, dialog) {
-			if (df.doc.vehicle_registration_order) {
+		var get_vehicle_registration_details = function (control, dialog) {
+			if (control.doc.vehicle_registration_order) {
 				frappe.call({
 					method: 'erpnext.vehicles.doctype.vehicle_registration_order.vehicle_registration_order.get_vehicle_registration_order_details',
 					args: {
-						vehicle_registration_order: df.doc.vehicle_registration_order,
+						vehicle_registration_order: control.doc.vehicle_registration_order,
 						get_customer: 1,
 						get_vehicle: 1,
 						get_vehicle_booking_order: 1
@@ -70,7 +70,7 @@ frappe.listview_settings['Vehicle Registration Order'] = {
 					callback: (r) => {
 						if (r.message) {
 							$.each(r.message || {}, function (k, v) {
-								df.doc[k] = v;
+								control.doc[k] = v;
 							});
 							dialog.fields_dict.orders.grid.refresh();
 						}
@@ -99,7 +99,7 @@ frappe.listview_settings['Vehicle Registration Order'] = {
 							}
 						}
 					},
-					change: function () {
+					onchange: function () {
 						get_vehicle_registration_details(this, dialog);
 					}
 				},
@@ -165,7 +165,7 @@ frappe.listview_settings['Vehicle Registration Order'] = {
 					fieldtype: 'Link',
 					options: 'Supplier',
 					reqd: 1,
-					change: function () {
+					onchange: function () {
 						if (dialog.get_value('agent')) {
 							frappe.db.get_value("Supplier", dialog.get_value('agent'), 'supplier_name', function (r) {
 								dialog.set_value('agent_name', r.supplier_name);
@@ -200,7 +200,7 @@ frappe.listview_settings['Vehicle Registration Order'] = {
 
 			var dialog = new frappe.ui.Dialog({
 				title: __('Agent Payment Order Selection'),
-				size: "large",
+				size: "extra-large",
 				fields: fields
 			});
 

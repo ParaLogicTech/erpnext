@@ -1,5 +1,4 @@
 Accounts
-CRM
 Buying
 Projects
 Selling
@@ -9,9 +8,7 @@ Manufacturing
 Stock
 Support
 Utilities
-Shopping Cart
 Assets
-Portal
 Maintenance
 Education
 Regional
@@ -21,7 +18,5 @@ Agriculture
 ERPNext Integrations
 Non Profit
 Hotels
-Hub Node
 Quality Management
-Communication
 Vehicles

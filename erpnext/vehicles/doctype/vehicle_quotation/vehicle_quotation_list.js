@@ -6,9 +6,9 @@ frappe.listview_settings['Vehicle Quotation'] = {
 		} else if(doc.status==="Ordered") {
 			return [__("Ordered"), "green", "status,=,Ordered"];
 		} else if(doc.status==="Lost") {
-			return [__("Lost"), "darkgrey", "status,=,Lost"];
+			return [__("Lost"), "grey", "status,=,Lost"];
 		} else if(doc.status==="Expired") {
-			return [__("Expired"), "darkgrey", "status,=,Expired"];
+			return [__("Expired"), "light-gray", "status,=,Expired"];
 		}
 	},
 	onload: function(listview) {
@@ -20,15 +20,6 @@ frappe.listview_settings['Vehicle Quotation'] = {
 					}
 				};
 			};
-		}
-
-		listview.page.fields_dict.party_name.get_query = () => {
-			var quotation_to = listview.page.fields_dict.quotation_to.get_value('quotation_to');
-			if (quotation_to == "Customer") {
-				return erpnext.queries.customer();
-			} else if (quotation_to == "Lead") {
-				return erpnext.queries.lead();
-			}
 		}
 
 		listview.page.fields_dict.variant_of.get_query = () => {

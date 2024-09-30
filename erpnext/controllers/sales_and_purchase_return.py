@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext
 from frappe import _
 from frappe.model.meta import get_field_precision
@@ -368,7 +367,7 @@ def make_return_doc(doctype, source_name, target_doc=None):
 				target_doc.precision('qty'))
 			target_doc.received_qty = target_doc.qty if target_doc.qty else -1 * source_doc.rejected_qty
 			target_doc.rejected_qty = -1 * source_doc.rejected_qty
-			target_doc.stock_qty = target_doc.qty * target_doc.conversion_factor
+			target_doc.stock_qty = -1 * source_doc.stock_qty
 			target_doc.purchase_order = source_doc.purchase_order
 			target_doc.purchase_receipt_item = source_doc.name
 			target_doc.purchase_order_item = source_doc.purchase_order_item
@@ -389,25 +388,35 @@ def make_return_doc(doctype, source_name, target_doc=None):
 			target_doc.sales_invoice_item = source_doc.sales_invoice_item
 
 		elif doctype == "Delivery Note":
-			target_doc.qty = -1 * flt(source_doc.qty - source_doc.billed_qty - source_doc.returned_qty,
-				target_doc.precision("qty"))
-			target_doc.sales_order = source_doc.sales_order
-			target_doc.sales_invoice = source_doc.sales_invoice
-			target_doc.target_warehouse = source_doc.target_warehouse
+			if frappe.get_cached_value("Stock Settings", None, "allow_delivery_returns_after_billing"):
+				target_doc.qty = -1 * flt(source_doc.qty - source_doc.returned_qty)
+			else:
+				target_doc.qty = -1 * flt(source_doc.qty - source_doc.billed_qty - source_doc.returned_qty)
+			target_doc.qty = flt(target_doc.qty, target_doc.precision("qty"))
+
 			target_doc.delivery_note_item = source_doc.name
+			target_doc.sales_order = source_doc.sales_order
 			target_doc.sales_order_item = source_doc.sales_order_item
+			target_doc.sales_invoice = source_doc.sales_invoice
 			target_doc.sales_invoice_item = source_doc.sales_invoice_item
+			target_doc.packing_slip = source_doc.packing_slip
+			target_doc.packing_slip_item = source_doc.packing_slip_item
+
+			target_doc.target_warehouse = source_doc.target_warehouse
 			target_doc.expense_account = source_doc.expense_account
 			if default_warehouse_for_sales_return:
 				target_doc.warehouse = default_warehouse_for_sales_return
 
 		elif doctype == "Sales Invoice":
-			target_doc.sales_order = source_doc.sales_order
-			target_doc.delivery_note = source_doc.delivery_note
-			target_doc.target_warehouse = source_doc.target_warehouse
-			target_doc.sales_order_item = source_doc.sales_order_item
-			target_doc.delivery_note_item = source_doc.delivery_note_item
 			target_doc.sales_invoice_item = source_doc.name
+			target_doc.sales_order = source_doc.sales_order
+			target_doc.sales_order_item = source_doc.sales_order_item
+			target_doc.delivery_note = source_doc.delivery_note
+			target_doc.delivery_note_item = source_doc.delivery_note_item
+			target_doc.packing_slip = source_doc.packing_slip
+			target_doc.packing_slip_item = source_doc.packing_slip_item
+
+			target_doc.target_warehouse = source_doc.target_warehouse
 			target_doc.expense_account = source_doc.expense_account
 			if default_warehouse_for_sales_return:
 				target_doc.warehouse = default_warehouse_for_sales_return
@@ -415,17 +424,19 @@ def make_return_doc(doctype, source_name, target_doc=None):
 	def update_terms(source_doc, target_doc, source_parent, target_parent):
 		target_doc.payment_amount = -source_doc.payment_amount
 
-	doclist = get_mapped_doc(doctype, source_name,	{
+	mapper = {
 		doctype: {
 			"doctype": doctype,
-
 			"validation": {
 				"docstatus": ["=", 1],
 			},
-
 			"field_map": {
-				"to_warehouse": "to_warehouse"
-			}
+				"to_warehouse": "to_warehouse",
+				"supplier_warehouse": "supplier_warehouse",
+				"po_no": "po_no",
+				"po_date": "po_date",
+			},
+			"field_no_map": ["is_subcontracted"],
 		},
 		doctype + " Item": {
 			"doctype": doctype + " Item",
@@ -440,6 +451,10 @@ def make_return_doc(doctype, source_name, target_doc=None):
 			"doctype": "Payment Schedule",
 			"postprocess": update_terms
 		}
-	}, target_doc, set_missing_values)
+	}
+
+	frappe.utils.call_hook_method("update_sales_purchase_return_mapper", mapper, doctype)
+
+	doclist = get_mapped_doc(doctype, source_name,	mapper, target_doc, set_missing_values)
 
 	return doclist

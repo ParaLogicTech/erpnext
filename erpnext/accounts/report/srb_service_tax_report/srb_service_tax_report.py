@@ -1,7 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import getdate, nowdate, flt, cint
@@ -187,7 +186,7 @@ class FBRInvoiceWiseTaxes(object):
 				left join `tabCustomer` c on c.name = i.bill_to
 				left join `tabAddress` addr on addr.name = i.customer_address
 				where i.docstatus = 1 and i.company = %(company)s and i.posting_date between %(from_date)s and %(to_date)s
-					and ifnull(i.is_return, 0) = 0 and exists(select tax.name from `tabSales Taxes and Charges` tax
+					and i.is_return = 0 and exists(select tax.name from `tabSales Taxes and Charges` tax
 						where tax.parent = i.name and tax.account_head in ({0}) and tax.base_tax_amount_after_discount_amount != 0)
 					{1}
 				order by i.posting_date, i.stin
@@ -203,7 +202,7 @@ class FBRInvoiceWiseTaxes(object):
 			d.buyer_type = "End_Consumer"
 			d.sale_type = "Services"
 			d.document_type = "SI"
-			d.hscode = "98201000"
+			# d.hscode = "98201000"
 			self.invoices_map[d.invoice] = frappe._dict({
 				'invoice': d, 'items': [], 'taxes': []
 			})

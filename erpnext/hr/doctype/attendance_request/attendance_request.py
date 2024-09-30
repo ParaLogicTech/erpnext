@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -16,8 +15,10 @@ class AttendanceRequest(Document):
 		validate_dates(self, self.from_date, self.to_date, allow_future_date=True)
 		validate_overlap(self, self.from_date, self.to_date, self.company)
 		if self.half_day:
-			if not getdate(self.from_date)<=getdate(self.half_day_date)<=getdate(self.to_date):
+			if not getdate(self.from_date) <= getdate(self.half_day_date) <= getdate(self.to_date):
 				frappe.throw(_("Half Day date should be in between from date and to date"))
+		else:
+			self.half_day_date = None
 
 	def on_submit(self):
 		self.update_attendance()
@@ -55,9 +56,20 @@ class AttendanceRequest(Document):
 							'late_entry': 0,
 							'previous_late_entry': existing_doc.late_entry,
 						})
+					
+					if self.remove_early_exit:
+						changes.update({
+							'early_exit': 0,
+							'previous_early_exit': existing_doc.early_exit,
+						})
 
 					existing_doc.db_set(changes, notify=1)
 				else:
+					from erpnext.hr.doctype.shift_assignment.shift_assignment import get_employee_shift
+					assigned_shift = get_employee_shift(self.employee, attendance_date, True)
+					if assigned_shift:
+						assigned_shift = assigned_shift.shift_type.name
+
 					attendance = frappe.new_doc("Attendance")
 					attendance.employee = self.employee
 					attendance.employee_name = self.employee_name
@@ -65,6 +77,7 @@ class AttendanceRequest(Document):
 					attendance.attendance_date = attendance_date
 					attendance.company = self.company
 					attendance.attendance_request = self.name
+					attendance.shift = assigned_shift
 					attendance.save(ignore_permissions=True)
 					attendance.submit()
 
@@ -91,6 +104,11 @@ class AttendanceRequest(Document):
 							'late_entry': att_doc.previous_late_entry,
 							'previous_late_entry': 0,
 						})
+					if self.remove_early_exit:
+						changes.update({
+							'early_exit': att_doc.previous_early_exit,
+							'previous_early_exit': 0,
+						})
 					att_doc.db_set(changes, notify=1)
 				else:
 					att_doc.flags.ignore_permissions = True
@@ -106,7 +124,7 @@ class AttendanceRequest(Document):
 		# Check if employee on Leave
 		leave_record = frappe.db.sql("""select half_day from `tabLeave Application`
 			where employee = %s and %s between from_date and to_date
-			and docstatus = 1""", (self.employee, attendance_date), as_dict=True)
+			and docstatus = 1 and late_deduction = 0""", (self.employee, attendance_date), as_dict=True)
 		if leave_record:
 			frappe.msgprint(_("Attendance not created for {0} as {1} is On Leave.")
 				.format(formatdate(attendance_date), self.employee))
@@ -114,12 +132,17 @@ class AttendanceRequest(Document):
 
 		existing_attendance = frappe.db.get_value("Attendance",
 			{'employee': self.employee, 'attendance_date': attendance_date, 'docstatus': 1},
-			['status', 'late_entry'], as_dict=1)
+			['status', 'late_entry', 'early_exit'], as_dict=1)
 		if existing_attendance:
 			if existing_attendance.status == "Present":
 				if self.remove_late_entry:
 					if not existing_attendance.late_entry:
 						frappe.msgprint(_("Attendance not created for {0} as it is already marked Present without Late Entry.")
+							.format(formatdate(attendance_date)))
+						return True
+				elif self.remove_early_exit:
+					if not existing_attendance.early_exit:
+						frappe.msgprint(_("Attendance not created for {0} as it is already marked Present without Early Exit.")
 							.format(formatdate(attendance_date)))
 						return True
 				else:

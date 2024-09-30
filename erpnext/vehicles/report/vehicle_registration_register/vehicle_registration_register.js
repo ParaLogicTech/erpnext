@@ -136,25 +136,25 @@ frappe.query_reports["Vehicle Registration Register"] = {
 			fieldname: "group_by_1",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Variant", "Group by Model", "Group by Item Group", "Group by Brand",
+			options: ["", "Group by Variant", "Group by Model", "Group by Item Group", "Group by Brand",
 				"Group by Status"],
-			default: "Ungrouped"
+			default: ""
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Variant", "Group by Model", "Group by Item Group", "Group by Brand",
+			options: ["", "Group by Variant", "Group by Model", "Group by Item Group", "Group by Brand",
 				"Group by Status"],
-			default: "Ungrouped"
+			default: ""
 		},
 		{
 			fieldname: "group_by_3",
 			label: __("Group By Level 3"),
 			fieldtype: "Select",
-			options: ["Ungrouped", "Group by Variant", "Group by Model", "Group by Item Group", "Group by Brand",
+			options: ["", "Group by Variant", "Group by Model", "Group by Item Group", "Group by Brand",
 				"Group by Status"],
-			default: "Ungrouped"
+			default: ""
 		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {

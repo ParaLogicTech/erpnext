@@ -126,7 +126,7 @@ frappe.query_reports["Sales Analytics"] = {
 					filters: {'company': frappe.query_report.get_filter_value("company")}
 				}
 			},
-		},,
+		},
 		{
 			fieldname: "applies_to_item",
 			label: __("Applies to Item"),
@@ -173,17 +173,15 @@ frappe.query_reports["Sales Analytics"] = {
 		},
 	],
 	after_datatable_render: function(datatable_obj) {
-		const checkbox = $(datatable_obj.wrapper).find(".dt-row-0").find('input[type=checkbox]');
-		if(!checkbox.prop("checked")) {
-			checkbox.click();
-		}
+		datatable_obj.rowmanager.checkRow(0, 1);
 	},
 	get_datatable_options(options) {
 		return Object.assign(options, {
 			checkboxColumn: true,
 			events: {
-				onCheckRow: function(data) {
-					let row_name = data[2].content;
+				onCheckRow: function (data) {
+					const raw_data = frappe.query_report.chart.data;
+
 					let period_columns = [];
 					$.each(frappe.query_report.columns || [], function(i, column) {
 						if (column.period_column) {
@@ -191,47 +189,30 @@ frappe.query_reports["Sales Analytics"] = {
 						}
 					});
 
-					let row_values = period_columns.map(i => data[i].content);
-					let entry = {
-						'name':row_name,
-						'values':row_values
-					};
+					const datasets = [];
 
-					let raw_data = frappe.query_report.chart.data;
-					let new_datasets = raw_data.datasets;
+					let checked_rows = frappe.query_report.datatable.rowmanager.getCheckedRows().map((i) => frappe.query_report.datatable.datamanager.getRow(i));
+					for (let row of checked_rows) {
+						let row_name = row[2].content;
+						let row_values = period_columns.map(i => row[i].content);
 
-					let found = false;
-
-					for(var i=0; i < new_datasets.length;i++){
-						if(new_datasets[i].name == row_name){
-							found = true;
-							new_datasets.splice(i,1);
-							break;
-						}
+						datasets.push({
+							name: row_name,
+							values: row_values,
+						});
 					}
 
-					if(!found){
-						new_datasets.push(entry);
-					}
-
-					let new_data = {
+					const new_data = {
 						labels: raw_data.labels,
-						datasets: new_datasets
+						datasets: datasets,
 					};
-
-					setTimeout(() => {
-						frappe.query_report.chart.update(new_data)
-					}, 500);
-
-
-					setTimeout(() => {
-						frappe.query_report.chart.draw(true);
-					}, 1000);
+					const new_options = Object.assign({}, frappe.query_report.chart_options, {data: new_data});
+					frappe.query_report.render_chart(new_options);
 
 					frappe.query_report.raw_chart_data = new_data;
 				},
-			}
-		})
+			},
+		});
 	},
 }
 

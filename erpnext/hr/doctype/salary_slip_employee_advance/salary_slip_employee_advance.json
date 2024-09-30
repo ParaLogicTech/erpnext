@@ -1,15 +1,21 @@
 {
+ "actions": [],
  "creation": "2020-12-08 18:39:43.520410",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "posting_date",
   "employee_advance",
-  "total_advance",
+  "column_break_lxqjv",
+  "posting_date",
+  "section_break_tvhzi",
+  "advance_amount",
+  "column_break_lkf6e",
+  "allocated_amount",
+  "column_break_dpqto",
   "balance_amount",
-  "advance_account",
-  "allocated_amount"
+  "section_break_lbp8s",
+  "advance_account"
  ],
  "fields": [
   {
@@ -20,14 +26,6 @@
    "options": "Employee Advance",
    "read_only": 1,
    "reqd": 1
-  },
-  {
-   "fieldname": "total_advance",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Total Advance",
-   "options": "Company:company:default_currency",
-   "read_only": 1
   },
   {
    "fieldname": "balance_amount",
@@ -58,12 +56,42 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Allocated Amount",
-   "options": "Company:company:default_currency"
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "advance_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Advance Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lxqjv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_tvhzi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_lkf6e",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_dpqto",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_lbp8s",
+   "fieldtype": "Section Break"
   }
  ],
  "istable": 1,
- "modified": "2020-12-17 14:25:26.191252",
- "modified_by": "furqan.790@outlook.com",
+ "links": [],
+ "modified": "2023-11-21 13:18:50.535056",
+ "modified_by": "Administrator",
  "module": "HR",
  "name": "Salary Slip Employee Advance",
  "owner": "furqan.790@outlook.com",
@@ -71,5 +99,6 @@
  "quick_entry": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

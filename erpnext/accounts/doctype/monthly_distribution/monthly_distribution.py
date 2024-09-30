@@ -1,13 +1,13 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import (flt, add_months)
 from frappe.model.document import Document
 
 class MonthlyDistribution(Document):
+	@frappe.whitelist()
 	def get_months(self):
 		month_list = ['January','February','March','April','May','June','July','August','September',
 		'October','November','December']

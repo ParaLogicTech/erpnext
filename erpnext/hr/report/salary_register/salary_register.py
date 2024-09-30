@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe.utils import flt, cint
 from frappe import _, scrub
@@ -10,7 +9,7 @@ from frappe.desk.query_report import group_report_data
 
 def execute(filters=None):
 	filters = frappe._dict(filters)
-	filters.show_employee_name = frappe.get_cached_value("HR Settings", None, "emp_created_by") != "Full Name"
+	filters.show_employee_name = frappe.db.get_single_value("HR Settings", "emp_created_by") != "Full Name"
 
 	salary_slips = get_salary_slips(filters)
 	if not salary_slips:
@@ -72,7 +71,7 @@ def get_grouped_data(columns, data, filters):
 	for i in range(2):
 		group_label = filters.get("group_by_" + str(i + 1), "").replace("Group by ", "")
 
-		if not group_label or group_label == "Ungrouped":
+		if not group_label:
 			continue
 		else:
 			group_field = scrub(group_label)

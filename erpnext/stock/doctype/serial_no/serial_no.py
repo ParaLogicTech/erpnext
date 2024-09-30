@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 
 from frappe.model.naming import make_autoname
@@ -10,8 +9,6 @@ from erpnext.stock.get_item_details import get_reserved_qty_for_so
 from frappe import _, ValidationError
 from erpnext.controllers.stock_controller import StockController
 from erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule import get_maintenance_schedule_from_serial_no
-from six.moves import map
-from six import string_types
 
 
 class SerialNoCannotCreateDirectError(ValidationError): pass
@@ -215,8 +212,10 @@ class SerialNo(StockController):
 			if last_customer_log:
 				self.customer = last_customer_log.get('customer')
 				self.customer_name = last_customer_log.get('customer_name')
-				self.vehicle_owner = last_customer_log.get('vehicle_owner')
-				self.vehicle_owner_name = last_customer_log.get('vehicle_owner_name')
+
+				if last_customer_log.vehicle_owner:
+					self.vehicle_owner = last_customer_log.get('vehicle_owner')
+					self.vehicle_owner_name = last_customer_log.get('vehicle_owner_name')
 
 	def get_last_sle(self, serial_no=None):
 		if not serial_no:
@@ -475,7 +474,7 @@ def validate_serial_no_ledger(serial_nos, item_code, voucher_type, voucher_no, c
 		frappe.throw(_("{0} is not available in any Warehouse{1}{2}")
 			.format(serial_no_link, issuing_voucher_msg, last_available_msg), title=_("Not In Stock"))
 
-	if isinstance(serial_nos, string_types):
+	if isinstance(serial_nos, str):
 		serial_nos = get_serial_nos(serial_nos)
 
 	if not serial_nos:
@@ -685,7 +684,7 @@ def update_serial_nos_after_submit(controller, parentfield):
 
 		if controller.doctype == "Stock Entry":
 			warehouse = d.t_warehouse
-			qty = d.transfer_qty
+			qty = d.stock_qty
 		else:
 			warehouse = d.warehouse
 			qty = (d.qty if controller.doctype == "Stock Reconciliation"

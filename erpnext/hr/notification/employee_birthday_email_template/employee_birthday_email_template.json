@@ -1,0 +1,28 @@
+{
+ "attach_print": 0,
+ "channel": "Email",
+ "creation": "2024-08-28 14:20:50.276994",
+ "days_in_advance": 0,
+ "docstatus": 0,
+ "doctype": "Notification",
+ "document_type": "Employee",
+ "enabled": 0,
+ "event": "Method",
+ "idx": 0,
+ "is_standard": 1,
+ "message": "Dear {{ doc.employee_name }},\n\nWe would like to wish you a Happy Birthday on turning {{ doc.age }} years old!\n\nSincerely,\n{{ doc.company }}",
+ "method": "send_birthday_notification",
+ "modified": "2024-08-28 15:09:58.197568",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Employee Birthday Email Template",
+ "owner": "Administrator",
+ "recipients": [
+  {
+   "receiver_by_document_field": "prefered_email"
+  }
+ ],
+ "send_system_notification": 1,
+ "send_to_all_assignees": 0,
+ "subject": "Happy Birthday {{ doc.employee_name }}"
+}

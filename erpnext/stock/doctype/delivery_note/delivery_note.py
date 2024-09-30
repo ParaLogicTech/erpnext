@@ -1,19 +1,15 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 
 import frappe
 import frappe.defaults
 from erpnext.controllers.selling_controller import SellingController
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 from frappe import _
-from frappe.contacts.doctype.address.address import get_company_address
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
-from frappe.model.utils import get_fetch_values
 from frappe.utils import cint, flt
-from six import string_types
 
 
 form_grid_templates = {
@@ -26,11 +22,11 @@ class DeliveryNote(SellingController):
 		super(DeliveryNote, self).__init__(*args, **kwargs)
 		self.status_map = [
 			["Draft", None],
-			["To Bill", "eval:self.per_completed < 100 and self.docstatus == 1"],
-			["Completed", "eval:self.per_completed == 100 and self.docstatus == 1"],
+			["To Bill", "eval:self.billing_status == 'To Bill' and self.docstatus == 1"],
+			["Completed", "eval:self.billing_status != 'To Bill' and self.docstatus == 1"],
 			["Return", "eval:self.is_return and self.docstatus == 1"],
-			["Cancelled", "eval:self.docstatus==2"],
-			["Closed", "eval:self.status=='Closed'"],
+			["Closed", "eval:self.status == 'Closed'"],
+			["Cancelled", "eval:self.docstatus == 2"],
 		]
 
 	def validate(self):
@@ -57,6 +53,9 @@ class DeliveryNote(SellingController):
 
 		self.update_current_stock()
 
+	def before_submit(self):
+		self.remove_partial_packing_slip_for_return()
+
 	def on_submit(self):
 		self.validate_packed_qty()
 
@@ -77,27 +76,27 @@ class DeliveryNote(SellingController):
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating reserved qty in bin depends upon updated delivered qty in SO
 		self.update_stock_ledger()
+		self.update_packing_slips()
 		self.make_gl_entries()
 
 	def on_cancel(self):
-		super(DeliveryNote, self).on_cancel()
-
 		self.check_next_docstatus()
+		self.update_status_on_cancel()
 
 		self.update_billing_status()
 		self.update_previous_doc_status()
-		self.cancel_packing_slips()
 
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating reserved qty in bin depends upon updated delivered qty in SO
 		self.update_stock_ledger()
+		self.update_packing_slips()
 		self.make_gl_entries_on_cancel()
 
 		if self.is_return:
 			from erpnext.accounts.doctype.sales_invoice.sales_invoice import unlink_inter_company_doc
 			unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
 
-	def before_print(self):
+	def before_print(self, print_settings=None):
 		def toggle_print_hide(meta, fieldname):
 			df = meta.get_field(fieldname)
 			if self.get("print_without_amount"):
@@ -115,10 +114,43 @@ class DeliveryNote(SellingController):
 			for f in fieldname:
 				toggle_print_hide(self.meta if key == "parent" else item_meta, f)
 
-		super(DeliveryNote, self).before_print()
+		super(DeliveryNote, self).before_print(print_settings=print_settings)
 
 	def set_title(self):
 		self.title = self.customer_name or self.customer
+
+	def set_missing_values(self, for_validate=False):
+		super().set_missing_values(for_validate=for_validate)
+		self.set_skip_sales_invoice()
+
+	def set_skip_sales_invoice(self, update=False, update_modified=True):
+		for d in self.get("items"):
+			self.set_skip_sales_invoice_for_row(d, update=update, update_modified=update_modified)
+
+		self.set_skip_sales_invoice_for_delivery_note(update=update, update_modified=update_modified)
+
+	def set_skip_sales_invoice_for_row(self, row, update=False, update_modified=True):
+		if row.item_code:
+			hooked_skip_sales_invoice = self.run_method("get_skip_sales_invoice", row)
+			if hooked_skip_sales_invoice is not None:
+				row.skip_sales_invoice = 1 if hooked_skip_sales_invoice else 0
+			else:
+				row.skip_sales_invoice = 0
+		else:
+			row.skip_sales_invoice = 0
+
+		if update:
+			row.db_set("skip_sales_invoice", row.skip_sales_invoice, update_modified=update_modified)
+
+	def get_skip_sales_invoice(self, row):
+		return None
+
+	def set_skip_sales_invoice_for_delivery_note(self, update=False, update_modified=True):
+		all_skip_sales_invoice = all(d.skip_sales_invoice for d in self.get("items"))
+		self.skip_sales_invoice = cint(all_skip_sales_invoice)
+
+		if update:
+			self.db_set("skip_sales_invoice", self.skip_sales_invoice, update_modified=update_modified)
 
 	def validate_previous_docstatus(self):
 		for d in self.get('items'):
@@ -128,13 +160,14 @@ class DeliveryNote(SellingController):
 			if d.sales_invoice and frappe.db.get_value("Sales Invoice", d.sales_invoice, "docstatus", cache=1) != 1:
 				frappe.throw(_("Row #{0}: Sales Invoice {1} is not submitted").format(d.idx, d.delivery_note))
 
-			if self.return_against and frappe.db.get_value("Delivery Note", self.return_against, "docstatus", cache=1) != 1:
-				frappe.throw(_("Return Against Delivery Note {0} is not submitted").format(self.return_against))
+		if self.return_against and frappe.db.get_value("Delivery Note", self.return_against, "docstatus", cache=1) != 1:
+			frappe.throw(_("Return Against Delivery Note {0} is not submitted").format(self.return_against))
 
 	def update_previous_doc_status(self):
 		sales_orders = set()
 		sales_invoices = set()
-		sales_order_row_names = set()
+		so_row_names_without_packing_slip = set()
+		so_row_names_with_packing_slip = set()
 		sales_invoice_row_names = set()
 		delivery_note_row_names = set()
 
@@ -144,20 +177,49 @@ class DeliveryNote(SellingController):
 			if d.sales_invoice:
 				sales_invoices.add(d.sales_invoice)
 			if d.sales_order_item:
-				sales_order_row_names.add(d.sales_order_item)
+				if d.packing_slip:
+					so_row_names_with_packing_slip.add(d.sales_order_item)
+				else:
+					so_row_names_without_packing_slip.add(d.sales_order_item)
 			if d.sales_invoice_item:
 				sales_invoice_row_names.add(d.sales_invoice_item)
 			if d.delivery_note_item:
 				delivery_note_row_names.add(d.delivery_note_item)
 
+		# Update Returned Against Delivery Note
+		if self.is_return and self.return_against:
+			doc = frappe.get_doc("Delivery Note", self.return_against)
+			doc.update_billing_status()
+			doc.validate_returned_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
+
+			if not frappe.get_cached_value("Stock Settings", None, "allow_delivery_returns_after_billing"):
+				doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
+
+			if self.reopen_order:
+				return_against_packing_slips = set([d.packing_slip for d in doc.items
+					if d.packing_slip and d.name in delivery_note_row_names])
+				return_against_packing_slip_row_names = [d.packing_slip_item for d in doc.items
+					if d.packing_slip_item and d.name in delivery_note_row_names]
+
+				for packing_slip in return_against_packing_slips:
+					ps_doc = frappe.get_doc("Packing Slip", packing_slip)
+					ps_doc.set_unpacked_return_status(update=True, row_names=return_against_packing_slip_row_names)
+					ps_doc.notify_update()
+
+			doc.notify_update()
+
 		# Update Sales Orders
 		for name in sales_orders:
 			doc = frappe.get_doc("Sales Order", name)
 			doc.set_delivery_status(update=True)
-			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=sales_order_row_names)
+			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=so_row_names_without_packing_slip)
+			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=so_row_names_with_packing_slip,
+				check_packed_qty=True)
+			doc.set_billing_status(update=True)
 
-			if self.is_return:
-				doc.set_billing_status(update=True)
+			# Update packed qty for unpacked returns
+			if self.is_return and self.reopen_order:
+				doc.set_production_packing_status(update=True)
 
 			doc.set_status(update=True)
 			doc.notify_update()
@@ -170,15 +232,15 @@ class DeliveryNote(SellingController):
 			doc.set_status(update=True)
 			doc.notify_update()
 
-		# Update Returned Against Delivery Note
-		if self.is_return and self.return_against:
-			doc = frappe.get_doc("Delivery Note", self.return_against)
-			doc.update_billing_status()
-			doc.validate_returned_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
-			doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
-			doc.notify_update()
-
 		self.update_project_billing_and_sales()
+
+	def update_sales_order_billing_status(self):
+		sales_orders = set([d.sales_order for d in self.items if d.sales_order])
+		for name in sales_orders:
+			doc = frappe.get_doc("Sales Order", name)
+			doc.set_billing_status(update=True)
+			doc.set_status(update=True)
+			doc.notify_update()
 
 	def update_billing_status(self, update_modified=True):
 		updated_delivery_notes = [self.name]
@@ -220,19 +282,27 @@ class DeliveryNote(SellingController):
 				}, update_modified=update_modified)
 
 		# update percentage in parent
+		billable_rows = [d for d in self.items if not d.skip_sales_invoice]
+
 		self.per_returned = flt(self.calculate_status_percentage('returned_qty', 'qty', self.items))
-		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', self.items)
-		self.per_completed = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty', self.items)
+		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', billable_rows)
+		self.per_completed = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty', billable_rows)
 		if self.per_completed is None:
-			total_billed_qty = flt(sum([flt(d.billed_qty) for d in self.items]), self.precision('total_qty'))
+			total_billed_qty = flt(sum([flt(d.billed_qty) for d in billable_rows]), self.precision('total_qty'))
 			self.per_billed = 100 if total_billed_qty else 0
 			self.per_completed = 100 if total_billed_qty else 0
+
+		# update billing_status
+		self.billing_status = self.get_completion_status('per_completed', 'Bill',
+			not_applicable=self.skip_sales_invoice or self.status == "Closed" or self.per_returned == 100 or self.is_return,
+			not_applicable_based_on='per_billed')
 
 		if update:
 			self.db_set({
 				'per_billed': self.per_billed,
 				'per_returned': self.per_returned,
 				'per_completed': self.per_completed,
+				'billing_status': self.billing_status,
 			}, update_modified=update_modified)
 
 	def set_installation_status(self, update=False, update_modified=True):
@@ -253,7 +323,7 @@ class DeliveryNote(SellingController):
 			self.per_installed = 100 if total_installed_qty else 0
 
 		# update installation_status
-		self.installation_status = self.get_completion_status('per_installed', 'Installed')
+		self.installation_status = self.get_completion_status('per_installed', 'Installed', not_applicable=True)
 
 		if update:
 			self.db_set({
@@ -270,7 +340,7 @@ class DeliveryNote(SellingController):
 					select i.delivery_note_item, -1 * sum(i.qty)
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` p on p.name = i.parent
-					where p.docstatus = 1 and p.is_return = 1 and p.reopen_order = 0 and i.delivery_note_item in %s
+					where p.docstatus = 1 and p.is_return = 1 and i.delivery_note_item in %s
 					group by i.delivery_note_item
 				""", [row_names]))
 
@@ -308,7 +378,11 @@ class DeliveryNote(SellingController):
 			allowance_type=None, from_doctype=from_doctype, row_names=row_names)
 
 	def update_status(self, status):
+		self.set_status(status=status)
+		self.set_installation_status(update=True)
+		self.set_billing_status(update=True)
 		self.set_status(update=True, status=status)
+		self.update_sales_order_billing_status()
 		self.update_project_billing_and_sales()
 		self.notify_update()
 		clear_doctype_notifications(self)
@@ -368,7 +442,16 @@ class DeliveryNote(SellingController):
 				"ref_dn_field": "quotation",
 				"compare_fields": [["company", "="]]
 			},
+			"Packing Slip Item": {
+				"ref_dn_field": "packing_slip_item",
+				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="],
+					["batch_no", "="], ["serial_no", "="], ["net_weight_per_unit", "="]],
+				"is_child_table": True,
+				"allow_duplicate_prev_row_id": True
+			},
 		})
+
+		self.validate_packing_slips()
 
 		if cint(frappe.get_cached_value('Selling Settings', None, 'maintain_same_sales_rate')) and not self.is_return:
 			self.validate_rate_with_reference_doc([["Sales Order", "sales_order", "sales_order_item"],
@@ -380,7 +463,7 @@ class DeliveryNote(SellingController):
 		for d in self.get_item_list():
 			if frappe.get_cached_value("Item", d['item_code'], "is_stock_item") == 1:
 				if not d['warehouse']:
-					frappe.throw(_("Warehouse required for stock Item {0}").format(d["item_code"]))
+					frappe.throw(_("Warehouse required for Stock Item {0}").format(d["item_code"]))
 
 	def update_current_stock(self):
 		if self.get("_action") and self._action != "update_after_submit":
@@ -446,72 +529,39 @@ class DeliveryNote(SellingController):
 		if submit_in:
 			frappe.throw(_("Installation Note {0} has already been submitted").format(submit_in[0][0]))
 
-	def cancel_packing_slips(self):
-		"""
-			Cancel submitted packing slips related to this delivery note
-		"""
-		res = frappe.db.sql("""SELECT name FROM `tabPacking Slip` WHERE delivery_note = %s
-			AND docstatus = 1""", self.name)
-
-		if res:
-			for r in res:
-				ps = frappe.get_doc('Packing Slip', r[0])
-				ps.cancel()
-			frappe.msgprint(_("Packing Slip(s) cancelled"))
-
-
-def get_list_context(context=None):
-	from erpnext.controllers.website_list_for_contact import get_list_context
-	list_context = get_list_context(context)
-	list_context.update({
-		'show_sidebar': True,
-		'show_search': True,
-		'no_breadcrumbs': True,
-		'title': _('Shipments'),
-	})
-	return list_context
-
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):
-	if isinstance(delivery_note, string_types):
+	if isinstance(delivery_note, str):
 		is_delivery_return = frappe.db.get_value("Delivery Note", delivery_note, "is_return", cache=1)
 	else:
 		is_delivery_return = delivery_note.get('is_return')
 
-	claim_customer = frappe.db.get_value("Delivery Note Item", delivery_note_item, "claim_customer")
-	claim_customer_cond = ""
-	if claim_customer:
-		claim_customer_cond = " and (inv.bill_to = {0} or i.amount != 0)"\
-			.format(frappe.db.escape(claim_customer))
-
 	billed = frappe.db.sql("""
-		select i.qty, i.amount, inv.is_return, inv.update_stock, inv.reopen_order, inv.depreciation_type
+		select i.qty, i.amount, inv.is_return, inv.update_stock, inv.reopen_order,
+			inv.depreciation_type, inv.bill_to
 		from `tabSales Invoice Item` i
 		inner join `tabSales Invoice` inv on inv.name = i.parent
-		where i.delivery_note_item=%s and inv.docstatus = 1 {0}
-	""".format(claim_customer_cond), delivery_note_item, as_dict=1)
+		where i.delivery_note_item=%s and inv.docstatus = 1
+	""", delivery_note_item, as_dict=1)
 
-	billed_qty, billed_amt = calculate_billed_qty_and_amount(billed, for_delivery_return=is_delivery_return)
+	billed_qty, billed_amt = calculate_billed_qty_and_amount(billed,
+		delivery_note_item=delivery_note_item, for_delivery_return=is_delivery_return)
 	frappe.db.set_value("Delivery Note Item", delivery_note_item, {"billed_qty": billed_qty, "billed_amt": billed_amt},
 		None, update_modified=update_modified)
 
 
 def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modified=True):
-	claim_customer = frappe.db.get_value("Sales Order Item", sales_order_item, "claim_customer")
-	claim_customer_cond = ""
-	if claim_customer:
-		claim_customer_cond = " and (inv.bill_to = {0} or item.amount != 0)" \
-			.format(frappe.db.escape(claim_customer))
-
 	# Billed against Sales Order directly
 	billed_against_so = frappe.db.sql("""
-		select item.qty, item.amount, inv.is_return, inv.update_stock, inv.reopen_order, inv.depreciation_type
+		select item.qty, item.amount, inv.is_return, inv.update_stock, inv.reopen_order,
+			inv.depreciation_type, inv.bill_to
 		from `tabSales Invoice Item` item, `tabSales Invoice` inv
 		where inv.name = item.parent and inv.docstatus = 1
-			and item.sales_order_item=%s and (item.delivery_note_item is null or item.delivery_note_item = '') {0}
-	""".format(claim_customer_cond), sales_order_item, as_dict=1)
+			and item.sales_order_item=%s and (item.delivery_note_item is null or item.delivery_note_item = '')
+	""", sales_order_item, as_dict=1)
 
-	billed_qty_against_so, billed_amt_against_so = calculate_billed_qty_and_amount(billed_against_so)
+	billed_qty_against_so, billed_amt_against_so = calculate_billed_qty_and_amount(billed_against_so,
+		sales_order_item=sales_order_item)
 
 	# Get all Delivery Note Item rows against the Sales Order Item row
 	dn_details = frappe.db.sql("""
@@ -537,12 +587,14 @@ def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modi
 		else:
 			# Get billed qty directly against Delivery Note
 			billed_against_dn = frappe.db.sql("""
-				select item.qty, item.amount, inv.is_return, inv.update_stock, inv.reopen_order, inv.depreciation_type
+				select item.qty, item.amount, inv.is_return, inv.update_stock, inv.reopen_order,
+					inv.depreciation_type, inv.bill_to
 				from `tabSales Invoice Item` item, `tabSales Invoice` inv
-				where inv.name=item.parent and item.delivery_note_item=%s and item.docstatus=1 {0}
-			""".format(claim_customer_cond), dnd.name, as_dict=1)
+				where inv.name=item.parent and item.delivery_note_item=%s and item.docstatus=1
+			""", dnd.name, as_dict=1)
 
-			billed_qty_against_dn, billed_amt_against_dn = calculate_billed_qty_and_amount(billed_against_dn)
+			billed_qty_against_dn, billed_amt_against_dn = calculate_billed_qty_and_amount(billed_against_dn,
+				delivery_note_item=dnd.name)
 
 		# Distribute billed qty and amt directly against SO between DNs based on FIFO
 		pending_qty_to_bill = flt(dnd.qty) - flt(dnd.returned_qty) - billed_qty_against_dn
@@ -565,24 +617,33 @@ def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modi
 	return updated_dn
 
 
-def calculate_billed_qty_and_amount(billed_data, for_delivery_return=False):
+def calculate_billed_qty_and_amount(billed_data, for_delivery_return=False, delivery_note_item=None, sales_order_item=None):
 	billed_qty = 0
 	billed_amt = 0
 
-	depreciation_types = set()
+	depreciation_type_qty = {}
+
+	claim_customer = None
+	if delivery_note_item:
+		claim_customer = frappe.db.get_value("Delivery Note Item", delivery_note_item, "claim_customer", cache=1)
+	elif sales_order_item:
+		claim_customer = frappe.db.get_value("Sales Order Item", sales_order_item, "claim_customer", cache=1)
 
 	for d in billed_data:
 		if for_delivery_return or not d.is_return or (d.reopen_order and not d.update_stock):
 			billed_amt += d.amount
 
-			depreciation_types.add(d.depreciation_type or 'No Depreciation')
-			if d.depreciation_type != 'Depreciation Amount Only':
+			depreciation_type = d.depreciation_type or 'No Depreciation'
+			depreciation_type_qty.setdefault(depreciation_type, 0)
+			depreciation_type_qty[depreciation_type] += d.qty
+
+			if d.depreciation_type != 'Depreciation Amount Only' and (not claim_customer or d.bill_to == claim_customer):
 				billed_qty += d.qty
 
-	if 'No Depreciation' not in depreciation_types:
-		has_depreciation_amount = 'Depreciation Amount Only' in depreciation_types
-		has_after_depreciation_amount = 'After Depreciation Amount' in depreciation_types
-		if not has_depreciation_amount or not has_after_depreciation_amount:
+	if 'No Depreciation' not in depreciation_type_qty:
+		depreciation_qty = flt(depreciation_type_qty.get("Depreciation Amount Only"), 6)
+		after_depreciation_qty = flt(depreciation_type_qty.get("After Depreciation Amount"), 6)
+		if not depreciation_qty or not after_depreciation_qty:
 			billed_qty = 0
 
 	return billed_qty, billed_amt
@@ -609,6 +670,9 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 				if not source.claim_customer:
 					return False
 
+		if source.skip_sales_invoice:
+			return False
+
 		if source_parent.get('is_return'):
 			return get_pending_qty(source) <= 0
 		else:
@@ -621,7 +685,7 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 		target.depreciation_percentage = None
 
 		if target_parent:
-			target_parent.set_rate_zero_for_claim_item(source, target)
+			target_parent.adjust_rate_for_claim_item(source, target)
 
 		if source.serial_no and source_parent.per_billed > 0:
 			target.serial_no = get_delivery_note_serial_no(source.item_code,
@@ -629,8 +693,10 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 
 	def postprocess(source, target):
 		target.ignore_pricing_rule = 1
+		target.update_stock = 0
 		target.run_method("set_missing_values")
 		target.run_method("set_po_nos")
+		target.run_method("reset_taxes_and_charges")
 		target.run_method("calculate_taxes_and_totals")
 
 	mapping = {
@@ -657,6 +723,8 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 				"sales_order_item": "sales_order_item",
 				"quotation": "quotation",
 				"quotation_item": "quotation_item",
+				"packing_slip": "packing_slip",
+				"packing_slip_item": "packing_slip_item",
 				"batch_no": "batch_no",
 				"serial_no": "serial_no",
 				"vehicle": "vehicle",
@@ -677,6 +745,8 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 			"add_if_empty": True
 		}
 	}
+
+	frappe.utils.call_hook_method("update_sales_invoice_from_delivery_note_mapper", mapping, "Sales Invoice")
 
 	if only_items:
 		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Delivery Note Item"}
@@ -758,24 +828,6 @@ def make_installation_note(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def make_packing_slip(source_name, target_doc=None):
-	doclist = get_mapped_doc("Delivery Note", source_name, 	{
-		"Delivery Note": {
-			"doctype": "Packing Slip",
-			"field_map": {
-				"name": "delivery_note",
-				"letter_head": "letter_head"
-			},
-			"validation": {
-				"docstatus": ["=", 0]
-			}
-		}
-	}, target_doc)
-
-	return doclist
-
-
-@frappe.whitelist()
 def make_sales_return(source_name, target_doc=None):
 	from erpnext.controllers.sales_and_purchase_return import make_return_doc
 	return make_return_doc("Delivery Note", source_name, target_doc)
@@ -784,4 +836,4 @@ def make_sales_return(source_name, target_doc=None):
 @frappe.whitelist()
 def update_delivery_note_status(docname, status):
 	dn = frappe.get_doc("Delivery Note", docname)
-	dn.update_status(status)
+	dn.run_method("update_status", status)

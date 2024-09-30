@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext
 from frappe.utils import flt, cstr, cint
 from frappe import _
@@ -24,7 +23,7 @@ def make_gl_entries(gl_map, cancel=False, adv_adj=False, merge_entries=True, upd
 			gl_map = process_gl_map(gl_map, merge_entries)
 			if gl_map and len(gl_map) > 1:
 				save_entries(gl_map, adv_adj, update_outstanding, from_repost)
-			else:
+			elif gl_map:
 				frappe.throw(_("Incorrect number of General Ledger Entries found. You might have selected a wrong Account in the transaction."))
 		else:
 			delete_gl_entries(gl_map, adv_adj=adv_adj, update_outstanding=update_outstanding)
@@ -55,30 +54,28 @@ def validate_accounting_period(gl_map):
 def process_gl_map(gl_map, merge_entries=True):
 	if merge_entries:
 		gl_map = merge_similar_entries(gl_map)
+
 	for entry in gl_map:
-		# toggle debit, credit if negative entry
+		# swap debit, credit if negative entry
 		if flt(entry.debit) < 0 and flt(entry.credit) < 0:
 			entry.debit, entry.credit = -flt(entry.credit), -flt(entry.debit)
-
 		if flt(entry.debit_in_account_currency) < 0 and flt(entry.credit_in_account_currency) < 0:
 			entry.debit_in_account_currency, entry.credit_in_account_currency = -flt(entry.credit_in_account_currency), -flt(entry.debit_in_account_currency)
 
+		# handle debit side negative
 		if flt(entry.debit) < 0:
 			entry.credit = flt(entry.credit) - flt(entry.debit)
 			entry.debit = 0.0
-
 		if flt(entry.debit_in_account_currency) < 0:
-			entry.credit_in_account_currency = \
-				flt(entry.credit_in_account_currency) - flt(entry.debit_in_account_currency)
+			entry.credit_in_account_currency = flt(entry.credit_in_account_currency) - flt(entry.debit_in_account_currency)
 			entry.debit_in_account_currency = 0.0
 
+		# handle credit side negative
 		if flt(entry.credit) < 0:
 			entry.debit = flt(entry.debit) - flt(entry.credit)
 			entry.credit = 0.0
-
 		if flt(entry.credit_in_account_currency) < 0:
-			entry.debit_in_account_currency = \
-				flt(entry.debit_in_account_currency) - flt(entry.credit_in_account_currency)
+			entry.debit_in_account_currency = flt(entry.debit_in_account_currency) - flt(entry.credit_in_account_currency)
 			entry.credit_in_account_currency = 0.0
 
 	return gl_map
@@ -111,7 +108,26 @@ def merge_similar_entries(gl_map):
 	precision = get_field_precision(frappe.get_meta("GL Entry").get_field("debit"), company_currency)
 
 	# filter zero debit and credit entries
-	merged_gle_list = [e for e in merged_gl_map.values() if flt(e.debit, precision) != 0 or flt(e.credit, precision) != 0]
+	merged_gle_list = []
+	for entry in merged_gl_map.values():
+		# handle both debit and credit set
+		if flt(entry.debit) and flt(entry.credit):
+			entry.debit = flt(entry.debit) - flt(entry.credit)
+			entry.credit = 0
+
+			if entry.debit < entry.credit:
+				entry.debit, entry.credit = entry.credit, entry.debit
+
+		if flt(entry.debit_in_account_currency) and flt(entry.credit_in_account_currency):
+			entry.debit_in_account_currency = flt(entry.debit_in_account_currency) - flt(entry.credit_in_account_currency)
+			entry.credit_in_account_currency = 0.0
+
+			if entry.debit_in_account_currency < entry.credit_in_account_currency:
+				entry.debit_in_account_currency, entry.credit_in_account_currency = entry.credit_in_account_currency, entry.debit_in_account_currency
+
+		if flt(entry.debit, precision) != 0 or flt(entry.credit, precision) != 0:
+			merged_gle_list.append(entry)
+
 	return merged_gle_list
 
 

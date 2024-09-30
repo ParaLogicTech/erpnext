@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import frappe
 from frappe.installer import remove_from_installed_apps
 
@@ -31,7 +30,7 @@ def setup_app_type():
 		shopify_settings.save()
 	except Exception:
 		frappe.db.set_value("Shopify Settings", None, "enable_shopify", 0)
-		frappe.log_error(frappe.get_traceback())
+		frappe.log_error(message=frappe.get_traceback())
 
 def disable_shopify():
 	# due to frappe.db.set_value wrongly written and enable_shopify being default 1

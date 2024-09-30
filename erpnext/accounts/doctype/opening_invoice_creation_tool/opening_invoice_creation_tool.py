@@ -2,7 +2,6 @@
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _, scrub
 from frappe.utils import flt, nowdate
@@ -62,6 +61,7 @@ class OpeningInvoiceCreationTool(Document):
 
 		return invoices_summary, max_count
 
+	@frappe.whitelist()
 	def make_invoices(self):
 		names = []
 		mandatory_error_msg = _("Row {0}: {1} is required to create the Opening {2} Invoices")

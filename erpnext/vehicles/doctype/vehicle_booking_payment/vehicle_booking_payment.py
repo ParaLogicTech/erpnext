@@ -2,7 +2,6 @@
 # Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 import erpnext
 from frappe import _
@@ -40,7 +39,7 @@ class VehicleBookingPayment(Document):
 		self.update_receiving_documents()
 		self.update_vehicle_booking_order()
 
-	def before_print(self):
+	def before_print(self, print_settings=None):
 		self.company_address_doc = erpnext.get_company_address(self)
 
 	def before_cancel(self):

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_rename": 1,
  "autoname": "field:project_type",
  "creation": "2017-07-18 13:32:46.031115",
@@ -121,10 +122,12 @@
    "label": "Bypass Mandatory Appointment Requirement"
   }
  ],
- "modified": "2023-04-07 18:13:27.534155",
+ "links": [],
+ "modified": "2023-10-31 15:26:51.368292",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project Type",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -158,6 +161,15 @@
    "read": 1,
    "report": 1,
    "role": "Projects User",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Projects User (Read Only)",
    "share": 1
   },
   {
@@ -218,5 +230,6 @@
  "quick_entry": 1,
  "sort_field": "idx",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

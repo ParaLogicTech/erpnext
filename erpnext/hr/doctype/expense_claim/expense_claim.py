@@ -1,13 +1,11 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt, cstr, cint
 from erpnext.hr.utils import set_employee_name
 from erpnext.accounts.general_ledger import make_gl_entries
-from erpnext.accounts.utils import unlink_ref_doc_from_payment_entries
 from erpnext.controllers.accounts_controller import AccountsController
 from erpnext.hr.doctype.employee_advance.employee_advance import get_unclaimed_advances
 
@@ -36,6 +34,7 @@ class ExpenseClaim(AccountsController):
 		self.title = self.employee_name or self.employee
 
 	def validate(self):
+		self.set_default_payable_account()
 		self.set_cost_center()
 		self.set_project_from_task()
 		self.validate_sanctioned_amount()
@@ -48,9 +47,13 @@ class ExpenseClaim(AccountsController):
 
 		if cint(self.allocate_advances_automatically):
 			self.set_advances()
-		self.clear_unallocated_advances("Expense Claim Advance", "advances")
+		self.clear_unallocated_advances()
 
 		self.set_status()
+
+	def before_submit(self):
+		if not self.payable_account:
+			frappe.throw(_("Payable Account is mandatory"))
 
 	def on_submit(self):
 		if self.approval_status=="Draft":
@@ -64,13 +67,15 @@ class ExpenseClaim(AccountsController):
 		self.update_against_document_in_jv()
 
 	def on_cancel(self):
+		self.unlink_payments_on_invoice_cancel()
 		self.update_task_and_project()
 		self.make_gl_entries(cancel=True)
+		self.set_status(update=True)
 
-		unlink_ref_doc_from_payment_entries(self, validate_permission=True)
+	def get_party(self):
+		return "Employee", self.employee, self.employee_name
 
-		self.set_status()
-
+	@frappe.whitelist()
 	def set_advances(self):
 		self.set("advances", [])
 
@@ -116,6 +121,10 @@ class ExpenseClaim(AccountsController):
 				"advance_amount": flt(d.amount),
 				"allocated_amount": 0
 			})
+
+	def set_default_payable_account(self):
+		if not self.payable_account and self.company:
+			self.payable_account = frappe.get_cached_value("Company", self.company, "default_expense_claim_payable_account")
 
 	def set_cost_center(self):
 		default_cost_center = self.get('cost_center') or frappe.get_cached_value('Company', self.company, 'cost_center')
@@ -167,6 +176,8 @@ class ExpenseClaim(AccountsController):
 		total_employee_advances = flt(total_employee_advances, self.precision('total_advance'))
 		payable_amount = flt(self.total_sanctioned_amount) - total_employee_advances
 
+		descriptions = ", ".join(list(set([d.description for d in self.expenses if d.description])))
+
 		# payable entry
 		if payable_amount:
 			gl_entry.append(
@@ -177,7 +188,8 @@ class ExpenseClaim(AccountsController):
 					"against": ", ".join(set([exp.expense_account for exp in self.expenses])),
 					"party_type": "Employee",
 					"party": self.employee,
-					"cost_center": self.get('cost_center')
+					"cost_center": self.get('cost_center'),
+					"remarks": descriptions,
 				})
 			)
 
@@ -195,6 +207,7 @@ class ExpenseClaim(AccountsController):
 					"party": d.party,
 					"against_voucher_type": "Purchase Invoice" if d.requires_purchase_invoice else "",
 					"against_voucher": d.purchase_invoice if d.requires_purchase_invoice else "",
+					"remarks": d.description
 				}, item=d)
 			)
 

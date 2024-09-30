@@ -1,12 +1,12 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt
 from frappe.model.document import Document
-from erpnext.controllers.accounts_controller import validate_taxes_and_charges, validate_inclusive_tax
+from erpnext.controllers.transaction_controller import validate_taxes_and_charges, validate_inclusive_tax
+
 
 class SalesTaxesandChargesTemplate(Document):
 	def validate(self):
@@ -21,6 +21,7 @@ class SalesTaxesandChargesTemplate(Document):
 		for data in self.taxes:
 			if data.charge_type == 'On Net Total' and flt(data.rate) == 0.0:
 				data.rate = frappe.db.get_value('Account', data.account_head, 'tax_rate')
+
 
 def valdiate_taxes_and_charges_template(doc):
 	# default should not be disabled
@@ -37,6 +38,7 @@ def valdiate_taxes_and_charges_template(doc):
 	for tax in doc.get("taxes"):
 		validate_taxes_and_charges(tax)
 		validate_inclusive_tax(tax, doc)
+
 
 def validate_disabled(doc):
 	if doc.is_default and doc.disabled:

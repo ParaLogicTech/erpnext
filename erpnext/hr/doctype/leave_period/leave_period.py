@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import date_diff, getdate, ceil
@@ -38,6 +37,7 @@ class LeavePeriod(Document):
 		if getdate(self.from_date) >= getdate(self.to_date):
 			frappe.throw(_("To Date can not be equal or less than From Date"))
 
+	@frappe.whitelist()
 	def grant_leave_allocation(self, grade=None, department=None, designation=None, employee=None, carry_forward=0):
 		employee_records = self.get_employees({
 			"grade": grade,

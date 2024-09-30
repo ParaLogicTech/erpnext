@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "naming_series:",
  "creation": "2018-07-09 17:23:29.518745",
  "doctype": "DocType",
@@ -7,42 +8,58 @@
  "field_order": [
   "naming_series",
   "work_order",
-  "bom_no",
-  "workstation",
   "operation",
   "operation_row_number",
+  "operation_id",
+  "column_break_voki1",
+  "workstation",
+  "employee",
+  "employee_name",
+  "project",
   "column_break_4",
-  "posting_date",
   "company",
+  "posting_date",
+  "amended_from",
+  "remarks_section",
   "remarks",
   "production_section",
   "production_item",
   "item_name",
-  "for_quantity",
-  "wip_warehouse",
   "column_break_12",
-  "employee",
-  "employee_name",
-  "status",
-  "project",
+  "bom_no",
+  "column_break_4yye7",
+  "for_quantity",
+  "stock_uom",
   "timing_detail",
   "time_logs",
   "section_break_13",
   "total_completed_qty",
-  "total_time_in_mins",
   "column_break_15",
+  "total_time_in_mins",
   "section_break_8",
   "items",
-  "more_information",
-  "operation_id",
-  "transferred_qty",
-  "requested_qty",
-  "column_break_20",
-  "barcode",
+  "more_information_tab",
+  "status_section",
+  "status",
   "job_started",
   "started_time",
   "current_time",
-  "amended_from"
+  "column_break_20",
+  "transferred_qty",
+  "column_break_rcvpd",
+  "requested_qty",
+  "barcode",
+  "settings_section",
+  "wip_warehouse",
+  "column_break_sd2ta",
+  "material_consumption_required",
+  "material_transfer_required",
+  "section_break_rwkxt",
+  "planned_start_dt",
+  "actual_start_dt",
+  "column_break_p41ok",
+  "planned_end_dt",
+  "actual_end_dt"
  ],
  "fields": [
   {
@@ -67,6 +84,7 @@
    "fieldname": "workstation",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Workstation",
    "options": "Workstation",
    "reqd": 1
@@ -75,6 +93,7 @@
    "fieldname": "operation",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Operation",
    "options": "Operation",
    "reqd": 1
@@ -87,7 +106,10 @@
    "default": "Today",
    "fieldname": "posting_date",
    "fieldtype": "Date",
-   "label": "Posting Date"
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Posting Date",
+   "reqd": 1
   },
   {
    "fieldname": "company",
@@ -100,16 +122,19 @@
    "fieldname": "for_quantity",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Qty To Manufacture"
-  },
-  {
-   "fieldname": "wip_warehouse",
-   "fieldtype": "Link",
-   "label": "WIP Warehouse",
-   "options": "Warehouse",
+   "label": "Qty To Produce",
    "reqd": 1
   },
   {
+   "fetch_from": "work_order.wip_warehouse",
+   "fieldname": "wip_warehouse",
+   "fieldtype": "Link",
+   "label": "Work-in-Progress Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: !cint(frappe.defaults.get_default('disable_capacity_planning'))",
    "fieldname": "timing_detail",
    "fieldtype": "Section Break",
    "label": "Timing Detail"
@@ -129,6 +154,7 @@
    "options": "Job Card Time Log"
   },
   {
+   "depends_on": "eval: !cint(frappe.defaults.get_default('disable_capacity_planning'))",
    "fieldname": "section_break_13",
    "fieldtype": "Section Break"
   },
@@ -161,12 +187,6 @@
    "read_only": 1
   },
   {
-   "collapsible": 1,
-   "fieldname": "more_information",
-   "fieldtype": "Section Break",
-   "label": "More Information"
-  },
-  {
    "fieldname": "operation_id",
    "fieldtype": "Data",
    "hidden": 1,
@@ -188,10 +208,12 @@
    "read_only": 1
   },
   {
+   "fetch_from": "work_order.project",
    "fieldname": "project",
    "fieldtype": "Link",
    "label": "Project",
-   "options": "Project"
+   "options": "Project",
+   "read_only": 1
   },
   {
    "fieldname": "remarks",
@@ -241,19 +263,23 @@
    "read_only": 1
   },
   {
-   "default": "PO-JOB.#####",
+   "default": "JC-",
    "fieldname": "naming_series",
    "fieldtype": "Select",
-   "label": "Naming Series",
-   "options": "PO-JOB.#####",
-   "reqd": 1,
+   "hidden": 1,
+   "label": "Series",
+   "no_copy": 1,
+   "options": "JC-",
+   "print_hide": 1,
    "set_only_once": 1
   },
   {
+   "depends_on": "eval:doc.employee && doc.employee_name != doc.employee",
    "fetch_from": "employee.employee_name",
    "fieldname": "employee_name",
-   "fieldtype": "Read Only",
-   "label": "Employee Name"
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
   },
   {
    "fieldname": "production_section",
@@ -267,8 +293,11 @@
   {
    "fetch_from": "work_order.production_item",
    "fieldname": "production_item",
-   "fieldtype": "Read Only",
-   "label": "Production Item"
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Production Item",
+   "options": "Item",
+   "read_only": 1
   },
   {
    "fieldname": "barcode",
@@ -295,30 +324,111 @@
    "fieldname": "operation_row_number",
    "fieldtype": "Select",
    "label": "Operation Row Number"
+  },
+  {
+   "fieldname": "column_break_voki1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "more_information_tab",
+   "fieldtype": "Tab Break",
+   "label": "More Information"
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "settings_section",
+   "fieldtype": "Section Break",
+   "label": "Settings"
+  },
+  {
+   "fetch_from": "work_order.stock_uom",
+   "fieldname": "stock_uom",
+   "fieldtype": "Link",
+   "label": "Stock UOM",
+   "options": "UOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_4yye7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rcvpd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_sd2ta",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "material_consumption_required",
+   "fieldtype": "Check",
+   "label": "Consume Materials against Job Card",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "material_transfer_required",
+   "fieldtype": "Check",
+   "label": "Transfer Materials against Job Card",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_rwkxt",
+   "fieldtype": "Section Break",
+   "label": "Planning"
+  },
+  {
+   "fieldname": "planned_start_dt",
+   "fieldtype": "Datetime",
+   "label": "Planned Start Date/Time"
+  },
+  {
+   "fieldname": "actual_start_dt",
+   "fieldtype": "Datetime",
+   "label": "Actual Start Date/Time",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_p41ok",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "planned_end_dt",
+   "fieldtype": "Datetime",
+   "label": "Planned End Date/Time"
+  },
+  {
+   "fieldname": "actual_end_dt",
+   "fieldtype": "Datetime",
+   "label": "Actual End Date/Time",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
+ "is_calendar_and_gantt": 1,
  "is_submittable": 1,
- "modified": "2021-11-03 13:09:25.973923",
+ "links": [],
+ "modified": "2024-09-09 18:21:52.323364",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Job Card",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
-  {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
   {
    "amend": 1,
    "cancel": 1,
@@ -333,25 +443,12 @@
    "share": 1,
    "submit": 1,
    "write": 1
-  },
-  {
-   "amend": 1,
-   "cancel": 1,
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Manufacturing Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
   }
  ],
- "sort_field": "modified",
+ "search_fields": "work_order,operation,workstation",
+ "sort_field": "posting_date",
  "sort_order": "DESC",
- "title_field": "operation",
+ "states": [],
+ "title_field": "item_name",
  "track_changes": 1
 }

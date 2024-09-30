@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe, erpnext, json
 from frappe.utils import cstr, flt, fmt_money, formatdate, getdate, nowdate, cint, get_link_to_form
 from frappe import msgprint, _, scrub
@@ -12,7 +11,6 @@ from erpnext.hr.doctype.expense_claim.expense_claim import update_reimbursed_amo
 from erpnext.accounts.doctype.invoice_discounting.invoice_discounting import get_party_account_based_on_invoice_discounting
 from frappe.model.utils import get_fetch_values
 
-from six import string_types, iteritems
 
 class JournalEntry(AccountsController):
 	def __init__(self, *args, **kwargs):
@@ -379,7 +377,7 @@ class JournalEntry(AccountsController):
 
 	def validate_orders(self):
 		"""Validate totals, closed and docstatus for orders"""
-		for reference_name, total in iteritems(self.reference_totals):
+		for reference_name, total in self.reference_totals.items():
 			reference_type = self.reference_types[reference_name]
 			account = self.reference_accounts[reference_name]
 
@@ -426,7 +424,7 @@ class JournalEntry(AccountsController):
 
 	def validate_invoices(self):
 		"""Validate totals and docstatus for invoices"""
-		for reference_name, total in iteritems(self.reference_totals):
+		for reference_name, total in self.reference_totals.items():
 			reference_type = self.reference_types[reference_name]
 
 			if reference_type in ("Sales Invoice", "Purchase Invoice", "Landed Cost Voucher", "Expense Claim"):
@@ -447,8 +445,8 @@ class JournalEntry(AccountsController):
 								.format(frappe.get_desk_link(reference_type, reference_name), frappe.format(invoice.outstanding_amount)))
 
 	def validate_jv_party_references(self):
-		for reference_name, acc_amounts in iteritems(self.jv_party_references):
-			for (account, party_type, party), amount in iteritems(acc_amounts):
+		for reference_name, acc_amounts in self.jv_party_references.items():
+			for (account, party_type, party), amount in acc_amounts.items():
 				if amount == 0:
 					continue
 
@@ -530,14 +528,13 @@ class JournalEntry(AccountsController):
 		for d in self.get("accounts"):
 			if d.account_currency == self.company_currency or not d.account:
 				d.exchange_rate = 1
-			elif not d.exchange_rate or d.exchange_rate == 1 \
-				or (d.reference_type in ("Sales Invoice", "Purchase Invoice") and d.reference_name and self.posting_date) \
-				or (d.reference_type == "Journal Entry" and d.reference_name and d.party_type and d.party and d.account):
-
-					# Modified to include the posting date for which to retreive the exchange rate
-					d.exchange_rate = get_exchange_rate(self.posting_date, d.account, d.account_currency,
-						self.company, d.reference_type, d.reference_name, d.debit, d.credit, d.exchange_rate,
-						d.party_type, d.party)
+			elif not d.exchange_rate or d.exchange_rate == 1:
+				# or (d.reference_type in ("Sales Invoice", "Purchase Invoice") and d.reference_name and self.posting_date) \
+				# or (d.reference_type == "Journal Entry" and d.reference_name and d.party_type and d.party and d.account):
+				# Modified to include the posting date for which to retreive the exchange rate
+				d.exchange_rate = get_exchange_rate(self.posting_date, d.account, d.account_currency,
+					self.company, d.reference_type, d.reference_name, d.debit, d.credit, d.exchange_rate,
+					d.party_type, d.party)
 
 			if not d.exchange_rate:
 				frappe.throw(_("Row {0}: Exchange Rate is mandatory").format(d.idx))
@@ -673,6 +670,7 @@ class JournalEntry(AccountsController):
 				)
 		return gl_map
 
+	@frappe.whitelist()
 	def get_balance(self):
 		if not self.get('accounts'):
 			msgprint(_("'Entries' cannot be empty"), raise_exception=True)
@@ -858,6 +856,7 @@ def get_default_bank_cash_account(company, account_type=None, mode_of_payment=No
 		})
 	else: return frappe._dict()
 
+
 @frappe.whitelist()
 def get_payment_entry_against_order(dt, dn, amount=None, debit_in_account_currency=None, journal_entry=False, bank_account=None):
 	ref_doc = frappe.get_doc(dt, dn)
@@ -896,6 +895,7 @@ def get_payment_entry_against_order(dt, dn, amount=None, debit_in_account_curren
 		"journal_entry": journal_entry
 	})
 
+
 @frappe.whitelist()
 def get_payment_entry_against_invoice(dt, dn, amount=None,  debit_in_account_currency=None, journal_entry=False, bank_account=None):
 	ref_doc = frappe.get_doc(dt, dn)
@@ -931,6 +931,7 @@ def get_payment_entry_against_invoice(dt, dn, amount=None,  debit_in_account_cur
 		"vehicle": vehicle,
 		"vehicle_booking_order": vehicle_booking_order,
 	})
+
 
 def get_payment_entry(ref_doc, args):
 	cost_center = ref_doc.get("cost_center") or frappe.get_cached_value('Company',  ref_doc.company,  "cost_center")
@@ -1019,6 +1020,7 @@ def get_opening_accounts(company):
 
 	return [{"account": a, "balance": get_balance_on(a)} for a in accounts]
 
+
 def get_outstanding_journal_entries(party_account, party_type, party, txt, start, page_len):
 	if erpnext.get_party_account_type(party_type) == "Receivable":
 		bal_dr_or_cr = "gle_je.credit_in_account_currency - gle_je.debit_in_account_currency"
@@ -1061,6 +1063,7 @@ def get_outstanding_journal_entries(party_account, party_type, party, txt, start
 		"page_len": page_len
 	}, as_dict=1)
 
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_against_jv(doctype, txt, searchfield, start, page_len, filters):
@@ -1068,19 +1071,25 @@ def get_against_jv(doctype, txt, searchfield, start, page_len, filters):
 		res = get_outstanding_journal_entries(filters.get("account"), filters.get("party_type"), filters.get("party"), txt, start, page_len)
 		return [[jv.name, jv.posting_date, _("Balance: {0}").format(jv.balance), jv.user_remark] for jv in res]
 	else:
-		return frappe.db.sql("""select jv.name, jv.posting_date, jv.user_remark
+		return frappe.db.sql("""
+			select jv.name, jv.posting_date, jv.user_remark
 			from `tabJournal Entry` jv, `tabJournal Entry Account` jv_detail
 			where jv_detail.parent = jv.name and jv_detail.account = %s and ifnull(jv_detail.party, '') = %s
 			and (jv_detail.reference_type is null or jv_detail.reference_type = '')
-			and jv.docstatus = 1 and jv.`{0}` like %s order by jv.name desc limit %s, %s""".format(searchfield),
-			(filters.get("account"), cstr(filters.get("party")), "%{0}%".format(txt), start, page_len))
+			and jv.docstatus = 1 and jv.`{0}` like %s
+			order by jv.name desc
+			limit %s, %s
+		""".format(searchfield), (
+			filters.get("account"), cstr(filters.get("party")), "%{0}%".format(txt), start, page_len)
+		)
+
 
 @frappe.whitelist()
 def get_outstanding(args):
 	if not frappe.has_permission("Account"):
 		frappe.msgprint(_("No Permission"), raise_exception=1)
 
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	company_currency = erpnext.get_company_currency(args.get("company"))
@@ -1154,6 +1163,7 @@ def get_outstanding(args):
 			"party": details.get("employee"),
 			"account": details.get(account_field),
 		}
+
 
 @frappe.whitelist()
 def get_party_account_and_balance(company, party_type, party, cost_center=None, account=None):
@@ -1260,6 +1270,7 @@ def get_exchange_rate(posting_date, account=None, account_currency=None, company
 	# don't return None or 0 as it is multipled with a value and that value could be lost
 	return exchange_rate or 1
 
+
 def get_average_party_exchange_rate_on_journal_entry(jv_name, party_type, party, account):
 	res = frappe.db.sql("""select avg(jv_detail.exchange_rate)
 		from `tabJournal Entry` jv, `tabJournal Entry Account` jv_detail
@@ -1268,6 +1279,7 @@ def get_average_party_exchange_rate_on_journal_entry(jv_name, party_type, party,
 		and (jv_detail.reference_type is null or jv_detail.reference_type = '')
 		""", [jv_name, account, party_type, party])
 	return res[0][0] if res else 1.0
+
 
 @frappe.whitelist()
 def get_average_exchange_rate(account, from_currency, to_currency, transaction_date):
@@ -1282,6 +1294,7 @@ def get_average_exchange_rate(account, from_currency, to_currency, transaction_d
 		exchange_rate = get_exchange_rate(from_currency, to_currency, transaction_date)
 
 	return exchange_rate
+
 
 @frappe.whitelist()
 def make_inter_company_journal_entry(name, voucher_type, company):
@@ -1301,15 +1314,9 @@ def make_inter_company_journal_entry(name, voucher_type, company):
 		source_company = frappe.get_cached_doc("Company", source_parent.company)
 		target_company = frappe.get_cached_doc("Company", target_parent.company)
 
-		company_field = None
-		for df in source_company.meta.fields:
-			if df.fieldtype == "Link" and df.options == "Account":
-				if source_company.get(df.fieldname) == source.account:
-					company_field = df.fieldname
-					break
-
-		if company_field:
-			target.account = target_company.get(company_field)
+		other_company_account = get_other_company_account(source.account, target_company.name)
+		if other_company_account:
+			target.account = other_company_account
 
 		if source.party:
 			if source.party_type == "Customer":
@@ -1391,7 +1398,8 @@ def make_reverse_journal_entry(source_name, target_doc=None):
 			"doctype": "Journal Entry",
 			"validation": {
 				"docstatus": ["=", 1]
-			}
+			},
+			"field_no_map": ["inter_company_reference"]
 		},
 		"Journal Entry Account": {
 			"doctype": "Journal Entry Account",
@@ -1408,3 +1416,91 @@ def make_reverse_journal_entry(source_name, target_doc=None):
 	}, target_doc)
 
 	return doclist 
+
+
+@frappe.whitelist()
+def get_other_company_accounts_and_cost_centers(target_company, accounts=None, cost_centers=None):
+	out = frappe._dict({
+		"accounts": {},
+		"cost_centers": {},
+		"default_cost_center": frappe.get_cached_value("Company", target_company, "cost_center"),
+	})
+
+	if not accounts:
+		accounts = []
+	if not cost_centers:
+		cost_centers = []
+
+	if isinstance(accounts, str):
+		accounts = json.loads(accounts)
+	if isinstance(cost_centers, str):
+		cost_centers = json.loads(cost_centers)
+
+	accounts = set(accounts)
+	cost_centers = set(cost_centers)
+
+	for source_account in accounts:
+		target_account = get_other_company_account(source_account, target_company)
+		if target_account:
+			out.accounts[source_account] = target_account
+
+	for source_cost_center in cost_centers:
+		target_cost_center = get_other_company_cost_center(source_cost_center, target_company)
+		if target_cost_center:
+			out.cost_centers[source_cost_center] = target_cost_center
+
+	return out
+
+
+@frappe.whitelist()
+def get_other_company_account(source_account, target_company):
+	if not source_account or not target_company:
+		return None
+
+	source_account_doc = frappe.get_cached_doc("Account", source_account)
+	if source_account_doc.company == target_company:
+		return source_account
+
+	source_company_doc = frappe.get_cached_doc("Company", source_account_doc.company)
+	target_company_doc = frappe.get_cached_doc("Company", target_company)
+
+	# Look for company linked account in target company
+	for df in source_company_doc.meta.fields:
+		if df.fieldtype != "Link" or df.options != "Account":
+			continue
+		if source_company_doc.get(df.fieldname) != source_account:
+			continue
+
+		company_field = df.fieldname
+		target_company_linked_account = target_company_doc.get(company_field)
+		if target_company_linked_account:
+			return target_company_linked_account
+
+	# Look for same name and type in other company
+	return frappe.db.get_value("Account", {
+		"account_name": source_account_doc.account_name,
+		"company": target_company,
+		"account_type": source_account_doc.account_type,
+		"is_group": source_account_doc.is_group,
+	})
+
+
+@frappe.whitelist()
+def get_other_company_cost_center(source_cost_center, target_company):
+	if not source_cost_center or not target_company:
+		return None
+
+	source_cost_center_doc = frappe.get_cached_doc("Cost Center", source_cost_center)
+	if source_cost_center_doc.company == target_company:
+		return source_cost_center
+
+	# Look for same name and type in other company
+	similar_cost_center = frappe.db.get_value("Cost Center", {
+		"cost_center_name": source_cost_center_doc.cost_center_name,
+		"company": target_company,
+		"is_group": source_cost_center_doc.is_group,
+	})
+	if similar_cost_center:
+		return similar_cost_center
+
+	return frappe.get_cached_value("Company", target_company, "cost_center")

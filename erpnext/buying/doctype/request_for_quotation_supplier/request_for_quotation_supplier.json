@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2016-03-29 05:59:11.896885",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -87,7 +88,7 @@
    "fieldname": "email_id",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Email Id",
+   "label": "Email Address",
    "no_copy": 1
   },
   {
@@ -98,7 +99,8 @@
   }
  ],
  "istable": 1,
- "modified": "2020-10-31 02:19:44.006698",
+ "links": [],
+ "modified": "2023-04-10 16:20:45.800537",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Request for Quotation Supplier",
@@ -106,5 +108,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

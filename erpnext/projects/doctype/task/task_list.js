@@ -5,11 +5,11 @@ frappe.listview_settings['Task'] = {
 	get_indicator: function(doc) {
 		var colors = {
 			"Open": "orange",
-			"Overdue": "red",
-			"Pending Review": "lightblue",
+			"On Hold": "red",
+			"Pending Review": "light-blue",
 			"Working": "purple",
 			"Completed": "green",
-			"Cancelled": "darkgrey"
+			"Cancelled": "light-gray"
 		}
 		return [__(doc.status), colors[doc.status], "status,=," + doc.status];
 	},
@@ -43,7 +43,7 @@ frappe.listview_settings['Task'] = {
 
 	gantt_custom_popup_html: function(ganttobj, task) {
 		var html = `<h5><a style="text-decoration:underline"\
-			href="#Form/Task/${ganttobj.id}""> ${ganttobj.name} </a></h5>`;
+			href="/app/task/${ganttobj.id}"">${ganttobj.name}</a></h5>`;
 
 		if(task.project) html += `<p>Project: ${task.project}</p>`;
 		html += `<p>Progress: ${ganttobj.progress}</p>`;

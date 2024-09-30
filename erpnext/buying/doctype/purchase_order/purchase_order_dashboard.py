@@ -1,12 +1,12 @@
-from __future__ import unicode_literals
 from frappe import _
+
 
 def get_data():
 	return {
 		'fieldname': 'purchase_order',
 		'non_standard_fieldnames': {
-			'Journal Entry': 'reference_name',
-			'Payment Entry': 'reference_name',
+			'Journal Entry': 'original_reference_name',
+			'Payment Entry': 'original_reference_name',
 			'Auto Repeat': 'reference_document'
 		},
 		'internal_links': {
@@ -14,6 +14,7 @@ def get_data():
 			'Supplier Quotation': ['items', 'supplier_quotation'],
 			'Project': ['items', 'project'],
 			'Sales Order': ['items', 'sales_order'],
+			'Work Order': ['items', 'work_order'],
 		},
 		'transactions': [
 			{
@@ -21,12 +22,12 @@ def get_data():
 				'items': ['Purchase Receipt', 'Purchase Invoice']
 			},
 			{
-				'label': _('Reference'),
+				'label': _('Previous Document'),
 				'items': ['Material Request', 'Supplier Quotation', 'Sales Order']
 			},
 			{
-				'label': _('Reference'),
-				'items': ['Stock Entry', 'Project', 'Auto Repeat']
+				'label': _('Subcontracting'),
+				'items': ['Stock Entry', 'Packing Slip', 'Work Order']
 			},
 			{
 				'label': _('Payment'),

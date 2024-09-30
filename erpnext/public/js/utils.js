@@ -57,27 +57,26 @@ $.extend(erpnext, {
 		return cint(frappe.boot.sysdefaults.allow_stale);
 	},
 
-	setup_serial_no: function() {
-		var grid_row = cur_frm.open_grid_row();
-		if(!grid_row || !grid_row.grid_form.fields_dict.serial_no ||
-			grid_row.grid_form.fields_dict.serial_no.get_status()!=="Write") return;
+	setup_serial_no: function(on_click) {
+		let grid_row = cur_frm.open_grid_row();
+		if(!grid_row
+			|| !grid_row.grid_form.fields_dict.serial_no
+			|| grid_row.grid_form.fields_dict.serial_no.get_status() !== "Write"
+		) {
+			return;
+		}
 
-		var $btn = $('<button class="btn btn-sm btn-default">'+__("Add Serial No")+'</button>')
-			.appendTo($("<div>")
-				.css({"margin-bottom": "10px", "margin-top": "10px"})
-				.appendTo(grid_row.grid_form.fields_dict.serial_no.$wrapper));
+		let $btn = $('<button class="btn btn-sm btn-default">'+__("Add Serial No")+'</button>').appendTo(
+			$("<div>").css({"margin-bottom": "5px", "margin-top": "5px"})
+				.appendTo(grid_row.grid_form.fields_dict.serial_no.$wrapper)
+		);
 
-		var me = this;
 		$btn.on("click", function() {
-			let callback = '';
-			let on_close = '';
-
-			if (grid_row.doc.serial_no) {
-				grid_row.doc.has_serial_no = true;
+			if (on_click) {
+				on_click();
+			} else {
+				new erpnext.stock.SerialBatchSelector(grid_row.frm, grid_row.doc);
 			}
-
-			me.show_serial_batch_selector(grid_row.frm, grid_row.doc,
-				callback, on_close, 'serial_no');
 		});
 	},
 
@@ -166,6 +165,17 @@ $.extend(erpnext.utils, {
 		refresh_field(table_fieldname);
 	},
 
+	autofill_warehouse (child_table, warehouse_field, warehouse, force) {
+		if ((warehouse || force) && child_table && child_table.length) {
+			let doctype = child_table[0].doctype;
+			$.each(child_table || [], function(i, item) {
+				if (force || !item.force_default_warehouse) {
+					frappe.model.set_value(doctype, item.name, warehouse_field, warehouse);
+				}
+			});
+		}
+	},
+
 	get_terms: function(tc_name, doc, callback) {
 		if(tc_name) {
 			return frappe.call({
@@ -217,6 +227,18 @@ $.extend(erpnext.utils, {
 		let filters = frappe.query_reports[report_name].filters;
 
 		(frappe.boot.additional_gl_filters || []).forEach((additional_filter) => {
+			let found = filters.some(el => el.fieldname === additional_filter['fieldname']);
+
+			if (!found) {
+				filters.push(additional_filter);
+			}
+		});
+	},
+
+	add_additional_sle_filters: function(report_name) {
+		let filters = frappe.query_reports[report_name].filters;
+
+		(frappe.boot.additional_sle_filters || []).forEach((additional_filter) => {
 			let found = filters.some(el => el.fieldname === additional_filter['fieldname']);
 
 			if (!found) {
@@ -313,116 +335,6 @@ $.extend(erpnext.utils, {
 		refresh_field(table_fieldname);
 	},
 
-	get_formatted_ntn: function (value) {
-		value = cstr(value).toUpperCase();
-		value = value.replace(/[^a-zA-Z0-9]+/g, "");
-
-		//0000000-0
-		if (value.length >= 7) {
-			value = value.slice(0, 7) + "-" + value.slice(7);
-		}
-
-		return value;
-	},
-
-	format_ntn: function(frm, fieldname) {
-		let value = frm.doc[fieldname];
-		if (value) {
-			value = erpnext.utils.get_formatted_ntn(value);
-			frm.doc[fieldname] = value;
-			frm.refresh_field(fieldname);
-		}
-	},
-
-	get_formatted_cnic: function (value) {
-		value = cstr(value).toUpperCase();
-		value = value.replace(/[^0-9]+/g, "");
-
-		// 00000-0000000-0
-		if (value.length >= 12) {
-			value = value.slice(0, 12) + "-" + value.slice(12);
-		}
-		if (value.length >= 5) {
-			value = value.slice(0, 5) + "-" + value.slice(5);
-		}
-
-		return value;
-	},
-
-	format_cnic: function(frm, fieldname) {
-		let value = frm.doc[fieldname];
-		if (value) {
-			value = erpnext.utils.get_formatted_cnic(value);
-			frm.doc[fieldname] = value;
-			frm.refresh_field(fieldname);
-		}
-	},
-
-	get_formatted_strn: function (value) {
-		value = cstr(value).toUpperCase();
-		value = value.replace(/[^a-zA-Z0-9]+/g, "");
-
-		// 00-00-0000-000-00
-		if (value.length >= 11) {
-			value = value.slice(0, 11) + "-" + value.slice(11);
-		}
-		if (value.length >= 8) {
-			value = value.slice(0, 8) + "-" + value.slice(8);
-		}
-		if (value.length >= 4) {
-			value = value.slice(0, 4) + "-" + value.slice(4);
-		}
-		if (value.length >= 2) {
-			value = value.slice(0, 2) + "-" + value.slice(2);
-		}
-
-		return value;
-	},
-
-	format_strn: function(frm, fieldname) {
-		let value = frm.doc[fieldname];
-		if (value) {
-			value = erpnext.utils.get_formatted_strn(value);
-			frm.doc[fieldname] = value;
-			frm.refresh_field(fieldname);
-		}
-	},
-
-	get_formatted_mobile_pakistan: function (value) {
-		value = value.replace(/[^0-9+]+/g, "");
-
-		// do not format international numbers
-		if (value.slice(0, 1) === '+' || value.slice(0, 2) === '00') {
-			return value;
-		}
-
-		// 0000-0000000
-		if (value.length >= 4) {
-			value = value.slice(0, 4) + "-" + value.slice(4);
-			return value;
-		}
-
-		return value;
-	},
-
-	format_mobile_pakistan: function (frm, fieldname) {
-		let value = frm.doc[fieldname];
-		if (value) {
-			value = erpnext.utils.get_formatted_mobile_pakistan(value);
-			frm.doc[fieldname] = value;
-			frm.refresh_field(fieldname);
-		}
-	},
-
-	format_mobile_pakistan_in_contact: function (frm) {
-		$.each(frm.doc.phone_nos || [], function (i, d) {
-			if (d.is_primary_mobile_no) {
-				d.phone = erpnext.utils.get_formatted_mobile_pakistan(d.phone);
-				refresh_field('phone', d.name, 'phone_nos');
-			}
-		});
-	},
-
 	get_formatted_vehicle_id(value) {
 		return cstr(value).replace(/\s+/g, "").toUpperCase();
 	},
@@ -450,21 +362,6 @@ $.extend(erpnext.utils, {
 		}
 	},
 
-	validate_duplicate_tax_id: function (doc, fieldname) {
-		let value = doc[fieldname];
-		if (value) {
-			frappe.call({
-				method: "erpnext.accounts.party.validate_duplicate_tax_id",
-				args: {
-					doctype: doc.doctype,
-					fieldname: fieldname,
-					value: value,
-					exclude: doc.__islocal ? null : doc.name
-				}
-			});
-		}
-	},
-
 	set_item_naming_series_options: function(frm) {
 		frappe.model.with_doctype("Item", function() {
 			var item_series = cstr(frappe.meta.get_docfield("Item", "naming_series").options).split("\n");
@@ -478,7 +375,7 @@ $.extend(erpnext.utils, {
 	add_payment_reconciliation_button: function(party_type, page, get_values) {
 		page.add_inner_button(__("Payment Reconciliation"), function() {
 			var values = get_values();
-			frappe.set_route('Form', 'Payment Reconciliation').then(() => {
+			frappe.new_doc("Payment Reconciliation").then(() => {
 				cur_frm.set_value({
 					company: values.company,
 					party_type: party_type,
@@ -502,14 +399,18 @@ $.extend(erpnext.utils, {
 			},
 			callback: function (r) {
 				if (r.message) {
-					// $.each(r.message.fieldnames || [], function (i, fieldname) {
-					// 	var default_read_only = frappe.meta.get_docfield("Item", fieldname);
-					// 	default_read_only = default_read_only ? default_read_only.read_only : 0;
-					// 	frm.set_df_property(fieldname, 'read_only', r.message.values.hasOwnProperty(fieldname) ? 1 : default_read_only);
-					// });
-					$.each(r.message.values || {}, function (fieldname, value) {
-						frm.get_field(fieldname).set_value(value);
-					});
+					if (frm.doc.__islocal) {
+						$.each(r.message.fieldnames || [], function (i, fieldname) {
+							var default_read_only = frappe.meta.get_docfield("Item", fieldname);
+							default_read_only = default_read_only ? default_read_only.read_only : 0;
+							frm.set_df_property(fieldname, 'read_only', r.message.values.hasOwnProperty(fieldname) ? 1 : default_read_only);
+						});
+					}
+
+					frappe.run_serially([
+						() => frm.set_value(r.message.values || {}),
+						() => frm.layout.refresh_section_collapse(),
+					]);
 				}
 			}
 		});
@@ -525,152 +426,256 @@ $.extend(erpnext.utils, {
 		});
 	},
 
-	get_sales_person_from_user: function (callback) {
-		return frappe.call({
-			method: "erpnext.setup.doctype.sales_person.sales_person.get_sales_person_from_user",
-			callback: function (r) {
-				if (!r.exc && callback) {
-					callback(r.message);
+	setup_remove_zero_qty_rows(frm, qty_fields) {
+		if (!qty_fields || !qty_fields.length) {
+			qty_fields = 'qty';
+		}
+		if (!Array.isArray(qty_fields)) {
+			qty_fields = [qty_fields];
+		}
+
+		if (frm.doc.docstatus === 0) {
+			frm.fields_dict.items.grid.add_custom_button(__("Remove 0 Qty Rows"), function () {
+				let actions = [];
+				for (let d of frm.doc.items || []) {
+					let qtys = qty_fields.map(f => flt(d[f], precision('qty', d)));
+					if (!qtys.some(Boolean)) {
+						actions.push(() => frm.fields_dict.items.grid.get_row(d.name).remove());
+					}
 				}
-			}
-		});
+
+				return frappe.run_serially(actions);
+			});
+		}
 	},
+
+	show_progress_for_qty(args) {
+		let bars = [];
+		let added_min = 0;
+
+		let description = args.description || [];
+		if (typeof description == "string") {
+			description = [description];
+		}
+
+		let total_qty = flt(args.total_qty) || 0;
+		if (!total_qty) {
+			return "";
+		}
+
+		for (let d of args.progress_bars) {
+			let title = d.title || "";
+
+			let completed_qty = flt(d.completed_qty) || 0;
+			if (completed_qty <= 0 && !d.add_min_width) {
+				continue;
+			}
+
+			if (!d.description_only) {
+				let bar_width = flt(completed_qty / total_qty * 100, 2);
+				bar_width -= added_min;
+				added_min = 0;
+
+				bar_width = Math.max(bar_width, 0)
+				if (bar_width == 0 && d.add_min_width) {
+					added_min += flt(d.add_min_width);
+					bar_width += flt(d.add_min_width);
+				}
+
+				bars.push({
+					"title": strip_html(title),
+					"bar_width": bar_width,
+					"width": bar_width + "%",
+					"progress_class": d.progress_class || "progress-bar-success",
+				});
+			}
+
+			if (title) {
+				description.push(title);
+			}
+		}
+
+		if (args.frm) {
+			args.frm.dashboard.add_progress(args.title || "Progress", bars, description.join("<br>"));
+		} else if (args.as_html) {
+			let html_progress_bars = [];
+			for (let d of bars) {
+				html_progress_bars.push(`
+					<div class="progress-bar ${d.progress_class}" role="progressbar"
+						aria-valuenow="${d.bar_width}" aria-valuemin="0" aria-valuemax="100"
+						title="${d.title}"
+						style="width: ${d.width};">
+					</div>
+				`);
+			}
+			return `
+				<div class="progress">
+					${html_progress_bars.join("")}
+				</div>
+			`;
+		}
+	}
 });
 
 erpnext.utils.select_alternate_items = function(opts) {
 	const frm = opts.frm;
 	const warehouse_field = opts.warehouse_field || 'warehouse';
-	const item_field = opts.item_field || 'item_code';
+	const item_code_field = opts.item_field || opts.item_code_field || 'item_code';
+	const item_name_field = opts.item_name_field || 'item_name';
+	let qty_field = opts.qty_field || (frm.doctype === 'Work Order' ? 'required_qty' : 'qty');
 
 	this.data = [];
 	const dialog = new frappe.ui.Dialog({
 		title: __("Select Alternate Item"),
+		size: "extra-large",
 		fields: [
-			{fieldtype:'Section Break', label: __('Items')},
 			{
-				fieldname: "alternative_items", fieldtype: "Table", cannot_add_rows: true,
-				in_place_edit: true, data: this.data,
+				label: __("Items"),
+				fieldname: "alternative_items",
+				fieldtype: "Table",
+				cannot_add_rows: true,
+				in_place_edit: true,
+				data: this.data,
 				get_data: () => {
 					return this.data;
 				},
-				fields: [{
-					fieldtype:'Data',
-					fieldname:"docname",
-					hidden: 1
-				}, {
-					fieldtype:'Link',
-					fieldname:"item_code",
-					options: 'Item',
-					in_list_view: 1,
-					read_only: 1,
-					label: __('Item Code')
-				}, {
-					fieldtype:'Link',
-					fieldname:"alternate_item",
-					options: 'Item',
-					default: "",
-					in_list_view: 1,
-					label: __('Alternate Item'),
-					onchange: function() {
-						const item_code = this.get_value();
-						const warehouse = this.grid_row.on_grid_fields_dict.warehouse.get_value();
-						if (item_code && warehouse) {
-							frappe.call({
-								method: "erpnext.stock.utils.get_latest_stock_qty",
-								args: {
-									item_code: item_code,
-									warehouse: warehouse
-								},
-								callback: (r) => {
-									this.grid_row.on_grid_fields_dict
-										.actual_qty.set_value(r.message || 0);
-								}
-							})
-						}
+				fields: [
+					{
+						fieldtype: "Link",
+						fieldname: "item_code",
+						options: "Item",
+						in_list_view: 1,
+						columns: 2,
+						read_only: 1,
+						bold: 1,
+						label: __("Original Item")
 					},
-					get_query: (e) => {
-						return {
-							query: "erpnext.stock.doctype.item_alternative.item_alternative.get_alternative_items",
-							filters: {
-								item_code: e.item_code
+					{
+						fieldtype: "Data",
+						fieldname: "item_name",
+						in_list_view: 1,
+						columns: 2,
+						read_only: 1,
+						label: __("Original Item Name"),
+					},
+					{
+						fieldtype: "Link",
+						fieldname: "alternate_item",
+						options: "Item",
+						in_list_view: 1,
+						label: __("Alternate Item"),
+						onchange: function() {
+							const alternate_item = this.grid_row.doc.alternate_item;
+							const stock_item = alternate_item || this.grid_row.doc.item_code;
+							const warehouse = this.grid_row.doc.warehouse;
+							if (stock_item && warehouse) {
+								frappe.call({
+									method: "erpnext.stock.utils.get_latest_stock_qty",
+									args: {
+										item_code: stock_item,
+										warehouse: warehouse
+									},
+									callback: (r) => {
+										this.grid_row.doc.actual_qty = r.message || 0;
+										dialog.refresh();
+									}
+								});
 							}
-						};
-					}
-				}, {
-					fieldtype:'Link',
-					fieldname:"warehouse",
-					options: 'Warehouse',
-					default: "",
-					in_list_view: 1,
-					label: __('Warehouse'),
-					onchange: function() {
-						const warehouse = this.get_value();
-						const item_code = this.grid_row.on_grid_fields_dict.item_code.get_value();
-						if (item_code && warehouse) {
-							frappe.call({
-								method: "erpnext.stock.utils.get_latest_stock_qty",
-								args: {
-									item_code: item_code,
-									warehouse: warehouse
-								},
-								callback: (r) => {
-									this.grid_row.on_grid_fields_dict
-										.actual_qty.set_value(r.message || 0);
+
+							if (alternate_item) {
+								frappe.db.get_value("Item", alternate_item, 'item_name', (r) => {
+									if (r) {
+										this.grid_row.doc.alternate_item_name = r.item_name || "";
+									} else {
+										this.grid_row.doc.alternate_item_name = "";
+									}
+									dialog.refresh();
+								});
+							} else {
+								this.grid_row.doc.alternate_item_name = "";
+								dialog.refresh();
+							}
+						},
+						get_query: (e) => {
+							return {
+								query: "erpnext.stock.doctype.item_alternative.item_alternative.alternative_item_query",
+								filters: {
+									item_code: e.item_code
 								}
-							})
+							};
 						}
 					},
-				}, {
-					fieldtype:'Float',
-					fieldname:"actual_qty",
-					default: 0,
-					read_only: 1,
-					in_list_view: 1,
-					label: __('Available Qty')
-				}]
+					{
+						fieldtype: "Data",
+						fieldname: "alternate_item_name",
+						in_list_view: 1,
+						columns: 2,
+						read_only: 1,
+						label: __("Alternate Item Name"),
+					},
+					{
+						fieldtype: "Link",
+						fieldname: "warehouse",
+						options: 'Warehouse',
+						read_only: 1,
+						label: __('Warehouse'),
+					},
+					{
+						fieldtype: "Float",
+						fieldname: "actual_qty",
+						default: 0,
+						read_only: 1,
+						in_list_view: 1,
+						columns: 2,
+						label: __('In Stock'),
+					},
+					{
+						fieldtype: "Data",
+						fieldname: "docname",
+						hidden: 1
+					},
+				]
 			},
 		],
 		primary_action: function() {
 			const args = this.get_values()["alternative_items"];
-			const alternative_items = args.filter(d => {
-				if (d.alternate_item && d.item_code != d.alternate_item) {
-					return true;
-				}
-			});
+			const alternative_items = args.filter(d => d.alternate_item && d.item_code != d.alternate_item);
 
-			alternative_items.forEach(d => {
+			for (const d of alternative_items) {
 				let row = frappe.get_doc(opts.child_doctype, d.docname);
-				let qty = null;
-				if (row.doctype === 'Work Order Item') {
-					qty = row.required_qty;
-				} else {
-					qty = row.qty;
-				}
-				row[item_field] = d.alternate_item;
-				frm.script_manager.trigger(item_field, row.doctype, row.name)
-					.then(() => {
-						frappe.model.set_value(row.doctype, row.name, 'qty', qty);
-						frappe.model.set_value(row.doctype, row.name,
-							opts.original_item_field, d.item_code);
-					});
-			});
+				let qty = row[qty_field];
+				row[item_code_field] = d.alternate_item;
 
-			refresh_field(opts.child_docname);
-			this.hide();
+				frappe.model.set_value(row.doctype, row.name, item_name_field, d.alternate_item_name);
+				frm.script_manager.trigger(item_code_field, row.doctype, row.name).then(() => {
+					if (qty != null) {
+						frappe.model.set_value(row.doctype, row.name, qty_field, flt(qty));
+					}
+
+					if (opts.original_item_field) {
+						frappe.model.set_value(row.doctype, row.name, opts.original_item_field, d.item_code);
+					}
+				});
+			}
+
+			frm.refresh_field(opts.child_docname);
+			dialog.hide();
 		},
 		primary_action_label: __('Update')
 	});
 
-	frm.doc[opts.child_docname].forEach(d => {
+	for (const d of frm.doc[opts.child_docname] || []) {
 		if (!opts.condition || opts.condition(d)) {
 			dialog.fields_dict.alternative_items.df.data.push({
 				"docname": d.name,
-				"item_code": d[item_field],
+				"item_code": d[item_code_field],
+				"item_name": d[item_name_field],
 				"warehouse": d[warehouse_field],
-				"actual_qty": d.actual_qty
+				"actual_qty": d.actual_qty,
+				"disable_item_formatter": 1,
 			});
 		}
-	})
+	}
 
 	this.data = dialog.fields_dict.alternative_items.df.data;
 	dialog.fields_dict.alternative_items.grid.refresh();
@@ -729,7 +734,7 @@ erpnext.utils.update_child_items = function(opts) {
 
 	const dialog = new frappe.ui.Dialog({
 		title: __("Update Items"),
-		size: "large",
+		size: "extra-large",
 		fields: [
 			{
 				fieldname: "trans_items",
@@ -911,7 +916,12 @@ erpnext.utils.query_report_local_refresh = function() {
 }
 
 frappe.form.link_formatters['Item'] = function(value, doc) {
-	if(doc && doc.item_name && doc.item_name !== value && !doc.disable_item_formatter) {
+	if (
+		doc
+		&& doc.item_name
+		&& doc.item_name !== value
+		&& !doc.disable_item_formatter
+	) {
 		return value ? value + ': ' + doc.item_name : doc.item_name;
 	} else {
 		return value;
@@ -934,6 +944,18 @@ frappe.form.link_formatters['Customer'] = function(value, doc) {
 		return value;
 	}
 }
+
+frappe.form.global_formatters.push(function (value, df, options, doc) {
+	if (df && doc) {
+		if (['alt_uom_qty', 'alt_uom_size', 'alt_uom_size_std'].includes(df.fieldname) && doc.alt_uom) {
+			return cstr(value) + " " + cstr(doc.alt_uom)
+		}
+
+		if (['alt_uom_rate', 'base_alt_uom_rate'].includes(df.fieldname) && doc.alt_uom) {
+			return cstr(value) + "/" + cstr(doc.alt_uom);
+		}
+	}
+});
 
 // add description on posting time
 $(document).on('app_ready', function() {

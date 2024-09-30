@@ -2,7 +2,6 @@
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 import json
@@ -50,7 +49,7 @@ class AccountingDimension(Document):
 
 def make_dimension_in_accounting_doctypes(doc):
 	doclist = get_doctypes_with_dimensions()
-	doc_count = len(get_accounting_dimensions())
+	doc_count = len(get_accounting_dimensions(cache=False))
 	count = 0
 
 	for doctype in doclist:
@@ -178,6 +177,7 @@ def get_doctypes_with_dimensions():
 		"Payment Entry", "Payment Entry Deduction",
 
 		"Stock Entry", "Stock Entry Detail",
+		"Packing Slip", "Packing Slip Packaging Material",
 		"Stock Reconciliation", "Stock Reconciliation Item",
 		"Landed Cost Voucher", "Landed Cost Taxes and Charges",
 
@@ -193,13 +193,22 @@ def get_doctypes_with_dimensions():
 
 	return doclist
 
-def get_accounting_dimensions(as_list=True):
-	accounting_dimensions = frappe.get_all("Accounting Dimension", fields=["label", "fieldname", "disabled", "document_type"])
+
+def get_accounting_dimensions(as_list=True, cache=True):
+	accounting_dimensions = _get_accounting_dimensions(cache=cache)
 
 	if as_list:
 		return [d.fieldname for d in accounting_dimensions]
 	else:
 		return accounting_dimensions
+
+
+def _get_accounting_dimensions(cache):
+	def generator():
+		return frappe.get_all("Accounting Dimension", fields=["label", "fieldname", "disabled", "document_type"])
+
+	return frappe.local_cache("accounting_dimensions", "accounting_dimensions", generator)
+
 
 def get_checks_for_pl_and_bs_accounts():
 	dimensions = frappe.db.sql("""SELECT p.name, p.label, p.disabled, p.fieldname, c.default_dimension, c.company, c.mandatory_for_pl, c.mandatory_for_bs

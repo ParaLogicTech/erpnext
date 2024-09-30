@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import msgprint, _
 from frappe.utils import cint, now
@@ -146,7 +145,7 @@ def pos_profile_query(doctype, txt, searchfield, start, page_len, filters):
 			on
 				pf.name = pfu.parent
 			where
-				ifnull(pfu.user, '') = ''
+				(pfu.user = '' or pfu.user is null)
 				and pf.company = %(company)s
 				and pf.name like %(txt)s
 				and pf.disabled = 0""", args)

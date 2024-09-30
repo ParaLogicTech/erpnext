@@ -1,13 +1,11 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import cstr, flt
 import json, copy
 
-from six import string_types
 
 class ItemVariantExistsError(frappe.ValidationError): pass
 class InvalidItemAttributeValueError(frappe.ValidationError): pass
@@ -28,7 +26,7 @@ def get_variant(template, args=None, variant=None, manufacturer=None,
 		return make_variant_based_on_manufacturer(item_template, manufacturer,
 			manufacturer_part_no)
 	else:
-		if isinstance(args, string_types):
+		if isinstance(args, str):
 			args = json.loads(args)
 
 		if not args:
@@ -52,7 +50,7 @@ def make_variant_based_on_manufacturer(template, manufacturer, manufacturer_part
 	return variant
 
 def validate_item_variant_attributes(item, args=None):
-	if isinstance(item, string_types):
+	if isinstance(item, str):
 		item = frappe.get_doc('Item', item)
 
 	if not args:
@@ -131,7 +129,6 @@ def find_variant(template, args, variant_item_code=None):
 
 	conditions = " or ".join(conditions)
 
-	from erpnext.portal.product_configurator.utils import get_item_codes_by_attributes
 	possible_variants = [i for i in get_item_codes_by_attributes(args, template) if i != variant_item_code]
 
 	for variant in possible_variants:
@@ -154,7 +151,7 @@ def find_variant(template, args, variant_item_code=None):
 
 @frappe.whitelist()
 def create_variant(item, args):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	template = frappe.get_doc("Item", item)
@@ -177,7 +174,7 @@ def create_variant(item, args):
 @frappe.whitelist()
 def enqueue_multiple_variant_creation(item, args):
 	# There can be innumerable attribute combinations, enqueue
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		variants = json.loads(args)
 	total_variants = 1
 	for key in variants:
@@ -194,7 +191,7 @@ def enqueue_multiple_variant_creation(item, args):
 
 def create_multiple_variants(item, args):
 	count = 0
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args_set = generate_keyed_value_combinations(args)
@@ -261,8 +258,7 @@ def generate_keyed_value_combinations(args):
 def copy_attributes_to_variant(item, variant):
 	# copy non no-copy fields
 
-	exclude_fields = ["naming_series", "item_code", "item_name", "show_in_website",
-		"show_variant_in_website", "opening_stock", "variant_of", "valuation_rate",
+	exclude_fields = ["naming_series", "item_code", "item_name", "opening_stock", "variant_of", "valuation_rate",
 		"variant_item_code_format", "variant_item_name_format"]
 
 	if item.variant_based_on=='Manufacturer':
@@ -366,3 +362,60 @@ def create_variant_doc_for_quick_entry(template, args):
 			validate_item_variant_attributes(variant, args)
 	return variant.as_dict()
 
+
+def get_item_codes_by_attributes(attribute_filters, template_item_code=None):
+	items = []
+
+	for attribute, values in attribute_filters.items():
+		attribute_values = values
+
+		if not isinstance(attribute_values, list):
+			attribute_values = [attribute_values]
+
+		if not attribute_values: continue
+
+		wheres = []
+		query_values = []
+		for attribute_value in attribute_values:
+			wheres.append('( attribute = %s and attribute_value = %s )')
+			query_values += [attribute, attribute_value]
+
+		attribute_query = ' or '.join(wheres)
+
+		if template_item_code:
+			variant_of_query = 'AND t2.variant_of = %s'
+			query_values.append(template_item_code)
+		else:
+			variant_of_query = ''
+
+		query = '''
+			SELECT
+				t1.parent
+			FROM
+				`tabItem Variant Attribute` t1
+			WHERE
+				1 = 1
+				AND (
+					{attribute_query}
+				)
+				AND EXISTS (
+					SELECT
+						1
+					FROM
+						`tabItem` t2
+					WHERE
+						t2.name = t1.parent
+						{variant_of_query}
+				)
+			GROUP BY
+				t1.parent
+			ORDER BY
+				NULL
+		'''.format(attribute_query=attribute_query, variant_of_query=variant_of_query)
+
+		item_codes = set([r[0] for r in frappe.db.sql(query, query_values)])
+		items.append(item_codes)
+
+	res = list(set.intersection(*items))
+
+	return res

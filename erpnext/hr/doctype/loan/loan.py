@@ -2,7 +2,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe, math, json
 import erpnext
 from frappe import _
@@ -76,6 +75,7 @@ class Loan(AccountsController):
 
 			self.repayment_periods = repayment_periods
 
+	@frappe.whitelist()
 	def update_repayment_schedule(self):
 		if self.rate_of_interest:
 			frappe.throw(_("Cannot change repayment schedule for loan with interest"))
@@ -260,7 +260,7 @@ def get_loan_application(loan_application):
 def make_repayment_entry(payment_rows, loan, company, loan_account, applicant_type, applicant, \
 	payment_account=None, interest_income_account=None):
 
-	if isinstance(payment_rows, frappe.string_types):
+	if isinstance(payment_rows, str):
 		payment_rows_list = json.loads(payment_rows)
 	else:
 		frappe.throw(_("No repayments available for Journal Entry"))
@@ -315,7 +315,6 @@ def make_repayment_entry(payment_rows, loan, company, loan_account, applicant_ty
 
 @frappe.whitelist()
 def make_jv_entry(loan, company, loan_account, applicant_type, applicant, loan_amount,payment_account=None):
-
 	journal_entry = frappe.new_doc('Journal Entry')
 	journal_entry.voucher_type = 'Bank Entry'
 	journal_entry.user_remark = _('Against Loan: {0}').format(loan)
@@ -330,12 +329,18 @@ def make_jv_entry(loan, company, loan_account, applicant_type, applicant, loan_a
 		"party": applicant,
 		"reference_type": "Loan",
 		"reference_name": loan,
-		})
+	})
+
 	account_amt_list.append({
 		"account": payment_account,
 		"credit_in_account_currency": loan_amount,
 		"reference_type": "Loan",
 		"reference_name": loan,
-		})
+	})
 	journal_entry.set("accounts", account_amt_list)
+
+	journal_entry.set_amounts_in_company_currency()
+	journal_entry.set_total_debit_credit()
+	journal_entry.set_party_name()
+
 	return journal_entry.as_dict()

@@ -2,13 +2,13 @@
 // For license information, please see license.txt
 
 frappe.provide("erpnext.vehicles");
-erpnext.vehicles.VehicleTransferLetterController = erpnext.vehicles.VehicleTransactionController.extend({
-	refresh: function () {
-		this._super();
-	},
+erpnext.vehicles.VehicleTransferLetterController = class VehicleTransferLetterController extends erpnext.vehicles.VehicleTransactionController {
+	refresh() {
+		super.refresh();
+	}
 
-	setup_queries: function () {
-		this._super();
+	setup_queries() {
+		super.setup_queries();
 
 		this.frm.set_query("vehicle_booking_order", function() {
 			return {
@@ -18,24 +18,24 @@ erpnext.vehicles.VehicleTransferLetterController = erpnext.vehicles.VehicleTrans
 				}
 			};
 		});
-	},
+	}
 
-	customer: function() {
-		this._super();
+	customer() {
+		super.customer();
 		this.warn_vehicle_reserved();
-	},
+	}
 
-	vehicle: function () {
-		this._super();
+	vehicle() {
+		super.vehicle();
 		this.warn_vehicle_reserved();
 		this.warn_vehicle_reserved_by_sales_person();
-	},
+	}
 
-	sales_person: function () {
+	sales_person() {
 		this.warn_vehicle_reserved_by_sales_person();
-	},
+	}
 
-	warn_vehicle_reserved: function () {
+	warn_vehicle_reserved() {
 		if (this.frm.doc.vehicle && this.frm.doc.customer) {
 			frappe.call({
 				method: "erpnext.vehicles.doctype.vehicle.vehicle.warn_vehicle_reserved",
@@ -45,9 +45,9 @@ erpnext.vehicles.VehicleTransferLetterController = erpnext.vehicles.VehicleTrans
 				}
 			})
 		}
-	},
+	}
 
-	warn_vehicle_reserved_by_sales_person: function () {
+	warn_vehicle_reserved_by_sales_person() {
 		if (this.frm.doc.vehicle && this.frm.doc.sales_person) {
 			frappe.call({
 				method: "erpnext.vehicles.doctype.vehicle.vehicle.warn_vehicle_reserved_by_sales_person",
@@ -58,6 +58,6 @@ erpnext.vehicles.VehicleTransferLetterController = erpnext.vehicles.VehicleTrans
 			})
 		}
 	}
-});
+};
 
-$.extend(cur_frm.cscript, new erpnext.vehicles.VehicleTransferLetterController({frm: cur_frm}));
+extend_cscript(cur_frm.cscript, new erpnext.vehicles.VehicleTransferLetterController({frm: cur_frm}));

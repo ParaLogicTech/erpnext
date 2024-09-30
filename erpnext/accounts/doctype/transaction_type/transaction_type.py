@@ -2,7 +2,6 @@
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import cint
@@ -56,11 +55,6 @@ def get_transaction_type_details(args, items):
 			out.doc.disable_rounded_total = cint(transaction_type_doc.disable_rounded_total == "Yes")
 		if transaction_type_doc.calculate_tax_on_company_currency:
 			out.doc.calculate_tax_on_company_currency = cint(transaction_type_doc.calculate_tax_on_company_currency == "Yes")
-
-		if args.company:
-			transaction_type_defaults = get_item_default_values({}, args)
-			if transaction_type_defaults.get('default_warehouse'):
-				out.doc.set_warehouse = transaction_type_defaults.get('default_warehouse')
 
 	if account_field and party_type and party:
 		party_account_details = get_party_account_details(party_type, party, args.company,

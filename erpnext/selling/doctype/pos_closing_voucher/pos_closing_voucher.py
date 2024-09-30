@@ -2,7 +2,6 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt
@@ -12,6 +11,7 @@ from erpnext.controllers.taxes_and_totals import get_itemised_tax_breakup_data
 import json
 
 class POSClosingVoucher(Document):
+	@frappe.whitelist()
 	def get_closing_voucher_details(self):
 		filters = {
 			'doc': self.name,
@@ -115,6 +115,7 @@ class POSClosingVoucher(Document):
 				'amount': tax['amount']
 			})
 
+	@frappe.whitelist()
 	def get_payment_reconciliation_details(self):
 		currency = get_company_currency(self)
 		return frappe.render_template("erpnext/selling/doctype/pos_closing_voucher/closing_voucher_details.html",

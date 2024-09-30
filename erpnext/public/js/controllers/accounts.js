@@ -51,6 +51,10 @@ frappe.ui.form.on(cur_frm.doctype, {
 			});
 			frm.fields_dict.taxes.grid.custom_buttons[__("Set Manual Distribution")].addClass('hidden');
 		}
+
+		if (frm.fields_dict.taxes) {
+			frm.fields_dict.taxes.grid.grid_rows.forEach(grid_row => erpnext.taxes.set_conditional_mandatory_rate_or_amount(grid_row));
+		}
 	},
 	validate: function(frm) {
 		// neither is absolutely mandatory
@@ -153,23 +157,30 @@ var get_payment_mode_account = function(frm, mode_of_payment, callback) {
 }
 
 cur_frm.cscript.account_head = function(doc, cdt, cdn) {
-	var d = locals[cdt][cdn];
-	if(!d.charge_type && d.account_head){
+	let d = locals[cdt][cdn];
+	if (!d.charge_type && d.account_head) {
 		frappe.msgprint(__("Please select Charge Type first"));
 		frappe.model.set_value(cdt, cdn, "account_head", "");
-	} else if(d.account_head && d.charge_type!=="Actual" && d.charge_type !=="Manual") {
-		frappe.call({
-			type:"GET",
-			method: "erpnext.controllers.accounts_controller.get_tax_rate",
-			args: {"account_head":d.account_head},
+	} else if (d.account_head) {
+		return frappe.call({
+			type: "GET",
+			method: "erpnext.accounts.doctype.account.account.get_tax_account_details",
+			args: {
+				account_head: d.account_head
+			},
 			callback: function(r) {
-				frappe.model.set_value(cdt, cdn, "rate", r.message.tax_rate || 0);
-				frappe.model.set_value(cdt, cdn, "description", r.message.account_name);
-				frappe.model.set_value(cdt, cdn, "exclude_from_item_tax_amount", r.message.exclude_from_item_tax_amount);
+				if (r.message) {
+					frappe.model.set_value(cdt, cdn, "description", r.message.account_name);
+					frappe.model.set_value(cdt, cdn, "exclude_from_item_tax_amount", cint(r.message.exclude_from_item_tax_amount));
+
+					if (["Actual", "Manual"].includes(d.charge_type)) {
+						frappe.model.set_value(cdt, cdn, "rate", flt(r.message.tax_rate) || 0);
+					} else {
+						frappe.model.set_value(cdt, cdn, "rate", 0);
+					}
+				}
 			}
-		})
-	} else if (d.charge_type == 'Actual' && d.account_head) {
-		frappe.model.set_value(cdt, cdn, "description", d.account_head.split(' - ')[0]);
+		});
 	}
 }
 
@@ -274,12 +285,14 @@ cur_frm.cscript.set_manual_distribution = function(doc, cdt, cdn) {
 		current_row.net_amount += me.frm.doc.calculate_tax_on_company_currency ? item_row.base_net_amount : item_row.net_amount;
 	});
 
+	let table_data = [];
+
 	var dialog = new frappe.ui.Dialog({
 		title: __("Manual Distribution for {0}", [tax_row.description]),
-		size: 'large',
+		size: "extra-large",
 		fields: [
-			{label: __("Items"), fieldname: "items", fieldtype: "Table", data: this.data,
-				get_data: () => this.data,
+			{label: __("Items"), fieldname: "items", fieldtype: "Table", data: table_data,
+				get_data: () => table_data,
 				cannot_add_rows: true, in_place_edit: true,
 				fields: [
 					{
@@ -322,7 +335,7 @@ cur_frm.cscript.set_manual_distribution = function(doc, cdt, cdn) {
 	});
 
 	dialog.fields_dict.items.df.data = itemised_rows;
-	this.data = dialog.fields_dict.items.df.data;
+	table_data = dialog.fields_dict.items.df.data;
 	dialog.fields_dict.items.grid.refresh();
 
 	dialog.show();
@@ -373,7 +386,7 @@ if(!erpnext.taxes.flags[cur_frm.cscript.tax_table]) {
 		}
 	});
 
-	frappe.ui.form.on(cur_frm.cscript.tax_table, "taxes_row_focused", function(frm, cdt, cdn) {
+	frappe.ui.form.on(cur_frm.cscript.tax_table, "taxes_before_row_focused", function(frm, cdt, cdn) {
 		var row = frappe.get_doc(cdt, cdn);
 		frm.focused_tax_dn = cdn;
 		frm.fields_dict.taxes.grid.custom_buttons[__("Set Manual Distribution")].toggleClass('hidden', row.charge_type !== 'Manual');
@@ -395,89 +408,15 @@ if(!erpnext.taxes.flags[cur_frm.cscript.tax_table]) {
 
 erpnext.taxes.set_conditional_mandatory_rate_or_amount = function(grid_row) {
 	if(grid_row) {
-		if(grid_row.doc.charge_type==="Actual" || grid_row.doc.charge_type==="Weighted Distribution") {
-			grid_row.toggle_editable("tax_amount", true);
-			grid_row.toggle_editable("base_tax_amount", true);
-			grid_row.toggle_reqd("tax_amount", true);
-			grid_row.toggle_editable("rate", grid_row.doc.charge_type==="Weighted Distribution");
-			grid_row.toggle_reqd("rate", grid_row.doc.charge_type==="Weighted Distribution");
-		} else {
-			grid_row.toggle_editable("rate", grid_row.doc.charge_type!=="Manual");
-			grid_row.toggle_reqd("rate", grid_row.doc.charge_type!=="Manual");
-			grid_row.toggle_editable("tax_amount", false);
-			grid_row.toggle_editable("base_tax_amount", false);
-			grid_row.toggle_reqd("tax_amount", false);
-		}
+		let doc = grid_row.doc
+		let amount_editable = doc.charge_type === "Actual" || doc.charge_type === "Weighted Distribution";
+		let rate_editable = doc.charge_type !== "Actual" && doc.charge_type !== "Manual"
+
+		grid_row.toggle_editable("tax_amount", amount_editable, true);
+		grid_row.toggle_editable("base_tax_amount", amount_editable, true);
+		grid_row.toggle_reqd("tax_amount", amount_editable, true);
+
+		grid_row.toggle_editable("rate", rate_editable, true);
+		grid_row.toggle_reqd("rate", rate_editable, true);
 	}
-}
-
-
-// For customizing print
-cur_frm.pformat.total = function(doc) { return ''; }
-cur_frm.pformat.discount_amount = function(doc) { return ''; }
-cur_frm.pformat.grand_total = function(doc) { return ''; }
-cur_frm.pformat.rounded_total = function(doc) { return ''; }
-cur_frm.pformat.in_words = function(doc) { return ''; }
-
-cur_frm.pformat.taxes= function(doc){
-	//function to make row of table
-	var make_row = function(title, val, bold, is_negative) {
-		var bstart = '<b>'; var bend = '</b>';
-		return '<tr><td style="width:50%;">' + (bold?bstart:'') + title + (bold?bend:'') + '</td>'
-			+ '<td style="width:50%;text-align:right;">' + (is_negative ? '- ' : '')
-		+ format_currency(val, doc.currency) + '</td></tr>';
-	}
-
-	function print_hide(fieldname) {
-		var doc_field = frappe.meta.get_docfield(doc.doctype, fieldname, doc.name);
-		return doc_field.print_hide;
-	}
-
-	out ='';
-	if (!doc.print_without_amount) {
-		var cl = doc.taxes || [];
-
-		// outer table
-		var out='<div><table class="noborder" style="width:100%"><tr><td style="width: 60%"></td><td>';
-
-		// main table
-
-		out +='<table class="noborder" style="width:100%">';
-
-		if(!print_hide('total')) {
-			out += make_row('Total', doc.total, 1);
-		}
-
-		// Discount Amount on net total
-		if(!print_hide('discount_amount') && doc.apply_discount_on == "Net Total" && doc.discount_amount)
-			out += make_row('Discount Amount', doc.discount_amount, 0, 1);
-
-		// add rows
-		if(cl.length){
-			for(var i=0;i<cl.length;i++) {
-				if(cl[i].tax_amount!=0 && !cl[i].included_in_print_rate)
-					out += make_row(cl[i].description, cl[i].tax_amount, 0);
-			}
-		}
-
-		// Discount Amount on grand total
-		if(!print_hide('discount_amount') && doc.apply_discount_on == "Grand Total" && doc.discount_amount)
-			out += make_row('Discount Amount', doc.discount_amount, 0, 1);
-
-		// grand total
-		if(!print_hide('grand_total'))
-			out += make_row('Grand Total', doc.grand_total, 1);
-
-		if(!print_hide('rounded_total'))
-			out += make_row('Rounded Total', doc.rounded_total, 1);
-
-		if(doc.in_words && !print_hide('in_words')) {
-			out +='</table></td></tr>';
-			out += '<tr><td colspan = "2">';
-			out += '<table><tr><td style="width:25%;"><b>In Words</b></td>';
-			out += '<td style="width:50%;">' + doc.in_words + '</td></tr>';
-		}
-		out += '</table></td></tr></table></div>';
-	}
-	return out;
 }

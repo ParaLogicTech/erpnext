@@ -3,6 +3,8 @@
 
 frappe.ui.form.on('Operation', {
 	refresh: function(frm) {
-
+		frm.set_query("workstation", () => {
+			return erpnext.queries.workstation(frm.doc.name);
+		});
 	}
 });

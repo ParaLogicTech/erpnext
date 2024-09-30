@@ -10,14 +10,14 @@ frappe.provide("erpnext.accounts.expense_entry");
 
 frappe.ui.form.on('Expense Entry', {
 	setup: function(frm) {
-		frm.cscript.remove_sidebar();
+		frm.page.toggle_sidebar(false);
 
 		frm.set_query('payable_account', function() {
 			if(!frm.doc.company) {
 				frappe.msgprint(__("Please select Company first"));
 			} else {
 				return {
-					filters:[
+					filters: [
 						['Account', 'company', '=', frm.doc.company],
 						['Account', 'is_group', '=', 0],
 						['Account', 'account_type', '=', 'Payable']
@@ -41,16 +41,30 @@ frappe.ui.form.on('Expense Entry', {
 		});
 
 		frm.set_query("expense_account", "accounts", function() {
-			if(!frm.doc.company) {
-				frappe.msgprint(__("Please select Company first"));
-			} else {
-				return {
-					filters: [
-						['Account', 'company', '=', frm.doc.company],
-						['Account', 'is_group', '=', 0],
-					]
+			return {
+				filters: {
+					company: frm.doc.company,
+					is_group: 0
 				}
-			}
+			};
+		});
+
+		frm.set_query("cost_center", function() {
+			return {
+				filters: {
+					company: frm.doc.company,
+					is_group: 0
+				}
+			};
+		});
+
+		frm.set_query("cost_center", "accounts", function(doc, cdt, cdn) {
+			return {
+				filters: {
+					company: frm.doc.company,
+					is_group: 0
+				}
+			};
 		});
 	},
 
@@ -58,9 +72,88 @@ frappe.ui.form.on('Expense Entry', {
 		erpnext.hide_company();
 	},
 
+	company: function (frm) {
+		frm.events.get_other_company_accounts_and_cost_centers(frm);
+	},
+
+	get_other_company_accounts_and_cost_centers: function (frm) {
+		let accounts = [];
+		let cost_centers = [];
+
+		if (frm.doc.paid_from_account) {
+			accounts.push(frm.doc.paid_from_account);
+		}
+		if (frm.doc.payable_account) {
+			accounts.push(frm.doc.paid_from_account);
+		}
+
+		if (frm.doc.cost_center) {
+			cost_centers.push(frm.doc.cost_center);
+		}
+
+		for (let d of frm.doc.accounts || []) {
+			if (d.expense_account) {
+				accounts.push(d.expense_account);
+			}
+			if (d.cost_center) {
+				cost_centers.push(d.cost_center);
+			}
+		}
+
+		return frappe.call({
+			method: "erpnext.accounts.doctype.journal_entry.journal_entry.get_other_company_accounts_and_cost_centers",
+			args: {
+				target_company: frm.doc.company,
+				accounts: accounts,
+				cost_centers: cost_centers,
+			},
+			callback: function(r){
+				if (r.message) {
+					frm.set_value("cost_center", r.message.cost_centers[frm.doc.cost_center] || r.message.default_cost_center);
+
+					if (frm.doc.paid_from_account && r.message.accounts[frm.doc.paid_from_account]) {
+						frm.set_value("paid_from_account", r.message.accounts[frm.doc.paid_from_account])
+					}
+					if (frm.doc.payable_account && r.message.accounts[frm.doc.payable_account]) {
+						frm.set_value("payable_account", r.message.accounts[frm.doc.payable_account])
+					} else {
+						frm.events.get_payable_account_currency(frm);
+					}
+
+					for (let d of frm.doc.accounts || []) {
+						if (d.expense_account && r.message.accounts[d.expense_account]) {
+							frappe.model.set_value(d.doctype, d.name, "expense_account", r.message.accounts[d.expense_account]);
+						}
+						if (d.cost_center && r.message.cost_centers[d.cost_center]) {
+							frappe.model.set_value(d.doctype, d.name, "cost_center", r.message.cost_centers[d.cost_center]);
+						}
+					}
+				}
+			}
+		});
+	},
+
 	payable_account: function (frm) {
-		if (!frm.doc.payable_account) {
-			var company_currency = frappe.get_doc(":Company", frm.doc.company).default_currency;
+		frm.events.get_payable_account_currency(frm);
+	},
+
+	get_payable_account_currency: function (frm) {
+		if (frm.doc.payable_account) {
+			return frappe.call({
+				method: "frappe.client.get",
+				filters: {
+					doctype: "Account",
+					filters: {name: frm.doc.payable_account},
+					fieldname: "account_currency"
+				},
+				callback: (r) => {
+					if (r.message) {
+						frm.set_value("payable_account_currency", r.message.account_currency);
+					}
+				}
+			});
+		} else {
+			let company_currency = frappe.get_doc(":Company", frm.doc.company).default_currency;
 			frm.set_value("payable_account_currency", company_currency);
 		}
 	},

@@ -1,12 +1,11 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from __future__ import unicode_literals
 
 import frappe
 from erpnext import get_default_company
 from erpnext.accounts.party import get_party_details
-from erpnext.stock.get_item_details import get_price_list_rate_for
+from erpnext.stock.get_item_details import get_price_list_rate
 from frappe import _
 
 
@@ -68,7 +67,7 @@ def get_data(filters=None):
 	item_stock_map = {item.item_code: item.available for item in item_stock_map}
 
 	for item in items:
-		price_list_rate = get_price_list_rate_for(customer_details, item.item_code) or 0.0
+		price_list_rate = get_price_list_rate(item.item_code, customer_details.get("price_list"), customer_details) or 0.0
 		available_stock = item_stock_map.get(item.item_code)
 
 		data.append({

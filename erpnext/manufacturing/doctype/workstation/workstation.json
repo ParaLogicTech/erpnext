@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:workstation_name",
@@ -7,15 +8,17 @@
  "document_type": "Setup",
  "engine": "InnoDB",
  "field_order": [
-  "description_section",
   "workstation_name",
   "description",
+  "column_break_sacb9",
+  "allowed_operations",
   "over_heads",
   "hour_rate_electricity",
   "hour_rate_consumable",
   "column_break_11",
   "hour_rate_rent",
   "hour_rate_labour",
+  "column_break_ig5wu",
   "hour_rate",
   "working_hours_section",
   "working_hours",
@@ -23,15 +26,8 @@
  ],
  "fields": [
   {
-   "collapsible": 1,
-   "fieldname": "description_section",
-   "fieldtype": "Section Break",
-   "label": "Description"
-  },
-  {
    "fieldname": "workstation_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Workstation Name",
    "oldfieldname": "workstation_name",
    "oldfieldtype": "Data",
@@ -40,7 +36,7 @@
   },
   {
    "fieldname": "description",
-   "fieldtype": "Text",
+   "fieldtype": "Small Text",
    "in_list_view": 1,
    "label": "Description",
    "oldfieldname": "description",
@@ -54,18 +50,16 @@
    "oldfieldtype": "Section Break"
   },
   {
-   "description": "per hour",
    "fieldname": "hour_rate_electricity",
    "fieldtype": "Currency",
-   "label": "Electricity Cost",
+   "label": "Electricity Cost (per hour)",
    "oldfieldname": "hour_rate_electricity",
    "oldfieldtype": "Currency"
   },
   {
-   "description": "per hour",
    "fieldname": "hour_rate_consumable",
    "fieldtype": "Currency",
-   "label": "Consumable Cost",
+   "label": "Consumable Cost (per hour)",
    "oldfieldname": "hour_rate_consumable",
    "oldfieldtype": "Currency"
   },
@@ -74,26 +68,24 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "per hour",
    "fieldname": "hour_rate_rent",
    "fieldtype": "Currency",
-   "label": "Rent Cost",
+   "label": "Rent Cost (per hour)",
    "oldfieldname": "hour_rate_rent",
    "oldfieldtype": "Currency"
   },
   {
-   "description": "Wages per hour",
    "fieldname": "hour_rate_labour",
    "fieldtype": "Currency",
-   "label": "Wages",
+   "label": "Wages (per hour)",
    "oldfieldname": "hour_rate_labour",
    "oldfieldtype": "Currency"
   },
   {
-   "description": "per hour",
    "fieldname": "hour_rate",
    "fieldtype": "Currency",
-   "label": "Net Hour Rate",
+   "in_list_view": 1,
+   "label": "Net Hour Rate (per hour)",
    "oldfieldname": "hour_rate",
    "oldfieldtype": "Currency",
    "read_only": 1
@@ -114,14 +106,30 @@
    "fieldtype": "Link",
    "label": "Holiday List",
    "options": "Holiday List"
+  },
+  {
+   "fieldname": "allowed_operations",
+   "fieldtype": "Table",
+   "label": "Allowed Operations",
+   "options": "Workstation Operation"
+  },
+  {
+   "fieldname": "column_break_sacb9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ig5wu",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "icon-wrench",
  "idx": 1,
- "modified": "2020-03-03 15:42:48.297865",
+ "links": [],
+ "modified": "2024-03-19 18:06:55.354767",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Workstation",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -131,14 +139,25 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Manufacturing User",
+   "role": "Manufacturing Manager",
    "share": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing User",
+   "share": 1
   }
  ],
  "quick_entry": 1,
+ "search_fields": "description",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
+ "states": [],
  "track_changes": 1
 }
