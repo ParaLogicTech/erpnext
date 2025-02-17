@@ -12,6 +12,7 @@ from frappe.contacts.doctype.address.address import get_default_address
 from frappe.contacts.doctype.contact.contact import get_default_contact, get_all_contact_nos
 from erpnext.accounts.party import get_contact_details, get_address_display
 from erpnext.controllers.status_updater import StatusUpdaterERP
+from erpnext.projects.doctype.project_type.project_type import get_project_type_defaults
 from erpnext.projects.doctype.project_status.project_status import (
 	get_auto_project_status,
 	set_manual_project_status,
@@ -55,7 +56,7 @@ class Project(StatusUpdaterERP):
 			set_name_by_naming_series(self, 'project_number')
 
 	def onload(self):
-		self.set_onload('cant_change_fields', self.get_cant_change_fields())
+		self.set_onload('cant_change_fields', self.get_cant_change_fields(for_onload=True))
 		self.set_onload('valid_manual_project_status_names', get_valid_manual_project_status_names(self))
 		self.set_onload('is_manual_project_status', is_manual_project_status(self.project_status))
 		self.set_onload('contact_nos', get_all_contact_nos('Customer', self.customer))
@@ -79,7 +80,7 @@ class Project(StatusUpdaterERP):
 		pass
 
 	def validate(self):
-		if self.status not in ['Completed', 'Closed']:
+		if self.status not in ('Completed', 'Closed', 'Cancelled'):
 			self.set_missing_values()
 
 		self.validate_appointment()
@@ -902,15 +903,22 @@ class Project(StatusUpdaterERP):
 					curr.idx
 				))
 
-	def get_cant_change_fields(self):
+	def get_cant_change_fields(self, for_onload=False):
 		has_sales_transaction = self.has_sales_transaction()
 		has_billable_transaction = self.has_billable_transaction()
 
-		return frappe._dict({
+		out = frappe._dict({
 			'customer': has_sales_transaction or self.advance_received_amount,
 			'bill_to': self.advance_received_amount or (self.is_warranty_claim and has_billable_transaction),
 			'is_warranty_claim': self.is_warranty_claim and has_billable_transaction,
 		})
+
+		if for_onload:
+			project_type_defaults = get_project_type_defaults(self.project_type)
+			for field in project_type_defaults:
+				out[field] = True
+
+		return out
 
 	def has_sales_transaction(self):
 		if getattr(self, '_has_sales_transaction', None):
@@ -943,7 +951,7 @@ class Project(StatusUpdaterERP):
 		return self._has_billable_transaction
 
 	def validate_project_type(self):
-		if self.status in ['Completed', 'Closed']:
+		if self.status in ('Completed', 'Closed', 'Cancelled'):
 			return
 
 		if self.project_type:
@@ -1017,11 +1025,18 @@ class Project(StatusUpdaterERP):
 			self.contact_mobile_2 = ''
 
 	def set_missing_values(self):
+		self.set_project_type_defaults()
 		self.set_appointment_details()
 		self.set_customer_details()
 		self.set_applies_to_details()
 		self.set_service_template_details()
 		self.set_material_and_service_item_groups()
+
+	def set_project_type_defaults(self):
+		defaults = get_project_type_defaults(self.project_type)
+		for k, v in defaults.items():
+			if self.meta.has_field(k):
+				self.set(k, v)
 
 	def set_customer_details(self):
 		args = self.as_dict()
@@ -1064,7 +1079,7 @@ class Project(StatusUpdaterERP):
 			if d.service_template and not d.service_template_name:
 				d.service_template_name = frappe.get_cached_value("Service Template", d.service_template, "service_template_name")
 
-			if self.status not in ['Completed', 'Closed']:
+			if self.status not in ('Completed', 'Closed', 'Cancelled'):
 				d.includes_service_warranty = frappe.get_cached_value("Service Template", d.service_template, "includes_service_warranty")
 
 	def set_appointment_details(self):
