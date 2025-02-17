@@ -1178,8 +1178,25 @@ frappe.ui.form.on('Payment Entry', {
 			frm.doc.paid_amount_before_tax = frm.doc.paid_amount;
 			frm.doc.paid_amount_after_tax = frm.doc.paid_amount;
 
+			frm.doc.base_paid_amount_before_tax = flt(
+				flt(frm.doc.paid_amount_before_tax) * flt(frm.doc.source_exchange_rate), precision("base_paid_amount")
+			);
+			frm.doc.base_paid_amount_after_tax = flt(
+				flt(frm.doc.paid_amount_after_tax) * flt(frm.doc.source_exchange_rate), precision("base_paid_amount")
+			);
+
 			frm.doc.received_amount_after_tax = frm.doc.received_amount;
 			frm.doc.received_amount_before_tax = frm.doc.received_amount;
+
+			frm.doc.base_received_amount_after_tax = flt(
+				flt(frm.doc.received_amount_after_tax) * flt(frm.doc.target_exchange_rate),
+				precision("base_received_amount"),
+			);
+
+			frm.doc.base_received_amount_before_tax = flt(
+				flt(frm.doc.received_amount_before_tax) * flt(frm.doc.target_exchange_rate),
+				precision("base_received_amount"),
+			);
 		});
 	},
 
@@ -1326,6 +1343,8 @@ frappe.ui.form.on('Payment Entry', {
 		let amount_before_tax_field = frm.doc.payment_type == "Receive" ? "paid_amount_before_tax" : "received_amount_before_tax";
 		let amount_after_tax_field =  frm.doc.payment_type == "Receive" ? "paid_amount_after_tax" : "received_amount_after_tax";
 
+		let exchange_rate = frm.events.get_party_exchange_rate(frm);
+
 		frm.doc.total_taxes_and_charges = 0.0;
 		frm.doc.base_total_taxes_and_charges = 0.0;
 
@@ -1355,7 +1374,6 @@ frappe.ui.form.on('Payment Entry', {
 
 			tax.tax_amount = current_tax_amount;
 
-			let exchange_rate = frm.events.get_party_exchange_rate(frm);
 			tax.base_tax_amount = flt(tax.tax_amount * exchange_rate, precision("base_tax_amount", tax));
 			tax.base_total = flt(tax.total * exchange_rate, precision("base_total", tax));
 
@@ -1370,6 +1388,8 @@ frappe.ui.form.on('Payment Entry', {
 			frm.doc[amount_after_tax_field] = frm.doc.taxes[frm.doc.taxes.length-1].total;
 			frm.doc["base_" + amount_after_tax_field] = frm.doc.taxes[frm.doc.taxes.length-1].base_total;
 		}
+
+		frm.doc["base_" + amount_before_tax_field] = flt(frm.doc[amount_before_tax_field] * exchange_rate, precision("base_paid_amount"));
 
 		frm.refresh_field(amount_before_tax_field);
 		frm.refresh_field(amount_after_tax_field);

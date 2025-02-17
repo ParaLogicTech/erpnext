@@ -1045,8 +1045,25 @@ class PaymentEntry(AccountsController):
 		self.paid_amount_after_tax = self.paid_amount
 		self.paid_amount_before_tax = self.paid_amount
 
+		self.base_paid_amount_before_tax = flt(
+			flt(self.paid_amount_before_tax) * flt(self.source_exchange_rate), self.precision("base_paid_amount")
+		)
+		self.base_paid_amount_after_tax = flt(
+			flt(self.paid_amount_after_tax) * flt(self.source_exchange_rate), self.precision("base_paid_amount")
+		)
+
 		self.received_amount_after_tax = self.received_amount
 		self.received_amount_before_tax = self.received_amount
+
+		self.base_received_amount_after_tax = flt(
+			flt(self.received_amount_after_tax) * flt(self.target_exchange_rate),
+			self.precision("base_received_amount"),
+		)
+
+		self.base_received_amount_before_tax = flt(
+			flt(self.received_amount_before_tax) * flt(self.target_exchange_rate),
+			self.precision("base_received_amount"),
+		)
 
 	def determine_exclusive_rate(self):
 		if not any(cint(tax.included_in_paid_amount) for tax in self.get("taxes")):
@@ -1073,6 +1090,8 @@ class PaymentEntry(AccountsController):
 	def calculate_taxes(self):
 		amount_before_tax_field = "paid_amount_before_tax" if self.payment_type == "Receive" else "received_amount_before_tax"
 		amount_after_tax_field = "paid_amount_after_tax" if self.payment_type == "Receive" else "received_amount_after_tax"
+
+		exchange_rate = self.get_party_exchange_rate()
 
 		self.total_taxes_and_charges = 0.0
 		self.base_total_taxes_and_charges = 0.0
@@ -1102,7 +1121,6 @@ class PaymentEntry(AccountsController):
 
 			tax.tax_amount = current_tax_amount
 
-			exchange_rate = self.get_party_exchange_rate()
 			tax.base_tax_amount = flt(tax.tax_amount * exchange_rate, tax.precision("base_tax_amount"))
 			tax.base_total = flt(tax.total * exchange_rate, tax.precision("base_total"))
 
