@@ -396,67 +396,45 @@ class Customer(TransactionBase):
 
 @frappe.whitelist()
 def make_quotation(source_name, target_doc=None):
-
 	def set_missing_values(source, target):
-		_set_missing_values(source, target)
+		price_list, currency = frappe.db.get_value("Customer", source_name, ['default_price_list', 'default_currency'])
+		if price_list:
+			target.selling_price_list = price_list
+		if currency:
+			target.currency = currency
 
-	target_doc = get_mapped_doc("Customer", source_name,
-		{"Customer": {
+		target.run_method("postprocess_after_mapping")
+
+	return get_mapped_doc("Customer", source_name, {
+		"Customer": {
 			"doctype": "Quotation",
 			"field_map": {
-				"name":"party_name"
+				"doctype": "quotation_to",
+				"name": "party_name",
+				"customer_primary_contact": "contact_person",
+				"customer_primary_address": "customer_address",
 			}
-		}}, target_doc, set_missing_values)
-
-	target_doc.quotation_to = "Customer"
-	target_doc.run_method("set_missing_values")
-	target_doc.run_method("reset_taxes_and_charges")
-	target_doc.run_method("calculate_taxes_and_totals")
-
-	price_list, currency = frappe.db.get_value("Customer", source_name, ['default_price_list', 'default_currency'])
-	if price_list:
-		target_doc.selling_price_list = price_list
-	if currency:
-		target_doc.currency = currency
-
-	return target_doc
+		}
+	}, target_doc, set_missing_values)
 
 
 @frappe.whitelist()
 def make_opportunity(source_name, target_doc=None):
 	def set_missing_values(source, target):
-		_set_missing_values(source, target)
+		target.run_method("set_missing_values")
 
-	target_doc = get_mapped_doc("Customer", source_name,
-		{"Customer": {
+	return get_mapped_doc("Customer", source_name, {
+		"Customer": {
 			"doctype": "Opportunity",
 			"field_map": {
 				"name": "party_name",
 				"doctype": "opportunity_from",
+				"customer_name": "customer_name",
+				"customer_primary_contact": "contact_person",
+				"customer_primary_address": "customer_address",
 			}
-		}}, target_doc, set_missing_values)
-
-	return target_doc
-
-
-def _set_missing_values(source, target):
-	address = frappe.get_all('Dynamic Link', {
-			'link_doctype': source.doctype,
-			'link_name': source.name,
-			'parenttype': 'Address',
-		}, ['parent'], limit=1)
-
-	contact = frappe.get_all('Dynamic Link', {
-			'link_doctype': source.doctype,
-			'link_name': source.name,
-			'parenttype': 'Contact',
-		}, ['parent'], limit=1)
-
-	if address:
-		target.customer_address = address[0].parent
-
-	if contact:
-		target.contact_person = contact[0].parent
+		}
+	}, target_doc, set_missing_values)
 
 
 @frappe.whitelist()

@@ -27,7 +27,6 @@ class OpportunityERP(Opportunity):
 	def validate(self):
 		super().validate()
 		validate_uom_is_integer(self, "uom", "qty")
-		self.validate_financer()
 		self.validate_maintenance_schedule()
 
 	@classmethod
@@ -38,15 +37,6 @@ class OpportunityERP(Opportunity):
 		super().set_missing_values()
 		self.set_item_details()
 		self.set_applies_to_details()
-
-	def validate_financer(self):
-		if self.get('financer'):
-			if self.get('opportunity_from') == "Customer" and self.get('party_name') == self.get('financer'):
-				frappe.throw(_("Customer and Financer cannot be the same"))
-
-		elif self.meta.has_field('financer'):
-			self.financer_name = None
-			self.finance_type = None
 
 	def validate_maintenance_schedule(self):
 		if not self.get("maintenance_schedule"):
