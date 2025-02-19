@@ -36,9 +36,11 @@
   "warranty_provision_amount",
   "column_break_9l4v",
   "warranty_provision_account",
-  "warranty_expense_account",
   "column_break_alj3",
+  "warranty_expense_account",
+  "accounting_dimensions_section",
   "cost_center",
+  "dimension_col_break",
   "terms_tab",
   "tc_name",
   "terms"
@@ -294,12 +296,22 @@
    "label": "Valid Upto",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "accounting_dimensions_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting Dimensions"
+  },
+  {
+   "fieldname": "dimension_col_break",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-15 00:16:18.700945",
+ "modified": "2025-02-20 00:42:34.228051",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Service Warranty",

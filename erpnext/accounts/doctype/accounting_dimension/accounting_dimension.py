@@ -9,7 +9,6 @@ from frappe.model.document import Document
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
 from frappe import scrub
 from frappe.utils import cstr
-from frappe.utils.background_jobs import enqueue
 from frappe.model import core_doctypes_list
 
 
@@ -19,7 +18,7 @@ class AccountingDimension(Document):
 
 	def validate(self):
 		if self.document_type in core_doctypes_list + ('Accounting Dimension', 'Project',
-				'Cost Center', 'Accounting Dimension Detail') :
+				'Cost Center', 'Accounting Dimension Detail'):
 
 			msg = _("Not allowed to create accounting dimension for {0}").format(self.document_type)
 			frappe.throw(msg)
@@ -31,9 +30,9 @@ class AccountingDimension(Document):
 
 	def after_insert(self):
 		if frappe.flags.in_test:
-			make_dimension_in_accounting_doctypes(doc=self)
+			make_dimension_in_accounting_doctypes(dimension_doc=self)
 		else:
-			frappe.enqueue(make_dimension_in_accounting_doctypes, doc=self)
+			frappe.enqueue(make_dimension_in_accounting_doctypes, dimension_doc=self)
 
 	def on_trash(self):
 		if frappe.flags.in_test:
@@ -49,38 +48,43 @@ class AccountingDimension(Document):
 			self.fieldname = scrub(self.label)
 
 
-def make_dimension_in_accounting_doctypes(doc):
+def make_dimension_in_accounting_doctypes(dimension_doc):
 	doclist = get_doctypes_with_dimensions()
-	doc_count = len(get_accounting_dimensions(cache=False))
+	dimension_count = len(get_accounting_dimensions(cache=False))
 	count = 0
 
 	for doctype in doclist:
-
-		if (doc_count + 1) % 2 == 0:
-			insert_after_field = 'dimension_col_break'
-		else:
-			insert_after_field = 'accounting_dimensions_section'
-
-		df = {
-			"fieldname": doc.fieldname,
-			"label": doc.label,
-			"fieldtype": "Link",
-			"options": doc.document_type,
-			"insert_after": insert_after_field,
-			"ignore_user_permissions": 1,
-			"owner": "Administrator"
-		}
-
-		if doctype == "Budget":
-			add_dimension_to_budget_doctype(df, doc)
-		else:
-			if not frappe.get_meta(doctype).has_field(doc.fieldname):
-				create_custom_field(doctype, df, is_system_generated=False)
-
+		make_dimension_field_for_doctype(doctype, dimension_doc, dimension_count=dimension_count)
 		count += 1
 
-		frappe.publish_progress(count*100/len(doclist), title = _("Creating Dimensions..."))
+		frappe.publish_progress(count*100/len(doclist), title=_("Creating Dimensions..."))
 		frappe.clear_cache(doctype=doctype)
+
+
+def make_dimension_field_for_doctype(doctype, dimension_doc, dimension_count=None):
+	if dimension_count is None:
+		dimension_count = len(get_accounting_dimensions())
+
+	if (dimension_count + 1) % 2 == 0:
+		insert_after_field = 'dimension_col_break'
+	else:
+		insert_after_field = 'accounting_dimensions_section'
+
+	df = {
+		"fieldname": dimension_doc.fieldname,
+		"label": dimension_doc.label,
+		"fieldtype": "Link",
+		"options": dimension_doc.document_type,
+		"insert_after": insert_after_field,
+		"ignore_user_permissions": 1,
+		"owner": "Administrator"
+	}
+
+	if doctype == "Budget":
+		add_dimension_to_budget_doctype(df, dimension_doc)
+	else:
+		if not frappe.get_meta(doctype).has_field(dimension_doc.fieldname):
+			create_custom_field(doctype, df, is_system_generated=False)
 
 
 def add_dimension_to_budget_doctype(df, doc):
@@ -181,21 +185,23 @@ def get_doctypes_with_dimensions():
 
 		"Journal Entry", "Journal Entry Account",
 		"Expense Entry", "Expense Entry Detail",
-		"Payment Entry", "Payment Entry Deduction",
+		"Payment Entry", "Payment Entry Deduction", "Advance Taxes and Charges",
 
 		"Stock Entry", "Stock Entry Detail",
-		"Packing Slip", "Packing Slip Packaging Material",
+		"Packing Slip", "Packing Slip Item", "Packing Slip Packaging Material",
 		"Stock Reconciliation", "Stock Reconciliation Item",
 		"Landed Cost Voucher", "Landed Cost Taxes and Charges",
 
+		"Service Warranty",
 		"Expense Claim", "Expense Claim Detail", "Expense Taxes and Charges",
+
 		"Loyalty Program", "Shipping Rule",
 		"Asset", "Asset Value Adjustment",
 		"Fees", "Fee Schedule", "Fee Structure",
 		"Budget",
 		"Payroll Entry",
 		"Travel Request",
-		"Subscription", "Subscription Plan"
+		"Subscription", "Subscription Plan",
 	]
 
 	return doclist
