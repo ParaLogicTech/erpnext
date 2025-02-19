@@ -1850,7 +1850,6 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "applies_to_item",
    "fieldname": "sec_applies_to",
    "fieldtype": "Section Break",
    "hidden": 1,
@@ -2325,7 +2324,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 22:16:11.204364",
+ "modified": "2025-02-19 22:26:43.395369",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

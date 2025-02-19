@@ -1212,7 +1212,6 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "applies_to_item",
    "fieldname": "sec_applies_to",
    "fieldtype": "Section Break",
    "hidden": 1,
@@ -1587,7 +1586,7 @@
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-10 16:09:11.300922",
+ "modified": "2025-02-19 22:26:37.184741",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",

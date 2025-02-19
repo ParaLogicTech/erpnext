@@ -514,7 +514,6 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "applies_to_item",
    "fieldname": "sec_applies_to",
    "fieldtype": "Section Break",
    "label": "Applies To",
@@ -1586,7 +1585,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-02-18 01:31:47.407860",
+ "modified": "2025-02-19 22:26:40.156771",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

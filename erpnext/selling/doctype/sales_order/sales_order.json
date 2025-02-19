@@ -1630,7 +1630,6 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "applies_to_item",
    "fieldname": "sec_applies_to",
    "fieldtype": "Section Break",
    "hidden": 1,
@@ -1810,7 +1809,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-05 00:57:13.227212",
+ "modified": "2025-02-19 22:26:31.460524",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",

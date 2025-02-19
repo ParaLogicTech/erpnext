@@ -341,7 +341,6 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "applies_to_item",
    "fieldname": "sec_applies_to",
    "fieldtype": "Section Break",
    "hidden": 1,
@@ -510,7 +509,7 @@
  "idx": 70,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-09 23:01:25.591258",
+ "modified": "2025-02-19 22:26:28.893858",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Material Request",

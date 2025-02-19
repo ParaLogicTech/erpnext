@@ -1372,7 +1372,6 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "applies_to_item",
    "fieldname": "sec_applies_to",
    "fieldtype": "Section Break",
    "hidden": 1,
@@ -1612,7 +1611,7 @@
  "idx": 261,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-02 14:40:38.492970",
+ "modified": "2025-02-19 22:26:13.275634",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt",

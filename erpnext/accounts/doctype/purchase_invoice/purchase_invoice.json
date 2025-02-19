@@ -1693,7 +1693,6 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "applies_to_item",
    "fieldname": "sec_applies_to",
    "fieldtype": "Section Break",
    "hidden": 1,
@@ -1894,7 +1893,7 @@
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-07 14:28:58.184519",
+ "modified": "2025-02-19 22:26:34.624223",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",
