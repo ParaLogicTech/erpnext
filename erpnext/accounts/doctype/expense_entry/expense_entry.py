@@ -10,7 +10,7 @@ from frappe.model.document import Document
 from erpnext.setup.utils import get_exchange_rate
 from erpnext import get_company_currency
 from erpnext.stock.get_item_details import get_item_tax_map
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_dimension_fields
 import json
 
 
@@ -185,7 +185,7 @@ class ExpenseEntry(Document):
 		if naming_series:
 			doc.naming_series = naming_series
 
-		self.set_accounting_dimensions(self, doc)
+		self.set_accounting_dimensions(d, doc)
 
 		return doc
 
@@ -198,11 +198,7 @@ class ExpenseEntry(Document):
 				else d.base_expense_amount,
 			"debit": d.base_expense_amount,
 			"exchange_rate": d.base_expense_amount/d.expense_amount if self.payable_account_currency == expense_account_currency else 1.0,
-			"cost_center": d.cost_center,
-			"project": d.project
 		})
-
-		self.set_accounting_dimensions(d, row)
 
 	def append_tax_entry(self, doc, d):
 		if not d.tax_amount:
@@ -227,11 +223,7 @@ class ExpenseEntry(Document):
 						else d.base_tax_amount,
 					"debit": d.base_tax_amount,
 					"exchange_rate": d.exchange_rate if self.payable_account_currency == tax_account_currency else 1.0,
-					"cost_center": d.cost_center,
-					"project": d.project
 				})
-
-				self.set_accounting_dimensions(d, row)
 
 	def append_supplier_credit_entry(self, doc, d):
 		row = doc.append("accounts", {
@@ -242,11 +234,7 @@ class ExpenseEntry(Document):
 			"credit_in_account_currency": flt(d.total_amount),
 			"credit": flt(d.base_total_amount),
 			"exchange_rate": d.exchange_rate,
-			"cost_center": d.cost_center,
-			"project": d.project
 		})
-
-		self.set_accounting_dimensions(d, row)
 
 	def append_supplier_debit_entry(self, doc, d, bill_jv):
 		row = doc.append("accounts", {
@@ -257,13 +245,9 @@ class ExpenseEntry(Document):
 			"debit_in_account_currency": flt(d.total_amount),
 			"debit": flt(d.base_total_amount),
 			"exchange_rate": d.exchange_rate,
-			"cost_center": d.cost_center,
-			"project": d.project,
 			"reference_type": "Journal Entry",
 			"reference_name": bill_jv.name
 		})
-
-		self.set_accounting_dimensions(d, row)
 
 	def append_payment_entry(self, doc, d):
 		paid_from_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
@@ -274,20 +258,15 @@ class ExpenseEntry(Document):
 				else d.base_total_amount,
 			"credit": d.base_total_amount,
 			"exchange_rate": d.exchange_rate if self.payable_account_currency == paid_from_account_currency else 1.0,
-			"cost_center": d.cost_center,
-			"project": d.project
 		})
-
-		self.set_accounting_dimensions(d, row)
 
 	def set_accounting_dimensions(self, source, target):
 		if not hasattr(self, 'acccounting_dimensions'):
-			self.accounting_dimensions = get_accounting_dimensions()
-			self.accounting_dimensions += ['cost_center', 'project']
+			self.accounting_dimensions = get_all_dimension_fields()
 			self.accounting_dimensions = list(set(self.accounting_dimensions))
 
 		for dimension in self.accounting_dimensions:
-			target.set(dimension, source.get(dimension))
+			target.set(dimension, source.get(dimension) or self.get(dimension))
 
 	def cancel_journal_entries(self):
 		je_names = [d.name for d in frappe.get_all("Journal Entry", fields=['name', 'docstatus'],
