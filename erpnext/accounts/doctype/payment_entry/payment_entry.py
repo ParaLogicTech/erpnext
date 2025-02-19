@@ -1558,6 +1558,7 @@ def get_reference_details(reference_doctype, reference_name, party_account_curre
 		exchange_rate = 1
 		outstanding_amount = ref_doc.get("outstanding_amount")
 	elif reference_doctype == "Journal Entry" and ref_doc.docstatus == 1:
+		bill_no = ref_doc.get("bill_no")
 		total_amount = ref_doc.get("total_amount")
 		if ref_doc.multi_currency:
 			exchange_rate = get_average_party_exchange_rate_on_journal_entry(reference_name, party_type, party, account)
