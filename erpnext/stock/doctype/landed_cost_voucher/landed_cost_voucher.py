@@ -391,7 +391,7 @@ class LandedCostVoucher(AccountsController):
 			# update stock & gl entries for submit state of PR
 			doc.docstatus = 1
 			doc.update_stock_ledger(allow_negative_stock=True, via_landed_cost_voucher=True)
-			doc.make_gl_entries(repost_future_gle=False)
+			doc.make_gl_entries(repost_future_gle=False, from_repost=True)
 
 			excluded_vouchers.append((doc.doctype, doc.name))
 

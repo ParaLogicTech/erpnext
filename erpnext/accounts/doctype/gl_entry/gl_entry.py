@@ -26,10 +26,11 @@ class GLEntry(Document):
 		self.flags.ignore_submit_comment = True
 		self.check_mandatory()
 		self.validate_and_set_fiscal_year()
-		self.pl_must_have_cost_center()
+		remove_dimensions_not_allowed_for_bs_account(self)
 		self.validate_cost_center()
 
 		if not self.flags.from_repost:
+			self.validate_cost_center_for_pl_and_bs()
 			self.check_pl_account()
 			self.validate_party()
 			self.validate_currency()
@@ -76,44 +77,64 @@ class GLEntry(Document):
 			frappe.throw(_("{0} {1}: Either debit or credit amount is required for {2}")
 				.format(self.voucher_type, self.voucher_no, self.account))
 
-	def pl_must_have_cost_center(self):
-		if frappe.db.get_value("Account", self.account, "report_type", cache=1) == "Profit and Loss":
-			if not self.cost_center and self.voucher_type != 'Period Closing Voucher':
-				frappe.throw(_("{0} {1}: Cost Center is required for 'Profit and Loss' account {2}. Please set up a default Cost Center for the Company.")
-					.format(self.voucher_type, self.voucher_no, self.account))
+	def validate_cost_center_for_pl_and_bs(self):
+		report_type = frappe.db.get_value("Account", self.account, "report_type", cache=1)
 
-		remove_dimensions_not_allowed_for_bs_account(self)
+		if not self.cost_center and self.voucher_type != 'Period Closing Voucher':
+			if report_type == "Profit and Loss":
+				frappe.throw(_("{0} {1}: Cost Center is required for 'Profit and Loss' account {2}. Please set up a default Cost Center for the Company.").format(
+					self.voucher_type, self.voucher_no, self.account
+				))
+			elif report_type == "Balance Sheet" and frappe.db.get_single_value("Accounts Settings", "cost_center_mandatory_in_entry_of_bs_account"):
+				frappe.throw(_("{0} {1}: Cost Center is required for 'Balance Sheet' account {2}. Please select Cost Center.").format(
+					self.voucher_type, self.voucher_no, self.account
+				))
 
 	def validate_dimensions_for_pl_and_bs(self):
-		account_type = frappe.db.get_value("Account", self.account, "report_type", cache=1)
+		report_type = frappe.db.get_value("Account", self.account, "report_type", cache=1)
 
 		accounting_dimensions = get_checks_for_pl_and_bs_accounts()
 		if accounting_dimensions:
-			mandatory_for_account = frappe.get_all("Mandatory Accounting Dimension",
-				filters={'parenttype': 'Account', 'parent': self.account}, fields=['accounting_dimension'])
-			mandatory_for_account = [d.accounting_dimension for d in mandatory_for_account]
+			account_doc = frappe.get_cached_doc("Account", self.account)
+			mandatory_for_account = [d.accounting_dimension for d in account_doc.mandatory_accounting_dimensions]
 
 			for dimension in get_checks_for_pl_and_bs_accounts():
-				if dimension.name in mandatory_for_account and self.company == dimension.company and not dimension.disabled:
+				if (
+					dimension.name in mandatory_for_account
+					and self.company == dimension.company
+					and not dimension.disabled
+				):
 					frappe.throw(_("Accounting Dimension <b>{0}</b> is required for Account <b>{1}</b>.")
 						.format(dimension.label, self.account))
 
-				if account_type == "Profit and Loss" \
-					and self.company == dimension.company and dimension.mandatory_for_pl and not dimension.disabled:
+				if (
+					report_type == "Profit and Loss"
+					and self.company == dimension.company
+					and dimension.mandatory_for_pl
+					and not dimension.disabled
+				):
 					if not self.get(dimension.fieldname):
 						frappe.throw(_("Accounting Dimension <b>{0}</b> is required for 'Profit and Loss' account {1}.")
 							.format(dimension.label, self.account))
 
-				if account_type == "Balance Sheet" \
-					and self.company == dimension.company and dimension.mandatory_for_bs and not dimension.disabled:
+				if (
+					report_type == "Balance Sheet"
+					and self.company == dimension.company
+					and dimension.mandatory_for_bs
+					and not dimension.disabled
+				):
 					if not self.get(dimension.fieldname):
 						frappe.throw(_("Accounting Dimension <b>{0}</b> is required for 'Balance Sheet' account {1}.")
 							.format(dimension.label, self.account))
 
 	def check_pl_account(self):
-		if self.is_opening=='Yes'\
-				and frappe.db.get_value("Account", self.account, "report_type", cache=1) == "Profit and Loss"\
-				and self.voucher_type not in ['Purchase Invoice', 'Sales Invoice', 'Journal Entry']:
+		report_type = frappe.db.get_value("Account", self.account, "report_type", cache=1)
+
+		if (
+			self.is_opening == 'Yes'
+			and report_type == "Profit and Loss"
+			and self.voucher_type not in ('Purchase Invoice', 'Sales Invoice', 'Journal Entry')
+		):
 			frappe.throw(_("{0} {1}: 'Profit and Loss' type account {2} not allowed in Opening Entry")
 				.format(self.voucher_type, self.voucher_no, self.account))
 

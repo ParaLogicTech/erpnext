@@ -34,8 +34,9 @@
   "project",
   "more_info_cb_2",
   "incoterms",
-  "more_info_cb_3",
   "inter_company_reference",
+  "more_info_cb_3",
+  "cost_center",
   "tax_id",
   "tax_cnic",
   "tax_strn",
@@ -1605,13 +1606,19 @@
    "hidden": 1,
    "label": "Branch",
    "options": "Branch"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center"
   }
  ],
  "icon": "fa fa-truck",
  "idx": 261,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 22:26:13.275634",
+ "modified": "2025-02-20 23:35:39.814616",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt",

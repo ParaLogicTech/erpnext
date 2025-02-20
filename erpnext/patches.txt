@@ -337,6 +337,8 @@ execute:frappe.delete_doc_if_exists("Report", "Trial Balance for Party")
 execute:frappe.delete_doc_if_exists("Report", "Trial Balance (Simple)")
 erpnext.patches.v15_0.unset_dimension_fields_system_generated
 erpnext.patches.v15_0.create_missing_dimension_fields
+execute:frappe.delete_doc_if_exists("Custom Field", "Purchase Receipt-cost_center")
+execute:frappe.delete_doc_if_exists("Custom Field", "Delivery Note-cost_center")
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay

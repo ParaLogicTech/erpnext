@@ -243,11 +243,14 @@ def _get_accounting_dimensions(cache=False):
 
 
 def get_checks_for_pl_and_bs_accounts():
-	dimensions = frappe.db.sql("""SELECT p.name, p.label, p.disabled, p.fieldname, c.default_dimension, c.company, c.mandatory_for_pl, c.mandatory_for_bs
-		FROM `tabAccounting Dimension`p ,`tabAccounting Dimension Detail` c
-		WHERE p.name = c.parent""", as_dict=1)
+	def generator():
+		return frappe.db.sql("""
+			SELECT p.name, p.label, p.disabled, p.fieldname, c.default_dimension, c.company, c.mandatory_for_pl, c.mandatory_for_bs
+			FROM `tabAccounting Dimension`p ,`tabAccounting Dimension Detail` c
+			WHERE p.name = c.parent
+		""", as_dict=1)
 
-	return dimensions
+	return frappe.local_cache("get_checks_for_pl_and_bs_accounts", "", generator)
 
 
 def get_dimension_with_children(doctype, dimension):

@@ -12,6 +12,7 @@
   "column_break_3",
   "auto_accounting_for_stock",
   "allow_cost_center_in_entry_of_bs_account",
+  "cost_center_mandatory_in_entry_of_bs_account",
   "allow_project_in_entry_of_bs_account",
   "book_asset_depreciation_entry_automatically",
   "section_break_5",
@@ -304,13 +305,19 @@
    "fieldname": "unlink_advance_on_cancellation_of_payment",
    "fieldtype": "Check",
    "label": "Unlink from Invoice on Cancellation of Advance Payment"
+  },
+  {
+   "default": "0",
+   "fieldname": "cost_center_mandatory_in_entry_of_bs_account",
+   "fieldtype": "Check",
+   "label": "Cost Center Mandatory in Entry of Balance Sheet Account"
   }
  ],
  "icon": "icon-cog",
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-02-07 14:27:54.218301",
+ "modified": "2025-02-20 13:47:07.014721",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounts Settings",
