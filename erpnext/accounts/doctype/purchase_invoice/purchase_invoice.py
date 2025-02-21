@@ -823,7 +823,7 @@ class PurchaseInvoice(BuyingController):
 							"account": expense_account,
 							"against": billing_party_name or billing_party,
 							"debit": amount,
-							"cost_center": item.cost_center,
+							"cost_center": item.cost_center or self.cost_center,
 							"project": item.project or self.project
 						}, account_currency, item=item))
 
@@ -834,7 +834,7 @@ class PurchaseInvoice(BuyingController):
 						gl_entries.append(self.get_gl_dict({
 							"account": expenses_included_in_asset_valuation,
 							"against": expense_account,
-							"cost_center": item.cost_center,
+							"cost_center": item.cost_center or self.cost_center,
 							"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 							"credit": flt(item.landed_cost_voucher_amount),
 							"project": item.project or self.project
@@ -843,7 +843,7 @@ class PurchaseInvoice(BuyingController):
 						gl_entries.append(self.get_gl_dict({
 							"account": expense_account,
 							"against": expenses_included_in_asset_valuation,
-							"cost_center": item.cost_center,
+							"cost_center": item.cost_center or self.cost_center,
 							"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 							"debit": flt(item.landed_cost_voucher_amount),
 							"project": item.project or self.project
@@ -952,7 +952,7 @@ class PurchaseInvoice(BuyingController):
 							gl_entries.append(self.get_gl_dict({
 								"account": eiiav_account,
 								"against": cwip_account,
-								"cost_center": item.cost_center,
+								"cost_center": item.cost_center or self.cost_center,
 								"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 								"credit": flt(item.landed_cost_voucher_amount),
 								"project": item.project or self.project
@@ -961,7 +961,7 @@ class PurchaseInvoice(BuyingController):
 							gl_entries.append(self.get_gl_dict({
 								"account": cwip_account,
 								"against": eiiav_account,
-								"cost_center": item.cost_center,
+								"cost_center": item.cost_center or self.cost_center,
 								"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 								"debit": flt(item.landed_cost_voucher_amount),
 								"project": item.project or self.project
@@ -1050,7 +1050,7 @@ class PurchaseInvoice(BuyingController):
 					gl_entries.append(
 						self.get_gl_dict({
 							"account": tax.account_head,
-							"cost_center": tax.cost_center,
+							"cost_center": tax.cost_center or self.cost_center,
 							"against": billing_party_name or billing_party,
 							"credit": applicable_amount,
 							"remarks": self.remarks,
@@ -1065,7 +1065,7 @@ class PurchaseInvoice(BuyingController):
 					gl_entries.append(
 						self.get_gl_dict({
 							"account": tax.account_head,
-							"cost_center": tax.cost_center,
+							"cost_center": tax.cost_center or self.cost_center,
 							"against": billing_party_name or billing_party,
 							"credit": valuation_tax[tax.name],
 							"remarks": self.remarks
