@@ -920,7 +920,7 @@ class PaymentEntry(AccountsController):
 						dr_or_cr + "_in_account_currency": base_tax_amount
 						if account_currency == self.company_currency
 						else d.tax_amount,
-						"cost_center": d.cost_center,
+						"cost_center": d.cost_center or self.cost_center,
 						"post_net_value": True,
 					},
 					account_currency,
@@ -1008,7 +1008,7 @@ class PaymentEntry(AccountsController):
 	def calculate_deductions(self, tax_details):
 		return {
 			"account": tax_details['tax']['account_head'],
-			"cost_center": frappe.get_cached_value('Company',  self.company,  "cost_center"),
+			"cost_center": self.cost_center or frappe.get_cached_value('Company',  self.company,  "cost_center"),
 			"amount": self.total_allocated_amount * (tax_details['tax']['rate'] / 100)
 		}
 
