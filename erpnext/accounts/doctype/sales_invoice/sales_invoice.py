@@ -531,6 +531,23 @@ class SalesInvoice(SellingController):
 				if flt(d.amount) > 0:
 					frappe.throw(_("Row #{0} (Payment Table): Amount must be negative for credit note").format(d.idx))
 
+			if flt(d.amount):
+				mode = frappe.get_cached_doc("Mode of Payment", d.mode_of_payment) if d.mode_of_payment else frappe._dict()
+				if not d.reference_no and mode.reference_no_mandatory:
+					frappe.throw(_("Row #{0} (Payment Table): Reference No is mandatory for Mode of Payment {1}").format(
+						d.idx, frappe.bold(d.mode_of_payment)
+					))
+
+				if not d.card_type and d.type == "Card" and mode.card_type_mandatory:
+					frappe.throw(_("Row #{0} (Payment Table): Card Type is mandatory for Mode of Payment {1}").format(
+						d.idx, frappe.bold(d.mode_of_payment)
+					))
+
+				if not d.party_bank and d.type in ("Bank", "Cheque") and mode.party_bank_mandatory:
+					frappe.throw(_("Row #{0} (Payment Table): Customer Bank Name is mandatory for Mode of Payment {1}").format(
+						d.idx, frappe.bold(d.mode_of_payment)
+					))
+
 		cash_rows = [d for d in self.payments if d.type == "Cash"]
 		if len(cash_rows) > 1:
 			frappe.throw(_("There can only be one Mode of Payment of type 'Cash'."))
@@ -572,6 +589,13 @@ class SalesInvoice(SellingController):
 
 		for i, d in enumerate(self.payments):
 			d.idx = i + 1
+
+		# Set missing reference date
+		for d in self.payments:
+			if flt(d.amount):
+				mode = frappe.get_cached_doc("Mode of Payment", d.mode_of_payment) if d.mode_of_payment else frappe._dict()
+				if not d.reference_date and mode.reference_date_mandatory:
+					d.reference_date = self.posting_date
 
 	def validate_tax_id_mandatory(self):
 		if self.get('tax_id') or self.get('tax_cnic') or self.get('tax_strn') or not self.get('has_stin') or self.is_opening == "Yes":

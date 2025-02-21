@@ -362,6 +362,7 @@
    "fieldname": "pos_profile",
    "fieldtype": "Link",
    "label": "POS Profile",
+   "mandatory_depends_on": "is_pos",
    "options": "POS Profile",
    "print_hide": 1
   },
@@ -2324,7 +2325,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 22:26:43.395369",
+ "modified": "2025-02-21 16:42:40.190043",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

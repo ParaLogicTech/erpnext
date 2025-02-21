@@ -744,14 +744,33 @@ class PaymentEntry(AccountsController):
 			self.title = self.paid_from + " - " + self.paid_to
 
 	def validate_transaction_reference(self):
-		bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
-		bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
-
 		if not self.reference_no or not self.reference_date:
+			bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
+			bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
 			if bank_account_type == "Bank":
 				frappe.throw(_("Reference No and Reference Date is mandatory for Bank transaction"))
-			if self.mode_of_payment_type in ("Bank", "Cheque", "Card"):
-				frappe.throw(_("Reference No and Reference Date is mandatory for {0} transaction").format(self.mode_of_payment_type))
+
+		mode = frappe.get_cached_doc("Mode of Payment", self.mode_of_payment) if self.mode_of_payment else frappe._dict()
+
+		if not self.reference_no and mode.reference_no_mandatory:
+			frappe.throw(_("Reference No is mandatory for Mode of Payment {0}").format(
+				frappe.bold(self.mode_of_payment)
+			))
+
+		if not self.reference_date and mode.reference_date_mandatory:
+			frappe.throw(_("Reference Date is mandatory for Mode of Payment {0}").format(
+				frappe.bold(self.mode_of_payment)
+			))
+
+		if not self.card_type and self.mode_of_payment_type == "Card" and mode.card_type_mandatory:
+			frappe.throw(_("Card Type is mandatory for Mode of Payment {0}").format(
+				frappe.bold(self.mode_of_payment)
+			))
+
+		if not self.party_bank and self.mode_of_payment_type in ("Bank", "Cheque") and mode.party_bank_mandatory:
+			frappe.throw(_("Party Bank is mandatory for Mode of Payment {0}").format(
+				frappe.bold(self.mode_of_payment)
+			))
 
 	def set_remarks(self):
 		remarks = []

@@ -165,7 +165,7 @@ class POSClosingEntry(Document):
 				pe.reference_no,
 				pe.reference_date,
 				pe.card_type,
-				pe.party_bank as sending_bank,
+				pe.party_bank,
 				if(pe.payment_type = 'Receive', pe.base_received_amount_after_tax, -1 * pe.base_paid_amount_after_tax) as paid_amount,
 				if(pe.payment_type = 'Receive', pe.paid_to, pe.paid_from) as account
 			from `tabPayment Entry` pe
@@ -356,7 +356,7 @@ def get_pos_payment_details(invoices, payment_entries):
 				pay.reference_no,
 				pay.reference_date,
 				pay.card_type,
-				pay.sending_bank,
+				pay.party_bank,
 				pay.base_amount - if(pay.type = 'Cash', inv.base_change_amount, 0) as paid_amount,
 				pay.account
 			from `tabSales Invoice Payment` pay
