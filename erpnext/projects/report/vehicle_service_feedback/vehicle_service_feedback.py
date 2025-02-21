@@ -228,9 +228,10 @@ class VehicleServiceFeedback:
 			{
 				"label": _("Contact Remarks"),
 				"fieldname": "contact_remarks",
-				"fieldtype": "Data",
+				"fieldtype": "Select",
 				"width": 200,
-				"editable": 1
+				"editable": 1,
+				"options": ["Not responding", "Invalid Number", "Followup"],
 			},
 			{
 				"label": _("Feedback Date/Time"),
@@ -241,9 +242,10 @@ class VehicleServiceFeedback:
 			{
 				"label": _("Customer Feedback"),
 				"fieldname": "customer_feedback",
-				"fieldtype": "Data",
-				"width": 300	,
-				"editable": 1
+				"fieldtype": "Select",
+				"width": 300,
+				"editable": 1,
+				"options": ["Highly Satisfied", "Satisfied", "Neutral", "Unsatisfied", "Highly Unsatisfied"],
 			},
 		]
 		self.columns = columns
