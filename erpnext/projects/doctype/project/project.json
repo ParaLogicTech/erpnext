@@ -839,6 +839,7 @@
    "fieldtype": "Attach Image",
    "hidden": 1,
    "label": "Image",
+   "no_copy": 1,
    "options": "image"
   },
   {
@@ -1585,7 +1586,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-02-19 22:26:40.156771",
+ "modified": "2025-02-23 22:39:52.632430",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

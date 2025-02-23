@@ -115,6 +115,7 @@
    "fieldtype": "Attach Image",
    "hidden": 1,
    "label": "Image",
+   "no_copy": 1,
    "options": "image"
   },
   {
@@ -747,7 +748,7 @@
  ],
  "image_field": "image",
  "links": [],
- "modified": "2024-12-26 13:27:52.212926",
+ "modified": "2025-02-23 22:39:35.913327",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",

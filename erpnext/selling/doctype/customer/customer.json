@@ -177,6 +177,7 @@
    "fieldtype": "Attach Image",
    "hidden": 1,
    "label": "Image",
+   "no_copy": 1,
    "print_hide": 1
   },
   {
@@ -711,7 +712,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2025-01-20 23:31:12.775220",
+ "modified": "2025-02-23 22:46:37.297004",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",

@@ -97,6 +97,7 @@
    "fieldtype": "Attach Image",
    "hidden": 1,
    "label": "Image",
+   "no_copy": 1,
    "options": "image",
    "print_hide": 1,
    "read_only": 1
@@ -513,7 +514,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2024-06-07 16:00:55.307819",
+ "modified": "2025-02-23 22:46:44.744836",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM",
