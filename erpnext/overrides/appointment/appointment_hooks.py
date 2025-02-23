@@ -55,8 +55,8 @@ class AppointmentERP(Appointment):
 		else:
 			return None
 
-	def is_appointment_closed(self):
-		return super().is_appointment_closed() or self.get_linked_project()
+	def is_appointment_converted(self):
+		return super().is_appointment_converted() or self.get_linked_project()
 
 	def get_linked_project(self):
 		return frappe.db.get_value("Project", {'appointment': self.name})
