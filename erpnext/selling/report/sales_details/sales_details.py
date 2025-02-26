@@ -91,7 +91,7 @@ class SalesPurchaseDetailsReport(object):
 				self.show_party_name = True
 
 	def set_fieldnames(self):
-		self.date_field = "posting_date" if self.doc_meta.has_field("posting_date") else "transaction_date"
+		self.date_field = "s.posting_date" if self.doc_meta.has_field("posting_date") else "s.transaction_date"
 
 		self.party_field = scrub(self.filters.party_type)
 		self.party_name_field = self.party_field + "_name"
@@ -214,7 +214,7 @@ class SalesPurchaseDetailsReport(object):
 		return select_fields, joins
 
 	def get_order_by(self):
-		return f"s.{self.date_field}, s.{self.party_field}, s.name, i.item_code"
+		return f"{self.date_field}, s.{self.party_field}, s.name, i.item_code"
 
 	def get_conditions(self):
 		conditions = []
