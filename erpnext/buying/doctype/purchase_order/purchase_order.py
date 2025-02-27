@@ -145,7 +145,7 @@ class PurchaseOrder(BuyingController):
 		for name in material_requests:
 			doc = frappe.get_doc("Material Request", name)
 			doc.set_completion_status(update=True)
-			doc.validate_ordered_qty(from_doctype=self.doctype, row_names=material_request_row_names)
+			# doc.validate_ordered_qty(from_doctype=self.doctype, row_names=material_request_row_names)
 			doc.set_status(update=True)
 			doc.notify_update()
 
