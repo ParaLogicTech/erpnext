@@ -938,7 +938,7 @@ def set_sales_order_defaults(parent_doctype, parent_doctype_name, child_docname,
 	Returns a Sales Order Item child item containing the default values
 	"""
 	p_doc = frappe.get_doc(parent_doctype, parent_doctype_name)
-	child_item = frappe.new_doc('Sales Order Item', p_doc, child_docname)
+	child_item = frappe.new_doc('Sales Order Item', parent_doc=p_doc, parentfield=child_docname)
 	item = frappe.get_cached_doc("Item", trans_item.get('item_code'))
 	child_item.item_code = item.item_code
 	child_item.item_name = item.item_name
@@ -968,7 +968,7 @@ def set_purchase_order_defaults(parent_doctype, parent_doctype_name, child_docna
 	Returns a Purchase Order Item child item containing the default values
 	"""
 	p_doc = frappe.get_doc(parent_doctype, parent_doctype_name)
-	child_item = frappe.new_doc('Purchase Order Item', p_doc, child_docname)
+	child_item = frappe.new_doc('Purchase Order Item', parent_doc=p_doc, parentfield=child_docname)
 	item = frappe.get_cached_doc("Item", trans_item.get('item_code'))
 	child_item.item_code = item.item_code
 	child_item.item_name = item.item_name
@@ -1006,7 +1006,7 @@ def validate_and_delete_children(parent, data):
 			frappe.throw(_("Row #{0}: Cannot delete item {1} which has already been billed.").format(d.idx, d.item_code))
 
 		d.cancel()
-		d.delete()
+		d.delete(ignore_permissions=True)
 
 
 @frappe.whitelist()
