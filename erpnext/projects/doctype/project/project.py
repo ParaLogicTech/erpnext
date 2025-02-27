@@ -4,7 +4,7 @@
 import frappe
 import erpnext
 from frappe import _
-from frappe.utils import flt, cint, cstr, ceil, getdate, clean_whitespace, now_datetime
+from frappe.utils import flt, cint, cstr, ceil, getdate, clean_whitespace, now_datetime, comma_or
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from frappe.model.naming import set_name_by_naming_series
 from frappe.model.utils import get_fetch_values
@@ -362,8 +362,13 @@ class Project(StatusUpdaterERP):
 	def get_advance_payment_entries(self):
 		payment_entries = []
 
-		billing_customer = self.bill_to or self.customer
-		if billing_customer and not self.is_new():
+		customers = []
+		if self.customer:
+			customers.append(self.customer)
+		if self.bill_to and self.bill_to != self.customer:
+			customers.append(self.bill_to)
+
+		if customers and not self.is_new():
 			payment_entries = frappe.db.sql("""
 				select
 					pe.name,
@@ -378,14 +383,14 @@ class Project(StatusUpdaterERP):
 				where pe.docstatus = 1
 					and pe.project = %(project)s
 					and pe.party_type = 'Customer'
-					and pe.party = %(customer)s
+					and pe.party in %(customers)s
 					and not exists(
 						select pref.name
 						from `tabPayment Entry Reference` pref
 						where pref.parent = pe.name and ifnull(pref.original_reference_doctype, '') not in ('', 'Sales Order', 'Payment Entry')
 					)
 			""", {
-				"customer": billing_customer,
+				"customers": customers,
 				"project": self.name,
 			}, as_dict=1)
 
@@ -760,9 +765,28 @@ class Project(StatusUpdaterERP):
 	def validate_payment_entry_customer(self, doc):
 		billing_customer = self.bill_to or self.customer
 
-		if billing_customer and doc.party_type == "Customer" and doc.party != billing_customer:
+		allowed_customers = []
+		if billing_customer:
+			allowed_customers.append(billing_customer)
+
+		if self.insurance_company:
+			has_depreciation_rate = (
+				self.default_depreciation_percentage
+				or self.default_underinsurance_percentage
+				or self.non_standard_depreciation
+				or self.non_standard_underinsurance
+			)
+
+			has_excess_amount = self.insurance_excess_amount or self.insurance_excess_percentage
+
+			if has_depreciation_rate or has_excess_amount:
+				allowed_customers.append(self.customer)
+
+		allowed_customers = list(set(allowed_customers))
+
+		if allowed_customers and doc.party_type == "Customer" and doc.party not in allowed_customers:
 			frappe.throw(_("Customer in Payment Entry does not match with {0}. Customer must be {1}").format(
-				frappe.get_desk_link("Project", self.name), frappe.bold(billing_customer)
+				frappe.get_desk_link("Project", self.name), comma_or(allowed_customers)
 			))
 
 	def check_po_no_is_set(self, doc):
@@ -2167,6 +2191,8 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 
 	def set_advances():
 		target_doc.set_advances(against_project=project.name)
+		if target_doc.advances:
+			target_doc.run_method("calculate_taxes_and_totals")
 
 	if frappe.flags.args and bill_multiple_projects is None:
 		bill_multiple_projects = frappe.flags.args.bill_multiple_projects
@@ -2211,11 +2237,12 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 		set_sales_person_in_target_doc(target_doc, project)
 		set_terms_template()
 		set_invoice_remarks()
-		set_advances()
 
 		target_doc.run_method("set_missing_values")
 		set_depreciation_in_invoice_items(target_doc.get('items'), project, force=True)
 		target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
+
+		set_advances()
 
 	if bill_multiple_projects:
 		frappe.flags.postprocess_after_mapping = postprocess_bill_multiple_projects
