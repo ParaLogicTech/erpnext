@@ -790,7 +790,7 @@ class Project(StatusUpdaterERP):
 			))
 
 	def check_po_no_is_set(self, doc):
-		if self.po_no:
+		if self.po_no or doc.is_pos:
 			return
 
 		check_po_no = frappe.get_cached_value("Projects Settings", None, "validate_po_for_billing_company_customer")
