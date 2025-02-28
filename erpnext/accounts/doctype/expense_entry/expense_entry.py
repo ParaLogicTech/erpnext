@@ -173,7 +173,7 @@ class ExpenseEntry(Document):
 			"expense_entry_name": self.name,
 			"company": self.company,
 			"branch": self.branch,
-			"posting_date": d.bill_date or self.transaction_date,
+			"posting_date": self.transaction_date if self.use_transaction_date else d.bill_date or self.transaction_date,
 			"bill_no": d.bill_no or self.name,
 			"bill_date": d.bill_date or self.transaction_date,
 			"cheque_no": d.bill_no or self.name,

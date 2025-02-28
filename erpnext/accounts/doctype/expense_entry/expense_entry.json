@@ -11,6 +11,7 @@
   "paid_from_account",
   "payable_account",
   "payable_account_currency",
+  "use_transaction_date",
   "column_break1",
   "company",
   "branch",
@@ -269,11 +270,17 @@
    "hidden": 1,
    "label": "Branch",
    "options": "Branch"
+  },
+  {
+   "default": "0",
+   "fieldname": "use_transaction_date",
+   "fieldtype": "Check",
+   "label": "Set Posting Date as Transaction Date"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-04 11:25:22.720779",
+ "modified": "2025-02-28 12:56:35.975825",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Expense Entry",
