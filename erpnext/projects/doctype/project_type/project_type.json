@@ -9,6 +9,7 @@
  "field_order": [
   "project_type",
   "description",
+  "disabled",
   "column_break_3",
   "claim_billing_type",
   "sec_defaults",
@@ -120,10 +121,16 @@
    "fieldname": "appointment_not_required",
    "fieldtype": "Check",
    "label": "Bypass Mandatory Appointment Requirement"
+  },
+  {
+   "default": "0",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled"
   }
  ],
  "links": [],
- "modified": "2023-10-31 15:26:51.368292",
+ "modified": "2025-02-28 18:18:46.417895",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project Type",
