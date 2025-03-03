@@ -589,7 +589,7 @@ class SellingController(TransactionController):
 			if not res:
 				frappe.throw(_("Customer {0} does not belong to project {1}").format(self.customer, self.project))
 
-	def update_project_billing_and_sales(self):
+	def update_project_billing_and_sales(self, material_cost_of_sales=False):
 		projects = []
 		if self.get('project'):
 			projects.append(self.get('project'))
@@ -610,6 +610,10 @@ class SellingController(TransactionController):
 
 			doc.set_billing_and_delivery_status(update=True)
 			doc.set_sales_amount(update=True)
+
+			if material_cost_of_sales:
+				doc.set_material_cost_of_sales(update=True)
+
 			doc.set_gross_margin(update=True)
 			doc.set_status(update=True, from_doctype=self.doctype, action=self.get("_action"))
 			doc.notify_update()

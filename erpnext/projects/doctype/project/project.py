@@ -160,6 +160,10 @@ class Project(StatusUpdaterERP):
 		self.billing_status, self.to_bill = self.get_billing_status(sales_orders, delivery_notes, sales_invoices, self.total_billed_amount)
 		self.delivery_status, self.to_deliver = self.get_delivery_status(sales_orders, delivery_notes, material_requests)
 
+		self.final_invoice_date = None
+		if sales_invoices and self.billing_status == "Fully Billed":
+			self.final_invoice_date = sales_invoices[-1].posting_date
+
 		if update:
 			self.db_set({
 				'total_billable_amount': self.total_billable_amount,
@@ -169,6 +173,7 @@ class Project(StatusUpdaterERP):
 				'to_bill': self.to_bill,
 				'delivery_status': self.delivery_status,
 				'to_deliver': self.to_deliver,
+				'final_invoice_date': self.final_invoice_date,
 			}, None, update_modified=update_modified)
 
 	def get_billing_status(self, sales_orders, delivery_notes, sales_invoices, total_billed_amount):
@@ -423,6 +428,7 @@ class Project(StatusUpdaterERP):
 		self.set_expense_claim_values(update=update, update_modified=update_modified)
 		self.set_purchase_values(update=update, update_modified=update_modified)
 		self.set_material_consumed_cost(update=update, update_modified=update_modified)
+		self.set_material_cost_of_sales(update=update, update_modified=update_modified)
 		self.set_gross_margin(update=update, update_modified=update_modified)
 
 	def set_sales_amount(self, update=False, update_modified=False):
@@ -489,13 +495,21 @@ class Project(StatusUpdaterERP):
 			}, None, update_modified=update_modified)
 
 	def set_purchase_values(self, update=False, update_modified=False):
-		total_purchase_cost = frappe.db.sql("""
+		purchase_receipt_cost = frappe.db.sql("""
+			select sum(base_net_amount * (qty - billed_qty) / qty)
+			from `tabPurchase Receipt Item`
+			where docstatus = 1 and project = %s and is_stock_item = 0 and is_fixed_asset = 0 and billed_qty < qty
+		""", self.name)
+		purchase_receipt_cost = flt(purchase_receipt_cost[0][0]) if purchase_receipt_cost else 0
+
+		purchase_invoice_cost = frappe.db.sql("""
 			select sum(base_net_amount)
 			from `tabPurchase Invoice Item`
-			where project = %s and docstatus=1
+			where docstatus = 1 and project = %s and is_stock_item = 0 and is_fixed_asset = 0
 		""", self.name)
+		purchase_invoice_cost = flt(purchase_invoice_cost[0][0]) if purchase_invoice_cost else 0
 
-		self.total_purchase_cost = flt(total_purchase_cost[0][0]) if total_purchase_cost else 0
+		self.total_purchase_cost = purchase_receipt_cost + purchase_invoice_cost
 
 		if update:
 			self.db_set({
@@ -504,21 +518,13 @@ class Project(StatusUpdaterERP):
 
 	def set_material_consumed_cost(self, update=False, update_modified=False):
 		amount = frappe.db.sql("""
-			select ifnull(sum(sed.amount), 0)
-			from `tabStock Entry` se, `tabStock Entry Detail` sed
-			where se.docstatus = 1 and se.project = %s and sed.parent = se.name
-				and (sed.t_warehouse is null or sed.t_warehouse = '')
+			select sum(if(se.purpose = 'Material Issue', sed.amount, -sed.amount))
+			from `tabStock Entry Detail` sed
+			inner join `tabStock Entry` se on sed.parent = se.name
+			where se.docstatus = 1 and se.project = %s and se.purpose in ('Material Issue', 'Material Receipt')
 		""", self.name, as_list=1)
+
 		amount = flt(amount[0][0]) if amount else 0
-
-		additional_costs = frappe.db.sql("""
-			select ifnull(sum(sed.amount), 0)
-			from `tabStock Entry` se, `tabStock Entry Taxes and Charges` sed
-			where se.docstatus = 1 and se.project = %s and sed.parent = se.name
-				and se.purpose = 'Manufacture'""", self.name, as_list=1)
-		additional_cost_amt = flt(additional_costs[0][0]) if additional_costs else 0
-
-		amount += additional_cost_amt
 
 		self.total_consumed_material_cost = amount
 
@@ -527,10 +533,31 @@ class Project(StatusUpdaterERP):
 				'total_consumed_material_cost': self.total_consumed_material_cost,
 			}, None, update_modified=update_modified)
 
+	def set_material_cost_of_sales(self, update=False, update_modified=False):
+		amount = frappe.db.sql("""
+			select -sum(stock_value_difference)
+			from `tabStock Ledger Entry` sle
+			where sle.project = %s and sle.voucher_type in ('Delivery Note', 'Sales Invoice')
+		""", self.name, as_list=1)
+
+		amount = flt(amount[0][0]) if amount else 0
+
+		self.material_cost_of_sales = amount
+
+		if update:
+			self.db_set({
+				'material_cost_of_sales': self.material_cost_of_sales,
+			}, None, update_modified=update_modified)
+
 	def set_gross_margin(self, update=False, update_modified=False):
 		total_revenue = flt(self.total_sales_amount)
-		total_expense = (flt(self.timesheet_costing_amount) + flt(self.total_expense_claim)
-			+ flt(self.total_purchase_cost) + flt(self.total_consumed_material_cost))
+		total_expense = (
+			flt(self.timesheet_costing_amount)
+			+ flt(self.total_expense_claim)
+			+ flt(self.total_purchase_cost)
+			+ flt(self.total_consumed_material_cost)
+			+ flt(self.material_cost_of_sales)
+		)
 
 		self.gross_margin = total_revenue - total_expense
 		self.per_gross_margin = self.gross_margin / total_revenue * 100 if total_revenue else 0
@@ -1255,10 +1282,10 @@ class Project(StatusUpdaterERP):
 				where item.parent = inv.name and item.project = %(project)s)"""
 
 		return frappe.db.sql("""
-			select inv.name, inv.customer, inv.bill_to
+			select inv.name, inv.customer, inv.bill_to, inv.posting_date
 			from `tabSales Invoice` inv
 			where inv.docstatus = 1 and ({0})
-			order by posting_date, posting_time, creation
+			order by inv.posting_date, inv.posting_time, inv.creation
 		""".format(project_condition), {'project': self.name}, as_dict=1)
 
 	def get_sales_invoice_names(self):

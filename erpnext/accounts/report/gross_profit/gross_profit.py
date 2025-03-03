@@ -5,7 +5,6 @@ import frappe
 from frappe import _, scrub, unscrub
 from frappe.utils import flt, cstr, getdate, nowdate, cint
 from frappe.desk.query_report import group_report_data
-from six import string_types
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 
 
@@ -281,7 +280,7 @@ class GrossProfitGenerator(object):
 			conditions.append("IF(si.cost_center IS NULL or si.cost_center = '', si_item.cost_center, si.cost_center) in %(cost_center)s")
 
 		if self.filters.get("project"):
-			if isinstance(self.filters.project, string_types):
+			if isinstance(self.filters.project, str):
 				self.filters.project = cstr(self.filters.get("project")).strip()
 				self.filters.project = [d.strip() for d in self.filters.project.split(',') if d]
 			conditions.append("IF(si.project IS NULL or si.project = '', si_item.project, si.project) in %(project)s")
@@ -551,7 +550,7 @@ class GrossProfitGenerator(object):
 
 
 
-def update_item_valuation_rates(items, doc=None):
+def update_item_valuation_rates(items, doc=None, get_last_purchase_rate=False):
 	from frappe.model.document import Document
 
 	if not doc:
@@ -566,7 +565,7 @@ def update_item_valuation_rates(items, doc=None):
 			cur_arg.update(d.as_dict() if isinstance(d, Document) else d)
 			args.append(d)
 
-	incoming_rate_data = get_item_incoming_rate_data(args)
+	incoming_rate_data = get_item_incoming_rate_data(args, get_last_purchase_rate=get_last_purchase_rate)
 
 	for i, d in enumerate(items):
 		source_info = incoming_rate_data.source_map.get(i)
@@ -582,7 +581,7 @@ def update_item_valuation_rates(items, doc=None):
 			d.valuation_rate = 0
 
 
-def get_item_incoming_rate_data(args):
+def get_item_incoming_rate_data(args, get_last_purchase_rate=False):
 	"""
 	args list:
 		'dt' or 'parenttype' or 'doctype'
@@ -618,7 +617,7 @@ def get_item_incoming_rate_data(args):
 			else:
 				# get_incoming_rate
 				source_map[i] = (None, None)
-		else:
+		elif get_last_purchase_rate:
 			transaction_date = getdate(d.get('transaction_date') or d.get('posting_date') or d.get('date'))
 			source_map[i] = ('item_last_purchase_rate', (d.get('item_code'), transaction_date))
 

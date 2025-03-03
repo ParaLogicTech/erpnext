@@ -79,6 +79,8 @@ class DeliveryNote(SellingController):
 		self.update_packing_slips()
 		self.make_gl_entries()
 
+		self.update_project_billing_and_sales(material_cost_of_sales=True)
+
 	def on_cancel(self):
 		self.check_next_docstatus()
 		self.update_status_on_cancel()
@@ -91,6 +93,8 @@ class DeliveryNote(SellingController):
 		self.update_stock_ledger()
 		self.update_packing_slips()
 		self.make_gl_entries_on_cancel()
+
+		self.update_project_billing_and_sales(material_cost_of_sales=True)
 
 		if self.is_return:
 			from erpnext.accounts.doctype.sales_invoice.sales_invoice import unlink_inter_company_doc
@@ -242,8 +246,6 @@ class DeliveryNote(SellingController):
 			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=sales_invoice_row_names)
 			doc.set_status(update=True)
 			doc.notify_update()
-
-		self.update_project_billing_and_sales()
 
 	def update_sales_order_billing_status(self):
 		sales_orders = set([d.sales_order for d in self.items if d.sales_order])

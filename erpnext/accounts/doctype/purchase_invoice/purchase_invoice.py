@@ -130,7 +130,7 @@ class PurchaseInvoice(BuyingController):
 
 		self.validate_zero_outstanding()
 
-		self.update_project()
+		self.update_project_purchase_status(procurement_status=False)
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
 
 	def on_cancel(self):
@@ -151,7 +151,7 @@ class PurchaseInvoice(BuyingController):
 		self.make_gl_entries_on_cancel()
 		self.set_outstanding_amount(update=True)
 
-		self.update_project()
+		self.update_project_purchase_status(procurement_status=False)
 
 		if not self.is_return:
 			unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
@@ -1159,21 +1159,6 @@ class PurchaseInvoice(BuyingController):
 					"debit": flt(self.base_rounding_adjustment, self.precision("base_rounding_adjustment")),
 					"cost_center": self.cost_center or round_off_cost_center,
 				}, round_off_account_currency, item=self))
-
-	def update_project(self):
-		projects = list(set([d.project for d in self.items if d.get("project")]))
-		for name in projects:
-			project = frappe.get_doc("Project", name)
-
-			project.validate_project_status_for_transaction(self)
-			if self.docstatus == 1:
-				project.validate_for_transaction(self)
-
-			project.set_purchase_values(update=True)
-			project.set_gross_margin(update=True)
-
-			project.set_status(update=True, from_doctype=self.doctype, action=self.get("_action"))
-			project.notify_update()
 
 	def validate_supplier_invoice(self):
 		if self.bill_date:

@@ -8,6 +8,7 @@
   "project_naming_by",
   "materials_item_group",
   "lubricants_item_group",
+  "consumables_item_group",
   "sublet_item_group",
   "sales_order_print_heading",
   "default_sales_transaction_type",
@@ -118,11 +119,17 @@
    "fieldname": "validate_sales_order_mandatory",
    "fieldtype": "Check",
    "label": "Validate Sales Order Submitted before Ready to Close"
+  },
+  {
+   "fieldname": "consumables_item_group",
+   "fieldtype": "Link",
+   "label": "Consumbles Item Group",
+   "options": "Item Group"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-02-13 15:57:25.935451",
+ "modified": "2025-02-26 11:47:35.124880",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",

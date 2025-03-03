@@ -1021,7 +1021,7 @@ class BuyingController(TransactionController):
 			if self.get("is_subcontracted"):
 				po_obj.update_reserved_qty_for_subcontract()
 
-	def update_project_procurement_status(self):
+	def update_project_purchase_status(self, procurement_status=True, purchase_values=True):
 		projects = list(set([d.project for d in self.items if d.get("project")]))
 		for name in projects:
 			project = frappe.get_doc("Project", name)
@@ -1030,7 +1030,12 @@ class BuyingController(TransactionController):
 			if self.docstatus == 1:
 				project.validate_for_transaction(self)
 
-			project.set_procurement_status(update=True)
+			if procurement_status:
+				project.set_procurement_status(update=True)
+
+			if purchase_values:
+				project.set_purchase_values(update=True)
+				project.set_gross_margin(update=True)
 
 			project.set_status(update=True, from_doctype=self.doctype, action=self.get("_action"))
 			project.notify_update()

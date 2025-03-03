@@ -381,3 +381,5 @@ erpnext.patches.v15_0.set_mop_type_in_pos_entries
 erpnext.patches.v15_0.set_expense_entry_supplier_name
 erpnext.patches.v15_0.set_payment_entry_reference_jv_bill_no
 erpnext.patches.v15_0.set_appointment_converted
+erpnext.patches.v15_0.set_project_final_invoice_date
+erpnext.patches.v15_0.fix_project_costing
