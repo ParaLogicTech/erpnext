@@ -1337,7 +1337,7 @@ class Project(StatusUpdaterERP):
 				task.assigned_to, task.assigned_to_name
 			from `tabTask` task
 			where task.project = %s
-			order by task.act_start_date is null, task.creation
+			order by task.act_start_date is null, task.act_start_date, task.creation
 		""", self.name, as_dict=True)
 
 		for d in tasks:

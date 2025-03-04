@@ -3,6 +3,7 @@
 	<thead>
 		<tr>
 			<th class="text-center" style="width: 2%;">#</th>
+			<th>{{ _("Timesheet") }}</th>
 			<th>{{ _("Employee") }}</th>
 			<th>{{ _("Task") }}</th>
 			<th>{{ _("Start Time") }}</th>
@@ -15,8 +16,25 @@
 	{% for d in data %}
 		<tr>
 			<td class="text-center">{{ loop.index }}</td>
-			<td>{{ d.employee_name or d.employee }}</td>
-			<td>{{ d.subject or d.task_type or "" }}</td>
+			<td>
+				<a href="{{ frappe.utils.get_url_to_form("Timesheet", d.timesheet) }}" target="_blank">
+					{{ d.timesheet }}
+				</a>
+			</td>
+			<td>
+				<a href="{{ frappe.utils.get_url_to_form("Employee", d.employee) }}" target="_blank">
+					{{ d.employee_name or d.employee }}
+				</a>
+			</td>
+			<td>
+				{% if d.task %}
+					<a href="{{ frappe.utils.get_url_to_form("Task", d.task) }}" target="_blank">
+						{{ d.subject or d.task_type or "" }}
+					</a>
+				{% else %}
+					{{ d.subject or d.task_type or "" }}
+				{% endif %}
+			</td>
 			<td>{{ frappe.utils.format_date(d.from_time) + ", " + frappe.utils.format_time(d.from_time, "hh:mm a") if d.from_time else "" }}</td>
 			<td>{{ frappe.utils.format_date(d.to_time) + ", " + frappe.utils.format_time(d.to_time, "hh:mm a") if d.to_time else "" }}</td>
 			<td>{{ frappe.format(flt(d.hours), precision=2) }}</td>
@@ -25,7 +43,7 @@
 
 	{% if not data %}
 		<tr>
-			<td colspan="6" class="text-center text-muted">{{ _("No Time Logs") }}</td>
+			<td colspan="7" class="text-center text-muted">{{ _("No Time Logs") }}</td>
 		</tr>
 	{% endif %}
 	</tbody>
@@ -35,6 +53,7 @@
 		<tr>
 			<th></th>
 			<th>Total</th>
+			<th></th>
 			<th></th>
 			<td>{{ frappe.utils.format_date(totals.from_time) + ", " + frappe.utils.format_time(totals.from_time, "hh:mm a") if totals.from_time else "" }}</td>
 			<td>{{ frappe.utils.format_date(totals.to_time) + ", " + frappe.utils.format_time(totals.to_time, "hh:mm a") if totals.to_time else "" }}</td>
