@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate, get_datetime, add_to_date, time_diff_in_hours
+from frappe.utils import flt, getdate, get_datetime, add_to_date, time_diff_in_hours, cstr
 import json
 
 
@@ -37,20 +37,38 @@ class Timesheet(Document):
 		self.update_task_and_project()
 
 	def set_missing_values(self):
+		self.set_missing_project()
+		self.set_missing_hours_and_to_time()
+		self.set_activity_cost()
+
+	def set_missing_project(self):
 		for d in self.time_logs:
 			if d.task and not d.project:
-				d.project = frappe.db.get_value("Task", d.task, "project")
+				d.project = frappe.db.get_value("Task", d.task, "project", cache=1)
 
-			if d.from_time:
-				if d.hours:
-					d.to_time = get_datetime(add_to_date(d.from_time, hours=d.hours, as_datetime=True))
-				if d.to_time:
-					d.hours = time_diff_in_hours(d.to_time, d.from_time)
+	def set_missing_hours_and_to_time(self):
+		for d in self.time_logs:
+			self.set_hours_and_to_time(d)
 
-			rate = get_activity_cost(self.employee, d.activity_type)
-			if rate:
-				d.billing_rate = flt(d.billing_rate) or flt(rate.get('billing_rate'))
-				d.costing_rate = flt(d.costing_rate) or flt(rate.get('costing_rate'))
+	def set_hours_and_to_time(self, row):
+		if row.from_time:
+			if row.hours:
+				row.to_time = get_datetime(add_to_date(row.from_time, hours=row.hours, as_datetime=True))
+			if row.to_time:
+				row.hours = time_diff_in_hours(row.to_time, row.from_time)
+
+	def set_activity_cost(self, force=False):
+		for d in self.time_logs:
+			activity_cost = get_activity_cost(employee=self.employee, activity_type=d.activity_type)
+			if not activity_cost:
+				continue
+
+			if force:
+				d.billing_rate = flt(activity_cost.get('billing_rate')) or flt(d.billing_rate)
+				d.costing_rate = flt(activity_cost.get('costing_rate')) or flt(d.costing_rate)
+			else:
+				d.billing_rate = flt(d.billing_rate) or flt(activity_cost.get('billing_rate'))
+				d.costing_rate = flt(d.costing_rate) or flt(activity_cost.get('costing_rate'))
 
 	def validate_dates(self):
 		for d in self.time_logs:
@@ -118,20 +136,10 @@ class Timesheet(Document):
 		if self.sales_invoice:
 			self.status = "Completed"
 
-	def set_hours_and_to_time(self, row):
-		if row.from_time:
-			if row.hours:
-				row.to_time = get_datetime(add_to_date(row.from_time, hours=row.hours, as_datetime=True))
-			if row.to_time:
-				row.hours = time_diff_in_hours(row.to_time, row.from_time)
-
 	def validate_mandatory_fields(self):
 		for d in self.time_logs:
 			if not d.from_time and not d.to_time:
 				frappe.throw(_("Row {0}: From Time and To Time is mandatory.").format(d.idx))
-
-			if not d.activity_type and self.employee:
-				frappe.throw(_("Row {0}: Activity Type is mandatory.").format(d.idx))
 
 			if flt(d.hours) == 0.0:
 				frappe.throw(_("Row {0}: Hours value must be greater than zero.").format(d.idx))
@@ -249,14 +257,48 @@ def make_salary_slip(source_name, target_doc=None):
 
 @frappe.whitelist()
 def get_activity_cost(employee=None, activity_type=None):
-	fields = ["costing_rate", "billing_rate"]
-	filters = {"employee": employee, "activity_type": activity_type}
-	rate = frappe.db.get_values("Activity Cost", filters, fields, as_dict=True)
-	if not rate:
-		filters.pop('employee')
-		rate = frappe.db.get_values("Activity Type", filters, fields,as_dict=True)
+	activity_cost = None
 
-	return rate[0] if rate else {}
+	if employee and activity_type:
+		activity_cost = _get_activity_cost(employee=employee, activity_type=activity_type)
+		if not activity_cost:
+			activity_cost = _get_activity_cost(employee=employee)
+		if not activity_cost:
+			activity_cost = _get_activity_cost(activity_type=activity_type)
+
+	elif employee:
+		activity_cost = _get_activity_cost(employee=employee)
+
+	elif activity_type:
+		activity_cost = _get_activity_cost(activity_type=activity_type)
+
+	return activity_cost or _get_activity_cost() or frappe._dict()
+
+
+def _get_activity_cost(employee=None, activity_type=None):
+	def generator():
+		filters = {}
+
+		if employee:
+			filters["employee"] = employee
+		else:
+			filters["employee"] = ['is', 'not set']
+
+		if activity_type:
+			filters["activity_type"] = activity_type
+		else:
+			filters["activity_type"] = ['is', 'not set']
+
+		data = frappe.get_all(
+			"Activity Cost",
+			filters=filters,
+			fields=["costing_rate", "billing_rate"],
+			limit=1
+		)
+		return data[0] if data else None
+
+	key = (cstr(employee), cstr(activity_type))
+	return frappe.local_cache("_get_activity_cost", key, generator)
 
 
 @frappe.whitelist()
