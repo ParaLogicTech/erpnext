@@ -1108,3 +1108,27 @@ def parse_naming_series_variable(doc, variable):
 		return frappe.get_cached_value('Company', doc.get('company'), 'abbr')
 	elif variable == "BR":
 		return frappe.get_cached_value('Branch', doc.get('branch'), 'abbreviation')
+
+
+def format_account(account, field=None, default=None):
+	if account:
+		account_number = frappe.get_cached_value("Account", account, "account_number")
+		account_name = frappe.get_cached_value("Account", account, "account_name") or account
+
+		if field == "account_number":
+			return cstr(account_number)
+		elif field == "account_name":
+			return cstr(account_name)
+		elif account_number:
+			return f"{account_number} - {account_name}"
+		else:
+			return account_name
+	else:
+		return cstr(default)
+
+
+def format_cost_center(cost_center, default=None):
+	if cost_center:
+		return frappe.get_cached_value("Cost Center", cost_center, "cost_center_name") or cost_center
+	else:
+		return cstr(default)

@@ -272,6 +272,8 @@ jinja = {
 		'erpnext.get_default_company',
 		'erpnext.get_default_branch',
 		'erpnext.get_company_address_doc',
+		'erpnext.accounts.utils.format_account',
+		'erpnext.accounts.utils.format_cost_center',
 	]
 }
 
