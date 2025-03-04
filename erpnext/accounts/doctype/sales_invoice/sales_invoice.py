@@ -150,7 +150,7 @@ class SalesInvoice(SellingController):
 
 		self.update_serial_no()
 
-		self.update_project_billing_and_sales(material_cost_of_sales=self.update_stock)
+		self.update_project_billing_and_sales(material_cost_of_sales=True)
 		self.update_time_sheet(self.name)
 
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
