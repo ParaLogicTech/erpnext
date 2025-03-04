@@ -3,8 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, cstr, getdate
-from six import string_types
+from frappe.utils import flt, cint, getdate
 
 
 def execute(filters=None):
@@ -164,9 +163,8 @@ class OrderItemFulfilmentTracker:
 			conditions.append("im.item_source = %(item_source)s")
 
 		if self.filters.get("project"):
-			if isinstance(self.filters.project, string_types):
-				self.filters.project = cstr(self.filters.get("project")).strip()
-				self.filters.project = [d.strip() for d in self.filters.project.split(',') if d]
+			if isinstance(self.filters.project, str):
+				self.filters.project = [self.filters.project]
 
 			if frappe.get_meta(self.filters.doctype + " Item").has_field("project") and frappe.get_meta(self.filters.doctype).has_field("project"):
 				conditions.append("IF(i.project IS NULL or i.project = '', o.project, i.project) in %(project)s")

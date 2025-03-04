@@ -130,10 +130,13 @@ frappe.query_reports["Gross Profit"] = {
 			"options": "Project"
 		},
 		{
-			"fieldname":"cost_center",
+			"fieldname": "cost_center",
 			"label": __("Cost Center"),
 			"fieldtype": "Link",
-			"options": "Cost Center"
+			"options": "Cost Center",
+			get_query: () => {
+				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+			},
 		},
 		{
 			fieldname: "include_non_stock_items",

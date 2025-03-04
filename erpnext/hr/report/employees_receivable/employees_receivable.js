@@ -86,10 +86,13 @@ frappe.query_reports["Employees Receivable"] = {
 			}
 		},
 		{
-			"fieldname":"cost_center",
+			"fieldname": "cost_center",
 			"label": __("Cost Center"),
 			"fieldtype": "Link",
-			"options": "Cost Center"
+			"options": "Cost Center",
+			get_query: () => {
+				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+			},
 		},
 		{
 			"fieldname":"project",

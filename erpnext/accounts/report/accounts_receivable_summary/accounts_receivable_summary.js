@@ -89,32 +89,19 @@ frappe.query_reports["Accounts Receivable Summary"] = {
 			"options": "Sales Person"
 		},
 		{
-			"fieldname":"cost_center",
+			"fieldname": "cost_center",
 			"label": __("Cost Center"),
 			"fieldtype": "Link",
 			"options": "Cost Center",
 			get_query: () => {
-				var company = frappe.query_report.get_filter_value('company');
-				return {
-					filters: {
-						'company': company
-					}
-				}
-			}
+				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+			},
 		},
 		{
-			"fieldname":"project",
+			"fieldname": "project",
 			"label": __("Project"),
 			"fieldtype": "Link",
 			"options": "Project",
-			get_query: () => {
-				var company = frappe.query_report.get_filter_value('company');
-				return {
-					filters: {
-						'company': company
-					}
-				}
-			}
 		},
 		{
 			"fieldname":"has_item",

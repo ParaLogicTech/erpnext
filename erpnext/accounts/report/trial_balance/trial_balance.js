@@ -49,15 +49,9 @@ frappe.query_reports["Trial Balance"] = {
 			"label": __("Cost Center"),
 			"fieldtype": "Link",
 			"options": "Cost Center",
-			"get_query": function() {
-				var company = frappe.query_report.get_filter_value('company');
-				return {
-					"doctype": "Cost Center",
-					"filters": {
-						"company": company,
-					}
-				}
-			}
+			get_query: () => {
+				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+			},
 		},
 		{
 			"fieldname": "project",

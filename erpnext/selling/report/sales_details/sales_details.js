@@ -125,24 +125,19 @@ frappe.query_reports["Sales Details"] = {
 			options: "Sales Person"
 		},
 		{
-			"fieldname":"cost_center",
-			"label": __("Cost Center"),
-			"fieldtype": "MultiSelectList",
-			get_data: function(txt) {
-				return frappe.db.get_link_options('Cost Center', txt, {
-					company: frappe.query_report.get_filter_value("company")
-				});
-			}
+			fieldname: "cost_center",
+			label: __("Cost Center"),
+			fieldtype: "Link",
+			options: "Cost Center",
+			get_query: () => {
+				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+			},
 		},
 		{
-			"fieldname":"project",
-			"label": __("Project"),
-			"fieldtype": "MultiSelectList",
-			get_data: function(txt) {
-				return frappe.db.get_link_options('Project', txt, {
-					company: frappe.query_report.get_filter_value("company")
-				});
-			}
+			fieldname: "project",
+			label: __("Project"),
+			fieldtype: "Link",
+			options: "Project",
 		},
 		{
 			fieldname: "group_by_1",

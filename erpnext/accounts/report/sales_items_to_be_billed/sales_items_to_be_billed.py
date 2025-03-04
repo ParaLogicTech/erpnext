@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _, scrub
-from frappe.utils import cint, cstr, getdate
+from frappe.utils import cint, getdate
 
 
 def execute(filters=None):
@@ -188,8 +188,7 @@ class ItemsToBeBilled:
 
 		if self.filters.project:
 			if isinstance(self.filters.project, str):
-				self.filters.project = cstr(self.filters.get("project")).strip()
-				self.filters.project = [d.strip() for d in self.filters.project.split(',') if d]
+				self.filters.project = [self.filters.project]
 
 			if frappe.get_meta(doctype + " Item").has_field("project") and frappe.get_meta(doctype).has_field("project"):
 				conditions.append("IF(i.project IS NULL or i.project = '', o.project, i.project) in %(project)s")

@@ -296,8 +296,7 @@ class SalesPurchaseDetailsReport(object):
 
 		if self.filters.get("project"):
 			if isinstance(self.filters.project, str):
-				self.filters.project = cstr(self.filters.get("project")).strip()
-				self.filters.project = [d.strip() for d in self.filters.project.split(',') if d]
+				self.filters.project = [self.filters.project]
 
 			if self.item_meta.has_field("project") and self.doc_meta.has_field("project"):
 				conditions.append("IF(i.project IS NULL or i.project = '', s.project, i.project) in %(project)s")

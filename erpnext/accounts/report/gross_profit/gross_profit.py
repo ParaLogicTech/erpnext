@@ -281,8 +281,7 @@ class GrossProfitGenerator(object):
 
 		if self.filters.get("project"):
 			if isinstance(self.filters.project, str):
-				self.filters.project = cstr(self.filters.get("project")).strip()
-				self.filters.project = [d.strip() for d in self.filters.project.split(',') if d]
+				self.filters.project = [self.filters.project]
 			conditions.append("IF(si.project IS NULL or si.project = '', si_item.project, si.project) in %(project)s")
 
 		if self.filters.get("sales_person"):

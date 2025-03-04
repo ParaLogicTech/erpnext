@@ -464,7 +464,7 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 
 def get_cost_centers_with_children(cost_centers):
 	if not isinstance(cost_centers, list):
-		cost_centers = [d.strip() for d in cost_centers.strip().split(',') if d]
+		cost_centers = [cost_centers]
 
 	all_cost_centers = []
 	for d in cost_centers:

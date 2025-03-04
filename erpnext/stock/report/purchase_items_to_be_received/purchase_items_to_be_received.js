@@ -85,15 +85,11 @@ frappe.query_reports["Purchase Items To Be Received"] = {
 			},
 		},
 		{
-			"fieldname":"project",
-			"label": __("Project"),
-			"fieldtype": "MultiSelectList",
-			get_data: function(txt) {
-				return frappe.db.get_link_options('Project', txt, {
-					company: frappe.query_report.get_filter_value("company")
-				});
-			}
-		}
+			fieldname: "project",
+			label: __("Project"),
+			fieldtype: "Link",
+			options: "Project",
+		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {
 		var style = {};

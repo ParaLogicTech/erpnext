@@ -3,8 +3,7 @@
 
 import frappe
 from frappe import _, scrub
-from frappe.utils import getdate, flt, add_to_date, add_days, cstr
-from six import iteritems, string_types
+from frappe.utils import getdate, flt, add_to_date, add_days
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.utils import get_fiscal_year
 from erpnext import get_default_currency
@@ -261,9 +260,8 @@ class Analytics(object):
 				conditions.append("s.cost_center in %(cost_center)s")
 
 		if self.filters.get("project"):
-			if isinstance(self.filters.project, string_types):
-				self.filters.project = cstr(self.filters.get("project")).strip()
-				self.filters.project = [d.strip() for d in self.filters.project.split(',') if d]
+			if isinstance(self.filters.project, str):
+				self.filters.project = [self.filters.project]
 
 			if frappe.get_meta(self.filters.doctype + " Item").has_field("project") and frappe.get_meta(self.filters.doctype).has_field("project"):
 				conditions.append("IF(i.project IS NULL or i.project = '', s.project, i.project) in %(project)s")
@@ -286,7 +284,7 @@ class Analytics(object):
 		total_row = frappe._dict({"entity": _("'Total'"), "total": 0})
 		self.data.append(total_row)
 
-		for entity, period_data in iteritems(self.entity_periodic_data):
+		for entity, period_data in self.entity_periodic_data.items():
 			row = {
 				"entity": entity,
 				"entity_name": self.entity_names.get(entity),

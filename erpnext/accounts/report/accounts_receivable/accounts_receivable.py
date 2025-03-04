@@ -47,8 +47,8 @@ class ReceivablePayableReport(object):
 			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
 
 		if self.filters.get("project"):
-			if not isinstance(self.filters.get("project"), list):
-				self.filters.project = [d.strip() for d in cstr(self.filters.project).strip().split(',') if d]
+			if isinstance(self.filters.get("project"), str):
+				self.filters.project = [self.filters.project]
 
 		if self.filters.get("sales_person"):
 			sales_person = self.filters.sales_person
