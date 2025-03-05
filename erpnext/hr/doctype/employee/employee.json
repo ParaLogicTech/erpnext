@@ -886,11 +886,12 @@
  "idx": 24,
  "image_field": "image",
  "links": [],
- "modified": "2025-02-02 18:46:35.805118",
+ "modified": "2025-03-05 14:15:07.351886",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
  "naming_rule": "By \"Naming Series\" field",
+ "nsm_parent_field": "reports_to",
  "owner": "Administrator",
  "permissions": [
   {
