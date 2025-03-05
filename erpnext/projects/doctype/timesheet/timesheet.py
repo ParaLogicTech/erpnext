@@ -275,7 +275,7 @@ def get_activity_cost(employee=None, activity_type=None):
 	return activity_cost or _get_activity_cost() or frappe._dict()
 
 
-def _get_activity_cost(employee=None, activity_type=None):
+def _get_activity_cost(employee=None, activity_type=None, cache=True):
 	def generator():
 		filters = {}
 
@@ -297,8 +297,11 @@ def _get_activity_cost(employee=None, activity_type=None):
 		)
 		return data[0] if data else None
 
-	key = (cstr(employee), cstr(activity_type))
-	return frappe.local_cache("_get_activity_cost", key, generator)
+	if cache:
+		cache_key = (cstr(employee), cstr(activity_type))
+		return frappe.local_cache("_get_activity_cost", cache_key, generator)
+	else:
+		return generator()
 
 
 @frappe.whitelist()
