@@ -22,9 +22,9 @@ class JobCard(Document):
 
 	def before_submit(self):
 		self.set_actual_dates()
+		self.validate_job_card()
 
 	def on_submit(self):
-		self.validate_job_card()
 		self.update_work_order()
 		self.set_transferred_qty()
 		self.create_material_consumption_entry()
@@ -52,10 +52,20 @@ class JobCard(Document):
 		if flt(self.for_quantity) <= 0:
 			frappe.throw(_("Qty to Produce must be greater than 0"))
 
+		if flt(self.process_loss_qty) < 0:
+			frappe.throw(_("Process Loss Qty cannot be negative"))
+		if flt(self.process_loss_qty) > flt(self.for_quantity):
+			frappe.throw(_("Process Loss Qty cannot be greater than Qty to Produce"))
+
 	def validate_time_logs(self):
 		if cint(frappe.get_cached_value("Manufacturing Settings", None, "disable_capacity_planning")):
 			self.time_logs = []
-			self.total_completed_qty = flt(self.for_quantity) if self.docstatus == 1 else 0
+
+			if self.docstatus == 1:
+				self.total_completed_qty = flt(self.for_quantity) - flt(self.process_loss_qty)
+			else:
+				self.total_completed_qty = 0
+
 			return
 
 		self.total_completed_qty = 0.0
@@ -164,12 +174,16 @@ class JobCard(Document):
 			frappe.throw(_("Time logs are required for {0} {1}")
 				.format(frappe.bold("Job Card"), get_link_to_form("Job Card", self.name)))
 
-		if self.for_quantity and self.total_completed_qty != self.for_quantity:
-			total_completed_qty = frappe.bold(_("Total Completed Qty"))
-			qty_to_manufacture = frappe.bold(_("Qty to Produce"))
+		for_quantity = flt(self.for_quantity, self.precision("for_quantity"))
+		completed_qty = flt(flt(self.total_completed_qty) + flt(self.process_loss_qty), self.precision("for_quantity"))
 
-			frappe.throw(_("The {0} ({1}) must be equal to {2} ({3})"
-				.format(total_completed_qty, frappe.bold(self.total_completed_qty), qty_to_manufacture,frappe.bold(self.for_quantity))))
+		if self.for_quantity and completed_qty != for_quantity:
+			frappe.throw(_("{0} ({1}) must be equal to {2} ({3})".format(
+				frappe.bold(_("Total Completed Qty")),
+				frappe.bold(frappe.format(completed_qty)),
+				frappe.bold(_("Qty to Produce")),
+				frappe.bold(frappe.format(for_quantity))
+			)))
 
 	def update_work_order(self):
 		if self.work_order:
@@ -224,7 +238,8 @@ class JobCard(Document):
 		make_stock_entry(
 			self.work_order,
 			purpose="Material Consumption for Manufacture",
-			qty=self.for_quantity,
+			qty=self.total_completed_qty,
+			process_loss_qty=self.process_loss_qty,
 			job_card=self.name,
 			auto_submit=True
 		)

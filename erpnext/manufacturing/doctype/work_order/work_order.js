@@ -30,7 +30,9 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 
 		// formatter for work order operation
 		this.frm.set_indicator_formatter("operation", (row) => {
-			return flt(row.completed_qty) < flt(this.frm.doc.qty) ? "orange" : "green";
+			let completed_qty = flt(row.completed_qty) + flt(row.process_loss_qty);
+			let producible_without_previous_loss = flt(this.frm.doc.qty) - flt(row.previous_loss_qty);
+			return flt(completed_qty, precision("qty")) < flt(producible_without_previous_loss, precision("qty")) ? "orange" : "green";
 		});
 
 		if (this.frm.is_new()) {

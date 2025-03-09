@@ -1250,7 +1250,7 @@ class StockEntry(TransactionController):
 
 		# add skip transfer items from bom
 		bom_materials = self.get_raw_materials_to_backflush_based_on_bom(
-			ignore_process_loss=self.pro_doc.allow_material_consumption
+			ignore_process_loss=self.pro_doc.allow_material_consumption and self.purpose != "Material Consumption for Manufacture"
 		)
 		bom_materials_skipped_transfer = {k: v for k, v in bom_materials.items() if v.get("skip_transfer_for_manufacture")}
 		if bom_materials_skipped_transfer:
