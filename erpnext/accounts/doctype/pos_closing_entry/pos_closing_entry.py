@@ -23,6 +23,9 @@ class POSClosingEntry(Document):
 	def on_cancel(self):
 		self.update_pos_opening_entry()
 
+	def after_delete(self):
+		self.update_pos_opening_entry(on_delete=True)
+
 	def before_print(self, print_settings=None):
 		self.company_address_doc = erpnext.get_company_address_doc(self)
 		self.group_payment_details()
@@ -67,7 +70,8 @@ class POSClosingEntry(Document):
 		if self.amended_from:
 			self.pos_opening_entry = frappe.db.get_value("POS Closing Entry", self.amended_from, "pos_opening_entry")
 		else:
-			self.pos_opening_entry = get_pos_opening_entry(self.user, self.pos_profile)
+			pos_opening = get_pos_opening_entry(self.user, self.pos_profile)
+			self.pos_opening_entry = pos_opening.name
 
 		self.validate_pos_is_open(throw=False)
 
@@ -115,14 +119,18 @@ class POSClosingEntry(Document):
 		if not self.period_end_date:
 			self.period_end_date = now_date
 
+		self.is_backdated = 0
 		if pos_opening:
-			self.period_start_date = pos_opening.period_start_date
-			self.period_start_time = pos_opening.period_start_time
+			self.period_start_date = getdate(pos_opening.period_start_date)
+			self.period_start_time = get_time(pos_opening.period_start_time)
 
-		if not pos_opening and getdate(self.period_start_date) == now_date:
-			self.period_start_time = get_time(now_dt)
-		if getdate(self.period_end_date) == now_date:
-			self.period_end_time = get_time(now_dt)
+			if pos_opening.is_backdated:
+				self.is_backdated = 1
+				self.period_end_date = getdate(pos_opening.period_end_date)
+				self.period_end_time = get_time(pos_opening.period_end_time)
+			else:
+				self.period_end_date = now_date
+				self.period_end_time = get_time(now_dt)
 
 		if self.amended_from:
 			self.period_end_date = frappe.db.get_value("POS Closing Entry", self.amended_from, "period_end_date")
@@ -336,9 +344,13 @@ class POSClosingEntry(Document):
 
 		self.grouped_payment_details = list(grouped.values())
 
-	def update_pos_opening_entry(self):
+	def update_pos_opening_entry(self, on_delete=False):
 		if self.pos_opening_entry:
 			doc = frappe.get_doc("POS Opening Entry", self.pos_opening_entry)
+
+			if on_delete:
+				doc.validate_duplicate()
+
 			doc.set_status(update=True)
 			doc.notify_update()
 

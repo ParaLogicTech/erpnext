@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import msgprint, _
+from frappe.utils import getdate
 from frappe.model.document import Document
 
 
@@ -213,19 +214,35 @@ def is_cashier(user=None):
 	""", user))
 
 
-def check_is_pos_open(user, pos_profile, throw=False):
+def check_is_pos_open(user, pos_profile, posting_date, throw=False):
 	from erpnext.accounts.doctype.pos_opening_entry.pos_opening_entry import get_pos_opening_entry
 
 	if not pos_profile or not user:
 		return
 
 	pos_opening_entry_mandatory = frappe.get_cached_value("POS Profile", pos_profile, "pos_opening_entry_mandatory")
-	if not pos_opening_entry_mandatory:
-		return
 
-	if not get_pos_opening_entry(user, pos_profile):
+	pos_opening = get_pos_opening_entry(user, pos_profile)
+	if not pos_opening and pos_opening_entry_mandatory:
 		message = pos_opening_mandatory_message()
 		frappe.msgprint(message, raise_exception=throw)
+
+	posting_date = getdate(posting_date)
+	if posting_date > getdate():
+		frappe.throw(_("Posting Date cannot be in the future for POS Entry"))
+
+	if pos_opening:
+		if posting_date < getdate(pos_opening.period_start_date):
+			frappe.msgprint(_("Posting Date {0} cannot be before POS Opening Start Date {1}").format(
+				frappe.bold(frappe.format(posting_date)),
+				frappe.bold(frappe.format(getdate(pos_opening.period_start_date))),
+			), raise_exception=throw)
+
+		if pos_opening.is_backdated and pos_opening.period_end_date and posting_date > getdate(pos_opening.period_end_date):
+			frappe.msgprint(_("Posting Date {0} cannot be after backdated POS Opening End Date {1}").format(
+				frappe.bold(frappe.format(posting_date)),
+				frappe.bold(frappe.format(getdate(pos_opening.period_end_date))),
+			), raise_exception=throw)
 
 
 def pos_opening_mandatory_message():

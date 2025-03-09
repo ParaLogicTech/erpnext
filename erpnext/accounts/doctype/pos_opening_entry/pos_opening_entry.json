@@ -13,6 +13,7 @@
   "column_break_3",
   "period_start_date",
   "period_start_time",
+  "is_backdated",
   "column_break_q03w",
   "period_end_date",
   "period_end_time",
@@ -35,7 +36,8 @@
    "in_standard_filter": 1,
    "label": "Period Start Date",
    "no_copy": 1,
-   "read_only": 1
+   "read_only": 1,
+   "read_only_depends_on": "eval:!doc.is_backdated"
   },
   {
    "fieldname": "period_end_date",
@@ -43,7 +45,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Period End Date",
-   "read_only": 1
+   "read_only": 1,
+   "read_only_depends_on": "eval:!doc.is_backdated"
   },
   {
    "fieldname": "column_break_3",
@@ -61,6 +64,7 @@
    "fieldname": "pos_profile",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "POS Profile",
    "options": "POS Profile",
    "reqd": 1
@@ -163,11 +167,17 @@
    "fieldtype": "Data",
    "label": "Cashier Name",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_backdated",
+   "fieldtype": "Check",
+   "label": "Is Backdated"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-31 22:43:18.639102",
+ "modified": "2025-03-09 21:06:24.806289",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "POS Opening Entry",

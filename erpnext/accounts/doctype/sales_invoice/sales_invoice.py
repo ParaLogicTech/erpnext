@@ -518,7 +518,7 @@ class SalesInvoice(SellingController):
 	def validate_pos_is_open(self, throw=True):
 		if self.is_pos and self.pos_profile:
 			user = self.owner or frappe.session.user
-			check_is_pos_open(user, self.pos_profile, throw=throw)
+			check_is_pos_open(user, self.pos_profile, self.posting_date, throw=throw)
 
 	def validate_pos_payments(self):
 		if not self.is_pos:

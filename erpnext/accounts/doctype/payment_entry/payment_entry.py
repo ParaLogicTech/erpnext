@@ -246,7 +246,7 @@ class PaymentEntry(AccountsController):
 	def validate_pos_is_open(self, throw=True):
 		if self.is_pos and self.pos_profile:
 			user = self.owner or frappe.session.user
-			check_is_pos_open(user, self.pos_profile, throw=throw)
+			check_is_pos_open(user, self.pos_profile, self.posting_date, throw=throw)
 
 	def set_missing_party_details(self):
 		if self.party_type and self.party:

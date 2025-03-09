@@ -13,6 +13,7 @@
   "period_start_date",
   "period_start_time",
   "pos_opening_entry",
+  "is_backdated",
   "column_break_lhia",
   "period_end_date",
   "period_end_time",
@@ -58,7 +59,8 @@
    "in_standard_filter": 1,
    "label": "Period Start Date",
    "no_copy": 1,
-   "read_only_depends_on": "eval:doc.pos_opening_entry"
+   "read_only_depends_on": "eval:doc.pos_opening_entry",
+   "reqd": 1
   },
   {
    "default": "Today",
@@ -67,7 +69,9 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Period End Date",
-   "no_copy": 1
+   "no_copy": 1,
+   "read_only_depends_on": "eval:doc.pos_opening_entry",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_3",
@@ -165,11 +169,13 @@
    "options": "Branch"
   },
   {
+   "default": "Now",
    "fieldname": "period_start_time",
    "fieldtype": "Time",
    "label": "Period Start Time",
    "no_copy": 1,
-   "read_only_depends_on": "eval:doc.pos_opening_entry"
+   "read_only_depends_on": "eval:doc.pos_opening_entry",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_lhia",
@@ -181,7 +187,8 @@
    "fieldtype": "Time",
    "label": "Period End Time",
    "no_copy": 1,
-   "read_only_depends_on": "eval:doc.period_end_date == frappe.datetime.get_today()"
+   "read_only_depends_on": "eval:doc.pos_opening_entry",
+   "reqd": 1
   },
   {
    "fieldname": "pos_opening_entry",
@@ -317,11 +324,18 @@
    "fieldtype": "Data",
    "label": "Cashier Name",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_backdated",
+   "fieldtype": "Check",
+   "label": "Is Backdated",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-31 22:41:29.119471",
+ "modified": "2025-03-09 21:03:35.935942",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "POS Closing Entry",

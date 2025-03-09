@@ -46,6 +46,10 @@ frappe.ui.form.on('POS Closing Entry', {
 			if (!frm.doc.user) {
 				frm.set_value("user", frappe.session.user);
 			}
+
+			frm.add_custom_button(__("Reload Closing Details"), () => {
+				frm.events.get_closing_voucher_details(frm);
+			});
 		}
 
 		if (frm.doc.docstatus == 1) {
