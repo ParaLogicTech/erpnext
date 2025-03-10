@@ -24,8 +24,9 @@
   "billing_amount",
   "billable",
   "reference",
-  "sales_invoice",
-  "expected_hours"
+  "expected_hours",
+  "column_break_6ybl",
+  "sales_invoice"
  ],
  "fields": [
   {
@@ -169,12 +170,16 @@
   {
    "fieldname": "column_break_enua",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_6ybl",
+   "fieldtype": "Column Break"
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-03 17:19:26.497580",
+ "modified": "2025-03-10 20:41:20.911934",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Timesheet Detail",
