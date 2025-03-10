@@ -54,6 +54,15 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 				filters: filters
 			};
 		});
+
+		this.frm.set_query("cost_center", () => {
+			return {
+				filters: {
+					company: this.frm.doc.company,
+					is_group: 0
+				}
+			};
+		});
 	}
 
 	setup_buttons() {

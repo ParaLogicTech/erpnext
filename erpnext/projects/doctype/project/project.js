@@ -97,6 +97,15 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			}
 		});
 
+		me.frm.set_query("cost_center", () => {
+			return {
+				filters: {
+					company: me.frm.doc.company,
+					is_group: 0
+				}
+			};
+		});
+
 		erpnext.queries.setup_queries(me.frm, "Warehouse", () => {
 			return erpnext.queries.warehouse(me.frm.doc);
 		});

@@ -53,6 +53,7 @@
   "column_break_daor",
   "company",
   "branch",
+  "cost_center",
   "sb_depends_on",
   "parent_task",
   "is_group",
@@ -430,7 +431,6 @@
    "fetch_from": "project.branch",
    "fieldname": "branch",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "Branch",
    "options": "Branch"
   },
@@ -504,6 +504,13 @@
    "fieldtype": "Data",
    "label": "Applies to Item Name",
    "read_only": 1
+  },
+  {
+   "fetch_from": "project.cost_center",
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center"
   }
  ],
  "icon": "fa fa-check",
@@ -511,7 +518,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-02-03 02:00:22.425243",
+ "modified": "2025-03-10 21:52:46.595756",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",
