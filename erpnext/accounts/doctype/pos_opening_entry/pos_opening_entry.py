@@ -56,6 +56,7 @@ class POSOpeningEntry(StatusUpdaterERP):
 	def validate_duplicate(self):
 		filters = {
 			"user": self.user,
+			"pos_profile": self.pos_profile,
 			"status": "Open",
 			"docstatus": 1,
 		}
