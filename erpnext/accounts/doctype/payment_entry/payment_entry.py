@@ -230,10 +230,9 @@ class PaymentEntry(AccountsController):
 					self.paid_from = account
 
 	def validate_pos(self):
-		user = self.owner or frappe.session.user
-
-		if is_cashier(user) and not self.is_pos:
-			frappe.throw(_("User {0} is cashier, payment must be a POS payment").format(frappe.bold(user)))
+		# cashier = self.cashier or frappe.session.user
+		# if is_cashier(cashier) and not self.is_pos:
+		# 	frappe.throw(_("User {0} is cashier, payment must be a POS payment").format(frappe.bold(cashier)))
 
 		if self.is_pos and not self.pos_profile:
 			frappe.throw(_("POS Profile is mandatory for POS Payment"))
