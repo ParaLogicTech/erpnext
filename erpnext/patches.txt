@@ -384,3 +384,4 @@ erpnext.patches.v15_0.set_appointment_converted
 erpnext.patches.v15_0.set_project_final_invoice_date
 erpnext.patches.v15_0.fix_project_costing
 erpnext.patches.v15_0.set_task_cost_center
+erpnext.patches.v15_0.set_project_sold_time

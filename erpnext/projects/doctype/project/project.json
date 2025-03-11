@@ -175,6 +175,7 @@
   "expected_end_date",
   "actual_end_date",
   "column_break_49",
+  "sold_time",
   "actual_time",
   "settings_tab",
   "accounts_settings_section",
@@ -1599,13 +1600,19 @@
    "options": "Company:company:default_currency",
    "permlevel": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "sold_time",
+   "fieldtype": "Float",
+   "label": "Sold Time (in Hours)",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-03-04 01:14:26.728945",
+ "modified": "2025-03-11 01:12:14.751157",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

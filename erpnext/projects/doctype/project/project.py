@@ -13,6 +13,7 @@ from frappe.contacts.doctype.contact.contact import get_default_contact, get_all
 from erpnext.accounts.party import get_contact_details, get_address_display
 from erpnext.controllers.status_updater import StatusUpdaterERP
 from erpnext.projects.doctype.project_type.project_type import get_project_type_defaults
+from erpnext.stock.doctype.item.item import convert_item_uom_for
 from erpnext.projects.doctype.project_status.project_status import (
 	get_auto_project_status,
 	set_manual_project_status,
@@ -440,6 +441,7 @@ class Project(StatusUpdaterERP):
 		self.service_sales_amount = sales_data.service_items.net_total
 		self.labour_sales_amount = sales_data.labour_items.net_total
 		self.sublet_sales_amount = sales_data.sublet_items.net_total
+		self.sold_time = sales_data.sold_time
 
 		if update:
 			self.db_set({
@@ -450,6 +452,7 @@ class Project(StatusUpdaterERP):
 				'service_sales_amount': self.service_sales_amount,
 				'labour_sales_amount': self.labour_sales_amount,
 				'sublet_sales_amount': self.sublet_sales_amount,
+				'sold_time': self.sold_time,
 			}, None, update_modified=update_modified)
 
 	def set_timesheet_values(self, update=False, update_modified=False):
@@ -1264,7 +1267,7 @@ class Project(StatusUpdaterERP):
 		sales_data = frappe._dict()
 		sales_data.material_items, sales_data.part_items, sales_data.lubricant_items = get_material_items(self,
 			get_sales_invoice=get_sales_invoice)
-		sales_data.service_items, sales_data.labour_items, sales_data.sublet_items = get_service_items(self,
+		sales_data.service_items, sales_data.labour_items, sales_data.sublet_items, sales_data.sold_time = get_service_items(self,
 			get_sales_invoice=get_sales_invoice)
 		sales_data.totals = get_totals_data(self, [sales_data.material_items, sales_data.service_items])
 
@@ -1482,7 +1485,7 @@ def get_service_items(project, get_sales_invoice=True):
 		select p.name as sales_order,
 			p.transaction_date,
 			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom,
+			i.qty, i.uom, i.stock_uom, i.conversion_factor,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
@@ -1510,7 +1513,7 @@ def get_service_items(project, get_sales_invoice=True):
 			select p.name as sales_invoice, i.delivery_note, i.sales_order,
 				p.posting_date as transaction_date,
 				i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-				i.qty, i.uom,
+				i.qty, i.uom, i.stock_uom, i.conversion_factor,
 				i.base_net_amount as net_amount,
 				i.base_net_rate as net_rate,
 				i.base_taxable_amount as taxable_amount,
@@ -1546,7 +1549,24 @@ def get_service_items(project, get_sales_invoice=True):
 	get_item_taxes(project, sublet_data, project.company)
 	post_process_items_data(sublet_data)
 
-	return service_data, labour_data, sublet_data
+	sold_time = get_sold_time(labour_data['items'])
+
+	return service_data, labour_data, sublet_data, sold_time
+
+
+def get_sold_time(items):
+	sold_time = 0
+	for d in items:
+		hours = convert_item_uom_for(
+			d.qty, d.item_code, d.uom, "Hour",
+			conversion_factor=d.conversion_factor if d.stock_uom == "Hour" else None,
+			null_if_not_convertible=True
+		)
+
+		if hours is not None:
+			sold_time += hours
+
+	return sold_time
 
 
 def get_consumable_items(project):
