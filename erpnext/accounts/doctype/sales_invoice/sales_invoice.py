@@ -47,6 +47,9 @@ class SalesInvoice(SellingController):
 		super().before_print(print_settings)
 		self.payments = self.get('payments', {'amount': ['!=', 0]})
 
+	def before_validate(self):
+		self.set_cashier(force=True)
+
 	def validate(self):
 		self.validate_posting_time()
 		super(SalesInvoice, self).validate()
@@ -517,7 +520,7 @@ class SalesInvoice(SellingController):
 
 	def validate_pos_is_open(self, throw=True):
 		if self.is_pos and self.pos_profile:
-			user = self.owner or frappe.session.user
+			user = self.cashier or self.owner
 			check_is_pos_open(user, self.pos_profile, self.posting_date, throw=throw)
 
 	def validate_pos_payments(self):
@@ -725,13 +728,14 @@ class SalesInvoice(SellingController):
 
 	def set_pos_fields(self, for_validate=False):
 		"""Set retail related fields from POS Profiles"""
+		self.set_cashier()
 		if not cint(self.is_pos):
 			self.pos_profile = None
 			return
 
 		pos_profile = self.get("pos_profile")
 		if not pos_profile:
-			pos_profile = get_pos_profile(company=self.company, branch=self.get("branch"), user=self.owner)
+			pos_profile = get_pos_profile(company=self.company, branch=self.get("branch"), user=self.cashier)
 			self.pos_profile = pos_profile
 
 		self.validate_pos_is_open(throw=False)

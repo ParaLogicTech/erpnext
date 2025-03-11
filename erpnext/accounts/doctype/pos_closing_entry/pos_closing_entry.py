@@ -41,7 +41,7 @@ class POSClosingEntry(Document):
 			return
 
 		if not self.pos_opening_entry:
-			message = pos_opening_mandatory_message()
+			message = pos_opening_mandatory_message(self.pos_profile, self.user)
 			frappe.msgprint(message, raise_exception=throw)
 
 	def validate_closing_amounts(self):
@@ -149,7 +149,7 @@ class POSClosingEntry(Document):
 			and inv.posting_date between %(from_date)s and %(to_date)s
 			and inv.company = %(company)s
 			and inv.pos_profile = %(pos_profile)s
-			and inv.owner = %(user)s
+			and inv.cashier = %(user)s
 			and not exists(
 				select closed.name
 				from `tabPOS Closing Entry Detail` closed
@@ -182,7 +182,7 @@ class POSClosingEntry(Document):
 			and pe.posting_date between %(from_date)s and %(to_date)s
 			and pe.company = %(company)s
 			and pe.pos_profile = %(pos_profile)s
-			and pe.owner = %(user)s
+			and pe.cashier = %(user)s
 			and not exists(
 				select closed.name
 				from `tabPOS Closing Entry Detail` closed

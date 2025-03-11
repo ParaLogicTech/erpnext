@@ -17,6 +17,7 @@
   "column_break_9",
   "user_remark",
   "pos_profile",
+  "cashier",
   "is_pos",
   "payment_order",
   "column_break_5",
@@ -938,11 +939,20 @@
    "label": "Refund Amount",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "depends_on": "is_pos",
+   "fieldname": "cashier",
+   "fieldtype": "Link",
+   "label": "Cashier",
+   "no_copy": 1,
+   "options": "User",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-21 16:46:32.754274",
+ "modified": "2025-03-11 11:39:57.569601",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",

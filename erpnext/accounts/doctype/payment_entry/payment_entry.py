@@ -52,6 +52,9 @@ class PaymentEntry(AccountsController):
 		if self.docstatus == 0:
 			self.set_original_reference(unset=True)
 
+	def before_validate(self):
+		self.set_cashier(force=True)
+
 	def validate(self):
 		self.setup_party_account_field()
 		self.set_missing_values()
@@ -190,6 +193,7 @@ class PaymentEntry(AccountsController):
 		self.set_missing_reference_details()
 
 	def set_pos_fields(self, for_validate=False):
+		self.set_cashier()
 		if not cint(self.is_pos):
 			self.pos_profile = None
 			return
@@ -198,7 +202,7 @@ class PaymentEntry(AccountsController):
 
 		pos_profile = self.get("pos_profile")
 		if not pos_profile:
-			pos_profile = get_pos_profile(company=self.company, branch=self.get("branch"), user=self.owner)
+			pos_profile = get_pos_profile(company=self.company, branch=self.get("branch"), user=self.cashier)
 			self.pos_profile = pos_profile
 
 		self.validate_pos_is_open(throw=False)
@@ -244,7 +248,7 @@ class PaymentEntry(AccountsController):
 
 	def validate_pos_is_open(self, throw=True):
 		if self.is_pos and self.pos_profile:
-			user = self.owner or frappe.session.user
+			user = self.cashier or self.owner
 			check_is_pos_open(user, self.pos_profile, self.posting_date, throw=throw)
 
 	def set_missing_party_details(self):

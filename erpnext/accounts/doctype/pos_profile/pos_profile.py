@@ -224,7 +224,7 @@ def check_is_pos_open(user, pos_profile, posting_date, throw=False):
 
 	pos_opening = get_pos_opening_entry(user, pos_profile)
 	if not pos_opening and pos_opening_entry_mandatory:
-		message = pos_opening_mandatory_message()
+		message = pos_opening_mandatory_message(pos_profile, user)
 		frappe.msgprint(message, raise_exception=throw)
 
 	posting_date = getdate(posting_date)
@@ -245,9 +245,12 @@ def check_is_pos_open(user, pos_profile, posting_date, throw=False):
 			), raise_exception=throw)
 
 
-def pos_opening_mandatory_message():
-	message = _("POS Opening Entry is mandatory for POS Transaction.")
-	message += " " + "<a href='/app/pos-opening-entry/new-pos-opening-entry' target='_blank'>{0}</a>".format(
+def pos_opening_mandatory_message(pos_profile, cashier=None):
+	message = _("POS Opening Entry is mandatory for POS Profile {0}{1}").format(
+		frappe.bold(pos_profile),
+		_(", Cashier {0}").format(frappe.bold(cashier)) if cashier else ""
+	)
+	message += "<br><br>" + "<a href='/app/pos-opening-entry/new-pos-opening-entry' target='_blank'>{0}</a>".format(
 		_("Please create POS Opening Entry")
 	)
 	return message

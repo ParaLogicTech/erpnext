@@ -690,6 +690,13 @@ class AccountsController(TransactionBase):
 				elif getdate(self.posting_date) > getdate(d.service_end_date):
 					frappe.throw(_("Row #{0}: Service End Date cannot be before Invoice Posting Date").format(d.idx))
 
+	def set_cashier(self, force=False):
+		if cint(self.get("is_pos")):
+			if not self.cashier or force:
+				self.cashier = frappe.session.user or self.owner
+		else:
+			self.cashier = None
+
 
 def validate_conversion_rate(currency, conversion_rate, conversion_rate_label, company):
 	"""common validation for currency and price list currency"""
