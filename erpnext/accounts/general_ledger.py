@@ -172,9 +172,10 @@ def make_entry(args, adv_adj, from_repost=False):
 	gle.update(args)
 	gle.flags.ignore_permissions = 1
 	gle.flags.from_repost = from_repost
+	gle.flags.adv_adj = adv_adj
 	gle.validate()
 	gle.db_insert()
-	gle.run_method("on_update_with_args", adv_adj, from_repost)
+	gle.run_method("on_update_with_args")
 	gle.flags.ignore_validate = True
 	gle.submit()
 

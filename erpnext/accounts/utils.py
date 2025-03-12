@@ -548,11 +548,13 @@ def update_reference_in_journal_entry(d, jv_doc):
 
 	# will work as update after submit
 	jv_doc.flags.ignore_validate_update_after_submit = True
+	jv_doc.flags.ignore_mandatory = True
 	jv_doc.save(ignore_permissions=True)
 
 
 def update_reference_in_payment_entry(d, payment_entry, do_not_save=False):
 	payment_entry.flags.ignore_validate_update_after_submit = True
+	payment_entry.flags.ignore_mandatory = True
 	payment_entry.setup_party_account_field()
 
 	reference_details = {

@@ -30,19 +30,20 @@ class GLEntry(Document):
 		self.validate_cost_center()
 
 		if not self.flags.from_repost:
-			self.validate_cost_center_for_pl_and_bs()
-			self.check_pl_account()
 			self.validate_party()
 			self.validate_currency()
+			self.validate_account_details()
+			self.check_pl_account()
 
-	def on_update_with_args(self, adv_adj, from_repost=False):
-		if not from_repost:
-			self.validate_account_details(adv_adj)
+		if not self.flags.from_repost and not self.flags.adv_adj:
+			self.validate_cost_center_for_pl_and_bs()
 			self.validate_dimensions_for_pl_and_bs()
-			check_freezing_date(self.posting_date, adv_adj)
 
-		validate_frozen_account(self.account, adv_adj)
-		validate_balance_type(self.account, adv_adj)
+		check_freezing_date(self.posting_date, self.flags.adv_adj)
+		validate_frozen_account(self.account, self.flags.adv_adj)
+
+	def on_update_with_args(self):
+		validate_balance_type(self.account, self.flags.adv_adj)
 
 	def check_mandatory(self):
 		mandatory = ['account', 'voucher_type', 'voucher_no', 'company']
@@ -138,23 +139,20 @@ class GLEntry(Document):
 			frappe.throw(_("{0} {1}: 'Profit and Loss' type account {2} not allowed in Opening Entry")
 				.format(self.voucher_type, self.voucher_no, self.account))
 
-	def validate_account_details(self, adv_adj):
+	def validate_account_details(self):
 		"""Account must be ledger, active and not freezed"""
 
-		ret = frappe.db.sql("""select is_group, docstatus, company
-			from tabAccount where name=%s""", self.account, as_dict=1)[0]
+		ret = frappe.db.get_value("Account", self.account, ("is_group", "company"), as_dict=1, cache=1)
 
-		if ret.is_group==1:
-			frappe.throw(_('''{0} {1}: Account {2} is a Group Account and group accounts cannot be used in
-				transactions''').format(self.voucher_type, self.voucher_no, self.account))
-
-		if ret.docstatus==2:
-			frappe.throw(_("{0} {1}: Account {2} is inactive")
-				.format(self.voucher_type, self.voucher_no, self.account))
+		if ret.is_group:
+			frappe.throw(_("{0} {1}: Account {2} is a Group Account and group accounts cannot be used in transactions").format(
+				self.voucher_type, self.voucher_no, self.account
+			))
 
 		if ret.company != self.company:
-			frappe.throw(_("{0} {1}: Account {2} does not belong to Company {3}")
-				.format(self.voucher_type, self.voucher_no, self.account, self.company))
+			frappe.throw(_("{0} {1}: Account {2} does not belong to Company {3}").format(
+				self.voucher_type, self.voucher_no, self.account, self.company
+			))
 
 	def validate_cost_center(self):
 		if not hasattr(self, "cost_center_company"):
@@ -201,15 +199,22 @@ class GLEntry(Document):
 
 
 def validate_balance_type(account, adv_adj=False):
-	if not adv_adj and account:
-		balance_must_be = frappe.db.get_value("Account", account, "balance_must_be", cache=1)
-		if balance_must_be:
-			balance = frappe.db.sql("""select sum(debit) - sum(credit)
-				from `tabGL Entry` where account = %s""", account)[0][0]
+	if adv_adj or not account:
+		return
 
-			if (balance_must_be=="Debit" and flt(balance) < 0) or \
-				(balance_must_be=="Credit" and flt(balance) > 0):
-				frappe.throw(_("Balance for Account {0} must always be {1}").format(account, _(balance_must_be)))
+	balance_must_be = frappe.db.get_value("Account", account, "balance_must_be", cache=1)
+	if balance_must_be:
+		balance = frappe.db.sql("""
+			select sum(debit) - sum(credit)
+			from `tabGL Entry`
+			where account = %s
+		""", account)[0][0]
+
+		if (
+			(balance_must_be == "Debit" and flt(balance) < 0)
+			or (balance_must_be == "Credit" and flt(balance) > 0)
+		):
+			frappe.throw(_("Balance for Account {0} must always be {1}").format(account, _(balance_must_be)))
 
 
 def check_freezing_date(posting_date, adv_adj=False):
@@ -217,24 +222,29 @@ def check_freezing_date(posting_date, adv_adj=False):
 		Nobody can do GL Entries where posting date is before freezing date
 		except authorized person
 	"""
-	if not adv_adj:
-		acc_frozen_upto = frappe.db.get_value('Accounts Settings', None, 'acc_frozen_upto', cache=1)
-		if acc_frozen_upto:
-			frozen_accounts_modifier = frappe.db.get_value( 'Accounts Settings', None, 'frozen_accounts_modifier', cache=1)
-			if getdate(posting_date) <= getdate(acc_frozen_upto) \
-					and not frozen_accounts_modifier in frappe.get_roles():
-				frappe.throw(_("You are not authorized to add or update entries before {0}").format(formatdate(acc_frozen_upto)))
+	if adv_adj:
+		return
+
+	acc_frozen_upto = frappe.db.get_single_value('Accounts Settings', 'acc_frozen_upto', cache=1)
+	if acc_frozen_upto:
+		frozen_accounts_modifier = frappe.db.get_single_value( 'Accounts Settings', 'frozen_accounts_modifier', cache=1)
+		if getdate(posting_date) <= getdate(acc_frozen_upto) and not frozen_accounts_modifier in frappe.get_roles():
+			frappe.throw(_("You are not authorized to add or update entries before {0}").format(formatdate(acc_frozen_upto)))
 
 
 def validate_frozen_account(account, adv_adj=None):
-	frozen_account = frappe.db.get_value("Account", account, "freeze_account", cache=1)
-	if frozen_account == 'Yes' and not adv_adj:
-		frozen_accounts_modifier = frappe.db.get_value('Accounts Settings', None, 'frozen_accounts_modifier', cache=1)
+	if adv_adj:
+		return
 
-		if not frozen_accounts_modifier:
-			frappe.throw(_("Account {0} is frozen").format(account))
-		elif frozen_accounts_modifier not in frappe.get_roles():
-			frappe.throw(_("Not authorized to edit frozen Account {0}").format(account))
+	frozen_account = frappe.db.get_value("Account", account, "freeze_account", cache=1)
+	if frozen_account != 'Yes':
+		return
+
+	frozen_accounts_modifier = frappe.db.get_single_value('Accounts Settings', 'frozen_accounts_modifier', cache=1)
+	if not frozen_accounts_modifier:
+		frappe.throw(_("Account {0} is frozen").format(account))
+	elif frozen_accounts_modifier not in frappe.get_roles():
+		frappe.throw(_("Not authorized to edit frozen Account {0}").format(account))
 
 
 def update_against_account(voucher_type, voucher_no):
