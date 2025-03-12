@@ -82,6 +82,7 @@ $.extend(erpnext.manufacturing, {
 					"operation": args.operation,
 					"workstation": args.workstation,
 					"qty": args.qty,
+					"process_loss_qty": args.process_loss_qty,
 				},
 				freeze: 1,
 				callback: (r) => {
@@ -109,6 +110,19 @@ $.extend(erpnext.manufacturing, {
 
 			frappe.model.with_doctype("Work Order", () => {
 				let operation_options = doc.operations.map(d => d.operation);
+
+				const calculate_process_loss_qty = () => {
+					if (!doc.allow_process_loss) {
+						return;
+					}
+
+					let values = dialog.get_values(true);
+
+					let input_qty = flt(values.input_qty);
+					let output_qty = flt(values.qty);
+					return dialog.set_value("process_loss_qty", input_qty - output_qty);
+				};
+
 				let fields = [
 					{
 						label: __('Select Operation'),
@@ -135,7 +149,12 @@ $.extend(erpnext.manufacturing, {
 							}
 
 							dialog.set_value("workstation", workstation);
+
 							dialog.set_value("qty", qty);
+							if (doc.allow_process_loss) {
+								dialog.set_value("input_qty", qty);
+							}
+
 							dialog.set_value("completed_qty", completed_qty);
 							dialog.set_df_property("qty", "description", description);
 						},
@@ -151,13 +170,54 @@ $.extend(erpnext.manufacturing, {
 							return erpnext.queries.workstation(operation);
 						}
 					},
-					{
+				]
+
+				if (!doc.allow_process_loss) {
+					fields.push({
 						label: __('Qty'),
 						fieldname: 'qty',
 						fieldtype: 'Float',
 						reqd: 1,
 						default: 0,
-					},
+					});
+				} else {
+					fields = fields.concat([
+						{
+							label: __('Input Qty'),
+							fieldname: 'input_qty',
+							fieldtype: 'Float',
+							reqd: 1,
+							default: 0,
+							onchange: () => {
+								return dialog.set_value("qty", flt(dialog.get_value("input_qty")));
+							}
+						},
+						{
+							label: __('Output Qty'),
+							fieldname: 'qty',
+							fieldtype: 'Float',
+							reqd: 1,
+							default: 0,
+							onchange: () => {
+								calculate_process_loss_qty();
+							}
+						},
+						{
+							fieldtype: 'Float',
+							label: __('Process Loss Qty'),
+							fieldname: 'process_loss_qty',
+							default: 0,
+							onchange: () => {
+								let input_qty = flt(dialog.get_value("input_qty"));
+								let process_loss_qty = flt(dialog.get_value("process_loss_qty"));
+								let output_qty = input_qty - process_loss_qty;
+								return dialog.set_value("qty", output_qty);
+							}
+						}
+					]);
+				}
+
+				fields = fields.concat([
 					{
 						fieldtype: 'Section Break',
 					},
@@ -178,7 +238,7 @@ $.extend(erpnext.manufacturing, {
 						default: 0,
 						read_only: 1,
 					},
-				]
+				])
 
 				if (!doc.skip_transfer) {
 					fields = fields.concat([
@@ -234,11 +294,16 @@ $.extend(erpnext.manufacturing, {
 					static: true,
 					primary_action: function() {
 						let data = dialog.get_values();
-						if (flt(data.qty) > max_with_allowance) {
+						if (flt(data.qty) + flt(data.process_loss_qty) > max_with_allowance) {
 							frappe.msgprint(__('Quantity can not be more than {0}', [
 								frappe.format(max_with_allowance, {"fieldtype": "Float"}, {"inline": 1}),
 							]));
-							reject();
+							return;
+						}
+
+						if (flt(data.process_loss_qty) < 0) {
+							frappe.msgprint(__('Process Loss Qty can not be negative'));
+							return;
 						}
 
 						dialog.hide();
@@ -246,6 +311,7 @@ $.extend(erpnext.manufacturing, {
 							operation: row.operation,
 							workstation: data.workstation,
 							qty: data.qty,
+							process_loss_qty: data.process_loss_qty,
 						});
 					},
 					primary_action_label: __('Finish')
@@ -293,7 +359,7 @@ $.extend(erpnext.manufacturing, {
 				const calculate_process_loss_qty = () => {
 					let [max_qty, max_qty_with_allowance] = erpnext.manufacturing.get_max_transferable_qty(doc, purpose, true);
 
-					let values = dialog.get_values();
+					let values = dialog.get_values(true);
 					if (!values.process_loss_remaining || !doc.allow_process_loss) {
 						return;
 					}
@@ -615,7 +681,7 @@ $.extend(erpnext.manufacturing, {
 		if (["Manufacture", "Material Consumption for Manufacture"].includes(purpose) && doc.operations?.length) {
 			let operation_completed_qty;
 			if (get_max_operation_qty) {
-				operation_completed_qty = Math.max(...doc.operations.map(d => flt(d.completed_qty)));
+				operation_completed_qty = Math.max(...doc.operations.map(d => flt(d.completed_qty + d.process_loss_qty)));
 			} else {
 				operation_completed_qty = Math.min(...doc.operations.map(d => flt(d.completed_qty)));
 			}
@@ -630,16 +696,19 @@ $.extend(erpnext.manufacturing, {
 	},
 
 	get_max_qty_for_operation: (doc, operation_row) => {
-		let producible_qty_with_allowance = erpnext.manufacturing.get_qty_with_allowance(doc.producible_qty, doc);
+		let producible_without_previous_loss = flt(doc.producible_qty) - flt(operation_row.previous_loss_qty);
+		let producible_qty_with_allowance = erpnext.manufacturing.get_qty_with_allowance(producible_without_previous_loss, doc);
+		let completed_qty = flt(operation_row.completed_qty) + flt(operation_row.process_loss_qty);
 
 		let pending_qty = 0;
 		let pending_qty_with_allowance = 0;
 
 		if (doc.skip_transfer) {
-			pending_qty = flt(doc.producible_qty) - flt(operation_row.completed_qty);
-			pending_qty_with_allowance = producible_qty_with_allowance - flt(operation_row.completed_qty);
+			pending_qty = producible_without_previous_loss - completed_qty;
+			pending_qty_with_allowance = producible_qty_with_allowance - completed_qty;
 		} else {
-			pending_qty = flt(doc.material_transferred_for_manufacturing) - flt(operation_row.completed_qty);
+			let transferred_without_previous_loss = flt(doc.material_transferred_for_manufacturing) - flt(operation_row.previous_loss_qty);
+			pending_qty = transferred_without_previous_loss - completed_qty;
 			pending_qty_with_allowance = pending_qty;
 		}
 
@@ -933,15 +1002,25 @@ $.extend(erpnext.manufacturing, {
 		});
 	},
 
-	show_progress_for_operation: function (doc, row, frm) {
+	show_progress_for_operation: function (doc, row, frm, opts) {
+		opts = opts || {};
+
 		let qty_precision = erpnext.manufacturing.get_work_order_precision();
 
 		let pending_operation;
 		if (doc.skip_transfer) {
-			pending_operation = flt(doc.producible_qty - flt(row.completed_qty), qty_precision);
+			pending_operation = flt(
+				doc.producible_qty - flt(row.completed_qty) - flt(row.process_loss_qty) - flt(row.previous_loss_qty),
+				qty_precision
+			);
 		} else {
-			pending_operation = flt(doc.material_transferred_for_manufacturing - flt(row.completed_qty), qty_precision);
+			pending_operation = flt(
+				doc.material_transferred_for_manufacturing - flt(row.completed_qty) - flt(row.process_loss_qty) - flt(row.previous_loss_qty),
+				qty_precision
+			);
 		}
+
+		let process_loss_label = opts.process_loss_label || __("Process Loss");
 
 		return erpnext.utils.show_progress_for_qty({
 			frm: frm,
@@ -959,6 +1038,15 @@ $.extend(erpnext.manufacturing, {
 					completed_qty: row.completed_qty,
 					progress_class: "progress-bar-success",
 					add_min_width: doc.producible_qty ? 0.5 : 0,
+				},
+				{
+					title: `<b>${process_loss_label}:</b> ` + __("{0} {1} ({2}%)", [
+						frappe.format(row.process_loss_qty, {'fieldtype': 'Float'}, { inline: 1 }),
+						doc.stock_uom,
+						format_number(doc.producible_qty ? row.process_loss_qty / doc.producible_qty * 100: 0, null, 1),
+					]),
+					completed_qty: row.process_loss_qty,
+					progress_class: "progress-bar-info",
 				},
 				{
 					title: __("<b>Remaining:</b> {0} {1}", [frappe.format(pending_operation, {'fieldtype': 'Float'}, { inline: 1 }), doc.stock_uom]),

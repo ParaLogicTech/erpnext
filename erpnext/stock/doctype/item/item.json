@@ -354,8 +354,7 @@
    "fieldname": "default_material_request_type",
    "fieldtype": "Select",
    "label": "Default Material Request Type",
-   "options": "\nPurchase\nManufacture\nCustomer Provided",
-   "read_only_depends_on": "eval: doc.is_customer_provided_item"
+   "options": "\nPurchase\nManufacture\nCustomer Provided"
   },
   {
    "depends_on": "is_stock_item",
@@ -1119,7 +1118,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2025-02-23 22:39:21.738966",
+ "modified": "2025-01-13 16:59:47.966847",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

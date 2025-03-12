@@ -62,11 +62,13 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 
 		this.toggle_operation_number();
 
+		let completed_qty = flt(this.frm.doc.total_completed_qty) + flt(this.frm.doc.process_loss_qty);
+
 		if (
 			!this.frm.is_new()
 			&& this.frm.doc.docstatus == 0
 			&& !cint(frappe.defaults.get_default("disable_capacity_planning"))
-			&& (this.frm.doc.total_completed_qty < this.frm.doc.for_quantity || !this.frm.doc.for_quantity)
+			&& (completed_qty < this.frm.doc.for_quantity || !this.frm.doc.for_quantity)
 		) {
 			if (this.frm.doc.work_order) {
 				frappe.db.get_value('Work Order', this.frm.doc.work_order, ['skip_transfer', 'status'], (result) => {

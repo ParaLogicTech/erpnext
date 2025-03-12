@@ -34,6 +34,8 @@
   "time_logs",
   "section_break_13",
   "total_completed_qty",
+  "column_break_podyi",
+  "process_loss_qty",
   "column_break_15",
   "total_time_in_mins",
   "section_break_8",
@@ -154,7 +156,6 @@
    "options": "Job Card Time Log"
   },
   {
-   "depends_on": "eval: !cint(frappe.defaults.get_default('disable_capacity_planning'))",
    "fieldname": "section_break_13",
    "fieldtype": "Section Break"
   },
@@ -417,12 +418,21 @@
    "label": "Actual End Date/Time",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_podyi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "process_loss_qty",
+   "fieldtype": "Float",
+   "label": "Process Loss Qty"
   }
  ],
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-09-09 18:21:52.323364",
+ "modified": "2025-03-08 16:06:15.093267",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Job Card",

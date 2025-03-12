@@ -398,6 +398,7 @@ class WorkOrder(StatusUpdaterERP):
 				SELECT operation_id,
 					sum(total_time_in_mins) as time_in_mins,
 					sum(total_completed_qty) as completed_qty,
+					sum(process_loss_qty) as process_loss_qty,
 					min(actual_start_dt) as start_time,
 					max(actual_end_dt) as end_time
 				FROM `tabJob Card`
@@ -410,15 +411,23 @@ class WorkOrder(StatusUpdaterERP):
 
 		min_production_qty = flt(self.get_min_qty(self.producible_qty), self.precision("qty"))
 
-		for d in self.operations:
+		for i, d in enumerate(self.operations):
 			# set operation status
 			d.completed_qty = flt(operation_data_map.get(d.name, {}).get('completed_qty'))
+			d.process_loss_qty = flt(operation_data_map.get(d.name, {}).get('process_loss_qty'))
 
-			if self.status == "Stopped" and d.completed_qty > 0:
+			if i == 0:
+				d.previous_loss_qty = 0
+			else:
+				d.previous_loss_qty = sum([op.process_loss_qty for op in self.operations[0:i]])
+
+			completed_qty = flt(d.completed_qty + d.process_loss_qty, self.precision("qty"))
+
+			if self.status == "Stopped" and completed_qty > 0:
 				d.status = "Completed"
-			elif not d.completed_qty:
+			elif not completed_qty:
 				d.status = "Pending"
-			elif flt(d.completed_qty) < min_production_qty and self.production_status != "Produced":
+			elif flt(completed_qty) < min_production_qty and self.production_status != "Produced":
 				d.status = "Work in Progress"
 			else:
 				d.status = "Completed"
@@ -433,6 +442,8 @@ class WorkOrder(StatusUpdaterERP):
 			for row in self.operations:
 				row.db_set({
 					'completed_qty': row.completed_qty,
+					'process_loss_qty': row.process_loss_qty,
+					'previous_loss_qty': row.previous_loss_qty,
 					'actual_start_time': row.actual_start_time,
 					'actual_end_time': row.actual_end_time,
 					'actual_operation_time': row.actual_operation_time,
@@ -454,36 +465,48 @@ class WorkOrder(StatusUpdaterERP):
 			}, update_modified=update_modified)
 
 	def validate_completed_qty_in_operations(self, from_doctype=None):
-		max_production_qty = flt(self.get_qty_with_allowance(self.producible_qty), self.precision("qty"))
-		transferred_qty = flt(self.material_transferred_for_manufacturing, self.precision("qty"))
-
 		for d in self.operations:
-			completed_qty = flt(d.completed_qty, self.precision("qty"))
+			producible_without_previous_loss = self.producible_qty - d.previous_loss_qty
+			max_production_qty = flt(self.get_qty_with_allowance(producible_without_previous_loss), self.precision("qty"))
 
-			if completed_qty > max_production_qty:
+			completed_without_loss_qty = flt(d.completed_qty, self.precision("qty"))
+			completed_with_loss_qty = flt(d.completed_qty + d.process_loss_qty, self.precision("qty"))
+
+			if completed_with_loss_qty > max_production_qty:
 				frappe.throw(_("Completed Qty {0} {1} for Operation {2} cannot be greater than maximum quantity {3} {1} in {4}").format(
-					frappe.bold(d.get_formatted("completed_qty")),
+					frappe.bold(frappe.format(completed_with_loss_qty)),
 					self.stock_uom,
 					frappe.bold(d.operation),
 					frappe.bold(frappe.format(max_production_qty)),
 					frappe.get_desk_link("Work Order", self.name)
-				))
+				), StockOverProductionError)
 
-			if self.produced_qty > completed_qty:
+			if self.produced_qty > completed_without_loss_qty:
 				frappe.throw(_("Produced Qty {0} {1} cannot be greater than {2} Operation Completed Qty {3} {1} in {4}").format(
 					frappe.bold(frappe.format(self.produced_qty)),
 					self.stock_uom,
 					frappe.bold(d.operation),
 					frappe.bold(d.get_formatted("completed_qty")),
 					frappe.get_desk_link("Work Order", self.name)
-				))
+				), StockOverProductionError)
 
-			if not self.skip_transfer and completed_qty > transferred_qty:
+			transferred_qty = flt(self.material_transferred_for_manufacturing, self.precision("qty"))
+			if not self.skip_transfer and completed_with_loss_qty > transferred_qty:
 				frappe.throw(_("Completed Qty {0} {1} for Operation {2} cannot be more than the Material Transferred for Manufacturing {3} {1} in {4}").format(
-					frappe.bold(d.get_formatted("completed_qty")),
+					frappe.bold(frappe.format(completed_with_loss_qty)),
 					self.stock_uom,
 					frappe.bold(d.operation),
 					frappe.bold(frappe.format(transferred_qty)),
+					frappe.get_desk_link("Work Order", self.name)
+				), StockOverProductionError)
+
+			transferred_without_previous_loss = flt(self.material_transferred_for_manufacturing - d.previous_loss_qty, self.precision("qty"))
+			if not self.skip_transfer and completed_with_loss_qty > transferred_without_previous_loss:
+				frappe.throw(_("Completed Qty {0} {1} for Operation {2} cannot be more than the Material Transferred less Previous Operations Loss Qty {3} {1} in {4}").format(
+					frappe.bold(frappe.format(completed_with_loss_qty)),
+					self.stock_uom,
+					frappe.bold(d.operation),
+					frappe.bold(frappe.format(transferred_without_previous_loss)),
 					frappe.get_desk_link("Work Order", self.name)
 				), StockOverProductionError)
 
@@ -1448,7 +1471,7 @@ def make_stock_entry(
 		stock_entry.to_warehouse = wip_warehouse
 		stock_entry.from_warehouse = work_order.source_warehouse
 	else:
-		stock_entry.from_warehouse = wip_warehouse
+		stock_entry.from_warehouse = work_order.source_warehouse if work_order.skip_transfer else wip_warehouse
 
 	if purpose == "Manufacture":
 		stock_entry.to_warehouse = work_order.fg_warehouse
@@ -1542,9 +1565,17 @@ def validate_operation_data(row):
 
 
 @frappe.whitelist()
-def make_job_card(work_order, operation, workstation, qty, auto_submit=False):
+def make_job_card(
+	work_order,
+	operation,
+	workstation,
+	qty,
+	process_loss_qty=0,
+	auto_submit=False
+):
 	pro_doc = frappe.get_doc("Work Order", work_order)
 	qty = flt(qty)
+	process_loss_qty = flt(process_loss_qty)
 
 	operation_row = [d for d in pro_doc.operations if d.operation == operation]
 	if operation_row:
@@ -1552,7 +1583,7 @@ def make_job_card(work_order, operation, workstation, qty, auto_submit=False):
 	else:
 		frappe.throw(_("Operation {0} not in Work Order {1}").format(operation, work_order))
 
-	job_card_doc = _make_job_card(pro_doc, operation_row, qty)
+	job_card_doc = _make_job_card(pro_doc, operation_row, qty, process_loss_qty=process_loss_qty)
 	job_card_doc.workstation = workstation
 
 	if auto_submit or frappe.db.get_single_value('Manufacturing Settings', 'auto_submit_job_card'):
@@ -1568,14 +1599,18 @@ def make_job_card(work_order, operation, workstation, qty, auto_submit=False):
 	return job_card_doc
 
 
-def _make_job_card(work_order, row, qty):
+def _make_job_card(work_order, row, qty, process_loss_qty=0.0):
 	doc = frappe.new_doc("Job Card")
+
+	process_loss_qty = max(0.0, flt(process_loss_qty))
+
 	doc.update({
 		'work_order': work_order.name,
 		'operation': row.get("operation"),
 		'workstation': row.get("workstation"),
 		'posting_date': getdate(),
-		'for_quantity': flt(qty),
+		'for_quantity': flt(qty) + process_loss_qty,
+		'process_loss_qty': process_loss_qty,
 		'operation_id': row.get("name"),
 		'bom_no': work_order.bom_no,
 		'project': work_order.project,
