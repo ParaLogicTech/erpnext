@@ -6,6 +6,9 @@ def get_data():
 		'heatmap': True,
 		'heatmap_message': _('This is based on the attendance of this Employee'),
 		'fieldname': 'employee',
+		'non_standard_fieldnames': {
+			'Task': 'assigned_to',
+		},
 		'transactions': [
 			{
 				'label': _('Leave and Attendance'),
@@ -37,7 +40,7 @@ def get_data():
 			# },
 			{
 				'label': _('Timesheets'),
-				'items': ['Timesheet', 'Activity Cost']
+				'items': ['Timesheet', 'Task', 'Activity Cost']
 			},
 		]
 	}
