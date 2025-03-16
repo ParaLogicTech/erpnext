@@ -275,6 +275,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"net_rate": 0.0,
 		"net_amount": 0.0,
 		"discount_percentage": 0.0,
+		"discount_amount": 0.0,
 		"depreciation_percentage": get_depreciation_percentage(item, args),
 		"underinsurance_percentage": flt(args.get("default_underinsurance_percentage")),
 		"ignore_depreciation": get_ignore_depreciation(item),
