@@ -1,27 +1,29 @@
-# Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and contributors
+# Copyright (c) 2025, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import cint, cstr
+from frappe.utils import cint, flt
 from frappe.model.document import Document
 
-transaction_filter_fields = ['company', 'transaction_type']
+user_filter_fields = ['user', 'role']
+transaction_filter_fields = ['company']
+customer_filter_fields = ['customer', 'customer_group', 'territory']
 item_filter_fields = ['item_code', 'item_source', 'brand', 'item_group']
 
-filter_fields = transaction_filter_fields + item_filter_fields
+filter_fields = user_filter_fields + transaction_filter_fields + customer_filter_fields + item_filter_fields
 
 
-class ItemDefaultRule(Document):
+class DiscountRule(Document):
 	def validate(self):
 		self.validate_duplicate()
-		self.validate_item_tax()
+		self.validate_max_discount()
 
 	def on_change(self):
-		clear_item_default_rule_cache()
+		clear_discount_rule_cache()
 
 	def after_rename(self, old_name, new_name, merge):
-		clear_item_default_rule_cache()
+		clear_discount_rule_cache()
 
 	def validate_duplicate(self):
 		filters = {}
@@ -35,21 +37,16 @@ class ItemDefaultRule(Document):
 			else:
 				filters[f] = ['is', 'not set']
 
-		existing = frappe.get_all("Item Default Rule", filters=filters)
+		existing = frappe.get_all("Discount Rule", filters=filters)
 		if existing:
 			frappe.throw(_("{0} already exists with the same filters")
-				.format(frappe.get_desk_link("Item Default Rule", existing[0].name)))
+				.format(frappe.get_desk_link("Discount Rule", existing[0].name)))
 
-	def validate_item_tax(self):
-		"""Check whether Tax Rate is not entered twice for same Tax Type"""
-		check_list = []
-		for d in self.get('taxes'):
-			if d.item_tax_template:
-				key = (d.item_tax_template, cstr(d.tax_category))
-				if key in check_list:
-					frappe.throw(_("{0} entered twice in Item Tax").format(d.item_tax_template))
-				else:
-					check_list.append(key)
+	def validate_max_discount(self):
+		if flt(self.max_discount) < 0:
+			frappe.throw(_("Maximum Discount cannot be negative"))
+		if flt(self.max_discount) > 100:
+			frappe.throw(_("Maximum Discount cannot be more than 100%"))
 
 	def get_applicable_rule_dict(self, filters):
 		required_filters = self.get_required_filters()
@@ -64,6 +61,18 @@ class ItemDefaultRule(Document):
 						break
 				elif field == "item_group":
 					if not self.match_tree("Item Group", required_value, filters.get(field)):
+						required_filters_matched = False
+						break
+				elif field == "customer_group":
+					if not self.match_tree("Customer Group", required_value, filters.get(field)):
+						required_filters_matched = False
+						break
+				elif field == "territory":
+					if not self.match_tree("Territory", required_value, filters.get(field)):
+						required_filters_matched = False
+						break
+				elif field == "role":
+					if required_value not in filters.get(field, []):
 						required_filters_matched = False
 						break
 				elif filters.get(field) != required_value:
@@ -122,21 +131,27 @@ class ItemDefaultRule(Document):
 		if rule_dict.get('item_group'):
 			rule_dict['item_group_lft'] = frappe.get_cached_value("Item Group", rule_dict.get('item_group'), 'lft')
 
+		if rule_dict.get('customer_group'):
+			rule_dict['customer_group_lft'] = frappe.get_cached_value("Customer Group", rule_dict.get('customer_group'), 'lft')
+
+		if rule_dict.get('territory'):
+			rule_dict['territory_lft'] = frappe.get_cached_value("Territory", rule_dict.get('territory'), 'lft')
+
 		return rule_dict
 
 
-def get_item_default_values(item, transaction=None):
-	filters = get_filters_dict(item, transaction)
+def get_discount_rule_values(item, transaction, user=None):
+	filters = get_filters_dict(item, transaction, user)
 	applicable_rules = get_applicable_rules_for_filters(filters)
-	return get_default_values_dict(applicable_rules)
+	return get_discount_rule_values_dict(applicable_rules)
 
 
-def get_default_values_for_filters(filters):
+def get_discount_rule_values_for_filters(filters):
 	applicable_rules = get_applicable_rules_for_filters(filters)
-	return get_default_values_dict(applicable_rules)
+	return get_discount_rule_values_dict(applicable_rules)
 
 
-def get_default_values_dict(applicable_rules, filter_sort=None):
+def get_discount_rule_values_dict(applicable_rules, filter_sort=None):
 	def sorting_function(d):
 		no_of_matches = len(d.required_filters)
 
@@ -149,6 +164,12 @@ def get_default_values_dict(applicable_rules, filter_sort=None):
 					filter_precedences.append((index, cint(not d.get('variant_of'))))
 				elif k == 'item_group':
 					filter_precedences.append((index, -cint(d.item_group_lft)))
+				elif k == 'customer_group':
+					filter_precedences.append((index, -cint(d.customer_group_lft)))
+				elif k == 'territory':
+					filter_precedences.append((index, -cint(d.territory_lft)))
+				elif k == 'role':
+					filter_precedences.append((index, cint(d.get('role') == 'All')))
 				else:
 					filter_precedences.append((index,))
 			else:
@@ -163,52 +184,62 @@ def get_default_values_dict(applicable_rules, filter_sort=None):
 		filter_sort = filter_fields.copy()
 
 	applicable_rules = sorted(applicable_rules, key=lambda d: sorting_function(d))
+	print([d.name for d in applicable_rules])
 
-	rule_meta = frappe.get_meta("Item Default Rule")
+	rule_meta = frappe.get_meta("Discount Rule")
 	values = frappe._dict()
 	for rule in applicable_rules:
 		for fieldname, value in rule.items():
-			if fieldname == "item_default_rule_name":
+			if fieldname == "discount_rule_name":
 				continue
 
 			if value and fieldname not in filter_fields and rule_meta.has_field(fieldname):
-				if fieldname == "taxes":
-					values.setdefault(fieldname, [])
-					values[fieldname] += value
-				elif not values.get(fieldname):
+				if fieldname not in values:
 					values[fieldname] = value
 
 	return values
 
 
-def get_applicable_rules(item, transaction=None):
-	filters = get_filters_dict(item, transaction)
+def get_applicable_rules(item, transaction, user=None):
+	filters = get_filters_dict(item, transaction, user)
 	return get_applicable_rules_for_filters(filters)
 
 
-def get_filters_dict(item, transaction=None):
+def get_filters_dict(item, transaction, user=None):
 	if not item:
 		item = {}
 	if not transaction:
 		transaction = {}
+	if not user:
+		user = frappe.session.user
 
 	if isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
 	if isinstance(transaction, Document):
 		transaction = transaction.as_dict()
 
+	customer = transaction.get("bill_to") or transaction.get("customer")
+	customer = frappe.get_cached_doc("Customer", customer) if customer else {}
+
 	filters = frappe._dict()
+
 	for f in item_filter_fields:
 		if item.get(f):
 			filters[f] = item.get(f)
 	for f in transaction_filter_fields:
 		if transaction.get(f):
 			filters[f] = transaction.get(f)
+	for f in customer_filter_fields:
+		if customer.get(f):
+			filters[f] = customer.get(f)
 
 	if item:
 		filters["item_code"] = item.get("name")
-	if 'transaction_type_name' in transaction:
-		filters['transaction_type'] = transaction.get('transaction_type_name')
+	if customer:
+		filters["customer"] = customer.get("name")
+	if user:
+		filters["user"] = user
+		filters["role"] = frappe.get_roles(user) if user else []
 
 	return filters
 
@@ -217,7 +248,7 @@ def get_applicable_rules_for_filters(filters):
 	if not filters:
 		filters = frappe._dict()
 
-	rules = get_item_default_rule_docs()
+	rules = get_discount_rule_docs()
 
 	applicable_rules = []
 	for rule in rules:
@@ -228,19 +259,19 @@ def get_applicable_rules_for_filters(filters):
 	return applicable_rules
 
 
-def get_item_default_rule_docs():
-	names = get_item_default_rule_names()
-	docs = [frappe.get_cached_doc("Item Default Rule", name) for name in names]
+def get_discount_rule_docs():
+	names = get_discount_rule_names()
+	docs = [frappe.get_cached_doc("Discount Rule", name) for name in names]
 	return docs
 
 
-def get_item_default_rule_names():
+def get_discount_rule_names():
 	def generator():
-		names = [d.name for d in frappe.get_all('Item Default Rule')]
+		names = [d.name for d in frappe.get_all('Discount Rule')]
 		return names
 
-	return frappe.cache.get_value("item_default_rule_names", generator)
+	return frappe.cache.get_value("discount_rule_names", generator)
 
 
-def clear_item_default_rule_cache():
-	frappe.cache.delete_value('item_default_rule_names')
+def clear_discount_rule_cache():
+	frappe.cache.delete_value('discount_rule_names')

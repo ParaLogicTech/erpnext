@@ -283,6 +283,14 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		}
 	}
 
+	customer() {
+		return this.frm.set_value("bill_to", this.frm.doc.customer);
+	}
+
+	bill_to() {
+		return super.customer();
+	}
+
 	get_items_from_quotation() {
 		erpnext.utils.map_current_doc({
 			method: "erpnext.selling.doctype.quotation.quotation.make_sales_order",

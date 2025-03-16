@@ -54,6 +54,7 @@ class SellingController(TransactionController):
 		self.validate_bill_to()
 		self.validate_items()
 		self.validate_max_discount()
+		self.validate_discount_rule()
 		self.validate_selling_price()
 		self.set_qty_as_per_stock_uom()
 		self.set_alt_uom_qty()
@@ -183,6 +184,70 @@ class SellingController(TransactionController):
 
 				if discount and flt(d.discount_percentage) > discount:
 					frappe.throw(_("Maximum discount for Item {0} is {1}%").format(d.item_code, discount))
+
+	def validate_discount_rule(self):
+		from erpnext.accounts.doctype.discount_rule.discount_rule import get_discount_rule_values
+
+		_customer_changed = None
+
+		def customer_changed():
+			if self.is_new():
+				return False
+
+			if self.meta.has_field("bill_to"):
+				if self.bill_to != self.db_get("bill_to"):
+					return True
+			else:
+				if self.customer != self.db_get("customer"):
+					return True
+
+		for d in self.get("items"):
+			if not d.item_code or not flt(d.get("discount_percentage")):
+				continue
+
+			discount_rule_values = get_discount_rule_values(d.item_code, self)
+			if not discount_rule_values:
+				continue
+
+			max_discount = flt(discount_rule_values.get("max_discount"))
+			if flt(d.discount_percentage) <= max_discount:
+				continue
+
+			if d.is_new():
+				if d.get("delivery_note_item"):
+					previous_discount = flt(frappe.db.get_value("Delivery Note Item", {
+						"name": d.delivery_note_item, "item_code": d.item_code,
+					}, "discount_percentage"))
+				elif d.get("sales_order_item"):
+					previous_discount = flt(frappe.db.get_value("Sales Order Item", {
+						"name": d.sales_order_item, "item_code": d.item_code,
+					}, "discount_percentage"))
+				elif d.get("quotation_item"):
+					previous_discount = flt(frappe.db.get_value("Quotation Item", {
+						"name": d.quotation_item, "item_code": d.item_code,
+					}, "discount_percentage"))
+				else:
+					previous_discount = 0
+			else:
+				previous_discount = flt(d.db_get("discount_percentage"))
+
+			check_rule = False
+			if flt(d.discount_percentage, d.precision("discount_percentage")) != flt(previous_discount, d.precision("discount_percentage")):
+				check_rule = True
+
+			if not check_rule:
+				if _customer_changed is None:
+					_customer_changed = customer_changed()
+				if _customer_changed:
+					check_rule = True
+
+			if check_rule:
+				frappe.throw(_("Row #{0}: Maximum discount allowed for Item {1} and Customer {2} is {3}").format(
+					d.idx,
+					frappe.bold(d.item_code),
+					frappe.bold(self.get("bill_to_name") or self.get("bill_to") or self.customer_name or self.customer),
+					frappe.bold(frappe.format(max_discount, df={"fieldtype": "Percent"}))
+				))
 
 	def set_qty_as_per_stock_uom(self):
 		for d in self.get("items"):
@@ -580,14 +645,27 @@ class SellingController(TransactionController):
 				frappe.throw(_("Transaction Type {0} is not allowed for sales transactions").format(frappe.bold(self.transaction_type)))
 
 	def validate_project_customer(self):
-		if self.project and self.customer:
-			res = frappe.db.sql("""
-				select name
-				from `tabProject`
-				where name = %s and (customer = %s or ifnull(customer,'') = '')
-			""", (self.project, self.customer))
-			if not res:
-				frappe.throw(_("Customer {0} does not belong to project {1}").format(self.customer, self.project))
+		if not self.get("project"):
+			return
+
+		project_details = frappe.db.get_value("Project", self.project, ["customer", "bill_to"], as_dict=1)
+		if project_details.customer and self.customer != project_details.customer:
+			frappe.throw(_("Customer {0} does not belong to {1}").format(
+				frappe.bold(self.customer), frappe.get_desk_link("Project", self.project)
+			))
+
+		if self.meta.has_field("bill_to"):
+			trn_bill_to = self.bill_to or self.customer
+			allowed_bill_to = []
+			if project_details.bill_to:
+				allowed_bill_to.append(project_details.bill_to)
+			if project_details.customer:
+				allowed_bill_to.append(project_details.customer)
+
+			if allowed_bill_to and trn_bill_to not in allowed_bill_to:
+				frappe.throw(_("Bill To {0} does not belong to {1}").format(
+					frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
+				))
 
 	def update_project_billing_and_sales(self, material_cost_of_sales=False):
 		projects = []

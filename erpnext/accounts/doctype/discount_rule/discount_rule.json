@@ -1,0 +1,238 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:discount_rule_name",
+ "creation": "2025-03-12 14:05:38.612056",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "discount_rule_name",
+  "transaction_filters_section",
+  "customer_group",
+  "territory",
+  "column_break_upd5",
+  "customer",
+  "customer_name",
+  "column_break_tf1u",
+  "company",
+  "item_filters_section",
+  "column_break_ltmm",
+  "item_code",
+  "item_name",
+  "column_break_xfgn",
+  "item_group",
+  "brand",
+  "column_break_eh0n",
+  "item_source",
+  "user_filters_section",
+  "role",
+  "column_break_zscv",
+  "user",
+  "rule_section",
+  "max_discount"
+ ],
+ "fields": [
+  {
+   "fieldname": "discount_rule_name",
+   "fieldtype": "Data",
+   "label": "Discount Rule Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "User",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_ltmm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "depends_on": "eval:doc.item_code && doc.item_name != doc.item_code",
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_xfgn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "brand",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Brand",
+   "options": "Brand"
+  },
+  {
+   "fieldname": "column_break_eh0n",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_source",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Item Source",
+   "options": "Item Source"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rule_section",
+   "fieldtype": "Section Break",
+   "label": "Rule"
+  },
+  {
+   "fieldname": "max_discount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Maximum Discount (%)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "user_filters_section",
+   "fieldtype": "Section Break",
+   "label": "User Filters"
+  },
+  {
+   "fieldname": "item_filters_section",
+   "fieldtype": "Section Break",
+   "label": "Item Filters"
+  },
+  {
+   "fieldname": "column_break_zscv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer Group",
+   "options": "Customer Group"
+  },
+  {
+   "fieldname": "territory",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Territory",
+   "options": "Territory"
+  },
+  {
+   "fieldname": "column_break_upd5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "depends_on": "eval:doc.customer && doc.customer_name != doc.customer",
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_tf1u",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "transaction_filters_section",
+   "fieldtype": "Section Break",
+   "label": "Transaction Filters"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-12 22:31:36.528814",
+ "modified_by": "Administrator",
+ "module": "Accounts",
+ "name": "Discount Rule",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Pricing Rule Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

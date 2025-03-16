@@ -66,7 +66,6 @@
    "fieldname": "default_warehouse",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Default Warehouse",
    "options": "Warehouse"
   },
@@ -74,7 +73,6 @@
    "fieldname": "force_default_warehouse",
    "fieldtype": "Select",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Force Default Warehouse",
    "options": "\nNo\nYes"
   },
@@ -82,7 +80,6 @@
    "fieldname": "default_price_list",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Default Price List",
    "options": "Price List"
   },
@@ -90,7 +87,6 @@
    "fieldname": "default_terms",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Default Terms and Conditions",
    "options": "Terms and Conditions"
   },
@@ -98,7 +94,6 @@
    "fieldname": "allow_zero_valuation_rate",
    "fieldtype": "Select",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Allow Zero Valuation Rate",
    "options": "\nNo\nYes"
   },
@@ -106,7 +101,6 @@
    "fieldname": "target_warehouse_validation",
    "fieldtype": "Select",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Target Warehouse Validation",
    "options": "\nMandatory\nNot Allowed"
   },
@@ -114,7 +108,6 @@
    "fieldname": "buying_cost_center",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Default Buying Cost Center",
    "options": "Cost Center"
   },
@@ -122,7 +115,6 @@
    "fieldname": "default_supplier",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Default Supplier",
    "options": "Supplier"
   },
@@ -130,7 +122,6 @@
    "fieldname": "expense_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Default Expense Account",
    "options": "Account"
   },
@@ -138,7 +129,6 @@
    "fieldname": "buying_apply_taxes_on_retail",
    "fieldtype": "Select",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Apply Taxes on Retail Price For Purchase",
    "options": "\nNo\nYes"
   },
@@ -146,7 +136,6 @@
    "fieldname": "selling_cost_center",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Default Selling Cost Center",
    "options": "Cost Center"
   },
@@ -154,7 +143,6 @@
    "fieldname": "income_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Default Income Account",
    "options": "Account"
   },
@@ -162,7 +150,6 @@
    "fieldname": "selling_apply_taxes_on_retail",
    "fieldtype": "Select",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Apply Taxes on Retail Price For Sales",
    "options": "\nNo\nYes"
   },
@@ -307,7 +294,6 @@
   {
    "fieldname": "show_item_code",
    "fieldtype": "Select",
-   "in_standard_filter": 1,
    "label": "Show Item Code",
    "options": "\nNo\nYes"
   },
@@ -323,7 +309,6 @@
    "fieldname": "sales_commission_category",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Sales Commission Category",
    "options": "Sales Commission Category"
   },
@@ -331,7 +316,6 @@
    "fieldname": "claim_customer",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "in_standard_filter": 1,
    "label": "Claim Customer",
    "options": "Customer"
   },
@@ -358,7 +342,7 @@
   }
  ],
  "links": [],
- "modified": "2025-02-10 16:54:19.442405",
+ "modified": "2025-03-12 22:17:50.377939",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Item Default Rule",

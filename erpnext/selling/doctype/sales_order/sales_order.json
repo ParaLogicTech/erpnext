@@ -13,6 +13,8 @@
   "title",
   "customer",
   "customer_name",
+  "bill_to",
+  "bill_to_name",
   "po_no",
   "po_date",
   "column_break1",
@@ -1802,6 +1804,22 @@
    "hidden": 1,
    "label": "Branch",
    "options": "Branch"
+  },
+  {
+   "depends_on": "eval:doc.docstatus == 0 || doc.bill_to != doc.customer",
+   "fieldname": "bill_to",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Bill To",
+   "options": "Customer"
+  },
+  {
+   "depends_on": "eval:doc.bill_to && doc.bill_to_name != doc.bill_to && doc.bill_to != doc.customer",
+   "fetch_from": "bill_to.customer_name",
+   "fieldname": "bill_to_name",
+   "fieldtype": "Data",
+   "label": "Bill To Name",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
@@ -1809,7 +1827,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 22:26:31.460524",
+ "modified": "2025-03-16 17:10:48.330428",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",
