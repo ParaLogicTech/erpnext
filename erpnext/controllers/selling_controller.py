@@ -264,34 +264,40 @@ class SellingController(TransactionController):
 				d.alt_uom_qty = flt(flt(d.stock_qty) * flt(d.alt_uom_size), d.precision("alt_uom_qty"))
 
 	def validate_selling_price(self):
-		def throw_message(idx, item_name, rate, ref_rate_field):
-			frappe.throw(_("""Row #{}: Selling rate for item {} is lower than its {}. Selling rate should be atleast {}""")
-				.format(idx, item_name, ref_rate_field, rate))
+		from erpnext.stock.stock_ledger import get_valuation_rate
 
+		def throw_message(row, min_rate):
+			frappe.throw(_("Row #{0}: Selling Rate for Item {1} cannot be less than {2}").format(
+				row.idx,
+				frappe.bold(row.item_code),
+				frappe.bold(frappe.format(min_rate, df=row.meta.get_field("rate"))),
+			))
+
+		if self.get("is_return"):
+			return
 		if not frappe.get_cached_value("Selling Settings", None, "validate_selling_price"):
 			return
 
-		if hasattr(self, "is_return") and self.is_return:
-			return
-
-		for it in self.get("items"):
-			if not it.item_code:
+		for d in self.get("items"):
+			if not d.item_code:
 				continue
 
-			last_purchase_rate, is_stock_item = frappe.get_cached_value("Item", it.item_code, ["last_purchase_rate", "is_stock_item"])
-			last_purchase_rate_in_sales_uom = last_purchase_rate / (it.conversion_factor or 1)
-			if flt(it.base_rate) < flt(last_purchase_rate_in_sales_uom):
-				throw_message(it.idx, frappe.bold(it.item_name), last_purchase_rate_in_sales_uom, "last purchase rate")
+			is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
+			if not is_stock_item:
+				continue
 
-			last_valuation_rate = frappe.db.sql("""
-				SELECT valuation_rate FROM `tabStock Ledger Entry` WHERE item_code = %s
-				AND warehouse = %s AND valuation_rate > 0
-				ORDER BY posting_date DESC, posting_time DESC, creation DESC LIMIT 1
-				""", (it.item_code, it.warehouse))
-			if last_valuation_rate:
-				last_valuation_rate_in_sales_uom = last_valuation_rate[0][0] / (it.conversion_factor or 1)
-				if is_stock_item and flt(it.base_rate) < flt(last_valuation_rate_in_sales_uom):
-					throw_message(it.idx, frappe.bold(it.item_name), last_valuation_rate_in_sales_uom, "valuation rate")
+			last_purchase_rate = flt(frappe.db.get_value("Item", d.item_code, "last_purchase_rate", cache=1))
+			if last_purchase_rate > 0:
+				last_purchase_rate_in_sales_uom = last_purchase_rate / (d.conversion_factor or 1)
+				if flt(d.base_rate) < flt(last_purchase_rate_in_sales_uom):
+					throw_message(d, last_purchase_rate_in_sales_uom)
+
+			valuation_rate = flt(get_valuation_rate(d.item_code, d.get("warehouse"), self.doctype, self.name,
+				raise_error_if_no_rate=False))
+			if valuation_rate > 0:
+				valuation_rate_in_sales_uom = valuation_rate / (d.conversion_factor or 1)
+				if flt(d.base_rate) < flt(valuation_rate_in_sales_uom):
+					throw_message(d, valuation_rate_in_sales_uom)
 
 	def get_item_list(self):
 		il = []
