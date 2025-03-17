@@ -479,19 +479,6 @@ class ReceivablePayableReport(object):
 			# against sales order/purchase order
 			or (gle.against_voucher_type in self.advance_against_voucher_types)
 
-			# sales invoice/purchase invoice
-			or (
-				gle.against_voucher == gle.voucher_no
-				and gle.get(self.dr_or_cr) - gle.get(self.reverse_dr_or_cr) > 0
-			)
-
-			# standalone credit notes
-			or (
-				gle.against_voucher == gle.voucher_no
-				and gle.voucher_no in self.return_entries
-				and not self.return_entries.get(gle.voucher_no)
-			)
-
 			# entries adjusted with future vouchers
 			or ((gle.against_voucher_type, gle.against_voucher) in self.future_vouchers)
 		)
