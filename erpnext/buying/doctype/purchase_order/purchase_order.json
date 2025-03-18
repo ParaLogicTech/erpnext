@@ -416,6 +416,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
    "label": "Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -1674,7 +1675,7 @@
  "idx": 105,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 22:26:26.217662",
+ "modified": "2025-03-17 20:12:46.218907",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Purchase Order",

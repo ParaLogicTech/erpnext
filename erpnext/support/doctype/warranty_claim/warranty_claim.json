@@ -252,6 +252,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
    "label": "Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -371,7 +372,7 @@
  "icon": "fa fa-bug",
  "idx": 1,
  "links": [],
- "modified": "2024-11-29 23:34:24.572367",
+ "modified": "2025-03-17 20:13:25.528574",
  "modified_by": "Administrator",
  "module": "Support",
  "name": "Warranty Claim",

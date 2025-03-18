@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
@@ -389,6 +390,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
    "label": "Contact Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -416,7 +418,8 @@
  ],
  "icon": "fa fa-ticket",
  "idx": 7,
- "modified": "2022-12-08 21:25:33.388384",
+ "links": [],
+ "modified": "2025-03-17 20:14:33.970490",
  "modified_by": "Administrator",
  "module": "Support",
  "name": "Issue",
@@ -438,6 +441,7 @@
  "search_fields": "status,customer,subject,raised_by",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "customer",
  "title_field": "subject",
  "track_changes": 1,

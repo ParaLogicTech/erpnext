@@ -476,6 +476,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
    "label": "Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -1893,7 +1894,7 @@
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 22:26:34.624223",
+ "modified": "2025-03-17 20:12:44.036107",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",

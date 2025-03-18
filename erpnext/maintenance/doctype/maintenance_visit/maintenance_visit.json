@@ -101,6 +101,7 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -288,7 +289,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-11-29 23:33:59.640625",
+ "modified": "2025-03-17 20:13:26.886761",
  "modified_by": "Administrator",
  "module": "Maintenance",
  "name": "Maintenance Visit",

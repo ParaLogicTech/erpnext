@@ -34,11 +34,12 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Mobile No"
+   "label": "Mobile No",
+   "options": "Phone"
   }
  ],
  "links": [],
- "modified": "2024-11-29 14:37:28.704983",
+ "modified": "2025-03-17 20:13:30.852727",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Insurance Surveyor",

@@ -416,6 +416,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
    "label": "Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -1827,7 +1828,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-16 17:10:48.330428",
+ "modified": "2025-03-17 20:08:03.333125",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",

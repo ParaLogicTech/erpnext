@@ -530,6 +530,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
    "label": "Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -2292,6 +2293,7 @@
    "fieldname": "insurance_surveyor_mobile_no",
    "fieldtype": "Data",
    "label": "Insurance Surveyor Contact",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -2335,7 +2337,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-11 11:39:06.025913",
+ "modified": "2025-03-17 20:08:35.999095",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

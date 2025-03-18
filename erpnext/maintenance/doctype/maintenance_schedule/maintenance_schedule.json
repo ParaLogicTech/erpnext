@@ -125,6 +125,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
    "label": "Customer Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -177,7 +178,7 @@
  ],
  "idx": 1,
  "links": [],
- "modified": "2024-11-29 14:37:29.977919",
+ "modified": "2025-03-17 20:13:28.107654",
  "modified_by": "Administrator",
  "module": "Maintenance",
  "name": "Maintenance Schedule",

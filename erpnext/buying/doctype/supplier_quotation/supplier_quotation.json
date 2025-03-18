@@ -277,6 +277,7 @@
    "fieldname": "contact_mobile",
    "fieldtype": "Data",
    "label": "Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -1188,7 +1189,7 @@
  "idx": 29,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-12-02 14:40:27.006815",
+ "modified": "2025-03-17 20:13:23.871137",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Supplier Quotation",

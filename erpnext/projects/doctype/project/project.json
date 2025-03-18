@@ -1254,6 +1254,7 @@
    "fieldname": "insurance_surveyor_mobile_no",
    "fieldtype": "Data",
    "label": "Insurance Surveyor Contact",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -1503,6 +1504,7 @@
    "fieldname": "billing_contact_mobile",
    "fieldtype": "Data",
    "label": "Billing Mobile No",
+   "options": "Phone",
    "read_only": 1
   },
   {
@@ -1612,7 +1614,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-03-11 01:12:14.751157",
+ "modified": "2025-03-17 20:12:12.137041",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",
