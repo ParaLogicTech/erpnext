@@ -49,14 +49,14 @@ def get_data(filters):
 	data = frappe.db.sql("""
 		SELECT
 			c.name as customer, c.customer_type, c.customer_name, c.customer_group, c.territory, c.date_of_birth,
-			c.mobile_no, c.mobile_no_2, c.phone_no, nc.last_sent_dt, nc.last_scheduled_dt
+			c.mobile_no, c.mobile_no_2, c.phone_no, max(nc.last_sent_dt)
 		FROM `tabCustomer` c
 		LEFT JOIN `tabNotification Count` nc
 			ON nc.reference_doctype = 'Customer'
 			AND nc.reference_name = c.name
 			AND nc.notification_type = 'Customer Birthday'
-			AND nc.notification_medium = 'SMS'
 		WHERE {0}
+		GROUP BY c.name
 		ORDER BY MONTH(date_of_birth), DAY(date_of_birth)
 	""".format(or_conditions), filters, as_dict=1)
 

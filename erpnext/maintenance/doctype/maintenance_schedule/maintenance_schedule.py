@@ -8,7 +8,6 @@ from dateutil.relativedelta import relativedelta
 from frappe.utils import add_days, getdate, get_time, now_datetime, combine_datetime, add_to_date, cstr, cint
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from erpnext.accounts.party import get_contact_details
-from frappe.core.doctype.sms_settings.sms_settings import enqueue_template_sms
 
 
 class MaintenanceSchedule(TransactionBase):
@@ -75,14 +74,9 @@ class MaintenanceSchedule(TransactionBase):
 
 		ms_row = ms_row[0]
 		context = {'row': ms_row}
-		enqueue_template_sms(self, "Maintenance Reminder", context=context, child_doctype=msd_doctype, child_name=row_name)
+		self.run_method("notify_maintenance_reminder", context=context, child_doctype=msd_doctype, child_name=row_name)
 
 	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if not notification_type:
-			if throw:
-				frappe.throw(_("Notification Type is mandatory"))
-			return False
-
 		if notification_type in ("Maintenance Reminder"):
 			ms_row = [d for d in self.schedules if d.name == child_name]
 			if not ms_row:
@@ -106,15 +100,6 @@ class MaintenanceSchedule(TransactionBase):
 						.format(notification_type))
 				return False
 		return True
-
-	def get_sms_args(self, notification_type=None, child_doctype=None, child_name=None):
-		sms_args = frappe._dict({
-			'receiver_list' : [self.contact_mobile],
-			'party_doctype': 'Customer',
-			'party': self.customer,
-		})
-
-		return sms_args
 
 
 def auto_schedule_next_service_templates():
@@ -405,9 +390,9 @@ def get_maintenance_schedules_for_reminder_notification(reminder_date=None):
 			And nc.child_doctype = 'Maintenance Schedule Detail' AND nc.child_name = msd.name
 		WHERE ms.status = 'Active'
 			AND msd.scheduled_date = %(schedule_date)s
-			AND nc.last_scheduled_dt is NULL
 			AND %(reminder_date)s <= msd.scheduled_date
-			AND (nc.last_sent_dt is null or DATE(nc.last_sent_dt) != %(reminder_date)s)
+			AND nc.last_scheduled_dt is null
+			AND nc.last_sent_dt is null
 	""", {
 		'schedule_date': schedule_date,
 		'reminder_date': reminder_date,
@@ -417,10 +402,9 @@ def get_maintenance_schedules_for_reminder_notification(reminder_date=None):
 
 
 def automated_maintenance_reminder_enabled():
-	from frappe.core.doctype.sms_settings.sms_settings import is_automated_sms_enabled
-	from frappe.core.doctype.sms_template.sms_template import has_automated_sms_template
+	from frappe.email.doctype.notification.notification import has_notification
 
-	if is_automated_sms_enabled() and has_automated_sms_template("Maintenance Schedule", "Maintenance Reminder"):
+	if has_notification("Maintenance Schedule", "Maintenance Reminder"):
 		return True
 	else:
 		return False

@@ -17,8 +17,6 @@ class OpportunityERP(Opportunity):
 		self.force_applies_to_fields = get_force_applies_to_fields(self.doctype)
 
 	def onload(self):
-		super().onload()
-
 		if self.opportunity_from == "Customer":
 			self.set_onload('customer', self.party_name)
 		elif self.opportunity_from == "Lead":

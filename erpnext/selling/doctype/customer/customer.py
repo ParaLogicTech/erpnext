@@ -12,7 +12,6 @@ from frappe.contacts.address_and_contact import load_address_and_contact, delete
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from frappe.contacts.doctype.address.address import get_default_address
 from frappe.model.mapper import get_mapped_doc
-from frappe.core.doctype.sms_settings.sms_settings import enqueue_template_sms
 import json
 
 primary_address_fields = [
@@ -371,17 +370,7 @@ class Customer(TransactionBase):
 	def validate_customer_override_values(self):
 		get_customer_override_values(self.as_dict(), validate=True)
 
-	def get_sms_args(self, notification_type=None, child_doctype=None, child_name=None):
-		return frappe._dict({
-			'receiver_list': [self.mobile_no],
-		})
-
 	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if not notification_type:
-			if throw:
-				frappe.throw(_("Notification Type is mandatory"))
-			return False
-
 		if notification_type == "Customer Birthday":
 			if not self.date_of_birth:
 				if throw:
@@ -391,7 +380,7 @@ class Customer(TransactionBase):
 		return True
 
 	def send_customer_birthday_notification(self):
-		enqueue_template_sms(self, notification_type="Customer Birthday", allow_if_already_sent=1)
+		self.run_method("notify_customer_birthday")
 
 
 @frappe.whitelist()
@@ -736,10 +725,9 @@ def send_customer_birthday_notifications():
 
 
 def automated_customer_birthday_enabled():
-	from frappe.core.doctype.sms_settings.sms_settings import is_automated_sms_enabled
-	from frappe.core.doctype.sms_template.sms_template import has_automated_sms_template
+	from frappe.email.doctype.notification.notification import has_notification
 
-	if is_automated_sms_enabled() and has_automated_sms_template("Customer", "Customer Birthday"):
+	if has_notification("Customer", "Customer Birthday"):
 		return True
 	else:
 		return False
@@ -765,11 +753,11 @@ def get_customers_for_birthday_notifications(notification_date=None):
 			ON nc.reference_doctype = 'Customer'
 			AND nc.reference_name = c.name
 			AND nc.notification_type = 'Customer Birthday'
-			AND nc.notification_medium = 'SMS'
 		WHERE day(c.date_of_birth) = %(day)s
 			AND month(c.date_of_birth)= %(month)s
 			AND (nc.last_scheduled_dt is null OR DATE(nc.last_scheduled_dt) != %(date_today)s)
 			AND (nc.last_sent_dt is null OR DATE(nc.last_sent_dt) != %(date_today)s)
+		GROUP BY c.name
 	""", {
 		"day": notification_date.day,
 		"month": notification_date.month,
