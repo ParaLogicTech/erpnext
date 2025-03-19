@@ -170,7 +170,6 @@
   {
    "fieldname": "branch",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "Branch",
    "options": "Branch"
   }
@@ -180,7 +179,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-01-27 17:45:06.821710",
+ "modified": "2025-03-19 14:16:20.263116",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Reconciliation",

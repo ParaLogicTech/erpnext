@@ -242,6 +242,7 @@ class BankReconciliation(Document):
 		reversal_jvs = []
 		for clearance_date, rows in to_reverse_map.items():
 			je = self.make_clearance_journal_entry(clearance_date, rows, is_reversal=True)
+			je.flags.ignore_mandatory = True
 			je.save()
 			je.submit()
 			reversal_jvs.append(je.name)
@@ -249,6 +250,7 @@ class BankReconciliation(Document):
 		clearance_jvs = []
 		for clearance_date, rows in to_clear_map.items():
 			je = self.make_clearance_journal_entry(clearance_date, rows, is_reversal=False)
+			je.flags.ignore_mandatory = True
 			je.save()
 			je.submit()
 			clearance_jvs.append(je.name)
@@ -275,13 +277,12 @@ class BankReconciliation(Document):
 		else:
 			je.user_remark = _("Bank reconciliation clearance entry")
 
-		total_amount = 0
 		for d in rows:
 			amount = d.amount
 			if is_reversal:
 				amount = -amount
 
-			je_row = je.append("accounts", {
+			bank_row = je.append("accounts", {
 				"account": self.account,
 				"debit_in_account_currency": abs(amount) if amount > 0 else 0,
 				"credit_in_account_currency": abs(amount) if amount < 0 else 0,
@@ -289,16 +290,19 @@ class BankReconciliation(Document):
 				"cheque_date": d.cheque_date,
 				"clearance_date": clearance_date,
 			})
-			je_row.update(self.get_row_additional_values(d))
 
-			total_amount += amount
+			suspense_row = je.append("accounts", {
+				"account": self.suspense_account,
+				"debit_in_account_currency": abs(amount) if amount < 0 else 0,
+				"credit_in_account_currency": abs(amount) if amount > 0 else 0,
+				"cheque_no": d.cheque_number,
+				"cheque_date": d.cheque_date,
+				"clearance_date": clearance_date,
+			})
 
-		je.append("accounts", {
-			"account": self.suspense_account,
-			"debit_in_account_currency": abs(total_amount) if total_amount < 0 else 0,
-			"credit_in_account_currency": abs(total_amount) if total_amount > 0 else 0,
-			"clearance_date": clearance_date,
-		})
+			additional_values = self.get_row_additional_values(d)
+			bank_row.update(additional_values)
+			suspense_row.update(additional_values)
 
 		return je
 
