@@ -290,7 +290,7 @@ class StockController(AccountsController):
 			incoming_rate = incoming_rate[0][0] if incoming_rate else 0.0
 		elif item_code and warehouse:
 			incoming_rate = get_valuation_rate(item_code, warehouse,
-				self.doctype, self.name, batch_no, company=self.company, currency=self.currency)
+				self.doctype, self.name, batch_no, company=self.company)
 
 		return incoming_rate
 

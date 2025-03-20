@@ -8,7 +8,6 @@ from frappe.model.utils import get_fetch_values
 from erpnext.accounts.party import get_party_details
 from erpnext.stock.get_item_details import get_conversion_factor, get_default_supplier, get_default_warehouse
 from erpnext.buying.utils import validate_for_items
-from erpnext.stock.stock_ledger import get_valuation_rate
 from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
 from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
 from erpnext.controllers.transaction_controller import TransactionController
@@ -578,10 +577,6 @@ class BuyingController(TransactionController):
 				"serial_no": rm.serial_no
 			})
 
-			if not rm.rate:
-				rm.rate = get_valuation_rate(raw_material_data.rm_item_code, self.supplier_warehouse,
-					self.doctype, self.name, rm.batch_no, currency=self.company_currency, company=self.company)
-
 		rm.amount = qty * flt(rm.rate)
 		fg_item_doc.rm_supp_cost += rm.amount
 
@@ -668,9 +663,6 @@ class BuyingController(TransactionController):
 					"qty": -1 * rm.required_qty,
 					"serial_no": rm.serial_no
 				})
-				if not rm.rate:
-					rm.rate = get_valuation_rate(bom_item.item_code, self.supplier_warehouse,
-						self.doctype, self.name, rm.batch_no, currency=self.company_currency, company=self.company)
 			else:
 				rm.rate = bom_item.rate
 

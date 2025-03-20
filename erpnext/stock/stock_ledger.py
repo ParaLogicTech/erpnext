@@ -3,7 +3,7 @@
 import frappe
 import erpnext
 from frappe import _
-from frappe.utils import cint, flt, now, cstr
+from frappe.utils import cint, flt, now, cstr, getdate, get_time
 from erpnext.stock.utils import get_valuation_method
 import json
 import datetime
@@ -344,9 +344,13 @@ class update_entries_after(object):
 		if not self.valuation_rate and sle.voucher_detail_no:
 			allow_zero_rate = self.check_if_allow_zero_valuation_rate(sle.voucher_type, sle.voucher_detail_no)
 			if not allow_zero_rate:
-				self.valuation_rate = get_valuation_rate(sle.item_code, sle.warehouse,
-					sle.voucher_type, sle.voucher_no, sle.batch_no, self.allow_zero_rate,
-					currency=erpnext.get_company_currency(sle.company), company=sle.company, batch_wise_valuation=0)
+				self.valuation_rate = get_valuation_rate(
+					sle.item_code, sle.warehouse,
+					voucher_type=sle.voucher_type, voucher_no=sle.voucher_no,
+					batch_no=sle.batch_no, allow_zero_rate=self.allow_zero_rate,
+					company=sle.company, batch_wise_valuation=0,
+					posting_date=sle.posting_date, posting_time=sle.posting_time,
+				)
 
 		self.qty_after_transaction += flt(sle.actual_qty)
 		self.stock_value = flt(self.qty_after_transaction) * flt(self.valuation_rate)
@@ -414,9 +418,13 @@ class update_entries_after(object):
 			if not new_valuation_rate and sle.voucher_detail_no:
 				allow_zero_valuation_rate = self.check_if_allow_zero_valuation_rate(sle.voucher_type, sle.voucher_detail_no)
 				if not allow_zero_valuation_rate:
-					new_valuation_rate = get_valuation_rate(sle.item_code, sle.warehouse,
-						sle.voucher_type, sle.voucher_no, sle.batch_no, self.allow_zero_rate,
-						currency=erpnext.get_company_currency(sle.company), batch_wise_valuation=self.batch_wise_valuation)
+					new_valuation_rate = get_valuation_rate(
+						sle.item_code, sle.warehouse,
+						voucher_type=sle.voucher_type, voucher_no=sle.voucher_no,
+						batch_no=sle.batch_no, allow_zero_rate=self.allow_zero_rate,
+						company=sle.company, batch_wise_valuation=self.batch_wise_valuation,
+						posting_date=sle.posting_date, posting_time=sle.posting_time,
+					)
 
 		self.qty_after_transaction += flt(sle.actual_qty)
 		self.qty_after_transaction = flt(self.qty_after_transaction, 9)
@@ -460,9 +468,13 @@ class update_entries_after(object):
 					# Get valuation rate from last sle if exists or from valuation rate field in item master
 					allow_zero_valuation_rate = self.check_if_allow_zero_valuation_rate(sle.voucher_type, sle.voucher_detail_no)
 					if not allow_zero_valuation_rate:
-						_rate = get_valuation_rate(sle.item_code, sle.warehouse,
-							sle.voucher_type, sle.voucher_no, sle.batch_no, self.allow_zero_rate,
-							currency=erpnext.get_company_currency(sle.company), company=sle.company)
+						_rate = get_valuation_rate(
+							sle.item_code, sle.warehouse,
+							voucher_type=sle.voucher_type, voucher_no=sle.voucher_no,
+							batch_no=sle.batch_no, allow_zero_rate=self.allow_zero_rate,
+							posting_date=sle.posting_date, posting_time=sle.posting_time,
+							company=sle.company,
+						)
 					else:
 						_rate = 0
 
@@ -933,14 +945,24 @@ def get_valuation_rate(
 	voucher_no,
 	batch_no=None,
 	allow_zero_rate=False,
-	currency=None,
 	company=None,
 	raise_error_if_no_rate=True,
 	batch_wise_valuation=None,
+	posting_date=None,
+	posting_time=None,
 ):
 	# Get valuation rate from last sle for the same item and warehouse
 	if not company:
 		company = erpnext.get_default_company()
+
+	posting_date_condition = ""
+	if posting_date:
+		posting_date = getdate(posting_date)
+		if posting_time:
+			posting_time = get_time(posting_time)
+			posting_date_condition = f"and (posting_date, posting_time) <= ('{posting_date}', '{posting_time}')"
+		else:
+			posting_date_condition = f"and posting_date <= '{posting_date}'"
 
 	last_valuation_rate = None
 
@@ -948,31 +970,44 @@ def get_valuation_rate(
 		valuation_method, batch_wise_valuation = get_valuation_method(item_code)
 
 	if batch_no and batch_wise_valuation:
-		last_valuation_rate = get_batch_valuation_rate(item_code, warehouse, voucher_type, voucher_no, batch_no)
+		last_valuation_rate = get_batch_valuation_rate(item_code, warehouse, voucher_type, voucher_no, batch_no,
+			posting_date_condition=posting_date_condition)
 
 	if not last_valuation_rate:
-		last_valuation_rate = frappe.db.sql("""select valuation_rate
+		last_valuation_rate = frappe.db.sql(f"""
+			select valuation_rate
 			from `tabStock Ledger Entry`
 			where item_code = %s
-			and warehouse = %s
-			and valuation_rate {0} 0
-			and is_processed = 1
-			AND NOT (voucher_no = %s AND voucher_type = %s)
-			order by posting_date desc, posting_time desc, creation desc limit 1
-		""".format('>' if batch_no and batch_wise_valuation else '>='), (item_code, warehouse, voucher_no, voucher_type))
+				and warehouse = %s
+				and valuation_rate {'>' if batch_no and batch_wise_valuation else '>='} 0
+				and is_processed = 1
+				and not (voucher_no = %s and voucher_type = %s)
+				{posting_date_condition}
+			order by posting_date desc, posting_time desc, creation desc
+			limit 1
+		""", (item_code, warehouse, voucher_no, voucher_type))
 
 	if not last_valuation_rate:
 		# Get valuation rate from last sle for the item against any warehouse
-		last_valuation_rate = frappe.db.sql("""
-			select valuation_rate
-			from `tabStock Ledger Entry`
-			where
-				item_code = %s
-				AND valuation_rate > 0
-				AND is_processed = 1
-				AND NOT(voucher_no = %s AND voucher_type = %s)
-			order by posting_date desc, posting_time desc, creation desc limit 1
-		""", (item_code, voucher_no, voucher_type))
+		if posting_date_condition:
+			last_valuation_rate = frappe.db.sql(f"""
+				select valuation_rate
+				from `tabStock Ledger Entry`
+				where
+					item_code = %s
+					AND valuation_rate > 0
+					AND is_processed = 1
+					AND NOT(voucher_no = %s AND voucher_type = %s)
+					{posting_date_condition}
+				order by posting_date desc, posting_time desc, creation desc
+				limit 1
+			""", (item_code, voucher_no, voucher_type))
+		else:
+			last_valuation_rate = frappe.db.sql(f"""
+				select sum(stock_value) / sum(actual_qty) as valuation_rate
+				from `tabBin`
+				where item_code = %s and stock_value > 0 and actual_qty > 0
+			""", item_code)
 
 	if last_valuation_rate:
 		return flt(last_valuation_rate[0][0])  # as there is previous records, it might come with zero rate
@@ -980,16 +1015,6 @@ def get_valuation_rate(
 	# If negative stock allowed, and item delivered without any incoming entry,
 	# system does not found any SLE, then take valuation rate from Item
 	valuation_rate = frappe.db.get_value("Item", item_code, "valuation_rate")
-
-	# if not valuation_rate:
-	# 	# try Item Standard rate
-	# 	valuation_rate = frappe.db.get_value("Item", item_code, "standard_rate")
-	#
-	# 	if not valuation_rate:
-	# 		# try in price list
-	# 		valuation_rate = frappe.db.get_value('Item Price',
-	# 			dict(item_code=item_code, buying=1, currency=currency),
-	# 			'price_list_rate')
 
 	if (
 		not allow_zero_rate
@@ -1013,8 +1038,11 @@ def get_valuation_rate(
 	return valuation_rate
 
 
-def get_batch_valuation_rate(item_code, warehouse, voucher_type, voucher_no, batch_no):
-	last_batch_valuation_rate = frappe.db.sql("""
+def get_batch_valuation_rate(item_code, warehouse, voucher_type, voucher_no, batch_no, posting_date_condition=None):
+	if not posting_date_condition:
+		posting_date_condition = ""
+
+	last_batch_valuation_rate = frappe.db.sql(f"""
 		select batch_valuation_rate
 		from `tabStock Ledger Entry`
 		where
@@ -1024,11 +1052,13 @@ def get_batch_valuation_rate(item_code, warehouse, voucher_type, voucher_no, bat
 			AND batch_valuation_rate >= 0
 			AND is_processed = 1
 			AND NOT (voucher_no = %s AND voucher_type = %s)
-		order by posting_date desc, posting_time desc, creation desc limit 1
+			{posting_date_condition}
+		order by posting_date desc, posting_time desc, creation desc
+		limit 1
 	""", (item_code, warehouse, batch_no, voucher_no, voucher_type))
 
 	if not last_batch_valuation_rate:
-		last_batch_valuation_rate = frappe.db.sql("""
+		last_batch_valuation_rate = frappe.db.sql(f"""
 			select batch_valuation_rate
 			from `tabStock Ledger Entry`
 			where
@@ -1037,7 +1067,9 @@ def get_batch_valuation_rate(item_code, warehouse, voucher_type, voucher_no, bat
 				AND batch_valuation_rate > 0
 				AND is_processed = 1
 				AND NOT (voucher_no = %s AND voucher_type = %s)
-			order by posting_date desc, posting_time desc, creation desc limit 1
+				{posting_date_condition}
+			order by posting_date desc, posting_time desc, creation desc
+			limit 1
 		""", (item_code, batch_no, voucher_no, voucher_type))
 
 	return last_batch_valuation_rate

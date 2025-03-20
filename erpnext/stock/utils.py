@@ -243,10 +243,18 @@ def get_incoming_rate(args, raise_error_if_no_rate=True):
 
 	if not in_rate:
 		voucher_no = args.get('voucher_no') or args.get('name')
-		in_rate = get_valuation_rate(args.get('item_code'), args.get('warehouse'),
-			args.get('voucher_type'), voucher_no, args.get('batch_no'), args.get('allow_zero_valuation'),
-			currency=erpnext.get_company_currency(args.get('company')), company=args.get('company'),
-			raise_error_if_no_rate=raise_error_if_no_rate)
+		in_rate = get_valuation_rate(
+			args.get('item_code'),
+			args.get('warehouse'),
+			voucher_type=args.get('voucher_type'),
+			voucher_no=voucher_no,
+			batch_no=args.get('batch_no'),
+			allow_zero_rate=args.get('allow_zero_valuation'),
+			company=args.get('company'),
+			raise_error_if_no_rate=raise_error_if_no_rate,
+			posting_date=args.get('posting_date'),
+			posting_time=args.get('posting_time'),
+		)
 
 	return in_rate
 

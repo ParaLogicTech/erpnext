@@ -590,7 +590,7 @@ class StockEntry(TransactionController):
 			elif d.t_warehouse and not d.basic_rate and not self.is_finished_good_item(d):
 				d.basic_rate = get_valuation_rate(d.item_code, d.t_warehouse,
 					self.doctype, d.name, d.batch_no, d.allow_zero_valuation_rate,
-					currency=erpnext.get_company_currency(self.company), company=self.company,
+					company=self.company,
 					raise_error_if_no_rate=False)
 
 	def set_actual_qty(self):
