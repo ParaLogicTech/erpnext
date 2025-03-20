@@ -187,6 +187,7 @@ class SellingController(TransactionController):
 
 	def validate_discount_rule(self):
 		from erpnext.accounts.doctype.discount_rule.discount_rule import get_discount_rule_values
+		from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
 		_customer_changed = None
 
@@ -213,6 +214,26 @@ class SellingController(TransactionController):
 			if flt(d.discount_percentage) <= max_discount:
 				continue
 
+			percent_precision = d.precision("discount_percentage")
+			rate_precision = d.precision("discount_amount")
+
+			# skip if pricing rule discount applied
+			if not self.get("ignore_pricing_rule"):
+				discount_from_pricing_rule = False
+				for pricing_rule in get_applied_pricing_rules(d.get('pricing_rules')):
+					pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+					if pricing_rule_doc.rate_or_discount == "Discount Percentage":
+						if flt(d.discount_percentage, percent_precision) == flt(pricing_rule_doc.discount_percentage, percent_precision):
+							discount_from_pricing_rule = True
+							break
+					elif pricing_rule_doc.rate_or_discount == "Discount Amount":
+						if flt(d.discount_amount, rate_precision) == flt(pricing_rule_doc.discount_amount, rate_precision):
+							discount_from_pricing_rule = True
+							break
+
+				if discount_from_pricing_rule:
+					continue
+
 			if d.is_new():
 				if d.get("delivery_note_item"):
 					previous_discount = flt(frappe.db.get_value("Delivery Note Item", {
@@ -232,7 +253,7 @@ class SellingController(TransactionController):
 				previous_discount = flt(d.db_get("discount_percentage"))
 
 			check_rule = False
-			if flt(d.discount_percentage, d.precision("discount_percentage")) != flt(previous_discount, d.precision("discount_percentage")):
+			if flt(d.discount_percentage, percent_precision) != flt(previous_discount, percent_precision):
 				check_rule = True
 
 			if not check_rule:
@@ -296,7 +317,7 @@ class SellingController(TransactionController):
 				raise_error_if_no_rate=False))
 			if valuation_rate > 0:
 				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
-				if flt(d.base_rate) < flt(valuation_rate_in_sales_uom):
+				if flt(d.base_rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
 					throw_message(d, valuation_rate_in_sales_uom)
 
 	def get_item_list(self):

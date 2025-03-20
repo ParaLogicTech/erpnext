@@ -285,7 +285,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 
 		item_details.has_pricing_rule = 1
 
-		item_details.pricing_rules = frappe.as_json([d.pricing_rule for d in rules])
+		item_details.pricing_rules = frappe.as_json([d.pricing_rule for d in rules], indent=0)
 
 		if not doc: return item_details
 

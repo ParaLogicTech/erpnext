@@ -510,7 +510,7 @@ def get_applied_pricing_rules(pricing_rules):
 		if pricing_rules.startswith('['):
 			return json.loads(pricing_rules)
 		else:
-			return pricing_rules.split(',')
+			return [d for d in pricing_rules.split(',') if d]
 
 	return []
 
