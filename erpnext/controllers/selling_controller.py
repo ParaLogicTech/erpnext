@@ -288,14 +288,14 @@ class SellingController(TransactionController):
 
 			last_purchase_rate = flt(frappe.db.get_value("Item", d.item_code, "last_purchase_rate", cache=1))
 			if last_purchase_rate > 0:
-				last_purchase_rate_in_sales_uom = last_purchase_rate / (d.conversion_factor or 1)
+				last_purchase_rate_in_sales_uom = last_purchase_rate * (d.conversion_factor or 1)
 				if flt(d.base_rate) < flt(last_purchase_rate_in_sales_uom):
 					throw_message(d, last_purchase_rate_in_sales_uom)
 
 			valuation_rate = flt(get_valuation_rate(d.item_code, d.get("warehouse"), self.doctype, self.name,
 				raise_error_if_no_rate=False))
 			if valuation_rate > 0:
-				valuation_rate_in_sales_uom = valuation_rate / (d.conversion_factor or 1)
+				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
 				if flt(d.base_rate) < flt(valuation_rate_in_sales_uom):
 					throw_message(d, valuation_rate_in_sales_uom)
 
