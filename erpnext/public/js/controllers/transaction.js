@@ -1034,7 +1034,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				is_shipping_address: 1,
 			}, (r) => {
 				if (r.message) {
-					debugger;
 					this.frm.set_value("shipping_address", r.message);
 				}
 			});
@@ -1838,7 +1837,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 			if (d.pricing_rule_for == "Discount Amount") {
 				frappe.model.set_value(d.doctype, d.child_docname || d.name, "discount_amount", flt(d.discount_amount));
-			} else if (d.pricing_rule_for) {
+			} else {
 				frappe.model.set_value(d.doctype, d.child_docname || d.name, "discount_percentage", flt(d.discount_percentage));
 			}
 

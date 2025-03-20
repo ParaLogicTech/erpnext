@@ -347,7 +347,7 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 		if pricing_rule.margin_type == "Amount" and args.item_code and args.uom:
 			item_details.margin_rate_or_amount = convert_item_uom_for(item_details.margin_rate_or_amount, args.item_code,
 				args.stock_uom, args.uom, conversion_factor=args.conversion_factor, is_rate=True)
-	else:
+	elif pricing_rule.margin_type:
 		item_details.margin_rate_or_amount = 0.0
 
 	if pricing_rule.rate_or_discount == 'Rate':
@@ -361,8 +361,14 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 			"discount_percentage": 0.0
 		})
 
-	elif pricing_rule.rate_or_discount == "Last Purchase Rate":
-		pricing_rule_rate = flt(frappe.get_cached_value("Item", args.item_code, "last_purchase_rate"))
+	elif pricing_rule.rate_or_discount in ("Valuation Rate", "Last Purchase Rate"):
+		pricing_rule_rate = 0
+
+		if pricing_rule.rate_or_discount == "Last Purchase Rate":
+			from erpnext.stock.get_item_details import get_last_purchase_rate
+			pricing_rule_rate = get_last_purchase_rate(args.item_code, warehouse=args.warehouse,
+				fallback_global_last_purchase_rate=False)
+
 		if not pricing_rule_rate:
 			from erpnext.stock.stock_ledger import get_valuation_rate
 			pricing_rule_rate = flt(get_valuation_rate(args.item_code, args.warehouse,
@@ -424,7 +430,7 @@ def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None):
 			if (
 				pricing_rule.margin_type in ['Percentage', 'Amount']
 				and pricing_rule.margin_rate_or_amount
-				and pricing_rule.rate_or_discount != "Last Purchase Rate"
+				and pricing_rule.rate_or_discount not in ("Valuation Rate", "Last Purchase Rate")
 			):
 				item_details.margin_rate_or_amount = 0.0
 
