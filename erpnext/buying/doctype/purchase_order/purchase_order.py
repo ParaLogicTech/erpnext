@@ -579,6 +579,7 @@ class PurchaseOrder(BuyingController):
 
 			last_purchase_details = get_price_from_last_purchase(
 				d.item_code,
+				warehouse=d.warehouse,
 				uom=d.uom,
 				conversion_factor=d.get("conversion_factor"),
 				exchange_rate=self.get("conversion_rate"),
@@ -594,7 +595,7 @@ class PurchaseOrder(BuyingController):
 				if item_last_purchase_rate:
 					conversion_factor = flt(d.get("conversion_factor")) or 1
 					exchange_rate = flt(self.get("conversion_rate")) or 1
-					d.price_list_rate = d.rate = d.last_purchase_rate = item_last_purchase_rate / conversion_factor / exchange_rate
+					d.price_list_rate = d.rate = d.last_purchase_rate = item_last_purchase_rate * conversion_factor / exchange_rate
 
 	# Check for Closed status
 	def check_on_hold_or_closed_status(self):

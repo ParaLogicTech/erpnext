@@ -226,9 +226,11 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		args['material_request_type'] = frappe.db.get_value('Material Request',
 			args.get('name'), 'material_request_type', cache=True)
 
-	# Set the UOM to the Default Sales UOM or Default Purchase UOM if configured in the Item Master
 	determine_selling_or_buying(args)
+	child_doctype = args.doctype + ' Item'
+	child_meta = frappe.get_meta(child_doctype)
 
+	# Set the UOM to the Default Sales UOM or Default Purchase UOM if configured in the Item Master
 	if args.get('doctype') == 'Material Request':
 		if args.get('material_request_type') == 'Purchase':
 			default_uom = item.purchase_uom or item.stock_uom
@@ -284,7 +286,6 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"delivered_by_supplier": item.delivered_by_supplier if args.get("doctype") in ["Sales Order", "Sales Invoice"] else 0,
 		"net_weight_per_unit": get_weight_per_unit(item.name, weight_uom=args.weight_uom or item.weight_uom),
 		"weight_uom": args.weight_uom or item.weight_uom,
-		"last_purchase_rate": item.last_purchase_rate if args.get("doctype") == "Purchase Order" else 0,
 		"transaction_date": args.get("transaction_date"),
 		"claim_customer": get_claim_customer(item, args),
 	})
@@ -323,13 +324,15 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 	out.commission_rate = get_commission_rate(out.sales_commission_category)
 
 	# calculate last purchase rate
-	if args.get("doctype") == "Purchase Order":
+	if child_meta.has_field("last_purchase_rate"):
 		out.last_purchase_rate = get_last_purchase_rate(
 			item.name,
+			warehouse=out.warehouse,
 			uom=out.uom,
 			conversion_factor=out.conversion_factor,
 			exchange_rate=args.conversion_rate,
 			exclude=args.name,
+			fallback_global_last_purchase_rate=True,
 		)
 
 	# if default specified in item is for another company, fetch from company
@@ -355,9 +358,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		out["manufacturer"] = item.default_item_manufacturer
 		out["manufacturer_part_no"] = item.default_manufacturer_part_no
 
-	child_doctype = args.doctype + ' Item'
-	meta = frappe.get_meta(child_doctype)
-	if meta.get_field("barcode"):
+	if child_meta.get_field("barcode"):
 		update_barcode_value(out)
 
 	return out
@@ -831,13 +832,22 @@ def get_price_list_data(args, item_doc, out):
 			out.retail_rate = flt(retail_rate)
 
 		if not out.price_list_rate and args.selling_or_buying == "buying":
-			out.update(get_price_from_last_purchase(
+			last_purchase_details = get_price_from_last_purchase(
 				item_doc.name,
+				warehouse=args.warehouse,
 				uom=args.uom,
 				conversion_factor=args.conversion_factor,
 				exchange_rate=args.conversion_rate,
 				exclude=args.name,
-			))
+			)
+			if last_purchase_details:
+				out.update(last_purchase_details)
+			else:
+				item_last_purchase_rate = flt(frappe.get_cached_value("Item", item_doc.name, "last_purchase_rate"))
+				if item_last_purchase_rate:
+					conversion_factor = flt(args.conversion_factor) or 1
+					exchange_rate = flt(args.conversion_rate) or 1
+					out.price_list_rate = item_last_purchase_rate * conversion_factor / exchange_rate
 
 
 def insert_item_price(args):
@@ -1006,34 +1016,50 @@ def get_item_price(args, item_code, ignore_party=False):
 	return prices[0] if prices else None
 
 
-def get_last_purchase_rate(item_code, uom=None, conversion_factor=None, exchange_rate=None, exclude=None):
+def get_last_purchase_rate(
+	item_code,
+	warehouse=None,
+	uom=None,
+	conversion_factor=None,
+	exchange_rate=None,
+	exclude=None,
+	fallback_global_last_purchase_rate=True,
+):
 	from erpnext.controllers.buying_controller import get_last_purchase_details
 
 	exchange_rate = flt(exchange_rate) or 1.0
-	conversion_factor = convert_item_uom_for(1.0, item_code, to_uom=uom, conversion_factor=conversion_factor) or 1.0
+	conversion_factor = convert_item_uom_for(1.0, item_code, to_uom=uom, conversion_factor=conversion_factor, is_rate=True) or 1.0
 
-	details = get_last_purchase_details(item_code, exclude=exclude)
+	details = get_last_purchase_details(item_code, warehouse=warehouse, exclude=exclude)
 
+	last_purchase_rate = 0
 	if details:
-		last_purchase_rate = flt(details.base_net_rate)
-	else:
+		last_purchase_rate = flt(details.base_net_rate) if details else 0
+	elif fallback_global_last_purchase_rate:
 		last_purchase_rate = flt(frappe.get_cached_value("Item", item_code, "last_purchase_rate"))
 
-	return last_purchase_rate / conversion_factor / exchange_rate
+	return last_purchase_rate * conversion_factor / exchange_rate
 
 
-def get_price_from_last_purchase(item_code, uom=None, conversion_factor=None, exchange_rate=None, exclude=None):
+def get_price_from_last_purchase(
+	item_code,
+	warehouse=None,
+	uom=None,
+	conversion_factor=None,
+	exchange_rate=None,
+	exclude=None,
+):
 	from erpnext.controllers.buying_controller import get_last_purchase_details
 
 	exchange_rate = flt(exchange_rate) or 1.0
-	conversion_factor = convert_item_uom_for(1.0, item_code, to_uom=uom, conversion_factor=conversion_factor) or 1.0
+	conversion_factor = convert_item_uom_for(1.0, item_code, to_uom=uom, conversion_factor=conversion_factor, is_rate=True) or 1.0
 
-	details = get_last_purchase_details(item_code, exclude=exclude)
+	details = get_last_purchase_details(item_code, warehouse=warehouse, exclude=exclude)
 	if details:
 		details.update({
-			"price_list_rate": flt(details.base_price_list_rate) / conversion_factor / exchange_rate,
-			"rate": flt(details.base_rate) / conversion_factor / exchange_rate,
-			"last_purchase_rate": flt(details.base_net_rate) / conversion_factor / exchange_rate
+			"price_list_rate": flt(details.base_price_list_rate) * conversion_factor / exchange_rate,
+			"rate": flt(details.base_rate) * conversion_factor / exchange_rate,
+			"last_purchase_rate": flt(details.base_net_rate) * conversion_factor / exchange_rate
 		})
 
 	return details
