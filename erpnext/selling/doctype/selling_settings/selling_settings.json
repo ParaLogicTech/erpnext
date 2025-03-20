@@ -113,7 +113,7 @@
    "default": "0",
    "fieldname": "validate_selling_price",
    "fieldtype": "Check",
-   "label": "Validate Selling Price for Item against Purchase Rate or Valuation Rate"
+   "label": "Validate Selling Price for Item against Valuation Rate"
   },
   {
    "default": "0",
@@ -150,7 +150,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-02-01 00:25:46.871369",
+ "modified": "2025-03-20 13:48:17.586330",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling Settings",
