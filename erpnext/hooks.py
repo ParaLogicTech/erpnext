@@ -58,6 +58,7 @@ override_doctype_dashboards = {
 	"Lead": "erpnext.overrides.lead.lead_hooks.override_lead_dashboard",
 	"Opportunity": "erpnext.overrides.opportunity.opportunity_hooks.override_opportunity_dashboard",
 	"Appointment": "erpnext.overrides.appointment.appointment_hooks.override_appointment_dashboard",
+	"Campaign": "erpnext.overrides.campaign.campaign_hooks.override_campaign_dashboard",
 }
 
 fixtures = [
@@ -78,6 +79,7 @@ fixtures = [
 				"Territory-targets_section",
 				"Territory-targets",
 
+				"Campaign-voucher_code_required",
 				"Campaign-claim_customer",
 				"Campaign-claim_customer_name",
 

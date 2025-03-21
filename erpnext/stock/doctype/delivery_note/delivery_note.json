@@ -34,7 +34,6 @@
   "more_info_cb_1",
   "project",
   "more_info_cb_2",
-  "campaign",
   "inter_company_reference",
   "more_info_cb_3",
   "cost_center",
@@ -168,6 +167,11 @@
   "terms_tab",
   "tc_name",
   "terms",
+  "campaign_section",
+  "campaign",
+  "campaign_voucher_code_required",
+  "column_break_wani",
+  "campaign_voucher_code",
   "transporter_info_tab",
   "transporter",
   "transporter_name",
@@ -1003,8 +1007,7 @@
    "oldfieldname": "campaign",
    "oldfieldtype": "Link",
    "options": "Campaign",
-   "print_hide": 1,
-   "read_only": 1
+   "print_hide": 1
   },
   {
    "fieldname": "source",
@@ -1745,13 +1748,38 @@
    "fieldtype": "Link",
    "label": "Cost Center",
    "options": "Cost Center"
+  },
+  {
+   "fieldname": "campaign_section",
+   "fieldtype": "Section Break",
+   "label": "Campaign"
+  },
+  {
+   "default": "0",
+   "fetch_from": "campaign.voucher_code_required",
+   "fieldname": "campaign_voucher_code_required",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Campaign Voucher Code Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_wani",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "campaign_voucher_code_required",
+   "fieldname": "campaign_voucher_code",
+   "fieldtype": "Data",
+   "label": "Campaign Voucher Code",
+   "mandatory_depends_on": "campaign_voucher_code_required"
   }
  ],
  "icon": "fa fa-truck",
  "idx": 146,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-17 20:12:39.764693",
+ "modified": "2025-03-21 13:05:59.082968",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Delivery Note",

@@ -85,6 +85,8 @@
   "cb_work_details_1",
   "previous_project",
   "campaign",
+  "campaign_voucher_code",
+  "campaign_voucher_code_required",
   "cb_work_details_2",
   "is_warranty_claim",
   "is_internal",
@@ -1608,13 +1610,29 @@
    "fieldtype": "Float",
    "label": "Sold Time (in Hours)",
    "read_only": 1
+  },
+  {
+   "depends_on": "campaign_voucher_code_required",
+   "fieldname": "campaign_voucher_code",
+   "fieldtype": "Data",
+   "label": "Campaign Voucher Code",
+   "mandatory_depends_on": "campaign_voucher_code_required"
+  },
+  {
+   "default": "0",
+   "fetch_from": "campaign.voucher_code_required",
+   "fieldname": "campaign_voucher_code_required",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Campaign Voucher Code Required",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-03-17 20:12:12.137041",
+ "modified": "2025-03-21 12:00:45.794849",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

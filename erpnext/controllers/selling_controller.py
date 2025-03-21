@@ -9,6 +9,7 @@ from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
 from erpnext.stock.get_item_details import get_target_warehouse_validation, item_has_product_bundle
 from erpnext.stock.doctype.batch.batch import get_batch_qty, auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
+from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from erpnext.controllers.transaction_controller import TransactionController
 
 
@@ -722,6 +723,9 @@ class SellingController(TransactionController):
 			doc.set_gross_margin(update=True)
 			doc.set_status(update=True, from_doctype=self.doctype, action=self.get("_action"))
 			doc.notify_update()
+
+	def validate_campaign(self):
+		validate_campaign_voucher_code(self)
 
 	@frappe.whitelist()
 	def set_rate_as_cost(self):

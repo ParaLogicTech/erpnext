@@ -56,6 +56,7 @@ class SalesOrder(SellingController):
 		self.validate_warehouse()
 		self.validate_drop_ship()
 		self.validate_serial_no_based_delivery()
+		self.validate_campaign()
 		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
 
 		if self.coupon_code:

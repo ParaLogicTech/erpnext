@@ -22,6 +22,7 @@ from erpnext.projects.doctype.project_status.project_status import (
 	validate_project_status_for_transaction,
 	apply_project_status_transition,
 )
+from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from frappe.model.meta import get_field_precision
 import json
 
@@ -91,6 +92,7 @@ class Project(StatusUpdaterERP):
 		self.validate_readings()
 		self.validate_depreciation()
 		self.validate_warranty()
+		self.validate_campaign()
 
 		self.set_title()
 
@@ -1224,6 +1226,10 @@ class Project(StatusUpdaterERP):
 		else:
 			self.warranty_claim_denied_reason = None
 
+	def validate_campaign(self):
+		if self.status not in ('Completed', 'Closed', 'Cancelled'):
+			validate_campaign_voucher_code(self)
+
 	def set_items_and_totals_html_onload(self, sales_data, consumables_data):
 		currency = erpnext.get_company_currency(self.company)
 
@@ -2013,7 +2019,7 @@ def get_project_details(project, doctype, purpose=None):
 		'insurance_company', 'insurance_loss_no', 'insurance_policy_no',
 		'insurance_surveyor', 'insurance_surveyor_company',
 		'has_stin', 'default_depreciation_percentage', 'default_underinsurance_percentage',
-		'campaign', 'cost_center', 'project_date',
+		'campaign', 'campaign_voucher_code', 'cost_center', 'project_date',
 	]
 	sales_only_fields = [
 		'customer', 'bill_to', 'has_stin',

@@ -36,6 +36,7 @@ class DeliveryNote(SellingController):
 		self.check_sales_order_on_hold_or_close()
 		self.validate_project_customer()
 		self.validate_warehouse()
+		self.validate_campaign()
 		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_uom_is_integer("uom", "qty")
 

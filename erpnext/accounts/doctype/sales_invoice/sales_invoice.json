@@ -44,7 +44,6 @@
   "source",
   "more_info_cb_2",
   "inter_company_reference",
-  "campaign",
   "more_info_cb_3",
   "cost_center",
   "tax_id",
@@ -240,6 +239,11 @@
   "sec_terms_and_conditions",
   "tc_name",
   "terms",
+  "campaign_section",
+  "campaign",
+  "campaign_voucher_code_required",
+  "column_break_ioc8",
+  "campaign_voucher_code",
   "fbr_pos_details_tab",
   "sec_fbr_pos_transaction_details",
   "settings_tab",
@@ -1357,7 +1361,6 @@
   {
    "fieldname": "campaign",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "Campaign",
    "oldfieldname": "campaign",
    "oldfieldtype": "Link",
@@ -2331,13 +2334,38 @@
    "no_copy": 1,
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "campaign_section",
+   "fieldtype": "Section Break",
+   "label": "Campaign"
+  },
+  {
+   "default": "0",
+   "fetch_from": "campaign.voucher_code_required",
+   "fieldname": "campaign_voucher_code_required",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Campaign Voucher Code Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ioc8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "campaign_voucher_code_required",
+   "fieldname": "campaign_voucher_code",
+   "fieldtype": "Data",
+   "label": "Campaign Voucher Code",
+   "mandatory_depends_on": "campaign_voucher_code_required"
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-17 20:08:35.999095",
+ "modified": "2025-03-21 13:06:09.637240",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

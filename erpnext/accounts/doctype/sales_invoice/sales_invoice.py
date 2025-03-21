@@ -19,7 +19,6 @@ from erpnext.projects.doctype.timesheet.timesheet import get_projectwise_timeshe
 from erpnext.assets.doctype.asset.depreciation import get_disposal_account_and_cost_center,\
 	get_gl_entries_on_asset_disposal
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos, get_delivery_note_serial_no
-from erpnext.setup.doctype.company.company import update_company_current_month_sales
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty_program_details_with_points,\
 	validate_loyalty_points
@@ -101,6 +100,7 @@ class SalesInvoice(SellingController):
 		self.update_packing_list()
 		self.set_billing_hours_and_amount()
 		self.update_timesheet_billing_for_project()
+		self.validate_campaign()
 
 		self.validate_total_advance_amount()
 		self.validate_pos_is_open(throw=True)

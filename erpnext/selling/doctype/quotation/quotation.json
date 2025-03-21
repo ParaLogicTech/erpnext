@@ -46,7 +46,6 @@
   "opportunity",
   "source",
   "more_info_cb_3",
-  "campaign",
   "tax_id",
   "tax_cnic",
   "tax_strn",
@@ -187,6 +186,11 @@
   "sec_terms_and_conditions",
   "tc_name",
   "terms",
+  "campaign_section",
+  "campaign",
+  "campaign_voucher_code_required",
+  "column_break_iqjj",
+  "campaign_voucher_code",
   "print_settings_tab",
   "letter_head",
   "group_same_items",
@@ -895,8 +899,7 @@
    "oldfieldname": "campaign",
    "oldfieldtype": "Link",
    "options": "Campaign",
-   "print_hide": 1,
-   "read_only": 1
+   "print_hide": 1
   },
   {
    "fieldname": "source",
@@ -1582,13 +1585,38 @@
    "label": "Set Delivery Warehouse",
    "options": "Warehouse",
    "print_hide": 1
+  },
+  {
+   "fieldname": "campaign_section",
+   "fieldtype": "Section Break",
+   "label": "Campaign"
+  },
+  {
+   "default": "0",
+   "fetch_from": "campaign.voucher_code_required",
+   "fieldname": "campaign_voucher_code_required",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Campaign Voucher Code Required",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_iqjj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "campaign_voucher_code_required",
+   "fieldname": "campaign_voucher_code",
+   "fieldtype": "Data",
+   "label": "Campaign Voucher Code",
+   "mandatory_depends_on": "campaign_voucher_code_required"
   }
  ],
  "icon": "fa fa-shopping-cart",
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-17 20:08:27.309500",
+ "modified": "2025-03-21 12:58:32.673772",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",
