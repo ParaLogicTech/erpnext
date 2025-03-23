@@ -40,6 +40,7 @@
   "supplier_group",
   "model_information_section",
   "applies_to_item",
+  "applies_to_item_name",
   "column_break_qi8g",
   "applies_to_item_group",
   "column_break_bltd",
@@ -631,12 +632,20 @@
    "fieldname": "do_not_force_pricing_rule",
    "fieldtype": "Check",
    "label": "Do Not Force Rule"
+  },
+  {
+   "depends_on": "eval:doc.applies_to_item && doc.applies_to_item_name != doc.applies_to_item",
+   "fetch_from": "applies_to_item.item_name",
+   "fieldname": "applies_to_item_name",
+   "fieldtype": "Data",
+   "label": "Applies to Item Name",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-gift",
  "idx": 1,
  "links": [],
- "modified": "2025-03-20 13:56:50.406766",
+ "modified": "2025-03-21 14:35:15.035881",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Pricing Rule",

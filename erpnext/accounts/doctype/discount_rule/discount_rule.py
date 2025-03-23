@@ -10,8 +10,9 @@ user_filter_fields = ['user', 'role']
 transaction_filter_fields = ['company']
 customer_filter_fields = ['customer', 'customer_group', 'territory']
 item_filter_fields = ['item_code', 'item_source', 'brand', 'item_group']
+applies_to_filter_fileds = ['applies_to_item', 'applies_to_item_brand', 'applies_to_item_group']
 
-filter_fields = user_filter_fields + transaction_filter_fields + customer_filter_fields + item_filter_fields
+filter_fields = user_filter_fields + transaction_filter_fields + customer_filter_fields + item_filter_fields + applies_to_filter_fileds
 
 
 class DiscountRule(Document):
@@ -55,11 +56,11 @@ class DiscountRule(Document):
 			# check if required filters matches
 			required_filters_matched = True
 			for field, required_value in required_filters.items():
-				if field == "item_code":
+				if field in ("item_code", "applies_to_item"):
 					if not self.match_item(required_value, filters.get(field)):
 						required_filters_matched = False
 						break
-				elif field == "item_group":
+				elif field in ("item_group", "applies_to_item_group"):
 					if not self.match_tree("Item Group", required_value, filters.get(field)):
 						required_filters_matched = False
 						break
@@ -128,8 +129,16 @@ class DiscountRule(Document):
 			if variant_of:
 				rule_dict['variant_of'] = variant_of
 
+		if rule_dict.get('applies_to_item'):
+			applies_to_variant_of = frappe.get_cached_value("Item", rule_dict.get('applies_to_item'), 'variant_of')
+			if applies_to_variant_of:
+				rule_dict['applies_to_variant_of'] = applies_to_variant_of
+
 		if rule_dict.get('item_group'):
 			rule_dict['item_group_lft'] = frappe.get_cached_value("Item Group", rule_dict.get('item_group'), 'lft')
+
+		if rule_dict.get('applies_to_item_group'):
+			rule_dict['applies_to_item_group_lft'] = frappe.get_cached_value("Item Group", rule_dict.get('item_group'), 'lft')
 
 		if rule_dict.get('customer_group'):
 			rule_dict['customer_group_lft'] = frappe.get_cached_value("Customer Group", rule_dict.get('customer_group'), 'lft')
@@ -162,8 +171,12 @@ def get_discount_rule_values_dict(applicable_rules, filter_sort=None):
 
 				if k == 'item_code':
 					filter_precedences.append((index, cint(not d.get('variant_of'))))
+				elif k == 'applies_to_item':
+					filter_precedences.append((index, cint(not d.get('applies_to_variant_of'))))
 				elif k == 'item_group':
 					filter_precedences.append((index, -cint(d.item_group_lft)))
+				elif k == 'applies_to_item_group':
+					filter_precedences.append((index, -cint(d.applies_to_item_group_lft)))
 				elif k == 'customer_group':
 					filter_precedences.append((index, -cint(d.customer_group_lft)))
 				elif k == 'territory':
@@ -221,6 +234,9 @@ def get_filters_dict(item, transaction, user=None):
 	customer = transaction.get("bill_to") or transaction.get("customer")
 	customer = frappe.get_cached_doc("Customer", customer) if customer else {}
 
+	applies_to_item = transaction.get("applies_to_item")
+	applies_to_item = frappe.get_cached_doc("Item", applies_to_item) if applies_to_item else {}
+
 	filters = frappe._dict()
 
 	for f in item_filter_fields:
@@ -235,11 +251,18 @@ def get_filters_dict(item, transaction, user=None):
 
 	if item:
 		filters["item_code"] = item.get("name")
+
 	if customer:
 		filters["customer"] = customer.get("name")
+
 	if user:
 		filters["user"] = user
 		filters["role"] = frappe.get_roles(user) if user else []
+
+	if applies_to_item:
+		filters["applies_to_item"] = applies_to_item.get("name")
+		filters["applies_to_item_brand"] = applies_to_item.get("brand")
+		filters["applies_to_item_item_group"] = applies_to_item.get("item_group")
 
 	return filters
 

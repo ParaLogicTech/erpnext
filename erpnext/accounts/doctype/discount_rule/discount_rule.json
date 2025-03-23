@@ -26,6 +26,13 @@
   "brand",
   "column_break_eh0n",
   "item_source",
+  "applies_to_item_filters_section",
+  "applies_to_item",
+  "applies_to_item_name",
+  "column_break_mdqx",
+  "applies_to_item_group",
+  "column_break_pjbh",
+  "applies_to_item_brand",
   "user_filters_section",
   "role",
   "column_break_zscv",
@@ -183,11 +190,50 @@
    "fieldname": "transaction_filters_section",
    "fieldtype": "Section Break",
    "label": "Transaction Filters"
+  },
+  {
+   "fieldname": "applies_to_item_filters_section",
+   "fieldtype": "Section Break",
+   "label": "Applies To Item Filters"
+  },
+  {
+   "fieldname": "applies_to_item",
+   "fieldtype": "Link",
+   "label": "Applies to Item",
+   "options": "Item"
+  },
+  {
+   "depends_on": "eval:doc.applies_to_item && doc.applies_to_item_name != doc.applies_to_item",
+   "fetch_from": "applies_to_item.item_name",
+   "fieldname": "applies_to_item_name",
+   "fieldtype": "Data",
+   "label": "Applies to Item Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_mdqx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "applies_to_item_group",
+   "fieldtype": "Link",
+   "label": "Applies to Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "column_break_pjbh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "applies_to_item_brand",
+   "fieldtype": "Link",
+   "label": "Applies to Item Brand",
+   "options": "Brand"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-12 22:31:36.528814",
+ "modified": "2025-03-21 14:38:50.546943",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Discount Rule",
