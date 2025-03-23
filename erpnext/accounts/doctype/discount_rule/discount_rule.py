@@ -197,7 +197,6 @@ def get_discount_rule_values_dict(applicable_rules, filter_sort=None):
 		filter_sort = filter_fields.copy()
 
 	applicable_rules = sorted(applicable_rules, key=lambda d: sorting_function(d))
-	print([d.name for d in applicable_rules])
 
 	rule_meta = frappe.get_meta("Discount Rule")
 	values = frappe._dict()
