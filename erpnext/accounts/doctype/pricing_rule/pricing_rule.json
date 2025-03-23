@@ -16,6 +16,7 @@
   "items",
   "item_groups",
   "brands",
+  "item_sources",
   "mixed_conditions",
   "is_cumulative",
   "coupon_code_based",
@@ -25,6 +26,7 @@
   "other_item_code",
   "other_item_group",
   "other_brand",
+  "other_item_source",
   "section_break_7",
   "selling",
   "buying",
@@ -70,6 +72,7 @@
   "discount_percentage",
   "column_break_6hwj1",
   "for_price_list",
+  "from_price_list",
   "product_discount_scheme_section",
   "free_item",
   "free_qty",
@@ -121,7 +124,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Apply On",
-   "options": "\nItem Code\nItem Group\nBrand\nTransaction",
+   "options": "\nItem Code\nItem Group\nBrand\nItem Source\nTransaction",
    "reqd": 1
   },
   {
@@ -197,7 +200,7 @@
    "fieldname": "apply_rule_on_other",
    "fieldtype": "Select",
    "label": "Apply Rule On Other",
-   "options": "\nItem Code\nItem Group\nBrand"
+   "options": "\nItem Code\nItem Group\nBrand\nItem Source"
   },
   {
    "fieldname": "column_break_17",
@@ -402,7 +405,7 @@
    "fieldtype": "Select",
    "in_standard_filter": 1,
    "label": "Rate or Discount",
-   "options": "\nRate\nDiscount Percentage\nDiscount Amount\nValuation Rate\nLast Purchase Rate"
+   "options": "\nRate\nDiscount Percentage\nDiscount Amount\nPrice List Rate\nValuation Rate\nLast Purchase Rate"
   },
   {
    "default": "Grand Total",
@@ -437,7 +440,7 @@
    "label": "Discount Percentage"
   },
   {
-   "depends_on": "eval:doc.rate_or_discount!=\"Rate\"",
+   "depends_on": "eval:![\"Rate\", \"Price List Rate\"].includes(doc.rate_or_discount)",
    "fieldname": "for_price_list",
    "fieldtype": "Link",
    "label": "For Price List",
@@ -640,12 +643,35 @@
    "fieldtype": "Data",
    "label": "Applies to Item Name",
    "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.rate_or_discount == \"Price List Rate\"",
+   "fieldname": "from_price_list",
+   "fieldtype": "Link",
+   "label": "From Price List",
+   "mandatory_depends_on": "eval:doc.rate_or_discount == \"Price List Rate\"",
+   "options": "Price List"
+  },
+  {
+   "depends_on": "eval:doc.apply_on == 'Item Source'",
+   "fieldname": "item_sources",
+   "fieldtype": "Table",
+   "label": "Apply Rule On Item Source",
+   "mandatory_depends_on": "eval:doc.apply_on == 'Item Source'",
+   "options": "Pricing Rule Item Source"
+  },
+  {
+   "depends_on": "eval:doc.apply_rule_on_other == 'Item Source'",
+   "fieldname": "other_item_source",
+   "fieldtype": "Link",
+   "label": "Item Source",
+   "options": "Item Source"
   }
  ],
  "icon": "fa fa-gift",
  "idx": 1,
  "links": [],
- "modified": "2025-03-21 14:35:15.035881",
+ "modified": "2025-03-23 23:41:53.139095",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Pricing Rule",

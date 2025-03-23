@@ -13,26 +13,29 @@ import json
 
 class MultiplePricingRuleConflict(frappe.ValidationError): pass
 
+
 apply_on_table = {
-    'Item Code': 'items',
-    'Item Group': 'item_groups',
-    'Brand': 'brands'
+	'Item Code': 'items',
+	'Item Source': 'item_sources',
+	'Brand': 'brands',
+	'Item Group': 'item_groups',
 }
+
 
 def get_pricing_rules(args, doc=None):
 	pricing_rules = []
-	values =  {}
+	values = {}
 
-	for apply_on in ['Item Code', 'Item Group', 'Brand']:
+	for apply_on in ['Item Code', 'Item Source', 'Brand', 'Item Group']:
 		pricing_rules.extend(_get_pricing_rules(apply_on, args, values))
-		if pricing_rules and not apply_multiple_pricing_rules(pricing_rules):
-			break
 
 	rules = []
 
-	if not pricing_rules: return []
+	if not pricing_rules:
+		return []
 
 	if apply_multiple_pricing_rules(pricing_rules):
+		pricing_rules = sorted(pricing_rules, key=lambda d: cint(d.priority), reverse=True)
 		for pricing_rule in pricing_rules:
 			pricing_rule = filter_pricing_rules(args, pricing_rule, doc)
 			if pricing_rule:
@@ -53,7 +56,7 @@ def _get_pricing_rules(apply_on, args, values):
 
 	conditions = item_variant_condition = item_conditions = ""
 	values[apply_on_field] = args.get(apply_on_field)
-	if apply_on_field in ['item_code', 'brand']:
+	if apply_on_field in ['item_code', 'brand', 'item_source']:
 		item_conditions = "{child_doc}.{apply_on_field}= %({apply_on_field})s".format(child_doc=child_doc,
 			apply_on_field = apply_on_field)
 
@@ -223,7 +226,7 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 
 	# apply internal priority
 	all_fields = [
-		"item_code", "item_group", "brand", "variant_of",
+		"item_code", "variant_of", "item_source", "brand", "item_group",
 		"customer", "customer_group", "territory",
 		"supplier", "supplier_group",
 		"campaign", "sales_partner",
@@ -232,10 +235,10 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 
 	if len(pricing_rules) > 1:
 		for field_set in [
-			["item_code", "variant_of", "item_group", "brand"],
+			["item_code", "variant_of", "item_source", "brand", "item_group"],
 			["customer", "customer_group", "territory"],
 			["supplier", "supplier_group"],
-			["applies_to_item", "applies_to_item_group", "applies_to_item_brand"],
+			["applies_to_item", "applies_to_item_brand", "applies_to_item_group"],
 		]:
 			remaining_fields = list(set(all_fields) - set(field_set))
 			if if_all_rules_same(pricing_rules, remaining_fields):

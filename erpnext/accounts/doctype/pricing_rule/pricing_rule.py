@@ -12,10 +12,14 @@ from frappe.model.document import Document
 from erpnext.stock.doctype.item.item import convert_item_uom_for
 from six import string_types
 
-apply_on_dict = {"Item Code": "items",
-	"Item Group": "item_groups", "Brand": "brands"}
+apply_on_dict = {
+	"Item Code": "items",
+	"Item Group": "item_groups",
+	"Brand": "brands",
+	"Item Source": "item_sources",
+}
 
-other_fields = ["other_item_code", "other_item_group", "other_brand"]
+other_fields = ["other_item_code", "other_item_group", "other_brand", "other_item_source"]
 
 
 class PricingRule(Document):
@@ -57,7 +61,6 @@ class PricingRule(Document):
 			if not self.get(o_field) and o_field in other_fields:
 				frappe.throw(_("For the 'Apply Rule On Other' condition the field {0} is mandatory")
 					.format(frappe.bold(self.apply_rule_on_other)))
-
 
 		if self.price_or_product_discount == 'Price' and not self.rate_or_discount:
 			throw(_("Rate or Discount is required for the price discount."), frappe.MandatoryError)
@@ -132,9 +135,20 @@ class PricingRule(Document):
 					throw(_("Max discount allowed for item: {0} is {1}%").format(self.item_code, max_discount))
 
 	def validate_price_list_with_currency(self):
-		if self.currency and self.for_price_list:
-			price_list_currency = frappe.db.get_value("Price List", self.for_price_list, "currency", True)
-			if not self.currency == price_list_currency:
+		if self.rate_or_discount in ("Rate", "Price List Rate"):
+			self.for_price_list = None
+
+		if self.rate_or_discount == "Price List Rate":
+			if not self.from_price_list:
+				frappe.throw(_("'From Price List' is mandatory for Price List Rate rule"))
+		else:
+			self.from_price_list = None
+
+		price_list = self.from_price_list or self.for_price_list
+
+		if self.currency and price_list:
+			price_list_currency = frappe.db.get_value("Price List", price_list, "currency")
+			if self.currency != price_list_currency:
 				throw(_("Currency should be same as Price List Currency: {0}").format(price_list_currency))
 
 	def validate_dates(self):
@@ -248,7 +262,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 	if pricing_rules:
 		rules = []
 
-		for pricing_rule in pricing_rules:
+		for pricing_rule in reversed(pricing_rules):
 			if not pricing_rule: continue
 
 			if isinstance(pricing_rule, string_types):
@@ -285,7 +299,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 
 		item_details.has_pricing_rule = 1
 
-		item_details.pricing_rules = frappe.as_json([d.pricing_rule for d in rules], indent=0)
+		item_details.pricing_rules = frappe.as_json([d.pricing_rule for d in reversed(rules)], indent=0)
 
 		if not doc: return item_details
 
@@ -296,14 +310,12 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 	return item_details
 
 def update_args_for_pricing_rule(args):
-	if not (args.item_group and args.brand):
-		try:
-			args.item_group, args.brand = frappe.get_cached_value("Item", args.item_code, ["item_group", "brand"])
-		except TypeError:
-			# invalid item_code
-			return
-		if not args.item_group:
-			frappe.throw(_("Item Group not mentioned in item master for item {0}").format(args.item_code))
+	if not args.item_group:
+		args.item_group = frappe.get_cached_value("Item", args.item_code, "item_group")
+	if not args.brand:
+		args.brand = frappe.get_cached_value("Item", args.item_code, "brand")
+	if not args.item_source:
+		args.item_source = frappe.get_cached_value("Item", args.item_code, "item_source")
 
 	if args.selling_or_buying == "selling":
 		if args.customer and not (args.customer_group and args.territory):
@@ -359,6 +371,28 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 		item_details.update({
 			"price_list_rate": pricing_rule_rate,
 			"discount_percentage": 0.0
+		})
+
+	elif pricing_rule.rate_or_discount == "Price List Rate":
+		from erpnext.stock.get_item_details import get_price_list_rate_for
+		pricing_rule_rate = flt(get_price_list_rate_for(
+			args.item_code,
+			pricing_rule.from_price_list,
+			frappe._dict({
+				"item_code": args.item_code,
+				"price_list": args.from_price_list,
+				"uom": args.uom,
+				"stock_uom": args.stock_uom,
+				"conversion_factor": args.conversion_factor,
+				"transaction_date": args.get('transaction_date') or args.get('posting_date'),
+				"ignore_party": True,
+			})))
+
+		if pricing_rule.currency != args.currency:
+			pricing_rule_rate = pricing_rule_rate / (args.conversion_rate or 1)
+
+		item_details.update({
+			"price_list_rate": pricing_rule_rate,
 		})
 
 	elif pricing_rule.rate_or_discount in ("Valuation Rate", "Last Purchase Rate"):
@@ -430,7 +464,7 @@ def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None):
 			if (
 				pricing_rule.margin_type in ['Percentage', 'Amount']
 				and pricing_rule.margin_rate_or_amount
-				and pricing_rule.rate_or_discount not in ("Valuation Rate", "Last Purchase Rate")
+				and pricing_rule.rate_or_discount not in ("Valuation Rate", "Last Purchase Rate", "Price List Rate")
 			):
 				item_details.margin_rate_or_amount = 0.0
 
