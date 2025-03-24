@@ -902,7 +902,7 @@ class StockEntry(TransactionController):
 			allow_negative_stock=allow_negative_stock)
 
 	def get_gl_entries(self):
-		gl_entries = super(StockEntry, self).get_gl_entries()
+		gl_entries = self.get_stock_ledger_gl_entries()
 
 		total_basic_amount = sum([flt(t.basic_amount) for t in self.get("items") if t.t_warehouse])
 		divide_based_on = total_basic_amount

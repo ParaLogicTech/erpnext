@@ -59,6 +59,9 @@ class StockController(AccountsController):
 						.format(d.idx, serial_no_data.name, d.batch_no))
 
 	def get_gl_entries(self):
+		return self.get_stock_ledger_gl_entries()
+
+	def get_stock_ledger_gl_entries(self, use_unbilled_stock_account=False):
 		warehouse_account = get_warehouse_account_map(self.company)
 		sle_map = self.get_stock_ledger_entry_map()
 		voucher_items = self.get_stock_voucher_items(sle_map)
@@ -72,13 +75,17 @@ class StockController(AccountsController):
 			if sle_list:
 				for sle in sle_list:
 					if warehouse_account.get(sle.warehouse):
-						self.check_expense_account(item_row)
+						expense_account = item_row.expense_account
+						if use_unbilled_stock_account and item_row.get("unbilled_stock_account"):
+							expense_account = item_row.get("unbilled_stock_account")
+						else:
+							self.check_expense_account(item_row)
 
 						item_gles = []
 
 						item_gles.append(self.get_gl_dict({
 							"account": warehouse_account[sle.warehouse]["account"],
-							"against": item_row.expense_account,
+							"against": expense_account,
 							"cost_center": item_row.get('cost_center') or self.get("cost_center"),
 							"project": item_row.get("project") or self.get("project"),
 							"remarks": self.get("remarks") or "Accounting Entry for Stock",
@@ -88,7 +95,7 @@ class StockController(AccountsController):
 
 						# to target warehouse / expense account
 						item_gles.append(self.get_gl_dict({
-							"account": item_row.expense_account,
+							"account": expense_account,
 							"against": warehouse_account[sle.warehouse]["account"],
 							"cost_center": item_row.get('cost_center') or self.get("cost_center"),
 							"remarks": self.get("remarks") or "Accounting Entry for Stock",
@@ -550,13 +557,37 @@ def update_gl_entries_for_reposted_stock_vouchers(excluded_vouchers=None, only_i
 
 		update_gl_entries_for_stock_voucher(vouchers, excluded_vouchers=excluded_vouchers, verbose=verbose)
 
+		sales_invoices = get_sales_invoices_with_unbilled_stock(vouchers)
+		if sales_invoices:
+			update_gl_entries_for_stock_voucher([("Sales Invoice", d) for d in sales_invoices],
+				excluded_vouchers=excluded_vouchers, verbose=verbose)
+
 		frappe.flags.stock_ledger_vouchers_reposted = None
 
 
 def update_gl_entries_after(posting_date, posting_time, for_warehouses=None, for_items=None, item_warehouse_list=None):
 	future_stock_vouchers = get_future_stock_vouchers(posting_date, posting_time,
 		for_warehouses, for_items, item_warehouse_list)
+
 	update_gl_entries_for_stock_voucher(future_stock_vouchers)
+
+	sales_invoices = get_sales_invoices_with_unbilled_stock(future_stock_vouchers)
+	if sales_invoices:
+		update_gl_entries_for_stock_voucher([("Sales Invoice", d) for d in sales_invoices])
+
+
+def get_sales_invoices_with_unbilled_stock(stock_vouchers):
+	delivery_notes = [voucher_no for voucher_type, voucher_no in stock_vouchers if voucher_type == "Delivery Note"]
+
+	sales_invoices = []
+	if delivery_notes:
+		sales_invoices = frappe.db.sql_list("""
+			select distinct parent
+			from `tabSales Invoice Item`
+			where delivery_note in %s and ifnull(unbilled_stock_account, '') != '' and docstatus = 1
+		""", [delivery_notes])
+
+	return sales_invoices
 
 
 def update_gl_entries_for_stock_voucher(stock_vouchers, excluded_vouchers=None, verbose=False):

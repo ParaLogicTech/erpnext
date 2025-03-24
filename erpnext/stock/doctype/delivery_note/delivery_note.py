@@ -39,6 +39,7 @@ class DeliveryNote(SellingController):
 		self.validate_campaign()
 		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_uom_is_integer("uom", "qty")
+		self.set_unbilled_stock_account()
 
 		from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party
 		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
@@ -381,7 +382,8 @@ class DeliveryNote(SellingController):
 
 	def validate_billed_qty(self, from_doctype=None, row_names=None):
 		self.validate_completed_qty(['billed_qty', 'returned_qty'], 'qty', self.items,
-			allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
+			allowance_type=lambda row: None if row.unbilled_stock_account else 'billing',
+			from_doctype=from_doctype, row_names=row_names)
 
 		if frappe.get_cached_value("Accounts Settings", None, "validate_over_billing_in_sales_invoice"):
 			self.validate_completed_qty('billed_amt', 'amount', self.items,
@@ -542,6 +544,53 @@ class DeliveryNote(SellingController):
 			(self.name))
 		if submit_in:
 			frappe.throw(_("Installation Note {0} has already been submitted").format(submit_in[0][0]))
+
+	def get_gl_entries(self):
+		return self.get_stock_ledger_gl_entries(use_unbilled_stock_account=True)
+
+	def set_unbilled_stock_account(self):
+		if self.is_return:
+			delivery_note_items = list(set([d.delivery_note_item for d in self.get("items") if d.delivery_note_item]))
+
+			unbilled_stock_account_map = {}
+			if delivery_note_items:
+				unbilled_stock_account_map = dict(frappe.db.sql("""
+					select name, unbilled_stock_account
+					from `tabDelivery Note Item`
+					where name in %s
+				""", [delivery_note_items]))
+
+			for d in self.get("items"):
+				if d.delivery_note_item:
+					d.unbilled_stock_account = unbilled_stock_account_map.get(d.delivery_note_item)
+				else:
+					d.unbilled_stock_account = None
+		else:
+			sales_order_item_to_check = []
+
+			stock_delivered_but_not_billed = frappe.get_cached_value("Company", self.company, "stock_delivered_but_not_billed")
+			for d in self.get("items"):
+				is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
+				if d.skip_sales_invoice or not is_stock_item:
+					d.unbilled_stock_account = None
+				else:
+					sales_order_item_to_check.append(d.sales_order_item)
+					d.unbilled_stock_account = stock_delivered_but_not_billed
+
+			sales_order_item_to_check = list(set(sales_order_item_to_check))
+			sales_order_items_indirectly_billed = []
+
+			if sales_order_item_to_check:
+				sales_order_items_indirectly_billed = frappe.db.sql_list("""
+					select distinct sales_order_item
+					from `tabSales Invoice Item`
+					where docstatus = 1 and sales_order_item in %s and ifnull(delivery_note_item, '') = ''
+				""", [sales_order_item_to_check])
+
+			if sales_order_items_indirectly_billed:
+				for d in self.get("items"):
+					if d.sales_order_item and d.sales_order_item in sales_order_items_indirectly_billed:
+						d.unbilled_stock_account = None
 
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):

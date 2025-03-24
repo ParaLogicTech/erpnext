@@ -69,6 +69,7 @@ class SalesInvoice(SellingController):
 
 		self.validate_fixed_asset()
 		self.set_income_account_for_fixed_assets()
+		self.set_unbilled_stock_account()
 		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
 
 		if cint(self.update_stock):
@@ -1068,6 +1069,38 @@ class SalesInvoice(SellingController):
 				if not d.cost_center:
 					d.cost_center = depreciation_cost_center
 
+	def set_unbilled_stock_account(self):
+		if (
+			self.update_stock
+			or self.depreciation_type == "Depreciation Amount Only"
+		):
+			for d in self.get("items"):
+				d.unbilled_stock_account = None
+		else:
+			delivery_note_items = list(set([d.delivery_note_item for d in self.get("items") if d.delivery_note_item]))
+			unbilled_stock_account_map = {}
+			if delivery_note_items:
+				dn_data = frappe.db.sql("""
+					select i.name, i.unbilled_stock_account, dn.is_return
+					from `tabDelivery Note Item` i
+					inner join `tabDelivery Note` dn on dn.name = i.parent
+					where i.name in %s
+				""", [delivery_note_items], as_dict=1)
+
+				for dn_row_data in dn_data:
+					unbilled_stock_account_map[dn_row_data.name] = dn_row_data
+
+			for d in self.get("items"):
+				if d.delivery_note_item:
+					dn_row_data = unbilled_stock_account_map.get(d.delivery_note_item, {})
+
+					if self.is_return and not self.reopen_order and not dn_row_data.get("is_return"):
+						d.unbilled_stock_account = None
+					else:
+						d.unbilled_stock_account = dn_row_data.get("unbilled_stock_account")
+				else:
+					d.unbilled_stock_account = None
+
 	def make_gl_entries(self, gl_entries=None, repost_future_gle=True, from_repost=False):
 		auto_accounting_for_stock = erpnext.is_perpetual_inventory_enabled(self.company)
 		if not gl_entries:
@@ -1092,6 +1125,7 @@ class SalesInvoice(SellingController):
 
 		self.make_customer_gl_entry(gl_entries)
 		self.make_item_gl_entries(gl_entries)
+		self.make_unbilled_stock_gl_entries(gl_entries)
 		self.make_tax_gl_entries(gl_entries)
 
 		# merge gl entries before adding pos entries
@@ -1232,7 +1266,61 @@ class SalesInvoice(SellingController):
 		# expense account gl entries
 		if cint(self.update_stock) and \
 			erpnext.is_perpetual_inventory_enabled(self.company):
-			gl_entries += super(SalesInvoice, self).get_gl_entries()
+			gl_entries += self.get_stock_ledger_gl_entries()
+
+	def make_unbilled_stock_gl_entries(self, gl_entries):
+		delivery_note_items = list(set([d.delivery_note_item for d in self.get("items") if d.delivery_note_item and d.get("unbilled_stock_account")]))
+		if not delivery_note_items:
+			return
+
+		stock_ledger_entries = frappe.db.sql("""
+			select voucher_detail_no, stock_value_difference, actual_qty
+			from `tabStock Ledger Entry`
+			where voucher_type = 'Delivery Note' and voucher_detail_no in %s
+		""", [delivery_note_items], as_dict=True)
+
+		sle_map = {}
+		for sle in stock_ledger_entries:
+			sle_dict = sle_map.setdefault(sle.get("voucher_detail_no"), frappe._dict({
+				"stock_value_difference": 0,
+				"actual_qty": 0,
+			}))
+
+			sle_dict.stock_value_difference += sle.stock_value_difference
+			sle_dict.actual_qty += sle.actual_qty
+
+		for item in self.get("items"):
+			if not item.get("unbilled_stock_account"):
+				continue
+
+			sle_dict = sle_map.get(item.delivery_note_item)
+			if not sle_dict or not sle_dict.stock_value_difference or not sle_dict.actual_qty:
+				continue
+
+			outgoing_rate = sle_dict.stock_value_difference / sle_dict.actual_qty
+			expense_amount = outgoing_rate * flt(item.stock_qty)
+
+			self.check_expense_account(item)
+
+			gl_entries.append(
+				self.get_gl_dict({
+					"account": item.expense_account,
+					"against": item.unbilled_stock_account,
+					"debit": expense_amount,
+					"cost_center": item.cost_center or self.cost_center,
+					"project": item.get('project') or self.project
+				}, item=item)
+			)
+
+			gl_entries.append(
+				self.get_gl_dict({
+					"account": item.unbilled_stock_account,
+					"against": item.expense_account,
+					"credit": expense_amount,
+					"cost_center": item.cost_center or self.cost_center,
+					"project": item.get('project') or self.project
+				}, item=item)
+			)
 
 	def make_advance_reversal_gl_entries(self, gl_entries):
 		billing_party_type, billing_party, billing_party_name = self.get_billing_party()

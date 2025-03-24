@@ -126,6 +126,7 @@
   "enable_perpetual_inventory",
   "column_break_32",
   "stock_received_but_not_billed",
+  "stock_delivered_but_not_billed",
   "expenses_included_in_valuation",
   "section_break_stdt",
   "material_transfer_transit_warehouse",
@@ -1023,6 +1024,14 @@
    "fieldname": "use_discount_allowed_account_in_sales_invoice",
    "fieldtype": "Check",
    "label": "Use Discount Allowed Account in Sales Invoice"
+  },
+  {
+   "fieldname": "stock_delivered_but_not_billed",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Stock Delivered But Not Billed",
+   "no_copy": 1,
+   "options": "Account"
   }
  ],
  "icon": "fa fa-building",
@@ -1030,7 +1039,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2025-02-10 16:44:18.923312",
+ "modified": "2025-03-24 12:01:35.191479",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",

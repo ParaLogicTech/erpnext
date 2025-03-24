@@ -71,7 +71,7 @@ class Company(NestedSet):
 			"default_bank_account", "default_cash_account",
 			"default_receivable_account", "default_payable_account",
 			"default_expense_account", "default_income_account",
-			"stock_received_but_not_billed", "stock_adjustment_account",
+			"stock_received_but_not_billed", "stock_delivered_but_not_billed", "stock_adjustment_account",
 			"expenses_included_in_valuation", "default_payroll_payable_account", "default_letter_of_credit_account",
 			"temporary_opening_account",
 			"sales_tax_account", "service_tax_account", "extra_tax_account", "further_tax_account", "advance_tax_account"
