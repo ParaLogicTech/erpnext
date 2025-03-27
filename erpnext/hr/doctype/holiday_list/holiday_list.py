@@ -125,3 +125,27 @@ def get_default_holiday_list(company):
 		return frappe.get_cached_value('Company', company, "default_holiday_list")
 
 	return None
+
+
+def get_holiday_map_from_holiday_lists(holiday_lists, from_date=None, to_date=None):
+	holiday_map = frappe._dict()
+
+	date_condition = ""
+	if from_date:
+		date_condition += " and holiday_date >= %(from_date)s"
+	if to_date:
+		date_condition += " and holiday_date <= %(to_date)s"
+
+	for holiday_list in holiday_lists:
+		if holiday_list:
+			args = {'holiday_list': holiday_list, 'from_date': from_date, 'to_date': to_date}
+			holidays = frappe.db.sql_list("""
+				select holiday_date
+				from `tabHoliday`
+				where parent=%(holiday_list)s {0}
+				order by holiday_date
+			""".format(date_condition), args)
+
+			holiday_map.setdefault(holiday_list, holidays)
+
+	return holiday_map

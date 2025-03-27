@@ -330,23 +330,85 @@ def update_user_permissions(doc, method):
 def get_holiday_list_for_employee(employee, raise_exception=True):
 	from erpnext.hr.doctype.holiday_list.holiday_list import get_default_holiday_list
 
-	emp_details = None
+	holiday_list = None
+	company = None
+
+	# Holiday list from Employee
 	if employee:
-		emp_details = frappe.db.get_value("Employee", employee, ("holiday_list", "company"), cache=1)
+		employee_doc = frappe.get_cached_doc("Employee", employee)
+		holiday_list = employee_doc.holiday_list
+		company = employee_doc.company
 
-	if emp_details:
-		holiday_list, company = emp_details
-	else:
-		holiday_list = None
-		company = frappe.db.get_single_value("Global Defaults", "default_company")
+	# Holiday list from hooks
+	if employee and not holiday_list:
+		holiday_list = frappe.utils.call_hook_method("get_holiday_list_for_employee", employee)
 
+	# Default Holiday List from Company
 	if not holiday_list:
+		if not company:
+			company = frappe.db.get_single_value("Global Defaults", "default_company")
+
 		holiday_list = get_default_holiday_list(company)
 
 	if not holiday_list and raise_exception:
 		frappe.throw(_('Please set a default Holiday List for Employee {0} or Company {1}').format(employee, company))
 
 	return holiday_list
+
+
+def get_holiday_map_for_employees(employees, from_date=None, to_date=None):
+	from erpnext.hr.doctype.holiday_list.holiday_list import get_holiday_map_from_holiday_lists
+
+	employee_holiday_list_map = get_employee_holiday_list_map(employees)
+	holiday_lists = list(set([name for name in employee_holiday_list_map.values() if name]))
+
+	holiday_list_map = get_holiday_map_from_holiday_lists(holiday_lists, from_date=from_date, to_date=to_date)
+
+	employee_holiday_map = {}
+	for employee in employees:
+		employee_holiday_list = employee_holiday_list_map.get(employee)
+		if employee_holiday_list:
+			employee_holiday_map[employee] = holiday_list_map.get(employee_holiday_list) or []
+		else:
+			employee_holiday_map[employee] = []
+
+	return employee_holiday_map
+
+
+def get_employee_holiday_list_map(employees):
+	from erpnext.hr.doctype.holiday_list.holiday_list import get_default_holiday_list
+
+	employee_holiday_list_map = {name: None for name in employees}
+	if not employees:
+		return employee_holiday_list_map
+
+	# Holiday List from Employee
+	employee_data = frappe.db.sql("""
+		select name, holiday_list, company
+		from `tabEmployee`
+		where name in %s
+	""", [employees], as_dict=True)
+
+	employee_details_map = {}
+	for d in employee_data:
+		employee_details_map[d.name] = d
+
+		if d.holiday_list:
+			employee_holiday_list_map[d.name] = d.holiday_list
+
+	# Holiday List from hooks
+	frappe.utils.call_hook_method("get_employee_holiday_list_map", employee_holiday_list_map)
+
+	# Default Holiday List from Company
+	default_company = frappe.db.get_single_value("Global Defaults", "default_company")
+	for employee in employee_holiday_list_map:
+		if employee_holiday_list_map.get(employee):
+			continue
+
+		company = employee_details_map.get(employee, {}).get("company") or default_company
+		employee_holiday_list_map[employee] = get_default_holiday_list(company)
+
+	return employee_holiday_list_map
 
 
 def is_holiday(employee, date=None, raise_exception=True):

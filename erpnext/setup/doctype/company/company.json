@@ -277,7 +277,8 @@
   {
    "fieldname": "standard_working_hours",
    "fieldtype": "Float",
-   "label": "Standard Working Hours"
+   "label": "Standard Working Hours",
+   "non_negative": 1
   },
   {
    "fieldname": "default_warehouse_for_sales_return",
@@ -1039,7 +1040,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2025-03-24 12:01:35.191479",
+ "modified": "2025-03-27 20:38:19.466124",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
