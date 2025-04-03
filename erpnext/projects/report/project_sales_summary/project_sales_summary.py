@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.utils import getdate
+from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 
 
 class ProjectSalesSummaryReport(object):
@@ -60,6 +61,9 @@ class ProjectSalesSummaryReport(object):
 
 		if self.filters.get("company"):
 			conditions.append("p.company = %(company)s")
+
+		if self.filters.get("branch"):
+			conditions.append("p.branch = %(branch)s")
 
 		if self.filters.get("from_date"):
 			conditions.append("p.project_date >= %(from_date)s")
@@ -119,6 +123,10 @@ class ProjectSalesSummaryReport(object):
 			lft, rgt = frappe.db.get_value("Territory", self.filters.territory, ["lft", "rgt"])
 			conditions.append("""c.territory in (select name from `tabTerritory`
 				where lft>=%s and rgt<=%s and docstatus<2)""" % (lft, rgt))
+
+		if self.filters.get("cost_center"):
+			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
+			conditions.append("p.cost_center in %(cost_center)s")
 
 		return conditions
 
