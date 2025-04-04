@@ -40,6 +40,7 @@ class StockLedgerEntry(Document):
 	def before_submit(self):
 		self.validate_dependency()
 		self.check_stock_frozen_date()
+		self.check_warehouse_transaction_permission()
 
 		if not self.get("via_landed_cost_voucher"):
 			from erpnext.stock.doctype.serial_no.serial_no import process_serial_no
@@ -154,6 +155,11 @@ class StockLedgerEntry(Document):
 			older_than_x_days_ago = (add_days(getdate(self.posting_date), stock_frozen_upto_days) <= date.today())
 			if older_than_x_days_ago and not stock_auth_role in frappe.get_roles():
 				frappe.throw(_("Not allowed to update stock transactions older than {0}").format(stock_frozen_upto_days), StockFreezeError)
+
+	def check_warehouse_transaction_permission(self):
+		if not self.get("via_landed_cost_voucher"):
+			from erpnext.stock.doctype.warehouse.warehouse import check_warehouse_transaction_permission
+			check_warehouse_transaction_permission(self.warehouse)
 
 	def scrub_posting_time(self):
 		if not self.posting_time or self.posting_time == '00:0':

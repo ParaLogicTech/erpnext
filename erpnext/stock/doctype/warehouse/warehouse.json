@@ -16,21 +16,26 @@
   "parent_warehouse",
   "is_group",
   "column_break_4",
-  "account",
   "company",
+  "account",
   "disabled",
   "address_and_contact",
   "address_html",
   "column_break_10",
   "contact_html",
+  "transaction_permissions_section",
+  "restrict_to_users",
+  "column_break_swld",
+  "restrict_to_roles",
   "warehouse_contact_info",
   "email_id",
-  "phone_no",
   "mobile_no",
+  "phone_no",
   "column_break0",
   "address_line_1",
   "address_line_2",
   "city",
+  "column_break_yssa",
   "state",
   "pin",
   "tree_details",
@@ -131,8 +136,7 @@
    "fieldtype": "Data",
    "label": "Phone No",
    "oldfieldname": "phone_no",
-   "oldfieldtype": "Int",
-   "options": "Phone"
+   "oldfieldtype": "Int"
   },
   {
    "fieldname": "mobile_no",
@@ -232,13 +236,38 @@
   {
    "fieldname": "section_break_3",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_yssa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "transaction_permissions_section",
+   "fieldtype": "Section Break",
+   "label": "Transaction Permissions"
+  },
+  {
+   "fieldname": "restrict_to_users",
+   "fieldtype": "Table MultiSelect",
+   "label": "Restrict to Users",
+   "options": "Warehouse User"
+  },
+  {
+   "fieldname": "column_break_swld",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "restrict_to_roles",
+   "fieldtype": "Table MultiSelect",
+   "label": "Restrict to Roles",
+   "options": "Warehouse Role"
   }
  ],
  "icon": "fa fa-building",
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-02-06 21:19:54.521577",
+ "modified": "2025-04-04 11:20:11.253844",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Warehouse",
