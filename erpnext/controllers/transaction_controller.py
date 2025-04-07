@@ -105,6 +105,7 @@ class TransactionController(StockController):
 
 		self.set_previous_document_reference_before_print()
 		self.set_common_uom_before_print()
+		self.set_pricing_rules_before_print()
 		self.group_items_before_print()
 		self.set_discount_negative_before_print()
 
@@ -200,7 +201,7 @@ class TransactionController(StockController):
 						if item_qty != len(get_serial_nos(item.get('serial_no'))):
 							item.set(fieldname, value)
 
-				if ret.get("pricing_rules"):
+				if ret.get("pricing_rules") and not self.get("ignore_pricing_rule"):
 					self.apply_pricing_rule_on_item(item, ret)
 
 		self.set_missing_applies_to_details()
@@ -231,7 +232,7 @@ class TransactionController(StockController):
 			elif pricing_rule_args.get('free_item_data'):
 				apply_pricing_rule_for_free_items(self, pricing_rule_args.get('free_item_data'))
 
-			if item.meta.has_field("margin_type"):
+			if item.meta.has_field("margin_type") and pricing_rule_args.get("margin_type"):
 				item.set("margin_rate_or_amount", pricing_rule_args.get("margin_rate_or_amount"))
 				if pricing_rule_args.get("margin_rate_or_amount"):
 					item.set("margin_type", pricing_rule_args.get("margin_type"))
@@ -294,6 +295,23 @@ class TransactionController(StockController):
 
 			for d in self.items:
 				d.alt_uom_or_uom = d.get("alt_uom") or d.get("uom")
+
+	def set_pricing_rules_before_print(self):
+		self.print_pricing_rules = set()
+		for d in self.items:
+			if not d.meta.has_field("pricing_rules"):
+				continue
+
+			pricing_rules = get_applied_pricing_rules(d.pricing_rules)
+			for pricing_rule in pricing_rules:
+				if frappe.get_cached_value("Pricing Rule", pricing_rule, "show_in_print"):
+					self.print_pricing_rules.add(pricing_rule)
+
+		self.print_pricing_rules = list(self.print_pricing_rules)
+		self.print_pricing_rule_descriptions = []
+		for pricing_rule in self.print_pricing_rules:
+			description = cstr(frappe.get_cached_value("Pricing Rule", pricing_rule, "rule_description")).strip()
+			self.print_pricing_rule_descriptions.append(description or pricing_rule)
 
 	def group_items_before_print(self):
 		if self.meta.has_field("items"):

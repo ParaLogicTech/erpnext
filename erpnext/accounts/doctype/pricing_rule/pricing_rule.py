@@ -10,16 +10,14 @@ from frappe import throw, _
 from frappe.utils import flt, getdate
 from frappe.model.document import Document
 from erpnext.stock.doctype.item.item import convert_item_uom_for
-from six import string_types
 
 apply_on_dict = {
 	"Item Code": "items",
 	"Item Group": "item_groups",
 	"Brand": "brands",
-	"Item Source": "item_sources",
 }
 
-other_fields = ["other_item_code", "other_item_group", "other_brand", "other_item_source"]
+other_fields = ["other_item_code", "other_item_group", "other_brand"]
 
 
 class PricingRule(Document):
@@ -158,7 +156,6 @@ class PricingRule(Document):
 		if self.valid_from and self.valid_upto and getdate(self.valid_from) > getdate(self.valid_upto):
 			frappe.throw(_("Valid from date must be less than valid upto date"))
 
-#--------------------------------------------------------------------------------
 
 @frappe.whitelist()
 def apply_pricing_rule(args, doc=None):
@@ -184,7 +181,7 @@ def apply_pricing_rule(args, doc=None):
 		}
 	"""
 
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)
@@ -213,6 +210,7 @@ def apply_pricing_rule(args, doc=None):
 
 	return out
 
+
 def get_serial_no_for_item(args):
 	from erpnext.stock.get_item_details import get_serial_no
 
@@ -225,11 +223,12 @@ def get_serial_no_for_item(args):
 		item_details.serial_no = get_serial_no(args)
 	return item_details
 
+
 def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=False):
 	from erpnext.accounts.doctype.pricing_rule.utils import (get_pricing_rules,
 		get_applied_pricing_rules, get_pricing_rule_items, get_product_discount_rule)
 
-	if isinstance(doc, string_types):
+	if isinstance(doc, str):
 		doc = json.loads(doc)
 
 	if doc:
@@ -249,10 +248,11 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 	})
 
 	if args.ignore_pricing_rule or not args.item_code:
-		if frappe.db.exists(args.doctype, args.name) and args.get("pricing_rules"):
+		if args.get("pricing_rules"):
 			item_details = remove_pricing_rule_for_item(args.get("pricing_rules"),
 				item_details, args.get('item_code'))
-		return item_details
+
+			args['pricing_rules'] = item_details.pricing_rules
 
 	update_args_for_pricing_rule(args)
 
@@ -265,7 +265,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 		for pricing_rule in reversed(pricing_rules):
 			if not pricing_rule: continue
 
-			if isinstance(pricing_rule, string_types):
+			if isinstance(pricing_rule, str):
 				pricing_rule = frappe.get_cached_doc("Pricing Rule", pricing_rule)
 				pricing_rule.apply_rule_on_other_items = get_pricing_rule_items(pricing_rule)
 
@@ -309,13 +309,12 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 
 	return item_details
 
+
 def update_args_for_pricing_rule(args):
 	if not args.item_group:
 		args.item_group = frappe.get_cached_value("Item", args.item_code, "item_group")
 	if not args.brand:
 		args.brand = frappe.get_cached_value("Item", args.item_code, "brand")
-	if not args.item_source:
-		args.item_source = frappe.get_cached_value("Item", args.item_code, "item_source")
 
 	if args.selling_or_buying == "selling":
 		if args.customer and not (args.customer_group and args.territory):
@@ -339,6 +338,7 @@ def update_args_for_pricing_rule(args):
 		args.applies_to_item_brand = frappe.get_cached_value("Item", args.applies_to_item, "brand")
 		args.applies_to_variant_of = frappe.get_cached_value("Item", args.applies_to_item, "variant_of")
 
+
 def get_pricing_rule_details(args, pricing_rule):
 	return frappe._dict({
 		'pricing_rule': pricing_rule.name,
@@ -348,6 +348,7 @@ def get_pricing_rule_details(args, pricing_rule):
 		'child_docname': args.get('child_docname'),
 		'claim_customer': pricing_rule.claim_customer,
 	})
+
 
 def apply_price_discount_rule(pricing_rule, item_details, args):
 	item_details.pricing_rule_for = pricing_rule.rate_or_discount
@@ -437,6 +438,7 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 
 			item_details[field] += rule_value
 
+
 def set_discount_amount(rate, item_details):
 	for field in ['discount_percentage_on_rate', 'discount_amount_on_rate']:
 		for d in item_details.get(field):
@@ -445,13 +447,21 @@ def set_discount_amount(rate, item_details):
 			rate -= dis_amount
 			item_details.rate = rate
 
+
 def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None):
 	from erpnext.accounts.doctype.pricing_rule.utils import (get_applied_pricing_rules,
 		get_pricing_rule_items)
 
-	for d in get_applied_pricing_rules(pricing_rules):
+	applied_pricing_rules = get_applied_pricing_rules(pricing_rules)
+	keep_pricing_rules = []
+
+	for d in applied_pricing_rules:
 		if not d or not frappe.db.exists("Pricing Rule", d): continue
 		pricing_rule = frappe.get_cached_doc('Pricing Rule', d)
+
+		if pricing_rule.prevent_ignore_pricing_rule:
+			keep_pricing_rules.append(pricing_rule.name)
+			continue
 
 		if pricing_rule.price_or_product_discount == 'Price':
 			if pricing_rule.rate_or_discount == 'Discount Percentage':
@@ -479,13 +489,14 @@ def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None):
 			item_details.applied_on_items = json.dumps(items)
 			item_details.price_or_product_discount = pricing_rule.price_or_product_discount
 
-	item_details.pricing_rules = ''
+	item_details.pricing_rules = frappe.as_json([d for d in keep_pricing_rules], indent=0) if keep_pricing_rules else ''
 
 	return item_details
 
+
 @frappe.whitelist()
 def remove_pricing_rules(item_list):
-	if isinstance(item_list, string_types):
+	if isinstance(item_list, str):
 		item_list = json.loads(item_list)
 
 	out = []

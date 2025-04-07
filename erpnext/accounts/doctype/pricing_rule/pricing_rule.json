@@ -16,7 +16,6 @@
   "items",
   "item_groups",
   "brands",
-  "item_sources",
   "mixed_conditions",
   "is_cumulative",
   "coupon_code_based",
@@ -26,7 +25,6 @@
   "other_item_code",
   "other_item_group",
   "other_brand",
-  "other_item_source",
   "section_break_7",
   "selling",
   "buying",
@@ -83,15 +81,18 @@
   "section_break_13",
   "priority",
   "threshold_percentage",
-  "column_break_11xu4",
   "claim_customer",
   "claim_customer_name",
+  "rule_description",
+  "column_break_11xu4",
+  "condition",
   "column_break_66",
   "apply_multiple_pricing_rules",
   "apply_discount_on_rate",
   "do_not_force_pricing_rule",
+  "prevent_ignore_pricing_rule",
   "validate_applied_rule",
-  "rule_description",
+  "show_in_print",
   "help_section",
   "pricing_rule_help",
   "reference_section",
@@ -124,7 +125,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Apply On",
-   "options": "\nItem Code\nItem Group\nBrand\nItem Source\nTransaction",
+   "options": "\nItem Code\nItem Group\nBrand\nTransaction",
    "reqd": 1
   },
   {
@@ -200,7 +201,7 @@
    "fieldname": "apply_rule_on_other",
    "fieldtype": "Select",
    "label": "Apply Rule On Other",
-   "options": "\nItem Code\nItem Group\nBrand\nItem Source"
+   "options": "\nItem Code\nItem Group\nBrand"
   },
   {
    "fieldname": "column_break_17",
@@ -531,7 +532,7 @@
    "label": "Validate Applied Rule"
   },
   {
-   "depends_on": "validate_applied_rule",
+   "depends_on": "eval:doc.validate_applied_rule || doc.show_in_print",
    "fieldname": "rule_description",
    "fieldtype": "Small Text",
    "label": "Rule Description"
@@ -653,25 +654,28 @@
    "options": "Price List"
   },
   {
-   "depends_on": "eval:doc.apply_on == 'Item Source'",
-   "fieldname": "item_sources",
-   "fieldtype": "Table",
-   "label": "Apply Rule On Item Source",
-   "mandatory_depends_on": "eval:doc.apply_on == 'Item Source'",
-   "options": "Pricing Rule Item Source"
+   "default": "0",
+   "fieldname": "prevent_ignore_pricing_rule",
+   "fieldtype": "Check",
+   "label": "Prevent Ignore Pricing Rule"
   },
   {
-   "depends_on": "eval:doc.apply_rule_on_other == 'Item Source'",
-   "fieldname": "other_item_source",
-   "fieldtype": "Link",
-   "label": "Item Source",
-   "options": "Item Source"
+   "fieldname": "condition",
+   "fieldtype": "Code",
+   "label": "Condition",
+   "options": "Python"
+  },
+  {
+   "default": "0",
+   "fieldname": "show_in_print",
+   "fieldtype": "Check",
+   "label": "Show in Print"
   }
  ],
  "icon": "fa fa-gift",
  "idx": 1,
  "links": [],
- "modified": "2025-03-23 23:41:53.139095",
+ "modified": "2025-04-07 11:48:41.290747",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Pricing Rule",
