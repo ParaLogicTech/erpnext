@@ -3,17 +3,26 @@
  "allow_rename": 1,
  "autoname": "field:template_category",
  "creation": "2022-04-07 00:25:56.715772",
+ "default_view": "Tree",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "template_category",
-  "description"
+  "section_break_sliv",
+  "description",
+  "column_break_tpbd",
+  "parent_service_template_category",
+  "is_group",
+  "tree_details_section",
+  "lft",
+  "rgt",
+  "old_parent"
  ],
  "fields": [
   {
    "fieldname": "description",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "label": "Description"
   },
   {
@@ -23,14 +32,72 @@
    "label": "Service Template Category",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Left",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Right",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Old Parent",
+   "no_copy": 1,
+   "options": "Service Template Category",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "parent_service_template_category",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Parent Service Template Category",
+   "options": "Service Template Category"
+  },
+  {
+   "fieldname": "section_break_sliv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_tpbd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "tree_details_section",
+   "fieldtype": "Section Break",
+   "label": "Tree Details"
   }
  ],
+ "is_tree": 1,
  "links": [],
- "modified": "2025-01-11 15:22:21.166411",
+ "modified": "2025-04-07 15:35:19.885925",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Service Template Category",
  "naming_rule": "By fieldname",
+ "nsm_parent_field": "parent_service_template_category",
  "owner": "Administrator",
  "permissions": [
   {
@@ -101,7 +168,7 @@
   }
  ],
  "quick_entry": 1,
- "search_fields": "description",
+ "search_fields": "description, parent_service_template_category",
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],
