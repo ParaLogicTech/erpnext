@@ -831,24 +831,6 @@ def get_price_list_data(args, item_doc, out):
 
 			out.retail_rate = flt(retail_rate)
 
-		if not out.price_list_rate and args.selling_or_buying == "buying":
-			last_purchase_details = get_price_from_last_purchase(
-				item_doc.name,
-				warehouse=args.warehouse,
-				uom=args.uom,
-				conversion_factor=args.conversion_factor,
-				exchange_rate=args.conversion_rate,
-				exclude=args.name,
-			)
-			if last_purchase_details:
-				out.update(last_purchase_details)
-			else:
-				item_last_purchase_rate = flt(frappe.get_cached_value("Item", item_doc.name, "last_purchase_rate"))
-				if item_last_purchase_rate:
-					conversion_factor = flt(args.conversion_factor) or 1
-					exchange_rate = flt(args.conversion_rate) or 1
-					out.price_list_rate = item_last_purchase_rate * conversion_factor / exchange_rate
-
 
 def insert_item_price(args):
 	"""Insert Item Price if Price List and Price List Rate are specified and currency is the same"""
@@ -1039,30 +1021,6 @@ def get_last_purchase_rate(
 		last_purchase_rate = flt(frappe.get_cached_value("Item", item_code, "last_purchase_rate"))
 
 	return last_purchase_rate * conversion_factor / exchange_rate
-
-
-def get_price_from_last_purchase(
-	item_code,
-	warehouse=None,
-	uom=None,
-	conversion_factor=None,
-	exchange_rate=None,
-	exclude=None,
-):
-	from erpnext.controllers.buying_controller import get_last_purchase_details
-
-	exchange_rate = flt(exchange_rate) or 1.0
-	conversion_factor = convert_item_uom_for(1.0, item_code, to_uom=uom, conversion_factor=conversion_factor, is_rate=True) or 1.0
-
-	details = get_last_purchase_details(item_code, warehouse=warehouse, exclude=exclude)
-	if details:
-		details.update({
-			"price_list_rate": flt(details.base_price_list_rate) * conversion_factor / exchange_rate,
-			"rate": flt(details.base_rate) * conversion_factor / exchange_rate,
-			"last_purchase_rate": flt(details.base_net_rate) * conversion_factor / exchange_rate
-		})
-
-	return details
 
 
 def check_packing_list(item_price, desired_qty, item_code):

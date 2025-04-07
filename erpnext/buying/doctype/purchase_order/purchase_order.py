@@ -570,7 +570,7 @@ class PurchaseOrder(BuyingController):
 
 	@frappe.whitelist()
 	def get_last_purchase_rate(self):
-		from erpnext.stock.get_item_details import get_price_from_last_purchase
+		from erpnext.controllers.buying_controller import get_price_from_last_purchase
 		"""get last purchase rates for all items"""
 
 		for d in self.get("items"):
