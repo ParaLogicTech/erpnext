@@ -7,6 +7,7 @@ from frappe import _
 from frappe.utils import flt, today, getdate, cint
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_checks_for_pl_and_bs_accounts
 
+
 def post_depreciation_entries(date=None):
 	# Return if automatic booking of asset depreciation is disabled
 	if not cint(frappe.db.get_value("Accounts Settings", None, "book_asset_depreciation_entry_automatically")):
@@ -14,16 +15,36 @@ def post_depreciation_entries(date=None):
 
 	if not date:
 		date = today()
+
 	for asset in get_depreciable_assets(date):
-		make_depreciation_entry(asset, date)
-		frappe.db.commit()
+		try:
+			make_depreciation_entry(asset, date)
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			frappe.log_error(
+				title=_("Depreciation Entry failed"),
+				message=frappe.get_traceback(),
+				reference_doctype="Asset",
+				reference_name=asset,
+			)
+			frappe.db.commit()
+
 
 def get_depreciable_assets(date):
-	return frappe.db.sql_list("""select a.name
+	return frappe.db.sql_list("""
+		select distinct a.name
 		from tabAsset a, `tabDepreciation Schedule` ds
-		where a.name = ds.parent and a.docstatus=1 and ds.schedule_date<=%s and a.calculate_depreciation = 1
+		where a.name = ds.parent
+			and a.docstatus = 1
+			and ds.schedule_date <= %s
+			and a.calculate_depreciation = 1
 			and a.status in ('Submitted', 'Partially Depreciated')
-			and ifnull(ds.journal_entry, '')=''""", date)
+			and ifnull(ds.journal_entry, '') = ''
+			and ds.skip_depreciation_entry = 0
+			and ds.depreciation_amount != 0
+	""", date)
+
 
 @frappe.whitelist()
 def make_depreciation_entry(asset_name, date=None):
@@ -44,10 +65,18 @@ def make_depreciation_entry(asset_name, date=None):
 	accounting_dimensions = get_checks_for_pl_and_bs_accounts()
 
 	for d in asset.get("schedules"):
-		if not d.journal_entry and getdate(d.schedule_date) <= getdate(date):
+		if (
+			not d.journal_entry
+			and not d.skip_depreciation_entry
+			and d.depreciation_amount
+			and getdate(d.schedule_date) <= getdate(date)
+		):
 			je = frappe.new_doc("Journal Entry")
 			je.voucher_type = "Depreciation Entry"
-			je.naming_series = depreciation_series
+
+			if depreciation_series:
+				je.naming_series = depreciation_series
+
 			je.posting_date = d.schedule_date
 			je.company = asset.company
 			je.finance_book = d.finance_book
@@ -58,7 +87,7 @@ def make_depreciation_entry(asset_name, date=None):
 				"credit_in_account_currency": d.depreciation_amount,
 				"reference_type": "Asset",
 				"reference_name": asset.name,
-				"cost_center": ""
+				"cost_center": depreciation_cost_center
 			}
 
 			debit_entry = {

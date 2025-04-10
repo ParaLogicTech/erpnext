@@ -233,7 +233,6 @@ scheduler_events = {
 		"erpnext.hr.doctype.employee.employee.send_employee_birthday_notification",
 		"erpnext.hr.doctype.employee.employee.send_employee_anniversary_notification",
 		"erpnext.projects.doctype.task.task.set_tasks_as_overdue",
-		"erpnext.assets.doctype.asset.depreciation.post_depreciation_entries",
 		"erpnext.hr.doctype.daily_work_summary_group.daily_work_summary_group.send_summary",
 		"erpnext.stock.doctype.serial_no.serial_no.update_maintenance_status",
 		"erpnext.buying.doctype.supplier_scorecard.supplier_scorecard.refresh_scorecards",
@@ -252,6 +251,7 @@ scheduler_events = {
 		"erpnext.hr.doctype.leave_ledger_entry.leave_ledger_entry.process_expired_allocation",
 		"erpnext.hr.doctype.leave_encashment.leave_encashment.generate_leave_encashment",
 		"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.auto_schedule_next_service_templates",
+		"erpnext.assets.doctype.asset.depreciation.post_depreciation_entries",
 	],
 	"monthly_long": [
 		"erpnext.accounts.deferred_revenue.convert_deferred_revenue_to_income",
