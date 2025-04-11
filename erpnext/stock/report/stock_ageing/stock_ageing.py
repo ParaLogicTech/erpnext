@@ -17,13 +17,9 @@ def execute(filters=None):
 class StockAgeingReport:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
-		self.filters.from_date = getdate(self.filters.from_date or today())
 		self.filters.to_date = getdate(self.filters.to_date or today())
 
 		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
-
-		if self.filters.from_date > self.filters.to_date:
-			frappe.throw(_("From Date cannot be after To Date"))
 
 	def run(self):
 		self.get_columns()
