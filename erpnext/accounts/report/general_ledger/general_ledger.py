@@ -53,11 +53,11 @@ def validate_filters(filters, account_details):
 	if filters.from_date > filters.to_date:
 		frappe.throw(_("From Date must be before To Date"))
 
-	if filters.get('project'):
-		filters.project = frappe.parse_json(filters.get('project'))
-
-	if filters.get('cost_center'):
-		filters.cost_center = frappe.parse_json(filters.get('cost_center'))
+	# if filters.get('project'):
+	# 	filters.project = frappe.parse_json(filters.get('project'))
+	#
+	# if filters.get('cost_center'):
+	# 	filters.cost_center = frappe.parse_json(filters.get('cost_center'))
 
 	if filters.get('party'):
 		# 	filters.party = frappe.parse_json(filters.get("party"))
@@ -320,7 +320,7 @@ def get_conditions(filters, accounting_dimensions):
 			conditions.append("gle.is_opening != 'Yes'")
 
 	if filters.get("project"):
-		conditions.append("gle.project in %(project)s")
+		conditions.append("gle.project = %(project)s")
 
 	if filters.get("group_by") == _("Group by Sales Person"):
 		conditions.append("steam.sales_person != '' and steam.sales_person is not null")
