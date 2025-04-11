@@ -151,8 +151,7 @@ class PurchaseInvoice(BuyingController):
 		self.make_gl_entries_on_cancel()
 		self.update_project()
 
-		if not self.is_return:
-			unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
+		unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
 
 	def set_title(self):
 		if self.letter_of_credit:

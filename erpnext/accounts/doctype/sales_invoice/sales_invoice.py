@@ -224,8 +224,7 @@ class SalesInvoice(SellingController):
 			against_si_doc.delete_loyalty_point_entry()
 			against_si_doc.make_loyalty_point_entry()
 
-		if self.is_return:
-			unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
+		unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
 
 		# Healthcare Service Invoice.
 		if "Healthcare" in frappe.get_active_domains():
