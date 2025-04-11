@@ -20,9 +20,8 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 		msgprint(_("No record found"))
 		return columns, invoice_list
 
-	invoice_income_map = get_invoice_income_map(invoice_list)
-	invoice_income_map, invoice_tax_map = get_invoice_tax_map(invoice_list,
-		invoice_income_map, income_accounts)
+	invoice_income_map = get_invoice_income_map(invoice_list, income_accounts)
+	invoice_tax_map = get_invoice_tax_map(invoice_list, income_accounts)
 	#Cost Center & Warehouse Map
 	invoice_cc_wh_map = get_invoice_cc_wh_map(invoice_list)
 	invoice_so_dn_map = get_invoice_so_dn_map(invoice_list)
@@ -231,12 +230,24 @@ def get_columns(invoice_list, additional_table_columns):
 	tax_columns = []
 
 	if invoice_list:
-		income_accounts = frappe.db.sql_list("""select distinct income_account
-			from `tabSales Invoice Item` where docstatus = 1 and parent in (%s)
-			order by income_account""" %
-			', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]))
+		invoice_names = [inv.name for inv in invoice_list]
 
-		tax_accounts = 	frappe.db.sql_list("""select distinct account_head
+		income_and_discount_accounts = frappe.db.sql("""
+			select distinct income_account, discount_account
+			from `tabSales Invoice Item`
+			where parent in %s
+		""", [invoice_names], as_dict=1)
+
+		income_accounts = set()
+		for d in income_and_discount_accounts:
+			if d.income_account:
+				income_accounts.add(d.income_account)
+			if d.discount_account:
+				income_accounts.add(d.discount_account)
+
+		income_accounts = sorted(list(income_accounts))
+
+		tax_accounts = frappe.db.sql_list("""select distinct account_head
 			from `tabSales Taxes and Charges` where parenttype = 'Sales Invoice'
 			and docstatus = 1 and base_tax_amount_after_discount_amount != 0
 			and parent in (%s) order by account_head""" %
@@ -372,19 +383,25 @@ def get_invoices(filters, additional_query_columns):
 		where docstatus = 1 %s order by posting_date desc, name desc""".format(additional_query_columns or '') %
 		conditions, filters, as_dict=1)
 
-def get_invoice_income_map(invoice_list):
-	income_details = frappe.db.sql("""select parent, income_account, sum(base_net_amount) as amount
-		from `tabSales Invoice Item` where parent in (%s) group by parent, income_account""" %
-		', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]), as_dict=1)
+def get_invoice_income_map(invoice_list, income_accounts):
+	invoice_names = [inv.name for inv in invoice_list]
 
 	invoice_income_map = {}
-	for d in income_details:
-		invoice_income_map.setdefault(d.parent, frappe._dict()).setdefault(d.income_account, [])
-		invoice_income_map[d.parent][d.income_account] = flt(d.amount)
+
+	gl_data = frappe.db.sql("""
+		select voucher_no, account, sum(credit - debit) as amount
+		from `tabGL Entry`
+		where voucher_type = 'Sales Invoice' and voucher_no in %s and account in %s
+		group by voucher_no, account
+	""", [invoice_names, income_accounts], as_dict=1)
+
+	for d in gl_data:
+		invoice_income_map.setdefault(d.voucher_no, {}).setdefault(d.account, 0)
+		invoice_income_map[d.voucher_no][d.account] += flt(d.amount)
 
 	return invoice_income_map
 
-def get_invoice_tax_map(invoice_list, invoice_income_map, income_accounts):
+def get_invoice_tax_map(invoice_list, income_accounts):
 	tax_details = frappe.db.sql("""select parent, account_head,
 		sum(base_tax_amount_after_discount_amount) as tax_amount
 		from `tabSales Taxes and Charges` where parent in (%s) group by parent, account_head""" %
@@ -392,16 +409,11 @@ def get_invoice_tax_map(invoice_list, invoice_income_map, income_accounts):
 
 	invoice_tax_map = {}
 	for d in tax_details:
-		if d.account_head in income_accounts:
-			if d.account_head in invoice_income_map[d.parent]:
-				invoice_income_map[d.parent][d.account_head] += flt(d.tax_amount)
-			else:
-				invoice_income_map[d.parent][d.account_head] = flt(d.tax_amount)
-		else:
-			invoice_tax_map.setdefault(d.parent, frappe._dict()).setdefault(d.account_head, [])
-			invoice_tax_map[d.parent][d.account_head] = flt(d.tax_amount)
+		if d.account_head not in income_accounts:
+			invoice_tax_map.setdefault(d.parent, {}).setdefault(d.account_head, 0)
+			invoice_tax_map[d.parent][d.account_head] += flt(d.tax_amount)
 
-	return invoice_income_map, invoice_tax_map
+	return invoice_tax_map
 
 def get_invoice_so_dn_map(invoice_list):
 	si_items = frappe.db.sql("""
