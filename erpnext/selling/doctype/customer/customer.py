@@ -104,8 +104,6 @@ class Customer(TransactionBase):
 		self.update_primary_contact()
 		self.update_primary_address()
 
-		self.update_customer_groups()
-
 	def check_customer_group_change(self):
 		frappe.flags.customer_group_changed = False
 
@@ -154,12 +152,6 @@ class Customer(TransactionBase):
 		from frappe.regional.pakistan import validate_mobile_pakistan
 		validate_mobile_pakistan(self.mobile_no)
 		validate_mobile_pakistan(self.mobile_no_2)
-
-	def update_customer_groups(self):
-		ignore_doctypes = ["Lead", "Opportunity", "POS Profile", "Tax Rule", "Pricing Rule"]
-		if frappe.flags.customer_group_changed:
-			update_linked_doctypes('Customer', self.name, 'Customer Group',
-				self.customer_group, ignore_doctypes)
 
 	def update_primary_contact(self):
 		push_or_pull = None
