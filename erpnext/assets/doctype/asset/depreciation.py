@@ -5,7 +5,7 @@
 import frappe
 from frappe import _
 from frappe.utils import flt, today, getdate, cint
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_checks_for_pl_and_bs_accounts
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 
 def post_depreciation_entries(date=None):
@@ -61,8 +61,7 @@ def make_depreciation_entry(asset_name, date=None):
 		["depreciation_cost_center", "series_for_depreciation_entry"])
 
 	depreciation_cost_center = asset.cost_center or depreciation_cost_center
-
-	accounting_dimensions = get_checks_for_pl_and_bs_accounts()
+	accounting_dimensions = get_accounting_dimensions()
 
 	for d in asset.get("schedules"):
 		if (
@@ -81,6 +80,11 @@ def make_depreciation_entry(asset_name, date=None):
 			je.company = asset.company
 			je.finance_book = d.finance_book
 			je.remark = "Depreciation Entry against {0} worth {1}".format(asset_name, d.depreciation_amount)
+			je.cost_center = depreciation_cost_center
+
+			for dimension_field in accounting_dimensions:
+				if asset.get(dimension_field):
+					je.set(dimension_field, asset.get(dimension_field))
 
 			credit_entry = {
 				"account": accumulated_depreciation_account,
@@ -98,19 +102,7 @@ def make_depreciation_entry(asset_name, date=None):
 				"cost_center": depreciation_cost_center
 			}
 
-			for dimension in accounting_dimensions:
-				if (asset.get(dimension['fieldname']) or dimension.get('mandatory_for_bs')):
-					credit_entry.update({
-						dimension['fieldname']: asset.get(dimension['fieldname']) or dimension.get('default_dimension')
-					})
-
-				if (asset.get(dimension['fieldname']) or dimension.get('mandatory_for_pl')):
-					debit_entry.update({
-						dimension['fieldname']: asset.get(dimension['fieldname']) or dimension.get('default_dimension')
-					})
-
 			je.append("accounts", credit_entry)
-
 			je.append("accounts", debit_entry)
 
 			je.flags.ignore_permissions = True
