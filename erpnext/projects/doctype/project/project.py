@@ -25,6 +25,7 @@ from erpnext.projects.doctype.project_status.project_status import (
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from frappe.model.meta import get_field_precision
 import json
+from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
 
 
 class Project(StatusUpdaterERP):
@@ -63,6 +64,7 @@ class Project(StatusUpdaterERP):
 		self.set_onload('is_manual_project_status', is_manual_project_status(self.project_status))
 		self.set_onload('contact_nos', get_all_contact_nos('Customer', self.customer))
 		self.set_onload('task_count', self.get_task_count())
+		self.set_onload('notification_count', get_all_notification_count(self.doctype, self.name))
 
 		self.sales_data = self.get_project_sales_data(get_sales_invoice=True)
 		self.consumables_data = self.get_project_consumables_data()
@@ -1382,6 +1384,12 @@ class Project(StatusUpdaterERP):
 
 		return self._item_group_subtree[item_group]
 
+	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
+		if notification_type == "Ready to Close":
+			return self.ready_to_close and self.status == "To Close"
+		frappe.throw(_("Cannot send {0} notification because Repair Order status is not 'To Close'")
+					 .format(notification_type))
+
 
 def get_material_items(project, get_sales_invoice=True):
 	is_material_condition = "i.is_stock_item = 1"
@@ -1896,11 +1904,11 @@ def create_kanban_board_if_not_exists(project):
 def set_project_ready_to_close(project):
 	project = frappe.get_doc('Project', project)
 	project.check_permission('write')
-
 	project.set_ready_to_close(update=True)
 	project.set_timesheet_values(update=True)
 	project.set_status(update=True, reset=True, from_doctype="Project", action="ready_to_close")
 	project.notify_update()
+	project.run_method('notify_ready_to_close')
 
 
 @frappe.whitelist()
@@ -2819,3 +2827,5 @@ def set_warranty_claim_denied(projects, denied, reason=None):
 		doc.warranty_claim_denied = denied
 		doc.warranty_claim_denied_reason = reason
 		doc.save()
+
+

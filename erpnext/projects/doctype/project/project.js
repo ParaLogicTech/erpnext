@@ -398,10 +398,24 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			});
 		}
 
+		// Notification Status for Ready for Collection
+		let ready_to_close_notification_count = frappe.get_notification_count(me.frm, 'Ready to Close');
+		let ready_to_close_notification_color = ready_to_close_notification_count ? "green" : "light-gray";
+		let ready_to_close_confirmation_status = frappe.get_notification_count_str(me.frm, 'Ready to Close');
+
+		let notification_items = [
+			{
+				contents: __('Ready to Close: {0}', [ready_to_close_confirmation_status]),
+				indicator: ready_to_close_notification_color
+			},
+		]
+
+
 		me.extend_dashboard_items(status_items, billing_items);
 
 		me.add_indicator_section(__("Status"), status_items);
 		me.add_indicator_section(__("Billing"), billing_items);
+		me.add_indicator_section(__("Notification"), notification_items);
 	}
 
 	extend_dashboard_items(status_items, billing_items) { }
