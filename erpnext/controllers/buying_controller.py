@@ -11,6 +11,8 @@ from erpnext.buying.utils import validate_for_items
 from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
 from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
 from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.stock.get_item_details import get_bin_details
+from erpnext.stock.doctype.batch.batch import get_batch_qty
 import json
 
 
@@ -43,6 +45,14 @@ class BuyingController(TransactionController):
 		if self.docstatus == 0:
 			if self.doctype in ("Supplier Quotation", "Purchase Order", "Purchase Receipt", "Purchase Invoice"):
 				self.calculate_taxes_and_totals()
+
+		for item in self.get("items"):
+				item.update(get_bin_details(item.item_code, item.warehouse))
+				if item.meta.has_field('actual_batch_qty'):
+					if item.get('batch_no'):
+						item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
+					else:
+						item.actual_batch_qty = 0
 
 	def validate(self):
 		super(BuyingController, self).validate()
