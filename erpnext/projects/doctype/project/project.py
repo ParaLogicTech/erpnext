@@ -1386,11 +1386,30 @@ class Project(StatusUpdaterERP):
 
 	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
 		if notification_type == "Ready to Close":
-			if self.ready_to_close and self.status == "To Close":
-				return True
-			else:
-				frappe.throw(_("Cannot send {0} notification because Repair Order status is not 'To Close'")
-					 .format(notification_type))
+			# Notification should not be sent if document is cancelled
+			if self.docstatus == 2:
+				if throw:
+					frappe.throw(
+						_("Cannot send {0} notification because Repair Order is cancelled").format(notification_type))
+				return False
+
+			# Notification should not be sent if status is not 'To Close'
+			if self.status != "To Close":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because Repair Order status is not 'To Close'").format(
+						notification_type))
+				return False
+
+			# Notification should not be sent if not marked as ready to close
+			if not self.ready_to_close:
+				if throw:
+					frappe.throw(
+						_("Cannot send {0} notification because Repair Order is not marked as ready to close").format(
+							notification_type))
+				return False
+
+		# Return True if no conditions catch any problem
+		return True
 
 
 def get_material_items(project, get_sales_invoice=True):
