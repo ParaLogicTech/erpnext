@@ -1386,8 +1386,10 @@ class Project(StatusUpdaterERP):
 
 	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
 		if notification_type == "Ready to Close":
-			return self.ready_to_close and self.status == "To Close"
-		frappe.throw(_("Cannot send {0} notification because Repair Order status is not 'To Close'")
+			if self.ready_to_close and self.status == "To Close":
+				return True
+			else:
+				frappe.throw(_("Cannot send {0} notification because Repair Order status is not 'To Close'")
 					 .format(notification_type))
 
 
@@ -1907,8 +1909,8 @@ def set_project_ready_to_close(project):
 	project.set_ready_to_close(update=True)
 	project.set_timesheet_values(update=True)
 	project.set_status(update=True, reset=True, from_doctype="Project", action="ready_to_close")
-	project.notify_update()
 	project.run_method('notify_ready_to_close')
+	project.notify_update()
 
 
 @frappe.whitelist()
@@ -1926,7 +1928,6 @@ def reopen_project_status(project):
 def set_project_status(project, project_status):
 	project = frappe.get_doc('Project', project)
 	project.check_permission('write')
-
 	project.set_status(status=project_status, from_doctype="Project", action="set_status")
 	project.save()
 
@@ -2827,5 +2828,3 @@ def set_warranty_claim_denied(projects, denied, reason=None):
 		doc.warranty_claim_denied = denied
 		doc.warranty_claim_denied_reason = reason
 		doc.save()
-
-
