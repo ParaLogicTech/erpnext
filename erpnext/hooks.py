@@ -111,6 +111,8 @@ fixtures = [
 				"Customer Feedback-applies_to_serial_no",
 				"Customer Feedback-applies_to_item",
 				"Customer Feedback-applies_to_item_name",
+				"Sales Invoice-customer_outstanding_amount",
+				"Sales Invoice-previous_outstanding_amount",
 			]]
 		}
 	},
