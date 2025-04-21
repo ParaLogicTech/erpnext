@@ -2,9 +2,13 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cstr, cint
 from erpnext.controllers.stock_controller import StockController
-from erpnext.stock.get_item_details import get_item_details, get_applies_to_details, get_force_applies_to_fields
+from erpnext.stock.get_item_details import (
+	get_item_details,
+	get_applies_to_details,
+	get_force_applies_to_fields,
+	get_bin_details,
+)
 from erpnext.stock.doctype.batch.batch import get_batch_qty
-from erpnext.stock.get_item_details import get_bin_details
 from erpnext.accounts.doctype.pricing_rule.utils import (
 	apply_pricing_rule_for_free_items, get_applied_pricing_rules,
 	apply_pricing_rule_on_transaction, update_pricing_rule_table
@@ -97,10 +101,17 @@ class TransactionController(StockController):
 
 	def onload(self):
 		super().onload()
+
 		self.set_onload("enable_dynamic_bundling", self.dynamic_bundling_enabled())
-		for item in self.get("items"):
-			if item.meta.has_field('actual_qty') or item.meta.has_field('projected_qty'):
+
+		for item in self.get("items") or []:
+			if (
+				item.meta.has_field("item_code")
+				and item.meta.has_field("warehouse")
+				and (item.meta.has_field('actual_qty') or item.meta.has_field('projected_qty'))
+			):
 				item.update(get_bin_details(item.item_code, item.warehouse))
+
 			if item.meta.has_field('actual_batch_qty'):
 				if item.get('batch_no'):
 					item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
