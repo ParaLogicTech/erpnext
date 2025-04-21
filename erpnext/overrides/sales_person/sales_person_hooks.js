@@ -53,14 +53,6 @@ frappe.ui.form.on('Sales Person', {
 		});
 	},
 
-	vehicle_workshop: function(frm) {
-        if (frm.doc.vehicle_workshop && !frm.doc.employee){
-            frappe.db.get_doc('Vehicle Workshop', frm.doc.vehicle_workshop).then(doc=> {
-                frm.set_value('branch', doc.branch);
-            })
-        }
-    },
-
 	set_employee_fields_read_only: function (frm) {
 		let read_only = cint(Boolean(frm.doc.employee));
 		frm.set_df_property("user_id", "read_only", read_only);

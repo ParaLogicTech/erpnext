@@ -106,15 +106,6 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			};
 		});
 
-		me.frm.set_query("service_advisor", () => {
-			return {
-				filters: {
-					vehicle_workshop: me.frm.doc.vehicle_workshop,
-					is_group: 0
-				}
-			};
-		});
-
 		erpnext.queries.setup_queries(me.frm, "Warehouse", () => {
 			return erpnext.queries.warehouse(me.frm.doc);
 		});
