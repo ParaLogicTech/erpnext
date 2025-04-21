@@ -11,8 +11,6 @@ from erpnext.buying.utils import validate_for_items
 from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
 from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
 from erpnext.controllers.transaction_controller import TransactionController
-from erpnext.stock.get_item_details import get_bin_details
-from erpnext.stock.doctype.batch.batch import get_batch_qty
 import json
 
 
