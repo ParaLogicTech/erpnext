@@ -22,10 +22,10 @@ from erpnext.projects.doctype.project_status.project_status import (
 	validate_project_status_for_transaction,
 	apply_project_status_transition,
 )
+from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from frappe.model.meta import get_field_precision
 import json
-from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
 
 
 class Project(StatusUpdaterERP):
@@ -1386,26 +1386,20 @@ class Project(StatusUpdaterERP):
 
 	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
 		if notification_type == "Ready to Close":
-			# Notification should not be sent if document is cancelled
-			if self.docstatus == 2:
-				if throw:
-					frappe.throw(
-						_("Cannot send {0} notification because Repair Order is cancelled").format(notification_type))
-				return False
-
 			# Notification should not be sent if status is not 'To Close'
 			if self.status != "To Close":
 				if throw:
-					frappe.throw(_("Cannot send {0} notification because Repair Order status is not 'To Close'").format(
-						notification_type))
+					frappe.throw(_("Cannot send {0} notification because status is not 'To Close'").format(
+						notification_type
+					))
 				return False
 
 			# Notification should not be sent if not marked as ready to close
 			if not self.ready_to_close:
 				if throw:
-					frappe.throw(
-						_("Cannot send {0} notification because Repair Order is not marked as ready to close").format(
-							notification_type))
+					frappe.throw(_("Cannot send {0} notification because ready to close is not marked").format(
+						notification_type
+					))
 				return False
 
 		# Return True if no conditions catch any problem
@@ -1925,6 +1919,7 @@ def create_kanban_board_if_not_exists(project):
 def set_project_ready_to_close(project):
 	project = frappe.get_doc('Project', project)
 	project.check_permission('write')
+
 	project.set_ready_to_close(update=True)
 	project.set_timesheet_values(update=True)
 	project.set_status(update=True, reset=True, from_doctype="Project", action="ready_to_close")
@@ -1947,6 +1942,7 @@ def reopen_project_status(project):
 def set_project_status(project, project_status):
 	project = frappe.get_doc('Project', project)
 	project.check_permission('write')
+
 	project.set_status(status=project_status, from_doctype="Project", action="set_status")
 	project.save()
 
