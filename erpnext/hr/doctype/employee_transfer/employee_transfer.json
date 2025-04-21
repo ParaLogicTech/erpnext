@@ -9,10 +9,13 @@
   "employee",
   "employee_name",
   "transfer_date",
+  "is_temporary_transfer",
+  "to_date",
   "column_break_3",
   "company",
   "new_company",
   "department",
+  "is_reverted",
   "details_section",
   "transfer_details",
   "reallocate_leaves",
@@ -43,6 +46,19 @@
    "reqd": 1
   },
   {
+   "fieldname": "is_temporary_transfer",
+   "fieldtype": "Check",
+   "label": "Is Temporary Transfer",
+   "default": 0
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date",
+   "depends_on": "is_temporary_transfer",
+   "mandatory_depends_on": "is_temporary_transfer"
+  },
+  {
    "fieldname": "column_break_3",
    "fieldtype": "Column Break"
   },
@@ -67,6 +83,15 @@
    "label": "Department",
    "options": "Department",
    "read_only": 1
+  },
+  {
+   "fieldname": "is_reverted",
+   "fieldtype": "Check",
+   "label": "Is Reverted",
+   "default": 0,
+   "allow_on_submit": 1,
+   "read_only": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "details_section",

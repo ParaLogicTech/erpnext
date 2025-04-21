@@ -244,6 +244,7 @@ scheduler_events = {
 		"erpnext.selling.doctype.quotation.quotation.set_expired_status",
 		"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.create_opportunity_from_schedule",
 		"erpnext.projects.doctype.service_warranty.service_warranty.set_warranty_service_expired",
+		"erpnext.hr.doctype.employee_transfer.employee_transfer.check_temporary_transfers",
 	],
 	"daily_long": [
 		"erpnext.setup.doctype.email_digest.email_digest.send",
