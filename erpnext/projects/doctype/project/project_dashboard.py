@@ -9,7 +9,7 @@ def get_data():
 		'transactions': [
 			{
 				'label': _('Sales'),
-				'items': ['Quotation', 'Sales Order', 'Sales Invoice']
+				'items': ['Quotation', 'Sales Order', 'Proforma Invoice', 'Sales Invoice']
 			},
 			{
 				'label': _('Material'),

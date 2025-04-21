@@ -67,6 +67,12 @@ class SellingController(TransactionController):
 	def before_update_after_submit(self):
 		self.calculate_sales_team_contribution(self.get('base_net_total'))
 
+	def set_title(self):
+		if self.meta.has_field("bill_to") and self.get("bill_to") and self.bill_to != self.customer:
+			self.title = "{0} ({1})".format(self.bill_to_name or self.bill_to, self.customer_name or self.customer)
+		else:
+			self.title = self.customer_name or self.customer
+
 	def get_party(self):
 		party = self.get("customer")
 		party_name = self.get("customer_name") if party else None
@@ -775,6 +781,26 @@ class SellingController(TransactionController):
 			cost_rate = get_incoming_rate(args, raise_error_if_no_rate=False)
 
 		return cost_rate
+
+	def adjust_rate_for_claim_item(self, source_row, target_row):
+		if not source_row.get('claim_customer'):
+			return
+
+		bill_to = self.get('bill_to') or self.get('customer')
+		if source_row.discount_amount:
+			if bill_to == source_row.claim_customer:
+				target_row.price_list_rate = source_row.discount_amount
+				target_row.rate = source_row.discount_amount
+				target_row.margin_rate_or_amount = 0
+				target_row.discount_percentage = 0
+				target_row.discount_amount = 0
+		else:
+			if bill_to and bill_to != source_row.claim_customer:
+				target_row.price_list_rate = 0
+				target_row.rate = 0
+				target_row.margin_rate_or_amount = 0
+				target_row.discount_percentage = 0
+				target_row.discount_amount = 0
 
 
 @frappe.whitelist()

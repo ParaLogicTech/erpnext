@@ -49,6 +49,7 @@ class DeliveryNote(SellingController):
 
 		self.validate_with_previous_doc()
 		self.set_billing_status()
+		self.set_proforma_status()
 		self.set_installation_status()
 		self.set_status()
 		self.set_title()
@@ -121,9 +122,6 @@ class DeliveryNote(SellingController):
 				toggle_print_hide(self.meta if key == "parent" else item_meta, f)
 
 		super(DeliveryNote, self).before_print(print_settings=print_settings)
-
-	def set_title(self):
-		self.title = self.customer_name or self.customer
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate=for_validate)
@@ -320,6 +318,16 @@ class DeliveryNote(SellingController):
 				'billing_status': self.billing_status,
 			}, update_modified=update_modified)
 
+	def set_proforma_status(self, update=False, update_modified=True):
+		proforma_qty_map = self.get_proforma_qty_map()
+
+		for d in self.items:
+			d.proforma_qty = flt(proforma_qty_map.get(d.name))
+			if update:
+				d.db_set({
+					'proforma_qty': d.proforma_qty,
+				}, update_modified=update_modified)
+
 	def set_installation_status(self, update=False, update_modified=True):
 		get_installed_qty_map = self.get_installed_qty_map()
 
@@ -361,6 +369,21 @@ class DeliveryNote(SellingController):
 
 		return delivery_return_qty_map
 
+	def get_proforma_qty_map(self):
+		proforma_qty_map = {}
+		if self.docstatus == 1:
+			row_names = [d.name for d in self.items]
+			if row_names:
+				proforma_qty_map = dict(frappe.db.sql("""
+					select i.delivery_note_item, sum(i.qty)
+					from `tabProforma Invoice Item` i
+					inner join `tabProforma Invoice` p on p.name = i.parent
+					where p.docstatus = 1 and i.delivery_note_item in %s
+					group by i.delivery_note_item
+				""", [row_names]))
+
+		return proforma_qty_map
+
 	def get_installed_qty_map(self):
 		installled_qty_map = {}
 		if self.docstatus == 1:
@@ -388,6 +411,11 @@ class DeliveryNote(SellingController):
 		if frappe.get_cached_value("Accounts Settings", None, "validate_over_billing_in_sales_invoice"):
 			self.validate_completed_qty('billed_amt', 'amount', self.items,
 				allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
+
+	def validate_proforma_qty(self, from_doctype=None, row_names=None):
+		self.validate_completed_qty(['proforma_qty', 'returned_qty'], 'qty', self.items,
+			allowance_type=lambda row: None if row.unbilled_stock_account else 'billing',
+			from_doctype=from_doctype, row_names=row_names)
 
 	def validate_installed_qty(self, from_doctype=None, row_names=None):
 		self.validate_completed_qty('installed_qty', 'qty', self.items,
@@ -717,12 +745,113 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
 
+	def postprocess(source, target):
+		target.ignore_pricing_rule = 1
+		target.update_stock = 0
+		target.run_method("postprocess_after_mapping", reset_taxes=True)
+
+	mapping = {
+		"Delivery Note": {
+			"doctype": "Sales Invoice",
+			"field_map": {
+				"is_return": "is_return",
+				"remarks": "remarks",
+			},
+			"field_no_map": [
+				"has_stin",
+			],
+			"validation": {
+				"docstatus": ["=", 1]
+			}
+		},
+		"Delivery Note Item": get_item_mapper_for_invoice(),
+		"Sales Taxes and Charges": {
+			"doctype": "Sales Taxes and Charges",
+			"add_if_empty": True
+		},
+		"Sales Team": {
+			"doctype": "Sales Team",
+			"field_map": {
+				"incentives": "incentives"
+			},
+			"add_if_empty": True
+		}
+	}
+
+	frappe.utils.call_hook_method("update_sales_invoice_from_delivery_note_mapper", mapping, "Sales Invoice")
+
+	if only_items:
+		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Delivery Note Item"}
+
+	doc = get_mapped_doc("Delivery Note", source_name, mapping, target_doc,
+		postprocess=postprocess if not skip_postprocess else None,
+		explicit_child_tables=only_items)
+
+	return doc
+
+
+@frappe.whitelist()
+def make_proforma_invoice(source_name, target_doc=None, only_items=None, skip_postprocess=False):
+	if frappe.flags.args and only_items is None:
+		only_items = cint(frappe.flags.args.only_items)
+
+	def postprocess(source, target):
+		target.ignore_pricing_rule = 1
+		target.run_method("postprocess_after_mapping", reset_taxes=True)
+
+	mapping = {
+		"Delivery Note": {
+			"doctype": "Proforma Invoice",
+			"field_map": {
+				"remarks": "remarks",
+			},
+			"field_no_map": [
+				"has_stin",
+			],
+			"validation": {
+				"docstatus": ["=", 1],
+				"is_return": ["=", 0],
+			}
+		},
+		"Delivery Note Item": get_item_mapper_for_invoice(target_doctype="Proforma Invoice Item"),
+		"Sales Taxes and Charges": {
+			"doctype": "Sales Taxes and Charges",
+			"add_if_empty": True
+		},
+		"Sales Team": {
+			"doctype": "Sales Team",
+			"field_map": {
+				"incentives": "incentives"
+			},
+			"add_if_empty": True
+		}
+	}
+
+	frappe.utils.call_hook_method("update_proforma_invoice_from_delivery_note_mapper", mapping, "Proforma Invoice")
+
+	if only_items:
+		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Delivery Note Item"}
+
+	doc = get_mapped_doc("Delivery Note", source_name, mapping, target_doc,
+		postprocess=postprocess if not skip_postprocess else None,
+		explicit_child_tables=only_items)
+
+	return doc
+
+
+def get_item_mapper_for_invoice(allow_duplicate=False, target_doctype="Sales Invoice Item"):
 	def get_pending_qty(source_doc):
-		return source_doc.qty - source_doc.billed_qty - source_doc.returned_qty
+		to_bill_qty = flt(source_doc.qty) - flt(source_doc.billed_qty) - flt(source_doc.returned_qty)
+		if target_doctype == "Proforma Invoice Item":
+			to_proforma_qty = flt(source_doc.qty) - flt(source_doc.proforma_qty) - flt(source_doc.returned_qty)
+			return min(to_proforma_qty, to_bill_qty)
+		else:
+			return to_bill_qty
 
 	def item_condition(source, source_parent, target_parent):
-		if source.name in [d.delivery_note_item for d in target_parent.get('items') if d.delivery_note_item]:
-			return False
+		if not allow_duplicate:
+			if source.name in [d.delivery_note_item for d in target_parent.get('items') if d.delivery_note_item]:
+				return False
 
 		if cint(target_parent.get('claim_billing')):
 			bill_to = target_parent.get('bill_to') or target_parent.get('customer')
@@ -754,67 +883,25 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 			target.serial_no = get_delivery_note_serial_no(source.item_code,
 				target.qty, source_parent.name)
 
-	def postprocess(source, target):
-		target.ignore_pricing_rule = 1
-		target.update_stock = 0
-		target.run_method("postprocess_after_mapping", reset_taxes=True)
-
-	mapping = {
-		"Delivery Note": {
-			"doctype": "Sales Invoice",
-			"field_map": {
-				"is_return": "is_return",
-				"remarks": "remarks",
-			},
-			"field_no_map": [
-				"has_stin",
-			],
-			"validation": {
-				"docstatus": ["=", 1]
-			}
+	return {
+		"doctype": target_doctype,
+		"field_map": {
+			"name": "delivery_note_item",
+			"parent": "delivery_note",
+			"sales_order": "sales_order",
+			"sales_order_item": "sales_order_item",
+			"quotation": "quotation",
+			"quotation_item": "quotation_item",
+			"packing_slip": "packing_slip",
+			"packing_slip_item": "packing_slip_item",
+			"batch_no": "batch_no",
+			"serial_no": "serial_no",
+			"vehicle": "vehicle",
+			"cost_center": "cost_center"
 		},
-		"Delivery Note Item": {
-			"doctype": "Sales Invoice Item",
-			"field_map": {
-				"name": "delivery_note_item",
-				"parent": "delivery_note",
-				"sales_order": "sales_order",
-				"sales_order_item": "sales_order_item",
-				"quotation": "quotation",
-				"quotation_item": "quotation_item",
-				"packing_slip": "packing_slip",
-				"packing_slip_item": "packing_slip_item",
-				"batch_no": "batch_no",
-				"serial_no": "serial_no",
-				"vehicle": "vehicle",
-				"cost_center": "cost_center"
-			},
-			"postprocess": update_item,
-			"condition": item_condition,
-		},
-		"Sales Taxes and Charges": {
-			"doctype": "Sales Taxes and Charges",
-			"add_if_empty": True
-		},
-		"Sales Team": {
-			"doctype": "Sales Team",
-			"field_map": {
-				"incentives": "incentives"
-			},
-			"add_if_empty": True
-		}
+		"postprocess": update_item,
+		"condition": item_condition,
 	}
-
-	frappe.utils.call_hook_method("update_sales_invoice_from_delivery_note_mapper", mapping, "Sales Invoice")
-
-	if only_items:
-		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Delivery Note Item"}
-
-	doc = get_mapped_doc("Delivery Note", source_name, mapping, target_doc,
-		postprocess=postprocess if not skip_postprocess else None,
-		explicit_child_tables=only_items)
-
-	return doc
 
 
 @frappe.whitelist()

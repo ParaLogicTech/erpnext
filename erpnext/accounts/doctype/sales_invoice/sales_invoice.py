@@ -233,12 +233,6 @@ class SalesInvoice(SellingController):
 
 		self.clear_unallocated_advances()
 
-	def set_title(self):
-		if self.get('bill_to') and self.bill_to != self.customer:
-			self.title = "{0} ({1})".format(self.bill_to_name or self.bill_to, self.customer_name or self.customer)
-		else:
-			self.title = self.customer_name or self.customer
-
 	def validate_previous_docstatus(self):
 		for d in self.get('items'):
 			if d.sales_order and frappe.db.get_value("Sales Order", d.sales_order, "docstatus", cache=1) != 1:
@@ -1740,26 +1734,6 @@ class SalesInvoice(SellingController):
 			return
 		else:
 			frappe.throw(_("Sales Invoice Grand Total cannot be 0"))
-
-	def adjust_rate_for_claim_item(self, source_row, target_row):
-		if not source_row.get('claim_customer'):
-			return
-
-		bill_to = self.get('bill_to') or self.get('customer')
-		if source_row.discount_amount:
-			if bill_to == source_row.claim_customer:
-				target_row.price_list_rate = source_row.discount_amount
-				target_row.rate = source_row.discount_amount
-				target_row.margin_rate_or_amount = 0
-				target_row.discount_percentage = 0
-				target_row.discount_amount = 0
-		else:
-			if bill_to and bill_to != source_row.claim_customer:
-				target_row.price_list_rate = 0
-				target_row.rate = 0
-				target_row.margin_rate_or_amount = 0
-				target_row.discount_percentage = 0
-				target_row.discount_amount = 0
 
 	def validate_zero_outstanding(self):
 		super().validate_zero_outstanding()

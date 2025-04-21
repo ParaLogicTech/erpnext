@@ -433,7 +433,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		var me = this;
 
 		erpnext.utils.map_current_doc({
-			method: "erpnext.projects.doctype.project.project.make_sales_invoice",
+			method: "erpnext.projects.doctype.project.project_mappers.make_sales_invoice",
 			source_doctype: "Project",
 			target: me.frm,
 			setters: [

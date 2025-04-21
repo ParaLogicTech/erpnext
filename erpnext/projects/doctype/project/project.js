@@ -147,6 +147,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			'Sales Order': 'Sales Order (All)',
 			'Delivery Note': 'Delivery Note',
 			'Sales Invoice': 'Sales Invoice',
+			'Proforma Invoice': 'Proforma Invoice',
 			'Material Request': 'Consumables Request',
 			'Stock Entry': 'Consumables Issue',
 			'Payment Entry': 'Advance Payment',
@@ -244,8 +245,16 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				}
 			}
 
+			if (frappe.model.can_create("Proforma Invoice")) {
+				me.frm.add_custom_button(__("Proforma Invoice"), () => {
+					me.show_invoice_dialog((depreciation_type) => me.make_proforma_invoice(depreciation_type));
+				}, __("Sales"));
+			}
+
 			if (frappe.model.can_create("Sales Invoice")) {
-				me.frm.add_custom_button(__("Sales Invoice"), () => me.make_sales_invoice(), __("Sales"));
+				me.frm.add_custom_button(__("Sales Invoice"), () => {
+					me.show_invoice_dialog((depreciation_type) => me.make_sales_invoice(depreciation_type));
+				}, __("Sales"));
 			}
 
 			if (
@@ -729,7 +738,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	make_sales_invoice() {
+	show_invoice_dialog(callback) {
 		let me = this;
 		me.frm.check_if_unsaved();
 
@@ -760,20 +769,36 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 			$('.btn-bill-customer', dialog.$wrapper).click(function () {
 				dialog.hide();
-				me._make_sales_invoice('Depreciation Amount Only');
+				callback('Depreciation Amount Only');
 			});
 			$('.btn-bill-insurance', dialog.$wrapper).click(function () {
 				dialog.hide();
-				me._make_sales_invoice('After Depreciation Amount');
+				callback('After Depreciation Amount');
 			});
 		} else {
-			me._make_sales_invoice();
+			callback();
 		}
 	}
 
-	_make_sales_invoice(depreciation_type) {
+	make_sales_invoice(depreciation_type) {
 		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.make_sales_invoice",
+			method: "erpnext.projects.doctype.project.project_mappers.make_sales_invoice",
+			args: {
+				"project_name": this.frm.doc.name,
+				"depreciation_type": depreciation_type,
+			},
+			callback: function (r) {
+				if (!r.exc) {
+					let doclist = frappe.model.sync(r.message);
+					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+				}
+			}
+		});
+	}
+
+	make_proforma_invoice(depreciation_type) {
+		return frappe.call({
+			method: "erpnext.projects.doctype.project.project_mappers.make_proforma_invoice",
 			args: {
 				"project_name": this.frm.doc.name,
 				"depreciation_type": depreciation_type,
@@ -791,7 +816,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let me = this;
 		me.frm.check_if_unsaved();
 		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.make_delivery_note",
+			method: "erpnext.projects.doctype.project.project_mappers.make_delivery_note",
 			args: {
 				"project_name": me.frm.doc.name,
 			},
@@ -808,7 +833,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let me = this;
 		me.frm.check_if_unsaved();
 		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.make_sales_order",
+			method: "erpnext.projects.doctype.project.project_mappers.make_sales_order",
 			args: {
 				"project_name": me.frm.doc.name,
 				"items_type": items_type,
@@ -825,7 +850,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	make_quotation() {
 		this.frm.check_if_unsaved();
 		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.make_quotation",
+			method: "erpnext.projects.doctype.project.project_mappers.make_quotation",
 			args: {
 				"project_name": this.frm.doc.name,
 			},
@@ -841,7 +866,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	make_material_request() {
 		this.frm.check_if_unsaved();
 		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.make_material_request",
+			method: "erpnext.projects.doctype.project.project_mappers.make_material_request",
 			args: {
 				"project_name": this.frm.doc.name,
 			},
@@ -857,7 +882,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	make_stock_entry(purpose) {
 		this.frm.check_if_unsaved();
 		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.make_stock_entry",
+			method: "erpnext.projects.doctype.project.project_mappers.make_stock_entry",
 			args: {
 				"project_name": this.frm.doc.name,
 				"purpose": purpose,
@@ -888,7 +913,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 	_create_service_warranties() {
 		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.create_service_warranties",
+			method: "erpnext.projects.doctype.project.project_mappers.create_service_warranties",
 			args: {
 				"project_name": this.frm.doc.name,
 			},
@@ -903,7 +928,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	make_payment_entry(is_refund) {
 		this.frm.check_if_unsaved();
 		return frappe.call({
-			method: "erpnext.projects.doctype.project.project.make_payment_entry",
+			method: "erpnext.projects.doctype.project.project_mappers.make_payment_entry",
 			args: {
 				"project_name": this.frm.doc.name,
 				"is_refund": cint(is_refund),
