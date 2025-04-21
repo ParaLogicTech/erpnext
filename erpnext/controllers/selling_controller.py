@@ -40,7 +40,6 @@ class SellingController(TransactionController):
 				frappe.get_cached_value("Customer", self.get("bill_to") or self.customer, "is_internal_customer"))
 
 			for item in self.get("items"):
-				item.update(get_bin_details(item.item_code, item.warehouse))
 				if item.meta.has_field('actual_batch_qty'):
 					if item.get('batch_no'):
 						item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)

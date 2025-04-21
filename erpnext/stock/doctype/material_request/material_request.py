@@ -42,8 +42,6 @@ class MaterialRequest(BuyingController):
 
 	def onload(self):
 		super().onload()
-		for item in self.get("items"):
-			item.update(get_bin_details(item.item_code, item.warehouse))
 
 	def before_print(self, print_settings=None):
 		super().before_print(print_settings)
