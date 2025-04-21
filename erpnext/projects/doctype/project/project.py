@@ -967,7 +967,7 @@ class Project(StatusUpdaterERP):
 
 		out = frappe._dict({
 			'customer': has_sales_transaction or self.advance_received_amount,
-			'bill_to': self.advance_received_amount or (self.is_warranty_claim and has_billable_transaction),
+			'bill_to': self.is_warranty_claim and has_billable_transaction,
 			'is_warranty_claim': self.is_warranty_claim and has_billable_transaction,
 		})
 
