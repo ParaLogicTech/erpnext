@@ -4,10 +4,9 @@
 import frappe
 from frappe.utils import cint, flt, cstr
 from frappe import _
-from erpnext.stock.get_item_details import get_bin_details
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
 from erpnext.stock.get_item_details import get_target_warehouse_validation, item_has_product_bundle
-from erpnext.stock.doctype.batch.batch import get_batch_qty, auto_select_and_split_batches
+from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from erpnext.controllers.transaction_controller import TransactionController
@@ -38,13 +37,6 @@ class SellingController(TransactionController):
 		if self.doctype in ("Sales Order", "Delivery Note", "Sales Invoice"):
 			self.set_onload("is_internal_customer",
 				frappe.get_cached_value("Customer", self.get("bill_to") or self.customer, "is_internal_customer"))
-
-			for item in self.get("items"):
-				if item.meta.has_field('actual_batch_qty'):
-					if item.get('batch_no'):
-						item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
-					else:
-						item.actual_batch_qty = 0
 
 		if self.docstatus == 0 and self.meta.get_field("currency"):
 			self.calculate_taxes_and_totals()
