@@ -145,6 +145,8 @@ def get_employee_details(employee):
 	out.contact_mobile = employee_details.cell_number
 	out.contact_email = employee_details.prefered_email or employee_details.company_email or employee_details.personal_email
 
+	frappe.utils.call_hook_method("get_sales_person_employee_details", employee, out)
+
 	return out
 
 
