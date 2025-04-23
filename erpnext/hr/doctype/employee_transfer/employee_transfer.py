@@ -17,24 +17,22 @@ class EmployeeTransfer(Document):
 		if self.to_date and getdate(self.to_date) < getdate(self.transfer_date):
 			frappe.throw(_("To Date cannot be before Transfer Date"))
 		
-		# Run validate hooks from other apps
-		for fn in frappe.get_hooks("employee_transfer_validate"):
-			frappe.get_attr(fn)(self)
+		if not self.is_temporary_transfer:
+			self.to_date = None
+
+		if self.is_temporary_transfer and self.create_new_employee_id:
+			frappe.throw(_("Cannot create a new Employee ID for temporary transfers"))
 
 	def before_submit(self):
-		today = getdate()
 		transfer_date = getdate(self.transfer_date)
 		
 		# Allow future dated transfers but ensure they are properly sequenced
 		if self.to_date:
 			to_date = getdate(self.to_date)
 			if to_date < transfer_date:
-				frappe.throw(_("To Date cannot be before Transfer Date"),
-					frappe.DocstatusTransitionError)
+				frappe.throw(_("To Date cannot be before Transfer Date"))
 		
-		# Run before_submit hooks from other apps
-		for fn in frappe.get_hooks("employee_transfer_before_submit"):
-			frappe.get_attr(fn)(self)
+
 
 	def on_submit(self):
 		employee = frappe.get_doc("Employee", self.employee)
@@ -61,9 +59,7 @@ class EmployeeTransfer(Document):
 				employee.date_of_joining = self.transfer_date
 			employee.save()
 
-		# Run on_submit hooks from other apps
-		for fn in frappe.get_hooks("employee_transfer_on_submit"):
-			frappe.get_attr(fn)(self)
+
 
 	def on_cancel(self):
 		employee = frappe.get_doc("Employee", self.employee)
@@ -79,9 +75,7 @@ class EmployeeTransfer(Document):
 			employee.company = self.company
 		employee.save()
 
-		# Run on_cancel hooks from other apps
-		for fn in frappe.get_hooks("employee_transfer_on_cancel"):
-			frappe.get_attr(fn)(self)
+
 
 	def validate_user_in_details(self):
 		for item in self.transfer_details:
@@ -89,14 +83,13 @@ class EmployeeTransfer(Document):
 				return True
 		return False
 
-	@frappe.whitelist()
 	def revert_temporary_transfer(self):
 		"""Revert temporary transfer by updating the existing record"""
-		if not self.is_temporary_transfer or not self.docstatus == 1:
+		if not self.is_temporary_transfer or self.docstatus != 1:
 			return
 
 		if self.is_reverted:
-			frappe.throw(_("This transfer has already been reverted"))
+			return
 
 		# Get the employee document
 		employee = frappe.get_doc("Employee", self.employee)
@@ -107,13 +100,6 @@ class EmployeeTransfer(Document):
 			
 			# Check if field exists in Employee doctype (either standard or custom)
 			field_exists = frappe.get_meta("Employee").has_field(fieldname)
-			
-			# If field doesn't exist in standard meta, check if it's a custom field or an attribute
-			if not field_exists:
-				if frappe.db.exists("Custom Field", {"dt": "Employee", "fieldname": fieldname}):
-					field_exists = True
-				elif hasattr(employee, fieldname):
-					field_exists = True
 			
 			if not field_exists:
 				continue
@@ -130,13 +116,9 @@ class EmployeeTransfer(Document):
 		# Update the employee with the reverted values
 		for detail in self.transfer_details:
 			if detail.fieldname:
-				if hasattr(employee, 'db_set'):
-					employee.db_set(detail.fieldname, detail.new)
-				else:
-					setattr(employee, detail.fieldname, detail.new)
-					employee.save()
-		
-		frappe.db.commit()
+				setattr(employee, detail.fieldname, detail.new)
+				
+		employee.save()
 		
 		return {
 			"status": "success", 
@@ -162,5 +144,6 @@ def check_temporary_transfers():
 			doc.revert_temporary_transfer()
 			frappe.db.commit()
 		except Exception as e:
-			frappe.log_error(f"Failed to revert transfer {transfer.name}: {str(e)}", 
-				"Employee Transfer Reversion Error")
+			frappe.log_error(message=f"Failed to revert transfer {transfer.name}: {str(e)}", 
+							 reference_doctype="Employee Transfer", 
+							 reference_name=transfer.name)
