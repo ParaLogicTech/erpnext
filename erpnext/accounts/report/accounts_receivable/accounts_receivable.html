@@ -73,48 +73,49 @@
 	</div>
 </div>
 
+{% if(report.report_name === "Accounts Receivable" || report.report_name === "Accounts Payable") { %}
 	{% var balance_row = data.slice(-1).pop(); %}
 	{% if(balance_row) { %}
 	<table class="table table-bordered table-condensed">
-		<caption style="caption-side: top; padding: 4px 8px;">
-		<div style="display: flex; justify-content: space-between; width: 100%;">
-			<span class="ageing-text">{%= __("Ageing") %}</span>
-			<span class="currency-text">(Amount in {%= data[0][__("currency")] || "" %})</span>
-		</div>
-		</caption>
-			<colgroup>
-				<col style="width: 30mm;">
-				{% var col_width = 90 / ageing_columns.length; %}
-				{% for(var i=0; i<ageing_columns.length; i++) { %}
-					<col style="width: {%= col_width %}mm;">
-				{% } %}
-				<col style="width: {%= col_width %}mm;">
-			</colgroup>
+		<caption class="text-right">(Amount in {%= data[0][__("currency")] || "" %})</caption>
+		<colgroup>
+			<col style="width: 18%;">
+			{% var col_width = 82 / (ageing_columns.length + 1); %}
+			{% for(var i = 0; i < ageing_columns.length; i++) { %}
+				<col style="width: {%= col_width %}%;">
+			{% } %}
+			<col style="width: {%= col_width %}%;">
+		</colgroup>
 
 		<thead>
 			<tr>
-				<th style="text-align: right; width: 30mm;">&nbsp;</th>
-				{% for(var i=0; i<ageing_columns.length; i++) { %}
+				<th>Ageing</th>
+
+				{% for(var i = 0; i < ageing_columns.length; i++) { %}
 					<th style="text-align: right;">{%= __(ageing_columns[i].label) %}</th>
 				{% } %}
+
 				<th style="text-align: right;">{%= __("Total") %}</th>
 			</tr>
 		</thead>
 
 		<tbody>
 			<tr>
-				<td>{%= __("Outstanding") %}</td>
-				{% for(var i=0; i<ageing_columns.length; i++) { %}
+				<td>{%= __("Outstanding Amount") %}</td>
+
+				{% for(var i = 0; i < ageing_columns.length; i++) { %}
 					<td class="text-right text-nowrap">{%= format_currency(balance_row[ageing_columns[i].fieldname]) %}</td>
 				{% } %}
+
 				<td class="text-right text-nowrap" style="white-space: nowrap;">
 					{%= format_currency(flt(balance_row[("outstanding_amount")]), data[data.length-1]["currency"]) %}
-					</td>
+				</td>
 			</tr>
 		</tbody>
 
 	</table>
 	{% } %}
+{% } %}
 
 <table class="table table-bordered">
 	<thead>
