@@ -514,7 +514,32 @@ $.extend(erpnext.utils, {
 				</div>
 			`;
 		}
+	},
+
+    setup_last_billed_rate_formatter(doctype, fieldname) {
+		let df = frappe.meta.get_docfield(doctype, fieldname);
+		if (df) {
+			erpnext.utils.set_last_billed_rate_link_formatter(df);
+		}
+	},
+	
+	set_last_billed_rate_link_formatter(df) {
+		df.formatter = (value, df, options, doc) => {
+			if (!value) return "";
+	
+			if (doc?.item_code && cur_frm?.doc?.customer && cur_frm?.doc?.company) {
+				const customer = cur_frm.doc.customer;
+				const company = cur_frm.doc.company;
+	
+				const link = `/app/query-report/Sales Details?company=${encodeURIComponent(company)}&customer=${encodeURIComponent(customer)}&item_code=${encodeURIComponent(doc.item_code)}`;
+	
+				return `<a href="${link}" target="_blank" style="text-decoration: underline;">${value}</a>`;
+			}
+	
+			return value;
+		};
 	}
+
 });
 
 erpnext.utils.select_alternate_items = function(opts) {
