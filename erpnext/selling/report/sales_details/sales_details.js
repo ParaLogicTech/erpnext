@@ -131,6 +131,12 @@ frappe.query_reports["Sales Details"] = {
 			options: "Sales Person"
 		},
 		{
+			fieldname: "account_manager",
+			label: __("Account Manager"),
+			fieldtype: "Link",
+			options: "Sales Person"
+		},
+		{
 			"fieldname":"cost_center",
 			"label": __("Cost Center"),
 			"fieldtype": "MultiSelectList",
