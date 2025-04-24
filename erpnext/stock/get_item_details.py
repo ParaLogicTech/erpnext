@@ -101,14 +101,14 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 	frappe.utils.call_hook_method("get_item_details", args, out, doc=doc, for_validate=for_validate)
 
-	if args.get("doctype") in ["Sales Order", "Sales Invoice"]:
+	child_doctype = args.doctype + ' Item'
+	meta = frappe.get_meta(child_doctype)
+	if meta.get_field("last_billed_rate"):
 		last_billed_rate = get_last_billed_rate(
 			item_code=args.get("item_code"),
 			customer=args.get("customer")
 		)
-
-		if last_billed_rate:
-			out["last_billed_rate"] = last_billed_rate
+		out["last_billed_rate"] = last_billed_rate
 
 	return out
 
@@ -1718,10 +1718,10 @@ def _update_item_info(scan_result):
 
 def get_last_billed_rate(item_code, customer):
     if not item_code or not customer:
-        return None
+        return flt(0)
 
     result = frappe.db.sql("""
-        SELECT sii.base_rate
+        SELECT sii.base_tax_exclusive_rate 
         FROM `tabSales Invoice Item` sii
         JOIN `tabSales Invoice` si ON si.name = sii.parent
         WHERE sii.item_code = %s
@@ -1732,4 +1732,4 @@ def get_last_billed_rate(item_code, customer):
         LIMIT 1
     """, (item_code, customer), as_dict=True)
 
-    return result[0].base_rate if result else None
+    return flt(result[0].base_tax_exclusive_rate) if result else flt(0)

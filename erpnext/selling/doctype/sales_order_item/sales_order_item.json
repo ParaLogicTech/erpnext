@@ -45,8 +45,6 @@
   "retail_amount",
   "base_retail_amount",
   "section_break_16",
-  "last_billed_rate",
-  "column_break_51",
   "price_list_rate",
   "base_price_list_rate",
   "apply_taxes_on_retail",
@@ -536,7 +534,7 @@
   {
    "fieldname": "net_weight_per_unit",
    "fieldtype": "Float",
-   "label": "Net Weight Per Unit"
+   "label": "Weight Per Unit"
   },
   {
    "fieldname": "net_weight",
@@ -1428,27 +1426,12 @@
    "fieldtype": "Check",
    "label": "Skip Delivery Note",
    "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "last_billed_rate",
-   "fieldtype": "Float",
-   "label": "Last Billed Rate",
-   "no_copy": 1,
-   "print_hide": 1,
-   "print_width": "70px",
-   "read_only": 1,
-   "width": "70px"
-  },
-  {
-   "fieldname": "column_break_51",
-   "fieldtype": "Column Break"
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-23 14:21:19.862946",
+ "modified": "2025-04-24 02:26:05.956178",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order Item",

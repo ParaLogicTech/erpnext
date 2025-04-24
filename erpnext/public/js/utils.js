@@ -517,26 +517,25 @@ $.extend(erpnext.utils, {
 	},
 
     setup_last_billed_rate_formatter(doctype, fieldname) {
-		let df = frappe.meta.get_docfield(doctype, fieldname);
-		if (df) {
-			erpnext.utils.set_last_billed_rate_link_formatter(df);
-		}
-	},
+        let df = frappe.meta.get_docfield(doctype, fieldname);
+        if (df) {
+            erpnext.utils.set_last_billed_rate_link_formatter(df);
+        }
+    },
 	
 	set_last_billed_rate_link_formatter(df) {
 		df.formatter = (value, df, options, doc) => {
-			if (!value) return "";
-	
+			let formatted_value = frappe.format(value, df, options, doc, true);
 			if (doc?.item_code && cur_frm?.doc?.customer && cur_frm?.doc?.company) {
 				const customer = cur_frm.doc.customer;
 				const company = cur_frm.doc.company;
 	
 				const link = `/app/query-report/Sales Details?company=${encodeURIComponent(company)}&customer=${encodeURIComponent(customer)}&item_code=${encodeURIComponent(doc.item_code)}`;
 	
-				return `<a href="${link}" target="_blank" style="text-decoration: underline;">${value}</a>`;
+				return `<a href="${link}" target="_blank" style="text-decoration: underline;">${formatted_value}</a>`;
 			}
 	
-			return value;
+			return formatted_value;
 		};
 	}
 
