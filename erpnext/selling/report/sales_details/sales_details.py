@@ -221,7 +221,9 @@ class SalesPurchaseDetailsReport(object):
 			conditions.append("s.customer = %(customer)s")
 
 		if self.filters.get("account_manager"):
-			conditions.append("cus.account_manager = %(account_manager)s")
+			lft, rgt = frappe.db.get_value("Sales Person", self.filters.account_manager, ["lft", "rgt"])
+			conditions.append("""cus.account_manager in (select name from `tabSales Person`
+				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
 		if self.filters.get("customer_group"):
 			lft, rgt = frappe.db.get_value("Customer Group", self.filters.customer_group, ["lft", "rgt"])
@@ -823,7 +825,7 @@ class SalesPurchaseDetailsReport(object):
 				"label": _("Account Manager"),
 				"fieldname": "account_manager",
 				"fieldtype": "Link",
-				"options": "User",
+				"options": "Sales Person",
 				"width": 120
 			})
 
