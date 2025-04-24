@@ -534,12 +534,12 @@
   {
    "fieldname": "net_weight_per_unit",
    "fieldtype": "Float",
-   "label": "Weight Per Unit"
+   "label": "Net Weight Per Unit"
   },
   {
    "fieldname": "net_weight",
    "fieldtype": "Float",
-   "label": "Total Weight",
+   "label": "Net Weight",
    "read_only": 1
   },
   {
