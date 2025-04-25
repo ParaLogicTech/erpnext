@@ -8,7 +8,7 @@ def execute():
 	
 	# Get all customers that have an account_manager set
 	customers = frappe.get_all("Customer", 
-		filters={"account_manager": ["!=", ""]},
+		filters={"account_manager": ["is", "set"]},
 		fields=["name", "account_manager"]
 	)
 
@@ -19,7 +19,6 @@ def execute():
 	for customer in customers:
 		if customer.account_manager not in valid_sales_persons:
 			frappe.db.set_value("Customer", customer.name, "account_manager", None)
-			frappe.db.commit()
 			
 			# Log the change
 			frappe.logger().info(
