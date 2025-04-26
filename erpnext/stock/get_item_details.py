@@ -99,6 +99,16 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		out.rate = args.rate or out.price_list_rate
 		out.amount = flt(args.qty * out.rate)
 
+	child_doctype = args.doctype + ' Item'
+	child_meta = frappe.get_meta(child_doctype)
+	if child_meta.get_field("last_billed_rate"):
+		last_billed_rate = get_last_billed_rate(
+			item_code=args.get("item_code"),
+			customer=args.get("customer"),
+			company=args.get("company"),
+		)
+		out["last_billed_rate"] = last_billed_rate
+
 	frappe.utils.call_hook_method("get_item_details", args, out, doc=doc, for_validate=for_validate)
 
 	return out
@@ -1706,3 +1716,29 @@ def _update_item_info(scan_result):
 		if item_info := frappe.get_cached_value("Item", item_code, ["has_batch_no", "has_serial_no"], as_dict=True):
 			scan_result.update(item_info)
 	return scan_result
+
+
+def get_last_billed_rate(item_code, customer, company=None):
+	if not item_code or not customer:
+		return 0
+
+	company_condition = ""
+	if company:
+		company_condition = " and si.company = %(company)s"
+
+	result = frappe.db.sql("""
+		SELECT sii.base_tax_exclusive_rate 
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+		WHERE si.docstatus = 1
+			AND si.is_return = 0
+			AND sii.item_code = %(item_code)s
+			AND si.customer = %(customer)s
+			{0}
+		ORDER BY si.posting_date DESC, si.posting_time DESC, si.creation DESC
+		LIMIT 1
+	""".format(company_condition), {
+		"item_code": item_code, "customer": customer, "company": company
+	})
+
+	return flt(result[0][0]) if result else 0.0
