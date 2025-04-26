@@ -353,6 +353,9 @@ class SalesPurchaseDetailsReport(object):
 				d['reference_type'] = self.filters.doctype
 				d['reference'] = d.get("parent")
 
+			if d.get("account_manager"):
+				self.filters.has_account_manager = True
+
 			# Add tax fields
 			for f, tax in zip(self.tax_amount_fields, self.tax_columns):
 				tax_amount = self.itemised_tax.get(d.name, {}).get(tax, {}).get("tax_amount", 0.0)
@@ -789,13 +792,6 @@ class SalesPurchaseDetailsReport(object):
 					},
 				]
 
-		# Check if any entry has an account_manager value
-		has_account_manager = False
-		for entry in self.entries:
-			if entry.get("account_manager"):
-				has_account_manager = True
-				break
-
 		columns += [
 			{
 				"label": _("Package"),
@@ -817,19 +813,13 @@ class SalesPurchaseDetailsReport(object):
 				"options": "Territory",
 				"width": 100
 			},
-		]
-
-		# Add Account Manager column only if there's a value in the dataset
-		if has_account_manager:
-			columns.append({
+			{
 				"label": _("Account Manager"),
 				"fieldname": "account_manager",
 				"fieldtype": "Link",
 				"options": "Sales Person",
-				"width": 120
-			})
-
-		columns += [
+				"width": 110
+			},
 			{
 				"label": _("Cost Center"),
 				"fieldname": "cost_center",
@@ -889,6 +879,9 @@ class SalesPurchaseDetailsReport(object):
 
 		if not self.filters.show_packing_slip:
 			columns = [c for c in columns if c.get('fieldname') != 'packing_slip']
+
+		if not self.filters.has_account_manager:
+			columns = [c for c in columns if c.get('fieldname') != 'account_manager']
 
 		if self.filters.totals_only:
 			if "item_code" not in self.group_by:
