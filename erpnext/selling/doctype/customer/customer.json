@@ -188,7 +188,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Account Manager",
-   "options": "User"
+   "options": "Sales Person"
   },
   {
    "fieldname": "customer_group",

@@ -169,7 +169,7 @@ class SalesPurchaseDetailsReport(object):
 		# Party
 		if self.filters.party_type == "Customer":
 			joins.append("inner join `tabCustomer` cus on cus.name = s.customer")
-			select_fields += ["cus.customer_group as party_group", "'Customer Group' as party_group_dt"]
+			select_fields += ["cus.customer_group as party_group", "'Customer Group' as party_group_dt", "cus.account_manager"]
 		elif self.filters.party_type == "Supplier":
 			joins.append("inner join `tabSupplier` sup on sup.name = s.supplier")
 			select_fields += ["sup.supplier_group as party_group", "'Supplier Group' as party_group_dt"]
@@ -219,6 +219,11 @@ class SalesPurchaseDetailsReport(object):
 
 		if self.filters.get("customer"):
 			conditions.append("s.customer = %(customer)s")
+
+		if self.filters.get("account_manager"):
+			lft, rgt = frappe.db.get_value("Sales Person", self.filters.account_manager, ["lft", "rgt"])
+			conditions.append("""cus.account_manager in (select name from `tabSales Person`
+				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
 		if self.filters.get("customer_group"):
 			lft, rgt = frappe.db.get_value("Customer Group", self.filters.customer_group, ["lft", "rgt"])
@@ -347,6 +352,9 @@ class SalesPurchaseDetailsReport(object):
 			if "Group by Item" in (self.filters.group_by_1, self.filters.group_by_2, self.filters.group_by_3):
 				d['reference_type'] = self.filters.doctype
 				d['reference'] = d.get("parent")
+
+			if d.get("account_manager"):
+				self.filters.has_account_manager = True
 
 			# Add tax fields
 			for f, tax in zip(self.tax_amount_fields, self.tax_columns):
@@ -806,6 +814,13 @@ class SalesPurchaseDetailsReport(object):
 				"width": 100
 			},
 			{
+				"label": _("Account Manager"),
+				"fieldname": "account_manager",
+				"fieldtype": "Link",
+				"options": "Sales Person",
+				"width": 110
+			},
+			{
 				"label": _("Cost Center"),
 				"fieldname": "cost_center",
 				"fieldtype": "Link",
@@ -864,6 +879,9 @@ class SalesPurchaseDetailsReport(object):
 
 		if not self.filters.show_packing_slip:
 			columns = [c for c in columns if c.get('fieldname') != 'packing_slip']
+
+		if not self.filters.has_account_manager:
+			columns = [c for c in columns if c.get('fieldname') != 'account_manager']
 
 		if self.filters.totals_only:
 			if "item_code" not in self.group_by:
