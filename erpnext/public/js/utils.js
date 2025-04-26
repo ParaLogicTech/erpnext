@@ -522,22 +522,21 @@ $.extend(erpnext.utils, {
             erpnext.utils.set_last_billed_rate_link_formatter(df);
         }
     },
-	
+
     set_last_billed_rate_link_formatter(df) {
         df.formatter = (value, df, options, doc) => {
             let formatted_value = frappe.format(value, df, options, doc, true);
-            if (doc?.item_code && cur_frm?.doc?.customer && cur_frm?.doc?.company) {
-                const customer = cur_frm.doc.customer;
-                const company = cur_frm.doc.company;
-                const link = `/app/query-report/Sales Details?company=${encodeURIComponent(company)}&customer=${encodeURIComponent(customer)}&item_code=${encodeURIComponent(doc.item_code)}`;
 
-                return `<a href="${link}" target="_blank" style="text-decoration: underline;">${formatted_value}</a>`;
+			const company = cur_frm?.doc?.company;
+			const customer = cur_frm?.doc?.customer;
+            if (doc?.item_code && customer && company) {
+                const link = `/app/query-report/Sales Details?company=${encodeURIComponent(company)}&customer=${encodeURIComponent(customer)}&item_code=${encodeURIComponent(doc.item_code)}`;
+                return `<a href="${link}" target="_blank">${formatted_value}</a>`;
             }
 
             return formatted_value;
         };
-    }
-
+    },
 });
 
 erpnext.utils.select_alternate_items = function(opts) {

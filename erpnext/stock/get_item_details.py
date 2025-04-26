@@ -100,11 +100,12 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		out.amount = flt(args.qty * out.rate)
 
 	child_doctype = args.doctype + ' Item'
-	meta = frappe.get_meta(child_doctype)
-	if meta.get_field("last_billed_rate"):
+	child_meta = frappe.get_meta(child_doctype)
+	if child_meta.get_field("last_billed_rate"):
 		last_billed_rate = get_last_billed_rate(
 			item_code=args.get("item_code"),
-			customer=args.get("customer")
+			customer=args.get("customer"),
+			company=args.get("company"),
 		)
 		out["last_billed_rate"] = last_billed_rate
 
@@ -1716,20 +1717,28 @@ def _update_item_info(scan_result):
 			scan_result.update(item_info)
 	return scan_result
 
-def get_last_billed_rate(item_code, customer):
-    if not item_code or not customer:
-        return flt(0)
 
-    result = frappe.db.sql("""
-        SELECT sii.base_tax_exclusive_rate 
-        FROM `tabSales Invoice Item` sii
-        JOIN `tabSales Invoice` si ON si.name = sii.parent
-        WHERE sii.item_code = %s
-			AND si.customer = %s
-			AND si.docstatus = 1
+def get_last_billed_rate(item_code, customer, company=None):
+	if not item_code or not customer:
+		return 0
+
+	company_condition = ""
+	if company:
+		company_condition = " and si.company = %(company)s"
+
+	result = frappe.db.sql("""
+		SELECT sii.base_tax_exclusive_rate 
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+		WHERE si.docstatus = 1
 			AND si.is_return = 0
-        ORDER BY si.posting_date DESC, si.modified DESC
-        LIMIT 1
-    """, (item_code, customer), as_dict=True)
+			AND sii.item_code = %(item_code)s
+			AND si.customer = %(customer)s
+			{0}
+		ORDER BY si.posting_date DESC, si.posting_time DESC, si.creation DESC
+		LIMIT 1
+	""".format(company_condition), {
+		"item_code": item_code, "customer": customer, "company": company
+	})
 
-    return result[0].base_tax_exclusive_rate if result else 0.0
+	return flt(result[0][0]) if result else 0.0
