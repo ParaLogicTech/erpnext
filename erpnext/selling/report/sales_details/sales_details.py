@@ -456,7 +456,7 @@ class SalesPurchaseDetailsReport(object):
 			if 'parent' in grouped_by:
 				fields_to_copy = [
 					'date', 'party', 'party_name', 'sales_person', 'territory',
-					'stin', 'bill_no', 'bill_date'
+					'stin', 'bill_no', 'bill_date', 'account_manager',
 				]
 				for f in fields_to_copy:
 					if f in data[0]:
@@ -482,6 +482,9 @@ class SalesPurchaseDetailsReport(object):
 				totals['group'] = data[0].get("party_group")
 				totals['party_name'] = data[0].get("party_name")
 				totals['party_type'] = self.filters.party_type
+
+			if 'party' in grouped_by:
+				totals['account_manager'] = data[0].get('account_manager')
 
 		# Set reference field
 		if group_field == ("item_code", "item_nane", "uom", "parent") and data:
