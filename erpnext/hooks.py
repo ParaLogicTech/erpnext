@@ -244,7 +244,6 @@ scheduler_events = {
 		"erpnext.selling.doctype.quotation.quotation.set_expired_status",
 		"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.create_opportunity_from_schedule",
 		"erpnext.projects.doctype.service_warranty.service_warranty.set_warranty_service_expired",
-		"erpnext.hr.doctype.employee_transfer.employee_transfer.check_temporary_transfers",
 	],
 	"daily_long": [
 		"erpnext.setup.doctype.email_digest.email_digest.send",
@@ -253,6 +252,7 @@ scheduler_events = {
 		"erpnext.hr.doctype.leave_encashment.leave_encashment.generate_leave_encashment",
 		"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.auto_schedule_next_service_templates",
 		"erpnext.assets.doctype.asset.depreciation.post_depreciation_entries",
+		"erpnext.hr.doctype.employee_transfer.employee_transfer.process_future_and_temporary_transfers",
 	],
 	"monthly_long": [
 		"erpnext.accounts.deferred_revenue.convert_deferred_revenue_to_income",
