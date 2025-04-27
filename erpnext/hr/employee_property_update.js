@@ -9,7 +9,7 @@ frappe.ui.form.on(cur_frm.doctype, {
 		});
 	},
 	onload: function(frm){
-		if(frm.doc.__islocal){
+		if (frm.doc.__islocal && !frm.doc.amended_from) {
 			if(frm.doctype == "Employee Promotion"){
 				frm.doc.promotion_details = [];
 			}else if (frm.doctype == "Employee Transfer") {
