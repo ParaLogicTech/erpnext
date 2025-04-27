@@ -1214,15 +1214,20 @@ def get_projected_qty(item_code, warehouse):
 
 @frappe.whitelist()
 def get_bin_details(item_code, warehouse):
+	empty = frappe._dict({"projected_qty": 0, "actual_qty": 0, "reserved_qty": 0})
+
 	def generator():
 		return frappe.db.get_value(
 			"Bin",
 			{"item_code": item_code, "warehouse": warehouse},
 			["projected_qty", "actual_qty", "reserved_qty"],
 			as_dict=True
-		) or {"projected_qty": 0, "actual_qty": 0, "reserved_qty": 0}
+		) or empty
 
-	return frappe.local_cache("get_bin_details", (item_code, warehouse), generator)
+	if not item_code or not warehouse:
+		return empty
+	else:
+		return frappe.local_cache("get_bin_details", (item_code, warehouse), generator)
 
 
 @frappe.whitelist()

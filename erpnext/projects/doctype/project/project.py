@@ -22,6 +22,7 @@ from erpnext.projects.doctype.project_status.project_status import (
 	validate_project_status_for_transaction,
 	apply_project_status_transition,
 )
+from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from frappe.model.meta import get_field_precision
 import json
@@ -63,6 +64,7 @@ class Project(StatusUpdaterERP):
 		self.set_onload('is_manual_project_status', is_manual_project_status(self.project_status))
 		self.set_onload('contact_nos', get_all_contact_nos('Customer', self.customer))
 		self.set_onload('task_count', self.get_task_count())
+		self.set_onload('notification_count', get_all_notification_count(self.doctype, self.name))
 
 		self.sales_data = self.get_project_sales_data(get_sales_invoice=True)
 		self.consumables_data = self.get_project_consumables_data()
@@ -965,7 +967,7 @@ class Project(StatusUpdaterERP):
 
 		out = frappe._dict({
 			'customer': has_sales_transaction or self.advance_received_amount,
-			'bill_to': self.advance_received_amount or (self.is_warranty_claim and has_billable_transaction),
+			'bill_to': self.is_warranty_claim and has_billable_transaction,
 			'is_warranty_claim': self.is_warranty_claim and has_billable_transaction,
 		})
 
@@ -1381,6 +1383,27 @@ class Project(StatusUpdaterERP):
 		self._item_group_subtree[item_group] = item_group_tree
 
 		return self._item_group_subtree[item_group]
+
+	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
+		if notification_type == "Ready to Close":
+			# Notification should not be sent if status is not 'To Close'
+			if self.status != "To Close":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because status is not 'To Close'").format(
+						notification_type
+					))
+				return False
+
+			# Notification should not be sent if not marked as ready to close
+			if not self.ready_to_close:
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because ready to close is not marked").format(
+						notification_type
+					))
+				return False
+
+		# Return True if no conditions catch any problem
+		return True
 
 
 def get_material_items(project, get_sales_invoice=True):
@@ -1900,6 +1923,7 @@ def set_project_ready_to_close(project):
 	project.set_ready_to_close(update=True)
 	project.set_timesheet_values(update=True)
 	project.set_status(update=True, reset=True, from_doctype="Project", action="ready_to_close")
+	project.run_method('notify_ready_to_close')
 	project.notify_update()
 
 
