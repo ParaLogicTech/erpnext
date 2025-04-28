@@ -129,15 +129,37 @@ def update_employee(employee, details, date=None, cancel=False):
 		employee.append("internal_work_history", internal_work_history)
 	return employee
 
+
 @frappe.whitelist()
-def get_employee_fields_label():
-	fields = []
-	for df in frappe.get_meta("Employee").get("fields"):
-		if df.fieldname in ["salutation", "user_id", "employee_number", "employment_type",
-			"holiday_list", "branch", "department", "designation", "grade",
-			"notice_number_of_days", "reports_to", "leave_policy", "company_email"]:
-				fields.append({"value": df.fieldname, "label": df.label})
-	return fields
+def get_employee_transfer_fields():
+	fieldnames = get_employee_transfer_fieldnames()
+
+	transfer_fields = []
+
+	employee_meta = frappe.get_meta("Employee")
+	for f in fieldnames:
+		df = employee_meta.get_field(f)
+		if not df:
+			continue
+
+		transfer_fields.append(frappe._dict({"value": df.fieldname, "label": df.label}))
+
+	return transfer_fields
+
+
+def get_employee_transfer_fieldnames():
+	fieldnames = [
+		"branch", "department", "designation", "employment_type",
+		"grade", "salutation", "reports_to",
+		"employee_number", "user_id", "company_email",
+		"notice_number_of_days",
+		"leave_policy", "holiday_list",
+	]
+
+	frappe.utils.call_hook_method("get_employee_transfer_fieldnames", fieldnames)
+
+	return fieldnames
+
 
 @frappe.whitelist()
 def get_employee_field_property(employee, fieldname):

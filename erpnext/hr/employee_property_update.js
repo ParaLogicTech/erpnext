@@ -35,7 +35,7 @@ frappe.ui.form.on(cur_frm.doctype, {
 				return;
 			}
 			frappe.call({
-				method: 'erpnext.hr.utils.get_employee_fields_label',
+				method: 'erpnext.hr.utils.get_employee_transfer_fields',
 				callback: function(r) {
 					if(r.message){
 						show_dialog(frm, table, r.message);
