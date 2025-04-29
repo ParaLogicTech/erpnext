@@ -123,6 +123,11 @@ fixtures = [
 				"Customer Feedback-applies_to_serial_no",
 				"Customer Feedback-applies_to_item",
 				"Customer Feedback-applies_to_item_name",
+				"Customer Feedback-Project",
+				"Customer Feedback-feedback_source",
+				"Customer Feedback-feedback_type",
+				"Customer Feedback-feedback_sub_type",
+				"Customer Feedback-feedback_status",
 			]]
 		}
 	},
