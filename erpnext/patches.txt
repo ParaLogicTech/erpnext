@@ -387,3 +387,4 @@ erpnext.patches.v15_0.set_task_cost_center
 erpnext.patches.v15_0.set_project_sold_time
 erpnext.patches.v15_0.set_pos_cashier_field
 erpnext.patches.v15_0.set_sales_order_bill_to
+erpnext.patches.v15_0.set_project_in_customer_feedback
