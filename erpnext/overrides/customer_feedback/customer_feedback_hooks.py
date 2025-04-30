@@ -7,6 +7,12 @@ class CustomerFeedbackERP(CustomerFeedback):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.force_applies_to_fields = get_force_applies_to_fields(self.doctype)
+		if self.project and not self.reference_name:
+			self.set_reference_from_project()
+
+	def set_reference_from_project(self):
+		self.reference_doctype = "Project"
+		self.reference_name = self.project
 
 	def set_missing_values(self):
 		super().set_missing_values()
