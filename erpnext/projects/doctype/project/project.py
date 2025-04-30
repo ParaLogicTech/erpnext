@@ -2068,6 +2068,10 @@ def get_project_details(project, doctype, purpose=None):
 			out['quotation_to'] = 'Customer'
 			out['party_name'] = project.get(f)
 
+		if doctype == "Customer Feedback" and f == 'customer':
+			out['feedback_from'] = 'Customer'
+			out['party_name'] = project.get(f)
+
 	# Contact and Address
 	if is_sales_doctype:
 		if project.get("bill_to") and frappe.get_meta(doctype).has_field("bill_to"):

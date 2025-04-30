@@ -7,6 +7,9 @@ class CustomerFeedbackERP(CustomerFeedback):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.force_applies_to_fields = get_force_applies_to_fields(self.doctype)
+
+	def validate(self):
+		super().validate()
 		if self.project and not self.reference_name:
 			self.set_reference_from_project()
 
