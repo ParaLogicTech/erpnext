@@ -118,12 +118,12 @@ fixtures = [
 				"Appointment-cb1_service_template",
 				"Appointment-service_template_name",
 
+				"Customer Feedback-project",
 				"Customer Feedback-applies_to_variant_of",
 				"Customer Feedback-applies_to_variant_of_name",
 				"Customer Feedback-applies_to_serial_no",
 				"Customer Feedback-applies_to_item",
 				"Customer Feedback-applies_to_item_name",
-				"Customer Feedback-project",
 			]]
 		}
 	},

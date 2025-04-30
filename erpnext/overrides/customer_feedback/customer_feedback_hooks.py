@@ -9,13 +9,16 @@ class CustomerFeedbackERP(CustomerFeedback):
 		self.force_applies_to_fields = get_force_applies_to_fields(self.doctype)
 
 	def validate(self):
+		self.set_reference_from_project()
 		super().validate()
-		if self.project and not self.reference_name:
-			self.set_reference_from_project()
 
 	def set_reference_from_project(self):
-		self.reference_doctype = "Project"
-		self.reference_name = self.project
+		if self.project and not self.reference_name:
+			self.reference_doctype = "Project"
+			self.reference_name = self.project
+
+		if self.reference_doctype == "Project" and self.reference_name and not self.project:
+			self.project = self.reference_name
 
 	def set_missing_values(self):
 		super().set_missing_values()

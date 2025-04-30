@@ -7,23 +7,23 @@ frappe.ui.form.on('Customer Feedback', {
 	},
 
 	project: function(frm) {
-		get_project_details(frm);
+		frm.events.get_project_details(frm);
+	},
+
+	get_project_details(frm) {
+		if (frm.doc.project) {
+			return frappe.call({
+				method: 'erpnext.projects.doctype.project.project.get_project_details',
+				args: {
+					project: frm.doc.project,
+					doctype: frm.doc.doctype,
+				},
+				callback: function(r) {
+					if (r.message) {
+						frm.set_value(r.message);
+					}
+				}
+			});
+		}
 	}
 });
-
-function get_project_details(frm) {
-	if (frm.doc.project) {
-		return frappe.call({
-			method: 'erpnext.projects.doctype.project.project.get_project_details',
-			args: {
-				project: frm.doc.project,
-				doctype: frm.doc.doctype,
-			},
-			callback: function(r) {
-				if (r.message) {
-					frm.set_value(r.message);
-				}
-			}
-		});
-	}
-}
