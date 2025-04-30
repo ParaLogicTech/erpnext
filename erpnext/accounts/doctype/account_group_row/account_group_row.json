@@ -1,0 +1,64 @@
+{
+    "actions": [],
+    "creation": "2024-01-01 00:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "row_type",
+        "account",
+        "account_group",
+        "section_name",
+        "section_account_groups"
+    ],
+    "fields": [
+        {
+            "fieldname": "row_type",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Row Type",
+            "options": "Account\nAccount Group\nSection Break\nSection Group",
+            "reqd": 1
+        },
+        {
+            "fieldname": "account",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Account",
+            "options": "Account",
+            "depends_on": "eval:doc.row_type=='Account'",
+            "mandatory_depends_on": "eval:doc.row_type=='Account'"
+        },
+        {
+            "fieldname": "account_group",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Account Group",
+            "options": "Account Group",
+            "depends_on": "eval:doc.row_type=='Account Group'",
+            "mandatory_depends_on": "eval:doc.row_type=='Account Group'"
+        },
+        {
+            "fieldname": "section_name",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Section Name"     
+        },
+        {
+            "fieldname": "section_account_groups",
+            "fieldtype": "Long Text",
+            "in_list_view": 1,
+            "label": "Section Account Groups"
+        }
+    ],
+    "istable": 1,
+    "modified": "2024-01-01 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Accounts",
+    "name": "Account Group Row",
+    "owner": "Administrator",
+    "permissions": [],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "track_changes": 1
+} 
