@@ -78,14 +78,6 @@ frappe.query_reports["Summarized Profit and Loss"] = {
         return `<a href="${groupUrl}" data-account-group="${data.account_group}">${value}</a>`;
     },
 
-    isCurrencyField: function(fieldname) {
-        const currencyFields = [
-            "mtd_actual", "mtd_budget", "mtd_prev_year",
-            "ytd_actual", "ytd_budget", "ytd_prev_year"
-        ];
-        return currencyFields.includes(fieldname);
-    },
-
 
     handleAccountClick: function(e) {
         if (e.which !== 1) return; // Only handle left clicks
