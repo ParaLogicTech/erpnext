@@ -1,119 +1,99 @@
 frappe.query_reports["Summarized Profit and Loss"] = {
-    filters: [
-        {
-            fieldname: "company",
-            label: __("Company"),
-            fieldtype: "Link",
-            options: "Company",
-            default: frappe.defaults.get_user_default("Company"),
-            reqd: 1
-        },
-        {
-            fieldname: "account_group",
-            label: __("Account Group"),
-            fieldtype: "Link",
-            options: "Account Group",
-            get_query: () => ({
-                filters: {
-                    company: frappe.query_report.get_filter_value('company'),
-                    reporting_type: "Profit and Loss"
-                }
-            })
-        },
-        {
-            fieldname: "report_date",
-            label: __("Report Date"),
-            fieldtype: "Date",
-            default: frappe.datetime.month_end(frappe.datetime.get_today()),
-            reqd: 1
-        }
-    ],
+	filters: [
+		{
+			fieldname: "company",
+			label: __("Company"),
+			fieldtype: "Link",
+			options: "Company",
+			default: frappe.defaults.get_user_default("Company"),
+			reqd: 1
+		},
+		{
+			fieldname: "report_date",
+			label: __("Report Date"),
+			fieldtype: "Date",
+			default: frappe.datetime.month_end(),
+			reqd: 1
+		},
+		{
+			fieldname: "account_group",
+			label: __("Account Group"),
+			fieldtype: "Link",
+			options: "Account Group",
+			get_query: () => ({
+				filters: {
+					company: frappe.query_report.get_filter_value('company'),
+					reporting_type: "Profit and Loss",
+				}
+			})
+		},
+	],
 
-    formatter: function(value, row, column, data, default_formatter) {
-        value = default_formatter(value, row, column, data);
-        
-        if (!data) return value;
+	formatter: function(value, row, column, data, default_formatter) {
+		let options = {
+			css: {},
+			link_target: "_blank",
+		};
 
-        // Handle account name column formatting
-        if (column.fieldname === "account_name") {
-            value = this.format_account_name(value, data);
-        }
+		// Handle account name column formatting
+		if (data) {
+			if (["account_name", "mtd_actual", "ytd_actual"].includes(column.fieldname) && data.row_type === "Account Group") {
+				options.link_href = this.get_account_group_link(data);
+				// let account_group = data.account_name;
+				// options.link_onclick = `
+				// 	let account_group = '${account_group.replace("'", "\"")}'
+				// 	frappe.query_report.set_filter_value('account_group', account_group);
+				// 	event.preventDefault();
+				// `;
+			}
+			if (column.fieldname === "mtd_actual" && data.row_type === "Account") {
+				let report_date = frappe.datetime.str_to_obj(frappe.query_report.get_filter_value('report_date'));
+				let from_date = moment(report_date).startOf("month").format();
+				options.link_href = this.get_account_link(data, from_date);
+				options.link_target = "_blank";
+			}
+			if (column.fieldname === "ytd_actual" && data.row_type === "Account") {
+				let report_date = frappe.datetime.str_to_obj(frappe.query_report.get_filter_value('report_date'));
+				let from_date = moment(report_date).startOf("year").format();
+				options.link_href = this.get_account_link(data, from_date);
+				options.link_target = "_blank";
+			}
 
-        // Make text bold if specified
-        if (data.is_bold) {
-            value = value.bold();
-        }
+			// Make text bold if specified
+			if (data.is_bold) {
+				options.css['font-weight'] = 'bold';
+			}
+		}
 
-        return value;
-    },
+		return default_formatter(value, row, column, data, options);
+	},
 
-    format_account_name: function(value, data) {
-        if (data.row_type === "Account") {
-            return this.create_account_link(value, data);
-        } else if (data.row_type === "Account Group") {
-            return this.create_account_group_link(value, data);
-        }
-        return value;
-    },
+	get_account_link: function(data, from_date) {
+		const params = {
+			account: data.account,
+			company: frappe.query_report.get_filter_value('company'),
+			from_date: from_date,
+			to_date: frappe.query_report.get_filter_value('report_date')
+		};
 
-    create_account_link: function(value, data) {
-        const params = {
-            account: data.account,
-            company: frappe.query_report.get_filter_value('company'),
-            from_date: frappe.datetime.month_start(frappe.query_report.get_filter_value('report_date')),
-            to_date: frappe.query_report.get_filter_value('report_date')
-        };
+		const query_string = Object.entries(params)
+			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+			.join('&');
 
-        const query_string = Object.entries(params)
-            .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
-            .join('&');
+		return `/app/query-report/General Ledger?${query_string}`;
+	},
 
-        const report_url = frappe.urllib.get_full_url(`/app/query-report/General Ledger?${query_string}`);
-        return `<a href="${report_url}" data-account="${data.account}">${value}</a>`;
-    },
+	get_account_group_link: function(data) {
+		const params = {
+			company: frappe.query_report.get_filter_value('company'),
+			report_date: frappe.query_report.get_filter_value('report_date'),
+			account_group: data.account_name,
+		};
 
-    create_account_group_link: function(value, data) {
-        const current_url = frappe.urllib.get_full_url(window.location.pathname);
-        const group_url = `${current_url}?account_group=${encodeURIComponent(data.account_group)}`;
-        return `<a href="${group_url}" data-account-group="${data.account_group}">${value}</a>`;
-    },
+		const query_string = Object.entries(params)
+			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+			.join('&');
 
-    handle_account_click: function(e) {
-        if (e.which !== 1) return; // Only handle left clicks
-
-        e.preventDefault();
-        const account = $(e.currentTarget).attr('data-account');
-        const params = {
-            account: account,
-            company: frappe.query_report.get_filter_value('company'),
-            from_date: frappe.datetime.month_start(frappe.query_report.get_filter_value('report_date')),
-            to_date: frappe.query_report.get_filter_value('report_date')
-        };
-        const query_string = Object.entries(params)
-            .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
-            .join('&');
-        const report_url = frappe.urllib.get_full_url(`/app/query-report/General Ledger?${query_string}`);
-        window.location.href = report_url;
-    },
-
-    handle_account_group_click: function(e) {
-        if (e.which !== 1) return; // Only handle left clicks
-
-        e.preventDefault();
-        const account_group = $(e.currentTarget).attr('data-account-group');
-        frappe.query_report.set_filter_value('account_group', account_group);
-        frappe.query_report.refresh();
-    },
-
-    onload: function(report) {
-        // Attach click handlers
-        report.page.wrapper
-            .on('click', 'a[data-account]', this.handle_account_click)
-            .on('click', 'a[data-account-group]', this.handle_account_group_click);
-    },
-
-    tree: true,
-    parent_field: "parent_account",
-    name_field: "account",
-    initial_depth: 1
-}; 
+		return `/app/query-report/Summarized Profit and Loss?${query_string}`;
+	},
+};
