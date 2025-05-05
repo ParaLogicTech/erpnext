@@ -26,10 +26,9 @@ class AccountGroup(Document):
             )
             
             if existing_root:
-                frappe.throw(
-                    f'Another root level group "{existing_root.group_name}" already exists for {self.reporting_type} reporting type. '
-                    f'<a href="/app/account-group/{existing_root.name}">Click here to view</a>'
-                )
+                frappe.throw(_(
+                    'Another root level group "{0}" already exists for {1} reporting type. <a href="/app/account-group/{2}">Click here to view</a>'
+                ).format(existing_root.group_name, self.reporting_type, existing_root.name))
 
     def validate_rows(self):
         """Validate rows for duplicates and clear irrelevant fields."""
@@ -45,7 +44,9 @@ class AccountGroup(Document):
                 
                 # Check for duplicates
                 if row.account in seen_accounts:
-                    frappe.throw(f'Row {i}: Account {row.account} appears multiple times')
+                    frappe.throw(_(
+                        'Row {0}: Account {1} appears multiple times'
+                    ).format(i, row.account))
                 seen_accounts.add(row.account)
                 
                 
@@ -58,7 +59,9 @@ class AccountGroup(Document):
                 
                 # Check for duplicates
                 if row.account_group in seen_groups:
-                    frappe.throw(f'Row {i}: Account Group {row.account_group} appears multiple times')
+                    frappe.throw(_(
+                        'Row {0}: Account Group {1} appears multiple times'
+                    ).format(i, row.account_group))
                 seen_groups.add(row.account_group)
                 
             elif row.row_type in ('Section Break', 'Section Group'):

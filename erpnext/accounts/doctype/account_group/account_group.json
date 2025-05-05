@@ -88,6 +88,10 @@
       "role": "Accounts Manager",
       "share": 1,
       "write": 1
+    },
+    {
+      "role": "Account User",
+      "read": 1
     }
   ],
   "sort_field": "modified",

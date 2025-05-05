@@ -36,7 +36,7 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 
         // Handle account name column formatting
         if (column.fieldname === "account_name") {
-            value = this.formatAccountName(value, data);
+            value = this.format_account_name(value, data);
         }
 
         // Make text bold if specified
@@ -47,16 +47,16 @@ frappe.query_reports["Summarized Profit and Loss"] = {
         return value;
     },
 
-    formatAccountName: function(value, data) {
+    format_account_name: function(value, data) {
         if (data.row_type === "Account") {
-            return this.createAccountLink(value, data);
+            return this.create_account_link(value, data);
         } else if (data.row_type === "Account Group") {
-            return this.createAccountGroupLink(value, data);
+            return this.create_account_group_link(value, data);
         }
         return value;
     },
 
-    createAccountLink: function(value, data) {
+    create_account_link: function(value, data) {
         const params = {
             account: data.account,
             company: frappe.query_report.get_filter_value('company'),
@@ -64,51 +64,52 @@ frappe.query_reports["Summarized Profit and Loss"] = {
             to_date: frappe.query_report.get_filter_value('report_date')
         };
 
-        const queryString = Object.entries(params)
+        const query_string = Object.entries(params)
             .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
             .join('&');
 
-        const reportUrl = frappe.urllib.get_full_url(`/app/query-report/General Ledger?${queryString}`);
-        return `<a href="${reportUrl}" data-account="${data.account}">${value}</a>`;
+        const report_url = frappe.urllib.get_full_url(`/app/query-report/General Ledger?${query_string}`);
+        return `<a href="${report_url}" data-account="${data.account}">${value}</a>`;
     },
 
-    createAccountGroupLink: function(value, data) {
-        const currentUrl = frappe.urllib.get_full_url(window.location.pathname);
-        const groupUrl = `${currentUrl}?account_group=${encodeURIComponent(data.account_group)}`;
-        return `<a href="${groupUrl}" data-account-group="${data.account_group}">${value}</a>`;
+    create_account_group_link: function(value, data) {
+        const current_url = frappe.urllib.get_full_url(window.location.pathname);
+        const group_url = `${current_url}?account_group=${encodeURIComponent(data.account_group)}`;
+        return `<a href="${group_url}" data-account-group="${data.account_group}">${value}</a>`;
     },
 
-
-    handleAccountClick: function(e) {
+    handle_account_click: function(e) {
         if (e.which !== 1) return; // Only handle left clicks
 
         e.preventDefault();
         const account = $(e.currentTarget).attr('data-account');
-        
-        frappe.route_options = {
+        const params = {
             account: account,
             company: frappe.query_report.get_filter_value('company'),
             from_date: frappe.datetime.month_start(frappe.query_report.get_filter_value('report_date')),
             to_date: frappe.query_report.get_filter_value('report_date')
         };
-        
-        frappe.set_route("query-report", "General Ledger");
+        const query_string = Object.entries(params)
+            .map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+            .join('&');
+        const report_url = frappe.urllib.get_full_url(`/app/query-report/General Ledger?${query_string}`);
+        window.location.href = report_url;
     },
 
-    handleAccountGroupClick: function(e) {
+    handle_account_group_click: function(e) {
         if (e.which !== 1) return; // Only handle left clicks
 
         e.preventDefault();
-        const accountGroup = $(e.currentTarget).attr('data-account-group');
-        frappe.query_report.set_filter_value('account_group', accountGroup);
+        const account_group = $(e.currentTarget).attr('data-account-group');
+        frappe.query_report.set_filter_value('account_group', account_group);
         frappe.query_report.refresh();
     },
 
     onload: function(report) {
         // Attach click handlers
         report.page.wrapper
-            .on('click', 'a[data-account]', this.handleAccountClick)
-            .on('click', 'a[data-account-group]', this.handleAccountGroupClick);
+            .on('click', 'a[data-account]', this.handle_account_click)
+            .on('click', 'a[data-account-group]', this.handle_account_group_click);
     },
 
     tree: true,

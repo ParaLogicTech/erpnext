@@ -12,15 +12,17 @@ frappe.ui.form.on('Account Group', {
         });
 
         // Set filters for account group selection
-        frm.set_query('account_group', 'rows', {
-            filters: {
-                'company': frm.doc.company,
-                'reporting_type': frm.doc.reporting_type
-            }
+        frm.set_query('account_group', 'rows', function(doc, cdt, cdn) {
+            return {
+                filters: {
+                    'company': frm.doc.company,
+                    'reporting_type': frm.doc.reporting_type
+                }
+            };
         });
     },
 
     // Clear child tables when filters change
-    company: frm => frm.clear_table(['rows']),
-    reporting_type: frm => frm.clear_table(['rows'])
+    // company: frm => frm.clear_table(['rows']),
+    // reporting_type: frm => frm.clear_table(['rows'])
 }); 
