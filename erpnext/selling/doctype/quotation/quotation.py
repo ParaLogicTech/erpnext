@@ -6,6 +6,7 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.utils import flt, nowdate, getdate, cint, add_days, date_diff
 from frappe import _
 from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
+from erpnext.projects.doctype.project.project import Project
 
 from erpnext.controllers.selling_controller import SellingController
 
@@ -55,6 +56,7 @@ class Quotation(SellingController):
 		self.update_opportunity()
 		self.update_lead_status()
 		self.trigger_project_status()
+		self.update_project_estimated_amount(True, True)
 
 	def on_cancel(self):
 		if self.lost_reasons:
@@ -65,6 +67,7 @@ class Quotation(SellingController):
 		self.update_opportunity()
 		self.update_lead_status(status="Interested")
 		self.trigger_project_status()
+		self.update_project_estimated_amount(True, True)
 
 	def clear_approval_date(self):
 		self.approval_date = None
@@ -255,6 +258,11 @@ class Quotation(SellingController):
 
 	def on_recurring(self, reference_doc, auto_repeat_doc):
 		self.valid_till = None
+
+	def update_project_estimated_amount(self, update=False, update_modified=True):
+		project = frappe.get_doc("Project", self.project)
+		if project:
+			project.set_pending_quotation_total(update, update_modified)
 
 
 @frappe.whitelist()

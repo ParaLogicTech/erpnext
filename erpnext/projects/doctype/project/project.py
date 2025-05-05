@@ -150,10 +150,11 @@ class Project(StatusUpdaterERP):
 		self.total_billable_amount = sales_data.totals.grand_total
 		self.customer_billable_amount = sales_data.totals.customer_grand_total
 		self.total_billed_amount = self.get_billed_amount()
+		self.total_discount_amount = sales_data.total_discount_amount
 
-		sales_orders = frappe.get_all("Sales Order", fields=['billing_status', 'delivery_status', 'status', 'skip_delivery_note'], filters={
+		sales_orders = frappe.get_all("Sales Order", fields=['billing_status', 'delivery_status', 'status', 'skip_delivery_note', 'transaction_date'], filters={
 			"project": self.name, "docstatus": 1
-		})
+		}, order_by="transaction_date desc")
 		delivery_notes = frappe.get_all("Delivery Note", fields=['billing_status', 'status'], filters={
 			"project": self.name, "docstatus": 1, "is_return": 0,
 		})
@@ -161,6 +162,8 @@ class Project(StatusUpdaterERP):
 			"project": self.name, "docstatus": 1, "material_request_type": "Material Issue",
 		})
 		sales_invoices = self.get_sales_invoices()
+		if sales_orders:
+			self.first_sales_order_date = sales_orders[-1].transaction_date
 
 		self.billing_status, self.to_bill = self.get_billing_status(sales_orders, delivery_notes, sales_invoices, self.total_billed_amount)
 		self.delivery_status, self.to_deliver = self.get_delivery_status(sales_orders, delivery_notes, material_requests)
@@ -179,6 +182,8 @@ class Project(StatusUpdaterERP):
 				'delivery_status': self.delivery_status,
 				'to_deliver': self.to_deliver,
 				'final_invoice_date': self.final_invoice_date,
+				'first_sales_order_date': self.first_sales_order_date,
+				'total_discount_amount': self.total_discount_amount,
 			}, None, update_modified=update_modified)
 
 	def get_billing_status(self, sales_orders, delivery_notes, sales_invoices, total_billed_amount):
@@ -265,38 +270,48 @@ class Project(StatusUpdaterERP):
 		return delivery_status, to_deliver
 
 	def set_procurement_status(self, update=False, update_modified=False):
-		self.procurement_status, self.to_receive_materials = self.get_procurement_status()
+		self.procurement_status, self.to_receive_materials, self.last_purchase_order_date, self.last_reciept_order_date, self.last_material_request_date = self.get_procurement_status()
 
 		if update:
 			self.db_set({
 				'procurement_status': self.procurement_status,
 				'to_receive_materials': self.to_receive_materials,
+				'last_purchase_order_date': self.last_purchase_order_date,
+				'last_reciept_order_date': self.last_reciept_order_date,
+				'last_material_request_date': self.last_material_request_date,
 			}, None, update_modified=update_modified)
 
 	def get_procurement_status(self):
 		purchase_orders = frappe.db.sql("""
-			select p.receipt_status, p.status, i.qty, i.received_qty
+			select p.receipt_status, p.status, i.qty, i.received_qty, p.transaction_date
 			from `tabPurchase Order Item` i
 			inner join `tabPurchase Order` p on p.name = i.parent
-			where p.docstatus = 1 and i.project = %s and i.is_stock_item = 1
+			where p.docstatus = 1 and i.project = %s and i.is_stock_item = 1 order by p.transaction_date desc
 		""", self.name, as_dict=1)
 
 		purchase_receipts = frappe.db.sql("""
-			select p.status, i.qty, i.received_qty
+			select p.status, i.qty, i.received_qty, p.posting_date
 			from `tabPurchase Receipt Item` i
 			inner join `tabPurchase Receipt` p on p.name = i.parent
-			where p.docstatus = 1 and i.project = %s and i.is_stock_item = 1
+			where p.docstatus = 1 and i.project = %s and i.is_stock_item = 1 order by p.posting_date desc
 		""", self.name, as_dict=1)
 
 		material_requests = frappe.get_all(
 			"Material Request",
-			fields=['receipt_status', 'status', 'per_received'],
+			fields=['receipt_status', 'status', 'per_received', 'transaction_date'],
 			filters={
 				"project": self.name,
 				"docstatus": 1,
 				"material_request_type": ["in", ["Purchase", "Material Transfer", "Customer Provided"]],
-			}
+			},
+			order_by = "transaction_date desc",
 		)
+		print("---------------------------------------------")
+		# print(material_requests[0])
+
+		last_purchase_order_date = purchase_orders[0].transaction_date if purchase_orders else None
+		last_purchase_receipt_date = purchase_receipts[0].transaction_date if purchase_receipts else None
+		last_material_request_date = material_requests[0].transaction_date if material_requests else None
 
 		has_receivables = False
 		has_unreceived = False
@@ -338,7 +353,7 @@ class Project(StatusUpdaterERP):
 				receipt_status = "Not Applicable"
 				to_receive = 0
 
-		return receipt_status, to_receive
+		return receipt_status, to_receive, last_purchase_order_date, last_purchase_receipt_date, last_material_request_date
 
 	def get_billed_amount(self):
 		directly_billed = frappe.db.sql("""
@@ -435,6 +450,7 @@ class Project(StatusUpdaterERP):
 		self.set_material_consumed_cost(update=update, update_modified=update_modified)
 		self.set_material_cost_of_sales(update=update, update_modified=update_modified)
 		self.set_gross_margin(update=update, update_modified=update_modified)
+		self.set_pending_quotation_total(update=update, update_modified=update_modified)
 
 	def set_sales_amount(self, update=False, update_modified=False):
 		sales_data = self.get_project_sales_data(get_sales_invoice=True)
@@ -442,6 +458,7 @@ class Project(StatusUpdaterERP):
 		self.material_sales_amount = sales_data.material_items.net_total
 		self.part_sales_amount = sales_data.part_items.net_total
 		self.lubricant_sales_amount = sales_data.lubricant_items.net_total
+		self.consumable_sales_amount = sales_data.consumable_items.net_total
 		self.service_sales_amount = sales_data.service_items.net_total
 		self.labour_sales_amount = sales_data.labour_items.net_total
 		self.sublet_sales_amount = sales_data.sublet_items.net_total
@@ -453,6 +470,7 @@ class Project(StatusUpdaterERP):
 				'material_sales_amount': self.material_sales_amount,
 				'part_sales_amount': self.part_sales_amount,
 				'lubricant_sales_amount': self.lubricant_sales_amount,
+				'consumable_sales_amount': self.consumable_sales_amount,
 				'service_sales_amount': self.service_sales_amount,
 				'labour_sales_amount': self.labour_sales_amount,
 				'sublet_sales_amount': self.sublet_sales_amount,
@@ -1158,6 +1176,7 @@ class Project(StatusUpdaterERP):
 		self.materials_item_group = settings.materials_item_group
 		self.lubricants_item_group = settings.lubricants_item_group
 		self.sublet_item_group = settings.sublet_item_group
+		self.consumables_item_group = settings.consumables_item_group
 
 	def validate_readings(self):
 		if self.meta.has_field('fuel_level'):
@@ -1273,7 +1292,7 @@ class Project(StatusUpdaterERP):
 
 	def get_project_sales_data(self, get_sales_invoice=True):
 		sales_data = frappe._dict()
-		sales_data.material_items, sales_data.part_items, sales_data.lubricant_items = get_material_items(self,
+		sales_data.material_items, sales_data.part_items, sales_data.lubricant_items, sales_data.consumable_items, sales_data.total_discount_amount = get_material_items(self,
 			get_sales_invoice=get_sales_invoice)
 		sales_data.service_items, sales_data.labour_items, sales_data.sublet_items, sales_data.sold_time = get_service_items(self,
 			get_sales_invoice=get_sales_invoice)
@@ -1405,6 +1424,17 @@ class Project(StatusUpdaterERP):
 		# Return True if no conditions catch any problem
 		return True
 
+	def set_pending_quotation_total(self, update=False, update_modified=False):
+		total = frappe.db.sql("""
+			SELECT SUM(rounded_total) 
+			FROM `tabQuotation`
+			WHERE project = %s AND docstatus = 1 AND status = "Open"
+			""", (self.name,), as_list=1)[0][0] or 0
+		self.pending_quotation_total = total
+		if update:
+			self.db_set({
+				'pending_quotation_total': self.pending_quotation_total,
+			}, None, update_modified=update_modified)
 
 def get_material_items(project, get_sales_invoice=True):
 	is_material_condition = "i.is_stock_item = 1"
@@ -1417,7 +1447,7 @@ def get_material_items(project, get_sales_invoice=True):
 		select p.name as delivery_note, i.sales_order,
 			p.posting_date, p.posting_time, i.idx,
 			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom,
+			i.qty, i.uom, p.base_tax_exclusive_total_discount,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
@@ -1437,7 +1467,7 @@ def get_material_items(project, get_sales_invoice=True):
 			if(i.is_stock_item = 1, i.qty - i.delivered_qty, i.qty) as qty,
 			i.qty as ordered_qty,
 			i.delivered_qty,
-			i.uom,
+			i.uom, p.base_tax_exclusive_total_discount,
 			if(i.is_stock_item = 1, i.base_net_amount * (i.qty - i.delivered_qty) / i.qty, i.base_net_amount) as net_amount,
 			i.base_net_rate as net_rate,
 			if(i.is_stock_item = 1, i.base_taxable_amount * (i.qty - i.delivered_qty) / i.qty, i.base_taxable_amount) as taxable_amount,
@@ -1466,6 +1496,7 @@ def get_material_items(project, get_sales_invoice=True):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_total_discount as total_discount,
+			p.base_tax_exclusive_total_discount,
 			i.item_tax_detail, p.conversion_rate
 		from `tabSales Invoice Item` i
 		inner join `tabSales Invoice` p on p.name = i.parent
@@ -1477,19 +1508,26 @@ def get_material_items(project, get_sales_invoice=True):
 	materials_data = get_items_data_template()
 	parts_data = get_items_data_template()
 	lubricants_data = get_items_data_template()
-
+	consumables_data = get_items_data_template()
+	total_discount_amount = 0
 	lubricants_item_groups = project.get_item_groups_subtree(project.lubricants_item_group)
+	consumables_item_group = project.get_item_groups_subtree(project.consumables_item_group)
 	for d in dn_data + so_data + sinv_data:
 		materials_data['items'].append(d)
+		if d.base_tax_exclusive_total_discount:
+			total_discount_amount += d.base_tax_exclusive_total_discount
 
 		if d.item_group in lubricants_item_groups:
 			lubricants_data['items'].append(d.copy())
+		elif d.item_group in consumables_item_group:
+			consumables_data['items'].append(d.copy())
 		else:
 			parts_data['items'].append(d.copy())
 
 	materials_data['items'] = sorted(materials_data['items'], key=lambda d: (cstr(d.posting_date), cstr(d.posting_time), d.idx))
 	parts_data['items'] = sorted(parts_data['items'], key=lambda d: (cstr(d.posting_date), cstr(d.posting_time), d.idx))
 	lubricants_data['items'] = sorted(lubricants_data['items'], key=lambda d: (cstr(d.posting_date), cstr(d.posting_time), d.idx))
+	consumables_data['items'] = sorted(consumables_data['items'], key=lambda d: (cstr(d.posting_date), cstr(d.posting_time), d.idx))
 
 	get_item_taxes(project, materials_data, project.company)
 	post_process_items_data(materials_data)
@@ -1500,7 +1538,10 @@ def get_material_items(project, get_sales_invoice=True):
 	get_item_taxes(project, lubricants_data, project.company)
 	post_process_items_data(lubricants_data)
 
-	return materials_data, parts_data, lubricants_data
+	get_item_taxes(project, consumables_data, project.company)
+	post_process_items_data(consumables_data)
+
+	return materials_data, parts_data, lubricants_data, consumables_data, total_discount_amount
 
 
 def get_service_items(project, get_sales_invoice=True):
