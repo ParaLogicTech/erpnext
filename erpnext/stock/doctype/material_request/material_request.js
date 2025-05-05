@@ -120,7 +120,7 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		if (this.frm.doc.docstatus == 1 && this.frm.has_perm("write")) {
 			if (this.frm.doc.status == 'Stopped') {
 				this.frm.add_custom_button(__('Re-Open'), () => this.update_status('Submitted'));
-			} else if (this.frm.doc.order_status == "To Order") {
+			} else if (this.frm.doc.order_status == "To Order" || this.frm.doc.receipt_status == "To Receive") {
 				this.frm.add_custom_button(__('Stop'), () => this.update_status('Stopped'));
 			}
 		}
