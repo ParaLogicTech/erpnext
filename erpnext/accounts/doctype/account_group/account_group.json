@@ -7,8 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "group_name",
-  "reporting_type",
-  "category",
+  "report_type",
+  "root_type",
   "column_break_gygm",
   "company",
   "is_root_level",
@@ -25,24 +25,10 @@
    "unique": 1
   },
   {
-   "fieldname": "reporting_type",
-   "fieldtype": "Select",
-   "label": "Reporting Type",
-   "options": "Profit and Loss\nBalance Sheet",
-   "reqd": 1
-  },
-  {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company",
-   "reqd": 1
-  },
-  {
-   "fieldname": "category",
-   "fieldtype": "Select",
-   "label": "Category",
-   "options": "Income\nExpense\nAsset\nLiability\nEquity",
    "reqd": 1
   },
   {
@@ -65,11 +51,25 @@
   {
    "fieldname": "section_break_tnce",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "report_type",
+   "fieldtype": "Select",
+   "label": "Report Type",
+   "options": "Profit and Loss\nBalance Sheet",
+   "reqd": 1
+  },
+  {
+   "fieldname": "root_type",
+   "fieldtype": "Select",
+   "label": "Root Type",
+   "options": "Income\nExpense\nAsset\nLiability\nEquity",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-05 15:21:42.075831",
+ "modified": "2025-05-05 15:55:27.919932",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group",

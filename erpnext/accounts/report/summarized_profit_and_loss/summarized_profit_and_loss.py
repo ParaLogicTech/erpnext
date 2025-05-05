@@ -125,7 +125,7 @@ class SummarizedProfitAndLossReport:
 					"name": row.account_group,
 					"group_name": child_group.group_name,
 					"totals": child_totals,
-					"category": child_group.category
+					"root_type": child_group.root_type
 				}
 
 		for row in group.rows:
@@ -190,7 +190,7 @@ class SummarizedProfitAndLossReport:
 				if group_code and group_code in child_groups:
 					group_info = child_groups[group_code]
 					included_groups.append(group_info)
-					included_categories.add(group_info["category"])
+					included_categories.add(group_info["root_type"])
 
 		if included_categories == {"Income"} or included_categories == {"Expense"}:
 			for group_info in included_groups:
@@ -201,7 +201,7 @@ class SummarizedProfitAndLossReport:
 			expense_totals = {key: 0 for key in running_totals}
 
 			for group_info in included_groups:
-				target_dict = income_totals if group_info["category"] == "Income" else expense_totals
+				target_dict = income_totals if group_info["root_type"] == "Income" else expense_totals
 				for key in target_dict:
 					target_dict[key] += group_info["totals"][key]
 

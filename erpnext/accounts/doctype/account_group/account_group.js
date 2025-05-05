@@ -4,7 +4,7 @@ frappe.ui.form.on('Account Group', {
 		frm.set_query('account', 'rows', function(doc, cdt, cdn) {
 			let filters = {
 				'company': frm.doc.company,
-				'root_type': frm.doc.category,
+				'report_type': frm.doc.report_type,
 				'is_group': 0
 			};
 
@@ -15,7 +15,7 @@ frappe.ui.form.on('Account Group', {
 		frm.set_query('account_group', 'rows', function(doc, cdt, cdn) {
 			let filters = {
 				'company': frm.doc.company,
-				'reporting_type': frm.doc.reporting_type,
+				'report_type': frm.doc.report_type,
 			}
 			if (!frm.is_new()) {
 				filters['name'] = ['!=', frm.doc.name];

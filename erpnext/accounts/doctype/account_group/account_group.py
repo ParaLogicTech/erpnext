@@ -11,7 +11,7 @@ class AccountGroup(Document):
 	def validate_root_level(self):
 		"""Validate root level account group type."""
 		if self.is_root_level:
-			if self.reporting_type not in ['Profit and Loss', 'Balance Sheet']:
+			if self.report_type not in ['Profit and Loss', 'Balance Sheet']:
 				frappe.throw(_("Root level Account Groups must be either 'Profit and Loss' or 'Balance Sheet'"))
 
 			# Check if another root level group exists for this reporting type
@@ -19,7 +19,7 @@ class AccountGroup(Document):
 				filters={
 					'company': self.company,
 					'is_root_level': 1,
-					'reporting_type': self.reporting_type,
+					'report_type': self.report_type,
 					'name': ['!=', self.name],
 				},
 				fieldname=['name', 'group_name'],
@@ -27,8 +27,8 @@ class AccountGroup(Document):
 			)
 
 			if existing_root:
-				frappe.throw(_("Another root level {0} already exists for reporting type {1}.").format(
-					frappe.get_desk_link("Account Group", existing_root.name), self.reporting_type
+				frappe.throw(_("Another root level {0} already exists for report type {1}.").format(
+					frappe.get_desk_link("Account Group", existing_root.name), self.report_type
 				))
 
 	def validate_rows(self):
@@ -44,10 +44,14 @@ class AccountGroup(Document):
 				row.section_account_groups = None
 
 				# Validate company and reporting type
-				account = frappe.get_cached_doc("Account", row.account)
-				if account.report_type != self.reporting_type:
-					frappe.throw(_("Row #{0}: Account {1} must of reporting type {2}").format(
-						row.idx, frappe.bold(row.account), frappe.bold(self.reporting_type)
+				account = frappe.get_doc("Account", row.account)
+				if account.is_group:
+					frappe.throw(_("Row #{0}: Account {1} must not be group Account").format(
+						row.idx, frappe.bold(row.account)
+					))
+				if account.report_type != self.report_type:
+					frappe.throw(_("Row #{0}: Account {1} must of report type {2}").format(
+						row.idx, frappe.bold(row.account), frappe.bold(self.report_type)
 					))
 				if account.company != self.company:
 					frappe.throw(_("Row #{0}: Account {1} does not belong to Company {2}").format(
@@ -71,10 +75,10 @@ class AccountGroup(Document):
 				if row.account_group == self.name:
 					frappe.throw(_("Row #{0}: Account Group must not be the same this one").format(row.idx))
 
-				account_group = frappe.get_cached_doc("Account Group", row.account_group)
-				if account_group.reporting_type != self.reporting_type:
+				account_group = frappe.get_doc("Account Group", row.account_group)
+				if account_group.report_type != self.report_type:
 					frappe.throw(_("Row #{0}: Account Group {1} must of reporting type {2}").format(
-						row.idx, frappe.bold(row.account_group), frappe.bold(self.reporting_type)
+						row.idx, frappe.bold(row.account_group), frappe.bold(self.report_type)
 					))
 				if account_group.company != self.company:
 					frappe.throw(_("Row #{0}: Account Group {1} does not belong to Company {2}").format(

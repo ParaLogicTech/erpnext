@@ -23,7 +23,7 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			get_query: () => ({
 				filters: {
 					company: frappe.query_report.get_filter_value('company'),
-					reporting_type: "Profit and Loss",
+					report_type: "Profit and Loss",
 				}
 			})
 		},
