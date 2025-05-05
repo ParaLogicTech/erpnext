@@ -306,8 +306,6 @@ class Project(StatusUpdaterERP):
 			},
 			order_by = "transaction_date desc",
 		)
-		print("---------------------------------------------")
-		# print(material_requests[0])
 
 		last_purchase_order_date = purchase_orders[0].transaction_date if purchase_orders else None
 		last_purchase_receipt_date = purchase_receipts[0].transaction_date if purchase_receipts else None
