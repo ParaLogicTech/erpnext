@@ -247,20 +247,36 @@ class SummarizedProfitAndLossReport:
 
 	def get_account_balances(self, account, company, report_date, month_start, year_start,
 			prev_year_date, prev_year_month_start, prev_year_start):
+		"""Get account balances with sign based on Account Group's root type."""
 		account_doc = frappe.get_doc("Account", account)
-		fiscal_year = report_date.year
+		
+		# Get Account Group's root type
+		group_root_type = frappe.get_value(
+			"Account Group",
+			frappe.get_value("Account Group Row", {"account": account}, "parent"),
+			"root_type"
+		)
+
+		# Get all balances
+		balances = {
+			"mtd_actual": self.get_balance(account, company, month_start, report_date, account_doc),
+			"ytd_actual": self.get_balance(account, company, year_start, report_date, account_doc),
+			"mtd_prev_year": self.get_balance(account, company, prev_year_month_start, prev_year_date, account_doc),
+			"ytd_prev_year": self.get_balance(account, company, prev_year_start, prev_year_date, account_doc),
+			"mtd_budget": self.get_budget_amount(account, company, month_start, report_date, year_start, report_date.year),
+			"ytd_budget": self.get_budget_amount(account, company, year_start, report_date, year_start, report_date.year)
+		}
+
+		# Apply sign based on group type (positive for Income, negative for Expense)
+		multiplier = 1 if group_root_type == "Income" else -1
+		signed_balances = {k: abs(v) * multiplier for k, v in balances.items()}
 
 		return {
 			"row_type": "Account",
 			"account_name": f"{account_doc.account_number} - {account_doc.account_name}" if account_doc.account_number else account_doc.account_name,
 			"account": account,
 			"account_type": account_doc.account_type,
-			"mtd_actual": self.get_balance(account, company, month_start, report_date, account_doc),
-			"mtd_budget": self.get_budget_amount(account, company, month_start, report_date, year_start, fiscal_year),
-			"mtd_prev_year": self.get_balance(account, company, prev_year_month_start, prev_year_date, account_doc),
-			"ytd_actual": self.get_balance(account, company, year_start, report_date, account_doc),
-			"ytd_budget": self.get_budget_amount(account, company, year_start, report_date, year_start, fiscal_year),
-			"ytd_prev_year": self.get_balance(account, company, prev_year_start, prev_year_date, account_doc)
+			**signed_balances
 		}
 
 	def get_tree_descendants(self, doctype, parent_names):
@@ -330,8 +346,7 @@ class SummarizedProfitAndLossReport:
 			FROM `tabGL Entry`
 			WHERE {where_clause}
 		""", tuple(params))[0][0] or 0
-		multiplier = 1 if account_doc.root_type in ["Asset", "Expense"] else -1
-		return balance * multiplier
+		return balance
 
 	def get_budget_amount(self, account, company, start_date, end_date, year_start, fiscal_year):
 		"""Get budget amount for the account between given dates, filtered by company, fiscal year, account, and parent Budget dimensions."""
