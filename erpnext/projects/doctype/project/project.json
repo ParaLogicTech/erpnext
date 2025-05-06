@@ -148,9 +148,12 @@
   "part_sales_amount",
   "lubricant_sales_amount",
   "consumable_sales_amount",
+  "paint_sales_amount",
   "column_break_28",
   "service_sales_amount",
   "labour_sales_amount",
+  "hourly_labour_sales_amount",
+  "package_sales_amount",
   "sublet_sales_amount",
   "costing_section",
   "material_cost_of_sales",
@@ -200,6 +203,8 @@
   "sublet_item_group",
   "column_break_134",
   "consumables_item_group",
+  "column_break_135",
+  "paint_item_group",
   "progress_settings_section",
   "percent_complete_method",
   "status_section",
@@ -1704,13 +1709,49 @@
    "no_copy": 1,
    "options": "Company:company:default_currency",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_135",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paint_item_group",
+   "fieldtype": "Link",
+   "label": "Paint Material Item Group",
+   "no_copy": 1,
+   "options": "Item Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paint_sales_amount",
+   "fieldtype": "Currency",
+   "label": "Paint Sales Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "package_sales_amount",
+   "fieldtype": "Currency",
+   "label": "Package Sales Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hourly_labour_sales_amount",
+   "fieldtype": "Currency",
+   "label": "Hourly Labour Sales Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-05-04 22:39:38.993499",
+ "modified": "2025-05-06 13:26:37.621598",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",
