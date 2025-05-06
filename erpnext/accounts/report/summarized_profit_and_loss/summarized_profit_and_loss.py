@@ -263,23 +263,56 @@ class SummarizedProfitAndLossReport:
 			"ytd_prev_year": self.get_balance(account, company, prev_year_start, prev_year_date, account_doc)
 		}
 
+	def get_tree_descendants(self, doctype, parent_names):
+		"""Get descendants for tree DocType nodes"""
+		if not parent_names:
+			return []
+		
+		parent_data = frappe.get_all(doctype, 
+			filters={'name': ['in', parent_names]},
+			fields=['lft', 'rgt'],
+			order_by='lft'
+		)
+		if not parent_data:
+			return []
+
+		or_filters = []
+		args = []
+		for p in parent_data:
+			or_filters.append("(lft >= %s AND rgt <= %s)")
+			args.extend([p.lft, p.rgt])
+
+		return [d.name for d in frappe.db.sql(
+			f"""SELECT name FROM `tab{doctype}` WHERE {" OR ".join(or_filters)}""",
+			args, as_dict=1
+		)]
+
 	def add_dimension_filters(self, table_alias, conditions, params):
-		"""Helper to add dimension filters"""
+		"""Helper to add dimension filters, including subtree filtering for tree dimensions."""
 		for dim in get_all_dimension_fields():
 			filter_value = self.filters.get(dim)
-			# Determine which table to check for the column
+			if not filter_value:
+				continue
+
 			table = "Budget" if table_alias == "b" else "GL Entry"
-			if filter_value and frappe.db.has_column(table, dim):
-				col = f"{table_alias}.{dim}" if table_alias else dim
-				if isinstance(filter_value, (list, tuple, set)):
-					filter_value = [v for v in filter_value if v]
-					if filter_value:
-						placeholders = ', '.join(['%s'] * len(filter_value))
-						conditions.append(f"{col} IN ({placeholders})")
-						params.extend(filter_value)
-				else:
-					conditions.append(f"{col} = %s")
-					params.append(filter_value)
+			if not frappe.db.has_column(table, dim):
+				continue
+
+			doctype = frappe.db.get_value("Custom Field", {"dt": table, "fieldname": dim}, "options") or dim.replace("_", " ").title()
+			is_tree = frappe.get_cached_value("DocType", doctype, "is_tree") or False
+			col = f"{table_alias}.{dim}" if table_alias else dim
+			values = [v for v in (filter_value if isinstance(filter_value, (list, tuple, set)) else [filter_value]) if v]
+			
+			if not values:
+				continue
+
+			if is_tree:
+				values = self.get_tree_descendants(doctype, values)
+			
+			if values:
+				placeholders = ', '.join(['%s'] * len(values))
+				conditions.append(f"{col} IN ({placeholders})")
+				params.extend(values)
 
 	def get_balance(self, account, company, start_date, end_date, account_doc):
 		"""Get GL balance for the account between given dates, filtered by dimensions."""
