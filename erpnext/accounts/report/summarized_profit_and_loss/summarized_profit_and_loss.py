@@ -71,7 +71,7 @@ class SummarizedProfitAndLossReport:
 				{
 					"company": self.filters.get('company'),
 					"is_root_level": 1,
-					"reporting_type": "Profit and Loss"
+					"report_type": "Profit and Loss"
 				},
 				["name", "group_name"]
 			)
