@@ -27,6 +27,24 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 				}
 			})
 		},
+		{
+			fieldname: "cost_center",
+			label: __("Cost Center"),
+			fieldtype: "MultiSelectList",
+			get_data: function(txt) {
+				return frappe.db.get_link_options('Cost Center', txt, {
+					company: frappe.query_report.get_filter_value("company")
+				});
+			}
+		},
+		{
+			fieldname: "project",
+			label: __("Project"),
+			fieldtype: "MultiSelectList",
+			get_data: function(txt) {
+				return frappe.db.get_link_options('Project', txt);
+			}
+		},
 	],
 
 	formatter: function(value, row, column, data, default_formatter) {
@@ -97,3 +115,5 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 		return `/app/query-report/Summarized Profit and Loss?${query_string}`;
 	},
 };
+
+erpnext.utils.add_dimensions('Summarized Profit and Loss', 5);
