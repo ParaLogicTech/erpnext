@@ -98,8 +98,10 @@ class SummarizedProfitAndLossReport:
 		all_accounts = group_account_map[group.name]
 		current_gl_data = self.get_gl_data(all_accounts, self.filters.year_start_date, self.filters.report_date)
 		prev_year_gl_data = self.get_gl_data(all_accounts, self.filters.prev_year_start, self.filters.prev_year_date)
+		raw_budget_records = self.get_budget_data(all_accounts, self.filters.report_date.year)
+		budget_data = self.calculate_budget_totals(raw_budget_records)
 
-		account_totals = self.get_account_totals(current_gl_data, prev_year_gl_data)
+		account_totals = self.get_account_totals(current_gl_data, prev_year_gl_data, budget_data)
 
 		# Calculate Child Group Totals
 		child_group_totals = {}
@@ -203,8 +205,8 @@ class SummarizedProfitAndLossReport:
 
 		return dimension_conditions, args
 
-	def get_account_totals(self, current_gl_data, prev_year_gl_data):
-		template = frappe._dict({f: 0 for f in self.gl_fields})
+	def get_account_totals(self, current_gl_data, prev_year_gl_data, budget_data):
+		template = frappe._dict({f: 0 for f in self.gl_fields + self.budget_fields})
 
 		account_totals = {}
 		for d in current_gl_data:
@@ -223,18 +225,24 @@ class SummarizedProfitAndLossReport:
 				group = account_totals.setdefault(d.account, template.copy())
 				group["ytd_prev_year"] += d.credit - d.debit
 
+		# --- Integrate budget data
+		for account, budget in budget_data.items():
+			group = account_totals.setdefault(account, template.copy())
+			group["mtd_budget"] = budget.get("mtd_budget", 0)
+			group["ytd_budget"] = budget.get("ytd_budget", 0)
+
 		return account_totals
 
 	def get_group_totals(self, group_accounts, account_totals):
-		group_totals = frappe._dict({f: 0 for f in self.gl_fields})
+		group_totals = frappe._dict({f: 0 for f in self.total_fields})
 
 		for account in group_accounts:
 			totals = account_totals.get(account)
 			if not totals:
 				continue
 
-			for f in self.gl_fields:
-				group_totals[f] += flt(totals[f])
+			for f in self.total_fields:
+				group_totals[f] += flt(totals.get(f))
 
 		return group_totals
 
@@ -290,45 +298,6 @@ class SummarizedProfitAndLossReport:
 
 		return section_totals
 
-	def get_budget_amount(self, account, start_date, end_date, fiscal_year):
-		"""Get budget amount for the account between given dates, filtered by company, fiscal year, account, and parent Budget dimensions."""
-		conditions = [
-			"ba.account = %s",
-			"b.company = %s",
-			"b.fiscal_year = %s",
-			"b.docstatus = 1"
-		]
-		params = [account, self.filters.company, fiscal_year]
-		self.add_dimension_filters('b', conditions, params)
-		where_clause = " AND ".join(conditions)
-		budget_data = frappe.db.sql(f"""
-			SELECT ba.budget_amount, b.monthly_distribution
-			FROM `tabBudget Account` ba
-			INNER JOIN `tabBudget` b ON ba.parent = b.name
-			WHERE {where_clause}
-		""", tuple(params), as_dict=1)
-
-		total_budget = 0
-
-		fy_start, fy_end = frappe.db.get_value('Fiscal Year', fiscal_year, ['year_start_date', 'year_end_date'])
-
-		for row in budget_data:
-			budget = row.budget_amount or 0
-			monthly_distribution = row.monthly_distribution
-			if monthly_distribution:
-				if start_date > fy_start:
-					total_budget += (
-						get_accumulated_monthly_budget(monthly_distribution, end_date, fiscal_year, budget)
-						- get_accumulated_monthly_budget(monthly_distribution, start_date - timedelta(days=1), fiscal_year, budget)
-					)
-				else:
-					total_budget += get_accumulated_monthly_budget(monthly_distribution, end_date, fiscal_year, budget)
-			else:
-				days_in_period = (end_date - start_date).days + 1
-				days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
-				total_budget += (budget * days_in_period / days_in_year)
-
-		return total_budget
 
 	def add_dimension_filters(self, table_alias, conditions, params):
 		"""Helper to add dimension filters, including subtree filtering for tree dimensions."""
@@ -432,3 +401,76 @@ class SummarizedProfitAndLossReport:
 			self._account_group_docs[group_name] = frappe.get_doc("Account Group", group_name)
 
 		return self._account_group_docs[group_name]
+
+	def get_budget_data(self, accounts, fiscal_year):
+		"""Fetch raw budget records for all accounts in bulk for the fiscal year"""
+  
+		if not accounts:
+			return []
+
+		accounts = list(accounts)
+  
+		dimension_conditions, dimension_args = self.get_dimension_conditions()
+
+		args = {
+			"accounts": accounts,
+			"company": self.filters.get('company'),
+			"fiscal_year": fiscal_year,
+			**dimension_args,
+		}
+		return frappe.db.sql(f"""
+			SELECT ba.account, ba.budget_amount, b.monthly_distribution
+			FROM `tabBudget Account` ba
+			INNER JOIN `tabBudget` b ON ba.parent = b.name
+			WHERE ba.account IN %(accounts)s
+			  AND b.company = %(company)s
+			  AND b.fiscal_year = %(fiscal_year)s
+			  AND b.docstatus = 1
+			  {dimension_conditions}
+		""", args, as_dict=1)
+
+	def calculate_budget_totals(self, budget_records):
+		"""Calculate MTD and YTD budget for each account from raw budget records"""
+  
+		budget_data = {}
+  
+		fy_start, fy_end = frappe.db.get_value('Fiscal Year', self.filters.report_date.year, ['year_start_date', 'year_end_date'])
+
+		for row in budget_records:
+			account = row.account
+			budget = row.budget_amount or 0
+			monthly_distribution = row.monthly_distribution
+
+			# MTD Budget
+			if monthly_distribution:
+				if self.filters.month_start_date > fy_start:
+					mtd_budget = (
+						get_accumulated_monthly_budget(monthly_distribution, self.filters.report_date, self.filters.report_date.year, budget)
+						- get_accumulated_monthly_budget(monthly_distribution, self.filters.month_start_date - timedelta(days=1), self.filters.report_date.year, budget)
+					)
+				else:
+					mtd_budget = get_accumulated_monthly_budget(monthly_distribution, self.filters.report_date, self.filters.report_date.year, budget)
+			else:
+				days_in_period = (self.filters.report_date - self.filters.month_start_date).days + 1
+				days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
+				mtd_budget = (budget * days_in_period / days_in_year)
+
+			# YTD Budget
+			if monthly_distribution:
+				if self.filters.year_start_date > fy_start:
+					ytd_budget = (
+						get_accumulated_monthly_budget(monthly_distribution, self.filters.report_date, self.filters.report_date.year, budget)
+						- get_accumulated_monthly_budget(monthly_distribution, self.filters.year_start_date - timedelta(days=1), self.filters.report_date.year, budget)
+					)
+				else:
+					ytd_budget = get_accumulated_monthly_budget(monthly_distribution, self.filters.report_date, self.filters.report_date.year, budget)
+			else:
+				days_in_period = (self.filters.report_date - self.filters.year_start_date).days + 1
+				days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
+				ytd_budget = (budget * days_in_period / days_in_year)
+    
+			entry = budget_data.setdefault(account, {"mtd_budget": 0, "ytd_budget": 0})
+			entry["mtd_budget"] += mtd_budget
+			entry["ytd_budget"] += ytd_budget
+
+		return budget_data
