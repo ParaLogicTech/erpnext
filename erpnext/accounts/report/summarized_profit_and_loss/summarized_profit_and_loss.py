@@ -92,6 +92,7 @@ class SummarizedProfitAndLossReport:
 		"""Aggregate account and group data for a given group."""
 		data = []
 		group = self.get_account_group_doc(group_name)
+		group_root_type = group.root_type
 
 		group_account_map = self.get_accounts_in_account_group(group)
 		all_accounts = group_account_map[group.name]
@@ -120,24 +121,24 @@ class SummarizedProfitAndLossReport:
 		for row in group.rows:
 			if row.row_type == "Account":
 				totals = account_totals.get(row.account) or {}
-				data.append(self.get_row(row.row_type, row.account, totals=totals))
+				data.append(self.get_row(row.row_type, row.account, totals=totals, group_root_type=group_root_type))
 
 				for f in self.total_fields:
 					running_totals[f] += flt(totals.get(f))
 
 			elif row.row_type == "Account Group":
 				totals = child_group_totals.get(row.account_group) or {}
-				data.append(self.get_row(row.row_type, row.account_group, totals=totals))
+				data.append(self.get_row(row.row_type, row.account_group, totals=totals, group_root_type=group_root_type))
 
 				for f in self.total_fields:
 					running_totals[f] += flt(totals.get(f))
 
 			elif row.row_type == "Section Break":
-				data.append(self.get_row(row.row_type, row.section_name, is_bold=True))
+				data.append(self.get_row(row.row_type, row.section_name, is_bold=True, group_root_type=group_root_type))
 
 			elif row.row_type == "Section Group":
 				section_totals = self.calculate_section_totals(row, child_group_totals, running_totals)
-				data.append(self.get_row(row.row_type, row.section_name, totals=section_totals, is_bold=True))
+				data.append(self.get_row(row.row_type, row.section_name, totals=section_totals, is_bold=True, group_root_type=group_root_type))
 
 		return data
 
@@ -237,7 +238,7 @@ class SummarizedProfitAndLossReport:
 
 		return group_totals
 
-	def get_row(self, row_type, row_value, totals=None, is_bold=False):
+	def get_row(self, row_type, row_value, totals=None, is_bold=False, group_root_type=None):
 		row = frappe._dict()
 
 		no_values = True
@@ -255,7 +256,7 @@ class SummarizedProfitAndLossReport:
 
 		row["row_type"] = row_type
 		row["account_name"] = row_value or ""
-		row["root_type"] = totals.get("root_type")
+		row["root_type"] = totals.get("root_type") or group_root_type
 		row["is_bold"] = cint(is_bold)
 
 		if not no_values:
