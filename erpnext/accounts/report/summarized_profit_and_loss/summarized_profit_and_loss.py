@@ -6,6 +6,7 @@ from frappe import _
 from frappe.utils import getdate, get_first_day, add_years, get_year_start
 from datetime import timedelta
 from erpnext.accounts.doctype.budget.budget import get_accumulated_monthly_budget
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_dimension_fields
 
 
 def execute(filters=None):
@@ -246,66 +247,142 @@ class SummarizedProfitAndLossReport:
 
 	def get_account_balances(self, account, company, report_date, month_start, year_start,
 			prev_year_date, prev_year_month_start, prev_year_start):
+		"""Get account balances with sign based on Account Group's root type."""
 		account_doc = frappe.get_doc("Account", account)
-		fiscal_year = report_date.year
+		
+		# Get Account Group's root type
+		group_root_type = frappe.get_value(
+			"Account Group",
+			frappe.get_value("Account Group Row", {"account": account}, "parent"),
+			"root_type"
+		)
+
+		# Get all balances
+		balances = {
+			"mtd_actual": self.get_balance(account, company, month_start, report_date, account_doc),
+			"ytd_actual": self.get_balance(account, company, year_start, report_date, account_doc),
+			"mtd_prev_year": self.get_balance(account, company, prev_year_month_start, prev_year_date, account_doc),
+			"ytd_prev_year": self.get_balance(account, company, prev_year_start, prev_year_date, account_doc),
+			"mtd_budget": self.get_budget_amount(account, company, month_start, report_date, year_start, report_date.year),
+			"ytd_budget": self.get_budget_amount(account, company, year_start, report_date, year_start, report_date.year)
+		}
+
+		# Apply sign based on group type (positive for Income, negative for Expense)
+		multiplier = 1 if group_root_type == "Income" else -1
+		signed_balances = {k: abs(v) * multiplier for k, v in balances.items()}
 
 		return {
 			"row_type": "Account",
 			"account_name": f"{account_doc.account_number} - {account_doc.account_name}" if account_doc.account_number else account_doc.account_name,
 			"account": account,
 			"account_type": account_doc.account_type,
-			"mtd_actual": self.get_balance(account, company, month_start, report_date, account_doc),
-			"mtd_budget": self.get_budget_amount(account, company, month_start, report_date, year_start, fiscal_year),
-			"mtd_prev_year": self.get_balance(account, company, prev_year_month_start, prev_year_date, account_doc),
-			"ytd_actual": self.get_balance(account, company, year_start, report_date, account_doc),
-			"ytd_budget": self.get_budget_amount(account, company, year_start, report_date, year_start, fiscal_year),
-			"ytd_prev_year": self.get_balance(account, company, prev_year_start, prev_year_date, account_doc)
+			**signed_balances
 		}
 
+	def get_tree_descendants(self, doctype, parent_names):
+		"""Get descendants for tree DocType nodes"""
+		if not parent_names:
+			return []
+		
+		parent_data = frappe.get_all(doctype, 
+			filters={'name': ['in', parent_names]},
+			fields=['lft', 'rgt'],
+			order_by='lft'
+		)
+		if not parent_data:
+			return []
+
+		or_filters = []
+		args = []
+		for p in parent_data:
+			or_filters.append("(lft >= %s AND rgt <= %s)")
+			args.extend([p.lft, p.rgt])
+
+		return [d.name for d in frappe.db.sql(
+			f"""SELECT name FROM `tab{doctype}` WHERE {" OR ".join(or_filters)}""",
+			args, as_dict=1
+		)]
+
+	def add_dimension_filters(self, table_alias, conditions, params):
+		"""Helper to add dimension filters, including subtree filtering for tree dimensions."""
+		for dim in get_all_dimension_fields():
+			filter_value = self.filters.get(dim)
+			if not filter_value:
+				continue
+
+			table = "Budget" if table_alias == "b" else "GL Entry"
+			if not frappe.db.has_column(table, dim):
+				continue
+
+			doctype = frappe.db.get_value("Custom Field", {"dt": table, "fieldname": dim}, "options") or dim.replace("_", " ").title()
+			is_tree = frappe.get_cached_value("DocType", doctype, "is_tree") or False
+			col = f"{table_alias}.{dim}" if table_alias else dim
+			values = [v for v in (filter_value if isinstance(filter_value, (list, tuple, set)) else [filter_value]) if v]
+			
+			if not values:
+				continue
+
+			if is_tree:
+				values = self.get_tree_descendants(doctype, values)
+			
+			if values:
+				placeholders = ', '.join(['%s'] * len(values))
+				conditions.append(f"{col} IN ({placeholders})")
+				params.extend(values)
+
 	def get_balance(self, account, company, start_date, end_date, account_doc):
-		"""Get GL balance for the account between given dates."""
-		balance = frappe.db.sql("""
+		"""Get GL balance for the account between given dates, filtered by dimensions."""
+		conditions = [
+			"account=%s",
+			"company=%s",
+			"posting_date BETWEEN %s AND %s",
+			"docstatus = 1"
+		]
+		params = [account, company, start_date, end_date]
+		self.add_dimension_filters('', conditions, params)
+		where_clause = " AND ".join(conditions)
+		balance = frappe.db.sql(f"""
 			SELECT SUM(debit) - SUM(credit)
 			FROM `tabGL Entry`
-			WHERE account=%s AND company=%s
-				AND posting_date BETWEEN %s AND %s
-				AND docstatus = 1
-		""", (account, company, start_date, end_date))[0][0] or 0
-
-		multiplier = 1 if account_doc.root_type in ["Asset", "Expense"] else -1
-		return balance * multiplier
+			WHERE {where_clause}
+		""", tuple(params))[0][0] or 0
+		return balance
 
 	def get_budget_amount(self, account, company, start_date, end_date, year_start, fiscal_year):
-		"""Get budget amount for the account between given dates."""
-		# Query budget information
-		budget_data = frappe.db.sql("""
+		"""Get budget amount for the account between given dates, filtered by company, fiscal year, account, and parent Budget dimensions."""
+		conditions = [
+			"ba.account = %s",
+			"b.company = %s",
+			"b.fiscal_year = %s",
+			"b.docstatus = 1"
+		]
+		params = [account, company, fiscal_year]
+		self.add_dimension_filters('b', conditions, params)
+		where_clause = " AND ".join(conditions)
+		budget_data = frappe.db.sql(f"""
 			SELECT ba.budget_amount, b.monthly_distribution
 			FROM `tabBudget Account` ba
 			INNER JOIN `tabBudget` b ON ba.parent = b.name
-			WHERE ba.account = %s AND b.company = %s 
-				AND b.fiscal_year = %s AND b.docstatus = 1
-			LIMIT 1
-		""", (account, company, fiscal_year), as_dict=1)
-
-		# Set defaults if no budget found
-		budget = 0
-		monthly_distribution = None
-
-		# Extract values if budget exists
-		if budget_data:
-			budget = budget_data[0].budget_amount or 0
-			monthly_distribution = budget_data[0].monthly_distribution
-
-		if monthly_distribution:
-			return (get_accumulated_monthly_budget(monthly_distribution, end_date, fiscal_year, budget) -
-					get_accumulated_monthly_budget(monthly_distribution, start_date - timedelta(days=1), fiscal_year, budget)
-					if start_date > year_start else
-					get_accumulated_monthly_budget(monthly_distribution, end_date, fiscal_year, budget))
-
-		fy_start, fy_end = frappe.db.get_value('Fiscal Year', fiscal_year, ['year_start_date', 'year_end_date'])
-		days_in_period = (end_date - start_date).days + 1
-		days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
-		return (budget * days_in_period / days_in_year)
+			WHERE {where_clause}
+		""", tuple(params), as_dict=1)
+		total_budget = 0
+		for row in budget_data:
+			budget = row.budget_amount or 0
+			monthly_distribution = row.monthly_distribution
+			if monthly_distribution:
+				if start_date > year_start:
+					total_budget += (
+						get_accumulated_monthly_budget(monthly_distribution, end_date, fiscal_year, budget)
+						- get_accumulated_monthly_budget(monthly_distribution, start_date - timedelta(days=1), fiscal_year, budget)
+					)
+				else:
+					total_budget += get_accumulated_monthly_budget(monthly_distribution, end_date, fiscal_year, budget)
+			else:
+				fy_start, fy_end = frappe.db.get_value('Fiscal Year', fiscal_year, ['year_start_date', 'year_end_date'])
+				days_in_period = (end_date - start_date).days + 1
+				days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
+				total_budget += (budget * days_in_period / days_in_year)
+		return total_budget
 
 	def get_columns(self):
 		return [
