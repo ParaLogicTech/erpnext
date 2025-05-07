@@ -410,17 +410,24 @@ class SummarizedProfitAndLossReport:
 
 		accounts = list(accounts)
   
-		return frappe.db.sql("""
+		dimension_conditions, dimension_args = self.get_dimension_conditions()
+
+		args = {
+			"accounts": accounts,
+			"company": self.filters.get('company'),
+			"fiscal_year": fiscal_year,
+			**dimension_args,
+		}
+		return frappe.db.sql(f"""
 			SELECT ba.account, ba.budget_amount, b.monthly_distribution
 			FROM `tabBudget Account` ba
 			INNER JOIN `tabBudget` b ON ba.parent = b.name
 			WHERE ba.account IN %(accounts)s
-			AND b.fiscal_year = %(fiscal_year)s
-			AND b.docstatus = 1
-		""", {
-			"accounts": accounts,
-			"fiscal_year": fiscal_year
-		}, as_dict=1)
+			  AND b.company = %(company)s
+			  AND b.fiscal_year = %(fiscal_year)s
+			  AND b.docstatus = 1
+			  {dimension_conditions}
+		""", args, as_dict=1)
 
 	def calculate_budget_totals(self, budget_records):
 		"""Calculate MTD and YTD budget for each account from raw budget records"""
@@ -461,10 +468,9 @@ class SummarizedProfitAndLossReport:
 				days_in_period = (self.filters.report_date - self.filters.year_start_date).days + 1
 				days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
 				ytd_budget = (budget * days_in_period / days_in_year)
-
-			budget_data[account] = {
-				"mtd_budget": mtd_budget,
-				"ytd_budget": ytd_budget
-			}
+    
+			entry = budget_data.setdefault(account, {"mtd_budget": 0, "ytd_budget": 0})
+			entry["mtd_budget"] += mtd_budget
+			entry["ytd_budget"] += ytd_budget
 
 		return budget_data
