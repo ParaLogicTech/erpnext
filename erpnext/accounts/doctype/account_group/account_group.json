@@ -19,7 +19,6 @@
   {
    "fieldname": "group_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
    "label": "Group Name",
    "reqd": 1,
    "unique": 1
@@ -35,13 +34,15 @@
    "default": "0",
    "fieldname": "is_root_level",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "Is Root Level Group"
   },
   {
    "fieldname": "rows",
    "fieldtype": "Table",
    "label": "Rows",
-   "options": "Account Group Row"
+   "options": "Account Group Row",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_gygm",
@@ -54,6 +55,8 @@
   {
    "fieldname": "report_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Report Type",
    "options": "Profit and Loss\nBalance Sheet",
    "reqd": 1
@@ -61,6 +64,8 @@
   {
    "fieldname": "root_type",
    "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Root Type",
    "options": "Income\nExpense\nAsset\nLiability\nEquity",
    "reqd": 1
@@ -68,7 +73,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-05 15:55:27.919932",
+ "modified": "2025-05-07 11:25:06.241165",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group",
