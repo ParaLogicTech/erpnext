@@ -8,7 +8,6 @@ from frappe.utils import getdate, get_first_day, add_years, get_year_start, flt,
 from datetime import timedelta
 from erpnext.accounts.doctype.budget.budget import get_accumulated_monthly_budget
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
-	get_all_dimension_fields,
 	get_accounting_dimensions,
 	get_dimension_with_children,
 )
@@ -228,8 +227,8 @@ class SummarizedProfitAndLossReport:
 		# --- Integrate budget data
 		for account, budget in budget_data.items():
 			group = account_totals.setdefault(account, template.copy())
-			group["mtd_budget"] = budget.get("mtd_budget", 0)
-			group["ytd_budget"] = budget.get("ytd_budget", 0)
+			group["mtd_budget"] = flt(budget.get("mtd_budget"))
+			group["ytd_budget"] = flt(budget.get("ytd_budget"))
 
 		return account_totals
 
@@ -298,58 +297,6 @@ class SummarizedProfitAndLossReport:
 
 		return section_totals
 
-
-	def add_dimension_filters(self, table_alias, conditions, params):
-		"""Helper to add dimension filters, including subtree filtering for tree dimensions."""
-		for dim in get_all_dimension_fields():
-			filter_value = self.filters.get(dim)
-			if not filter_value:
-				continue
-
-			table = "Budget" if table_alias == "b" else "GL Entry"
-			if not frappe.db.has_column(table, dim):
-				continue
-
-			doctype = frappe.db.get_value("Custom Field", {"dt": table, "fieldname": dim}, "options") or dim.replace("_", " ").title()
-			is_tree = frappe.get_cached_value("DocType", doctype, "is_tree") or False
-			col = f"{table_alias}.{dim}" if table_alias else dim
-			values = [v for v in (filter_value if isinstance(filter_value, (list, tuple, set)) else [filter_value]) if v]
-
-			if not values:
-				continue
-
-			if is_tree:
-				values = self.get_tree_descendants(doctype, values)
-
-			if values:
-				placeholders = ', '.join(['%s'] * len(values))
-				conditions.append(f"{col} IN ({placeholders})")
-				params.extend(values)
-
-	def get_tree_descendants(self, doctype, parent_names):
-		"""Get descendants for tree DocType nodes"""
-		if not parent_names:
-			return []
-
-		parent_data = frappe.get_all(doctype,
-			filters={'name': ['in', parent_names]},
-			fields=['lft', 'rgt'],
-			order_by='lft'
-		)
-		if not parent_data:
-			return []
-
-		or_filters = []
-		args = []
-		for p in parent_data:
-			or_filters.append("(lft >= %s AND rgt <= %s)")
-			args.extend([p.lft, p.rgt])
-
-		return [d.name for d in frappe.db.sql(
-			f"""SELECT name FROM `tab{doctype}` WHERE {" OR ".join(or_filters)}""",
-			args, as_dict=1
-		)]
-
 	def get_columns(self):
 		return [
 			{
@@ -404,12 +351,12 @@ class SummarizedProfitAndLossReport:
 
 	def get_budget_data(self, accounts, fiscal_year):
 		"""Fetch raw budget records for all accounts in bulk for the fiscal year"""
-  
+
 		if not accounts:
 			return []
 
 		accounts = list(accounts)
-  
+
 		dimension_conditions, dimension_args = self.get_dimension_conditions()
 
 		args = {
@@ -423,17 +370,17 @@ class SummarizedProfitAndLossReport:
 			FROM `tabBudget Account` ba
 			INNER JOIN `tabBudget` b ON ba.parent = b.name
 			WHERE ba.account IN %(accounts)s
-			  AND b.company = %(company)s
-			  AND b.fiscal_year = %(fiscal_year)s
-			  AND b.docstatus = 1
-			  {dimension_conditions}
+				AND b.company = %(company)s
+				AND b.fiscal_year = %(fiscal_year)s
+				AND b.docstatus = 1
+				{dimension_conditions}
 		""", args, as_dict=1)
 
 	def calculate_budget_totals(self, budget_records):
 		"""Calculate MTD and YTD budget for each account from raw budget records"""
-  
+
 		budget_data = {}
-  
+
 		fy_start, fy_end = frappe.db.get_value('Fiscal Year', self.filters.report_date.year, ['year_start_date', 'year_end_date'])
 
 		for row in budget_records:
@@ -468,7 +415,7 @@ class SummarizedProfitAndLossReport:
 				days_in_period = (self.filters.report_date - self.filters.year_start_date).days + 1
 				days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
 				ytd_budget = (budget * days_in_period / days_in_year)
-    
+
 			entry = budget_data.setdefault(account, {"mtd_budget": 0, "ytd_budget": 0})
 			entry["mtd_budget"] += mtd_budget
 			entry["ytd_budget"] += ytd_budget
