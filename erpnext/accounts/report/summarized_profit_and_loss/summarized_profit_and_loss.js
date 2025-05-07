@@ -30,20 +30,11 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 		{
 			fieldname: "cost_center",
 			label: __("Cost Center"),
-			fieldtype: "MultiSelectList",
-			get_data: function(txt) {
-				return frappe.db.get_link_options('Cost Center', txt, {
-					company: frappe.query_report.get_filter_value("company")
-				});
-			}
-		},
-		{
-			fieldname: "project",
-			label: __("Project"),
-			fieldtype: "MultiSelectList",
-			get_data: function(txt) {
-				return frappe.db.get_link_options('Project', txt);
-			}
+			fieldtype: "Link",
+			options: "Cost Center",
+			get_query: () => {
+				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+			},
 		},
 	],
 
@@ -55,7 +46,7 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 
 		// Handle account name column formatting
 		if (data) {
-			if (["account_name", "mtd_actual", "ytd_actual"].includes(column.fieldname) && data.row_type === "Account Group") {
+			if (["account_name", "mtd_actual_display", "ytd_actual_display"].includes(column.fieldname) && data.row_type === "Account Group") {
 				options.link_href = this.get_account_group_link(data);
 				// let account_group = data.account_name;
 				// options.link_onclick = `
@@ -64,13 +55,13 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 				// 	event.preventDefault();
 				// `;
 			}
-			if (column.fieldname === "mtd_actual" && data.row_type === "Account") {
+			if (column.fieldname === "mtd_actual_display" && data.row_type === "Account") {
 				let report_date = frappe.datetime.str_to_obj(frappe.query_report.get_filter_value('report_date'));
 				let from_date = moment(report_date).startOf("month").format();
 				options.link_href = this.get_account_link(data, from_date);
 				options.link_target = "_blank";
 			}
-			if (column.fieldname === "ytd_actual" && data.row_type === "Account") {
+			if (column.fieldname === "ytd_actual_display" && data.row_type === "Account") {
 				let report_date = frappe.datetime.str_to_obj(frappe.query_report.get_filter_value('report_date'));
 				let from_date = moment(report_date).startOf("year").format();
 				options.link_href = this.get_account_link(data, from_date);
