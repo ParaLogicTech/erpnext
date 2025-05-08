@@ -127,6 +127,8 @@ class Project(StatusUpdaterERP):
 
 	def after_insert(self):
 		self.set_project_in_sales_order_and_quotation()
+		if hasattr(self, "validate_duplicate_repair_order"):
+			self.validate_duplicate_repair_order()
 
 	def after_delete(self):
 		self.update_appointment()
