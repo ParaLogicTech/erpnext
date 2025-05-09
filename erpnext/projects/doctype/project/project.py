@@ -154,7 +154,7 @@ class Project(StatusUpdaterERP):
 
 		sales_orders = frappe.get_all("Sales Order", fields=['billing_status', 'delivery_status', 'status', 'skip_delivery_note', 'transaction_date'], filters={
 			"project": self.name, "docstatus": 1
-		}, order_by="transaction_date, creation desc")
+		}, order_by="transaction_date desc, creation desc")
 		delivery_notes = frappe.get_all("Delivery Note", fields=['billing_status', 'status'], filters={
 			"project": self.name, "docstatus": 1, "is_return": 0,
 		})
@@ -287,7 +287,7 @@ class Project(StatusUpdaterERP):
 			from `tabPurchase Order Item` i
 			inner join `tabPurchase Order` p on p.name = i.parent
 			where p.docstatus = 1 and i.project = %s and i.is_stock_item = 1 
-			order by p.transaction_date, p.creation desc
+			order by p.transaction_date desc, p.creation desc
 		""", self.name, as_dict=1)
 
 		purchase_receipts = frappe.db.sql("""
@@ -295,7 +295,7 @@ class Project(StatusUpdaterERP):
 			from `tabPurchase Receipt Item` i
 			inner join `tabPurchase Receipt` p on p.name = i.parent
 			where p.docstatus = 1 and i.project = %s and i.is_stock_item = 1 
-			order by p.posting_date, p.creation desc
+			order by p.posting_date desc, p.creation desc
 		""", self.name, as_dict=1)
 
 		material_requests = frappe.get_all(
@@ -306,11 +306,11 @@ class Project(StatusUpdaterERP):
 				"docstatus": 1,
 				"material_request_type": ["in", ["Purchase", "Material Transfer", "Customer Provided"]],
 			},
-			order_by = "transaction_date, creation desc",
+			order_by = "transaction_date desc, creation desc",
 		)
 
 		last_purchase_order_date = purchase_orders[0].transaction_date if purchase_orders else None
-		last_purchase_receipt_date = purchase_receipts[0].transaction_date if purchase_receipts else None
+		last_purchase_receipt_date = purchase_receipts[0].posting_date if purchase_receipts else None
 		last_material_request_date = material_requests[0].transaction_date if material_requests else None
 
 		has_receivables = False
