@@ -114,9 +114,7 @@ fixtures = [
 				"Appointment-applies_to_item_name",
 
 				"Appointment-sec_service_template",
-				"Appointment-service_template",
-				"Appointment-cb1_service_template",
-				"Appointment-service_template_name",
+				"Appointment-appointment_service_templates",
 
 				"Customer Feedback-project",
 				"Customer Feedback-applies_to_variant_of",
