@@ -529,7 +529,7 @@ $.extend(erpnext.utils, {
 
 			const company = cur_frm?.doc?.company;
 			const customer = cur_frm?.doc?.customer;
-            if (doc?.item_code && customer && company) {
+			if (doc?.item_code && customer && company) {
 				const today = new Date();
 				const fromDate = new Date();
 				fromDate.setFullYear(today.getFullYear() - 2);
@@ -538,7 +538,7 @@ $.extend(erpnext.utils, {
 
 				const from_date = formatDate(fromDate);
 				const to_date = formatDate(today);
-                const filters = {
+				const filters = {
 					company,
 					customer,
 					item_code: doc.item_code,
@@ -552,7 +552,7 @@ $.extend(erpnext.utils, {
 				};
 
 				return `<a href="#" onclick='frappe.set_route("query-report", "Sales Details", ${JSON.stringify(filters)})' style="text-decoration: underline;">${formatted_value}</a>`;
-            }
+			}
 
             return formatted_value;
         };
