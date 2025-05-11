@@ -530,8 +530,28 @@ $.extend(erpnext.utils, {
 			const company = cur_frm?.doc?.company;
 			const customer = cur_frm?.doc?.customer;
             if (doc?.item_code && customer && company) {
-                const link = `/app/query-report/Sales Details?company=${encodeURIComponent(company)}&customer=${encodeURIComponent(customer)}&item_code=${encodeURIComponent(doc.item_code)}`;
-                return `<a href="${link}" target="_blank">${formatted_value}</a>`;
+				const today = new Date();
+				const fromDate = new Date();
+				fromDate.setFullYear(today.getFullYear() - 2);
+
+				const formatDate = (date) => date.toISOString().split('T')[0];
+
+				const from_date = formatDate(fromDate);
+				const to_date = formatDate(today);
+                const filters = {
+					company,
+					customer,
+					item_code: doc.item_code,
+					doctype: "Sales Invoice",
+					qty_field: "Stock Qty",
+					from_date,
+					to_date,
+					group_by_2: "",
+					group_by_3: "",
+					group_same_items: 0
+				};
+
+				return `<a href="#" onclick='frappe.set_route("query-report", "Sales Details", ${JSON.stringify(filters)})' style="text-decoration: underline;">${formatted_value}</a>`;
             }
 
             return formatted_value;
