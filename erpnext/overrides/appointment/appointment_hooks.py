@@ -76,12 +76,6 @@ def get_project(source_name, target_doc=None):
 			target.applies_to_item = None
 			target.applies_to_variant_of = None
 
-		if source.service_template:
-			target.append("service_templates", {
-				"service_template": source.service_template,
-				"service_template_name": source.service_template_name,
-			})
-
 		target.run_method("set_missing_values")
 
 	mapper = {
@@ -95,6 +89,13 @@ def get_project(source_name, target_doc=None):
 				"description": "description",
 				"applies_to_serial_no": "applies_to_serial_no",
 			}
+		},
+		"Appointment Service Template": {
+			"doctype": "Project Service Template",
+			"field_map": {
+				"service_template": "service_template",
+				"service_template_name": "service_template_name",
+			},
 		},
 		"postprocess": set_missing_values,
 	}

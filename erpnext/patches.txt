@@ -389,3 +389,4 @@ erpnext.patches.v15_0.set_pos_cashier_field
 erpnext.patches.v15_0.set_sales_order_bill_to
 erpnext.patches.v15_0.set_project_in_customer_feedback
 erpnext.patches.v15_0.copy_contact_in_customer_feedback_from_project
+erpnext.patches.v15_0.update_appointment_service_template
