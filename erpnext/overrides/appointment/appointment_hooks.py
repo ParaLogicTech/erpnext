@@ -88,16 +88,14 @@ def get_project(source_name, target_doc=None):
 				"sales_person": "service_advisor",
 				"description": "description",
 				"applies_to_serial_no": "applies_to_serial_no",
-			},
-			"table_map": {
-				"appointment_service_templates": {
-					"doctype": "Project Service Template",
-					"field_map": {
-						"service_template": "service_template",
-						"service_template_name": "service_template_name",
-					}
-				}
 			}
+		},
+		"Appointment Service Template": {
+			"doctype": "Project Service Template",
+			"field_map": {
+				"service_template": "service_template",
+				"service_template_name": "service_template_name",
+			},
 		},
 		"postprocess": set_missing_values,
 	}

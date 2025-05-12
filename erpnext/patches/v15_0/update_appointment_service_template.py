@@ -1,7 +1,15 @@
 import frappe
+from frappe.utils.fixtures import sync_fixtures
+
 
 def execute():
-    for appt in frappe.get_all("Appointment", fields=["name", "service_template", "service_template_name"]):
+    sync_fixtures(app="erpnext")
+
+    appointments = frappe.get_all("Appointment", filters={
+        "service_template": ['is', 'set']
+    }, fields=["name", "service_template", "service_template_name"])
+
+    for appt in appointments:
         if appt.service_template:
             child = frappe.get_doc({
                 "doctype": "Appointment Service Template",
@@ -9,11 +17,10 @@ def execute():
                 "service_template_name": appt.service_template_name,
                 "parent": appt.name,
                 "parenttype": "Appointment",
-                "parentfield": "appointment_service_templates"
+                "parentfield": "service_templates"
             })
             child.insert(ignore_permissions=True)
 
-            frappe.db.set_value("Appointment", appt.name, {
-                "service_template": None,
-                "service_template_name": None
-            })
+    frappe.delete_doc_if_exists("Custom Field", "Appointment-service_template")
+    frappe.delete_doc_if_exists("Custom Field", "Appointment-service_template_name")
+    frappe.delete_doc_if_exists("Custom Field", "Appointment-cb1_service_template")
