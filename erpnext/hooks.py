@@ -114,10 +114,9 @@ fixtures = [
 				"Appointment-applies_to_item_name",
 
 				"Appointment-sec_service_template",
-				"Appointment-service_template",
-				"Appointment-cb1_service_template",
-				"Appointment-service_template_name",
+				"Appointment-service_templates",
 
+				"Customer Feedback-project",
 				"Customer Feedback-applies_to_variant_of",
 				"Customer Feedback-applies_to_variant_of_name",
 				"Customer Feedback-applies_to_serial_no",
@@ -268,6 +267,10 @@ get_translated_dict = {
 get_site_info = 'erpnext.utilities.get_site_info'
 
 payment_gateway_enabled = "erpnext.accounts.utils.create_payment_gateway_account"
+
+get_customer_feedback_contact_details = [
+	"erpnext.overrides.customer_feedback.customer_feedback_hooks.get_customer_feedback_contact_details_hook"
+]
 
 jinja = {
 	'methods': [

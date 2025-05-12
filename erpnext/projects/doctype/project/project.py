@@ -2142,9 +2142,13 @@ def get_project_details(project, doctype, purpose=None):
 
 		out[f] = project.get(f)
 
-		if doctype == "Quotation" and f == 'customer':
-			out['quotation_to'] = 'Customer'
-			out['party_name'] = project.get(f)
+		if f == "customer":
+			if doctype == "Quotation":
+				out['quotation_to'] = 'Customer'
+				out['party_name'] = project.get(f)
+			elif doctype == "Customer Feedback":
+				out['feedback_from'] = 'Customer'
+				out['party_name'] = project.get(f)
 
 	# Contact and Address
 	if is_sales_doctype:
