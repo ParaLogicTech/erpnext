@@ -530,28 +530,31 @@ $.extend(erpnext.utils, {
 			const company = cur_frm?.doc?.company;
 			const customer = cur_frm?.doc?.customer;
 			if (doc?.item_code && customer && company) {
-				const today = new Date();
-				const fromDate = new Date();
-				fromDate.setFullYear(today.getFullYear() - 2);
+				const today = frappe.datetime.get_today();
+				const from_date = moment(today).subtract(2, 'years').format('YYYY-MM-DD');
+				frappe.msgprint(moment(today).subtract(2, 'years'));
 
-				const formatDate = (date) => date.toISOString().split('T')[0];
-
-				const from_date = formatDate(fromDate);
-				const to_date = formatDate(today);
-				const filters = {
-					company,
-					customer,
+				const params = {
+					company: company,
+					customer: customer,
 					item_code: doc.item_code,
-					doctype: "Sales Invoice",
-					qty_field: "Stock Qty",
-					from_date,
-					to_date,
-					group_by_2: "",
-					group_by_3: "",
-					group_same_items: 0
+					from_date: from_date,
+					to_date: today,
+					doctype: 'Sales Invoice',
+					qty_field: 'Stock Qty',
+					group_by_1: '',
+					group_by_2: '',
+					group_by_3: '',
+					group_same_items: 0,
 				};
 
-				return `<a href="#" onclick='frappe.set_route("query-report", "Sales Details", ${JSON.stringify(filters)})' style="text-decoration: underline;">${formatted_value}</a>`;
+				const query_string = Object.entries(params)
+					.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+					.join('&');
+
+				const link = `/app/query-report/Sales Details?${query_string}`;
+
+				return `<a href="${link}" target="_blank">${formatted_value}</a>`;
 			}
 
             return formatted_value;
