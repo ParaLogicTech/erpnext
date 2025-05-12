@@ -150,11 +150,15 @@ class Project(StatusUpdaterERP):
 		self.total_billable_amount = sales_data.totals.grand_total
 		self.customer_billable_amount = sales_data.totals.customer_grand_total
 		self.total_billed_amount = self.get_billed_amount()
-		self.total_discount_amount = sales_data.totals.base_tax_exclusive_total_discount
 
-		sales_orders = frappe.get_all("Sales Order", fields=['billing_status', 'delivery_status', 'status', 'skip_delivery_note', 'transaction_date'], filters={
-			"project": self.name, "docstatus": 1
-		}, order_by="transaction_date desc, creation desc")
+		sales_orders = frappe.get_all(
+			"Sales Order",
+			fields=['billing_status', 'delivery_status', 'status', 'skip_delivery_note', 'transaction_date'],
+			filters={
+				"project": self.name, "docstatus": 1
+			},
+			order_by="transaction_date, creation"
+		)
 		delivery_notes = frappe.get_all("Delivery Note", fields=['billing_status', 'status'], filters={
 			"project": self.name, "docstatus": 1, "is_return": 0,
 		})
@@ -162,11 +166,11 @@ class Project(StatusUpdaterERP):
 			"project": self.name, "docstatus": 1, "material_request_type": "Material Issue",
 		})
 		sales_invoices = self.get_sales_invoices()
-		if sales_orders:
-			self.first_sales_order_date = sales_orders[-1].transaction_date
 
 		self.billing_status, self.to_bill = self.get_billing_status(sales_orders, delivery_notes, sales_invoices, self.total_billed_amount)
 		self.delivery_status, self.to_deliver = self.get_delivery_status(sales_orders, delivery_notes, material_requests)
+
+		self.first_sales_order_date = sales_orders[0].transaction_date if sales_orders else None
 
 		self.final_invoice_date = None
 		if sales_invoices and self.billing_status == "Fully Billed":
@@ -183,7 +187,6 @@ class Project(StatusUpdaterERP):
 				'to_deliver': self.to_deliver,
 				'final_invoice_date': self.final_invoice_date,
 				'first_sales_order_date': self.first_sales_order_date,
-				'total_discount_amount': self.total_discount_amount,
 			}, None, update_modified=update_modified)
 
 	def get_billing_status(self, sales_orders, delivery_notes, sales_invoices, total_billed_amount):
@@ -270,14 +273,20 @@ class Project(StatusUpdaterERP):
 		return delivery_status, to_deliver
 
 	def set_procurement_status(self, update=False, update_modified=False):
-		self.procurement_status, self.to_receive_materials, self.last_purchase_order_date, self.last_reciept_order_date, self.last_material_request_date = self.get_procurement_status()
+		status_data = self.get_procurement_status()
+
+		self.procurement_status = status_data.procurement_status
+		self.to_receive_materials = status_data.to_receive_materials
+		self.last_purchase_order_date = status_data.last_purchase_order_date
+		self.last_purchase_receipt_date = status_data.last_purchase_receipt_date
+		self.last_material_request_date = status_data.last_material_request_date
 
 		if update:
 			self.db_set({
 				'procurement_status': self.procurement_status,
 				'to_receive_materials': self.to_receive_materials,
 				'last_purchase_order_date': self.last_purchase_order_date,
-				'last_reciept_order_date': self.last_reciept_order_date,
+				'last_purchase_receipt_date': self.last_purchase_receipt_date,
 				'last_material_request_date': self.last_material_request_date,
 			}, None, update_modified=update_modified)
 
@@ -287,7 +296,7 @@ class Project(StatusUpdaterERP):
 			from `tabPurchase Order Item` i
 			inner join `tabPurchase Order` p on p.name = i.parent
 			where p.docstatus = 1 and i.project = %s and i.is_stock_item = 1 
-			order by p.transaction_date desc, p.creation desc
+			order by p.transaction_date, p.creation
 		""", self.name, as_dict=1)
 
 		purchase_receipts = frappe.db.sql("""
@@ -295,7 +304,7 @@ class Project(StatusUpdaterERP):
 			from `tabPurchase Receipt Item` i
 			inner join `tabPurchase Receipt` p on p.name = i.parent
 			where p.docstatus = 1 and i.project = %s and i.is_stock_item = 1 
-			order by p.posting_date desc, p.creation desc
+			order by p.posting_date, p.creation
 		""", self.name, as_dict=1)
 
 		material_requests = frappe.get_all(
@@ -306,12 +315,12 @@ class Project(StatusUpdaterERP):
 				"docstatus": 1,
 				"material_request_type": ["in", ["Purchase", "Material Transfer", "Customer Provided"]],
 			},
-			order_by = "transaction_date desc, creation desc",
+			order_by="transaction_date, creation",
 		)
 
-		last_purchase_order_date = purchase_orders[0].transaction_date if purchase_orders else None
-		last_purchase_receipt_date = purchase_receipts[0].posting_date if purchase_receipts else None
-		last_material_request_date = material_requests[0].transaction_date if material_requests else None
+		last_purchase_order_date = purchase_orders[-1].transaction_date if purchase_orders else None
+		last_purchase_receipt_date = purchase_receipts[-1].posting_date if purchase_receipts else None
+		last_material_request_date = material_requests[-1].transaction_date if material_requests else None
 
 		has_receivables = False
 		has_unreceived = False
@@ -337,23 +346,29 @@ class Project(StatusUpdaterERP):
 		if has_receivables:
 			if has_receipt:
 				if has_unreceived:
-					receipt_status = "Partly Received"
+					procurement_status = "Partly Received"
 					to_receive = 1
 				else:
-					receipt_status = "Fully Received"
+					procurement_status = "Fully Received"
 					to_receive = 0
 			else:
-				receipt_status = "Not Received"
+				procurement_status = "Not Received"
 				to_receive = 1
 		else:
 			if has_receipt:
-				receipt_status = "Fully Received"
+				procurement_status = "Fully Received"
 				to_receive = 0
 			else:
-				receipt_status = "Not Applicable"
+				procurement_status = "Not Applicable"
 				to_receive = 0
 
-		return receipt_status, to_receive, last_purchase_order_date, last_purchase_receipt_date, last_material_request_date
+		return frappe._dict({
+			"procurement_status": procurement_status,
+			"to_receive_materials": to_receive,
+			"last_purchase_order_date": last_purchase_order_date,
+			"last_purchase_receipt_date": last_purchase_receipt_date,
+			"last_material_request_date": last_material_request_date,
+		})
 
 	def get_billed_amount(self):
 		directly_billed = frappe.db.sql("""
@@ -444,13 +459,13 @@ class Project(StatusUpdaterERP):
 
 	def set_costing(self, update=False, update_modified=False):
 		self.set_sales_amount(update=update, update_modified=update_modified)
+		self.set_pending_quotation_amount(update=update, update_modified=update_modified)
 		self.set_timesheet_values(update=update, update_modified=update_modified)
 		self.set_expense_claim_values(update=update, update_modified=update_modified)
 		self.set_purchase_values(update=update, update_modified=update_modified)
 		self.set_material_consumed_cost(update=update, update_modified=update_modified)
 		self.set_material_cost_of_sales(update=update, update_modified=update_modified)
 		self.set_gross_margin(update=update, update_modified=update_modified)
-		self.set_pending_quotation_total(update=update, update_modified=update_modified)
 
 	def set_sales_amount(self, update=False, update_modified=False):
 		sales_data = self.get_project_sales_data(get_sales_invoice=True)
@@ -465,7 +480,7 @@ class Project(StatusUpdaterERP):
 		self.hourly_labour_sales_amount = sales_data.hourly_labour_items.net_total
 		self.package_sales_amount = sales_data.package_items.net_total
 		self.sublet_sales_amount = sales_data.sublet_items.net_total
-		self.total_discount_amount = sales_data.totals.base_tax_exclusive_total_discount
+		self.total_discount_amount = sales_data.totals.total_discount
 		self.sold_time = sales_data.sold_time
 
 		if update:
@@ -481,8 +496,8 @@ class Project(StatusUpdaterERP):
 				'hourly_labour_sales_amount': self.hourly_labour_sales_amount,
 				'package_sales_amount': self.package_sales_amount,
 				'sublet_sales_amount': self.sublet_sales_amount,
-				'sold_time': self.sold_time,
 				'total_discount_amount': self.total_discount_amount,
+				'sold_time': self.sold_time,
 			}, None, update_modified=update_modified)
 
 	def set_timesheet_values(self, update=False, update_modified=False):
@@ -1433,20 +1448,21 @@ class Project(StatusUpdaterERP):
 		# Return True if no conditions catch any problem
 		return True
 
-	def set_pending_quotation_total(self, update=False, update_modified=False):
+	def set_pending_quotation_amount(self, update=False, update_modified=False):
 		total = frappe.db.sql("""
-			SELECT SUM(CASE 
-				WHEN base_rounded_total = 0 THEN base_grand_total
-				ELSE base_rounded_total
-			END) 
+			SELECT SUM(IF(base_rounded_total = 0, base_grand_total, base_rounded_total))
 			FROM `tabQuotation`
-			WHERE project = %s AND docstatus = 1 AND status = "Open"
-			""", (self.name,), as_list=1)[0][0] or 0
-		self.pending_quotation_total = total
+			WHERE project = %s AND docstatus = 1 AND status = 'Open'
+		""", self.name)
+		total = flt(total[0][0]) if total else 0
+
+		self.pending_quotation_amount = total
+
 		if update:
 			self.db_set({
-				'pending_quotation_total': self.pending_quotation_total,
-			}, None, update_modified=update_modified)
+				'pending_quotation_amount': self.pending_quotation_amount,
+			}, update_modified=update_modified)
+
 
 def get_material_items(project, get_sales_invoice=True):
 	is_material_condition = "i.is_stock_item = 1"
@@ -1459,11 +1475,11 @@ def get_material_items(project, get_sales_invoice=True):
 		select p.name as delivery_note, i.sales_order,
 			p.posting_date, p.posting_time, i.idx,
 			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom, p.base_tax_exclusive_total_discount,
+			i.qty, i.uom,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
-			i.base_total_discount as total_discount,
+			i.base_tax_exclusive_total_discount as total_discount,
 			i.item_tax_detail, i.claim_customer, p.conversion_rate
 		from `tabDelivery Note Item` i
 		inner join `tabDelivery Note` p on p.name = i.parent
@@ -1479,11 +1495,11 @@ def get_material_items(project, get_sales_invoice=True):
 			if(i.is_stock_item = 1, i.qty - i.delivered_qty, i.qty) as qty,
 			i.qty as ordered_qty,
 			i.delivered_qty,
-			i.uom, p.base_tax_exclusive_total_discount,
+			i.uom,
 			if(i.is_stock_item = 1, i.base_net_amount * (i.qty - i.delivered_qty) / i.qty, i.base_net_amount) as net_amount,
 			i.base_net_rate as net_rate,
 			if(i.is_stock_item = 1, i.base_taxable_amount * (i.qty - i.delivered_qty) / i.qty, i.base_taxable_amount) as taxable_amount,
-			if(i.is_stock_item = 1, i.base_total_discount * (i.qty - i.delivered_qty) / i.qty, i.base_total_discount) as total_discount,
+			if(i.is_stock_item = 1, i.base_tax_exclusive_total_discount * (i.qty - i.delivered_qty) / i.qty, i.base_tax_exclusive_total_discount) as total_discount,
 			i.item_tax_detail, i.claim_customer, p.conversion_rate
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
@@ -1507,8 +1523,7 @@ def get_material_items(project, get_sales_invoice=True):
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
-			i.base_total_discount as total_discount,
-			p.base_tax_exclusive_total_discount,
+			i.base_tax_exclusive_total_discount as total_discount,
 			i.item_tax_detail, p.conversion_rate
 		from `tabSales Invoice Item` i
 		inner join `tabSales Invoice` p on p.name = i.parent
@@ -1577,7 +1592,7 @@ def get_service_items(project, get_sales_invoice=True):
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
-			i.base_total_discount as total_discount,
+			i.base_tax_exclusive_total_discount as total_discount,
 			i.item_tax_detail, i.claim_customer, p.conversion_rate
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
@@ -1605,7 +1620,7 @@ def get_service_items(project, get_sales_invoice=True):
 				i.base_net_amount as net_amount,
 				i.base_net_rate as net_rate,
 				i.base_taxable_amount as taxable_amount,
-				i.base_total_discount as total_discount,
+				i.base_tax_exclusive_total_discount as total_discount,
 				i.item_tax_detail, p.conversion_rate
 			from `tabSales Invoice Item` i
 			inner join `tabSales Invoice` p on p.name = i.parent
@@ -1634,7 +1649,6 @@ def get_service_items(project, get_sales_invoice=True):
 				hourly_labour_data['items'].append(d.copy())
 			else:
 				package_data['items'].append(d.copy())
-
 
 	get_item_taxes(project, service_data, project.company)
 	post_process_items_data(service_data)
@@ -1724,6 +1738,8 @@ def get_items_data_template():
 
 		'net_total': 0,
 		'customer_net_total': 0,
+
+		'total_discount': 0,
 
 		'taxable_total': 0,
 
@@ -1845,6 +1861,8 @@ def post_process_items_data(data):
 		data.net_total += flt(d.net_amount)
 		data.customer_net_total += flt(d.customer_net_amount)
 
+		data.total_discount += flt(d.total_discount)
+
 		data.taxable_total += flt(d.taxable_amount)
 		if flt(d.sales_tax_amount):
 			data.sales_taxable_total += flt(d.taxable_amount)
@@ -1891,6 +1909,8 @@ def get_totals_data(project, items_dataset):
 		'net_total': 0,
 		'customer_net_total': 0,
 
+		'total_discount': 0,
+
 		'taxable_total': 0,
 		'sales_taxable_total': 0,
 		'service_taxable_total': 0,
@@ -1900,12 +1920,12 @@ def get_totals_data(project, items_dataset):
 
 		'grand_total': 0,
 		'customer_grand_total': 0,
-
-		'base_tax_exclusive_total_discount': 0
 	})
 	for data in items_dataset:
 		totals_data.net_total += flt(data.net_total)
 		totals_data.customer_net_total += flt(data.customer_net_total)
+
+		totals_data.total_discount += flt(data.total_discount)
 
 		totals_data.taxable_total += flt(data.taxable_total)
 		totals_data.sales_taxable_total += flt(data.sales_taxable_total)
@@ -1919,9 +1939,6 @@ def get_totals_data(project, items_dataset):
 
 		totals_data.other_taxes_and_charges += flt(data.other_taxes_and_charges)
 		totals_data.customer_other_taxes_and_charges += flt(data.customer_other_taxes_and_charges)
-
-		if data.base_tax_exclusive_total_discount:
-			totals_data.base_tax_exclusive_total_discount += flt(data.base_tax_exclusive_total_discount)
 
 		for tax_account, tax_amount in data.taxes.items():
 			totals_data.taxes.setdefault(tax_account, 0)

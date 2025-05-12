@@ -54,8 +54,7 @@ class Quotation(SellingController):
 		# update enquiry status
 		self.update_opportunity()
 		self.update_lead_status()
-		self.trigger_project_status()
-		self.update_project_estimated_amount(True, True)
+		self.update_project_quotation_status()
 
 	def on_cancel(self):
 		if self.lost_reasons:
@@ -65,8 +64,7 @@ class Quotation(SellingController):
 		self.update_status_on_cancel()
 		self.update_opportunity()
 		self.update_lead_status(status="Interested")
-		self.trigger_project_status()
-		self.update_project_estimated_amount(True, True)
+		self.update_project_quotation_status()
 
 	def clear_approval_date(self):
 		self.approval_date = None
@@ -237,6 +235,7 @@ class Quotation(SellingController):
 			opp.set_is_lost(is_lost, lost_reasons_list, detailed_reason)
 
 		self.update_lead_status()
+		self.update_project_quotation_status(action="set_is_lost")
 		self.notify_update()
 
 	def set_customer_name(self):
@@ -258,10 +257,19 @@ class Quotation(SellingController):
 	def on_recurring(self, reference_doc, auto_repeat_doc):
 		self.valid_till = None
 
-	def update_project_estimated_amount(self, update=False, update_modified=True):
-		project = frappe.get_doc("Project", self.project)
-		if project:
-			project.set_pending_quotation_total(update, update_modified)
+	def update_project_quotation_status(self, action=None):
+		if not self.get("project"):
+			return
+
+		doc = frappe.get_doc("Project", self.project)
+
+		doc.validate_project_status_for_transaction(self)
+		if self.docstatus == 1:
+			doc.validate_for_transaction(self)
+
+		doc.set_pending_quotation_amount(update=True)
+		doc.set_status(update=True, from_doctype=self.doctype, action=action or self.get("_action"))
+		doc.notify_update()
 
 
 @frappe.whitelist()
