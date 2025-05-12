@@ -10,6 +10,7 @@
   "lubricants_item_group",
   "consumables_item_group",
   "sublet_item_group",
+  "paint_item_group",
   "sales_order_print_heading",
   "default_sales_transaction_type",
   "insurance_excess_item",
@@ -125,11 +126,17 @@
    "fieldtype": "Link",
    "label": "Consumbles Item Group",
    "options": "Item Group"
+  },
+  {
+   "fieldname": "paint_item_group",
+   "fieldtype": "Link",
+   "label": "Paint Material Item Group",
+   "options": "Item Group"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-02-26 11:47:35.124880",
+ "modified": "2025-05-05 22:03:24.859389",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",

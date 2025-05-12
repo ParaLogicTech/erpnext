@@ -707,6 +707,7 @@ class SellingController(TransactionController):
 
 			doc.set_billing_and_delivery_status(update=True)
 			doc.set_sales_amount(update=True)
+			doc.set_pending_quotation_amount(update=True)
 
 			if material_cost_of_sales:
 				doc.set_material_cost_of_sales(update=True)
