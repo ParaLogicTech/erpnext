@@ -251,6 +251,7 @@
    "fieldname": "late_entry_hours",
    "fieldtype": "Float",
    "label": "Late Entry Hours",
+   "precision": "1",
    "read_only": 1
   },
   {
@@ -258,6 +259,7 @@
    "fieldname": "early_exit_hours",
    "fieldtype": "Float",
    "label": "Early Exit Hours",
+   "precision": "1",
    "read_only": 1
   },
   {
@@ -271,6 +273,7 @@
    "fieldname": "overtime_hours",
    "fieldtype": "Float",
    "label": "Overtime Hours",
+   "precision": "1",
    "read_only": 1
   }
  ],
@@ -279,7 +282,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-13 23:10:41.354775",
+ "modified": "2025-05-14 00:48:22.356990",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Attendance",
