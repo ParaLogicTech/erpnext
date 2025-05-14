@@ -532,7 +532,6 @@ $.extend(erpnext.utils, {
 			if (doc?.item_code && customer && company) {
 				const today = frappe.datetime.get_today();
 				const from_date = moment(today).subtract(2, 'years').format('YYYY-MM-DD');
-				frappe.msgprint(moment(today).subtract(2, 'years'));
 
 				const params = {
 					company: company,
