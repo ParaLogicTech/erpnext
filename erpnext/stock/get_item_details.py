@@ -15,7 +15,7 @@ from erpnext.stock.doctype.item_manufacturer.item_manufacturer import get_item_m
 from erpnext.selling.doctype.sales_commission_category.sales_commission_category import get_commission_rate
 from erpnext.vehicles.doctype.vehicle.vehicle import get_vehicle_from_serial_no
 import json
-
+import datetime
 
 @frappe.whitelist()
 def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=True):
@@ -108,6 +108,14 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 			company=args.get("company"),
 		)
 		out["last_billed_rate"] = last_billed_rate
+
+	if child_meta.get_field("in_transit_qty"):
+		transit_qty = get_in_transit_qty(args.get("item_code"))
+		out["in_transit_qty"] = transit_qty
+
+	if child_meta.get_field("avg_monthly_sales"):
+		avg_monthly_sales = get_avg_monthly_sales(args.get("item_code"))
+		out["avg_monthly_sales"] = avg_monthly_sales
 
 	frappe.utils.call_hook_method("get_item_details", args, out, doc=doc, for_validate=for_validate)
 
@@ -1742,3 +1750,36 @@ def get_last_billed_rate(item_code, customer, company=None):
 	})
 
 	return flt(result[0][0]) if result else 0.0
+
+def get_in_transit_qty(item_code):
+	if not item_code:
+		return 0
+
+	in_transit = frappe.db.sql("""
+		SELECT SUM((poi.qty - poi.received_qty) * poi.conversion_factor)
+		FROM `tabPurchase Order Item` poi
+		JOIN `tabPurchase Order` po ON poi.parent = po.name
+		WHERE poi.item_code = %s
+		  AND poi.received_qty < poi.qty
+		  AND (po.status != 'Closed' AND po.status != 'Draft' AND po.status != 'Cancelled')
+		  AND (poi.is_stock_item = 1 OR poi.is_fixed_asset = 1)
+	""", (item_code,))[0][0]
+
+	return in_transit or 0
+
+def get_avg_monthly_sales(item_code):
+	if not item_code:
+		return 0
+	end_date = datetime.date.today()
+	start_date = end_date - datetime.timedelta(days=365)
+
+	total_sales_qty = frappe.db.sql("""
+		SELECT SUM(stock_qty)
+		FROM `tabSales Invoice Item` sii
+		JOIN `tabSales Invoice` si ON sii.parent = si.name
+		WHERE sii.item_code = %s
+		  AND si.docstatus = 1
+		  AND si.posting_date BETWEEN %s AND %s
+	""", (item_code, start_date, end_date))[0][0] or 0
+
+	return total_sales_qty / 12

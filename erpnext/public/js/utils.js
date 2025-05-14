@@ -516,23 +516,34 @@ $.extend(erpnext.utils, {
 		}
 	},
 
-    setup_last_billed_rate_formatter(doctype, fieldname) {
-        let df = frappe.meta.get_docfield(doctype, fieldname);
-        if (df) {
-            erpnext.utils.set_last_billed_rate_link_formatter(df);
-        }
-    },
+	setup_custom_formatter(doctype, fieldname) {
+		const df = frappe.meta.get_docfield(doctype, fieldname);
+		if (df) {
+			this.formatterMap[fieldname](df);
+		}
+	},
 
-    set_last_billed_rate_link_formatter(df) {
-        df.formatter = (value, df, options, doc) => {
-            let formatted_value = frappe.format(value, df, options, doc, true);
+	formatterMap: {
+		last_billed_rate: function (df) {
+			erpnext.utils.set_last_billed_rate_link_formatter(df);
+		},
+		in_transit_qty: function (df) {
+			erpnext.utils.set_in_transit_qty_link_formatter(df);
+		},
+		avg_monthly_sales: function (df) {
+			erpnext.utils.set_item_sales_detail_link_formatter(df);
+		}
+	},
+
+	set_last_billed_rate_link_formatter(df) {
+		df.formatter = (value, df, options, doc) => {
+			let formatted_value = frappe.format(value, df, options, doc, true);
 
 			const company = cur_frm?.doc?.company;
 			const customer = cur_frm?.doc?.customer;
 			if (doc?.item_code && customer && company) {
 				const today = frappe.datetime.get_today();
 				const from_date = moment(today).subtract(2, 'years').format('YYYY-MM-DD');
-				frappe.msgprint(moment(today).subtract(2, 'years'));
 
 				const params = {
 					company: company,
@@ -557,9 +568,60 @@ $.extend(erpnext.utils, {
 				return `<a href="${link}" target="_blank">${formatted_value}</a>`;
 			}
 
-            return formatted_value;
-        };
-    },
+			return formatted_value;
+		};
+	},
+
+	set_in_transit_qty_link_formatter(df) {
+		df.formatter = (value, df, options, doc) => {
+			let formatted_value = frappe.format(value, df, options, doc, true);
+
+			if (doc?.item_code) {
+				const status = 'To Receive and Bill';
+				const item_code = doc.item_code;
+
+				const link = `/app/purchase-order/view/report?status=${encodeURIComponent(status)}&item_code=${encodeURIComponent(item_code)}`;
+
+				return `<a href="${link}" target="_blank">${formatted_value}</a>`;
+			}
+
+			return formatted_value;
+		};
+	},
+
+	set_item_sales_detail_link_formatter(df) {
+		df.formatter = (value, df, options, doc) => {
+			let formatted_value = frappe.format(value, df, options, doc, true);
+			const transaction_date = cur_frm?.doc?.transaction_date;
+
+			if (doc?.item_code && transaction_date) {
+				const to_date = transaction_date;
+				const from_date = moment(to_date).subtract(1, 'year').format('YYYY-MM-DD');
+
+				const params = {
+					item_code: doc.item_code,
+					from_date: from_date,
+					to_date: to_date,
+					doctype: 'Sales Invoice',
+					qty_field: 'Stock Qty',
+					group_by_1: '',
+					group_by_2: '',
+					group_by_3: '',
+					group_same_items: 0,
+				};
+
+				const query_string = Object.entries(params)
+					.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+					.join('&');
+
+				const link = `/app/query-report/Sales Details?${query_string}`;
+				return `<a href="${link}" target="_blank">${formatted_value}</a>`;
+			}
+
+			return formatted_value;
+		};
+	},
+
 });
 
 erpnext.utils.select_alternate_items = function(opts) {
