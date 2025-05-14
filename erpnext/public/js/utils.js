@@ -577,10 +577,9 @@ $.extend(erpnext.utils, {
 			let formatted_value = frappe.format(value, df, options, doc, true);
 
 			if (doc?.item_code) {
-				const status = 'To Receive and Bill';
 				const item_code = doc.item_code;
 
-				const link = `/app/purchase-order/view/report?status=${encodeURIComponent(status)}&item_code=${encodeURIComponent(item_code)}`;
+				const link = `/app/query-report/Purchase Items To Be Received?item_code=${encodeURIComponent(item_code)}`;
 
 				return `<a href="${link}" target="_blank">${formatted_value}</a>`;
 			}

@@ -26,7 +26,6 @@
   "manufacturer_part_no",
   "quantity_and_rate",
   "qty",
-  "in_transit_qty",
   "uom",
   "col_break2",
   "conversion_factor",
@@ -47,8 +46,6 @@
   "retail_amount",
   "base_retail_amount",
   "sec_break1",
-  "avg_monthly_sales",
-  "column_break_52",
   "price_list_rate",
   "base_price_list_rate",
   "column_break_51",
@@ -1241,28 +1238,12 @@
    "options": "Work Order",
    "read_only": 1,
    "search_index": 1
-  },
-  {
-   "fieldname": "in_transit_qty",
-   "fieldtype": "Float",
-   "label": "In Transit Qty",
-   "read_only": 1
-  },
-  {
-   "fieldname": "avg_monthly_sales",
-   "fieldtype": "Float",
-   "label": "Average Monthly Sales",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_52",
-   "fieldtype": "Column Break"
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-13 08:00:06.362036",
+ "modified": "2024-10-16 16:55:12.636671",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Purchase Order Item",

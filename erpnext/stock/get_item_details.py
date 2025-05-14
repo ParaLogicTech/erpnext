@@ -1761,11 +1761,12 @@ def get_in_transit_qty(item_code):
 		JOIN `tabPurchase Order` po ON poi.parent = po.name
 		WHERE poi.item_code = %s
 		  AND poi.received_qty < poi.qty
-		  AND (po.status != 'Closed' AND po.status != 'Draft' AND po.status != 'Cancelled')
+		  AND po.status != 'Closed'
+		  AND po.docstatus = 1
 		  AND (poi.is_stock_item = 1 OR poi.is_fixed_asset = 1)
 	""", (item_code,))[0][0]
 
-	return in_transit or 0
+	return flt(in_transit) or 0.0
 
 def get_avg_monthly_sales(item_code):
 	if not item_code:
@@ -1782,4 +1783,4 @@ def get_avg_monthly_sales(item_code):
 		  AND si.posting_date BETWEEN %s AND %s
 	""", (item_code, start_date, end_date))[0][0] or 0
 
-	return total_sales_qty / 12
+	return flt(total_sales_qty / 12)
