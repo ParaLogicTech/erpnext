@@ -17,18 +17,12 @@ from erpnext import get_default_company
 def execute(filters=None):
 	return SummarizedProfitAndLossReport(filters).run()
 
-
-class SummarizedProfitAndLossReport:
-	gl_fields = [
-		'mtd_actual', 'mtd_prev_year',
-		'ytd_actual', 'ytd_prev_year',
-	]
-	budget_fields = [
-		'mtd_budget', 'ytd_budget'
-	]
-	total_fields = gl_fields + budget_fields
-	total_with_display_fields = total_fields + [f"{f}_display" for f in total_fields]
-
+class BaseSummarizedFinancialReport:
+	gl_fields = []
+	budget_fields = []
+	total_fields = []
+	total_with_display_fields = []
+ 
 	def __init__(self, filters=None):
 		self._account_group_docs = {}
 		self.filters = frappe._dict(filters or {})
@@ -42,15 +36,7 @@ class SummarizedProfitAndLossReport:
 			self.filters.company = get_default_company()
 		if not self.filters.company:
 			frappe.throw(_("Company is mandatory"))
-
-		self.filters.report_date = getdate(self.filters.report_date)
-		self.filters.month_start_date = get_first_day(self.filters.report_date)
-		self.filters.year_start_date = get_year_start(self.filters.report_date)
-
-		self.filters.prev_year_date = add_years(self.filters.report_date, -1)
-		self.filters.prev_year_month_start = add_years(self.filters.month_start_date, -1)
-		self.filters.prev_year_start = add_years(self.filters.year_start_date, -1)
-
+   
 	def get_data(self):
 		current_account_group = self.filters.get('account_group')
 		is_root = False
@@ -61,13 +47,13 @@ class SummarizedProfitAndLossReport:
 				{
 					"company": self.filters.get('company'),
 					"is_root_level": 1,
-					"report_type": "Profit and Loss",
+					"report_type": self.get_report_type(),
 				},
 				"name",
 			)
 
 			if not current_account_group:
-				frappe.throw(_("Please configure Root Level Profit and Loss Account Group or filter by Account Group"))
+				frappe.throw(_(f"Please configure Root Level {self.get_report_type()} Group or filter by Account Group"))
 
 		data = self.get_account_group_data(current_account_group)
 
@@ -87,6 +73,57 @@ class SummarizedProfitAndLossReport:
 
 		return data
 
+	def get_gl_data(self, accounts, from_date, to_date):
+		dimension_conditions, dimension_args = self.get_dimension_conditions()
+
+		args = {
+			"accounts": accounts,
+			"to_date": to_date,
+			**dimension_args,
+		}
+  
+		if from_date:
+			args["from_date"] = from_date
+			date_condition = "and posting_date between %(from_date)s and %(to_date)s"
+		else:
+			date_condition = "and posting_date <= %(to_date)s"
+
+		return frappe.db.sql(f"""
+			SELECT posting_date, account, credit, debit
+			FROM `tabGL Entry`
+			WHERE
+				account in %(accounts)s
+				{date_condition}
+				{dimension_conditions}
+			ORDER BY posting_date
+		""", args, as_dict=1)
+
+	def get_dimension_conditions(self):
+		dimension_conditions = []
+		args = {}
+
+		if self.filters.get("cost_center"):
+			args["cost_center"] = get_cost_centers_with_children(self.filters.cost_center)
+			dimension_conditions.append("cost_center in %(cost_center)s")
+
+		accounting_dimensions = get_accounting_dimensions(as_list=False)
+
+		for dimension in accounting_dimensions:
+			if self.filters.get(dimension.fieldname):
+				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
+					args[dimension.fieldname] = get_dimension_with_children(dimension.document_type, self.filters.get(dimension.fieldname))
+					dimension_conditions.append("{0} in %({0})s".format(dimension.fieldname))
+				else:
+					args[dimension.fieldname] = self.filters.get(dimension.fieldname)
+					dimension_conditions.append("{0} = %({0})s".format(dimension.fieldname))
+
+		dimension_conditions = " AND " + " AND ".join(dimension_conditions) if dimension_conditions else ""
+
+		return dimension_conditions, args
+	
+	def get_budget_data_for_group(self, all_accounts):
+		return {}
+
 	def get_account_group_data(self, group_name):
 		"""Aggregate account and group data for a given group."""
 		data = []
@@ -97,9 +134,7 @@ class SummarizedProfitAndLossReport:
 		all_accounts = group_account_map[group.name]
 		current_gl_data = self.get_gl_data(all_accounts, self.filters.year_start_date, self.filters.report_date)
 		prev_year_gl_data = self.get_gl_data(all_accounts, self.filters.prev_year_start, self.filters.prev_year_date)
-		raw_budget_records = self.get_budget_data(all_accounts, self.filters.report_date.year)
-		budget_data = self.calculate_budget_totals(raw_budget_records)
-
+		budget_data = self.get_budget_data_for_group(all_accounts)
 		account_totals = self.get_account_totals(current_gl_data, prev_year_gl_data, budget_data)
 
 		# Calculate Child Group Totals
@@ -116,7 +151,6 @@ class SummarizedProfitAndLossReport:
 
 			child_group_totals[row.account_group] = group_totals
 
-		# Build rows
 		running_totals = {f: 0 for f in self.total_fields}
 
 		for row in group.rows:
@@ -143,6 +177,12 @@ class SummarizedProfitAndLossReport:
 
 		return data
 
+	def get_account_group_doc(self, group_name):
+		if not self._account_group_docs.get(group_name):
+			self._account_group_docs[group_name] = frappe.get_doc("Account Group", group_name)
+
+		return self._account_group_docs[group_name]
+
 	def get_accounts_in_account_group(self, account_group):
 		account_map = {}
 
@@ -162,47 +202,66 @@ class SummarizedProfitAndLossReport:
 			elif row.row_type == "Account Group":
 				self.get_accounts_in_child_account_group(row.account_group, root_group_name, account_map)
 
-	def get_gl_data(self, accounts, from_date, to_date):
-		dimension_conditions, dimension_args = self.get_dimension_conditions()
+	def calculate_section_totals(self, row, child_groups, running_totals):
+		if not row.section_account_groups:
+			return running_totals.copy()
 
-		args = {
-			"accounts": accounts,
-			"from_date": from_date,
-			"to_date": to_date,
-			**dimension_args,
-		}
+		included_groups = []
+		included_categories = set()
 
-		return frappe.db.sql(f"""
-			SELECT posting_date, account, credit, debit
-			FROM `tabGL Entry`
-			WHERE
-				account in %(accounts)s
-				and posting_date between %(from_date)s and %(to_date)s
-				{dimension_conditions}
-			ORDER BY posting_date
-		""", args, as_dict=1)
+		for line in row.section_account_groups.split('\n'):
+			group_code = line.strip()
+			if group_code and group_code in child_groups:
+				group_info = child_groups[group_code]
+				included_groups.append(group_info)
+				included_categories.add(group_info["root_type"])
 
-	def get_dimension_conditions(self):
-		dimension_conditions = []
-		args = {}
+		section_totals = {key: 0 for key in self.total_fields}
+		for group_info in included_groups:
+			for key in section_totals:
+				section_totals[key] += flt(group_info.get(key))
 
-		if self.filters.get("cost_center"):
-			args["cost_center"] = get_cost_centers_with_children(self.filters.cost_center)
-			dimension_conditions.append("cost_center in %(cost_center)s")
+		if len(included_categories) == 1:
+			section_totals["root_type"] = list(included_categories)[0]
 
-		accounting_dimensions = get_accounting_dimensions(as_list=False)
-		for dimension in accounting_dimensions:
-			if self.filters.get(dimension.fieldname):
-				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
-					args[dimension.fieldname] = get_dimension_with_children(dimension.document_type, self.filters.get(dimension.fieldname))
-					dimension_conditions.append("{0} in %({0})s".format(dimension.fieldname))
-				else:
-					args[dimension.fieldname] = self.filters.get(dimension.fieldname)
-					dimension_conditions.append("{0} = %({0})s".format(dimension.fieldname))
+		return section_totals
 
-		dimension_conditions = " AND " + " AND ".join(dimension_conditions) if dimension_conditions else ""
+	def get_group_totals(self, group_accounts, account_totals):
+		group_totals = frappe._dict({f: 0 for f in self.total_fields})
 
-		return dimension_conditions, args
+		for account in group_accounts:
+			totals = account_totals.get(account)
+			if not totals:
+				continue
+
+			for f in self.total_fields:
+				group_totals[f] += flt(totals.get(f))
+
+		return group_totals
+
+
+class SummarizedProfitAndLossReport(BaseSummarizedFinancialReport):
+	gl_fields = [
+		'mtd_actual', 'mtd_prev_year',
+		'ytd_actual', 'ytd_prev_year',
+	]
+	budget_fields = [
+		'mtd_budget', 'ytd_budget'
+	]
+ 
+	total_fields = gl_fields + budget_fields
+	total_with_display_fields = total_fields + [f"{f}_display" for f in total_fields]
+
+	def validate_filters(self):
+		super().validate_filters()
+
+		self.filters.report_date = getdate(self.filters.report_date)
+		self.filters.month_start_date = get_first_day(self.filters.report_date)
+		self.filters.year_start_date = get_year_start(self.filters.report_date)
+
+		self.filters.prev_year_date = add_years(self.filters.report_date, -1)
+		self.filters.prev_year_month_start = add_years(self.filters.month_start_date, -1)
+		self.filters.prev_year_start = add_years(self.filters.year_start_date, -1)
 
 	def get_account_totals(self, current_gl_data, prev_year_gl_data, budget_data):
 		template = frappe._dict({f: 0 for f in self.gl_fields + self.budget_fields})
@@ -232,19 +291,6 @@ class SummarizedProfitAndLossReport:
 
 		return account_totals
 
-	def get_group_totals(self, group_accounts, account_totals):
-		group_totals = frappe._dict({f: 0 for f in self.total_fields})
-
-		for account in group_accounts:
-			totals = account_totals.get(account)
-			if not totals:
-				continue
-
-			for f in self.total_fields:
-				group_totals[f] += flt(totals.get(f))
-
-		return group_totals
-
 	def get_row(self, row_type, row_value, totals=None, is_bold=False, group_root_type=None):
 		row = frappe._dict()
 
@@ -272,30 +318,6 @@ class SummarizedProfitAndLossReport:
 				row[f"{f}_display"] = row[f] * multiplier
 
 		return row
-
-	def calculate_section_totals(self, row, child_groups, running_totals):
-		if not row.section_account_groups:
-			return running_totals.copy()
-
-		included_groups = []
-		included_categories = set()
-
-		for line in row.section_account_groups.split('\n'):
-			group_code = line.strip()
-			if group_code and group_code in child_groups:
-				group_info = child_groups[group_code]
-				included_groups.append(group_info)
-				included_categories.add(group_info["root_type"])
-
-		section_totals = {key: 0 for key in self.total_fields}
-		for group_info in included_groups:
-			for key in section_totals:
-				section_totals[key] += flt(group_info.get(key))
-
-		if len(included_categories) == 1:
-			section_totals["root_type"] = list(included_categories)[0]
-
-		return section_totals
 
 	def get_columns(self):
 		return [
@@ -342,12 +364,6 @@ class SummarizedProfitAndLossReport:
 				"width": 150
 			}
 		]
-
-	def get_account_group_doc(self, group_name):
-		if not self._account_group_docs.get(group_name):
-			self._account_group_docs[group_name] = frappe.get_doc("Account Group", group_name)
-
-		return self._account_group_docs[group_name]
 
 	def get_budget_data(self, accounts, fiscal_year):
 		"""Fetch raw budget records for all accounts in bulk for the fiscal year"""
@@ -421,3 +437,13 @@ class SummarizedProfitAndLossReport:
 			entry["ytd_budget"] += ytd_budget
 
 		return budget_data
+
+	def get_report_type(self):
+		return "Profit and Loss"
+
+	def get_budget_data_for_group(self, accounts):
+		raw_budget_records = self.get_budget_data(
+			accounts,
+			self.filters.get('fiscal_year') or self.filters.report_date.year
+		)
+		return self.calculate_budget_totals(raw_budget_records)
