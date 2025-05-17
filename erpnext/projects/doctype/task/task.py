@@ -523,19 +523,28 @@ def create_service_template_tasks(project):
 			tasks_created.append(task_doc)
 
 	if tasks_created:
-		frappe.msgprint(_("{0} Service Template tasks created against {1}<br><br><ul>{2}</ul>").format(
+		message = _("{0} Service Template tasks created against {1}<br><br><ul>{2}</ul>").format(
 			len(tasks_created),
 			get_link_from_name("Project", project_doc.name),
 			"".join([f"<li>{get_link(d)}</li>" for d in tasks_created])
-		), indicator="green")
+		)
+		frappe.msgprint(message, indicator="green")
+		return {"message": message}
+
 	elif tasks_exists:
-		frappe.msgprint(_("Service Template tasks against {0} already created").format(
+		message = _("Service Template tasks against {0} already created").format(
 			get_link_from_name("Project", project_doc.name)
-		))
+		)
+		frappe.msgprint(message)
+		return {"message": message}
+
 	else:
-		frappe.msgprint(_("There are no Service Templates with tasks in {0}").format(
+		message = _("There are no Service Templates with tasks in {0}").format(
 			get_link_from_name("Project", project_doc.name)
-		))
+		)
+		frappe.msgprint(message)
+		return {"message": message}
+
 
 
 def determine_time_from_service_item(project_doc, template_doc, service_template_detail=None):
@@ -624,9 +633,10 @@ def create_project_task(subject, project=None, task_type=None, description=None,
 
 	task_doc.save()
 
-	frappe.msgprint(_("{0} created").format(
-		get_link(task_doc)
-	), indicator="green")
+	message = _("{0} created").format(get_link(task_doc))
+	frappe.msgprint(message, indicator="green")
+
+	return {"message": message}
 
 
 @frappe.whitelist()
@@ -655,10 +665,10 @@ def edit_task(task, subject, task_type=None, description=None, expected_time=Non
 
 	task_doc.save()
 
-	frappe.msgprint(_("{0} edited").format(
-		get_link(task_doc)
-	), alert=True, indicator="green")
+	message = _("{0} edited").format(get_link(task_doc))
+	frappe.msgprint(message, alert=True, indicator="green")
 
+	return {"message": message}
 
 def get_new_task(subject, project=None, task_type=None, description=None, expected_time=None, additional_values=None):
 	task_doc = frappe.new_doc("Task")
@@ -794,9 +804,10 @@ def cancel_task(task):
 	task_doc.status = "Cancelled"
 	task_doc.save()
 
-	frappe.msgprint(_("{0} cancelled").format(
-		get_link(task_doc)
-	), indicator="green")
+	message = _("{0} cancelled").format(get_link(task_doc))
+	frappe.msgprint(message, indicator="green")
+
+	return {"message": message}
 
 
 @frappe.whitelist()
@@ -851,9 +862,10 @@ def split_task(task, expected_time=None):
 
 	new_task.save()
 
-	frappe.msgprint(_("{0} split from {1}").format(
-		get_link(new_task), get_link(ref_task)
-	), indicator="green")
+	message = _("{0} split from {1}").format(get_link(new_task), get_link(ref_task))
+	frappe.msgprint(message, indicator="green")
+
+	return {"message": message}
 
 
 def add_timesheet_log(task, assigned_to, project=None):
