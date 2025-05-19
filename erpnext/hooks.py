@@ -80,6 +80,7 @@ fixtures = [
 				"Territory-targets",
 
 				"Campaign-voucher_code_required",
+				"Campaign-voucher_code_regex",
 				"Campaign-claim_customer",
 				"Campaign-claim_customer_name",
 
