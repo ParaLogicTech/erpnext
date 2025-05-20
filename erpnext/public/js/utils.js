@@ -519,7 +519,7 @@ $.extend(erpnext.utils, {
 	setup_last_billed_rate_formatter(doctype, fieldname) {
 		let df = frappe.meta.get_docfield(doctype, fieldname);
 		if (df) {
-			erpnext.utils.set_item_sales_detail_link_formatter(df, 2);
+			erpnext.utils.set_item_sales_detail_link_formatter(df, 2, true);
 		}
 	},
 
@@ -533,24 +533,23 @@ $.extend(erpnext.utils, {
 	setup_avg_monthly_sales_formatter(doctype, fieldname) {
 		let df = frappe.meta.get_docfield(doctype, fieldname);
 		if (df) {
-			erpnext.utils.set_item_sales_detail_link_formatter(df, 1);
+			erpnext.utils.set_item_sales_detail_link_formatter(df, 1, false);
 		}
 	},
 
-	set_item_sales_detail_link_formatter(df, years) {
+	set_item_sales_detail_link_formatter(df, years, filter_customer) {
 		years = years || 1;
 		df.formatter = (value, df, options, doc) => {
 			let formatted_value = frappe.format(value, df, options, doc, true);
 
 			const company = cur_frm?.doc?.company;
-			const customer = cur_frm?.doc?.customer;
-			if (doc?.item_code && customer && company) {
+			const customer = filter_customer ? cur_frm?.doc?.customer : null;
+			if (doc?.item_code && company && (customer || !filter_customer)) {
 				const today = frappe.datetime.get_today();
 				const from_date = moment(today).subtract(years, 'years').format('YYYY-MM-DD');
 
 				const params = {
 					company: company,
-					customer: customer,
 					item_code: doc.item_code,
 					from_date: from_date,
 					to_date: today,
@@ -561,6 +560,10 @@ $.extend(erpnext.utils, {
 					group_by_3: '',
 					group_same_items: 0,
 				};
+
+				if (customer) {
+					params["customer"] = customer
+				}
 
 				const query_string = Object.entries(params)
 					.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)

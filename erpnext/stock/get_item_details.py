@@ -1758,19 +1758,21 @@ def get_in_transit_qty(item_code, company=None):
 
 	company_condition = ""
 	if company:
-		company_condition = " and pi.company = %(company)s"
+		company_condition = " and po.company = %(company)s"
 
 	in_transit = frappe.db.sql("""
 		SELECT SUM((poi.qty - poi.received_qty) * poi.conversion_factor)
 		FROM `tabPurchase Order Item` poi
 		INNER JOIN `tabPurchase Order` po ON poi.parent = po.name
-		WHERE poi.item_code = %s
+		WHERE poi.item_code = %(item_code)s
 			AND poi.received_qty < poi.qty
 			AND po.status != 'Closed'
 			AND po.docstatus = 1
 			AND (poi.is_stock_item = 1 OR poi.is_fixed_asset = 1)
 			{0}
-	""".format(company_condition), item_code)
+	""".format(company_condition), {
+		"item_code": item_code, "company": company,
+	})
 
 	return flt(in_transit[0][0]) if in_transit else 0
 
@@ -1784,18 +1786,23 @@ def get_avg_monthly_sales(item_code, company=None, transaction_date=None):
 		company_condition = " and si.company = %(company)s"
 
 	transaction_date = getdate(transaction_date)
-	end_date = transaction_date
-	start_date = add_years(end_date, -1)
+	to_date = transaction_date
+	from_date = add_years(to_date, -1)
 
 	total_sales_qty = frappe.db.sql("""
 		SELECT SUM(stock_qty)
 		FROM `tabSales Invoice Item` sii
 		INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
-		WHERE sii.item_code = %s
+		WHERE sii.item_code = %(item_code)s
 			AND si.docstatus = 1
-			AND si.posting_date BETWEEN %s AND %s
+			AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
 			{0}
-	""".format(company_condition), (item_code, start_date, end_date))
+	""".format(company_condition), {
+		"item_code": item_code,
+		"from_date": from_date,
+		"to_date": to_date,
+		"company": company,
+	})
 
 	total_sales_qty = flt(total_sales_qty[0][0]) if total_sales_qty else 0
 	return total_sales_qty / 12
