@@ -32,7 +32,8 @@ class TransactionController(StockController):
 		"item_tax_rate", "pricing_rules", "allow_zero_valuation_rate",
 		"is_stock_item", "is_fixed_asset" "has_batch_no", "has_serial_no", "is_vehicle",
 		"claim_customer", "force_default_warehouse",
-		"sales_commission_category", "commission_rate", "retail_rate", "last_billed_rate",
+		"sales_commission_category", "commission_rate", "retail_rate",
+		"last_billed_rate", "in_transit_qty", "avg_monthly_sales",
 	]
 
 	force_applies_to_fields = (
