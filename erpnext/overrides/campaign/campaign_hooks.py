@@ -1,22 +1,32 @@
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, cstr
+import re
 
 
 def validate_campaign_voucher_code(doc):
-	voucher_code_required = False
-	if doc.get("campaign"):
-		voucher_code_required = frappe.get_cached_value("Campaign", doc.campaign, "voucher_code_required")
-
-	doc.campaign_voucher_code_required = cint(voucher_code_required)
-
-	if voucher_code_required:
-		if not doc.get("campaign_voucher_code"):
-			frappe.throw(_("Voucher Code is required for Campaign {0}").format(
-				frappe.bold(doc.campaign)
-			))
-	else:
+	doc.campaign_voucher_code_required = 0
+	if not doc.get("campaign"):
 		doc.campaign_voucher_code = None
+		return
+
+	voucher_code_required = frappe.get_cached_value("Campaign", doc.campaign, "voucher_code_required")
+	doc.campaign_voucher_code_required = cint(voucher_code_required)
+	if not voucher_code_required:
+		doc.campaign_voucher_code = None
+		return
+
+	campaign_voucher_code = doc.get("campaign_voucher_code")
+	if not campaign_voucher_code:
+		frappe.throw(_("Voucher Code is required for Campaign {0}").format(frappe.bold(doc.campaign)))
+
+	voucher_code_regex = frappe.get_cached_value("Campaign", doc.campaign, "voucher_code_regex")
+	if cstr(voucher_code_regex).strip():
+		if not re.match(f"^{voucher_code_regex}$", campaign_voucher_code):
+			frappe.throw(_("Invalid Campaign Voucher Code {0} for Campaign {1}").format(
+				frappe.bold(campaign_voucher_code),
+				frappe.bold(doc.campaign),
+			))
 
 
 def override_campaign_dashboard(data):
