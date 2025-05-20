@@ -582,10 +582,11 @@ $.extend(erpnext.utils, {
 		df.formatter = (value, df, options, doc) => {
 			let formatted_value = frappe.format(value, df, options, doc, true);
 
-			if (doc?.item_code) {
+			const company = cur_frm?.doc?.company;
+			if (doc?.item_code && company) {
 				const item_code = doc.item_code;
 
-				const link = `/app/query-report/Purchase Items To Be Received?item_code=${encodeURIComponent(item_code)}`;
+				const link = `/app/query-report/Purchase Items To Be Received?item_code=${encodeURIComponent(item_code)}&company=${encodeURIComponent(company)}`;
 
 				return `<a href="${link}" target="_blank">${formatted_value}</a>`;
 			}
