@@ -1086,7 +1086,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "More Reports",
-   "link_count": 5,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -1097,6 +1097,16 @@
    "label": "Summarized Profit and Loss",
    "link_count": 0,
    "link_to": "Summarized Profit and Loss",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Summarized Balance Sheet",
+   "link_count": 0,
+   "link_to": "Summarized Balance Sheet",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -1145,7 +1155,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-05 16:05:56.133940",
+ "modified": "2025-05-21 12:17:11.323572",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting",
