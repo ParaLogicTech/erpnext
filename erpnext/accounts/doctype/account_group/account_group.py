@@ -97,7 +97,9 @@ class AccountGroup(Document):
 				row.account = None
 				row.account_group = None
 
+
 @frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def get_account_groups_for_balance_sheet(doctype, txt, searchfield, start, page_len, filters):
 	company = filters.get("company")
 	report_type = filters.get("report_type")
