@@ -1,4 +1,4 @@
-frappe.query_reports["Summarized Balance Report"] = {
+frappe.query_reports["Summarized Balance Sheet"] = {
 	filters: [
 		{
 			fieldname: "company",
@@ -83,8 +83,8 @@ frappe.query_reports["Summarized Balance Report"] = {
 		const query_string = Object.entries(params)
 			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
 			.join('&');
-		return `/app/query-report/Summarized Balance Report?${query_string}`;
+		return `/app/query-report/Summarized Balance Sheet?${query_string}`;
 	},
 };
 
-erpnext.utils.add_dimensions('Summarized Balance Report', 5); 
+erpnext.utils.add_dimensions('Summarized Balance Sheet', 5); 

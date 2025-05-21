@@ -15,10 +15,10 @@ from erpnext.accounts.report.summarized_profit_and_loss.summarized_profit_and_lo
 
 
 def execute(filters=None):
-	return SummarizedBalanceReport(filters).run()
+	return SummarizedBalanceSheet(filters).run()
 
 
-class SummarizedBalanceReport(BaseSummarizedFinancialReport):
+class SummarizedBalanceSheet(BaseSummarizedFinancialReport):
 	gl_fields = [
 		'actual', 'prev_year',
 	]

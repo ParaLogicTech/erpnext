@@ -22,7 +22,7 @@ class BaseSummarizedFinancialReport:
 	budget_fields = []
 	total_fields = []
 	total_with_display_fields = []
- 
+
 	def __init__(self, filters=None):
 		self._account_group_docs = {}
 		self.filters = frappe._dict(filters or {})
@@ -36,7 +36,7 @@ class BaseSummarizedFinancialReport:
 			self.filters.company = get_default_company()
 		if not self.filters.company:
 			frappe.throw(_("Company is mandatory"))
-   
+
 	def get_data(self):
 		current_account_group = self.filters.get('account_group')
 		is_root = False
@@ -53,7 +53,7 @@ class BaseSummarizedFinancialReport:
 			)
 
 			if not current_account_group:
-				frappe.throw(_(f"Please configure Root Level {self.get_report_type()} Group or filter by Account Group"))
+				frappe.throw(_("Please configure Root Level {0} Group or filter by Account Group").format(self.get_report_type()))
 
 		data = self.get_account_group_data(current_account_group)
 
@@ -81,7 +81,6 @@ class BaseSummarizedFinancialReport:
 			"to_date": to_date,
 			**dimension_args,
 		}
-  
 		if from_date:
 			args["from_date"] = from_date
 			date_condition = "and posting_date between %(from_date)s and %(to_date)s"
@@ -152,7 +151,6 @@ class BaseSummarizedFinancialReport:
 			child_group_totals[row.account_group] = group_totals
 
 		running_totals = {f: 0 for f in self.total_fields}
-
 		for row in group.rows:
 			if row.row_type == "Account":
 				totals = account_totals.get(row.account) or {}
