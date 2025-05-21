@@ -59,6 +59,56 @@ erpnext.financial_statements = {
 			var filters = report.get_values();
 			frappe.set_route('query-report', 'Cash Flow', {company: filters.company});
 		}, __('Financial Statements'));
+	},
+
+	get_account_ledger_link: function(account, from_date, to_date) {
+		const params = this.get_params_for_link();
+		params["account"] = account;
+		params["from_date"] = from_date;
+		params["to_date"] = to_date;
+
+		const query_string = Object.entries(params)
+			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+			.join('&');
+
+		return `/app/query-report/General Ledger?${query_string}`;
+	},
+
+	get_summarized_statement_link: function(report_name, account_group, report_date) {
+		let params = this.get_params_for_link();
+		params["report_date"] = report_date;
+		params["account_group"] = account_group;
+
+		const query_string = Object.entries(params)
+			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+			.join('&');
+
+		return `/app/query-report/${report_name}?${query_string}`;
+	},
+
+	get_params_for_link: function () {
+		let params = {};
+
+		let company = frappe.query_report.get_filter_value('company');
+		if (company) {
+			params["company"] = company;
+		}
+
+		let cost_center = frappe.query_report.get_filter_value('cost_center');
+		if (cost_center) {
+			params["cost_center"] = cost_center;
+		}
+
+		for (let dimension of erpnext.dimension_filters) {
+			let dimension_field = dimension['fieldname'];
+			let dimension_value = frappe.query_report.get_filter_value(dimension_field);
+
+			if (dimension_value) {
+				params[dimension_field] = dimension_value;
+			}
+		}
+
+		return params;
 	}
 };
 

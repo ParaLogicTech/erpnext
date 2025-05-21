@@ -298,8 +298,10 @@ class SummarizedFinancialReport:
 
 		if row_type == "Account":
 			row["account"] = row_value
+			row["link_type"] = "Account"
 		elif row_type == "Account Group":
 			row["account_group"] = row_value
+			row["link_type"] = "Account Group"
 
 		if not no_values:
 			multiplier = self.get_display_value_multiplier(row)

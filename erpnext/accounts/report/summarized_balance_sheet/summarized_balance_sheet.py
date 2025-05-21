@@ -48,7 +48,8 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 			{
 				"fieldname": "account_name",
 				"label": _("Account"),
-				"fieldtype": "Data",
+				"fieldtype": "Dynamic Link",
+				"options": "link_type",
 				"width": 300
 			},
 			{
