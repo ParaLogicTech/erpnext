@@ -1,4 +1,4 @@
-frappe.query_reports["Summarized Profit and Loss"] = {
+frappe.query_reports["Summarized Balance Sheet"] = {
 	filters: [
 		{
 			fieldname: "company",
@@ -23,7 +23,7 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			get_query: () => ({
 				filters: {
 					company: frappe.query_report.get_filter_value('company'),
-					report_type: "Profit and Loss",
+					report_type: "Balance Sheet",
 				}
 			})
 		},
@@ -44,7 +44,6 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			link_target: "_blank",
 		};
 
-		// Handle account name column formatting
 		if (data) {
 			let report_date = frappe.query_report.get_filter_value('report_date');
 			let report_date_moment = moment(frappe.datetime.str_to_obj(report_date));
@@ -52,33 +51,15 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			let prev_year_date_moment = report_date_moment.subtract(1, "year");
 			let prev_year_date = prev_year_date_moment.format();
 
-			if (["mtd_actual_display", "ytd_actual_display"].includes(column.fieldname) && data.row_type === "Account Group") {
+			if (["actual_display", "prev_year_display"].includes(column.fieldname) && data.row_type === "Account Group") {
 				options.link_href = erpnext.financial_statements.get_summarized_statement_link(
-					"Summarized Profit and Loss",
+					"Summarized Balance Sheet",
 					data.account_group,
 					report_date,
 				);
 			}
 
-			if (column.fieldname === "mtd_actual_display" && data.row_type === "Account") {
-				let from_date = report_date_moment.startOf("month").format();
-				options.link_href = erpnext.financial_statements.get_account_ledger_link(
-					data.account,
-					from_date,
-					report_date
-				);
-			}
-
-			if (column.fieldname === "mtd_prev_year_display" && data.row_type === "Account") {
-				let from_date = prev_year_date_moment.startOf("month").format();
-				options.link_href = erpnext.financial_statements.get_account_ledger_link(
-					data.account,
-					from_date,
-					prev_year_date
-				);
-			}
-
-			if (column.fieldname === "ytd_actual_display" && data.row_type === "Account") {
+			if (column.fieldname === "actual_display" && data.row_type === "Account") {
 				let from_date = report_date_moment.startOf("year").format();
 				options.link_href = erpnext.financial_statements.get_account_ledger_link(
 					data.account,
@@ -87,7 +68,7 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 				);
 			}
 
-			if (column.fieldname === "ytd_prev_year_display" && data.row_type === "Account") {
+			if (column.fieldname === "prev_year_display" && data.row_type === "Account") {
 				let from_date = prev_year_date_moment.startOf("year").format();
 				options.link_href = erpnext.financial_statements.get_account_ledger_link(
 					data.account,
@@ -96,14 +77,12 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 				);
 			}
 
-			// Make text bold if specified
 			if (data.is_bold) {
 				options.css['font-weight'] = 'bold';
 			}
 		}
-
 		return default_formatter(value, row, column, data, options);
 	},
 };
 
-erpnext.utils.add_dimensions('Summarized Profit and Loss', 5);
+erpnext.utils.add_dimensions('Summarized Balance Sheet', 5); 

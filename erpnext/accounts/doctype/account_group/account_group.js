@@ -13,14 +13,14 @@ frappe.ui.form.on('Account Group', {
 
 		// Set filters for account group selection
 		frm.set_query('account_group', 'rows', function(doc, cdt, cdn) {
-			let filters = {
-				'company': frm.doc.company,
-				'report_type': frm.doc.report_type,
-			}
-			if (!frm.is_new()) {
-				filters['name'] = ['!=', frm.doc.name];
-			}
-			return { filters };
+			return {
+				query: "erpnext.accounts.doctype.account_group.account_group.get_account_groups_for_balance_sheet",
+				filters: {
+					company: frm.doc.company,
+					report_type: frm.doc.report_type,
+					exclude_name: frm.doc.name
+				}
+			};
 		});
 	},
 });

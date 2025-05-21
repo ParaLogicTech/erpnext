@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:group_name",
  "creation": "2024-01-01 00:00:00",
@@ -41,8 +42,7 @@
    "fieldname": "rows",
    "fieldtype": "Table",
    "label": "Rows",
-   "options": "Account Group Row",
-   "reqd": 1
+   "options": "Account Group Row"
   },
   {
    "fieldname": "column_break_gygm",
@@ -73,7 +73,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-07 11:25:06.241165",
+ "modified": "2025-05-21 12:27:34.613644",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group",
