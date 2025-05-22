@@ -7,12 +7,11 @@ import re
 
 def validate_campaign_voucher_code(doc):
 	doc.campaign_voucher_code_required = 0
-	campaign = doc.get("campaign")
-	if not campaign:
+	if not doc.get("campaign"):
 		doc.campaign_voucher_code = None
 		return
 
-	voucher_code_required = frappe.get_cached_value("Campaign", campaign, "voucher_code_required")
+	voucher_code_required = frappe.get_cached_value("Campaign", doc.campaign, "voucher_code_required")
 	doc.campaign_voucher_code_required = cint(voucher_code_required)
 	if not voucher_code_required:
 		doc.campaign_voucher_code = None
@@ -20,24 +19,24 @@ def validate_campaign_voucher_code(doc):
 
 	campaign_voucher_code = doc.get("campaign_voucher_code")
 	if not campaign_voucher_code:
-		frappe.throw(_("Voucher Code is required for Campaign {0}").format(frappe.bold(campaign)))
+		frappe.throw(_("Voucher Code is required for Campaign {0}").format(frappe.bold(doc.campaign)))
 
-	voucher_code_regex = frappe.get_cached_value("Campaign", campaign, "voucher_code_regex")
+	voucher_code_regex = frappe.get_cached_value("Campaign", doc.campaign, "voucher_code_regex")
 	if cstr(voucher_code_regex).strip():
 		if not re.match(f"^{voucher_code_regex}$", campaign_voucher_code):
 			frappe.throw(_("Invalid Campaign Voucher Code {0} for Campaign {1}").format(
 				frappe.bold(campaign_voucher_code),
-				frappe.bold(campaign),
+				frappe.bold(doc.campaign),
 			))
 
-	validate_duplicate_code = frappe.get_cached_value("Campaign", campaign, "validate_duplicate_voucher_code")
+	validate_duplicate_code = frappe.get_cached_value("Campaign", doc.campaign, "validate_duplicate_voucher_code")
 	if not validate_duplicate_code:
 		return
 
 	project = getattr(doc, "project", None)
 
 	check_duplicate_voucher_across_transactions(
-		campaign,
+		doc.campaign,
 		campaign_voucher_code,
 		doc.doctype,
 		doc.name,
