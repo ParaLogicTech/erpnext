@@ -30,18 +30,14 @@ def validate_campaign_voucher_code(doc):
 			))
 
 	validate_duplicate_code = frappe.get_cached_value("Campaign", doc.campaign, "validate_duplicate_voucher_code")
-	if not validate_duplicate_code:
-		return
-
-	project = getattr(doc, "project", None)
-
-	check_duplicate_voucher_across_transactions(
-		campaign=doc.campaign,
-		voucher_code=campaign_voucher_code,
-		current_doctype=doc.doctype,
-		current_doc_name=doc.name,
-		project=project,
-	)
+	if validate_duplicate_code:
+		check_duplicate_voucher_across_transactions(
+			campaign=doc.campaign,
+			voucher_code=campaign_voucher_code,
+			current_doctype=doc.doctype,
+			current_doc_name=doc.name,
+			project=doc.get("project"),
+		)
 
 
 def override_campaign_dashboard(data):
@@ -67,9 +63,7 @@ def check_duplicate_voucher_across_transactions(campaign, voucher_code, current_
 		if doctype == "Sales Invoice":
 			additional_filters["is_return"] = 0
 
-		if doctype == "Project":
-			additional_filters["docstatus"] = ["!=", 2]
-		else:
+		if doctype != "Project":
 			additional_filters["docstatus"] = 1
 
 		if exclude_repair_order and project:
