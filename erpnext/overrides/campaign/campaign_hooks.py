@@ -36,11 +36,11 @@ def validate_campaign_voucher_code(doc):
 	project = getattr(doc, "project", None)
 
 	check_duplicate_voucher_across_transactions(
-		doc.campaign,
-		campaign_voucher_code,
-		doc.doctype,
-		doc.name,
-		project,
+		campaign=doc.campaign,
+		voucher_code=campaign_voucher_code,
+		current_doctype=doc.doctype,
+		current_doc_name=doc.name,
+		project=project,
 	)
 
 
