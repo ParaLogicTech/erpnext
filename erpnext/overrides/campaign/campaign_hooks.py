@@ -92,5 +92,5 @@ def check_duplicate_voucher_across_transactions(campaign, voucher_code, current_
 	]
 
 	for target_doctype, exclude_repair in doctype_validation_rules:
-		filters = get_common_filters(target_doctype, exclude_repair_order=exclude_repair)
-		validate_duplicate(target_doctype, filters)
+		filter_conditions = get_common_filters(target_doctype, exclude_repair_order=exclude_repair)
+		validate_duplicate(target_doctype, filter_conditions)
