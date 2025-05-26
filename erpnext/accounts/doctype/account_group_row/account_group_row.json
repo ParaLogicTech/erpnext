@@ -9,10 +9,12 @@
   "account",
   "account_group",
   "section_name",
-  "section_account_groups"
+  "section_account_groups",
+  "reverse_sign"
  ],
  "fields": [
   {
+   "columns": 1,
    "fieldname": "row_type",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -21,6 +23,7 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "depends_on": "eval:doc.row_type=='Account'",
    "fieldname": "account",
    "fieldtype": "Link",
@@ -30,6 +33,7 @@
    "options": "Account"
   },
   {
+   "columns": 2,
    "depends_on": "eval:doc.row_type=='Account Group'",
    "fieldname": "account_group",
    "fieldtype": "Link",
@@ -39,21 +43,31 @@
    "options": "Account Group"
   },
   {
+   "columns": 2,
    "fieldname": "section_name",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Section Name"
   },
   {
+   "columns": 2,
    "fieldname": "section_account_groups",
-   "fieldtype": "Long Text",
+   "fieldtype": "Text",
    "in_list_view": 1,
    "label": "Section Account Groups"
+  },
+  {
+   "columns": 1,
+   "default": "0",
+   "fieldname": "reverse_sign",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Reverse Sign"
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2025-05-05 15:08:42.279001",
+ "modified": "2025-05-22 00:19:44.785825",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group Row",

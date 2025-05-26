@@ -76,7 +76,7 @@ class AccountGroup(Document):
 					frappe.throw(_("Row #{0}: Account Group must not be the same this one").format(row.idx))
 
 				account_group = frappe.get_doc("Account Group", row.account_group)
-				if account_group.report_type != self.report_type:
+				if account_group.report_type != self.report_type and not account_group.is_root_level:
 					frappe.throw(_("Row #{0}: Account Group {1} must of reporting type {2}").format(
 						row.idx, frappe.bold(row.account_group), frappe.bold(self.report_type)
 					))
@@ -96,3 +96,20 @@ class AccountGroup(Document):
 				# Clear irrelevant fields
 				row.account = None
 				row.account_group = None
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_account_groups_for_balance_sheet(doctype, txt, searchfield, start, page_len, filters):
+	company = filters.get("company")
+	report_type = filters.get("report_type")
+	exclude_name = filters.get("exclude_name")
+	return frappe.db.sql("""
+		SELECT name, group_name
+		FROM `tabAccount Group`
+		WHERE company = %s
+		AND (report_type = %s OR is_root_level = 1)
+		AND name != %s
+		AND (name LIKE %s OR group_name LIKE %s)
+		LIMIT %s OFFSET %s
+	""", (company, report_type, exclude_name, f"%{txt}%", f"%{txt}%", page_len, start))
