@@ -177,6 +177,7 @@ def determine_selling_or_buying(args):
 
 @frappe.whitelist()
 def get_item_code(barcode=None, serial_no=None, vehicle=None):
+	frappe.msgprint("Dileep Balineni")
 	item_code = None
 	if barcode:
 		item_code = frappe.db.get_value("Item Barcode", {"barcode": barcode}, fieldname=["parent"])
@@ -1428,10 +1429,29 @@ def set_valuation_rate(out, args):
 		product_bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
 
 		for bundle_item in product_bundle_doc.get("items"):
-			bundle_item_valuation_rate = flt(
-				get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
-			)
-			valuation_rate += bundle_item_valuation_rate * flt(bundle_item.qty)
+			if bundle_item.type == "Item":
+				bundle_item_valuation_rate = flt(
+					get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
+				)
+				valuation_rate += bundle_item_valuation_rate * flt(bundle_item.qty)
+			elif bundle_item.type == "Item Group":
+				# For item groups, we'll use the average valuation rate of items in the group
+				items_in_group = frappe.get_all("Item",
+					filters= {
+						"item_group": bundle_item.item_group,
+						"is_stock_item": 1
+					},
+					fields=["name"]
+				)
+				if items_in_group:
+					group_valuation_rate = 0.0
+					for item in items_in_group:
+						item_valuation_rate = flt(
+							get_valuation_rate(item.name, args.company, out.get("warehouse")).get("valuation_rate")
+						)
+						group_valuation_rate += item_valuation_rate
+					group_valuation_rate = group_valuation_rate / len(items_in_group)
+					valuation_rate += group_valuation_rate * flt(bundle_item.qty)
 
 		out.update({
 			"valuation_rate": valuation_rate

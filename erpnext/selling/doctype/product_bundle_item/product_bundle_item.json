@@ -4,13 +4,23 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "type",
   "item_code",
+  "item_group",
   "qty",
   "description",
   "rate",
   "uom"
  ],
  "fields": [
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Item\nItem Group",
+   "reqd": 1
+  },
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
@@ -20,7 +30,27 @@
    "oldfieldname": "item_code",
    "oldfieldtype": "Link",
    "options": "Item",
-   "reqd": 1
+   "depends_on": "type",
+   "mandatory_depends_on": "eval:doc.type == 'Item'",
+   "hidden_depends_on": "eval:doc.type == 'Item Group'"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Group",
+   "options": "Item Group",
+   "depends_on": "type",
+   "mandatory_depends_on": "eval:doc.type == 'Item Group'",
+   "hidden_depends_on": "eval:doc.type == 'Item'"
+  },
+  {
+   "fieldname": "selected_items",
+   "fieldtype": "Table",
+   "label": "Selected Items",
+   "options": "Product Bundle Selected Item",
+   "depends_on": "type",
+   "hidden_depends_on": "eval:doc.type == 'Item'"
   },
   {
    "fieldname": "qty",
@@ -29,7 +59,9 @@
    "label": "Qty",
    "oldfieldname": "qty",
    "oldfieldtype": "Currency",
-   "reqd": 1
+   "depends_on": "type",
+   "mandatory_depends_on": "eval:doc.type == 'Item'",
+   "hidden_depends_on": "eval:doc.type == 'Item Group'"
   },
   {
    "fieldname": "description",
@@ -57,7 +89,9 @@
    "oldfieldname": "uom",
    "oldfieldtype": "Link",
    "options": "UOM",
-   "read_only": 1
+   "read_only": 1,
+   "depends_on": "type",
+   "hidden_depends_on": "eval:doc.type == 'Item Group'"
   }
  ],
  "idx": 1,

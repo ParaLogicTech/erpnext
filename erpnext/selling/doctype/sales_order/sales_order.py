@@ -438,6 +438,22 @@ class SalesOrder(SellingController):
 					group by i.sales_order_item
 				""", [delivery_by_billing_row_names]))
 
+			# For product bundles, check if all packed items are delivered
+			for d in self.items:
+				if frappe.db.exists('Product Bundle', d.item_code):
+					packed_items = [p for p in self.packed_items if p.parent_detail_docname == d.name]
+					if packed_items:
+						# Get delivered qty for each packed item
+						packed_item_delivered = True
+						for p in packed_items:
+							delivered_qty = out.delivered_qty_map.get(p.name, 0)
+							if delivered_qty < p.qty:
+								packed_item_delivered = False
+								break
+						# If all packed items are delivered, mark the bundle as delivered
+						if packed_item_delivered:
+							out.delivered_qty_map[d.name] = d.qty
+
 		return out
 
 	def get_production_packing_status_data(self):

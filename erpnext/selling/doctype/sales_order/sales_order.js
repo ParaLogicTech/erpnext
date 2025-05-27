@@ -20,6 +20,31 @@ frappe.ui.form.on("Sales Order", {
 			'Vehicle': __("Reserved Vehicles"),
 			'Packing Slip': __("Packing Slip"),
 		}
+
+		// Set query for item_code in packed_items child table, filtering by item_group
+		if (frm.fields_dict.packed_items && frm.fields_dict.packed_items.grid) {
+			frm.fields_dict.packed_items.grid.get_field('item_code').get_query = function(doc, cdt, cdn) {
+				let row = locals[cdt][cdn];
+				if (row.item_group) {
+					return {
+						query: "erpnext.controllers.queries.item_query",
+						filters: {
+							item_group: ["in", row.item_group],
+							is_stock_item: 1,
+							disabled: 0
+						}
+					};
+				} else {
+					return {
+						query: "erpnext.controllers.queries.item_query",
+						filters: {
+							is_stock_item: 1,
+							disabled: 0
+						}
+					};
+				}
+			};
+		}
 	},
 	refresh: function(frm) {
 		if (frm.doc.docstatus === 1

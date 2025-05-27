@@ -1457,3 +1457,47 @@ var add_to_item_line = function(frm, checked_values, invoice_healthcare_services
 		frm.refresh_fields();
 	}
 };
+
+frappe.ui.form.on('Sales Invoice Item', {
+	item_code: function(frm, cdt, cdn) {
+		let d = locals[cdt][cdn];
+		if (d.item_code) {
+			frappe.db.get_value('Item', d.item_code, 'is_stock_item', function(r) {
+				if (r && r.is_stock_item == 0) {
+					// Check if it's a product bundle
+					frappe.db.get_value('Product Bundle', d.item_code, 'name', function(r) {
+						if (r && r.name) {
+							// Clear existing packed items for this row
+							frm.doc.packed_items = frm.doc.packed_items.filter(
+								pi => pi.parent_detail_docname !== d.name
+							);
+							frm.refresh_field('packed_items');
+							
+							// Fetch and add packed items
+							frappe.call({
+								method: 'erpnext.stock.doctype.packed_item.packed_item.get_product_bundle_items',
+								args: {
+									item_code: d.item_code
+								},
+								callback: function(r) {
+									if (r.message) {
+										r.message.forEach(function(bundle_item) {
+											let packed_item = frappe.model.add_child(frm.doc, 'Packed Item', 'packed_items');
+											packed_item.parent_detail_docname = d.name;
+											packed_item.item_code = bundle_item.item_code;
+											packed_item.qty = flt(bundle_item.qty) * flt(d.qty);
+											packed_item.description = bundle_item.description;
+											packed_item.rate = 0.0;
+											packed_item.uom = bundle_item.uom;
+										});
+										frm.refresh_field('packed_items');
+									}
+								}
+							});
+						}
+					});
+				}
+			});
+		}
+	}
+});

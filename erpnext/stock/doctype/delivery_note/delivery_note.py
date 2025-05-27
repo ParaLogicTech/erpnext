@@ -47,6 +47,20 @@ class DeliveryNote(SellingController):
 		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
 		make_packing_list(self)
 
+		# Validate product bundle items
+		for d in self.get("items"):
+			if frappe.db.exists('Product Bundle', d.item_code):
+				# Get packed items for this bundle
+				packed_items = [p for p in self.packed_items if p.parent_detail_docname == d.name]
+				if not packed_items:
+					frappe.throw(_("No packed items found for Product Bundle {0}").format(d.item_code))
+				
+				# Validate quantities
+				total_packed_qty = sum(flt(p.qty) for p in packed_items)
+				if flt(total_packed_qty) != flt(d.qty):
+					frappe.throw(_("Total packed quantity ({0}) must equal bundle quantity ({1}) for {2}").format(
+						total_packed_qty, d.qty, d.item_code))
+
 		self.validate_with_previous_doc()
 		self.set_billing_status()
 		self.set_installation_status()
@@ -54,6 +68,9 @@ class DeliveryNote(SellingController):
 		self.set_title()
 
 		self.update_current_stock()
+		self.validate_packed_items()
+		self.set_actual_qty()
+		self.calculate_taxes_and_totals()
 
 	def before_submit(self):
 		self.remove_partial_packing_slip_for_return()
@@ -546,7 +563,63 @@ class DeliveryNote(SellingController):
 			frappe.throw(_("Installation Note {0} has already been submitted").format(submit_in[0][0]))
 
 	def get_gl_entries(self):
-		return self.get_stock_ledger_gl_entries(use_unbilled_stock_account=True)
+		gl_entries = []
+
+		# Product Bundle Items
+		for d in self.get("items"):
+			if frappe.db.exists('Product Bundle', d.item_code):
+				# Get packed items for this bundle
+				packed_items = [p for p in self.packed_items if p.parent_detail_docname == d.name]
+				if packed_items:
+					# Create GL entries for each packed item
+					for p in packed_items:
+						if p.item_code:
+							is_stock_item = frappe.get_cached_value("Item", p.item_code, "is_stock_item")
+							if is_stock_item:
+								# Get stock value for the packed item
+								stock_value = abs(p.stock_qty * p.valuation_rate)
+								
+								if d.unbilled_stock_account:
+									# Debit Unbilled Stock Account
+									gl_entries.append(self.get_gl_dict({
+										"account": d.unbilled_stock_account,
+										"against": d.income_account,
+										"debit": stock_value,
+										"debit_in_account_currency": stock_value,
+										"cost_center": d.cost_center,
+										"remarks": "Unbilled Stock for {0}".format(p.item_code)
+									}))
+
+									# Credit Stock in Hand
+									gl_entries.append(self.get_gl_dict({
+										"account": d.warehouse,
+										"against": d.income_account,
+										"credit": stock_value,
+										"credit_in_account_currency": stock_value,
+										"cost_center": d.cost_center,
+										"remarks": "Stock Value for {0}".format(p.item_code)
+									}))
+
+		# Update delivery status for bundle items
+		for d in self.get("items"):
+			if frappe.db.exists('Product Bundle', d.item_code):
+				packed_items = [p for p in self.packed_items if p.parent_detail_docname == d.name]
+				if packed_items:
+					# Calculate delivery status based on packed items
+					total_delivered = sum(flt(p.delivered_qty) for p in packed_items)
+					total_required = sum(flt(p.qty) for p in packed_items)
+					
+					if total_delivered >= total_required:
+						d.delivered_qty = d.qty
+						d.delivery_status = "Fully Delivered"
+					elif total_delivered > 0:
+						d.delivered_qty = (total_delivered / total_required) * d.qty
+						d.delivery_status = "Partially Delivered"
+					else:
+						d.delivered_qty = 0
+						d.delivery_status = "Not Delivered"
+
+		return gl_entries
 
 	def set_unbilled_stock_account(self):
 		if self.is_return:
@@ -896,3 +969,70 @@ def make_sales_return(source_name, target_doc=None):
 def update_delivery_note_status(docname, status):
 	dn = frappe.get_doc("Delivery Note", docname)
 	dn.run_method("update_status", status)
+
+
+def update_stock_ledger(self):
+	"""Update stock ledger for both main items and packed items"""
+	super(DeliveryNote, self).update_stock_ledger()
+	
+	# Update stock for packed items
+	for item in self.get("items"):
+		if frappe.db.exists('Product Bundle', item.item_code):
+			packed_items = [d for d in self.get("packed_items") if d.parent_detail_docname == item.name]
+			for packed_item in packed_items:
+				self.update_stock_ledger_for_item(packed_item)
+
+def update_stock_ledger_for_item(self, item):
+	"""Update stock ledger for a single item"""
+	if not item.warehouse:
+		frappe.throw(_("Warehouse is required for item {0}").format(item.item_code))
+
+	sl_entries = []
+	if self.docstatus == 1:
+		sl_entries.append(self.get_sl_entries(item, {
+			"actual_qty": -flt(item.qty),
+			"stock_value_difference": -flt(item.base_net_amount)
+		}))
+	elif self.docstatus == 2:
+		sl_entries.append(self.get_sl_entries(item, {
+			"actual_qty": flt(item.qty),
+			"stock_value_difference": flt(item.base_net_amount)
+		}))
+
+	if sl_entries:
+		self.make_sl_entries(sl_entries)
+
+def get_sl_entries(self, item, args):
+	"""Get stock ledger entries for an item"""
+	return frappe._dict({
+		"item_code": item.item_code,
+		"warehouse": item.warehouse,
+		"posting_date": self.posting_date,
+		"posting_time": self.posting_time,
+		"voucher_type": self.doctype,
+		"voucher_no": self.name,
+		"voucher_detail_no": item.name,
+		"actual_qty": args.get("actual_qty", 0),
+		"stock_value_difference": args.get("stock_value_difference", 0),
+		"company": self.company,
+		"fiscal_year": get_fiscal_year(self.posting_date, company=self.company)[0],
+		"is_cancelled": self.docstatus == 2
+	})
+
+def update_delivery_status(self):
+	"""Update delivery status based on packed items"""
+	for item in self.get("items"):
+		if frappe.db.exists('Product Bundle', item.item_code):
+			packed_items = [d for d in self.get("packed_items") if d.parent_detail_docname == item.name]
+			if packed_items:
+				total_delivered = sum(flt(d.delivered_qty) for d in packed_items)
+				total_required = sum(flt(d.qty) for d in packed_items)
+				
+				if total_delivered >= total_required:
+					item.delivery_status = "Fully Delivered"
+				elif total_delivered > 0:
+					item.delivery_status = "Partially Delivered"
+				else:
+					item.delivery_status = "Not Delivered"
+				
+				item.delivered_qty = total_delivered

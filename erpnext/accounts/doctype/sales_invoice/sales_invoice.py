@@ -52,7 +52,6 @@ class SalesInvoice(SellingController):
 	def validate(self):
 		self.validate_posting_time()
 		super(SalesInvoice, self).validate()
-
 		self.validate_order_required()
 		self.validate_stin()
 		self.validate_project_customer()
@@ -61,6 +60,8 @@ class SalesInvoice(SellingController):
 		self.check_sales_order_on_hold_or_close()
 		self.validate_debit_to_acc()
 		self.validate_return_against()
+		self.validate_packed_items()
+		self.update_delivery_status()
 
 		self.check_advance_payment_against_order("sales_order")
 
@@ -117,6 +118,27 @@ class SalesInvoice(SellingController):
 		self.set_title()
 
 		validate_fbr_pos_invoice(self)
+
+		# Update packed items for product bundles
+		if self.update_stock:
+			from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
+			make_packing_list(self)
+
+			# Validate product bundle items
+			for d in self.get("items"):
+				if frappe.db.exists('Product Bundle', d.item_code):
+					# Get packed items for this bundle
+					packed_items = [p for p in self.packed_items if p.parent_detail_docname == d.name]
+					if not packed_items:
+						frappe.throw(_("No packed items found for Product Bundle {0}").format(d.item_code))
+					
+					# Validate quantities
+					total_packed_qty = sum(flt(p.qty) for p in packed_items)
+					if flt(total_packed_qty) != flt(d.qty):
+						frappe.throw(_("Total packed quantity ({0}) must equal bundle quantity ({1}) for {2}").format(
+							total_packed_qty, d.qty, d.item_code))
+
+		self.validate_packed_items()
 
 	def on_update(self):
 		self.set_paid_amount()
@@ -1013,7 +1035,10 @@ class SalesInvoice(SellingController):
 			d.projected_qty = bin and flt(bin[0]['projected_qty']) or 0
 
 	def update_packing_list(self):
-		if cint(self.update_stock) == 1:
+		# Always update packing list for product bundles, regardless of update_stock
+		has_product_bundle = any(frappe.db.exists('Product Bundle', d.item_code) for d in self.get("items"))
+		
+		if cint(self.update_stock) == 1 or has_product_bundle:
 			from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
 			make_packing_list(self)
 		else:
@@ -1784,6 +1809,78 @@ class SalesInvoice(SellingController):
 					frappe.throw(_("Outstanding Amount must be 0 for Cash Customer {0}").format(
 						frappe.utils.get_link_to_form("Customer", self.bill_to)
 					))
+
+	def validate_packed_items(self):
+		"""Validate that all product bundles have proper packed items"""
+		from erpnext.stock.doctype.packed_item.packed_item import validate_packed_items_for_bundles
+		
+		if self.update_stock:
+			validate_packed_items_for_bundles(self)
+			
+			# Additional validation for sales invoice
+			for item in self.get("items"):
+				if frappe.db.exists('Product Bundle', item.item_code):
+					packed_items = [d for d in self.get("packed_items") if d.parent_detail_docname == item.name]
+					if not packed_items:
+						frappe.throw(_("Row #{0}: Product Bundle {1} has no packed items").format(
+							item.idx, item.item_code
+						))
+						
+					# Validate quantities
+					total_qty = sum(flt(d.qty) for d in packed_items)
+					if abs(total_qty - flt(item.qty)) > 0.0001:
+						frappe.throw(_("Row #{0}: Total quantity of packed items ({1}) does not match bundle quantity ({2})").format(
+							item.idx, total_qty, item.qty
+						))
+
+	def update_delivery_status(self):
+		"""Update delivery status based on packed items"""
+		for item in self.get("items"):
+			if frappe.db.exists('Product Bundle', item.item_code):
+				packed_items = [d for d in self.get("packed_items") if d.parent_detail_docname == item.name]
+				if packed_items:
+					total_delivered = sum(flt(d.delivered_qty) for d in packed_items)
+					total_required = sum(flt(d.qty) for d in packed_items)
+					
+					if total_delivered >= total_required:
+						item.delivery_status = "Fully Delivered"
+					elif total_delivered > 0:
+						item.delivery_status = "Partially Delivered"
+					else:
+						item.delivery_status = "Not Delivered"
+					
+					item.delivered_qty = total_delivered
+
+	def update_stock_ledger(self):
+		"""Update stock ledger for both main items and packed items"""
+		super(SalesInvoice, self).update_stock_ledger()
+		
+		# Update stock for packed items
+		for item in self.get("items"):
+			if frappe.db.exists('Product Bundle', item.item_code):
+				packed_items = [d for d in self.get("packed_items") if d.parent_detail_docname == item.name]
+				for packed_item in packed_items:
+					self.update_stock_ledger_for_item(packed_item)
+
+	def update_stock_ledger_for_item(self, item):
+		"""Update stock ledger for a single item"""
+		if not item.warehouse:
+			frappe.throw(_("Warehouse is required for item {0}").format(item.item_code))
+
+		sl_entries = []
+		if self.docstatus == 1:
+			sl_entries.append(self.get_sl_entries(item, {
+				"actual_qty": -flt(item.qty),
+				"stock_value_difference": -flt(item.base_net_amount)
+			}))
+		elif self.docstatus == 2:
+			sl_entries.append(self.get_sl_entries(item, {
+				"actual_qty": flt(item.qty),
+				"stock_value_difference": flt(item.base_net_amount)
+			}))
+
+		if sl_entries:
+			self.make_sl_entries(sl_entries)
 
 
 def get_discounting_status(sales_invoice):

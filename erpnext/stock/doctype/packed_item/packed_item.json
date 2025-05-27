@@ -26,7 +26,9 @@
   "uom",
   "page_break",
   "prevdoc_doctype",
-  "parent_detail_docname"
+  "parent_detail_docname",
+  "type",
+  "item_group"
  ],
  "fields": [
   {
@@ -47,8 +49,7 @@
    "label": "Item Code",
    "oldfieldname": "item_code",
    "oldfieldtype": "Link",
-   "options": "Item",
-   "read_only": 1
+   "options": "Item"
   },
   {
    "fieldname": "item_name",
@@ -198,6 +199,21 @@
    "label": "Actual Batch Quantity",
    "no_copy": 1,
    "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Item Group",
+   "options": "Item Group",
    "read_only": 1
   }
  ],
