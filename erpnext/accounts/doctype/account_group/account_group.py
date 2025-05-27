@@ -97,6 +97,10 @@ class AccountGroup(Document):
 				row.account = None
 				row.account_group = None
 
+			elif row.row_type == "Profit and Loss":
+				row.account = None
+				row.account_group = None
+				row.section_account_groups = None
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
