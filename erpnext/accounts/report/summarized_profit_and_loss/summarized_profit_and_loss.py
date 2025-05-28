@@ -54,11 +54,11 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				group["ytd_prev_year"] += d.credit - d.debit
 
 		# Fetch budgets for all fiscal years overlapping the calendar YTD
-		budget_data = self.get_budget_data(all_accounts, self.filters.ytd_calendar_start, self.filters.report_date)
+		budget_data = self.get_budget_data(all_accounts, self.filters.year_start_date, self.filters.report_date)
 		budget_totals = self.calculate_budget_totals(
 			budget_data,
 			self.filters.month_start_date, self.filters.report_date,
-			self.filters.ytd_calendar_start, self.filters.report_date
+			self.filters.year_start_date, self.filters.report_date
 		)
 
 		for account, budget in budget_totals.items():

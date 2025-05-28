@@ -31,8 +31,6 @@ class SummarizedFinancialReport:
 		self.filters.prev_year_month_start = add_years(self.filters.month_start_date, -1)
 		self.filters.prev_year_start = add_years(self.filters.year_start_date, -1)
 
-		self.filters.ytd_calendar_start = getdate(f"{self.filters.report_date.year}-01-01")
-
 	def get_data(self):
 		report_type = self.get_report_type()
 
