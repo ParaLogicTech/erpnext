@@ -12,6 +12,7 @@ def get_data():
 			'Payment Request': 'reference_name',
 			'Sales Invoice': 'return_against',
 			'Auto Repeat': 'reference_document',
+			'POS Closing Entry': 'document_name',
 		},
 		'internal_links': {
 			'Sales Order': ['items', 'sales_order'],
@@ -22,7 +23,7 @@ def get_data():
 		'transactions': [
 			{
 				'label': _('Payment'),
-				'items': ['Payment Entry', 'Journal Entry', 'Payment Request']
+				'items': ['Payment Entry', 'Journal Entry', 'POS Closing Entry']
 			},
 			{
 				'label': _('Previous Documents'),

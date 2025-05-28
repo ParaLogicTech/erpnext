@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, add_days, cstr, add_months, getdate
+from frappe.utils import flt, cint, add_days, cstr, add_months, getdate, add_years
 from erpnext.accounts.doctype.pricing_rule.pricing_rule import get_pricing_rule_for_item
 from erpnext.setup.utils import get_exchange_rate
 from frappe.model.meta import get_field_precision
@@ -96,6 +96,24 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 	if args.doctype == 'Material Request':
 		out.rate = args.rate or out.price_list_rate
 		out.amount = flt(args.qty * out.rate)
+
+	child_doctype = args.doctype + ' Item'
+	child_meta = frappe.get_meta(child_doctype)
+	if child_meta.get_field("last_billed_rate"):
+		last_billed_rate = get_last_billed_rate(
+			item_code=args.get("item_code"),
+			customer=args.get("customer"),
+			company=args.get("company"),
+		)
+		out["last_billed_rate"] = last_billed_rate
+
+	if child_meta.get_field("in_transit_qty"):
+		in_transit_qty = get_in_transit_qty(args.get("item_code"), company=args.get("company"))
+		out["in_transit_qty"] = in_transit_qty
+
+	if child_meta.get_field("avg_monthly_sales"):
+		avg_monthly_sales = get_avg_monthly_sales(args.get("item_code"), company=args.get("company"))
+		out["avg_monthly_sales"] = avg_monthly_sales
 
 	frappe.utils.call_hook_method("get_item_details", args, out, doc=doc, for_validate=for_validate)
 
@@ -1686,3 +1704,85 @@ def _update_item_info(scan_result):
 		if item_info := frappe.get_cached_value("Item", item_code, ["has_batch_no", "has_serial_no"], as_dict=True):
 			scan_result.update(item_info)
 	return scan_result
+
+
+def get_last_billed_rate(item_code, customer, company=None):
+	if not item_code or not customer:
+		return 0
+
+	company_condition = ""
+	if company:
+		company_condition = " and si.company = %(company)s"
+
+	result = frappe.db.sql("""
+		SELECT sii.base_tax_exclusive_rate 
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+		WHERE si.docstatus = 1
+			AND si.is_return = 0
+			AND sii.item_code = %(item_code)s
+			AND si.customer = %(customer)s
+			{0}
+		ORDER BY si.posting_date DESC, si.posting_time DESC, si.creation DESC
+		LIMIT 1
+	""".format(company_condition), {
+		"item_code": item_code, "customer": customer, "company": company
+	})
+
+	return flt(result[0][0]) if result else 0.0
+
+
+def get_in_transit_qty(item_code, company=None):
+	if not item_code:
+		return 0
+
+	company_condition = ""
+	if company:
+		company_condition = " and po.company = %(company)s"
+
+	in_transit = frappe.db.sql("""
+		SELECT SUM((poi.qty - poi.received_qty) * poi.conversion_factor)
+		FROM `tabPurchase Order Item` poi
+		INNER JOIN `tabPurchase Order` po ON poi.parent = po.name
+		WHERE poi.item_code = %(item_code)s
+			AND poi.received_qty < poi.qty
+			AND po.status != 'Closed'
+			AND po.docstatus = 1
+			AND (poi.is_stock_item = 1 OR poi.is_fixed_asset = 1)
+			{0}
+	""".format(company_condition), {
+		"item_code": item_code, "company": company,
+	})
+
+	return flt(in_transit[0][0]) if in_transit else 0
+
+
+def get_avg_monthly_sales(item_code, company=None, transaction_date=None):
+	if not item_code:
+		return 0
+
+	company_condition = ""
+	if company:
+		company_condition = " and si.company = %(company)s"
+
+	transaction_date = getdate(transaction_date)
+	to_date = transaction_date
+	from_date = add_years(to_date, -1)
+
+	total_sales_qty = frappe.db.sql("""
+		SELECT SUM(stock_qty)
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+		WHERE sii.item_code = %(item_code)s
+			AND si.docstatus = 1
+			AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+			{0}
+	""".format(company_condition), {
+		"item_code": item_code,
+		"from_date": from_date,
+		"to_date": to_date,
+		"company": company,
+	})
+
+	total_sales_qty = flt(total_sales_qty[0][0]) if total_sales_qty else 0
+	return total_sales_qty / 12

@@ -14,6 +14,7 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 
 		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "actual_qty");
 		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "projected_qty");
+		erpnext.utils.setup_last_billed_rate_formatter(this.frm.doc.doctype + " Item", "last_billed_rate");
 	}
 
 	onload() {

@@ -248,7 +248,7 @@ class EmailDigest(Document):
 				card = cache.get_value(cache_key)
 
 				if card:
-					card = frappe.safe_eval(card)
+					card = frappe.safe_eval(card) if isinstance(card) else card
 
 				else:
 					card = frappe._dict(getattr(self, "get_" + key)())

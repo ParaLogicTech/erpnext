@@ -210,8 +210,7 @@ class SalesInvoice(SellingController):
 
 		self.update_project_billing_and_sales(material_cost_of_sales=self.update_stock)
 
-		if self.is_return:
-			unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
+		unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
 
 		# Healthcare Service Invoice.
 		if "Healthcare" in frappe.get_active_domains():
