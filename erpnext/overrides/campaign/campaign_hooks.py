@@ -1,7 +1,6 @@
 import frappe
 from frappe import _
 from frappe.utils import cint, cstr
-from frappe.utils import get_link_to_form
 import re
 
 
@@ -31,11 +30,11 @@ def validate_campaign_voucher_code(doc):
 
 	validate_duplicate_code = frappe.get_cached_value("Campaign", doc.campaign, "validate_duplicate_voucher_code")
 	if validate_duplicate_code:
-		check_duplicate_voucher_across_transactions(
+		check_duplicate_campaign_voucher_code(
 			campaign=doc.campaign,
 			voucher_code=campaign_voucher_code,
 			current_doctype=doc.doctype,
-			current_doc_name=doc.name,
+			current_docname=doc.name,
 			project=doc.get("project"),
 		)
 
@@ -48,43 +47,58 @@ def override_campaign_dashboard(data):
 
 	return data
 
-def check_duplicate_voucher_across_transactions(campaign, voucher_code, current_doctype, current_doc_name, project):
-	standard_filters = {
-		"campaign": campaign,
-		"campaign_voucher_code": voucher_code,
-	}
 
-	def get_common_filters(doctype, exclude_repair_order=False):
-		additional_filters = standard_filters.copy()
+def check_duplicate_campaign_voucher_code(campaign, voucher_code, current_doctype, current_docname, project):
+	if current_doctype == "Project" and current_docname:
+		project = current_docname
 
-		if doctype == current_doctype:
-			additional_filters["name"] = ["!=", current_doc_name]
+	def validate_duplicate(doctype):
+		filter_conditions = get_filters(target_doctype)
 
-		if doctype == "Sales Invoice":
-			additional_filters["is_return"] = 0
-
-		if doctype != "Project":
-			additional_filters["docstatus"] = 1
-
-		if exclude_repair_order and project:
-			additional_filters["project"] = ["!=", project]
-		elif project and not exclude_repair_order:
-			additional_filters["name"] = ["!=", project]
-
-		return additional_filters
-
-	def validate_duplicate(doctype, filter_conditions):
 		duplicate = frappe.get_all(doctype, filters=filter_conditions, fields=["name"], limit=1)
 		if duplicate:
-			link = frappe.bold(get_link_to_form(doctype, duplicate[0]["name"]))
-			frappe.throw(_("Duplicate voucher found in submitted transaction:\n\n{0}: {1}").format(doctype, link))
+			frappe.throw(_("{0} Campaign Voucher Code {1} has already been used in {2}").format(
+				frappe.bold(campaign),
+				frappe.bold(voucher_code),
+				frappe.get_desk_link(doctype, duplicate[0]["name"])
+			))
 
-	doctype_validation_rules = [
-		("Project", False),
-		("Sales Order", True),
-		("Sales Invoice", True)
+	def get_filters(doctype):
+		filters = {
+			"campaign": campaign,
+			"campaign_voucher_code": voucher_code,
+		}
+
+		if doctype == "Sales Invoice":
+			filters["is_return"] = 0
+
+		if doctype == "Project":
+			filters["status"] = ["!=", "Cancelled"]
+		else:
+			filters["docstatus"] = 1
+
+		if doctype == current_doctype:
+			filters["name"] = ["!=", current_docname]
+
+		if project and doctype == "Project":
+			filters["name"] = ["!=", project]
+		elif project:
+			filters["project"] = ["!=", project]
+
+		return filters
+
+	doctypes_to_validate = [
+		"Project",
+		"Sales Invoice",
 	]
 
-	for target_doctype, exclude_repair in doctype_validation_rules:
-		filter_conditions = get_common_filters(target_doctype, exclude_repair_order=exclude_repair)
-		validate_duplicate(target_doctype, filter_conditions)
+	if project:
+		doctypes_to_validate += [
+			"Sales Order",
+		]
+
+	if current_doctype not in doctypes_to_validate:
+		doctypes_to_validate.append(current_doctype)
+
+	for target_doctype in doctypes_to_validate:
+		validate_duplicate(target_doctype)
