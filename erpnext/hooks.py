@@ -81,6 +81,7 @@ fixtures = [
 
 				"Campaign-voucher_code_required",
 				"Campaign-voucher_code_regex",
+				"Campaign-validate_duplicate_voucher_code",
 				"Campaign-claim_customer",
 				"Campaign-claim_customer_name",
 

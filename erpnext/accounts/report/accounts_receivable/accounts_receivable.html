@@ -73,66 +73,43 @@
 	</div>
 </div>
 
-{% if(filters.show_future_payments) { %}
-	{% var balance_row = data.slice(-1).pop();
-		var range1 = report.columns.find(d => d.fieldname == "range1").label;
-		var range2 = report.columns.find(d => d.fieldname == "range2").label;
-		var range3 = report.columns.find(d => d.fieldname == "range3").label;
-		var range4 = report.columns.find(d => d.fieldname == "range4").label;
-		var range5 = report.columns.find(d => d.fieldname == "range5").label;
-	%}
+{% if(report.report_name === "Accounts Receivable" || report.report_name === "Accounts Payable") { %}
+	{% var balance_row = data.slice(-1).pop(); %}
 	{% if(balance_row) { %}
 	<table class="table table-bordered table-condensed">
 		<caption class="text-right">(Amount in {%= data[0][__("currency")] || "" %})</caption>
-			<colgroup>
-				<col style="width: 30mm;">
-				<col style="width: 18mm;">
-				<col style="width: 18mm;">
-				<col style="width: 18mm;">
-				<col style="width: 18mm;">
-				<col style="width: 18mm;">
-				<col style="width: 18mm;">
-			</colgroup>
+		<colgroup>
+			<col style="width: 18%;">
+			{% var col_width = 82 / (ageing_columns.length + 1); %}
+			{% for(var i = 0; i < ageing_columns.length; i++) { %}
+				<col style="width: {%= col_width %}%;">
+			{% } %}
+			<col style="width: {%= col_width %}%;">
+		</colgroup>
 
 		<thead>
 			<tr>
-				<th>{%= __(" ") %}</th>
-				<th>{%= __(range1) %}</th>
-				<th>{%= __(range2) %}</th>
-				<th>{%= __(range3) %}</th>
-				<th>{%= __(range4) %}</th>
-				<th>{%= __(range5) %}</th>
-				<th>{%= __("Total") %}</th>
+				<th>Ageing</th>
+
+				{% for(var i = 0; i < ageing_columns.length; i++) { %}
+					<th style="text-align: right;">{%= __(ageing_columns[i].label) %}</th>
+				{% } %}
+
+				<th style="text-align: right;">{%= __("Total") %}</th>
 			</tr>
 		</thead>
+
 		<tbody>
 			<tr>
-				<td>{%= __("Total Outstanding") %}</td>
-				<td class="text-right text-nowrap">{%= format_currency(balance_row[range1]) %}</td>
-				<td class="text-right text-nowrap">{%= format_currency(balance_row[range2]) %}</td>
-				<td class="text-right text-nowrap">{%= format_currency(balance_row[range3]) %}</td>
-				<td class="text-right text-nowrap">{%= format_currency(balance_row[range4]) %}</td>
-				<td class="text-right text-nowrap">{%= format_currency(balance_row[range5]) %}</td>
-				<td class="text-right text-nowrap">
+				<td>{%= __("Outstanding Amount") %}</td>
+
+				{% for(var i = 0; i < ageing_columns.length; i++) { %}
+					<td class="text-right text-nowrap">{%= format_currency(balance_row[ageing_columns[i].fieldname]) %}</td>
+				{% } %}
+
+				<td class="text-right text-nowrap" style="white-space: nowrap;">
 					{%= format_currency(flt(balance_row[("outstanding_amount")]), data[data.length-1]["currency"]) %}
-					</td>
-			</tr>
-				<td>{%= __("PDC/LC") %}</td>
-				<td></td>
-				<td></td>
-				<td></td>
-				<td></td>
-				<td class="text-right text-nowrap">
-					{%= format_currency(flt(balance_row[("pdc/lc_amount")]), data[data.length-1]["currency"]) %}
 				</td>
-			<tr class="cvs-footer">
-				<th class="text-left">{%= __("Cheques Required") %}</th>
-				<th></th>
-				<th></th>
-				<th></th>
-				<th></th>
-				<th class="text-right text-nowrap">
-					{%= format_currency(flt(balance_row[("outstanding_amount")]-balance_row[("pdc/lc_amount")]), data[data.length-1]["currency"]) %}</th>
 			</tr>
 		</tbody>
 

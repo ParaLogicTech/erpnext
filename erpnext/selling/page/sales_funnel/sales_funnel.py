@@ -24,9 +24,8 @@ def get_funnel_data(from_date, to_date, company):
 
 	active_leads = frappe.db.sql(
 		"""select count(*) from `tabLead`
-		where (date(`creation`) between %s and %s)
-		and company=%s""",
-		(from_date, to_date, company),
+		where (date(`creation`) between %s and %s)""",
+		(from_date, to_date),
 	)[0][0]
 
 	opportunities = frappe.db.sql(
@@ -45,10 +44,9 @@ def get_funnel_data(from_date, to_date, company):
 
 	converted = frappe.db.sql(
 		"""select count(*) from `tabCustomer`
-		JOIN `tabLead` ON `tabLead`.name = `tabCustomer`.lead_name
-		WHERE (date(`tabCustomer`.creation) between %s and %s)
-		and `tabLead`.company=%s""",
-		(from_date, to_date, company),
+		JOIN `tabLead` ON `tabLead`.customer = `tabCustomer`.name
+		WHERE (date(`tabCustomer`.creation) between %s and %s)""",
+		(from_date, to_date),
 	)[0][0]
 
 	return [
@@ -70,7 +68,7 @@ def get_opp_by_lead_source(from_date, to_date, company):
 			["company", "=", company],
 			["transaction_date", "Between", [from_date, to_date]],
 		],
-		fields=["currency", "sales_stage", "opportunity_amount", "probability", "source"],
+		fields=["currency", "sales_stage", "opportunity_amount", "source"],
 	)
 
 	if opportunities:
@@ -82,8 +80,6 @@ def get_opp_by_lead_source(from_date, to_date, company):
 				**{
 					"compound_amount": (
 						convert(x["opportunity_amount"], x["currency"], default_currency, to_date)
-						* x["probability"]
-						/ 100
 					)
 				}
 			)
@@ -122,7 +118,7 @@ def get_pipeline_data(from_date, to_date, company):
 			["company", "=", company],
 			["transaction_date", "Between", [from_date, to_date]],
 		],
-		fields=["currency", "sales_stage", "opportunity_amount", "probability"],
+		fields=["currency", "sales_stage", "opportunity_amount"],
 	)
 
 	if opportunities:
@@ -134,8 +130,6 @@ def get_pipeline_data(from_date, to_date, company):
 				**{
 					"compound_amount": (
 						convert(x["opportunity_amount"], x["currency"], default_currency, to_date)
-						* x["probability"]
-						/ 100
 					)
 				}
 			)

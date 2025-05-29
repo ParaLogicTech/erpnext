@@ -153,8 +153,7 @@ class PurchaseInvoice(BuyingController):
 
 		self.update_project_purchase_status(procurement_status=False)
 
-		if not self.is_return:
-			unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
+		unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
 
 	def on_gl_against_voucher(self, account, party_type, party, on_cancel):
 		if not party_type or not party:
