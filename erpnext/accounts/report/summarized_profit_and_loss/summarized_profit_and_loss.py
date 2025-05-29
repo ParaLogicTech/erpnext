@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import flt, getdate
 from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
 from erpnext.accounts.doctype.budget.budget import get_accumulated_monthly_budget
 from datetime import timedelta
@@ -53,12 +53,13 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				group = account_totals.setdefault(d.account, template.copy())
 				group["ytd_prev_year"] += d.credit - d.debit
 
-		# Budget Data
-		budget_data = self.get_budget_data(
-			all_accounts,
-			self.filters.get('fiscal_year') or self.filters.report_date.year
+		# Fetch budgets for all fiscal years overlapping the calendar YTD
+		budget_data = self.get_budget_data(all_accounts, self.filters.year_start_date, self.filters.report_date)
+		budget_totals = self.calculate_budget_totals(
+			budget_data,
+			self.filters.month_start_date, self.filters.report_date,
+			self.filters.year_start_date, self.filters.report_date
 		)
-		budget_totals = self.calculate_budget_totals(budget_data)
 
 		for account, budget in budget_totals.items():
 			group = account_totals.setdefault(account, template.copy())
@@ -67,72 +68,104 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 
 		return account_totals
 
-	def get_budget_data(self, accounts, fiscal_year):
-		"""Fetch raw budget records for all accounts in bulk for the fiscal year"""
+	def get_fiscal_years_for_period(self, start_date, end_date):
+		fiscal_years = frappe.db.sql(
+			"""
+			SELECT name, year_start_date, year_end_date
+			FROM `tabFiscal Year`
+			WHERE year_end_date >= %(start_date)s
+				AND year_start_date <= %(end_date)s
+			ORDER BY year_start_date
+			""",
+			{"start_date": start_date, "end_date": end_date},
+			as_dict=True
+		)
+		return fiscal_years
 
+	def get_budget_data(self, accounts, from_date, to_date):
+		"""Fetch raw budget records for all accounts in bulk for all fiscal years overlapping the date range."""
 		if not accounts:
 			return []
 
 		accounts = list(accounts)
 
+		fiscal_years = self.get_fiscal_years_for_period(from_date, to_date)
 		dimension_conditions, dimension_args = self.get_dimension_conditions()
+		
+		# Check if any dimension filter is applied
+		dimension_filter_applied = bool(dimension_conditions.strip())
+		all_budget_records = []
+		extra_condition = ""
 
-		args = {
-			"accounts": accounts,
-			"company": self.filters.get('company'),
-			"fiscal_year": fiscal_year,
-			**dimension_args,
-		}
-		return frappe.db.sql(f"""
-			SELECT ba.account, ba.budget_amount, b.monthly_distribution
-			FROM `tabBudget Account` ba
-			INNER JOIN `tabBudget` b ON ba.parent = b.name
-			WHERE ba.account IN %(accounts)s
-				AND b.company = %(company)s
-				AND b.fiscal_year = %(fiscal_year)s
-				AND b.docstatus = 1
-				{dimension_conditions}
-		""", args, as_dict=1)
 
-	def calculate_budget_totals(self, budget_records):
-		"""Calculate MTD and YTD budget for each account from raw budget records"""
+		for fy in fiscal_years:
+			args = {
+				"accounts": accounts,
+				"fiscal_year": fy['name'],
+				**dimension_args,
+			}
 
+			if not dimension_filter_applied:
+				extra_condition = " AND b.budget_against = 'Cost Center'"
+
+			records = frappe.db.sql(f"""
+				SELECT ba.account, ba.budget_amount,b.budget_against, b.monthly_distribution, b.fiscal_year,
+					   %(fy_start)s as fy_start, %(fy_end)s as fy_end
+				FROM `tabBudget Account` ba
+				INNER JOIN `tabBudget` b ON ba.parent = b.name
+				WHERE ba.account IN %(accounts)s
+					AND b.fiscal_year = %(fiscal_year)s
+					AND b.docstatus = 1
+					{dimension_conditions}
+					{extra_condition}
+			""", {**args, "fy_start": fy['year_start_date'], "fy_end": fy['year_end_date']}, as_dict=1)
+			all_budget_records.extend(records)
+
+
+		return all_budget_records
+
+
+	def calculate_budget_totals(self, budget_records, mtd_start, mtd_end, ytd_start, ytd_end):
+		"""Calculate MTD and YTD budget for each account from raw budget records, supporting multi-fiscal-year."""
 		budget_data = {}
-
-		fy_start, fy_end = frappe.db.get_value('Fiscal Year', self.filters.report_date.year, ['year_start_date', 'year_end_date'])
-
 		for row in budget_records:
 			account = row.account
 			budget = row.budget_amount or 0
 			monthly_distribution = row.monthly_distribution
 
-			# MTD Budget
-			if monthly_distribution:
-				if self.filters.month_start_date > fy_start:
-					mtd_budget = (
-						get_accumulated_monthly_budget(monthly_distribution, self.filters.report_date, self.filters.report_date.year, budget)
-						- get_accumulated_monthly_budget(monthly_distribution, self.filters.month_start_date - timedelta(days=1), self.filters.report_date.year, budget)
-					)
-				else:
-					mtd_budget = get_accumulated_monthly_budget(monthly_distribution, self.filters.report_date, self.filters.report_date.year, budget)
-			else:
-				days_in_period = (self.filters.report_date - self.filters.month_start_date).days + 1
-				days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
-				mtd_budget = (budget * days_in_period / days_in_year)
+			fy_start = getdate(row.fy_start)
+			fy_end = getdate(row.fy_end)
 
-			# YTD Budget
-			if monthly_distribution:
-				if self.filters.year_start_date > fy_start:
-					ytd_budget = (
-						get_accumulated_monthly_budget(monthly_distribution, self.filters.report_date, self.filters.report_date.year, budget)
-						- get_accumulated_monthly_budget(monthly_distribution, self.filters.year_start_date - timedelta(days=1), self.filters.report_date.year, budget)
+			# MTD overlap
+			mtd_overlap_start = max(mtd_start, fy_start)
+			mtd_overlap_end = min(mtd_end, fy_end)
+
+			mtd_days = (mtd_overlap_end - mtd_overlap_start).days + 1 if mtd_overlap_end >= mtd_overlap_start else 0
+			fy_days = (fy_end - fy_start).days + 1 if fy_end and fy_start else 365
+			mtd_budget = 0
+			if mtd_days > 0:
+				if monthly_distribution:
+					mtd_budget = (
+						get_accumulated_monthly_budget(monthly_distribution, mtd_overlap_end, row.fiscal_year, budget)
+						- get_accumulated_monthly_budget(monthly_distribution, mtd_overlap_start - timedelta(days=1), row.fiscal_year, budget)
 					)
 				else:
-					ytd_budget = get_accumulated_monthly_budget(monthly_distribution, self.filters.report_date, self.filters.report_date.year, budget)
-			else:
-				days_in_period = (self.filters.report_date - self.filters.year_start_date).days + 1
-				days_in_year = (fy_end - fy_start).days + 1 if fy_start and fy_end else 365
-				ytd_budget = (budget * days_in_period / days_in_year)
+					mtd_budget = (budget * mtd_days / fy_days)
+
+			# YTD overlap
+			ytd_overlap_start = max(ytd_start, fy_start)
+			ytd_overlap_end = min(ytd_end, fy_end)
+
+			ytd_days = (ytd_overlap_end - ytd_overlap_start).days + 1 if ytd_overlap_end >= ytd_overlap_start else 0
+			ytd_budget = 0
+			if ytd_days > 0:
+				if monthly_distribution:
+					ytd_budget = (
+						get_accumulated_monthly_budget(monthly_distribution, ytd_overlap_end, row.fiscal_year, budget)
+						- get_accumulated_monthly_budget(monthly_distribution, ytd_overlap_start - timedelta(days=1), row.fiscal_year, budget)
+					)
+				else:
+					ytd_budget = (budget * ytd_days / fy_days)
 
 			entry = budget_data.setdefault(account, {"mtd_budget": 0, "ytd_budget": 0})
 			entry["mtd_budget"] += mtd_budget
