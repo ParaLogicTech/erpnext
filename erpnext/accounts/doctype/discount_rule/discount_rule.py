@@ -205,7 +205,7 @@ def get_discount_rule_values_dict(applicable_rules, filter_sort=None):
 			if fieldname == "discount_rule_name":
 				continue
 
-			if value and fieldname not in filter_fields and rule_meta.has_field(fieldname):
+			if value is not None and fieldname not in filter_fields and rule_meta.has_field(fieldname):
 				if fieldname not in values:
 					values[fieldname] = value
 
