@@ -1484,8 +1484,16 @@ frappe.ui.form.on('Sales Invoice Item', {
 										r.message.forEach(function(bundle_item) {
 											let packed_item = frappe.model.add_child(frm.doc, 'Packed Item', 'packed_items');
 											packed_item.parent_detail_docname = d.name;
-											packed_item.item_code = bundle_item.item_code;
-											packed_item.qty = flt(bundle_item.qty) * flt(d.qty);
+											packed_item.parent_item = d.item_code;
+											if (bundle_item.type === 'Item') {
+												packed_item.item_code = bundle_item.item_code;
+												packed_item.qty = flt(bundle_item.qty) * flt(d.qty);
+												packed_item.uom = bundle_item.uom;
+											} else if (bundle_item.type === 'Item Group') {
+												packed_item.type = 'Item Group';
+												packed_item.item_group = bundle_item.item_group;
+												packed_item.qty = flt(bundle_item.qty) * flt(d.qty);
+											}
 											packed_item.description = bundle_item.description;
 											packed_item.rate = 0.0;
 											packed_item.uom = bundle_item.uom;

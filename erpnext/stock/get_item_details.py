@@ -1550,10 +1550,26 @@ def get_blanket_order_details(args):
 	return blanket_order_details
 
 
-def get_skip_delivery_note(item, delivered_by_supplier=False):
+def get_skip_delivery_note(item, doc=None, delivered_by_supplier=False):
 	if delivered_by_supplier:
 		return 1
-	elif not item.is_fixed_asset and not item.is_stock_item and not item_is_product_bundle_with_stock_item(item.name):
+	elif not item.is_fixed_asset and not item.is_stock_item:
+		# For product bundles, check if any packed item is a stock item
+		if item_has_product_bundle(item.name):
+			# Get the sales order document from args
+			if doc:
+				try:
+					sales_order = doc
+					# Get packed items for this item
+					packed_items = [d for d in sales_order.get("packed_items") if d.parent_item == item.name]
+
+					# If there are any packed items, check if any of them are stock items
+					if packed_items:
+						for packed_item in packed_items:
+							if frappe.get_cached_value("Item", packed_item.item_code, "is_stock_item"):
+								return 0
+				except:
+					pass
 		return 1
 	else:
 		return 0

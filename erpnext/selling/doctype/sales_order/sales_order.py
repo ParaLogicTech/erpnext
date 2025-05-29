@@ -66,6 +66,8 @@ class SalesOrder(SellingController):
 		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
 		make_packing_list(self)
 
+		# validate_packed_items_for_bundles(self)
+
 		self.validate_with_previous_doc()
 		self.set_advance_paid_amount()
 		self.set_delivery_status()
@@ -154,7 +156,7 @@ class SalesOrder(SellingController):
 	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
 		if row.item_code:
 			item = frappe.get_cached_doc("Item", row.item_code)
-			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier))
+			row.skip_delivery_note = get_skip_delivery_note(item, doc=self, delivered_by_supplier=cint(row.delivered_by_supplier))
 			if not row.skip_delivery_note:
 				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
 				if hooked_skip_delivery_note is not None:
@@ -1438,6 +1440,16 @@ def make_sales_invoice(source_name, target_doc=None, ignore_permissions=False,
 
 		if target.get("allocate_advances_automatically"):
 			target.set_advances()
+
+		# # Map packed items from sales order
+		if source.packed_items:
+			for packed_item in source.packed_items:
+				if packed_item.parent_detail_docname in [d.name for d in target.items]:
+					new_packed_item = frappe.copy_doc(packed_item)
+					new_packed_item.parent = target.name
+					new_packed_item.parenttype = target.doctype
+					new_packed_item.parentfield = "packed_items"
+					target.append("packed_items", new_packed_item)
 
 	mapping = {
 		"Sales Order": {

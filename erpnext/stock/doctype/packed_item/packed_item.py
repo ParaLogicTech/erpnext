@@ -8,6 +8,7 @@ from frappe.utils import cstr, flt
 from erpnext.stock.get_item_details import get_item_details, get_default_warehouse
 from frappe.model.document import Document
 import json
+from frappe import _
 
 
 class PackedItem(Document):
@@ -102,7 +103,7 @@ def make_packing_list(doc):
 
 	manual_items = []
 	for ep in existing_packed_items:
-		key = (ep.parent_item, ep.parent_detail_docname, ep.item_code if ep.type == "Item" else ep.item_group)
+		key = (ep.parent_item, ep.item_code if ep.type == "Item" else ep.item_group)
 		if key not in bundle_keys:
 			manual_items.append(ep)
 
@@ -141,14 +142,13 @@ def make_packing_list(doc):
 					# Check if this item group already exists
 					existing_group = None
 					for ep in existing_packed_items:
-						if (ep.parent_item == d.item_code and 
-							ep.parent_detail_docname == d.name and 
+						if (ep.parent_item == d.item_code and
 							ep.item_group == i.item_group):
 							existing_group = ep
 							break
 					
 					if existing_group:
-						# Use existing group
+						# Use existing group and its selected items
 						doc.append('packed_items', existing_group)
 					elif is_first_creation:
 						# Only create empty row on first creation
@@ -165,16 +165,14 @@ def make_packing_list(doc):
 					processed_items.add((d.item_code, d.name, i.item_group))
 
 	# Add back any existing packed items (manual or bundle) that are not already present
-	current_keys = set()
-	for ep in doc.get("packed_items"):
-		key = (ep.parent_item, ep.parent_detail_docname, ep.item_code if ep.type == "Item" else ep.item_group)
-		current_keys.add(key)
-
 	for ep in existing_packed_items:
 		key = (ep.parent_item, ep.parent_detail_docname, ep.item_code if ep.type == "Item" else ep.item_group)
-		if key not in current_keys:
+		if key not in processed_items:
 			doc.append('packed_items', ep)
-			current_keys.add(key)
+
+	# Add back manual items
+	for mi in manual_items:
+		doc.append('packed_items', mi)
 
 	cleanup_packing_list(doc, parent_items)
 
@@ -254,11 +252,15 @@ def validate_packed_items_for_bundles(doc):
 	for item in doc.get("items"):
 		if frappe.db.exists('Product Bundle', item.item_code):
 			# Get packed items for this bundle
-			packed_items = [d for d in doc.get("packed_items") if d.parent_detail_docname == item.name]
+			packed_items = [d for d in doc.get("packed_items") if d.parent_item == item.item_code]
 			if not packed_items:
-				frappe.throw(_("Row #{0}: Product Bundle {1} has no packed items").format(
-					item.idx, item.item_code
-				))
+				# Try to auto-generate the packing list if missing
+				make_packing_list(doc)
+				packed_items = [d for d in doc.get("packed_items") if d.parent_detail_docname == item.name]
+				if not packed_items:
+					frappe.throw(_("Row #{0}: Product Bundle {1} has no packed items").format(
+						item.idx, item.item_code
+					))
 
 			# Get product bundle details
 			bundle = frappe.get_doc('Product Bundle', item.item_code)
@@ -311,7 +313,7 @@ def validate_packed_items_for_bundles(doc):
 			for req_group, req_data in required_items.items():
 				if req_data['type'] == 'Item Group':
 					total_qty = sum(flt(item['qty']) for item in req_data['selected_items'])
-					if abs(total_qty - req_data['qty']) > 0.0001:
+					if abs(total_qty - req_data['qty']) >= 0.0001:
 						frappe.throw(_("Row #{0}: Total quantity of items from group {1} ({2}) does not match required quantity ({3})").format(
 							item.idx, req_group, total_qty, req_data['qty']
 						))

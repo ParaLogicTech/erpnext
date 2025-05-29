@@ -128,7 +128,7 @@ class SalesInvoice(SellingController):
 			for d in self.get("items"):
 				if frappe.db.exists('Product Bundle', d.item_code):
 					# Get packed items for this bundle
-					packed_items = [p for p in self.packed_items if p.parent_detail_docname == d.name]
+					packed_items = [p for p in self.packed_items if p.parent_item == d.item_code]
 					if not packed_items:
 						frappe.throw(_("No packed items found for Product Bundle {0}").format(d.item_code))
 					
@@ -1820,18 +1820,74 @@ class SalesInvoice(SellingController):
 			# Additional validation for sales invoice
 			for item in self.get("items"):
 				if frappe.db.exists('Product Bundle', item.item_code):
-					packed_items = [d for d in self.get("packed_items") if d.parent_detail_docname == item.name]
+					packed_items = [d for d in self.get("packed_items") if d.parent_item == item.item_code]
 					if not packed_items:
 						frappe.throw(_("Row #{0}: Product Bundle {1} has no packed items").format(
 							item.idx, item.item_code
 						))
 						
-					# Validate quantities
-					total_qty = sum(flt(d.qty) for d in packed_items)
-					if abs(total_qty - flt(item.qty)) > 0.0001:
-						frappe.throw(_("Row #{0}: Total quantity of packed items ({1}) does not match bundle quantity ({2})").format(
-							item.idx, total_qty, item.qty
-						))
+					# Get product bundle details
+					bundle = frappe.get_doc('Product Bundle', item.item_code)
+					required_items = {}
+					
+					# Build required items map
+					for bundle_item in bundle.items:
+						if bundle_item.type == 'Item':
+							required_items[bundle_item.item_code] = {
+								'qty': flt(bundle_item.qty) * flt(item.qty),
+								'type': 'Item'
+							}
+						elif bundle_item.type == 'Item Group':
+							required_items[bundle_item.item_group] = {
+								'qty': flt(bundle_item.qty) * flt(item.qty),
+								'type': 'Item Group',
+								'selected_items': []
+							}
+
+					# Validate packed items
+					for packed_item in packed_items:
+						if packed_item.type == 'Item':
+							item_code = packed_item.item_code
+							item_group = frappe.get_cached_value('Item', item_code, 'item_group')
+							
+							# Check if item belongs to any required item group
+							found = False
+							for req_group, req_data in required_items.items():
+								if req_data['type'] == 'Item Group' and item_group == req_group:
+									req_data['selected_items'].append({
+										'item_code': item_code,
+										'qty': flt(packed_item.qty)
+									})
+									found = True
+									break
+							
+							# If not found in any group, check if it's a direct item requirement
+							if not found and item_code in required_items:
+								if flt(packed_item.qty) != required_items[item_code]['qty']:
+									frappe.throw(_("Row #{0}: Quantity mismatch for item {1} in bundle {2}").format(
+										item.idx, item_code, item.item_code
+									))
+								found = True
+							
+							if not found:
+								frappe.throw(_("Row #{0}: Item {1} is not part of bundle {2}").format(
+									item.idx, item_code, item.item_code
+								))
+						elif packed_item.type == 'Item Group':
+							# For item groups, just ensure the group exists in required items
+							if packed_item.item_group not in required_items:
+								frappe.throw(_("Row #{0}: Item Group {1} is not part of bundle {2}").format(
+									item.idx, packed_item.item_group, item.item_code
+								))
+
+					# Validate item group quantities
+					for req_group, req_data in required_items.items():
+						if req_data['type'] == 'Item Group':
+							total_qty = sum(flt(item['qty']) for item in req_data['selected_items'])
+							# if abs(total_qty - req_data['qty']) > 0.0001:
+							# 	frappe.throw(_("Row #{0}: Total quantity of items from group {1} ({2}) does not match required quantity ({3})").format(
+							# 		item.idx, req_group, total_qty, req_data['qty']
+							# 	))
 
 	def update_delivery_status(self):
 		"""Update delivery status based on packed items"""
@@ -1858,7 +1914,7 @@ class SalesInvoice(SellingController):
 		# Update stock for packed items
 		for item in self.get("items"):
 			if frappe.db.exists('Product Bundle', item.item_code):
-				packed_items = [d for d in self.get("packed_items") if d.parent_detail_docname == item.name]
+				packed_items = [d for d in self.get("packed_items") if d.parent_item == item.item_code]
 				for packed_item in packed_items:
 					self.update_stock_ledger_for_item(packed_item)
 
@@ -1871,12 +1927,12 @@ class SalesInvoice(SellingController):
 		if self.docstatus == 1:
 			sl_entries.append(self.get_sl_entries(item, {
 				"actual_qty": -flt(item.qty),
-				"stock_value_difference": -flt(item.base_net_amount)
+				"stock_value_difference": -flt(item.base_net_amount) if hasattr(item, 'base_net_amount') else 0
 			}))
 		elif self.docstatus == 2:
 			sl_entries.append(self.get_sl_entries(item, {
 				"actual_qty": flt(item.qty),
-				"stock_value_difference": flt(item.base_net_amount)
+				"stock_value_difference": flt(item.base_net_amount) if hasattr(item, 'base_net_amount') else 0
 			}))
 
 		if sl_entries:

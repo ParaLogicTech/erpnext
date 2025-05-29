@@ -51,7 +51,7 @@ class DeliveryNote(SellingController):
 		for d in self.get("items"):
 			if frappe.db.exists('Product Bundle', d.item_code):
 				# Get packed items for this bundle
-				packed_items = [p for p in self.packed_items if p.parent_detail_docname == d.name]
+				packed_items = [p for p in self.get("packed_items") if p.parent_item == d.name]
 				if not packed_items:
 					frappe.throw(_("No packed items found for Product Bundle {0}").format(d.item_code))
 				
@@ -664,6 +664,84 @@ class DeliveryNote(SellingController):
 				for d in self.get("items"):
 					if d.sales_order_item and d.sales_order_item in sales_order_items_indirectly_billed:
 						d.unbilled_stock_account = None
+
+	def validate_packed_items(self):
+		"""Validate that all product bundles have proper packed items"""
+		from erpnext.stock.doctype.packed_item.packed_item import validate_packed_items_for_bundles
+		
+		validate_packed_items_for_bundles(self)
+			
+		# Additional validation for delivery note
+		for item in self.get("items"):
+			if frappe.db.exists('Product Bundle', item.item_code):
+				packed_items = [d for d in self.get("packed_items") if d.parent_item == item.item_code]
+				if not packed_items:
+					frappe.throw(_("Row #{0}: Product Bundle {1} has no packed items").format(
+						item.idx, item.item_code
+					))
+					
+				# Get product bundle details
+				bundle = frappe.get_doc('Product Bundle', item.item_code)
+				required_items = {}
+				
+				# Build required items map
+				for bundle_item in bundle.items:
+					if bundle_item.type == 'Item':
+						required_items[bundle_item.item_code] = {
+							'qty': flt(bundle_item.qty) * flt(item.qty),
+							'type': 'Item'
+						}
+					elif bundle_item.type == 'Item Group':
+						required_items[bundle_item.item_group] = {
+							'qty': flt(bundle_item.qty) * flt(item.qty),
+							'type': 'Item Group',
+							'selected_items': []
+						}
+
+				# Validate packed items
+				for packed_item in packed_items:
+					if packed_item.type == 'Item':
+						item_code = packed_item.item_code
+						item_group = frappe.get_cached_value('Item', item_code, 'item_group')
+						
+						# Check if item belongs to any required item group
+						found = False
+						for req_group, req_data in required_items.items():
+							if req_data['type'] == 'Item Group' and item_group == req_group:
+								req_data['selected_items'].append({
+									'item_code': item_code,
+									'qty': flt(packed_item.qty)
+								})
+								found = True
+								break
+						
+						# If not found in any group, check if it's a direct item requirement
+						if not found and item_code in required_items:
+							if flt(packed_item.qty) != required_items[item_code]['qty']:
+								frappe.throw(_("Row #{0}: Quantity mismatch for item {1} in bundle {2}").format(
+									item.idx, item_code, item.item_code
+								))
+							found = True
+						
+						if not found:
+							frappe.throw(_("Row #{0}: Item {1} is not part of bundle {2}").format(
+								item.idx, item_code, item.item_code
+							))
+					elif packed_item.type == 'Item Group':
+						# For item groups, just ensure the group exists in required items
+						if packed_item.item_group not in required_items:
+							frappe.throw(_("Row #{0}: Item Group {1} is not part of bundle {2}").format(
+								item.idx, packed_item.item_group, item.item_code
+							))
+
+				# Validate item group quantities
+				for req_group, req_data in required_items.items():
+					if req_data['type'] == 'Item Group':
+						total_qty = sum(flt(item['qty']) for item in req_data['selected_items'])
+						if abs(total_qty - req_data['qty']) >= 0.0001:
+							frappe.throw(_("Row #{0}: Total quantity of items from group {1} ({2}) does not match required quantity ({3})").format(
+								item.idx, req_group, total_qty, req_data['qty']
+							))
 
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):
