@@ -392,3 +392,4 @@ erpnext.patches.v15_0.set_project_in_customer_feedback
 erpnext.patches.v15_0.copy_contact_in_customer_feedback_from_project
 erpnext.patches.v15_0.update_appointment_service_template
 erpnext.patches.v15_0.update_project_sales_and_procurement_status
+erpnext.patches.v15_0.update_project_additional_insurance_excess
