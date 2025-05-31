@@ -442,19 +442,10 @@ class SalesOrder(SellingController):
 
 			# For product bundles, check if all packed items are delivered
 			for d in self.items:
-				if frappe.db.exists('Product Bundle', d.item_code):
-					packed_items = [p for p in self.packed_items if p.parent_detail_docname == d.name]
-					if packed_items:
-						# Get delivered qty for each packed item
-						packed_item_delivered = True
-						for p in packed_items:
-							delivered_qty = out.delivered_qty_map.get(p.name, 0)
-							if delivered_qty < p.qty:
-								packed_item_delivered = False
-								break
-						# If all packed items are delivered, mark the bundle as delivered
-						if packed_item_delivered:
-							out.delivered_qty_map[d.name] = d.qty
+				if item_has_product_bundle(d.item_code):
+					packed_items = [p for p in self.get("packed_items") if p.parent_detail_docname == d.name]
+					if not packed_items:
+						frappe.throw(_("No packed items found for Product Bundle {0}").format(d.item_code))
 
 		return out
 
@@ -1078,8 +1069,6 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 
 		if warehouse:
 			target.set_warehouse = warehouse
-
-		target.run_method("postprocess_after_mapping")
 
 	mapper = {
 		"Sales Order": {

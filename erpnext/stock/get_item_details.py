@@ -177,7 +177,6 @@ def determine_selling_or_buying(args):
 
 @frappe.whitelist()
 def get_item_code(barcode=None, serial_no=None, vehicle=None):
-	frappe.msgprint("Dileep Balineni")
 	item_code = None
 	if barcode:
 		item_code = frappe.db.get_value("Item Barcode", {"barcode": barcode}, fieldname=["parent"])

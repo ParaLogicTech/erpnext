@@ -47,20 +47,6 @@ class DeliveryNote(SellingController):
 		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
 		make_packing_list(self)
 
-		# Validate product bundle items
-		for d in self.get("items"):
-			if frappe.db.exists('Product Bundle', d.item_code):
-				# Get packed items for this bundle
-				packed_items = [p for p in self.get("packed_items") if p.parent_item == d.name]
-				if not packed_items:
-					frappe.throw(_("No packed items found for Product Bundle {0}").format(d.item_code))
-				
-				# Validate quantities
-				total_packed_qty = sum(flt(p.qty) for p in packed_items)
-				if flt(total_packed_qty) != flt(d.qty):
-					frappe.throw(_("Total packed quantity ({0}) must equal bundle quantity ({1}) for {2}").format(
-						total_packed_qty, d.qty, d.item_code))
-
 		self.validate_with_previous_doc()
 		self.set_billing_status()
 		self.set_installation_status()
@@ -667,19 +653,14 @@ class DeliveryNote(SellingController):
 
 	def validate_packed_items(self):
 		"""Validate that all product bundles have proper packed items"""
-		from erpnext.stock.doctype.packed_item.packed_item import validate_packed_items_for_bundles
-		
-		validate_packed_items_for_bundles(self)
-			
-		# Additional validation for delivery note
 		for item in self.get("items"):
 			if frappe.db.exists('Product Bundle', item.item_code):
-				packed_items = [d for d in self.get("packed_items") if d.parent_item == item.item_code]
-				if not packed_items:
-					frappe.throw(_("Row #{0}: Product Bundle {1} has no packed items").format(
-						item.idx, item.item_code
-					))
-					
+				packed_items = [d for d in self.get("packed_items") if d.parent_detail_docname == item.name]
+				# if not packed_items:
+				# 	frappe.throw(_("Row #{0}: Product Bundle {1} has no packed items").format(
+				# 		item.idx, item.item_code
+				# 	))
+
 				# Get product bundle details
 				bundle = frappe.get_doc('Product Bundle', item.item_code)
 				required_items = {}
@@ -735,13 +716,13 @@ class DeliveryNote(SellingController):
 							))
 
 				# Validate item group quantities
-				for req_group, req_data in required_items.items():
-					if req_data['type'] == 'Item Group':
-						total_qty = sum(flt(item['qty']) for item in req_data['selected_items'])
-						if abs(total_qty - req_data['qty']) >= 0.0001:
-							frappe.throw(_("Row #{0}: Total quantity of items from group {1} ({2}) does not match required quantity ({3})").format(
-								item.idx, req_group, total_qty, req_data['qty']
-							))
+				# for req_group, req_data in required_items.items():
+				# 	if req_data['type'] == 'Item Group':
+				# 		total_qty = sum(flt(item['qty']) for item in req_data['selected_items'])
+				# 		if abs(total_qty - req_data['qty']) >= 0.0001:
+				# 			frappe.throw(_("Row #{0}: Total quantity of items from group {1} ({2}) does not match required quantity ({3})").format(
+				# 				item.idx, req_group, total_qty, req_data['qty']
+				# 			))
 
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):

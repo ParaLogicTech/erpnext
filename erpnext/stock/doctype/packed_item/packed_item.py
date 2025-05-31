@@ -90,68 +90,59 @@ def make_packing_list(doc):
 	existing_packed_items = doc.get("packed_items", [])
 	is_first_creation = len(existing_packed_items) == 0
 
-	# Identify manual items (not matching any bundle logic)
-	bundle_keys = set()
+	# Create a more comprehensive tracking system
+	processed_items = {}  # Use dict instead of set for better tracking
+	manual_items = []
+
+	# Store parent items first
 	for d in doc.get("items"):
 		if frappe.db.get_value("Product Bundle", {"new_item_code": d.item_code}):
-			bundle_items = get_product_bundle_items(d.item_code)
-			for i in bundle_items:
-				if i.type == "Item":
-					bundle_keys.add((d.item_code, d.name, i.item_code))
-				if i.type == "Item Group":
-					bundle_keys.add((d.item_code, d.name, i.item_group))
-
-	manual_items = []
-	for ep in existing_packed_items:
-		key = (ep.parent_item, ep.item_code if ep.type == "Item" else ep.item_group)
-		if key not in bundle_keys:
-			manual_items.append(ep)
+			parent_items.append([d.item_code, d.name])
 
 	# Clear only the items that need to be updated
 	doc.set("packed_items", [])
-	
-	# Track which items we've processed
-	processed_items = set()
 
 	for d in doc.get("items"):
 		if frappe.db.get_value("Product Bundle", {"new_item_code": d.item_code}):
 			bundle_items = get_product_bundle_items(d.item_code)
 			for i in bundle_items:
+				key = (d.item_code, d.name, i.item_code if i.type == "Item" else i.item_group)
+				
+				# Check if this item was already processed
+				if key in processed_items:
+					continue
+
 				if i.type == "Item":
-					# Check if this item already exists in packed items
-					existing_item = None
-					for ep in existing_packed_items:
-						if (ep.parent_item == d.item_code and 
-							ep.item_code == i.item_code and 
-							ep.parent_detail_docname == d.name):
-							existing_item = ep
-							break
+					# Always look for existing item first
+					existing_item = next((ep for ep in existing_packed_items 
+						if ep.parent_item == d.item_code 
+						and ep.item_code == i.item_code 
+						and ep.parent_detail_docname == d.name), None)
 					
 					if existing_item:
-						# Use existing item
+						# Update existing item
 						doc.append('packed_items', existing_item)
 					elif is_first_creation:
 						# Only create new item on first creation
-						update_packing_list_item(doc, i.item_code, flt(i.qty)*flt(d.stock_qty), d, i.description)
+						update_packing_list_item(doc, i.item_code, 
+							flt(i.qty)*flt(d.stock_qty), d, i.description)
 					
-					if [d.item_code, d.name] not in parent_items:
-						parent_items.append([d.item_code, d.name])
-					processed_items.add((d.item_code, d.name, i.item_code))
+					processed_items[key] = True
 				
-				if i.type == "Item Group":
-					# Check if this item group already exists
-					existing_group = None
-					for ep in existing_packed_items:
-						if (ep.parent_item == d.item_code and
-							ep.item_group == i.item_group):
-							existing_group = ep
-							break
+				elif i.type == "Item Group":
+					# For item groups, we need to handle differently
+					# First check if we have any existing items for this group
+					existing_group_items = [ep for ep in existing_packed_items 
+						if ep.parent_item == d.item_code 
+						and ep.parent_detail_docname == d.name
+						and ep.item_group == i.item_group]
 					
-					if existing_group:
-						# Use existing group and its selected items
-						doc.append('packed_items', existing_group)
+					if existing_group_items:
+						# If we have existing items, use them
+						for existing_item in existing_group_items:
+							doc.append('packed_items', existing_item)
 					elif is_first_creation:
-						# Only create empty row on first creation
+						# On first creation, create an empty row for item selection
 						pi = doc.append('packed_items', {})
 						pi.parent_item = d.item_code
 						pi.parent_detail_docname = d.name
@@ -159,20 +150,16 @@ def make_packing_list(doc):
 						pi.qty = flt(i.qty)*flt(d.stock_qty)
 						pi.description = i.description
 						pi.type = "Item Group"
+						# Don't set item_code - let user select it
 					
-					if [d.item_code, d.name] not in parent_items:
-						parent_items.append([d.item_code, d.name])
-					processed_items.add((d.item_code, d.name, i.item_group))
+					processed_items[key] = True
 
-	# Add back any existing packed items (manual or bundle) that are not already present
+	# Add back manual items and any existing items that weren't processed
 	for ep in existing_packed_items:
-		key = (ep.parent_item, ep.parent_detail_docname, ep.item_code if ep.type == "Item" else ep.item_group)
+		key = (ep.parent_item, ep.parent_detail_docname, 
+			   ep.item_code if ep.type == "Item" else ep.item_group)
 		if key not in processed_items:
 			doc.append('packed_items', ep)
-
-	# Add back manual items
-	for mi in manual_items:
-		doc.append('packed_items', mi)
 
 	cleanup_packing_list(doc, parent_items)
 
@@ -181,8 +168,11 @@ def cleanup_packing_list(doc, parent_items):
 	"""Remove all those child items which are no longer present in main item table"""
 	delete_list = []
 	for d in doc.get("packed_items"):
+		# Only consider for deletion if parent_detail_docname is set
+		if not d.parent_detail_docname:
+			# Optionally log a warning here
+			continue
 		if [d.parent_item, d.parent_detail_docname] not in parent_items:
-			# mark for deletion from doclist
 			delete_list.append(d)
 
 	if not delete_list:
@@ -242,7 +232,23 @@ def update_packing_list_item_from_selection(doc, selected_items):
 			'target_warehouse': doc.get('target_warehouse')
 		})
 
-	update_packing_list_item(doc, item.get('item_code'), item.get('qty'), main_item_row, item.get('description'))
+		# Look for existing item with same parent and item_group
+		existing_item = next((ep for ep in existing_packed_items 
+			if ep.parent_item == item.get('parent_item')
+			and ep.parent_detail_docname == item.get('parent_detail_docname')
+			and ep.item_group == item.get('item_group')), None)
+
+		if existing_item:
+			# Update existing item
+			existing_item.item_code = item.get('item_code')
+			existing_item.item_name = item.get('item_name')
+			existing_item.qty = flt(item.get('qty'))
+			if item.get('description'):
+				existing_item.description = item.get('description')
+			doc.append('packed_items', existing_item)
+		else:
+			# Create new item if not found
+			update_packing_list_item(doc, item.get('item_code'), item.get('qty'), main_item_row, item.get('description'))
 
 	return doc
 
@@ -252,7 +258,7 @@ def validate_packed_items_for_bundles(doc):
 	for item in doc.get("items"):
 		if frappe.db.exists('Product Bundle', item.item_code):
 			# Get packed items for this bundle
-			packed_items = [d for d in doc.get("packed_items") if d.parent_item == item.item_code]
+			packed_items = [d for d in doc.get("packed_items") if d.parent_detail_docname == item.name]
 			if not packed_items:
 				# Try to auto-generate the packing list if missing
 				make_packing_list(doc)
@@ -282,38 +288,45 @@ def validate_packed_items_for_bundles(doc):
 
 			# Validate packed items
 			for packed_item in packed_items:
-				item_code = packed_item.item_code
-				item_group = frappe.get_cached_value('Item', item_code, 'item_group')
-				
-				# Check if item belongs to any required item group
-				found = False
-				for req_group, req_data in required_items.items():
-					if req_data['type'] == 'Item Group' and item_group == req_group:
-						req_data['selected_items'].append({
-							'item_code': item_code,
-							'qty': flt(packed_item.qty)
-						})
+				if packed_item.type == 'Item':
+					item_code = packed_item.item_code
+					item_group = frappe.get_cached_value('Item', item_code, 'item_group')
+					
+					# Check if item belongs to any required item group
+					found = False
+					for req_group, req_data in required_items.items():
+						if req_data['type'] == 'Item Group' and item_group == req_group:
+							req_data['selected_items'].append({
+								'item_code': item_code,
+								'qty': flt(packed_item.qty)
+							})
+							found = True
+							break
+					
+					# If not found in any group, check if it's a direct item requirement
+					if not found and item_code in required_items:
+						if flt(packed_item.qty) != required_items[item_code]['qty']:
+							frappe.throw(_("Row #{0}: Quantity mismatch for item {1} in bundle {2}").format(
+								item.idx, item_code, item.item_code
+							))
 						found = True
-						break
-				
-				# If not found in any group, check if it's a direct item requirement
-				if not found and item_code in required_items:
-					if flt(packed_item.qty) != required_items[item_code]['qty']:
-						frappe.throw(_("Row #{0}: Quantity mismatch for item {1} in bundle {2}").format(
+					
+					if not found:
+						frappe.throw(_("Row #{0}: Item {1} is not part of bundle {2}").format(
 							item.idx, item_code, item.item_code
 						))
-					found = True
-				
-				if not found:
-					frappe.throw(_("Row #{0}: Item {1} is not part of bundle {2}").format(
-						item.idx, item_code, item.item_code
-					))
+				elif packed_item.type == 'Item Group':
+					# For item groups, just ensure the group exists in required items
+					if packed_item.item_group not in required_items:
+						frappe.throw(_("Row #{0}: Item Group {1} is not part of bundle {2}").format(
+							item.idx, packed_item.item_group, item.item_code
+						))
 
 			# Validate item group quantities
 			for req_group, req_data in required_items.items():
 				if req_data['type'] == 'Item Group':
 					total_qty = sum(flt(item['qty']) for item in req_data['selected_items'])
-					if abs(total_qty - req_data['qty']) >= 0.0001:
+					if abs(total_qty - req_data['qty']) > 0.0001:
 						frappe.throw(_("Row #{0}: Total quantity of items from group {1} ({2}) does not match required quantity ({3})").format(
 							item.idx, req_group, total_qty, req_data['qty']
 						))
