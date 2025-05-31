@@ -176,7 +176,7 @@ class SalesInvoice(SellingController):
 
 		self.update_serial_no()
 
-		self.update_project_billing_and_sales(material_cost_of_sales=True)
+		self.update_project_billing_and_sales(material_cost_of_sales=True, validate_insurance_excess=True)
 		self.update_time_sheet(self.name)
 
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
@@ -230,7 +230,7 @@ class SalesInvoice(SellingController):
 			against_si_doc.delete_loyalty_point_entry()
 			against_si_doc.make_loyalty_point_entry()
 
-		self.update_project_billing_and_sales(material_cost_of_sales=self.update_stock)
+		self.update_project_billing_and_sales(material_cost_of_sales=True)
 
 		unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
 
