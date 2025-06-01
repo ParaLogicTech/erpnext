@@ -210,6 +210,9 @@ class OpeningInvoiceCreationTool(Document):
 				args.transaction_type = row.transaction_type
 
 			args["is_pos"] = 0
+		elif self.invoice_type == "Purchase":
+			if row.bill_no:
+				args.bill_no = row.bill_no
 
 		return args
 
