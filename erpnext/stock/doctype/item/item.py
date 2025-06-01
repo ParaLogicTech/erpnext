@@ -760,6 +760,9 @@ def get_timeline_data(doctype, name):
 
 
 def validate_end_of_life(item_code, end_of_life=None, disabled=None, verbose=1):
+	if frappe.flags.ignore_item_disabled_check:
+		return
+
 	if (not end_of_life) or (disabled is None):
 		end_of_life, disabled = frappe.get_cached_value("Item", item_code, ["end_of_life", "disabled"])
 
