@@ -223,6 +223,41 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 			}
 		]
 
+	def get_net_profit_loss(self):
+		result = frappe._dict({f: 0 for f in self.total_fields})
+
+		accounts = frappe.get_all(
+			"Account",
+			filters={
+				"company": self.filters.company,
+				"report_type": self.get_report_type(),
+				"is_group": 0,
+			},
+			pluck="name"
+		)
+		if not accounts:
+			return result
+
+		periods = {
+			"mtd_actual": (self.filters.month_start_date, self.filters.report_date),
+			"mtd_prev_year": (self.filters.prev_year_month_start, self.filters.prev_year_date),
+			"ytd_actual": (self.filters.year_start_date, self.filters.report_date),
+			"ytd_prev_year": (self.filters.prev_year_start, self.filters.prev_year_date),
+		}
+		for key, (from_date, to_date) in periods.items():
+			result[key] = self.get_net_profit_loss_for_period(accounts, from_date, to_date)
+
+		return result
+
+	def get_net_profit_loss_for_period(self, accounts, from_date, to_date):
+		gl_data = self.get_gl_data(accounts, from_date=from_date, to_date=to_date, aggregate=True)
+
+		net = 0
+		for row in gl_data:
+			net += flt(row.get("credit")) - flt(row.get("debit"))
+
+		return net
+
 	@staticmethod
 	def get_report_type():
 		return "Profit and Loss"

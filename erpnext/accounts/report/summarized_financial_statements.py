@@ -214,6 +214,17 @@ class SummarizedFinancialReport:
 					reverse_sign=row.reverse_sign,
 				))
 
+			elif row.row_type == "Profit and Loss":
+				net_profit_loss = self.get_net_profit_loss()
+				data.append(self.get_row(
+					row.row_type,
+					row.section_name,
+					totals=net_profit_loss,
+					is_bold=True,
+					group_root_type=group_root_type,
+					reverse_sign=row.reverse_sign,
+				))
+
 		return data
 
 	def get_accounts_in_account_group(self, account_group):
@@ -274,6 +285,9 @@ class SummarizedFinancialReport:
 			section_totals["root_type"] = list(included_categories)[0]
 
 		return section_totals
+
+	def get_net_profit_loss(self):
+		return {f: 0 for f in self.total_fields}
 
 	def get_row(self, row_type, row_value, totals=None, is_bold=False, group_root_type=None, reverse_sign=False):
 		row = frappe._dict()
