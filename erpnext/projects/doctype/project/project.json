@@ -114,6 +114,7 @@
   "insurance_excess_amount",
   "column_break_cqrw",
   "insurance_excess_percentage",
+  "additional_insurance_excess_amount",
   "non_standard_depreciation_section",
   "non_standard_depreciation",
   "column_break_10xsn",
@@ -1762,13 +1763,21 @@
    "options": "Company:company:default_currency",
    "permlevel": 1,
    "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.insurance_company && doc.additional_insurance_excess_amount",
+   "fieldname": "additional_insurance_excess_amount",
+   "fieldtype": "Currency",
+   "label": "Additional Insurance Excess Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-05-12 14:40:15.177157",
+ "modified": "2025-05-29 23:44:50.517415",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

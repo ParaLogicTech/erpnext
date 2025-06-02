@@ -19,7 +19,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Row Type",
-   "options": "Account\nAccount Group\nSection Break\nSection Group",
+   "options": "Account\nAccount Group\nSection Break\nSection Group\nProfit and Loss",
    "reqd": 1
   },
   {

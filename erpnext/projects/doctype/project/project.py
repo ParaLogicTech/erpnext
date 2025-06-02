@@ -149,6 +149,12 @@ class Project(StatusUpdaterERP):
 		sales_data = self.get_project_sales_data(get_sales_invoice=False)
 		self.total_billable_amount = sales_data.totals.grand_total
 		self.customer_billable_amount = sales_data.totals.customer_grand_total
+
+		self.additional_insurance_excess_amount = flt(
+			sales_data.totals.net_total * flt(self.insurance_excess_percentage) / 100,
+			self.precision("additional_insurance_excess_amount")
+		)
+
 		self.total_billed_amount = self.get_billed_amount()
 
 		sales_orders = frappe.get_all(
@@ -180,6 +186,7 @@ class Project(StatusUpdaterERP):
 			self.db_set({
 				'total_billable_amount': self.total_billable_amount,
 				'customer_billable_amount': self.customer_billable_amount,
+				'additional_insurance_excess_amount': self.additional_insurance_excess_amount,
 				'total_billed_amount': self.total_billed_amount,
 				'billing_status': self.billing_status,
 				'to_bill': self.to_bill,
@@ -199,6 +206,12 @@ class Project(StatusUpdaterERP):
 				has_billables = True
 				if d.billing_status == "To Bill":
 					has_unbilled = True
+
+		if self.insurance_excess_amount or self.additional_insurance_excess_amount:
+			positive_excess, negative_excess = self.get_insurance_excess_billed()
+			precision = self.precision("insurance_excess_amount")
+			if negative_excess and negative_excess - positive_excess > 1 / 10 ** precision:
+				has_unbilled = True
 
 		if sales_invoices:
 			has_sales_invoice = True
@@ -852,7 +865,7 @@ class Project(StatusUpdaterERP):
 				or self.non_standard_underinsurance
 			)
 
-			has_excess_amount = self.insurance_excess_amount or self.insurance_excess_percentage
+			has_excess_amount = self.insurance_excess_amount or self.additional_insurance_excess_amount
 
 			if has_depreciation_rate or has_excess_amount:
 				allowed_customers.append(self.customer)
@@ -1262,6 +1275,49 @@ class Project(StatusUpdaterERP):
 					.format(d.idx, frappe.bold(d.underinsurance_item_code)))
 
 			item_codes_visited.add(d.underinsurance_item_code)
+
+	def validate_insurance_excess_billed_amount(self):
+		total_excess = flt(self.insurance_excess_amount) + flt(self.additional_insurance_excess_amount)
+		if not total_excess:
+			return
+
+		positive_excess, negative_excess = self.get_insurance_excess_billed()
+
+		precision = self.precision("insurance_excess_amount")
+
+		if (
+			positive_excess - total_excess > 1 / 10 ** precision
+			or negative_excess - total_excess > 1 / 10 ** precision
+		):
+			frappe.throw(_("Total Insurance Excess billed amount cannot be greater than {0}").format(
+				frappe.format(total_excess, df=self.meta.get_field("insurance_excess_amount"))
+			))
+
+	def get_insurance_excess_billed(self):
+		positive_excess = 0
+		negative_excess = 0
+
+		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
+		if not insurance_excess_item:
+			return positive_excess, negative_excess
+
+		invoice_data = frappe.db.sql("""
+			SELECT inv.bill_to, i.base_amount
+			FROM `tabSales Invoice Item` i
+			INNER JOIN `tabSales Invoice` inv ON i.parent = inv.name
+			WHERE inv.docstatus = 1
+				AND inv.project = %s
+				AND i.item_code = %s
+				AND (inv.is_return = 0 or inv.reopen_order = 1)
+		""", (self.name, insurance_excess_item), as_dict=1)
+
+		for d in invoice_data:
+			if d.base_amount < 0:
+				negative_excess -= d.base_amount
+			else:
+				positive_excess += d.base_amount
+
+		return positive_excess, negative_excess
 
 	def validate_warranty(self):
 		if self.get('warranty_claim_denied'):
@@ -2300,28 +2356,41 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 			insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
 			insurance_excess_item_name = frappe.get_cached_value("Item", insurance_excess_item, "item_name") or _("Insurance Excess")
 
-			if flt(project.insurance_excess_amount):
-				row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
-				row.item_code = insurance_excess_item
-				row.qty = 1
-				row.price_list_rate = 0
-				row.rate = flt(project.insurance_excess_amount)
-				if depreciation_type == "After Depreciation Amount":
-					row.rate *= -1
+			total_excess = flt(project.insurance_excess_amount) + flt(project.additional_insurance_excess_amount)
+			positive_excess, negative_excess = project.get_insurance_excess_billed()
+			billed_excess = negative_excess if depreciation_type == "After Depreciation Amount" else positive_excess
+			balance_excess = flt(total_excess - billed_excess, project.precision("insurance_excess_amount"))
 
-			if flt(project.insurance_excess_percentage):
-				sales_data = project.get_project_sales_data(get_sales_invoice=False)
+			if billed_excess:
+				if balance_excess > 0:
+					row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+					row.item_code = insurance_excess_item
+					row.qty = 1
+					row.price_list_rate = 0
+					row.rate = balance_excess
+					if depreciation_type == "After Depreciation Amount":
+						row.rate *= -1
+			else:
+				if flt(project.insurance_excess_amount):
+					row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+					row.item_code = insurance_excess_item
+					row.qty = 1
+					row.price_list_rate = 0
+					row.rate = flt(project.insurance_excess_amount)
+					if depreciation_type == "After Depreciation Amount":
+						row.rate *= -1
 
-				row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
-				row.item_code = insurance_excess_item
-				row.item_name = insurance_excess_item_name + " ({0})".format(
-					project.get_formatted("insurance_excess_percentage", precision=1)
-				)
-				row.qty = 1
-				row.price_list_rate = 0
-				row.rate = flt(sales_data.totals.net_total) * flt(project.insurance_excess_percentage) / 100
-				if depreciation_type == "After Depreciation Amount":
-					row.rate *= -1
+				if flt(project.additional_insurance_excess_amount):
+					row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+					row.item_code = insurance_excess_item
+					row.item_name = insurance_excess_item_name + " ({0})".format(
+						project.get_formatted("insurance_excess_percentage", precision=1)
+					)
+					row.qty = 1
+					row.price_list_rate = 0
+					row.rate = flt(project.additional_insurance_excess_amount)
+					if depreciation_type == "After Depreciation Amount":
+						row.rate *= -1
 
 	def set_cash_or_credit():
 		invoice_bill_to = target_doc.bill_to or target_doc.customer
@@ -2394,7 +2463,7 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 		or project.non_standard_underinsurance
 	)
 
-	has_excess_amount = project.insurance_excess_amount or project.insurance_excess_percentage
+	has_excess_amount = project.insurance_excess_amount or project.additional_insurance_excess_amount
 
 	if has_excess_amount and not has_depreciation_rate and depreciation_type != "After Depreciation Amount":
 		pass
