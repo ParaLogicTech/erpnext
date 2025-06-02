@@ -286,6 +286,9 @@ class SummarizedFinancialReport:
 
 		return section_totals
 
+	def get_net_profit_loss(self):
+		return {f: 0 for f in self.total_fields}
+
 	def get_row(self, row_type, row_value, totals=None, is_bold=False, group_root_type=None, reverse_sign=False):
 		row = frappe._dict()
 
@@ -336,6 +339,3 @@ class SummarizedFinancialReport:
 	@staticmethod
 	def get_report_type():
 		raise NotImplementedError("get_report_type not implemented")
-
-	def get_net_profit_loss(self):
-		return {f: 0 for f in self.total_fields}
