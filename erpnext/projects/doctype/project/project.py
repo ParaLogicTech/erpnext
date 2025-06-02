@@ -802,7 +802,7 @@ class Project(StatusUpdaterERP):
 			}, None)
 
 	def validate_for_transaction(self, doc):
-		if doc.doctype in ("Sales Invoice", "Service Warranty"):
+		if doc.doctype in ("Service Warranty"):
 			self.check_is_ready_to_close()
 		if doc.doctype == "Sales Invoice":
 			self.check_undelivered_sales_orders()
