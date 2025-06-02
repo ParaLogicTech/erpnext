@@ -32,13 +32,15 @@ class AccountGroupMappingReport:
 		)
 
 	def get_leaf_accounts(self):
-		conditions = ["company=%s", "rgt - lft = 1", "report_type=%s"]
-		args = [self.company, self.report_type]
+		filters = {**self.filters, "is_group": 0}
 
-		if self.root_type:
-			conditions.append("root_type=%s")
-			args.append(self.root_type)
-		where = " AND ".join(conditions)
+		where_clauses = []
+		args = []
+		for key, value in filters.items():
+			where_clauses.append(f"{key}=%s")
+			args.append(value)
+
+		where = " AND ".join(where_clauses)
 		return frappe.db.sql(
 			f"""
 			SELECT name, account_number, account_name, root_type, lft, rgt
@@ -64,22 +66,22 @@ class AccountGroupMappingReport:
 	def get_columns(self):
 		columns = [
 			{
-			"label": _("Account Number"),
-			"fieldname": "account_number",
-			"fieldtype": "Data",
-			"width": 100
+				"label": _("Account Number"),
+				"fieldname": "account_number",
+				"fieldtype": "Data",
+				"width": 100
 			},
 			{
-			"label": _("Account Name"),
-			"fieldname": "account_name",
-			"fieldtype": "Data",
-			"width": 250,
+				"label": _("Account Name"),
+				"fieldname": "account_name",
+				"fieldtype": "Data",
+				"width": 250
 			},
 			{
-			"label": _("Unmapped & Recent"),
-			"fieldname": "recent_unmapped",
-			"fieldtype": "Data",
-			"width": 130,
+				"label": _("Unmapped & Recent"),
+				"fieldname": "recent_unmapped",
+				"fieldtype": "Data",
+				"width": 130
 			},
 		]
 
@@ -145,11 +147,14 @@ def update_account_group_mapping(account, old_group, new_group):
 		frappe.throw(_("Account is required."))
 
 	if old_group == new_group:
-		return {"message": "no change"}
+		return
 
 	if old_group and old_group != new_group:
 		old_group_doc = frappe.get_doc("Account Group", old_group)
 		old_group_doc.rows = [r for r in old_group_doc.rows if not (r.row_type == "Account" and r.account == account)]
+		# Reset idx for all rows
+		for i, r in enumerate(old_group_doc.rows):
+			r.idx = i + 1
 		old_group_doc.save()
 
 	if new_group:
@@ -160,5 +165,3 @@ def update_account_group_mapping(account, old_group, new_group):
 				"account": account
 			})
 			new_group_doc.save()
-
-	return {"message": "success"}

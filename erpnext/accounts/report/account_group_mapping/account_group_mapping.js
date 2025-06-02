@@ -15,7 +15,7 @@ frappe.query_reports["Account Group Mapping"] = {
 			fieldname: "report_type",
 			label: __("Report Type"),
 			fieldtype: "Select",
-			options: ["Profit and Loss", "Balance Sheet"].join("\n"),
+			options: ["Profit and Loss", "Balance Sheet"],
 			default: "Profit and Loss",
 			description: __("Filter by report type for Account Groups and Accounts"),
 			reqd: 1
@@ -24,7 +24,7 @@ frappe.query_reports["Account Group Mapping"] = {
 			fieldname: "root_type",
 			label: __("Root Type"),
 			fieldtype: "Select",
-			options: ["", "Income", "Expense", "Asset", "Liability", "Equity"].join("\n"),
+			options: ["", "Income", "Expense", "Asset", "Liability", "Equity"],
 			default: "",
 			description: __("Filter by root type for Accounts only")
 		}
@@ -40,8 +40,8 @@ frappe.query_reports["Account Group Mapping"] = {
 				old_group: old_value,
 				new_group: new_value
 			},
-			callback: function (r) {
-				if (r.message) frappe.query_report.refresh();
+			callback: function () {
+				frappe.query_report.refresh();
 			}
 		});
 	},
