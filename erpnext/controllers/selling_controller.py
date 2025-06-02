@@ -686,7 +686,7 @@ class SellingController(TransactionController):
 					frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
 				))
 
-	def update_project_billing_and_sales(self, material_cost_of_sales=False):
+	def update_project_billing_and_sales(self, material_cost_of_sales=False, validate_insurance_excess=False):
 		projects = []
 		if self.get('project'):
 			projects.append(self.get('project'))
@@ -712,9 +712,22 @@ class SellingController(TransactionController):
 			if material_cost_of_sales:
 				doc.set_material_cost_of_sales(update=True)
 
+			if validate_insurance_excess:
+				self.validate_insurance_excess(doc)
+
 			doc.set_gross_margin(update=True)
 			doc.set_status(update=True, from_doctype=self.doctype, action=self.get("_action"))
 			doc.notify_update()
+
+	def validate_insurance_excess(self, project):
+		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
+		if not insurance_excess_item:
+			return
+
+		if not any(d.item_code == insurance_excess_item for d in self.items):
+			return
+
+		project.validate_insurance_excess_billed_amount()
 
 	def validate_campaign(self):
 		validate_campaign_voucher_code(self)
