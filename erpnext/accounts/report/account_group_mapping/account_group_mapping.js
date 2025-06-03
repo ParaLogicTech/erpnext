@@ -45,4 +45,31 @@ frappe.query_reports["Account Group Mapping"] = {
 			}
 		});
 	},
+	onload: function () {
+		const style = document.createElement("style");
+		style.innerHTML = `
+			.awesomplete {
+				z-index: 10010 !important;
+			}
+	
+			.awesomplete > ul {
+				z-index: 10010 !important;
+				position: absolute !important;
+				background: white;
+				border: 1px solid #ddd;
+				max-height: 200px;
+				overflow-y: auto;
+			}
+	
+			.dt-scrollable {
+				overflow: visible !important;
+			}
+	
+			.dataTable-cell > .link-field {
+				overflow: visible !important;
+			}
+		`;
+		document.head.appendChild(style);
+	}
+	
 };

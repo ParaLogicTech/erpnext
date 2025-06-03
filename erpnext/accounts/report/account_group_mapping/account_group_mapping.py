@@ -103,7 +103,8 @@ class AccountGroupMappingReport:
 					}
 				},
 				"width": 160,
-				"editable": 1
+				"editable": 1,
+				"align": "left"
 			})
 
 		return columns
