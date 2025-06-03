@@ -702,7 +702,7 @@ class TransactionController(StockController):
 				frappe.throw(_("Row #{0}: Item Code is mandatory").format(d.idx))
 
 	def validate_qty_is_not_zero(self):
-		if self.get('is_return') and self.doctype in ("Sales Invoice", "Purchase Invoice") and not self.update_stock:
+		if self.get('is_return') and self.doctype in ("Sales Invoice", "Purchase Invoice"):
 			return
 
 		for item in self.get("items"):
