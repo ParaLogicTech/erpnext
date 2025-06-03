@@ -816,7 +816,8 @@ class Project(StatusUpdaterERP):
 
 	def validate_for_transaction(self, doc):
 		if doc.doctype in ("Sales Invoice", "Service Warranty"):
-			self.check_is_ready_to_close()
+			if not self.is_insurance_excess_invoice_for_customer(doc):
+				self.check_is_ready_to_close()
 		if doc.doctype == "Sales Invoice":
 			self.check_undelivered_sales_orders()
 		if doc.doctype == "Payment Entry":
@@ -876,6 +877,24 @@ class Project(StatusUpdaterERP):
 			frappe.throw(_("Customer in Payment Entry does not match with {0}. Customer must be {1}").format(
 				frappe.get_desk_link("Project", self.name), comma_or(allowed_customers)
 			))
+
+	def is_insurance_excess_invoice_for_customer(self, doc):
+		if doc.doctype != "Sales Invoice":
+			return False
+
+		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
+		if not insurance_excess_item:
+			return False
+
+		billed_to = doc.bill_to or doc.customer
+		if billed_to != self.customer:
+			return False
+
+		for item in doc.items:
+			if item.item_code == insurance_excess_item:
+				return True
+
+		return False
 
 	def check_po_no_is_set(self, doc):
 		if self.po_no or doc.is_pos:
