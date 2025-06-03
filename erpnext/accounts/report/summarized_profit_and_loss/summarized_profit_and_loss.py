@@ -101,8 +101,8 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		)
 
 		# Sum budget for all accounts
-		result["mtd_budget"] = sum(b.get("mtd_budget", 0) for b in budget_totals.values())
-		result["ytd_budget"] = sum(b.get("ytd_budget", 0) for b in budget_totals.values())
+		result["mtd_budget"] = sum(flt(b.get("mtd_budget")) for b in budget_totals.values())
+		result["ytd_budget"] = sum(flt(b.get("ytd_budget")) for b in budget_totals.values())
 
 		return result
 
