@@ -22,7 +22,7 @@ class AccountGroupMappingReport:
 
 		self.max_groups = max((len(groups) for groups in self.account_group_mapping.values()), default=1)
 
-		return self.get_columns(), self.get_data()
+		return self.get_columns(), self.get_rows()
 
 	def validate_filters(self):
 		if not self.filters.company:
@@ -39,27 +39,6 @@ class AccountGroupMappingReport:
 			fields=["name", "report_type", "root_type"],
 			order_by="name"
 		)
-
-	def get_accounts(self):
-		condtions = [
-			"is_group = 0",
-		]
-
-		if self.filters.company:
-			condtions.append("company = %(company)s")
-		if self.filters.report_type:
-			condtions.append("report_type = %(report_type)s")
-		if self.filters.root_type:
-			condtions.append("root_type = %(root_type)s")
-
-		condtions_str = " AND ".join(condtions)
-
-		return frappe.db.sql(f"""
-			SELECT name, account_number, account_name, root_type, lft, rgt
-			FROM `tabAccount`
-			WHERE {condtions_str}
-			ORDER BY lft
-		""", self.filters, as_dict=True)
 
 	def get_account_group_mapping(self, account_group_names):
 		mapping = {}
@@ -80,56 +59,15 @@ class AccountGroupMappingReport:
 
 		return mapping
 
-	def get_columns(self):
-		columns = [
-			{
-				"label": _("Account Number"),
-				"fieldname": "account_number",
-				"fieldtype": "Data",
-				"width": 100
-			},
-			{
-				"label": _("Account Name"),
-				"fieldname": "account_name",
-				"fieldtype": "Data",
-				"width": 250
-			},
-			{
-				"label": _("Unmapped & Recent"),
-				"fieldname": "recent_unmapped",
-				"fieldtype": "Data",
-				"width": 130
-			},
-		]
-
-		for idx in range(1, self.max_groups + 2):
-			columns.append({
-				"label": _("Account Group {0}").format(idx),
-				"fieldname": f"account_group_{idx}",
-				"fieldtype": "Link",
-				"options": "Account Group",
-				"get_query": {
-					"filters": {
-						"company": self.filters.company,
-						"report_type": self.filters.report_type,
-					}
-				},
-				"width": 160,
-				"editable": 1,
-				"account_group_idx": idx,
-			})
-
-		return columns
-
-	def get_data(self):
+	def get_rows(self):
 		accounts = self.get_accounts()
 		data = []
 
 		for acc in accounts:
 			row = {
-				"account_number": acc["account_number"],
-				"account_name": acc["account_name"],
-				"account": acc["name"]
+				"account": acc.name,
+				"account_number": acc.account_number,
+				"account_name": acc.account_name,
 			}
 
 			groups = self.account_group_mapping.get(acc["name"], [])
@@ -152,6 +90,57 @@ class AccountGroupMappingReport:
 			data.append(row)
 
 		return data
+
+	def get_accounts(self):
+		condtions = [
+			"is_group = 0",
+		]
+
+		if self.filters.company:
+			condtions.append("company = %(company)s")
+		if self.filters.report_type:
+			condtions.append("report_type = %(report_type)s")
+		if self.filters.root_type:
+			condtions.append("root_type = %(root_type)s")
+
+		condtions_str = " AND ".join(condtions)
+
+		return frappe.db.sql(f"""
+			SELECT name, account_number, account_name, root_type, lft, rgt
+			FROM `tabAccount`
+			WHERE {condtions_str}
+			ORDER BY lft
+		""", self.filters, as_dict=True)
+
+	def get_columns(self):
+		columns = [
+			{
+				"label": _("Account"),
+				"fieldname": "account",
+				"fieldtype": "Link",
+				"options": "Account",
+				"width": 350,
+			},
+		]
+
+		for idx in range(1, self.max_groups + 2):
+			columns.append({
+				"label": _("Account Group {0}").format(idx),
+				"fieldname": f"account_group_{idx}",
+				"fieldtype": "Link",
+				"options": "Account Group",
+				"get_query": {
+					"filters": {
+						"company": self.filters.company,
+						"report_type": self.filters.report_type,
+					}
+				},
+				"width": 200,
+				"editable": 1,
+				"account_group_idx": idx,
+			})
+
+		return columns
 
 
 @frappe.whitelist()
