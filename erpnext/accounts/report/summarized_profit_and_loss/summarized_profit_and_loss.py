@@ -92,6 +92,18 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		for key, (from_date, to_date) in periods.items():
 			result[key] = self.get_net_profit_loss_for_period(accounts, from_date, to_date)
 
+		# --- Budget Calculation ---
+		budget_data = self.get_budget_data(accounts, self.filters.year_start_date, self.filters.report_date)
+		budget_totals = self.calculate_budget_totals(
+			budget_data,
+			self.filters.month_start_date, self.filters.report_date,
+			self.filters.year_start_date, self.filters.report_date
+		)
+
+		# Sum budget for all accounts
+		result["mtd_budget"] = sum(flt(b.get("mtd_budget")) for b in budget_totals.values())
+		result["ytd_budget"] = sum(flt(b.get("ytd_budget")) for b in budget_totals.values())
+
 		return result
 
 	def get_net_profit_loss_for_period(self, accounts, from_date, to_date):
