@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from frappe.utils import flt
 from erpnext import get_default_company
 
 
@@ -61,56 +62,91 @@ class AccountGroupMappingReport:
 
 	def get_rows(self):
 		accounts = self.get_accounts()
+		account_names = [d.name for d in accounts]
+
+		gl_map = self.get_gl_map(account_names)
+
 		data = []
 
 		for acc in accounts:
-			row = {
+			gl_obj = gl_map.get(acc.name, {})
+			mapped_groups = self.account_group_mapping.get(acc.name, [])
+
+			if self.filters.filter_without_entries and not gl_obj and not mapped_groups:
+				continue
+
+			row = frappe._dict({
 				"account": acc.name,
 				"account_number": acc.account_number,
 				"account_name": acc.account_name,
-			}
+				"company": self.filters.company,
+			})
 
-			groups = self.account_group_mapping.get(acc["name"], [])
+			if gl_obj:
+				row.update({
+					"debit": flt(gl_obj.get("debit")),
+					"credit": flt(gl_obj.get("credit")),
+					"diff": flt(gl_obj.get("debit")) - flt(gl_obj.get("credit")),
+				})
 
 			for i in range(1, self.max_groups + 1):
-				row[f"account_group_{i}"] = groups[i-1] if i-1 < len(groups) else None
+				row[f"account_group_{i}"] = mapped_groups[i-1] if i-1 < len(mapped_groups) else None
 
-			# Check for recent GL Entry if unmapped
-			row["recent_unmapped"] = ""
-
-			if not groups:
-				recent_entry = frappe.db.exists(
-					"GL Entry",
-					{
-						"account": acc["name"],
-						"posting_date": [">=", frappe.utils.add_days(frappe.utils.nowdate(), -90)]
-					}
-				)
-				row["recent_unmapped"] = _("Needs Mapping") if recent_entry else ""
 			data.append(row)
 
 		return data
 
 	def get_accounts(self):
-		condtions = [
+		conditions = [
 			"is_group = 0",
 		]
 
 		if self.filters.company:
-			condtions.append("company = %(company)s")
+			conditions.append("company = %(company)s")
 		if self.filters.report_type:
-			condtions.append("report_type = %(report_type)s")
+			conditions.append("report_type = %(report_type)s")
 		if self.filters.root_type:
-			condtions.append("root_type = %(root_type)s")
+			conditions.append("root_type = %(root_type)s")
 
-		condtions_str = " AND ".join(condtions)
+		conditions_str = " AND ".join(conditions)
 
 		return frappe.db.sql(f"""
 			SELECT name, account_number, account_name, root_type, lft, rgt
 			FROM `tabAccount`
-			WHERE {condtions_str}
+			WHERE {conditions_str}
 			ORDER BY lft
 		""", self.filters, as_dict=True)
+
+	def get_gl_map(self, accounts):
+		if not accounts:
+			return {}
+
+		conditions = [
+			"account in %(accounts)s"
+		]
+		if self.filters.from_date:
+			conditions.append("posting_date >= %(from_date)s")
+		if self.filters.to_date:
+			conditions.append("posting_date <= %(to_date)s")
+
+		conditions_str = " AND ".join(conditions)
+
+		gl_data = frappe.db.sql(f"""
+			select account, sum(debit) as debit, sum(credit) as credit
+			from `tabGL Entry`
+			where {conditions_str}
+			group by account
+		""", {
+			"accounts": accounts,
+			"from_date": self.filters.from_date,
+			"to_date": self.filters.to_date,
+		}, as_dict=True)
+
+		gl_map = {}
+		for d in gl_data:
+			gl_map[d.account] = d
+
+		return gl_map
 
 	def get_columns(self):
 		columns = [
@@ -139,6 +175,30 @@ class AccountGroupMappingReport:
 				"editable": 1,
 				"account_group_idx": idx,
 			})
+
+		columns += [
+			{
+				"label": _("Debit"),
+				"fieldname": "debit",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 120,
+			},
+			{
+				"label": _("Credit"),
+				"fieldname": "credit",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 120,
+			},
+			{
+				"label": _("Net"),
+				"fieldname": "diff",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 120,
+			},
+		]
 
 		return columns
 

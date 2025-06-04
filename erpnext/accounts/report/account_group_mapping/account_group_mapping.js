@@ -26,7 +26,24 @@ frappe.query_reports["Account Group Mapping"] = {
 			fieldtype: "Select",
 			options: ["", "Income", "Expense", "Asset", "Liability", "Equity"],
 			description: __("Filter by Root Type for Accounts only")
-		}
+		},
+		{
+			fieldname: "from_date",
+			label: __("From Date"),
+			fieldtype: "Date",
+			default: frappe.defaults.get_user_default("year_start_date"),
+		},
+		{
+			fieldname: "to_date",
+			label: __("To Date"),
+			fieldtype: "Date",
+			default: frappe.datetime.month_end(),
+		},
+		{
+			fieldname: "filter_without_entries",
+			label: __("Filter Accounts Without Entries"),
+			fieldtype: "Check",
+		},
 	],
 
 	onChange: function (new_value, column, data) {
