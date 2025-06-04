@@ -6,6 +6,7 @@ from frappe.model.document import Document
 class AccountGroup(Document):
 	def validate(self):
 		self.validate_root_level()
+		self.validate_root_type()
 		self.validate_rows()
 
 	def validate_root_level(self):
@@ -30,6 +31,18 @@ class AccountGroup(Document):
 				frappe.throw(_("Another root level {0} already exists for report type {1}.").format(
 					frappe.get_desk_link("Account Group", existing_root.name), self.report_type
 				))
+
+	def validate_root_type(self):
+		pnl_root_types = ("Income", "Expense")
+		bs_root_types = ("Asset", "Liability", "Equity")
+
+		if self.report_type == "Profit and Loss":
+			if self.root_type not in pnl_root_types:
+				frappe.throw(_("Root Type must be either Income or Expense for 'Profit and Loss' Account Group"))
+
+		elif self.report_type == "Balance Sheet":
+			if self.root_type not in bs_root_types:
+				frappe.throw(_("Root Type must be either Asset, Liability or Equity for 'Balance Sheet' Account Group"))
 
 	def validate_rows(self):
 		"""Validate rows for duplicates and clear irrelevant fields."""
