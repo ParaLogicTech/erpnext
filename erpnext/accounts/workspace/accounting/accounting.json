@@ -1086,7 +1086,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "More Reports",
-   "link_count": 6,
+   "link_count": 7,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -1107,6 +1107,16 @@
    "label": "Summarized Balance Sheet",
    "link_count": 0,
    "link_to": "Summarized Balance Sheet",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Account Group Mapping",
+   "link_count": 0,
+   "link_to": "Account Group Mapping",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -1155,7 +1165,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-21 12:17:11.323572",
+ "modified": "2025-05-27 15:51:21.425993",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting",
