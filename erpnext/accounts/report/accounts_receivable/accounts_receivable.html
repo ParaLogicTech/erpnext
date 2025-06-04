@@ -8,9 +8,6 @@
 .print-format {
 	font-size: 8.0pt !important;
 }
-.print-format td, .print-format th {
-	vertical-align:middle !important;
-}
 </style>
 
 {% function print_group(data, group) { %}
@@ -156,7 +153,7 @@
 			<tr>
 			{% if(report.report_name === "Accounts Receivable" || report.report_name === "Accounts Payable") { %}
 				{% if(data[i]["party"]) { %}
-					<td>{%= frappe.datetime.str_to_user(data[i]["posting_date"]) %}</td>
+					<td class="text-nowrap">{%= frappe.datetime.str_to_user(data[i]["posting_date"]) %}</td>
 					<td class="text-right">
 						{%= data[i]["age"] %}
 						{% if(filters.mark_overdue_in_print && data[i]["due_date"] && data[i]["due_date"] < filters.report_date) { %}
