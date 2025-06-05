@@ -150,7 +150,7 @@ class SummarizedFinancialReport:
 		group_root_type = group.root_type
 
 		group_account_map = self.get_accounts_in_account_group(group)
-		all_accounts = group_account_map[group.name]
+		all_accounts = group_account_map.get(group.name, [])
 		account_totals = self.get_account_totals(all_accounts)
 
 		# Calculate Child Group Totals
