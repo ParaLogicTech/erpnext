@@ -17,6 +17,7 @@ from erpnext.manufacturing.doctype.production_plan.production_plan import get_it
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
 from erpnext.stock.get_item_details import item_has_product_bundle, get_skip_delivery_note, get_default_bom
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+from erpnext.stock.doctype.packed_item.packed_item import validate_packed_items_for_bundles
 
 
 form_grid_templates = {
@@ -66,8 +67,6 @@ class SalesOrder(SellingController):
 		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
 		make_packing_list(self)
 
-		# validate_packed_items_for_bundles(self)
-
 		self.validate_with_previous_doc()
 		self.set_advance_paid_amount()
 		self.set_delivery_status()
@@ -80,6 +79,7 @@ class SalesOrder(SellingController):
 	def before_submit(self):
 		self.validate_item_code_mandatory()
 		self.validate_previous_docstatus()
+		validate_packed_items_for_bundles(self)
 
 	def on_submit(self):
 		self.check_credit_limit()
@@ -156,7 +156,7 @@ class SalesOrder(SellingController):
 	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
 		if row.item_code:
 			item = frappe.get_cached_doc("Item", row.item_code)
-			row.skip_delivery_note = get_skip_delivery_note(item, doc=self, delivered_by_supplier=cint(row.delivered_by_supplier))
+			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier), doc=self)
 			if not row.skip_delivery_note:
 				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
 				if hooked_skip_delivery_note is not None:

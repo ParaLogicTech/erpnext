@@ -45,14 +45,6 @@
    "hidden_depends_on": "eval:doc.type == 'Item'"
   },
   {
-   "fieldname": "selected_items",
-   "fieldtype": "Table",
-   "label": "Selected Items",
-   "options": "Product Bundle Selected Item",
-   "depends_on": "type",
-   "hidden_depends_on": "eval:doc.type == 'Item'"
-  },
-  {
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,

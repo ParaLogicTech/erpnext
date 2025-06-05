@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2013-02-22 01:28:00",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -28,7 +29,9 @@
   "prevdoc_doctype",
   "parent_detail_docname",
   "type",
-  "item_group"
+  "item_group",
+  "allow_qty_edit",
+  "allow_select_item_code"
  ],
  "fields": [
   {
@@ -49,7 +52,8 @@
    "label": "Item Code",
    "oldfieldname": "item_code",
    "oldfieldtype": "Link",
-   "options": "Item"
+   "options": "Item",
+   "read_only_depends_on": "eval:!doc.allow_select_item_code"
   },
   {
    "fieldname": "item_name",
@@ -103,7 +107,7 @@
    "label": "Qty",
    "oldfieldname": "qty",
    "oldfieldtype": "Currency",
-   "read_only": 1
+   "read_only_depends_on": "eval:!doc.allow_qty_edit"
   },
   {
    "fieldname": "section_break_9",
@@ -215,11 +219,24 @@
    "label": "Item Group",
    "options": "Item Group",
    "read_only": 1
+  },
+  {
+   "fieldname": "allow_qty_edit",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Allow Qty Edit"
+  },
+  {
+   "fieldname": "allow_select_item_code",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Allow Select Item Code"
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2020-03-03 15:35:18.593701",
+ "links": [],
+ "modified": "2025-06-05 09:58:37.575387",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packed Item",
@@ -227,5 +244,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

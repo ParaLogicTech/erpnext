@@ -26,11 +26,14 @@ class ProductBundle(Document):
 	def validate_child_items(self):
 		for item in self.items:
 			if item.type == "Item":
+				# Clear irrelevant fields
+				item.item_group = None
 				if frappe.db.exists("Product Bundle", item.item_code):
 					frappe.throw(_("Row #{0}: Child Item should not be a Product Bundle. Please remove Item {1} and Save").format(item.idx, frappe.bold(item.item_code)))
 					if not item.qty:
 						frappe.throw(_("Row #{0}: Quantity is required for Item type").format(item.idx))
 			elif item.type == "Item Group":
+				item.item_code = None
 				if not frappe.db.exists("Item Group", item.item_group):
 					frappe.throw(_("Row #{0}: Item Group {1} does not exist").format(item.idx, frappe.bold(item.item_group)))
 

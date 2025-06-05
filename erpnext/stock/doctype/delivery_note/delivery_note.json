@@ -619,7 +619,7 @@
    "oldfieldtype": "Table",
    "options": "Packed Item",
    "print_hide": 1,
-   "read_only": 1
+   "read_only_depends_on": "eval:doc.docstatus !== 0"
   },
   {
    "fieldname": "product_bundle_help",

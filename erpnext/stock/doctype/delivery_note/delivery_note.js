@@ -38,7 +38,6 @@ frappe.ui.form.on("Delivery Note", {
 			}
 		});
 
-
 		frm.set_query('expense_account', 'items', function(doc, cdt, cdn) {
 			if (erpnext.is_perpetual_inventory_enabled(doc.company)) {
 				return {
@@ -77,6 +76,15 @@ frappe.ui.form.on("Delivery Note", {
 					frm: cur_frm,
 				})
 			}, __('Create'));
+		}
+		if (frm.doc.packed_items) {
+			frm.doc.packed_items.forEach(row => {
+			if (row.type === "Item Group") {
+				row.allow_select_item_code = 0;
+				row.allow_qty_edit = 1;
+				}
+			});
+			frm.refresh_field('packed_items');
 		}
 	}
 });

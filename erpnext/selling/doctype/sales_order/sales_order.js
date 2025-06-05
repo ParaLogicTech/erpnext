@@ -34,14 +34,6 @@ frappe.ui.form.on("Sales Order", {
 							disabled: 0
 						}
 					};
-				} else {
-					return {
-						query: "erpnext.controllers.queries.item_query",
-						filters: {
-							is_stock_item: 1,
-							disabled: 0
-						}
-					};
 				}
 			};
 		}
@@ -61,9 +53,18 @@ frappe.ui.form.on("Sales Order", {
 				})
 			});
 		}
+		if (frm.doc.packed_items) {
+			frm.doc.packed_items.forEach(row => {
+				if (row.type === "Item Group") {
+					row.allow_select_item_code = 1;
+					row.allow_qty_edit = 0;
+				}
+			});
+			frm.refresh_field('packed_items');
+		}
 	},
 	onload: function(frm) {
-		if (!frm.doc.transaction_date){
+		if (!frm.doc.transaction_date) {
 			frm.set_value('transaction_date', frappe.datetime.get_today())
 		}
 		erpnext.queries.setup_queries(frm, "Warehouse", function() {

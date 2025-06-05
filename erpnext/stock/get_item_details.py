@@ -1549,7 +1549,7 @@ def get_blanket_order_details(args):
 	return blanket_order_details
 
 
-def get_skip_delivery_note(item, doc=None, delivered_by_supplier=False):
+def get_skip_delivery_note(item, delivered_by_supplier=False, doc=None):
 	if delivered_by_supplier:
 		return 1
 	elif not item.is_fixed_asset and not item.is_stock_item:
