@@ -944,8 +944,7 @@
    "fieldtype": "Table",
    "label": "Packed Items",
    "options": "Packed Item",
-   "print_hide": 1,
-   "read_only": 1
+   "print_hide": 1
   },
   {
    "fieldname": "payment_schedule_section",
@@ -1856,7 +1855,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-21 13:05:54.524018",
+ "modified": "2025-06-05 16:26:41.281539",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",

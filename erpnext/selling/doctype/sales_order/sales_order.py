@@ -154,7 +154,7 @@ class SalesOrder(SellingController):
 	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
 		if row.item_code:
 			item = frappe.get_cached_doc("Item", row.item_code)
-			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier))
+			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier), doc=self)
 			if not row.skip_delivery_note:
 				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
 				if hooked_skip_delivery_note is not None:

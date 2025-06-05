@@ -20,6 +20,22 @@ frappe.ui.form.on("Sales Order", {
 			'Vehicle': __("Reserved Vehicles"),
 			'Packing Slip': __("Packing Slip"),
 		}
+
+		if (frm.fields_dict.packed_items && frm.fields_dict.packed_items.grid) {
+			frm.fields_dict.packed_items.grid.get_field('item_code').get_query = function(doc, cdt, cdn) {
+				let row = locals[cdt][cdn];
+				if (row.item_group) {
+					return {
+						query: "erpnext.controllers.queries.item_query",
+						filters: {
+							item_group: ["in", row.item_group],
+							is_stock_item: 1,
+							disabled: 0
+						}
+					};
+				}
+			};
+		}
 	},
 	refresh: function(frm) {
 		if (frm.doc.docstatus === 1
@@ -35,6 +51,15 @@ frappe.ui.form.on("Sales Order", {
 					cannot_add_row: false,
 				})
 			});
+		}
+		if (frm.doc.packed_items) {
+			frm.doc.packed_items.forEach(row => {
+				if (row.type === "Item Group") {
+					row.allow_select_item_code = 1;
+					row.allow_qty_edit = 0;
+				}
+			});
+			frm.refresh_field('packed_items');
 		}
 	},
 	onload: function(frm) {

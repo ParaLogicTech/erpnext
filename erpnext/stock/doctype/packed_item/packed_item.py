@@ -15,7 +15,7 @@ class PackedItem(Document):
 
 
 def get_product_bundle_items(item_code):
-	return frappe.db.sql("""select t1.item_code, t1.qty, t1.uom, t1.description
+	return frappe.db.sql("""select t1.item_code, t1.qty, t1.uom, t1.description, t1.type, t1.item_group
 		from `tabProduct Bundle Item` t1, `tabProduct Bundle` t2
 		where t2.new_item_code=%s and t1.parent = t2.name order by t1.idx""", item_code, as_dict=1)
 
@@ -81,8 +81,25 @@ def make_packing_list(doc):
 	parent_items = []
 	for d in doc.get("items"):
 		if frappe.db.get_value("Product Bundle", {"new_item_code": d.item_code}):
-			for i in get_product_bundle_items(d.item_code):
-				update_packing_list_item(doc, i.item_code, flt(i.qty)*flt(d.stock_qty), d, i.description)
+			for bundle_item in get_product_bundle_items(d.item_code):
+				if bundle_item.type == "Item":
+					update_packing_list_item(doc, bundle_item.item_code, flt(bundle_item.qty)*flt(d.stock_qty), d, bundle_item.description)
+				elif bundle_item.type == "Item Group":
+					packed_items = doc.get("packed_items")
+					if not packed_items:
+						packed_item = doc.append('packed_items', {})
+						packed_item.parent_item = d.item_code
+						packed_item.parent_detail_docname = d.name
+						packed_item.item_group = bundle_item.item_group
+						bundle_qty = 1 if flt(bundle_item.qty) == 0 else flt(bundle_item.qty)
+						packed_item.qty = flt(bundle_qty)*flt(d.stock_qty)
+						packed_item.description = bundle_item.description
+						packed_item.type = "Item Group"
+					else:
+						for packed_item in packed_items:
+							if packed_item.item_code:
+								update_packing_list_item(doc, packed_item.item_code, flt(bundle_item.qty) * flt(d.stock_qty), d, packed_item.description)
+
 
 			if [d.item_code, d.name] not in parent_items:
 				parent_items.append([d.item_code, d.name])
