@@ -68,19 +68,52 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 
 		return account_totals
 
-	def get_fiscal_years_for_period(self, start_date, end_date):
-		fiscal_years = frappe.db.sql(
-			"""
-			SELECT name, year_start_date, year_end_date
-			FROM `tabFiscal Year`
-			WHERE year_end_date >= %(start_date)s
-				AND year_start_date <= %(end_date)s
-			ORDER BY year_start_date
-			""",
-			{"start_date": start_date, "end_date": end_date},
-			as_dict=True
+	def get_net_profit_loss(self):
+		result = frappe._dict({f: 0 for f in self.total_fields})
+
+		accounts = frappe.get_all(
+			"Account",
+			filters={
+				"company": self.filters.company,
+				"report_type": self.get_report_type(),
+				"is_group": 0,
+			},
+			pluck="name"
 		)
-		return fiscal_years
+		if not accounts:
+			return result
+
+		periods = {
+			"mtd_actual": (self.filters.month_start_date, self.filters.report_date),
+			"mtd_prev_year": (self.filters.prev_year_month_start, self.filters.prev_year_date),
+			"ytd_actual": (self.filters.year_start_date, self.filters.report_date),
+			"ytd_prev_year": (self.filters.prev_year_start, self.filters.prev_year_date),
+		}
+		for key, (from_date, to_date) in periods.items():
+			result[key] = self.get_net_profit_loss_for_period(accounts, from_date, to_date)
+
+		# --- Budget Calculation ---
+		budget_data = self.get_budget_data(accounts, self.filters.year_start_date, self.filters.report_date)
+		budget_totals = self.calculate_budget_totals(
+			budget_data,
+			self.filters.month_start_date, self.filters.report_date,
+			self.filters.year_start_date, self.filters.report_date
+		)
+
+		# Sum budget for all accounts
+		result["mtd_budget"] = sum(flt(b.get("mtd_budget")) for b in budget_totals.values())
+		result["ytd_budget"] = sum(flt(b.get("ytd_budget")) for b in budget_totals.values())
+
+		return result
+
+	def get_net_profit_loss_for_period(self, accounts, from_date, to_date):
+		gl_data = self.get_gl_data(accounts, from_date=from_date, to_date=to_date, aggregate=True)
+
+		net = 0
+		for row in gl_data:
+			net += flt(row.get("credit")) - flt(row.get("debit"))
+
+		return net
 
 	def get_budget_data(self, accounts, from_date, to_date):
 		"""Fetch raw budget records for all accounts in bulk for all fiscal years overlapping the date range."""
@@ -96,7 +129,6 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		dimension_filter_applied = bool(dimension_conditions.strip())
 		all_budget_records = []
 		extra_condition = ""
-
 
 		for fy in fiscal_years:
 			args = {
@@ -121,9 +153,21 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 			""", {**args, "fy_start": fy['year_start_date'], "fy_end": fy['year_end_date']}, as_dict=1)
 			all_budget_records.extend(records)
 
-
 		return all_budget_records
 
+	def get_fiscal_years_for_period(self, start_date, end_date):
+		fiscal_years = frappe.db.sql(
+			"""
+			SELECT name, year_start_date, year_end_date
+			FROM `tabFiscal Year`
+			WHERE year_end_date >= %(start_date)s
+				AND year_start_date <= %(end_date)s
+			ORDER BY year_start_date
+			""",
+			{"start_date": start_date, "end_date": end_date},
+			as_dict=True
+		)
+		return fiscal_years
 
 	def calculate_budget_totals(self, budget_records, mtd_start, mtd_end, ytd_start, ytd_end):
 		"""Calculate MTD and YTD budget for each account from raw budget records, supporting multi-fiscal-year."""

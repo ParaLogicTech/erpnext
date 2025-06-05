@@ -740,7 +740,7 @@ def get_batch_no(doctype, txt, searchfield, start, page_len, filters):
 	if filters.get("posting_date"):
 		cond += " and (batch.expiry_date is null or batch.expiry_date >= %(posting_date)s)"
 
-	if filters.get("warehouse"):
+	if filters.get("warehouse") and (not filters.get("is_return") or filters.get('is_receipt')):
 		cond += " and sle.warehouse = %(warehouse)s"
 
 	batch_nos = None
@@ -764,21 +764,22 @@ def get_batch_no(doctype, txt, searchfield, start, page_len, filters):
 		having_clause = ""
 
 	batch_nos = frappe.db.sql("""
-		select sle.batch_no,
-			sum(sle.actual_qty), sle.stock_uom,
+		select batch.name,
+			sum(sle.actual_qty), item.stock_uom,
 			min(timestamp(sle.posting_date, sle.posting_time)) as received_dt,
 			batch.manufacturing_date,
 			batch.expiry_date
-		from `tabStock Ledger Entry` sle
-		inner join `tabBatch` batch on sle.batch_no = batch.name
+		from `tabBatch` batch
+		inner join `tabItem` item on item.name = batch.item
+		left join `tabStock Ledger Entry` sle on sle.batch_no = batch.name
 		where
 			batch.disabled = 0
-			and sle.item_code = %(item_code)s
-			and sle.batch_no like %(txt)s
+			and batch.item = %(item_code)s
+			and batch.name like %(txt)s
 			{cond}
 		group by batch_no
 		{having_clause}
-		order by batch.expiry_date, received_dt, sle.batch_no desc
+		order by batch.expiry_date, received_dt, batch.name desc
 		limit %(start)s, %(page_len)s
 	""".format(
 		cond=cond,

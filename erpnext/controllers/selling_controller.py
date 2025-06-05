@@ -195,6 +195,9 @@ class SellingController(TransactionController):
 					return True
 
 		for d in self.get("items"):
+			percent_precision = d.precision("discount_percentage")
+			rate_precision = d.precision("discount_amount")
+
 			if not d.item_code or not flt(d.get("discount_percentage")):
 				continue
 
@@ -203,11 +206,8 @@ class SellingController(TransactionController):
 				continue
 
 			max_discount = flt(discount_rule_values.get("max_discount"))
-			if flt(d.discount_percentage) <= max_discount:
+			if flt(d.discount_percentage, percent_precision) <= max_discount:
 				continue
-
-			percent_precision = d.precision("discount_percentage")
-			rate_precision = d.precision("discount_amount")
 
 			# skip if pricing rule discount applied
 			if not self.get("ignore_pricing_rule"):
