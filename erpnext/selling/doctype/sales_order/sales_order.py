@@ -4,6 +4,7 @@
 import frappe
 import json
 import frappe.utils
+from erpnext.stock.doctype.packed_item.packed_item import validate_packed_items_for_bundles
 from frappe.utils import cstr, flt, getdate, cint, nowdate, add_days, get_link_to_form, round_up, round_down
 from frappe import _
 from frappe.model.mapper import get_mapped_doc
@@ -76,6 +77,7 @@ class SalesOrder(SellingController):
 		self.set_title()
 
 	def before_submit(self):
+		validate_packed_items_for_bundles(self)
 		self.validate_item_code_mandatory()
 		self.validate_previous_docstatus()
 

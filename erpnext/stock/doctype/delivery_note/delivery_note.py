@@ -5,6 +5,7 @@
 import frappe
 import frappe.defaults
 from erpnext.controllers.selling_controller import SellingController
+from erpnext.stock.doctype.packed_item.packed_item import validate_packed_items_for_bundles
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 from frappe import _
 from frappe.desk.notifications import clear_doctype_notifications
@@ -56,6 +57,7 @@ class DeliveryNote(SellingController):
 		self.update_current_stock()
 
 	def before_submit(self):
+		validate_packed_items_for_bundles(self)
 		self.remove_partial_packing_slip_for_return()
 
 	def on_submit(self):

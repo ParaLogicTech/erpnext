@@ -80,9 +80,9 @@ frappe.ui.form.on("Delivery Note", {
 		}
 		if (frm.doc.packed_items) {
 			frm.doc.packed_items.forEach(row => {
-			if (row.type === "Item Group") {
-				row.allow_select_item_code = 0;
-				row.allow_qty_edit = 1;
+				if (row.type === "Item Group") {
+					row.allow_select_item_code = 0;
+					row.allow_edit_qty = 1;
 				}
 			});
 			frm.refresh_field('packed_items');

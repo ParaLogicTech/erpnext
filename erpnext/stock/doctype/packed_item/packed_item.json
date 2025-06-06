@@ -107,7 +107,7 @@
    "label": "Qty",
    "oldfieldname": "qty",
    "oldfieldtype": "Currency",
-   "read_only_depends_on": "eval:!doc.allow_qty_edit"
+   "read_only_depends_on": "eval:!doc.allow_edit_qty"
   },
   {
    "fieldname": "section_break_9",

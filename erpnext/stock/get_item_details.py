@@ -1423,32 +1423,35 @@ def get_default_bom(item_code, project=None):
 
 
 def set_valuation_rate(out, args, doc=None):
-	if product_bundle := item_has_product_bundle(args.item_code):
-		valuation_rate = 0.0
-		product_bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+	from frappe.utils import flt
 
-		for bundle_item in product_bundle_doc.get("items"):
-			if bundle_item.type == "Item":
-				bundle_item_valuation_rate = flt(
-					get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
-				)
-				valuation_rate += bundle_item_valuation_rate * flt(bundle_item.qty)
-			elif bundle_item.type == "Item Group":
-				if doc:
-					packed_items = doc.get("packed_item") or []
-					for packed_item in packed_items:
-						if packed_item.item_code:
-							bundle_item_valuation_rate = flt(
-								get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
-							)
-							valuation_rate += bundle_item_valuation_rate * flt(bundle_item.qty)
-
-		out.update({
-			"valuation_rate": valuation_rate
-		})
-
-	else:
+	product_bundle = item_has_product_bundle(args.item_code)
+	if not product_bundle:
 		out.update(get_valuation_rate(args.item_code, args.company, out.get("warehouse"), args.transaction_type_name))
+		return
+
+	valuation_rate = 0.0
+	product_bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+
+	for bundle_item in product_bundle_doc.get("items"):
+		if bundle_item.type == "Item":
+			rate = flt(
+				get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
+			)
+			valuation_rate += rate * flt(bundle_item.qty)
+
+		elif bundle_item.type == "Item Group" and doc:
+			for packed_item in (doc.get("packed_item") or []):
+				if packed_item.item_code:
+					rate = flt(
+						get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
+					)
+					valuation_rate += rate * flt(bundle_item.qty)
+
+	out.update({
+		"valuation_rate": valuation_rate
+	})
+
 
 
 def get_valuation_rate(item_code, company, warehouse=None, transaction_type_name=None):
@@ -1543,23 +1546,39 @@ def get_blanket_order_details(args):
 def get_skip_delivery_note(item, delivered_by_supplier=False, doc=None):
 	if delivered_by_supplier:
 		return 1
-	elif not item.is_fixed_asset and not item.is_stock_item:
-		if not item_is_product_bundle_with_stock_item(item.name):
-			product_bundle= frappe.db.get_value("Product Bundle", {"new_item_code": item.item_code})
-			if not doc:
-				return 1
-			packed_items = doc.get("packed_items") or []
-			if packed_items:
-				for bundle_item in doc.get("packed_items"):
-					if bundle_item.type == "Item":
-						return item_is_product_bundle_with_stock_item(bundle_item.item_code)
-					elif bundle_item.type == "Item Group":
-						for packed_item in packed_items:
-							if frappe.get_cached_value("Item", packed_item.item_code, "is_stock_item"):
-								return 0
-		return 1
-	else:
+
+	if item.is_fixed_asset or item.is_stock_item:
 		return 0
+
+	if item_is_product_bundle_with_stock_item(item.name):
+		return 0
+
+	# Check alternate bundle match via new_item_code
+	product_bundle = frappe.db.get_value("Product Bundle", {"new_item_code": item.item_code})
+	if not product_bundle:
+		return 1
+
+	if not doc:
+		return 1
+
+	if has_stock_item_in_bundle(doc):
+		return 0
+
+	return 1
+
+def has_stock_item_in_bundle(doc):
+	"""Checks if the packed items in the doc include any stock items."""
+	packed_items = doc.get("packed_items") or []
+
+	for bundle_item in packed_items:
+		if bundle_item.type == "Item":
+			if item_is_product_bundle_with_stock_item(bundle_item.item_code):
+				return True
+		elif bundle_item.type == "Item Group":
+			for packed_item in packed_items:
+				if frappe.get_cached_value("Item", packed_item.item_code, "is_stock_item"):
+					return True
+	return False
 
 
 def item_has_product_bundle(item_code):

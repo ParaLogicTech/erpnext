@@ -4,6 +4,7 @@
 import frappe
 import erpnext
 import frappe.defaults
+from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
 from frappe.utils import cint, flt, getdate, add_days, cstr
 from frappe import _
 from erpnext.accounts.party import get_party_account, get_due_date
@@ -66,6 +67,8 @@ class SalesInvoice(SellingController):
 
 		self.validate_write_off_account()
 		self.validate_account_for_change_amount()
+		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
+		make_packing_list(self)
 
 		self.validate_fixed_asset()
 		self.set_income_account_for_fixed_assets()
@@ -1016,7 +1019,7 @@ class SalesInvoice(SellingController):
 		if cint(self.update_stock) == 1:
 			from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
 			make_packing_list(self)
-		else:
+		elif not self.get("delivery_note"):
 			self.set('packed_items', [])
 
 	def set_billing_hours_and_amount(self):

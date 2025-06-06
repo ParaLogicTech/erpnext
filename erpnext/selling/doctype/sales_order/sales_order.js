@@ -56,7 +56,7 @@ frappe.ui.form.on("Sales Order", {
 			frm.doc.packed_items.forEach(row => {
 				if (row.type === "Item Group") {
 					row.allow_select_item_code = 1;
-					row.allow_qty_edit = 0;
+					row.allow_edit_qty = 0;
 				}
 			});
 			frm.refresh_field('packed_items');
