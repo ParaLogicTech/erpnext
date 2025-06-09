@@ -1174,30 +1174,30 @@ frappe.ui.form.on('Payment Entry', {
 			$.each(tax_fields, function (i, fieldname) {
 				tax[fieldname] = 0.0;
 			});
-
-			frm.doc.paid_amount_before_tax = frm.doc.paid_amount;
-			frm.doc.paid_amount_after_tax = frm.doc.paid_amount;
-
-			frm.doc.base_paid_amount_before_tax = flt(
-				flt(frm.doc.paid_amount_before_tax) * flt(frm.doc.source_exchange_rate), precision("base_paid_amount")
-			);
-			frm.doc.base_paid_amount_after_tax = flt(
-				flt(frm.doc.paid_amount_after_tax) * flt(frm.doc.source_exchange_rate), precision("base_paid_amount")
-			);
-
-			frm.doc.received_amount_after_tax = frm.doc.received_amount;
-			frm.doc.received_amount_before_tax = frm.doc.received_amount;
-
-			frm.doc.base_received_amount_after_tax = flt(
-				flt(frm.doc.received_amount_after_tax) * flt(frm.doc.target_exchange_rate),
-				precision("base_received_amount"),
-			);
-
-			frm.doc.base_received_amount_before_tax = flt(
-				flt(frm.doc.received_amount_before_tax) * flt(frm.doc.target_exchange_rate),
-				precision("base_received_amount"),
-			);
 		});
+
+		frm.doc.paid_amount_before_tax = frm.doc.paid_amount;
+		frm.doc.paid_amount_after_tax = frm.doc.paid_amount;
+
+		frm.doc.base_paid_amount_before_tax = flt(
+			flt(frm.doc.paid_amount_before_tax) * flt(frm.doc.source_exchange_rate), precision("base_paid_amount")
+		);
+		frm.doc.base_paid_amount_after_tax = flt(
+			flt(frm.doc.paid_amount_after_tax) * flt(frm.doc.source_exchange_rate), precision("base_paid_amount")
+		);
+
+		frm.doc.received_amount_after_tax = frm.doc.received_amount;
+		frm.doc.received_amount_before_tax = frm.doc.received_amount;
+
+		frm.doc.base_received_amount_after_tax = flt(
+			flt(frm.doc.received_amount_after_tax) * flt(frm.doc.target_exchange_rate),
+			precision("base_received_amount"),
+		);
+
+		frm.doc.base_received_amount_before_tax = flt(
+			flt(frm.doc.received_amount_before_tax) * flt(frm.doc.target_exchange_rate),
+			precision("base_received_amount"),
+		);
 	},
 
 	validate_taxes_and_charges: function (d) {
