@@ -24,13 +24,14 @@ frappe.ui.form.on("Item", {
 
 	refresh: function(frm) {
 		if (frm.doc.is_stock_item) {
-			frm.add_custom_button(__("Balance"), function() {
+			frm.add_custom_button(__("Stock Balance"), function() {
 				frappe.route_options = {
 					"item_code": frm.doc.name
 				}
 				frappe.set_route("query-report", "Stock Balance");
 			}, __("View"));
-			frm.add_custom_button(__("Ledger"), function() {
+
+			frm.add_custom_button(__("Stock Ledger"), function() {
 				frappe.route_options = {
 					"item_code": frm.doc.name,
 					"from_date": frappe.defaults.get_user_default("year_start_date"),
@@ -38,11 +39,30 @@ frappe.ui.form.on("Item", {
 				}
 				frappe.set_route("query-report", "Stock Ledger");
 			}, __("View"));
-			frm.add_custom_button(__("Projected"), function() {
+
+			frm.add_custom_button(__("Projected Qty"), function() {
 				frappe.route_options = {
 					"item_code": frm.doc.name
 				}
 				frappe.set_route("query-report", "Stock Projected Qty");
+			}, __("View"));
+
+			frm.add_custom_button(__("Sales Details"), function() {
+				frappe.route_options = {
+					"item_code": frm.doc.name,
+					"from_date": frappe.defaults.get_user_default("year_start_date"),
+					"to_date": frappe.defaults.get_user_default("year_end_date"),
+				}
+				frappe.set_route("query-report", "Sales Details");
+			}, __("View"));
+
+			frm.add_custom_button(__("Purchase Details"), function() {
+				frappe.route_options = {
+					"item_code": frm.doc.name,
+					"from_date": frappe.defaults.get_user_default("year_start_date"),
+					"to_date": frappe.defaults.get_user_default("year_end_date"),
+				}
+				frappe.set_route("query-report", "Purchase Details");
 			}, __("View"));
 		}
 
