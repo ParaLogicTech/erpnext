@@ -19,8 +19,8 @@ class TransactionBase(StatusUpdaterERP):
 
 		if not getattr(self, 'set_posting_time', None) and not self.get('amended_from'):
 			now = now_datetime()
-			self.posting_date = now.strftime('%Y-%m-%d')
-			self.posting_time = now.strftime('%H:%M:%S.%f')
+			self.posting_date = getdate(now)
+			self.posting_time = get_time(now)
 		elif self.posting_time:
 			try:
 				get_time(self.posting_time)
