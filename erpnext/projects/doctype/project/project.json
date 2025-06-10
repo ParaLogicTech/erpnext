@@ -242,7 +242,8 @@
   "ready_to_close_dt",
   "ready_to_close",
   "column_break_n7e6",
-  "status"
+  "status",
+  "loaner_status"
  ],
  "fields": [
   {
@@ -1770,6 +1771,15 @@
    "fieldtype": "Currency",
    "label": "Additional Insurance Excess Amount",
    "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loaner_status",
+   "fieldtype": "Select",
+   "label": "Loaner Status",
+   "options": "Not Applicable\nBooked\nRented\nReturned",
+   "default": "Not Applicable",
+   "in_standard_filter": 1,
    "read_only": 1
   }
  ],

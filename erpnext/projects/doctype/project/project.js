@@ -269,6 +269,18 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		me.frm.dashboard.stats_area_row.empty();
 		me.frm.dashboard.stats_area.show();
 
+		// Loaner Status indicator
+		let loaner_status_color;
+		if (me.frm.doc.loaner_status == "Booked") {
+			loaner_status_color = "orange";
+		} else if (me.frm.doc.loaner_status == "Rented") {
+			loaner_status_color = "blue";
+		} else if (me.frm.doc.loaner_status == "Returned") {
+			loaner_status_color = "green";
+		} else {
+			loaner_status_color = "light-gray";
+		}
+
 		let tasks_status_color;
 		if (me.frm.doc.tasks_status == "No Tasks") {
 			tasks_status_color = "light-gray";
@@ -312,6 +324,10 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		}
 
 		let status_items = [
+			{
+				contents: __('Loaner Status: {0}', [me.frm.doc.loaner_status]),
+				indicator: loaner_status_color
+			},
 			{
 				contents: __('Tasks Status: {0}{1}', [me.frm.doc.tasks_status, task_count]),
 				indicator: tasks_status_color

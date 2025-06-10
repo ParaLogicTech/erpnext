@@ -31,12 +31,16 @@
   "column_break_8",
   "plate_region",
   "license_plate",
+  "vehicle_workshop",
   "unregistered",
   "column_break_16",
   "color",
   "interior",
+  "branch",
   "column_break_8qjzs",
   "last_odometer",
+  "is_loaner_vehicle",
+  "loaner_status",
   "insurance_details",
   "insurance_company",
   "insurance_company_name",
@@ -239,7 +243,7 @@
    "options": "Customer"
   },
   {
-   "depends_on": "eval:doc.vehicle_owner && doc.vehicle_owner_name != doc.vehicle_owner",
+   "depends_on": "eval:!doc.is_loaner_vehicle && doc.vehicle_owner && doc.vehicle_owner_name != doc.vehicle_owner",
    "fetch_from": "vehicle_owner.customer_name",
    "fieldname": "vehicle_owner_name",
    "fieldtype": "Data",
@@ -301,6 +305,15 @@
    "search_index": 1
   },
   {
+    "depends_on": "eval:doc.is_loaner_vehicle == 1",
+    "in_standard_filter": 1,
+    "fieldname": "vehicle_workshop",
+    "fieldtype": "Link",
+    "label": "Vehicle Workshop",
+    "options": "Vehicle Workshop",
+    "mandatory": 1
+  },
+  {
    "allow_in_quick_entry": 1,
    "fieldname": "column_break_16",
    "fieldtype": "Column Break"
@@ -323,6 +336,13 @@
    "options": "Vehicle Interior"
   },
   {
+    "fieldname": "branch",
+    "fieldtype": "Link",
+    "fetch_from": "vehicle_workshop.branch",
+    "label": "Branch",
+    "options": "Branch"
+  },
+  {
    "fieldname": "column_break_8qjzs",
    "fieldtype": "Column Break"
   },
@@ -332,6 +352,19 @@
    "label": "Odometer Reading (Last)",
    "no_copy": 1,
    "set_only_once": 1
+  },
+  {
+    "fieldname": "is_loaner_vehicle",
+    "fieldtype": "Check",
+    "label": "Is Loaner Vehicle",
+    "default": 0
+   },
+   {
+    "fieldname": "loaner_status",
+    "fieldtype": "Select",
+    "label": "Loaner Status",
+    "options": "Not Applicable\nAvailable\nBooked\nRented\nGrounded",
+    "default": "Not Applicable"
   },
   {
    "fieldname": "insurance_details",
