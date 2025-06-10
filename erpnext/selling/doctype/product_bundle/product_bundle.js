@@ -14,6 +14,7 @@ frappe.ui.form.on("Product Bundle", {
 		frm.set_query("item_code", "items", () => {
 			return erpnext.queries.item({
 				has_product_bundle: 0,
+				is_vehicle: 0,
 			});
 		});
 	}
