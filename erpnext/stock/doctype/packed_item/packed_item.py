@@ -4,11 +4,11 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.utils import cstr, flt
 from erpnext.stock.get_item_details import get_item_details, get_default_warehouse
 from frappe.model.document import Document
 import json
-from frappe import _
 
 
 class PackedItem(Document):
@@ -16,9 +16,12 @@ class PackedItem(Document):
 
 
 def get_product_bundle_items(item_code):
-	return frappe.db.sql("""select t1.item_code, t1.qty, t1.uom, t1.description, t1.type, t1.item_group
+	return frappe.db.sql("""
+		select t1.item_code, t1.qty, t1.uom, t1.type, t1.item_group
 		from `tabProduct Bundle Item` t1, `tabProduct Bundle` t2
-		where t2.new_item_code=%s and t1.parent = t2.name order by t1.idx""", item_code, as_dict=1)
+		where t2.new_item_code = %s and t1.parent = t2.name
+		order by t1.idx
+	""", item_code, as_dict=1)
 
 
 def get_packing_item_details(item, company):
@@ -33,7 +36,7 @@ def get_bin_qty(item, warehouse):
 	return det and det[0] or frappe._dict()
 
 
-def update_packing_list_item(doc, packing_item_code, qty, main_item_row, description, packed_item_qty=None):
+def update_packing_list_item(doc, packing_item_code, qty, main_item_row, packed_item_qty=None):
 	if doc.amended_from:
 		old_packed_items_map = get_old_packed_item_details(doc.packed_items)
 	else:
@@ -68,8 +71,6 @@ def update_packing_list_item(doc, packing_item_code, qty, main_item_row, descrip
 		pi.allow_edit_qty = 1
 		pi.qty = get_final_qty(qty, packed_item_qty)
 
-	if description and not pi.description:
-		pi.description = description
 	if not pi.warehouse and not doc.amended_from:
 		pi.warehouse = (main_item_row.warehouse if ((doc.get('is_pos') or item.is_stock_item \
 			or not item.default_warehouse) and main_item_row.warehouse) else item.default_warehouse)
@@ -123,7 +124,7 @@ def is_product_bundle(item_code):
 def add_bundle_item(doc, bundle_item, parent_item):
 	"""Add a bundled item (type: Item) to the packing list."""
 	qty = flt(bundle_item.qty) * flt(parent_item.stock_qty)
-	update_packing_list_item(doc, bundle_item.item_code, qty, parent_item, bundle_item.description)
+	update_packing_list_item(doc, bundle_item.item_code, qty, parent_item)
 
 
 def add_bundle_group(doc, bundle_item, parent_item):
@@ -139,13 +140,12 @@ def add_bundle_group(doc, bundle_item, parent_item):
 		packed_item.parent_detail_docname = parent_item.name
 		packed_item.item_group = bundle_item.item_group
 		packed_item.qty = total_qty
-		packed_item.description = bundle_item.description
 		packed_item.type = "Item Group"
 	else:
 		for packed_item in packed_items:
 			if packed_item.item_code:
 				update_packing_list_item(doc, packed_item.item_code, flt(bundle_item.qty) * flt(parent_item.stock_qty),
-					parent_item, packed_item.description, packed_item_qty=packed_item.qty)
+					parent_item, packed_item_qty=packed_item.qty)
 
 
 def cleanup_packing_list(doc, parent_items):

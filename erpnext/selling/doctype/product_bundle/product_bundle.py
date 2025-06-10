@@ -2,9 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
 from frappe import _
-
 from frappe.model.document import Document
 
 
@@ -28,23 +26,14 @@ class ProductBundle(Document):
 			if item.type == "Item":
 				# Clear irrelevant fields
 				item.item_group = None
-				if frappe.db.exists("Product Bundle", item.item_code):
-					frappe.throw(_("Row #{0}: Child Item should not be a Product Bundle. Please remove Item {1} and Save").format(item.idx, frappe.bold(item.item_code)))
+				if frappe.db.exists("Product Bundle", {"new_item_code": item.item_code}):
+					frappe.throw(_("Row #{0}: Child Item should not be a Product Bundle. Please remove Item {1} and save").format(
+						item.idx, frappe.bold(item.item_code)
+					))
 					if not item.qty:
-						frappe.throw(_("Row #{0}: Quantity is required for Item type").format(item.idx))
+						frappe.throw(_("Row #{0}: Quantity is required for type 'Item'").format(item.idx))
+
 			elif item.type == "Item Group":
 				item.item_code = None
-				if not frappe.db.exists("Item Group", item.item_group):
-					frappe.throw(_("Row #{0}: Item Group {1} does not exist").format(item.idx, frappe.bold(item.item_group)))
-
-
-@frappe.whitelist()
-@frappe.validate_and_sanitize_search_inputs
-def get_new_item_code(doctype, txt, searchfield, start, page_len, filters):
-	from erpnext.controllers.queries import get_match_cond
-
-	return frappe.db.sql("""select name, item_name, description from tabItem
-		where is_stock_item=0 and name not in (select name from `tabProduct Bundle`)
-		and %s like %s %s limit %s, %s""" % (searchfield, "%s",
-		get_match_cond(doctype),"%s", "%s"),
-		("%%%s%%" % txt, start, page_len))
+				item.item_name = None
+				item.uom = None
