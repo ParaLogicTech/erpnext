@@ -66,6 +66,7 @@
   "default_leave_policy",
   "column_break_24",
   "standard_working_hours",
+  "break_hours",
   "accounts_settings",
   "tax_settings_section",
   "tax_id",
@@ -1033,6 +1034,12 @@
    "label": "Stock Delivered But Not Billed",
    "no_copy": 1,
    "options": "Account"
+  },
+  {
+   "fieldname": "break_hours",
+   "fieldtype": "Float",
+   "label": "Break Hours",
+   "non_negative": 1
   }
  ],
  "icon": "fa fa-building",
@@ -1040,7 +1047,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2025-03-27 20:38:19.466124",
+ "modified": "2025-06-10 10:45:15.834587",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
