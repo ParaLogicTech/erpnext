@@ -594,6 +594,13 @@ class DeliveryNote(SellingController):
 					if d.sales_order_item and d.sales_order_item in sales_order_items_indirectly_billed:
 						d.unbilled_stock_account = None
 
+	def calculate_taxes_and_totals(self):
+		if self.packed_items:
+			total_qty = sum(flt(d.qty) for d in self.get("packed_items"))
+			self.total_qty = total_qty
+		else:
+			super().calculate_taxes_and_totals()
+
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):
 	if isinstance(delivery_note, str):
