@@ -3,14 +3,13 @@
 
 
 import frappe
-import frappe.defaults
-from erpnext.controllers.selling_controller import SellingController
-from erpnext.stock.doctype.packed_item.packed_item import validate_packed_items_for_bundles
-from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 from frappe import _
+from frappe.utils import cint, flt
+from erpnext.controllers.selling_controller import SellingController
+from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import cint, flt
+from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
 
 
 form_grid_templates = {
@@ -45,8 +44,8 @@ class DeliveryNote(SellingController):
 		from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party
 		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
 
-		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
-		make_packing_list(self)
+		make_bundled_item_list(self)
+		validate_bundled_item_list(self)
 
 		self.validate_with_previous_doc()
 		self.set_billing_status()
@@ -57,7 +56,6 @@ class DeliveryNote(SellingController):
 		self.update_current_stock()
 
 	def before_submit(self):
-		validate_packed_items_for_bundles(self)
 		self.remove_partial_packing_slip_for_return()
 
 	def on_submit(self):
@@ -162,6 +160,7 @@ class DeliveryNote(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		make_bundled_item_list(self)
 
 		if reset_taxes:
 			self.reset_taxes_and_charges()
@@ -593,14 +592,6 @@ class DeliveryNote(SellingController):
 				for d in self.get("items"):
 					if d.sales_order_item and d.sales_order_item in sales_order_items_indirectly_billed:
 						d.unbilled_stock_account = None
-
-	def calculate_taxes_and_totals(self):
-		if self.packed_items:
-			total_qty = sum(flt(d.qty) for d in self.get("packed_items"))
-			self.total_qty = total_qty
-		else:
-			super().calculate_taxes_and_totals()
-
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):
 	if isinstance(delivery_note, str):

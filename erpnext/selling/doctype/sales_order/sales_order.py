@@ -4,7 +4,6 @@
 import frappe
 import json
 import frappe.utils
-from erpnext.stock.doctype.packed_item.packed_item import validate_packed_items_for_bundles
 from frappe.utils import cstr, flt, getdate, cint, nowdate, add_days, get_link_to_form, round_up, round_down
 from frappe import _
 from frappe.model.mapper import get_mapped_doc
@@ -16,8 +15,9 @@ from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty,
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
-from erpnext.stock.get_item_details import item_has_product_bundle, get_skip_delivery_note, get_default_bom
+from erpnext.stock.get_item_details import get_skip_delivery_note, get_default_bom
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle, validate_bundled_item_list, make_bundled_item_list
 
 
 form_grid_templates = {
@@ -64,8 +64,8 @@ class SalesOrder(SellingController):
 			from erpnext.accounts.doctype.pricing_rule.utils import validate_coupon_code
 			validate_coupon_code(self.coupon_code)
 
-		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
-		make_packing_list(self)
+		make_bundled_item_list(self)
+		validate_bundled_item_list(self)
 
 		self.validate_with_previous_doc()
 		self.set_advance_paid_amount()
@@ -77,7 +77,6 @@ class SalesOrder(SellingController):
 		self.set_title()
 
 	def before_submit(self):
-		validate_packed_items_for_bundles(self)
 		self.validate_item_code_mandatory()
 		self.validate_previous_docstatus()
 
@@ -181,6 +180,7 @@ class SalesOrder(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		make_bundled_item_list(self)
 
 		if reset_taxes:
 			self.reset_taxes_and_charges()
@@ -784,7 +784,7 @@ class SalesOrder(SellingController):
 
 		for d in self.get("items"):
 			if not so_item_rows or d.name in so_item_rows:
-				if item_has_product_bundle(d.item_code):
+				if is_product_bundle(d.item_code):
 					for p in self.get("packed_items"):
 						if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 							add_to_item_warehouse_list(p.item_code, p.warehouse)

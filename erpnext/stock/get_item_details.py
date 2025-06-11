@@ -1423,9 +1423,9 @@ def get_default_bom(item_code, project=None):
 
 
 def set_valuation_rate(out, args, doc=None):
-	from frappe.utils import flt
+	from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle_from_item_code
 
-	product_bundle = item_has_product_bundle(args.item_code)
+	product_bundle = get_product_bundle_from_item_code(args.item_code)
 	if not product_bundle:
 		out.update(get_valuation_rate(args.item_code, args.company, out.get("warehouse"), args.transaction_type_name))
 		return
@@ -1566,6 +1566,7 @@ def get_skip_delivery_note(item, delivered_by_supplier=False, doc=None):
 
 	return 1
 
+
 def has_stock_item_in_bundle(doc):
 	"""Checks if the packed items in the doc include any stock items."""
 	packed_items = doc.get("packed_items") or []
@@ -1579,14 +1580,6 @@ def has_stock_item_in_bundle(doc):
 				if frappe.get_cached_value("Item", packed_item.item_code, "is_stock_item"):
 					return True
 	return False
-
-
-def item_has_product_bundle(item_code):
-	if not item_code:
-		return False
-
-	return frappe.local_cache("item_has_product_bundle", item_code,
-		lambda: frappe.db.get_value("Product Bundle", {"new_item_code": item_code}))
 
 
 def item_is_product_bundle_with_stock_item(item_code):

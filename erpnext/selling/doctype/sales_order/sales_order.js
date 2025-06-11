@@ -21,20 +21,16 @@ frappe.ui.form.on("Sales Order", {
 			'Packing Slip': __("Packing Slip"),
 		}
 
-		if (frm.fields_dict.packed_items && frm.fields_dict.packed_items.grid) {
-			frm.fields_dict.packed_items.grid.get_field('item_code').get_query = function(doc, cdt, cdn) {
+		if (frm.fields_dict.packed_items) {
+			frm.set_query("item_code", "packed_items", (doc, cdt, cdn) => {
 				let row = locals[cdt][cdn];
-				if (row.item_group) {
-					return {
-						query: "erpnext.controllers.queries.item_query",
-						filters: {
-							item_group: ["in", row.item_group],
-							is_stock_item: 1,
-							disabled: 0
-						}
-					};
+				if (row.type == "Item Group" && row.item_group) {
+					return erpnext.queries.item({
+						item_group: ["subtree of", row.item_group],
+						is_stock_item: 1,
+					});
 				}
-			};
+			});
 		}
 	},
 	refresh: function(frm) {
@@ -51,15 +47,6 @@ frappe.ui.form.on("Sales Order", {
 					cannot_add_row: false,
 				})
 			});
-		}
-		if (frm.doc.packed_items) {
-			frm.doc.packed_items.forEach(row => {
-				if (row.type === "Item Group") {
-					row.allow_select_item_code = 1;
-					row.allow_edit_qty = 0;
-				}
-			});
-			frm.refresh_field('packed_items');
 		}
 	},
 	onload: function(frm) {
@@ -127,7 +114,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 				}
 			} else {
 				if (!doc.delivered_qty) {
-					if (!doc.is_stock_item || doc.skip_delivery_note) {
+					if (doc.skip_delivery_note) {
 						return "purple";
 					} else {
 						return "orange";
