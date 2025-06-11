@@ -37,12 +37,18 @@ def make_bundled_item_list(doc):
 def update_child_item_row(doc, bundle_row, parent_row):
 	child_row = None
 	for d in doc.get("packed_items"):
-		if d.parent_item == parent_row.item_code and d.item_code == bundle_row.item_code:
-			if not doc.is_new() and d.parent_detail_docname != parent_row.name:
+		if d.parent_item != parent_row.item_code or d.item_code != bundle_row.item_code:
+			continue
+
+		if doc.is_new():
+			if d.flags.is_updated:
+				continue
+		else:
+			if d.parent_detail_docname != parent_row.name:
 				continue
 
-			child_row = d
-			break
+		child_row = d
+		break
 
 	if not child_row:
 		child_row = doc.append('packed_items')
@@ -53,12 +59,18 @@ def update_child_item_row(doc, bundle_row, parent_row):
 def update_child_item_group_row(doc, bundle_row, parent_row):
 	child_row = None
 	for d in doc.get("packed_items"):
-		if d.parent_item == parent_row.item_code and d.item_group == bundle_row.item_group:
-			if not doc.is_new() and d.parent_detail_docname != parent_row.name:
+		if d.parent_item != parent_row.item_code or d.item_group != bundle_row.item_group:
+			continue
+
+		if doc.is_new():
+			if d.flags.is_updated:
+				continue
+		else:
+			if d.parent_detail_docname != parent_row.name:
 				continue
 
-			child_row = d
-			break
+		child_row = d
+		break
 
 	if not child_row:
 		child_row = doc.append('packed_items')
@@ -124,6 +136,9 @@ def update_packing_list_item(doc, bundle_row, parent_row, child_row):
 	child_row.actual_qty = flt(bin_details.get("actual_qty"))
 	child_row.projected_qty = flt(bin_details.get("projected_qty"))
 
+	child_row.flags.is_updated = True
+	child_row.flags.parent_row = parent_row
+
 
 def cleanup_packing_list(doc):
 	def sorter(row):
@@ -149,12 +164,20 @@ def cleanup_packing_list(doc):
 
 
 def get_parent_row_from_child_row(doc, child_row):
-	if doc.name and (not child_row.parent_detail_docname or not child_row.parent_item):
+	if not child_row.parent_item:
+		return None
+	if doc.name and not child_row.parent_detail_docname:
 		return None
 
 	for parent_row in doc.get("items"):
-		if (not doc.name or parent_row.name == child_row.parent_detail_docname) and parent_row.item_code == child_row.parent_item:
-			return parent_row
+		if parent_row.item_code != child_row.parent_item:
+			continue
+
+		if doc.name:
+			if parent_row.name == child_row.parent_detail_docname:
+				return parent_row
+		elif child_row.flags.parent_row:
+			return child_row.flags.parent_row
 
 
 def get_bundle_row_from_child_row(child_row):
