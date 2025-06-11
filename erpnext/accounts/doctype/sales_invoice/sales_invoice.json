@@ -88,9 +88,8 @@
   "items_section",
   "items",
   "scan_barcode",
-  "packing_list",
+  "product_bundles_section",
   "packed_items",
-  "product_bundle_help",
   "pricing_rule_details",
   "pricing_rules",
   "time_sheet_list",
@@ -716,23 +715,10 @@
    "read_only": 1
   },
   {
-   "fieldname": "packing_list",
-   "fieldtype": "Section Break",
-   "label": "Packing List",
-   "options": "fa fa-suitcase",
-   "print_hide": 1
-  },
-  {
    "fieldname": "packed_items",
    "fieldtype": "Table",
-   "label": "Packed Items",
+   "label": "Bundled Items",
    "options": "Packed Item",
-   "print_hide": 1
-  },
-  {
-   "fieldname": "product_bundle_help",
-   "fieldtype": "HTML",
-   "label": "Product Bundle Help",
    "print_hide": 1
   },
   {
@@ -2359,13 +2345,22 @@
    "fieldtype": "Data",
    "label": "Campaign Voucher Code",
    "mandatory_depends_on": "campaign_voucher_code_required"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "packed_items",
+   "fieldname": "product_bundles_section",
+   "fieldtype": "Section Break",
+   "label": "Product Bundles",
+   "options": "fa fa-suitcase",
+   "print_hide": 1
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-09 16:12:27.019520",
+ "modified": "2025-06-10 16:29:03.334440",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

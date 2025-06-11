@@ -66,9 +66,8 @@
   "items_section",
   "items",
   "scan_barcode",
-  "packing_list",
+  "product_bundles_section",
   "packed_items",
-  "product_bundle_help",
   "pricing_rule_details",
   "pricing_rules",
   "section_break_31",
@@ -602,28 +601,12 @@
    "read_only": 1
   },
   {
-   "collapsible": 1,
-   "collapsible_depends_on": "packed_items",
-   "fieldname": "packing_list",
-   "fieldtype": "Section Break",
-   "label": "Packing List",
-   "oldfieldtype": "Section Break",
-   "options": "fa fa-suitcase",
-   "print_hide": 1
-  },
-  {
    "fieldname": "packed_items",
    "fieldtype": "Table",
-   "label": "Packed Items",
+   "label": "Bundled Items",
    "oldfieldname": "packing_details",
    "oldfieldtype": "Table",
    "options": "Packed Item",
-   "print_hide": 1
-  },
-  {
-   "fieldname": "product_bundle_help",
-   "fieldtype": "HTML",
-   "label": "Product Bundle Help",
    "print_hide": 1
   },
   {
@@ -1772,13 +1755,24 @@
    "fieldtype": "Data",
    "label": "Campaign Voucher Code",
    "mandatory_depends_on": "campaign_voucher_code_required"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "packed_items",
+   "depends_on": "packed_items",
+   "fieldname": "product_bundles_section",
+   "fieldtype": "Section Break",
+   "label": "Product Bundles",
+   "oldfieldtype": "Section Break",
+   "options": "fa fa-suitcase",
+   "print_hide": 1
   }
  ],
  "icon": "fa fa-truck",
  "idx": 146,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-05 21:09:04.903021",
+ "modified": "2025-06-10 16:29:19.612716",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Delivery Note",
