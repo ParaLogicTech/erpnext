@@ -152,13 +152,22 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			});
 		}
 
-		if(this.frm.fields_dict["packed_items"] &&
-			this.frm.fields_dict["packed_items"].grid.get_field('batch_no')) {
+		if (this.frm.fields_dict.packed_items) {
+			this.frm.set_query("item_code", "packed_items", (doc, cdt, cdn) => {
+				let filters = {is_stock_item: 1};
+				let row = locals[cdt][cdn];
+				if (row.type == "Item Group" && row.item_group) {
+					filters["item_group"] = ["subtree of", row.item_group];
+				}
+				return erpnext.queries.item(filters);
+			});
+		}
+
+		if(this.frm.fields_dict["packed_items"]?.grid?.get_field('batch_no')) {
 			this.frm.set_query("batch_no", "packed_items", function(doc, cdt, cdn) {
 				return me.set_query_for_batch(doc, cdt, cdn)
 			});
 		}
-
 	}
 
 	refresh() {

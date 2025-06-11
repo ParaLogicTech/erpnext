@@ -20,18 +20,6 @@ frappe.ui.form.on("Sales Order", {
 			'Vehicle': __("Reserved Vehicles"),
 			'Packing Slip': __("Packing Slip"),
 		}
-
-		if (frm.fields_dict.packed_items) {
-			frm.set_query("item_code", "packed_items", (doc, cdt, cdn) => {
-				let row = locals[cdt][cdn];
-				if (row.type == "Item Group" && row.item_group) {
-					return erpnext.queries.item({
-						item_group: ["subtree of", row.item_group],
-						is_stock_item: 1,
-					});
-				}
-			});
-		}
 	},
 	refresh: function(frm) {
 		if (frm.doc.docstatus === 1
