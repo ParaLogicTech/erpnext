@@ -23,7 +23,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 				'item_code': item.item_code,
 				'posting_date': doc.posting_date || frappe.datetime.nowdate(),
 				'posting_time': doc.posting_time,
-				// 'show_all': 1,
+				'show_all': 1,
 			};
 			if (item.warehouse) filters["warehouse"] = item.warehouse;
 			return {
@@ -31,6 +31,15 @@ frappe.ui.form.on("Stock Reconciliation", {
 				filters: filters
 			}
 		});
+
+		let batch_no_field = frm.get_docfield("items", "batch_no");
+		if (batch_no_field) {
+			batch_no_field.get_route_options_for_new_doc = function(row) {
+				return {
+					"item": row.doc.item_code
+				}
+			};
+		}
 
 		if (!frm.doc.expense_account) {
 			frm.trigger("set_expense_account");
