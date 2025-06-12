@@ -102,11 +102,9 @@ def execute(filters=None):
 							row['attendance_request'] = attendance_details.attendance_request
 							row['remarks'] = attendance_details.remarks or attendance_details.leave_type or attendance_details.attendance_request_reason or row.remarks
 
-							if attendance_details.working_hours:
-								row['working_hours'] = attendance_details.working_hours
-								row['break_hours'] = 0
-							if attendance_details.break_hours:
-								row['break_hours'] = attendance_details.break_hours
+							row['working_hours'] = attendance_details.working_hours
+							row['break_hours'] = attendance_details.break_hours
+							row['available_hours'] = attendance_details.available_hours
 
 						row['attendance_marked'] = 1 if attendance_details else 0
 
@@ -131,18 +129,20 @@ def execute(filters=None):
 								row['attendance_abbr'] = get_attendance_status_abbr(attendance_status, late_entry, early_exit)
 								row['late_entry'] = late_entry
 								row['early_exit'] = early_exit
-								if working_hours:
-									row['working_hours'] = working_hours
-									row['break_hours'] = flt(frappe.get_cached_value("Shift Type", shift_type, "break_hours"))
+								row['working_hours'] = working_hours
+
+								row['break_hours'] = flt(frappe.get_cached_value("Shift Type", shift_type, "break_hours"))
+								if flt(row.get("break_hours")) >= flt(row.get("working_hours")):
+									row['break_hours'] = 0
+								row['available_hours'] = flt(row.get('working_hours')) - flt(row.get('break_hours'))
 
 							elif not is_holiday and shift_ended(shift_type, attendance_date=current_date):
 								row['attendance_status'] = "Absent"
 
-						if row.get("break_hours") and flt(row.get("break_hours")) >= flt(row.get("working_hours")):
-							row['break_hours'] = 0
-
-						if flt(row.get('working_hours')):
-							row['available_hours'] = flt(row.get('working_hours')) - flt(row.get('break_hours'))
+						if not row.get("working_hours") and not row.get("break_hours") and not row.get("available_hours"):
+							row["working_hours"] = None
+							row["break_hours"] = None
+							row["available_hours"] = None
 
 						row['late_entry_hours'] = get_late_entry_hours(row, checkins)
 						row['early_exit_hours'] = get_early_exit_hours(row, checkins)
