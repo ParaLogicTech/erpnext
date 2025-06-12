@@ -62,11 +62,10 @@
   "default_buying_terms",
   "hr_settings_section",
   "default_holiday_list",
-  "column_break_36",
   "default_leave_policy",
   "column_break_24",
   "standard_working_hours",
-  "break_hours",
+  "standard_break_hours",
   "accounts_settings",
   "tax_settings_section",
   "tax_id",
@@ -904,10 +903,6 @@
    "options": "\nFiler\nNon Filer\nExempt"
   },
   {
-   "fieldname": "column_break_36",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "default_leave_policy",
    "fieldtype": "Link",
    "label": "Default Leave Policy",
@@ -1036,9 +1031,9 @@
    "options": "Account"
   },
   {
-   "fieldname": "break_hours",
+   "fieldname": "standard_break_hours",
    "fieldtype": "Float",
-   "label": "Break Hours",
+   "label": "Standard Break Hours",
    "non_negative": 1
   }
  ],
@@ -1047,7 +1042,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2025-06-10 10:45:15.834587",
+ "modified": "2025-06-12 12:35:05.388441",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",

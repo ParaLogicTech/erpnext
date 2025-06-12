@@ -32,8 +32,6 @@ def execute(filters=None):
 	data = []
 
 	checkin_column_count = 1
-	company_doc = frappe.get_cached_doc("Company", filters.company)
-	default_break_hours = flt(company_doc.get("break_hours", 0.0))
 	current_date = filters.from_date
 	while current_date <= filters.to_date:
 		day = get_weekday(current_date)
@@ -48,8 +46,6 @@ def execute(filters=None):
 					'department': employee_details.department,
 					'designation': employee_details.designation,
 					'disable_party_name_formatter': 1,
-					'break_hours': None,
-					'available_hours': None,
 				})
 
 				is_holiday = is_date_holiday(current_date, holiday_map, employee_details, filters.default_holiday_list)
@@ -108,6 +104,9 @@ def execute(filters=None):
 
 							if attendance_details.working_hours:
 								row['working_hours'] = attendance_details.working_hours
+								row['break_hours'] = 0
+							if attendance_details.break_hours:
+								row['break_hours'] = attendance_details.break_hours
 
 						row['attendance_marked'] = 1 if attendance_details else 0
 
@@ -134,11 +133,15 @@ def execute(filters=None):
 								row['early_exit'] = early_exit
 								if working_hours:
 									row['working_hours'] = working_hours
+									row['break_hours'] = flt(frappe.get_cached_value("Shift Type", shift_type, "break_hours"))
+
 							elif not is_holiday and shift_ended(shift_type, attendance_date=current_date):
 								row['attendance_status'] = "Absent"
 
-						if flt(row.get('working_hours')) > 0:
-							row['break_hours'] = default_break_hours
+						if row.get("break_hours") and flt(row.get("break_hours")) >= flt(row.get("working_hours")):
+							row['break_hours'] = 0
+
+						if flt(row.get('working_hours')):
 							row['available_hours'] = flt(row.get('working_hours')) - flt(row.get('break_hours'))
 
 						row['late_entry_hours'] = get_late_entry_hours(row, checkins)
@@ -253,12 +256,10 @@ def calculate_totals(employee, data, filters):
 					totals['total_lwp'] += leave_count
 
 		# total hours
-		if d.break_hours:
-			totals['total_break_hours'] += flt(d.break_hours)
-		if d.available_hours:
-			totals['total_available_hours'] += flt(d.available_hours)
-
 		totals['total_working_hours'] += flt(d.working_hours)
+		totals['total_break_hours'] += flt(d.break_hours)
+		totals['total_available_hours'] += flt(d.available_hours)
+
 		totals['total_late_entry_hours'] += flt(d.late_entry_hours)
 		totals['total_early_exit_hours'] += flt(d.early_exit_hours)
 
@@ -336,7 +337,8 @@ def get_attendance_map(filters):
 
 	attendance = frappe.db.sql("""
 		select att.name, att.employee, att.attendance_date, att.shift,
-			att.status, att.late_entry, att.early_exit, att.working_hours,
+			att.status, att.late_entry, att.early_exit,
+			att.working_hours, att.break_hours, att.available_hours,
 			att.leave_application, att.attendance_request,
 			att.remarks, att.leave_type, arq.reason as attendance_request_reason
 		from `tabAttendance` att
@@ -404,8 +406,8 @@ def get_columns(filters, checkin_column_count, totals):
 		{"fieldname": "attendance_status", "label": _("Status"), "fieldtype": "Data", "width": 75},
 		{"fieldname": "remarks", "label": _("Remarks"), "fieldtype": "Data", "width": 100},
 		{"fieldname": "working_hours", "label": _("W. Hours"), "fieldtype": "Float", "width": 65, "precision": 1},
-		{"fieldname": "break_hours", "label": _("Break. Hours"), "fieldtype": "Float", "width": 65, "precision": 1},
-		{"fieldname": "available_hours", "label": _("A. Hours"), "fieldtype": "Float", "width": 65, "precision": 1},
+		{"fieldname": "break_hours", "label": _("Brk. Hours"), "fieldtype": "Float", "width": 72, "precision": 1},
+		{"fieldname": "available_hours", "label": _("Avl. Hours"), "fieldtype": "Float", "width": 70, "precision": 1},
 		{"fieldname": "late_entry_hours", "label": _("Late Hours"), "fieldtype": "Float", "width": 75, "precision": 1},
 		{"fieldname": "early_exit_hours", "label": _("Early Exit Hours"), "fieldtype": "Float", "width": 77, "precision": 1},
 		{"fieldname": "leave_application", "label": _("Leave Application"), "fieldtype": "Link", "options": "Leave Application", "width": 130},
