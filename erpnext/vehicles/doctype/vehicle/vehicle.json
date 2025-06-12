@@ -31,16 +31,18 @@
   "column_break_8",
   "plate_region",
   "license_plate",
-  "vehicle_workshop",
   "unregistered",
   "column_break_16",
   "color",
   "interior",
-  "branch",
   "column_break_8qjzs",
   "last_odometer",
+  "loaner_vehicle_details_section",
   "is_loaner_vehicle",
   "loaner_status",
+  "column_break_loaner_vehicle",
+  "vehicle_workshop",
+  "branch",
   "insurance_details",
   "insurance_company",
   "insurance_company_name",
@@ -305,13 +307,11 @@
    "search_index": 1
   },
   {
-    "depends_on": "eval:doc.is_loaner_vehicle == 1",
-    "in_standard_filter": 1,
-    "fieldname": "vehicle_workshop",
-    "fieldtype": "Link",
-    "label": "Vehicle Workshop",
-    "options": "Vehicle Workshop",
-    "mandatory": 1
+   "fieldname": "vehicle_workshop",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Vehicle Workshop",
+   "options": "Vehicle Workshop"
   },
   {
    "allow_in_quick_entry": 1,
@@ -336,11 +336,11 @@
    "options": "Vehicle Interior"
   },
   {
-    "fieldname": "branch",
-    "fieldtype": "Link",
-    "fetch_from": "vehicle_workshop.branch",
-    "label": "Branch",
-    "options": "Branch"
+   "fetch_from": "vehicle_workshop.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
   },
   {
    "fieldname": "column_break_8qjzs",
@@ -354,17 +354,23 @@
    "set_only_once": 1
   },
   {
-    "fieldname": "is_loaner_vehicle",
-    "fieldtype": "Check",
-    "label": "Is Loaner Vehicle",
-    "default": 0
-   },
-   {
-    "fieldname": "loaner_status",
-    "fieldtype": "Select",
-    "label": "Loaner Status",
-    "options": "Not Applicable\nAvailable\nBooked\nRented\nGrounded",
-    "default": "Not Applicable"
+   "fieldname": "loaner_vehicle_details_section",
+   "fieldtype": "Section Break",
+   "label": "Loaner Vehicle Details"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_loaner_vehicle",
+   "fieldtype": "Check",
+   "label": "Is Loaner Vehicle"
+  },
+  {
+   "default": "Not Applicable",
+   "fieldname": "loaner_status",
+   "fieldtype": "Select",
+   "label": "Loaner Status",
+   "options": "Not Applicable\nAvailable\nBooked\nRented\nGrounded",
+   "read_only": 1
   },
   {
    "fieldname": "insurance_details",
@@ -777,11 +783,15 @@
    "fieldtype": "Link",
    "label": "Model Year",
    "options": "Vehicle Model Year"
+  },
+  {
+   "fieldname": "column_break_loaner_vehicle",
+   "fieldtype": "Column Break"
   }
  ],
  "image_field": "image",
  "links": [],
- "modified": "2025-02-23 22:39:35.913327",
+ "modified": "2025-06-11 15:03:58.452117",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",
