@@ -27,6 +27,8 @@
   "attendance_date",
   "shift",
   "working_hours",
+  "break_hours",
+  "available_hours",
   "late_entry",
   "late_entry_hours",
   "previous_late_entry",
@@ -275,6 +277,20 @@
    "label": "Overtime Hours",
    "precision": "1",
    "read_only": 1
+  },
+  {
+   "fieldname": "break_hours",
+   "fieldtype": "Float",
+   "label": "Break Hours",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "available_hours",
+   "fieldtype": "Float",
+   "label": "Available Hours",
+   "precision": "1",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-ok",
@@ -282,7 +298,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-14 00:48:22.356990",
+ "modified": "2025-06-12 11:59:40.072689",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Attendance",

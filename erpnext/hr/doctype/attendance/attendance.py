@@ -2,11 +2,9 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
-from frappe.utils import getdate, nowdate
 from frappe import _
+from frappe.utils import getdate, nowdate, flt, cstr
 from frappe.model.document import Document
-from frappe.utils import cstr
 
 
 class Attendance(Document):
@@ -16,6 +14,7 @@ class Attendance(Document):
 		self.validate_duplicate_record()
 		self.check_leave_record()
 		self.check_attendance_request_record()
+		self.set_available_hours()
 		validate_status(self.status, ["Present", "Absent", "On Leave", "Half Day"])
 
 	def before_validate_links(self):
@@ -103,6 +102,9 @@ class Attendance(Document):
 		if not self.flags.from_auto_attendance:
 			if date_of_joining and getdate(self.attendance_date) < getdate(date_of_joining):
 				frappe.throw(_("Attendance Date can not be before Joining Date for Employee {0}").format(self.employee))
+
+	def set_available_hours(self):
+		self.available_hours = flt(self.working_hours) - flt(self.break_hours)
 
 
 @frappe.whitelist()
