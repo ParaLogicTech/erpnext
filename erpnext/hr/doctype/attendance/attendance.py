@@ -104,6 +104,9 @@ class Attendance(Document):
 				frappe.throw(_("Attendance Date can not be before Joining Date for Employee {0}").format(self.employee))
 
 	def set_available_hours(self):
+		if flt(self.break_hours) >= flt(self.working_hours):
+			self.break_hours = 0
+
 		self.available_hours = flt(self.working_hours) - flt(self.break_hours)
 
 
