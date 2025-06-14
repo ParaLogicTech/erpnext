@@ -334,25 +334,24 @@ frappe.ui.form.on('Payment Entry', {
 		frm.set_currency_labels(["received_amount", "received_amount_after_tax", "received_amount_before_tax"],
 			frm.doc.paid_to_account_currency);
 
-		var party_account_currency =
-			frm.doc.payment_type == "Receive"
-				? frm.doc.paid_from_account_currency
-				: frm.doc.paid_to_account_currency;
+		var currency_field =
+			frm.doc.payment_type == "Receive" ? "paid_from_account_currency" : "paid_to_account_currency";
+		var party_account_currency = frm[currency_field];
 
 		frm.set_currency_labels(
 			["total_allocated_amount", "unallocated_amount", "refund_amount", "total_taxes_and_charges"],
 			party_account_currency
 		);
-
-		var currency_field =
-			frm.doc.payment_type == "Receive" ? "paid_from_account_currency" : "paid_to_account_currency";
 		frm.set_df_property("total_allocated_amount", "options", currency_field);
 		frm.set_df_property("unallocated_amount", "options", currency_field);
 		frm.set_df_property("total_taxes_and_charges", "options", currency_field);
 		frm.set_df_property("party_balance", "options", currency_field);
 
-		frm.set_currency_labels(["total_amount", "outstanding_amount", "allocated_amount"],
-			party_account_currency, "references");
+		var references_fields = ["total_amount", "outstanding_amount", "allocated_amount"];
+		frm.set_currency_labels(references_fields, party_account_currency, "references");
+		for (let f of references_fields) {
+			frm.fields_dict.references?.grid?.update_docfield_property(f, "options", currency_field);
+		}
 
 		frm.set_currency_labels(["amount"], company_currency, "deductions");
 
