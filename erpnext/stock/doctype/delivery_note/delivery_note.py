@@ -48,6 +48,9 @@ class DeliveryNote(SellingController):
 		make_packing_list(self)
 
 		self.validate_with_previous_doc()
+
+		self.sort_items()
+
 		self.set_billing_status()
 		self.set_installation_status()
 		self.set_status()
@@ -160,6 +163,7 @@ class DeliveryNote(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		self.sort_items()
 
 		if reset_taxes:
 			self.reset_taxes_and_charges()

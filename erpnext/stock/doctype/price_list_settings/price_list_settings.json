@@ -5,9 +5,13 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "price_list_note",
   "item_group_order",
-  "brand_order"
+  "column_break_lymd",
+  "brand_order",
+  "section_break_p7oi",
+  "price_list_note",
+  "column_break_2w0a",
+  "sort_items_in_sales_transactions"
  ],
  "fields": [
   {
@@ -26,11 +30,30 @@
    "fieldtype": "Table",
    "label": "Brand Order",
    "options": "Brand Order"
+  },
+  {
+   "fieldname": "column_break_lymd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_p7oi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_2w0a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Keep User Order",
+   "fieldname": "sort_items_in_sales_transactions",
+   "fieldtype": "Select",
+   "label": "Sort Items in Sales Transactions",
+   "options": "Keep User Order\nOrder by Item Group\nOrder by Brand"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2024-08-24 07:02:51.754320",
+ "modified": "2025-06-15 04:09:52.654302",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Price List Settings",

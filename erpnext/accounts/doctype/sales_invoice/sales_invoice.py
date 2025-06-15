@@ -112,6 +112,9 @@ class SalesInvoice(SellingController):
 			validate_loyalty_points(self, self.loyalty_points)
 
 		self.validate_with_previous_doc()
+
+		self.sort_items()
+
 		self.set_delivery_status()
 		self.set_returned_status()
 		self.set_status()
@@ -671,6 +674,7 @@ class SalesInvoice(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		self.sort_items()
 		self.set_po_nos()
 
 		if reset_taxes:
