@@ -79,6 +79,7 @@ class SalesInvoice(SellingController):
 			self.validate_warehouse()
 			self.update_current_stock()
 			self.validate_delivery_note_if_update_stock()
+			self.set_delivery_date()
 
 		self.validate_update_stock_mandatory()
 
@@ -113,6 +114,9 @@ class SalesInvoice(SellingController):
 			validate_loyalty_points(self, self.loyalty_points)
 
 		self.validate_with_previous_doc()
+
+		self.sort_items()
+
 		self.set_delivery_status()
 		self.set_returned_status()
 		self.set_status()
@@ -672,6 +676,7 @@ class SalesInvoice(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		self.sort_items()
 		self.set_po_nos()
 		self.update_bundled_items_list()
 
@@ -1020,6 +1025,13 @@ class SalesInvoice(SellingController):
 			make_bundled_item_list(self)
 		else:
 			self.set('packed_items', [])
+
+	def set_delivery_date(self):
+		if not self.meta.has_field("delivery_date"):
+			return
+
+		if not self.get("delivery_date"):
+			self.delivery_date = self.posting_date
 
 	def set_billing_hours_and_amount(self):
 		if not self.project:

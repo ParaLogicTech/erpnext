@@ -87,7 +87,7 @@
  "icon": "fa fa-credit-card",
  "idx": 1,
  "links": [],
- "modified": "2025-02-21 14:48:19.803699",
+ "modified": "2025-06-14 08:13:20.973289",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Mode of Payment",
@@ -109,6 +109,15 @@
    "read": 1,
    "report": 1,
    "role": "Accounts User"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Payments User",
+   "share": 1
   },
   {
    "role": "Employee",

@@ -781,7 +781,8 @@ def get_batch_no(doctype, txt, searchfield, start, page_len, filters):
 
 	batch_nos = frappe.db.sql("""
 		select batch.name,
-			sum(sle.actual_qty), item.stock_uom,
+			ifnull(sum(sle.actual_qty), 0) as actual_qty,
+			item.stock_uom,
 			min(timestamp(sle.posting_date, sle.posting_time)) as received_dt,
 			batch.manufacturing_date,
 			batch.expiry_date
@@ -795,7 +796,7 @@ def get_batch_no(doctype, txt, searchfield, start, page_len, filters):
 			{cond}
 		group by batch_no
 		{having_clause}
-		order by batch.expiry_date, received_dt, batch.name desc
+		order by actual_qty <= 0, batch.expiry_date, received_dt, batch.name desc
 		limit %(start)s, %(page_len)s
 	""".format(
 		cond=cond,
