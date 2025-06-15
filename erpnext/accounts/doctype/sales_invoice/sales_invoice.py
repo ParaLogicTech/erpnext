@@ -78,6 +78,7 @@ class SalesInvoice(SellingController):
 			self.validate_warehouse()
 			self.update_current_stock()
 			self.validate_delivery_note_if_update_stock()
+			self.set_delivery_date()
 
 		self.validate_update_stock_mandatory()
 
@@ -1018,6 +1019,13 @@ class SalesInvoice(SellingController):
 			make_packing_list(self)
 		else:
 			self.set('packed_items', [])
+
+	def set_delivery_date(self):
+		if not self.meta.has_field("delivery_date"):
+			return
+
+		if not self.get("delivery_date"):
+			self.delivery_date = self.posting_date
 
 	def set_billing_hours_and_amount(self):
 		if not self.project:
