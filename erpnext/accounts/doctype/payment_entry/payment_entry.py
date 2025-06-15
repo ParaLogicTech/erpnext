@@ -776,35 +776,22 @@ class PaymentEntry(AccountsController):
 			))
 
 	def set_remarks(self):
+		if self.user_remark:
+			self.remarks = self.user_remark
+			return
+
 		remarks = []
 
-		if self.user_remark:
-			remarks.append("Note: {0}".format(self.user_remark))
-
-		if self.payment_type=="Internal Transfer":
-			remarks.append(_("Amount {0} {1} transferred from {2} to {3}")
-				.format(self.paid_from_account_currency, self.paid_amount, self.paid_from, self.paid_to))
-		else:
-			remarks.append(_("Amount {0} {1} {2} {3}").format(
-				self.party_account_currency,
-				self.paid_amount if self.payment_type=="Receive" else self.received_amount,
-				_("received from") if self.payment_type=="Receive" else _("to"), self.party
+		if self.payment_type == "Internal Transfer":
+			remarks.append(_("{0} transferred from {1} to {2}").format(
+				self.get_formatted("paid_amount_after_tax"), self.paid_from, self.paid_to
 			))
-
-		if self.reference_no:
-			remarks.append(_("Transaction reference no {0} dated {1}")
-				.format(self.reference_no, self.reference_date))
-
-		if self.payment_type in ["Receive", "Pay"]:
-			for d in self.get("references"):
-				if flt(d.allocated_amount):
-					remarks.append(_("Amount {0} {1} against {2} {3}").format(self.party_account_currency,
-						d.allocated_amount, d.reference_doctype, d.reference_name))
-
-		for d in self.get("deductions"):
-			if d.amount:
-				remarks.append(_("Amount {0} {1} deducted against {2}")
-					.format(self.company_currency, d.amount, d.account))
+		else:
+			remarks.append(_("{0} {1} {2}").format(
+				self.get_formatted("paid_amount_after_tax") if self.payment_type == "Receive" else self.get_formatted("received_amount_after_tax"),
+				_("received from") if self.payment_type == "Receive" else _("paid to"),
+				self.party_name or self.party
+			))
 
 		self.set("remarks", "\n".join(remarks))
 
