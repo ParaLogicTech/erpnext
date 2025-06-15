@@ -14,6 +14,10 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 
 		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "actual_qty");
 		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "projected_qty");
+
+		erpnext.utils.setup_projected_qty_formatter("Packed Item", "actual_qty");
+		erpnext.utils.setup_projected_qty_formatter("Packed Item", "projected_qty");
+
 		erpnext.utils.setup_last_billed_rate_formatter(this.frm.doc.doctype + " Item", "last_billed_rate");
 	}
 
@@ -148,13 +152,22 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			});
 		}
 
-		if(this.frm.fields_dict["packed_items"] &&
-			this.frm.fields_dict["packed_items"].grid.get_field('batch_no')) {
+		if (this.frm.fields_dict.packed_items) {
+			this.frm.set_query("item_code", "packed_items", (doc, cdt, cdn) => {
+				let filters = {is_stock_item: 1};
+				let row = locals[cdt][cdn];
+				if (row.type == "Item Group" && row.item_group) {
+					filters["item_group"] = ["subtree of", row.item_group];
+				}
+				return erpnext.queries.item(filters);
+			});
+		}
+
+		if(this.frm.fields_dict["packed_items"]?.grid?.get_field('batch_no')) {
 			this.frm.set_query("batch_no", "packed_items", function(doc, cdt, cdn) {
 				return me.set_query_for_batch(doc, cdt, cdn)
 			});
 		}
-
 	}
 
 	refresh() {
@@ -162,10 +175,6 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 
 		this.set_dynamic_link();
 
-		if(this.frm.fields_dict.packed_items) {
-			var packing_list_exists = (this.frm.doc.packed_items || []).length;
-			this.frm.toggle_display("packing_list", packing_list_exists ? true : false);
-		}
 		this.toggle_editable_price_list_rate();
 
 		var me = this;
@@ -465,27 +474,6 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 
 	set_dynamic_labels() {
 		super.set_dynamic_labels();
-		this.set_product_bundle_help(this.frm.doc);
-	}
-
-	set_product_bundle_help(doc) {
-		if(!cur_frm.fields_dict.packing_list) return;
-		if ((doc.packed_items || []).length) {
-			$(cur_frm.fields_dict.packing_list.row.wrapper).toggle(true);
-
-			if (in_list(['Delivery Note', 'Sales Invoice'], doc.doctype)) {
-				var help_msg = "<div class='alert alert-warning'>" +
-					__("For 'Product Bundle' items, Warehouse, Serial No and Batch No will be considered from the 'Packing List' table. If Warehouse and Batch No are same for all packing items for any 'Product Bundle' item, those values can be entered in the main Item table, values will be copied to 'Packing List' table.")+
-				"</div>";
-				frappe.meta.get_docfield(doc.doctype, 'product_bundle_help', doc.name).options = help_msg;
-			}
-		} else {
-			$(cur_frm.fields_dict.packing_list.row.wrapper).toggle(false);
-			if (in_list(['Delivery Note', 'Sales Invoice'], doc.doctype)) {
-				frappe.meta.get_docfield(doc.doctype, 'product_bundle_help', doc.name).options = '';
-			}
-		}
-		refresh_field('product_bundle_help');
 	}
 
 	margin_rate_or_amount(doc, cdt, cdn) {

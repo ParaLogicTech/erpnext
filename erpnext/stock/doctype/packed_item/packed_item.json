@@ -1,35 +1,44 @@
 {
+ "actions": [],
  "creation": "2013-02-22 01:28:00",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "parent_item",
+  "parent_item_name",
+  "item_group",
+  "column_break_5",
   "item_code",
   "item_name",
-  "column_break_5",
+  "description_section",
   "description",
   "section_break_6",
+  "qty",
+  "column_break_9",
+  "uom",
+  "section_break_9",
   "warehouse",
   "target_warehouse",
-  "column_break_9",
-  "qty",
-  "section_break_9",
-  "serial_no",
   "column_break_11",
   "batch_no",
-  "actual_batch_qty",
+  "serial_no",
   "section_break_13",
   "actual_qty",
+  "actual_batch_qty",
   "projected_qty",
   "column_break_16",
-  "uom",
   "page_break",
   "prevdoc_doctype",
-  "parent_detail_docname"
+  "parent_detail_docname",
+  "allow_edit_qty",
+  "allow_select_item_code",
+  "type",
+  "disable_item_formatter"
  ],
  "fields": [
   {
+   "columns": 1,
    "fieldname": "parent_item",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -37,23 +46,28 @@
    "oldfieldname": "parent_item",
    "oldfieldtype": "Link",
    "options": "Item",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 1
   },
   {
+   "bold": 1,
+   "columns": 1,
    "fieldname": "item_code",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
-   "label": "Item Code",
+   "label": "Bundled Item",
    "oldfieldname": "item_code",
    "oldfieldtype": "Link",
    "options": "Item",
-   "read_only": 1
+   "read_only_depends_on": "eval:!doc.allow_select_item_code"
   },
   {
+   "columns": 3,
+   "fetch_from": "item_code.item_name",
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "label": "Item Name",
+   "in_list_view": 1,
+   "label": "Bundled Item Name",
    "oldfieldname": "item_name",
    "oldfieldtype": "Data",
    "read_only": 1
@@ -65,7 +79,6 @@
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
-   "in_list_view": 1,
    "label": "Description",
    "oldfieldname": "description",
    "oldfieldtype": "Text",
@@ -79,7 +92,7 @@
   {
    "fieldname": "warehouse",
    "fieldtype": "Link",
-   "label": "From Warehouse",
+   "label": "Delivery Warehouse",
    "oldfieldname": "warehouse",
    "oldfieldtype": "Link",
    "options": "Warehouse"
@@ -87,7 +100,10 @@
   {
    "fieldname": "target_warehouse",
    "fieldtype": "Link",
-   "label": "To Warehouse (Optional)",
+   "hidden": 1,
+   "ignore_user_permissions": 1,
+   "label": "Target Warehouse (Optional)",
+   "no_copy": 1,
    "options": "Warehouse",
    "print_hide": 1
   },
@@ -96,13 +112,14 @@
    "fieldtype": "Column Break"
   },
   {
+   "columns": 1,
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Qty",
    "oldfieldname": "qty",
    "oldfieldtype": "Currency",
-   "read_only": 1
+   "read_only_depends_on": "eval:!doc.allow_edit_qty"
   },
   {
    "fieldname": "section_break_9",
@@ -131,7 +148,7 @@
    "allow_on_submit": 1,
    "fieldname": "actual_qty",
    "fieldtype": "Float",
-   "label": "Actual Qty",
+   "label": "In Stock",
    "no_copy": 1,
    "oldfieldname": "actual_qty",
    "oldfieldtype": "Currency",
@@ -152,8 +169,10 @@
    "fieldtype": "Column Break"
   },
   {
+   "columns": 1,
    "fieldname": "uom",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "UOM",
    "oldfieldname": "uom",
    "oldfieldtype": "Link",
@@ -184,7 +203,7 @@
    "fieldname": "parent_detail_docname",
    "fieldtype": "Data",
    "hidden": 1,
-   "label": "Parent Detail docname",
+   "label": "Parent Detail DocName",
    "no_copy": 1,
    "oldfieldname": "parent_detail_docname",
    "oldfieldtype": "Data",
@@ -195,15 +214,71 @@
    "depends_on": "batch_no",
    "fieldname": "actual_batch_qty",
    "fieldtype": "Float",
-   "label": "Actual Batch Quantity",
+   "label": "In Batch",
    "no_copy": 1,
    "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Type",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Group",
+   "options": "Item Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "allow_edit_qty",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Allow Edit Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "allow_select_item_code",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Allow Select Item Code",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "columns": 2,
+   "fetch_from": "parent_item.item_name",
+   "fieldname": "parent_item_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Parent Item Name",
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "disable_item_formatter",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "is_virtual": 1,
+   "label": "Disable Item Formatter",
+   "options": "1",
    "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2020-03-03 15:35:18.593701",
+ "links": [],
+ "modified": "2025-06-10 16:20:19.103776",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packed Item",
@@ -211,5 +286,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

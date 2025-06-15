@@ -102,7 +102,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 				}
 			} else {
 				if (!doc.delivered_qty) {
-					if (!doc.is_stock_item || doc.skip_delivery_note) {
+					if (doc.skip_delivery_note) {
 						return "purple";
 					} else {
 						return "orange";

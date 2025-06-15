@@ -15,8 +15,9 @@ from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty,
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
-from erpnext.stock.get_item_details import item_has_product_bundle, get_skip_delivery_note, get_default_bom
+from erpnext.stock.get_item_details import get_skip_delivery_note, get_default_bom
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle, validate_bundled_item_list, make_bundled_item_list
 
 
 form_grid_templates = {
@@ -63,8 +64,8 @@ class SalesOrder(SellingController):
 			from erpnext.accounts.doctype.pricing_rule.utils import validate_coupon_code
 			validate_coupon_code(self.coupon_code)
 
-		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
-		make_packing_list(self)
+		make_bundled_item_list(self)
+		validate_bundled_item_list(self)
 
 		self.validate_with_previous_doc()
 
@@ -157,7 +158,7 @@ class SalesOrder(SellingController):
 	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
 		if row.item_code:
 			item = frappe.get_cached_doc("Item", row.item_code)
-			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier))
+			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier), doc=self)
 			if not row.skip_delivery_note:
 				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
 				if hooked_skip_delivery_note is not None:
@@ -182,6 +183,7 @@ class SalesOrder(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		make_bundled_item_list(self)
 		self.sort_items()
 
 		if reset_taxes:
@@ -385,20 +387,75 @@ class SalesOrder(SellingController):
 			if delivery_by_stock_row_names:
 				# Delivered By Delivery Note
 				delivered_by_dn = frappe.db.sql("""
-					select i.sales_order_item, i.qty, p.is_return, p.reopen_order
+					select i.sales_order_item, i.qty, p.is_return, p.reopen_order, p.name as delivery_note_name, i.name as delivery_note_item_name
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` p on p.name = i.parent
 					where p.docstatus = 1 and i.sales_order_item in %s
 				""", [delivery_by_stock_row_names], as_dict=1)
 
+				# Aggregate delivered quantities for each SO item, handling bundles separately
+				so_item_delivered_data = {}
+
 				for d in delivered_by_dn:
 					if not d.is_return or d.reopen_order:
-						out.delivered_qty_map.setdefault(d.sales_order_item, 0)
-						out.delivered_qty_map[d.sales_order_item] += d.qty
+						so_item_name = d.sales_order_item
+						so_item_doc = self.getone('items', {'name': so_item_name})
 
-					if d.is_return:
+						if so_item_doc and frappe.db.exists("Product Bundle", {"new_item_code": so_item_doc.item_code}):
+							# This is a bundle item, calculate delivered quantity based on packed items
+							bundle_item_doc = frappe.get_cached_doc("Item", so_item_doc.item_code)
+							product_bundle = frappe.get_doc("Product Bundle", {"new_item_code": bundle_item_doc.name})
+
+							# Get all packed items from all delivery notes linked to this specific SO item
+							packed_items_in_dn = frappe.db.sql("""
+								select pi.item_code, sum(pi.qty) as total_delivered_qty
+								from `tabPacked Item` pi
+								inner join `tabDelivery Note Item` dni on dni.name = pi.parent_detail_docname
+								inner join `tabDelivery Note` dn on dn.name = dni.parent
+								where dn.docstatus = 1
+									and dni.sales_order_item = %s
+									and (dn.is_return = 0 or dn.reopen_order = 1)
+								group by pi.item_code
+							""", (so_item_name), as_dict=1)
+
+							# Calculate completion for each packed item type
+							packed_item_completion = {}
+							for pb_item in product_bundle.items:
+								item_codes_in_group = []
+								if pb_item.item_group:
+									# Get all item codes that belong to this item group
+									item_codes_in_group = frappe.get_list("Item", filters={'item_group': pb_item.item_group}, pluck='name')
+
+								# Sum delivered quantity for packed items that match either item_code or belong to item_group
+								delivered_qty = sum(pi.total_delivered_qty for pi in packed_items_in_dn if 
+									(pb_item.item_code and pi.item_code == pb_item.item_code) or 
+									(pb_item.item_group and pi.item_code in item_codes_in_group)
+								)
+								required_qty_per_bundle = flt(pb_item.qty)
+								if required_qty_per_bundle > 0:
+									completion_percentage = delivered_qty / (required_qty_per_bundle * flt(so_item_doc.qty))
+									packed_item_completion[pb_item.item_code] = completion_percentage
+
+							# The overall bundle completion is limited by the least delivered packed item
+							overall_bundle_completion = 0
+							if packed_item_completion:
+								overall_bundle_completion = min(packed_item_completion.values())
+
+
+							# Store the calculated delivered quantity for the bundle item
+							so_item_delivered_data[so_item_name] = flt(so_item_doc.qty) * overall_bundle_completion
+						else:
+							# Not a bundle item, sum up quantities from delivery notes
+							so_item_delivered_data.setdefault(so_item_name, 0)
+							so_item_delivered_data[so_item_name] += d.qty
+
+					# Handle returns for both bundle and non-bundle items
+					if d.is_return and not d.reopen_order:
 						out.total_returned_qty_map.setdefault(d.sales_order_item, 0)
-						out.total_returned_qty_map[d.sales_order_item] -= d.qty
+						out.total_returned_qty_map[d.sales_order_item] += d.qty
+
+				# Update the delivered_qty_map with the aggregated data
+				out.delivered_qty_map.update(so_item_delivered_data)
 
 				# Delivered By Sales Invoice
 				delivered_by_sinv = frappe.db.sql("""
@@ -731,7 +788,7 @@ class SalesOrder(SellingController):
 
 		for d in self.get("items"):
 			if not so_item_rows or d.name in so_item_rows:
-				if item_has_product_bundle(d.item_code):
+				if is_product_bundle(d.item_code):
 					for p in self.get("packed_items"):
 						if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 							add_to_item_warehouse_list(p.item_code, p.warehouse)

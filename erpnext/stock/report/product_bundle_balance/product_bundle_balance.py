@@ -35,7 +35,6 @@ def execute(filters=None):
 				"item_name": parent_item_detail.item_name,
 				"item_group": parent_item_detail.item_group,
 				"brand": parent_item_detail.brand,
-				"description": parent_item_detail.description,
 				"warehouse": warehouse,
 				"uom": parent_item_detail.stock_uom,
 				"company": company,
@@ -51,7 +50,6 @@ def execute(filters=None):
 					"item_name": child_item_detail.item_name,
 					"item_group": child_item_detail.item_group,
 					"brand": child_item_detail.brand,
-					"description": child_item_detail.description,
 					"warehouse": warehouse,
 					"uom": child_item_detail.uom,
 					"actual_qty": flt(child_item_balance.qty_after_transaction),
@@ -80,7 +78,6 @@ def get_columns():
 		{"fieldname": "minimum_qty", "label": _("Minimum Qty"), "fieldtype": "Float", "width": 100},
 		{"fieldname": "item_group", "label": _("Item Group"), "fieldtype": "Link", "options": "Item Group", "width": 100},
 		{"fieldname": "brand", "label": _("Brand"), "fieldtype": "Link", "options": "Brand", "width": 100},
-		{"fieldname": "description", "label": _("Description"), "width": 140},
 		{"fieldname": "company", "label": _("Company"), "fieldtype": "Link", "options": "Company", "width": 100}
 	]
 	return columns
@@ -92,7 +89,7 @@ def get_items(filters):
 
 	conditions = get_parent_item_conditions(filters)
 	parent_item_details = frappe.db.sql("""
-		select item.name as item_code, item.item_name, pb.description, item.item_group, item.brand, item.stock_uom
+		select item.name as item_code, item.item_name, item.item_group, item.brand, item.stock_uom
 		from `tabItem` item
 		inner join `tabProduct Bundle` pb on pb.new_item_code = item.name
 		where ifnull(item.disabled, 0) = 0 {0}
@@ -106,7 +103,7 @@ def get_items(filters):
 	if parent_items:
 		child_item_details = frappe.db.sql("""
 			select
-				pb.new_item_code as parent_item, pbi.item_code, item.item_name, pbi.description, item.item_group, item.brand,
+				pb.new_item_code as parent_item, pbi.item_code, item.item_name, item.item_group, item.brand,
 				item.stock_uom, pbi.uom, pbi.qty
 			from `tabProduct Bundle Item` pbi
 			inner join `tabProduct Bundle` pb on pb.name = pbi.parent

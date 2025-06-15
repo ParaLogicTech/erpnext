@@ -3,13 +3,13 @@
 
 
 import frappe
-import frappe.defaults
+from frappe import _
+from frappe.utils import cint, flt
 from erpnext.controllers.selling_controller import SellingController
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
-from frappe import _
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import cint, flt
+from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
 
 
 form_grid_templates = {
@@ -44,8 +44,8 @@ class DeliveryNote(SellingController):
 		from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party
 		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
 
-		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
-		make_packing_list(self)
+		make_bundled_item_list(self)
+		validate_bundled_item_list(self)
 
 		self.validate_with_previous_doc()
 
@@ -163,6 +163,7 @@ class DeliveryNote(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		make_bundled_item_list(self)
 		self.sort_items()
 
 		if reset_taxes:
@@ -595,7 +596,6 @@ class DeliveryNote(SellingController):
 				for d in self.get("items"):
 					if d.sales_order_item and d.sales_order_item in sales_order_items_indirectly_billed:
 						d.unbilled_stock_account = None
-
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):
 	if isinstance(delivery_note, str):
