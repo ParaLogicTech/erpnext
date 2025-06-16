@@ -815,13 +815,16 @@ class Project(StatusUpdaterERP):
 			}, None)
 
 	def validate_for_transaction(self, doc):
-		if doc.doctype in ("Sales Invoice", "Service Warranty"):
+		if doc.doctype == "Sales Invoice":
 			if not self.is_insurance_excess_invoice_for_customer(doc):
 				self.check_is_ready_to_close()
-		if doc.doctype == "Sales Invoice":
-			self.check_undelivered_sales_orders()
+				self.check_undelivered_sales_orders()
+
 		if doc.doctype == "Payment Entry":
 			self.validate_payment_entry_customer(doc)
+
+		if doc.doctype == "Service Warranty":
+			self.check_is_ready_to_close()
 
 	def check_is_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_ready_to_close"):
@@ -890,11 +893,7 @@ class Project(StatusUpdaterERP):
 		if billed_to != self.customer:
 			return False
 
-		for item in doc.items:
-			if item.item_code == insurance_excess_item:
-				return True
-
-		return False
+		return doc.items and all(d.item_code == insurance_excess_item for d in doc.items)
 
 	def check_po_no_is_set(self, doc):
 		if self.po_no or doc.is_pos:
