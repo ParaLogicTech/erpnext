@@ -136,7 +136,7 @@ frappe.query_reports["Purchase Details"] = {
 			fieldtype: "Select",
 			options: ["", "Group by Supplier", "Group by Supplier Group", "Group by Transaction",
 				"Group by Item", "Group by Item Group", "Group by Brand"],
-			default: "Group by Supplier"
+			default: ""
 		},
 		{
 			fieldname: "group_by_3",
@@ -144,7 +144,7 @@ frappe.query_reports["Purchase Details"] = {
 			fieldtype: "Select",
 			options: ["", "Group by Supplier", "Group by Supplier Group", "Group by Transaction",
 				"Group by Item", "Group by Item Group", "Group by Brand"],
-			default: "Group by Transaction"
+			default: ""
 		},
 		{
 			fieldname: "group_same_items",

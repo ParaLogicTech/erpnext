@@ -36,7 +36,7 @@ frappe.ui.form.on('Stock Entry', {
 			if(!item.item_code) {
 				frappe.throw(__("Please enter Item Code to get Batch Number"));
 			} else {
-				if (item.s_warehouse || frm.doc.purpose == "Material Receipt") {
+				if (item.s_warehouse || frm.doc.purpose == "Material Issue") {
 					return {
 						query : "erpnext.controllers.queries.get_batch_no",
 						filters: {

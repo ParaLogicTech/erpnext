@@ -78,6 +78,7 @@ class SalesInvoice(SellingController):
 			self.validate_warehouse()
 			self.update_current_stock()
 			self.validate_delivery_note_if_update_stock()
+			self.set_delivery_date()
 
 		self.validate_update_stock_mandatory()
 
@@ -111,6 +112,9 @@ class SalesInvoice(SellingController):
 			validate_loyalty_points(self, self.loyalty_points)
 
 		self.validate_with_previous_doc()
+
+		self.sort_items()
+
 		self.set_delivery_status()
 		self.set_returned_status()
 		self.set_status()
@@ -154,7 +158,7 @@ class SalesInvoice(SellingController):
 
 		self.update_serial_no()
 
-		self.update_project_billing_and_sales(material_cost_of_sales=True)
+		self.update_project_billing_and_sales(material_cost_of_sales=True, validate_insurance_excess=True)
 		self.update_time_sheet(self.name)
 
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
@@ -208,7 +212,7 @@ class SalesInvoice(SellingController):
 			against_si_doc.delete_loyalty_point_entry()
 			against_si_doc.make_loyalty_point_entry()
 
-		self.update_project_billing_and_sales(material_cost_of_sales=self.update_stock)
+		self.update_project_billing_and_sales(material_cost_of_sales=True)
 
 		unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
 
@@ -670,6 +674,7 @@ class SalesInvoice(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		self.sort_items()
 		self.set_po_nos()
 
 		if reset_taxes:
@@ -1018,6 +1023,13 @@ class SalesInvoice(SellingController):
 			make_packing_list(self)
 		else:
 			self.set('packed_items', [])
+
+	def set_delivery_date(self):
+		if not self.meta.has_field("delivery_date"):
+			return
+
+		if not self.get("delivery_date"):
+			self.delivery_date = self.posting_date
 
 	def set_billing_hours_and_amount(self):
 		if not self.project:

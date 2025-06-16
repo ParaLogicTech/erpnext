@@ -3,6 +3,11 @@
 
 frappe.ui.form.on("Supplier", {
 	setup: function (frm) {
+		frm.make_methods = {
+			'Pricing Rule': () => erpnext.utils.make_pricing_rule(frm.doc.doctype, frm.doc.name),
+			'Bank Account': () => erpnext.utils.make_bank_account(frm.doc.doctype, frm.doc.name),
+		}
+
 		frm.set_query('default_price_list', { 'buying': 1 });
 		if (frm.doc.__islocal == 1) {
 			frm.set_value("represents_company", "");
@@ -83,13 +88,13 @@ frappe.ui.form.on("Supplier", {
 				});
 			});
 
-			frm.add_custom_button(__('Bank Account'), function () {
-				erpnext.utils.make_bank_account(frm.doc.doctype, frm.doc.name);
-			}, __('Create'));
-
-			frm.add_custom_button(__('Pricing Rule'), function () {
-				erpnext.utils.make_pricing_rule(frm.doc.doctype, frm.doc.name);
-			}, __('Create'));
+			frm.add_custom_button(__('Purchase Details'), function() {
+				frappe.set_route('query-report', 'Purchase Details', {
+					supplier: frm.doc.name,
+					from_date: frappe.defaults.get_user_default("year_start_date"),
+					to_date: frappe.defaults.get_user_default("year_end_date")
+				});
+			});
 
 			// indicators
 			erpnext.utils.set_party_dashboard_indicators(frm);

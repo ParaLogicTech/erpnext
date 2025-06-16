@@ -32,7 +32,6 @@ def execute(filters=None):
 	data = []
 
 	checkin_column_count = 1
-
 	current_date = filters.from_date
 	while current_date <= filters.to_date:
 		day = get_weekday(current_date)
@@ -103,8 +102,9 @@ def execute(filters=None):
 							row['attendance_request'] = attendance_details.attendance_request
 							row['remarks'] = attendance_details.remarks or attendance_details.leave_type or attendance_details.attendance_request_reason or row.remarks
 
-							if attendance_details.working_hours:
-								row['working_hours'] = attendance_details.working_hours
+							row['working_hours'] = attendance_details.working_hours
+							row['break_hours'] = attendance_details.break_hours
+							row['available_hours'] = attendance_details.available_hours
 
 						row['attendance_marked'] = 1 if attendance_details else 0
 
@@ -129,10 +129,20 @@ def execute(filters=None):
 								row['attendance_abbr'] = get_attendance_status_abbr(attendance_status, late_entry, early_exit)
 								row['late_entry'] = late_entry
 								row['early_exit'] = early_exit
-								if working_hours:
-									row['working_hours'] = working_hours
+								row['working_hours'] = working_hours
+
+								row['break_hours'] = flt(frappe.get_cached_value("Shift Type", shift_type, "break_hours"))
+								if flt(row.get("break_hours")) >= flt(row.get("working_hours")):
+									row['break_hours'] = 0
+								row['available_hours'] = flt(row.get('working_hours')) - flt(row.get('break_hours'))
+
 							elif not is_holiday and shift_ended(shift_type, attendance_date=current_date):
 								row['attendance_status'] = "Absent"
+
+						if not row.get("working_hours") and not row.get("break_hours") and not row.get("available_hours"):
+							row["working_hours"] = None
+							row["break_hours"] = None
+							row["available_hours"] = None
 
 						row['late_entry_hours'] = get_late_entry_hours(row, checkins)
 						row['early_exit_hours'] = get_early_exit_hours(row, checkins)
@@ -203,6 +213,8 @@ def calculate_totals(employee, data, filters):
 		"total_working_hours": 0,
 		"total_late_entry_hours": 0,
 		"total_early_exit_hours": 0,
+		"total_break_hours": 0,
+		"total_available_hours": 0,
 	})
 
 	for d in data:
@@ -245,6 +257,9 @@ def calculate_totals(employee, data, filters):
 
 		# total hours
 		totals['total_working_hours'] += flt(d.working_hours)
+		totals['total_break_hours'] += flt(d.break_hours)
+		totals['total_available_hours'] += flt(d.available_hours)
+
 		totals['total_late_entry_hours'] += flt(d.late_entry_hours)
 		totals['total_early_exit_hours'] += flt(d.early_exit_hours)
 
@@ -272,6 +287,8 @@ def calculate_totals(employee, data, filters):
 	totals['total_working_hours'] = flt(totals['total_working_hours'], 1)
 	totals['total_late_entry_hours'] = flt(totals['total_late_entry_hours'], 1)
 	totals['total_early_exit_hours'] = flt(totals['total_early_exit_hours'], 1)
+	totals['total_break_hours'] = flt(totals['total_break_hours'], 1)
+	totals['total_available_hours'] = flt(totals['total_available_hours'], 1)
 
 	return totals
 
@@ -320,7 +337,8 @@ def get_attendance_map(filters):
 
 	attendance = frappe.db.sql("""
 		select att.name, att.employee, att.attendance_date, att.shift,
-			att.status, att.late_entry, att.early_exit, att.working_hours,
+			att.status, att.late_entry, att.early_exit,
+			att.working_hours, att.break_hours, att.available_hours,
 			att.leave_application, att.attendance_request,
 			att.remarks, att.leave_type, arq.reason as attendance_request_reason
 		from `tabAttendance` att
@@ -388,6 +406,8 @@ def get_columns(filters, checkin_column_count, totals):
 		{"fieldname": "attendance_status", "label": _("Status"), "fieldtype": "Data", "width": 75},
 		{"fieldname": "remarks", "label": _("Remarks"), "fieldtype": "Data", "width": 100},
 		{"fieldname": "working_hours", "label": _("W. Hours"), "fieldtype": "Float", "width": 65, "precision": 1},
+		{"fieldname": "break_hours", "label": _("Brk. Hours"), "fieldtype": "Float", "width": 72, "precision": 1},
+		{"fieldname": "available_hours", "label": _("Avl. Hours"), "fieldtype": "Float", "width": 70, "precision": 1},
 		{"fieldname": "late_entry_hours", "label": _("Late Hours"), "fieldtype": "Float", "width": 75, "precision": 1},
 		{"fieldname": "early_exit_hours", "label": _("Early Exit Hours"), "fieldtype": "Float", "width": 77, "precision": 1},
 		{"fieldname": "leave_application", "label": _("Leave Application"), "fieldtype": "Link", "options": "Leave Application", "width": 130},
@@ -463,6 +483,20 @@ def get_totals_summary(totals):
 			"label": _("Total Working Hours"),
 			"value": totals.total_working_hours,
 			"indicator": "blue" if totals.total_working_hours > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Total Break Hours"),
+			"value": totals.total_break_hours,
+			"indicator": "blue" if totals.total_break_hours > 0 else "grey",
+			"datatype": "Float",
+			"precision": 1,
+		},
+		{
+			"label": _("Total Available Hours"),
+			"value": totals.total_available_hours,
+			"indicator": "blue" if totals.total_available_hours > 0 else "grey",
 			"datatype": "Float",
 			"precision": 1,
 		},

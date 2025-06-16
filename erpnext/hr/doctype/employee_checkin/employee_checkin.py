@@ -142,7 +142,15 @@ def add_log_based_on_employee_field(employee_field_value, timestamp, device_id=N
 	return doc
 
 
-def mark_attendance_and_link_log(logs, attendance_status, attendance_date, working_hours=None, late_entry=False, early_exit=False, shift=None):
+def mark_attendance_and_link_log(
+	logs,
+	attendance_status,
+	attendance_date,
+	working_hours=None,
+	late_entry=False,
+	early_exit=False,
+	shift=None,
+):
 	"""Creates an attendance and links the attendance to the Employee Checkin.
 	Note: If attendance is already present for the given date, the logs are marked as skipped and no exception is thrown.
 
@@ -171,6 +179,14 @@ def mark_attendance_and_link_log(logs, attendance_status, attendance_date, worki
 				'late_entry': late_entry,
 				'early_exit': early_exit
 			}
+
+			break_hours = 0
+			if shift:
+				break_hours = frappe.get_cached_value("Shift Type", shift, "break_hours")
+			elif doc_dict.get("company"):
+				break_hours = frappe.get_cached_value("Company", doc_dict.get("company"), "standard_break_hours")
+
+			doc_dict["break_hours"] = break_hours
 
 			attendance = frappe.get_doc(doc_dict)
 			attendance.flags.from_auto_attendance = True

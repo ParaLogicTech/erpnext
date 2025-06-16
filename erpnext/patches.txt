@@ -336,7 +336,6 @@ execute:frappe.delete_doc_if_exists("Custom Field", "Expense Entry-branch")
 execute:frappe.delete_doc_if_exists("Report", "Trial Balance for Party")
 execute:frappe.delete_doc_if_exists("Report", "Trial Balance (Simple)")
 erpnext.patches.v15_0.unset_dimension_fields_system_generated
-erpnext.patches.v15_0.create_missing_dimension_fields
 execute:frappe.delete_doc_if_exists("Custom Field", "Purchase Receipt-cost_center")
 execute:frappe.delete_doc_if_exists("Custom Field", "Delivery Note-cost_center")
 erpnext.patches.v15_0.rename_sending_bank_field
@@ -392,3 +391,7 @@ erpnext.patches.v15_0.set_project_in_customer_feedback
 erpnext.patches.v15_0.copy_contact_in_customer_feedback_from_project
 erpnext.patches.v15_0.update_appointment_service_template
 erpnext.patches.v15_0.update_project_sales_and_procurement_status
+erpnext.patches.v15_0.update_project_additional_insurance_excess
+erpnext.patches.v15_0.create_missing_dimension_fields
+erpnext.patches.v15_0.set_attendance_available_hours
+erpnext.patches.v15_0.set_payment_entry_reference_posting_date #1

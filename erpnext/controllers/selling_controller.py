@@ -195,6 +195,9 @@ class SellingController(TransactionController):
 					return True
 
 		for d in self.get("items"):
+			percent_precision = d.precision("discount_percentage")
+			rate_precision = d.precision("discount_amount")
+
 			if not d.item_code or not flt(d.get("discount_percentage")):
 				continue
 
@@ -203,11 +206,8 @@ class SellingController(TransactionController):
 				continue
 
 			max_discount = flt(discount_rule_values.get("max_discount"))
-			if flt(d.discount_percentage) <= max_discount:
+			if flt(d.discount_percentage, percent_precision) <= max_discount:
 				continue
-
-			percent_precision = d.precision("discount_percentage")
-			rate_precision = d.precision("discount_amount")
 
 			# skip if pricing rule discount applied
 			if not self.get("ignore_pricing_rule"):
@@ -686,7 +686,7 @@ class SellingController(TransactionController):
 					frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
 				))
 
-	def update_project_billing_and_sales(self, material_cost_of_sales=False):
+	def update_project_billing_and_sales(self, material_cost_of_sales=False, validate_insurance_excess=False):
 		projects = []
 		if self.get('project'):
 			projects.append(self.get('project'))
@@ -712,9 +712,22 @@ class SellingController(TransactionController):
 			if material_cost_of_sales:
 				doc.set_material_cost_of_sales(update=True)
 
+			if validate_insurance_excess:
+				self.validate_insurance_excess(doc)
+
 			doc.set_gross_margin(update=True)
 			doc.set_status(update=True, from_doctype=self.doctype, action=self.get("_action"))
 			doc.notify_update()
+
+	def validate_insurance_excess(self, project):
+		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
+		if not insurance_excess_item:
+			return
+
+		if not any(d.item_code == insurance_excess_item for d in self.items):
+			return
+
+		project.validate_insurance_excess_billed_amount()
 
 	def validate_campaign(self):
 		validate_campaign_voucher_code(self)
@@ -767,6 +780,37 @@ class SellingController(TransactionController):
 			cost_rate = get_incoming_rate(args, raise_error_if_no_rate=False)
 
 		return cost_rate
+
+	def sort_items(self):
+		price_list_settings = frappe.get_cached_doc("Price List Settings", None)
+
+		sorting_field = None
+		if price_list_settings.sort_items_in_sales_transactions == "Order by Item Group":
+			sorting_field = "item_group"
+		elif price_list_settings.sort_items_in_sales_transactions == "Order by Brand":
+			sorting_field = "brand"
+
+		if not sorting_field:
+			return
+
+		order_list = price_list_settings.get(f"{sorting_field}_order", [])
+		order_map = {d.get(sorting_field): cint(d.idx) for d in order_list}
+
+		if not order_map:
+			return
+
+		def sorter(d):
+			if sorting_field == "item_group":
+				key = self.get_item_group_print_heading(d)
+			else:
+				key = d.get(sorting_field)
+
+			sorting_idx = order_map[key] if key in order_map else 99999
+			return sorting_idx
+
+		self.items = sorted(self.items, key=sorter)
+		for i, d in enumerate(self.items):
+			d.idx = i + 1
 
 
 @frappe.whitelist()

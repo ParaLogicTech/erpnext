@@ -35,6 +35,7 @@ class Quotation(SellingController):
 		self.validate_campaign()
 		self.clear_approval_date()
 		self.set_customer_name()
+		self.sort_items()
 
 		if self.items:
 			self.with_items = 1

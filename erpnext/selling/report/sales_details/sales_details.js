@@ -163,7 +163,7 @@ frappe.query_reports["Sales Details"] = {
 				"Group by Item", "Group by Item Group", "Group by Brand",
 				"Group by Applies To Item", "Group by Applies To Variant Of",
 				"Group by Territory", "Group by Sales Person"],
-			default: "Group by Customer"
+			default: ""
 		},
 		{
 			fieldname: "group_by_3",
@@ -173,7 +173,7 @@ frappe.query_reports["Sales Details"] = {
 				"Group by Item", "Group by Item Group", "Group by Brand",
 				"Group by Applies To Item", "Group by Applies To Variant Of",
 				"Group by Territory", "Group by Sales Person"],
-			default: "Group by Transaction"
+			default: ""
 		},
 		{
 			fieldname: "totals_only",

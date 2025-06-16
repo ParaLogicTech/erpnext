@@ -22,5 +22,16 @@ frappe.ui.form.on('Account Group', {
 				}
 			};
 		});
+
+		let account_group_field = frm.get_docfield("rows", "account_group");
+		if (account_group_field) {
+			account_group_field.get_route_options_for_new_doc = function(row) {
+				return {
+					"company": frm.doc.company,
+					"report_type": frm.doc.report_type,
+					"root_type": frm.doc.root_type,
+				}
+			};
+		}
 	},
 });
