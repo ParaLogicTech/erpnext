@@ -311,6 +311,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Vehicle Workshop",
+   "mandatory_depends_on": "eval:doc.is_loaner_vehicle",
    "options": "Vehicle Workshop"
   },
   {
@@ -362,7 +363,8 @@
    "default": "0",
    "fieldname": "is_loaner_vehicle",
    "fieldtype": "Check",
-   "label": "Is Loaner Vehicle"
+   "label": "Is Loaner Vehicle",
+   "read_only_depends_on": "eval:in_list(['Booked', 'Rented'], doc.loaner_status)"
   },
   {
    "default": "Not Applicable",
@@ -791,7 +793,7 @@
  ],
  "image_field": "image",
  "links": [],
- "modified": "2025-06-11 15:03:58.452117",
+ "modified": "2025-06-16 13:52:55.269253",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",
