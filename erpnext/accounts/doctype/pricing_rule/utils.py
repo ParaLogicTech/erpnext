@@ -28,6 +28,8 @@ def get_pricing_rules(args, doc=None):
 	for apply_on in ['Item Code', 'Brand', 'Item Group']:
 		pricing_rules.extend(_get_pricing_rules(apply_on, args, values))
 
+	pricing_rules = filter_pricing_rules_with_item_price_check(pricing_rules, args)
+
 	pricing_rules = filter_pricing_rules_based_on_condition(pricing_rules, args, doc=doc)
 
 	rules = []
@@ -664,3 +666,27 @@ def update_coupon_code_count(coupon_name,transaction_type):
 			if coupon.used>0:
 				coupon.used=coupon.used-1
 				coupon.save(ignore_permissions=True)
+
+def filter_pricing_rules_with_item_price_check(pricing_rules, args):
+	from erpnext.stock.get_item_details import get_price_list_rate_for
+	filtered = []
+
+	for pricing_rule in pricing_rules:
+		if pricing_rule.get('ignore_if_item_price_available'):
+			price_list = pricing_rule.for_price_list or args.get('price_list')
+
+			item_price_args = {
+				"item_code": args.get("item_code"),
+				"price_list": price_list,
+				"transaction_date": args.get("transaction_date") or today(),
+				"uom": args.get("uom")
+			}
+
+			item_price_data = get_price_list_rate_for(args.get("item_code"), price_list, item_price_args)
+
+			if item_price_data:
+				continue
+
+		filtered.append(pricing_rule)
+
+	return filtered
