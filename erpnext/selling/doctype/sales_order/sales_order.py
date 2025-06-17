@@ -252,6 +252,13 @@ class SalesOrder(SellingController):
 					'total_returned_qty': d.total_returned_qty,
 				}, update_modified=update_modified)
 
+		for d in self.packed_items:
+			d.delivered_qty = flt(data.bundled_item_delivered_qty_map.get(d.name))
+			if update:
+				d.db_set({
+					'delivered_qty': d.delivered_qty,
+				}, update_modified=update_modified)
+
 		# update percentage in parent
 		self.per_delivered, within_allowance = self.calculate_status_percentage('delivered_qty', 'qty', data.deliverable_rows,
 			under_delivery_allowance=True)
@@ -363,12 +370,16 @@ class SalesOrder(SellingController):
 
 		out.deliverable_rows = []
 		out.delivered_qty_map = {}
+		out.bundled_item_delivered_qty_map = {}
 		out.total_returned_qty_map = {}
 		out.service_billed_qty_map = {}
 
 		delivery_by_supplier_row_names = []
 		delivery_by_stock_row_names = []
 		delivery_by_billing_row_names = []
+
+		delivery_by_bundle_rows = []
+		bundled_item_row_names = [d.name for d in self.packed_items]
 
 		for d in self.items:
 			is_deliverable = not d.skip_delivery_note or d.delivered_by_supplier
@@ -377,6 +388,8 @@ class SalesOrder(SellingController):
 
 				if d.delivered_by_supplier:
 					delivery_by_supplier_row_names.append(d.name)
+				elif is_product_bundle(d.item_code):
+					delivery_by_bundle_rows.append(d)
 				else:
 					delivery_by_stock_row_names.append(d.name)
 			else:
@@ -387,75 +400,11 @@ class SalesOrder(SellingController):
 			if delivery_by_stock_row_names:
 				# Delivered By Delivery Note
 				delivered_by_dn = frappe.db.sql("""
-					select i.sales_order_item, i.qty, p.is_return, p.reopen_order, p.name as delivery_note_name, i.name as delivery_note_item_name
+					select i.sales_order_item, i.qty, p.is_return, p.reopen_order
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` p on p.name = i.parent
 					where p.docstatus = 1 and i.sales_order_item in %s
 				""", [delivery_by_stock_row_names], as_dict=1)
-
-				# Aggregate delivered quantities for each SO item, handling bundles separately
-				so_item_delivered_data = {}
-
-				for d in delivered_by_dn:
-					if not d.is_return or d.reopen_order:
-						so_item_name = d.sales_order_item
-						so_item_doc = self.getone('items', {'name': so_item_name})
-
-						if so_item_doc and frappe.db.exists("Product Bundle", {"new_item_code": so_item_doc.item_code}):
-							# This is a bundle item, calculate delivered quantity based on packed items
-							bundle_item_doc = frappe.get_cached_doc("Item", so_item_doc.item_code)
-							product_bundle = frappe.get_doc("Product Bundle", {"new_item_code": bundle_item_doc.name})
-
-							# Get all packed items from all delivery notes linked to this specific SO item
-							packed_items_in_dn = frappe.db.sql("""
-								select pi.item_code, sum(pi.qty) as total_delivered_qty
-								from `tabPacked Item` pi
-								inner join `tabDelivery Note Item` dni on dni.name = pi.parent_detail_docname
-								inner join `tabDelivery Note` dn on dn.name = dni.parent
-								where dn.docstatus = 1
-									and dni.sales_order_item = %s
-									and (dn.is_return = 0 or dn.reopen_order = 1)
-								group by pi.item_code
-							""", (so_item_name), as_dict=1)
-
-							# Calculate completion for each packed item type
-							packed_item_completion = {}
-							for pb_item in product_bundle.items:
-								item_codes_in_group = []
-								if pb_item.item_group:
-									# Get all item codes that belong to this item group
-									item_codes_in_group = frappe.get_list("Item", filters={'item_group': pb_item.item_group}, pluck='name')
-
-								# Sum delivered quantity for packed items that match either item_code or belong to item_group
-								delivered_qty = sum(pi.total_delivered_qty for pi in packed_items_in_dn if 
-									(pb_item.item_code and pi.item_code == pb_item.item_code) or 
-									(pb_item.item_group and pi.item_code in item_codes_in_group)
-								)
-								required_qty_per_bundle = flt(pb_item.qty)
-								if required_qty_per_bundle > 0:
-									completion_percentage = delivered_qty / (required_qty_per_bundle * flt(so_item_doc.qty))
-									packed_item_completion[pb_item.item_code] = completion_percentage
-
-							# The overall bundle completion is limited by the least delivered packed item
-							overall_bundle_completion = 0
-							if packed_item_completion:
-								overall_bundle_completion = min(packed_item_completion.values())
-
-
-							# Store the calculated delivered quantity for the bundle item
-							so_item_delivered_data[so_item_name] = flt(so_item_doc.qty) * overall_bundle_completion
-						else:
-							# Not a bundle item, sum up quantities from delivery notes
-							so_item_delivered_data.setdefault(so_item_name, 0)
-							so_item_delivered_data[so_item_name] += d.qty
-
-					# Handle returns for both bundle and non-bundle items
-					if d.is_return and not d.reopen_order:
-						out.total_returned_qty_map.setdefault(d.sales_order_item, 0)
-						out.total_returned_qty_map[d.sales_order_item] += d.qty
-
-				# Update the delivered_qty_map with the aggregated data
-				out.delivered_qty_map.update(so_item_delivered_data)
 
 				# Delivered By Sales Invoice
 				delivered_by_sinv = frappe.db.sql("""
@@ -465,7 +414,7 @@ class SalesOrder(SellingController):
 					where p.docstatus = 1 and p.update_stock = 1 and i.sales_order_item in %s
 				""", [delivery_by_stock_row_names], as_dict=1)
 
-				for d in delivered_by_sinv:
+				for d in delivered_by_dn + delivered_by_sinv:
 					if not d.is_return or d.reopen_order:
 						out.delivered_qty_map.setdefault(d.sales_order_item, 0)
 						out.delivered_qty_map[d.sales_order_item] += d.qty
@@ -498,6 +447,41 @@ class SalesOrder(SellingController):
 						and i.sales_order_item in %s
 					group by i.sales_order_item
 				""", [delivery_by_billing_row_names]))
+
+			# Get Bundled Item Delivered Qty
+			if bundled_item_row_names:
+				bundled_item_delivered_by_dn = frappe.db.sql("""
+					select i.previous_detail_docname, i.qty, p.is_return, p.reopen_order
+					from `tabPacked Item` i
+					inner join `tabDelivery Note` p on p.name = i.parent and i.parenttype = 'Delivery Note'
+					where p.docstatus = 1 and i.previous_detail_docname in %s
+				""", [bundled_item_row_names], as_dict=1)
+
+				bundled_item_delivered_by_sinv = frappe.db.sql("""
+					select i.previous_detail_docname, i.qty, p.is_return, p.reopen_order
+					from `tabPacked Item` i
+					inner join `tabSales Invoice` p on p.name = i.parent and i.parenttype = 'Sales Invoice'
+					where p.docstatus = 1 and p.update_stock = 1 and i.previous_detail_docname in %s
+				""", [bundled_item_row_names], as_dict=1)
+
+				for d in bundled_item_delivered_by_dn + bundled_item_delivered_by_sinv:
+					if not d.is_return or d.reopen_order:
+						out.bundled_item_delivered_qty_map.setdefault(d.previous_detail_docname, 0)
+						out.bundled_item_delivered_qty_map[d.previous_detail_docname] += d.qty
+
+			for parent_row in delivery_by_bundle_rows:
+				child_rows = [d for d in self.packed_items if d.parent_detail_docname == parent_row.name]
+				if not child_rows:
+					continue
+
+				accumulated_delivery_portion = 0
+				for child_row in child_rows:
+					child_delivered_qty = flt(out.bundled_item_delivered_qty_map.get(child_row.name))
+					child_delivery_portion = min(1, child_delivered_qty / child_row.qty) if child_row.qty else 1
+					accumulated_delivery_portion += child_delivery_portion
+
+				parent_delivered_qty = parent_row.qty * accumulated_delivery_portion / len(child_rows)
+				out.delivered_qty_map[parent_row.name] = parent_delivered_qty
 
 		return out
 
@@ -642,6 +626,10 @@ class SalesOrder(SellingController):
 		else:
 			self.validate_completed_qty('delivered_qty', 'qty', self.items,
 				allowance_type='qty', from_doctype=from_doctype, row_names=row_names)
+
+	def validate_bundled_item_delivered_qty(self, from_doctype=None, row_names=None):
+		self.validate_completed_qty('delivered_qty', 'qty', self.packed_items,
+			allowance_type='qty', from_doctype=from_doctype, row_names=row_names)
 
 	def validate_packed_qty(self, from_doctype=None, row_names=None):
 		self.validate_completed_qty('packed_qty', 'qty', self.items,
@@ -1111,6 +1099,9 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 	if not warehouse and frappe.flags.args:
 		warehouse = frappe.flags.args.warehouse
 
+	def update_bundled_item(source, target, source_parent, target_parent):
+		target.qty = max(0, source.qty - source.delivered_qty)
+
 	def set_missing_values(source, target):
 		target.ignore_pricing_rule = 1
 
@@ -1147,6 +1138,13 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 
 	if not skip_item_mapping:
 		mapper["Sales Order Item"] = get_item_mapper_for_delivery(allow_duplicate=allow_duplicate)
+		mapper["Packed Item"] = {
+			"doctype": "Packed Item",
+			"field_map": {
+				"name": "previous_detail_docname",
+			},
+			"postprocess": update_bundled_item,
+		}
 
 	frappe.utils.call_hook_method("update_delivery_note_from_sales_order_mapper", mapper, "Delivery Note")
 

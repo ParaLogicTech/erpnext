@@ -190,6 +190,7 @@ class DeliveryNote(SellingController):
 		sales_invoices = set()
 		so_row_names_without_packing_slip = set()
 		so_row_names_with_packing_slip = set()
+		so_bundled_item_row_names = set()
 		sales_invoice_row_names = set()
 		delivery_note_row_names = set()
 
@@ -207,6 +208,10 @@ class DeliveryNote(SellingController):
 				sales_invoice_row_names.add(d.sales_invoice_item)
 			if d.delivery_note_item:
 				delivery_note_row_names.add(d.delivery_note_item)
+
+		for d in self.packed_items:
+			if d.previous_detail_docname:
+				so_bundled_item_row_names.add(d.previous_detail_docname)
 
 		# Update Returned Against Delivery Note
 		if self.is_return and self.return_against:
@@ -237,6 +242,7 @@ class DeliveryNote(SellingController):
 			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=so_row_names_without_packing_slip)
 			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=so_row_names_with_packing_slip,
 				check_packed_qty=True)
+			doc.validate_bundled_item_delivered_qty(from_doctype=self.doctype, row_names=so_bundled_item_row_names)
 			doc.set_billing_status(update=True)
 
 			# Update packed qty for unpacked returns

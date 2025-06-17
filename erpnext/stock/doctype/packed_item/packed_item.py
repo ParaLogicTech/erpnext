@@ -25,16 +25,21 @@ def make_bundled_item_list(doc):
 		if not is_product_bundle(parent_row.item_code):
 			continue
 
-		for bundle_row in get_product_bundle_items(parent_row.item_code):
-			if bundle_row.type == "Item":
-				update_child_item_row(doc, bundle_row, parent_row)
-			elif bundle_row.type == "Item Group":
-				update_child_item_group_row(doc, bundle_row, parent_row)
+		if doc.doctype in ("Delivery Note", "Sales Invoice") and parent_row.get("sales_order") and parent_row.get("sales_order_item"):
+			sales_order_bundled_items = get_sales_order_bundled_items(parent_row.sales_order, parent_row.sales_order_item)
+			for bundle_row in sales_order_bundled_items:
+				update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=bundle_row.name)
+		else:
+			for bundle_row in get_product_bundle_items(parent_row.item_code):
+				if bundle_row.type == "Item":
+					update_child_item_row(doc, bundle_row, parent_row)
+				elif bundle_row.type == "Item Group":
+					update_child_item_group_row(doc, bundle_row, parent_row)
 
 	cleanup_packing_list(doc)
 
 
-def update_child_item_row(doc, bundle_row, parent_row):
+def update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=None):
 	child_row = None
 	for d in doc.get("packed_items"):
 		if d.parent_item != parent_row.item_code or d.item_code != bundle_row.item_code:
@@ -53,7 +58,7 @@ def update_child_item_row(doc, bundle_row, parent_row):
 	if not child_row:
 		child_row = doc.append('packed_items')
 
-	update_packing_list_item(doc, bundle_row, parent_row, child_row)
+	update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_detail_docname=previous_detail_docname)
 
 
 def update_child_item_group_row(doc, bundle_row, parent_row):
@@ -78,19 +83,22 @@ def update_child_item_group_row(doc, bundle_row, parent_row):
 	update_packing_list_item(doc, bundle_row, parent_row, child_row)
 
 
-def update_packing_list_item(doc, bundle_row, parent_row, child_row):
+def update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_detail_docname=None):
 	from erpnext.stock.get_item_details import get_bin_details
 
 	child_row.type = bundle_row.type
 	child_row.parent_item = parent_row.item_code
 	child_row.parent_item_name = parent_row.item_name
 	child_row.parent_detail_docname = parent_row.name
+	child_row.previous_detail_docname = previous_detail_docname
 
 	if bundle_row.type == "Item":
 		child_row.item_code = bundle_row.item_code
 		child_row.item_group = None
 	elif bundle_row.type == "Item Group":
 		child_row.item_group = bundle_row.item_group
+		if previous_detail_docname and bundle_row.item_code:
+			child_row.item_code = bundle_row.item_code
 
 	# Allow editing qty
 	if (
@@ -135,6 +143,9 @@ def update_packing_list_item(doc, bundle_row, parent_row, child_row):
 	bin_details = get_bin_details(child_row.item_code, child_row.warehouse)
 	child_row.actual_qty = flt(bin_details.get("actual_qty"))
 	child_row.projected_qty = flt(bin_details.get("projected_qty"))
+
+	if doc.doctype == "Delivery Note" or (doc.doctype == "Sales Invoice" and doc.update_stock) and doc.docstatus == 1:
+		child_row.delivered_qty = child_row.qty
 
 	child_row.flags.is_updated = True
 	child_row.flags.parent_row = parent_row
@@ -245,8 +256,8 @@ def validate_bundled_items_for_parent_row(doc, parent_row):
 						child_row.idx, frappe.bold(child_row.item_code)
 					))
 			else:
-				if flt(child_row.qty) <= 0:
-					frappe.throw(_("Bundled Item Row #{0}: Bundled Item {1} Qty must be greater than 0").format(
+				if flt(child_row.qty) < 0:
+					frappe.throw(_("Bundled Item Row #{0}: Bundled Item {1} Qty can not be negative").format(
 						child_row.idx, frappe.bold(child_row.item_code)
 					))
 
@@ -258,6 +269,19 @@ def get_product_bundle_items(item_code):
 
 	bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
 	return bundle_doc.items
+
+
+def get_sales_order_bundled_items(sales_order, sales_order_item):
+	return frappe.db.sql("""
+		select *
+		from `tabPacked Item`
+		where parenttype = 'Sales Order'
+			and parent = %(sales_order)s
+			and parent_detail_docname = %(sales_order_item)s
+	""", {
+		"sales_order": sales_order,
+		"sales_order_item": sales_order_item,
+	}, as_dict=1)
 
 
 def is_product_bundle(item_code):
