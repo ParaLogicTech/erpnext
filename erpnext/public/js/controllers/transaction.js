@@ -2132,7 +2132,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					apply_taxes_on_retail: item.apply_taxes_on_retail,
 					allow_zero_valuation_rate: me.allow_zero_valuation_rate,
 					project: item.project || me.frm.doc.project,
-					warehouse: item.warehouse
+					warehouse: item.warehouse,
+					asset: item.asset,
 				});
 			}
 		});

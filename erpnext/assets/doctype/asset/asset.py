@@ -598,7 +598,7 @@ def make_sales_invoice(asset, item_code, company, serial_no=None):
 		"asset": asset,
 		"income_account": disposal_account,
 		"serial_no": serial_no,
-		"cost_center": depreciation_cost_center,
+		"cost_center": frappe.db.get_value("Asset", asset, "cost_center") or depreciation_cost_center,
 		"qty": 1
 	})
 	si.set_missing_values()
