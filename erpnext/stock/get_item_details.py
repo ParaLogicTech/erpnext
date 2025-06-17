@@ -547,6 +547,9 @@ def get_default_income_account(item, args):
 	if isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
 
+	if item.is_fixed_asset and args.company:
+		return frappe.get_cached_value("Company", args.company, "disposal_account")
+
 	default_values = get_item_default_values(item, args)
 
 	account = default_values.get("income_account")
@@ -612,6 +615,11 @@ def get_default_cost_center(item, args, selling_or_buying=None):
 
 	determine_selling_or_buying(args)
 	selling_or_buying = selling_or_buying or args.get("selling_or_buying")
+
+	if not cost_center and item.is_fixed_asset and args.get('asset'):
+		asset_cost_center = frappe.db.get_value("Asset", args.get("asset"), "cost_center", cache=True)
+		if asset_cost_center:
+			cost_center = asset_cost_center
 
 	if not cost_center and args.get('project'):
 		cost_center = frappe.db.get_value("Project", args.get("project"), "cost_center", cache=True)
