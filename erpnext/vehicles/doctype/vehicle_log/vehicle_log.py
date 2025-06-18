@@ -90,7 +90,7 @@ def make_odometer_log(vehicle, odometer, date=None, project=None, reference_type
 
 
 def make_vehicle_log(vehicle, odometer=None, customer=None, vehicle_owner=None, date=None, project=None,
-		reference_type=None, reference_name=None, ignore_permissions=True,
+		reference_type=None, reference_name=None, unset_customer=False, ignore_permissions=True,
 		from_project_update=False, do_not_update_customer=False):
 	if not vehicle:
 		frappe.throw(_("Vehicle is not provided to make Vehicle Odometer Log"))
@@ -109,6 +109,7 @@ def make_vehicle_log(vehicle, odometer=None, customer=None, vehicle_owner=None, 
 		doc.reference_type = reference_type
 		doc.reference_name = reference_name
 
+	doc.unset_customer = unset_customer
 	doc.flags.ignore_permissions = ignore_permissions
 	doc.flags.from_project_update = from_project_update
 	doc.flags.do_not_update_customer = do_not_update_customer
@@ -167,16 +168,50 @@ def get_last_customer_log(vehicle, purchase_date=None):
 	if not vehicle:
 		frappe.throw(_("Vehicle not provided"))
 
+	fields = [
+		'unset_customer', 'customer', 'customer_name',
+		'vehicle_owner', 'vehicle_owner_name', 'date'
+	]
+	order_by = "date desc, creation desc"
+
+	# Get the latest log for the vehicle
 	filters = {
 		"vehicle": vehicle,
-		"docstatus": 1,
-		"customer": ['is', 'set']
+		"docstatus": 1
 	}
-
 	if purchase_date:
 		filters['date'] = ['>=', getdate(purchase_date)]
 
-	odometer_log = frappe.get_all("Vehicle Log", filters=filters,
-		fields=['customer', 'customer_name', 'vehicle_owner', 'vehicle_owner_name', 'date'],
-		order_by="date desc, creation desc", limit_page_length=1)
-	return odometer_log[0] if odometer_log else None
+	latest_log = frappe.get_all(
+		"Vehicle Log",
+		filters=filters,
+		fields=fields,
+		order_by=order_by,
+		limit_page_length=1
+	)
+
+	if not latest_log:
+		return None
+
+	# If the latest log unsets the customer, return None for customer fields
+	if latest_log[0].get('unset_customer'):
+		return frappe._dict({
+			'customer': None,
+			'customer_name': None,
+			'vehicle_owner': None,
+			'vehicle_owner_name': None,
+			'date': latest_log[0].get('date')
+		})
+
+	# Get the last log with a customer
+	filters.update({"customer": ['is', 'set']})
+	customer_log = frappe.get_all(
+		"Vehicle Log",
+		filters=filters,
+		fields=fields,
+		order_by=order_by,
+		limit_page_length=1
+	)
+
+	return frappe._dict(customer_log[0]) if customer_log else None
+
