@@ -5,7 +5,7 @@ import frappe
 from frappe.utils import cint, flt, cstr
 from frappe import _
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_target_warehouse_validation, item_has_product_bundle
+from erpnext.stock.get_item_details import get_target_warehouse_validation
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
@@ -313,12 +313,14 @@ class SellingController(TransactionController):
 					throw_message(d, valuation_rate_in_sales_uom)
 
 	def get_item_list(self):
+		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+
 		il = []
 		for d in self.get("items"):
 			if d.qty is None:
 				frappe.throw(_("Row {0}: Qty is mandatory").format(d.idx))
 
-			if item_has_product_bundle(d.item_code):
+			if is_product_bundle(d.item_code):
 				for p in self.get("packed_items"):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
@@ -326,6 +328,7 @@ class SellingController(TransactionController):
 							'warehouse': p.warehouse or d.warehouse,
 							'item_code': p.item_code,
 							'qty': flt(p.qty),
+							'bundle_qty': flt(d.qty),
 							'uom': p.uom,
 							'batch_no': cstr(p.batch_no).strip(),
 							'packing_slip': p.get("packing_slip"),
@@ -335,7 +338,7 @@ class SellingController(TransactionController):
 							'company': self.company,
 							'voucher_type': self.doctype,
 							'allow_zero_valuation': d.allow_zero_valuation_rate,
-							'delivery_note': d.get('delivery_note')
+							'delivery_note': d.get('delivery_note'),
 						}))
 			else:
 				il.append(frappe._dict({
@@ -465,6 +468,7 @@ class SellingController(TransactionController):
 					or (cint(self.is_return) and self.docstatus==2)):
 						sl_entries.append(self.get_sl_entries(d, {
 							"actual_qty": -1*flt(d.qty),
+							"bundle_qty": -1*flt(d.bundle_qty),
 							"incoming_rate": return_rate,
 							"is_transfer": cint(bool(d.get("target_warehouse"))),
 						}))
@@ -486,6 +490,7 @@ class SellingController(TransactionController):
 
 					target_warehouse_sle = self.get_sl_entries(d, {
 						"actual_qty": flt(d.qty),
+						"bundle_qty": flt(d.bundle_qty),
 						"warehouse": d.target_warehouse,
 						"dependencies": target_warehouse_dependency,
 						"is_transfer": 1,
@@ -519,6 +524,7 @@ class SellingController(TransactionController):
 					or (cint(self.is_return) and self.docstatus==1)):
 						sl_entries.append(self.get_sl_entries(d, {
 							"actual_qty": -1*flt(d.qty),
+							"bundle_qty": -1*flt(d.bundle_qty),
 							"incoming_rate": return_rate,
 							"dependencies": return_dependency,
 							"is_transfer": cint(bool(d.get("target_warehouse"))),

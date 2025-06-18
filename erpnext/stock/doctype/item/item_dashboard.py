@@ -25,7 +25,7 @@ def get_data():
 			},
 			{
 				'label': _('Stock'),
-				'items': ['Stock Entry', 'Stock Reconciliation', 'Packing Slip']
+				'items': ['Stock Entry', 'Stock Reconciliation', 'Packing Slip', 'Product Bundle']
 			},
 			{
 				'label': _('Request'),

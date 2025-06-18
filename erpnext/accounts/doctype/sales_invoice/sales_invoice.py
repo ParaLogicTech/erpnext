@@ -26,6 +26,7 @@ from erpnext.accounts.deferred_revenue import validate_service_stop_date
 from erpnext.accounts.doctype.pos_profile.pos_profile import set_account_for_mode_of_payment, get_pos_profile, check_is_pos_open
 from erpnext.erpnext_integrations.fbr_pos_integration import validate_fbr_pos_invoice, before_cancel_fbr_pos_invoice,\
 	on_submit_fbr_pos_invoice
+from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
 
 from erpnext.healthcare.utils import manage_invoice_submit_cancel
 
@@ -99,7 +100,8 @@ class SalesInvoice(SellingController):
 		self.validate_time_sheets_are_submitted()
 		if not self.is_return:
 			self.validate_serial_numbers()
-		self.update_packing_list()
+		self.update_bundled_items_list()
+		validate_bundled_item_list(self)
 		self.set_billing_hours_and_amount()
 		self.update_timesheet_billing_for_project()
 		self.validate_campaign()
@@ -676,6 +678,7 @@ class SalesInvoice(SellingController):
 		self.set_missing_values()
 		self.sort_items()
 		self.set_po_nos()
+		self.update_bundled_items_list()
 
 		if reset_taxes:
 			self.reset_taxes_and_charges()
@@ -1017,10 +1020,9 @@ class SalesInvoice(SellingController):
 			d.actual_qty = bin and flt(bin[0]['actual_qty']) or 0
 			d.projected_qty = bin and flt(bin[0]['projected_qty']) or 0
 
-	def update_packing_list(self):
-		if cint(self.update_stock) == 1:
-			from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
-			make_packing_list(self)
+	def update_bundled_items_list(self):
+		if cint(self.update_stock):
+			make_bundled_item_list(self)
 		else:
 			self.set('packed_items', [])
 
@@ -1292,24 +1294,23 @@ class SalesInvoice(SellingController):
 
 		sle_map = {}
 		for sle in stock_ledger_entries:
-			sle_dict = sle_map.setdefault(sle.get("voucher_detail_no"), frappe._dict({
-				"stock_value_difference": 0,
-				"actual_qty": 0,
-			}))
-
-			sle_dict.stock_value_difference += sle.stock_value_difference
-			sle_dict.actual_qty += sle.actual_qty
+			sle_map.setdefault(sle.get("voucher_detail_no"), 0)
+			sle_map[sle.get("voucher_detail_no")] += -1 * sle.stock_value_difference
 
 		for item in self.get("items"):
 			if not item.get("unbilled_stock_account"):
 				continue
 
-			sle_dict = sle_map.get(item.delivery_note_item)
-			if not sle_dict or not sle_dict.stock_value_difference or not sle_dict.actual_qty:
+			stock_value_difference = sle_map.get(item.delivery_note_item)
+			if not stock_value_difference:
 				continue
 
-			outgoing_rate = sle_dict.stock_value_difference / sle_dict.actual_qty
-			expense_amount = outgoing_rate * flt(item.stock_qty)
+			delivered_qty = flt(frappe.db.get_value("Delivery Note Item", item.delivery_note_item, "qty"))
+			if not delivered_qty:
+				continue
+
+			outgoing_rate = stock_value_difference / delivered_qty
+			expense_amount = outgoing_rate * flt(item.qty)
 
 			self.check_expense_account(item)
 

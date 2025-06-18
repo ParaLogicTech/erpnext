@@ -216,6 +216,20 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			where tabItem.name = iai.parent or tabItem.variant_of = iai.parent)
 		"""
 
+	# Product bundle condition
+	product_bundle_condition = ""
+	if filters and isinstance(filters, dict) and 'has_product_bundle' in filters:
+		has_product_bundle_condition = """exists(select pb.name
+			from `tabProduct Bundle` pb
+			where tabItem.name = pb.new_item_code)
+		"""
+
+		has_product_bundle = filters.pop('has_product_bundle')
+		if has_product_bundle:
+			product_bundle_condition = f" and {has_product_bundle_condition}"
+		else:
+			product_bundle_condition = f" and not {has_product_bundle_condition}"
+
 	# Default Conditions
 	default_conditions = []
 	default_disabled_condition = "tabItem.disabled = 0"
@@ -268,6 +282,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			{fcond}
 			{mcond}
 			{has_applicable_items_cond}
+			{product_bundle_condition}
 		order by
 			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
 			if(locate(%(_txt)s, item_name), locate(%(_txt)s, item_name), 99999),
@@ -280,8 +295,9 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			fcond=get_filters_cond(doctype, filters, conditions).replace('%', '%%'),
 			mcond=get_match_cond(doctype).replace('%', '%%'),
 			description_cond=description_cond,
-			has_applicable_items_cond=has_applicable_items_cond),
-			{
+			has_applicable_items_cond=has_applicable_items_cond,
+			product_bundle_condition=product_bundle_condition,
+		), {
 				"today": nowdate(),
 				"txt": "%%%s%%" % txt,
 				"_txt": txt.replace("%", ""),
