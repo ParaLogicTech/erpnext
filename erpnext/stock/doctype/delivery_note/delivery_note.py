@@ -781,6 +781,7 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 			},
 			"field_no_map": [
 				"has_stin",
+				"group_same_items",
 			],
 			"validation": {
 				"docstatus": ["=", 1]

@@ -1123,7 +1123,10 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 			},
 			"field_map": {
 				"remarks": "remarks"
-			}
+			},
+			"field_no_map": [
+				"group_same_items",
+			],
 		},
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
@@ -1492,6 +1495,7 @@ def make_sales_invoice(source_name, target_doc=None, ignore_permissions=False,
 			},
 			"field_no_map": [
 				"has_stin",
+				"group_same_items",
 			],
 			"validation": {
 				"docstatus": ["=", 1]
