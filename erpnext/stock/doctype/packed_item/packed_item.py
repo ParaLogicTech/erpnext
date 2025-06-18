@@ -57,6 +57,7 @@ def update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=N
 
 	if not child_row:
 		child_row = doc.append('packed_items')
+		set_child_row_balance_qty(doc, bundle_row, child_row)
 
 	update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_detail_docname=previous_detail_docname)
 
@@ -81,6 +82,14 @@ def update_child_item_group_row(doc, bundle_row, parent_row):
 		child_row = doc.append('packed_items')
 
 	update_packing_list_item(doc, bundle_row, parent_row, child_row)
+
+
+def set_child_row_balance_qty(doc, bundle_row, child_row):
+	if (
+		(doc.doctype == "Delivery Note" or (doc.doctype == "Sales Invoice" and doc.update_stock))
+		and bundle_row.doctype == "Packed Item"
+	):
+		child_row.qty = max(0, bundle_row.qty - bundle_row.delivered_qty)
 
 
 def update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_detail_docname=None):
@@ -126,8 +135,14 @@ def update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_de
 	child_row.item_name = item.item_name
 	child_row.uom = item.stock_uom
 
+	child_row.is_stock_item = item.is_stock_item
+	child_row.has_batch_no = item.has_batch_no
+	child_row.has_serial_no = item.has_serial_no
+
 	if not child_row.allow_edit_qty:
 		child_row.qty = flt(flt(bundle_row.qty) * flt(parent_row.stock_qty), 6)
+
+	child_row.stock_qty = flt(child_row.qty, 6)
 
 	if parent_row.warehouse:
 		child_row.warehouse = parent_row.warehouse
@@ -154,13 +169,13 @@ def update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_de
 def cleanup_packing_list(doc):
 	def sorter(row):
 		parent_row = get_parent_row_from_child_row(doc, row) or frappe._dict()
-		bundle_row = get_bundle_row_from_child_row(row) or frappe._dict()
+		bundle_row = get_bundle_row_from_child_row(doc, row) or frappe._dict()
 		return parent_row.idx or 99999, bundle_row.idx or 99999
 
 	delete_list = []
 	for child_row in doc.get("packed_items"):
 		parent_row = get_parent_row_from_child_row(doc, child_row)
-		bundle_row = get_bundle_row_from_child_row(child_row)
+		bundle_row = get_bundle_row_from_child_row(doc, child_row)
 		if not child_row.parent_item:
 			delete_list.append(child_row)
 		elif not parent_row or not bundle_row:
@@ -172,6 +187,32 @@ def cleanup_packing_list(doc):
 	doc.packed_items = sorted(doc.get("packed_items"), key=lambda d: sorter(d))
 	for i, child_row in enumerate(doc.get("packed_items")):
 		child_row.idx = i + 1
+
+
+def get_bundle_row_from_child_row(doc, child_row):
+	if not child_row.parent_item:
+		return None
+
+	product_bundle = get_product_bundle_from_item_code(child_row.parent_item)
+	if product_bundle:
+		bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+		parent_row = get_parent_row_from_child_row(doc, child_row)
+
+		if (
+			doc.doctype in ("Delivery Note", "Sales Invoice")
+			and parent_row
+			and parent_row.get("sales_order")
+			and parent_row.get("sales_order_item")
+		):
+			bundled_items = get_sales_order_bundled_items(parent_row.sales_order, parent_row.sales_order_item)
+		else:
+			bundled_items = bundle_doc.get("items")
+
+		for bundle_row in bundled_items:
+			if child_row.type == "Item" and bundle_row.item_code == child_row.item_code:
+				return bundle_row
+			if child_row.type == "Item Group" and bundle_row.item_group == child_row.item_group:
+				return bundle_row
 
 
 def get_parent_row_from_child_row(doc, child_row):
@@ -189,20 +230,6 @@ def get_parent_row_from_child_row(doc, child_row):
 				return parent_row
 		elif child_row.flags.parent_row:
 			return child_row.flags.parent_row
-
-
-def get_bundle_row_from_child_row(child_row):
-	if not child_row.parent_item:
-		return None
-
-	product_bundle = get_product_bundle_from_item_code(child_row.parent_item)
-	if product_bundle:
-		bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
-		for bundle_row in bundle_doc.get("items"):
-			if child_row.type == "Item" and bundle_row.item_code == child_row.item_code:
-				return bundle_row
-			if child_row.type == "Item Group" and bundle_row.item_group == child_row.item_group:
-				return bundle_row
 
 
 @frappe.whitelist()
@@ -272,16 +299,19 @@ def get_product_bundle_items(item_code):
 
 
 def get_sales_order_bundled_items(sales_order, sales_order_item):
-	return frappe.db.sql("""
-		select *
-		from `tabPacked Item`
-		where parenttype = 'Sales Order'
-			and parent = %(sales_order)s
-			and parent_detail_docname = %(sales_order_item)s
-	""", {
-		"sales_order": sales_order,
-		"sales_order_item": sales_order_item,
-	}, as_dict=1)
+	def generator():
+		return frappe.db.sql("""
+			select *
+			from `tabPacked Item`
+			where parenttype = 'Sales Order'
+				and parent = %(sales_order)s
+				and parent_detail_docname = %(sales_order_item)s
+		""", {
+			"sales_order": sales_order,
+			"sales_order_item": sales_order_item,
+		}, update={"doctype": "Packed Item"}, as_dict=1)
+
+	return frappe.local_cache("get_sales_order_bundled_items", (sales_order, sales_order_item), generator)
 
 
 def is_product_bundle(item_code):

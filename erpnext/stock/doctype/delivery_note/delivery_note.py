@@ -9,8 +9,11 @@ from erpnext.controllers.selling_controller import SellingController
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
-from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
-
+from erpnext.stock.doctype.packed_item.packed_item import (
+	make_bundled_item_list,
+	validate_bundled_item_list,
+	is_product_bundle,
+)
 
 form_grid_templates = {
 	"items": "templates/form_grid/item_grid.html"
@@ -582,7 +585,7 @@ class DeliveryNote(SellingController):
 			stock_delivered_but_not_billed = frappe.get_cached_value("Company", self.company, "stock_delivered_but_not_billed")
 			for d in self.get("items"):
 				is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
-				if d.skip_sales_invoice or not is_stock_item:
+				if d.skip_sales_invoice or (not is_stock_item and not is_product_bundle(d.item_code)):
 					d.unbilled_stock_account = None
 				else:
 					sales_order_item_to_check.append(d.sales_order_item)

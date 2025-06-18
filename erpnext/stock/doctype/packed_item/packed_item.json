@@ -15,6 +15,7 @@
   "description",
   "section_break_6",
   "qty",
+  "stock_qty",
   "column_break_9",
   "uom",
   "section_break_9",
@@ -35,7 +36,10 @@
   "allow_edit_qty",
   "allow_select_item_code",
   "type",
-  "disable_item_formatter"
+  "disable_item_formatter",
+  "is_stock_item",
+  "has_batch_no",
+  "has_serial_no"
  ],
  "fields": [
   {
@@ -282,12 +286,47 @@
    "label": "Delivered Qty",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "item_code.is_stock_item",
+   "fieldname": "is_stock_item",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Stock Item",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "item_code.has_batch_no",
+   "fieldname": "has_batch_no",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Has Batch No",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "item_code.has_serial_no",
+   "fieldname": "has_serial_no",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Has Serial No",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stock_qty",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Qty as per Stock UOM",
+   "precision": "6",
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-17 00:05:17.576951",
+ "modified": "2025-06-18 01:11:28.133209",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packed Item",

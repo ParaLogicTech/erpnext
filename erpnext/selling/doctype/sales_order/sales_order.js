@@ -113,7 +113,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 					return "green";
 				}
 			}
-		});
+		}, null, true);
 
 		if (this.frm.doc.__islocal) {
 			this.set_skip_delivery_note();

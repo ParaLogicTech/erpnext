@@ -71,7 +71,7 @@ class StockController(AccountsController):
 
 		precision = frappe.get_precision("GL Entry", "debit")
 		for item_row in voucher_items:
-			sle_list = sle_map.get((item_row.item_code, item_row.name))
+			sle_list = sle_map.get(item_row.name)
 			if sle_list:
 				for sle in sle_list:
 					if warehouse_account.get(sle.warehouse):
@@ -166,7 +166,7 @@ class StockController(AccountsController):
 		""", (self.doctype, self.name), as_dict=True)
 
 		for sle in stock_ledger_entries:
-			stock_ledger.setdefault((sle.item_code, sle.voucher_detail_no), []).append(sle)
+			stock_ledger.setdefault(sle.voucher_detail_no, []).append(sle)
 
 		return stock_ledger
 
@@ -238,6 +238,7 @@ class StockController(AccountsController):
 			"voucher_no": self.name,
 			"voucher_detail_no": d.name,
 			"actual_qty": (self.docstatus==1 and 1 or -1)*flt(d.get("stock_qty")),
+			"bundle_qty": (self.docstatus==1 and 1 or -1)*flt(d.get("bundle_qty")),
 			"stock_uom": frappe.db.get_value("Item", args.get("item_code") or d.get("item_code"), "stock_uom", cache=1),
 			"incoming_rate": 0,
 			"company": self.company,

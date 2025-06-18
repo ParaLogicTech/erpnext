@@ -328,6 +328,7 @@ class SellingController(TransactionController):
 							'warehouse': p.warehouse or d.warehouse,
 							'item_code': p.item_code,
 							'qty': flt(p.qty),
+							'bundle_qty': flt(d.qty),
 							'uom': p.uom,
 							'batch_no': cstr(p.batch_no).strip(),
 							'packing_slip': p.get("packing_slip"),
@@ -337,7 +338,7 @@ class SellingController(TransactionController):
 							'company': self.company,
 							'voucher_type': self.doctype,
 							'allow_zero_valuation': d.allow_zero_valuation_rate,
-							'delivery_note': d.get('delivery_note')
+							'delivery_note': d.get('delivery_note'),
 						}))
 			else:
 				il.append(frappe._dict({
@@ -467,6 +468,7 @@ class SellingController(TransactionController):
 					or (cint(self.is_return) and self.docstatus==2)):
 						sl_entries.append(self.get_sl_entries(d, {
 							"actual_qty": -1*flt(d.qty),
+							"bundle_qty": -1*flt(d.bundle_qty),
 							"incoming_rate": return_rate,
 							"is_transfer": cint(bool(d.get("target_warehouse"))),
 						}))
@@ -488,6 +490,7 @@ class SellingController(TransactionController):
 
 					target_warehouse_sle = self.get_sl_entries(d, {
 						"actual_qty": flt(d.qty),
+						"bundle_qty": flt(d.bundle_qty),
 						"warehouse": d.target_warehouse,
 						"dependencies": target_warehouse_dependency,
 						"is_transfer": 1,
@@ -521,6 +524,7 @@ class SellingController(TransactionController):
 					or (cint(self.is_return) and self.docstatus==1)):
 						sl_entries.append(self.get_sl_entries(d, {
 							"actual_qty": -1*flt(d.qty),
+							"bundle_qty": -1*flt(d.bundle_qty),
 							"incoming_rate": return_rate,
 							"dependencies": return_dependency,
 							"is_transfer": cint(bool(d.get("target_warehouse"))),

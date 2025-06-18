@@ -1294,24 +1294,23 @@ class SalesInvoice(SellingController):
 
 		sle_map = {}
 		for sle in stock_ledger_entries:
-			sle_dict = sle_map.setdefault(sle.get("voucher_detail_no"), frappe._dict({
-				"stock_value_difference": 0,
-				"actual_qty": 0,
-			}))
-
-			sle_dict.stock_value_difference += sle.stock_value_difference
-			sle_dict.actual_qty += sle.actual_qty
+			sle_map.setdefault(sle.get("voucher_detail_no"), 0)
+			sle_map[sle.get("voucher_detail_no")] += -1 * sle.stock_value_difference
 
 		for item in self.get("items"):
 			if not item.get("unbilled_stock_account"):
 				continue
 
-			sle_dict = sle_map.get(item.delivery_note_item)
-			if not sle_dict or not sle_dict.stock_value_difference or not sle_dict.actual_qty:
+			stock_value_difference = sle_map.get(item.delivery_note_item)
+			if not stock_value_difference:
 				continue
 
-			outgoing_rate = sle_dict.stock_value_difference / sle_dict.actual_qty
-			expense_amount = outgoing_rate * flt(item.stock_qty)
+			delivered_qty = flt(frappe.db.get_value("Delivery Note Item", item.delivery_note_item, "qty"))
+			if not delivered_qty:
+				continue
+
+			outgoing_rate = stock_value_difference / delivered_qty
+			expense_amount = outgoing_rate * flt(item.qty)
 
 			self.check_expense_account(item)
 
