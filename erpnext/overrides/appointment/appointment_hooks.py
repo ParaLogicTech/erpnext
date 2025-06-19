@@ -88,6 +88,7 @@ def get_project(source_name, target_doc=None):
 				"sales_person": "service_advisor",
 				"description": "description",
 				"applies_to_serial_no": "applies_to_serial_no",
+				"campaign": "campaign"
 			}
 		},
 		"Appointment Service Template": {
