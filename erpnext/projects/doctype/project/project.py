@@ -2112,7 +2112,7 @@ def set_project_status(project, project_status):
 	project = frappe.get_doc('Project', project)
 	project.check_permission('write')
 
-	project.set_status(status=project_status, from_doctype="Project", action="set_status")
+	project.set_status(status=project_status, update=True, from_doctype="Project", action="set_status")
 	project.save()
 
 
