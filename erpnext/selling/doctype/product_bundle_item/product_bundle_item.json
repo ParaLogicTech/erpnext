@@ -1,55 +1,59 @@
 {
+ "actions": [],
  "creation": "2013-05-23 16:55:51",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "type",
   "item_code",
+  "item_name",
+  "item_group",
   "qty",
-  "description",
-  "rate",
   "uom"
  ],
  "fields": [
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Item\nItem Group",
+   "reqd": 1
+  },
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_global_search": 1,
    "in_list_view": 1,
-   "label": "Item",
+   "label": "Item Code",
+   "mandatory_depends_on": "eval:doc.type == 'Item'",
    "oldfieldname": "item_code",
    "oldfieldtype": "Link",
    "options": "Item",
-   "reqd": 1
+   "read_only_depends_on": "eval:doc.type != 'Item'"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Group",
+   "mandatory_depends_on": "eval:doc.type == 'Item Group'",
+   "options": "Item Group",
+   "read_only_depends_on": "eval:doc.type != 'Item Group'"
   },
   {
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Qty",
+   "mandatory_depends_on": "eval:doc.type == 'Item'",
    "oldfieldname": "qty",
-   "oldfieldtype": "Currency",
-   "reqd": 1
+   "oldfieldtype": "Currency"
   },
   {
-   "fieldname": "description",
-   "fieldtype": "Text Editor",
-   "in_list_view": 1,
-   "label": "Description",
-   "oldfieldname": "description",
-   "oldfieldtype": "Text",
-   "print_width": "300px"
-  },
-  {
-   "fieldname": "rate",
-   "fieldtype": "Float",
-   "hidden": 1,
-   "label": "Rate",
-   "oldfieldname": "rate",
-   "oldfieldtype": "Currency",
-   "print_hide": 1
-  },
-  {
+   "depends_on": "type",
+   "fetch_from": "item_code.stock_uom",
    "fieldname": "uom",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -58,11 +62,19 @@
    "oldfieldtype": "Link",
    "options": "UOM",
    "read_only": 1
+  },
+  {
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name",
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
- "modified": "2020-02-28 14:06:05.725655",
+ "links": [],
+ "modified": "2025-06-10 15:09:40.344842",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Product Bundle Item",
@@ -70,5 +82,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

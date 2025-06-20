@@ -815,12 +815,16 @@ class Project(StatusUpdaterERP):
 			}, None)
 
 	def validate_for_transaction(self, doc):
-		if doc.doctype in ("Sales Invoice", "Service Warranty"):
-			self.check_is_ready_to_close()
 		if doc.doctype == "Sales Invoice":
-			self.check_undelivered_sales_orders()
+			if not self.is_insurance_excess_invoice_for_customer(doc):
+				self.check_is_ready_to_close()
+				self.check_undelivered_sales_orders()
+
 		if doc.doctype == "Payment Entry":
 			self.validate_payment_entry_customer(doc)
+
+		if doc.doctype == "Service Warranty":
+			self.check_is_ready_to_close()
 
 	def check_is_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_ready_to_close"):
@@ -876,6 +880,20 @@ class Project(StatusUpdaterERP):
 			frappe.throw(_("Customer in Payment Entry does not match with {0}. Customer must be {1}").format(
 				frappe.get_desk_link("Project", self.name), comma_or(allowed_customers)
 			))
+
+	def is_insurance_excess_invoice_for_customer(self, doc):
+		if doc.doctype != "Sales Invoice":
+			return False
+
+		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
+		if not insurance_excess_item:
+			return False
+
+		billed_to = doc.bill_to or doc.customer
+		if billed_to != self.customer:
+			return False
+
+		return doc.items and all(d.item_code == insurance_excess_item for d in doc.items)
 
 	def check_po_no_is_set(self, doc):
 		if self.po_no or doc.is_pos:
@@ -2094,7 +2112,7 @@ def set_project_status(project, project_status):
 	project = frappe.get_doc('Project', project)
 	project.check_permission('write')
 
-	project.set_status(status=project_status, from_doctype="Project", action="set_status")
+	project.set_status(status=project_status, update=True, from_doctype="Project", action="set_status")
 	project.save()
 
 

@@ -1274,8 +1274,13 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	qty(doc, cdt, cdn) {
 		let item = frappe.get_doc(cdt, cdn);
-		this.conversion_factor(doc, cdt, cdn, true);
-		this.apply_pricing_rule(item);
+		if (item.doctype == "Packed Item") {
+			item.stock_qty = flt(item.qty, 6);
+			refresh_field("item_code", item.name, "packed_items");
+		} else {
+			this.conversion_factor(doc, cdt, cdn, true);
+			this.apply_pricing_rule(item);
+		}
 	}
 
 	uom(doc, cdt, cdn) {
@@ -2132,7 +2137,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					apply_taxes_on_retail: item.apply_taxes_on_retail,
 					allow_zero_valuation_rate: me.allow_zero_valuation_rate,
 					project: item.project || me.frm.doc.project,
-					warehouse: item.warehouse
+					warehouse: item.warehouse,
+					asset: item.asset,
 				});
 			}
 		});

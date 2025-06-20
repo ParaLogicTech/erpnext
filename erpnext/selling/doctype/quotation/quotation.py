@@ -35,6 +35,7 @@ class Quotation(SellingController):
 		self.validate_campaign()
 		self.clear_approval_date()
 		self.set_customer_name()
+		self.sort_items()
 
 		if self.items:
 			self.with_items = 1
@@ -309,7 +310,10 @@ def _make_sales_order(
 			},
 			"field_map": {
 				"remarks": "remarks"
-			}
+			},
+			"field_no_map": [
+				"group_same_items",
+			],
 		},
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
@@ -390,6 +394,7 @@ def _make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 				},
 				"field_no_map": [
 					"has_stin",
+					"group_same_items",
 				],
 				"field_map": {
 					"remarks": "remarks"

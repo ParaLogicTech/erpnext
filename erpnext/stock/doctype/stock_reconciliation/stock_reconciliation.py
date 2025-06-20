@@ -44,6 +44,7 @@ class StockReconciliation(StockController):
 		self.set_total_qty_and_amount()
 
 	def on_submit(self):
+		self.auto_create_batches("warehouse", item_condition=lambda d: flt(d.quantity_difference, 6) > 0)
 		self.update_stock_ledger()
 		self.make_gl_entries()
 
@@ -300,10 +301,11 @@ class StockReconciliation(StockController):
 	def get_stock_voucher_items(self, sle_map):
 		is_opening = "Yes" if self.purpose == "Opening Stock" else "No"
 		details = []
-		for item_code, voucher_detail_no in sle_map:
+		for voucher_detail_no in sle_map:
+			item_row = self.getone("items", {"name": voucher_detail_no})
 			details.append(frappe._dict({
 				"name": voucher_detail_no,
-				"item_code": item_code,
+				"item_code": item_row.item_code,
 				"expense_account": self.expense_account,
 				"cost_center": self.cost_center,
 				"is_opening": is_opening

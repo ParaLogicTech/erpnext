@@ -62,10 +62,10 @@
   "default_buying_terms",
   "hr_settings_section",
   "default_holiday_list",
-  "column_break_36",
   "default_leave_policy",
   "column_break_24",
   "standard_working_hours",
+  "standard_break_hours",
   "accounts_settings",
   "tax_settings_section",
   "tax_id",
@@ -903,10 +903,6 @@
    "options": "\nFiler\nNon Filer\nExempt"
   },
   {
-   "fieldname": "column_break_36",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "default_leave_policy",
    "fieldtype": "Link",
    "label": "Default Leave Policy",
@@ -1033,6 +1029,12 @@
    "label": "Stock Delivered But Not Billed",
    "no_copy": 1,
    "options": "Account"
+  },
+  {
+   "fieldname": "standard_break_hours",
+   "fieldtype": "Float",
+   "label": "Standard Break Hours",
+   "non_negative": 1
   }
  ],
  "icon": "fa fa-building",
@@ -1040,7 +1042,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2025-03-27 20:38:19.466124",
+ "modified": "2025-06-12 12:35:05.388441",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",

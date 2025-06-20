@@ -67,7 +67,7 @@
   "items_section",
   "items",
   "scan_barcode",
-  "packing_list",
+  "product_bundles_section",
   "packed_items",
   "pricing_rule_details",
   "pricing_rules",
@@ -930,22 +930,11 @@
    "read_only": 1
   },
   {
-   "collapsible": 1,
-   "collapsible_depends_on": "packed_items",
-   "fieldname": "packing_list",
-   "fieldtype": "Section Break",
-   "label": "Packing List",
-   "oldfieldtype": "Section Break",
-   "options": "fa fa-suitcase",
-   "print_hide": 1
-  },
-  {
    "fieldname": "packed_items",
    "fieldtype": "Table",
-   "label": "Packed Items",
+   "label": "Bundled Items",
    "options": "Packed Item",
-   "print_hide": 1,
-   "read_only": 1
+   "print_hide": 1
   },
   {
    "fieldname": "payment_schedule_section",
@@ -1849,6 +1838,17 @@
    "fieldtype": "Data",
    "label": "Campaign Voucher Code",
    "mandatory_depends_on": "campaign_voucher_code_required"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "packed_items",
+   "depends_on": "packed_items",
+   "fieldname": "product_bundles_section",
+   "fieldtype": "Section Break",
+   "label": "Product Bundles",
+   "oldfieldtype": "Section Break",
+   "options": "fa fa-suitcase",
+   "print_hide": 1
   }
  ],
  "icon": "fa fa-file-text",
@@ -1856,7 +1856,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-21 13:05:54.524018",
+ "modified": "2025-06-10 16:27:32.401142",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",

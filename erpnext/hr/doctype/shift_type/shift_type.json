@@ -8,6 +8,7 @@
  "field_order": [
   "start_time",
   "end_time",
+  "break_hours",
   "column_break_3",
   "holiday_list",
   "enable_auto_attendance",
@@ -214,10 +215,16 @@
    "fieldname": "half_day_if_monthly_early_exit_count",
    "fieldtype": "Int",
    "label": "Mark Half Day if n Early Exits in a Month"
+  },
+  {
+   "fieldname": "break_hours",
+   "fieldtype": "Float",
+   "label": "Break Hours",
+   "precision": "1"
   }
  ],
  "links": [],
- "modified": "2023-08-31 00:59:41.839335",
+ "modified": "2025-06-12 12:12:02.193517",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Shift Type",
