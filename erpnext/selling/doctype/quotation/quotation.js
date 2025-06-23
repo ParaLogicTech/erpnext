@@ -68,8 +68,12 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 	}
 
 	set_dynamic_link() {
-		var doctype = this.frm.doc.quotation_to == 'Lead' ? 'Lead' : 'Customer';
-		frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'party_name', doctype: doctype}
+		if (this.frm.doc.bill_to) {
+			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'bill_to', doctype: 'Customer'};
+		} else {
+			let doctype = this.frm.doc.quotation_to == 'Lead' ? 'Lead' : 'Customer';
+			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'party_name', doctype: doctype};
+		}
 	}
 
 	setup_buttons() {
@@ -208,6 +212,7 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 	}
 
 	bill_to() {
+		this.set_dynamic_link();
 		return this.get_party_details();
 	}
 
