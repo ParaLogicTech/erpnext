@@ -288,6 +288,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 	}
 
 	bill_to() {
+		this.set_dynamic_link();
 		return super.customer();
 	}
 
