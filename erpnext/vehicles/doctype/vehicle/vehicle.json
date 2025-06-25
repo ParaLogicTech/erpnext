@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
- "creation": "2016-09-03 03:33:27.680331",
+ "creation": "2025-06-25 12:44:50.217693",
  "doctype": "DocType",
  "document_type": "Document",
  "editable_grid": 1,
@@ -37,12 +37,6 @@
   "interior",
   "column_break_8qjzs",
   "last_odometer",
-  "loaner_vehicle_details_section",
-  "is_loaner_vehicle",
-  "loaner_status",
-  "column_break_loaner_vehicle",
-  "vehicle_workshop",
-  "branch",
   "insurance_details",
   "insurance_company",
   "insurance_company_name",
@@ -307,14 +301,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "vehicle_workshop",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Vehicle Workshop",
-   "mandatory_depends_on": "eval:doc.is_loaner_vehicle",
-   "options": "Vehicle Workshop"
-  },
-  {
    "allow_in_quick_entry": 1,
    "fieldname": "column_break_16",
    "fieldtype": "Column Break"
@@ -337,13 +323,6 @@
    "options": "Vehicle Interior"
   },
   {
-   "fetch_from": "vehicle_workshop.branch",
-   "fieldname": "branch",
-   "fieldtype": "Link",
-   "label": "Branch",
-   "options": "Branch"
-  },
-  {
    "fieldname": "column_break_8qjzs",
    "fieldtype": "Column Break"
   },
@@ -353,26 +332,6 @@
    "label": "Odometer Reading (Last)",
    "no_copy": 1,
    "set_only_once": 1
-  },
-  {
-   "fieldname": "loaner_vehicle_details_section",
-   "fieldtype": "Section Break",
-   "label": "Loaner Vehicle Details"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_loaner_vehicle",
-   "fieldtype": "Check",
-   "label": "Is Loaner Vehicle",
-   "read_only_depends_on": "eval:in_list(['Booked', 'Rented'], doc.loaner_status)"
-  },
-  {
-   "default": "Not Applicable",
-   "fieldname": "loaner_status",
-   "fieldtype": "Select",
-   "label": "Loaner Status",
-   "options": "Not Applicable\nAvailable\nBooked\nRented\nGrounded",
-   "read_only": 1
   },
   {
    "fieldname": "insurance_details",
@@ -785,15 +744,11 @@
    "fieldtype": "Link",
    "label": "Model Year",
    "options": "Vehicle Model Year"
-  },
-  {
-   "fieldname": "column_break_loaner_vehicle",
-   "fieldtype": "Column Break"
   }
  ],
  "image_field": "image",
  "links": [],
- "modified": "2025-06-16 13:52:55.269253",
+ "modified": "2025-06-25 12:45:30.749904",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",
