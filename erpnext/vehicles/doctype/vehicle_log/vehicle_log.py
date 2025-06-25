@@ -89,9 +89,20 @@ def make_odometer_log(vehicle, odometer, date=None, project=None, reference_type
 		ignore_permissions=False)
 
 
-def make_vehicle_log(vehicle, odometer=None, customer=None, vehicle_owner=None, date=None, project=None,
-		reference_type=None, reference_name=None, ignore_permissions=True,
-		from_project_update=False, do_not_update_customer=False):
+def make_vehicle_log(
+	vehicle,
+	odometer=None,
+	customer=None,
+	vehicle_owner=None,
+	date=None,
+	project=None,
+	reference_type=None,
+	reference_name=None,
+	unset_customer=False,
+	ignore_permissions=True,
+	from_project_update=False,
+	do_not_update_customer=False,
+):
 	if not vehicle:
 		frappe.throw(_("Vehicle is not provided to make Vehicle Odometer Log"))
 
@@ -104,6 +115,7 @@ def make_vehicle_log(vehicle, odometer=None, customer=None, vehicle_owner=None, 
 	doc.odometer = cint(odometer)
 	doc.customer = customer
 	doc.vehicle_owner = vehicle_owner
+	doc.unset_customer = unset_customer
 
 	if reference_type and reference_name:
 		doc.reference_type = reference_type
@@ -167,16 +179,37 @@ def get_last_customer_log(vehicle, purchase_date=None):
 	if not vehicle:
 		frappe.throw(_("Vehicle not provided"))
 
-	filters = {
-		"vehicle": vehicle,
-		"docstatus": 1,
-		"customer": ['is', 'set']
-	}
-
+	# Get the latest log for the vehicle
+	date_condition = ""
 	if purchase_date:
-		filters['date'] = ['>=', getdate(purchase_date)]
+		purchase_date = getdate(purchase_date)
+		date_condition = "and date >= %(purchase_date)s"
 
-	odometer_log = frappe.get_all("Vehicle Log", filters=filters,
-		fields=['customer', 'customer_name', 'vehicle_owner', 'vehicle_owner_name', 'date'],
-		order_by="date desc, creation desc", limit_page_length=1)
-	return odometer_log[0] if odometer_log else None
+	latest_log = frappe.db.sql(f"""
+		select customer, customer_name, vehicle_owner, vehicle_owner_name, unset_customer, date
+		from `tabVehicle Log`
+		where docstatus = 1
+			and vehicle = %(vehicle)s
+			and ((customer is not null and customer != '') or unset_customer = 1)
+			{date_condition}
+		order by date desc, creation desc
+		limit 1
+	""", {
+		"vehicle": vehicle,
+		"purchase_date": purchase_date,
+	}, as_dict=True)
+
+	latest_log = latest_log[0] if latest_log else None
+	if not latest_log:
+		return None
+
+	# If the latest log unsets the customer, unset customer
+	if latest_log.get('unset_customer'):
+		latest_log.update({
+			'customer': None,
+			'customer_name': None,
+			'vehicle_owner': None,
+			'vehicle_owner_name': None,
+		})
+
+	return latest_log
