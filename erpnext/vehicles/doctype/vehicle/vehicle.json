@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
- "creation": "2025-06-25 12:44:50.217693",
+ "creation": "2016-09-03 03:33:27.680331",
  "doctype": "DocType",
  "document_type": "Document",
  "editable_grid": 1,
@@ -239,7 +239,7 @@
    "options": "Customer"
   },
   {
-   "depends_on": "eval:!doc.is_loaner_vehicle && doc.vehicle_owner && doc.vehicle_owner_name != doc.vehicle_owner",
+   "depends_on": "eval:doc.vehicle_owner && doc.vehicle_owner_name != doc.vehicle_owner",
    "fetch_from": "vehicle_owner.customer_name",
    "fieldname": "vehicle_owner_name",
    "fieldtype": "Data",
@@ -748,7 +748,7 @@
  ],
  "image_field": "image",
  "links": [],
- "modified": "2025-06-25 12:45:30.749904",
+ "modified": "2025-02-23 22:39:35.913327",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",
