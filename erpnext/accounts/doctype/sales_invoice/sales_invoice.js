@@ -65,7 +65,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 
 		// Update Buttons
 		this.add_update_customer_name_button();
-		this.add_update_vehicle_details_button();
+		this.add_update_applies_to_details_button();
 
 		// Pricing Buttons
 		if (this.frm.doc.docstatus == 0) {

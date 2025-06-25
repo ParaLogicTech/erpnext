@@ -860,8 +860,7 @@ def update_customer_name_from_master(doctype, name):
 
 
 @frappe.whitelist()
-def update_vehicle_details_from_master(doctype, name):
-	from automotive.controllers.vehicle_transaction_controller import get_vehicle_details
+def update_applies_to_details(doctype, name):
 
 	if doctype not in ("Quotation", "Sales Order", "Delivery Note", "Sales Invoice"):
 		frappe.throw(_("DocType {0} not allowed").format(doctype))
@@ -871,18 +870,12 @@ def update_vehicle_details_from_master(doctype, name):
 	if doc.docstatus != 1:
 		frappe.throw(_("{0} {1} is not submitted").format(doctype, name))
 
-	if not doc.get("applies_to_vehicle"):
-		frappe.throw(_("No vehicle found for {0} {1}").format(doctype, name))
 
 	doc.check_permission("submit")
 	doc._doc_before_save = frappe.get_doc(doc.as_dict())
 
-	if doc.get("applies_to_vehicle"):
-		vehicle_details = get_vehicle_details({"vehicle": doc.applies_to_vehicle})
-		if vehicle_details:
-			for field, value in vehicle_details.items():
-				if doc.meta.has_field(field):
-					doc.db_set(field, value)
+	doc.set_missing_applies_to_details()
+	doc.db_update()
 
 	doc.notify_update()
 	doc.save_version()
