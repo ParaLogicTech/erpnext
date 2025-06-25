@@ -48,7 +48,7 @@ erpnext.ChecklistEditor = Class.extend({
 	load_items_and_render: function () {
 		var me = this;
 		frappe.call({
-			method: "erpnext.controllers.vehicle_checklist.get_default_vehicle_checklist_items",
+			method: "erpnext.controllers.checklist_editor.get_default_checklist_items",
 			args: {
 				parentfield: me.parentfield,
 				checklist_doctype: me.checklist_doctype,

@@ -4,7 +4,7 @@ from frappe.utils import cint
 
 
 @frappe.whitelist()
-def get_default_vehicle_checklist_items(parentfield, checklist_doctype):
+def get_default_checklist_items(parentfield, checklist_doctype):
 	vehicles_settings = frappe.get_cached_doc(checklist_doctype, None)
 	checklist_items = [d.checklist_item for d in vehicles_settings.get(parentfield)]
 	return checklist_items
@@ -21,7 +21,7 @@ def validate_duplicate_checklist_items(checklist_items):
 
 def set_missing_checklist(doc, parentfield, checklist_doctype):
 	if not doc.get(parentfield):
-		checklist = get_default_vehicle_checklist_items(parentfield, checklist_doctype)
+		checklist = get_default_checklist_items(parentfield, checklist_doctype)
 		for item in checklist:
 			doc.append(parentfield, {'checklist_item': item, 'checklist_item_checked': 0})
 
@@ -44,7 +44,7 @@ def set_updated_checklist(doc, parentfield, checklist_doctype):
 	custom_items = [d for d in doc.get(parentfield) if d.get('is_custom_checklist_item')]
 	existing_items = {d.checklist_item: d for d in doc.get(parentfield)}
 
-	updated_checklist = get_default_vehicle_checklist_items(parentfield, checklist_doctype)
+	updated_checklist = get_default_checklist_items(parentfield, checklist_doctype)
 	doc.set(parentfield, [])
 
 	# Add settings items first
