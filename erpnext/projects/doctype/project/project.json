@@ -242,8 +242,7 @@
   "ready_to_close_dt",
   "ready_to_close",
   "column_break_n7e6",
-  "status",
-  "loaner_status"
+  "status"
  ],
  "fields": [
   {
@@ -1772,22 +1771,13 @@
    "label": "Additional Insurance Excess Amount",
    "options": "Company:company:default_currency",
    "read_only": 1
-  },
-  {
-   "fieldname": "loaner_status",
-   "fieldtype": "Select",
-   "label": "Loaner Status",
-   "options": "Not Applicable\nBooked\nRented\nReturned",
-   "default": "Not Applicable",
-   "in_standard_filter": 1,
-   "read_only": 1
   }
  ],
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-05-29 23:44:50.517415",
+ "modified": "2025-06-25 11:50:50.743682",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",
