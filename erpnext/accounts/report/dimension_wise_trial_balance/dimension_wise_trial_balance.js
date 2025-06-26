@@ -71,10 +71,9 @@ frappe.query_reports["Dimension-Wise Trial Balance"] = {
 			fieldtype: "Select",
 			options: ["", "Group by Cost Center", "Group by Project", "Group by Vehicle Workshop Division",
 				"Group by Vehicle Brand", "Group by Vehicle", "Group by Item Group",
-				"Group by Customer Group", "Group by Branch",],
+				"Group by Customer Group", "Group by Branch"],
 			default: "",
 			on_change: function(query_report) {
-				// Refresh the report when group_by changes to update columns
 				query_report.refresh();
 			}
 		},
