@@ -12,8 +12,8 @@ frappe.query_reports["Dimension-Wise Trial Balance"] = {
 			"reqd": 1
 		},
 		{
-			fieldname: "group_by",
-			label: __("Group By"),
+			fieldname: "based_on",
+			label: __("Based on"),
 			fieldtype: "Select",
 			options: ["Cost Center"],
 			default: "Cost Center",
@@ -105,8 +105,8 @@ frappe.query_reports["Dimension-Wise Trial Balance"] = {
 erpnext.utils.add_dimensions('Dimension-Wise Trial Balance', 6);
 erpnext.utils.add_additional_gl_filters('Dimension-Wise Trial Balance');
 
-let group_by_filter = frappe.query_reports["Dimension-Wise Trial Balance"].filters.find(f => f.fieldname === "group_by");
+let based_on_filter = frappe.query_reports["Dimension-Wise Trial Balance"].filters.find(f => f.fieldname === "based_on");
 
 erpnext.dimension_filters.forEach((dimension) => {
-	group_by_filter.options.push(dimension["document_type"]);
+	based_on_filter.options.push(dimension["document_type"]);
 });
