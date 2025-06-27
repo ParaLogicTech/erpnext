@@ -12,6 +12,14 @@ frappe.query_reports["Dimension-Wise Trial Balance"] = {
 			"reqd": 1
 		},
 		{
+			fieldname: "group_by",
+			label: __("Group By"),
+			fieldtype: "Select",
+			options: ["Cost Center"],
+			default: "Cost Center",
+			reqd: 1
+		},
+		{
 			"fieldname": "fiscal_year",
 			"label": __("Fiscal Year"),
 			"fieldtype": "Link",
@@ -66,18 +74,6 @@ frappe.query_reports["Dimension-Wise Trial Balance"] = {
 			"options": "Finance Book",
 		},
 		{
-			fieldname: "group_by",
-			label: __("Group By"),
-			fieldtype: "Select",
-			options: ["", "Group by Cost Center", "Group by Project", "Group by Vehicle Workshop Division",
-				"Group by Vehicle Brand", "Group by Vehicle", "Group by Item Group",
-				"Group by Customer Group", "Group by Branch"],
-			default: "",
-			on_change: function(query_report) {
-				query_report.refresh();
-			}
-		},
-		{
 			"fieldname": "with_period_closing_entry",
 			"label": __("Period Closing Entry"),
 			"fieldtype": "Check",
@@ -108,3 +104,9 @@ frappe.query_reports["Dimension-Wise Trial Balance"] = {
 
 erpnext.utils.add_dimensions('Dimension-Wise Trial Balance', 6);
 erpnext.utils.add_additional_gl_filters('Dimension-Wise Trial Balance');
+
+let group_by_filter = frappe.query_reports["Dimension-Wise Trial Balance"].filters.find(f => f.fieldname === "group_by");
+
+erpnext.dimension_filters.forEach((dimension) => {
+	group_by_filter.options.push(dimension["document_type"]);
+});
