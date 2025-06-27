@@ -117,8 +117,7 @@ class GLDataProcessor:
 						query_filters[dimension.fieldname] = self.filters.get(dimension.fieldname)
 					else:
 						if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
-							dimension_values = get_dimension_with_children(dimension.document_type,
-																		   self.filters.get(dimension.fieldname))
+							dimension_values = get_dimension_with_children(dimension.document_type, self.filters.get(dimension.fieldname))
 							conditions.append(f"{dimension.fieldname} in %({dimension.fieldname})s")
 							query_filters[dimension.fieldname] = dimension_values
 						else:
@@ -162,7 +161,8 @@ class GLDataProcessor:
 			SUM(CASE WHEN posting_date < %(from_date)s OR is_opening = 'Yes' THEN debit ELSE 0 END) as opening_debit,
 			SUM(CASE WHEN posting_date < %(from_date)s OR is_opening = 'Yes' THEN credit ELSE 0 END) as opening_credit,
 			SUM(CASE WHEN posting_date BETWEEN %(from_date)s AND %(to_date)s AND is_opening != 'Yes' THEN debit ELSE 0 END) as period_debit,
-			SUM(CASE WHEN posting_date BETWEEN %(from_date)s AND %(to_date)s AND is_opening != 'Yes' THEN credit ELSE 0 END) as period_credit, acc.report_type
+			SUM(CASE WHEN posting_date BETWEEN %(from_date)s AND %(to_date)s AND is_opening != 'Yes' THEN credit ELSE 0 END) as period_credit,
+		acc.report_type
 		FROM `tabGL Entry` gle
 		INNER JOIN `tabAccount` acc ON gle.account = acc.name
 		{dimension_join}
