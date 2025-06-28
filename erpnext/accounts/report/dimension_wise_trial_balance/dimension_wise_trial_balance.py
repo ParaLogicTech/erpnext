@@ -20,7 +20,7 @@ def execute(filters=None):
 		frappe.throw(_("Invalid Based On selection"))
 
 	data = get_data(filters, based_on_field)
-	columns = get_columns(filters, based_on_field, data.get('dimension_values', []), data.get('dimension_labels', []))
+	columns = get_columns(data.get('dimension_values', []), data.get('dimension_labels', []))
 	return columns, data.get('report_data', [])
 
 
@@ -150,9 +150,6 @@ class GLDataProcessor:
 		if self.based_on_field == 'cost_center':
 			dimension_select = f"cc.cost_center_name as dimension_label, gle.{self.based_on_field} as dimension_value"
 			dimension_join = "INNER JOIN `tabCost Center` cc ON gle.cost_center = cc.name AND cc.disabled = 0"
-		elif self.based_on_field == 'project':
-			dimension_select = f"gle.{self.based_on_field} as dimension_label, gle.{self.based_on_field} as dimension_value"
-			dimension_join = ""
 		else:
 			dimension_select = f"gle.{self.based_on_field} as dimension_label, gle.{self.based_on_field} as dimension_value"
 			dimension_join = ""
@@ -238,7 +235,7 @@ def get_data(filters, based_on_field):
 
 	accumulate_values_into_parents(accounts, accounts_by_name, dimension_values)
 
-	data = prepare_data(accounts, filters, total_row, parent_children_map, company_currency, dimension_values)
+	data = prepare_data(accounts, filters, total_row, company_currency, dimension_values)
 
 	if not filters.get("show_zero_values"):
 		data = [row for row in data if row.get("has_value", True)]
@@ -309,7 +306,7 @@ def accumulate_values_into_parents(accounts, accounts_by_name, dimension_values)
 					parent[key] = parent.get(key, 0) + account.get(key, 0)
 
 
-def prepare_data(accounts, filters, total_row, parent_children_map, company_currency, dimension_values):
+def prepare_data(accounts, filters, total_row, company_currency, dimension_values):
 	"""Prepare final data for report"""
 	data = []
 
@@ -353,7 +350,7 @@ def set_zero_for_group_accounts(data, parent_children_map, dimension_values):
 						del row[key]
 
 
-def get_columns(filters=None, based_on_field=None, dimension_values=None, dimension_labels=None):
+def get_columns(dimension_values=None, dimension_labels=None):
 	"""Generate report columns"""
 	if not dimension_values:
 		dimension_values = []
