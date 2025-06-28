@@ -102,7 +102,7 @@ class GLDataProcessor:
 			cost_center_data = frappe.db.get_value('Cost Center', self.filters.cost_center, 'lft, rgt')
 			if cost_center_data:
 				lft, rgt = cost_center_data
-				conditions.append(f"cost_center in (select name from `tabCost Center` where lft >= {lft} and rgt <= {rgt})")
+				conditions.append(f"cost_center in (select name from `tabCost Center` where lft >= {lft} and rgt <= {rgt} and disabled = 0)")
 
 		if self.filters.project:
 			conditions.append("project = %(project)s")
@@ -149,7 +149,7 @@ class GLDataProcessor:
 
 		if self.based_on_field == 'cost_center':
 			dimension_select = f"cc.cost_center_name as dimension_label, gle.{self.based_on_field} as dimension_value"
-			dimension_join = "LEFT JOIN `tabCost Center` cc ON gle.cost_center = cc.name"
+			dimension_join = "INNER JOIN `tabCost Center` cc ON gle.cost_center = cc.name AND cc.disabled = 0"
 		elif self.based_on_field == 'project':
 			dimension_select = f"gle.{self.based_on_field} as dimension_label, gle.{self.based_on_field} as dimension_value"
 			dimension_join = ""
