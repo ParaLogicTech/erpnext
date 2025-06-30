@@ -1042,6 +1042,17 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 1,
+   "label": "Dimension-Wise Trial Balance",
+   "link_count": 0,
+   "link_to": "Dimension-Wise Trial Balance",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
    "label": "Profit and Loss Statement",
    "link_count": 0,
    "link_to": "Profit and Loss Statement",

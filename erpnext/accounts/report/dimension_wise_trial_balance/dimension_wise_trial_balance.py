@@ -4,20 +4,17 @@
 import frappe, erpnext
 from frappe import _
 from frappe.utils import flt, getdate, formatdate, cstr
-from erpnext.accounts.report.financial_statements import filter_accounts
+from erpnext.accounts.report.financial_statements import filter_accounts, set_gl_entries_by_account, \
+	filter_out_zero_value_rows
+from erpnext.accounts.report.trial_balance.trial_balance import validate_filters, get_rootwise_opening_balances
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, \
 	get_dimension_with_children
 from collections import defaultdict
 
-value_fields = ("opening_debit", "opening_credit", "debit", "credit", "closing_debit", "closing_credit")
-
 
 def execute(filters=None):
 	validate_filters(filters)
-	based_on_field = get_based_on_field(filters.get("based_on")) if filters.get("based_on") else None
-
-	if not based_on_field:
-		frappe.throw(_("Invalid Based On selection"))
+	based_on_field = get_based_on_field(filters.get("based_on"))
 
 	data = get_data(filters, based_on_field)
 	columns = get_columns(data.get('dimension_values', []), data.get('dimension_labels', []))
@@ -42,175 +39,71 @@ def get_based_on_field(based_on_value):
 	return None
 
 
-def validate_filters(filters):
-	if not filters.fiscal_year:
-		frappe.throw(_("Fiscal Year {0} is required").format(filters.fiscal_year))
+def process_gl_data(opening_balances, filters, gl_entries_by_account, based_on_field):
+	"""Process GL entries into structured data from nested dictionary"""
+	account_data = defaultdict(lambda: defaultdict(dict))
+	dimension_values = set()
+	dimension_labels = {}
+	no_dimension_accounts = defaultdict(
+		lambda: {'opening_debit': 0, 'opening_credit': 0, 'period_debit': 0, 'period_credit': 0})
 
-	fiscal_year = frappe.db.get_value("Fiscal Year", filters.fiscal_year, ["year_start_date", "year_end_date"], as_dict=True)
-	if not fiscal_year:
-		frappe.throw(_("Fiscal Year {0} does not exist").format(filters.fiscal_year))
-	else:
-		filters.year_start_date = getdate(fiscal_year.year_start_date)
-		filters.year_end_date = getdate(fiscal_year.year_end_date)
+	def get_adjusted_opening_balance(entry_data, filters):
+		"""Get opening balance adjusted for P&L accounts based on filters"""
+		opening_debit = entry_data.get('opening_debit', 0) or 0
+		opening_credit = entry_data.get('opening_credit', 0) or 0
 
-	if not filters.from_date:
-		filters.from_date = filters.year_start_date
+		if entry_data.get('report_type') == "Profit and Loss" and not filters.get('show_unclosed_fy_pl_balances'):
+			opening_debit = 0
+			opening_credit = 0
 
-	if not filters.to_date:
-		filters.to_date = filters.year_end_date
+		return opening_debit, opening_credit
 
-	filters.from_date = getdate(filters.from_date)
-	filters.to_date = getdate(filters.to_date)
+	def initialize_account_dimension(account_name, dim_value, opening_debit=0, opening_credit=0):
+		"""Initialize account dimension data structure"""
+		if account_name not in account_data:
+			account_data[account_name] = defaultdict(dict)
 
-	if filters.from_date > filters.to_date:
-		frappe.throw(_("From Date cannot be greater than To Date"))
-
-	if (filters.from_date < filters.year_start_date) or (filters.from_date > filters.year_end_date):
-		frappe.msgprint(_("From Date should be within the Fiscal Year. Assuming From Date = {0}")\
-			.format(formatdate(filters.year_start_date)))
-
-		filters.from_date = filters.year_start_date
-
-	if (filters.to_date < filters.year_start_date) or (filters.to_date > filters.year_end_date):
-		frappe.msgprint(_("To Date should be within the Fiscal Year. Assuming To Date = {0}")\
-			.format(formatdate(filters.year_end_date)))
-		filters.to_date = filters.year_end_date
-
-
-class GLDataProcessor:
-	"""Handles all GL Entry data processing with single query optimization"""
-
-	def __init__(self, filters, based_on_field):
-		self.filters = filters
-		self.based_on_field = based_on_field
-		self.company_currency = erpnext.get_company_currency(filters.company)
-
-	def build_conditions_and_filters(self):
-		"""Build SQL conditions and query filters once"""
-		conditions = []
-		query_filters = {
-			"company": self.filters.company,
-			"from_date": self.filters.from_date,
-			"to_date": self.filters.to_date,
-			"year_start_date": self.filters.year_start_date
+		account_data[account_name][dim_value] = {
+			'opening_debit': opening_debit,
+			'opening_credit': opening_credit,
+			'period_debit': 0,
+			'period_credit': 0,
 		}
 
-		if not flt(self.filters.with_period_closing_entry):
-			conditions.append("voucher_type != 'Period Closing Voucher'")
-
-		if self.filters.cost_center:
-			cost_center_data = frappe.db.get_value('Cost Center', self.filters.cost_center, 'lft, rgt')
-			if cost_center_data:
-				lft, rgt = cost_center_data
-				conditions.append(f"cost_center in (select name from `tabCost Center` where lft >= {lft} and rgt <= {rgt} and disabled = 0)")
-
-		if self.filters.project:
-			conditions.append("project = %(project)s")
-			query_filters["project"] = self.filters.project
-
-		accounting_dimensions = get_accounting_dimensions(as_list=False)
-		if accounting_dimensions:
-			for dimension in accounting_dimensions:
-				if self.filters.get(dimension.fieldname):
-					if self.based_on_field == dimension.fieldname:
-						conditions.append(f"{dimension.fieldname} = %({dimension.fieldname})s")
-						query_filters[dimension.fieldname] = self.filters.get(dimension.fieldname)
-					else:
-						if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
-							dimension_values = get_dimension_with_children(dimension.document_type, self.filters.get(dimension.fieldname))
-							conditions.append(f"{dimension.fieldname} in %({dimension.fieldname})s")
-							query_filters[dimension.fieldname] = dimension_values
-						else:
-							conditions.append(f"{dimension.fieldname} = %({dimension.fieldname})s")
-							query_filters[dimension.fieldname] = self.filters.get(dimension.fieldname)
-
-		if self.filters.finance_book:
-			query_filters["finance_book"] = self.filters.finance_book
-			query_filters["company_fb"] = frappe.db.get_value("Company", self.filters.company, 'default_finance_book')
-
-			if self.filters.include_default_book_entries:
-				conditions.append("(finance_book in (%(finance_book)s, %(company_fb)s, '') OR finance_book IS NULL)")
-			else:
-				conditions.append("finance_book = %(finance_book)s")
-
-		return conditions, query_filters
-
-	def get_all_gl_data(self):
-		"""Single optimized query to get all GL data with opening and period balances"""
-		conditions, query_filters = self.build_conditions_and_filters()
-
-		min_lft, max_rgt = frappe.db.sql("""
-			select min(lft), max(rgt)
-			from `tabAccount`
-			where company = %s
-		""", (self.filters.company,))[0]
-
-		conditions_str = " AND " + " AND ".join(conditions) if conditions else ""
-
-		if self.based_on_field == 'cost_center':
-			dimension_select = f"cc.cost_center_name as dimension_label, gle.{self.based_on_field} as dimension_value"
-			dimension_join = "INNER JOIN `tabCost Center` cc ON gle.cost_center = cc.name AND cc.disabled = 0"
-		else:
-			dimension_select = f"gle.{self.based_on_field} as dimension_label, gle.{self.based_on_field} as dimension_value"
-			dimension_join = ""
-
-		sql = f"""SELECT account,{dimension_select},
-			SUM(CASE WHEN posting_date < %(from_date)s OR is_opening = 'Yes' THEN debit ELSE 0 END) as opening_debit,
-			SUM(CASE WHEN posting_date < %(from_date)s OR is_opening = 'Yes' THEN credit ELSE 0 END) as opening_credit,
-			SUM(CASE WHEN posting_date BETWEEN %(from_date)s AND %(to_date)s AND is_opening != 'Yes' THEN debit ELSE 0 END) as period_debit,
-			SUM(CASE WHEN posting_date BETWEEN %(from_date)s AND %(to_date)s AND is_opening != 'Yes' THEN credit ELSE 0 END) as period_credit,
-		acc.report_type
-		FROM `tabGL Entry` gle
-		INNER JOIN `tabAccount` acc ON gle.account = acc.name
-		{dimension_join}
-		WHERE gle.company = %(company)s
-			AND gle.account IN (
-				SELECT name FROM `tabAccount` 
-				WHERE lft >= {min_lft} AND rgt <= {max_rgt} AND company = %(company)s
-			)
-			AND gle.{self.based_on_field} IS NOT NULL 
-			AND gle.{self.based_on_field} != ''
-			AND (
-				posting_date < %(from_date)s 
-				OR (posting_date BETWEEN %(from_date)s AND %(to_date)s)
-				OR is_opening = 'Yes'
-			)
-			{conditions_str}
-		GROUP BY account, gle.{self.based_on_field}, acc.report_type
-		ORDER BY account, gle.{self.based_on_field}
-		"""
-
-		return frappe.db.sql(sql, query_filters, as_dict=True)
-
-	def process_gl_data(self, gl_entries):
-		"""Process GL entries into structured data"""
-		account_data = defaultdict(lambda: defaultdict(dict))
-		dimension_values = set()
-		dimension_labels = {}
-
-		for entry in gl_entries:
-			account = entry.account
-			dim_value = entry.dimension_value
-			dim_label = entry.dimension_label
-
+	def process_dimension_data(account_name, dim_value, entry_data, is_opening_balance=True):
+		"""Process dimension data for both opening balances and GL entries"""
+		if dim_value and dim_value != "default":
 			dimension_values.add(dim_value)
-			dimension_labels[dim_value] = dim_label
+			dimension_labels[dim_value] = entry_data.get('dimension_label', dim_value)
 
-			opening_debit = entry.opening_debit or 0
-			opening_credit = entry.opening_credit or 0
+			if is_opening_balance:
+				opening_debit, opening_credit = get_adjusted_opening_balance(entry_data, filters)
+				initialize_account_dimension(account_name, dim_value, opening_debit, opening_credit)
+			else:
+				if account_name not in account_data or dim_value not in account_data[account_name]:
+					initialize_account_dimension(account_name, dim_value)
 
-			if entry.report_type == "Profit and Loss" and not self.filters.show_unclosed_fy_pl_balances:
-				opening_debit = 0
-				opening_credit = 0
+				account_data[account_name][dim_value]['period_debit'] += entry_data.get('debit', 0) or 0
+				account_data[account_name][dim_value]['period_credit'] += entry_data.get('credit', 0) or 0
+		else:
+			if is_opening_balance:
+				opening_debit, opening_credit = get_adjusted_opening_balance(entry_data, filters)
+				no_dimension_accounts[account_name]['opening_debit'] += opening_debit
+				no_dimension_accounts[account_name]['opening_credit'] += opening_credit
+			else:
+				no_dimension_accounts[account_name]['period_debit'] += entry_data.get('debit', 0) or 0
+				no_dimension_accounts[account_name]['period_credit'] += entry_data.get('credit', 0) or 0
 
-			account_data[account][dim_value] = {
-				'opening_debit': opening_debit,
-				'opening_credit': opening_credit,
-				'period_debit': entry.period_debit or 0,
-				'period_credit': entry.period_credit or 0,
-			}
+	for account_name, dimension_data in opening_balances.items():
+		for dim_value, entry_data in dimension_data.items():
+			process_dimension_data(account_name, dim_value, entry_data, is_opening_balance=True)
 
-		return account_data, sorted(dimension_values), dimension_labels
+	for account, gl_entries in gl_entries_by_account.items():
+		for entry in gl_entries:
+			dim_value = entry.get(based_on_field) if based_on_field else None
+			process_dimension_data(account, dim_value, entry, is_opening_balance=False)
+
+	return account_data, sorted(dimension_values), dimension_labels, no_dimension_accounts
 
 
 def get_data(filters, based_on_field):
@@ -227,18 +120,34 @@ def get_data(filters, based_on_field):
 	company_currency = erpnext.get_company_currency(filters.company)
 	accounts, accounts_by_name, parent_children_map = filter_accounts(accounts)
 
-	gl_data_processor = GLDataProcessor(filters, based_on_field)
-	gl_entries = gl_data_processor.get_all_gl_data()
-	account_data, dimension_values, dimension_labels = gl_data_processor.process_gl_data(gl_entries)
+	min_lft, max_rgt = frappe.db.sql("""
+		select min(lft), max(rgt)
+		from `tabAccount`
+		where company=%s
+	""", (filters.company,))[0]
 
-	total_row = calculate_account_values(accounts, account_data, dimension_values, company_currency)
+	gl_entries_by_account = {}
+
+	opening_balances = get_opening_balances(filters, based_on_field)
+
+	# add filter inside list so that the query in financial_statements.py doesn't break
+	if filters.project:
+		filters.project = [filters.project]
+
+	set_gl_entries_by_account(filters.company, filters.from_date, filters.to_date,
+		min_lft, max_rgt, filters, gl_entries_by_account,
+		ignore_closing_entries=not flt(filters.with_period_closing_entry))
+
+	account_data, dimension_values, dimension_labels, no_dimension_accounts = process_gl_data(
+		opening_balances, filters, gl_entries_by_account, based_on_field)
+
+	total_row = calculate_account_values(accounts, account_data, dimension_values, company_currency, no_dimension_accounts)
 
 	accumulate_values_into_parents(accounts, accounts_by_name, dimension_values)
 
 	data = prepare_data(accounts, filters, total_row, company_currency, dimension_values)
 
-	if not filters.get("show_zero_values"):
-		data = [row for row in data if row.get("has_value", True)]
+	data = filter_out_zero_value_rows(data, parent_children_map, show_zero_values=filters.get("show_zero_values"))
 
 	set_zero_for_group_accounts(data, parent_children_map, dimension_values)
 
@@ -249,7 +158,32 @@ def get_data(filters, based_on_field):
 	}
 
 
-def calculate_account_values(accounts, account_data, dimension_values, company_currency):
+def get_opening_balances(filters, based_on_field):
+	"""Get opening balances for both Balance Sheet and P&L accounts"""
+	balance_sheet_opening = get_rootwise_opening_balances(filters, "Balance Sheet", based_on_field)
+	pl_opening = get_rootwise_opening_balances(filters, "Profit and Loss", based_on_field)
+
+	all_opening_balances = {}
+
+	for account, dimensions in balance_sheet_opening.items():
+		all_opening_balances[account] = dimensions.copy()
+		for dim_value in dimensions:
+			all_opening_balances[account][dim_value]['report_type'] = 'Balance Sheet'
+
+	for account, dimensions in pl_opening.items():
+		if account in all_opening_balances:
+			for dim_value, dim_data in dimensions.items():
+				dim_data['report_type'] = 'Profit and Loss'
+				all_opening_balances[account][dim_value] = dim_data
+		else:
+			all_opening_balances[account] = dimensions.copy()
+			for dim_value in dimensions:
+				all_opening_balances[account][dim_value]['report_type'] = 'Profit and Loss'
+
+	return all_opening_balances
+
+
+def calculate_account_values(accounts, account_data, dimension_values, company_currency, no_dimension_accounts):
 	"""Calculate opening, movement, and closing values for each account and dimension"""
 	total_row = {
 		"account": "'" + _("Total") + "'",
@@ -272,22 +206,33 @@ def calculate_account_values(accounts, account_data, dimension_values, company_c
 			account[f"movement_{dim}"] = 0.0
 			account[f"closing_{dim}"] = 0.0
 
-		# Calculate values for each dimension
 		account_gl_data = account_data.get(account.name, {})
+		no_dim_data = no_dimension_accounts.get(account.name, {})
 
 		for dim in dimension_values:
 			dim_data = account_gl_data.get(dim, {})
 
 			opening_debit = dim_data.get('opening_debit', 0)
 			opening_credit = dim_data.get('opening_credit', 0)
+
+			if dim == sorted(dimension_values)[0]:
+				opening_debit += no_dim_data.get('opening_debit', 0)
+				opening_credit += no_dim_data.get('opening_credit', 0)
+
 			account[f"opening_{dim}"] = opening_debit - opening_credit
 
 			period_debit = dim_data.get('period_debit', 0)
 			period_credit = dim_data.get('period_credit', 0)
+
+			if dim == sorted(dimension_values)[0]:
+				period_debit += no_dim_data.get('period_debit', 0)
+				period_credit += no_dim_data.get('period_credit', 0)
+
 			account[f"movement_{dim}"] = period_debit - period_credit
 
 			account[f"closing_{dim}"] = account[f"opening_{dim}"] + account[f"movement_{dim}"]
 
+			# Add to totals
 			total_row[f"opening_{dim}"] += account[f"opening_{dim}"]
 			total_row[f"movement_{dim}"] += account[f"movement_{dim}"]
 			total_row[f"closing_{dim}"] += account[f"closing_{dim}"]
@@ -319,11 +264,10 @@ def prepare_data(accounts, filters, total_row, company_currency, dimension_value
 			"from_date": filters.from_date,
 			"to_date": filters.to_date,
 			"currency": company_currency,
-			"account_name": (f'{account.account_number} - {account.account_name}'
-			if account.account_number else account.account_name)
+			"account_name": ('{0} - {1}'.format(account.account_number, account.account_name) if account.account_number else account.account_name)
 		}
 
-		# Add dimension values
+		# Add dimension values grouped by type (opening, movement, closing)
 		for field_type in ["opening", "movement", "closing"]:
 			for dim in dimension_values:
 				key = f"{field_type}_{dim}"
@@ -351,7 +295,7 @@ def set_zero_for_group_accounts(data, parent_children_map, dimension_values):
 
 
 def get_columns(dimension_values=None, dimension_labels=None):
-	"""Generate report columns"""
+	"""Generate report columns with dimension-wise grouping"""
 	if not dimension_values:
 		dimension_values = []
 	if not dimension_labels:
@@ -374,7 +318,6 @@ def get_columns(dimension_values=None, dimension_labels=None):
 		}
 	]
 
-	# Add columns for each dimension - grouped by type
 	for column_type in ["opening", "movement", "closing"]:
 		for dim_value in dimension_values:
 			display_label = dimension_labels.get(dim_value, dim_value)
