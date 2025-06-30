@@ -1172,12 +1172,14 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 		parent.update_ordered_qty()
 		parent.update_ordered_and_reserved_qty()
 		parent.set_receipt_status(update=True)
+		parent.set_billing_status(update=True)
 		if parent.get("is_subcontracted"):
 			parent.update_reserved_qty_for_subcontract()
 	else:
 		parent.update_reserved_qty()
 		parent.update_previous_doc_status()
 		parent.set_delivery_status(update=True)
+		parent.set_billing_status(update=True)
 
 	parent.reload()
 	validate_workflow_conditions(parent)
