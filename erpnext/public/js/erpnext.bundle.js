@@ -30,6 +30,9 @@ import "./utils/customer_quick_entry.js"
 import "./utils/insurance_surveyor_quick_entry.js"
 import "./utils/vehicle_quick_entry.js"
 
+//UI Components
+import "../../../../erpnext/erpnext/public/js/ui/checklist_editor.js"
+
 // HR
 import "./templates/employees_to_mark_attendance.html"
 
