@@ -1171,7 +1171,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 		parent.update_requested_qty()
 		parent.update_ordered_qty()
 		parent.update_ordered_and_reserved_qty()
-		parent.set_receipt_status()
+		parent.set_receipt_status(update=True)
 		if parent.get("is_subcontracted"):
 			parent.update_reserved_qty_for_subcontract()
 	else:
@@ -1183,7 +1183,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 	validate_workflow_conditions(parent)
 
 	parent.update_blanket_order()
-	parent.set_status()
+	parent.set_status(update=True)
 
 
 @erpnext.allow_regional
