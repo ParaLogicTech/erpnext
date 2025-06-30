@@ -78,12 +78,6 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 			}
 		]
 
-	def get_previous_year_end_date(self, current_date):
-		if isinstance(current_date, str):
-			current_date = datetime.strptime(current_date, '%Y-%m-%d')
-
-		return date(current_date.year, 12, 31)
-
 	def get_accounts_in_child_account_group(self, current_group_name, root_group_name, account_map):
 		current_group = self.get_account_group_doc(current_group_name)
 

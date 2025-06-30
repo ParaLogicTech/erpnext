@@ -26,12 +26,12 @@
   },
   {
    "columns": 1,
-   "depends_on": "eval:doc.row_type=='Account' || doc.row_type == 'Related Party'",
+   "depends_on": "eval:doc.row_type=='Account'",
    "fieldname": "account",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Account",
-   "mandatory_depends_on": "eval:doc.row_type=='Account' || doc.row_type == 'Related Party'",
+   "mandatory_depends_on": "eval:doc.row_type=='Account'",
    "options": "Account"
   },
    {
