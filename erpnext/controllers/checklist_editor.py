@@ -4,9 +4,9 @@ from frappe.utils import cint
 
 
 @frappe.whitelist()
-def get_default_checklist_items(parentfield, checklist_doctype):
-	vehicles_settings = frappe.get_cached_doc(checklist_doctype, None)
-	checklist_items = [d.checklist_item for d in vehicles_settings.get(parentfield)]
+def get_default_checklist_items(parentfield, checklist_doctype, docname=None):
+	parent_doctype = frappe.get_cached_doc(checklist_doctype, docname)
+	checklist_items = [d.checklist_item for d in parent_doctype.get(parentfield)]
 	return checklist_items
 
 

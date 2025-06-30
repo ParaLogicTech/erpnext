@@ -1,17 +1,17 @@
 frappe.provide("erpnext");
 
-erpnext.make_checklist = function (frm, parentfield, wrapper, default_items, read_only, title, checklist_doctype) {
+erpnext.make_checklist = function (frm, parentfield, wrapper, default_items, read_only, title, checklist_doctype, docname=null, force_reload=false) {
 	$(wrapper).empty();
 	if (title) {
 		$(`<label class="control-label">${title}</label>`).appendTo(wrapper);
 	}
 	var checklist_area = $('<div></div>').appendTo(wrapper);
 
-	return new erpnext.ChecklistEditor(frm, parentfield, checklist_area, default_items, read_only, checklist_doctype);
+	return new erpnext.ChecklistEditor(frm, parentfield, checklist_area, default_items, read_only, checklist_doctype, docname, force_reload);
 };
 
 erpnext.ChecklistEditor = Class.extend({
-	init: function(frm, parentfield, wrapper, default_items, read_only, checklist_doctype) {
+	init: function(frm, parentfield, wrapper, default_items, read_only, checklist_doctype, docname=null, force_reload=false) {
 		var me = this;
 		me.wrapper = $(wrapper);
 		me.parentfield = parentfield;
@@ -21,6 +21,7 @@ erpnext.ChecklistEditor = Class.extend({
 		me.buttons_container = $(`<div style="margin-top: 5px; margin-bottom: 5px;"></div>`).appendTo(me.wrapper);
 		me.empty_checklist_container = $(`<div></div>`).appendTo(me.wrapper);
 		me.checklist_doctype = checklist_doctype;
+		me.docname = docname;
 
 
 		me.frm = frm;
@@ -29,7 +30,7 @@ erpnext.ChecklistEditor = Class.extend({
 		me.default_checklist_items = default_items || [];
 
 		var checklist_items = me.get_checklist_items();
-		if (checklist_items && checklist_items.length) {
+		if (checklist_items && checklist_items.length && !force_reload) {
 			me.render_checklist();
 		} else {
 			me.load_items_and_render();
@@ -52,6 +53,7 @@ erpnext.ChecklistEditor = Class.extend({
 			args: {
 				parentfield: me.parentfield,
 				checklist_doctype: me.checklist_doctype,
+				docname: me.docname
 			},
 			callback: function (r) {
 				if (r.message && !r.exc) {
