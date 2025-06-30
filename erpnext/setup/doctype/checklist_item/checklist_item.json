@@ -8,7 +8,7 @@
   "checklist_item",
   "checklist_item_checked",
   "is_custom_checklist_item",
-  "is_check_madatory"
+  "is_check_mandatory"
  ],
  "fields": [
   {
@@ -31,15 +31,15 @@
    "label": "Is Custom Checklist Item"
   },
   {
-   "default": "0",
-   "fieldname": "is_check_madatory",
+   "columns": 2,
+   "fieldname": "is_check_mandatory",
    "fieldtype": "Check",
-   "label": "Is Check Madatory"
+   "label": "Is Check Mandatory"
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2025-06-27 18:22:30.271944",
+ "modified": "2025-06-30 15:03:03.529799",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Checklist Item",

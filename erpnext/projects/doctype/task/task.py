@@ -57,7 +57,6 @@ class Task(NestedSet):
 		self.validate_after_status()
 		self.validate_checklist_completion()
 
-
 	def validate_before_status(self):
 		self.set_depends_on()
 		self.validate_dates()

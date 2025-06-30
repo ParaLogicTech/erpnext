@@ -166,6 +166,7 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 			}
 		})
 	}
+
 	task_type() {
 		this.make_task_checklist(this.frm.doc.task_type, true)
 	}
