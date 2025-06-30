@@ -51,7 +51,10 @@ frappe.query_reports["Summarized Balance Sheet"] = {
 			let prev_year_date_moment = report_date_moment.subtract(1, "year");
 			let prev_year_date = prev_year_date_moment.format();
 
-			if (["actual_display", "prev_year_display"].includes(column.fieldname) && data.row_type === "Account Group") {
+			let prev_year_end_moment = prev_year_date_moment.clone().endOf("year");
+			let prev_year_end_date = prev_year_end_moment.format();
+
+			if (["actual_display", "prev_year_display", "prev_year_end_display"].includes(column.fieldname) && data.row_type === "Account Group") {
 				options.link_href = erpnext.financial_statements.get_summarized_statement_link(
 					"Summarized Balance Sheet",
 					data.account_group,
@@ -64,7 +67,9 @@ frappe.query_reports["Summarized Balance Sheet"] = {
 				options.link_href = erpnext.financial_statements.get_account_ledger_link(
 					data.account,
 					from_date,
-					report_date
+					report_date,
+					data.party_type,
+					data.party
 				);
 			}
 
@@ -73,7 +78,20 @@ frappe.query_reports["Summarized Balance Sheet"] = {
 				options.link_href = erpnext.financial_statements.get_account_ledger_link(
 					data.account,
 					from_date,
-					prev_year_date
+					prev_year_date,
+					data.party_type,
+					data.party
+				);
+			}
+
+			if (column.fieldname === "prev_year_end_display" && data.row_type === "Account") {
+				let from_date = prev_year_date_moment.startOf("year").format();
+				options.link_href = erpnext.financial_statements.get_account_ledger_link(
+					data.account,
+					from_date,
+					prev_year_end_date,
+					data.party_type,
+					data.party
 				);
 			}
 

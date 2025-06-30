@@ -73,24 +73,24 @@ class SummarizedFinancialReport:
 		if not accounts:
 			return []
 
+		if isinstance(accounts, dict):
+			accounts = [{acc: cond} for acc, cond in accounts.items()]
+
 		dimension_conditions, dimension_args = self.get_dimension_conditions()
 
 		args = {
 			"company": self.filters.company,
-			"accounts": accounts,
 			"to_date": to_date,
 			"from_date": from_date,
 			**dimension_args,
 		}
-		if from_date:
-			date_condition = "and posting_date between %(from_date)s and %(to_date)s"
-		else:
-			date_condition = "and posting_date <= %(to_date)s"
+		date_condition = (
+			"AND posting_date BETWEEN %(from_date)s AND %(to_date)s"
+			if from_date else
+			"AND posting_date <= %(to_date)s"
+		)
 
 		fields = ["account"]
-
-		group_by = ""
-		order_by = ""
 
 		if aggregate:
 			fields += [
@@ -98,27 +98,66 @@ class SummarizedFinancialReport:
 				"sum(credit) as credit",
 			]
 			group_by = "GROUP BY account"
+			order_by = ""
 		else:
 			fields += [
 				"debit",
 				"credit",
 				"posting_date",
 			]
+			group_by = ""
 			order_by = "ORDER BY posting_date"
 
 		fields_str = ", ".join(fields)
 
-		return frappe.db.sql(f"""
-			SELECT {fields_str}
-			FROM `tabGL Entry`
-			WHERE
-				company = %(company)s
-				and account in %(accounts)s
-				{date_condition}
-				{dimension_conditions}
-			{group_by}
-			{order_by}
-		""", args, as_dict=1)
+		or_conditions = []
+		or_args = {}
+		for i, item in enumerate(accounts):
+			if isinstance(item, str):
+				cond = f"(account = %(acc_{i})s)"
+				or_args[f"acc_{i}"] = item
+			elif isinstance(item, dict):
+				if len(item) != 1:
+					print("Invalid conditioned account entry:", item)
+					continue
+				acc_name, conditions = list(item.items())[0]
+				cond = f"(account = %(acc_{i})s"
+				or_args[f"acc_{i}"] = acc_name
+
+				if conditions.get("party_type") and conditions.get("party"):
+					cond += f" AND party_type = %(pt_{i})s AND party = %(p_{i})s"
+					or_args[f"pt_{i}"] = conditions["party_type"]
+					or_args[f"p_{i}"] = conditions["party"]
+
+				cond += ")"
+			else:
+				print("Unsupported account format:", item)
+				continue
+
+			or_conditions.append(cond)
+
+		if not or_conditions:
+			print("No valid account conditions found")
+			return []
+
+		account_condition = f"AND ({' OR '.join(or_conditions)})"
+		args.update(or_args)
+
+		query = f"""
+	        SELECT {fields_str}
+	        FROM `tabGL Entry`
+	        WHERE
+	            company = %(company)s
+	            {date_condition}
+	            {dimension_conditions}
+	            {account_condition}
+	        {group_by}
+	        {order_by}
+	    """
+		try:
+			return frappe.db.sql(query, args, as_dict=True)
+		except Exception as e:
+			return []
 
 	def get_dimension_conditions(self):
 		dimension_conditions = []
@@ -177,6 +216,8 @@ class SummarizedFinancialReport:
 					totals=totals,
 					group_root_type=group_root_type,
 					reverse_sign=row.reverse_sign,
+					party_type = row.party_type,
+					party =row.party
 				))
 
 				for f in self.total_fields:
@@ -289,7 +330,7 @@ class SummarizedFinancialReport:
 	def get_net_profit_loss(self):
 		return {f: 0 for f in self.total_fields}
 
-	def get_row(self, row_type, row_value, totals=None, is_bold=False, group_root_type=None, reverse_sign=False):
+	def get_row(self, row_type, row_value, totals=None, is_bold=False, group_root_type=None, reverse_sign=False, party_type=None, party=None):
 		row = frappe._dict()
 
 		no_values = True
@@ -313,6 +354,10 @@ class SummarizedFinancialReport:
 		if row_type == "Account":
 			row["account"] = row_value
 			row["link_type"] = "Account"
+			if party_type:
+				row["party_type"] = party_type
+			if party:
+				row['party'] = party
 		elif row_type == "Account Group":
 			row["account_group"] = row_value
 			row["link_type"] = "Account Group"

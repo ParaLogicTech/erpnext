@@ -34,4 +34,14 @@ frappe.ui.form.on('Account Group', {
 			};
 		}
 	},
+
+	onload: function(frm) {
+        frm.fields_dict["rows"].grid.get_field("party_type").get_query = function(doc, cdt, cdn) {
+            return {
+                filters: {
+                    name: ["in", Object.keys(frappe.boot.party_account_types)]
+                }
+            };
+        };
+    }
 });

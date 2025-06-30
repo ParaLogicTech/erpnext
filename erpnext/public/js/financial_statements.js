@@ -61,11 +61,18 @@ erpnext.financial_statements = {
 		}, __('Financial Statements'));
 	},
 
-	get_account_ledger_link: function(account, from_date, to_date) {
+	get_account_ledger_link: function(account, from_date, to_date, party_type=None, party=None) {
 		const params = this.get_params_for_link();
 		params["account"] = account;
 		params["from_date"] = from_date;
 		params["to_date"] = to_date;
+		if (party_type) {
+			params["party_type"] = party_type
+		}
+		if (party) {
+			params["party"] = party
+		}
+
 
 		const query_string = Object.entries(params)
 			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)

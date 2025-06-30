@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
+from datetime import date, datetime
 
 
 def execute(filters=None):
@@ -12,7 +13,7 @@ def execute(filters=None):
 
 class SummarizedBalanceSheet(SummarizedFinancialReport):
 	gl_fields = [
-		'actual', 'prev_year',
+		'actual', 'prev_year', 'prev_year_end',
 	]
 
 	total_fields = gl_fields
@@ -27,6 +28,7 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 
 		current_gl_data = self.get_gl_data(all_accounts, to_date=self.filters.report_date, aggregate=True)
 		prev_year_gl_data = self.get_gl_data(all_accounts, to_date=self.filters.prev_year_date, aggregate=True)
+		prev_year_end_gl_data = self.get_gl_data(all_accounts, to_date=date(int(str(self.filters.prev_year_date)[:4]), 12, 31), aggregate=True)
 
 		account_totals = {}
 
@@ -37,7 +39,11 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 		for d in prev_year_gl_data:
 			group = account_totals.setdefault(d.account, template.copy())
 			group["prev_year"] += d.debit - d.credit
-			
+
+		for d in prev_year_end_gl_data:
+			group = account_totals.setdefault(d.account, template.copy())
+			group["prev_year_end"] += d.debit - d.credit
+
 		return account_totals
 
 	def get_display_value_multiplier(self, row):
@@ -63,8 +69,32 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 				"label": _("Previous Year ({0})").format(frappe.format(self.filters.prev_year_date)),
 				"fieldtype": "Currency",
 				"width": 175
+			},
+			{
+				"fieldname": "prev_year_end_display",
+				"label": _("Previous Year End ({0})").format(frappe.format(date(int(str(self.filters.prev_year_date)[:4]), 12, 31))),
+				"fieldtype": "Currency",
+				"width": 300
 			}
 		]
+
+	def get_previous_year_end_date(self, current_date):
+		if isinstance(current_date, str):
+			current_date = datetime.strptime(current_date, '%Y-%m-%d')
+
+		return date(current_date.year, 12, 31)
+
+	def get_accounts_in_child_account_group(self, current_group_name, root_group_name, account_map):
+		current_group = self.get_account_group_doc(current_group_name)
+
+		for row in current_group.rows:
+			if row.row_type == "Account":
+				account_map.setdefault(root_group_name, {})[row.account] = {
+					"party_type": row.party_type or None,
+					"party": row.party or None
+				}
+			elif row.row_type == "Account Group":
+				self.get_accounts_in_child_account_group(row.account_group, root_group_name, account_map)
 
 	@staticmethod
 	def get_report_type():
