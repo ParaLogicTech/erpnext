@@ -264,7 +264,8 @@ def prepare_data(accounts, filters, total_row, company_currency, dimension_value
 			"from_date": filters.from_date,
 			"to_date": filters.to_date,
 			"currency": company_currency,
-			"account_name": ('{0} - {1}'.format(account.account_number, account.account_name) if account.account_number else account.account_name)
+			"account_name": ('{0} - {1}'.format(account.account_number, account.account_name)
+				if account.account_number else account.account_name)
 		}
 
 		# Add dimension values grouped by type (opening, movement, closing)

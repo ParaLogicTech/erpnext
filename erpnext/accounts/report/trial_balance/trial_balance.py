@@ -190,7 +190,8 @@ def get_rootwise_opening_balances(filters, report_type, dimension_field=None):
 				and (gle.posting_date < %(from_date)s or gle.is_opening = 'Yes')
 				and gle.account in (select name from `tabAccount` where report_type=%(report_type)s)
 			group by {group_clause}
-		""".format(select_clause=select_clause, join_clause=join_clause, additional_conditions=additional_conditions, group_clause=group_clause)
+		""".format(select_clause=select_clause, join_clause=join_clause,
+		additional_conditions=additional_conditions, group_clause=group_clause)
 	else:
 		sql = """
 			select
