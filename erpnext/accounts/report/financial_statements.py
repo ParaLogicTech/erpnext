@@ -370,9 +370,18 @@ def sort_accounts(accounts, is_root=False, key="name"):
 
 
 def set_gl_entries_by_account(company, from_date, to_date, root_lft, root_rgt, filters, gl_entries_by_account,
-		ignore_closing_entries=False):
+		ignore_closing_entries=False,dimension_field=None):
 
 	"""Returns a dict like { "account": [gl entries], ... }"""
+	select_fields = ["posting_date", "account", "debit", "credit", "debit_in_account_currency",
+		"credit_in_account_currency","is_opening", "fiscal_year", "account_currency"
+	]
+
+	if dimension_field:
+		select_fields.append(dimension_field)
+
+	select_clause = ", ".join(select_fields)
+
 	additional_conditions = get_additional_conditions(from_date, ignore_closing_entries, filters)
 
 	accounts = frappe.db.sql_list("""select name from `tabAccount`
@@ -400,14 +409,13 @@ def set_gl_entries_by_account(company, from_date, to_date, root_lft, root_rgt, f
 				})
 
 		gl_entries = frappe.db.sql("""
-			select posting_date, account, debit, credit, debit_in_account_currency, credit_in_account_currency,
-				is_opening, fiscal_year, account_currency
+			select {select_clause}
 			from `tabGL Entry`
 			where company=%(company)s
 				{additional_conditions}
 				and posting_date <= %(to_date)s
 			order by account, posting_date
-		""".format(additional_conditions=additional_conditions), gl_filters, as_dict=True)  #nosec
+		""".format(select_clause=select_clause, additional_conditions=additional_conditions), gl_filters, as_dict=True)  #nosec
 
 		if filters and filters.get('presentation_currency'):
 			convert_to_presentation_currency(gl_entries, get_currency(filters))

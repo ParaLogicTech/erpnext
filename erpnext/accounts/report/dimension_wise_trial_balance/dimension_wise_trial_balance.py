@@ -9,27 +9,24 @@ from erpnext.accounts.report.financial_statements import filter_accounts, set_gl
 from erpnext.accounts.report.trial_balance.trial_balance import validate_filters, get_rootwise_opening_balances
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, \
 	get_dimension_with_children
-from collections import defaultdict
 
 
 def execute(filters=None):
 	validate_filters(filters)
-	dimension_field = get_based_on_field(filters.get("based_on"))
+	dimension_field = get_dimension_field(filters.get("based_on"))
 
 	data = get_data(filters, dimension_field)
 	columns = get_columns(data.get('dimension_values', []), data.get('dimension_labels', []))
 	return columns, data.get('report_data', [])
 
 
-def get_based_on_field(based_on_value):
+def get_dimension_field(based_on_value):
 	"""Get the field name from the based on value dynamically"""
 	if not based_on_value:
 		return None
 
 	if based_on_value == "Cost Center":
 		return "cost_center"
-	elif based_on_value == "Project":
-		return "project"
 
 	accounting_dimensions = get_accounting_dimensions(as_list=False)
 	for dimension in accounting_dimensions:
@@ -37,73 +34,6 @@ def get_based_on_field(based_on_value):
 			return dimension.fieldname
 
 	return None
-
-
-def process_gl_data(opening_balances, filters, gl_entries_by_account, based_on_field):
-	"""Process GL entries into structured data from nested dictionary"""
-	account_data = defaultdict(lambda: defaultdict(dict))
-	dimension_values = set()
-	dimension_labels = {}
-	no_dimension_accounts = defaultdict(
-		lambda: {'opening_debit': 0, 'opening_credit': 0, 'period_debit': 0, 'period_credit': 0})
-
-	def get_adjusted_opening_balance(entry_data, filters):
-		"""Get opening balance adjusted for P&L accounts based on filters"""
-		opening_debit = entry_data.get('opening_debit', 0) or 0
-		opening_credit = entry_data.get('opening_credit', 0) or 0
-
-		if entry_data.get('report_type') == "Profit and Loss" and not filters.get('show_unclosed_fy_pl_balances'):
-			opening_debit = 0
-			opening_credit = 0
-
-		return opening_debit, opening_credit
-
-	def initialize_account_dimension(account_name, dim_value, opening_debit=0, opening_credit=0):
-		"""Initialize account dimension data structure"""
-		if account_name not in account_data:
-			account_data[account_name] = defaultdict(dict)
-
-		account_data[account_name][dim_value] = {
-			'opening_debit': opening_debit,
-			'opening_credit': opening_credit,
-			'period_debit': 0,
-			'period_credit': 0,
-		}
-
-	def process_dimension_data(account_name, dim_value, entry_data, is_opening_balance=True):
-		"""Process dimension data for both opening balances and GL entries"""
-		if dim_value and dim_value != "default":
-			dimension_values.add(dim_value)
-			dimension_labels[dim_value] = entry_data.get('dimension_label', dim_value)
-
-			if is_opening_balance:
-				opening_debit, opening_credit = get_adjusted_opening_balance(entry_data, filters)
-				initialize_account_dimension(account_name, dim_value, opening_debit, opening_credit)
-			else:
-				if account_name not in account_data or dim_value not in account_data[account_name]:
-					initialize_account_dimension(account_name, dim_value)
-
-				account_data[account_name][dim_value]['period_debit'] += entry_data.get('debit', 0) or 0
-				account_data[account_name][dim_value]['period_credit'] += entry_data.get('credit', 0) or 0
-		else:
-			if is_opening_balance:
-				opening_debit, opening_credit = get_adjusted_opening_balance(entry_data, filters)
-				no_dimension_accounts[account_name]['opening_debit'] += opening_debit
-				no_dimension_accounts[account_name]['opening_credit'] += opening_credit
-			else:
-				no_dimension_accounts[account_name]['period_debit'] += entry_data.get('debit', 0) or 0
-				no_dimension_accounts[account_name]['period_credit'] += entry_data.get('credit', 0) or 0
-
-	for account_name, dimension_data in opening_balances.items():
-		for dim_value, entry_data in dimension_data.items():
-			process_dimension_data(account_name, dim_value, entry_data, is_opening_balance=True)
-
-	for account, gl_entries in gl_entries_by_account.items():
-		for entry in gl_entries:
-			dim_value = entry.get(based_on_field) if based_on_field else None
-			process_dimension_data(account, dim_value, entry, is_opening_balance=False)
-
-	return account_data, sorted(dimension_values), dimension_labels, no_dimension_accounts
 
 
 def get_data(filters, dimension_field):
@@ -136,17 +66,16 @@ def get_data(filters, dimension_field):
 
 	set_gl_entries_by_account(filters.company, filters.from_date, filters.to_date,
 		min_lft, max_rgt, filters, gl_entries_by_account,
-		ignore_closing_entries=not flt(filters.with_period_closing_entry))
+		ignore_closing_entries=not flt(filters.with_period_closing_entry),dimension_field=dimension_field)
 
-	account_data, dimension_values, dimension_labels, no_dimension_accounts = process_gl_data(
-		opening_balances, filters, gl_entries_by_account, dimension_field)
+	dimension_values, dimension_labels = get_dimension_values(opening_balances, gl_entries_by_account, dimension_field)
 
-	total_row = calculate_account_values(accounts, account_data, dimension_values, company_currency, no_dimension_accounts)
+	total_row = calculate_values(accounts, gl_entries_by_account, opening_balances, filters,
+		company_currency, dimension_values, dimension_field)
 
 	accumulate_values_into_parents(accounts, accounts_by_name, dimension_values)
 
 	data = prepare_data(accounts, filters, total_row, company_currency, dimension_values)
-
 	data = filter_out_zero_value_rows(data, parent_children_map, show_zero_values=filters.get("show_zero_values"))
 
 	set_zero_for_group_accounts(data, parent_children_map, dimension_values)
@@ -158,33 +87,48 @@ def get_data(filters, dimension_field):
 	}
 
 
-def get_opening_balances(filters, based_on_field):
+def get_opening_balances(filters, dimension_field):
 	"""Get opening balances for both Balance Sheet and P&L accounts"""
-	balance_sheet_opening = get_rootwise_opening_balances(filters, "Balance Sheet", based_on_field)
-	pl_opening = get_rootwise_opening_balances(filters, "Profit and Loss", based_on_field)
+	balance_sheet_opening = get_rootwise_opening_balances(filters, "Balance Sheet", dimension_field)
+	pl_opening = get_rootwise_opening_balances(filters, "Profit and Loss", dimension_field)
 
-	all_opening_balances = {}
-
-	for account, dimensions in balance_sheet_opening.items():
-		all_opening_balances[account] = dimensions.copy()
-		for dim_value in dimensions:
-			all_opening_balances[account][dim_value]['report_type'] = 'Balance Sheet'
-
-	for account, dimensions in pl_opening.items():
-		if account in all_opening_balances:
-			for dim_value, dim_data in dimensions.items():
-				dim_data['report_type'] = 'Profit and Loss'
-				all_opening_balances[account][dim_value] = dim_data
-		else:
-			all_opening_balances[account] = dimensions.copy()
-			for dim_value in dimensions:
-				all_opening_balances[account][dim_value]['report_type'] = 'Profit and Loss'
-
-	return all_opening_balances
+	balance_sheet_opening.update(pl_opening)
+	return balance_sheet_opening
 
 
-def calculate_account_values(accounts, account_data, dimension_values, company_currency, no_dimension_accounts):
+def get_dimension_values(opening_balances, gl_entries_by_account, dimension_field):
+	"""Extract unique dimension values and labels from data"""
+	dimension_values = set()
+	dimension_labels = {}
+
+	# Get dimension values from opening balances
+	for account_name, dimension_data in opening_balances.items():
+		for dim_value, entry_data in dimension_data.items():
+			if dim_value:
+				dimension_values.add(dim_value)
+				dimension_labels[dim_value] = entry_data.get('dimension_label', dim_value)
+
+	# Get dimension values from GL entries
+	for account, gl_entries in gl_entries_by_account.items():
+		for entry in gl_entries:
+			dim_value = entry.get(dimension_field) if dimension_field else None
+			if dim_value:
+				dimension_values.add(dim_value)
+				if dim_value not in dimension_labels:
+					dimension_labels[dim_value] = dim_value
+
+	return sorted(dimension_values), dimension_labels
+
+
+def calculate_values(accounts, gl_entries_by_account, opening_balances, filters, company_currency, dimension_values,
+		dimension_field):
 	"""Calculate opening, movement, and closing values for each account and dimension"""
+	init = {}
+	for dim in dimension_values:
+		init[f"opening_{dim}"] = 0.0
+		init[f"movement_{dim}"] = 0.0
+		init[f"closing_{dim}"] = 0.0
+
 	total_row = {
 		"account": "'" + _("Total") + "'",
 		"account_name": "'" + _("Total") + "'",
@@ -201,35 +145,30 @@ def calculate_account_values(accounts, account_data, dimension_values, company_c
 		total_row[f"closing_{dim}"] = 0.0
 
 	for account in accounts:
+		account.update(init.copy())
+
+		account_opening = opening_balances.get(account.name, {})
+
+		for dim_value, entry_data in account_opening.items():
+			opening_debit = entry_data.get('opening_debit', 0) or 0
+			opening_credit = entry_data.get('opening_credit', 0) or 0
+
+			if dim_value and dim_value in dimension_values:
+				account[f"opening_{dim_value}"] = opening_debit - opening_credit
+
+		for entry in gl_entries_by_account.get(account.name, []):
+			if cstr(entry.is_opening) == "Yes":
+				continue
+
+			dim_value = entry.get(dimension_field) if dimension_field else None
+			debit = flt(entry.debit)
+			credit = flt(entry.credit)
+
+			if dim_value and dim_value in dimension_values:
+				account[f"movement_{dim_value}"] += debit - credit
+
+		# Calculate closing balances and add to totals
 		for dim in dimension_values:
-			account[f"opening_{dim}"] = 0.0
-			account[f"movement_{dim}"] = 0.0
-			account[f"closing_{dim}"] = 0.0
-
-		account_gl_data = account_data.get(account.name, {})
-		no_dim_data = no_dimension_accounts.get(account.name, {})
-
-		for dim in dimension_values:
-			dim_data = account_gl_data.get(dim, {})
-
-			opening_debit = dim_data.get('opening_debit', 0)
-			opening_credit = dim_data.get('opening_credit', 0)
-
-			if dim == sorted(dimension_values)[0]:
-				opening_debit += no_dim_data.get('opening_debit', 0)
-				opening_credit += no_dim_data.get('opening_credit', 0)
-
-			account[f"opening_{dim}"] = opening_debit - opening_credit
-
-			period_debit = dim_data.get('period_debit', 0)
-			period_credit = dim_data.get('period_credit', 0)
-
-			if dim == sorted(dimension_values)[0]:
-				period_debit += no_dim_data.get('period_debit', 0)
-				period_credit += no_dim_data.get('period_credit', 0)
-
-			account[f"movement_{dim}"] = period_debit - period_credit
-
 			account[f"closing_{dim}"] = account[f"opening_{dim}"] + account[f"movement_{dim}"]
 
 			# Add to totals
@@ -245,8 +184,8 @@ def accumulate_values_into_parents(accounts, accounts_by_name, dimension_values)
 	for account in reversed(accounts):
 		if account.parent_account and account.parent_account in accounts_by_name:
 			parent = accounts_by_name[account.parent_account]
-			for field_type in ["opening", "movement", "closing"]:
-				for dim in dimension_values:
+			for dim in dimension_values:
+				for field_type in ["opening", "movement", "closing"]:
 					key = f"{field_type}_{dim}"
 					parent[key] = parent.get(key, 0) + account.get(key, 0)
 
@@ -268,11 +207,12 @@ def prepare_data(accounts, filters, total_row, company_currency, dimension_value
 				if account.account_number else account.account_name)
 		}
 
-		# Add dimension values grouped by type (opening, movement, closing)
-		for field_type in ["opening", "movement", "closing"]:
-			for dim in dimension_values:
+		# Add dimension values
+		for dim in dimension_values:
+			for field_type in ["opening", "movement", "closing"]:
 				key = f"{field_type}_{dim}"
 				row[key] = flt(account.get(key, 0.0), 3)
+				total_row[key] = total_row.get(key, 0.0) + row[key]
 				if abs(row[key]) >= 0.005:
 					has_value = True
 
@@ -287,9 +227,8 @@ def set_zero_for_group_accounts(data, parent_children_map, dimension_values):
 	"""Hide parent account totals for grouped reports while keeping structure visible"""
 	for row in data:
 		if row.get('account') and parent_children_map.get(row['account']):
-			# This is a parent account, hide its totals
-			for field_type in ["opening", "movement", "closing"]:
-				for dim in dimension_values:
+			for dim in dimension_values:
+				for field_type in ["opening", "movement", "closing"]:
 					key = f"{field_type}_{dim}"
 					if key in row:
 						del row[key]

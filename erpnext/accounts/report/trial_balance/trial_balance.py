@@ -166,7 +166,7 @@ def get_rootwise_opening_balances(filters, report_type, dimension_field=None):
 		if dimension_field == 'cost_center':
 			select_fields.append("cc.cost_center_name as dimension_label")
 		else:
-			select_fields.append("gle.cost_center as dimension_label")
+			select_fields.append(f"gle.{dimension_field} as dimension_label")
 
 	select_fields_str = ", ".join(select_fields)
 
