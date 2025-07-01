@@ -156,99 +156,54 @@ def get_rootwise_opening_balances(filters, report_type, dimension_field=None):
 
 	hooks = frappe.get_hooks('set_gl_conditions')
 	for method in hooks:
-		frappe.get_attr(method)(filters, additional_conditions, alias="`tabGL Entry`")
+		frappe.get_attr(method)(filters, additional_conditions, alias="gle")
 
 	additional_conditions = " and {0}".format(" and ".join(additional_conditions)) if additional_conditions else ""
 
+	select_fields = ["gle.account", "sum(gle.debit) as opening_debit", "sum(gle.credit) as opening_credit"]
 	if dimension_field:
+		select_fields.append(f"gle.{dimension_field}")
 		if dimension_field == 'cost_center':
-			select_clause = """
-				account, {0}, 
-				cc.cost_center_name as dimension_label,
-				sum(debit) as opening_debit, sum(credit) as opening_credit
-			""".format(dimension_field)
-			join_clause = "LEFT JOIN `tabCost Center` cc ON gle.cost_center = cc.name AND cc.disabled = 0"
-			group_clause = "account, gle.{0}, cc.cost_center_name".format(dimension_field)
+			select_fields.append("cc.cost_center_name as dimension_label")
 		else:
-			select_clause = """
-				account, {0}, 
-				gle.{0} as dimension_label,
-				sum(debit) as opening_debit, sum(credit) as opening_credit
-			""".format(dimension_field)
-			join_clause = ""
-			group_clause = "account, gle.{0}".format(dimension_field)
-		
-		additional_conditions += " AND gle.{0} IS NOT NULL AND gle.{0} != ''".format(dimension_field)
-		
-		sql = """
-			select {select_clause}
-			from `tabGL Entry` gle
-			{join_clause}
-			where
-				gle.company = %(company)s
-				{additional_conditions}
-				and (gle.posting_date < %(from_date)s or gle.is_opening = 'Yes')
-				and gle.account in (select name from `tabAccount` where report_type=%(report_type)s)
-			group by {group_clause}
-		""".format(select_clause=select_clause, join_clause=join_clause,
-		additional_conditions=additional_conditions, group_clause=group_clause)
-	else:
-		sql = """
-			select
-				account, sum(debit) as opening_debit, sum(credit) as opening_credit
-			from `tabGL Entry`
-			where
-				company = %(company)s
-				{additional_conditions}
-				and (posting_date < %(from_date)s or is_opening = 'Yes')
-				and account in (select name from `tabAccount` where report_type=%(report_type)s)
-			group by account
-		""".format(additional_conditions=additional_conditions)
+			select_fields.append("gle.cost_center as dimension_label")
 
-	gle = frappe.db.sql(sql, query_filters, as_dict=True)
+	select_fields_str = ", ".join(select_fields)
 
+	cost_center_join = ""
+	if dimension_field == 'cost_center':
+		cost_center_join = "LEFT JOIN `tabCost Center` cc ON gle.cost_center = cc.name"
+
+	group_by = "gle.account"
 	if dimension_field:
-		opening = frappe._dict()
-		for d in gle:
-			account = d.account
-			dim_value = d.get(dimension_field)
-			if not account or not dim_value:
-				continue
-				
-			if account not in opening:
-				opening[account] = frappe._dict()
-			
-			opening[account][dim_value] = {
-				'opening_debit': d.opening_debit or 0,
-				'opening_credit': d.opening_credit or 0,
-				'dimension_label': d.dimension_label
-			}
-	else:
-		opening = frappe._dict()
-		for d in gle:
+		group_by = f"gle.account, gle.{dimension_field}"
+
+	gle = frappe.db.sql(f"""
+		select {select_fields_str}
+		from `tabGL Entry` gle
+		{cost_center_join}
+		where gle.company = %(company)s
+			{additional_conditions}
+			and (gle.posting_date < %(from_date)s or gle.is_opening = 'Yes')
+			and account in (select acc.name from `tabAccount` acc where acc.report_type = %(report_type)s)
+		group by {group_by}
+	""", query_filters, as_dict=True)
+
+	opening = frappe._dict()
+	for d in gle:
+		if dimension_field:
+			opening.setdefault(d.account, {}).setdefault(cstr(d.get(dimension_field)), d)
+		else:
 			opening.setdefault(d.account, d)
 
-	hooks = frappe.get_hooks('get_opening_account_balances')
-	for method in hooks:
-		opening_balances = frappe.get_attr(method)(filters)
-		if opening_balances is None:
-			continue
+	if not dimension_field:
+		hooks = frappe.get_hooks('get_opening_account_balances')
+		for method in hooks:
+			opening_balances = frappe.get_attr(method)(filters)
+			if opening_balances is None:
+				continue
 
-		for account, opening_entry in opening_balances.items():
-			if dimension_field:
-				if account not in opening:
-					opening[account] = frappe._dict()
-				default_dim = list(opening[account].keys())[0] if opening[account] else 'default'
-				if default_dim not in opening[account]:
-					opening[account][default_dim] = {
-						'opening_debit': 0, 'opening_credit': 0, 'dimension_label': default_dim
-					}
-				
-				if opening_entry.opening_balance >= 0:
-					opening[account][default_dim]['opening_debit'] += opening_entry.opening_balance
-				else:
-					opening[account][default_dim]['opening_credit'] += -1 * opening_entry.opening_balance
-			else:
+			for account, opening_entry in opening_balances.items():
 				opening_data = opening.setdefault(account, frappe._dict({
 					'account': account, 'opening_debit': 0, 'opening_credit': 0
 				}))

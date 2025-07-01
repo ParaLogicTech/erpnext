@@ -14,9 +14,9 @@ from collections import defaultdict
 
 def execute(filters=None):
 	validate_filters(filters)
-	based_on_field = get_based_on_field(filters.get("based_on"))
+	dimension_field = get_based_on_field(filters.get("based_on"))
 
-	data = get_data(filters, based_on_field)
+	data = get_data(filters, dimension_field)
 	columns = get_columns(data.get('dimension_values', []), data.get('dimension_labels', []))
 	return columns, data.get('report_data', [])
 
@@ -106,7 +106,7 @@ def process_gl_data(opening_balances, filters, gl_entries_by_account, based_on_f
 	return account_data, sorted(dimension_values), dimension_labels, no_dimension_accounts
 
 
-def get_data(filters, based_on_field):
+def get_data(filters, dimension_field):
 	"""Main data processing function"""
 	accounts = frappe.db.sql("""SELECT name, account_number, parent_account, account_name, root_type, report_type, lft, rgt
         FROM `tabAccount`
@@ -128,7 +128,7 @@ def get_data(filters, based_on_field):
 
 	gl_entries_by_account = {}
 
-	opening_balances = get_opening_balances(filters, based_on_field)
+	opening_balances = get_opening_balances(filters, dimension_field)
 
 	# add filter inside list so that the query in financial_statements.py doesn't break
 	if filters.project:
@@ -139,7 +139,7 @@ def get_data(filters, based_on_field):
 		ignore_closing_entries=not flt(filters.with_period_closing_entry))
 
 	account_data, dimension_values, dimension_labels, no_dimension_accounts = process_gl_data(
-		opening_balances, filters, gl_entries_by_account, based_on_field)
+		opening_balances, filters, gl_entries_by_account, dimension_field)
 
 	total_row = calculate_account_values(accounts, account_data, dimension_values, company_currency, no_dimension_accounts)
 
