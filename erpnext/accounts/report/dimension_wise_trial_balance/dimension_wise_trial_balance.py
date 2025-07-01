@@ -212,12 +212,16 @@ def prepare_data(accounts, filters, total_row, company_currency, dimension_value
 			for field_type in ["opening", "movement", "closing"]:
 				key = f"{field_type}_{dim}"
 				row[key] = flt(account.get(key, 0.0), 3)
-				total_row[key] = total_row.get(key, 0.0) + row[key]
 				if abs(row[key]) >= 0.005:
 					has_value = True
 
 		row["has_value"] = has_value
 		data.append(row)
+
+	for dim in dimension_values:
+		for field_type in ["opening", "movement", "closing"]:
+			key = f"{field_type}_{dim}"
+			total_row[key] = flt(total_row.get(key, 0.0), 3)
 
 	data.extend([{}, total_row])
 	return data
