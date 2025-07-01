@@ -73,8 +73,8 @@ class SummarizedFinancialReport:
 		if not accounts:
 			return []
 
-		if isinstance(accounts, dict):
-			accounts = [{acc: cond} for acc, cond in accounts.items()]
+		if isinstance(accounts, set):
+			accounts = list(accounts)
 
 		dimension_conditions, dimension_args = self.get_dimension_conditions()
 
@@ -91,7 +91,6 @@ class SummarizedFinancialReport:
 		)
 
 		fields = ["account"]
-
 		if aggregate:
 			fields += [
 				"sum(debit) as debit",
@@ -110,54 +109,111 @@ class SummarizedFinancialReport:
 
 		fields_str = ", ".join(fields)
 
-		or_conditions = []
-		or_args = {}
-		for i, item in enumerate(accounts):
-			if isinstance(item, str):
-				cond = f"(account = %(acc_{i})s)"
-				or_args[f"acc_{i}"] = item
-			elif isinstance(item, dict):
-				if len(item) != 1:
-					print("Invalid conditioned account entry:", item)
-					continue
-				acc_name, conditions = list(item.items())[0]
-				cond = f"(account = %(acc_{i})s"
-				or_args[f"acc_{i}"] = acc_name
+		leaf_accounts = set()
+		leaf_accounts_with_pt = []
+		leaf_accounts_with_pt_and_party = []
 
-				if conditions.get("party_type") and conditions.get("party"):
-					cond += f" AND party_type = %(pt_{i})s AND party = %(p_{i})s"
-					or_args[f"pt_{i}"] = conditions["party_type"]
-					or_args[f"p_{i}"] = conditions["party"]
+		results = []
 
-				cond += ")"
-			else:
-				print("Unsupported account format:", item)
-				continue
+		for acc, pt, party in accounts:
+			if pt is None and party is None:
+				leaf_accounts.add(acc)
+			elif pt is not None and party is None:
+				leaf_accounts_with_pt.append((acc, pt))
+			elif pt is not None and party is not None:
+				leaf_accounts_with_pt_and_party.append((acc, pt, party))
 
-			or_conditions.append(cond)
+		# Accounts with no filters
+		if leaf_accounts:
+			args = args.copy()
+			account_placeholders = ", ".join([f"%(ua_{i})s" for i in range(len(leaf_accounts))])
+			for i, acc in enumerate(leaf_accounts):
+				args[f"ua_{i}"] = acc
+			account_condition = f"AND account IN ({account_placeholders})"
 
-		if not or_conditions:
-			print("No valid account conditions found")
-			return []
+			query = f"""
+				SELECT {fields_str}
+				FROM `tabGL Entry`
+				WHERE
+					company = %(company)s
+					{date_condition}
+					{dimension_conditions}
+					{account_condition}
+				{group_by}
+				{order_by}
+			"""
+			leaf_results = frappe.db.sql(query, args, as_dict=True)
+			for row in leaf_results:
+				row["account"] = (row["account"], None, None)
+			results.extend(leaf_results)
 
-		account_condition = f"AND ({' OR '.join(or_conditions)})"
-		args.update(or_args)
+		# Accounts with only party_type
+		if leaf_accounts_with_pt:
+			or_conditions = []
+			or_args = {}
+			for i, (acc, pt) in enumerate(leaf_accounts_with_pt):
+				cond_parts = [
+					f"account = %(f_acc_{i})s",
+					f"party_type = %(f_pt_{i})s"
+				]
+				or_conditions.append(f"({' AND '.join(cond_parts)})")
+				or_args[f"f_acc_{i}"] = acc
+				or_args[f"f_pt_{i}"] = pt
 
-		query = f"""
-	        SELECT {fields_str}
-	        FROM `tabGL Entry`
-	        WHERE
-	            company = %(company)s
-	            {date_condition}
-	            {dimension_conditions}
-	            {account_condition}
-	        {group_by}
-	        {order_by}
-	    """
-		try:
-			return frappe.db.sql(query, args, as_dict=True)
-		except Exception as e:
-			return []
+			account_condition = f"AND ({' OR '.join(or_conditions)})"
+			args = {**args, **or_args}
+
+			query = f"""
+				SELECT {fields_str}, party_type
+				FROM `tabGL Entry`
+				WHERE
+					company = %(company)s
+					{date_condition}
+					{dimension_conditions}
+					{account_condition}
+				{group_by}
+				{order_by}
+			"""
+			pt_results = frappe.db.sql(query, args, as_dict=True)
+			for row in pt_results:
+				row["account"] = (row["account"], row.get("party_type"), None)
+			results.extend(pt_results)
+
+		# Accounts with party_type and party
+		if leaf_accounts_with_pt_and_party:
+			or_conditions = []
+			or_args = {}
+			for i, (acc, pt, party) in enumerate(leaf_accounts_with_pt_and_party):
+				cond_parts = [
+					f"account = %(f_acc_{i})s",
+					f"party_type = %(f_pt_{i})s",
+					f"party = %(f_party_{i})s"
+				]
+				or_conditions.append(f"({' AND '.join(cond_parts)})")
+				or_args[f"f_acc_{i}"] = acc
+				or_args[f"f_pt_{i}"] = pt
+				or_args[f"f_party_{i}"] = party
+
+			account_condition = f"AND ({' OR '.join(or_conditions)})"
+			args = {**args, **or_args}
+
+			query = f"""
+				SELECT {fields_str}, party_type, party
+				FROM `tabGL Entry`
+				WHERE
+					company = %(company)s
+					{date_condition}
+					{dimension_conditions}
+					{account_condition}
+				{group_by}
+				{order_by}
+			"""
+			pt_party_results = frappe.db.sql(query, args, as_dict=True)
+			for row in pt_party_results:
+				row["account"] = (row["account"], row.get("party_type"), row.get("party"))
+			results.extend(pt_party_results)
+
+		return results
 
 	def get_dimension_conditions(self):
 		dimension_conditions = []
@@ -209,7 +265,7 @@ class SummarizedFinancialReport:
 		running_totals = {f: 0 for f in self.total_fields}
 		for row in group.rows:
 			if row.row_type == "Account":
-				totals = account_totals.get(row.account) or {}
+				totals = account_totals.get((row.account, row.party_type or None, row.party or None)) or {}
 				data.append(self.get_row(
 					row.row_type,
 					row.account,
@@ -217,7 +273,7 @@ class SummarizedFinancialReport:
 					group_root_type=group_root_type,
 					reverse_sign=row.reverse_sign,
 					party_type = row.party_type,
-					party =row.party
+					party = row.party
 				))
 
 				for f in self.total_fields:
@@ -283,7 +339,8 @@ class SummarizedFinancialReport:
 
 		for row in current_group.rows:
 			if row.row_type == "Account":
-				account_map.setdefault(root_group_name, set()).add(row.account)
+				account_key = (row.account, row.party_type or None, row.party or None)
+				account_map.setdefault(root_group_name, set()).add(account_key)
 			elif row.row_type == "Account Group":
 				self.get_accounts_in_child_account_group(row.account_group, root_group_name, account_map)
 
@@ -354,10 +411,8 @@ class SummarizedFinancialReport:
 		if row_type == "Account":
 			row["account"] = row_value
 			row["link_type"] = "Account"
-			if party_type:
-				row["party_type"] = party_type
-			if party:
-				row['party'] = party
+			row["party_type"] = party_type
+			row['party'] = party
 		elif row_type == "Account Group":
 			row["account_group"] = row_value
 			row["link_type"] = "Account Group"

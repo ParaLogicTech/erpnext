@@ -78,18 +78,6 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 			}
 		]
 
-	def get_accounts_in_child_account_group(self, current_group_name, root_group_name, account_map):
-		current_group = self.get_account_group_doc(current_group_name)
-
-		for row in current_group.rows:
-			if row.row_type == "Account":
-				account_map.setdefault(root_group_name, {})[row.account] = {
-					"party_type": row.party_type or None,
-					"party": row.party or None
-				}
-			elif row.row_type == "Account Group":
-				self.get_accounts_in_child_account_group(row.account_group, root_group_name, account_map)
-
 	@staticmethod
 	def get_report_type():
 		return "Balance Sheet"
