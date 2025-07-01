@@ -92,28 +92,31 @@ class SummarizedFinancialReport:
 
 		fields = ["account"]
 		if aggregate:
-			fields += [
-				"sum(debit) as debit",
-				"sum(credit) as credit",
-			]
-			group_by = "GROUP BY account"
+			fields += ["SUM(debit) as debit", "SUM(credit) as credit"]
 			order_by = ""
 		else:
-			fields += [
-				"debit",
-				"credit",
-				"posting_date",
-			]
-			group_by = ""
+			fields += ["debit", "credit", "posting_date"]
 			order_by = "ORDER BY posting_date"
 
-		fields_str = ", ".join(fields)
+		def run_gl_query(group_by_fields, extra_fields, account_condition, args):
+			group_by_clause = "GROUP BY " + ", ".join(group_by_fields) if aggregate else ""
+			fields_str = ", ".join(fields + extra_fields)
+			query = f"""
+	            SELECT {fields_str}
+	            FROM `tabGL Entry`
+	            WHERE
+	                company = %(company)s
+	                {date_condition}
+	                {dimension_conditions}
+	                {account_condition}
+	            {group_by_clause}
+	            {order_by}
+	        """
+			return frappe.db.sql(query, args, as_dict=True)
 
 		leaf_accounts = set()
 		leaf_accounts_with_pt = []
 		leaf_accounts_with_pt_and_party = []
-
-		results = []
 
 		for acc, pt, party in accounts:
 			if pt is None and party is None:
@@ -123,7 +126,9 @@ class SummarizedFinancialReport:
 			elif pt is not None and party is not None:
 				leaf_accounts_with_pt_and_party.append((acc, pt, party))
 
-		# Accounts with no filters
+		results = []
+
+		# No filters
 		if leaf_accounts:
 			args = args.copy()
 			account_placeholders = ", ".join([f"%(ua_{i})s" for i in range(len(leaf_accounts))])
@@ -131,84 +136,55 @@ class SummarizedFinancialReport:
 				args[f"ua_{i}"] = acc
 			account_condition = f"AND account IN ({account_placeholders})"
 
-			query = f"""
-				SELECT {fields_str}
-				FROM `tabGL Entry`
-				WHERE
-					company = %(company)s
-					{date_condition}
-					{dimension_conditions}
-					{account_condition}
-				{group_by}
-				{order_by}
-			"""
-			leaf_results = frappe.db.sql(query, args, as_dict=True)
+			leaf_results = run_gl_query(
+				group_by_fields=["account"],
+				extra_fields=[],
+				account_condition=account_condition,
+				args=args,
+			)
 			for row in leaf_results:
 				row["account"] = (row["account"], None, None)
 			results.extend(leaf_results)
 
-		# Accounts with only party_type
+		# Only party_type
 		if leaf_accounts_with_pt:
-			or_conditions = []
-			or_args = {}
+			or_conditions, or_args = [], {}
 			for i, (acc, pt) in enumerate(leaf_accounts_with_pt):
-				cond_parts = [
-					f"account = %(f_acc_{i})s",
-					f"party_type = %(f_pt_{i})s"
-				]
-				or_conditions.append(f"({' AND '.join(cond_parts)})")
+				or_conditions.append(f"(account = %(f_acc_{i})s AND party_type = %(f_pt_{i})s)")
 				or_args[f"f_acc_{i}"] = acc
 				or_args[f"f_pt_{i}"] = pt
-
 			account_condition = f"AND ({' OR '.join(or_conditions)})"
 			args = {**args, **or_args}
 
-			query = f"""
-				SELECT {fields_str}, party_type
-				FROM `tabGL Entry`
-				WHERE
-					company = %(company)s
-					{date_condition}
-					{dimension_conditions}
-					{account_condition}
-				{group_by}
-				{order_by}
-			"""
-			pt_results = frappe.db.sql(query, args, as_dict=True)
+			pt_results = run_gl_query(
+				group_by_fields=["account", "party_type"],
+				extra_fields=["party_type"],
+				account_condition=account_condition,
+				args=args,
+			)
 			for row in pt_results:
 				row["account"] = (row["account"], row.get("party_type"), None)
 			results.extend(pt_results)
 
-		# Accounts with party_type and party
+		# party_type + party
 		if leaf_accounts_with_pt_and_party:
-			or_conditions = []
-			or_args = {}
+			or_conditions, or_args = [], {}
 			for i, (acc, pt, party) in enumerate(leaf_accounts_with_pt_and_party):
-				cond_parts = [
-					f"account = %(f_acc_{i})s",
-					f"party_type = %(f_pt_{i})s",
-					f"party = %(f_party_{i})s"
-				]
-				or_conditions.append(f"({' AND '.join(cond_parts)})")
+				or_conditions.append(
+					f"(account = %(f_acc_{i})s AND party_type = %(f_pt_{i})s AND party = %(f_party_{i})s)"
+				)
 				or_args[f"f_acc_{i}"] = acc
 				or_args[f"f_pt_{i}"] = pt
 				or_args[f"f_party_{i}"] = party
-
 			account_condition = f"AND ({' OR '.join(or_conditions)})"
 			args = {**args, **or_args}
 
-			query = f"""
-				SELECT {fields_str}, party_type, party
-				FROM `tabGL Entry`
-				WHERE
-					company = %(company)s
-					{date_condition}
-					{dimension_conditions}
-					{account_condition}
-				{group_by}
-				{order_by}
-			"""
-			pt_party_results = frappe.db.sql(query, args, as_dict=True)
+			pt_party_results = run_gl_query(
+				group_by_fields=["account", "party_type", "party"],
+				extra_fields=["party_type", "party"],
+				account_condition=account_condition,
+				args=args,
+			)
 			for row in pt_party_results:
 				row["account"] = (row["account"], row.get("party_type"), row.get("party"))
 			results.extend(pt_party_results)
