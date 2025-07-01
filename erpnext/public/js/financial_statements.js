@@ -17,7 +17,7 @@ erpnext.financial_statements = {
 			value = $(`<span>${value}</span>`);
 
 			var $value = $(value).css("font-weight", "bold");
-			if (data.warn_if_negative && data[column.fieldname] < 0) {
+			if (data.warn_if_negative && flt(data[column.fieldname], 3) < 0) {
 				$value.addClass("text-danger");
 			}
 
