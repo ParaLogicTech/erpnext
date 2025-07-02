@@ -88,10 +88,11 @@ erpnext.ChecklistEditor = Class.extend({
 
 		if (me.can_write()) {
 			me.frm.clear_table(me.parentfield);
-			$.each(me.default_checklist_items || [], function (i, item) {
+			$.each(me.default_checklist_items || [], function (i, d) {
 				me.frm.add_child(me.parentfield, {
-					"checklist_item": item,
-					"checklist_item_checked": 0
+					"checklist_item": d.checklist_item,
+					"is_check_mandatory": d.is_check_mandatory,
+					"checklist_item_checked": 0,
 				});
 			});
 		}
