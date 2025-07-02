@@ -11,6 +11,12 @@ from frappe.utils import (
 from frappe.utils.nestedset import NestedSet
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from erpnext.hr.doctype.employee.employee import get_employee_from_user
+from erpnext.controllers.checklist_editor import (
+	get_default_checklist_items,
+	set_missing_checklist,
+	validate_mandatory_checklist,
+)
+
 import json
 
 
@@ -45,12 +51,16 @@ class Task(NestedSet):
 		self.set_onload("timelogs", timelogs)
 		self.set_timelogs_html_onload(timelogs)
 
+		self.set_onload('default_task_checklist_items', get_default_checklist_items('task_checklist', 'Task Type', self.task_type))
+		self.set_missing_checklist()
+
 	def validate(self):
 		self.set_previous_values()
 		self.set_missing_values()
 		self.validate_before_status()
 		self.set_status()
 		self.validate_after_status()
+		self.validate_mandatory_checklist()
 
 	def validate_before_status(self):
 		self.set_depends_on()
@@ -361,6 +371,16 @@ class Task(NestedSet):
 		set_hrs_for_running_timelogs(timelogs)
 
 		return timelogs
+
+	def set_missing_checklist(self):
+		set_missing_checklist(self, 'task_checklist', 'Task Type', self.task_type)
+
+	def validate_mandatory_checklist(self):
+		if self.status == "Completed":
+			validate_mandatory_checklist(
+				self.task_checklist,
+				_("The following checklist items are mandatory and must be checked before you can complete this task.")
+			)
 
 
 @frappe.whitelist()

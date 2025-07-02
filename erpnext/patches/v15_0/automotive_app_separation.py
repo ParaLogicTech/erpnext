@@ -64,7 +64,6 @@ def remove_automotive_docs():
 		'Vehicle Booking Payment Detail',
 		'Vehicle Invoice Document Template',
 		'Vehicle Pricing Price List',
-		'Vehicle Checklist Item',
 		'Vehicle Number Plate Receipt Detail',
 		'Vehicle Withholding Tax Engine Capacity',
 		'Project Workshop',
