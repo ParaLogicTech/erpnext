@@ -1,17 +1,36 @@
 frappe.provide("erpnext");
 
-erpnext.make_checklist = function (frm, parentfield, wrapper, default_items, read_only, title, checklist_doctype, docname=null, force_reload=false) {
+erpnext.make_checklist = function (
+	frm,
+	parentfield,
+	wrapper,
+	default_items,
+	read_only,
+	title,
+	default_checklist_dt,
+	default_checklist_dn=null,
+	force_reload=false,
+) {
 	$(wrapper).empty();
 	if (title) {
 		$(`<label class="control-label">${title}</label>`).appendTo(wrapper);
 	}
 	var checklist_area = $('<div></div>').appendTo(wrapper);
 
-	return new erpnext.ChecklistEditor(frm, parentfield, checklist_area, default_items, read_only, checklist_doctype, docname, force_reload);
+	return new erpnext.ChecklistEditor(frm, parentfield, checklist_area, default_items, read_only, default_checklist_dt, default_checklist_dn, force_reload);
 };
 
 erpnext.ChecklistEditor = Class.extend({
-	init: function(frm, parentfield, wrapper, default_items, read_only, checklist_doctype, docname=null, force_reload=false) {
+	init: function(
+		frm,
+		parentfield,
+		wrapper,
+		default_items,
+		read_only,
+		default_checklist_dt,
+		default_checklist_dn=null,
+		force_reload=false,
+	) {
 		var me = this;
 		me.wrapper = $(wrapper);
 		me.parentfield = parentfield;
@@ -20,9 +39,8 @@ erpnext.ChecklistEditor = Class.extend({
 		me.right_container = $(`<div class="col-sm-6"></div>`).appendTo(me.checklist_wrapper);
 		me.buttons_container = $(`<div style="margin-top: 5px; margin-bottom: 5px;"></div>`).appendTo(me.wrapper);
 		me.empty_checklist_container = $(`<div></div>`).appendTo(me.wrapper);
-		me.checklist_doctype = checklist_doctype;
-		me.docname = docname;
-
+		me.default_checklist_dt = default_checklist_dt;
+		me.default_checklist_dn = default_checklist_dn;
 
 		me.frm = frm;
 		me.read_only = cint(read_only);
@@ -52,8 +70,8 @@ erpnext.ChecklistEditor = Class.extend({
 			method: "erpnext.controllers.checklist_editor.get_default_checklist_items",
 			args: {
 				parentfield: me.parentfield,
-				checklist_doctype: me.checklist_doctype,
-				docname: me.docname
+				default_checklist_dt: me.default_checklist_dt,
+				default_checklist_dn: me.default_checklist_dn
 			},
 			callback: function (r) {
 				if (r.message && !r.exc) {
