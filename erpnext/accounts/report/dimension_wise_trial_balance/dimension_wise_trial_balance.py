@@ -64,9 +64,12 @@ def get_data(filters, dimension_field):
 	if filters.project:
 		filters.project = [filters.project]
 
-	set_gl_entries_by_account(filters.company, filters.from_date, filters.to_date,
+	set_gl_entries_by_account(
+		filters.company, filters.from_date, filters.to_date,
 		min_lft, max_rgt, filters, gl_entries_by_account,
-		ignore_closing_entries=not flt(filters.with_period_closing_entry),dimension_field=dimension_field)
+		ignore_closing_entries=not flt(filters.with_period_closing_entry),
+		dimension_field=dimension_field,
+	)
 
 	dimension_values, dimension_labels = get_dimension_values(opening_balances, gl_entries_by_account, dimension_field)
 
@@ -264,7 +267,7 @@ def get_columns(dimension_values=None, dimension_labels=None):
 
 	for column_type in ["opening", "movement", "closing"]:
 		for dim_value in dimension_values:
-			display_label = dimension_labels.get(dim_value, dim_value)
+			display_label = dimension_labels.get(dim_value) or dim_value
 			columns.append({
 				"fieldname": f"{column_type}_{dim_value}",
 				"label": f"{column_type.title()} {display_label}",
