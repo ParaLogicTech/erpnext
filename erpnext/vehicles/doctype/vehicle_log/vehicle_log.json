@@ -30,6 +30,7 @@
   "column_break_12",
   "customer",
   "customer_name",
+  "unset_customer",
   "column_break_17",
   "vehicle_owner",
   "vehicle_owner_name",
@@ -196,6 +197,11 @@
    "no_copy": 1,
    "read_only": 1
   },
+  {
+   "fieldname": "unset_customer",
+   "fieldtype": "Check",
+   "label": "Unset Customer"
+   },
   {
    "fieldname": "column_break_17",
    "fieldtype": "Column Break"

@@ -1167,23 +1167,24 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 	if parent_doctype == 'Purchase Order':
 		parent.update_last_purchase_rate()
-		parent.update_previous_doc_status()
 		parent.update_requested_qty()
 		parent.update_ordered_qty()
 		parent.update_ordered_and_reserved_qty()
-		parent.set_receipt_status()
+		parent.set_receipt_status(update=True)
+		parent.set_billing_status(update=True)
 		if parent.get("is_subcontracted"):
 			parent.update_reserved_qty_for_subcontract()
 	else:
 		parent.update_reserved_qty()
-		parent.update_previous_doc_status()
 		parent.set_delivery_status(update=True)
+		parent.set_billing_status(update=True)
 
 	parent.reload()
 	validate_workflow_conditions(parent)
 
 	parent.update_blanket_order()
-	parent.set_status()
+	parent.set_status(update=True)
+	parent.update_previous_doc_status()
 
 
 @erpnext.allow_regional

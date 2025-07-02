@@ -684,4 +684,37 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			}
 		})
 	}
+
+	add_update_applies_to_details_button() {
+		let me = this;
+		if (
+			me.frm.doc.docstatus == 1
+			&& me.frm.has_perm("submit")
+			&& me.frm.doc.applies_to_serial_no
+		) {
+			me.frm.add_custom_button(__("Set Updated Applies To Details"), function () {
+				return me.update_applies_to_details_from_master();
+			}, __("Update"));
+		}
+	}
+
+	update_applies_to_details_from_master() {
+		let me = this;
+		if (me.frm.doc.__islocal) {
+			return;
+		}
+
+		return frappe.call({
+			method: "erpnext.controllers.selling_controller.update_applies_to_details_from_master",
+			args: {
+				doctype: me.frm.doc.doctype,
+				name: me.frm.doc.name,
+			},
+			callback: function (r) {
+				if (!r.exc) {
+					me.frm.reload_doc();
+				}
+			}
+		})
+	}
 };

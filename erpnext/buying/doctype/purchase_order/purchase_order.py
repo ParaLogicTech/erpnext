@@ -75,7 +75,6 @@ class PurchaseOrder(BuyingController):
 		self.update_requested_qty()
 		self.update_ordered_qty()
 		self.validate_budget()
-		self.update_project_purchase_status(purchase_values=False)
 
 		if self.is_subcontracted:
 			self.update_reserved_qty_for_subcontract()
@@ -101,7 +100,6 @@ class PurchaseOrder(BuyingController):
 		self.check_on_hold_or_closed_status()
 
 		self.update_previous_doc_status()
-		self.update_project_purchase_status(purchase_values=False)
 
 		# Must be called after updating ordered qty in Material Request
 		self.update_requested_qty()
@@ -161,6 +159,8 @@ class PurchaseOrder(BuyingController):
 			doc = frappe.get_doc("Work Order", name)
 			doc.run_method("update_status", from_doctype=self.doctype)
 			doc.notify_update()
+
+		self.update_project_purchase_status(purchase_values=False)
 
 	def update_status(self, status):
 		self.check_modified_date()
