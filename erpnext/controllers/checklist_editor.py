@@ -5,9 +5,6 @@ from frappe.utils import cint
 
 @frappe.whitelist()
 def get_default_checklist_items(parentfield, default_checklist_dt, default_checklist_dn=None):
-	if not default_checklist_dn:
-		default_checklist_dn = default_checklist_dt
-
 	meta = frappe.get_meta(default_checklist_dt)
 	if not meta:
 		frappe.throw(_("Invalid Default Checklist DocType"))
@@ -15,6 +12,12 @@ def get_default_checklist_items(parentfield, default_checklist_dt, default_check
 	df = meta.get_field(parentfield)
 	if df.fieldtype != "Table" or df.options != "Checklist Item":
 		frappe.throw(_("Invalid Checklist parentfield"))
+
+	if not default_checklist_dn and meta.issingle:
+		default_checklist_dn = default_checklist_dt
+
+	if not default_checklist_dn:
+		return []
 
 	doc = frappe.get_cached_doc(default_checklist_dt, default_checklist_dn)
 	checklist_items = [frappe._dict({
@@ -33,9 +36,9 @@ def validate_duplicate_checklist_items(checklist_items):
 		visited.add(d.checklist_item)
 
 
-def set_missing_checklist(doc, parentfield, default_checklist_dt):
+def set_missing_checklist(doc, parentfield, default_checklist_dt, default_checklist_dn=None):
 	if not doc.get(parentfield):
-		checklist = get_default_checklist_items(parentfield, default_checklist_dt)
+		checklist = get_default_checklist_items(parentfield, default_checklist_dt, default_checklist_dn)
 		for d in checklist:
 			doc.append(parentfield, {
 				'checklist_item': d.checklist_item,
@@ -88,6 +91,32 @@ def set_updated_checklist(doc, parentfield, default_checklist_dt):
 		d.idx = i + 1
 		if d.checklist_item in checked_items:
 			d.checklist_item_checked = 1
+
+
+def validate_mandatory_checklist(checklist_items, error_message=None):
+	unchecked_mandatory_items = get_mandatory_unchecked_items(checklist_items)
+	if not unchecked_mandatory_items:
+		return
+
+	list_str = "".join([f"<li>{item}</li>" for item in unchecked_mandatory_items])
+	list_str = f"<ol>{list_str}</ol>"
+
+	if not error_message:
+		error_message = _("The following checklist items are mandatory")
+
+	frappe.throw(f"{error_message}<br><br>{list_str}")
+
+
+def get_mandatory_unchecked_items(checklist_items):
+	if not checklist_items:
+		return
+
+	mandatory_checklist_items = set([d.checklist_item for d in checklist_items if d.get("is_check_mandatory")])
+	if not mandatory_checklist_items:
+		return
+
+	checked_items = set([d.checklist_item for d in checklist_items if d.checklist_item_checked])
+	return mandatory_checklist_items - checked_items
 
 
 def clear_empty_checklist(doc, parentfield):

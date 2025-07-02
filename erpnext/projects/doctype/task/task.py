@@ -11,7 +11,11 @@ from frappe.utils import (
 from frappe.utils.nestedset import NestedSet
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from erpnext.hr.doctype.employee.employee import get_employee_from_user
-from erpnext.controllers.checklist_editor import get_default_checklist_items, set_missing_checklist
+from erpnext.controllers.checklist_editor import (
+	get_default_checklist_items,
+	set_missing_checklist,
+	validate_mandatory_checklist,
+)
 
 import json
 
@@ -42,12 +46,13 @@ class Task(NestedSet):
 
 	def onload(self):
 		self.set_onload("action_conditions", get_task_action_conditions(self))
-		self.set_onload('default_checklist_items', get_default_checklist_items('task_checklist', 'Task Type', self.task_type))
-		self.set_missing_checklist()
 
 		timelogs = self.get_timelogs()
 		self.set_onload("timelogs", timelogs)
 		self.set_timelogs_html_onload(timelogs)
+
+		self.set_onload('default_task_checklist_items', get_default_checklist_items('task_checklist', 'Task Type', self.task_type))
+		self.set_missing_checklist()
 
 	def validate(self):
 		self.set_previous_values()
@@ -55,7 +60,7 @@ class Task(NestedSet):
 		self.validate_before_status()
 		self.set_status()
 		self.validate_after_status()
-		self.validate_checklist_completion()
+		self.validate_mandatory_checklist()
 
 	def validate_before_status(self):
 		self.set_depends_on()
@@ -368,35 +373,13 @@ class Task(NestedSet):
 		return timelogs
 
 	def set_missing_checklist(self):
-		if self.meta.has_field('task_checklist'):
-			set_missing_checklist(self, 'task_checklist', 'Task Type')
+		set_missing_checklist(self, 'task_checklist', 'Task Type', self.task_type)
 
-	def validate_checklist_completion(self):
-		if not self.meta.has_field('task_checklist') or not self.task_type:
-			return
-
-		mandatory_checklist_items = set(frappe.db.sql_list("""
-			SELECT checklist_item FROM `tabChecklist Item`
-			WHERE parenttype = %s
-				AND parent = %s
-				AND is_check_madatory = 1
-				""", ("Task Type", self.task_type)))
-
-		if not mandatory_checklist_items:
-			return
-
-		checked_items = set()
-		for d in self.get("task_checklist"):
-			if d.checklist_item_checked:
-				checked_items.add(d.checklist_item)
-
-
-		missing_items = mandatory_checklist_items - checked_items
-		if missing_items:
-			frappe.throw(
-				_("The following checklist items are mandatory and must be checked before you can proceed: {0}").format(
-					", ".join(frappe.bold(item) for item in missing_items)
-				)
+	def validate_mandatory_checklist(self):
+		if self.status == "Completed":
+			validate_mandatory_checklist(
+				self.task_checklist,
+				_("The following checklist items are mandatory and must be checked before you can complete this task.")
 			)
 
 

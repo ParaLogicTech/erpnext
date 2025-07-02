@@ -25,7 +25,7 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 		erpnext.hide_company();
 		this.setup_buttons();
 		this.setup_timelogs_table();
-		this.make_task_checklist(this.frm.doc.task_type)
+		this.make_task_checklist();
 	}
 
 	setup_queries() {
@@ -168,22 +168,20 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 	}
 
 	task_type() {
-		this.make_task_checklist(this.frm.doc.task_type, true)
+		this.make_task_checklist(true)
 	}
 
-	make_task_checklist(task_type, force_reload=false) {
-		if (task_type) {
-			this.frm.task_checklist_editor = erpnext.make_checklist(this.frm,
-				'task_checklist',
-				this.frm.fields_dict.task_checklist_html.wrapper,
-				this.frm.doc.__onload?.default_checklist_items,
-				0,
-				__(task_type + " Checklist"),
-				'Task Type',
-				task_type,
-				force_reload
-			);
-		}
+	make_task_checklist(force_reload=false) {
+		this.frm.task_checklist_editor = erpnext.make_checklist(this.frm,
+			'task_checklist',
+			this.frm.fields_dict.task_checklist_html.wrapper,
+			this.frm.doc.__onload?.default_task_checklist_items,
+			0,
+			this.frm.doc.task_type ? __(this.frm.doc.task_type + " Checklist") : __("Task Checklist"),
+			'Task Type',
+			this.frm.doc.task_type,
+			force_reload
+		);
 	}
 }
 
