@@ -5,7 +5,7 @@ erpnext.financial_statements = {
 	"formatter": function(value, row, column, data, default_formatter) {
 		if (data && ((column.fieldname=="account") || (column.fieldname=="account_number") || (column.fieldname=="account_name"))) {
 
-			if (!["account_name", "account_number"].includes(column.fieldname)) {
+			if(column.fieldname == "account") {
 				value = data.account_name || value;
 			}
 
