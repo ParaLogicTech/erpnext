@@ -47,7 +47,7 @@ def set_missing_checklist(doc, parentfield, default_checklist_dt, default_checkl
 			})
 
 
-def set_updated_checklist(doc, parentfield, default_checklist_dt):
+def set_updated_checklist(doc, parentfield, default_checklist_dt, default_checklist_dn=None):
 	def add_row(row, is_custom=0):
 		if isinstance(row, str):
 			row = frappe._dict({'checklist_item': d})
@@ -69,7 +69,7 @@ def set_updated_checklist(doc, parentfield, default_checklist_dt):
 	custom_items = [d for d in doc.get(parentfield) if d.get('is_custom_checklist_item')]
 	existing_items = {d.checklist_item: d for d in doc.get(parentfield)}
 
-	updated_checklist = get_default_checklist_items(parentfield, default_checklist_dt)
+	updated_checklist = get_default_checklist_items(parentfield, default_checklist_dt, default_checklist_dn)
 	doc.set(parentfield, [])
 
 	# Add settings items first
