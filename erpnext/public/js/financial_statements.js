@@ -3,8 +3,11 @@ frappe.provide("erpnext.financial_statements");
 erpnext.financial_statements = {
 	"filters": get_filters(),
 	"formatter": function(value, row, column, data, default_formatter) {
-		if (data && column.fieldname=="account") {
-			value = data.account_name || value;
+		if (data && ((column.fieldname=="account") || (column.fieldname=="account_number") || (column.fieldname=="account_name"))) {
+
+			if(!column.fieldname in ["account_name", "account_number"]) {
+				value = data.account_name || value;
+			}
 
 			column.link_onclick =
 				"erpnext.financial_statements.open_general_ledger(" + JSON.stringify(data) + ")";

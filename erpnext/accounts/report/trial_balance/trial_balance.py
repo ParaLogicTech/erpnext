@@ -56,7 +56,7 @@ def validate_filters(filters):
 
 def get_data(filters):
 	accounts = frappe.db.sql("""
-		select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt
+		select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt, is_group
 		from `tabAccount`
 		where company=%s order by lft
 	""", filters.company, as_dict=True)
@@ -269,13 +269,13 @@ def prepare_data(accounts, filters, total_row, parent_children_map, company_curr
 		has_value = False
 		row = {
 			"account": d.name,
+			"account_number": d.account_number,
+			"account_name": d.account_name,
 			"parent_account": d.parent_account,
-			"indent": d.indent,
+			"is_group": d.is_group,
 			"from_date": filters.from_date,
 			"to_date": filters.to_date,
-			"currency": company_currency,
-			"account_name": ('{} - {}'.format(d.account_number, d.account_name)
-				if d.account_number else d.account_name)
+			"currency": company_currency
 		}
 
 		for key in value_fields:
@@ -286,7 +286,8 @@ def prepare_data(accounts, filters, total_row, parent_children_map, company_curr
 				has_value = True
 
 		row["has_value"] = has_value
-		data.append(row)
+		if not d.is_group:
+			data.append(row)
 
 	data.extend([{}, total_row])
 
@@ -300,7 +301,24 @@ def get_columns():
 			"label": _("Account"),
 			"fieldtype": "Link",
 			"options": "Account",
-			"width": 300
+			"width": 300,
+			"hidden": 1
+		},
+		{
+			"fieldname": "account_number",
+			"label": _("Account Number"),
+			"fieldtype": "Link",
+			"options": "Account",
+			"width": 120,
+			"hidden": 0
+		},
+		{
+			"fieldname": "account_name",
+			"label": _("Account Name"),
+			"fieldtype": "Link",
+			"options": "Account",
+			"width": 300,
+			"hidden": 0
 		},
 		{
 			"fieldname": "currency",
