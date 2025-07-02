@@ -111,12 +111,18 @@ def get_mandatory_unchecked_items(checklist_items):
 	if not checklist_items:
 		return
 
-	mandatory_checklist_items = set([d.checklist_item for d in checklist_items if d.get("is_check_mandatory")])
+	mandatory_checklist_items = [d.checklist_item for d in checklist_items if d.get("is_check_mandatory")]
 	if not mandatory_checklist_items:
 		return
 
 	checked_items = set([d.checklist_item for d in checklist_items if d.checklist_item_checked])
-	return mandatory_checklist_items - checked_items
+
+	mandatory_unchecked_items = []
+	for item in mandatory_checklist_items:
+		if item not in checked_items:
+			mandatory_unchecked_items.append(item)
+
+	return mandatory_unchecked_items
 
 
 def clear_empty_checklist(doc, parentfield):
