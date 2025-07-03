@@ -16,13 +16,13 @@ def execute(filters=None):
 	period_list = get_period_list(filters.fiscal_year, filters.fiscal_year, "Monthly", False, filters.company)
 
 	data = get_data(filters, period_list)
-	columns = get_columns(period_list)
+	columns = get_columns(filters, period_list)
 	return columns, data
 
 
 def get_data(filters, period_list):
 	accounts = frappe.db.sql("""
-		select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt
+		select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt, is_group
 		from `tabAccount`
 		where company=%s order by lft
 	""", filters.company, as_dict=True)
@@ -82,8 +82,8 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, filters,
 		init[period.key] = 0
 
 	total_row = {
-		"account": "'" + _("Total") + "'",
-		"account_name": "'" + _("Total") + "'",
+		"account_display": _("Total"),
+		"account_name": _("Total"),
 		"warn_if_negative": True,
 		"opening_balance": 0.0,
 		"debit": 0.0,
@@ -143,14 +143,18 @@ def prepare_data(accounts, filters, total_row, parent_children_map, company_curr
 		has_value = False
 		row = {
 			"account": d.name,
+			"account_number": d.account_number,
+			"account_name": d.account_name,
+			"account_display": f"{d.account_number} - {d.account_name}" if d.account_number else d.account_name,
 			"parent_account": d.parent_account,
-			"indent": d.indent,
+			"is_group": d.is_group,
 			"from_date": filters.from_date,
 			"to_date": filters.to_date,
 			"currency": company_currency,
-			"account_name": ('{} - {}'.format(d.account_number, d.account_name)
-				if d.account_number else d.account_name)
 		}
+
+		if filters.show_tree:
+			row["indent"] = d.indent
 
 		for key in get_value_fields(period_list):
 			row[key] = flt(d.get(key, 0.0), 3)
@@ -160,7 +164,8 @@ def prepare_data(accounts, filters, total_row, parent_children_map, company_curr
 				has_value = True
 
 		row["has_value"] = has_value
-		data.append(row)
+		if not d.is_group or filters.show_tree:
+			data.append(row)
 
 	for key in get_value_fields(period_list):
 		total_row[key] = flt(total_row.get(key, 0.0), 3)
@@ -178,15 +183,33 @@ def get_value_fields(period_list):
 	return value_fields
 
 
-def get_columns(period_list):
-	columns = [
-		{
-			"fieldname": "account",
-			"label": _("Account"),
-			"fieldtype": "Link",
-			"options": "Account",
-			"width": 300
-		},
+def get_columns(filters, period_list):
+	if filters.show_tree:
+		columns = [
+			{
+				"fieldname": "account_display",
+				"label": _("Account"),
+				"fieldtype": "Data",
+				"width": 300,
+			},
+		]
+	else:
+		columns = [
+			{
+				"fieldname": "account_number",
+				"label": _("Account Number"),
+				"fieldtype": "Data",
+				"width": 108,
+			},
+			{
+				"fieldname": "account_name",
+				"label": _("Account Name"),
+				"fieldtype": "Data",
+				"width": 200,
+			},
+		]
+
+	columns += [
 		{
 			"fieldname": "opening_balance",
 			"label": _("Opening Balance"),
