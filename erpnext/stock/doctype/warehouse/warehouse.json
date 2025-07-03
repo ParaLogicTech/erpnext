@@ -14,6 +14,7 @@
   "section_break_3",
   "warehouse_type",
   "parent_warehouse",
+  "branch_warehouse",
   "is_group",
   "column_break_4",
   "company",
@@ -261,13 +262,19 @@
    "fieldtype": "Table MultiSelect",
    "label": "Restrict to Roles",
    "options": "Warehouse Role"
+  },
+  {
+   "fieldname": "branch_warehouse",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
   }
  ],
  "icon": "fa fa-building",
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-04-04 11:20:11.253844",
+ "modified": "2025-07-02 17:24:04.215426",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Warehouse",
