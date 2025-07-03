@@ -42,6 +42,7 @@ class StockReconciliation(StockController):
 		self.validate_data()
 		self.validate_expense_account()
 		self.set_total_qty_and_amount()
+		self.validate_warehouse()
 
 	def on_submit(self):
 		self.auto_create_batches("warehouse", item_condition=lambda d: flt(d.quantity_difference, 6) > 0)
