@@ -3,29 +3,28 @@ frappe.provide("erpnext.financial_statements");
 erpnext.financial_statements = {
 	"filters": get_filters(),
 	"formatter": function(value, row, column, data, default_formatter) {
-		if (data && ((column.fieldname=="account") || (column.fieldname=="account_number") || (column.fieldname=="account_name"))) {
+		let options = {
+			css: {},
+			link_target: "_blank",
+		}
 
-			if(column.fieldname == "account") {
-				value = data.account_name || value;
-			}
-
-			column.link_onclick =
-				"erpnext.financial_statements.open_general_ledger(" + JSON.stringify(data) + ")";
+		if (data && data.account && (["account", "account_number", "account_name", "account_display"].includes(column.fieldname))) {
+			options.link_href = erpnext.financial_statements.get_account_ledger_link(
+				data.account,
+				data.from_date || data.year_start_date || frappe.query_report.get_filter_value("from_date"),
+				data.to_date || data.year_end_date || frappe.query_report.get_filter_value("to_date"),
+			);
 			column.is_tree = true;
 		}
 
-		value = default_formatter(value, row, column, data);
-
 		if (data && !data.parent_account) {
-			value = $(`<span>${value}</span>`);
-
-			var $value = $(value).css("font-weight", "bold");
+			options.css["font-weight"] = "bold";
 			if (data.warn_if_negative && data[column.fieldname] < 0) {
-				$value.addClass("text-danger");
+				options.css["color"] = "var(--red-500)";
 			}
-
-			value = $value.wrap("<p></p>").parent().html();
 		}
+
+		value = default_formatter(value, row, column, data, options);
 
 		return value;
 	},
