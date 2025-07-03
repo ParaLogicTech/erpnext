@@ -15,7 +15,7 @@ value_fields = ("opening_debit", "opening_credit", "debit", "credit", "closing_d
 def execute(filters=None):
 	validate_filters(filters)
 	data = get_data(filters)
-	columns = get_columns()
+	columns = get_columns(filters)
 	return columns, data
 
 
@@ -56,7 +56,7 @@ def validate_filters(filters):
 
 def get_data(filters):
 	accounts = frappe.db.sql("""
-		select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt
+		select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt, is_group
 		from `tabAccount`
 		where company=%s order by lft
 	""", filters.company, as_dict=True)
@@ -227,8 +227,8 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, filters,
 	}
 
 	total_row = {
-		"account": "'" + _("Total") + "'",
-		"account_name": "'" + _("Total") + "'",
+		"account_name": _("Total"),
+		"account_display": _("Total"),
 		"warn_if_negative": True,
 		"opening_debit": 0.0,
 		"opening_credit": 0.0,
@@ -290,14 +290,18 @@ def prepare_data(accounts, filters, total_row, parent_children_map, company_curr
 		has_value = False
 		row = {
 			"account": d.name,
+			"account_number": d.account_number,
+			"account_name": d.account_name,
+			"account_display": f"{d.account_number} - {d.account_name}" if d.account_number else d.account_name,
 			"parent_account": d.parent_account,
-			"indent": d.indent,
+			"is_group": d.is_group,
 			"from_date": filters.from_date,
 			"to_date": filters.to_date,
 			"currency": company_currency,
-			"account_name": ('{} - {}'.format(d.account_number, d.account_name)
-				if d.account_number else d.account_name)
 		}
+
+		if filters.show_tree:
+			row["indent"] = d.indent
 
 		for key in value_fields:
 			row[key] = flt(d.get(key, 0.0), 3)
@@ -307,29 +311,41 @@ def prepare_data(accounts, filters, total_row, parent_children_map, company_curr
 				has_value = True
 
 		row["has_value"] = has_value
-		data.append(row)
+		if not d.is_group or filters.show_tree:
+			data.append(row)
 
 	data.extend([{}, total_row])
 
 	return data
 
 
-def get_columns():
-	return [
-		{
-			"fieldname": "account",
-			"label": _("Account"),
-			"fieldtype": "Link",
-			"options": "Account",
-			"width": 300
-		},
-		{
-			"fieldname": "currency",
-			"label": _("Currency"),
-			"fieldtype": "Link",
-			"options": "Currency",
-			"hidden": 1
-		},
+def get_columns(filters):
+	if filters.show_tree:
+		columns = [
+			{
+				"fieldname": "account_display",
+				"label": _("Account"),
+				"fieldtype": "Data",
+				"width": 300,
+			},
+		]
+	else:
+		columns = [
+			{
+				"fieldname": "account_number",
+				"label": _("Account Number"),
+				"fieldtype": "Data",
+				"width": 108,
+			},
+			{
+				"fieldname": "account_name",
+				"label": _("Account Name"),
+				"fieldtype": "Data",
+				"width": 300,
+			},
+		]
+
+	columns += [
 		{
 			"fieldname": "opening_debit",
 			"label": _("Opening (Dr)"),
@@ -373,6 +389,8 @@ def get_columns():
 			"width": 120
 		}
 	]
+
+	return columns
 
 
 def prepare_opening_closing(row):

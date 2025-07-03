@@ -86,7 +86,12 @@ frappe.query_reports["Trial Balance"] = {
 			"label": __("Include Default Book Entries"),
 			"fieldtype": "Check",
 			"default": 1
-		}
+		},
+		{
+			"fieldname": "show_tree",
+			"label": __("Show Tree View"),
+			"fieldtype": "Check",
+		},
 	],
 	"formatter": erpnext.financial_statements.formatter,
 	"tree": true,
