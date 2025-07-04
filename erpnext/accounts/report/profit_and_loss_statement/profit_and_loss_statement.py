@@ -35,8 +35,8 @@ def execute(filters=None):
 def get_net_profit_loss(income, expense, period_list, company, currency=None, consolidated=False):
 	total = 0
 	net_profit_loss = {
-		"account_name": "'" + _("Profit for the year") + "'",
-		"account": "'" + _("Profit for the year") + "'",
+		"account_name": _("Profit for the year"),
+		"account_display": _("Profit for the year"),
 		"warn_if_negative": True,
 		"currency": currency or frappe.get_cached_value('Company',  company,  "default_currency")
 	}

@@ -29,8 +29,8 @@ def execute(filters=None):
 
 	if(len(gross_income)==0 and len(gross_expense)== 0):
 		data.append({
-			"account_name": "'" + _("Nothing is included in gross") + "'",
-			"account": "'" + _("Nothing is included in gross") + "'"
+			"account_name": _("Nothing is included in gross"),
+			"account_display": _("Nothing is included in gross")
 		})
 		return columns, data
 
@@ -42,8 +42,8 @@ def execute(filters=None):
 		gross_expense = [{}]
 
 	data.append({
-		"account_name": "'" + _("Included in Gross Profit") + "'",
-		"account": "'" + _("Included in Gross Profit") + "'"
+		"account_name": _("Included in Gross Profit"),
+		"account_display": _("Included in Gross Profit")
 	})
 
 	data.append({})
@@ -119,8 +119,8 @@ def set_total(node, value, complete_list, totals):
 
 def get_profit(gross_income, gross_expense, period_list, company, profit_type, currency=None, consolidated=False):
 	profit_loss = {
-		"account_name": "'" + _(profit_type) + "'",
-		"account": "'" + _(profit_type) + "'",
+		"account_name": _(profit_type),
+		"account_display": _(profit_type),
 		"warn_if_negative": True,
 		"currency": currency or frappe.get_cached_value('Company',  company,  "default_currency")
 	}
@@ -141,8 +141,8 @@ def get_profit(gross_income, gross_expense, period_list, company, profit_type, c
 
 def get_net_profit(non_gross_income, gross_income, gross_expense, non_gross_expense, period_list, company, currency=None, consolidated=False):
 	profit_loss = {
-		"account_name": "'" + _("Net Profit") + "'",
-		"account": "'" + _("Net Profit") + "'",
+		"account_name": _("Net Profit"),
+		"account_display": _("Net Profit"),
 		"warn_if_negative": True,
 		"currency": currency or frappe.get_cached_value('Company',  company,  "default_currency")
 	}

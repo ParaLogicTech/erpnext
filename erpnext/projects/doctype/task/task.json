@@ -45,6 +45,11 @@
   "applies_to_item_name",
   "sb_details",
   "description",
+  "task_checklist_section_break",
+  "remarks",
+  "column_break_mwlw",
+  "task_checklist_html",
+  "task_checklist",
   "more_information_section",
   "task_weight",
   "column_break_fcnk7",
@@ -511,6 +516,32 @@
    "fieldtype": "Link",
    "label": "Cost Center",
    "options": "Cost Center"
+  },
+  {
+   "fieldname": "task_checklist_section_break",
+   "fieldtype": "Section Break",
+   "label": "Remarks & Checklist"
+  },
+  {
+   "fieldname": "task_checklist_html",
+   "fieldtype": "HTML",
+   "label": "Task Checklist"
+  },
+  {
+   "fieldname": "task_checklist",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Task Checklist",
+   "options": "Checklist Item"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "column_break_mwlw",
+   "fieldtype": "Column Break"
   }
  ],
  "icon": "fa fa-check",
@@ -518,7 +549,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-03-10 21:52:46.595756",
+ "modified": "2025-07-02 12:29:30.295539",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",

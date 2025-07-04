@@ -237,8 +237,11 @@ def prepare_data(accounts, balance_must_be, period_list, company_currency):
 		has_value = False
 		total = 0
 		row = frappe._dict({
-			"account": _(d.name),
-			"parent_account": _(d.parent_account) if d.parent_account else '',
+			"account": d.name,
+			"account_number": d.account_number,
+			"account_name": d.account_name,
+			"account_display": f"{d.account_number} - {d.account_name}" if d.account_number else d.account_name,
+			"parent_account": d.parent_account if d.parent_account else '',
 			"indent": flt(d.indent),
 			"year_start_date": year_start_date,
 			"year_end_date": year_end_date,
@@ -247,8 +250,6 @@ def prepare_data(accounts, balance_must_be, period_list, company_currency):
 			"account_type": d.account_type,
 			"is_group": d.is_group,
 			"opening_balance": d.get("opening_balance", 0.0) * (1 if balance_must_be=="Debit" else -1),
-			"account_name": ('%s - %s' %(_(d.account_number), _(d.account_name))
-				if d.account_number else _(d.account_name))
 		})
 		for period in period_list:
 			if d.get(period.key) and balance_must_be == "Credit":
@@ -289,7 +290,7 @@ def filter_out_zero_value_rows(data, parent_children_map, show_zero_values=False
 def add_total_row(out, root_type, balance_must_be, period_list, company_currency):
 	total_row = {
 		"account_name": _("Total {0} ({1})").format(_(root_type), _(balance_must_be)),
-		"account": _("Total {0} ({1})").format(_(root_type), _(balance_must_be)),
+		"account_display": _("Total {0} ({1})").format(_(root_type), _(balance_must_be)),
 		"currency": company_currency
 	}
 
@@ -489,21 +490,12 @@ def get_cost_centers_with_children(cost_centers):
 
 def get_columns(periodicity, period_list, accumulated_values=1, company=None):
 	columns = [{
-		"fieldname": "account",
+		"fieldname": "account_display",
 		"label": _("Account"),
-		"fieldtype": "Link",
+		"fieldtype": "Data",
 		"options": "Account",
 		"width": 300
 	}]
-
-	if company:
-		columns.append({
-			"fieldname": "currency",
-			"label": _("Currency"),
-			"fieldtype": "Link",
-			"options": "Currency",
-			"hidden": 1
-		})
 
 	if periodicity != "Yearly":
 		if not accumulated_values:
