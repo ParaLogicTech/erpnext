@@ -66,6 +66,13 @@ frappe.query_reports["Trial Balance"] = {
 			"options": "Finance Book",
 		},
 		{
+			"fieldname": "based_on",
+			"label": __("Based on"),
+			"fieldtype": "Select",
+			"options": ["", "Cost Center"],
+			"default": "",
+		},
+		{
 			"fieldname": "with_period_closing_entry",
 			"label": __("Period Closing Entry"),
 			"fieldtype": "Check",
@@ -101,3 +108,9 @@ frappe.query_reports["Trial Balance"] = {
 
 erpnext.utils.add_dimensions('Trial Balance', 6);
 erpnext.utils.add_additional_gl_filters('Trial Balance');
+
+let based_on_filter = frappe.query_reports["Trial Balance"].filters.find(f => f.fieldname === "based_on");
+
+erpnext.dimension_filters.forEach((dimension) => {
+	based_on_filter.options.push(dimension["document_type"]);
+});
