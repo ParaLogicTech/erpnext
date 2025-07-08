@@ -97,15 +97,17 @@ class LandedCostVoucher(AccountsController):
 		for row in self.get('purchase_receipts'):
 			if row.receipt_document_type and row.receipt_document:
 				details = frappe.db.get_value(row.receipt_document_type, row.receipt_document,
-					['posting_date', 'supplier', 'base_grand_total'], as_dict=1)
+					['posting_date', 'supplier', 'bill_no', 'base_grand_total'], as_dict=1)
 
 				if details:
 					row.posting_date = details.posting_date
 					row.supplier = details.supplier
+					row.bill_no = details.bill_no
 					row.grand_total = details.base_grand_total
 			else:
 				row.posting_date = None
 				row.supplier = None
+				row.bill_no = None
 				row.grand_total = None
 
 	@frappe.whitelist()
@@ -179,6 +181,7 @@ class LandedCostVoucher(AccountsController):
 
 	def validate_purchase_receipts(self):
 		receipt_documents = []
+		seen_docs = set()
 
 		for d in self.get("purchase_receipts"):
 			fields = ["company", "docstatus", "is_return"]
@@ -186,6 +189,11 @@ class LandedCostVoucher(AccountsController):
 				fields.append("update_stock")
 
 			details = frappe.db.get_value(d.receipt_document_type, d.receipt_document, fields, as_dict=1)
+
+			key = (d.receipt_document_type, d.receipt_document)
+			if key in seen_docs:
+				frappe.throw(_("Duplicate purchase receipt found: {0} - {1}")
+					 .format(d.receipt_document_type, d.receipt_document))
 
 			if details is None:
 				frappe.throw(_("Row #{0}: {1} {2} does not exist")
@@ -207,7 +215,13 @@ class LandedCostVoucher(AccountsController):
 				frappe.throw(_("Row #{0}: {1} {2} does not belong to Company {3}")
 					.format(d.idx, d.receipt_document_type, d.receipt_document, self.company))
 
+			if self.party_type == "Supplier" and self.party:
+				if d.supplier != self.party:
+					frappe.throw(_("Row #{0}: {1} {2} does not belong to the Supplier {3}")
+						.format(d.idx, d.receipt_document_type, d.receipt_document, self.party))
+
 			receipt_documents.append(d.receipt_document)
+			seen_docs.add((d.receipt_document_type, d.receipt_document))
 
 		for item in self.get("items"):
 			if (not item.purchase_receipt and not item.purchase_invoice) \

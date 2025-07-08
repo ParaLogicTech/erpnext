@@ -619,4 +619,43 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 	}
 };
 
+frappe.ui.form.on('Landed Cost Purchase Receipt', {
+	// reset the fields when the document type changes
+	receipt_document_type: function(frm, cdt, cdn) {
+		frappe.model.set_value(cdt, cdn, 'receipt_document', '');
+		frappe.model.set_value(cdt, cdn, 'supplier', '');
+		frappe.model.set_value(cdt, cdn, 'bill_no', '');
+		frappe.model.set_value(cdt, cdn, 'grand_total', 0);
+		frm.refresh_field('purchase_receipts');
+	},
+	receipt_document: function(frm, cdt, cdn) {
+		let row = locals[cdt][cdn];
+		if (row.receipt_document_type && row.receipt_document) {
+			frappe.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: row.receipt_document_type,
+					filters: { name: row.receipt_document },
+					fieldname: ["supplier", "bill_no", "base_grand_total"]
+				},
+				callback: function(r) {
+					if (r.message) {
+						frappe.model.set_value(cdt, cdn, 'supplier', r.message.supplier);
+						frappe.model.set_value(cdt, cdn, 'bill_no', r.message.bill_no);
+						frappe.model.set_value(cdt, cdn, 'grand_total', r.message.base_grand_total);
+						frm.refresh_field('purchase_receipts');
+					}
+				},
+				error: function(err) {
+					frappe.msgprint({
+						title: __('Error Fetching Document'),
+						message: __('Unable to fetch the document details. Please check if it exists or try again later.'),
+						indicator: 'red'
+					});
+				}
+			});
+		}
+	},
+});
+
 cur_frm.script_manager.make(erpnext.stock.LandedCostVoucher);

@@ -12,6 +12,8 @@
   "party",
   "is_payable",
   "col_break2",
+  "bill_no",
+  "bill_date",
   "remarks",
   "column_break_8",
   "company",
@@ -431,12 +433,23 @@
    "fieldname": "item_filters_section",
    "fieldtype": "Section Break",
    "label": "Item Filters"
+  },
+  {
+   "fieldname": "bill_no",
+   "fieldtype": "Data",
+   "label": "Bill No"
+  },
+  {
+   "depends_on": "eval:doc.bill_no",
+   "fieldname": "bill_date",
+   "fieldtype": "Date",
+   "label": "Bill Date"
   }
  ],
  "icon": "icon-usd",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-07 14:29:16.956561",
+ "modified": "2025-07-08 06:17:06.657023",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Landed Cost Voucher",
