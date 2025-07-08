@@ -6,8 +6,7 @@ from frappe import _
 from frappe.utils import flt, getdate, formatdate, cstr
 from erpnext.accounts.report.financial_statements \
 	import filter_accounts, set_gl_entries_by_account, filter_out_zero_value_rows
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, \
-	get_dimension_with_children
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, get_dimension_with_children
 from collections import defaultdict
 
 value_fields = ("opening_debit", "opening_credit", "debit", "credit", "closing_debit", "closing_credit")
@@ -26,8 +25,7 @@ def validate_filters(filters):
 	if not filters.fiscal_year:
 		frappe.throw(_("Fiscal Year {0} is required").format(filters.fiscal_year))
 
-	fiscal_year = frappe.db.get_value("Fiscal Year", filters.fiscal_year, ["year_start_date", "year_end_date"],
-									  as_dict=True)
+	fiscal_year = frappe.db.get_value("Fiscal Year", filters.fiscal_year, ["year_start_date", "year_end_date"], as_dict=True)
 	if not fiscal_year:
 		frappe.throw(_("Fiscal Year {0} does not exist").format(filters.fiscal_year))
 	else:
@@ -59,7 +57,6 @@ def validate_filters(filters):
 
 
 def get_dimension_field(based_on_value):
-	"""Get the field name from the based on value dynamically"""
 	if not based_on_value:
 		return None
 
@@ -75,7 +72,6 @@ def get_dimension_field(based_on_value):
 
 
 def get_dimension_label(dimension_field):
-	"""Get the display label for the dimension field"""
 	if dimension_field == "cost_center":
 		return "Cost Center"
 
@@ -121,8 +117,7 @@ def get_data(filters, dimension_field=None):
 		dimension_field=dimension_field)
 
 	account_data, dimension_values, total_rows = calculate_values(
-		accounts, gl_entries_by_account, opening_balances, dimension_field, company_currency
-	)
+		accounts, gl_entries_by_account, opening_balances, dimension_field, company_currency)
 
 	accumulate_values_into_parents(account_data, dimension_values, accounts_by_name, accounts)
 
@@ -393,40 +388,16 @@ def accumulate_values_into_parents(account_data, dimension_values, accounts_by_n
 					parent_data[field] += child_data.get(field, 0)
 
 
-def has_account_value(data, value_fields=value_fields):
-	for field in value_fields:
-		if abs(data.get(field, 0)) >= 0.005:
-			return True
-	return False
+def set_zero_for_group_accounts(data, parent_children_map):
+	for d in data:
+		if d.get('account') and parent_children_map.get(d['account']):
+			for key in value_fields:
+				del d[key]
 
 
-def build_account_row(account, filters, company_currency, dimension_value=None):
-	row = {
-		"account": account.name,
-		"account_number": account.account_number,
-		"account_name": account.account_name,
-		"account_display": f"{account.account_number} - {account.account_name}" if account.account_number else account.account_name,
-		"parent_account": account.parent_account,
-		"is_group": account.is_group,
-		"from_date": filters.from_date,
-		"to_date": filters.to_date,
-		"currency": company_currency,
-	}
-
-	if filters.show_tree:
-		row["indent"] = account.indent
-
-	if dimension_value is not None:
-		row["dimension_value"] = dimension_value
-
-	return row
-
-
-def prepare_data(accounts, filters, account_data, dimension_values, total_rows, parent_children_map, company_currency,
-				 dimension_field):
+def prepare_data(accounts, filters, account_data, dimension_values, total_rows, parent_children_map, company_currency, dimension_field):
 	data = []
-	is_dimension_case = dimension_field and len(dimension_values) > 1 or (
-				len(dimension_values) == 1 and None not in dimension_values)
+	is_dimension_case = dimension_field and len(dimension_values) > 1 or (len(dimension_values) == 1 and None not in dimension_values)
 
 	for account in accounts:
 		is_group_account = parent_children_map.get(account.name)
@@ -520,13 +491,33 @@ def prepare_data(accounts, filters, account_data, dimension_values, total_rows, 
 
 	return data
 
+def has_account_value(data):
+	for field in value_fields:
+		if abs(data.get(field, 0)) >= 0.005:
+			return True
+	return False
 
-def set_zero_for_group_accounts(data, parent_children_map):
-	for d in data:
-		if d.get('account') and parent_children_map.get(d['account']):
-			for key in value_fields:
-				if key in d:
-					del d[key]
+
+def build_account_row(account, filters, company_currency, dimension_value=None):
+	row = {
+		"account": account.name,
+		"account_number": account.account_number,
+		"account_name": account.account_name,
+		"account_display": f"{account.account_number} - {account.account_name}" if account.account_number else account.account_name,
+		"parent_account": account.parent_account,
+		"is_group": account.is_group,
+		"from_date": filters.from_date,
+		"to_date": filters.to_date,
+		"currency": company_currency,
+	}
+
+	if filters.show_tree:
+		row["indent"] = account.indent
+
+	if dimension_value is not None:
+		row["dimension_value"] = dimension_value
+
+	return row
 
 
 def get_columns(filters, dimension_field=None):
