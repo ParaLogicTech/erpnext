@@ -443,12 +443,13 @@ def get_columns(filters):
 		]
 
 	if filters.dimension_field:
-		dimension_label = get_dimension_label(filters.dimension_field)
+		dimension_details = get_dimension_column_details(filters.dimension_field)
 		columns.append({
 			"fieldname": filters.dimension_field,
-			"label": _(dimension_label),
-			"fieldtype": "Data",
-			"width": 150
+			"label": dimension_details.label,
+			"fieldtype": "Link" if dimension_details.document_type else "Data",
+			"options": dimension_details.document_type,
+			"width": 150,
 		})
 
 	columns += [
@@ -499,16 +500,20 @@ def get_columns(filters):
 	return columns
 
 
-def get_dimension_label(dimension_field):
-	if dimension_field == "cost_center":
-		return "Cost Center"
-
+def get_dimension_column_details(dimension_field):
 	accounting_dimensions = get_accounting_dimensions(as_list=False)
 	for dimension in accounting_dimensions:
 		if dimension.fieldname == dimension_field:
-			return dimension.document_type
+			return frappe._dict({
+				"label": _(dimension.label),
+				"document_type": dimension.document_type,
+			})
 
-	return unscrub(dimension_field)
+	label = unscrub(dimension_field)
+	return frappe._dict({
+		"label": _(label),
+		"document_type": label if label in ("Cost Center", "Project") else None,
+	})
 
 
 def prepare_opening_closing(row):
