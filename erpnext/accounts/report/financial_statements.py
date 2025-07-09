@@ -148,7 +148,8 @@ def get_data(company, root_type, balance_must_be, period_list, filters=None,
 			period_list[0]["year_start_date"] if only_current_fiscal_year else None,
 			period_list[-1]["to_date"],
 			root.lft, root.rgt, filters,
-			gl_entries_by_account, ignore_closing_entries=ignore_closing_entries
+			gl_entries_by_account,
+			ignore_closing_entries=ignore_closing_entries
 		)
 
 	calculate_values(accounts_by_name, gl_entries_by_account, period_list, accumulated_values,
@@ -370,8 +371,17 @@ def sort_accounts(accounts, is_root=False, key="name"):
 	accounts.sort(key = functools.cmp_to_key(compare_accounts))
 
 
-def set_gl_entries_by_account(company, from_date, to_date, root_lft, root_rgt, filters, gl_entries_by_account,
-		ignore_closing_entries=False, dimension_field=None):
+def set_gl_entries_by_account(
+	company,
+	from_date,
+	to_date,
+	root_lft,
+	root_rgt,
+	filters,
+	gl_entries_by_account,
+	ignore_closing_entries=False,
+	dimension_field=None
+):
 
 	"""Returns a dict like { "account": [gl entries], ... }"""
 	select_fields = [
@@ -413,9 +423,9 @@ def set_gl_entries_by_account(company, from_date, to_date, root_lft, root_rgt, f
 		gl_entries = frappe.db.sql(f"""
 			select {select_clause}
 			from `tabGL Entry`
-			where company=%(company)s
-				{additional_conditions}
+			where company = %(company)s
 				and posting_date <= %(to_date)s
+				{additional_conditions}
 			order by account, posting_date
 		""", gl_filters, as_dict=True)  #nosec
 

@@ -2,22 +2,21 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe, erpnext
-from frappe import _
+from frappe import _, unscrub
 from frappe.utils import flt, getdate, formatdate, cstr
 from erpnext.accounts.report.financial_statements \
 	import filter_accounts, set_gl_entries_by_account, filter_out_zero_value_rows
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, get_dimension_with_children
-from collections import defaultdict
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, \
+	get_dimension_with_children, get_all_dimension_fields
 
 value_fields = ("opening_debit", "opening_credit", "debit", "credit", "closing_debit", "closing_credit")
 
 
 def execute(filters=None):
 	validate_filters(filters)
-	dimension_field = get_dimension_field(filters.get("based_on"))
 
-	data = get_data(filters, dimension_field=dimension_field)
-	columns = get_columns(filters, dimension_field=dimension_field)
+	data = get_data(filters)
+	columns = get_columns(filters)
 	return columns, data
 
 
@@ -55,39 +54,18 @@ def validate_filters(filters):
 			.format(formatdate(filters.year_end_date)))
 		filters.to_date = filters.year_end_date
 
+	if filters.project:
+		filters.project = [filters.project]
 
-def get_dimension_field(based_on_value):
-	if not based_on_value:
-		return None
-
-	if based_on_value == "Cost Center":
-		return "cost_center"
-
-	accounting_dimensions = get_accounting_dimensions(as_list=False)
-	for dimension in accounting_dimensions:
-		if dimension.document_type == based_on_value:
-			return dimension.fieldname
-
-	return None
+	if filters.dimension_field and filters.dimension_field not in get_all_dimension_fields():
+		frappe.throw(_("Invalid Dimension Field {0}").format(filters.dimension_field))
 
 
-def get_dimension_label(dimension_field):
-	if dimension_field == "cost_center":
-		return "Cost Center"
-
-	accounting_dimensions = get_accounting_dimensions(as_list=False)
-	for dimension in accounting_dimensions:
-		if dimension.fieldname == dimension_field:
-			return dimension.document_type
-
-	return dimension_field.replace("_", " ").title()
-
-
-def get_data(filters, dimension_field=None):
+def get_data(filters):
 	accounts = frappe.db.sql("""
 		select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt, is_group
 		from `tabAccount`
-		where company=%s order by lft
+		where company = %s order by lft
 	""", filters.company, as_dict=True)
 
 	if not accounts:
@@ -103,27 +81,22 @@ def get_data(filters, dimension_field=None):
 		where company=%s
 	""", (filters.company,))[0]
 
+	opening_balances = get_opening_balances(filters, dimension_field=filters.dimension_field)
+
 	gl_entries_by_account = {}
-
-	opening_balances = get_opening_balances(filters, dimension_field)
-
-	# add filter inside list so that the query in financial_statements.py doesn't break
-	if filters.project:
-		filters.project = [filters.project]
-
-	set_gl_entries_by_account(filters.company, filters.from_date, filters.to_date,
+	set_gl_entries_by_account(
+		filters.company, filters.from_date, filters.to_date,
 		min_lft, max_rgt, filters, gl_entries_by_account,
 		ignore_closing_entries=not flt(filters.with_period_closing_entry),
-		dimension_field=dimension_field)
+		dimension_field=filters.dimension_field,
+	)
 
-	account_data, dimension_values, total_rows = calculate_values(
-		accounts, gl_entries_by_account, opening_balances, dimension_field, company_currency)
+	total_rows = calculate_values(accounts, gl_entries_by_account, opening_balances, company_currency,
+		dimension_field=filters.dimension_field)
+	accumulate_values_into_parents(accounts, accounts_by_name)
 
-	accumulate_values_into_parents(account_data, dimension_values, accounts_by_name, accounts)
-
-	data = prepare_data(accounts, filters, account_data, dimension_values, total_rows,
-		parent_children_map, company_currency, dimension_field)
-
+	data = prepare_data(accounts, filters, total_rows, parent_children_map, company_currency,
+		dimension_field=filters.dimension_field)
 	data = filter_out_zero_value_rows(data, parent_children_map, show_zero_values=filters.get("show_zero_values"))
 
 	set_zero_for_group_accounts(data, parent_children_map)
@@ -197,10 +170,6 @@ def get_rootwise_opening_balances(filters, report_type, dimension_field=None):
 	select_fields = ["gle.account", "sum(gle.debit) as opening_debit", "sum(gle.credit) as opening_credit"]
 	if dimension_field:
 		select_fields.append(f"gle.{dimension_field}")
-		if dimension_field == 'cost_center':
-			select_fields.append("cc.cost_center_name as dimension_label")
-		else:
-			select_fields.append(f"gle.{dimension_field} as dimension_label")
 
 	select_fields_str = ", ".join(select_fields)
 
@@ -212,7 +181,7 @@ def get_rootwise_opening_balances(filters, report_type, dimension_field=None):
 	if dimension_field:
 		group_by = f"gle.account, gle.{dimension_field}"
 
-	gle = frappe.db.sql(f"""
+	gl_data = frappe.db.sql(f"""
 		select {select_fields_str}
 		from `tabGL Entry` gle
 		{cost_center_join}
@@ -223,169 +192,163 @@ def get_rootwise_opening_balances(filters, report_type, dimension_field=None):
 		group by {group_by}
 	""", query_filters, as_dict=True)
 
-	opening = frappe._dict()
-	for d in gle:
+	opening_balances = frappe._dict()
+	for gle in gl_data:
+		account_opening = opening_balances.setdefault(gle.account, frappe._dict({
+			"account": gle.account, "opening_debit": 0, "opening_credit": 0, "dimensions": {},
+		}))
+
+		account_opening.opening_debit += gle.opening_debit
+		account_opening.opening_credit += gle.opening_credit
+
 		if dimension_field:
-			opening.setdefault(d.account, {}).setdefault(cstr(d.get(dimension_field)), d)
-		else:
-			opening.setdefault(d.account, d)
+			dimension_value = cstr(gle.get(dimension_field))
+			dimension_opening = account_opening.dimensions.setdefault(dimension_value, frappe._dict({
+				dimension_field: dimension_value,
+				"opening_debit": 0,
+				"opening_credit": 0,
+			}))
 
-	if not dimension_field:
-		hooks = frappe.get_hooks('get_opening_account_balances')
-		for method in hooks:
-			opening_balances = frappe.get_attr(method)(filters)
-			if opening_balances is None:
-				continue
+			dimension_opening.opening_debit += gle.opening_debit
+			dimension_opening.opening_credit += gle.opening_credit
 
-			for account, opening_entry in opening_balances.items():
-				opening_data = opening.setdefault(account, frappe._dict({
-					'account': account, 'opening_debit': 0, 'opening_credit': 0
+	hooks = frappe.get_hooks('get_opening_account_balances')
+	for method in hooks:
+		hooked_opening_balances = frappe.get_attr(method)(filters)
+		if hooked_opening_balances is None:
+			continue
+
+		for account, op in hooked_opening_balances.items():
+			account_opening = opening_balances.setdefault(account, frappe._dict({
+				"account": account, "opening_debit": 0, "opening_credit": 0, "dimensions": {},
+			}))
+
+			if op.opening_balance >= 0:
+				account_opening['opening_debit'] += op.opening_balance
+			else:
+				account_opening['opening_credit'] += -1 * op.opening_balance
+
+			if dimension_field:
+				dimension_value = cstr(op.get(dimension_field))
+				dimension_opening = account_opening.dimensions.setdefault(dimension_value, frappe._dict({
+					dimension_field: dimension_value,
+					"opening_debit": 0,
+					"opening_credit": 0,
 				}))
 
-				if opening_entry.opening_balance >= 0:
-					opening_data['opening_debit'] += opening_entry.opening_balance
+				if op.opening_balance >= 0:
+					dimension_opening['opening_debit'] += op.opening_balance
 				else:
-					opening_data['opening_credit'] += -1 * opening_entry.opening_balance
+					dimension_opening['opening_credit'] += -1 * op.opening_balance
 
-	return opening
+	return opening_balances
 
 
-def calculate_values(accounts, gl_entries_by_account, opening_balances, dimension_field, company_currency):
-	dimension_values = set()
+def calculate_values(accounts, gl_entries_by_account, opening_balances, company_currency, dimension_field=None):
+	init = frappe._dict({
+		"opening_debit": 0.0,
+		"opening_credit": 0.0,
+		"debit": 0.0,
+		"credit": 0.0,
+		"closing_debit": 0.0,
+		"closing_credit": 0.0
+	})
 
-	if dimension_field:
-		account_data = defaultdict(lambda: defaultdict(lambda: {
-			"opening_debit": 0.0, "opening_credit": 0.0, "debit": 0.0,
-			"credit": 0.0, "closing_debit": 0.0, "closing_credit": 0.0
-		}))
-	else:
-		account_data = {}
-		dimension_values.add(None)
+	total_row_init = frappe._dict({
+		"account_name": _("Total"),
+		"account_display": _("Total"),
+		"warn_if_negative": True,
+		"opening_debit": 0.0,
+		"opening_credit": 0.0,
+		"debit": 0.0,
+		"credit": 0.0,
+		"closing_debit": 0.0,
+		"closing_credit": 0.0,
+		"parent_account": None,
+		"indent": 0,
+		"has_value": True,
+		"currency": company_currency
+	})
+	dimension_totals = {}
+	grand_total_row = total_row_init.copy()
 
-	for account_name, opening_data in opening_balances.items():
-		if dimension_field and isinstance(opening_data, dict):
-			for dim_value, data in opening_data.items():
-				clean_dim_value = dim_value or _("Empty")
-				dimension_values.add(clean_dim_value)
-				account_data[account_name][clean_dim_value]["opening_debit"] = data.get("opening_debit", 0)
-				account_data[account_name][clean_dim_value]["opening_credit"] = data.get("opening_credit", 0)
-		else:
-			if dimension_field:
-				clean_dim_value = _("Empty")
-				dimension_values.add(clean_dim_value)
-				account_data[account_name][clean_dim_value]["opening_debit"] = opening_data.get("opening_debit", 0)
-				account_data[account_name][clean_dim_value]["opening_credit"] = opening_data.get("opening_credit", 0)
-			else:
-				account_data[account_name] = {
-					"opening_debit": opening_data.get("opening_debit", 0),
-					"opening_credit": opening_data.get("opening_credit", 0),
-					"debit": 0.0, "credit": 0.0, "closing_debit": 0.0, "closing_credit": 0.0
-				}
+	def get_dimension_object(account_obj, dimension_field, dimension_value):
+		if dimension_value not in account_obj.dimensions:
+			dimension_object = account_obj.dimensions[dimension_value] = dim_init.copy()
+			dimension_object[dimension_field] = dimension_value
 
-	for account_name, gl_entries in gl_entries_by_account.items():
-		for entry in gl_entries:
+		return account_obj.dimensions[dimension_value]
+
+	for acc in accounts:
+		acc.update(init.copy())
+		dim_init = acc.copy()
+		acc["dimensions"] = {}
+
+		account_opening = opening_balances.get(acc.name, frappe._dict())
+
+		# add opening
+		acc["opening_debit"] = flt(account_opening.get("opening_debit"))
+		acc["opening_credit"] = flt(account_opening.get("opening_credit"))
+
+		for dimension_value, dimension_opening in account_opening.get("dimensions", {}).items():
+			dim = get_dimension_object(acc, dimension_field, dimension_value)
+			dim["opening_debit"] = flt(dimension_opening.get("opening_debit"))
+			dim["opening_credit"] = flt(dimension_opening.get("opening_credit"))
+
+		# add movement
+		for entry in gl_entries_by_account.get(acc.name, []):
 			if cstr(entry.is_opening) == "Yes":
 				continue
 
-			if dimension_field:
-				dim_value = entry.get(dimension_field) or _("Empty")
-				dimension_values.add(dim_value)
-				account_data[account_name][dim_value]["debit"] += flt(entry.debit)
-				account_data[account_name][dim_value]["credit"] += flt(entry.credit)
-			else:
-				if account_name not in account_data:
-					account_data[account_name] = {
-						"opening_debit": 0.0, "opening_credit": 0.0,
-						"debit": 0.0, "credit": 0.0, "closing_debit": 0.0, "closing_credit": 0.0
-					}
-				account_data[account_name]["debit"] += flt(entry.debit)
-				account_data[account_name]["credit"] += flt(entry.credit)
+			acc["debit"] += flt(entry.debit)
+			acc["credit"] += flt(entry.credit)
 
-	for account in accounts:
+			if dimension_field:
+				dimension_value = cstr(entry.get(dimension_field))
+				dim = get_dimension_object(acc, dimension_field, dimension_value)
+				dim["debit"] += flt(entry.debit)
+				dim["credit"] += flt(entry.credit)
+
+		# calculate closing
+		acc["closing_debit"] = acc["opening_debit"] + acc["debit"]
+		acc["closing_credit"] = acc["opening_credit"] + acc["credit"]
+		prepare_opening_closing(acc)
+
+		for dimension_value, dim in acc.get("dimensions", {}).items():
+			dim["closing_debit"] = dim["opening_debit"] + dim["debit"]
+			dim["closing_credit"] = dim["opening_credit"] + dim["credit"]
+			prepare_opening_closing(dim)
+
+		# accumulate total rows
 		if dimension_field:
-			for dim_value in dimension_values:
-				account_data[account.name][dim_value]["root_type"] = account.root_type
+			for dimension_value, dim in acc.get("dimensions", {}).items():
+				dimension_total_row = dimension_totals.get(dimension_value)
+				if not dimension_total_row:
+					dimension_total_row = dimension_totals[dimension_value] = total_row_init.copy()
+					dimension_total_row["account_name"] = _("Dimension Total")
+					dimension_total_row["account_display"] = _("Dimension Total")
+					dimension_total_row[dimension_field] = dimension_value
+
+				for field in value_fields:
+					dimension_total_row[field] += dim[field]
+					grand_total_row[field] += dim[field]
 		else:
-			if account.name not in account_data:
-				account_data[account.name] = {
-					"opening_debit": 0.0, "opening_credit": 0.0,
-					"debit": 0.0, "credit": 0.0, "closing_debit": 0.0, "closing_credit": 0.0
-				}
-			account_data[account.name]["root_type"] = account.root_type
+			for field in value_fields:
+				grand_total_row[field] += acc[field]
 
 	if dimension_field:
-		for account_name, account_dims in account_data.items():
-			for dim_value, data in account_dims.items():
-				data["closing_debit"] = data["opening_debit"] + data["debit"]
-				data["closing_credit"] = data["opening_credit"] + data["credit"]
-				prepare_opening_closing(data)
+		total_rows = sorted(dimension_totals.values(), key=lambda d: d.get(dimension_field)) + [{}, grand_total_row]
 	else:
-		for account_name, data in account_data.items():
-			data["closing_debit"] = data["opening_debit"] + data["debit"]
-			data["closing_credit"] = data["opening_credit"] + data["credit"]
-			prepare_opening_closing(data)
-
-	total_rows = create_total_rows(dimension_values, company_currency, dimension_field)
-
-	return (dict(account_data) if dimension_field else account_data), sorted(dimension_values), total_rows
-
-
-def create_total_rows(dimension_values, company_currency, dimension_field):
-	total_rows = {}
-
-	for dim_value in dimension_values:
-		total_row = {
-			"account_name": _("Total"),
-			"account_display": _("Total"),
-			"warn_if_negative": True,
-			"opening_debit": 0.0,
-			"opening_credit": 0.0,
-			"debit": 0.0,
-			"credit": 0.0,
-			"closing_debit": 0.0,
-			"closing_credit": 0.0,
-			"parent_account": None,
-			"has_value": True,
-			"currency": company_currency
-		}
-
-		if dimension_field and dim_value is not None:
-			total_row["dimension_value"] = dim_value
-
-		total_rows[dim_value] = total_row
+		total_rows = [grand_total_row]
 
 	return total_rows
 
 
-def accumulate_values_into_parents(account_data, dimension_values, accounts_by_name, accounts):
-	for account in reversed(accounts):
-		if account.parent_account and account.parent_account in accounts_by_name:
-			if len(dimension_values) > 1 or (len(dimension_values) == 1 and None not in dimension_values):
-				# Dimension case
-				for dim_value in dimension_values:
-					child_data = account_data.get(account.name, {}).get(dim_value, {})
-					parent_data = account_data.setdefault(account.parent_account, {}).setdefault(dim_value, {
-						"opening_debit": 0.0, "opening_credit": 0.0, "debit": 0.0,
-						"credit": 0.0, "closing_debit": 0.0, "closing_credit": 0.0
-					})
-
-					if "root_type" not in parent_data:
-						parent_data["root_type"] = accounts_by_name[account.parent_account].root_type
-
-					for field in value_fields:
-						parent_data[field] += child_data.get(field, 0)
-			else:
-				child_data = account_data.get(account.name, {})
-				parent_data = account_data.setdefault(account.parent_account, {
-					"opening_debit": 0.0, "opening_credit": 0.0, "debit": 0.0,
-					"credit": 0.0, "closing_debit": 0.0, "closing_credit": 0.0
-				})
-
-				if "root_type" not in parent_data:
-					parent_data["root_type"] = accounts_by_name[account.parent_account].root_type
-
-				for field in value_fields:
-					parent_data[field] += child_data.get(field, 0)
+def accumulate_values_into_parents(accounts, accounts_by_name):
+	for d in reversed(accounts):
+		if d.parent_account:
+			for key in value_fields:
+				accounts_by_name[d.parent_account][key] += d[key]
 
 
 def set_zero_for_group_accounts(data, parent_children_map):
@@ -395,132 +358,65 @@ def set_zero_for_group_accounts(data, parent_children_map):
 				del d[key]
 
 
-def prepare_data(accounts, filters, account_data, dimension_values, total_rows, parent_children_map, company_currency, dimension_field):
+def prepare_data(accounts, filters, total_rows, parent_children_map, company_currency, dimension_field=None):
 	data = []
-	is_dimension_case = dimension_field and len(dimension_values) > 1 or (len(dimension_values) == 1 and None not in dimension_values)
 
-	for account in accounts:
-		is_group_account = parent_children_map.get(account.name)
+	for acc in accounts:
+		# Prepare opening closing for group account
+		if parent_children_map.get(acc.account):
+			prepare_opening_closing(acc)
 
-		if is_dimension_case:
-			if is_group_account:
-				aggregated_data = {
-					"opening_debit": 0.0, "opening_credit": 0.0, "debit": 0.0,
-					"credit": 0.0, "closing_debit": 0.0, "closing_credit": 0.0,
-					"root_type": account.root_type
-				}
-
-				account_dims = account_data.get(account.name, {})
-				for dim_value in dimension_values:
-					dimension_data = account_dims.get(dim_value, {})
-					for field in value_fields:
-						aggregated_data[field] += dimension_data.get(field, 0)
-
-				prepare_opening_closing(aggregated_data)
-
-				if has_account_value(aggregated_data) or filters.get("show_zero_values"):
-					row = build_account_row(account, filters, company_currency)
-					row["has_value"] = has_account_value(aggregated_data)
-
-					for field in value_fields:
-						row[field] = flt(aggregated_data.get(field, 0.0), 3)
-
-					if not account.is_group or filters.show_tree:
-						data.append(row)
-			else:
-				for dim_value in dimension_values:
-					dimension_data = account_data.get(account.name, {}).get(dim_value, {})
-
-					if has_account_value(dimension_data) or filters.get("show_zero_values"):
-						row = build_account_row(account, filters, company_currency, dim_value)
-						row["has_value"] = has_account_value(dimension_data)
-
-						for field in value_fields:
-							row[field] = flt(dimension_data.get(field, 0.0), 3)
-							total_rows[dim_value][field] += row[field]
-
-						if not account.is_group or filters.show_tree:
-							data.append(row)
+		if dimension_field and not acc.is_group:
+			sources = acc.dimensions.values() or [acc]
 		else:
-			account_values = account_data.get(account.name, {})
+			sources = [acc]
 
-			if is_group_account and account_values:
-				prepare_opening_closing(account_values)
+		account_rows = []
 
-			if has_account_value(account_values) or filters.get("show_zero_values"):
-				row = build_account_row(account, filters, company_currency)
-				row["has_value"] = has_account_value(account_values)
+		for d in sources:
+			has_value = False
+			row = {
+				"account": d.name,
+				"account_number": d.account_number,
+				"account_name": d.account_name,
+				"account_display": f"{d.account_number} - {d.account_name}" if d.account_number else d.account_name,
+				"parent_account": d.parent_account,
+				"is_group": d.is_group,
+				"from_date": filters.from_date,
+				"to_date": filters.to_date,
+				"currency": company_currency,
+			}
 
-				for field in value_fields:
-					row[field] = flt(account_values.get(field, 0.0), 3)
-					if (not account.is_group or filters.show_tree) and not is_group_account:
-						total_rows[None][field] += row[field]
+			if dimension_field:
+				dimension_value = cstr(d.get(dimension_field))
+				row[dimension_field] = dimension_value
 
-				if not account.is_group or filters.show_tree:
-					data.append(row)
+			if filters.show_tree:
+				row["indent"] = d.indent
+
+			for key in value_fields:
+				row[key] = flt(d.get(key, 0.0), 3)
+
+				if abs(row[key]) >= 0.005:
+					# ignore zero values
+					has_value = True
+
+			row["has_value"] = has_value
+			if not d.is_group or filters.show_tree:
+				account_rows.append(row)
+
+		if dimension_field:
+			account_rows = sorted(account_rows, key=lambda d: cstr(d.get(dimension_field)))
+
+		data += account_rows
 
 	data.append({})
-
-	if is_dimension_case:
-		for dim_value in dimension_values:
-			if filters.show_tree:
-				total_rows[dim_value]["indent"] = 0
-			data.append(total_rows[dim_value])
-
-		if len(dimension_values) > 1:
-			grand_total_row = create_total_rows([None], company_currency, None)[None]
-			grand_total_row.update({
-				"account_name": _("Grand Total"),
-				"account_display": _("Grand Total"),
-				"dimension_value": ""
-			})
-
-			if filters.show_tree:
-				grand_total_row["indent"] = 0
-
-			for dim_value in dimension_values:
-				for field in value_fields:
-					grand_total_row[field] += total_rows[dim_value][field]
-
-			data.append(grand_total_row)
-	else:
-		if None in total_rows:
-			if filters.show_tree:
-				total_rows[None]["indent"] = 0
-			data.append(total_rows[None])
+	data += total_rows
 
 	return data
 
-def has_account_value(data):
-	for field in value_fields:
-		if abs(data.get(field, 0)) >= 0.005:
-			return True
-	return False
 
-
-def build_account_row(account, filters, company_currency, dimension_value=None):
-	row = {
-		"account": account.name,
-		"account_number": account.account_number,
-		"account_name": account.account_name,
-		"account_display": f"{account.account_number} - {account.account_name}" if account.account_number else account.account_name,
-		"parent_account": account.parent_account,
-		"is_group": account.is_group,
-		"from_date": filters.from_date,
-		"to_date": filters.to_date,
-		"currency": company_currency,
-	}
-
-	if filters.show_tree:
-		row["indent"] = account.indent
-
-	if dimension_value is not None:
-		row["dimension_value"] = dimension_value
-
-	return row
-
-
-def get_columns(filters, dimension_field=None):
+def get_columns(filters):
 	if filters.show_tree:
 		columns = [
 			{
@@ -542,14 +438,14 @@ def get_columns(filters, dimension_field=None):
 				"fieldname": "account_name",
 				"label": _("Account Name"),
 				"fieldtype": "Data",
-				"width": 300,
+				"width": 250,
 			},
 		]
 
-	if dimension_field:
-		dimension_label = get_dimension_label(dimension_field)
+	if filters.dimension_field:
+		dimension_label = get_dimension_label(filters.dimension_field)
 		columns.append({
-			"fieldname": "dimension_value",
+			"fieldname": filters.dimension_field,
 			"label": _(dimension_label),
 			"fieldtype": "Data",
 			"width": 150
@@ -601,6 +497,18 @@ def get_columns(filters, dimension_field=None):
 	]
 
 	return columns
+
+
+def get_dimension_label(dimension_field):
+	if dimension_field == "cost_center":
+		return "Cost Center"
+
+	accounting_dimensions = get_accounting_dimensions(as_list=False)
+	for dimension in accounting_dimensions:
+		if dimension.fieldname == dimension_field:
+			return dimension.document_type
+
+	return unscrub(dimension_field)
 
 
 def prepare_opening_closing(row):
