@@ -24,14 +24,42 @@ class PaymentReconciliation(Document):
 			order_doctype, against_all_orders=True, against_account=self.bank_cash_account, limit=self.limit)
 		journal_entries = get_advance_journal_entries(self.party_type, self.party, self.receivable_payable_account,
 			order_doctype, against_all_orders=True, limit=self.limit)
+		dr_cr_notes_entries = self.get_dr_cr_notes_entries()
 				
-		self.add_payment_entries(payment_entries + journal_entries)
+		self.add_payment_entries(payment_entries + journal_entries + dr_cr_notes_entries)
 
 	def add_payment_entries(self, entries):
 		self.set('payments', [])
 		for e in entries:
 			row = self.append('payments', {})
 			row.update(e)
+
+	def get_dr_cr_notes_entries(self):
+		dr_cr_notes_entries = []
+
+		invoices = get_outstanding_invoices(self.party_type, self.party, self.receivable_payable_account,
+			include_negative_outstanding=True)
+
+		for inv in invoices:
+			if inv.voucher_type not in ["Sales Invoice", "Purchase Invoice"]:
+				continue
+			# verify if the invoice is cr or dr note
+			is_return = frappe.get_cached_value(inv.voucher_type, inv.voucher_no, "is_return")
+			if not is_return:
+				continue
+
+			dr_cr_notes_entries.append({
+				'reference_type': inv.voucher_type,
+				'reference_name': inv.voucher_no,
+				'reference_row': None,
+				'amount': abs(inv.outstanding_amount),
+				'allocated_amount': 0.0,
+				'difference_amount': 0.0,
+				'invoice_number': '',
+				'invoice_type': '',
+			})
+
+		return dr_cr_notes_entries
 
 	def get_invoice_entries(self):
 		#Fetch JVs, Sales and Purchase Invoices for 'invoices' to reconcile against
@@ -180,8 +208,6 @@ class PaymentReconciliation(Document):
 
 def reconcile_dr_cr_note(dr_cr_notes, company):
 	for d in dr_cr_notes:
-		voucher_type = ('Credit Note'
-			if d.voucher_type == 'Sales Invoice' else 'Debit Note')
 
 		reconcile_dr_or_cr = ('debit_in_account_currency'
 			if d.dr_or_cr == 'credit_in_account_currency' else 'credit_in_account_currency')
@@ -190,7 +216,7 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 
 		jv = frappe.get_doc({
 			"doctype": "Journal Entry",
-			"voucher_type": voucher_type,
+			"voucher_type": "Journal Entry",
 			"posting_date": today(),
 			"company": company,
 			"multi_currency": 1 if d.currency != company_currency else 0,
