@@ -37,26 +37,50 @@ class PaymentReconciliation(Document):
 	def get_dr_cr_notes_entries(self):
 		dr_cr_notes_entries = []
 
-		invoices = get_outstanding_invoices(self.party_type, self.party, self.receivable_payable_account,
-			include_negative_outstanding=True)
+		invoice_doctype = 'Sales Invoice' if self.party_type == 'Customer' else 'Purchase Invoice'
 
-		for inv in invoices:
-			if inv.voucher_type not in ["Sales Invoice", "Purchase Invoice"]:
-				continue
-			# verify if the invoice is cr or dr note
-			is_return = frappe.get_cached_value(inv.voucher_type, inv.voucher_no, "is_return")
-			if not is_return:
-				continue
+		gl_entries = frappe.db.get_all(
+			"GL Entry",
+			filters={
+				"party_type": self.party_type,
+				"party": self.party,
+				"account": self.receivable_payable_account,
+				"voucher_type": invoice_doctype,
+			},
+			fields=["voucher_no"],
+			group_by="voucher_no"
+		)
 
+		if not gl_entries:
+			return []
+
+		invoice_names = [d.voucher_no for d in gl_entries]
+		if not invoice_names:
+			return []
+
+		dr_cr_invoices = frappe.get_all(
+			invoice_doctype,
+			filters={
+				'company': self.company,
+				'is_return': 1,
+				'docstatus': 1,
+				'name': ['in', invoice_names],
+				'outstanding_amount': ('<', 0)
+			},
+			fields=['name', 'posting_date', 'outstanding_amount', 'currency']
+		)
+
+		for inv in dr_cr_invoices:
 			dr_cr_notes_entries.append({
-				'reference_type': inv.voucher_type,
-				'reference_name': inv.voucher_no,
+				'reference_type': invoice_doctype,
+				'reference_name': inv.name,
+				'posting_date': inv.posting_date,
 				'reference_row': None,
 				'amount': abs(inv.outstanding_amount),
 				'allocated_amount': 0.0,
 				'difference_amount': 0.0,
 				'invoice_number': '',
-				'invoice_type': '',
+				'currency': inv.currency,
 			})
 
 		return dr_cr_notes_entries
