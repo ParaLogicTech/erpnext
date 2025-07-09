@@ -337,7 +337,7 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, company_
 				grand_total_row[field] += acc[field]
 
 	if dimension_field:
-		total_rows = sorted(dimension_totals.values(), key=lambda d: d.get(dimension_field)) + [{}, grand_total_row]
+		total_rows = sorted(dimension_totals.values(), key=lambda d: dimension_sorter(d, dimension_field)) + [{}, grand_total_row]
 	else:
 		total_rows = [grand_total_row]
 
@@ -406,7 +406,7 @@ def prepare_data(accounts, filters, total_rows, parent_children_map, company_cur
 				account_rows.append(row)
 
 		if dimension_field:
-			account_rows = sorted(account_rows, key=lambda d: cstr(d.get(dimension_field)))
+			account_rows = sorted(account_rows, key=lambda d: dimension_sorter(d, dimension_field))
 
 		data += account_rows
 
@@ -514,6 +514,11 @@ def get_dimension_column_details(dimension_field):
 		"label": _(label),
 		"document_type": label if label in ("Cost Center", "Project") else None,
 	})
+
+
+def dimension_sorter(data, dimension_field):
+	dimension_value = data.get(dimension_field)
+	return not dimension_value, dimension_value
 
 
 def prepare_opening_closing(row):
