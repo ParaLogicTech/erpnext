@@ -1462,7 +1462,7 @@ class Project(StatusUpdaterERP):
 			select task.name as task, task.subject, task.task_type, task.status,
 				task.act_start_date, task.act_end_date,
 				task.actual_time, task.expected_time,
-				task.assigned_to, task.assigned_to_name
+				task.assigned_to, task.assigned_to_name, task.remarks
 			from `tabTask` task
 			where task.project = %s
 			order by task.act_start_date is null, task.act_start_date, task.creation
