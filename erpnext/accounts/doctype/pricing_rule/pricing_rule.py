@@ -311,6 +311,8 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 
 
 def update_args_for_pricing_rule(args):
+	if args.get("bill_to"):
+		args.customer = args.bill_to
 	if not args.item_group:
 		args.item_group = frappe.get_cached_value("Item", args.item_code, "item_group")
 	if not args.brand:
