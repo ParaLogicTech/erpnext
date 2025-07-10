@@ -734,6 +734,7 @@ def start_task(task):
 		))
 
 	check_assigned_to_availability(task_doc.assigned_to, throw=True)
+	check_attendance_requirement(task_doc.assigned_to, throw=True, action="start")
 
 	add_timesheet_log(task_doc.name, task_doc.assigned_to, project=task_doc.project)
 
@@ -778,6 +779,7 @@ def resume_task(task):
 		))
 
 	check_assigned_to_availability(task_doc.assigned_to, throw=True)
+	check_attendance_requirement(task_doc.assigned_to, throw=True, action="resume")
 
 	add_timesheet_log(task_doc.name, task_doc.assigned_to, project=task_doc.project)
 
@@ -1048,6 +1050,35 @@ def is_assigned_employee(assigned_to):
 	else:
 		return frappe.local_cache("is_assigned_employee", assigned_to, generator)
 
+
+def check_employee_attendance(employee, date=None, throw=False, action="start"):
+	if not date:
+		date = today()
+
+	attendance = frappe.db.get_value("Attendance", {
+		"employee": employee,
+		"attendance_date": date,
+		"status": ["in", ["Present", "Half Day"]],
+		"docstatus": 1
+	})
+
+	if not attendance and throw:
+		frappe.throw(_("{0} ({1}) has no attendance for {2}. Cannot {3} task without attendance.").format(
+			frappe.bold(frappe.get_cached_value("Employee", employee, "employee_name")),
+			employee,
+			date,
+			action
+		))
+
+	return attendance
+
+def check_attendance_requirement(employee, throw=False, action="start"):
+	projects_settings = frappe.get_cached_doc("Projects Settings")
+	
+	if not projects_settings.require_attendance_for_task_start:
+		return True
+	
+	return check_employee_attendance(employee, throw=throw, action=action)
 
 def get_task_status_color(status):
 	return task_status_color_map.get(status, 'black')

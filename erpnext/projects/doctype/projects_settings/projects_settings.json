@@ -22,7 +22,8 @@
   "ignore_employee_time_overlap",
   "auto_schedule_next_service_templates",
   "validate_po_for_billing_company_customer",
-  "apply_taxes_on_advance_payment"
+  "apply_taxes_on_advance_payment",
+  "require_attendance_for_task_start"
  ],
  "fields": [
   {
@@ -114,6 +115,12 @@
    "fieldname": "apply_taxes_on_advance_payment",
    "fieldtype": "Check",
    "label": "Apply Taxes on Advance Payment"
+  },
+  {
+   "default": "0",
+   "fieldname": "require_attendance_for_task_start",
+   "fieldtype": "Check",
+   "label": "Require Attendance for Task Start"
   },
   {
    "default": "0",
