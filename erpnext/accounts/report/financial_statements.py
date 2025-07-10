@@ -380,17 +380,17 @@ def set_gl_entries_by_account(
 	filters,
 	gl_entries_by_account,
 	ignore_closing_entries=False,
-	dimension_field=None
+	dimension_fields=None
 ):
-
 	"""Returns a dict like { "account": [gl entries], ... }"""
+
+	dimension_fields = dimension_fields or []
+
 	select_fields = [
 		"posting_date", "account", "debit", "credit",
 		"debit_in_account_currency", "credit_in_account_currency",
 		"is_opening", "fiscal_year", "account_currency",
-	]
-	if dimension_field:
-		select_fields.append(dimension_field)
+	] + dimension_fields
 
 	select_clause = ", ".join(select_fields)
 
