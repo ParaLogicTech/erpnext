@@ -120,6 +120,14 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 			}, __("Actions"));
 		}
 
+		if (this.get_action_condition("rework_task")) {
+			this.frm.add_custom_button(__("Create Rework Task"), () => {
+				this.frm.check_if_unsaved();
+				return erpnext.task_actions.create_rework_task(this.frm.doc.name, this.frm.doc, null,
+					() => this.frm.reload_doc());
+			}, __("Actions"));
+		}
+
 		if (this.get_action_condition("cancel_task")) {
 			this.frm.add_custom_button(__("Cancel"), () => {
 				this.frm.check_if_unsaved();

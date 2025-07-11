@@ -6,6 +6,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, clean_whitespace, cstr
+from erpnext.projects.utils  import validate_comma_separated_indices, check_for_circular_dependencies
 import json
 
 
@@ -15,6 +16,7 @@ class ServiceTemplate(Document):
 		self.validate_duplicate_applicable_item_groups()
 		self.validate_due_after()
 		self.validate_service_warranty()
+		self.validate_task_dependencies()
 
 	def onload(self):
 		pass
@@ -85,6 +87,16 @@ class ServiceTemplate(Document):
 				return True
 
 		return False
+
+	def validate_task_dependencies(self):
+		max_idx = max((row.idx for row in self.tasks if row.idx), default=0)
+		dependency_map = {}
+
+		for row in self.tasks:
+			dep_indices = validate_comma_separated_indices(row.depends_on_task, row.idx, max_allowed_idx=max_idx)
+			dependency_map[row.idx] = dep_indices
+
+		check_for_circular_dependencies(dependency_map)
 
 
 @frappe.whitelist()
@@ -219,7 +231,7 @@ def get_service_template_tasks(
 			'service_template_name': service_template_doc.service_template_name,
 		})
 
-	for template_task_row in service_template_doc.tasks:
+	for idx, template_task_row in enumerate(service_template_doc.tasks):
 		task_details = frappe._dict()
 		task_details.subject = template_task_row.subject
 		task_details.description = template_task_row.description
@@ -228,6 +240,8 @@ def get_service_template_tasks(
 		task_details.service_template = service_template_detail.service_template
 		task_details.service_template_detail = service_template_detail.name
 		task_details.determine_time = template_task_row.determine_time
+		task_details.depends_on_task = template_task_row.depends_on_task or ""
+		task_details.idx = idx + 1
 
 		if template_task_row.use_template_name:
 			task_details.subject = service_template_detail.service_template_name

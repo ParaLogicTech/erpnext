@@ -78,7 +78,7 @@ class Task(NestedSet):
 		self.validate_project_status()
 		self.set_time_and_costing()
 		self.validate_progress()
-		self.validate_status_depedency()
+		self.validate_status_dependency()
 		self.set_completion_values()
 		self.set_is_overdue()
 
@@ -194,12 +194,18 @@ class Task(NestedSet):
 		if self.status == 'Completed':
 			self.progress = 100
 
-	def validate_status_depedency(self):
+	def validate_status_dependency(self):
 		if self.value_changed("status") and self.status == "Completed":
 			for d in self.depends_on:
-				if frappe.db.get_value("Task", d.task, "status") not in ("Completed", "Cancelled"):
-					frappe.throw(_("Cannot complete task {0} as its dependant {1} is not completed / cancelled.")
-						.format(frappe.bold(self.name), frappe.get_desk_link("Task", d.task)))
+				dependency_task = frappe.db.get_value("Task", d.task, ["subject", "status"], as_dict=True)
+				if dependency_task.status not in ("Completed", "Cancelled"):
+					frappe.throw(_(
+						"Cannot complete task {0} because it depends on {1}: {2}, which is not completed or cancelled."
+					).format(
+						frappe.bold(self.name),
+						frappe.get_desk_link("Task", d.task),
+						frappe.bold(dependency_task.subject)
+					))
 
 	def set_completion_values(self):
 		if self.value_changed("status") and self.status == "Completed":
@@ -523,7 +529,11 @@ def create_service_template_tasks(project):
 
 		template_doc = frappe.get_cached_doc("Service Template", service_template_row.service_template)
 		template_tasks = get_service_template_tasks(service_template_row.service_template, service_template_detail=service_template_row)
-		for template_task_details in template_tasks:
+
+		task_data_list = []
+		task_lookup_by_index = {}
+
+		for idx, template_task_details in enumerate(template_tasks):
 			task_doc = frappe.new_doc("Task")
 			for k, v in template_task_details.items():
 				if task_doc.meta.has_field(k):
@@ -541,6 +551,29 @@ def create_service_template_tasks(project):
 
 			task_doc.save()
 			tasks_created.append(task_doc)
+
+			task_data_list.append({
+				"row_index": idx + 1,
+				"doc": task_doc,
+				"depends_on_task": template_task_details.get("depends_on_task")
+			})
+			task_lookup_by_index[idx + 1] = task_doc
+
+		for data in task_data_list:
+			task_doc = data["doc"]
+			dependency_indices = [
+				int(x.strip()) for x in (data["depends_on_task"] or "").split(",") if x.strip().isdigit()
+			]
+			for dependency_idx in dependency_indices:
+				dependency_task = task_lookup_by_index.get(dependency_idx)
+				if dependency_task:
+					task_doc.append("depends_on", {
+						"task": dependency_task.name,
+						"subject": dependency_task.subject,
+						"project": dependency_task.project
+					})
+			if dependency_indices:
+				task_doc.save()
 
 	if tasks_created:
 		message = _("{0} Service Template tasks created against {1}<br><br><ul>{2}</ul>").format(
@@ -880,7 +913,28 @@ def split_task(task, expected_time=None):
 	for f in copy_fields:
 		new_task.set(f, ref_task.get(f))
 
+	for dep in ref_task.depends_on:
+		new_task.append("depends_on", {
+			"task": dep.task,
+			"subject": dep.subject,
+			"project": dep.project
+		})
+
 	new_task.save()
+
+	dependent_tasks = frappe.get_all("Task Depends On",
+		filters={"task": ref_task.name},
+		fields=["parent"]
+	)
+
+	for d in dependent_tasks:
+		parent_task = frappe.get_doc("Task", d.parent)
+		parent_task.append("depends_on", {
+			"task": new_task.name,
+			"subject": new_task.subject,
+			"project": new_task.project
+		})
+		parent_task.save()
 
 	message = _("{0} split from {1}").format(get_link(new_task), get_link(ref_task))
 	frappe.msgprint(message, indicator="green")
@@ -1022,6 +1076,7 @@ def _get_task_action_conditions(task, project=None):
 		"edit_task": has_task_write and task.status != "Completed",
 		"split_task": has_task_create and task.status not in ("Completed", "Cancelled"),
 		"cancel_task": has_task_write and task.status == "Open",
+		"rework_task": has_task_create,
 	})
 
 	frappe.utils.call_hook_method(
@@ -1082,3 +1137,112 @@ def get_timelog_totals(timelogs):
 
 def on_doctype_update():
 	frappe.db.add_index("Task", ["lft", "rgt"])
+
+@frappe.whitelist()
+def create_rework_tasks(task, rework_reason):
+	frappe.has_permission("Task", "create", throw=True)
+
+	ref_task = frappe.get_doc("Task", task)
+	ref_task.check_permission("write")
+
+	copy_fields = [
+		"subject", "description", "task_type", "project", "priority",
+		"service_template", "service_template_detail", "expected_time",
+		"weight", "color", "exp_start_date", "exp_end_date", "is_group",
+		"company", "branch", "vehicle_workshop_division"
+	]
+
+	existing_reworks = frappe.get_all("Task",
+		filters={
+			"rework_of": ref_task.name,
+			"is_rework_task": 1,
+			"status": ["not in", ["Completed", "Cancelled"]],
+			"name": ["!=", ref_task.name]
+		},
+	)
+	if existing_reworks:
+		links = [frappe.utils.get_link_to_form("Task", task["name"]) for task in existing_reworks]
+		frappe.throw(
+			"Rework task(s) already exist for this task. Please complete or cancel them before creating a new one:<br><br>" +
+			"<br>".join(links)
+		)
+
+	rework_task = frappe.new_doc("Task")
+	for f in copy_fields:
+		rework_task.set(f, ref_task.get(f))
+
+	rework_task.subject = f"Rework of {ref_task.subject}"
+	rework_task.rework_of = ref_task.name
+	rework_task.rework_reason = rework_reason
+	rework_task.is_rework_task = 1
+
+	for dep in ref_task.depends_on:
+		rework_task.append("depends_on", {
+			"task": dep.task,
+			"subject": dep.subject,
+			"project": dep.project
+		})
+
+	rework_task.insert()
+
+	qc_task = None
+	if ref_task.task_type != "QC":
+		qc_task = frappe.new_doc("Task")
+		for f in copy_fields:
+			qc_task.set(f, ref_task.get(f))
+
+		qc_task.subject = f"QC for {rework_task.subject}"
+		qc_task.task_type = "QC"
+		qc_task.rework_of = ref_task.name
+		qc_task.rework_reason = rework_reason
+		qc_task.is_rework_task = 1
+
+		qc_task.append("depends_on", {
+			"task": rework_task.name,
+			"subject": rework_task.subject,
+			"project": rework_task.project
+		})
+
+		qc_task.save()
+
+	dependent_tasks = frappe.get_all(
+		"Task Depends On",
+		filters={"task": ref_task.name},
+		fields=["parent"]
+	)
+
+	for d in dependent_tasks:
+		dependent_task = frappe.get_doc("Task", d.parent)
+
+		dependent_task.append("depends_on", {
+			"task": rework_task.name,
+			"subject": rework_task.subject,
+			"project": rework_task.project
+		})
+
+		if qc_task:
+			dependent_task.append("depends_on", {
+				"task": qc_task.name,
+				"subject": qc_task.subject,
+				"project": qc_task.project
+			})
+
+		dependent_task.save()
+
+	if qc_task:
+		message = _("Rework Task {0} and QC Task {1} created.").format(
+			frappe.utils.get_link_to_form("Task", rework_task.name),
+			frappe.utils.get_link_to_form("Task", qc_task.name)
+		)
+	else:
+		message = _("Rework Task {0} created (original task is already a QC task).").format(
+			frappe.utils.get_link_to_form("Task", rework_task.name)
+		)
+
+	frappe.msgprint(message, indicator="green")
+
+	return {
+		"rework_task": rework_task.name,
+		"qc_task": qc_task.name if qc_task is not None else "",
+		"message": message
+	}
