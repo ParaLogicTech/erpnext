@@ -91,7 +91,6 @@ class Project(StatusUpdaterERP):
 		self.validate_phone_nos()
 		self.validate_project_type()
 		self.validate_cash_billing()
-		self.validate_readings()
 		self.validate_depreciation()
 		self.validate_warranty()
 		self.validate_campaign()
@@ -1232,14 +1231,6 @@ class Project(StatusUpdaterERP):
 		self.sublet_item_group = settings.sublet_item_group
 		self.consumables_item_group = settings.consumables_item_group
 		self.paint_item_group = settings.paint_item_group
-
-	def validate_readings(self):
-		if self.meta.has_field('fuel_level'):
-			if flt(self.fuel_level) < 0 or flt(self.fuel_level) > 100:
-				frappe.throw(_("Fuel Level must be between 0% and 100%"))
-		if self.meta.has_field('keys'):
-			if cint(self.keys) < 0:
-				frappe.throw(_("No of Keys cannot be negative"))
 
 	def set_project_in_sales_order_and_quotation(self):
 		if self.sales_order:
