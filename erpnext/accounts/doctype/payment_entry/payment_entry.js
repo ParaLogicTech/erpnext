@@ -227,6 +227,51 @@ frappe.ui.form.on('Payment Entry', {
 		frm.events.hide_unhide_fields(frm);
 		frm.events.set_dynamic_labels(frm);
 		frm.events.show_general_ledger(frm);
+		frm.events.handle_reference_row_selection(frm);
+	},
+
+	handle_reference_row_selection: (frm) => {
+		frm.fields_dict.references.grid.wrapper.on('change', 'input[type="checkbox"]', function(event) {
+			const rows = frm.fields_dict.references.grid.grid_rows;
+			let balance = flt(frm.doc.paid_amount);
+
+			rows.forEach(r => {
+				frappe.model.set_value(r.doc.doctype, r.doc.name, 'allocated_amount', 0)
+			});
+
+			rows.forEach(r => {
+				if (r.wrapper.find('input.grid-row-check').prop('checked')) {
+					const amt = flt(r.doc.outstanding_amount);
+					frappe.model.set_value(r.doc.doctype, r.doc.name, 'allocated_amount', amt);
+					balance -= amt;
+				}
+			});
+
+			rows.forEach(r => {
+				// bypass checked rows
+				if (r.wrapper.find('input.grid-row-check').prop('checked')) return;
+
+				// if balance is zero no need to reconcile entries
+				if (balance === 0) return;
+
+				const os = flt(r.doc.outstanding_amount);
+
+				// Positive row consumes balance; negative row increases it
+				let alloc = 0;
+				if (os > 0 && balance > 0) {
+					alloc = Math.min(os, balance);
+				} else if (os < 0 && balance < 0) {
+					alloc = Math.max(os, balance);
+				}
+
+				if (alloc !== 0) {
+					frappe.model.set_value(r.doc.doctype, r.doc.name, 'allocated_amount', alloc);
+					balance -= alloc;
+				}
+			});
+
+			frm.refresh_field('references');
+		});
 	},
 
 	validate_company: (frm) => {
