@@ -19,7 +19,7 @@ erpnext.financial_statements = {
 
 		if (data && !data.parent_account) {
 			options.css["font-weight"] = "bold";
-			if (data.warn_if_negative && data[column.fieldname] < 0) {
+			if (data.warn_if_negative && flt(data[column.fieldname], 3) < 0) {
 				options.css["color"] = "var(--red-500)";
 			}
 		}
