@@ -236,9 +236,9 @@ frappe.ui.form.on('Payment Entry', {
 		frm.refresh_fields = function() {
 			refresh_fields();
 			let $wrapper = frm.fields_dict.references.grid.wrapper;
-			let allChecked = $wrapper.find('.grid-body input[type="checkbox"]').length
+			let areAllRowsSelected = $wrapper.find('.grid-body input[type="checkbox"]').length
 				=== $wrapper.find('.grid-body input[type="checkbox"]:checked').length;
-			$wrapper.find('.grid-heading-row input[type="checkbox"]').prop('checked', allChecked);
+			$wrapper.find('.grid-heading-row input[type="checkbox"]').prop('checked', areAllRowsSelected);
 		};
 	},
 
