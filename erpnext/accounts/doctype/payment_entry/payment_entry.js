@@ -224,54 +224,55 @@ frappe.ui.form.on('Payment Entry', {
 
 	refresh: function(frm) {
 		erpnext.hide_company();
+		frm.events.override_refresh_fields(frm);
 		frm.events.hide_unhide_fields(frm);
 		frm.events.set_dynamic_labels(frm);
 		frm.events.show_general_ledger(frm);
-		frm.events.handle_reference_row_selection(frm);
+		frm.events.set_up_reference_row_selection(frm);
 	},
 
-	handle_reference_row_selection: (frm) => {
-		frm.fields_dict.references.grid.wrapper.on('change', 'input[type="checkbox"]', function(event) {
-			const rows = frm.fields_dict.references.grid.grid_rows;
-			let balance = flt(frm.doc.paid_amount);
+	override_refresh_fields: (frm) => {
+		const refresh_fields = frm.refresh_fields.bind(frm);
+		frm.refresh_fields = function() {
+			refresh_fields();
+			let $wrapper = frm.fields_dict.references.grid.wrapper;
+			let allChecked = $wrapper.find('.grid-body input[type="checkbox"]').length
+				=== $wrapper.find('.grid-body input[type="checkbox"]:checked').length;
+			$wrapper.find('.grid-heading-row input[type="checkbox"]').prop('checked', allChecked);
+		};
+	},
 
-			rows.forEach(r => {
-				frappe.model.set_value(r.doc.doctype, r.doc.name, 'allocated_amount', 0)
-			});
-
-			rows.forEach(r => {
-				if (r.wrapper.find('input.grid-row-check').prop('checked')) {
-					const amt = flt(r.doc.outstanding_amount);
-					frappe.model.set_value(r.doc.doctype, r.doc.name, 'allocated_amount', amt);
-					balance -= amt;
-				}
-			});
-
-			rows.forEach(r => {
-				// bypass checked rows
-				if (r.wrapper.find('input.grid-row-check').prop('checked')) return;
-
-				// if balance is zero no need to reconcile entries
-				if (balance === 0) return;
-
-				const os = flt(r.doc.outstanding_amount);
-
-				// Positive row consumes balance; negative row increases it
-				let alloc = 0;
-				if (os > 0 && balance > 0) {
-					alloc = Math.min(os, balance);
-				} else if (os < 0 && balance < 0) {
-					alloc = Math.max(os, balance);
-				}
-
-				if (alloc !== 0) {
-					frappe.model.set_value(r.doc.doctype, r.doc.name, 'allocated_amount', alloc);
-					balance -= alloc;
-				}
-			});
-
-			frm.refresh_field('references');
+	set_up_reference_row_selection: frm => {
+		frm.fields_dict.references.grid.wrapper.on('click', '.grid-row-check', (e) => {
+			frm.events.reconcile_reference_rows(frm);
 		});
+	},
+
+	reconcile_reference_rows: (frm) => {
+		const reference_rows = frm.doc.references;
+		let balance = flt(frm.doc.paid_amount);
+
+		reference_rows.forEach(r => r.allocated_amount = 0);
+
+		const selected_rows = frm.fields_dict.references.grid.get_selected_children();
+
+		if (selected_rows.length > 0) {
+			selected_rows.forEach(r => {
+				const amt = flt(r.outstanding_amount);
+				r.allocated_amount = amt;
+			});
+		} else {
+			reference_rows.forEach(r => {
+				if (balance === 0) return;
+				const outstanding_amount = flt(r.outstanding_amount);
+				if (outstanding_amount > 0 && balance > 0) {
+					r.allocated_amount = Math.min(outstanding_amount, balance);
+					balance -= r.allocated_amount;
+				}
+			});
+		}
+
+		frm.events.set_total_allocated_amount(frm);
 	},
 
 	validate_company: (frm) => {
@@ -866,6 +867,7 @@ frappe.ui.form.on('Payment Entry', {
 						c.total_amount = d.invoice_amount;
 						c.outstanding_amount = d.outstanding_amount;
 						c.bill_no = d.bill_no;
+						c.posting_date = d.posting_date || d.transaction_date;
 
 						if(!in_list(["Sales Order", "Purchase Order", "Expense Claim", "Fees"], d.voucher_type)) {
 							if(flt(d.outstanding_amount) > 0)
@@ -1536,7 +1538,6 @@ frappe.ui.form.on('Payment Entry Reference', {
 
 						let allocated_amount = frm.doc.unallocated_amount > row.outstanding_amount ?
 							row.outstanding_amount : frm.doc.unallocated_amount;
-
 						frappe.model.set_value(cdt, cdn, 'allocated_amount', allocated_amount);
 						frm.refresh_fields();
 					}
