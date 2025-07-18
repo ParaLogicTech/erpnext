@@ -18,17 +18,18 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import g
 	get_dimension_with_children
 
 
-def get_period_list(from_fiscal_year, to_fiscal_year, periodicity, accumulated_values=False,
-	company=None, reset_period_on_fy_change=True):
+def get_period_list(
+	from_fiscal_year,
+	to_fiscal_year,
+	periodicity,
+	accumulated_values=False,
+	company=None,
+	reset_period_on_fy_change=True,
+	from_date=None,
+	to_date=None,
+):
 	"""Get a list of dict {"from_date": from_date, "to_date": to_date, "key": key, "label": label}
 		Periodicity can be (Yearly, Quarterly, Monthly)"""
-
-	fiscal_year = get_fiscal_year_data(from_fiscal_year, to_fiscal_year)
-	validate_fiscal_year(fiscal_year, from_fiscal_year, to_fiscal_year)
-
-	# start with first day, so as to avoid year to_dates like 2-April if ever they occur]
-	year_start_date = getdate(fiscal_year.year_start_date)
-	year_end_date = getdate(fiscal_year.year_end_date)
 
 	months_to_add = {
 		"Yearly": 12,
@@ -39,8 +40,16 @@ def get_period_list(from_fiscal_year, to_fiscal_year, periodicity, accumulated_v
 
 	period_list = []
 
-	start_date = year_start_date
-	months = get_months(year_start_date, year_end_date)
+	fiscal_year_data = get_fiscal_year_data(from_fiscal_year, to_fiscal_year)
+	validate_fiscal_year(fiscal_year_data, from_fiscal_year, to_fiscal_year)
+
+	year_start_date = getdate(fiscal_year_data.year_start_date)
+	year_end_date = getdate(fiscal_year_data.year_end_date)
+
+	start_date = getdate(from_date) if from_date else year_start_date
+	end_date = getdate(to_date) if to_date else year_end_date
+
+	months = get_months(start_date, end_date)
 
 	for i in range(cint(math.ceil(months / months_to_add))):
 		period = frappe._dict({
@@ -53,26 +62,26 @@ def get_period_list(from_fiscal_year, to_fiscal_year, periodicity, accumulated_v
 		# Subtract one day from to_date, as it may be first day in next fiscal year or month
 		to_date = add_days(to_date, -1)
 
-		if to_date <= year_end_date:
+		if to_date <= end_date:
 			# the normal case
 			period.to_date = to_date
 		else:
 			# if a fiscal year ends before a 12 month period
-			period.to_date = year_end_date
+			period.to_date = end_date
 
 		period.to_date_fiscal_year = get_fiscal_year(period.to_date, company=company)[0]
 		period.from_date_fiscal_year_start_date = get_fiscal_year(period.from_date, company=company)[1]
 
 		period_list.append(period)
 
-		if period.to_date == year_end_date:
+		if period.to_date >= end_date:
 			break
 
 	# common processing
 	for opts in period_list:
 		key = opts["to_date"].strftime("%b_%Y").lower()
 		if periodicity == "Monthly" and not accumulated_values:
-			label = formatdate(opts["to_date"], "MMM yyyy")
+			label = formatdate(opts["from_date"], "MMM yyyy")
 		else:
 			if not accumulated_values:
 				label = get_label(periodicity, opts["from_date"], opts["to_date"])

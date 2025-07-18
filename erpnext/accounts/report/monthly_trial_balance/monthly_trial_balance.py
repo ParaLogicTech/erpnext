@@ -21,7 +21,15 @@ from erpnext.accounts.report.financial_statements import get_period_list
 def execute(filters=None):
 	validate_filters(filters)
 
-	period_list = get_period_list(filters.fiscal_year, filters.fiscal_year, "Monthly", False, filters.company)
+	period_list = get_period_list(
+		filters.fiscal_year,
+		filters.fiscal_year,
+		"Monthly",
+		False,
+		filters.company,
+		from_date=filters.from_date,
+		to_date=filters.to_date,
+	)
 
 	data = get_data(filters, period_list)
 	columns = get_columns(filters, period_list)
