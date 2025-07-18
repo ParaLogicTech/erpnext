@@ -566,7 +566,6 @@ def create_service_template_tasks(project):
 		return {"message": message}
 
 
-
 def determine_time_from_service_item(project_doc, template_doc, service_template_detail=None):
 	from erpnext.projects.doctype.service_template.service_template import get_service_template_items
 	from erpnext.stock.doctype.item.item import convert_item_uom_for
@@ -756,14 +755,17 @@ def pause_task(task):
 			frappe.bold(task_doc.status)
 		))
 
-	stop_timesheet_log(task_doc.name, task_doc.assigned_to, completed=0)
-
-	task_doc.status = "On Hold"
-	task_doc.save(ignore_permissions=True)
+	_pause_task(task_doc, ignore_permissions=True)
 
 	frappe.msgprint(_("{0} paused").format(
 		get_link(task_doc)
 	), alert=True, indicator="green")
+
+
+def _pause_task(task_doc, ignore_permissions=False):
+	stop_timesheet_log(task_doc.name, task_doc.assigned_to, completed=0)
+	task_doc.status = "On Hold"
+	task_doc.save(ignore_permissions=ignore_permissions)
 
 
 @frappe.whitelist()

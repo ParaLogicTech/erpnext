@@ -125,7 +125,7 @@
  "icon": "icon-wrench",
  "idx": 1,
  "links": [],
- "modified": "2024-03-19 18:06:55.354767",
+ "modified": "2025-07-12 13:37:55.740574",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Workstation",
@@ -156,7 +156,7 @@
  "quick_entry": 1,
  "search_fields": "description",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
+ "sort_field": "name",
  "sort_order": "ASC",
  "states": [],
  "track_changes": 1
