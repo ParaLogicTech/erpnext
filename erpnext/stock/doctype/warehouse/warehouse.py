@@ -224,19 +224,15 @@ def check_warehouse_transaction_permission(warehouse, user=None):
 	if user == "Administrator":
 		return
 
-	doc = frappe.get_cached_doc("Warehouse", warehouse)
+	current_warehouse = warehouse
+	restricted_to_users = None
+	restricted_to_roles = None
 
-	restricted_to_users = doc.restrict_to_users
-	restricted_to_roles = doc.restrict_to_roles
-
-	if not restricted_to_users or not restricted_to_roles:
-		# loop through the parent docs till you find the allowed users and allowed roles
-		while doc.parent_warehouse and (not restricted_to_users or not restricted_to_roles):
-			doc = frappe.get_cached_doc("Warehouse", doc.parent_warehouse)
-			if not restricted_to_users:
-				restricted_to_users = doc.restrict_to_users
-			if not restricted_to_roles:
-				restricted_to_roles = doc.restrict_to_roles
+	while current_warehouse and not restricted_to_users and not restricted_to_roles:
+		doc = frappe.get_cached_doc("Warehouse", current_warehouse)
+		restricted_to_users = doc.restrict_to_users
+		restricted_to_roles = doc.restrict_to_roles
+		current_warehouse = doc.parent_warehouse
 
 	if not restricted_to_users and not restricted_to_roles:
 		return
