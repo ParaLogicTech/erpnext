@@ -89,6 +89,7 @@ class PaymentEntry(AccountsController):
 		self.set_missing_reference_details()
 		self.update_payment_schedule()
 		self.update_project()
+		self.set_payment_req_status()
 		self.set_status()
 
 	def on_cancel(self):
@@ -132,7 +133,7 @@ class PaymentEntry(AccountsController):
 
 	def set_payment_req_status(self):
 		from erpnext.accounts.doctype.payment_request.payment_request import update_payment_req_status
-		update_payment_req_status(self, None)
+		update_payment_req_status(self)
 
 	def validate_duplicate_entry(self):
 		reference_names = []
