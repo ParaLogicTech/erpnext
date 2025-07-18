@@ -91,7 +91,6 @@ class Project(StatusUpdaterERP):
 		self.validate_phone_nos()
 		self.validate_project_type()
 		self.validate_cash_billing()
-		self.validate_readings()
 		self.validate_depreciation()
 		self.validate_warranty()
 		self.validate_campaign()
@@ -1233,14 +1232,6 @@ class Project(StatusUpdaterERP):
 		self.consumables_item_group = settings.consumables_item_group
 		self.paint_item_group = settings.paint_item_group
 
-	def validate_readings(self):
-		if self.meta.has_field('fuel_level'):
-			if flt(self.fuel_level) < 0 or flt(self.fuel_level) > 100:
-				frappe.throw(_("Fuel Level must be between 0% and 100%"))
-		if self.meta.has_field('keys'):
-			if cint(self.keys) < 0:
-				frappe.throw(_("No of Keys cannot be negative"))
-
 	def set_project_in_sales_order_and_quotation(self):
 		if self.sales_order:
 			frappe.db.set_value("Sales Order", self.sales_order, "project", self.name, notify=1)
@@ -1462,7 +1453,7 @@ class Project(StatusUpdaterERP):
 			select task.name as task, task.subject, task.task_type, task.status,
 				task.act_start_date, task.act_end_date,
 				task.actual_time, task.expected_time,
-				task.assigned_to, task.assigned_to_name
+				task.assigned_to, task.assigned_to_name, task.remarks
 			from `tabTask` task
 			where task.project = %s
 			order by task.act_start_date is null, task.act_start_date, task.creation
@@ -2576,7 +2567,7 @@ def make_delivery_note(project_name):
 
 
 @frappe.whitelist()
-def make_sales_order(project_name, items_type=None):
+def make_sales_order(project_name, items_type=None, without_items=False, skip_postprocess=False):
 	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
 
 	project = frappe.get_doc("Project", project_name)
@@ -2601,33 +2592,35 @@ def make_sales_order(project_name, items_type=None):
 		if target_doc.meta.has_field(k):
 			target_doc.set(k, v)
 
-	# Get Service Template Items
-	for d in project.service_templates:
-		if not d.get('sales_order') and d.service_template:
-			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-				check_duplicate=False, service_template_detail=d, items_type=items_type)
+	if not without_items:
+		# Get Service Template Items
+		for d in project.service_templates:
+			if not d.get('sales_order') and d.service_template:
+				target_doc = add_service_template_items(target_doc, d.service_template,
+					applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
+					check_duplicate=False, service_template_detail=d, items_type=items_type)
+
+		# Remove already ordered items
+		service_template_ordered_set = get_service_template_ordered_set(project, group_by_item_type=True)
+		to_remove = []
+		for d in target_doc.get('items'):
+			is_stock_item = 0
+			if d.item_code:
+				is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, 'is_stock_item'))
+
+			if d.service_template_detail and (d.service_template_detail, is_stock_item) in service_template_ordered_set:
+				to_remove.append(d)
+
+		for d in to_remove:
+			target_doc.remove(d)
+		for i, d in enumerate(target_doc.items):
+			d.idx = i + 1
 
 	set_sales_person_in_target_doc(target_doc, project)
 
-	# Remove already ordered items
-	service_template_ordered_set = get_service_template_ordered_set(project, group_by_item_type=True)
-	to_remove = []
-	for d in target_doc.get('items'):
-		is_stock_item = 0
-		if d.item_code:
-			is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, 'is_stock_item'))
-
-		if d.service_template_detail and (d.service_template_detail, is_stock_item) in service_template_ordered_set:
-			to_remove.append(d)
-
-	for d in to_remove:
-		target_doc.remove(d)
-	for i, d in enumerate(target_doc.items):
-		d.idx = i + 1
-
 	# Missing Values and Forced Values
-	target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
+	if not skip_postprocess:
+		target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
 
 	project.validate_for_transaction(target_doc)
 
