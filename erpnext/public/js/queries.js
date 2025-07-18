@@ -128,14 +128,14 @@ $.extend(erpnext.queries, {
 		let filters = [
 			["Warehouse", "is_group", "=",0]
 		];
-		let excluded_doctypes = ["Stock Entry", "Packing Slip"];
 
 		if (doc.company) {
 			filters.push(["Warehouse", "company", "in", [cstr(doc.company), ""]]);
 		}
 
-		if (!excluded_doctypes.includes(doc.doctype) && doc.branch) {
-			filters.push(["Warehouse", "branch_warehouse", "=", cstr(doc.branch)]);
+		let excluded_branch_validation_doctypes = ["Stock Entry"];
+		if (doc.branch && !excluded_branch_validation_doctypes.includes(doc.doctype)) {
+			filters.push(["Warehouse", "branch", "in", [cstr(doc.branch), ""]]);
 		}
 
 		if (get_warehouse_filters) {

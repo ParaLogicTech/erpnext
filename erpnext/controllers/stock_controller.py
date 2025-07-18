@@ -307,7 +307,7 @@ class StockController(AccountsController):
 		warehouses = list(set([d.warehouse for d in self.get("items") if d.get("warehouse")]))
 		for w in warehouses:
 			validate_warehouse_company(w, self.company)
-			if self.branch:
+			if self.get("branch"):
 				validate_warehouse_branch(w, self.branch)
 
 	def validate_inspection(self):

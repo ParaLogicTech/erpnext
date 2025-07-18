@@ -336,13 +336,14 @@ def get_valid_serial_nos(sr_nos, qty=0, item_code=''):
 def validate_warehouse_company(warehouse, company):
 	warehouse_company = frappe.db.get_value("Warehouse", warehouse, "company", cache=1)
 	if warehouse_company and warehouse_company != company:
-		frappe.throw(_("Warehouse {0} does not belong to company {1}").format(warehouse, company),
+		frappe.throw(_("Warehouse {0} does not belong to Company {1}").format(warehouse, company),
 			InvalidWarehouseCompany)
 
+
 def validate_warehouse_branch(warehouse, branch):
-	warehouse_branch = frappe.db.get_value("Warehouse", warehouse, "branch_warehouse", cache=1)
+	warehouse_branch = frappe.db.get_value("Warehouse", warehouse, "branch", cache=1)
 	if warehouse_branch and warehouse_branch != branch:
-		frappe.throw(_("Warehouse {0} does not belong to branch {1}").format(warehouse, branch),
+		frappe.throw(_("Warehouse {0} does not belong to Branch {1}").format(warehouse, branch),
 			InvalidWarehouseBranch)
 
 
