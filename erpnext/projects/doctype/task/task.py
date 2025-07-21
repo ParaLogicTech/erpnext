@@ -15,6 +15,7 @@ from erpnext.controllers.checklist_editor import (
 	get_default_checklist_items,
 	set_missing_checklist,
 	validate_mandatory_checklist,
+	set_updated_checklist,
 )
 
 import json
@@ -45,7 +46,7 @@ class Task(NestedSet):
 		return '{0}: {1}'.format(_(self.status), self.subject)
 
 	def onload(self):
-		self.set_onload("action_conditions", get_task_action_conditions(self))
+		self.set_onload("action_conditions", self.get_action_conditions())
 
 		timelogs = self.get_timelogs()
 		self.set_onload("timelogs", timelogs)
@@ -328,6 +329,9 @@ class Task(NestedSet):
 		if update:
 			self.db_set('is_overdue', self.is_overdue, update_modified=update_modified)
 
+	def get_action_conditions(self):
+		return get_task_action_conditions(self)
+
 	def check_clocking_permission(self):
 		self.check_permission("read")
 
@@ -381,6 +385,9 @@ class Task(NestedSet):
 				self.task_checklist,
 				_("The following checklist items are mandatory and must be checked before you can complete this task.")
 			)
+
+	def set_updated_checklist(self, task_checklist):
+		set_updated_checklist(self, "task_checklist", task_checklist)
 
 
 @frappe.whitelist()
@@ -890,6 +897,38 @@ def split_task(task, expected_time=None):
 	frappe.msgprint(message, indicator="green")
 
 	return {"message": message}
+
+
+@frappe.whitelist()
+def update_task_remarks(task, remarks=None):
+	task_doc = frappe.get_doc("Task", task)
+	task_doc.check_clocking_permission()
+
+	task_doc.remarks = remarks
+	task_doc.save(ignore_permissions=True)
+
+	frappe.msgprint(_("{0} remarks updated").format(
+		get_link(task_doc)
+	), alert=True, indicator="green")
+
+
+@frappe.whitelist()
+def update_task_checklist(task, task_checklist=None):
+	if isinstance(task_checklist, str):
+		task_checklist = json.loads(task_checklist)
+
+	task_doc = frappe.get_doc("Task", task)
+	task_doc.check_clocking_permission()
+
+	task_doc.set_missing_checklist()
+	task_doc.set_updated_checklist(task_checklist)
+	task_doc.save(ignore_permissions=True)
+
+	frappe.db.commit()
+
+	frappe.msgprint(_("{0} checklist updated").format(
+		get_link(task_doc)
+	), alert=True, indicator="green")
 
 
 def add_timesheet_log(task, assigned_to, project=None):
