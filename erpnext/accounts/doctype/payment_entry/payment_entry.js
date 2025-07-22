@@ -1538,6 +1538,7 @@ frappe.ui.form.on('Payment Entry Reference', {
 
 						let allocated_amount = frm.doc.unallocated_amount > row.outstanding_amount ?
 							row.outstanding_amount : frm.doc.unallocated_amount;
+
 						frappe.model.set_value(cdt, cdn, 'allocated_amount', allocated_amount);
 						frm.refresh_fields();
 					}
