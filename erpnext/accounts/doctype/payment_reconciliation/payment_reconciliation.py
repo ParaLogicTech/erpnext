@@ -35,55 +35,50 @@ class PaymentReconciliation(Document):
 			row.update(e)
 
 	def get_dr_cr_notes_entries(self):
-		dr_cr_notes_entries = []
-
-		invoice_doctype = 'Sales Invoice' if self.party_type == 'Customer' else 'Purchase Invoice'
-
-		gl_entries = frappe.db.get_all(
-			"GL Entry",
-			filters={
-				"party_type": self.party_type,
-				"party": self.party,
-				"account": self.receivable_payable_account,
-				"voucher_type": invoice_doctype,
-			},
-			fields=["voucher_no"],
-			group_by="voucher_no"
-		)
-
-		if not gl_entries:
+		if self.party_type not in ["Customer", "Supplier"] or not self.receivable_payable_account:
 			return []
 
-		invoice_names = [d.voucher_no for d in gl_entries]
-		if not invoice_names:
-			return []
+		invoice_doctype = "Sales Invoice" if self.party_type == "Customer" else "Purchase Invoice"
+		party_field = "customer" if self.party_type == "Customer" else "supplier"
 
-		dr_cr_invoices = frappe.get_all(
-			invoice_doctype,
-			filters={
-				'company': self.company,
-				'is_return': 1,
-				'docstatus': 1,
-				'name': ['in', invoice_names],
-				'outstanding_amount': ('<', 0)
-			},
-			fields=['name', 'posting_date', 'outstanding_amount', 'currency']
+		query = f"""
+			SELECT i.name, i.posting_date, i.outstanding_amount, i.currency
+			FROM `tab{invoice_doctype}` i
+			WHERE i.{party_field} = %s
+			AND i.is_return = 1
+			AND i.outstanding_amount < 0
+			AND i.docstatus = 1
+			AND EXISTS (
+				SELECT 1
+				FROM `tabGL Entry` gl
+				WHERE gl.voucher_no = i.name
+					AND gl.voucher_type = %s
+					AND gl.party_type = %s
+					AND gl.party = %s
+					AND gl.account = %s
+					AND gl.company = %s
+			)"""
+
+		dr_cr_note_entries = frappe.db.sql(
+			query,
+			(self.party, invoice_doctype, self.party_type, self.party, self.receivable_payable_account, self.company),
+			as_dict=True
 		)
 
-		for inv in dr_cr_invoices:
-			dr_cr_notes_entries.append({
-				'reference_type': invoice_doctype,
-				'reference_name': inv.name,
-				'posting_date': inv.posting_date,
-				'reference_row': None,
-				'amount': abs(inv.outstanding_amount),
-				'allocated_amount': 0.0,
-				'difference_amount': 0.0,
-				'invoice_number': '',
-				'currency': inv.currency,
-			})
-
-		return dr_cr_notes_entries
+		return [
+			{
+				"reference_type": invoice_doctype,
+				"reference_name": res.name,
+				"posting_date": res.posting_date,
+				"reference_row": None,
+				"amount": abs(res.outstanding_amount),
+				"allocated_amount": 0.0,
+				"difference_amount": 0.0,
+				"invoice_number": "",
+				"currency": res.currency,
+			}
+			for res in dr_cr_note_entries
+		]
 
 	def get_invoice_entries(self):
 		#Fetch JVs, Sales and Purchase Invoices for 'invoices' to reconcile against
@@ -240,7 +235,7 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 
 		jv = frappe.get_doc({
 			"doctype": "Journal Entry",
-			"voucher_type": "Journal Entry",
+			"voucher_type": "Payment Reconciliation",
 			"posting_date": today(),
 			"company": company,
 			"multi_currency": 1 if d.currency != company_currency else 0,
