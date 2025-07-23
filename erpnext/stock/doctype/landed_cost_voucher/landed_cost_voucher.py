@@ -191,7 +191,7 @@ class LandedCostVoucher(AccountsController):
 			details = frappe.db.get_value(d.receipt_document_type, d.receipt_document, fields, as_dict=1)
 
 			key = (d.receipt_document_type, d.receipt_document)
-			if key in seen_docs:
+			if key in seen_docs or seen_docs.add(key):
 				frappe.throw(_("Duplicate purchase receipt found: {0} - {1}")
 					 .format(d.receipt_document_type, d.receipt_document))
 
@@ -221,7 +221,6 @@ class LandedCostVoucher(AccountsController):
 						.format(d.idx, d.receipt_document_type, d.receipt_document, self.party))
 
 			receipt_documents.append(d.receipt_document)
-			seen_docs.add((d.receipt_document_type, d.receipt_document))
 
 		for item in self.get("items"):
 			if (not item.purchase_receipt and not item.purchase_invoice) \
@@ -571,3 +570,10 @@ def get_party_details(party_type, party, company):
 		out.currency = frappe.db.get_value(party_type, party, 'default_currency') or out.currency
 
 	return out
+
+@frappe.whitelist()
+def get_receipt_details(doctype_name, docname):
+	doc = frappe.db.get_value(doctype_name, docname, ["supplier", "bill_no", "base_grand_total"], as_dict=True)
+	if not doc:
+		return {}
+	return doc

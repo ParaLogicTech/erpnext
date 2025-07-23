@@ -620,23 +620,35 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 };
 
 frappe.ui.form.on('Landed Cost Purchase Receipt', {
+	setup: function(frm) {
+		frm._last_doc_type_selected = {};
+	},
 	// reset the fields when the document type changes
 	receipt_document_type: function(frm, cdt, cdn) {
+		let row = locals[cdt][cdn];
+		if (!frm._last_doc_type_selected) {
+			frm._last_doc_type_selected = {};
+		}
+		if (frm._last_doc_type_selected[cdn] === row.receipt_document_type) {
+			return;
+		}
+		frm._last_doc_type_selected[cdn] = row.receipt_document_type;
+		// Reset fields
 		frappe.model.set_value(cdt, cdn, 'receipt_document', '');
 		frappe.model.set_value(cdt, cdn, 'supplier', '');
 		frappe.model.set_value(cdt, cdn, 'bill_no', '');
 		frappe.model.set_value(cdt, cdn, 'grand_total', 0);
 		frm.refresh_field('purchase_receipts');
 	},
+
 	receipt_document: function(frm, cdt, cdn) {
 		let row = locals[cdt][cdn];
 		if (row.receipt_document_type && row.receipt_document) {
 			frappe.call({
-				method: "frappe.client.get_value",
+				method: "erpnext.stock.doctype.landed_cost_voucher.landed_cost_voucher.get_receipt_details",
 				args: {
-					doctype: row.receipt_document_type,
-					filters: { name: row.receipt_document },
-					fieldname: ["supplier", "bill_no", "base_grand_total"]
+					doctype_name: row.receipt_document_type,
+					docname: row.receipt_document
 				},
 				callback: function(r) {
 					if (r.message) {
