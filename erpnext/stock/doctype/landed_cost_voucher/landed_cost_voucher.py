@@ -575,5 +575,5 @@ def get_party_details(party_type, party, company):
 def get_receipt_details(doctype_name, docname):
 	doc = frappe.db.get_value(doctype_name, docname, ["supplier", "bill_no", "base_grand_total"], as_dict=True)
 	if not doc:
-		return {}
+		frappe.throw(_("Document not found: {0}").format(docname), frappe.DoesNotExistError)
 	return doc
