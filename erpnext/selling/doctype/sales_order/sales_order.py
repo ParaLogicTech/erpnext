@@ -934,25 +934,27 @@ class SalesOrder(SellingController):
 
 				if is_service_template_row_linked:
 					frappe.throw(
-						f"Service template: {service_template} already linked to item: {item.item_name} and will not be linked to new sales order.")
+						_("Service template: {0} already linked to item: {1} and will not be linked to new sales order.").format(service_template, item.item_name))
 					continue
 
 			new_service_template_row = project.append("service_templates", {
 				"service_template": service_template,
 				"has_sales_order": 1,
-				"sales_order": self.name,
 			})
 			service_template_rows.append((item.name, new_service_template_row))
 			updated = True
 
-		if updated:
-			project.save(ignore_permissions=True)
+		if not updated:
+			return
 
-			for item_name, service_template_row in service_template_rows:
-				if service_template_row.name:
-					frappe.db.set_value("Sales Order Item", item_name, "service_template_detail", service_template_row.name)
+		for service_template_row in service_template_rows:
+			service_template_row[1].insert(ignore_permissions=True)
 
-			project.set_service_template_has_transaction(update=True)
+		for item_name, service_template_row in service_template_rows:
+			if service_template_row.name:
+				frappe.db.set_value("Sales Order Item", item_name, "service_template_detail", service_template_row.name)
+
+		project.set_service_template_has_transaction(update=True)
 
 
 @frappe.whitelist()
