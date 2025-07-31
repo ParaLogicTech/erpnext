@@ -595,8 +595,6 @@ class ReceivablePayableReport(object):
 		row["account"] = gle.account
 		row["cost_center"] = gle.cost_center
 		row["project"] = gle.project or self.projects_map.get((gle.voucher_type, gle.voucher_no))
-		print(gle)
-		print("gle")
 		row["branch"] = gle.branch
 
 		if row.cost_center:
