@@ -92,17 +92,23 @@ frappe.query_reports["Accounts Payable"] = {
 			"options": "Project",
 		},
 		{
+			"fieldname": "branch",
+			"label": __("Branch"),
+			"fieldtype": "Link",
+			"options": "Branch",
+		},
+		{
 			"fieldname":"group_by",
 			"label": __("Group By Level 1"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Supplier\nGroup by Supplier Group\nGroup by Cost Center\nGroup by Project",
+			"options": "\nGroup by Supplier\nGroup by Supplier Group\nGroup by Cost Center\nGroup by RO\nGroup by Branch",
 			"default": ""
 		},
 		{
 			"fieldname":"group_by_2",
 			"label": __("Group By Level 2"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Supplier\nGroup by Supplier Group\nGroup by Cost Center\nGroup by Project",
+			"options": "\nGroup by Supplier\nGroup by Supplier Group\nGroup by Cost Center\nGroup by RO\nGroup by Branch",
 			"default": ""
 		},
 		{

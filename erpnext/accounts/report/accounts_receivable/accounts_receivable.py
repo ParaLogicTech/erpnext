@@ -144,7 +144,7 @@ class ReceivablePayableReport(object):
 				gle.voucher_type, gle.voucher_no,
 				gle.against_voucher_type, gle.against_voucher,
 				gle.account_currency, gle.remarks,
-				gle.cost_center, gle.project,
+				gle.cost_center, gle.project, gle.branch,
 				{select_fields}
 			from `tabGL Entry` gle
 			where gle.party_type = %s
@@ -193,6 +193,11 @@ class ReceivablePayableReport(object):
 		if party:
 			conditions.append("gle.party = %s")
 			values.append(party)
+		
+		if self.filters.party_type != "Employee":
+			if self.filters.get("branch"):
+				conditions.append("gle.branch = %s")
+				values.append(self.filters.get("branch"))
 
 		if self.filters.party_type == "Customer":
 			account_type = "Receivable"
@@ -590,6 +595,9 @@ class ReceivablePayableReport(object):
 		row["account"] = gle.account
 		row["cost_center"] = gle.cost_center
 		row["project"] = gle.project or self.projects_map.get((gle.voucher_type, gle.voucher_no))
+		print(gle)
+		print("gle")
+		row["branch"] = gle.branch
 
 		if row.cost_center:
 			self.has_cost_center = True
@@ -896,6 +904,13 @@ class ReceivablePayableReport(object):
 				"fieldname": "voucher_no",
 				"width": 140,
 				"options": "voucher_type",
+			},
+			{
+				"label": _("Branch"),
+				"fieldtype": "link",
+				"options": "Branch",
+				"fieldname": "branch",
+				"width": 80
 			}
 		]
 

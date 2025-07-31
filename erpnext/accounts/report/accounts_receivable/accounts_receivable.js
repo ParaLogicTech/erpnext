@@ -128,6 +128,12 @@ frappe.query_reports["Accounts Receivable"] = {
 			"options": "Project",
 		},
 		{
+			"fieldname": "branch",
+			"label": __("Branch"),
+			"fieldtype": "Link",
+			"options": "Branch",
+		},
+		{
 			"fieldname":"from_date",
 			"label": __("Show Invoices of Date Above"),
 			"fieldtype": "Date"
@@ -153,14 +159,14 @@ frappe.query_reports["Accounts Receivable"] = {
 			"fieldname":"group_by",
 			"label": __("Group By Level 1"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Customer\nGroup by Customer Group\nGroup by Territory\nGroup by Sales Person\nGroup by Cost Center\nGroup by Project",
+			"options": "\nGroup by Customer\nGroup by Customer Group\nGroup by Territory\nGroup by Branch\nGroup by Sales Person\nGroup by Cost Center\nGroup by RO",
 			"default": ""
 		},
 		{
 			"fieldname":"group_by_2",
 			"label": __("Group By Level 2"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Customer\nGroup by Customer Group\nGroup by Territory\nGroup by Sales Person\nGroup by Cost Center\nGroup by Project",
+			"options": "\nGroup by Customer\nGroup by Customer Group\nGroup by Territory\nGroup by Branch\nGroup by Sales Person\nGroup by Cost Center\nGroup by RO",
 			"default": ""
 		},
 		{
