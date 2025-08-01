@@ -231,25 +231,27 @@ frappe.ui.form.on('Asset', {
 	},
 
 
-	item_code: function(frm) {
-		if(frm.doc.item_code) {
-			frm.trigger('set_finance_book');
+	item_code: function (frm) {
+		if (frm.doc.item_code && frm.doc.calculate_depreciation) {
+			frm.trigger("set_finance_book");
+		} else {
+			frm.set_value("finance_books", []);
 		}
 	},
 
-	set_finance_book: function(frm) {
+	set_finance_book: function (frm) {
 		frappe.call({
 			method: "erpnext.assets.doctype.asset.asset.get_item_details",
 			args: {
 				item_code: frm.doc.item_code,
-				asset_category: frm.doc.asset_category
+				asset_category: frm.doc.asset_category,
 			},
-			callback: function(r, rt) {
-				if(r.message) {
-					frm.set_value('finance_books', r.message);
+			callback: function (r, rt) {
+				if (r.message) {
+					frm.set_value("finance_books", r.message);
 				}
-			}
-		})
+			},
+		});
 	},
 
 	available_for_use_date: function(frm) {

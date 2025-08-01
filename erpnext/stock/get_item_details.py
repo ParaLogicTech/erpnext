@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, add_days, cstr, add_months, getdate
+from frappe.utils import flt, cint, add_days, cstr, add_months, getdate, add_years
 from erpnext.accounts.doctype.pricing_rule.pricing_rule import get_pricing_rule_for_item
 from erpnext.setup.utils import get_exchange_rate
 from frappe.model.meta import get_field_precision
@@ -61,7 +61,7 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 	get_party_item_code(args, item, out)
 
-	set_valuation_rate(out, args)
+	set_valuation_rate(out, args, doc=doc)
 
 	update_party_blanket_order(args, out)
 
@@ -96,6 +96,24 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 	if args.doctype == 'Material Request':
 		out.rate = args.rate or out.price_list_rate
 		out.amount = flt(args.qty * out.rate)
+
+	child_doctype = args.doctype + ' Item'
+	child_meta = frappe.get_meta(child_doctype)
+	if child_meta.get_field("last_billed_rate"):
+		last_billed_rate = get_last_billed_rate(
+			item_code=args.get("item_code"),
+			customer=args.get("customer"),
+			company=args.get("company"),
+		)
+		out["last_billed_rate"] = last_billed_rate
+
+	if child_meta.get_field("in_transit_qty"):
+		in_transit_qty = get_in_transit_qty(args.get("item_code"), company=args.get("company"))
+		out["in_transit_qty"] = in_transit_qty
+
+	if child_meta.get_field("avg_monthly_sales"):
+		avg_monthly_sales = get_avg_monthly_sales(args.get("item_code"), company=args.get("company"))
+		out["avg_monthly_sales"] = avg_monthly_sales
 
 	frappe.utils.call_hook_method("get_item_details", args, out, doc=doc, for_validate=for_validate)
 
@@ -529,6 +547,9 @@ def get_default_income_account(item, args):
 	if isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
 
+	if item.is_fixed_asset and args.company:
+		return frappe.get_cached_value("Company", args.company, "disposal_account")
+
 	default_values = get_item_default_values(item, args)
 
 	account = default_values.get("income_account")
@@ -594,6 +615,11 @@ def get_default_cost_center(item, args, selling_or_buying=None):
 
 	determine_selling_or_buying(args)
 	selling_or_buying = selling_or_buying or args.get("selling_or_buying")
+
+	if not cost_center and item.is_fixed_asset and args.get('asset'):
+		asset_cost_center = frappe.db.get_value("Asset", args.get("asset"), "cost_center", cache=True)
+		if asset_cost_center:
+			cost_center = asset_cost_center
 
 	if not cost_center and args.get('project'):
 		cost_center = frappe.db.get_value("Project", args.get("project"), "cost_center", cache=True)
@@ -1214,15 +1240,20 @@ def get_projected_qty(item_code, warehouse):
 
 @frappe.whitelist()
 def get_bin_details(item_code, warehouse):
+	empty = frappe._dict({"projected_qty": 0, "actual_qty": 0, "reserved_qty": 0})
+
 	def generator():
 		return frappe.db.get_value(
 			"Bin",
 			{"item_code": item_code, "warehouse": warehouse},
 			["projected_qty", "actual_qty", "reserved_qty"],
 			as_dict=True
-		) or {"projected_qty": 0, "actual_qty": 0, "reserved_qty": 0}
+		) or empty
 
-	return frappe.local_cache("get_bin_details", (item_code, warehouse), generator)
+	if not item_code or not warehouse:
+		return empty
+	else:
+		return frappe.local_cache("get_bin_details", (item_code, warehouse), generator)
 
 
 @frappe.whitelist()
@@ -1399,23 +1430,36 @@ def get_default_bom(item_code, project=None):
 	return bom
 
 
-def set_valuation_rate(out, args):
-	if product_bundle := item_has_product_bundle(args.item_code):
-		valuation_rate = 0.0
-		product_bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+def set_valuation_rate(out, args, doc=None):
+	from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle_from_item_code
 
-		for bundle_item in product_bundle_doc.get("items"):
-			bundle_item_valuation_rate = flt(
+	product_bundle = get_product_bundle_from_item_code(args.item_code)
+	if not product_bundle:
+		out.update(get_valuation_rate(args.item_code, args.company, out.get("warehouse"), args.transaction_type_name))
+		return
+
+	valuation_rate = 0.0
+	product_bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+
+	for bundle_item in product_bundle_doc.get("items"):
+		if bundle_item.type == "Item":
+			rate = flt(
 				get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
 			)
-			valuation_rate += bundle_item_valuation_rate * flt(bundle_item.qty)
+			valuation_rate += rate * flt(bundle_item.qty)
 
-		out.update({
-			"valuation_rate": valuation_rate
-		})
+		elif bundle_item.type == "Item Group" and doc:
+			for packed_item in (doc.get("packed_item") or []):
+				if packed_item.item_code:
+					rate = flt(
+						get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
+					)
+					valuation_rate += rate * flt(bundle_item.qty)
 
-	else:
-		out.update(get_valuation_rate(args.item_code, args.company, out.get("warehouse"), args.transaction_type_name))
+	out.update({
+		"valuation_rate": valuation_rate
+	})
+
 
 
 def get_valuation_rate(item_code, company, warehouse=None, transaction_type_name=None):
@@ -1507,21 +1551,43 @@ def get_blanket_order_details(args):
 	return blanket_order_details
 
 
-def get_skip_delivery_note(item, delivered_by_supplier=False):
+def get_skip_delivery_note(item, delivered_by_supplier=False, doc=None):
 	if delivered_by_supplier:
 		return 1
-	elif not item.is_fixed_asset and not item.is_stock_item and not item_is_product_bundle_with_stock_item(item.name):
-		return 1
-	else:
+
+	if item.is_fixed_asset or item.is_stock_item:
 		return 0
 
+	if item_is_product_bundle_with_stock_item(item.name):
+		return 0
 
-def item_has_product_bundle(item_code):
-	if not item_code:
-		return False
+	# Check alternate bundle match via new_item_code
+	product_bundle = frappe.db.get_value("Product Bundle", {"new_item_code": item.item_code})
+	if not product_bundle:
+		return 1
 
-	return frappe.local_cache("item_has_product_bundle", item_code,
-		lambda: frappe.db.get_value("Product Bundle", {"new_item_code": item_code}))
+	if not doc:
+		return 1
+
+	if has_stock_item_in_bundle(doc):
+		return 0
+
+	return 1
+
+
+def has_stock_item_in_bundle(doc):
+	"""Checks if the packed items in the doc include any stock items."""
+	packed_items = doc.get("packed_items") or []
+
+	for bundle_item in packed_items:
+		if bundle_item.type == "Item":
+			if item_is_product_bundle_with_stock_item(bundle_item.item_code):
+				return True
+		elif bundle_item.type == "Item Group":
+			for packed_item in packed_items:
+				if frappe.get_cached_value("Item", packed_item.item_code, "is_stock_item"):
+					return True
+	return False
 
 
 def item_is_product_bundle_with_stock_item(item_code):
@@ -1592,6 +1658,8 @@ def get_applies_to_details(args, for_validate=False):
 	out.applies_to_variant_of = item.variant_of
 	out.applies_to_variant_of_name = frappe.get_cached_value("Item", item.variant_of, "item_name")\
 		if item.variant_of else None
+
+	out.applies_to_item_brand = item.brand
 
 	frappe.utils.call_hook_method("get_applies_to_details", args, out, for_validate=for_validate)
 
@@ -1681,3 +1749,85 @@ def _update_item_info(scan_result):
 		if item_info := frappe.get_cached_value("Item", item_code, ["has_batch_no", "has_serial_no"], as_dict=True):
 			scan_result.update(item_info)
 	return scan_result
+
+
+def get_last_billed_rate(item_code, customer, company=None):
+	if not item_code or not customer:
+		return 0
+
+	company_condition = ""
+	if company:
+		company_condition = " and si.company = %(company)s"
+
+	result = frappe.db.sql("""
+		SELECT sii.base_tax_exclusive_rate 
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON si.name = sii.parent
+		WHERE si.docstatus = 1
+			AND si.is_return = 0
+			AND sii.item_code = %(item_code)s
+			AND si.customer = %(customer)s
+			{0}
+		ORDER BY si.posting_date DESC, si.posting_time DESC, si.creation DESC
+		LIMIT 1
+	""".format(company_condition), {
+		"item_code": item_code, "customer": customer, "company": company
+	})
+
+	return flt(result[0][0]) if result else 0.0
+
+
+def get_in_transit_qty(item_code, company=None):
+	if not item_code:
+		return 0
+
+	company_condition = ""
+	if company:
+		company_condition = " and po.company = %(company)s"
+
+	in_transit = frappe.db.sql("""
+		SELECT SUM((poi.qty - poi.received_qty) * poi.conversion_factor)
+		FROM `tabPurchase Order Item` poi
+		INNER JOIN `tabPurchase Order` po ON poi.parent = po.name
+		WHERE poi.item_code = %(item_code)s
+			AND poi.received_qty < poi.qty
+			AND po.status != 'Closed'
+			AND po.docstatus = 1
+			AND (poi.is_stock_item = 1 OR poi.is_fixed_asset = 1)
+			{0}
+	""".format(company_condition), {
+		"item_code": item_code, "company": company,
+	})
+
+	return flt(in_transit[0][0]) if in_transit else 0
+
+
+def get_avg_monthly_sales(item_code, company=None, transaction_date=None):
+	if not item_code:
+		return 0
+
+	company_condition = ""
+	if company:
+		company_condition = " and si.company = %(company)s"
+
+	transaction_date = getdate(transaction_date)
+	to_date = transaction_date
+	from_date = add_years(to_date, -1)
+
+	total_sales_qty = frappe.db.sql("""
+		SELECT SUM(stock_qty)
+		FROM `tabSales Invoice Item` sii
+		INNER JOIN `tabSales Invoice` si ON sii.parent = si.name
+		WHERE sii.item_code = %(item_code)s
+			AND si.docstatus = 1
+			AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+			{0}
+	""".format(company_condition), {
+		"item_code": item_code,
+		"from_date": from_date,
+		"to_date": to_date,
+		"company": company,
+	})
+
+	total_sales_qty = flt(total_sales_qty[0][0]) if total_sales_qty else 0
+	return total_sales_qty / 12

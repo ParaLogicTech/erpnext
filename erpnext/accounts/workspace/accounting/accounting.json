@@ -538,48 +538,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "More Reports",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Gross Profit",
-   "link_count": 0,
-   "link_to": "Gross Profit",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Profitability Analysis",
-   "link_count": 0,
-   "link_to": "Profitability Analysis",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Claim Items To Be Billed",
-   "link_count": 0,
-   "link_to": "Claim Items To Be Billed",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Opening and Closing",
    "link_count": 0,
    "link_type": "DocType",
@@ -1053,6 +1011,88 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "More Reports",
+   "link_count": 7,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Summarized Profit and Loss",
+   "link_count": 0,
+   "link_to": "Summarized Profit and Loss",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Summarized Balance Sheet",
+   "link_count": 0,
+   "link_to": "Summarized Balance Sheet",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Account Group Mapping",
+   "link_count": 0,
+   "link_to": "Account Group Mapping",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Account Group",
+   "link_count": 0,
+   "link_to": "Account Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Gross Profit",
+   "link_count": 0,
+   "link_to": "Gross Profit",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Profitability Analysis",
+   "link_count": 0,
+   "link_to": "Profitability Analysis",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Claim Items To Be Billed",
+   "link_count": 0,
+   "link_to": "Claim Items To Be Billed",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Financial Statements",
    "link_count": 6,
    "link_type": "DocType",
@@ -1125,7 +1165,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-03-03 14:51:18.125636",
+ "modified": "2025-07-07 12:20:33.789870",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting",

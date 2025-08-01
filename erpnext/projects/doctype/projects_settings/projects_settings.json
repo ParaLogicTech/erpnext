@@ -10,6 +10,7 @@
   "lubricants_item_group",
   "consumables_item_group",
   "sublet_item_group",
+  "paint_item_group",
   "sales_order_print_heading",
   "default_sales_transaction_type",
   "insurance_excess_item",
@@ -21,7 +22,8 @@
   "ignore_employee_time_overlap",
   "auto_schedule_next_service_templates",
   "validate_po_for_billing_company_customer",
-  "apply_taxes_on_advance_payment"
+  "apply_taxes_on_advance_payment",
+  "require_attendance_for_task_start"
  ],
  "fields": [
   {
@@ -116,6 +118,12 @@
   },
   {
    "default": "0",
+   "fieldname": "require_attendance_for_task_start",
+   "fieldtype": "Check",
+   "label": "Require Attendance for Starting Tasks"
+  },
+  {
+   "default": "0",
    "fieldname": "validate_sales_order_mandatory",
    "fieldtype": "Check",
    "label": "Validate Sales Order Submitted before Ready to Close"
@@ -125,11 +133,17 @@
    "fieldtype": "Link",
    "label": "Consumbles Item Group",
    "options": "Item Group"
+  },
+  {
+   "fieldname": "paint_item_group",
+   "fieldtype": "Link",
+   "label": "Paint Material Item Group",
+   "options": "Item Group"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-02-26 11:47:35.124880",
+ "modified": "2025-07-18 13:19:46.499197",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",

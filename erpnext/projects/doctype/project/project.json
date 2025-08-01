@@ -114,6 +114,7 @@
   "insurance_excess_amount",
   "column_break_cqrw",
   "insurance_excess_percentage",
+  "additional_insurance_excess_amount",
   "non_standard_depreciation_section",
   "non_standard_depreciation",
   "column_break_10xsn",
@@ -142,13 +143,19 @@
   "advance_received_amount",
   "sales_section",
   "total_sales_amount",
+  "pending_quotation_amount",
+  "total_discount_amount",
   "column_break_w31qd",
   "material_sales_amount",
   "part_sales_amount",
   "lubricant_sales_amount",
+  "consumable_sales_amount",
+  "paint_sales_amount",
   "column_break_28",
   "service_sales_amount",
   "labour_sales_amount",
+  "hourly_labour_sales_amount",
+  "package_sales_amount",
   "sublet_sales_amount",
   "costing_section",
   "material_cost_of_sales",
@@ -195,6 +202,10 @@
   "column_break_130",
   "lubricants_item_group",
   "column_break_133",
+  "consumables_item_group",
+  "column_break_134",
+  "paint_item_group",
+  "column_break_135",
   "sublet_item_group",
   "progress_settings_section",
   "percent_complete_method",
@@ -208,14 +219,21 @@
   "is_active",
   "order_status_section",
   "delivery_status",
+  "first_sales_order_date",
   "to_deliver",
-  "column_break_fibu",
-  "procurement_status",
-  "to_receive_materials",
   "column_break_simg",
   "billing_status",
   "final_invoice_date",
   "to_bill",
+  "procurement_status_section",
+  "procurement_status",
+  "to_receive_materials",
+  "column_break_fibu",
+  "last_material_request_date",
+  "column_break_xp27",
+  "last_purchase_order_date",
+  "column_break_hbxu",
+  "last_purchase_receipt_date",
   "main_status_section",
   "project_status",
   "indicator_color",
@@ -1626,13 +1644,140 @@
    "hidden": 1,
    "label": "Campaign Voucher Code Required",
    "read_only": 1
+  },
+  {
+   "fieldname": "consumable_sales_amount",
+   "fieldtype": "Currency",
+   "label": "Consumable Sales Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_134",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "consumables_item_group",
+   "fieldtype": "Link",
+   "label": "Consumables Item Group",
+   "no_copy": 1,
+   "options": "Item Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "first_sales_order_date",
+   "fieldtype": "Date",
+   "label": "First Sales Order Date",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_discount_amount",
+   "fieldtype": "Currency",
+   "label": "Total Discount Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_purchase_order_date",
+   "fieldtype": "Date",
+   "label": "Last Purchase Order Date",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_purchase_receipt_date",
+   "fieldtype": "Date",
+   "label": "Last Purchase Receipt Date",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_material_request_date",
+   "fieldtype": "Date",
+   "label": "Last Material Request Date",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_135",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paint_item_group",
+   "fieldtype": "Link",
+   "label": "Paint Material Item Group",
+   "no_copy": 1,
+   "options": "Item Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paint_sales_amount",
+   "fieldtype": "Currency",
+   "label": "Paint Sales Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "package_sales_amount",
+   "fieldtype": "Currency",
+   "label": "Package Sales Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "hourly_labour_sales_amount",
+   "fieldtype": "Currency",
+   "label": "Hourly Labour Sales Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "procurement_status_section",
+   "fieldtype": "Section Break",
+   "label": "Procurement Status"
+  },
+  {
+   "fieldname": "column_break_xp27",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_hbxu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pending_quotation_amount",
+   "fieldtype": "Currency",
+   "label": "Pending Quotation Amount",
+   "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "permlevel": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.insurance_company && doc.additional_insurance_excess_amount",
+   "fieldname": "additional_insurance_excess_amount",
+   "fieldtype": "Currency",
+   "label": "Additional Insurance Excess Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-03-21 12:00:45.794849",
+ "modified": "2025-05-29 23:44:50.517415",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

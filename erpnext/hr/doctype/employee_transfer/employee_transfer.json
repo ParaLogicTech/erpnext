@@ -8,23 +8,26 @@
  "field_order": [
   "employee",
   "employee_name",
-  "transfer_date",
   "column_break_3",
   "company",
   "new_company",
-  "department",
+  "create_new_employee_id",
+  "amended_from",
+  "column_break_fver",
+  "transfer_date",
+  "to_date",
+  "is_temporary_transfer",
+  "is_applied",
+  "is_reverted",
   "details_section",
   "transfer_details",
-  "reallocate_leaves",
-  "create_new_employee_id",
-  "new_employee_id",
-  "amended_from"
+  "new_employee_id"
  ],
  "fields": [
   {
    "fieldname": "employee",
    "fieldtype": "Link",
-   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Employee",
    "options": "Employee",
    "reqd": 1
@@ -39,8 +42,25 @@
   {
    "fieldname": "transfer_date",
    "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Transfer Date",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_temporary_transfer",
+   "fieldtype": "Check",
+   "label": "Is Temporary Transfer"
+  },
+  {
+   "depends_on": "is_temporary_transfer",
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "To Date",
+   "mandatory_depends_on": "is_temporary_transfer"
   },
   {
    "fieldname": "column_break_3",
@@ -60,12 +80,13 @@
    "options": "Company"
   },
   {
-   "bold": 1,
-   "fetch_from": "employee.department",
-   "fieldname": "department",
-   "fieldtype": "Link",
-   "label": "Department",
-   "options": "Department",
+   "allow_on_submit": 1,
+   "default": "0",
+   "depends_on": "is_temporary_transfer",
+   "fieldname": "is_reverted",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Reverted",
    "read_only": 1
   },
   {
@@ -82,13 +103,7 @@
   },
   {
    "default": "0",
-   "fieldname": "reallocate_leaves",
-   "fieldtype": "Check",
-   "hidden": 1,
-   "label": "Re-allocate Leaves"
-  },
-  {
-   "default": "0",
+   "depends_on": "eval:!doc.is_temporary_transfer",
    "fieldname": "create_new_employee_id",
    "fieldtype": "Check",
    "label": "Create New Employee Id"
@@ -109,11 +124,24 @@
    "options": "Employee Transfer",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fver",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "is_applied",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Applied",
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2023-08-30 23:11:12.279804",
+ "modified": "2025-04-27 22:53:55.418439",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Transfer",

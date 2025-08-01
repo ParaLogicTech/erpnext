@@ -216,7 +216,7 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 				} else {
 					return "green";
 				}
-			} else if (doc.docstatus === 1) {
+			} else if (doc.docstatus === 1 && doc.doctype == "Delivery Note Item") {
 				let completed_qty = flt(doc.billed_qty) + flt(doc.returned_qty);
 				if (doc.returned_qty && doc.returned_qty >= doc.qty) {
 					return "grey";
@@ -232,7 +232,7 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 					return "green";
 				}
 			}
-		});
+		}, null, true);
 	}
 
 	get_items_from_sales_order() {

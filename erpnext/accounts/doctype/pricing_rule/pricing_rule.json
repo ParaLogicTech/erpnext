@@ -93,6 +93,7 @@
   "prevent_ignore_pricing_rule",
   "validate_applied_rule",
   "show_in_print",
+  "ignore_if_item_price_available",
   "help_section",
   "pricing_rule_help",
   "reference_section",
@@ -670,12 +671,18 @@
    "fieldname": "show_in_print",
    "fieldtype": "Check",
    "label": "Show in Print"
+  },
+  {
+   "default": "0",
+   "fieldname": "ignore_if_item_price_available",
+   "fieldtype": "Check",
+   "label": "Do Not Apply if Item Price is Available"
   }
  ],
  "icon": "fa fa-gift",
  "idx": 1,
  "links": [],
- "modified": "2025-04-07 11:48:41.290747",
+ "modified": "2025-06-02 16:14:52.874949",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Pricing Rule",

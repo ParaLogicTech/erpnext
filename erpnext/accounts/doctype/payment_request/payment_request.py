@@ -404,7 +404,7 @@ def make_payment_entry(docname):
 	return doc.create_payment_entry(submit=False).as_dict()
 
 
-def update_payment_req_status(doc, method):
+def update_payment_req_status(doc):
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_reference_details
 
 	for ref in doc.references:
@@ -413,7 +413,15 @@ def update_payment_req_status(doc, method):
 			"docstatus": 1})
 
 		if payment_request_name:
-			ref_details = get_reference_details(ref.reference_doctype, ref.reference_name, doc.party_account_currency)
+			ref_details = get_reference_details(
+				ref.reference_doctype,
+				ref.reference_name,
+				doc.party_account_currency,
+				doc.party_type,
+				doc.party,
+				doc.paid_from if doc.payment_type == "Receive" else doc.paid_to,
+				doc.payment_type
+			)
 			pay_req_doc = frappe.get_doc('Payment Request', payment_request_name)
 			status = pay_req_doc.status
 

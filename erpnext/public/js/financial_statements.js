@@ -3,26 +3,28 @@ frappe.provide("erpnext.financial_statements");
 erpnext.financial_statements = {
 	"filters": get_filters(),
 	"formatter": function(value, row, column, data, default_formatter) {
-		if (data && column.fieldname=="account") {
-			value = data.account_name || value;
+		let options = {
+			css: {},
+			link_target: "_blank",
+		}
 
-			column.link_onclick =
-				"erpnext.financial_statements.open_general_ledger(" + JSON.stringify(data) + ")";
+		if (data && data.account && (["account", "account_number", "account_name", "account_display"].includes(column.fieldname))) {
+			options.link_href = erpnext.financial_statements.get_account_ledger_link(
+				data.account,
+				data.from_date || data.year_start_date || frappe.query_report.get_filter_value("from_date"),
+				data.to_date || data.year_end_date || frappe.query_report.get_filter_value("to_date"),
+			);
 			column.is_tree = true;
 		}
 
-		value = default_formatter(value, row, column, data);
-
 		if (data && !data.parent_account) {
-			value = $(`<span>${value}</span>`);
-
-			var $value = $(value).css("font-weight", "bold");
-			if (data.warn_if_negative && data[column.fieldname] < 0) {
-				$value.addClass("text-danger");
+			options.css["font-weight"] = "bold";
+			if (data.warn_if_negative && flt(data[column.fieldname], 3) < 0) {
+				options.css["color"] = "var(--red-500)";
 			}
-
-			value = $value.wrap("<p></p>").parent().html();
 		}
+
+		value = default_formatter(value, row, column, data, options);
 
 		return value;
 	},
@@ -59,6 +61,56 @@ erpnext.financial_statements = {
 			var filters = report.get_values();
 			frappe.set_route('query-report', 'Cash Flow', {company: filters.company});
 		}, __('Financial Statements'));
+	},
+
+	get_account_ledger_link: function(account, from_date, to_date) {
+		const params = this.get_params_for_link();
+		params["account"] = account;
+		params["from_date"] = from_date;
+		params["to_date"] = to_date;
+
+		const query_string = Object.entries(params)
+			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+			.join('&');
+
+		return `/app/query-report/General Ledger?${query_string}`;
+	},
+
+	get_summarized_statement_link: function(report_name, account_group, report_date) {
+		let params = this.get_params_for_link();
+		params["report_date"] = report_date;
+		params["account_group"] = account_group;
+
+		const query_string = Object.entries(params)
+			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+			.join('&');
+
+		return `/app/query-report/${report_name}?${query_string}`;
+	},
+
+	get_params_for_link: function () {
+		let params = {};
+
+		let company = frappe.query_report.get_filter_value('company');
+		if (company) {
+			params["company"] = company;
+		}
+
+		let cost_center = frappe.query_report.get_filter_value('cost_center');
+		if (cost_center) {
+			params["cost_center"] = cost_center;
+		}
+
+		for (let dimension of erpnext.dimension_filters) {
+			let dimension_field = dimension['fieldname'];
+			let dimension_value = frappe.query_report.get_filter_value(dimension_field);
+
+			if (dimension_value) {
+				params[dimension_field] = dimension_value;
+			}
+		}
+
+		return params;
 	}
 };
 

@@ -34,9 +34,10 @@ def execute(filters=None):
 		section_data = []
 		data.append({
 			"account_name": cash_flow_account['section_header'],
+			"account_display": cash_flow_account['section_header'],
 			"parent_account": None,
 			"indent": 0.0,
-			"account": cash_flow_account['section_header']
+			# "account": cash_flow_account['section_header']
 		})
 
 		if len(data) == 1:
@@ -54,7 +55,8 @@ def execute(filters=None):
 				account['account_type'], period_list, filters.accumulated_values, filters)
 			account_data.update({
 				"account_name": account['label'],
-				"account": account['label'],
+				"account_display": account['label'],
+				# "account": account['label'],
 				"indent": 1,
 				"parent_account": cash_flow_account['section_header'],
 				"currency": company_currency
@@ -158,8 +160,9 @@ def get_start_date(period, accumulated_values, company):
 
 def add_total_row_account(out, data, label, period_list, currency, consolidated = False):
 	total_row = {
-		"account_name": "'" + _("{0}").format(label) + "'",
-		"account": "'" + _("{0}").format(label) + "'",
+		"account_name": _("{0}").format(label),
+		"account_display": _("{0}").format(label),
+		# "account": _("{0}").format(label),
 		"currency": currency
 	}
 	for row in data:
@@ -177,7 +180,7 @@ def add_total_row_account(out, data, label, period_list, currency, consolidated 
 
 def get_chart_data(columns, data):
 	labels = [d.get("label") for d in columns[2:]]
-	datasets = [{'name':account.get('account').replace("'", ""), 'values': [account.get('total')]}  for account in data if account.get('parent_account') == None and account.get('currency')]
+	datasets = [{'name':account.get('account_display').replace("'", ""), 'values': [account.get('total')]}  for account in data if account.get('parent_account') == None and account.get('currency')]
 	datasets = datasets[:-1]
 
 	chart = {

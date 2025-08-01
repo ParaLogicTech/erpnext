@@ -2,7 +2,13 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cstr, cint
 from erpnext.controllers.stock_controller import StockController
-from erpnext.stock.get_item_details import get_item_details, get_applies_to_details, get_force_applies_to_fields
+from erpnext.stock.get_item_details import (
+	get_item_details,
+	get_applies_to_details,
+	get_force_applies_to_fields,
+	get_bin_details,
+)
+from erpnext.stock.doctype.batch.batch import get_batch_qty
 from erpnext.accounts.doctype.pricing_rule.utils import (
 	apply_pricing_rule_for_free_items, get_applied_pricing_rules,
 	apply_pricing_rule_on_transaction, update_pricing_rule_table
@@ -34,7 +40,7 @@ class TransactionController(StockController):
 			"item_group", "brand", "item_source",
 			"stock_uom", "alt_uom", "alt_uom_size",
 			"item_tax_rate", "pricing_rules", "allow_zero_valuation_rate",
-			"is_stock_item", "is_fixed_asset" "has_batch_no", "has_serial_no", "is_vehicle",
+			"is_stock_item", "is_fixed_asset", "has_batch_no", "has_serial_no", "is_vehicle",
 			"claim_customer", "force_default_warehouse",
 			"sales_commission_category", "commission_rate", "retail_rate",
 			"ignore_depreciation",
@@ -95,7 +101,22 @@ class TransactionController(StockController):
 
 	def onload(self):
 		super().onload()
+
 		self.set_onload("enable_dynamic_bundling", self.dynamic_bundling_enabled())
+
+		for item in self.get("items") or []:
+			if (
+				item.meta.has_field("item_code")
+				and item.meta.has_field("warehouse")
+				and (item.meta.has_field('actual_qty') or item.meta.has_field('projected_qty'))
+			):
+				item.update(get_bin_details(item.item_code, item.warehouse))
+
+			if item.meta.has_field('actual_batch_qty'):
+				if item.get('batch_no'):
+					item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
+				else:
+					item.actual_batch_qty = 0
 
 	def before_print(self, print_settings=None):
 		super().before_print(print_settings)
@@ -681,7 +702,7 @@ class TransactionController(StockController):
 				frappe.throw(_("Row #{0}: Item Code is mandatory").format(d.idx))
 
 	def validate_qty_is_not_zero(self):
-		if self.get('is_return') and self.doctype in ("Sales Invoice", "Purchase Invoice") and not self.update_stock:
+		if self.get('is_return') and self.doctype in ("Sales Invoice", "Purchase Invoice"):
 			return
 
 		for item in self.get("items"):

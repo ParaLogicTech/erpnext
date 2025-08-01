@@ -526,28 +526,19 @@ def append_debit_accounts(pce, je, override_account=None):
 	for d in pce.payment_reconciliation:
 		mode_accounts[d.mode_of_payment] = d.account
 
-	cash_row = None
 	for d in pce.payment_details:
 		if not d.paid_amount:
 			continue
 
-		if d.type == "Cash" and cash_row:
-			row = cash_row
-		else:
-			row = je.append("accounts", {
-				"account": override_account or mode_accounts.get(d.mode_of_payment),
-				"reference_type": "POS Closing Entry",
-				"reference_name": pce.name,
-				"debit_in_account_currency": 0,
-				"cheque_no": d.reference_no if d.type != "Cash" else None,
-				"cheque_date": d.reference_date if d.type != "Cash" else None,
-				"user_remark": _("{0} Collected").format(d.mode_of_payment)
-			})
-
-			if d.type == "Cash":
-				cash_row = row
-
-		row.debit_in_account_currency += d.paid_amount
+		je.append("accounts", {
+			"account": override_account or mode_accounts.get(d.mode_of_payment),
+			"reference_type": "POS Closing Entry",
+			"reference_name": pce.name,
+			"debit_in_account_currency": d.paid_amount,
+			"cheque_no": d.reference_no if d.type != "Cash" else None,
+			"cheque_date": d.reference_date if d.type != "Cash" else None,
+			"user_remark": _("{0} collected against {1} {2}").format(d.mode_of_payment, d.document_type, d.document_name)
+		})
 
 
 def append_credit_accounts(pce, je, override_account=None):

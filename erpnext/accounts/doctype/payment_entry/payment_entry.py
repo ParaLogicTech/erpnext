@@ -89,6 +89,7 @@ class PaymentEntry(AccountsController):
 		self.set_missing_reference_details()
 		self.update_payment_schedule()
 		self.update_project()
+		self.set_payment_req_status()
 		self.set_status()
 
 	def on_cancel(self):
@@ -132,7 +133,7 @@ class PaymentEntry(AccountsController):
 
 	def set_payment_req_status(self):
 		from erpnext.accounts.doctype.payment_request.payment_request import update_payment_req_status
-		update_payment_req_status(self, None)
+		update_payment_req_status(self)
 
 	def validate_duplicate_entry(self):
 		reference_names = []
@@ -776,35 +777,22 @@ class PaymentEntry(AccountsController):
 			))
 
 	def set_remarks(self):
+		if self.user_remark:
+			self.remarks = self.user_remark
+			return
+
 		remarks = []
 
-		if self.user_remark:
-			remarks.append("Note: {0}".format(self.user_remark))
-
-		if self.payment_type=="Internal Transfer":
-			remarks.append(_("Amount {0} {1} transferred from {2} to {3}")
-				.format(self.paid_from_account_currency, self.paid_amount, self.paid_from, self.paid_to))
-		else:
-			remarks.append(_("Amount {0} {1} {2} {3}").format(
-				self.party_account_currency,
-				self.paid_amount if self.payment_type=="Receive" else self.received_amount,
-				_("received from") if self.payment_type=="Receive" else _("to"), self.party
+		if self.payment_type == "Internal Transfer":
+			remarks.append(_("{0} transferred from {1} to {2}").format(
+				self.get_formatted("paid_amount_after_tax"), self.paid_from, self.paid_to
 			))
-
-		if self.reference_no:
-			remarks.append(_("Transaction reference no {0} dated {1}")
-				.format(self.reference_no, self.reference_date))
-
-		if self.payment_type in ["Receive", "Pay"]:
-			for d in self.get("references"):
-				if flt(d.allocated_amount):
-					remarks.append(_("Amount {0} {1} against {2} {3}").format(self.party_account_currency,
-						d.allocated_amount, d.reference_doctype, d.reference_name))
-
-		for d in self.get("deductions"):
-			if d.amount:
-				remarks.append(_("Amount {0} {1} deducted against {2}")
-					.format(self.company_currency, d.amount, d.account))
+		else:
+			remarks.append(_("{0} {1} {2}").format(
+				self.get_formatted("paid_amount_after_tax") if self.payment_type == "Receive" else self.get_formatted("received_amount_after_tax"),
+				_("received from") if self.payment_type == "Receive" else _("paid to"),
+				self.party_name or self.party
+			))
 
 		self.set("remarks", "\n".join(remarks))
 
@@ -1637,11 +1625,12 @@ def get_reference_details(reference_doctype, reference_name, party_account_curre
 			company_currency, ref_doc.posting_date)
 
 	return frappe._dict({
-		"due_date": ref_doc.get("due_date"),
 		"total_amount": total_amount,
 		"outstanding_amount": outstanding_amount,
 		"exchange_rate": exchange_rate,
-		"bill_no": bill_no
+		"bill_no": bill_no,
+		"posting_date": ref_doc.get("posting_date") or ref_doc.get("transaction_date"),
+		"due_date": ref_doc.get("due_date"),
 	})
 
 

@@ -24,8 +24,7 @@ frappe.ui.form.on("Sales Order", {
 	refresh: function(frm) {
 		if (frm.doc.docstatus === 1
 			&& frm.doc.status !== 'Closed'
-			&& frm.doc.delivery_status == "To Deliver"
-			&& frm.doc.billing_status == "To Bill"
+			&& (frm.doc.delivery_status == "To Deliver" || frm.doc.billing_status == "To Bill")
 		) {
 			frm.add_custom_button(__('Update Items'), () => {
 				erpnext.utils.update_child_items({
@@ -102,7 +101,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 				}
 			} else {
 				if (!doc.delivered_qty) {
-					if (!doc.is_stock_item || doc.skip_delivery_note) {
+					if (doc.skip_delivery_note) {
 						return "purple";
 					} else {
 						return "orange";
@@ -113,7 +112,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 					return "green";
 				}
 			}
-		});
+		}, null, true);
 
 		if (this.frm.doc.__islocal) {
 			this.set_skip_delivery_note();
@@ -288,6 +287,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 	}
 
 	bill_to() {
+		this.set_dynamic_link();
 		return super.customer();
 	}
 

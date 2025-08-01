@@ -65,6 +65,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 
 		// Update Buttons
 		this.add_update_customer_name_button();
+		this.add_update_applies_to_details_button();
 
 		// Pricing Buttons
 		if (this.frm.doc.docstatus == 0) {
@@ -523,7 +524,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 				party: this.frm.doc.customer,
 				party_type: "Customer",
 				bill_to: this.frm.doc.bill_to,
-				account: this.frm.doc.debit_to,
 				price_list: this.frm.doc.selling_price_list,
 				pos_profile: pos_profile
 			}, function() {

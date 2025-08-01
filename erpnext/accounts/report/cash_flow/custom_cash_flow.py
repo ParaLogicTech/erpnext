@@ -156,9 +156,10 @@ def add_data_for_operating_activities(
 
 	data.append({
 		"account_name": mapper['section_header'],
+		"account_display": mapper['section_header'],
 		"parent_account": None,
 		"indent": 0.0,
-		"account": mapper['section_header']
+		# "account": mapper['section_header']
 	})
 
 	if profit_data:
@@ -171,18 +172,20 @@ def add_data_for_operating_activities(
 
 		data.append({
 			"account_name": mapper["section_leader"],
+			"account_display": mapper["section_leader"],
 			"parent_account": None,
 			"indent": 1.0,
-			"account": mapper["section_leader"]
+			# "account": mapper["section_leader"]
 		})
 
 	for account in mapper['account_types']:
 		if account['is_working_capital'] and not has_added_working_capital_header:
 			data.append({
 				"account_name": 'Movement in working capital',
+				"account_display": 'Movement in working capital',
 				"parent_account": None,
 				"indent": 1.0,
-				"account": ""
+				# "account": ""
 			})
 			has_added_working_capital_header = True
 
@@ -197,7 +200,8 @@ def add_data_for_operating_activities(
 		if account_data['total'] != 0:
 			account_data.update({
 				"account_name": account['label'],
-				"account": account['names'],
+				"account_display": account['label'],
+				# "account": account['names'],
 				"indent": 1.0,
 				"parent_account": mapper['section_header'],
 				"currency": company_currency
@@ -223,6 +227,7 @@ def add_data_for_operating_activities(
 				'parent_account': mapper['section_header'],
 				'currency': company_currency,
 				'account_name': account['label'],
+				'account_display': account['label'],
 				'indent': 1.0
 			})
 			data.append(tax_paid)
@@ -242,6 +247,7 @@ def add_data_for_operating_activities(
 				'parent_account': mapper['section_header'],
 				'currency': company_currency,
 				'account_name': account['label'],
+				'account_display': account['label'],
 				'indent': 1.0
 			})
 			data.append(interest_paid)
@@ -285,9 +291,10 @@ def add_data_for_other_activities(
 		section_data = []
 		data.append({
 			"account_name": mapper['section_header'],
+			"account_display": mapper['section_header'],
 			"parent_account": None,
 			"indent": 0.0,
-			"account": mapper['section_header']
+			# "account": mapper['section_header']
 		})
 
 		for account in mapper['account_types']:
@@ -296,7 +303,8 @@ def add_data_for_other_activities(
 			if account_data['total'] != 0:
 				account_data.update({
 					"account_name": account['label'],
-					"account": account['names'],
+					"account_display": account['label'],
+					# "account": account['names'],
 					"indent": 1,
 					"parent_account": mapper['section_header'],
 					"currency": company_currency
@@ -427,7 +435,8 @@ def _add_total_row_account(out, data, label, period_list, currency, indent=0.0):
 	total_row = {
 		"indent": indent,
 		"account_name": "'" + _("{0}").format(label) + "'",
-		"account": "'" + _("{0}").format(label) + "'",
+		"account_display": "'" + _("{0}").format(label) + "'",
+		# "account": "'" + _("{0}").format(label) + "'",
 		"currency": currency
 	}
 	for row in data:

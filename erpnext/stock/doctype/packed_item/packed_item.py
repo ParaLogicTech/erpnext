@@ -4,9 +4,11 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import cstr, flt
-from erpnext.stock.get_item_details import get_item_details, get_default_warehouse
+from frappe import _
+from frappe.utils import flt
 from frappe.model.document import Document
+from erpnext.stock.get_item_details import get_item_details, get_default_warehouse
+from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
 import json
 
 
@@ -14,121 +16,318 @@ class PackedItem(Document):
 	pass
 
 
-def get_product_bundle_items(item_code):
-	return frappe.db.sql("""select t1.item_code, t1.qty, t1.uom, t1.description
-		from `tabProduct Bundle Item` t1, `tabProduct Bundle` t2
-		where t2.new_item_code=%s and t1.parent = t2.name order by t1.idx""", item_code, as_dict=1)
+def make_bundled_item_list(doc):
+	"""Create packing list for Product Bundle items."""
+	if doc.get("_action") == "update_after_submit":
+		return
+
+	for parent_row in doc.get("items", []):
+		if not is_product_bundle(parent_row.item_code):
+			continue
+
+		if doc.doctype in ("Delivery Note", "Sales Invoice") and parent_row.get("sales_order") and parent_row.get("sales_order_item"):
+			sales_order_bundled_items = get_sales_order_bundled_items(parent_row.sales_order, parent_row.sales_order_item)
+			for bundle_row in sales_order_bundled_items:
+				update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=bundle_row.name)
+		else:
+			for bundle_row in get_product_bundle_items(parent_row.item_code):
+				if bundle_row.type == "Item":
+					update_child_item_row(doc, bundle_row, parent_row)
+				elif bundle_row.type == "Item Group":
+					update_child_item_group_row(doc, bundle_row, parent_row)
+
+	cleanup_packing_list(doc)
 
 
-def get_packing_item_details(item, company):
-	item_details = frappe.get_cached_doc("Item", item).as_dict()
-	item_details.default_warehouse = get_default_warehouse(item, {'company': company})
-	return item_details
+def update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=None):
+	child_row = None
+	for d in doc.get("packed_items"):
+		if d.parent_item != parent_row.item_code or d.item_code != bundle_row.item_code:
+			continue
+
+		if doc.is_new():
+			if d.flags.is_updated:
+				continue
+		else:
+			if d.parent_detail_docname != parent_row.name:
+				continue
+
+		child_row = d
+		break
+
+	if not child_row:
+		child_row = doc.append('packed_items')
+		set_child_row_balance_qty(doc, bundle_row, child_row)
+
+	update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_detail_docname=previous_detail_docname)
 
 
-def get_bin_qty(item, warehouse):
-	det = frappe.db.sql("""select actual_qty, projected_qty from `tabBin`
-		where item_code = %s and warehouse = %s""", (item, warehouse), as_dict = 1)
-	return det and det[0] or frappe._dict()
+def update_child_item_group_row(doc, bundle_row, parent_row):
+	child_row = None
+	for d in doc.get("packed_items"):
+		if d.parent_item != parent_row.item_code or d.item_group != bundle_row.item_group:
+			continue
+
+		if doc.is_new():
+			if d.flags.is_updated:
+				continue
+		else:
+			if d.parent_detail_docname != parent_row.name:
+				continue
+
+		child_row = d
+		break
+
+	if not child_row:
+		child_row = doc.append('packed_items')
+
+	update_packing_list_item(doc, bundle_row, parent_row, child_row)
 
 
-def update_packing_list_item(doc, packing_item_code, qty, main_item_row, description):
-	if doc.amended_from:
-		old_packed_items_map = get_old_packed_item_details(doc.packed_items)
+def set_child_row_balance_qty(doc, bundle_row, child_row):
+	if (
+		(doc.doctype == "Delivery Note" or (doc.doctype == "Sales Invoice" and doc.update_stock))
+		and bundle_row.doctype == "Packed Item"
+	):
+		child_row.qty = max(0, bundle_row.qty - bundle_row.delivered_qty)
+
+
+def update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_detail_docname=None):
+	from erpnext.stock.get_item_details import get_bin_details
+
+	child_row.type = bundle_row.type
+	child_row.parent_item = parent_row.item_code
+	child_row.parent_item_name = parent_row.item_name
+	child_row.parent_detail_docname = parent_row.name
+	child_row.previous_detail_docname = previous_detail_docname
+
+	if bundle_row.type == "Item":
+		child_row.item_code = bundle_row.item_code
+		child_row.item_group = None
+	elif bundle_row.type == "Item Group":
+		child_row.item_group = bundle_row.item_group
+		if previous_detail_docname and bundle_row.item_code:
+			child_row.item_code = bundle_row.item_code
+
+	# Allow editing qty
+	if (
+		not bundle_row.qty
+		or (doc.doctype == "Delivery Note" and parent_row.get("sales_order"))
+		or (doc.doctype == "Sales Invoice" and (parent_row.get("sales_order") or parent_row.get("delivery_note")))
+		or doc.get("is_return")
+	):
+		child_row.allow_edit_qty = 1
 	else:
-		old_packed_items_map = False
-	item = get_packing_item_details(packing_item_code, doc.company)
+		child_row.allow_edit_qty = 0
 
-	# check if exists
-	exists = 0
-	for d in doc.get("packed_items"):
-		if d.parent_item == main_item_row.item_code and d.item_code == packing_item_code and\
-				d.parent_detail_docname == main_item_row.name:
-			pi, exists = d, 1
-			break
+	# Allow selecting item code
+	if (
+		bundle_row.type == "Item Group"
+		and not (doc.doctype == "Delivery Note" and parent_row.get("sales_order"))
+		and not (doc.doctype == "Sales Invoice" and (parent_row.get("sales_order") or parent_row.get("delivery_note")))
+	):
+		child_row.allow_select_item_code = 1
+	else:
+		child_row.allow_select_item_code = 0
 
-	if not exists:
-		pi = doc.append('packed_items', {})
+	item = frappe.get_cached_doc("Item", child_row.item_code) if child_row.item_code else frappe._dict()
 
-	pi.parent_item = main_item_row.item_code
-	pi.item_code = packing_item_code
-	pi.item_name = item.item_name
-	pi.parent_detail_docname = main_item_row.name
-	pi.uom = item.stock_uom
-	pi.qty = flt(qty)
-	if description and not pi.description:
-		pi.description = description
-	if not pi.warehouse and not doc.amended_from:
-		pi.warehouse = (main_item_row.warehouse if ((doc.get('is_pos') or item.is_stock_item \
-			or not item.default_warehouse) and main_item_row.warehouse) else item.default_warehouse)
-	if not pi.batch_no and not doc.amended_from:
-		pi.batch_no = cstr(main_item_row.get("batch_no"))
-	if not pi.target_warehouse:
-		pi.target_warehouse = main_item_row.get("target_warehouse")
-	bin = get_bin_qty(packing_item_code, pi.warehouse)
-	pi.actual_qty = flt(bin.get("actual_qty"))
-	pi.projected_qty = flt(bin.get("projected_qty"))
-	if old_packed_items_map and old_packed_items_map.get((packing_item_code, main_item_row.item_code)):
-		pi.batch_no = old_packed_items_map.get((packing_item_code, main_item_row.item_code))[0].batch_no
-		pi.serial_no = old_packed_items_map.get((packing_item_code, main_item_row.item_code))[0].serial_no
-		pi.warehouse = old_packed_items_map.get((packing_item_code, main_item_row.item_code))[0].warehouse
+	child_row.item_name = item.item_name
+	child_row.uom = item.stock_uom
 
+	child_row.is_stock_item = item.is_stock_item
+	child_row.has_batch_no = item.has_batch_no
+	child_row.has_serial_no = item.has_serial_no
 
-def make_packing_list(doc):
-	"""make packing list for Product Bundle item"""
-	if doc.get("_action") and doc._action == "update_after_submit": return
+	if not child_row.allow_edit_qty:
+		child_row.qty = flt(flt(bundle_row.qty) * flt(parent_row.stock_qty), 6)
 
-	parent_items = []
-	for d in doc.get("items"):
-		if frappe.db.get_value("Product Bundle", {"new_item_code": d.item_code}):
-			for i in get_product_bundle_items(d.item_code):
-				update_packing_list_item(doc, i.item_code, flt(i.qty)*flt(d.stock_qty), d, i.description)
+	child_row.stock_qty = flt(child_row.qty, 6)
 
-			if [d.item_code, d.name] not in parent_items:
-				parent_items.append([d.item_code, d.name])
+	if parent_row.warehouse:
+		child_row.warehouse = parent_row.warehouse
+	elif not child_row.warehouse and item.is_stock_item:
+		args = doc.get_item_details_child_args(parent_row, doc.get_item_details_parent_args())
+		child_row.warehouse = get_default_warehouse(item, args, overwrite_warehouse=False)
 
-	cleanup_packing_list(doc, parent_items)
+	if parent_row.get("target_warehouse"):
+		child_row.target_warehouse = parent_row.get("target_warehouse")
+	else:
+		child_row.target_warehouse = None
+
+	bin_details = get_bin_details(child_row.item_code, child_row.warehouse)
+	child_row.actual_qty = flt(bin_details.get("actual_qty"))
+	child_row.projected_qty = flt(bin_details.get("projected_qty"))
+
+	if doc.doctype == "Delivery Note" or (doc.doctype == "Sales Invoice" and doc.update_stock) and doc.docstatus == 1:
+		child_row.delivered_qty = child_row.qty
+
+	child_row.flags.is_updated = True
+	child_row.flags.parent_row = parent_row
 
 
-def cleanup_packing_list(doc, parent_items):
-	"""Remove all those child items which are no longer present in main item table"""
+def cleanup_packing_list(doc):
+	def sorter(row):
+		parent_row = get_parent_row_from_child_row(doc, row) or frappe._dict()
+		bundle_row = get_bundle_row_from_child_row(doc, row) or frappe._dict()
+		return parent_row.idx or 99999, bundle_row.idx or 99999
+
 	delete_list = []
-	for d in doc.get("packed_items"):
-		if [d.parent_item, d.parent_detail_docname] not in parent_items:
-			# mark for deletion from doclist
-			delete_list.append(d)
+	for child_row in doc.get("packed_items"):
+		parent_row = get_parent_row_from_child_row(doc, child_row)
+		bundle_row = get_bundle_row_from_child_row(doc, child_row)
+		if not child_row.parent_item:
+			delete_list.append(child_row)
+		elif not parent_row or not bundle_row:
+			delete_list.append(child_row)
 
-	if not delete_list:
-		return doc
+	for child_row in delete_list:
+		doc.remove(child_row)
 
-	packed_items = doc.get("packed_items")
-	doc.set("packed_items", [])
-	for d in packed_items:
-		if d not in delete_list:
-			doc.append("packed_items", d)
+	doc.packed_items = sorted(doc.get("packed_items"), key=lambda d: sorter(d))
+	for i, child_row in enumerate(doc.get("packed_items")):
+		child_row.idx = i + 1
+
+
+def get_bundle_row_from_child_row(doc, child_row):
+	if not child_row.parent_item:
+		return None
+
+	product_bundle = get_product_bundle_from_item_code(child_row.parent_item)
+	if product_bundle:
+		bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+		parent_row = get_parent_row_from_child_row(doc, child_row)
+
+		if (
+			doc.doctype in ("Delivery Note", "Sales Invoice")
+			and parent_row
+			and parent_row.get("sales_order")
+			and parent_row.get("sales_order_item")
+		):
+			bundled_items = get_sales_order_bundled_items(parent_row.sales_order, parent_row.sales_order_item)
+		else:
+			bundled_items = bundle_doc.get("items")
+
+		for bundle_row in bundled_items:
+			if child_row.type == "Item" and bundle_row.item_code == child_row.item_code:
+				return bundle_row
+			if child_row.type == "Item Group" and bundle_row.item_group == child_row.item_group:
+				return bundle_row
+
+
+def get_parent_row_from_child_row(doc, child_row):
+	if not child_row.parent_item:
+		return None
+	if doc.name and not child_row.parent_detail_docname:
+		return None
+
+	for parent_row in doc.get("items"):
+		if parent_row.item_code != child_row.parent_item:
+			continue
+
+		if doc.name:
+			if parent_row.name == child_row.parent_detail_docname:
+				return parent_row
+		elif child_row.flags.parent_row:
+			return child_row.flags.parent_row
 
 
 @frappe.whitelist()
 def get_items_from_product_bundle(args):
-	args = json.loads(args)
+	if isinstance(args, str):
+		args = json.loads(args)
+
 	items = []
 	bundled_items = get_product_bundle_items(args["item_code"])
 	for item in bundled_items:
-		args.update({
-			"item_code": item.item_code,
-			"qty": flt(args["quantity"]) * flt(item.qty)
-		})
-		items.append(get_item_details(args))
+		if item.item_code:
+			args.update({
+				"item_code": item.item_code,
+				"qty": flt(args["quantity"]) * flt(item.qty)
+			})
+			items.append(get_item_details(args))
 
 	return items
 
 
+def validate_bundled_item_list(doc):
+	for parent_row in doc.get("items"):
+		validate_bundled_items_for_parent_row(doc, parent_row)
+
+
+def validate_bundled_items_for_parent_row(doc, parent_row):
+	if not is_product_bundle(parent_row.item_code):
+		return
+
+	child_rows = [d for d in doc.get("packed_items")
+		if d.parent_detail_docname == parent_row.name and d.parent_item == parent_row.item_code]
+
+	for child_row in child_rows:
+		if not child_row.item_code and doc.docstatus == 1:
+			frappe.throw(_("Bundled Item Row #{0}: Please select Bundled Item for Parent Item {1} for Item Group {2}").format(
+				child_row.idx, frappe.bold(parent_row.item_code), frappe.bold(child_row.item_group)
+			))
+
+		if child_row.type == "Item Group" and child_row.item_code and child_row.item_group:
+			allowed_item_groups = get_item_group_subtree(child_row.item_group)
+			child_item_group = frappe.get_cached_value("Item", child_row.item_code, "item_group")
+			if child_item_group not in allowed_item_groups:
+				frappe.throw(_("Bundled Item Row #{0}: Bundled Item {1} does not belong to Item Group {2}").format(
+					child_row.idx, frappe.bold(child_row.item_code), frappe.bold(child_row.item_group)
+				))
+
+		if child_row.allow_edit_qty and child_row.item_code:
+			if doc.get("is_return"):
+				if flt(child_row.qty) > 0:
+					frappe.throw(_("Bundled Item Row #{0}: Bundled Item {1} Qty must be negative for return").format(
+						child_row.idx, frappe.bold(child_row.item_code)
+					))
+			else:
+				if flt(child_row.qty) < 0:
+					frappe.throw(_("Bundled Item Row #{0}: Bundled Item {1} Qty can not be negative").format(
+						child_row.idx, frappe.bold(child_row.item_code)
+					))
+
+
+def get_product_bundle_items(item_code):
+	product_bundle = get_product_bundle_from_item_code(item_code)
+	if not product_bundle:
+		return []
+
+	bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+	return bundle_doc.items
+
+
+def get_sales_order_bundled_items(sales_order, sales_order_item):
+	def generator():
+		return frappe.db.sql("""
+			select *
+			from `tabPacked Item`
+			where parenttype = 'Sales Order'
+				and parent = %(sales_order)s
+				and parent_detail_docname = %(sales_order_item)s
+		""", {
+			"sales_order": sales_order,
+			"sales_order_item": sales_order_item,
+		}, update={"doctype": "Packed Item"}, as_dict=1)
+
+	return frappe.local_cache("get_sales_order_bundled_items", (sales_order, sales_order_item), generator)
+
+
+def is_product_bundle(item_code):
+	return get_product_bundle_from_item_code(item_code)
+
+
+def get_product_bundle_from_item_code(item_code):
+	if not item_code:
+		return None
+
+	return frappe.local_cache(
+		"get_product_bundle_from_item_code",
+		item_code,
+		lambda: frappe.db.get_value("Product Bundle", {"new_item_code": item_code})
+	)
+
+
 def on_doctype_update():
 	frappe.db.add_index("Packed Item", ["item_code", "warehouse"])
-
-
-def get_old_packed_item_details(old_packed_items):
-	old_packed_items_map = {}
-	for items in old_packed_items:
-		old_packed_items_map.setdefault((items.item_code ,items.parent_item), []).append(items.as_dict())
-	return old_packed_items_map

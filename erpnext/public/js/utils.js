@@ -637,7 +637,86 @@ $.extend(erpnext.utils, {
 			}
 			return frappe.format(value, df, options, doc, true);
 		}
-	}
+	},
+
+	setup_last_billed_rate_formatter(doctype, fieldname) {
+		let df = frappe.meta.get_docfield(doctype, fieldname);
+		if (df) {
+			erpnext.utils.set_item_sales_detail_link_formatter(df, 2, true);
+		}
+	},
+
+	setup_in_transit_qty_formatter(doctype, fieldname) {
+		let df = frappe.meta.get_docfield(doctype, fieldname);
+		if (df) {
+			erpnext.utils.set_in_transit_qty_link_formatter(df);
+		}
+	},
+
+	setup_avg_monthly_sales_formatter(doctype, fieldname) {
+		let df = frappe.meta.get_docfield(doctype, fieldname);
+		if (df) {
+			erpnext.utils.set_item_sales_detail_link_formatter(df, 1, false);
+		}
+	},
+
+	set_item_sales_detail_link_formatter(df, years, filter_customer) {
+		years = years || 1;
+		df.formatter = (value, df, options, doc) => {
+			let formatted_value = frappe.format(value, df, options, doc, true);
+
+			const company = cur_frm?.doc?.company;
+			const customer = filter_customer ? cur_frm?.doc?.customer : null;
+			if (doc?.item_code && company && (customer || !filter_customer)) {
+				const today = frappe.datetime.get_today();
+				const from_date = moment(today).subtract(years, 'years').format('YYYY-MM-DD');
+
+				const params = {
+					company: company,
+					item_code: doc.item_code,
+					from_date: from_date,
+					to_date: today,
+					doctype: 'Sales Invoice',
+					qty_field: 'Stock Qty',
+					group_by_1: '',
+					group_by_2: '',
+					group_by_3: '',
+					group_same_items: 0,
+				};
+
+				if (customer) {
+					params["customer"] = customer
+				}
+
+				const query_string = Object.entries(params)
+					.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+					.join('&');
+
+				const link = `/app/query-report/Sales Details?${query_string}`;
+
+				return `<a href="${link}" target="_blank">${formatted_value}</a>`;
+			}
+
+			return formatted_value;
+		};
+	},
+
+	set_in_transit_qty_link_formatter(df) {
+		df.formatter = (value, df, options, doc) => {
+			let formatted_value = frappe.format(value, df, options, doc, true);
+
+			const company = cur_frm?.doc?.company;
+			if (doc?.item_code && company) {
+				const item_code = doc.item_code;
+
+				const link = `/app/query-report/Purchase Items To Be Received?item_code=${encodeURIComponent(item_code)}&company=${encodeURIComponent(company)}`;
+
+				return `<a href="${link}" target="_blank">${formatted_value}</a>`;
+			}
+
+			return formatted_value;
+		};
+	},
 });
 
 erpnext.utils.select_alternate_items = function(opts) {

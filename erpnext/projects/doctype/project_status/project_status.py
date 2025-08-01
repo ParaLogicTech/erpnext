@@ -167,4 +167,5 @@ def execute_project_status_validation(project_status_doc, project, validation_fi
 	context = frappe._dict(context or {})
 	context.update({"doc": project})
 
-	safe_exec(project_status_doc.get(validation_field), None, context)
+	safe_exec(project_status_doc.get(validation_field), _locals=context,
+		script_filename=f"Project Status {project_status_doc.name}")

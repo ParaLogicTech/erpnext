@@ -348,7 +348,6 @@ erpnext.accounts.PurchaseInvoice = class PurchaseInvoice extends erpnext.buying.
 				party_type: "Supplier",
 				party: this.frm.doc.supplier,
 				letter_of_credit: this.frm.doc.letter_of_credit,
-				account: this.frm.doc.credit_to,
 				price_list: this.frm.doc.buying_price_list
 			}, function() {
 				me.apply_pricing_rule();

@@ -290,7 +290,7 @@ class GrossProfitGenerator(object):
 				where lft>=%s and rgt<=%s)""" % (lft, rgt))
 
 		if not self.filters.get("include_non_stock_items"):
-			conditions.append("i.is_stock_item = 1")
+			conditions.append("(i.is_stock_item = 1 or exists(select pb.name from `tabProduct Bundle` pb where pb.new_item_code = i.name))")
 
 		return "and {}".format(" and ".join(conditions)) if conditions else ""
 
@@ -654,14 +654,26 @@ def get_sle_outgoing_rate(voucher_detail_nos):
 		values.append(voucher_detail_no)
 
 	res = frappe.db.sql("""
-		select sum(stock_value_difference) / sum(actual_qty) as outgoing_rate, voucher_type, voucher_detail_no
+		select
+			sum(stock_value_difference) as stock_value_difference,
+			sum(actual_qty) as actual_qty,
+			bundle_qty,
+			voucher_type,
+			voucher_detail_no
 		from `tabStock Ledger Entry`
 		where (voucher_type, voucher_detail_no) in ({0})
 		group by voucher_type, voucher_detail_no
 	""".format(", ".join(["(%s, %s)"] * len(voucher_detail_nos))), values, as_dict=1)
 
 	for d in res:
-		out[(d.voucher_type, d.voucher_detail_no)] = d.outgoing_rate
+		if d.bundle_qty:
+			outgoing_rate = d.stock_value_difference / d.bundle_qty
+		elif d.actual_qty:
+			outgoing_rate = d.stock_value_difference / d.actual_qty
+		else:
+			outgoing_rate = 0
+
+		out[(d.voucher_type, d.voucher_detail_no)] = outgoing_rate
 
 	return out
 
@@ -670,7 +682,11 @@ def get_stock_items(item_codes):
 	stock_items = []
 	if item_codes:
 		stock_items = frappe.db.sql_list("""
-			select name from `tabItem` where name in %s and is_stock_item=1
+			select i.name
+			from `tabItem` i
+			where i.name in %s and (i.is_stock_item = 1 or exists(
+				select pb.name from `tabProduct Bundle` pb where pb.new_item_code = i.name
+			))
 		""", [item_codes])
 
 	return stock_items

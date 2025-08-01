@@ -3,14 +3,17 @@
 
 
 import frappe
-import frappe.defaults
+from frappe import _
+from frappe.utils import cint, flt
 from erpnext.controllers.selling_controller import SellingController
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
-from frappe import _
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import cint, flt
-
+from erpnext.stock.doctype.packed_item.packed_item import (
+	make_bundled_item_list,
+	validate_bundled_item_list,
+	is_product_bundle,
+)
 
 form_grid_templates = {
 	"items": "templates/form_grid/item_grid.html"
@@ -44,10 +47,13 @@ class DeliveryNote(SellingController):
 		from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party
 		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
 
-		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
-		make_packing_list(self)
+		make_bundled_item_list(self)
+		validate_bundled_item_list(self)
 
 		self.validate_with_previous_doc()
+
+		self.sort_items()
+
 		self.set_billing_status()
 		self.set_proforma_status()
 		self.set_installation_status()
@@ -158,6 +164,8 @@ class DeliveryNote(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		make_bundled_item_list(self)
+		self.sort_items()
 
 		if reset_taxes:
 			self.reset_taxes_and_charges()
@@ -183,6 +191,7 @@ class DeliveryNote(SellingController):
 		sales_invoices = set()
 		so_row_names_without_packing_slip = set()
 		so_row_names_with_packing_slip = set()
+		so_bundled_item_row_names = set()
 		sales_invoice_row_names = set()
 		delivery_note_row_names = set()
 
@@ -200,6 +209,10 @@ class DeliveryNote(SellingController):
 				sales_invoice_row_names.add(d.sales_invoice_item)
 			if d.delivery_note_item:
 				delivery_note_row_names.add(d.delivery_note_item)
+
+		for d in self.packed_items:
+			if d.previous_detail_docname:
+				so_bundled_item_row_names.add(d.previous_detail_docname)
 
 		# Update Returned Against Delivery Note
 		if self.is_return and self.return_against:
@@ -230,6 +243,7 @@ class DeliveryNote(SellingController):
 			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=so_row_names_without_packing_slip)
 			doc.validate_delivered_qty(from_doctype=self.doctype, row_names=so_row_names_with_packing_slip,
 				check_packed_qty=True)
+			doc.validate_bundled_item_delivered_qty(from_doctype=self.doctype, row_names=so_bundled_item_row_names)
 			doc.set_billing_status(update=True)
 
 			# Update packed qty for unpacked returns
@@ -599,7 +613,7 @@ class DeliveryNote(SellingController):
 			stock_delivered_but_not_billed = frappe.get_cached_value("Company", self.company, "stock_delivered_but_not_billed")
 			for d in self.get("items"):
 				is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
-				if d.skip_sales_invoice or not is_stock_item:
+				if d.skip_sales_invoice or (not is_stock_item and not is_product_bundle(d.item_code)):
 					d.unbilled_stock_account = None
 				else:
 					sales_order_item_to_check.append(d.sales_order_item)
@@ -619,7 +633,6 @@ class DeliveryNote(SellingController):
 				for d in self.get("items"):
 					if d.sales_order_item and d.sales_order_item in sales_order_items_indirectly_billed:
 						d.unbilled_stock_account = None
-
 
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):
 	if isinstance(delivery_note, str):
@@ -759,6 +772,7 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 			},
 			"field_no_map": [
 				"has_stin",
+				"group_same_items",
 			],
 			"validation": {
 				"docstatus": ["=", 1]
@@ -807,6 +821,7 @@ def make_proforma_invoice(source_name, target_doc=None, only_items=None, skip_po
 			},
 			"field_no_map": [
 				"has_stin",
+				"group_same_items",
 			],
 			"validation": {
 				"docstatus": ["=", 1],

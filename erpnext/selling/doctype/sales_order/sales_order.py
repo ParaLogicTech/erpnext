@@ -15,8 +15,9 @@ from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty,
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
-from erpnext.stock.get_item_details import item_has_product_bundle, get_skip_delivery_note, get_default_bom
+from erpnext.stock.get_item_details import get_skip_delivery_note, get_default_bom
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle, validate_bundled_item_list, make_bundled_item_list
 
 
 form_grid_templates = {
@@ -63,10 +64,13 @@ class SalesOrder(SellingController):
 			from erpnext.accounts.doctype.pricing_rule.utils import validate_coupon_code
 			validate_coupon_code(self.coupon_code)
 
-		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
-		make_packing_list(self)
+		make_bundled_item_list(self)
+		validate_bundled_item_list(self)
 
 		self.validate_with_previous_doc()
+
+		self.sort_items()
+
 		self.set_advance_paid_amount()
 		self.set_delivery_status()
 		self.set_production_packing_status()
@@ -152,7 +156,7 @@ class SalesOrder(SellingController):
 	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
 		if row.item_code:
 			item = frappe.get_cached_doc("Item", row.item_code)
-			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier))
+			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier), doc=self)
 			if not row.skip_delivery_note:
 				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
 				if hooked_skip_delivery_note is not None:
@@ -177,6 +181,8 @@ class SalesOrder(SellingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
+		make_bundled_item_list(self)
+		self.sort_items()
 
 		if reset_taxes:
 			self.reset_taxes_and_charges()
@@ -242,6 +248,13 @@ class SalesOrder(SellingController):
 				d.db_set({
 					'delivered_qty': d.delivered_qty,
 					'total_returned_qty': d.total_returned_qty,
+				}, update_modified=update_modified)
+
+		for d in self.packed_items:
+			d.delivered_qty = flt(data.bundled_item_delivered_qty_map.get(d.name))
+			if update:
+				d.db_set({
+					'delivered_qty': d.delivered_qty,
 				}, update_modified=update_modified)
 
 		# update percentage in parent
@@ -365,12 +378,16 @@ class SalesOrder(SellingController):
 
 		out.deliverable_rows = []
 		out.delivered_qty_map = {}
+		out.bundled_item_delivered_qty_map = {}
 		out.total_returned_qty_map = {}
 		out.service_billed_qty_map = {}
 
 		delivery_by_supplier_row_names = []
 		delivery_by_stock_row_names = []
 		delivery_by_billing_row_names = []
+
+		delivery_by_bundle_rows = []
+		bundled_item_row_names = [d.name for d in self.packed_items]
 
 		for d in self.items:
 			is_deliverable = not d.skip_delivery_note or d.delivered_by_supplier
@@ -379,6 +396,8 @@ class SalesOrder(SellingController):
 
 				if d.delivered_by_supplier:
 					delivery_by_supplier_row_names.append(d.name)
+				elif is_product_bundle(d.item_code):
+					delivery_by_bundle_rows.append(d)
 				else:
 					delivery_by_stock_row_names.append(d.name)
 			else:
@@ -395,15 +414,6 @@ class SalesOrder(SellingController):
 					where p.docstatus = 1 and i.sales_order_item in %s
 				""", [delivery_by_stock_row_names], as_dict=1)
 
-				for d in delivered_by_dn:
-					if not d.is_return or d.reopen_order:
-						out.delivered_qty_map.setdefault(d.sales_order_item, 0)
-						out.delivered_qty_map[d.sales_order_item] += d.qty
-
-					if d.is_return:
-						out.total_returned_qty_map.setdefault(d.sales_order_item, 0)
-						out.total_returned_qty_map[d.sales_order_item] -= d.qty
-
 				# Delivered By Sales Invoice
 				delivered_by_sinv = frappe.db.sql("""
 					select i.sales_order_item, i.qty, p.is_return, p.reopen_order
@@ -412,7 +422,7 @@ class SalesOrder(SellingController):
 					where p.docstatus = 1 and p.update_stock = 1 and i.sales_order_item in %s
 				""", [delivery_by_stock_row_names], as_dict=1)
 
-				for d in delivered_by_sinv:
+				for d in delivered_by_dn + delivered_by_sinv:
 					if not d.is_return or d.reopen_order:
 						out.delivered_qty_map.setdefault(d.sales_order_item, 0)
 						out.delivered_qty_map[d.sales_order_item] += d.qty
@@ -445,6 +455,41 @@ class SalesOrder(SellingController):
 						and i.sales_order_item in %s
 					group by i.sales_order_item
 				""", [delivery_by_billing_row_names]))
+
+			# Get Bundled Item Delivered Qty
+			if bundled_item_row_names:
+				bundled_item_delivered_by_dn = frappe.db.sql("""
+					select i.previous_detail_docname, i.qty, p.is_return, p.reopen_order
+					from `tabPacked Item` i
+					inner join `tabDelivery Note` p on p.name = i.parent and i.parenttype = 'Delivery Note'
+					where p.docstatus = 1 and i.previous_detail_docname in %s
+				""", [bundled_item_row_names], as_dict=1)
+
+				bundled_item_delivered_by_sinv = frappe.db.sql("""
+					select i.previous_detail_docname, i.qty, p.is_return, p.reopen_order
+					from `tabPacked Item` i
+					inner join `tabSales Invoice` p on p.name = i.parent and i.parenttype = 'Sales Invoice'
+					where p.docstatus = 1 and p.update_stock = 1 and i.previous_detail_docname in %s
+				""", [bundled_item_row_names], as_dict=1)
+
+				for d in bundled_item_delivered_by_dn + bundled_item_delivered_by_sinv:
+					if not d.is_return or d.reopen_order:
+						out.bundled_item_delivered_qty_map.setdefault(d.previous_detail_docname, 0)
+						out.bundled_item_delivered_qty_map[d.previous_detail_docname] += d.qty
+
+			for parent_row in delivery_by_bundle_rows:
+				child_rows = [d for d in self.packed_items if d.parent_detail_docname == parent_row.name]
+				if not child_rows:
+					continue
+
+				accumulated_delivery_portion = 0
+				for child_row in child_rows:
+					child_delivered_qty = flt(out.bundled_item_delivered_qty_map.get(child_row.name))
+					child_delivery_portion = min(1, child_delivered_qty / child_row.qty) if child_row.qty else 1
+					accumulated_delivery_portion += child_delivery_portion
+
+				parent_delivered_qty = parent_row.qty * accumulated_delivery_portion / len(child_rows)
+				out.delivered_qty_map[parent_row.name] = parent_delivered_qty
 
 		return out
 
@@ -605,6 +650,10 @@ class SalesOrder(SellingController):
 			self.validate_completed_qty('delivered_qty', 'qty', self.items,
 				allowance_type='qty', from_doctype=from_doctype, row_names=row_names)
 
+	def validate_bundled_item_delivered_qty(self, from_doctype=None, row_names=None):
+		self.validate_completed_qty('delivered_qty', 'qty', self.packed_items,
+			allowance_type='qty', from_doctype=from_doctype, row_names=row_names)
+
 	def validate_packed_qty(self, from_doctype=None, row_names=None):
 		self.validate_completed_qty('packed_qty', 'qty', self.items,
 			allowance_type='qty', from_doctype=from_doctype, row_names=row_names)
@@ -754,7 +803,7 @@ class SalesOrder(SellingController):
 
 		for d in self.get("items"):
 			if not so_item_rows or d.name in so_item_rows:
-				if item_has_product_bundle(d.item_code):
+				if is_product_bundle(d.item_code):
 					for p in self.get("packed_items"):
 						if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 							add_to_item_warehouse_list(p.item_code, p.warehouse)
@@ -1077,6 +1126,9 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 	if not warehouse and frappe.flags.args:
 		warehouse = frappe.flags.args.warehouse
 
+	def update_bundled_item(source, target, source_parent, target_parent):
+		target.qty = max(0, source.qty - source.delivered_qty)
+
 	def set_missing_values(source, target):
 		target.ignore_pricing_rule = 1
 
@@ -1098,7 +1150,10 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 			},
 			"field_map": {
 				"remarks": "remarks"
-			}
+			},
+			"field_no_map": [
+				"group_same_items",
+			],
 		},
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
@@ -1113,6 +1168,13 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 
 	if not skip_item_mapping:
 		mapper["Sales Order Item"] = get_item_mapper_for_delivery(allow_duplicate=allow_duplicate)
+		mapper["Packed Item"] = {
+			"doctype": "Packed Item",
+			"field_map": {
+				"name": "previous_detail_docname",
+			},
+			"postprocess": update_bundled_item,
+		}
 
 	frappe.utils.call_hook_method("update_delivery_note_from_sales_order_mapper", mapper, "Delivery Note")
 
@@ -1465,6 +1527,7 @@ def make_sales_invoice(
 			},
 			"field_no_map": [
 				"has_stin",
+				"group_same_items",
 			],
 			"validation": {
 				"docstatus": ["=", 1]

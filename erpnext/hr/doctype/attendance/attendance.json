@@ -27,10 +27,16 @@
   "attendance_date",
   "shift",
   "working_hours",
+  "break_hours",
+  "available_hours",
   "late_entry",
+  "late_entry_hours",
   "previous_late_entry",
   "early_exit",
-  "previous_early_exit"
+  "early_exit_hours",
+  "previous_early_exit",
+  "overtime",
+  "overtime_hours"
  ],
  "fields": [
   {
@@ -241,6 +247,52 @@
    "label": "Early Exit Before Modification",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "depends_on": "late_entry_hours",
+   "fieldname": "late_entry_hours",
+   "fieldtype": "Float",
+   "label": "Late Entry Hours",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "depends_on": "early_exit_hours",
+   "fieldname": "early_exit_hours",
+   "fieldtype": "Float",
+   "label": "Early Exit Hours",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "overtime",
+   "fieldtype": "Check",
+   "label": "Overtime"
+  },
+  {
+   "depends_on": "overtime_hours",
+   "fieldname": "overtime_hours",
+   "fieldtype": "Float",
+   "label": "Overtime Hours",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "depends_on": "break_hours",
+   "fieldname": "break_hours",
+   "fieldtype": "Float",
+   "label": "Break Hours",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.available_hours != doc.working_hours",
+   "fieldname": "available_hours",
+   "fieldtype": "Float",
+   "label": "Available Hours",
+   "precision": "1",
+   "read_only": 1
   }
  ],
  "icon": "fa fa-ok",
@@ -248,7 +300,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-04-04 12:03:41.549431",
+ "modified": "2025-06-12 12:09:18.659986",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Attendance",

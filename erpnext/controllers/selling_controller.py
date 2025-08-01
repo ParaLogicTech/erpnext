@@ -4,10 +4,9 @@
 import frappe
 from frappe.utils import cint, flt, cstr
 from frappe import _
-from erpnext.stock.get_item_details import get_bin_details
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_target_warehouse_validation, item_has_product_bundle
-from erpnext.stock.doctype.batch.batch import get_batch_qty, auto_select_and_split_batches
+from erpnext.stock.get_item_details import get_target_warehouse_validation, get_last_purchase_rate
+from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from erpnext.controllers.transaction_controller import TransactionController
@@ -38,14 +37,6 @@ class SellingController(TransactionController):
 		if self.doctype in ("Sales Order", "Delivery Note", "Sales Invoice"):
 			self.set_onload("is_internal_customer",
 				frappe.get_cached_value("Customer", self.get("bill_to") or self.customer, "is_internal_customer"))
-
-			for item in self.get("items"):
-				item.update(get_bin_details(item.item_code, item.warehouse))
-				if item.meta.has_field('actual_batch_qty'):
-					if item.get('batch_no'):
-						item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
-					else:
-						item.actual_batch_qty = 0
 
 		if self.docstatus == 0 and self.meta.get_field("currency"):
 			self.calculate_taxes_and_totals()
@@ -210,6 +201,9 @@ class SellingController(TransactionController):
 					return True
 
 		for d in self.get("items"):
+			percent_precision = d.precision("discount_percentage")
+			rate_precision = d.precision("discount_amount")
+
 			if not d.item_code or not flt(d.get("discount_percentage")):
 				continue
 
@@ -218,11 +212,8 @@ class SellingController(TransactionController):
 				continue
 
 			max_discount = flt(discount_rule_values.get("max_discount"))
-			if flt(d.discount_percentage) <= max_discount:
+			if flt(d.discount_percentage, percent_precision) <= max_discount:
 				continue
-
-			percent_precision = d.precision("discount_percentage")
-			rate_precision = d.precision("discount_amount")
 
 			# skip if pricing rule discount applied
 			if not self.get("ignore_pricing_rule"):
@@ -314,26 +305,34 @@ class SellingController(TransactionController):
 			if not is_stock_item:
 				continue
 
-			# last_purchase_rate = flt(frappe.db.get_value("Item", d.item_code, "last_purchase_rate", cache=1))
-			# if last_purchase_rate > 0:
-			# 	last_purchase_rate_in_sales_uom = last_purchase_rate * (d.conversion_factor or 1)
-			# 	if flt(d.base_rate) < flt(last_purchase_rate_in_sales_uom):
-			# 		throw_message(d, last_purchase_rate_in_sales_uom)
+			valuation_rate = flt(get_valuation_rate(
+				d.item_code,
+				d.get("warehouse"),
+				self.doctype,
+				self.name,
+				raise_error_if_no_rate=False,
+				ignore_zero_rate=True,
+			))
 
-			valuation_rate = flt(get_valuation_rate(d.item_code, d.get("warehouse"), self.doctype, self.name,
-				raise_error_if_no_rate=False))
+			if valuation_rate <= 0:
+				last_purchase_rate = get_last_purchase_rate(d.item_code, d.get("warehouse"))
+				if last_purchase_rate > 0:
+					valuation_rate = last_purchase_rate
+
 			if valuation_rate > 0:
 				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
 				if flt(d.base_rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
 					throw_message(d, valuation_rate_in_sales_uom)
 
 	def get_item_list(self):
+		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+
 		il = []
 		for d in self.get("items"):
 			if d.qty is None:
 				frappe.throw(_("Row {0}: Qty is mandatory").format(d.idx))
 
-			if item_has_product_bundle(d.item_code):
+			if is_product_bundle(d.item_code):
 				for p in self.get("packed_items"):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
@@ -341,6 +340,7 @@ class SellingController(TransactionController):
 							'warehouse': p.warehouse or d.warehouse,
 							'item_code': p.item_code,
 							'qty': flt(p.qty),
+							'bundle_qty': flt(d.qty),
 							'uom': p.uom,
 							'batch_no': cstr(p.batch_no).strip(),
 							'packing_slip': p.get("packing_slip"),
@@ -350,7 +350,7 @@ class SellingController(TransactionController):
 							'company': self.company,
 							'voucher_type': self.doctype,
 							'allow_zero_valuation': d.allow_zero_valuation_rate,
-							'delivery_note': d.get('delivery_note')
+							'delivery_note': d.get('delivery_note'),
 						}))
 			else:
 				il.append(frappe._dict({
@@ -480,6 +480,7 @@ class SellingController(TransactionController):
 					or (cint(self.is_return) and self.docstatus==2)):
 						sl_entries.append(self.get_sl_entries(d, {
 							"actual_qty": -1*flt(d.qty),
+							"bundle_qty": -1*flt(d.bundle_qty),
 							"incoming_rate": return_rate,
 							"is_transfer": cint(bool(d.get("target_warehouse"))),
 						}))
@@ -501,6 +502,7 @@ class SellingController(TransactionController):
 
 					target_warehouse_sle = self.get_sl_entries(d, {
 						"actual_qty": flt(d.qty),
+						"bundle_qty": flt(d.bundle_qty),
 						"warehouse": d.target_warehouse,
 						"dependencies": target_warehouse_dependency,
 						"is_transfer": 1,
@@ -534,6 +536,7 @@ class SellingController(TransactionController):
 					or (cint(self.is_return) and self.docstatus==1)):
 						sl_entries.append(self.get_sl_entries(d, {
 							"actual_qty": -1*flt(d.qty),
+							"bundle_qty": -1*flt(d.bundle_qty),
 							"incoming_rate": return_rate,
 							"dependencies": return_dependency,
 							"is_transfer": cint(bool(d.get("target_warehouse"))),
@@ -701,7 +704,7 @@ class SellingController(TransactionController):
 					frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
 				))
 
-	def update_project_billing_and_sales(self, material_cost_of_sales=False):
+	def update_project_billing_and_sales(self, material_cost_of_sales=False, validate_insurance_excess=False):
 		projects = []
 		if self.get('project'):
 			projects.append(self.get('project'))
@@ -722,13 +725,27 @@ class SellingController(TransactionController):
 
 			doc.set_billing_and_delivery_status(update=True)
 			doc.set_sales_amount(update=True)
+			doc.set_pending_quotation_amount(update=True)
 
 			if material_cost_of_sales:
 				doc.set_material_cost_of_sales(update=True)
 
+			if validate_insurance_excess:
+				self.validate_insurance_excess(doc)
+
 			doc.set_gross_margin(update=True)
 			doc.set_status(update=True, from_doctype=self.doctype, action=self.get("_action"))
 			doc.notify_update()
+
+	def validate_insurance_excess(self, project):
+		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
+		if not insurance_excess_item:
+			return
+
+		if not any(d.item_code == insurance_excess_item for d in self.items):
+			return
+
+		project.validate_insurance_excess_billed_amount()
 
 	def validate_campaign(self):
 		validate_campaign_voucher_code(self)
@@ -802,6 +819,37 @@ class SellingController(TransactionController):
 				target_row.discount_percentage = 0
 				target_row.discount_amount = 0
 
+	def sort_items(self):
+		price_list_settings = frappe.get_cached_doc("Price List Settings", None)
+
+		sorting_field = None
+		if price_list_settings.sort_items_in_sales_transactions == "Order by Item Group":
+			sorting_field = "item_group"
+		elif price_list_settings.sort_items_in_sales_transactions == "Order by Brand":
+			sorting_field = "brand"
+
+		if not sorting_field:
+			return
+
+		order_list = price_list_settings.get(f"{sorting_field}_order", [])
+		order_map = {d.get(sorting_field): cint(d.idx) for d in order_list}
+
+		if not order_map:
+			return
+
+		def sorter(d):
+			if sorting_field == "item_group":
+				key = self.get_item_group_print_heading(d)
+			else:
+				key = d.get(sorting_field)
+
+			sorting_idx = order_map[key] if key in order_map else 99999
+			return sorting_idx
+
+		self.items = sorted(self.items, key=sorter)
+		for i, d in enumerate(self.items):
+			d.idx = i + 1
+
 
 @frappe.whitelist()
 def update_customer_name_from_master(doctype, name):
@@ -838,6 +886,26 @@ def update_customer_name_from_master(doctype, name):
 		doc.run_method("set_title")
 		if doc.get("title"):
 			doc.db_set("title", doc.get("title"))
+
+	doc.notify_update()
+	doc.save_version()
+
+
+@frappe.whitelist()
+def update_applies_to_details_from_master(doctype, name):
+	if doctype not in ("Quotation", "Sales Order", "Delivery Note", "Sales Invoice"):
+		frappe.throw(_("DocType {0} not allowed").format(doctype))
+
+	doc = frappe.get_doc(doctype, name)
+
+	if doc.docstatus != 1:
+		frappe.throw(_("{0} {1} is not submitted").format(doctype, name))
+
+	doc.check_permission("submit")
+	doc._doc_before_save = frappe.get_doc(doc.as_dict())
+
+	doc.set_missing_applies_to_details()
+	doc.db_update()
 
 	doc.notify_update()
 	doc.save_version()

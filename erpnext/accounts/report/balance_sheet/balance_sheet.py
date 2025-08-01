@@ -35,8 +35,8 @@ def execute(filters=None):
 	data.extend(equity or [])
 	if opening_balance and round(opening_balance,2) !=0:
 		unclosed ={
-			"account_name": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
-			"account": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
+			"account_name": _("Unclosed Fiscal Years Profit / Loss (Credit)"),
+			"account_display": _("Unclosed Fiscal Years Profit / Loss (Credit)"),
 			"warn_if_negative": True,
 			"currency": currency
 		}
@@ -66,8 +66,8 @@ def get_provisional_profit_loss(asset, liability, equity, period_list, company, 
 		total = total_row_total=0
 		currency = currency or frappe.get_cached_value('Company',  company,  "default_currency")
 		total_row = {
-			"account_name": "'" + _("Total (Credit)") + "'",
-			"account": "'" + _("Total (Credit)") + "'",
+			"account_name": _("Total (Credit)"),
+			"account_display": _("Total (Credit)"),
 			"warn_if_negative": True,
 			"currency": currency
 		}
@@ -95,8 +95,8 @@ def get_provisional_profit_loss(asset, liability, equity, period_list, company, 
 
 		if has_value:
 			provisional_profit_loss.update({
-				"account_name": "'" + _("Provisional Profit / Loss (Credit)") + "'",
-				"account": "'" + _("Provisional Profit / Loss (Credit)") + "'",
+				"account_name": _("Provisional Profit / Loss (Credit)"),
+				"account_display": _("Provisional Profit / Loss (Credit)"),
 				"warn_if_negative": True,
 				"currency": currency
 			})

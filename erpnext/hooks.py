@@ -80,6 +80,8 @@ fixtures = [
 				"Territory-targets",
 
 				"Campaign-voucher_code_required",
+				"Campaign-voucher_code_regex",
+				"Campaign-validate_duplicate_voucher_code",
 				"Campaign-claim_customer",
 				"Campaign-claim_customer_name",
 
@@ -92,6 +94,7 @@ fixtures = [
 				"Opportunity-applies_to_variant_of_name",
 				"Opportunity-applies_to_serial_no",
 				"Opportunity-applies_to_item",
+				"Opportunity-applies_to_item_brand",
 				"Opportunity-applies_to_item_name",
 
 				"Opportunity Item-item_code",
@@ -114,10 +117,9 @@ fixtures = [
 				"Appointment-applies_to_item_name",
 
 				"Appointment-sec_service_template",
-				"Appointment-service_template",
-				"Appointment-cb1_service_template",
-				"Appointment-service_template_name",
+				"Appointment-service_templates",
 
+				"Customer Feedback-project",
 				"Customer Feedback-applies_to_variant_of",
 				"Customer Feedback-applies_to_variant_of_name",
 				"Customer Feedback-applies_to_serial_no",
@@ -191,7 +193,7 @@ doc_events = {
 		"validate": "erpnext.regional.india.utils.update_grand_total_for_rcm"
 	},
 	"Payment Entry": {
-		"on_submit": ["erpnext.regional.create_transaction_log", "erpnext.accounts.doctype.payment_request.payment_request.update_payment_req_status"],
+		"on_submit": ["erpnext.regional.create_transaction_log"],
 		"on_trash": "erpnext.regional.check_deletion_permission"
 	},
 	'Address': {
@@ -252,6 +254,7 @@ scheduler_events = {
 		"erpnext.hr.doctype.leave_encashment.leave_encashment.generate_leave_encashment",
 		"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.auto_schedule_next_service_templates",
 		"erpnext.assets.doctype.asset.depreciation.post_depreciation_entries",
+		"erpnext.hr.doctype.employee_transfer.employee_transfer.process_future_and_temporary_transfers",
 	],
 	"monthly_long": [
 		"erpnext.accounts.deferred_revenue.convert_deferred_revenue_to_income",
@@ -267,6 +270,10 @@ get_translated_dict = {
 get_site_info = 'erpnext.utilities.get_site_info'
 
 payment_gateway_enabled = "erpnext.accounts.utils.create_payment_gateway_account"
+
+get_customer_feedback_contact_details = [
+	"erpnext.overrides.customer_feedback.customer_feedback_hooks.get_customer_feedback_contact_details_hook"
+]
 
 jinja = {
 	'methods': [

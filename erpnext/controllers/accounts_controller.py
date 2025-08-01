@@ -17,7 +17,7 @@ from erpnext.accounts.party import get_party_account_currency, validate_party_fr
 from erpnext.exceptions import InvalidCurrency
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 from erpnext.stock.get_item_details import get_default_warehouse
-from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
+from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list
 from erpnext.accounts.doctype.payment_terms_template.payment_terms_template import get_payment_term_due_date, \
 	get_payment_terms, get_due_date_from_template
 from collections import OrderedDict
@@ -1152,7 +1152,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 	parent.set_qty_as_per_stock_uom()
 	parent.calculate_taxes_and_totals()
 	if parent_doctype == "Sales Order":
-		make_packing_list(parent)
+		make_bundled_item_list(parent)
 		parent.set_gross_profit()
 	frappe.get_doc('Authorization Control').validate_approving_authority(parent.doctype,
 		parent.company, parent.base_grand_total)
@@ -1167,23 +1167,24 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 	if parent_doctype == 'Purchase Order':
 		parent.update_last_purchase_rate()
-		parent.update_previous_doc_status()
 		parent.update_requested_qty()
 		parent.update_ordered_qty()
 		parent.update_ordered_and_reserved_qty()
-		parent.set_receipt_status()
+		parent.set_receipt_status(update=True)
+		parent.set_billing_status(update=True)
 		if parent.get("is_subcontracted"):
 			parent.update_reserved_qty_for_subcontract()
 	else:
 		parent.update_reserved_qty()
-		parent.update_previous_doc_status()
 		parent.set_delivery_status(update=True)
+		parent.set_billing_status(update=True)
 
 	parent.reload()
 	validate_workflow_conditions(parent)
 
 	parent.update_blanket_order()
-	parent.set_status()
+	parent.set_status(update=True)
+	parent.update_previous_doc_status()
 
 
 @erpnext.allow_regional

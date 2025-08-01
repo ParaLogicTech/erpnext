@@ -13,6 +13,11 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 	setup() {
 		super.setup();
 
+		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "actual_qty");
+		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "projected_qty");
+		erpnext.utils.setup_in_transit_qty_formatter(this.frm.doc.doctype + " Item", "in_transit_qty");
+		erpnext.utils.setup_avg_monthly_sales_formatter(this.frm.doc.doctype + " Item", "avg_monthly_sales");
+
 		frappe.ui.form.on(this.frm.doctype + " Item", {
 			items_add: function(frm, cdt, cdn) {
 				var item = frappe.get_doc(cdt, cdn);

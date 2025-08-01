@@ -15,6 +15,7 @@ class ProjectSalesSummaryReport(object):
 
 	def run(self):
 		self.get_data()
+		self.process_data()
 		columns = self.get_columns()
 		return columns, self.data
 
@@ -37,6 +38,7 @@ class ProjectSalesSummaryReport(object):
 			order by p.project_date, p.creation
 		""", self.filters, as_dict=1)
 
+	def process_data(self):
 		for d in self.data:
 			# Model Name if not a variant
 			if not d.applies_to_variant_of_name:
@@ -46,8 +48,9 @@ class ProjectSalesSummaryReport(object):
 		select_fields = [
 			"p.name as project", "p.project_name", "p.project_type",
 			"p.project_date", "p.project_status",
-			"p.total_sales_amount", "p.material_sales_amount", "p.part_sales_amount", "p.lubricant_sales_amount",
-			"p.service_sales_amount", "p.labour_sales_amount", "p.sublet_sales_amount",
+			"p.total_sales_amount", "p.material_sales_amount", "p.service_sales_amount",
+			"p.part_sales_amount", "p.lubricant_sales_amount", "p.consumable_sales_amount", "p.paint_sales_amount",
+			"p.labour_sales_amount", "p.hourly_labour_sales_amount", "p.package_sales_amount", "p.sublet_sales_amount",
 			"p.customer", "p.customer_name", "p.company",
 			"p.service_advisor",
 			"p.applies_to_variant_of", "p.applies_to_variant_of_name",
@@ -84,6 +87,9 @@ class ProjectSalesSummaryReport(object):
 				conditions.append("status = 'To Close'")
 		else:
 			conditions.append("status not in ('Cancelled', 'Draft')")
+
+		if self.filters.get("project_status"):
+			conditions.append("p.project_status = %(project_status)s")
 
 		if self.filters.get("project"):
 			conditions.append("p.name = %(project)s")
@@ -136,15 +142,15 @@ class ProjectSalesSummaryReport(object):
 			{'label': _("Date"), 'fieldname': 'project_date', 'fieldtype': 'Date', 'width': 80},
 			{'label': _("Project Type"), 'fieldname': 'project_type', 'fieldtype': 'Link', 'options': 'Project Type', 'width': 100},
 			{'label': _("Status"), 'fieldname': 'project_status', 'fieldtype': 'Data', 'width': 100},
-			{"label": _("Voice of Customer"), "fieldname": "project_name", "fieldtype": "Data", "width": 150},
-			{'label': _("Customer"), 'fieldname': 'customer', 'fieldtype': 'Link', 'options': 'Customer', 'width': 100},
+			{"label": _("Customer Comments"), "fieldname": "project_name", "fieldtype": "Data", "width": 150},
+			{'label': _("Customer"), 'fieldname': 'customer', 'fieldtype': 'Link', 'options': 'Customer', 'width': 80},
 			{'label': _("Customer Name"), 'fieldname': 'customer_name', 'fieldtype': 'Data', 'width': 150},
 
+			{'label': _("Total Sales"), 'fieldname': 'total_sales_amount', 'fieldtype': 'Currency', 'width': 110,
+				'options': 'Company:company:default_currency'},
 			{'label': _("Materials Total"), 'fieldname': 'material_sales_amount', 'fieldtype': 'Currency', 'width': 110,
 				'options': 'Company:company:default_currency'},
 			{'label': _("Services Total"), 'fieldname': 'service_sales_amount', 'fieldtype': 'Currency', 'width': 110,
-				'options': 'Company:company:default_currency'},
-			{'label': _("Total Sales"), 'fieldname': 'total_sales_amount', 'fieldtype': 'Currency', 'width': 110,
 				'options': 'Company:company:default_currency'},
 
 			{'label': _("Item Code"), 'fieldname': 'applies_to_item', 'fieldtype': 'Link', 'options': 'Item', 'width': 120},

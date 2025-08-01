@@ -1,5 +1,6 @@
 import frappe
 from crm.crm.doctype.customer_feedback.customer_feedback import CustomerFeedback
+from erpnext.accounts.party import get_contact_details
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 
 
@@ -7,6 +8,18 @@ class CustomerFeedbackERP(CustomerFeedback):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.force_applies_to_fields = get_force_applies_to_fields(self.doctype)
+
+	def validate(self):
+		self.set_reference_from_project()
+		super().validate()
+
+	def set_reference_from_project(self):
+		if self.project and not self.reference_name:
+			self.reference_doctype = "Project"
+			self.reference_name = self.project
+
+		if self.reference_doctype == "Project" and self.reference_name and not self.project:
+			self.project = self.reference_name
 
 	def set_missing_values(self):
 		super().set_missing_values()
@@ -38,3 +51,18 @@ class CustomerFeedbackERP(CustomerFeedback):
 				})
 
 		return communication_doc
+
+
+def get_customer_feedback_contact_details_hook(args, out):
+	if not args.project:
+		return
+
+	party = frappe.get_cached_doc(args.feedback_from, args.party_name)
+	lead = party if party.doctype == "Lead" else None
+
+	if not args.contact_person and party.doctype == "Customer":
+		project_details = frappe.db.get_value("Project", args.project, ["customer", "contact_person"], as_dict=True)
+		if party.name == project_details.customer:
+			out.contact_person = project_details.contact_person
+
+	out.update(get_contact_details(out.contact_person, lead=lead, project=args.project))

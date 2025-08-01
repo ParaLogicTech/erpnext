@@ -88,7 +88,7 @@ class OpeningInvoiceCreationTool(Document):
 					frappe.throw(_("{0} {1} does not exist.").format(frappe.bold(row.party_type), frappe.bold(row.party)))
 
 			if not row.item_name:
-				row.item_name = _("Opening Invoice Item")
+				row.item_name = frappe.get_cached_value("Item", self.item_code, "item_name") or _("Opening Invoice Item")
 			if not row.posting_date:
 				row.posting_date = nowdate()
 			if not row.due_date:
@@ -160,8 +160,7 @@ class OpeningInvoiceCreationTool(Document):
 				"qty": qty,
 				"conversion_factor": 1.0,
 				"item_code": self.item_code,
-				"item_name": row.item_name or "Opening Invoice Item",
-				"description": row.item_name or "Opening Invoice Item",
+				"item_name": row.item_name or _("Opening Invoice Item"),
 				income_expense_account_field: row.temporary_opening_account,
 				"cost_center": cost_center
 			})
@@ -182,6 +181,7 @@ class OpeningInvoiceCreationTool(Document):
 			"is_opening": "Yes",
 			"is_return": 1 if row.outstanding_amount < 0 else 0,
 			"set_posting_time": 1,
+			"update_stock": 0,
 			"company": self.company,
 			"due_date": row.due_date,
 			"posting_date": row.posting_date,
@@ -210,6 +210,9 @@ class OpeningInvoiceCreationTool(Document):
 				args.transaction_type = row.transaction_type
 
 			args["is_pos"] = 0
+		elif self.invoice_type == "Purchase":
+			if row.bill_no:
+				args.bill_no = row.bill_no
 
 		return args
 

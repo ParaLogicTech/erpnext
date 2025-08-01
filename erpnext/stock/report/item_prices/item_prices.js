@@ -212,18 +212,7 @@ frappe.query_reports["Item Prices"] = {
 			callback: function(r) {
 				if (r.message) {
 					frappe.query_report.datatable.datamanager.data[rowIndex] = r.message[1][0];
-
-					frappe.query_report.datatable.datamanager.rowCount = 0;
-					frappe.query_report.datatable.datamanager.columns = [];
-					frappe.query_report.datatable.datamanager.rows = [];
-
-					frappe.query_report.datatable.datamanager.prepareColumns();
-					frappe.query_report.datatable.datamanager.prepareRows();
-					frappe.query_report.datatable.datamanager.prepareTreeRows();
-					frappe.query_report.datatable.datamanager.prepareRowView();
-					frappe.query_report.datatable.datamanager.prepareNumericColumns();
-
-					frappe.query_report.datatable.bodyRenderer.render();
+					erpnext.utils.query_report_local_refresh();
 				}
 			}
 		});

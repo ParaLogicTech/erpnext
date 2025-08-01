@@ -9,7 +9,7 @@ frappe.ui.form.on(cur_frm.doctype, {
 		});
 	},
 	onload: function(frm){
-		if(frm.doc.__islocal){
+		if (frm.doc.__islocal && !frm.doc.amended_from) {
 			if(frm.doctype == "Employee Promotion"){
 				frm.doc.promotion_details = [];
 			}else if (frm.doctype == "Employee Transfer") {
@@ -35,7 +35,7 @@ frappe.ui.form.on(cur_frm.doctype, {
 				return;
 			}
 			frappe.call({
-				method: 'erpnext.hr.utils.get_employee_fields_label',
+				method: 'erpnext.hr.utils.get_employee_transfer_fields',
 				callback: function(r) {
 					if(r.message){
 						show_dialog(frm, table, r.message);

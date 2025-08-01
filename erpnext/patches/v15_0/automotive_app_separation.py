@@ -17,10 +17,11 @@ def execute():
 		remove_automotive_docs()
 
 	app_order = get_installed_app_order()
-	erpnext_index = app_order.index("erpnext")
-	app_order.remove("automotive")
-	app_order.insert(erpnext_index + 1, "automotive")
-	update_installed_apps_order(app_order)
+	if "automotive" in app_order:
+		erpnext_index = app_order.index("erpnext")
+		app_order.remove("automotive")
+		app_order.insert(erpnext_index + 1, "automotive")
+		update_installed_apps_order(app_order)
 
 	frappe.db.sql("update `tabRole` set restrict_to_domain = null where restrict_to_domain = 'Vehicles'")
 	frappe.db.sql("delete from `tabHas Domain` where domain = 'Vehicles'")
@@ -63,7 +64,6 @@ def remove_automotive_docs():
 		'Vehicle Booking Payment Detail',
 		'Vehicle Invoice Document Template',
 		'Vehicle Pricing Price List',
-		'Vehicle Checklist Item',
 		'Vehicle Number Plate Receipt Detail',
 		'Vehicle Withholding Tax Engine Capacity',
 		'Project Workshop',

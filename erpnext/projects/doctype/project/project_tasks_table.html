@@ -21,6 +21,7 @@
 				<a href="{{ frappe.utils.get_url_to_form("Task", d.task) }}" target="_blank">
 					{{ d.subject or "" }}
 				</a>
+				{% if d.remarks %}<div><b>Remarks:</b> {{ d.remarks }}</div>{% endif %}
 			</td>
 			<td>
 				{% if d.assigned_to %}

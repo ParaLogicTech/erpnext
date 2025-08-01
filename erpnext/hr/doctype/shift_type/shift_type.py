@@ -64,8 +64,15 @@ class ShiftType(Document):
 
 		for (employee, shift_start), single_shift_logs in grouped_logs.items():
 			attendance_status, working_hours, late_entry, early_exit = self.get_attendance(single_shift_logs)
-			mark_attendance_and_link_log(single_shift_logs, attendance_status, shift_start.date(),
-				working_hours, late_entry, early_exit, self.name)
+			mark_attendance_and_link_log(
+				single_shift_logs,
+				attendance_status,
+				shift_start.date(),
+				working_hours=working_hours,
+				late_entry=late_entry,
+				early_exit=early_exit,
+				shift=self.name,
+			)
 
 			completed_tasks += 1
 			frappe.publish_progress(completed_tasks * 100 / total_tasks,

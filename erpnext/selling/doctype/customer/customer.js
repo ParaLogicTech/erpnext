@@ -15,7 +15,8 @@ frappe.ui.form.on("Customer", {
 			'Opportunity': () => frappe.model.open_mapped_doc({
 				method: 'erpnext.selling.doctype.customer.customer.make_opportunity',
 				frm: cur_frm
-			})
+			}),
+			'Pricing Rule': () => erpnext.utils.make_pricing_rule(frm.doc.doctype, frm.doc.name)
 		}
 
 		frm.events.setup_queries(frm);
@@ -44,25 +45,29 @@ frappe.ui.form.on("Customer", {
 					party_type: 'Customer',
 					party: frm.doc.name,
 					from_date: frappe.defaults.get_user_default("year_start_date"),
-					to_date: frappe.defaults.get_user_default("year_end_date")
+					to_date: frappe.defaults.get_user_default("year_end_date"),
 				});
 			});
 
 			frm.add_custom_button(__('Accounts Receivable'), function() {
-				frappe.set_route('query-report', 'Accounts Receivable', {customer:frm.doc.name});
+				frappe.set_route('query-report', 'Accounts Receivable', {customer: frm.doc.name});
 			});
 
 			frm.add_custom_button(__('Ledger Summary'), function() {
 				frappe.set_route('query-report', 'Customer Ledger Summary', {
 					party: frm.doc.name,
 					from_date: frappe.defaults.get_user_default("year_start_date"),
-					to_date: frappe.defaults.get_user_default("year_end_date")
+					to_date: frappe.defaults.get_user_default("year_end_date"),
 				});
 			});
 
-			frm.add_custom_button(__('Pricing Rule'), function () {
-				erpnext.utils.make_pricing_rule(frm.doc.doctype, frm.doc.name);
-			}, __('Create'));
+			frm.add_custom_button(__('Sales Details'), function() {
+				frappe.set_route('query-report', 'Sales Details', {
+					customer: frm.doc.name,
+					from_date: frappe.defaults.get_user_default("year_start_date"),
+					to_date: frappe.defaults.get_user_default("year_end_date"),
+				});
+			});
 
 			// indicator
 			erpnext.utils.set_party_dashboard_indicators(frm);

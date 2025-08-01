@@ -427,6 +427,10 @@ class Item(Document):
 			update_item_last_purchase_rate(new_name)
 			self.recalculate_bin_qty(new_name)
 
+		product_bundle = frappe.db.get_value("Product Bundle", {"new_item_code": new_name})
+		if product_bundle:
+			frappe.rename_doc("Product Bundle", product_bundle, new_name, force=True)
+
 		for dt in ("Sales Taxes and Charges", "Purchase Taxes and Charges"):
 			for d in frappe.db.sql("""select name, item_wise_tax_detail from `tab{0}`
 					where ifnull(item_wise_tax_detail, '') != ''""".format(dt), as_dict=1):
@@ -760,6 +764,9 @@ def get_timeline_data(doctype, name):
 
 
 def validate_end_of_life(item_code, end_of_life=None, disabled=None, verbose=1):
+	if frappe.flags.ignore_item_disabled_check:
+		return
+
 	if (not end_of_life) or (disabled is None):
 		end_of_life, disabled = frappe.get_cached_value("Item", item_code, ["end_of_life", "disabled"])
 

@@ -17,6 +17,7 @@
   "is_group",
   "column_break_4",
   "company",
+  "branch",
   "account",
   "disabled",
   "address_and_contact",
@@ -64,6 +65,7 @@
    "fieldname": "is_group",
    "fieldtype": "Check",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Is Group"
   },
   {
@@ -84,6 +86,7 @@
    "fieldname": "disabled",
    "fieldtype": "Check",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Disabled"
   },
   {
@@ -230,6 +233,7 @@
    "fieldname": "warehouse_type",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Warehouse Type",
    "options": "Warehouse Type"
   },
@@ -261,13 +265,21 @@
    "fieldtype": "Table MultiSelect",
    "label": "Restrict to Roles",
    "options": "Warehouse Role"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Branch",
+   "options": "Branch"
   }
  ],
  "icon": "fa fa-building",
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-04-04 11:20:11.253844",
+ "modified": "2025-07-18 14:28:15.142427",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Warehouse",

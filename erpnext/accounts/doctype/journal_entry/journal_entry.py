@@ -499,50 +499,7 @@ class JournalEntry(AccountsController):
 				frappe.throw(_("Row {0}: Exchange Rate is mandatory").format(d.idx))
 
 	def create_remarks(self):
-		r = []
-
-		if self.user_remark:
-			r.append(_("Note: {0}").format(self.user_remark))
-
-		# Reference numbers string
-		refs = set([d.cheque_no for d in self.accounts if d.cheque_no])
-		self.reference_numbers = ", ".join(refs)
-
-		# Reference number and dates string
-		refs = set([(d.cheque_no, d.cheque_date) for d in self.accounts if d.cheque_no])
-		ref_strs = []
-		for ref in refs:
-			if ref[0] and ref[1]:
-				ref_strs.append(_("{0} dated {1}").format(ref[0], formatdate(ref[1])))
-			else:
-				ref_strs.append(ref[0])
-		if ref_strs:
-			r.append(_("Reference #: {0}").format(", ".join(ref_strs)))
-
-		# Reference documents
-		for d in self.get('accounts'):
-			if d.reference_type=="Sales Invoice" and d.credit:
-				r.append(_("{0} against Sales Invoice {1}").format(fmt_money(flt(d.credit), currency = self.company_currency), \
-					d.reference_name))
-
-			if d.reference_type=="Sales Order" and d.credit:
-				r.append(_("{0} against Sales Order {1}").format(fmt_money(flt(d.credit), currency = self.company_currency), \
-					d.reference_name))
-
-			if d.reference_type == "Purchase Invoice" and d.debit:
-				r.append(_("{0} against Purchase Invoice {1}").format(fmt_money(flt(d.debit), currency = self.company_currency), \
-					d.reference_name))
-
-				bill_no = frappe.db.sql("""select bill_no, bill_date from `tabPurchase Invoice` where name=%s""", d.reference_name)
-				if bill_no and bill_no[0][0] and bill_no[0][0].lower().strip() not in ['na', 'not applicable', 'none']:
-					r.append(_('{0} against Bill {1} dated {2}').format(fmt_money(flt(d.debit), currency=self.company_currency), \
-						bill_no[0][0], bill_no[0][1] and formatdate(bill_no[0][1])))
-
-			if d.reference_type == "Purchase Order" and d.debit:
-				r.append(_("{0} against Purchase Order {1}").format(fmt_money(flt(d.debit), currency = self.company_currency), \
-					d.reference_name))
-
-		self.remark = "\n".join(r) if r else "" # User Remarks is not mandatory
+		self.remark = self.user_remark
 
 	def set_original_reference(self, unset=False):
 		if self.docstatus == 0:
