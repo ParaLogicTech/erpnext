@@ -8,6 +8,7 @@ from frappe.utils import getdate, flt, cint, formatdate, cstr
 from frappe.desk.query_report import group_report_data
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.utils import get_currency_precision
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 
 class ReceivablePayableReport(object):
@@ -137,6 +138,9 @@ class ReceivablePayableReport(object):
 			select_fields = "sum(gle.debit_in_account_currency) as debit, sum(gle.credit_in_account_currency) as credit"
 		else:
 			select_fields = "sum(gle.debit) as debit, sum(gle.credit) as credit"
+		
+		if "branch" in get_accounting_dimensions():
+			select_fields += ", gle.branch"
 
 		self.gl_entries = frappe.db.sql(f"""
 			select
@@ -145,7 +149,7 @@ class ReceivablePayableReport(object):
 				gle.voucher_type, gle.voucher_no,
 				gle.against_voucher_type, gle.against_voucher,
 				gle.account_currency, gle.remarks,
-				gle.cost_center, gle.project, gle.branch,
+				gle.cost_center, gle.project,
 				{select_fields}
 			from `tabGL Entry` gle
 			where gle.party_type = %s
@@ -491,7 +495,7 @@ class ReceivablePayableReport(object):
 			return True
 	
 	def is_in_branch(self, gle):
-		if self.filters.party_type != "Employee":
+		if ((self.filters.party_type != "Employee") and ("branch" in get_accounting_dimensions())):
 			if self.filters.get("branch"):
 				return gle.branch and gle.branch in self.filters.branch
 		return True
