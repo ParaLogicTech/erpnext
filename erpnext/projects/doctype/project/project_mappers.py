@@ -219,28 +219,41 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
 		insurance_excess_item_name = frappe.get_cached_value("Item", insurance_excess_item, "item_name") or _("Insurance Excess")
 
-		if flt(project.insurance_excess_amount):
-			row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
-			row.item_code = insurance_excess_item
-			row.qty = 1
-			row.price_list_rate = 0
-			row.rate = flt(project.insurance_excess_amount)
-			if depreciation_type == "After Depreciation Amount":
-				row.rate *= -1
+		total_excess = flt(project.insurance_excess_amount) + flt(project.additional_insurance_excess_amount)
+		positive_excess, negative_excess = project.get_insurance_excess_billed()
+		billed_excess = negative_excess if depreciation_type == "After Depreciation Amount" else positive_excess
+		balance_excess = flt(total_excess - billed_excess, project.precision("insurance_excess_amount"))
 
-		if flt(project.insurance_excess_percentage):
-			sales_data = project.get_project_sales_data(get_sales_invoice=False)
+		if billed_excess:
+			if balance_excess > 0:
+				row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+				row.item_code = insurance_excess_item
+				row.qty = 1
+				row.price_list_rate = 0
+				row.rate = balance_excess
+				if depreciation_type == "After Depreciation Amount":
+					row.rate *= -1
+		else:
+			if flt(project.insurance_excess_amount):
+				row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+				row.item_code = insurance_excess_item
+				row.qty = 1
+				row.price_list_rate = 0
+				row.rate = flt(project.insurance_excess_amount)
+				if depreciation_type == "After Depreciation Amount":
+					row.rate *= -1
 
-			row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
-			row.item_code = insurance_excess_item
-			row.item_name = insurance_excess_item_name + " ({0})".format(
-				project.get_formatted("insurance_excess_percentage", precision=1)
-			)
-			row.qty = 1
-			row.price_list_rate = 0
-			row.rate = flt(sales_data.totals.net_total) * flt(project.insurance_excess_percentage) / 100
-			if depreciation_type == "After Depreciation Amount":
-				row.rate *= -1
+			if flt(project.additional_insurance_excess_amount):
+				row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+				row.item_code = insurance_excess_item
+				row.item_name = insurance_excess_item_name + " ({0})".format(
+					project.get_formatted("insurance_excess_percentage", precision=1)
+				)
+				row.qty = 1
+				row.price_list_rate = 0
+				row.rate = flt(project.additional_insurance_excess_amount)
+				if depreciation_type == "After Depreciation Amount":
+					row.rate *= -1
 
 
 def postprocess_bill_multiple_projects(target_doc):
@@ -301,7 +314,7 @@ def make_delivery_note(project_name):
 
 
 @frappe.whitelist()
-def make_sales_order(project_name, items_type=None):
+def make_sales_order(project_name, items_type=None, without_items=False, skip_postprocess=False):
 	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
 
 	project = frappe.get_doc("Project", project_name)
@@ -326,33 +339,35 @@ def make_sales_order(project_name, items_type=None):
 		if target_doc.meta.has_field(k):
 			target_doc.set(k, v)
 
-	# Get Service Template Items
-	for d in project.service_templates:
-		if not d.get('sales_order') and d.service_template:
-			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-				check_duplicate=False, service_template_detail=d, items_type=items_type)
+	if not without_items:
+		# Get Service Template Items
+		for d in project.service_templates:
+			if not d.get('sales_order') and d.service_template:
+				target_doc = add_service_template_items(target_doc, d.service_template,
+					applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
+					check_duplicate=False, service_template_detail=d, items_type=items_type)
+
+		# Remove already ordered items
+		service_template_ordered_set = get_service_template_ordered_set(project, group_by_item_type=True)
+		to_remove = []
+		for d in target_doc.get('items'):
+			is_stock_item = 0
+			if d.item_code:
+				is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, 'is_stock_item'))
+
+			if d.service_template_detail and (d.service_template_detail, is_stock_item) in service_template_ordered_set:
+				to_remove.append(d)
+
+		for d in to_remove:
+			target_doc.remove(d)
+		for i, d in enumerate(target_doc.items):
+			d.idx = i + 1
 
 	set_sales_person_in_target_doc(target_doc, project)
 
-	# Remove already ordered items
-	service_template_ordered_set = get_service_template_ordered_set(project, group_by_item_type=True)
-	to_remove = []
-	for d in target_doc.get('items'):
-		is_stock_item = 0
-		if d.item_code:
-			is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, 'is_stock_item'))
-
-		if d.service_template_detail and (d.service_template_detail, is_stock_item) in service_template_ordered_set:
-			to_remove.append(d)
-
-	for d in to_remove:
-		target_doc.remove(d)
-	for i, d in enumerate(target_doc.items):
-		d.idx = i + 1
-
 	# Missing Values and Forced Values
-	target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
+	if not skip_postprocess:
+		target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
 
 	project.validate_for_transaction(target_doc)
 
