@@ -83,6 +83,7 @@ class ReceivablePayableReport(object):
 				self.is_receivable_or_payable(gle)
 				and self.is_in_cost_center(gle)
 				and self.is_in_project(gle)
+				and self.is_in_branch(gle)
 				and self.is_in_sales_person(gle)
 				and self.is_in_item_filtered_invoice(gle)
 			):
@@ -193,11 +194,6 @@ class ReceivablePayableReport(object):
 		if party:
 			conditions.append("gle.party = %s")
 			values.append(party)
-		
-		if self.filters.party_type != "Employee":
-			if self.filters.get("branch"):
-				conditions.append("gle.branch = %s")
-				values.append(self.filters.get("branch"))
 
 		if self.filters.party_type == "Customer":
 			account_type = "Receivable"
@@ -493,6 +489,12 @@ class ReceivablePayableReport(object):
 			return gle.cost_center and gle.cost_center in self.filters.cost_center
 		else:
 			return True
+	
+	def is_in_branch(self, gle):
+		if self.filters.party_type != "Employee":
+			if self.filters.get("branch"):
+				return gle.branch and gle.branch in self.filters.branch
+		return True
 
 	def is_in_project(self, gle):
 		project = gle.project
