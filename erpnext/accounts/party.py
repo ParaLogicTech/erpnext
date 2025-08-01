@@ -7,7 +7,7 @@ from frappe import _, scrub
 from frappe.core.doctype.user_permission.user_permission import get_permitted_documents
 from frappe.model.utils import get_fetch_values
 from frappe.utils import getdate, add_years, get_timestamp, nowdate, flt, cstr, cint
-from frappe.contacts.doctype.address.address import get_default_address
+from frappe.contacts.doctype.address.address import get_default_address, render_address
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from erpnext.exceptions import PartyFrozen, PartyDisabled, InvalidAccountCurrency
 from erpnext.accounts.utils import get_fiscal_year
@@ -236,7 +236,7 @@ def set_address_details(
 		"company": company,
 		"branch": branch,
 	})
-	party_details["company_address_display"] = get_address_display(party_details["company_address"])
+	party_details["company_address_display"] = render_address(party_details["company_address"], check_permissions=False)
 
 	if doctype and frappe.get_meta(doctype).has_field('company_address'):
 		party_details.update(get_fetch_values(doctype, 'company_address', party_details.company_address))
