@@ -10,7 +10,7 @@ from six import string_types, iteritems
 
 
 class InvalidWarehouseCompany(frappe.ValidationError): pass
-
+class InvalidWarehouseBranch(frappe.ValidationError): pass
 
 def get_stock_value_from_bin(warehouse=None, item_code=None):
 	values = {}
@@ -336,8 +336,15 @@ def get_valid_serial_nos(sr_nos, qty=0, item_code=''):
 def validate_warehouse_company(warehouse, company):
 	warehouse_company = frappe.db.get_value("Warehouse", warehouse, "company", cache=1)
 	if warehouse_company and warehouse_company != company:
-		frappe.throw(_("Warehouse {0} does not belong to company {1}").format(warehouse, company),
+		frappe.throw(_("Warehouse {0} does not belong to Company {1}").format(warehouse, company),
 			InvalidWarehouseCompany)
+
+
+def validate_warehouse_branch(warehouse, branch):
+	warehouse_branch = frappe.db.get_value("Warehouse", warehouse, "branch", cache=1)
+	if warehouse_branch and warehouse_branch != branch:
+		frappe.throw(_("Warehouse {0} does not belong to Branch {1}").format(warehouse, branch),
+			InvalidWarehouseBranch)
 
 
 def is_group_warehouse(warehouse):

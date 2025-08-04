@@ -51,6 +51,12 @@
 	</h6>
 {% } %}
 
+{% if (filters.branch || group.branch) { %}
+	<h6 class="text-center">
+		{%= __("Branch: ")%}{%= filters.branch || group.branch %}
+	</h6>
+{% } %}
+
 <h5 class="text-center">
 	{%= __(filters.ageing_based_on) %}
 	{%= __("Upto") %}

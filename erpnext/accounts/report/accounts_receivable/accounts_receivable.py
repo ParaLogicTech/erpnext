@@ -8,6 +8,7 @@ from frappe.utils import getdate, flt, cint, formatdate, cstr
 from frappe.desk.query_report import group_report_data
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.utils import get_currency_precision
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 
 class ReceivablePayableReport(object):
@@ -15,6 +16,7 @@ class ReceivablePayableReport(object):
 		self.filters = frappe._dict(filters or {})
 		self.currency_precision = get_currency_precision() or 2
 		self.has_cost_center = False
+		self.has_branch = False
 		self.has_project = False
 
 		self.advance_against_voucher_types = get_advance_against_voucher_types()
@@ -83,6 +85,7 @@ class ReceivablePayableReport(object):
 				self.is_receivable_or_payable(gle)
 				and self.is_in_cost_center(gle)
 				and self.is_in_project(gle)
+				and self.is_in_branch(gle)
 				and self.is_in_sales_person(gle)
 				and self.is_in_item_filtered_invoice(gle)
 			):
@@ -136,6 +139,9 @@ class ReceivablePayableReport(object):
 			select_fields = "sum(gle.debit_in_account_currency) as debit, sum(gle.credit_in_account_currency) as credit"
 		else:
 			select_fields = "sum(gle.debit) as debit, sum(gle.credit) as credit"
+
+		if "branch" in get_accounting_dimensions():
+			select_fields += ", gle.branch"
 
 		self.gl_entries = frappe.db.sql(f"""
 			select
@@ -489,6 +495,12 @@ class ReceivablePayableReport(object):
 		else:
 			return True
 
+	def is_in_branch(self, gle):
+		if self.filters.get("branch"):
+			return gle.branch and gle.branch in self.filters.branch
+		else:
+			return True
+
 	def is_in_project(self, gle):
 		project = gle.project
 		if not project:
@@ -590,9 +602,12 @@ class ReceivablePayableReport(object):
 		row["account"] = gle.account
 		row["cost_center"] = gle.cost_center
 		row["project"] = gle.project or self.projects_map.get((gle.voucher_type, gle.voucher_no))
+		row["branch"] = gle.branch
 
 		if row.cost_center:
 			self.has_cost_center = True
+		if row.branch:
+			self.has_branch = True
 		if row.project:
 			self.has_project = True
 
@@ -700,7 +715,7 @@ class ReceivablePayableReport(object):
 				group_object.totals['party'] = group_object.group_value
 				group_object.totals['party_name'] = group_object.rows[0].get('party_name')
 			else:
-				group_object.totals['party'] = "'{0}: {1}'".format(group_object.group_label, group_object.group_value)
+				group_object.totals['party'] = "'{0}: {1}'".format(_(group_object.group_label), group_object.group_value)
 
 			if group_object.group_field == 'party':
 				group_object.totals['currency'] = group_object.rows[0].get("currency")
@@ -896,7 +911,7 @@ class ReceivablePayableReport(object):
 				"fieldname": "voucher_no",
 				"width": 140,
 				"options": "voucher_type",
-			}
+			},
 		]
 
 		if self.filters.get("party_type") != "Employee":
@@ -989,6 +1004,15 @@ class ReceivablePayableReport(object):
 				"options": "Cost Center",
 				"width": 80,
 				"hide_if_filtered": 1
+			})
+
+		if self.has_branch:
+			columns.append({
+				"label": _("Branch"),
+				"fieldtype": "Link",
+				"options": "Branch",
+				"fieldname": "branch",
+				"width": 80
 			})
 
 		if self.has_project:
