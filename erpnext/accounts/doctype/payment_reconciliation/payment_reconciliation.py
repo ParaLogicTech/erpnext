@@ -153,7 +153,8 @@ class PaymentReconciliation(Document):
 			'unadjusted_amount' : flt(row.amount),
 			'allocated_amount' : flt(row.allocated_amount),
 			'difference_amount': row.difference_amount,
-			'difference_account': row.difference_account
+			'difference_account': row.difference_account,
+			'currency': row.currency,
 		})
 
 	@frappe.whitelist()
