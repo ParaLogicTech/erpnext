@@ -1094,7 +1094,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Financial Statements",
-   "link_count": 7,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -1116,16 +1116,6 @@
    "label": "Monthly Trial Balance",
    "link_count": 0,
    "link_to": "Monthly Trial Balance",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Dimension-Wise Trial Balance",
-   "link_count": 0,
-   "link_to": "Dimension-Wise Trial Balance",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -1175,7 +1165,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-07-01 09:11:22.083172",
+ "modified": "2025-07-07 12:20:33.789870",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting",

@@ -2,7 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe import _, throw
+from frappe import _
 from frappe.desk.form.assign_to import clear, close_all_assignments
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import (
@@ -15,6 +15,7 @@ from erpnext.controllers.checklist_editor import (
 	get_default_checklist_items,
 	set_missing_checklist,
 	validate_mandatory_checklist,
+	set_updated_checklist,
 )
 
 import json
@@ -45,7 +46,7 @@ class Task(NestedSet):
 		return '{0}: {1}'.format(_(self.status), self.subject)
 
 	def onload(self):
-		self.set_onload("action_conditions", get_task_action_conditions(self))
+		self.set_onload("action_conditions", self.get_action_conditions())
 
 		timelogs = self.get_timelogs()
 		self.set_onload("timelogs", timelogs)
@@ -95,7 +96,7 @@ class Task(NestedSet):
 
 	def on_trash(self):
 		if check_if_child_exists(self.name):
-			throw(_("Child Task exists for this Task. You can not delete this Task."))
+			frappe.throw(_("Child Task exists for this Task. You can not delete this Task."))
 
 		self.update_nsm_model()
 
@@ -328,6 +329,9 @@ class Task(NestedSet):
 		if update:
 			self.db_set('is_overdue', self.is_overdue, update_modified=update_modified)
 
+	def get_action_conditions(self):
+		return get_task_action_conditions(self)
+
 	def check_clocking_permission(self):
 		self.check_permission("read")
 
@@ -381,6 +385,9 @@ class Task(NestedSet):
 				self.task_checklist,
 				_("The following checklist items are mandatory and must be checked before you can complete this task.")
 			)
+
+	def set_updated_checklist(self, task_checklist):
+		set_updated_checklist(self, "task_checklist", task_checklist)
 
 
 @frappe.whitelist()
@@ -566,7 +573,6 @@ def create_service_template_tasks(project):
 		return {"message": message}
 
 
-
 def determine_time_from_service_item(project_doc, template_doc, service_template_detail=None):
 	from erpnext.projects.doctype.service_template.service_template import get_service_template_items
 	from erpnext.stock.doctype.item.item import convert_item_uom_for
@@ -734,6 +740,7 @@ def start_task(task):
 		))
 
 	check_assigned_to_availability(task_doc.assigned_to, throw=True)
+	check_employee_attendance(task_doc.assigned_to, throw=True)
 
 	add_timesheet_log(task_doc.name, task_doc.assigned_to, project=task_doc.project)
 
@@ -756,14 +763,17 @@ def pause_task(task):
 			frappe.bold(task_doc.status)
 		))
 
-	stop_timesheet_log(task_doc.name, task_doc.assigned_to, completed=0)
-
-	task_doc.status = "On Hold"
-	task_doc.save(ignore_permissions=True)
+	_pause_task(task_doc, ignore_permissions=True)
 
 	frappe.msgprint(_("{0} paused").format(
 		get_link(task_doc)
 	), alert=True, indicator="green")
+
+
+def _pause_task(task_doc, ignore_permissions=False):
+	stop_timesheet_log(task_doc.name, task_doc.assigned_to, completed=0)
+	task_doc.status = "On Hold"
+	task_doc.save(ignore_permissions=ignore_permissions)
 
 
 @frappe.whitelist()
@@ -778,6 +788,7 @@ def resume_task(task):
 		))
 
 	check_assigned_to_availability(task_doc.assigned_to, throw=True)
+	check_employee_attendance(task_doc.assigned_to, throw=True)
 
 	add_timesheet_log(task_doc.name, task_doc.assigned_to, project=task_doc.project)
 
@@ -886,6 +897,38 @@ def split_task(task, expected_time=None):
 	frappe.msgprint(message, indicator="green")
 
 	return {"message": message}
+
+
+@frappe.whitelist()
+def update_task_remarks(task, remarks=None):
+	task_doc = frappe.get_doc("Task", task)
+	task_doc.check_clocking_permission()
+
+	task_doc.remarks = remarks
+	task_doc.save(ignore_permissions=True)
+
+	frappe.msgprint(_("{0} remarks updated").format(
+		get_link(task_doc)
+	), alert=True, indicator="green")
+
+
+@frappe.whitelist()
+def update_task_checklist(task, task_checklist=None):
+	if isinstance(task_checklist, str):
+		task_checklist = json.loads(task_checklist)
+
+	task_doc = frappe.get_doc("Task", task)
+	task_doc.check_clocking_permission()
+
+	task_doc.set_missing_checklist()
+	task_doc.set_updated_checklist(task_checklist)
+	task_doc.save(ignore_permissions=True)
+
+	frappe.db.commit()
+
+	frappe.msgprint(_("{0} checklist updated").format(
+		get_link(task_doc)
+	), alert=True, indicator="green")
 
 
 def add_timesheet_log(task, assigned_to, project=None):
@@ -1047,6 +1090,38 @@ def is_assigned_employee(assigned_to):
 		return False
 	else:
 		return frappe.local_cache("is_assigned_employee", assigned_to, generator)
+
+
+def check_employee_attendance(employee, date=None, throw=False):
+	projects_settings = frappe.get_cached_doc("Projects Settings")
+	if not projects_settings.require_attendance_for_task_start:
+		return
+
+	date = getdate(date)
+
+	attendance = get_employee_attendance(employee)
+	if not attendance and throw:
+		frappe.throw(_("{0} ({1}) does not have an attendance for {2}. Cannot start task without attendance").format(
+			frappe.bold(frappe.get_cached_value("Employee", employee, "employee_name")),
+			employee,
+			frappe.format(date),
+		))
+
+	return bool(attendance)
+
+
+def get_employee_attendance(employee, date=None):
+	if not employee:
+		return
+
+	date = getdate(date)
+
+	return frappe.db.get_value("Attendance", {
+		"employee": employee,
+		"attendance_date": date,
+		"status": ["in", ["Present", "Half Day"]],
+		"docstatus": 1
+	})
 
 
 def get_task_status_color(status):

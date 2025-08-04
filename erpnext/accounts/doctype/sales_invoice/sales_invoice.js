@@ -524,7 +524,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 				party: this.frm.doc.customer,
 				party_type: "Customer",
 				bill_to: this.frm.doc.bill_to,
-				account: this.frm.doc.debit_to,
 				price_list: this.frm.doc.selling_price_list,
 				pos_profile: pos_profile
 			}, function() {

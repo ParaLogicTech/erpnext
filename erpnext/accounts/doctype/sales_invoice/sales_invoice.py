@@ -1339,6 +1339,9 @@ class SalesInvoice(SellingController):
 
 		for tax in self.get("taxes"):
 			if flt(tax.base_advance_tax):
+				reference_no = set([adv.reference_name for adv in self.advances if adv.advance_tax])
+				reference_no = ", ".join(reference_no)
+
 				account_currency = get_account_currency(tax.account_head)
 				gl_entries.append(
 					self.get_gl_dict({
@@ -1350,7 +1353,8 @@ class SalesInvoice(SellingController):
 							if account_currency == self.company_currency else
 							flt(tax.advance_tax, tax.precision("advance_tax"))
 						),
-						"cost_center": tax.cost_center or self.cost_center
+						"cost_center": tax.cost_center or self.cost_center,
+						"reference_no": reference_no,
 					}, account_currency, item=tax)
 				)
 
@@ -1369,7 +1373,8 @@ class SalesInvoice(SellingController):
 						"against_voucher": self.return_against if cint(self.is_return) and self.return_against else self.name,
 						"against_voucher_type": self.doctype,
 						"cost_center": self.cost_center,
-						"project": self.project
+						"project": self.project,
+						"reference_no": reference_no,
 					}, self.party_account_currency, item=self)
 				)
 

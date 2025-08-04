@@ -94,6 +94,7 @@ fixtures = [
 				"Opportunity-applies_to_variant_of_name",
 				"Opportunity-applies_to_serial_no",
 				"Opportunity-applies_to_item",
+				"Opportunity-applies_to_item_brand",
 				"Opportunity-applies_to_item_name",
 
 				"Opportunity Item-item_code",

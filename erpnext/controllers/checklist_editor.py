@@ -47,7 +47,7 @@ def set_missing_checklist(doc, parentfield, default_checklist_dt, default_checkl
 			})
 
 
-def set_updated_checklist(doc, parentfield, default_checklist_dt, default_checklist_dn=None):
+def set_updated_checklist_from_default_checklist(doc, parentfield, default_checklist_dt, default_checklist_dn=None):
 	def add_row(row, is_custom=0):
 		if isinstance(row, str):
 			row = frappe._dict({'checklist_item': d})
@@ -91,6 +91,32 @@ def set_updated_checklist(doc, parentfield, default_checklist_dt, default_checkl
 		d.idx = i + 1
 		if d.checklist_item in checked_items:
 			d.checklist_item_checked = 1
+
+
+def set_updated_checklist(doc, parentfield, updated_checklist):
+	updated_checklist = updated_checklist or []
+
+	existing_items = {d.checklist_item for d in doc.get(parentfield)}
+	received_items_map = {d.get("checklist_item"): cint(d.get("checklist_item_checked")) for d in updated_checklist if d.get("checklist_item")}
+
+	# update check/unchecked based on received data
+	for d in doc.get(parentfield):
+		if d.checklist_item in received_items_map:
+			d.checklist_item_checked = received_items_map.get(d.checklist_item)
+
+	# add custom items for new checklist items
+	for d in updated_checklist:
+		if not d.get("checklist_item") or d.get("checklist_item") in existing_items:
+			continue
+
+		doc.append(parentfield, {
+			'checklist_item': d.get("checklist_item"),
+			'is_check_mandatory': 0,
+			'checklist_item_checked': cint(d.get("checklist_item_checked")),
+			'is_custom_checklist_item': 1,
+		})
+
+		existing_items.add(d.get("checklist_item"))
 
 
 def validate_mandatory_checklist(checklist_items, error_message=None):

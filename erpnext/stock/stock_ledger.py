@@ -950,6 +950,7 @@ def get_valuation_rate(
 	batch_wise_valuation=None,
 	posting_date=None,
 	posting_time=None,
+	ignore_zero_rate=False,
 ):
 	# Get valuation rate from last sle for the same item and warehouse
 	if not company:
@@ -979,7 +980,7 @@ def get_valuation_rate(
 			from `tabStock Ledger Entry`
 			where item_code = %s
 				and warehouse = %s
-				and valuation_rate {'>' if batch_no and batch_wise_valuation else '>='} 0
+				and valuation_rate {'>' if (batch_no and batch_wise_valuation) or ignore_zero_rate else '>='} 0
 				and is_processed = 1
 				and not (voucher_no = %s and voucher_type = %s)
 				{posting_date_condition}
