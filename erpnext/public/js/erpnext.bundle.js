@@ -23,6 +23,9 @@ import "./utils/item_selector.js"
 import "./utils/serial_batch_selector.js"
 import "./utils/barcode_scanner.js"
 
+//UI Components
+import "./projects/checklist_editor.js"
+
 // Quick Entries
 import "./utils/item_quick_entry.js"
 import "./templates/item_quick_entry.html"

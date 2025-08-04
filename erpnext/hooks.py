@@ -94,6 +94,7 @@ fixtures = [
 				"Opportunity-applies_to_variant_of_name",
 				"Opportunity-applies_to_serial_no",
 				"Opportunity-applies_to_item",
+				"Opportunity-applies_to_item_brand",
 				"Opportunity-applies_to_item_name",
 
 				"Opportunity Item-item_code",
@@ -192,7 +193,7 @@ doc_events = {
 		"validate": "erpnext.regional.india.utils.update_grand_total_for_rcm"
 	},
 	"Payment Entry": {
-		"on_submit": ["erpnext.regional.create_transaction_log", "erpnext.accounts.doctype.payment_request.payment_request.update_payment_req_status"],
+		"on_submit": ["erpnext.regional.create_transaction_log"],
 		"on_trash": "erpnext.regional.check_deletion_permission"
 	},
 	'Address': {

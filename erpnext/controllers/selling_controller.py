@@ -5,7 +5,7 @@ import frappe
 from frappe.utils import cint, flt, cstr
 from frappe import _
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_target_warehouse_validation
+from erpnext.stock.get_item_details import get_target_warehouse_validation, get_last_purchase_rate
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
@@ -299,14 +299,20 @@ class SellingController(TransactionController):
 			if not is_stock_item:
 				continue
 
-			# last_purchase_rate = flt(frappe.db.get_value("Item", d.item_code, "last_purchase_rate", cache=1))
-			# if last_purchase_rate > 0:
-			# 	last_purchase_rate_in_sales_uom = last_purchase_rate * (d.conversion_factor or 1)
-			# 	if flt(d.base_rate) < flt(last_purchase_rate_in_sales_uom):
-			# 		throw_message(d, last_purchase_rate_in_sales_uom)
+			valuation_rate = flt(get_valuation_rate(
+				d.item_code,
+				d.get("warehouse"),
+				self.doctype,
+				self.name,
+				raise_error_if_no_rate=False,
+				ignore_zero_rate=True,
+			))
 
-			valuation_rate = flt(get_valuation_rate(d.item_code, d.get("warehouse"), self.doctype, self.name,
-				raise_error_if_no_rate=False))
+			if valuation_rate <= 0:
+				last_purchase_rate = get_last_purchase_rate(d.item_code, d.get("warehouse"))
+				if last_purchase_rate > 0:
+					valuation_rate = last_purchase_rate
+
 			if valuation_rate > 0:
 				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
 				if flt(d.base_rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):

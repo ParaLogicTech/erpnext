@@ -8,7 +8,9 @@
  "field_order": [
   "task_type",
   "weight",
-  "description"
+  "description",
+  "task_checklist_sec_break",
+  "task_checklist"
  ],
  "fields": [
   {
@@ -28,10 +30,21 @@
    "label": "Task Type",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "task_checklist_sec_break",
+   "fieldtype": "Section Break",
+   "label": "Task Checklist"
+  },
+  {
+   "fieldname": "task_checklist",
+   "fieldtype": "Table",
+   "label": "Task Checklist Items",
+   "options": "Checklist Item"
   }
  ],
  "links": [],
- "modified": "2024-12-20 01:26:08.689022",
+ "modified": "2025-06-30 13:47:31.221711",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task Type",
