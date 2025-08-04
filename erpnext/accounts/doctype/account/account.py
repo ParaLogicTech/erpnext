@@ -407,6 +407,7 @@ def sync_update_account_number_in_child(
 	for d in frappe.db.get_values("Account", filters=filters, fieldname=["company", "name"], as_dict=True):
 		update_account_number(d["name"], account_name, account_number, from_descendant=True)
 
+
 def _ensure_idle_system():
 	# Don't allow renaming if accounting entries are actively being updated, there are two main reasons:
 	# 1. Correctness: It's next to impossible to ensure that renamed account is not being used *right now*.
