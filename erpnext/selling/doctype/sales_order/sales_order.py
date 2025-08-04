@@ -916,6 +916,7 @@ class SalesOrder(SellingController):
 
 	def add_service_template_rows(self):
 		project_name = self.get("project")
+
 		if not project_name:
 			return
 
@@ -941,6 +942,7 @@ class SalesOrder(SellingController):
 				"service_template": service_template,
 				"has_sales_order": 1,
 			})
+
 			service_template_rows.append((item.name, new_service_template_row))
 			updated = True
 
