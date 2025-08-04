@@ -1,6 +1,15 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
+const ap_group_by_options = [
+	"",
+	{label: __("Group by ") + __("Supplier"), value: "Group by Supplier"},
+	{label: __("Group by ") + __("Supplier Group"), value: "Group by Supplier Group"},
+	{label: __("Group by ") + __("Cost Center"), value: "Group by Cost Center"},
+	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
+	{label: __("Group by ") + __("Project"), value: "Group by Project"},
+]
+
 frappe.query_reports["Accounts Payable"] = {
 	"filters": [
 		{
@@ -86,29 +95,29 @@ frappe.query_reports["Accounts Payable"] = {
 			},
 		},
 		{
-			"fieldname": "project",
-			"label": __("Project"),
-			"fieldtype": "Link",
-			"options": "Project",
-		},
-		{
 			"fieldname": "branch",
 			"label": __("Branch"),
 			"fieldtype": "Link",
 			"options": "Branch",
 		},
 		{
+			"fieldname": "project",
+			"label": __("Project"),
+			"fieldtype": "Link",
+			"options": "Project",
+		},
+		{
 			"fieldname":"group_by",
 			"label": __("Group By Level 1"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Supplier\nGroup by Supplier Group\nGroup by Cost Center\nGroup by RO\nGroup by Branch",
+			"options": ap_group_by_options,
 			"default": ""
 		},
 		{
 			"fieldname":"group_by_2",
 			"label": __("Group By Level 2"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Supplier\nGroup by Supplier Group\nGroup by Cost Center\nGroup by RO\nGroup by Branch",
+			"options": ap_group_by_options,
 			"default": ""
 		},
 		{

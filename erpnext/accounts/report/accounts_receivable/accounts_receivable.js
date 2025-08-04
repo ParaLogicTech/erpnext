@@ -1,6 +1,17 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
+const ar_group_by_options = [
+	"",
+	{label: __("Group by ") + __("Customer"), value: "Group by Customer"},
+	{label: __("Group by ") + __("Customer Group"), value: "Group by Customer Group"},
+	{label: __("Group by ") + __("Territory"), value: "Group by Territory"},
+	{label: __("Group by ") + __("Sales Person"), value: "Group by Sales Person"},
+	{label: __("Group by ") + __("Cost Center"), value: "Group by Cost Center"},
+	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
+	{label: __("Group by ") + __("Project"), value: "Group by Project"},
+]
+
 frappe.query_reports["Accounts Receivable"] = {
 	"filters": [
 		{
@@ -122,16 +133,16 @@ frappe.query_reports["Accounts Receivable"] = {
 			},
 		},
 		{
-			"fieldname": "project",
-			"label": __("Project"),
-			"fieldtype": "Link",
-			"options": "Project",
-		},
-		{
 			"fieldname": "branch",
 			"label": __("Branch"),
 			"fieldtype": "Link",
 			"options": "Branch",
+		},
+		{
+			"fieldname": "project",
+			"label": __("Project"),
+			"fieldtype": "Link",
+			"options": "Project",
 		},
 		{
 			"fieldname":"from_date",
@@ -159,14 +170,14 @@ frappe.query_reports["Accounts Receivable"] = {
 			"fieldname":"group_by",
 			"label": __("Group By Level 1"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Customer\nGroup by Customer Group\nGroup by Territory\nGroup by Branch\nGroup by Sales Person\nGroup by Cost Center\nGroup by RO",
+			"options": ar_group_by_options,
 			"default": ""
 		},
 		{
 			"fieldname":"group_by_2",
 			"label": __("Group By Level 2"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Customer\nGroup by Customer Group\nGroup by Territory\nGroup by Branch\nGroup by Sales Person\nGroup by Cost Center\nGroup by RO",
+			"options": ar_group_by_options,
 			"default": ""
 		},
 		{
