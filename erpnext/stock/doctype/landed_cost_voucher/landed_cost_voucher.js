@@ -12,6 +12,7 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		};
 
 		this.setup_queries();
+		this.frm._last_doc_type_selected = {};
 	}
 
 	validate() {
@@ -149,6 +150,45 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 			</table>`;
 
 		set_field_options("landed_cost_help", help_content);
+	}
+
+	receipt_document_type(frm, cdt, cdn) {
+		let row = locals[cdt][cdn];
+		if (!this.frm._last_doc_type_selected) {
+			this.frm._last_doc_type_selected = {};
+		}
+		if (this.frm._last_doc_type_selected[cdn] === row.receipt_document_type) {
+			return;
+		}
+		this.frm._last_doc_type_selected[cdn] = row.receipt_document_type;
+
+		frappe.model.set_value(cdt, cdn, 'receipt_document', '');
+	}
+
+	receipt_document(frm, cdt, cdn) {
+		let row = locals[cdt][cdn];
+
+		if (!row.receipt_document || !row.receipt_document_type) {
+			frappe.model.set_value(cdt, cdn, 'supplier', '');
+			frappe.model.set_value(cdt, cdn, 'bill_no', '');
+			frappe.model.set_value(cdt, cdn, 'grand_total', '');
+			return;
+		}
+
+		frappe.call({
+			method: "erpnext.stock.doctype.landed_cost_voucher.landed_cost_voucher.get_receipt_details",
+			args: {
+				doctype: row.receipt_document_type,
+				docname: row.receipt_document
+			},
+			callback: function(r) {
+				if (r.message) {
+					frappe.model.set_value(cdt, cdn, 'supplier', r.message.supplier);
+					frappe.model.set_value(cdt, cdn, 'bill_no', r.message.bill_no);
+					frappe.model.set_value(cdt, cdn, 'grand_total', r.message.base_grand_total);
+				}
+			}
+		});
 	}
 
 	allocate_advances_automatically() {
@@ -618,56 +658,5 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		});
 	}
 };
-
-frappe.ui.form.on('Landed Cost Purchase Receipt', {
-	setup: function(frm) {
-		frm._last_doc_type_selected = {};
-	},
-	// reset the fields when the document type changes
-	receipt_document_type: function(frm, cdt, cdn) {
-		let row = locals[cdt][cdn];
-		if (!frm._last_doc_type_selected) {
-			frm._last_doc_type_selected = {};
-		}
-		if (frm._last_doc_type_selected[cdn] === row.receipt_document_type) {
-			return;
-		}
-		frm._last_doc_type_selected[cdn] = row.receipt_document_type;
-		// Reset fields
-		frappe.model.set_value(cdt, cdn, 'receipt_document', '');
-		frappe.model.set_value(cdt, cdn, 'supplier', '');
-		frappe.model.set_value(cdt, cdn, 'bill_no', '');
-		frappe.model.set_value(cdt, cdn, 'grand_total', 0);
-		frm.refresh_field('purchase_receipts');
-	},
-
-	receipt_document: function(frm, cdt, cdn) {
-		let row = locals[cdt][cdn];
-		if (row.receipt_document_type && row.receipt_document) {
-			frappe.call({
-				method: "erpnext.stock.doctype.landed_cost_voucher.landed_cost_voucher.get_receipt_details",
-				args: {
-					doctype_name: row.receipt_document_type,
-					docname: row.receipt_document
-				},
-				callback: function(r) {
-					if (r.message) {
-						frappe.model.set_value(cdt, cdn, 'supplier', r.message.supplier);
-						frappe.model.set_value(cdt, cdn, 'bill_no', r.message.bill_no);
-						frappe.model.set_value(cdt, cdn, 'grand_total', r.message.base_grand_total);
-						frm.refresh_field('purchase_receipts');
-					}
-				},
-				error: function(err) {
-					frappe.msgprint({
-						title: __('Error Fetching Document'),
-						message: __('Unable to fetch the document details. Please check if it exists or try again later.'),
-						indicator: 'red'
-					});
-				}
-			});
-		}
-	},
-});
 
 cur_frm.script_manager.make(erpnext.stock.LandedCostVoucher);

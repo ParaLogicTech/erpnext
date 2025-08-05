@@ -96,8 +96,7 @@ class LandedCostVoucher(AccountsController):
 	def set_purchase_receipt_details(self):
 		for row in self.get('purchase_receipts'):
 			if row.receipt_document_type and row.receipt_document:
-				details = frappe.db.get_value(row.receipt_document_type, row.receipt_document,
-					['posting_date', 'supplier', 'bill_no', 'base_grand_total'], as_dict=1)
+				details = get_receipt_details(row.receipt_document_type, row.receipt_document)
 
 				if details:
 					row.posting_date = details.posting_date
@@ -214,11 +213,6 @@ class LandedCostVoucher(AccountsController):
 			if details.company != self.company:
 				frappe.throw(_("Row #{0}: {1} {2} does not belong to Company {3}")
 					.format(d.idx, d.receipt_document_type, d.receipt_document, self.company))
-
-			if self.party_type == "Supplier" and self.party:
-				if d.supplier != self.party:
-					frappe.throw(_("Row #{0}: {1} {2} does not belong to the Supplier {3}")
-						.format(d.idx, d.receipt_document_type, d.receipt_document, self.party))
 
 			receipt_documents.append(d.receipt_document)
 
@@ -572,8 +566,8 @@ def get_party_details(party_type, party, company):
 	return out
 
 @frappe.whitelist()
-def get_receipt_details(doctype_name, docname):
-	doc = frappe.db.get_value(doctype_name, docname, ["supplier", "bill_no", "base_grand_total"], as_dict=True)
+def get_receipt_details(doctype, docname):
+	doc = frappe.db.get_value(doctype, docname, ["supplier", "bill_no", "base_grand_total", "posting_date"], as_dict=True)
 	if not doc:
 		frappe.throw(_("Document not found: {0}").format(docname), frappe.DoesNotExistError)
 	return doc
