@@ -3,261 +3,168 @@
 import json
 
 import frappe
-# import frappe
 from frappe.model.document import Document
 
 
 class BankDepositTool(Document):
-	def get_undeposited_entries_for_type(self, voucher_type, account, from_date=None, to_date=None, min_amount=None,
-										 max_amount=None, limit=None):
-		conditions = [
-			"gle.voucher_type = %(voucher_type)s",
-			"gle.account = %(account)s",
-			"gle.debit > 0"
-		]
+	@frappe.whitelist()
+	def get_undeposited_entries(self):
+		self.get_undeposited_payment_entries()
+		self.get_undeposited_invoice_entries()
+		self.get_undeposited_journal_entries()
 
-		if from_date:
-			conditions.append("gle.posting_date >= %(from_date)s")
-		if to_date:
-			conditions.append("gle.posting_date <= %(to_date)s")
-
-		where_clause = " AND ".join(conditions)
-
-		params = {
-			"voucher_type": voucher_type,
-			"account": account,
-			"from_date": from_date,
-			"to_date": to_date
-		}
-
-		final = []
-
-		if voucher_type == "Journal Entry":
-			# Handle standalone Journal Entries specially
-			sql = f"""
+	def get_undeposited_payment_entries(self):
+		entries = frappe.db.sql("""
 				SELECT
-					SUM(gle.debit) AS received_amount,
-					(
-						SELECT SUM(credit)
-						FROM `tabGL Entry` AS credit_gl
-						WHERE
-							credit_gl.account = %(account)s
-							AND credit_gl.against_voucher_type = 'Journal Entry'
-							AND credit_gl.against_voucher IS NOT NULL
-					) AS deposited_amount
-				FROM `tabGL Entry` gle
-				WHERE {where_clause}
-				  AND gle.against_voucher IS NULL
-			"""
+					'Payment Entry' AS voucher_type,
+					name AS voucher_no,
+					paid_amount AS amount,
+					reference_no AS cheque_number,
+					party
+				from `tabPayment Entry`
+				WHERE
+					payment_type = 'Receive'
+					AND paid_to = %(account)s
+					AND docstatus = 1
+					AND (deposit_date IS NULL OR deposit_date = '')
+			""", {"account": self.undeposited_account}, as_dict=True)
 
-			result = frappe.db.sql(sql, params, as_dict=True)
-			if result:
-				row = result[0]
-				deposited = row.deposited_amount or 0
-				received = row.received_amount or 0
-				undeposited = received - deposited
+		self.add_undeposited_entries(entries)
 
-				if undeposited > 0:
-					if (min_amount and undeposited < min_amount) or (max_amount and undeposited > max_amount):
-						pass
-					else:
-						final.append({
-							"voucher_type": "Journal Entry",
-							"voucher_no": "",
-							"amount": undeposited
-						})
-		else:
-			# Default logic for all other voucher types
-			sql = f"""
+	def get_undeposited_invoice_entries(self):
+		pos_sales_invoices = frappe.db.sql("""
 				SELECT
-					gle.voucher_type,
-					gle.voucher_no,
-					SUM(gle.debit) AS received_amount,
-					(
-						SELECT SUM(credit)
-						FROM `tabGL Entry` AS credit_gl
-						WHERE
-							credit_gl.account = %(account)s
-							AND credit_gl.against_voucher_type = gle.voucher_type
-							AND credit_gl.against_voucher = gle.voucher_no
-					) AS deposited_amount
-				FROM `tabGL Entry` gle
-				WHERE {where_clause}
-				GROUP BY gle.voucher_type, gle.voucher_no
-			"""
+					'Sales Invoice' AS voucher_type,
+					si.name AS voucher_no,
+					sip.name AS voucher_detail_dn,
+					sip.reference_no AS cheque_number,
+					sip.reference_date AS cheque_date,
+					sip.amount AS amount,
+					si.posting_date,
+					si.customer AS party,
+					'Customer' AS party_type,
+					account.account_currency AS currency
+				FROM `tabSales Invoice Payment` sip
+				INNER JOIN `tabSales Invoice` si ON sip.parent = si.name
+				INNER JOIN `tabAccount` account ON account.name = sip.account
+				WHERE
+					si.docstatus = 1
+					AND sip.account = %(account)s
+					AND (si.deposit_date IS NULL or si.deposit_date = '')
+					AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+				ORDER BY si.posting_date, si.creation
+			""", {
+			"account": self.undeposited_account,
+			"from_date": self.from_date,
+			"to_date": self.to_date
+		}, as_dict=True)
 
-			if limit and limit > 0:
-				sql += f"\nLIMIT {int(limit)}"
+		self.add_undeposited_entries(pos_sales_invoices)
 
-			results = frappe.db.sql(sql, params, as_dict=True)
+	def get_undeposited_journal_entries(self):
+		entries = frappe.db.sql("""
+			SELECT
+				'Journal Entry' AS voucher_type,
+				gle.voucher_no AS voucher_no,
+				gle.name AS voucher_detail_dn,
+				je.cheque_no AS cheque_number,
+				je.cheque_date AS cheque_date,
+				gle.debit AS amount,
+				gle.posting_date,
+				gle.party,
+				account.account_currency AS currency
+			FROM `tabGL Entry` gle
+			INNER JOIN `tabJournal Entry` je ON je.name = gle.voucher_no
+			INNER JOIN `tabAccount` account ON account.name = gle.account
+			WHERE
+				gle.account = %(account)s
+				AND gle.debit > 0
+				AND gle.voucher_type = 'Journal Entry'
+				AND gle.docstatus = 1
+				AND je.docstatus = 1
+				AND je.deposit_date IS NULL
+				AND gle.posting_date BETWEEN %(from_date)s AND %(to_date)s
+			ORDER BY gle.posting_date, gle.creation
+		""", {
+			"account": self.undeposited_account,
+			"from_date": self.from_date,
+			"to_date": self.to_date
+		}, as_dict=True)
 
-			for row in results:
-				deposited = row.deposited_amount or 0
-				received = row.received_amount or 0
-				undeposited = received - deposited
+		self.add_undeposited_entries(entries)
 
-				if undeposited <= 0:
-					continue
-
-				if min_amount and undeposited < min_amount:
-					continue
-				if max_amount and undeposited > max_amount:
-					continue
-
-				final.append({
-					"voucher_type": row.voucher_type,
-					"voucher_no": row.voucher_no,
-					"amount": undeposited
-				})
-
-		return final
-
-@frappe.whitelist()
-def populate_undeposited_entries(doc_name, undeposited_account):
-	doc = frappe.get_doc("Bank Deposit Tool", doc_name)
-	doc.set("undeposited_entries", [])
-
-	voucher_types = [
-		"Payment Entry",
-		"Sales Invoice",
-		"Journal Entry",
-		"POS Closing Entry"
-	]
-
-	for voucher_type in voucher_types:
-		entries = doc.get_undeposited_entries_for_type(
-			voucher_type,
-			undeposited_account,
-			doc.from_date,
-			doc.to_date,
-			doc.minimum_pending_deposit_entry_amount,
-			doc.maximum_pending_deposit_entry_amount,
-			doc.limit
-		)
-
+	def add_undeposited_entries(self, entries):
 		for row in entries:
-			doc.append("undeposited_entries", {
-				"voucher_type": row['voucher_type'],
-				"voucher_no": row['voucher_no'],
-				"amount": row['amount']
+			self.append("undeposited_entries", {
+				"voucher_type": row["voucher_type"],
+				"voucher_no": row["voucher_no"],
+				"amount": row["amount"],
+				"cheque_number": row.get("cheque_number"),
+				"cheque_date": row.get("cheque_date"),
+				"posting_date": row.get("posting_date"),
+				"party": row.get("party")
 			})
 
-	return doc
 
-@frappe.whitelist()
-def verify_account_currencies(source_account, destination_account):
-	source_account = frappe.get_doc("Account", source_account)
-	destination_account = frappe.get_doc("Account", destination_account)
+	@frappe.whitelist()
+	def reconcile_undeposited_entries(self, selected_entries):
 
-	return source_account.account_currency == destination_account.account_currency
+		if isinstance(selected_entries, str):
+			selected_entries = json.loads(selected_entries)
 
+		if not self.undeposited_account or not self.deposit_to_account:
+			frappe.throw("Please specify both Undeposited Account and Deposit To Account.")
 
-@frappe.whitelist()
-def reconcile_undeposited_entries(source_account, deposit_account, selected_entries, deduction_entries=None,
-								  company=None, remark=None, deposit_date = frappe.utils.nowdate()):
-	print(deduction_entries)
-	if isinstance(selected_entries, str):
-		selected_entries = json.loads(selected_entries)
+		if not selected_entries:
+			frappe.throw("No valid undeposited entries selected to create deposit.")
 
-	if deduction_entries:
-		if isinstance(deduction_entries, str):
-			deduction_entries = json.loads(deduction_entries)
-	else:
-		deduction_entries = []
+		je = frappe.new_doc("Journal Entry")
+		je.voucher_type = ""
+		je.posting_date = self.deposit_date
+		je.company = self.company
+		je.user_remark = self.remarks
 
-	if not source_account or not deposit_account:
-		frappe.throw("Please specify both Undeposited Account and Deposit To Account.")
+		amount_deposited_to_bank = 0
 
-	if not selected_entries:
-		frappe.throw("No valid undeposited entries selected to create deposit.")
+		for entry in selected_entries:
+			amount = entry['amount']
+			# Credit line - reduce undeposited account
+			je.append("accounts", {
+				"account": self.undeposited_account,
+				"credit_in_account_currency": amount,
+				"reference_type": entry['voucher_type'],
+				"reference_name": entry['voucher_no'],
+			})
+			amount_deposited_to_bank += amount
 
-	je = frappe.new_doc("Journal Entry")
-	je.voucher_type = "Journal Entry"
-	je.posting_date = deposit_date
-	je.company = company if company else None
-	je.user_remark = remark if remark else None
+		def get_user_remark_from_entry_type(type):
+			if type == 'Transaction Fee':
+				return 'Transaction Fee of the Deposit'
+			elif type == 'Bank Fee':
+				return 'Bank Charges for the Deposit'
+			else:
+				return 'Other Miscellaneous Charges for the Deposit'
 
-	amount_deposited_to_bank = 0
+		# fee amount entries
+		for deduction in self.adjustment_entries:
+			deduction_amount = deduction.get('adjustment_amount') or 0
+			# decrease deposit to account since it is an adjustment
+			je.append("accounts", {
+				"account": deduction.get('account'),
+				"debit_in_account_currency": deduction_amount,
+				"user_remark": get_user_remark_from_entry_type(deduction.get('entry_type')),
+			})
+			# reduce the amount from the bank deposit
+			amount_deposited_to_bank -= deduction_amount
 
-	for entry in selected_entries:
-		amount = entry['amount']
-		# Credit line - reduce undeposited account
+		# Debit line - increase deposit_to account
+		# bank deposit
 		je.append("accounts", {
-			"account": source_account,
-			"credit_in_account_currency": amount,
-			"reference_type": entry['voucher_type'],
-			"reference_name": entry['voucher_no'],
+			"account": self.deposit_to_account,
+			"debit_in_account_currency": amount_deposited_to_bank
 		})
-		amount_deposited_to_bank += amount
 
-	def get_user_remark_from_entry_type(type):
-		if type == 'Transaction Fee':
-			return 'Transaction Fee of the Deposit'
-		elif type == 'Bank Fee':
-			return 'Bank Charges for the Deposit'
-		else:
-			return 'Other Miscellaneous Charges for the Deposit'
+		je.insert()
+		je.submit()
 
-	# fee amount entries
-	for deduction in deduction_entries:
-		deduction_amount = deduction.get('adjustment_amount') or 0
-		# decrease deposit to account since it is an adjustment
-		je.append("accounts", {
-			"account": deduction.get('account'),
-			"debit_in_account_currency": deduction_amount,
-			"user_remark": get_user_remark_from_entry_type(deduction.get('entry_type')),
-		})
-		# reduce the amount from the bank deposit
-		amount_deposited_to_bank -= deduction_amount
-
-	# Debit line - increase deposit_to account
-	# bank deposit
-	je.append("accounts", {
-		"account": deposit_account,
-		"debit_in_account_currency": amount_deposited_to_bank,
-		"user_remark": "Deposited Amount to Bank"
-	})
-
-	je.insert()
-	je.submit()
-
-	return je.name
-
-@frappe.whitelist()
-def get_undeposited_entry_details(doctype, docname):
-	doc = frappe.get_doc(doctype, docname)
-
-	party = None
-	cheque_number = None
-	party_type = None
-
-	if doctype == "Payment Entry":
-		party = doc.party
-		cheque_number = doc.reference_no
-		party_type = doc.party_type
-
-	elif doctype == "Sales Invoice":
-		party_type = 'Customer'
-		party = doc.customer
-		cheque_number = doc.cheque_no if hasattr(doc, "cheque_no") else None
-
-	elif doctype == "Journal Entry":
-		for entry in doc.accounts:
-			if entry.reference_type == "Bank Deposit Entry Management":
-				continue
-			if entry.party:
-				party = entry.party
-				break
-			if entry.party_type:
-				party = entry.party_type
-				break
-
-	elif doctype == "POS Closing Entry":
-		party = doc.user if hasattr(doc, "user") else None
-		cheque_number = None
-
-	return {
-		"party": party,
-		"cheque_number": cheque_number,
-		"party_type": party_type
-	}
+		return je.name

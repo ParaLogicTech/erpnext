@@ -140,7 +140,9 @@
   {
    "fieldname": "deposited_amount",
    "fieldtype": "Currency",
-   "label": "Amount Deposited"
+   "force_currency_symbol": 1,
+   "label": "Amount Deposited",
+   "non_negative": 1
   },
   {
    "fieldname": "deposit_adjustments_section",
@@ -188,7 +190,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-04 05:58:23.525598",
+ "modified": "2025-08-05 09:49:57.527822",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",

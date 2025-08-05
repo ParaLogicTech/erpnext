@@ -37,40 +37,15 @@ frappe.ui.form.on("Bank Deposit Tool", {
 	},
 
 	fetch_undeposited_entries: function(frm) {
-		frappe.call({
-				method: "erpnext.accounts.doctype.bank_deposit_tool.bank_deposit_tool.populate_undeposited_entries",
-				args: {
-					doc_name: frm.doc,
-					undeposited_account: frm.doc.undeposited_account
-				},
-				callback: function(r) {
-					if (r.message) {
-						frm.doc.undeposited_entries = r.message.undeposited_entries;
-						(frm.doc.undeposited_entries || []).forEach(row => {
-							frm.events.fetch_undeposited_details(frm, row.voucher_type, row.voucher_no, row); // Use doctype and name
-						});
-						frm.refresh_field('undeposited_entries');
-					}
-				}
-			});
+		frm.call({
+			doc: frm.doc,
+			method: 'get_undeposited_entries',
+			callback: function(r, rt) {
+				frm.refresh_field('undeposited_entries');
+			}
+		});
 	},
 
-	deposit_to_account: function(frm) {
-		if (frm.doc.deposit_to_account) {
-			frappe.call({
-				method: "erpnext.accounts.doctype.bank_deposit_tool.bank_deposit_tool.verify_account_currencies",
-				args: {
-					source_account: frm.doc.undeposited_account,
-					destination_account: frm.doc.deposit_to_account
-				},
-				callback: function(r) {
-					if(!r.message) {
-						frappe.msgprint(__("Undeposited Account currency should match the account currency that is being deposited to"));
-					}
-				}
-			});
-		}
-	},
 	create_deposit: function(frm) {
 		let selected_rows = frm.fields_dict.undeposited_entries.grid.get_selected_children();
 		// verify the accounts are selected
@@ -124,7 +99,6 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		let selected_rows = frm.fields_dict.undeposited_entries.grid.get_selected_children();
 		let received_amount = 0;
 
-
 		selected_rows.forEach((row) => {
 			received_amount += row.amount || 0;
 		});
@@ -141,22 +115,21 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			})
 		}
 		frm.set_value('difference_amount', difference);
-
-//		frm.refresh_field('received_amount');
-//		frm.refresh_field('deposited_amount');
-//		frm.refresh_field('difference_amount');
 	},
+
 	deposited_amount: function(frm) {
 		let deposited_amount = frm.doc.deposited_amount;
 		if (frm.doc.deposited_amount > frm.doc.received_amount) {
-			frappe.msgprint(__('Received amount must be less than paid amount'));
+			frappe.msgprint(__('Deposit Amount must be less than the received amount'));
 			deposited_amount = frm.doc.received_amount;
 		}
 		// Calculate difference
 		let difference = frm.doc.received_amount - deposited_amount;
+		frm.set_value('deposited_amount', deposited_amount);
 		frm.set_value('difference_amount', difference);
 		frm.refresh_field('difference_amount');
 	},
+
 	reconcile_difference_amount: function(frm) {
 		let difference = frm.doc.difference_amount;
 		if (frm.doc.adjustment_entries.length > 0) {
@@ -165,27 +138,9 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			})
 		}
 		frm.set_value('difference_amount', difference);
-		frm.refresh_field('difference_amount');
-	},
-    fetch_undeposited_details: function(frm, cdt, cdn, row) {
-
-		frappe.call({
-			method: "erpnext.accounts.doctype.bank_deposit_tool.bank_deposit_tool.get_undeposited_entry_details",
-			args: {
-				doctype: row.voucher_type,
-				docname: row.voucher_no
-			},
-			callback: function(r) {
-				if (!r.exc && r.message) {
-					row.party = r.message.party;
-					row.party_type = r.message.party_type;
-					row.cheque_number = r.message.cheque_number;
-					console.log(r.message)
-				}
-			}
-		});
 	}
 });
+
 frappe.ui.form.on("Deposit Adjustments", {
 	adjustment_amount: function(frm, cdt, cdn) {
 		let child_row = frappe.get_doc(cdt, cdn);

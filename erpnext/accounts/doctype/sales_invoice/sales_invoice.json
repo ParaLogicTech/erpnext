@@ -36,6 +36,7 @@
   "set_posting_time",
   "due_date",
   "amended_from",
+  "deposit_date",
   "more_info",
   "transaction_type",
   "order_type",
@@ -244,7 +245,6 @@
   "column_break_ioc8",
   "campaign_voucher_code",
   "fbr_pos_details_tab",
-  "sec_fbr_pos_transaction_details",
   "settings_tab",
   "print_settings_section",
   "letter_head",
@@ -2062,12 +2062,6 @@
    "label": "Default Depreciation (%)"
   },
   {
-   "depends_on": "eval:doc.has_stin && doc.is_fbr_pos_invoice",
-   "fieldname": "sec_fbr_pos_transaction_details",
-   "fieldtype": "Section Break",
-   "label": "FBR POS Transaction Details"
-  },
-  {
    "fetch_from": "applies_to_item.variant_of",
    "fieldname": "applies_to_variant_of",
    "fieldtype": "Link",
@@ -2354,13 +2348,21 @@
    "label": "Product Bundles",
    "options": "fa fa-suitcase",
    "print_hide": 1
+  },
+  {
+   "depends_on": "eval:doc.",
+   "fieldname": "deposit_date",
+   "fieldtype": "Date",
+   "label": "Deposit Date",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-10 16:29:03.334440",
+ "modified": "2025-08-05 12:58:17.417910",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

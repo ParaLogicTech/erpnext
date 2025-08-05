@@ -35,6 +35,7 @@
   "reference_date",
   "column_break_29",
   "deposit_no",
+  "deposit_date",
   "clearance_date",
   "bank_details_section",
   "bank_account",
@@ -949,11 +950,18 @@
    "no_copy": 1,
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "deposit_date",
+   "fieldtype": "Date",
+   "label": "Deposit Date",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-17 20:08:32.148429",
+ "modified": "2025-08-05 12:47:58.268607",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",
