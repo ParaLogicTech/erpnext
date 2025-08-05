@@ -209,7 +209,7 @@
    "in_standard_filter": 1,
    "label": "Against Document Type",
    "no_copy": 1,
-   "options": "\nSales Invoice\nPurchase Invoice\nJournal Entry\nSales Order\nPurchase Order\nExpense Claim\nAsset\nLoan\nPayroll Entry\nEmployee Advance\nExchange Rate Revaluation\nInvoice Discounting\nVehicle Registration Order\nPOS Closing Entry"
+   "options": "\nSales Invoice\nPurchase Invoice\nJournal Entry\nSales Order\nPurchase Order\nExpense Claim\nAsset\nLoan\nPayroll Entry\nEmployee Advance\nExchange Rate Revaluation\nInvoice Discounting\nVehicle Registration Order\nPOS Closing Entry\nPayment Entry"
   },
   {
    "fieldname": "reference_name",
