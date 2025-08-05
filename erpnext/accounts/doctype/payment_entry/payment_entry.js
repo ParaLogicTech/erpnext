@@ -224,52 +224,33 @@ frappe.ui.form.on('Payment Entry', {
 
 	refresh: function(frm) {
 		erpnext.hide_company();
-		frm.events.override_refresh_fields(frm);
 		frm.events.hide_unhide_fields(frm);
 		frm.events.set_dynamic_labels(frm);
 		frm.events.show_general_ledger(frm);
 		frm.events.set_up_reference_row_selection(frm);
 	},
 
-	override_refresh_fields: (frm) => {
-		const refresh_fields = frm.refresh_fields.bind(frm);
-		frm.refresh_fields = function() {
-			refresh_fields();
-			let $wrapper = frm.fields_dict.references.grid.wrapper;
-			let areAllRowsSelected = $wrapper.find('.grid-body input[type="checkbox"]').length
-				=== $wrapper.find('.grid-body input[type="checkbox"]:checked').length;
-			$wrapper.find('.grid-heading-row input[type="checkbox"]').prop('checked', areAllRowsSelected);
-		};
-	},
-
 	set_up_reference_row_selection: frm => {
 		frm.fields_dict.references.grid.wrapper.on('click', '.grid-row-check', (e) => {
-			frm.events.reconcile_reference_rows(frm);
+			frm.events.allocate_checked_rows(frm);
 		});
 	},
 
-	reconcile_reference_rows: (frm) => {
-		const reference_rows = frm.doc.references;
-		let balance = flt(frm.doc.paid_amount);
-
-		reference_rows.forEach(r => r.allocated_amount = 0);
+	allocate_checked_rows: (frm) => {
+		for (let r of frm.doc.references || []) {
+			r.allocated_amount = 0;
+		}
 
 		const selected_rows = frm.fields_dict.references.grid.get_selected_children();
-
-		if (selected_rows.length > 0) {
-			selected_rows.forEach(r => {
-				const amt = flt(r.outstanding_amount);
-				r.allocated_amount = amt;
-			});
+		if (selected_rows.length) {
+			for (let r of selected_rows) {
+				r.allocated_amount = flt(r.outstanding_amount);
+			}
 		} else {
-			reference_rows.forEach(r => {
-				if (balance === 0) return;
-				const outstanding_amount = flt(r.outstanding_amount);
-				if (outstanding_amount > 0 && balance > 0) {
-					r.allocated_amount = Math.min(outstanding_amount, balance);
-					balance -= r.allocated_amount;
-				}
-			});
+			frm.events.allocate_party_amount_against_ref_docs(
+				frm,
+				frm.doc.payment_type=="Receive" ? frm.doc.paid_amount_before_tax : frm.doc.received_amount_before_tax
+			);
 		}
 
 		frm.events.set_total_allocated_amount(frm);
