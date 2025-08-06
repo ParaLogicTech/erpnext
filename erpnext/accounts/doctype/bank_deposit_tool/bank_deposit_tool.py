@@ -9,61 +9,128 @@ from frappe.model.document import Document
 class BankDepositTool(Document):
 	@frappe.whitelist()
 	def get_undeposited_entries(self):
+		# reset the undeposited entries
 		self.set("undeposited_entries", [])
 		self.get_undeposited_payment_entries()
 		self.get_undeposited_invoice_entries()
 		self.get_undeposited_journal_entries()
 
-	def get_undeposited_payment_entries(self):
-		entries = frappe.db.sql("""
-				SELECT
-					'Payment Entry' AS voucher_type,
-					name AS voucher_no,
-					paid_amount AS amount,
-					reference_no AS cheque_number,
-					party
-				from `tabPayment Entry`
-				WHERE
-					payment_type = 'Receive'
-					AND paid_to = %(account)s
-					AND docstatus = 1
-					AND (deposit_date IS NULL OR deposit_date = '')
-			""", {"account": self.undeposited_account}, as_dict=True)
+	def build_common_conditions_and_params(self, voucher_type, base_conditions="", base_params=None):
+		if base_params is None:
+			base_params = {}
 
+		conditions = base_conditions
+		params = base_params.copy()
+
+		if self.from_date:
+			if voucher_type == "Journal Entry":
+				conditions += " AND gle.posting_date >= %(from_date)s"
+			elif voucher_type == "Sales Invoice":
+				conditions += " AND si.posting_date >= %(from_date)s"
+			elif voucher_type == "Payment Entry":
+				conditions += " AND posting_date >= %(from_date)s"
+			params["from_date"] = self.from_date
+
+		if self.to_date:
+			if voucher_type == "Journal Entry":
+				conditions += " AND gle.posting_date <= %(to_date)s"
+			elif voucher_type == "Sales Invoice":
+				conditions += " AND si.posting_date <= %(to_date)s"
+			elif voucher_type == "Payment Entry":
+				conditions += " AND posting_date <= %(to_date)s"
+			params["to_date"] = self.to_date
+
+		# Add amount filters based on voucher type
+		if self.minimum_pending_deposit_entry_amount:
+			if voucher_type == "Journal Entry":
+				conditions += " AND gle.debit >= %(min_amount)s"
+			elif voucher_type == "Sales Invoice":
+				conditions += " AND sip.amount >= %(min_amount)s"
+			elif voucher_type == "Payment Entry":
+				conditions += " AND paid_amount >= %(min_amount)s"
+			params["min_amount"] = self.minimum_pending_deposit_entry_amount
+
+		if self.maximum_pending_deposit_entry_amount:
+			if voucher_type == "Journal Entry":
+				conditions += " AND gle.debit <= %(max_amount)s"
+			elif voucher_type == "Sales Invoice":
+				conditions += " AND sip.amount <= %(max_amount)s"
+			elif voucher_type == "Payment Entry":
+				conditions += " AND paid_amount <= %(max_amount)s"
+			params["max_amount"] = self.maximum_pending_deposit_entry_amount
+
+		if hasattr(self, 'limit') and self.limit:
+			params["limit"] = self.limit
+
+		return conditions, params
+
+	def apply_limit_to_query(self, query, params):
+		if params.get("limit"):
+			query += " LIMIT %(limit)s"
+		return query
+
+	def get_undeposited_payment_entries(self):
+		base_conditions = """
+			payment_type = 'Receive'
+			AND paid_to = %(account)s
+			AND docstatus = 1
+			AND (deposit_date IS NULL OR deposit_date = '')
+		"""
+		base_params = {"account": self.undeposited_account}
+
+		conditions, params = self.build_common_conditions_and_params("Payment Entry", base_conditions, base_params)
+
+		query = f"""
+			SELECT
+				'Payment Entry' AS voucher_type,
+				name AS voucher_no,
+				paid_amount AS amount,
+				reference_no AS cheque_number,
+				party,
+				party_type
+			from `tabPayment Entry`
+			WHERE {conditions}
+		"""
+
+		query = self.apply_limit_to_query(query, params)
+		entries = frappe.db.sql(query, params, as_dict=True)
 		self.add_undeposited_entries(entries)
 
 	def get_undeposited_invoice_entries(self):
-		pos_sales_invoices = frappe.db.sql("""
-				SELECT
-					'Sales Invoice' AS voucher_type,
-					si.name AS voucher_no,
-					sip.name AS voucher_detail_dn,
-					sip.reference_no AS cheque_number,
-					sip.reference_date AS cheque_date,
-					sip.amount AS amount,
-					si.posting_date,
-					si.customer AS party,
-					'Customer' AS party_type,
-					account.account_currency AS currency
-				FROM `tabSales Invoice Payment` sip
-				INNER JOIN `tabSales Invoice` si ON sip.parent = si.name
-				INNER JOIN `tabAccount` account ON account.name = sip.account
-				WHERE
-					si.docstatus = 1
-					AND sip.account = %(account)s
-					AND (si.deposit_date IS NULL or si.deposit_date = '')
-					AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
-				ORDER BY si.posting_date, si.creation
-			""", {
-			"account": self.undeposited_account,
-			"from_date": self.from_date,
-			"to_date": self.to_date
-		}, as_dict=True)
+		base_conditions = """
+			si.docstatus = 1
+			AND sip.account = %(account)s
+			AND (si.deposit_date IS NULL or si.deposit_date = '')
+		"""
+		base_params = {"account": self.undeposited_account}
 
+		conditions, params = self.build_common_conditions_and_params("Sales Invoice", base_conditions, base_params)
+
+		query = f"""
+			SELECT
+				'Sales Invoice' AS voucher_type,
+				si.name AS voucher_no,
+				sip.name AS voucher_detail_dn,
+				sip.reference_no AS cheque_number,
+				sip.reference_date AS cheque_date,
+				sip.amount AS amount,
+				si.posting_date,
+				si.customer AS party,
+				'Customer' AS party_type,
+				account.account_currency AS currency
+			FROM `tabSales Invoice Payment` sip
+			INNER JOIN `tabSales Invoice` si ON sip.parent = si.name
+			INNER JOIN `tabAccount` account ON account.name = sip.account
+			WHERE {conditions}
+			ORDER BY si.posting_date, si.creation
+		"""
+
+		query = self.apply_limit_to_query(query, params)
+		pos_sales_invoices = frappe.db.sql(query, params, as_dict=True)
 		self.add_undeposited_entries(pos_sales_invoices)
 
 	def get_undeposited_journal_entries(self):
-		conditions = """
+		base_conditions = """
 			gle.account = %(account)s
 			AND gle.debit > 0
 			AND gle.voucher_type = 'Journal Entry'
@@ -71,20 +138,10 @@ class BankDepositTool(Document):
 			AND je.docstatus = 1
 			AND je.deposit_date IS NULL
 		"""
+		base_params = {"account": self.undeposited_account}
 
-		# Optional date filters
-		if self.from_date:
-			conditions += " AND gle.posting_date >= %(from_date)s"
-		if self.to_date:
-			conditions += " AND gle.posting_date <= %(to_date)s"
+		conditions, params = self.build_common_conditions_and_params("Journal Entry", base_conditions, base_params)
 
-		# Optional amount filters
-		if self.minimum_pending_deposit_entry_amount:
-			conditions += " AND gle.debit >= %(min_amount)s"
-		if self.maximum_pending_deposit_entry_amount:
-			conditions += " AND gle.debit <= %(max_amount)s"
-
-		# Final query
 		query = f"""
 			SELECT
 				'Journal Entry' AS voucher_type,
@@ -95,6 +152,7 @@ class BankDepositTool(Document):
 				gle.debit AS amount,
 				gle.posting_date,
 				gle.party,
+				gle.party_type,
 				account.account_currency AS currency
 			FROM `tabGL Entry` gle
 			INNER JOIN `tabJournal Entry` je ON je.name = gle.voucher_no
@@ -102,22 +160,8 @@ class BankDepositTool(Document):
 			WHERE {conditions}
 			ORDER BY gle.posting_date DESC, gle.creation DESC
 		"""
-
-		# Build parameters dictionary
-		params = {
-			"account": self.undeposited_account,
-		}
-		if self.from_date:
-			params["from_date"] = self.from_date
-		if self.to_date:
-			params["to_date"] = self.to_date
-		if self.minimum_pending_deposit_entry_amount:
-			params["min_amount"] = self.min_amount
-		if self.maximum_pending_deposit_entry_amount:
-			params["max_amount"] = self.max_amount
-
+		query = self.apply_limit_to_query(query, params)
 		jv_entries = frappe.db.sql(query, params, as_dict=True)
-
 		self.add_undeposited_entries(jv_entries)
 
 	def add_undeposited_entries(self, entries):
@@ -129,11 +173,28 @@ class BankDepositTool(Document):
 				"cheque_number": row.get("cheque_number"),
 				"cheque_date": row.get("cheque_date"),
 				"posting_date": row.get("posting_date"),
-				"party": row.get("party")
+				"party": row.get("party"),
+				"party_type": row.get("party_type")
 			})
+
+	def validate(self):
+		self._validate_accounts()
+
+	def _validate_accounts(self):
+		# Ensure accounts are different
+		if self.undeposited_account == self.deposit_to_account:
+			frappe.throw("Undeposited Account and Deposit To Account cannot be the same")
+		# ensure the account selected have same currency
+		undeposited_acount = frappe.get_cached_doc("Account", self.undeposited_account);
+		deposit_to_account = frappe.get_cahed_doc("Account", self.deposit_to_account);
+		if undeposited_acount.currency != deposit_to_account.currency:
+			frappe.throw("Undeposited Account and Deposit To Account must have same currency")
+
 
 	@frappe.whitelist()
 	def reconcile_undeposited_entries(self, selected_entries):
+		# Validate before processing
+		self.validate()
 
 		if isinstance(selected_entries, str):
 			selected_entries = json.loads(selected_entries)

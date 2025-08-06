@@ -12,6 +12,9 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		});
 	},
 	setup: function(frm) {
+		frm.events.setup_filters(frm);
+	},
+	setup_filters: function(frm) {
 		frm.set_query("undeposited_account", function() {
 			return {
 				filters: {
@@ -61,6 +64,11 @@ frappe.ui.form.on("Bank Deposit Tool", {
 
 	create_deposit: function(frm) {
 		let selected_rows = frm.fields_dict.undeposited_entries.grid.get_selected_children();
+		// verify the company has been selected
+		if (!frm.doc.company) {
+			frappe.msgprint(__('Please select the Company'));
+			return;
+		}
 		// verify the accounts are selected
 		if (!frm.doc.undeposited_account || !frm.doc.deposit_to_account) {
 			frappe.msgprint(__('Please select Undeposited and Deposit To accounts'));
@@ -145,6 +153,24 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			deposited_amount = frm.doc.received_amount;
 		}
 		frm.events.recalculate_difference(frm);
+	},
+	// verify filter validations
+	to_date: function(frm) {
+		if (frm.doc.from_date && frm.doc.to_date) {
+			if (frappe.datetime.get_diff(frm.doc.to_date, frm.doc.from_date) < 0) {
+				frappe.msgprint(__('To Date cannot be before From Date'));
+				frm.set_value('to_date', '');
+			}
+		}
+	},
+	// verify the min max validations
+	maximum_pending_deposit_entry_amount: function(frm) {
+		if (frm.doc.minimum_pending_deposit_entry_amount && frm.doc.maximum_pending_deposit_entry_amount) {
+			if (frm.doc.maximum_pending_deposit_entry_amount < frm.doc.minimum_pending_deposit_entry_amount) {
+				frappe.msgprint(__('Maximum Amount cannot be less than Minimum Amount'));
+				frm.set_value('maximum_pending_deposit_entry_amount', '');
+			}
+		}
 	}
 });
 
