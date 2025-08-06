@@ -3,17 +3,17 @@
 import json
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
 class BankDepositTool(Document):
 	@frappe.whitelist()
 	def get_undeposited_entries(self):
-		# reset the undeposited entries
-		self.set("undeposited_entries", [])
-		self.get_undeposited_payment_entries()
-		self.get_undeposited_invoice_entries()
-		self.get_undeposited_journal_entries()
+		undeposited_payment_entries = self.get_undeposited_payment_entries()
+		undeposited_pos_sinvs = self.get_undeposited_invoice_entries()
+		undeposited_jv_entries = self.get_undeposited_journal_entries()
+		self.add_undeposited_entries(undeposited_payment_entries + undeposited_pos_sinvs + undeposited_jv_entries)
 
 	def build_common_conditions_and_params(self, voucher_type, base_conditions="", base_params=None):
 		if base_params is None:
@@ -93,8 +93,7 @@ class BankDepositTool(Document):
 		"""
 
 		query = self.apply_limit_to_query(query, params)
-		entries = frappe.db.sql(query, params, as_dict=True)
-		self.add_undeposited_entries(entries)
+		return frappe.db.sql(query, params, as_dict=True)
 
 	def get_undeposited_invoice_entries(self):
 		base_conditions = """
@@ -126,8 +125,7 @@ class BankDepositTool(Document):
 		"""
 
 		query = self.apply_limit_to_query(query, params)
-		pos_sales_invoices = frappe.db.sql(query, params, as_dict=True)
-		self.add_undeposited_entries(pos_sales_invoices)
+		return frappe.db.sql(query, params, as_dict=True)
 
 	def get_undeposited_journal_entries(self):
 		base_conditions = """
@@ -161,10 +159,10 @@ class BankDepositTool(Document):
 			ORDER BY gle.posting_date DESC, gle.creation DESC
 		"""
 		query = self.apply_limit_to_query(query, params)
-		jv_entries = frappe.db.sql(query, params, as_dict=True)
-		self.add_undeposited_entries(jv_entries)
+		return frappe.db.sql(query, params, as_dict=True)
 
 	def add_undeposited_entries(self, entries):
+		self.set("undeposited_entries", [])
 		for row in entries:
 			self.append("undeposited_entries", {
 				"voucher_type": row["voucher_type"],
@@ -178,17 +176,17 @@ class BankDepositTool(Document):
 			})
 
 	def validate(self):
-		self._validate_accounts()
+		self.validate_accounts()
 
-	def _validate_accounts(self):
+	def validate_accounts(self):
 		# Ensure accounts are different
 		if self.undeposited_account == self.deposit_to_account:
-			frappe.throw("Undeposited Account and Deposit To Account cannot be the same")
+			frappe.throw(_("Undeposited Account and Deposit To Account cannot be the same"))
 		# ensure the account selected have same currency
-		undeposited_acount = frappe.get_cached_doc("Account", self.undeposited_account);
-		deposit_to_account = frappe.get_cahed_doc("Account", self.deposit_to_account);
-		if undeposited_acount.currency != deposit_to_account.currency:
-			frappe.throw("Undeposited Account and Deposit To Account must have same currency")
+		undeposited_acount = frappe.get_cached_doc("Account", self.undeposited_account)
+		deposit_to_account = frappe.get_cached_doc("Account", self.deposit_to_account)
+		if undeposited_acount.account_currency != deposit_to_account.account_currency:
+			frappe.throw(_("Undeposited Account and Deposit To Account must have same currency"))
 
 
 	@frappe.whitelist()
@@ -199,11 +197,8 @@ class BankDepositTool(Document):
 		if isinstance(selected_entries, str):
 			selected_entries = json.loads(selected_entries)
 
-		if not self.undeposited_account or not self.deposit_to_account:
-			frappe.throw("Please specify both Undeposited Account and Deposit To Account.")
-
 		if not selected_entries:
-			frappe.throw("No valid undeposited entries selected to create deposit.")
+			frappe.throw(_("No valid undeposited entries selected to create deposit."))
 
 		je = frappe.new_doc("Journal Entry")
 		je.posting_date = self.deposit_date
@@ -234,17 +229,18 @@ class BankDepositTool(Document):
 			else:
 				return 'Other Miscellaneous Charges for the Deposit'
 
-		# fee amount entries
-		for deduction in self.adjustment_entries:
-			deduction_amount = deduction.get('adjustment_amount') or 0
-			# decrease deposit to account since it is an adjustment
-			je.append("accounts", {
-				"account": deduction.get('account'),
-				"debit_in_account_currency": deduction_amount,
-				"user_remark": get_user_remark_from_entry_type(deduction.get('entry_type')),
-			})
-			# reduce the amount from the bank deposit
-			amount_deposited_to_bank -= deduction_amount
+		# adjustment entries
+		if self.difference_amount:
+			for deduction in self.adjustment_entries:
+				deduction_amount = deduction.get('adjustment_amount') or 0
+				# decrease deposit to undeposited account since it is an adjustment
+				je.append("accounts", {
+					"account": deduction.get('account'),
+					"debit_in_account_currency": deduction_amount,
+					"user_remark": get_user_remark_from_entry_type(deduction.get('entry_type')),
+				})
+				# reduce the amount from the bank deposit
+				amount_deposited_to_bank -= deduction_amount
 
 		# Debit line - increase deposit_to account
 		# bank deposit

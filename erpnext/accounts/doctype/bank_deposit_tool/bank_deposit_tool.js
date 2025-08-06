@@ -111,7 +111,11 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			freeze_message: __('Creating Deposit Entry...'),
 			callback: function(r) {
 				if (!r.exc) {
-					frappe.msgprint(__('Deposit Journal Entry created successfully: {0}', [r.message]));
+					let link = frappe.utils.get_form_link("Journal Entry", r.message);
+					frappe.msgprint({
+						message: __('Deposit Journal Entry created: <a href="{0}">{1}</a>', [link, r.message]),
+						indicator: 'green'
+					});
 					frm.events.fetch_undeposited_entries(frm);
 				}
 			}
