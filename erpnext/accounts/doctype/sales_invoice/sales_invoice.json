@@ -2350,7 +2350,7 @@
    "print_hide": 1
   },
   {
-   "depends_on": "eval:doc.",
+   "depends_on": "eval:doc.is_pos",
    "fieldname": "deposit_date",
    "fieldtype": "Date",
    "label": "Deposit Date",
@@ -2362,7 +2362,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-05 12:58:17.417910",
+ "modified": "2025-08-05 13:50:53.663415",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

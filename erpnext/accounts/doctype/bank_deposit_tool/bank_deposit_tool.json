@@ -14,7 +14,6 @@
   "deposit_reference_id",
   "deposit_date",
   "remarks",
-  "create_deposit",
   "pending_deposit_entry_filters_section",
   "from_date",
   "to_date",
@@ -161,11 +160,6 @@
    "label": "Get Undeposited Entries"
   },
   {
-   "fieldname": "create_deposit",
-   "fieldtype": "Button",
-   "label": "Create Deposit"
-  },
-  {
    "fieldname": "difference_amount",
    "fieldtype": "Currency",
    "label": "Difference Amount",
@@ -190,7 +184,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-05 09:49:57.527822",
+ "modified": "2025-08-05 14:58:49.844002",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",

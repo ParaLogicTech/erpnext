@@ -7,6 +7,9 @@ frappe.ui.form.on("Bank Deposit Tool", {
 	},
 	refresh: function(frm) {
 		frm.events.set_up_reference_row_selection(frm);
+		frm.page.set_secondary_action('Create Deposit', function() {
+			frm.events.create_deposit(frm);
+		});
 	},
 	setup: function(frm) {
 		frm.set_query("undeposited_account", function() {
@@ -27,6 +30,15 @@ frappe.ui.form.on("Bank Deposit Tool", {
 				}
 			};
 		});
+		frm.set_query("account", "adjustment_entries", function(doc, cdt, cdn) {
+			return {
+				filters: {
+					root_type: "Asset",
+					is_group: 0,
+					company: doc.company
+				}
+			};
+		});
 	},
 	get_undeposited_entries: function(frm) {
 		if (!frm.doc.undeposited_account) {
@@ -42,6 +54,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			method: 'get_undeposited_entries',
 			callback: function(r, rt) {
 				frm.refresh_field('undeposited_entries');
+				frm.events.set_up_reference_row_selection(frm);
 			}
 		});
 	},
@@ -69,17 +82,14 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			return;
 		}
 		// call the controller to reconcile entries
-		frappe.call({
-			method: "erpnext.accounts.doctype.bank_deposit_tool.bank_deposit_tool.reconcile_undeposited_entries",
+		frm.call({
+			doc: frm.doc,
+			method: "reconcile_undeposited_entries",
 			args: {
-				source_account: frm.doc.undeposited_account,
-				deposit_account: frm.doc.deposit_to_account,
-				selected_entries: selected_rows,
-				deduction_entries: JSON.stringify(frm.fields_dict.adjustment_entries.grid.get_data()),
-				company: frm.doc.company,
-				remark: frm.doc.remarks,
-				deposit_date: frm.doc.deposit_date
+			selected_entries: selected_rows
 			},
+			freeze: true,
+			freeze_message: __('Creating Deposit Entry...'),
 			callback: function(r) {
 				if (!r.exc) {
 					frappe.msgprint(__('Deposit Journal Entry created successfully: {0}', [r.message]));
@@ -90,6 +100,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 	},
 
 	set_up_reference_row_selection: frm => {
+		// reconcile when the row is selected or deselected
 		frm.fields_dict.undeposited_entries.grid.wrapper.on('click', '.grid-row-check', (e) => {
 			frm.events.reconcile_reference_rows(frm);
 		});
@@ -106,15 +117,25 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		frm.set_value('deposited_amount', received_amount);
 		frm.set_value('received_amount', received_amount);
 
-		// Calculate difference
-		let difference = 0;
-		// verify and reduce the deduction entry amount if there are any
-		if (frm.doc.adjustment_entries.length > 0) {
-			frm.doc.adjustment_entries.forEach((d_row) => {
-				difference -= d_row.adjustment_amount || 0;
-			})
+		frm.events.recalculate_difference(frm);
+	},
+
+	recalculate_difference: function(frm) {
+		let received = frm.doc.received_amount || 0;
+		let deposited = frm.doc.deposited_amount || 0;
+
+		let base_difference = received - deposited;
+		let total_adjustments = 0;
+
+		if (frm.doc.adjustment_entries?.length) {
+			frm.doc.adjustment_entries.forEach(d_row => {
+				total_adjustments += d_row.adjustment_amount || 0;
+			});
 		}
-		frm.set_value('difference_amount', difference);
+
+		let final_difference = base_difference - total_adjustments;
+		frm.set_value('difference_amount', final_difference);
+		frm.refresh_field('difference_amount');
 	},
 
 	deposited_amount: function(frm) {
@@ -123,21 +144,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			frappe.msgprint(__('Deposit Amount must be less than the received amount'));
 			deposited_amount = frm.doc.received_amount;
 		}
-		// Calculate difference
-		let difference = frm.doc.received_amount - deposited_amount;
-		frm.set_value('deposited_amount', deposited_amount);
-		frm.set_value('difference_amount', difference);
-		frm.refresh_field('difference_amount');
-	},
-
-	reconcile_difference_amount: function(frm) {
-		let difference = frm.doc.difference_amount;
-		if (frm.doc.adjustment_entries.length > 0) {
-			frm.doc.adjustment_entries.forEach((d_row) => {
-				difference -= d_row.adjustment_amount || 0;
-			})
-		}
-		frm.set_value('difference_amount', difference);
+		frm.events.recalculate_difference(frm);
 	}
 });
 
@@ -155,7 +162,10 @@ frappe.ui.form.on("Deposit Adjustments", {
 			});
 			frappe.model.set_value(cdt, cdn, 'adjustment_amount', 0);
 		}
-		frm.events.reconcile_difference_amount(frm);
+		frm.events.recalculate_difference(frm);
+	},
+	adjustment_entries_remove: function(frm) {
+		frm.events.recalculate_difference(frm);
 	}
 });
 

@@ -9,6 +9,7 @@ from frappe.model.document import Document
 class BankDepositTool(Document):
 	@frappe.whitelist()
 	def get_undeposited_entries(self):
+		self.set("undeposited_entries", [])
 		self.get_undeposited_payment_entries()
 		self.get_undeposited_invoice_entries()
 		self.get_undeposited_journal_entries()
@@ -62,7 +63,29 @@ class BankDepositTool(Document):
 		self.add_undeposited_entries(pos_sales_invoices)
 
 	def get_undeposited_journal_entries(self):
-		entries = frappe.db.sql("""
+		conditions = """
+			gle.account = %(account)s
+			AND gle.debit > 0
+			AND gle.voucher_type = 'Journal Entry'
+			AND gle.docstatus = 1
+			AND je.docstatus = 1
+			AND je.deposit_date IS NULL
+		"""
+
+		# Optional date filters
+		if self.from_date:
+			conditions += " AND gle.posting_date >= %(from_date)s"
+		if self.to_date:
+			conditions += " AND gle.posting_date <= %(to_date)s"
+
+		# Optional amount filters
+		if self.minimum_pending_deposit_entry_amount:
+			conditions += " AND gle.debit >= %(min_amount)s"
+		if self.maximum_pending_deposit_entry_amount:
+			conditions += " AND gle.debit <= %(max_amount)s"
+
+		# Final query
+		query = f"""
 			SELECT
 				'Journal Entry' AS voucher_type,
 				gle.voucher_no AS voucher_no,
@@ -76,22 +99,26 @@ class BankDepositTool(Document):
 			FROM `tabGL Entry` gle
 			INNER JOIN `tabJournal Entry` je ON je.name = gle.voucher_no
 			INNER JOIN `tabAccount` account ON account.name = gle.account
-			WHERE
-				gle.account = %(account)s
-				AND gle.debit > 0
-				AND gle.voucher_type = 'Journal Entry'
-				AND gle.docstatus = 1
-				AND je.docstatus = 1
-				AND je.deposit_date IS NULL
-				AND gle.posting_date BETWEEN %(from_date)s AND %(to_date)s
-			ORDER BY gle.posting_date, gle.creation
-		""", {
-			"account": self.undeposited_account,
-			"from_date": self.from_date,
-			"to_date": self.to_date
-		}, as_dict=True)
+			WHERE {conditions}
+			ORDER BY gle.posting_date DESC, gle.creation DESC
+		"""
 
-		self.add_undeposited_entries(entries)
+		# Build parameters dictionary
+		params = {
+			"account": self.undeposited_account,
+		}
+		if self.from_date:
+			params["from_date"] = self.from_date
+		if self.to_date:
+			params["to_date"] = self.to_date
+		if self.minimum_pending_deposit_entry_amount:
+			params["min_amount"] = self.min_amount
+		if self.maximum_pending_deposit_entry_amount:
+			params["max_amount"] = self.max_amount
+
+		jv_entries = frappe.db.sql(query, params, as_dict=True)
+
+		self.add_undeposited_entries(jv_entries)
 
 	def add_undeposited_entries(self, entries):
 		for row in entries:
@@ -104,7 +131,6 @@ class BankDepositTool(Document):
 				"posting_date": row.get("posting_date"),
 				"party": row.get("party")
 			})
-
 
 	@frappe.whitelist()
 	def reconcile_undeposited_entries(self, selected_entries):
@@ -119,10 +145,12 @@ class BankDepositTool(Document):
 			frappe.throw("No valid undeposited entries selected to create deposit.")
 
 		je = frappe.new_doc("Journal Entry")
-		je.voucher_type = ""
 		je.posting_date = self.deposit_date
 		je.company = self.company
 		je.user_remark = self.remarks
+		# set the reference number if provided
+		if self.deposit_reference_id:
+			je.cheque_no = self.deposit_reference_id
 
 		amount_deposited_to_bank = 0
 
@@ -166,5 +194,12 @@ class BankDepositTool(Document):
 
 		je.insert()
 		je.submit()
+		# update deposit dates of the vouchers
+		for entry in selected_entries:
+			voucher_type = entry["voucher_type"]
+			voucher_no = entry["voucher_no"]
+			frappe.db.set_value(voucher_type, voucher_no, "deposit_date", self.deposit_date)
+
+		self.set("adjustment_entries", [])
 
 		return je.name
