@@ -245,6 +245,7 @@
   "column_break_ioc8",
   "campaign_voucher_code",
   "fbr_pos_details_tab",
+  "sec_fbr_pos_transaction_details",
   "settings_tab",
   "print_settings_section",
   "letter_head",
@@ -2060,6 +2061,12 @@
    "fieldname": "default_depreciation_percentage",
    "fieldtype": "Percent",
    "label": "Default Depreciation (%)"
+  },
+  {
+   "depends_on": "eval:doc.has_stin && doc.is_fbr_pos_invoice",
+   "fieldname": "sec_fbr_pos_transaction_details",
+   "fieldtype": "Section Break",
+   "label": "FBR POS Transaction Details"
   },
   {
    "fetch_from": "applies_to_item.variant_of",

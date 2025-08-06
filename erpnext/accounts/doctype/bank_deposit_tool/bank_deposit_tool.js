@@ -5,15 +5,25 @@ frappe.ui.form.on("Bank Deposit Tool", {
 	onload: function(frm) {
 		frm.disable_save();
 	},
+
 	refresh: function(frm) {
 		frm.events.set_up_reference_row_selection(frm);
 		frm.page.set_secondary_action('Create Deposit', function() {
 			frm.events.create_deposit(frm);
 		});
 	},
+
 	setup: function(frm) {
 		frm.events.setup_filters(frm);
 	},
+
+	set_up_reference_row_selection: frm => {
+		// reconcile when the row is selected or deselected
+		frm.fields_dict.undeposited_entries.grid.wrapper.on('click', '.grid-row-check', (e) => {
+			frm.events.reconcile_reference_rows(frm);
+		});
+	},
+
 	setup_filters: function(frm) {
 		frm.set_query("undeposited_account", function() {
 			return {
@@ -43,9 +53,10 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			};
 		});
 	},
+
 	get_undeposited_entries: function(frm) {
 		if (!frm.doc.undeposited_account) {
-			frappe.msgprint(__('Please select an Undeposited Account first.'));
+			frappe.msgprint(__('Please select Undeposited Account'));
 			return;
 		}
 		frm.events.fetch_undeposited_entries(frm);
@@ -107,13 +118,6 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		});
 	},
 
-	set_up_reference_row_selection: frm => {
-		// reconcile when the row is selected or deselected
-		frm.fields_dict.undeposited_entries.grid.wrapper.on('click', '.grid-row-check', (e) => {
-			frm.events.reconcile_reference_rows(frm);
-		});
-	},
-
 	reconcile_reference_rows: function(frm) {
 		let selected_rows = frm.fields_dict.undeposited_entries.grid.get_selected_children();
 		let received_amount = 0;
@@ -154,6 +158,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		}
 		frm.events.recalculate_difference(frm);
 	},
+
 	// verify filter validations
 	to_date: function(frm) {
 		if (frm.doc.from_date && frm.doc.to_date) {
@@ -163,6 +168,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			}
 		}
 	},
+
 	// verify the min max validations
 	maximum_pending_deposit_entry_amount: function(frm) {
 		if (frm.doc.minimum_pending_deposit_entry_amount && frm.doc.maximum_pending_deposit_entry_amount) {
