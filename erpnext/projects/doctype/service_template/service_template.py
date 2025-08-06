@@ -228,6 +228,7 @@ def get_service_template_tasks(
 		task_details.service_template = service_template_detail.service_template
 		task_details.service_template_detail = service_template_detail.name
 		task_details.determine_time = template_task_row.determine_time
+		task_details.prevent_duplicate_task = template_task_row.prevent_duplicate_task
 
 		if template_task_row.use_template_name:
 			task_details.subject = service_template_detail.service_template_name

@@ -518,7 +518,27 @@ def create_service_template_tasks(project):
 
 	tasks_created = []
 	tasks_exists = False
+
+	existing_task_types = {
+		d.task_type for d in frappe.get_all("Task", filters={"project": project_doc.name}, fields=["task_type"])
+		if d.task_type
+	}
+
+	prevent_types = set()
+	service_template_task_map = {}
+
 	for service_template_row in project_doc.service_templates:
+		template_tasks = get_service_template_tasks(
+			service_template_row.service_template,
+			service_template_detail=service_template_row
+		)
+		service_template_task_map[service_template_row.name] = (service_template_row, template_tasks)
+
+		for task in template_tasks:
+			if task.get("prevent_duplicate_task") and task.get("task_type"):
+				prevent_types.add(task.get("task_type"))
+
+	for service_template_row, template_tasks in service_template_task_map.values():
 		filters = {
 			"project": project_doc.name,
 			"service_template": service_template_row.service_template,
@@ -529,8 +549,13 @@ def create_service_template_tasks(project):
 			continue
 
 		template_doc = frappe.get_cached_doc("Service Template", service_template_row.service_template)
-		template_tasks = get_service_template_tasks(service_template_row.service_template, service_template_detail=service_template_row)
+
 		for template_task_details in template_tasks:
+			task_type = template_task_details.get("task_type")
+
+			if task_type in prevent_types and task_type in existing_task_types:
+				continue
+
 			task_doc = frappe.new_doc("Task")
 			for k, v in template_task_details.items():
 				if task_doc.meta.has_field(k):
@@ -548,6 +573,9 @@ def create_service_template_tasks(project):
 
 			task_doc.save()
 			tasks_created.append(task_doc)
+
+			if task_type:
+				existing_task_types.add(task_type)
 
 	if tasks_created:
 		message = _("{0} Service Template tasks created against {1}<br><br><ul>{2}</ul>").format(
