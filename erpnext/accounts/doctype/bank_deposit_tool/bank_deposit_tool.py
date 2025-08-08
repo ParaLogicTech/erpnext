@@ -117,7 +117,7 @@ class BankDepositTool(Document):
 			where
 				si.docstatus = 1
 				and sip.account = %(account)s
-				and (si.deposit_date is null or si.deposit_date = '')
+				and (sip.deposit_date is null or sip.deposit_date = '')
 				{0}
 			order by si.posting_date, si.creation
 		""".format(conditions), params, as_dict=1)
@@ -159,7 +159,7 @@ class BankDepositTool(Document):
 				je.docstatus = 1
 				and jea.account = %(account)s
 				and jea.debit_in_account_currency > 0
-				and (je.deposit_date is null or je.deposit_date = '')
+				and (jea.deposit_date is null or jea.deposit_date = '')
 				{0}
 			order by je.posting_date, je.creation
 		""".format(conditions), params, as_dict=1)
@@ -335,12 +335,13 @@ class BankDepositTool(Document):
 		return remarks.get(entry_type, _('Other Miscellaneous Charges for the Deposit'))
 
 	def update_deposit_dates(self, selected_entries):
-		for entry in selected_entries:
-			voucher_type = entry.get("voucher_type")
-			voucher_no = entry.get("voucher_no")
-
-			if voucher_type and voucher_no:
-				frappe.db.set_value(voucher_type, voucher_no, "deposit_date", self.deposit_date)
+		for row in selected_entries:
+			if row.voucher_detail_dn:
+				frappe.db.set_value(row.voucher_detail_dt, row.voucher_detail_dn, 'deposit_date', row.clearance_date,
+						notify=True)
+			else:
+				frappe.db.set_value(row.voucher_type, row.voucher_no, 'deposit_date', row.clearance_date,
+						notify=True)
 
 
 def get_document_dimensions(doctype, name):

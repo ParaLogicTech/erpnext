@@ -36,7 +36,6 @@
   "set_posting_time",
   "due_date",
   "amended_from",
-  "deposit_date",
   "more_info",
   "transaction_type",
   "order_type",
@@ -2355,21 +2354,13 @@
    "label": "Product Bundles",
    "options": "fa fa-suitcase",
    "print_hide": 1
-  },
-  {
-   "depends_on": "eval:doc.is_pos",
-   "fieldname": "deposit_date",
-   "fieldtype": "Date",
-   "label": "Deposit Date",
-   "no_copy": 1,
-   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-05 13:50:53.663415",
+ "modified": "2025-06-10 16:29:03.334440",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

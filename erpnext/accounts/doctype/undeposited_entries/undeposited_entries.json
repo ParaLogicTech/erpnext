@@ -13,7 +13,9 @@
   "party",
   "cheque_number",
   "cheque_date",
-  "amount"
+  "amount",
+  "voucher_detail_dt",
+  "voucher_detail_dn"
  ],
  "fields": [
   {
@@ -72,12 +74,24 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Cheque Date"
+  },
+  {
+   "fieldname": "voucher_detail_dt",
+   "fieldtype": "Link",
+   "label": "Voucher Detail Doctype",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "voucher_detail_dn",
+   "fieldtype": "Dynamic Link",
+   "label": "Voucher Detail No",
+   "options": "voucher_detail_dt"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-07 14:59:57.774394",
+ "modified": "2025-08-08 04:08:01.908740",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Undeposited Entries",

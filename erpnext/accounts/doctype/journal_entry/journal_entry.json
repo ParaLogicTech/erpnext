@@ -35,7 +35,6 @@
   "bill_no",
   "bill_date",
   "due_date",
-  "deposit_date",
   "column_break_20",
   "total_debit",
   "total_credit",
@@ -552,20 +551,13 @@
    "hidden": 1,
    "label": "Branch",
    "options": "Branch"
-  },
-  {
-   "fieldname": "deposit_date",
-   "fieldtype": "Date",
-   "label": "Deposit Date",
-   "no_copy": 1,
-   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
  "idx": 176,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-05 13:22:18.301427",
+ "modified": "2025-08-08 03:10:42.519409",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Journal Entry",
