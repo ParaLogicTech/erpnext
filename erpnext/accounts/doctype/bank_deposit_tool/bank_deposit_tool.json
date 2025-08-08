@@ -10,10 +10,12 @@
   "undeposited_account",
   "get_undeposited_entries",
   "column_break_ozda",
-  "deposit_to_account",
-  "deposit_reference_id",
   "deposit_date",
+  "deposit_to_account",
+  "deposit_number",
+  "deposit_remarks_section",
   "remarks",
+  "column_break_scgw",
   "pending_deposit_entry_filters_section",
   "from_date",
   "to_date",
@@ -25,9 +27,10 @@
   "pending_deposit_entries_section",
   "undeposited_entries",
   "summary_totals_section",
-  "received_amount",
+  "undeposited_amount",
+  "selected_deposit_amount",
   "column_break_dnzs",
-  "deposited_amount",
+  "net_deposited_amount",
   "difference_amount",
   "deposit_adjustments_section",
   "adjustment_entries"
@@ -103,11 +106,11 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
-   "description": "System will fetch all entries if set to 0",
+   "default": "100",
    "fieldname": "limit",
    "fieldtype": "Int",
-   "label": "Limit"
+   "label": "Limit",
+   "non_negative": 1
   },
   {
    "fieldname": "pending_deposit_entries_section",
@@ -126,22 +129,8 @@
    "label": "Summary Totals"
   },
   {
-   "fieldname": "received_amount",
-   "fieldtype": "Currency",
-   "label": "Received Amount",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
    "fieldname": "column_break_dnzs",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "deposited_amount",
-   "fieldtype": "Currency",
-   "force_currency_symbol": 1,
-   "label": "Amount Deposited",
-   "non_negative": 1
   },
   {
    "fieldname": "deposit_adjustments_section",
@@ -167,16 +156,47 @@
    "read_only": 1
   },
   {
-   "fieldname": "deposit_reference_id",
-   "fieldtype": "Data",
-   "label": "Deposit Reference ID"
-  },
-  {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company",
    "remember_last_selected_value": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "undeposited_amount",
+   "fieldtype": "Currency",
+   "label": "Undeposited Amount",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "selected_deposit_amount",
+   "fieldtype": "Currency",
+   "label": "Selected Deposit Amount",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "net_deposited_amount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Deposited Amount",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "deposit_remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Deposit Remarks"
+  },
+  {
+   "fieldname": "column_break_scgw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "deposit_number",
+   "fieldtype": "Data",
+   "label": "Deposit Number",
    "reqd": 1
   }
  ],
@@ -184,7 +204,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-05 14:58:49.844002",
+ "modified": "2025-08-08 02:06:21.771458",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",

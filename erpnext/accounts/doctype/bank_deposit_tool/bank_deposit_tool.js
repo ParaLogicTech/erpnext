@@ -11,6 +11,12 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		frm.page.set_secondary_action('Create Deposit', function() {
 			frm.events.create_deposit(frm);
 		});
+		if (!frm.doc.from_date) {
+			frm.set_value("from_date", frappe.datetime.month_start());
+		}
+		if (!frm.doc.to_date) {
+			frm.set_value("to_date", frappe.datetime.month_end());
+		}
 	},
 
 	setup: function(frm) {
@@ -46,7 +52,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		frm.set_query("account", "adjustment_entries", function(doc, cdt, cdn) {
 			return {
 				filters: {
-					root_type: "Asset",
+					root_type: ["in", ["Income", "Expense"]],
 					is_group: 0,
 					company: doc.company
 				}
@@ -100,6 +106,11 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			frappe.msgprint(__('Please select Deposit Date'));
 			return;
 		}
+		// verify the deposit number has been added
+		if (!frm.doc.deposit_number) {
+			frappe.msgprint(__('Please enter deposit number'));
+			return;
+		}
 		// call the controller to reconcile entries
 		frm.call({
 			doc: frm.doc,
@@ -111,11 +122,6 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			freeze_message: __('Creating Deposit Entry...'),
 			callback: function(r) {
 				if (!r.exc) {
-					let link = frappe.utils.get_form_link("Journal Entry", r.message);
-					frappe.msgprint({
-						message: __('Deposit Journal Entry created: <a href="{0}">{1}</a>', [link, r.message]),
-						indicator: 'green'
-					});
 					frm.events.fetch_undeposited_entries(frm);
 				}
 			}
@@ -124,28 +130,28 @@ frappe.ui.form.on("Bank Deposit Tool", {
 
 	reconcile_reference_rows: function(frm) {
 		let selected_rows = frm.fields_dict.undeposited_entries.grid.get_selected_children();
-		let received_amount = 0;
+		let selected_deposit_amount = 0;
 
 		selected_rows.forEach((row) => {
-			received_amount += row.amount || 0;
+			selected_deposit_amount += flt(row.amount) || 0;
 		});
 
-		frm.set_value('deposited_amount', received_amount);
-		frm.set_value('received_amount', received_amount);
+		frm.set_value('selected_deposit_amount', selected_deposit_amount);
+		frm.set_value('net_deposited_amount', selected_deposit_amount);
 
 		frm.events.recalculate_difference(frm);
 	},
 
 	recalculate_difference: function(frm) {
-		let received = frm.doc.received_amount || 0;
-		let deposited = frm.doc.deposited_amount || 0;
+		let received = frm.doc.selected_deposit_amount || 0;
+		let deposited = frm.doc.net_deposited_amount || 0;
 
 		let base_difference = received - deposited;
 		let total_adjustments = 0;
 
 		if (frm.doc.adjustment_entries?.length) {
 			frm.doc.adjustment_entries.forEach(d_row => {
-				total_adjustments += d_row.adjustment_amount || 0;
+				total_adjustments += flt(d_row.adjustment_amount) || 0;
 			});
 		}
 
@@ -154,11 +160,11 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		frm.refresh_field('difference_amount');
 	},
 
-	deposited_amount: function(frm) {
-		let deposited_amount = frm.doc.deposited_amount;
-		if (frm.doc.deposited_amount > frm.doc.received_amount) {
-			frappe.msgprint(__('Deposit Amount must be less than the received amount'));
-			deposited_amount = frm.doc.received_amount;
+	net_deposited_amount: function(frm) {
+		let deposited_amount = frm.doc.net_deposited_amount;
+		if (frm.doc.net_deposited_amount > frm.doc.selected_deposit_amount) {
+			frappe.msgprint(__('Net Deposit Amount must be less than the Deposit amount'));
+			deposited_amount = frm.doc.selected_deposit_amount;
 		}
 		frm.events.recalculate_difference(frm);
 	},
