@@ -336,11 +336,11 @@ class BankDepositTool(Document):
 
 	def update_deposit_dates(self, selected_entries):
 		for row in selected_entries:
-			if row.voucher_detail_dn:
-				frappe.db.set_value(row.voucher_detail_dt, row.voucher_detail_dn, 'deposit_date', row.clearance_date,
+			if row['voucher_detail_dn']:
+				frappe.db.set_value(row['voucher_detail_dt'], row['voucher_detail_dn'], 'deposit_date', self.deposit_date,
 						notify=True)
 			else:
-				frappe.db.set_value(row.voucher_type, row.voucher_no, 'deposit_date', row.clearance_date,
+				frappe.db.set_value(row['voucher_type'], row['voucher_no'], 'deposit_date', self.deposit_date,
 						notify=True)
 
 
