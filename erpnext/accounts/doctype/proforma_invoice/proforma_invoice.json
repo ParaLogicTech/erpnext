@@ -69,9 +69,6 @@
   "items_section",
   "items",
   "scan_barcode",
-  "packing_list",
-  "packed_items",
-  "product_bundle_help",
   "pricing_rule_details",
   "pricing_rules",
   "section_break_30",
@@ -678,26 +675,6 @@
    "hidden": 1,
    "label": "Scan Barcode",
    "options": "Barcode"
-  },
-  {
-   "fieldname": "packing_list",
-   "fieldtype": "Section Break",
-   "label": "Packing List",
-   "options": "fa fa-suitcase",
-   "print_hide": 1
-  },
-  {
-   "fieldname": "packed_items",
-   "fieldtype": "Table",
-   "label": "Packed Items",
-   "options": "Packed Item",
-   "print_hide": 1
-  },
-  {
-   "fieldname": "product_bundle_help",
-   "fieldtype": "HTML",
-   "label": "Product Bundle Help",
-   "print_hide": 1
   },
   {
    "collapsible": 1,
@@ -1727,7 +1704,7 @@
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-10 13:17:46.676144",
+ "modified": "2025-08-11 14:40:22.767409",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",
@@ -1843,6 +1820,7 @@
    "role": "All"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "transaction_date, customer,bill_to, base_grand_total",
  "show_name_in_global_search": 1,
  "sort_field": "transaction_date",
