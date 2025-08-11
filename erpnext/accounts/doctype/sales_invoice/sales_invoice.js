@@ -145,6 +145,12 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 					}, __("Get Items From"));
 				}
 
+				if (frappe.model.can_read("Proforma Invoice")) {
+					this.frm.add_custom_button(__('Proforma Invoice'), () => {
+						this.get_items_from_proforma_invoice();
+					}, __("Get Items From"));
+				}
+
 				if (frappe.model.can_read("Quotation")) {
 					this.frm.add_custom_button(__('Quotation'), () => {
 						this.get_items_from_quotation();
@@ -430,11 +436,67 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		});
 	}
 
+	get_items_from_proforma_invoice() {
+		let me = this;
+
+		erpnext.utils.map_current_doc({
+			method: "erpnext.accounts.doctype.proforma_invoice.proforma_invoice.make_sales_invoice",
+			source_doctype: "Proforma Invoice",
+			target: me.frm,
+			setters: [
+				{
+					fieldtype: 'Link',
+					label: __('Customer'),
+					options: 'Customer',
+					fieldname: 'customer',
+					default: me.frm.doc.customer || undefined,
+				},
+				{
+					fieldtype: 'Link',
+					label: __('Project'),
+					options: 'Project',
+					fieldname: 'project',
+					default: me.frm.doc.project || undefined,
+				},
+				{
+					fieldtype: 'Link',
+					label: __('Branch'),
+					options: 'Branch',
+					fieldname: 'branch',
+					default: me.frm.doc.branch || undefined,
+				},
+				{
+					fieldtype: 'DateRange',
+					label: __('Date Range'),
+					fieldname: 'transaction_date',
+				}
+			],
+			columns: ['customer_name', 'transaction_date', 'project'],
+			get_query: function() {
+				let filters = {
+					company: me.frm.doc.company,
+					claim_billing: cint(me.frm.doc.claim_billing),
+				};
+				if (me.frm.doc.customer) {
+					filters["customer"] = me.frm.doc.customer;
+				}
+
+				return {
+					query: "erpnext.controllers.queries.get_proforma_invoices_to_be_billed",
+					filters: filters
+				};
+			},
+			args: {
+				only_items: cint(me.frm.doc.bill_multiple_projects)
+			}
+		});
+	}
+
 	get_items_from_project() {
 		var me = this;
 
 		erpnext.utils.map_current_doc({
-			method: "erpnext.projects.doctype.project.project.make_sales_invoice",
+			method: "erpnext.projects.doctype.project.project_mappers.make_sales_invoice",
 			source_doctype: "Project",
 			target: me.frm,
 			setters: [

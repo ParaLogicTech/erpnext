@@ -75,6 +75,7 @@ class SalesOrder(SellingController):
 		self.set_delivery_status()
 		self.set_production_packing_status()
 		self.set_billing_status()
+		self.set_proforma_status()
 		self.set_purchase_status()
 		self.set_status()
 		self.set_title()
@@ -129,9 +130,6 @@ class SalesOrder(SellingController):
 		self.set_advance_paid_amount(update=True)
 		self.set_status(update=True)
 		self.notify_update()
-
-	def set_title(self):
-		self.title = self.customer_name or self.customer
 
 	def update_status(self, status):
 		self.check_modified_date()
@@ -352,6 +350,16 @@ class SalesOrder(SellingController):
 				'per_completed': self.per_completed,
 				'billing_status': self.billing_status,
 			}, update_modified=update_modified)
+
+	def set_proforma_status(self, update=False, update_modified=True):
+		proforma_qty_map = self.get_proforma_qty_map()
+
+		for d in self.items:
+			d.proforma_qty = flt(proforma_qty_map.get(d.name))
+			if update:
+				d.db_set({
+					'proforma_qty': d.proforma_qty,
+				}, update_modified=update_modified)
 
 	def set_purchase_status(self, update=False, update_modified=True):
 		purchase_order_qty_map = self.get_purchase_order_qty_map()
@@ -603,6 +611,21 @@ class SalesOrder(SellingController):
 
 		return out
 
+	def get_proforma_qty_map(self):
+		proforma_qty_map = {}
+		if self.docstatus == 1:
+			row_names = [d.name for d in self.items]
+			if row_names:
+				proforma_qty_map = dict(frappe.db.sql("""
+					select i.sales_order_item, sum(i.qty)
+					from `tabProforma Invoice Item` i
+					inner join `tabProforma Invoice` p on p.name = i.parent
+					where p.docstatus = 1 and i.sales_order_item in %s
+					group by i.sales_order_item
+				""", [row_names]))
+
+		return proforma_qty_map
+
 	def get_purchase_order_qty_map(self):
 		purchase_order_qty_map = {}
 
@@ -642,6 +665,10 @@ class SalesOrder(SellingController):
 		if frappe.get_cached_value("Accounts Settings", None, "validate_over_billing_in_sales_invoice"):
 			self.validate_completed_qty('billed_amt', 'amount', self.items,
 				allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
+
+	def validate_proforma_qty(self, from_doctype=None, row_names=None):
+		self.validate_completed_qty(['proforma_qty', 'returned_qty'], 'qty', self.items,
+			allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
 
 	def validate_po(self):
 		# validate p.o date v/s delivery date
@@ -1463,9 +1490,14 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None):
 
 
 @frappe.whitelist()
-def make_sales_invoice(source_name, target_doc=None, ignore_permissions=False,
-		only_items=None, skip_item_mapping=False, skip_postprocess=False):
-
+def make_sales_invoice(
+	source_name,
+	target_doc=None,
+	ignore_permissions=False,
+	only_items=None,
+	skip_item_mapping=False,
+	skip_postprocess=False
+):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
 
@@ -1526,18 +1558,91 @@ def make_sales_invoice(source_name, target_doc=None, ignore_permissions=False,
 		mapping,
 		target_doc=target_doc,
 		ignore_permissions=ignore_permissions,
-		explicit_child_tables=only_items)
+		explicit_child_tables=only_items,
+	)
 
 	return doclist
 
 
-def get_item_mapper_for_invoice(sales_order, allow_duplicate=False):
+@frappe.whitelist()
+def make_proforma_invoice(
+	source_name,
+	target_doc=None,
+	ignore_permissions=False,
+	only_items=None,
+	skip_item_mapping=False,
+	skip_postprocess=False
+):
+	if frappe.flags.args and only_items is None:
+		only_items = cint(frappe.flags.args.only_items)
+
+	def postprocess(source, target):
+		if not skip_item_mapping:
+			split_vehicle_items_by_qty(target)
+			set_reserved_vehicles_from_so(source, target)
+
+		target.ignore_pricing_rule = 1
+		target.flags.ignore_permissions = ignore_permissions
+		target.run_method("postprocess_after_mapping", reset_taxes=True)
+
+	mapping = {
+		"Sales Order": {
+			"doctype": "Proforma Invoice",
+			"field_map": {
+				"payment_terms_template": "payment_terms_template",
+				"remarks": "remarks",
+			},
+			"field_no_map": [
+				"has_stin",
+			],
+			"validation": {
+				"docstatus": ["=", 1]
+			}
+		},
+		"Sales Taxes and Charges": {
+			"doctype": "Sales Taxes and Charges",
+			"add_if_empty": True
+		},
+		"Sales Team": {
+			"doctype": "Sales Team",
+			"add_if_empty": True
+		},
+		"postprocess": postprocess if not skip_postprocess else None,
+	}
+
+	if not skip_item_mapping:
+		mapping["Sales Order Item"] = get_item_mapper_for_invoice(source_name, target_doctype="Proforma Invoice Item")
+
+	if only_items:
+		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Sales Order Item"}
+
+	frappe.utils.call_hook_method("update_proforma_invoice_from_sales_order_mapper", mapping, "Proforma Invoice")
+
+	doclist = get_mapped_doc(
+		"Sales Order",
+		source_name,
+		mapping,
+		target_doc=target_doc,
+		ignore_permissions=ignore_permissions,
+		explicit_child_tables=only_items,
+	)
+
+	return doclist
+
+
+def get_item_mapper_for_invoice(sales_order, allow_duplicate=False, target_doctype="Sales Invoice Item"):
 	unbilled_dn_qty_map = get_unbilled_dn_qty_map(sales_order)
 
 	def get_pending_qty(source):
 		billable_qty = flt(source.qty) - flt(source.billed_qty) - flt(source.returned_qty)
 		unbilled_dn_qty = flt(unbilled_dn_qty_map.get(source.name))
-		return max(billable_qty - unbilled_dn_qty, 0)
+		to_bill_qty = billable_qty - unbilled_dn_qty
+
+		if target_doctype == "Proforma Invoice Item":
+			to_proforma_qty = flt(source.qty) - flt(source.proforma_qty) - flt(source.returned_qty) - unbilled_dn_qty
+			return max(min(to_bill_qty, to_proforma_qty), 0)
+		else:
+			return max(to_bill_qty, 0)
 
 	def item_condition(source, source_parent, target_parent):
 		if not allow_duplicate:
@@ -1556,15 +1661,17 @@ def get_item_mapper_for_invoice(sales_order, allow_duplicate=False):
 		return get_pending_qty(source)
 
 	def update_item(source, target, source_parent, target_parent):
-		target.project = source_parent.get('project')
 		target.qty = get_pending_qty(source)
 		target.depreciation_percentage = None
+
+		if target.meta.has_field("project"):
+			target.project = source_parent.get('project')
 
 		if target_parent:
 			target_parent.adjust_rate_for_claim_item(source, target)
 
 	return {
-		"doctype": "Sales Invoice Item",
+		"doctype": target_doctype,
 		"field_map": {
 			"name": "sales_order_item",
 			"parent": "sales_order",

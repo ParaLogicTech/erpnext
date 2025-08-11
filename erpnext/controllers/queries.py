@@ -605,6 +605,56 @@ def _get_sales_orders_to_be_billed(doctype="Sales Order", txt="", searchfield="n
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
+def get_proforma_invoices_to_be_billed(doctype, txt, searchfield, start, page_len, filters, as_dict):
+	return _get_proforma_invoices_to_be_billed(doctype, txt, searchfield, start, page_len, filters, as_dict)
+
+
+def _get_proforma_invoices_to_be_billed(doctype="Proforma Invoice", txt="", searchfield="name", start=0, page_len=0,
+		filters=None, as_dict=True, ignore_permissions=False):
+	fields = get_fields(doctype, ["name", "customer", "customer_name", "transaction_date", "project"])
+	select_fields = ", ".join(["`tabProforma Invoice`.{0}".format(f) for f in fields])
+	limit = "limit {0}, {1}".format(start, page_len) if page_len else ""
+
+	if not filters:
+		filters = {}
+
+	claim_customer_cond = ""
+	if cint(filters.get('claim_billing')):
+		if filters.get('customer'):
+			claim_customer_op = "pfi.claim_customer = {0}".format(frappe.db.escape(filters.get('customer')))
+			filters.pop("customer")
+		else:
+			claim_customer_op = "ifnull(pfi.claim_customer, '') != ''"
+
+		claim_customer_cond = """ and exists(select pfi.name from `tabProforma Invoice Item` pfi
+			where soi.parent = `tabProforma Invoice`.name and {0})""".format(claim_customer_op)
+
+	if "claim_billing" in filters:
+		filters.pop("claim_billing")
+
+	return frappe.db.sql("""
+		select {fields}
+		from `tabProforma Invoice`
+		where `tabProforma Invoice`.docstatus = 1
+			and `tabProforma Invoice`.`{key}` like {txt}
+			and `tabProforma Invoice`.`billing_status` = 'To Bill'
+			and `tabProforma Invoice`.`status` != 'Closed'
+			{claim_customer_cond} {fcond} {mcond}
+		order by `tabProforma Invoice`.transaction_date, `tabProforma Invoice`.creation
+		{limit}
+	""".format(
+		fields=select_fields,
+		key=searchfield,
+		fcond=get_filters_cond(doctype, filters, [], ignore_permissions=ignore_permissions),
+		mcond="" if ignore_permissions else get_match_cond(doctype),
+		claim_customer_cond=claim_customer_cond,
+		limit=limit,
+		txt="%(txt)s",
+	), {"txt": ("%%%s%%" % txt)}, as_dict=as_dict)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
 def get_packing_slips_to_be_delivered(doctype, txt, searchfield, start, page_len, filters, as_dict):
 	return _get_packing_slips_to_be_delivered(doctype, txt, searchfield, start, page_len, filters, as_dict)
 
