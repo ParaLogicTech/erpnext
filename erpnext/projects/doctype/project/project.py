@@ -880,7 +880,7 @@ class Project(StatusUpdaterERP):
 			))
 
 	def is_insurance_excess_invoice_for_customer(self, doc):
-		if doc.doctype != "Sales Invoice":
+		if doc.doctype not in ("Sales Invoice", "Proforma Invoice"):
 			return False
 
 		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
