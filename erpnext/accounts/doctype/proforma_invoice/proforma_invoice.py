@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, flt
 from erpnext.controllers.selling_controller import SellingController
 from frappe.model.mapper import get_mapped_doc
 
@@ -15,6 +15,7 @@ class ProformaInvoice(SellingController):
 		self.status_map = [
 			["Draft", None],
 			["To Bill", "eval:self.docstatus == 1"],
+			["Billed", "eval:self.docstatus == 1 and self.billing_status != 'To Bill'"],
 			["Cancelled", "eval:self.docstatus == 2"],
 		]
 
@@ -25,7 +26,7 @@ class ProformaInvoice(SellingController):
 		self.check_sales_order_on_hold_or_close()
 		self.validate_campaign()
 		self.validate_with_previous_doc()
-		# self.set_billing_status()
+		self.set_billing_status()
 		self.set_status()
 		self.set_title()
 
@@ -121,6 +122,66 @@ class ProformaInvoice(SellingController):
 
 		# self.update_project_billing_and_sales()
 
+	def set_billing_status(self, update=False, update_modified=True):
+		data = self.get_billing_status_data()
+
+		# update values in rows
+		for d in self.items:
+			d.billed_qty = flt(data.billed_qty_map.get(d.name))
+			d.billed_amt = flt(data.billed_amount_map.get(d.name))
+			if update:
+				d.db_set({
+					'billed_qty': d.billed_qty,
+					'billed_amt': d.billed_amt,
+				}, update_modified=update_modified)
+
+		# update percentage in parent
+		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', self.items)
+		if self.per_billed is None:
+			total_billed_qty = flt(sum([flt(d.billed_qty) for d in self.items]), self.precision('total_qty'))
+			self.per_billed = 100 if total_billed_qty else 0
+
+		# update billing_status
+		self.billing_status = self.get_completion_status('per_billed', 'Bill',
+			not_applicable=self.status == "Closed",
+			not_applicable_based_on='per_billed')
+
+		if update:
+			self.db_set({
+				'per_billed': self.per_billed,
+				'billing_status': self.billing_status,
+			}, update_modified=update_modified)
+
+	def get_billing_status_data(self):
+		out = frappe._dict()
+		out.billed_qty_map = {}
+		out.billed_amount_map = {}
+
+		if self.docstatus == 1:
+			row_names = [d.name for d in self.items]
+			if row_names:
+				# Billed By Sales Invoice
+				billed_by_sinv = frappe.db.sql("""
+					select i.proforma_invoice_item, i.qty, i.amount
+					from `tabSales Invoice Item` i
+					inner join `tabSales Invoice` p on p.name = i.parent
+					where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
+						and i.proforma_invoice_item in %s
+				""", [row_names], as_dict=1)
+
+				for d in billed_by_sinv:
+					out.billed_amount_map.setdefault(d.proforma_invoice_item, 0)
+					out.billed_amount_map[d.proforma_invoice_item] += d.amount
+
+					out.billed_qty_map.setdefault(d.proforma_invoice_item, 0)
+					out.billed_qty_map[d.proforma_invoice_item] += d.qty
+
+		return out
+
+	def validate_billed_qty(self, from_doctype=None, row_names=None):
+		self.validate_completed_qty('billed_qty', 'qty', self.items,
+			allowance_type=None, from_doctype=from_doctype, row_names=row_names)
+
 
 @frappe.whitelist()
 def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postprocess=False):
@@ -142,7 +203,7 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 				"docstatus": ["=", 1],
 			}
 		},
-		"Proform Invoice Item": get_item_mapper_for_invoice(),
+		"Proforma Invoice Item": get_item_mapper_for_invoice(),
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
 			"add_if_empty": True
@@ -173,6 +234,9 @@ def get_item_mapper_for_invoice(allow_duplicate=False):
 		if not allow_duplicate:
 			if source.name in [d.proforma_invoice_item for d in target_parent.get('items') if d.proforma_invoice_item]:
 				return False
+
+		to_bill_qty = flt(source.qty) - flt(source.billed_qty)
+		return to_bill_qty > 0
 
 	def update_item(source, target, source_parent, target_parent):
 		target.project = source_parent.get('project')

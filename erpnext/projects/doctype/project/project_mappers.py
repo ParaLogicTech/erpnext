@@ -14,6 +14,66 @@ import json
 
 @frappe.whitelist()
 def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None):
+	from erpnext.controllers.queries import _get_proforma_invoices_to_be_billed
+
+	if frappe.flags.args and bill_multiple_projects is None:
+		bill_multiple_projects = frappe.flags.args.bill_multiple_projects
+
+	bill_multiple_projects = cint(bill_multiple_projects)
+
+	proforma_invoice_filters = {"project": project_name}
+	if depreciation_type:
+		project_details = frappe.db.get_value("Project", project_name,
+			["customer", "bill_to", "insurance_company"], as_dict=1)
+		if depreciation_type == "Depreciation Amount Only":
+			proforma_invoice_filters["bill_to"] = project_details.customer
+		elif depreciation_type == "After Depreciation Amount":
+			proforma_invoice_filters["bill_to"] = project_details.bill_to or project_details.insurance_company
+
+	proforma_invoices = _get_proforma_invoices_to_be_billed(filters=proforma_invoice_filters)
+
+	if proforma_invoices:
+		return make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc, bill_multiple_projects)
+	else:
+		return make_sales_invoice_from_orders(project_name, target_doc, depreciation_type, bill_multiple_projects)
+
+
+def make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc=None, bill_multiple_projects=None):
+	from erpnext.accounts.doctype.proforma_invoice.proforma_invoice import make_sales_invoice as invoice_from_proforma_invoice
+
+	project = frappe.get_doc("Project", project_name)
+	project_details = get_project_details(project, "Sales Invoice")
+
+	# Make Sales Invoice Target Document
+	if target_doc and isinstance(target_doc, str):
+		target_doc = json.loads(target_doc)
+
+	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Sales Invoice")
+	if not bill_multiple_projects:
+		set_default_transaction_type(target_doc)
+		set_project_details_in_transaction(target_doc, project_details, project)
+
+	# Map Proforma Invoices
+	for d in proforma_invoices:
+		target_doc = invoice_from_proforma_invoice(d.name, target_doc=target_doc, only_items=bill_multiple_projects,
+			skip_postprocess=bill_multiple_projects)
+
+	# Postprocess
+	if not bill_multiple_projects:
+		set_cash_or_credit(target_doc, project)
+		target_doc.run_method("postprocess_after_mapping")
+		# set_advances()
+
+	if bill_multiple_projects:
+		frappe.flags.postprocess_after_mapping = postprocess_bill_multiple_projects
+
+	project.check_po_no_is_set(target_doc)
+	project.validate_for_transaction(target_doc)
+
+	return target_doc
+
+
+def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None):
 	def get_filters():
 		filters = {"project": project.name}
 		if project.company:
@@ -48,16 +108,6 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 
 		return target
 
-	def set_cash_or_credit():
-		invoice_bill_to = target_doc.bill_to or target_doc.customer
-		project_bill_to = project.bill_to or project.customer
-		if target_doc.insurance_company and invoice_bill_to == target_doc.insurance_company:
-			target_doc.is_pos = 0
-		elif target_doc.insurance_company and invoice_bill_to != project_bill_to:
-			target_doc.is_pos = frappe.get_cached_value("Customer", invoice_bill_to, "cash_billing") or project.cash_billing
-		else:
-			target_doc.is_pos = project.cash_billing
-
 	def set_terms_template():
 		if project.invoice_terms_template:
 			target_doc.tc_name = project.invoice_terms_template
@@ -66,11 +116,6 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 		target_doc.set_advances(against_project=project.name)
 		if target_doc.advances:
 			target_doc.run_method("calculate_taxes_and_totals")
-
-	if frappe.flags.args and bill_multiple_projects is None:
-		bill_multiple_projects = frappe.flags.args.bill_multiple_projects
-
-	bill_multiple_projects = cint(bill_multiple_projects)
 
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Sales Invoice")
@@ -82,6 +127,7 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Sales Invoice")
 
 	if not bill_multiple_projects:
+		set_default_transaction_type(target_doc)
 		set_project_details_in_transaction(target_doc, project_details, project)
 
 	has_depreciation_rate = (
@@ -103,7 +149,7 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 		remove_taxes_from_transaction(target_doc)
 		set_project_details_in_transaction(target_doc, project_details, project)
 		set_depreciation_type_and_customer(target_doc, project, depreciation_type, has_depreciation_rate, has_excess_amount)
-		set_cash_or_credit()
+		set_cash_or_credit(target_doc, project)
 		set_contact_and_address_in_transaction(target_doc, project)
 		set_po_no_in_transaction(target_doc, project)
 		set_missing_insurance_details(target_doc)
@@ -165,11 +211,13 @@ def make_proforma_invoice(project_name, target_doc=None, depreciation_type=None)
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Proforma Invoice")
 
-	# Make Sales Invoice Target Document
+	# Make Proforma Invoice Target Document
 	if target_doc and isinstance(target_doc, str):
 		target_doc = json.loads(target_doc)
 
 	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Proforma Invoice")
+
+	set_default_transaction_type(target_doc)
 	set_project_details_in_transaction(target_doc, project_details, project)
 
 	has_depreciation_rate = (
@@ -226,7 +274,7 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 
 		if billed_excess:
 			if balance_excess > 0:
-				row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+				row = target_doc.append("items", frappe.new_doc(target_doc.doctype + " Item"))
 				row.item_code = insurance_excess_item
 				row.qty = 1
 				row.price_list_rate = 0
@@ -235,7 +283,7 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 					row.rate *= -1
 		else:
 			if flt(project.insurance_excess_amount):
-				row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+				row = target_doc.append("items", frappe.new_doc(target_doc.doctype + " Item"))
 				row.item_code = insurance_excess_item
 				row.qty = 1
 				row.price_list_rate = 0
@@ -244,7 +292,7 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 					row.rate *= -1
 
 			if flt(project.additional_insurance_excess_amount):
-				row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
+				row = target_doc.append("items", frappe.new_doc(target_doc.doctype + " Item"))
 				row.item_code = insurance_excess_item
 				row.item_name = insurance_excess_item_name + " ({0})".format(
 					project.get_formatted("insurance_excess_percentage", precision=1)
@@ -272,15 +320,9 @@ def make_delivery_note(project_name):
 	# Create Delivery Note
 	target_doc = frappe.new_doc("Delivery Note")
 
-	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
-	if default_transaction_type:
-		target_doc.transaction_type = default_transaction_type
-
 	# Set Project Details
+	set_default_transaction_type(target_doc, force=True)
 	set_project_details_in_transaction(target_doc, project_details, project)
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
 
 	# Get Sales Orders
 	sales_order_filters = {
@@ -330,9 +372,7 @@ def make_sales_order(project_name, items_type=None, without_items=False, skip_po
 	if sales_order_print_heading:
 		target_doc.select_print_heading = sales_order_print_heading
 
-	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
-	if default_transaction_type:
-		target_doc.transaction_type = default_transaction_type
+	set_default_transaction_type(target_doc, force=True)
 
 	# Set Project Details
 	for k, v in project_details.items():
@@ -387,9 +427,7 @@ def make_quotation(project_name, items_type=None):
 	target_doc.project = project.name
 	target_doc.delivery_date = project.expected_delivery_date if getdate(project.expected_delivery_date) >= getdate() else None
 
-	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
-	if default_transaction_type:
-		target_doc.transaction_type = default_transaction_type
+	set_default_transaction_type(target_doc, force=True)
 
 	# Set Project Details
 	for k, v in project_details.items():
@@ -667,6 +705,17 @@ def set_project_details_in_transaction(target_doc, project_details, project):
 			target_doc.set(k, v)
 
 
+def set_cash_or_credit(target_doc, project):
+	invoice_bill_to = target_doc.bill_to or target_doc.customer
+	project_bill_to = project.bill_to or project.customer
+	if target_doc.insurance_company and invoice_bill_to == target_doc.insurance_company:
+		target_doc.is_pos = 0
+	elif target_doc.insurance_company and invoice_bill_to != project_bill_to:
+		target_doc.is_pos = frappe.get_cached_value("Customer", invoice_bill_to, "cash_billing") or project.cash_billing
+	else:
+		target_doc.is_pos = project.cash_billing
+
+
 def set_contact_and_address_in_transaction(target_doc, project):
 	target_bill_to = target_doc.bill_to or target_doc.customer
 	if project.bill_to and target_bill_to == project.bill_to:
@@ -707,3 +756,12 @@ def set_sales_person_in_target_doc(target_doc, project):
 			"sales_person": project.service_advisor,
 			"allocated_percentage": 100
 		})
+
+
+def set_default_transaction_type(target_doc, force=False):
+	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
+	if not default_transaction_type:
+		return
+
+	if not target_doc.transaction_type or force:
+		target_doc.transaction_type = default_transaction_type

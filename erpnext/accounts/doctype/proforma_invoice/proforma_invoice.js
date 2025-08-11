@@ -34,6 +34,17 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 				}, __("Get Items From"));
 			}
 		}
+
+		if (this.frm.doc.docstatus == 1 && this.frm.doc.status != "Closed" && flt(this.frm.doc.per_billed) < 100) {
+			if (frappe.model.can_create("Sales Invoice")) {
+				this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(),
+					__('Create'));
+			}
+		}
+
+		if (!this.frm.doc.__islocal && this.frm.doc.docstatus == 1) {
+			this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+		}
 	}
 
 	get_items_from_sales_order() {
@@ -141,6 +152,13 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 				};
 			},
 		});
+	}
+
+	make_sales_invoice() {
+		frappe.model.open_mapped_doc({
+			method: "erpnext.accounts.doctype.proforma_invoice.proforma_invoice.make_sales_invoice",
+			frm: this.frm
+		})
 	}
 };
 

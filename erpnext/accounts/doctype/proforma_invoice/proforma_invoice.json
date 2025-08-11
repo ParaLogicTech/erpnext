@@ -199,6 +199,10 @@
   "language",
   "status_tab",
   "status",
+  "column_break_vddy",
+  "billing_status",
+  "column_break_bqtv",
+  "per_billed",
   "commission_tab",
   "sales_partner",
   "cb_7",
@@ -1699,12 +1703,37 @@
    "oldfieldtype": "Date",
    "reqd": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "column_break_vddy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "billing_status",
+   "fieldtype": "Select",
+   "label": "Billing Status",
+   "no_copy": 1,
+   "options": "To Bill\nBilled\nNot Applicable",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_bqtv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "per_billed",
+   "fieldtype": "Percent",
+   "label": "% Billed",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-11 14:40:22.767409",
+ "modified": "2025-08-11 15:51:42.047792",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",

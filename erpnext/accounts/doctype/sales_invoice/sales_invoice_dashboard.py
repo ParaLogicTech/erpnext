@@ -19,6 +19,7 @@ def get_data():
 			'Delivery Note': ['items', 'delivery_note'],
 			'Quotation': ['items', 'quotation'],
 			'Packing Slip': ['items', 'packing_slip'],
+			'Proforma Invoice': ['items', 'proforma_invoice'],
 		},
 		'transactions': [
 			{
@@ -27,11 +28,11 @@ def get_data():
 			},
 			{
 				'label': _('Previous Documents'),
-				'items': ['Delivery Note', 'Sales Order', 'Quotation']
+				'items': ['Delivery Note', 'Sales Order', 'Proforma Invoice']
 			},
 			{
 				'label': _('Reference'),
-				'items': ['Packing Slip']
+				'items': ['Packing Slip', 'Quotation']
 			},
 			{
 				'label': _('Returns'),
