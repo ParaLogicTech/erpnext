@@ -2,7 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.utils import cint, cstr
+from frappe.utils import cint, cstr, add_to_date, pretty_date
 from frappe import throw, _
 from frappe.utils.nestedset import NestedSet, get_ancestors_of, get_descendants_of
 
@@ -299,16 +299,59 @@ def validate_account_number(name, account_number, company):
 
 
 @frappe.whitelist()
-def update_account_number(name, account_name, account_number=None):
-
-	account = frappe.db.get_value("Account", name, "company", as_dict=True)
+def update_account_number(name, account_name, account_number=None, from_descendant=False):
+	_ensure_idle_system()
+	account = frappe.get_cached_doc("Account", name)
 	if not account: return
+
+	old_acc_name, old_acc_number = account.account_name, account.account_number
+
+	# check if account exists in parent company
+	ancestors = get_ancestors_of("Company", account.company)
+	allow_independent_account_creation = frappe.get_cached_value(
+		"Company", account.company, "allow_account_creation_against_child_company"
+	)
+
+	if ancestors and not allow_independent_account_creation:
+		for ancestor in ancestors:
+			old_name = frappe.db.get_value(
+				"Account",
+				{"account_number": old_acc_number, "account_name": old_acc_name, "company": ancestor},
+				"name",
+			)
+
+			if old_name and not from_descendant:
+				# same account in parent company exists
+				allow_child_account_creation = _("Allow Account Creation Against Child Company")
+
+				message = _("Account {0} exists in parent company {1}.").format(
+					frappe.bold(old_acc_name), frappe.bold(ancestor)
+				)
+				message += "<br>"
+				message += _("Renaming it is only allowed via parent company {0}, to avoid mismatch.").format(
+					frappe.bold(ancestor)
+				)
+				message += "<br><br>"
+				message += _("To overrule this, enable '{0}' in company {1}").format(
+					allow_child_account_creation, frappe.bold(account.company)
+				)
+
+				frappe.throw(message, title=_("Rename Not Allowed"))
+
 	validate_account_number(name, account_number, account.company)
 	if account_number:
 		frappe.db.set_value("Account", name, "account_number", account_number.strip())
 	else:
 		frappe.db.set_value("Account", name, "account_number", "")
 	frappe.db.set_value("Account", name, "account_name", account_name.strip())
+
+	if not from_descendant:
+		# Update and rename in child company accounts as well
+		descendants = get_descendants_of("Company", account.company)
+		if descendants:
+			sync_update_account_number_in_child(
+				descendants, old_acc_name, account_name, account_number, old_acc_number
+			)
 
 	new_name = get_account_autoname(account_number, account_name, account.company)
 	if name != new_name:
@@ -349,3 +392,45 @@ def get_root_company(company):
 	# return the topmost company in the hierarchy
 	ancestors = get_ancestors_of('Company', company, "lft asc")
 	return [ancestors[0]] if ancestors else []
+
+
+def sync_update_account_number_in_child(
+	descendants, old_acc_name, account_name, account_number=None, old_acc_number=None
+):
+	filters = {
+		"company": ["in", descendants],
+		"account_name": old_acc_name,
+	}
+	if old_acc_number:
+		filters["account_number"] = old_acc_number
+
+	for d in frappe.db.get_values("Account", filters=filters, fieldname=["company", "name"], as_dict=True):
+		update_account_number(d["name"], account_name, account_number, from_descendant=True)
+
+
+def _ensure_idle_system():
+	# Don't allow renaming if accounting entries are actively being updated, there are two main reasons:
+	# 1. Correctness: It's next to impossible to ensure that renamed account is not being used *right now*.
+	# 2. Performance: Renaming requires locking out many tables entirely and severely degrades performance.
+
+	if frappe.flags.in_test:
+		return
+
+	last_gl_update = None
+	try:
+		# We also lock inserts to GL entry table with for_update here.
+		last_gl_update = frappe.db.get_value("GL Entry", {}, "modified", for_update=True, wait=False)
+	except frappe.QueryTimeoutError:
+		# wait=False fails immediately if there's an active transaction.
+		last_gl_update = add_to_date(None, seconds=-1)
+
+	if not last_gl_update:
+		return
+
+	if last_gl_update > add_to_date(None, minutes=-5):
+		frappe.throw(
+			_(
+				"Last GL Entry update was done {}. This operation is not allowed while system is actively being used. Please wait for 5 minutes before retrying."
+			).format(pretty_date(last_gl_update)),
+			title=_("System In Use"),
+		)

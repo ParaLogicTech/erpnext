@@ -29,8 +29,10 @@ class GLEntry(Document):
 		remove_dimensions_not_allowed_for_bs_account(self)
 		self.validate_cost_center()
 
-		if not self.flags.from_repost:
+		if not self.flags.from_repost and not self.flags.adv_adj:
 			self.validate_party()
+
+		if not self.flags.from_repost:
 			self.validate_currency()
 			self.validate_account_details()
 			self.check_pl_account()

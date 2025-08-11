@@ -379,27 +379,36 @@ def reconcile_against_document(args):
 	"""
 		Cancel JV, Update aginst document, split if required and resubmit jv
 	"""
+
+	to_repost = []
+
 	for d in args:
+		update_payment_voucher_allocation_reference(d)
+		if (d.voucher_type, d.voucher_no) not in to_repost:
+			to_repost.append((d.voucher_type, d.voucher_no))
 
-		check_if_advance_entry_modified(d)
-		validate_allocated_amount(d)
+	repost_reconciled_payment_voucher(to_repost)
 
-		# cancel advance entry
-		doc = frappe.get_doc(d.voucher_type, d.voucher_no)
 
+def update_payment_voucher_allocation_reference(d):
+	check_if_advance_entry_modified(d)
+	validate_allocated_amount(d)
+
+	# update ref in advance entry
+	doc = frappe.get_doc(d.voucher_type, d.voucher_no)
+	if d.voucher_type == "Journal Entry":
+		update_reference_in_journal_entry(d, doc)
+	else:
+		update_reference_in_payment_entry(d, doc)
+
+
+def repost_reconciled_payment_voucher(payment_vouchers):
+	for voucher_type, voucher_no in payment_vouchers:
+		# cancel advance entry and resubmit gl entries
+		doc = frappe.get_doc(voucher_type, voucher_no)
 		doc.make_gl_entries(cancel=1, adv_adj=1)
-
-		# update ref in advance entry
-		if d.voucher_type == "Journal Entry":
-			update_reference_in_journal_entry(d, doc)
-		else:
-			update_reference_in_payment_entry(d, doc)
-
-		# re-submit advance entry
-		doc = frappe.get_doc(d.voucher_type, d.voucher_no)
-		doc.make_gl_entries(cancel = 0, adv_adj =1)
-
-		if d.voucher_type in ('Payment Entry', 'Journal Entry'):
+		doc.make_gl_entries(cancel=0, adv_adj=1)
+		if voucher_type in ('Payment Entry', 'Journal Entry'):
 			doc.update_expense_claim()
 
 
@@ -467,7 +476,7 @@ def validate_allocated_amount(args):
 		throw(_("Allocated amount cannot be greater than unadjusted amount"))
 
 
-def update_reference_in_journal_entry(d, jv_doc):
+def update_reference_in_journal_entry(d, jv_doc, do_not_save=False):
 	"""
 		Updates against document, if partial amount splits into rows
 	"""
@@ -482,7 +491,12 @@ def update_reference_in_journal_entry(d, jv_doc):
 
 	amt_allocated = 0.0
 	for jv_detail in rows_to_reconcile:
-		amt_allocatable = min(jv_detail.get(d["dr_or_cr"]), d["allocated_amount"] - amt_allocated)
+		jvd = frappe.copy_doc(jv_detail)
+
+		amt_allocatable = flt(
+			min(jv_detail.get(d["dr_or_cr"]), d["allocated_amount"] - amt_allocated),
+			jv_detail.precision("debit")
+		)
 		original_dr_or_cr = jv_detail.get(d["dr_or_cr"])
 		original_reference_type = jv_detail.reference_type
 		original_reference_name = jv_detail.reference_name
@@ -495,10 +509,8 @@ def update_reference_in_journal_entry(d, jv_doc):
 		jv_detail.set("reference_name", d["against_voucher"])
 
 		if amt_allocatable < original_dr_or_cr:
-			jvd = frappe.db.sql("select * from `tabJournal Entry Account` where name = %s", jv_detail.name, as_dict=True)
-
-			amount_in_account_currency = flt(original_dr_or_cr) - flt(amt_allocatable)
-			amount_in_company_currency = amount_in_account_currency * flt(jvd[0]['exchange_rate'])
+			amount_in_account_currency = flt(flt(original_dr_or_cr) - flt(amt_allocatable), jv_detail.precision("debit"))
+			amount_in_company_currency = amount_in_account_currency * flt(jvd.exchange_rate)
 
 			# new entry with balance amount
 			ch = jv_doc.append("accounts")
@@ -511,25 +523,25 @@ def update_reference_in_journal_entry(d, jv_doc):
 			ch.idx = new_idx
 
 			ch.account = d['account']
-			ch.account_type = jvd[0]['account_type']
-			ch.account_currency = jvd[0]['account_currency']
-			ch.exchange_rate = jvd[0]['exchange_rate']
+			ch.account_type = jvd.account_type
+			ch.account_currency = jvd.account_currency
+			ch.exchange_rate = jvd.exchange_rate
 			ch.party_type = d["party_type"]
 			ch.party = d["party"]
-			ch.party_name = jvd[0]["party_name"]
-			ch.cost_center = cstr(jvd[0]["cost_center"])
-			ch.project = jvd[0]["project"]
-			ch.balance = flt(jvd[0]["balance"])
-			ch.cheque_no = jvd[0]["cheque_no"]
-			ch.cheque_date = jvd[0]["cheque_date"]
-			ch.user_remark = jvd[0]["user_remark"]
-			ch.original_reference_type = jvd[0]["original_reference_type"]
-			ch.original_reference_name = jvd[0]["original_reference_type"]
-			ch.against_account = cstr(jvd[0]["against_account"])
+			ch.party_name = jvd.party_name
+			ch.cost_center = cstr(jvd.cost_center)
+			ch.project = jvd.project
+			ch.balance = flt(jvd.balance)
+			ch.cheque_no = jvd.cheque_no
+			ch.cheque_date = jvd.cheque_date
+			ch.user_remark = jvd.user_remark
+			ch.original_reference_type = jvd.original_reference_type
+			ch.original_reference_name = jvd.original_reference_type
+			ch.against_account = cstr(jvd.against_account)
 
 			from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 			for dimension_fieldname in get_accounting_dimensions():
-				ch.set(dimension_fieldname, jvd[0].get(dimension_fieldname))
+				ch.set(dimension_fieldname, jvd.get(dimension_fieldname))
 
 			ch.set(d['dr_or_cr'], amount_in_account_currency)
 			ch.set('debit' if d['dr_or_cr']=='debit_in_account_currency' else 'credit', amount_in_company_currency)
@@ -547,9 +559,10 @@ def update_reference_in_journal_entry(d, jv_doc):
 			break
 
 	# will work as update after submit
-	jv_doc.flags.ignore_validate_update_after_submit = True
-	jv_doc.flags.ignore_mandatory = True
-	jv_doc.save(ignore_permissions=True)
+	if not do_not_save:
+		jv_doc.flags.ignore_validate_update_after_submit = True
+		jv_doc.flags.ignore_mandatory = True
+		jv_doc.save(ignore_permissions=True)
 
 
 def update_reference_in_payment_entry(d, payment_entry, do_not_save=False):

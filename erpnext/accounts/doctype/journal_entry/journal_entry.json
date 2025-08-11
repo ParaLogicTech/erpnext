@@ -92,7 +92,7 @@
    "label": "Entry Type",
    "oldfieldname": "voucher_type",
    "oldfieldtype": "Select",
-   "options": "Journal Entry\nBank Entry\nCash Entry\nWrite Off Entry\nOpening Entry\nDepreciation Entry\nExchange Rate Revaluation\nBank Clearance Entry",
+   "options": "Journal Entry\nBank Entry\nCash Entry\nWrite Off Entry\nOpening Entry\nDepreciation Entry\nExchange Rate Revaluation\nBank Clearance Entry\nPayment Reconciliation",
    "reqd": 1,
    "search_index": 1
   },

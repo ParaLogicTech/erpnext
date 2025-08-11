@@ -227,6 +227,33 @@ frappe.ui.form.on('Payment Entry', {
 		frm.events.hide_unhide_fields(frm);
 		frm.events.set_dynamic_labels(frm);
 		frm.events.show_general_ledger(frm);
+		frm.events.set_up_reference_row_selection(frm);
+	},
+
+	set_up_reference_row_selection: frm => {
+		frm.fields_dict.references.grid.wrapper.on('click', '.grid-row-check', (e) => {
+			frm.events.allocate_checked_rows(frm);
+		});
+	},
+
+	allocate_checked_rows: (frm) => {
+		for (let r of frm.doc.references || []) {
+			r.allocated_amount = 0;
+		}
+
+		const selected_rows = frm.fields_dict.references.grid.get_selected_children();
+		if (selected_rows.length) {
+			for (let r of selected_rows) {
+				r.allocated_amount = flt(r.outstanding_amount);
+			}
+		} else {
+			frm.events.allocate_party_amount_against_ref_docs(
+				frm,
+				frm.doc.payment_type=="Receive" ? frm.doc.paid_amount_before_tax : frm.doc.received_amount_before_tax
+			);
+		}
+
+		frm.events.set_total_allocated_amount(frm);
 	},
 
 	validate_company: (frm) => {
@@ -821,6 +848,7 @@ frappe.ui.form.on('Payment Entry', {
 						c.total_amount = d.invoice_amount;
 						c.outstanding_amount = d.outstanding_amount;
 						c.bill_no = d.bill_no;
+						c.posting_date = d.posting_date || d.transaction_date;
 
 						if(!in_list(["Sales Order", "Purchase Order", "Expense Claim", "Fees"], d.voucher_type)) {
 							if(flt(d.outstanding_amount) > 0)
