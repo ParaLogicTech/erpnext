@@ -17,32 +17,11 @@ frappe.query_reports["Employees Receivable"] = {
 			"default": frappe.datetime.get_today()
 		},
 		{
-			"fieldname":"range1",
-			"label": __("Ageing Range 1"),
-			"fieldtype": "Int",
-			"default": "30",
-			"reqd": 1
-		},
-		{
-			"fieldname":"range2",
-			"label": __("Ageing Range 2"),
-			"fieldtype": "Int",
-			"default": "60",
-			"reqd": 1
-		},
-		{
-			"fieldname":"range3",
-			"label": __("Ageing Range 3"),
-			"fieldtype": "Int",
-			"default": "90",
-			"reqd": 1
-		},
-		{
-			"fieldname":"range4",
-			"label": __("Ageing Range 4"),
-			"fieldtype": "Int",
-			"default": "120",
-			"reqd": 1
+			"fieldname":"ageing_range",
+			"label": __("Ageing Range"),
+			"fieldtype": "Data",
+			"default": "30, 60, 90, 120",
+			"reqd": 0
 		},
 		{
 			"fieldname":"employee",
@@ -55,12 +34,6 @@ frappe.query_reports["Employees Receivable"] = {
 			"label": __("Department"),
 			"fieldtype": "Link",
 			"options": "Department"
-		},
-		{
-			"fieldname":"designation",
-			"label": __("Designation"),
-			"fieldtype": "Link",
-			"options": "Designation"
 		},
 		{
 			"fieldname":"branch",
@@ -99,12 +72,6 @@ frappe.query_reports["Employees Receivable"] = {
 			"label": __("Project"),
 			"fieldtype": "Link",
 			"options": "Project"
-		},
-		{
-			"fieldname":"finance_book",
-			"label": __("Finance Book"),
-			"fieldtype": "Link",
-			"options": "Finance Book"
 		},
 		{
 			"fieldname":"group_by",

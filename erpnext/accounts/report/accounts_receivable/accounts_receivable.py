@@ -35,6 +35,7 @@ class ReceivablePayableReport(object):
 	def validate_filters(self, args):
 		self.filters.party_type = args.get('party_type')
 		self.party_naming_by = frappe.db.get_single_value(args.get("naming_by")[0], args.get("naming_by")[1])
+		self.show_party_name = self.party_naming_by in ("Naming Series", "Employee Number")
 
 		self.filters.report_date = getdate(self.filters.report_date)
 		self.age_as_on = getdate() if self.filters.report_date > getdate() else self.filters.report_date
@@ -868,7 +869,7 @@ class ReceivablePayableReport(object):
 		return self.filters.get(scrub(self.filters.get("party_type")))
 
 	def get_columns(self):
-		party_column_width = 80 if self.party_naming_by == "Naming Series" else 200
+		party_column_width = 80 if self.show_party_name else 200
 
 		columns = [
 			{
@@ -890,7 +891,7 @@ class ReceivablePayableReport(object):
 		if self.filters.get("group_by"):
 			columns = list(reversed(columns))
 
-		if self.party_naming_by == "Naming Series":
+		if self.show_party_name:
 			columns.append({
 				"label": _(self.filters.get("party_type") + " Name"),
 				"fieldtype": "Data",
