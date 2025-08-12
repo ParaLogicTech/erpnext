@@ -344,16 +344,6 @@
    "options": "Branch"
   },
   {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Proforma Invoice",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
    "collapsible": 1,
    "fieldname": "more_info",
    "fieldtype": "Section Break",
@@ -1733,7 +1723,7 @@
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-11 15:51:42.047792",
+ "modified": "2025-08-12 10:02:30.714390",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",
