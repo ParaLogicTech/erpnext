@@ -1536,7 +1536,7 @@ def get_material_items(project, get_sales_invoice=True):
 		is_material_condition = "(i.is_stock_item = 1 or i.item_group in ({0}))"\
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
-	dn_data = frappe.db.sql("""
+	dn_data = frappe.db.sql(f"""
 		select
 			p.name as delivery_note,
 			i.sales_order,
@@ -1560,12 +1560,13 @@ def get_material_items(project, get_sales_invoice=True):
 			i.claim_customer
 		from `tabDelivery Note Item` i
 		inner join `tabDelivery Note` p on p.name = i.parent
-		where p.docstatus = 1 and {0}
+		where p.docstatus = 1
+			and {is_material_condition}
 			and p.project = %s
-	""".format(is_material_condition), project.name, as_dict=1)
+	""", project.name, as_dict=1)
 	set_sales_data_customer_amounts(dn_data, project)
 
-	so_data = frappe.db.sql("""
+	so_data = frappe.db.sql(f"""
 		select
 			p.name as sales_order,
 			p.transaction_date,
@@ -1590,7 +1591,8 @@ def get_material_items(project, get_sales_invoice=True):
 			i.claim_customer
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
-		where p.docstatus = 1 and {0}
+		where p.docstatus = 1
+			and {is_material_condition}
 			and (i.delivered_qty < i.qty or i.is_stock_item = 0)
 			and i.qty > 0
 			and (p.status != 'Closed' or exists(select sum(si_item.amount)
@@ -1599,10 +1601,10 @@ def get_material_items(project, get_sales_invoice=True):
 				having sum(si_item.amount) > 0)
 			)
 			and p.project = %s
-	""".format(is_material_condition), project.name, as_dict=1)
+	""", project.name, as_dict=1)
 	set_sales_data_customer_amounts(so_data, project)
 
-	sinv_data = frappe.db.sql("""
+	sinv_data = frappe.db.sql(f"""
 		select
 			p.name as sales_invoice,
 			i.delivery_note,
@@ -1626,9 +1628,12 @@ def get_material_items(project, get_sales_invoice=True):
 			p.conversion_rate
 		from `tabSales Invoice Item` i
 		inner join `tabSales Invoice` p on p.name = i.parent
-		where p.docstatus = 1 and {0} and ifnull(i.sales_order, '') = '' and ifnull(i.delivery_note, '') = ''
+		where p.docstatus = 1
+			and {is_material_condition}
+			and ifnull(i.sales_order, '') = ''
+			and ifnull(i.delivery_note, '') = ''
 			and i.project = %s
-	""".format(is_material_condition), project.name, as_dict=1)
+	""", project.name, as_dict=1)
 	set_sales_data_customer_amounts(sinv_data, project)
 
 	materials_data = get_items_data_template()
@@ -1683,7 +1688,7 @@ def get_service_items(project, get_sales_invoice=True):
 		is_service_condition = "(i.is_stock_item = 0 and i.is_fixed_asset = 0 and i.item_group not in ({0}))"\
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
-	so_data = frappe.db.sql("""
+	so_data = frappe.db.sql(f"""
 		select
 			p.name as sales_order,
 			p.transaction_date,
@@ -1705,7 +1710,8 @@ def get_service_items(project, get_sales_invoice=True):
 			i.claim_customer
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
-		where p.docstatus = 1 and {0}
+		where p.docstatus = 1
+			and {is_service_condition}
 			and p.project = %s
 			and (p.status != 'Closed' or exists(select sum(si_item.amount)
 				from `tabSales Invoice Item` si_item
@@ -1713,7 +1719,7 @@ def get_service_items(project, get_sales_invoice=True):
 				having sum(si_item.amount) > 0)
 			)
 		order by p.transaction_date, p.creation, i.idx
-	""".format(is_service_condition), project.name, as_dict=1)
+	""", project.name, as_dict=1)
 	set_sales_data_customer_amounts(so_data, project)
 
 	sinv_data = []
@@ -1721,7 +1727,7 @@ def get_service_items(project, get_sales_invoice=True):
 		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
 		exclude_insurance_excess = " and i.item_code != {0}".format(frappe.db.escape(insurance_excess_item)) if insurance_excess_item else ""
 
-		sinv_data = frappe.db.sql("""
+		sinv_data = frappe.db.sql(f"""
 			select
 				p.name as sales_invoice,
 				i.delivery_note,
@@ -1744,10 +1750,13 @@ def get_service_items(project, get_sales_invoice=True):
 				p.conversion_rate
 			from `tabSales Invoice Item` i
 			inner join `tabSales Invoice` p on p.name = i.parent
-			where p.docstatus = 1 and {0} and ifnull(i.sales_order, '') = ''
-				and i.project = %s {1}
+			where p.docstatus = 1
+				and {is_service_condition}
+				and ifnull(i.sales_order, '') = ''
+				and i.project = %s
+				{exclude_insurance_excess}
 			order by p.posting_date, p.creation, i.idx
-		""".format(is_service_condition, exclude_insurance_excess), project.name, as_dict=1)
+		""", project.name, as_dict=1)
 	set_sales_data_customer_amounts(sinv_data, project)
 
 	service_data = get_items_data_template()
