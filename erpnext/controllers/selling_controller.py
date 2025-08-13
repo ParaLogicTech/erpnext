@@ -745,7 +745,7 @@ class SellingController(TransactionController):
 		if not any(d.item_code == insurance_excess_item for d in self.items):
 			return
 
-		project.validate_insurance_excess_billed_amount()
+		project.validate_insurance_excess_billed_amount(for_proforma_invoice=self.doctype == "Proforma Invoice")
 
 	def validate_campaign(self):
 		validate_campaign_voucher_code(self)

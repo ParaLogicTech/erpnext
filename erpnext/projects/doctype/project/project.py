@@ -1285,12 +1285,14 @@ class Project(StatusUpdaterERP):
 
 			item_codes_visited.add(d.underinsurance_item_code)
 
-	def validate_insurance_excess_billed_amount(self):
+	def validate_insurance_excess_billed_amount(self, for_proforma_invoice=False):
 		total_excess = flt(self.insurance_excess_amount) + flt(self.additional_insurance_excess_amount)
 		if not total_excess:
 			return
 
-		positive_excess, negative_excess = self.get_insurance_excess_billed()
+		positive_excess, negative_excess = self.get_insurance_excess_billed(
+			include_proforma_invoices=for_proforma_invoice
+		)
 
 		precision = self.precision("insurance_excess_amount")
 
@@ -1302,7 +1304,7 @@ class Project(StatusUpdaterERP):
 				frappe.format(total_excess, df=self.meta.get_field("insurance_excess_amount"))
 			))
 
-	def get_insurance_excess_billed(self):
+	def get_insurance_excess_billed(self, include_proforma_invoices=False):
 		positive_excess = 0
 		negative_excess = 0
 
@@ -1310,17 +1312,29 @@ class Project(StatusUpdaterERP):
 		if not insurance_excess_item:
 			return positive_excess, negative_excess
 
-		invoice_data = frappe.db.sql("""
-			SELECT inv.bill_to, i.base_amount
+		sinv_data = frappe.db.sql("""
+			SELECT p.bill_to, i.base_amount
 			FROM `tabSales Invoice Item` i
-			INNER JOIN `tabSales Invoice` inv ON i.parent = inv.name
-			WHERE inv.docstatus = 1
-				AND inv.project = %s
+			INNER JOIN `tabSales Invoice` p ON i.parent = p.name
+			WHERE p.docstatus = 1
+				AND i.project = %s
 				AND i.item_code = %s
-				AND (inv.is_return = 0 or inv.reopen_order = 1)
+				AND (p.is_return = 0 or p.reopen_order = 1)
 		""", (self.name, insurance_excess_item), as_dict=1)
 
-		for d in invoice_data:
+		pfinv_data = []
+		if include_proforma_invoices:
+			pfinv_data = frappe.db.sql("""
+				SELECT p.bill_to, (i.amount - i.billed_amt) * p.conversion_rate as base_amount
+				FROM `tabProforma Invoice Item` i
+				INNER JOIN `tabProforma Invoice` p ON i.parent = p.name
+				WHERE p.docstatus = 1
+					AND p.project = %s
+					AND i.item_code = %s
+					AND i.billed_amt < i.amount
+			""", (self.name, insurance_excess_item), as_dict=1)
+
+		for d in sinv_data + pfinv_data:
 			if d.base_amount < 0:
 				negative_excess -= d.base_amount
 			else:
@@ -1349,6 +1363,7 @@ class Project(StatusUpdaterERP):
 			"data": sales_data.service_items,
 			"currency": currency,
 			"show_sales_order": True,
+			"show_proforma_invoice": True,
 			"show_amount": True,
 		})
 
@@ -1359,6 +1374,7 @@ class Project(StatusUpdaterERP):
 			"currency": currency,
 			"show_sales_order": True,
 			"show_delivery_note": True,
+			"show_proforma_invoice": True,
 			"show_amount": True,
 		})
 
@@ -1536,11 +1552,14 @@ def get_material_items(project, get_sales_invoice=True):
 		is_material_condition = "(i.is_stock_item = 1 or i.item_group in ({0}))"\
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
-	dn_data = frappe.db.sql(f"""
+	pfinv_data = frappe.db.sql(f"""
 		select
-			p.name as delivery_note,
+			p.name as proforma_invoice,
+			i.delivery_note,
 			i.sales_order,
-			p.posting_date, p.posting_time,
+			p.bill_to,
+			if(so.transaction_date is null, p.transaction_date, so.transaction_date) as transaction_date,
+			dn.posting_date, dn.posting_time,
 			i.idx,
 			i.item_code,
 			i.item_name,
@@ -1556,15 +1575,49 @@ def get_material_items(project, get_sales_invoice=True):
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
 			i.item_tax_detail,
+			p.conversion_rate
+		from `tabProforma Invoice Item` i
+		inner join `tabProforma Invoice` p on p.name = i.parent
+		left join `tabDelivery Note` dn on dn.name = i.delivery_note
+		left join `tabSales Order` so on so.name = i.sales_order
+		where p.docstatus = 1
+			and {is_material_condition}
+			and p.project = %s
+		order by transaction_date, p.creation, i.idx
+	""" , project.name, as_dict=1)
+	pre_process_items_data(pfinv_data, project)
+
+	dn_data = frappe.db.sql(f"""
+		select
+			p.name as delivery_note,
+			i.sales_order,
+			p.posting_date, p.posting_time,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.proforma_qty as fulfilled_qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
+			i.base_net_amount as net_amount,
+			i.base_net_rate as net_rate,
+			i.base_taxable_amount as taxable_amount,
+			i.base_tax_exclusive_total_discount as total_discount,
+			i.item_tax_detail,
 			p.conversion_rate,
 			i.claim_customer
 		from `tabDelivery Note Item` i
 		inner join `tabDelivery Note` p on p.name = i.parent
 		where p.docstatus = 1
 			and {is_material_condition}
+			and i.proforma_qty < i.qty
 			and p.project = %s
 	""", project.name, as_dict=1)
-	set_sales_data_customer_amounts(dn_data, project)
+	pre_process_items_data(dn_data, project)
 
 	so_data = frappe.db.sql(f"""
 		select
@@ -1576,16 +1629,15 @@ def get_material_items(project, get_sales_invoice=True):
 			i.description,
 			i.item_group,
 			i.is_stock_item,
-			if(i.is_stock_item = 1, i.qty - i.delivered_qty, i.qty) as qty,
-			i.qty as original_qty,
-			i.delivered_qty,
+			i.qty,
+			greatest(if(i.is_stock_item = 1, i.delivered_qty, 0), i.proforma_qty) as fulfilled_qty,
 			i.uom,
 			i.stock_uom,
 			i.conversion_factor,
-			if(i.is_stock_item = 1, i.base_net_amount * (i.qty - i.delivered_qty) / i.qty, i.base_net_amount) as net_amount,
+			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
-			if(i.is_stock_item = 1, i.base_taxable_amount * (i.qty - i.delivered_qty) / i.qty, i.base_taxable_amount) as taxable_amount,
-			if(i.is_stock_item = 1, i.base_tax_exclusive_total_discount * (i.qty - i.delivered_qty) / i.qty, i.base_tax_exclusive_total_discount) as total_discount,
+			i.base_taxable_amount as taxable_amount,
+			i.base_tax_exclusive_total_discount as total_discount,
 			i.item_tax_detail,
 			p.conversion_rate,
 			i.claim_customer
@@ -1594,6 +1646,7 @@ def get_material_items(project, get_sales_invoice=True):
 		where p.docstatus = 1
 			and {is_material_condition}
 			and (i.delivered_qty < i.qty or i.is_stock_item = 0)
+			and i.proforma_qty < i.qty
 			and i.qty > 0
 			and (p.status != 'Closed' or exists(select sum(si_item.amount)
 				from `tabSales Invoice Item` si_item
@@ -1602,13 +1655,15 @@ def get_material_items(project, get_sales_invoice=True):
 			)
 			and p.project = %s
 	""", project.name, as_dict=1)
-	set_sales_data_customer_amounts(so_data, project)
+	pre_process_items_data(so_data, project)
 
 	sinv_data = frappe.db.sql(f"""
 		select
 			p.name as sales_invoice,
 			i.delivery_note,
 			i.sales_order,
+			i.proforma_invoice,
+			p.bill_to,
 			p.posting_date, p.posting_time,
 			i.idx,
 			i.item_code,
@@ -1632,9 +1687,10 @@ def get_material_items(project, get_sales_invoice=True):
 			and {is_material_condition}
 			and ifnull(i.sales_order, '') = ''
 			and ifnull(i.delivery_note, '') = ''
+			and ifnull(i.proforma_invoice, '') = ''
 			and i.project = %s
 	""", project.name, as_dict=1)
-	set_sales_data_customer_amounts(sinv_data, project)
+	pre_process_items_data(sinv_data, project)
 
 	materials_data = get_items_data_template()
 	parts_data = get_items_data_template()
@@ -1645,7 +1701,7 @@ def get_material_items(project, get_sales_invoice=True):
 	lubricants_item_groups = project.get_item_groups_subtree(project.lubricants_item_group)
 	consumables_item_group = project.get_item_groups_subtree(project.consumables_item_group)
 	paint_material_item_group = project.get_item_groups_subtree(project.paint_item_group)
-	for d in dn_data + so_data + sinv_data:
+	for d in pfinv_data + dn_data + so_data + sinv_data:
 		materials_data['items'].append(d)
 
 		if d.item_group in lubricants_item_groups:
@@ -1688,16 +1744,55 @@ def get_service_items(project, get_sales_invoice=True):
 		is_service_condition = "(i.is_stock_item = 0 and i.is_fixed_asset = 0 and i.item_group not in ({0}))"\
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
-	so_data = frappe.db.sql(f"""
+	insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
+	exclude_insurance_excess = f" and i.item_code != {frappe.db.escape(insurance_excess_item)}" if insurance_excess_item else ""
+
+	pfinv_data = frappe.db.sql(f"""
 		select
-			p.name as sales_order,
-			p.transaction_date,
+			p.name as proforma_invoice,
+			i.delivery_note,
+			i.sales_order,
+			p.bill_to,
+			if(so.transaction_date is null, p.transaction_date, so.transaction_date) as transaction_date,
+			i.idx,
 			i.item_code,
 			i.item_name,
 			i.description,
 			i.item_group,
 			i.is_stock_item,
 			i.qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
+			i.base_net_amount as net_amount,
+			i.base_net_rate as net_rate,
+			i.base_taxable_amount as taxable_amount,
+			i.base_tax_exclusive_total_discount as total_discount,
+			i.item_tax_detail,
+			p.conversion_rate
+		from `tabProforma Invoice Item` i
+		inner join `tabProforma Invoice` p on p.name = i.parent
+		left join `tabSales Order` so on so.name = i.sales_order
+		where p.docstatus = 1
+			and {is_service_condition}
+			and p.project = %s
+			{exclude_insurance_excess}
+		order by transaction_date, p.creation, i.idx
+	""", project.name, as_dict=1)
+	pre_process_items_data(pfinv_data, project)
+
+	so_data = frappe.db.sql(f"""
+		select
+			p.name as sales_order,
+			p.transaction_date,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.proforma_qty as fulfilled_qty,
 			i.uom,
 			i.stock_uom,
 			i.conversion_factor,
@@ -1713,6 +1808,7 @@ def get_service_items(project, get_sales_invoice=True):
 		where p.docstatus = 1
 			and {is_service_condition}
 			and p.project = %s
+			and i.proforma_qty < i.qty
 			and (p.status != 'Closed' or exists(select sum(si_item.amount)
 				from `tabSales Invoice Item` si_item
 				where si_item.docstatus = 1 and si_item.sales_order_item = i.name
@@ -1720,19 +1816,19 @@ def get_service_items(project, get_sales_invoice=True):
 			)
 		order by p.transaction_date, p.creation, i.idx
 	""", project.name, as_dict=1)
-	set_sales_data_customer_amounts(so_data, project)
+	pre_process_items_data(so_data, project)
 
 	sinv_data = []
 	if get_sales_invoice:
-		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
-		exclude_insurance_excess = " and i.item_code != {0}".format(frappe.db.escape(insurance_excess_item)) if insurance_excess_item else ""
-
 		sinv_data = frappe.db.sql(f"""
 			select
 				p.name as sales_invoice,
 				i.delivery_note,
 				i.sales_order,
+				i.proforma_invoice,
+				p.bill_to,
 				p.posting_date as transaction_date,
+				i.idx,
 				i.item_code,
 				i.item_name,
 				i.description,
@@ -1753,11 +1849,12 @@ def get_service_items(project, get_sales_invoice=True):
 			where p.docstatus = 1
 				and {is_service_condition}
 				and ifnull(i.sales_order, '') = ''
+				and ifnull(i.proforma_invoice, '') = ''
 				and i.project = %s
 				{exclude_insurance_excess}
 			order by p.posting_date, p.creation, i.idx
 		""", project.name, as_dict=1)
-	set_sales_data_customer_amounts(sinv_data, project)
+	pre_process_items_data(sinv_data, project)
 
 	service_data = get_items_data_template()
 	labour_data = get_items_data_template()
@@ -1766,7 +1863,7 @@ def get_service_items(project, get_sales_invoice=True):
 	sublet_data = get_items_data_template()
 
 	sublet_item_groups = project.get_item_groups_subtree(project.sublet_item_group)
-	for d in so_data + sinv_data:
+	for d in pfinv_data + so_data + sinv_data:
 		service_data['items'].append(d)
 
 		if d.item_group in sublet_item_groups:
@@ -1890,9 +1987,27 @@ def get_items_data_template():
 	})
 
 
-def set_sales_data_customer_amounts(data, project):
+def pre_process_items_data(data, project):
+	adjust_sales_data_fulfilled_qty(data)
 	set_depreciation_in_invoice_items(data, project, force=True)
+	set_sales_data_customer_amounts(data, project)
 
+
+def adjust_sales_data_fulfilled_qty(data):
+	for d in data:
+		if not flt(d.fulfilled_qty):
+			continue
+
+		d.original_qty = flt(d.qty)
+		d.qty = max(flt(flt(d.qty) - flt(d.fulfilled_qty), 9), 0)
+		ratio = d.qty / d.original_qty if d.original_qty else 0
+
+		d.net_amount *= ratio
+		d.taxable_amount *= ratio
+		d.total_discount *= ratio
+
+
+def set_sales_data_customer_amounts(data, project):
 	for d in data:
 		d.has_customer_depreciation = 0
 
@@ -1910,7 +2025,12 @@ def set_sales_data_customer_amounts(data, project):
 		else:
 			d.is_claim_item = 0
 
-			if project.insurance_company and project.bill_to and project.bill_to != project.customer:
+			if (
+				project.insurance_company
+				and project.bill_to
+				and project.bill_to != project.customer
+				and (not d.bill_to or d.bill_to != project.customer)
+			):
 				d.has_customer_depreciation = 1
 
 				depreciation_amount = d.net_amount * flt(d.depreciation_percentage) / 100

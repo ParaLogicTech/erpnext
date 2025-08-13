@@ -120,7 +120,7 @@ class ProformaInvoice(SellingController):
 			doc.set_status(update=True)
 			doc.notify_update()
 
-		# self.update_project_billing_and_sales()
+		self.update_project_billing_and_sales(validate_insurance_excess=True)
 
 	def set_billing_status(self, update=False, update_modified=True):
 		data = self.get_billing_status_data()

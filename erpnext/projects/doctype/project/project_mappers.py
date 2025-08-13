@@ -268,7 +268,9 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 		insurance_excess_item_name = frappe.get_cached_value("Item", insurance_excess_item, "item_name") or _("Insurance Excess")
 
 		total_excess = flt(project.insurance_excess_amount) + flt(project.additional_insurance_excess_amount)
-		positive_excess, negative_excess = project.get_insurance_excess_billed()
+		positive_excess, negative_excess = project.get_insurance_excess_billed(
+			include_proforma_invoices=target_doc.doctype == "Proforma Invoice"
+		)
 		billed_excess = negative_excess if depreciation_type == "After Depreciation Amount" else positive_excess
 		balance_excess = flt(total_excess - billed_excess, project.precision("insurance_excess_amount"))
 
