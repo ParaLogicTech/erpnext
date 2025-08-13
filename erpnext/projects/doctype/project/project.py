@@ -1537,15 +1537,27 @@ def get_material_items(project, get_sales_invoice=True):
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
 	dn_data = frappe.db.sql("""
-		select p.name as delivery_note, i.sales_order,
-			p.posting_date, p.posting_time, i.idx,
-			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom,
+		select
+			p.name as delivery_note,
+			i.sales_order,
+			p.posting_date, p.posting_time,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.item_tax_detail, i.claim_customer, p.conversion_rate
+			i.item_tax_detail,
+			p.conversion_rate,
+			i.claim_customer
 		from `tabDelivery Note Item` i
 		inner join `tabDelivery Note` p on p.name = i.parent
 		where p.docstatus = 1 and {0}
@@ -1554,18 +1566,28 @@ def get_material_items(project, get_sales_invoice=True):
 	set_sales_data_customer_amounts(dn_data, project)
 
 	so_data = frappe.db.sql("""
-		select p.name as sales_order,
-			p.transaction_date, i.idx,
-			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
+		select
+			p.name as sales_order,
+			p.transaction_date,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
 			if(i.is_stock_item = 1, i.qty - i.delivered_qty, i.qty) as qty,
-			i.qty as ordered_qty,
+			i.qty as original_qty,
 			i.delivered_qty,
 			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
 			if(i.is_stock_item = 1, i.base_net_amount * (i.qty - i.delivered_qty) / i.qty, i.base_net_amount) as net_amount,
 			i.base_net_rate as net_rate,
 			if(i.is_stock_item = 1, i.base_taxable_amount * (i.qty - i.delivered_qty) / i.qty, i.base_taxable_amount) as taxable_amount,
 			if(i.is_stock_item = 1, i.base_tax_exclusive_total_discount * (i.qty - i.delivered_qty) / i.qty, i.base_tax_exclusive_total_discount) as total_discount,
-			i.item_tax_detail, i.claim_customer, p.conversion_rate
+			i.item_tax_detail,
+			p.conversion_rate,
+			i.claim_customer
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
 		where p.docstatus = 1 and {0}
@@ -1581,15 +1603,27 @@ def get_material_items(project, get_sales_invoice=True):
 	set_sales_data_customer_amounts(so_data, project)
 
 	sinv_data = frappe.db.sql("""
-		select p.name as sales_invoice, i.delivery_note, i.sales_order,
-			p.posting_date, p.posting_time, i.idx,
-			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom,
+		select
+			p.name as sales_invoice,
+			i.delivery_note,
+			i.sales_order,
+			p.posting_date, p.posting_time,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.item_tax_detail, p.conversion_rate
+			i.item_tax_detail,
+			p.conversion_rate
 		from `tabSales Invoice Item` i
 		inner join `tabSales Invoice` p on p.name = i.parent
 		where p.docstatus = 1 and {0} and ifnull(i.sales_order, '') = '' and ifnull(i.delivery_note, '') = ''
@@ -1650,15 +1684,25 @@ def get_service_items(project, get_sales_invoice=True):
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
 	so_data = frappe.db.sql("""
-		select p.name as sales_order,
+		select
+			p.name as sales_order,
 			p.transaction_date,
-			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom, i.stock_uom, i.conversion_factor,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.item_tax_detail, i.claim_customer, p.conversion_rate
+			i.item_tax_detail,
+			p.conversion_rate,
+			i.claim_customer
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
 		where p.docstatus = 1 and {0}
@@ -1678,15 +1722,26 @@ def get_service_items(project, get_sales_invoice=True):
 		exclude_insurance_excess = " and i.item_code != {0}".format(frappe.db.escape(insurance_excess_item)) if insurance_excess_item else ""
 
 		sinv_data = frappe.db.sql("""
-			select p.name as sales_invoice, i.delivery_note, i.sales_order,
+			select
+				p.name as sales_invoice,
+				i.delivery_note,
+				i.sales_order,
 				p.posting_date as transaction_date,
-				i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-				i.qty, i.uom, i.stock_uom, i.conversion_factor,
+				i.item_code,
+				i.item_name,
+				i.description,
+				i.item_group,
+				i.is_stock_item,
+				i.qty,
+				i.uom,
+				i.stock_uom,
+				i.conversion_factor,
 				i.base_net_amount as net_amount,
 				i.base_net_rate as net_rate,
 				i.base_taxable_amount as taxable_amount,
 				i.base_tax_exclusive_total_discount as total_discount,
-				i.item_tax_detail, p.conversion_rate
+				i.item_tax_detail,
+				p.conversion_rate
 			from `tabSales Invoice Item` i
 			inner join `tabSales Invoice` p on p.name = i.parent
 			where p.docstatus = 1 and {0} and ifnull(i.sales_order, '') = ''
@@ -1896,9 +1951,9 @@ def get_item_taxes(project, data, company):
 
 					customer_tax_amount *= conversion_rate
 
-					if flt(d.ordered_qty):
-						tax_amount = tax_amount * flt(d.qty) / flt(d.ordered_qty)
-						customer_tax_amount = customer_tax_amount * flt(d.qty) / flt(d.ordered_qty)
+					if flt(d.original_qty):
+						tax_amount = tax_amount * flt(d.qty) / flt(d.original_qty)
+						customer_tax_amount = customer_tax_amount * flt(d.qty) / flt(d.original_qty)
 
 					d.taxes.setdefault(tax_account, 0)
 					d.taxes[tax_account] += tax_amount
