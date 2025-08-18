@@ -238,12 +238,6 @@ class SalesInvoice(SellingController):
 
 		self.clear_unallocated_advances()
 
-	def set_title(self):
-		if self.get('bill_to') and self.bill_to != self.customer:
-			self.title = "{0} ({1})".format(self.bill_to_name or self.bill_to, self.customer_name or self.customer)
-		else:
-			self.title = self.customer_name or self.customer
-
 	def validate_previous_docstatus(self):
 		for d in self.get('items'):
 			if d.sales_order and frappe.db.get_value("Sales Order", d.sales_order, "docstatus", cache=1) != 1:
@@ -293,6 +287,22 @@ class SalesInvoice(SellingController):
 					ps_doc.set_unpacked_return_status(update=True, row_names=return_against_packing_slip_row_names)
 					ps_doc.notify_update()
 
+			doc.notify_update()
+
+		# Update Proforma Invoices
+		proforma_invoices = set()
+		proforma_invoice_row_names = set()
+		for d in self.items:
+			if d.proforma_invoice:
+				proforma_invoices.add(d.proforma_invoice)
+			if d.proforma_invoice_item:
+				proforma_invoice_row_names.add(d.proforma_invoice_item)
+
+		for name in proforma_invoices:
+			doc = frappe.get_doc("Proforma Invoice", name)
+			doc.set_billing_status(update=True)
+			doc.validate_billed_qty(from_doctype=self.doctype, row_names=proforma_invoice_row_names)
+			doc.set_status(update=True)
 			doc.notify_update()
 
 		# Update Delivery Notes
@@ -1339,6 +1349,9 @@ class SalesInvoice(SellingController):
 
 		for tax in self.get("taxes"):
 			if flt(tax.base_advance_tax):
+				reference_no = set([adv.reference_name for adv in self.advances if adv.advance_tax])
+				reference_no = ", ".join(reference_no)
+
 				account_currency = get_account_currency(tax.account_head)
 				gl_entries.append(
 					self.get_gl_dict({
@@ -1350,7 +1363,8 @@ class SalesInvoice(SellingController):
 							if account_currency == self.company_currency else
 							flt(tax.advance_tax, tax.precision("advance_tax"))
 						),
-						"cost_center": tax.cost_center or self.cost_center
+						"cost_center": tax.cost_center or self.cost_center,
+						"reference_no": reference_no,
 					}, account_currency, item=tax)
 				)
 
@@ -1369,7 +1383,8 @@ class SalesInvoice(SellingController):
 						"against_voucher": self.return_against if cint(self.is_return) and self.return_against else self.name,
 						"against_voucher_type": self.doctype,
 						"cost_center": self.cost_center,
-						"project": self.project
+						"project": self.project,
+						"reference_no": reference_no,
 					}, self.party_account_currency, item=self)
 				)
 
@@ -1752,26 +1767,6 @@ class SalesInvoice(SellingController):
 			return
 		else:
 			frappe.throw(_("Sales Invoice Grand Total cannot be 0"))
-
-	def adjust_rate_for_claim_item(self, source_row, target_row):
-		if not source_row.get('claim_customer'):
-			return
-
-		bill_to = self.get('bill_to') or self.get('customer')
-		if source_row.discount_amount:
-			if bill_to == source_row.claim_customer:
-				target_row.price_list_rate = source_row.discount_amount
-				target_row.rate = source_row.discount_amount
-				target_row.margin_rate_or_amount = 0
-				target_row.discount_percentage = 0
-				target_row.discount_amount = 0
-		else:
-			if bill_to and bill_to != source_row.claim_customer:
-				target_row.price_list_rate = 0
-				target_row.rate = 0
-				target_row.margin_rate_or_amount = 0
-				target_row.discount_percentage = 0
-				target_row.discount_amount = 0
 
 	def validate_zero_outstanding(self):
 		super().validate_zero_outstanding()

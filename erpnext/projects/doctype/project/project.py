@@ -7,7 +7,6 @@ from frappe import _
 from frappe.utils import flt, cint, cstr, ceil, getdate, clean_whitespace, now_datetime, comma_or
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from frappe.model.naming import set_name_by_naming_series
-from frappe.model.utils import get_fetch_values
 from frappe.contacts.doctype.address.address import get_default_address
 from frappe.contacts.doctype.contact.contact import get_default_contact, get_all_contact_nos
 from erpnext.accounts.party import get_contact_details, get_address_display
@@ -91,7 +90,6 @@ class Project(StatusUpdaterERP):
 		self.validate_phone_nos()
 		self.validate_project_type()
 		self.validate_cash_billing()
-		self.validate_readings()
 		self.validate_depreciation()
 		self.validate_warranty()
 		self.validate_campaign()
@@ -815,7 +813,7 @@ class Project(StatusUpdaterERP):
 			}, None)
 
 	def validate_for_transaction(self, doc):
-		if doc.doctype == "Sales Invoice":
+		if doc.doctype in ("Sales Invoice", "Proforma Invoice"):
 			if not self.is_insurance_excess_invoice_for_customer(doc):
 				self.check_is_ready_to_close()
 				self.check_undelivered_sales_orders()
@@ -882,7 +880,7 @@ class Project(StatusUpdaterERP):
 			))
 
 	def is_insurance_excess_invoice_for_customer(self, doc):
-		if doc.doctype != "Sales Invoice":
+		if doc.doctype not in ("Sales Invoice", "Proforma Invoice"):
 			return False
 
 		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
@@ -1056,6 +1054,7 @@ class Project(StatusUpdaterERP):
 
 		if frappe.db.get_value("Sales Order", {'project': self.name, 'docstatus': 1})\
 				or frappe.db.get_value("Sales Invoice", {'project': self.name, 'docstatus': 1})\
+				or frappe.db.get_value("Proforma Invoice", {'project': self.name, 'docstatus': 1})\
 				or frappe.db.get_value("Delivery Note", {'project': self.name, 'docstatus': 1})\
 				or frappe.db.get_value("Quotation", {'project': self.name, 'docstatus': 1}):
 			self._has_sales_transaction = True
@@ -1233,14 +1232,6 @@ class Project(StatusUpdaterERP):
 		self.consumables_item_group = settings.consumables_item_group
 		self.paint_item_group = settings.paint_item_group
 
-	def validate_readings(self):
-		if self.meta.has_field('fuel_level'):
-			if flt(self.fuel_level) < 0 or flt(self.fuel_level) > 100:
-				frappe.throw(_("Fuel Level must be between 0% and 100%"))
-		if self.meta.has_field('keys'):
-			if cint(self.keys) < 0:
-				frappe.throw(_("No of Keys cannot be negative"))
-
 	def set_project_in_sales_order_and_quotation(self):
 		if self.sales_order:
 			frappe.db.set_value("Sales Order", self.sales_order, "project", self.name, notify=1)
@@ -1294,12 +1285,14 @@ class Project(StatusUpdaterERP):
 
 			item_codes_visited.add(d.underinsurance_item_code)
 
-	def validate_insurance_excess_billed_amount(self):
+	def validate_insurance_excess_billed_amount(self, for_proforma_invoice=False):
 		total_excess = flt(self.insurance_excess_amount) + flt(self.additional_insurance_excess_amount)
 		if not total_excess:
 			return
 
-		positive_excess, negative_excess = self.get_insurance_excess_billed()
+		positive_excess, negative_excess = self.get_insurance_excess_billed(
+			include_proforma_invoices=for_proforma_invoice
+		)
 
 		precision = self.precision("insurance_excess_amount")
 
@@ -1311,7 +1304,7 @@ class Project(StatusUpdaterERP):
 				frappe.format(total_excess, df=self.meta.get_field("insurance_excess_amount"))
 			))
 
-	def get_insurance_excess_billed(self):
+	def get_insurance_excess_billed(self, include_proforma_invoices=False):
 		positive_excess = 0
 		negative_excess = 0
 
@@ -1319,17 +1312,29 @@ class Project(StatusUpdaterERP):
 		if not insurance_excess_item:
 			return positive_excess, negative_excess
 
-		invoice_data = frappe.db.sql("""
-			SELECT inv.bill_to, i.base_amount
+		sinv_data = frappe.db.sql("""
+			SELECT p.bill_to, i.base_amount
 			FROM `tabSales Invoice Item` i
-			INNER JOIN `tabSales Invoice` inv ON i.parent = inv.name
-			WHERE inv.docstatus = 1
-				AND inv.project = %s
+			INNER JOIN `tabSales Invoice` p ON i.parent = p.name
+			WHERE p.docstatus = 1
+				AND i.project = %s
 				AND i.item_code = %s
-				AND (inv.is_return = 0 or inv.reopen_order = 1)
+				AND (p.is_return = 0 or p.reopen_order = 1)
 		""", (self.name, insurance_excess_item), as_dict=1)
 
-		for d in invoice_data:
+		pfinv_data = []
+		if include_proforma_invoices:
+			pfinv_data = frappe.db.sql("""
+				SELECT p.bill_to, (i.amount - i.billed_amt) * p.conversion_rate as base_amount
+				FROM `tabProforma Invoice Item` i
+				INNER JOIN `tabProforma Invoice` p ON i.parent = p.name
+				WHERE p.docstatus = 1
+					AND p.project = %s
+					AND i.item_code = %s
+					AND i.billed_amt < i.amount
+			""", (self.name, insurance_excess_item), as_dict=1)
+
+		for d in sinv_data + pfinv_data:
 			if d.base_amount < 0:
 				negative_excess -= d.base_amount
 			else:
@@ -1358,6 +1363,7 @@ class Project(StatusUpdaterERP):
 			"data": sales_data.service_items,
 			"currency": currency,
 			"show_sales_order": True,
+			"show_proforma_invoice": True,
 			"show_amount": True,
 		})
 
@@ -1368,6 +1374,7 @@ class Project(StatusUpdaterERP):
 			"currency": currency,
 			"show_sales_order": True,
 			"show_delivery_note": True,
+			"show_proforma_invoice": True,
 			"show_amount": True,
 		})
 
@@ -1462,7 +1469,7 @@ class Project(StatusUpdaterERP):
 			select task.name as task, task.subject, task.task_type, task.status,
 				task.act_start_date, task.act_end_date,
 				task.actual_time, task.expected_time,
-				task.assigned_to, task.assigned_to_name
+				task.assigned_to, task.assigned_to_name, task.remarks
 			from `tabTask` task
 			where task.project = %s
 			order by task.act_start_date is null, task.act_start_date, task.creation
@@ -1545,40 +1552,101 @@ def get_material_items(project, get_sales_invoice=True):
 		is_material_condition = "(i.is_stock_item = 1 or i.item_group in ({0}))"\
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
-	dn_data = frappe.db.sql("""
-		select p.name as delivery_note, i.sales_order,
-			p.posting_date, p.posting_time, i.idx,
-			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom,
+	pfinv_data = frappe.db.sql(f"""
+		select
+			p.name as proforma_invoice,
+			i.delivery_note,
+			i.sales_order,
+			p.bill_to,
+			if(so.transaction_date is null, p.transaction_date, so.transaction_date) as transaction_date,
+			dn.posting_date, dn.posting_time,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.item_tax_detail, i.claim_customer, p.conversion_rate
+			i.item_tax_detail,
+			p.conversion_rate
+		from `tabProforma Invoice Item` i
+		inner join `tabProforma Invoice` p on p.name = i.parent
+		left join `tabDelivery Note` dn on dn.name = i.delivery_note
+		left join `tabSales Order` so on so.name = i.sales_order
+		where p.docstatus = 1
+			and {is_material_condition}
+			and p.project = %s
+		order by transaction_date, p.creation, i.idx
+	""" , project.name, as_dict=1)
+	pre_process_items_data(pfinv_data, project)
+
+	dn_data = frappe.db.sql(f"""
+		select
+			p.name as delivery_note,
+			i.sales_order,
+			p.posting_date, p.posting_time,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.proforma_qty as fulfilled_qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
+			i.base_net_amount as net_amount,
+			i.base_net_rate as net_rate,
+			i.base_taxable_amount as taxable_amount,
+			i.base_tax_exclusive_total_discount as total_discount,
+			i.item_tax_detail,
+			p.conversion_rate,
+			i.claim_customer
 		from `tabDelivery Note Item` i
 		inner join `tabDelivery Note` p on p.name = i.parent
-		where p.docstatus = 1 and {0}
+		where p.docstatus = 1
+			and {is_material_condition}
+			and i.proforma_qty < i.qty
 			and p.project = %s
-	""".format(is_material_condition), project.name, as_dict=1)
-	set_sales_data_customer_amounts(dn_data, project)
+	""", project.name, as_dict=1)
+	pre_process_items_data(dn_data, project)
 
-	so_data = frappe.db.sql("""
-		select p.name as sales_order,
-			p.transaction_date, i.idx,
-			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			if(i.is_stock_item = 1, i.qty - i.delivered_qty, i.qty) as qty,
-			i.qty as ordered_qty,
-			i.delivered_qty,
+	so_data = frappe.db.sql(f"""
+		select
+			p.name as sales_order,
+			p.transaction_date,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			greatest(if(i.is_stock_item = 1, i.delivered_qty, 0), i.proforma_qty) as fulfilled_qty,
 			i.uom,
-			if(i.is_stock_item = 1, i.base_net_amount * (i.qty - i.delivered_qty) / i.qty, i.base_net_amount) as net_amount,
+			i.stock_uom,
+			i.conversion_factor,
+			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
-			if(i.is_stock_item = 1, i.base_taxable_amount * (i.qty - i.delivered_qty) / i.qty, i.base_taxable_amount) as taxable_amount,
-			if(i.is_stock_item = 1, i.base_tax_exclusive_total_discount * (i.qty - i.delivered_qty) / i.qty, i.base_tax_exclusive_total_discount) as total_discount,
-			i.item_tax_detail, i.claim_customer, p.conversion_rate
+			i.base_taxable_amount as taxable_amount,
+			i.base_tax_exclusive_total_discount as total_discount,
+			i.item_tax_detail,
+			p.conversion_rate,
+			i.claim_customer
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
-		where p.docstatus = 1 and {0}
+		where p.docstatus = 1
+			and {is_material_condition}
 			and (i.delivered_qty < i.qty or i.is_stock_item = 0)
+			and i.proforma_qty < i.qty
 			and i.qty > 0
 			and (p.status != 'Closed' or exists(select sum(si_item.amount)
 				from `tabSales Invoice Item` si_item
@@ -1586,25 +1654,43 @@ def get_material_items(project, get_sales_invoice=True):
 				having sum(si_item.amount) > 0)
 			)
 			and p.project = %s
-	""".format(is_material_condition), project.name, as_dict=1)
-	set_sales_data_customer_amounts(so_data, project)
+	""", project.name, as_dict=1)
+	pre_process_items_data(so_data, project)
 
-	sinv_data = frappe.db.sql("""
-		select p.name as sales_invoice, i.delivery_note, i.sales_order,
-			p.posting_date, p.posting_time, i.idx,
-			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom,
+	sinv_data = frappe.db.sql(f"""
+		select
+			p.name as sales_invoice,
+			i.delivery_note,
+			i.sales_order,
+			i.proforma_invoice,
+			p.bill_to,
+			p.posting_date, p.posting_time,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.item_tax_detail, p.conversion_rate
+			i.item_tax_detail,
+			p.conversion_rate
 		from `tabSales Invoice Item` i
 		inner join `tabSales Invoice` p on p.name = i.parent
-		where p.docstatus = 1 and {0} and ifnull(i.sales_order, '') = '' and ifnull(i.delivery_note, '') = ''
+		where p.docstatus = 1
+			and {is_material_condition}
+			and ifnull(i.sales_order, '') = ''
+			and ifnull(i.delivery_note, '') = ''
+			and ifnull(i.proforma_invoice, '') = ''
 			and i.project = %s
-	""".format(is_material_condition), project.name, as_dict=1)
-	set_sales_data_customer_amounts(sinv_data, project)
+	""", project.name, as_dict=1)
+	pre_process_items_data(sinv_data, project)
 
 	materials_data = get_items_data_template()
 	parts_data = get_items_data_template()
@@ -1615,7 +1701,7 @@ def get_material_items(project, get_sales_invoice=True):
 	lubricants_item_groups = project.get_item_groups_subtree(project.lubricants_item_group)
 	consumables_item_group = project.get_item_groups_subtree(project.consumables_item_group)
 	paint_material_item_group = project.get_item_groups_subtree(project.paint_item_group)
-	for d in dn_data + so_data + sinv_data:
+	for d in pfinv_data + dn_data + so_data + sinv_data:
 		materials_data['items'].append(d)
 
 		if d.item_group in lubricants_item_groups:
@@ -1658,51 +1744,117 @@ def get_service_items(project, get_sales_invoice=True):
 		is_service_condition = "(i.is_stock_item = 0 and i.is_fixed_asset = 0 and i.item_group not in ({0}))"\
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
-	so_data = frappe.db.sql("""
-		select p.name as sales_order,
-			p.transaction_date,
-			i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-			i.qty, i.uom, i.stock_uom, i.conversion_factor,
+	insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
+	exclude_insurance_excess = f" and i.item_code != {frappe.db.escape(insurance_excess_item)}" if insurance_excess_item else ""
+
+	pfinv_data = frappe.db.sql(f"""
+		select
+			p.name as proforma_invoice,
+			i.delivery_note,
+			i.sales_order,
+			p.bill_to,
+			if(so.transaction_date is null, p.transaction_date, so.transaction_date) as transaction_date,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
 			i.base_net_amount as net_amount,
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.item_tax_detail, i.claim_customer, p.conversion_rate
+			i.item_tax_detail,
+			p.conversion_rate
+		from `tabProforma Invoice Item` i
+		inner join `tabProforma Invoice` p on p.name = i.parent
+		left join `tabSales Order` so on so.name = i.sales_order
+		where p.docstatus = 1
+			and {is_service_condition}
+			and p.project = %s
+			{exclude_insurance_excess}
+		order by transaction_date, p.creation, i.idx
+	""", project.name, as_dict=1)
+	pre_process_items_data(pfinv_data, project)
+
+	so_data = frappe.db.sql(f"""
+		select
+			p.name as sales_order,
+			p.transaction_date,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.proforma_qty as fulfilled_qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
+			i.base_net_amount as net_amount,
+			i.base_net_rate as net_rate,
+			i.base_taxable_amount as taxable_amount,
+			i.base_tax_exclusive_total_discount as total_discount,
+			i.item_tax_detail,
+			p.conversion_rate,
+			i.claim_customer
 		from `tabSales Order Item` i
 		inner join `tabSales Order` p on p.name = i.parent
-		where p.docstatus = 1 and {0}
+		where p.docstatus = 1
+			and {is_service_condition}
 			and p.project = %s
+			and i.proforma_qty < i.qty
 			and (p.status != 'Closed' or exists(select sum(si_item.amount)
 				from `tabSales Invoice Item` si_item
 				where si_item.docstatus = 1 and si_item.sales_order_item = i.name
 				having sum(si_item.amount) > 0)
 			)
 		order by p.transaction_date, p.creation, i.idx
-	""".format(is_service_condition), project.name, as_dict=1)
-	set_sales_data_customer_amounts(so_data, project)
+	""", project.name, as_dict=1)
+	pre_process_items_data(so_data, project)
 
 	sinv_data = []
 	if get_sales_invoice:
-		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
-		exclude_insurance_excess = " and i.item_code != {0}".format(frappe.db.escape(insurance_excess_item)) if insurance_excess_item else ""
-
-		sinv_data = frappe.db.sql("""
-			select p.name as sales_invoice, i.delivery_note, i.sales_order,
+		sinv_data = frappe.db.sql(f"""
+			select
+				p.name as sales_invoice,
+				i.delivery_note,
+				i.sales_order,
+				i.proforma_invoice,
+				p.bill_to,
 				p.posting_date as transaction_date,
-				i.item_code, i.item_name, i.description, i.item_group, i.is_stock_item,
-				i.qty, i.uom, i.stock_uom, i.conversion_factor,
+				i.idx,
+				i.item_code,
+				i.item_name,
+				i.description,
+				i.item_group,
+				i.is_stock_item,
+				i.qty,
+				i.uom,
+				i.stock_uom,
+				i.conversion_factor,
 				i.base_net_amount as net_amount,
 				i.base_net_rate as net_rate,
 				i.base_taxable_amount as taxable_amount,
 				i.base_tax_exclusive_total_discount as total_discount,
-				i.item_tax_detail, p.conversion_rate
+				i.item_tax_detail,
+				p.conversion_rate
 			from `tabSales Invoice Item` i
 			inner join `tabSales Invoice` p on p.name = i.parent
-			where p.docstatus = 1 and {0} and ifnull(i.sales_order, '') = ''
-				and i.project = %s {1}
+			where p.docstatus = 1
+				and {is_service_condition}
+				and ifnull(i.sales_order, '') = ''
+				and ifnull(i.proforma_invoice, '') = ''
+				and i.project = %s
+				{exclude_insurance_excess}
 			order by p.posting_date, p.creation, i.idx
-		""".format(is_service_condition, exclude_insurance_excess), project.name, as_dict=1)
-	set_sales_data_customer_amounts(sinv_data, project)
+		""", project.name, as_dict=1)
+	pre_process_items_data(sinv_data, project)
 
 	service_data = get_items_data_template()
 	labour_data = get_items_data_template()
@@ -1711,7 +1863,7 @@ def get_service_items(project, get_sales_invoice=True):
 	sublet_data = get_items_data_template()
 
 	sublet_item_groups = project.get_item_groups_subtree(project.sublet_item_group)
-	for d in so_data + sinv_data:
+	for d in pfinv_data + so_data + sinv_data:
 		service_data['items'].append(d)
 
 		if d.item_group in sublet_item_groups:
@@ -1835,9 +1987,27 @@ def get_items_data_template():
 	})
 
 
-def set_sales_data_customer_amounts(data, project):
+def pre_process_items_data(data, project):
+	adjust_sales_data_fulfilled_qty(data)
 	set_depreciation_in_invoice_items(data, project, force=True)
+	set_sales_data_customer_amounts(data, project)
 
+
+def adjust_sales_data_fulfilled_qty(data):
+	for d in data:
+		if not flt(d.fulfilled_qty):
+			continue
+
+		d.original_qty = flt(d.qty)
+		d.qty = max(flt(flt(d.qty) - flt(d.fulfilled_qty), 9), 0)
+		ratio = d.qty / d.original_qty if d.original_qty else 0
+
+		d.net_amount *= ratio
+		d.taxable_amount *= ratio
+		d.total_discount *= ratio
+
+
+def set_sales_data_customer_amounts(data, project):
 	for d in data:
 		d.has_customer_depreciation = 0
 
@@ -1855,7 +2025,12 @@ def set_sales_data_customer_amounts(data, project):
 		else:
 			d.is_claim_item = 0
 
-			if project.insurance_company and project.bill_to and project.bill_to != project.customer:
+			if (
+				project.insurance_company
+				and project.bill_to
+				and project.bill_to != project.customer
+				and (not d.bill_to or d.bill_to != project.customer)
+			):
 				d.has_customer_depreciation = 1
 
 				depreciation_amount = d.net_amount * flt(d.depreciation_percentage) / 100
@@ -1905,9 +2080,9 @@ def get_item_taxes(project, data, company):
 
 					customer_tax_amount *= conversion_rate
 
-					if flt(d.ordered_qty):
-						tax_amount = tax_amount * flt(d.qty) / flt(d.ordered_qty)
-						customer_tax_amount = customer_tax_amount * flt(d.qty) / flt(d.ordered_qty)
+					if flt(d.original_qty):
+						tax_amount = tax_amount * flt(d.qty) / flt(d.original_qty)
+						customer_tax_amount = customer_tax_amount * flt(d.qty) / flt(d.original_qty)
 
 					d.taxes.setdefault(tax_account, 0)
 					d.taxes[tax_account] += tax_amount
@@ -2268,663 +2443,6 @@ def get_project_details(project, doctype, purpose=None):
 	frappe.utils.call_hook_method("get_project_details", project, out, doctype)
 
 	return out
-
-
-@frappe.whitelist()
-def make_against_project(project_name, dt):
-	project = frappe.get_doc("Project", project_name)
-	doc = frappe.new_doc(dt)
-
-	if doc.meta.has_field('company'):
-		doc.company = project.company
-	if doc.meta.has_field('branch'):
-		doc.branch = project.branch
-	if doc.meta.has_field('project'):
-		doc.project = project_name
-
-	# Set customer
-	if project.customer:
-		if doc.meta.has_field('customer'):
-			doc.customer = project.customer
-			doc.update(get_fetch_values(doc.doctype, 'customer', project.customer))
-		elif dt == 'Quotation':
-			doc.quotation_to = 'Customer'
-			doc.party_name = project.customer
-			doc.update(get_fetch_values(doc.doctype, 'party_name', project.customer))
-
-	if project.applies_to_item:
-		if doc.meta.has_field('item_code'):
-			doc.item_code = project.applies_to_item
-			doc.update(get_fetch_values(doc.doctype, 'item_code', project.applies_to_item))
-
-			if doc.meta.has_field('serial_no'):
-				doc.serial_no = project.serial_no
-				doc.update(get_fetch_values(doc.doctype, 'serial_no', project.serial_no))
-		else:
-			child = doc.append("purposes" if dt == "Maintenance Visit" else "items", {
-				"item_code": project.applies_to_item,
-				"serial_no": project.serial_no
-			})
-			child.update(get_fetch_values(child.doctype, 'item_code', project.applies_to_item))
-			if child.meta.has_field('serial_no'):
-				child.update(get_fetch_values(child.doctype, 'serial_no', project.serial_no))
-
-	doc.run_method("postprocess_after_mapping")
-
-	project.validate_for_transaction(doc)
-
-	return doc
-
-
-@frappe.whitelist()
-def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None):
-	def map_delivery_notes(target, only_items=False, skip_postprocess=False):
-		from erpnext.controllers.queries import _get_delivery_notes_to_be_billed
-		from erpnext.stock.doctype.delivery_note.delivery_note import make_sales_invoice as invoice_from_delivery_note
-
-		delivery_note_filters = get_filters()
-		delivery_note_filters['is_return'] = 0
-		delivery_notes = _get_delivery_notes_to_be_billed(filters=delivery_note_filters)
-
-		for d in delivery_notes:
-			target = invoice_from_delivery_note(d.name, target_doc=target, only_items=only_items,
-				skip_postprocess=skip_postprocess)
-
-		return target
-
-	def map_sales_orders(target, only_items=False, skip_postprocess=False):
-		from erpnext.controllers.queries import _get_sales_orders_to_be_billed
-		from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice as invoice_from_sales_order
-
-		sales_order_filters = get_filters()
-		sales_orders = _get_sales_orders_to_be_billed(filters=sales_order_filters)
-
-		for d in sales_orders:
-			target = invoice_from_sales_order(d.name, target_doc=target, only_items=only_items,
-				skip_postprocess=skip_postprocess)
-
-		return target
-
-	def get_filters():
-		filters = {"project": project.name}
-		if project.company:
-			filters['company'] = project.company
-
-		return filters
-
-	def set_project_details():
-		target_doc.company = project.company
-		target_doc.project = project.name
-
-		for k, v in project_details.items():
-			if target_doc.meta.has_field(k):
-				target_doc.set(k, v)
-
-	def set_depreciation_type_and_customer():
-		if depreciation_type and (has_depreciation_rate or has_excess_amount):
-			if has_depreciation_rate:
-				target_doc.depreciation_type = depreciation_type
-
-			if depreciation_type == "Depreciation Amount Only":
-				target_doc.bill_to = target_doc.customer
-			elif depreciation_type == "After Depreciation Amount":
-				if not project.bill_to and project.insurance_company:
-					target_doc.bill_to = project.insurance_company
-
-			insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
-			insurance_excess_item_name = frappe.get_cached_value("Item", insurance_excess_item, "item_name") or _("Insurance Excess")
-
-			total_excess = flt(project.insurance_excess_amount) + flt(project.additional_insurance_excess_amount)
-			positive_excess, negative_excess = project.get_insurance_excess_billed()
-			billed_excess = negative_excess if depreciation_type == "After Depreciation Amount" else positive_excess
-			balance_excess = flt(total_excess - billed_excess, project.precision("insurance_excess_amount"))
-
-			if billed_excess:
-				if balance_excess > 0:
-					row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
-					row.item_code = insurance_excess_item
-					row.qty = 1
-					row.price_list_rate = 0
-					row.rate = balance_excess
-					if depreciation_type == "After Depreciation Amount":
-						row.rate *= -1
-			else:
-				if flt(project.insurance_excess_amount):
-					row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
-					row.item_code = insurance_excess_item
-					row.qty = 1
-					row.price_list_rate = 0
-					row.rate = flt(project.insurance_excess_amount)
-					if depreciation_type == "After Depreciation Amount":
-						row.rate *= -1
-
-				if flt(project.additional_insurance_excess_amount):
-					row = target_doc.append("items", frappe.new_doc("Sales Invoice Item"))
-					row.item_code = insurance_excess_item
-					row.item_name = insurance_excess_item_name + " ({0})".format(
-						project.get_formatted("insurance_excess_percentage", precision=1)
-					)
-					row.qty = 1
-					row.price_list_rate = 0
-					row.rate = flt(project.additional_insurance_excess_amount)
-					if depreciation_type == "After Depreciation Amount":
-						row.rate *= -1
-
-	def set_cash_or_credit():
-		invoice_bill_to = target_doc.bill_to or target_doc.customer
-		project_bill_to = project.bill_to or project.customer
-		if target_doc.insurance_company and invoice_bill_to == target_doc.insurance_company:
-			target_doc.is_pos = 0
-		elif target_doc.insurance_company and invoice_bill_to != project_bill_to:
-			target_doc.is_pos = frappe.get_cached_value("Customer", invoice_bill_to, "cash_billing") or project.cash_billing
-		else:
-			target_doc.is_pos = project.cash_billing
-
-	def set_contact_and_address():
-		target_bill_to = target_doc.bill_to or target_doc.customer
-		if project.bill_to and target_bill_to == project.bill_to:
-			target_doc.contact_person = project.billing_contact_person
-			target_doc.customer_address = project.billing_address
-		else:
-			target_doc.contact_person = project.contact_person
-			target_doc.contact_mobile = project.contact_mobile
-			target_doc.contact_phone = project.contact_phone
-			target_doc.customer_address = project.customer_address
-
-	def set_po_no():
-		target_bill_to = target_doc.bill_to or target_doc.customer
-		if project.po_no and not project.bill_to or target_bill_to == project.bill_to:
-			target_doc.po_no = project.po_no
-			target_doc.po_date = project.po_date
-
-	def remove_taxes():
-		target_doc.taxes_and_charges = None
-		target_doc.taxes = []
-
-	def set_fetch_values():
-		target_doc.update(get_fetch_values(target_doc.doctype, 'insurance_company', target_doc.insurance_company))
-
-	def set_terms_template():
-		if project.invoice_terms_template:
-			target_doc.tc_name = project.invoice_terms_template
-
-	def set_invoice_remarks():
-		if project.get("invoice_remarks"):
-			target_doc.remarks = project.get("invoice_remarks")
-
-	def set_advances():
-		target_doc.set_advances(against_project=project.name)
-		if target_doc.advances:
-			target_doc.run_method("calculate_taxes_and_totals")
-
-	if frappe.flags.args and bill_multiple_projects is None:
-		bill_multiple_projects = frappe.flags.args.bill_multiple_projects
-
-	bill_multiple_projects = cint(bill_multiple_projects)
-
-	project = frappe.get_doc("Project", project_name)
-	project_details = get_project_details(project, "Sales Invoice")
-
-	# Make Sales Invoice Target Document
-	if target_doc and isinstance(target_doc, str):
-		target_doc = json.loads(target_doc)
-
-	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Sales Invoice")
-
-	if not bill_multiple_projects:
-		set_project_details()
-
-	has_depreciation_rate = (
-		project.default_depreciation_percentage
-		or project.default_underinsurance_percentage
-		or project.non_standard_depreciation
-		or project.non_standard_underinsurance
-	)
-
-	has_excess_amount = project.insurance_excess_amount or project.additional_insurance_excess_amount
-
-	if has_excess_amount and not has_depreciation_rate and depreciation_type != "After Depreciation Amount":
-		pass
-	else:
-		target_doc = map_delivery_notes(target_doc, only_items=bill_multiple_projects, skip_postprocess=bill_multiple_projects)
-		target_doc = map_sales_orders(target_doc, only_items=bill_multiple_projects, skip_postprocess=bill_multiple_projects)
-
-	if not bill_multiple_projects:
-		remove_taxes()
-		set_project_details()
-		set_depreciation_type_and_customer()
-		set_cash_or_credit()
-		set_contact_and_address()
-		set_po_no()
-		set_fetch_values()
-		set_sales_person_in_target_doc(target_doc, project)
-		set_terms_template()
-		set_invoice_remarks()
-
-		target_doc.run_method("set_missing_values")
-		set_depreciation_in_invoice_items(target_doc.get('items'), project, force=True)
-		target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
-
-		set_advances()
-
-	if bill_multiple_projects:
-		frappe.flags.postprocess_after_mapping = postprocess_bill_multiple_projects
-
-	project.check_po_no_is_set(target_doc)
-	project.validate_for_transaction(target_doc)
-
-	return target_doc
-
-
-def postprocess_bill_multiple_projects(target_doc):
-	target_doc.ignore_pricing_rule = 1
-	target_doc.bill_multiple_projects = 1
-	target_doc.run_method("postprocess_after_mapping")
-
-
-@frappe.whitelist()
-def make_delivery_note(project_name):
-	from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
-
-	project = frappe.get_doc("Project", project_name)
-	project_details = get_project_details(project, "Delivery Note")
-
-	# Create Delivery Note
-	target_doc = frappe.new_doc("Delivery Note")
-	target_doc.company = project.company
-	target_doc.project = project.name
-
-	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
-	if default_transaction_type:
-		target_doc.transaction_type = default_transaction_type
-
-	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
-	# Get Sales Orders
-	sales_order_filters = {
-		"docstatus": 1,
-		"status": ["not in", ["Closed", "On Hold"]],
-		"delivery_status": ["=", "To Deliver"],
-		"project": project.name,
-		"company": project.company,
-		"skip_delivery_note": 0,
-	}
-	sales_orders = frappe.get_all("Sales Order", filters=sales_order_filters)
-	for d in sales_orders:
-		target_doc = make_delivery_note(d.name, target_doc=target_doc)
-
-	# Remove Taxes (so they are reloaded)
-	target_doc.taxes_and_charges = None
-	target_doc.taxes = []
-
-	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
-	set_sales_person_in_target_doc(target_doc, project)
-
-	# Missing Values and Forced Values
-	target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
-
-	project.validate_for_transaction(target_doc)
-
-	return target_doc
-
-
-@frappe.whitelist()
-def make_sales_order(project_name, items_type=None):
-	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
-
-	project = frappe.get_doc("Project", project_name)
-	project_details = get_project_details(project, "Sales Order")
-
-	# Create Sales Order
-	target_doc = frappe.new_doc("Sales Order")
-	target_doc.company = project.company
-	target_doc.project = project.name
-	target_doc.delivery_date = project.expected_delivery_date
-
-	sales_order_print_heading = frappe.get_cached_value("Projects Settings", None, "sales_order_print_heading")
-	if sales_order_print_heading:
-		target_doc.select_print_heading = sales_order_print_heading
-
-	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
-	if default_transaction_type:
-		target_doc.transaction_type = default_transaction_type
-
-	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
-	# Get Service Template Items
-	for d in project.service_templates:
-		if not d.get('sales_order') and d.service_template:
-			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-				check_duplicate=False, service_template_detail=d, items_type=items_type)
-
-	set_sales_person_in_target_doc(target_doc, project)
-
-	# Remove already ordered items
-	service_template_ordered_set = get_service_template_ordered_set(project, group_by_item_type=True)
-	to_remove = []
-	for d in target_doc.get('items'):
-		is_stock_item = 0
-		if d.item_code:
-			is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, 'is_stock_item'))
-
-		if d.service_template_detail and (d.service_template_detail, is_stock_item) in service_template_ordered_set:
-			to_remove.append(d)
-
-	for d in to_remove:
-		target_doc.remove(d)
-	for i, d in enumerate(target_doc.items):
-		d.idx = i + 1
-
-	# Missing Values and Forced Values
-	target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
-
-	project.validate_for_transaction(target_doc)
-
-	return target_doc
-
-
-@frappe.whitelist()
-def make_quotation(project_name, items_type=None):
-	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
-
-	project = frappe.get_doc("Project", project_name)
-	project_details = get_project_details(project, "Quotation")
-
-	# Create Sales Order
-	target_doc = frappe.new_doc("Quotation")
-	target_doc.company = project.company
-	target_doc.project = project.name
-	target_doc.delivery_date = project.expected_delivery_date if getdate(project.expected_delivery_date) >= getdate() else None
-
-	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
-	if default_transaction_type:
-		target_doc.transaction_type = default_transaction_type
-
-	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
-	# Get Service Template Items
-	for d in project.service_templates:
-		if not d.get('sales_order') and d.service_template:
-			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-				check_duplicate=False, service_template_detail=d, items_type=items_type)
-
-	set_sales_person_in_target_doc(target_doc, project)
-
-	# Remove already ordered items
-	service_template_quoted_set = get_service_template_quoted_set(project)
-	service_template_ordered_set = get_service_template_ordered_set(project)
-
-	to_remove = []
-	for d in target_doc.get('items'):
-		if (
-			d.service_template_detail
-			and (
-				d.service_template_detail in service_template_quoted_set
-				or d.service_template_detail in service_template_ordered_set
-			)
-		):
-			to_remove.append(d)
-
-	for d in to_remove:
-		target_doc.remove(d)
-	for i, d in enumerate(target_doc.items):
-		d.idx = i + 1
-
-	# Set Previous Orders
-	sales_orders = frappe.get_all("Sales Order", filters={
-		"project": project.name, "status": ["!=", "Closed"], "docstatus": 1
-	}, pluck="name", order_by="transaction_date, creation")
-	for sales_order in sales_orders:
-		target_doc.append("previous_orders", {"previous_sales_order": sales_order})
-
-	# Missing Values and Forced Values
-	target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
-
-	project.validate_for_transaction(target_doc)
-
-	return target_doc
-
-
-@frappe.whitelist()
-def make_material_request(project_name):
-	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
-
-	project = frappe.get_doc("Project", project_name)
-	project_details = get_project_details(project, "Material Request")
-
-	# Create Material Request
-	target_doc = frappe.new_doc("Material Request")
-	target_doc.material_request_type = "Material Issue"
-	target_doc.company = project.company
-	target_doc.project = project.name
-	target_doc.schedule_date = project.expected_delivery_date
-
-	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
-	# Get Service Template Items
-	for d in project.service_templates:
-		if not d.get('sales_order') and d.service_template:
-			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-				check_duplicate=False, service_template_detail=d, items_type="stock")
-
-	# Remove already ordered items
-	service_template_requested_set = get_service_template_requested_set(project)
-	to_remove = []
-	for d in target_doc.get('items'):
-		if d.service_template_detail and d.service_template_detail in service_template_requested_set:
-			to_remove.append(d)
-
-	for d in to_remove:
-		target_doc.remove(d)
-	for i, d in enumerate(target_doc.items):
-		d.idx = i + 1
-
-	# Missing Values and Forced Values
-	target_doc.run_method("postprocess_after_mapping")
-
-	project.validate_for_transaction(target_doc)
-
-	return target_doc
-
-
-@frappe.whitelist()
-def make_stock_entry(project_name, purpose):
-	from erpnext.stock.doctype.material_request.material_request import make_stock_entry
-
-	if not purpose:
-		frappe.throw(_("Purpose not provided"))
-	if purpose not in ("Material Issue", "Material Receipt"):
-		frappe.throw(_("Invalid Purpose {0}").format(purpose))
-
-	project = frappe.get_doc("Project", project_name)
-	project_details = get_project_details(project, "Stock Entry", purpose=purpose)
-
-	# Create Stock Entry
-	target_doc = frappe.new_doc("Stock Entry")
-	target_doc.company = project.company
-	target_doc.project = project.name
-	target_doc.purpose = purpose
-
-	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
-	# Map Material Requests
-	if purpose == "Material Issue":
-		material_request_filters = {
-			"docstatus": 1,
-			"material_request_type": "Material Issue",
-			"status": ["!=", "Stopped"],
-			"order_status": "To Order",
-			"project": project.name,
-			"company": project.company,
-		}
-		material_requests = frappe.get_all("Material Request", filters=material_request_filters)
-		for d in material_requests:
-			target_doc = make_stock_entry(d.name, target_doc=target_doc)
-	elif purpose == "Material Receipt":
-		returnable = get_returnable_consumables(project.name)
-		for d in returnable:
-			row = target_doc.append("items", frappe.new_doc("Stock Entry Detail"))
-			row.update(d)
-			row.qty = 0
-
-	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
-	# Missing Values and Forced Values
-	target_doc.set_stock_entry_type()
-	target_doc.run_method("postprocess_after_mapping")
-
-	project.validate_for_transaction(target_doc)
-
-	return target_doc
-
-
-@frappe.whitelist()
-def make_payment_entry(project_name, is_refund=False):
-	project = frappe.get_doc("Project", project_name)
-
-	is_refund = cint(is_refund)
-
-	pe = frappe.new_doc("Payment Entry")
-	pe.posting_date = getdate()
-	pe.company = project.company
-	pe.branch = project.branch
-	pe.cost_center = project.cost_center
-	pe.project = project.name
-
-	pe.payment_type = "Pay" if is_refund else "Receive"
-	pe.party_type = "Customer"
-	pe.party = project.bill_to or project.customer
-	pe.contact_person = project.billing_contact_person if project.bill_to else project.contact_person
-
-	frappe.utils.call_hook_method("get_payment_entry", project, pe)
-
-	if is_refund:
-		payment_entries = project.get_advance_payment_entries()
-		payment_entries = [d for d in payment_entries if d.payment_type == "Receive" and d.unallocated_amount > 0]
-
-		for d in payment_entries:
-			row = pe.append("references", {
-				"reference_doctype": "Payment Entry",
-				"reference_name": d.name,
-			})
-			pe.set_reference_row_details(row)
-
-	set_taxes = frappe.get_cached_value("Projects Settings", None, "apply_taxes_on_advance_payment")
-	pe.run_method("postprocess_after_mapping", reset_taxes=set_taxes)
-
-	return pe
-
-
-@frappe.whitelist()
-def create_service_warranties(project_name):
-	project = frappe.get_doc("Project", project_name)
-
-	warranty_templates = [d for d in project.service_templates if d.includes_service_warranty]
-	warranty_templates_not_created = [d for d in warranty_templates if not d.has_service_warranty]
-	if not warranty_templates:
-		frappe.throw(_("{0} does not have Service Templates with Service Warranty included").format(
-			frappe.get_desk_link("Project", project.name)
-		))
-	if not warranty_templates_not_created:
-		frappe.throw(_("Service Warranty already created for {0}").format(
-			frappe.get_desk_link("Project", project.name)
-		))
-
-	docs = []
-	for row in warranty_templates_not_created:
-		doc = frappe.new_doc("Service Warranty")
-		doc.project = project.name
-		doc.service_template = row.service_template
-		doc.service_template_detail = row.name
-		doc.posting_date = getdate()
-		doc.valid_from = getdate(project.ready_to_close_dt)
-		doc.submit()
-
-		docs.append(doc)
-
-	list_txt = "".join([
-		"<li>{0}: {1}</li>".format(
-			doc.service_template_name, frappe.utils.get_link_to_form("Service Warranty", doc.name)
-		)
-		for doc in docs
-	])
-	list_txt = f"<ul>{list_txt}</ul>"
-	frappe.msgprint(_("Service Warranty created:<br><br>{0}").format(list_txt))
-
-	return [doc.name for doc in docs]
-
-
-def get_returnable_consumables(project):
-	material_issue_data = frappe.db.sql("""
-		select i.item_code, sum(i.qty) as qty, i.uom
-		from `tabStock Entry Detail` i
-		inner join `tabStock Entry` ste on ste.name = i.parent
-		where ste.project = %s and ste.docstatus = 1 and ste.purpose = 'Material Issue'
-		group by i.item_code, i.uom
-	""", project, as_dict=1)
-
-	material_receipt_data = frappe.db.sql("""
-		select i.item_code, sum(i.qty) as qty, i.uom
-		from `tabStock Entry Detail` i
-		inner join `tabStock Entry` ste on ste.name = i.parent
-		where ste.project = %s and ste.docstatus = 1 and ste.purpose = 'Material Receipt'
-		group by i.item_code, i.uom
-	""", project, as_dict=1)
-
-	material_map = {}
-	for d in material_issue_data:
-		key = (d.item_code, d.uom)
-		row = material_map.setdefault(key, frappe._dict({"item_code": d.item_code, "uom": d.uom, "qty": 0}))
-		row.qty += d.qty
-
-	for d in material_receipt_data:
-		key = (d.item_code, d.uom)
-		if key not in material_map:
-			continue
-
-		row = material_map[key]
-		row.qty -= d.qty
-
-	out = list(material_map.values())
-	for d in out:
-		d.qty = flt(d.qty, frappe.get_precision("Stock Entry Detail", "qty"))
-
-	out = [d for d in out if d.qty > 0]
-	return out
-
-
-def set_sales_person_in_target_doc(target_doc, project):
-	if project.service_advisor and target_doc.meta.has_field("sales_team"):
-		target_doc.sales_team = []
-		target_doc.append("sales_team", {
-			"sales_person": project.service_advisor,
-			"allocated_percentage": 100
-		})
 
 
 def get_service_template_quoted_set(project):

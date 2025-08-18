@@ -142,6 +142,7 @@
   "actual_qty",
   "actual_batch_qty",
   "column_break_110",
+  "proforma_qty",
   "billed_qty",
   "billed_amt",
   "column_break_115",
@@ -1406,12 +1407,20 @@
    "options": "Account",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "proforma_qty",
+   "fieldtype": "Float",
+   "label": "Proforma Qty",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-24 12:58:25.956847",
+ "modified": "2025-04-10 13:52:41.019803",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Delivery Note Item",

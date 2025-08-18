@@ -28,6 +28,10 @@ def get_notification_config():
 				"outstanding_amount": (">", 0),
 				"docstatus": ("<", 2)
 			},
+			"Proforma Invoice": {
+				"status": ("!=", "Billed"),
+				"docstatus": ("<", 2)
+			},
 			"Purchase Invoice": {
 				"outstanding_amount": (">", 0),
 				"docstatus": ("<", 2)

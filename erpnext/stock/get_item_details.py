@@ -1659,6 +1659,8 @@ def get_applies_to_details(args, for_validate=False):
 	out.applies_to_variant_of_name = frappe.get_cached_value("Item", item.variant_of, "item_name")\
 		if item.variant_of else None
 
+	out.applies_to_item_brand = item.brand
+
 	frappe.utils.call_hook_method("get_applies_to_details", args, out, for_validate=for_validate)
 
 	return out

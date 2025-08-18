@@ -41,6 +41,7 @@ class StockReconciliation(StockController):
 
 		self.validate_data()
 		self.validate_expense_account()
+		self.validate_warehouse()
 		self.set_total_qty_and_amount()
 
 	def on_submit(self):

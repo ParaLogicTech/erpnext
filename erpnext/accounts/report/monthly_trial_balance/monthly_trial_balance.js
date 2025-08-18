@@ -45,6 +45,14 @@ frappe.query_reports["Monthly Trial Balance"] = {
 			"default": frappe.defaults.get_user_default("year_end_date"),
 		},
 		{
+			"fieldname": "dimension_fields",
+			"label": __("Group by Dimensions"),
+			"fieldtype": "MultiSelectList",
+			"options": [
+				{label: __("Cost Center"), value: "cost_center"}
+			],
+		},
+		{
 			"fieldname": "cost_center",
 			"label": __("Cost Center"),
 			"fieldtype": "Link",
@@ -101,3 +109,11 @@ frappe.query_reports["Monthly Trial Balance"] = {
 
 erpnext.utils.add_dimensions('Monthly Trial Balance', 6);
 erpnext.utils.add_additional_gl_filters('Monthly Trial Balance');
+
+let dimension_field_filter = frappe.query_reports["Monthly Trial Balance"].filters.find(f => f.fieldname === "dimension_fields");
+erpnext.dimension_filters.forEach((dimension) => {
+	dimension_field_filter.options.push({
+		"label": __(dimension["label"]),
+		"value": dimension["fieldname"],
+	});
+});

@@ -303,10 +303,12 @@ class StockController(AccountsController):
 		return incoming_rate
 
 	def validate_warehouse(self):
-		from erpnext.stock.utils import validate_warehouse_company
+		from erpnext.stock.utils import validate_warehouse_company, validate_warehouse_branch
 		warehouses = list(set([d.warehouse for d in self.get("items") if d.get("warehouse")]))
 		for w in warehouses:
 			validate_warehouse_company(w, self.company)
+			if self.get("branch"):
+				validate_warehouse_branch(w, self.branch)
 
 	def validate_inspection(self):
 		'''Checks if quality inspection is set for Items that require inspection.

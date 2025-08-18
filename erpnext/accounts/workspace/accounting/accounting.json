@@ -249,81 +249,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Payments",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Payment Entry",
-   "link_count": 0,
-   "link_to": "Payment Entry",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Payment Request",
-   "link_count": 0,
-   "link_to": "Payment Request",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Payment Reconciliation / Allocation",
-   "link_count": 0,
-   "link_to": "Payment Reconciliation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Payment Term",
-   "link_count": 0,
-   "link_to": "Payment Term",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Payment Terms Template",
-   "link_count": 0,
-   "link_to": "Payment Terms Template",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Payment Period Based On Invoice Date",
-   "link_count": 0,
-   "link_to": "Payment Period Based On Invoice Date",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "General Ledger",
    "link_count": 0,
    "link_type": "DocType",
@@ -1094,7 +1019,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Financial Statements",
-   "link_count": 7,
+   "link_count": 6,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -1116,16 +1041,6 @@
    "label": "Monthly Trial Balance",
    "link_count": 0,
    "link_to": "Monthly Trial Balance",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Dimension-Wise Trial Balance",
-   "link_count": 0,
-   "link_to": "Dimension-Wise Trial Balance",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -1173,9 +1088,94 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payments",
+   "link_count": 7,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Entry",
+   "link_count": 0,
+   "link_to": "Payment Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Proforma Invoice",
+   "link_count": 0,
+   "link_to": "Proforma Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Request",
+   "link_count": 0,
+   "link_to": "Payment Request",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Reconciliation / Allocation",
+   "link_count": 0,
+   "link_to": "Payment Reconciliation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Term",
+   "link_count": 0,
+   "link_to": "Payment Term",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Terms Template",
+   "link_count": 0,
+   "link_to": "Payment Terms Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Payment Period Based On Invoice Date",
+   "link_count": 0,
+   "link_to": "Payment Period Based On Invoice Date",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-07-01 09:11:22.083172",
+ "modified": "2025-08-13 22:12:22.160227",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting",
@@ -1229,6 +1229,7 @@
    "doc_view": "List",
    "label": "Accounts Receivable",
    "link_to": "Accounts Receivable",
+   "report_ref_doctype": "Sales Invoice",
    "stats_filter": "",
    "type": "Report"
   },
@@ -1237,6 +1238,7 @@
    "doc_view": "List",
    "label": "General Ledger",
    "link_to": "General Ledger",
+   "report_ref_doctype": "GL Entry",
    "stats_filter": "",
    "type": "Report"
   },
@@ -1262,6 +1264,7 @@
    "doc_view": "List",
    "label": "Accounts Payable",
    "link_to": "Accounts Payable",
+   "report_ref_doctype": "Purchase Invoice",
    "stats_filter": "",
    "type": "Report"
   }

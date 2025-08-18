@@ -5,7 +5,7 @@ import frappe
 from frappe.utils import cint, flt, cstr
 from frappe import _
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_target_warehouse_validation
+from erpnext.stock.get_item_details import get_target_warehouse_validation, get_last_purchase_rate
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
@@ -57,6 +57,12 @@ class SellingController(TransactionController):
 
 	def before_update_after_submit(self):
 		self.calculate_sales_team_contribution(self.get('base_net_total'))
+
+	def set_title(self):
+		if self.meta.has_field("bill_to") and self.get("bill_to") and self.bill_to != self.customer:
+			self.title = "{0} ({1})".format(self.bill_to_name or self.bill_to, self.customer_name or self.customer)
+		else:
+			self.title = self.customer_name or self.customer
 
 	def get_party(self):
 		party = self.get("customer")
@@ -299,14 +305,20 @@ class SellingController(TransactionController):
 			if not is_stock_item:
 				continue
 
-			# last_purchase_rate = flt(frappe.db.get_value("Item", d.item_code, "last_purchase_rate", cache=1))
-			# if last_purchase_rate > 0:
-			# 	last_purchase_rate_in_sales_uom = last_purchase_rate * (d.conversion_factor or 1)
-			# 	if flt(d.base_rate) < flt(last_purchase_rate_in_sales_uom):
-			# 		throw_message(d, last_purchase_rate_in_sales_uom)
+			valuation_rate = flt(get_valuation_rate(
+				d.item_code,
+				d.get("warehouse"),
+				self.doctype,
+				self.name,
+				raise_error_if_no_rate=False,
+				ignore_zero_rate=True,
+			))
 
-			valuation_rate = flt(get_valuation_rate(d.item_code, d.get("warehouse"), self.doctype, self.name,
-				raise_error_if_no_rate=False))
+			if valuation_rate <= 0:
+				last_purchase_rate = get_last_purchase_rate(d.item_code, d.get("warehouse"))
+				if last_purchase_rate > 0:
+					valuation_rate = last_purchase_rate
+
 			if valuation_rate > 0:
 				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
 				if flt(d.base_rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
@@ -733,7 +745,7 @@ class SellingController(TransactionController):
 		if not any(d.item_code == insurance_excess_item for d in self.items):
 			return
 
-		project.validate_insurance_excess_billed_amount()
+		project.validate_insurance_excess_billed_amount(for_proforma_invoice=self.doctype == "Proforma Invoice")
 
 	def validate_campaign(self):
 		validate_campaign_voucher_code(self)
@@ -786,6 +798,26 @@ class SellingController(TransactionController):
 			cost_rate = get_incoming_rate(args, raise_error_if_no_rate=False)
 
 		return cost_rate
+
+	def adjust_rate_for_claim_item(self, source_row, target_row):
+		if not source_row.get('claim_customer'):
+			return
+
+		bill_to = self.get('bill_to') or self.get('customer')
+		if source_row.discount_amount:
+			if bill_to == source_row.claim_customer:
+				target_row.price_list_rate = source_row.discount_amount
+				target_row.rate = source_row.discount_amount
+				target_row.margin_rate_or_amount = 0
+				target_row.discount_percentage = 0
+				target_row.discount_amount = 0
+		else:
+			if bill_to and bill_to != source_row.claim_customer:
+				target_row.price_list_rate = 0
+				target_row.rate = 0
+				target_row.margin_rate_or_amount = 0
+				target_row.discount_percentage = 0
+				target_row.discount_amount = 0
 
 	def sort_items(self):
 		price_list_settings = frappe.get_cached_doc("Price List Settings", None)

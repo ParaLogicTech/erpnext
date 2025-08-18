@@ -33,6 +33,7 @@ class Quotation(SellingController):
 		self.validate_delivery_date()
 		self.validate_previous_orders()
 		self.validate_campaign()
+		self.validate_warehouse()
 		self.clear_approval_date()
 		self.set_customer_name()
 		self.sort_items()
@@ -80,12 +81,6 @@ class Quotation(SellingController):
 			self.set_onload('customer', self.party_name)
 		elif self.quotation_to == "Lead":
 			self.set_onload('customer', get_customer_from_lead(self.party_name))
-
-	def set_title(self):
-		if self.get('bill_to') and self.bill_to != self.customer:
-			self.title = "{0} ({1})".format(self.bill_to_name or self.bill_to, self.customer_name or self.customer)
-		else:
-			self.title = self.customer_name or self.customer
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate)
