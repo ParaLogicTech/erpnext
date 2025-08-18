@@ -7,22 +7,6 @@ frappe.provide("erpnext.stock");
 
 frappe.ui.form.on("Purchase Receipt", {
 	setup: (frm) => {
-		frm.make_methods = {
-			'Landed Cost Voucher': () => {
-				let lcv = frappe.model.get_new_doc('Landed Cost Voucher');
-				lcv.company = frm.doc.company;
-
-				let lcv_receipt = frappe.model.get_new_doc('Landed Cost Purchase Receipt');
-				lcv_receipt.receipt_document_type = 'Purchase Receipt';
-				lcv_receipt.receipt_document = frm.doc.name;
-				lcv_receipt.supplier = frm.doc.supplier;
-				lcv_receipt.grand_total = frm.doc.grand_total;
-				lcv.purchase_receipts = [lcv_receipt];
-
-				frappe.set_route("Form", lcv.doctype, lcv.name);
-			},
-		}
-		
 		frm.custom_make_buttons = {
 			'Purchase Receipt': 'Purchase Return',
 			'Purchase Invoice': 'Purchase Invoice',

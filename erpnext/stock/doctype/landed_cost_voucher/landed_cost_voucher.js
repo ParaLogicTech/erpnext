@@ -151,6 +151,34 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		set_field_options("landed_cost_help", help_content);
 	}
 
+	receipt_document_type(frm, cdt, cdn) {
+		frappe.model.set_value(cdt, cdn, 'receipt_document', "");
+	}
+
+	receipt_document(frm, cdt, cdn) {
+		let row = locals[cdt][cdn];
+
+		if (!row.receipt_document || !row.receipt_document_type) {
+			frappe.model.set_value(cdt, cdn, 'supplier', '');
+			frappe.model.set_value(cdt, cdn, 'bill_no', '');
+			frappe.model.set_value(cdt, cdn, 'grand_total', '');
+			return;
+		}
+
+		return frappe.call({
+			method: "erpnext.stock.doctype.landed_cost_voucher.landed_cost_voucher.get_receipt_details",
+			args: {
+				doctype: row.receipt_document_type,
+				docname: row.receipt_document
+			},
+			callback: function(r) {
+				if (r.message) {
+					return frappe.model.set_value(cdt, cdn, r.message);
+				}
+			}
+		});
+	}
+
 	allocate_advances_automatically() {
 		if (this.frm.doc.allocate_advances_automatically) {
 			this.get_advances();
