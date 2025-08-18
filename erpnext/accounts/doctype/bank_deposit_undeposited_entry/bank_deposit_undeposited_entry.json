@@ -94,7 +94,7 @@
  "modified": "2025-08-08 04:08:01.908740",
  "modified_by": "Administrator",
  "module": "Accounts",
- "name": "Undeposited Entries",
+ "name": "Bank Deposit Undeposited Entry",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

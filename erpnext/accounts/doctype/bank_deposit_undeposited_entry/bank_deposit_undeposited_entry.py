@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class UndepositedEntries(Document):
+class BankDepositUndepositedEntry(Document):
 	pass

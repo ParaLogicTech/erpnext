@@ -121,7 +121,7 @@
    "fieldname": "undeposited_entries",
    "fieldtype": "Table",
    "label": "Undeposited Entries",
-   "options": "Undeposited Entries"
+   "options": "Bank Deposit Undeposited Entry"
   },
   {
    "fieldname": "summary_totals_section",
@@ -141,7 +141,7 @@
    "fieldname": "adjustment_entries",
    "fieldtype": "Table",
    "label": "Adjustment Entries",
-   "options": "Deposit Adjustments"
+   "options": "Bank Deposit Adjustment"
   },
   {
    "fieldname": "get_undeposited_entries",
@@ -204,7 +204,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-08 02:06:21.771458",
+ "modified": "2025-08-18 04:45:54.189734",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",
@@ -221,6 +221,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

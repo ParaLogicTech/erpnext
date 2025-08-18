@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class DepositAdjustments(Document):
+class BankDepositAdjustment(Document):
 	pass

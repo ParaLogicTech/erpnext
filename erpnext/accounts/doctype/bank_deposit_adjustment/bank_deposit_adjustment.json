@@ -41,7 +41,7 @@
  "modified": "2025-08-06 01:26:01.768847",
  "modified_by": "Administrator",
  "module": "Accounts",
- "name": "Deposit Adjustments",
+ "name": "Bank Deposit Adjustment",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
