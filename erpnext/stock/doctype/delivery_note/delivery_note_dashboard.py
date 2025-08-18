@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 
+
 def get_data():
 	return {
 		'fieldname': 'delivery_note',
@@ -27,7 +28,7 @@ def get_data():
 			},
 			{
 				'label': _('Reference'),
-				'items': ['Quality Inspection']
+				'items': ['Quality Inspection', 'Proforma Invoice']
 			},
 			{
 				'label': _('Returns'),

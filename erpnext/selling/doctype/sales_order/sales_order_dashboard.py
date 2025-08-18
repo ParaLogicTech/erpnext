@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 
+
 def get_data():
 	return {
 		'fieldname': 'sales_order',
@@ -20,7 +21,7 @@ def get_data():
 			},
 			{
 				'label': _('Reference'),
-				'items': ['Quotation', 'Pick List']
+				'items': ['Quotation', 'Proforma Invoice', 'Pick List']
 			},
 			{
 				'label': _('Procurement'),

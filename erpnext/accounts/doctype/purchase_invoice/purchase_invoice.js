@@ -545,6 +545,7 @@ frappe.ui.form.on("Purchase Invoice", {
 			'Sales Order': 'Sales Order',
 			'Auto Repeat': 'Subscription',
 			'Payment Request': 'Payment Request',
+			'Landed Cost Voucher': 'Landed Cost Voucher',
 		}
 
 		frm.fields_dict['items'].grid.get_field('deferred_expense_account').get_query = function(doc) {

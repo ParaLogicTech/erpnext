@@ -10,9 +10,11 @@
   "naming_series",
   "party_type",
   "party",
-  "is_payable",
+  "bill_no",
+  "bill_date",
   "col_break2",
   "remarks",
+  "is_payable",
   "column_break_8",
   "company",
   "posting_date",
@@ -431,12 +433,23 @@
    "fieldname": "item_filters_section",
    "fieldtype": "Section Break",
    "label": "Item Filters"
+  },
+  {
+   "fieldname": "bill_no",
+   "fieldtype": "Data",
+   "label": "Bill No"
+  },
+  {
+   "depends_on": "eval:doc.bill_no",
+   "fieldname": "bill_date",
+   "fieldtype": "Date",
+   "label": "Bill Date"
   }
  ],
  "icon": "icon-usd",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-07 14:29:16.956561",
+ "modified": "2025-08-18 04:22:54.109824",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Landed Cost Voucher",
@@ -481,6 +494,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "total_taxes_and_charges, outstanding_amount, party",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
