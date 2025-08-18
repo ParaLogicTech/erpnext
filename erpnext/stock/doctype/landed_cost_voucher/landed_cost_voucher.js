@@ -12,7 +12,6 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		};
 
 		this.setup_queries();
-		this.frm._last_doc_type_selected = {};
 	}
 
 	validate() {
@@ -153,16 +152,7 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 	}
 
 	receipt_document_type(frm, cdt, cdn) {
-		let row = locals[cdt][cdn];
-		if (!this.frm._last_doc_type_selected) {
-			this.frm._last_doc_type_selected = {};
-		}
-		if (this.frm._last_doc_type_selected[cdn] === row.receipt_document_type) {
-			return;
-		}
-		this.frm._last_doc_type_selected[cdn] = row.receipt_document_type;
-
-		frappe.model.set_value(cdt, cdn, 'receipt_document', '');
+		frappe.model.set_value(cdt, cdn, 'receipt_document', "");
 	}
 
 	receipt_document(frm, cdt, cdn) {
@@ -175,7 +165,7 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 			return;
 		}
 
-		frappe.call({
+		return frappe.call({
 			method: "erpnext.stock.doctype.landed_cost_voucher.landed_cost_voucher.get_receipt_details",
 			args: {
 				doctype: row.receipt_document_type,
@@ -183,9 +173,7 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 			},
 			callback: function(r) {
 				if (r.message) {
-					frappe.model.set_value(cdt, cdn, 'supplier', r.message.supplier);
-					frappe.model.set_value(cdt, cdn, 'bill_no', r.message.bill_no);
-					frappe.model.set_value(cdt, cdn, 'grand_total', r.message.base_grand_total);
+					return frappe.model.set_value(cdt, cdn, r.message);
 				}
 			}
 		});

@@ -397,3 +397,4 @@ erpnext.patches.v15_0.update_project_additional_insurance_excess
 erpnext.patches.v15_0.create_missing_dimension_fields
 erpnext.patches.v15_0.set_attendance_available_hours
 erpnext.patches.v15_0.set_payment_entry_reference_posting_date #1
+erpnext.patches.v15_0.set_lcv_receipt_missing_details

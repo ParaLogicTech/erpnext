@@ -97,15 +97,11 @@ class LandedCostVoucher(AccountsController):
 		for row in self.get('purchase_receipts'):
 			if row.receipt_document_type and row.receipt_document:
 				details = get_receipt_details(row.receipt_document_type, row.receipt_document)
-
-				if details:
-					row.posting_date = details.posting_date
-					row.supplier = details.supplier
-					row.bill_no = details.bill_no
-					row.grand_total = details.base_grand_total
+				row.update(details)
 			else:
 				row.posting_date = None
 				row.supplier = None
+				row.supplier_name = None
 				row.bill_no = None
 				row.grand_total = None
 
@@ -190,9 +186,11 @@ class LandedCostVoucher(AccountsController):
 			details = frappe.db.get_value(d.receipt_document_type, d.receipt_document, fields, as_dict=1)
 
 			key = (d.receipt_document_type, d.receipt_document)
-			if key in seen_docs or seen_docs.add(key):
-				frappe.throw(_("Duplicate purchase receipt found: {0} - {1}")
-					 .format(d.receipt_document_type, d.receipt_document))
+			if key in seen_docs:
+				frappe.throw(_("Row #{0}: Duplicate Receipt Document found: {1} {2}").format(
+					d.idx, d.receipt_document_type, d.receipt_document
+				))
+			seen_docs.add(key)
 
 			if details is None:
 				frappe.throw(_("Row #{0}: {1} {2} does not exist")
@@ -542,7 +540,9 @@ def get_landed_cost_voucher(dt, dn):
 		"receipt_document_type": dt,
 		"receipt_document": dn,
 		"supplier": doc.supplier,
+		"supplier_name": doc.supplier_name,
 		"posting_date": doc.posting_date,
+		"bill_no": doc.get("bill_no"),
 		"grand_total": doc.base_grand_total,
 	})
 
@@ -550,6 +550,7 @@ def get_landed_cost_voucher(dt, dn):
 		lcv.party_type = "Letter of Credit"
 		lcv.party = doc.get("letter_of_credit")
 
+	lcv.set_purchase_receipt_details()
 	lcv.get_items_from_purchase_receipts()
 	return lcv
 
@@ -565,9 +566,17 @@ def get_party_details(party_type, party, company):
 
 	return out
 
+
 @frappe.whitelist()
 def get_receipt_details(doctype, docname):
-	doc = frappe.db.get_value(doctype, docname, ["supplier", "bill_no", "base_grand_total", "posting_date"], as_dict=True)
-	if not doc:
+	if doctype not in ("Purchase Receipt", "Purchase Invoice"):
+		return frappe._dict()
+
+	details = frappe.db.get_value(doctype, docname, [
+		"supplier", "supplier_name", "bill_no", "base_grand_total as grand_total", "posting_date",
+	], as_dict=True)
+
+	if not details:
 		frappe.throw(_("Document not found: {0}").format(docname), frappe.DoesNotExistError)
-	return doc
+
+	return details
