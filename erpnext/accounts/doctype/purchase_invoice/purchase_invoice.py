@@ -88,7 +88,7 @@ class PurchaseInvoice(BuyingController):
 		self.create_remarks()
 		self.validate_purchase_receipt_if_update_stock()
 		self.validate_purchase_receipt_in_same_fy()
-		self.check_valuation_amounts_with_previous_doc()
+		self.set_revalue_purchase_receipt()
 		validate_inter_company_party(self.doctype, self.supplier, self.company, self.inter_company_reference)
 
 		self.set_returned_status()
@@ -118,7 +118,7 @@ class PurchaseInvoice(BuyingController):
 			from erpnext.stock.doctype.serial_no.serial_no import update_serial_nos_after_submit
 			update_serial_nos_after_submit(self, "items")
 
-		if not self.is_return or not self.update_stock:
+		if (not self.is_return or not self.update_stock) and self.revalue_purchase_receipt:
 			self.update_receipts_valuation()
 
 		# this sequence because outstanding may get -negative
@@ -145,7 +145,7 @@ class PurchaseInvoice(BuyingController):
 			self.update_stock_ledger()
 			self.unlink_auto_created_batches()
 
-		if not self.is_return or not self.update_stock:
+		if (not self.is_return or not self.update_stock) and self.revalue_purchase_receipt:
 			self.update_receipts_valuation()
 
 		self.make_gl_entries_on_cancel()
@@ -321,25 +321,70 @@ class PurchaseInvoice(BuyingController):
 				["Purchase Receipt", "purchase_receipt", "purchase_receipt_item"]
 			])
 
-	def check_valuation_amounts_with_previous_doc(self):
-		does_revalue = False
+	def set_revalue_purchase_receipt(self):
+		self.revalue_purchase_receipt = 0
+		if self.is_return and self.update_stock:
+			return
 
-		if not self.is_return or not self.update_stock:
-			for item in self.items:
-				if item.purchase_receipt_item:
-					pr_item = frappe.db.get_value("Purchase Receipt Item", item.purchase_receipt_item,
-						["base_net_rate", "item_tax_amount"], as_dict=1)
+		# if there is already another Purchase Invoice that revalues Purchase Receipt, this one will have to revalue as well
+		# because 2nd PINV will change the average valuation of the receipt
+		purchase_receipts = list(set([d.purchase_receipt for d in self.items if d.get('purchase_receipt')]))
+		if purchase_receipts:
+			pinv_with_revalue_prec = frappe.db.sql("""
+				select i.name
+				from `tabPurchase Invoice Item` i
+				inner join `tabPurchase Invoice` pinv on pinv.name = i.parent
+				where pinv.docstatus = 1
+					and pinv.revalue_purchase_receipt = 1
+					and i.purchase_receipt in %s
+					and pinv.name != %s
+				limit 1
+			""", [purchase_receipts, self.name], as_dict=1)
 
-					if pr_item:
-						# if rate is different
-						if abs(item.base_net_rate - pr_item.base_net_rate) >= 1.0/10**self.precision("base_net_rate", "items"):
-							does_revalue = True
+			if pinv_with_revalue_prec:
+				self.revalue_purchase_receipt = 1
+				return
 
-						# if item tax amount is different
-						if abs(item.item_tax_amount - pr_item.item_tax_amount) >= 1.0/10**self.precision("item_tax_amount", "items"):
-							does_revalue = True
+		# if there is any difference in rate or valuation tax then revalue
+		prec_items = list(set([d.purchase_receipt_item for d in self.items if d.get('purchase_receipt_item')]))
+		prec_item_map = {}
+		if prec_items:
+			purchase_receipt_item_data = frappe.db.sql("""
+				select name, base_net_rate, item_tax_amount, qty, billed_qty
+				from `tabPurchase Receipt Item`
+				where name in %s
+			""", [prec_items], as_dict=1)
+			for d in purchase_receipt_item_data:
+				prec_item_map[d.name] = d
 
-		self.revalue_purchase_receipt = cint(does_revalue)
+		for item in self.items:
+			if not item.purchase_receipt_item:
+				continue
+
+			pr_item = prec_item_map.get(item.purchase_receipt_item)
+			if not pr_item:
+				continue
+
+			# if rate is different
+			if abs(item.base_net_rate - pr_item.base_net_rate) >= 1.0/10**self.precision("base_net_rate", "items"):
+				self.revalue_purchase_receipt = 1
+				return
+
+			# if item tax amount is different
+			if abs(item.item_tax_amount - pr_item.item_tax_amount) >= 1.0/10**self.precision("item_tax_amount", "items"):
+				self.revalue_purchase_receipt = 1
+				return
+
+			# if overbilling a prec
+			billed_qty = flt(pr_item.billed_qty) + flt(item.qty)
+			if flt(billed_qty, 6) > flt(pr_item.qty, 6):
+				self.revalue_purchase_receipt = 1
+				return
+
+			# if debit note against prec
+			if not self.update_stock and self.is_return:
+				self.revalue_purchase_receipt = 1
+				return
 
 	def validate_return_against(self):
 		if cint(self.is_return) and self.return_against:
