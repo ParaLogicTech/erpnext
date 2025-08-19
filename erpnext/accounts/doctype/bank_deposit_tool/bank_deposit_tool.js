@@ -2,212 +2,228 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Bank Deposit Tool", {
-	onload: function(frm) {
-		frm.disable_save();
-	},
-
-	refresh: function(frm) {
-		frm.events.set_up_reference_row_selection(frm);
-		frm.page.set_secondary_action('Create Deposit', function() {
-			frm.events.create_deposit(frm);
-		});
-		if (!frm.doc.from_date) {
-			frm.set_value("from_date", frappe.datetime.month_start());
-		}
-		if (!frm.doc.to_date) {
-			frm.set_value("to_date", frappe.datetime.month_end());
-		}
-	},
-
 	setup: function(frm) {
 		frm.events.setup_filters(frm);
 	},
 
-	set_up_reference_row_selection: frm => {
-		// reconcile when the row is selected or deselected
-		frm.fields_dict.undeposited_entries.grid.wrapper.on('click', '.grid-row-check', (e) => {
-			frm.events.reconcile_reference_rows(frm);
+	refresh: function(frm) {
+		erpnext.hide_company(frm);
+		if (!frm.doc.company) {
+			frm.set_value("company", frappe.defaults.get_user_default("Company"));
+		}
+
+		frm.disable_save();
+		frm.page.set_primary_action(__("Submit Deposit Entry"), () => {
+			frappe.confirm(__("Are you sure you want to submit Deposit Entry?"), () => {
+				frm.events.submit_deposit(frm);
+			});
 		});
+
+		frm.set_df_property("undeposited_entries", "cannot_add_rows", true);
+
+		frm.events.get_other_company_accounts_and_cost_centers(frm);
+	},
+
+	onload_post_render: function (frm) {
+		frm.events.setup_row_checkbox_selection(frm);
 	},
 
 	setup_filters: function(frm) {
 		frm.set_query("undeposited_account", function() {
 			return {
 				filters: {
-				  root_type: "Asset",
-				  is_group: 0,
-				  company: frm.doc.company
+					account_type: ["in", ["Bank", "Cash"]],
+					company: frm.doc.company,
+					is_group: 0,
 				}
-		  };
+			};
 		});
+
 		frm.set_query("deposit_to_account", function() {
 			return {
 				filters: {
-					root_type: "Asset",
+					account_type: "Bank",
+					company: frm.doc.company,
 					is_group: 0,
-					company: frm.doc.company
 				}
 			};
 		});
+
 		frm.set_query("account", "adjustment_entries", function(doc, cdt, cdn) {
 			return {
 				filters: {
-					root_type: ["in", ["Income", "Expense"]],
+					company: doc.company,
 					is_group: 0,
-					company: doc.company
 				}
 			};
 		});
 	},
 
-	get_undeposited_entries: function(frm) {
-		if (!frm.doc.undeposited_account) {
-			frappe.msgprint(__('Please select Undeposited Account'));
-			return;
-		}
-		frm.events.fetch_undeposited_entries(frm);
+	setup_row_checkbox_selection: function(frm) {
+		// reconcile when the row is selected or deselected
+		frm.fields_dict.undeposited_entries.grid.wrapper.on('click', '.grid-row-check', (e) => {
+			frm.doc.actual_deposit_amount = frm.events.get_selected_deposit_amount(frm);
+			frm.events.calculate_totals(frm);
+		});
 	},
 
-	fetch_undeposited_entries: function(frm) {
-		frm.call({
+	company: function (frm) {
+		frm.events.get_other_company_accounts_and_cost_centers(frm);
+	},
+
+	undeposited_account: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	deposit_date: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	actual_deposit_amount: function(frm) {
+		frm.events.calculate_totals(frm);
+	},
+
+	calculate_totals: function(frm) {
+		frm.doc.total_undeposited_amount = 0;
+		for (let d of frm.doc.undeposited_entries) {
+			frm.doc.total_undeposited_amount += flt(d.amount);
+		}
+
+		frm.doc.selected_deposit_amount = frm.events.get_selected_deposit_amount(frm);
+
+		let base_difference = flt(frm.doc.selected_deposit_amount) - flt(frm.doc.actual_deposit_amount);
+
+		let total_adjustments = 0;
+		for (let d of frm.doc.adjustment_entries || []) {
+			total_adjustments += flt(d.adjustment_amount) || 0;
+		}
+
+		let final_difference = base_difference - total_adjustments;
+		frm.doc.difference_amount = final_difference;
+		frm.refresh_fields();
+	},
+
+	get_selected_deposit_amount: function(frm) {
+		let selected_rows = frm.fields_dict.undeposited_entries.grid.get_selected_children();
+
+		let selected_deposit_amount = 0;
+		for (let d of selected_rows || []) {
+			selected_deposit_amount += flt(d.amount);
+		}
+
+		return selected_deposit_amount;
+	},
+
+	reload_undeposited_entries: function (frm) {
+		if (!frm.doc.undeposited_account || !frm.doc.deposit_date) {
+			frappe.msgprint(__("Please select Undeposited Funds Account and Deposit Date"));
+			return;
+		}
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	get_undeposited_entries: function(frm) {
+		if (!frm.doc.undeposited_account || !frm.doc.deposit_date) {
+			return;
+		}
+
+		return frm.call({
 			doc: frm.doc,
 			method: 'get_undeposited_entries',
-			callback: function(r, rt) {
-				frm.refresh_field('undeposited_entries');
-				frm.events.set_up_reference_row_selection(frm);
+			freeze: true,
+			freeze_message: __("Loading Undeposited Entries"),
+			callback: function() {
+				frm.events.calculate_totals(frm);
 			}
 		});
 	},
 
-	create_deposit: function(frm) {
-		let selected_rows = frm.fields_dict.undeposited_entries.grid.get_selected_children();
-		// verify the company has been selected
-		if (!frm.doc.company) {
-			frappe.msgprint(__('Please select the Company'));
-			return;
-		}
-		// verify the accounts are selected
-		if (!frm.doc.undeposited_account || !frm.doc.deposit_to_account) {
-			frappe.msgprint(__('Please select Undeposited and Deposit To accounts'));
-			return;
-		}
-		// verify at-least one undeposited entry is selected
-		if (!selected_rows.length) {
-			frappe.msgprint(__('Please select at least one entry to create deposit.'));
-			return;
-		}
-		// verify the difference amount is zero
-		if (frm.doc.difference_amount != 0) {
-			frappe.msgprint(__('Cannot create deposit with non zero difference amount.'));
-			return;
-		}
-		// verify the deposit date has been added
-		if (!frm.doc.deposit_date) {
-			frappe.msgprint(__('Please select Deposit Date'));
-			return;
-		}
-		// verify the deposit number has been added
-		if (!frm.doc.deposit_number) {
-			frappe.msgprint(__('Please enter deposit number'));
-			return;
-		}
+	submit_deposit: function(frm) {
+		let selected_row_names = frm.fields_dict.undeposited_entries.grid.get_selected();
 		// call the controller to reconcile entries
-		frm.call({
+		return frm.call({
 			doc: frm.doc,
-			method: "reconcile_undeposited_entries",
+			method: "submit_deposit",
 			args: {
-			selected_entries: selected_rows
+				selected_row_names: selected_row_names
 			},
 			freeze: true,
-			freeze_message: __('Creating Deposit Entry...'),
-			callback: function(r) {
-				if (!r.exc) {
-					frm.events.fetch_undeposited_entries(frm);
+			freeze_message: __('Submitting Deposit Entry...'),
+		});
+	},
+
+	get_other_company_accounts_and_cost_centers: function (frm) {
+		if (!frm.doc.company) {
+			return;
+		}
+
+		let accounts = [];
+		let cost_centers = [];
+
+		if (frm.doc.undeposited_account) {
+			accounts.push(frm.doc.undeposited_account);
+		}
+		if (frm.doc.deposit_to_account) {
+			accounts.push(frm.doc.deposit_to_account);
+		}
+
+		for (let d of frm.doc.adjustment_entries || []) {
+			if (d.account) {
+				accounts.push(d.account);
+			}
+			if (d.cost_center) {
+				cost_centers.push(d.cost_center);
+			}
+		}
+
+		return frappe.call({
+			method: "erpnext.accounts.doctype.journal_entry.journal_entry.get_other_company_accounts_and_cost_centers",
+			args: {
+				target_company: frm.doc.company,
+				accounts: accounts,
+				cost_centers: cost_centers,
+			},
+			callback: (r) => {
+				if (r.message) {
+					frm.default_cost_center = r.message.default_cost_center;
+
+					if (frm.doc.undeposited_account && r.message.accounts[frm.doc.undeposited_account]) {
+						frm.set_value("undeposited_account", r.message.accounts[frm.doc.undeposited_account]);
+					}
+					if (frm.doc.deposit_to_account && r.message.accounts[frm.doc.deposit_to_account]) {
+						frm.set_value("deposit_to_account", r.message.accounts[frm.doc.deposit_to_account]);
+					}
+
+					for (let d of frm.doc.adjustment_entries || []) {
+						if (d.account && r.message.accounts[d.account]) {
+							frappe.model.set_value(d.doctype, d.name, "account", r.message.accounts[d.account]);
+						}
+
+						frappe.model.set_value(
+							d.doctype,
+							d.name,
+							"cost_center",
+							r.message.cost_centers[d.cost_center] || r.message.default_cost_center
+						);
+					}
 				}
 			}
 		});
 	},
-
-	reconcile_reference_rows: function(frm) {
-		let selected_rows = frm.fields_dict.undeposited_entries.grid.get_selected_children();
-		let selected_deposit_amount = 0;
-
-		selected_rows.forEach((row) => {
-			selected_deposit_amount += flt(row.amount) || 0;
-		});
-
-		frm.set_value('selected_deposit_amount', selected_deposit_amount);
-		frm.set_value('net_deposited_amount', selected_deposit_amount);
-
-		frm.events.recalculate_difference(frm);
-	},
-
-	recalculate_difference: function(frm) {
-		let received = frm.doc.selected_deposit_amount || 0;
-		let deposited = frm.doc.net_deposited_amount || 0;
-
-		let base_difference = received - deposited;
-		let total_adjustments = 0;
-
-		if (frm.doc.adjustment_entries?.length) {
-			frm.doc.adjustment_entries.forEach(d_row => {
-				total_adjustments += flt(d_row.adjustment_amount) || 0;
-			});
-		}
-
-		let final_difference = base_difference - total_adjustments;
-		frm.set_value('difference_amount', final_difference);
-		frm.refresh_field('difference_amount');
-	},
-
-	net_deposited_amount: function(frm) {
-		let deposited_amount = frm.doc.net_deposited_amount;
-		if (frm.doc.net_deposited_amount > frm.doc.selected_deposit_amount) {
-			frappe.msgprint(__('Net Deposit Amount must be less than the Deposit amount'));
-			deposited_amount = frm.doc.selected_deposit_amount;
-		}
-		frm.events.recalculate_difference(frm);
-	},
-
-	// verify filter validations
-	to_date: function(frm) {
-		if (frm.doc.from_date && frm.doc.to_date) {
-			if (frappe.datetime.get_diff(frm.doc.to_date, frm.doc.from_date) < 0) {
-				frappe.msgprint(__('To Date cannot be before From Date'));
-				frm.set_value('to_date', '');
-			}
-		}
-	},
-
-	// verify the min max validations
-	maximum_pending_deposit_entry_amount: function(frm) {
-		if (frm.doc.minimum_pending_deposit_entry_amount && frm.doc.maximum_pending_deposit_entry_amount) {
-			if (frm.doc.maximum_pending_deposit_entry_amount < frm.doc.minimum_pending_deposit_entry_amount) {
-				frappe.msgprint(__('Maximum Amount cannot be less than Minimum Amount'));
-				frm.set_value('maximum_pending_deposit_entry_amount', '');
-			}
-		}
-	}
 });
 
-frappe.ui.form.on("Deposit Adjustments", {
+frappe.ui.form.on("Bank Deposit Adjustment", {
 	adjustment_amount: function(frm, cdt, cdn) {
-		let child_row = frappe.get_doc(cdt, cdn);
-		let adjustment_value = child_row.adjustment_amount || 0;
-		let difference_amount = frm.doc.difference_amount || 0;
-
-		if (adjustment_value > difference_amount) {
-			frappe.msgprint({
-				message: __("Adjustment Amount cannot be greater than the Difference Amount ({0}). Resetting to zero.", [difference_amount]),
-				title: __("Invalid Adjustment Amount"),
-				indicator: 'red'
-			});
-			frappe.model.set_value(cdt, cdn, 'adjustment_amount', 0);
-		}
-		frm.events.recalculate_difference(frm);
+		frm.events.calculate_totals(frm);
 	},
 	adjustment_entries_remove: function(frm) {
-		frm.events.recalculate_difference(frm);
-	}
+		frm.events.calculate_totals(frm);
+	},
+	adjustment_entries_add: function (frm, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		if (frm.default_cost_center && !row.cost_center) {
+			row.cost_center = frm.default_cost_center;
+			refresh_field("cost_center", row.name, "adjustment_entries");
+		}
+	},
 });
-
