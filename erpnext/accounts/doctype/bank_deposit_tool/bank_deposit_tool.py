@@ -319,7 +319,6 @@ class BankDepositTool(Document):
 				"credit_in_account_currency": abs(amount) if amount < 0 else 0,
 				"cheque_no": d.get('reference_no'),
 				"cheque_date": d.get('reference_date'),
-				"deposit_date": self.deposit_date,
 				"deposit_against_type": d.voucher_type,
 				"deposit_against": d.voucher_no,
 				"deposit_against_detail_no": d.voucher_detail_dn,
