@@ -255,9 +255,11 @@ class BankDepositTool(Document):
 		if len(selected_entries) != len(selected_row_names):
 			frappe.throw(_("Some selected undeposited entries are missing from the data provided"))
 
+		if not selected_entries and not self.adjustment_entries:
+			frappe.throw(_("Please check mark Undeposited Entries first"))
+
 		for d in selected_entries:
 			self.validate_undeposited_row(d)
-			self.update_row_deposit_date(d)
 
 		deposit_amount = 0
 		for d in selected_entries:
@@ -273,7 +275,7 @@ class BankDepositTool(Document):
 		je.insert()
 		je.submit()
 
-		frappe.msgprint(_("Bank Deposit Entry {0} created successfully").format(
+		frappe.msgprint(_("Deposit Entry {0} created successfully").format(
 			frappe.utils.get_link_to_form("Journal Entry", je.name)
 		))
 
@@ -292,39 +294,10 @@ class BankDepositTool(Document):
 				row.get("idx"), frappe.get_desk_link(row.voucher_type, row.voucher_no)
 			))
 
-		if row.voucher_detail_dn:
-			row.previous_deposit_date = frappe.db.get_value(row.voucher_detail_dt, row.voucher_detail_dn,
-				'deposit_date', for_update=True)
-		else:
-			row.previous_deposit_date = frappe.db.get_value(row.voucher_type, row.voucher_no,
-				'deposit_date', for_update=True)
-		row.previous_deposit_date = getdate(row.previous_deposit_date) if row.previous_deposit_date else None
-
-		if row.previous_deposit_date:
-			frappe.throw(_("Row #{0}: {1} is already deposited").format(
-				row.idx, frappe.get_desk_link(row.voucher_type, row.voucher_no)
-			))
-
 		if row.reference_date and getdate(self.deposit_date) < getdate(row.reference_date):
 			frappe.throw(_("Row #{0}: Deposit Date {1} cannot be before Reference/Cheque Date {2}").format(
 				row.idx, frappe.bold(self.get_formatted("deposit_date")), frappe.bold(row.get_formatted("reference_date"))
 			))
-
-	def update_row_deposit_date(self, row):
-		if row.get('voucher_detail_dn'):
-			frappe.db.set_value(row.voucher_detail_dt, row.voucher_detail_dn, 'deposit_date', self.deposit_date,
-				notify=True)
-		else:
-			frappe.db.set_value(row.voucher_type, row.voucher_no, 'deposit_date', self.deposit_date,
-				notify=True)
-
-		frappe.get_doc(dict(
-			doctype='Version',
-			ref_doctype=row.voucher_type,
-			docname=row.voucher_no,
-			data=frappe.as_json(dict(comment_type="Label", comment=_("Set Deposit Date to {0}".format(
-				frappe.utils.formatdate(self.deposit_date)))))
-		)).insert(ignore_permissions=True)
 
 	def make_journal_entry(self, selected_entries):
 		je = frappe.new_doc("Journal Entry")
@@ -347,6 +320,9 @@ class BankDepositTool(Document):
 				"cheque_no": d.get('reference_no'),
 				"cheque_date": d.get('reference_date'),
 				"deposit_date": self.deposit_date,
+				"deposit_against_type": d.voucher_type,
+				"deposit_against": d.voucher_no,
+				"deposit_against_detail_no": d.voucher_detail_dn,
 			})
 
 			credit_row = je.append("accounts", {
@@ -356,12 +332,17 @@ class BankDepositTool(Document):
 				"cheque_no": d.get('reference_no'),
 				"cheque_date": d.get('reference_date'),
 				"deposit_date": self.deposit_date,
+				"deposit_against_type": d.voucher_type,
+				"deposit_against": d.voucher_no,
+				"deposit_against_detail_no": d.voucher_detail_dn,
 			})
 
 			# Add dimensions from original voucher
 			additional_values = self.get_entry_additional_values(d)
 			debit_row.update(additional_values)
 			credit_row.update(additional_values)
+
+			credit_row.user_remark = je.user_remark or credit_row.user_remark
 
 		# adjustment entries
 		for d in self.adjustment_entries:
