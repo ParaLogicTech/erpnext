@@ -14,10 +14,12 @@ frappe.ui.form.on("Bank Reconciliation", {
 
 		frm.disable_save();
 		frm.page.set_primary_action(__("Update Clearance"), () => {
-			frappe.confirm(__("Are you sure you update Bank Clearance?"), () => {
+			frappe.confirm(__("Are you sure you want to update Bank Clearance?"), () => {
 				frm.events.update_clearance(frm);
 			});
 		});
+
+		frm.set_df_property("payment_entries", "cannot_add_rows", true);
 
 		if (!frm.doc.from_date) {
 			frm.set_value("from_date", frappe.datetime.month_start());
