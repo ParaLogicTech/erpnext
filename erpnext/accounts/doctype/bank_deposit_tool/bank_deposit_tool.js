@@ -84,11 +84,6 @@ frappe.ui.form.on("Bank Deposit Tool", {
 	},
 
 	calculate_totals: function(frm) {
-		frm.doc.total_undeposited_amount = 0;
-		for (let d of frm.doc.undeposited_entries) {
-			frm.doc.total_undeposited_amount += flt(d.amount);
-		}
-
 		frm.doc.selected_deposit_amount = frm.events.get_selected_deposit_amount(frm);
 
 		let base_difference = flt(frm.doc.selected_deposit_amount) - flt(frm.doc.actual_deposit_amount);

@@ -226,7 +226,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-19 13:23:59.217739",
+ "modified": "2025-08-20 05:28:22.498019",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",
@@ -234,11 +234,10 @@
  "permissions": [
   {
    "create": 1,
-   "delete": 1,
    "email": 1,
    "print": 1,
    "read": 1,
-   "role": "System Manager",
+   "role": "Accounts User",
    "share": 1,
    "write": 1
   }
