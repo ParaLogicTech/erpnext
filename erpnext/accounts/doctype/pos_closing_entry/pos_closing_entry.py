@@ -363,6 +363,7 @@ def get_pos_payment_details(invoices, payment_entries):
 			select
 				'Sales Invoice' as document_type,
 				inv.name as document_name,
+				pay.name as document_detail_no,
 				pay.mode_of_payment,
 				inv.posting_date,
 				pay.reference_no,
@@ -491,8 +492,8 @@ def make_head_cashier_voucher(pos_closing_entry):
 def make_till_transfer_voucher(pos_closing_entry):
 	pce = frappe.get_doc("POS Closing Entry", pos_closing_entry)
 
-	je = make_journal_entry(pce)
-	append_debit_accounts(pce, je)
+	je = make_journal_entry(pce, is_deposit=True)
+	append_debit_accounts(pce, je, is_deposit=True)
 	append_credit_accounts(pce, je, override_account=pce.head_cashier_account)
 	if not pce.head_cashier_account:
 		append_difference_accounts(pce, je)
@@ -501,7 +502,7 @@ def make_till_transfer_voucher(pos_closing_entry):
 	return je
 
 
-def make_journal_entry(pce):
+def make_journal_entry(pce, is_deposit=False):
 	if pce.docstatus != 1:
 		frappe.throw(_("POS Closing Entry must be submitted"))
 
@@ -510,6 +511,7 @@ def make_journal_entry(pce):
 	je = frappe.new_doc("Journal Entry")
 	je.company = pce.company
 	je.branch = pce.branch
+	je.voucher_type = "Deposit Entry" if is_deposit else "Journal Entry"
 	je.user_remark = _("POS Closing Transfer Entry for Cashier {0} POS Profile {1}").format(
 		pce.user_name or pce.user, pce.pos_profile
 	)
@@ -519,7 +521,7 @@ def make_journal_entry(pce):
 	return je
 
 
-def append_debit_accounts(pce, je, override_account=None):
+def append_debit_accounts(pce, je, override_account=None, is_deposit=False):
 	# Debit / Deposit Collections
 
 	mode_accounts = {}
@@ -530,15 +532,32 @@ def append_debit_accounts(pce, je, override_account=None):
 		if not d.paid_amount:
 			continue
 
-		je.append("accounts", {
+		row = je.append("accounts", {
 			"account": override_account or mode_accounts.get(d.mode_of_payment),
 			"reference_type": "POS Closing Entry",
 			"reference_name": pce.name,
 			"debit_in_account_currency": d.paid_amount,
 			"cheque_no": d.reference_no if d.type != "Cash" else None,
 			"cheque_date": d.reference_date if d.type != "Cash" else None,
-			"user_remark": _("{0} collected against {1} {2}").format(d.mode_of_payment, d.document_type, d.document_name)
+			"user_remark": _("{0} collected against {1} {2}").format(d.mode_of_payment, d.document_type, d.document_name),
 		})
+
+		if is_deposit:
+			row.update({
+				"deposit_against_type": d.document_type,
+				"deposit_against": d.document_name,
+				"deposit_against_detail_no": d.document_detail_no,
+			})
+			if not d.document_detail_no and d.document_type in ("Sales Invoice", "Journal Entry"):
+				row.update({
+					"deposit_against_type": None,
+					"deposit_against": None,
+					"deposit_against_detail_no": None,
+				})
+		else:
+			row.update({
+				"deposit_date": getdate(je.posting_date)
+			})
 
 
 def append_credit_accounts(pce, je, override_account=None):

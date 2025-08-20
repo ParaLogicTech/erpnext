@@ -54,6 +54,7 @@ class JournalEntry(AccountsController):
 		self.set_account_and_party_balance()
 		self.set_party_name()
 		self.validate_inter_company_accounts()
+		self.validate_deposit_against()
 		self.set_original_reference()
 
 		if not self.title:
@@ -74,6 +75,7 @@ class JournalEntry(AccountsController):
 		self.update_loan()
 		self.update_inter_company_jv()
 		self.update_invoice_discounting()
+		self.update_deposit_dates()
 
 	def on_cancel(self):
 		from erpnext.accounts.utils import unlink_ref_doc_from_payment_entries
@@ -93,6 +95,7 @@ class JournalEntry(AccountsController):
 		self.unlink_inter_company_jv()
 		self.unlink_asset_adjustment_entry()
 		self.update_invoice_discounting()
+		self.update_deposit_dates()
 
 	def get_title(self):
 		return self.pay_to_recd_from or self.accounts[0].account
@@ -113,6 +116,31 @@ class JournalEntry(AccountsController):
 		if self.inter_company_reference:
 			frappe.db.set_value("Journal Entry", self.inter_company_reference,\
 				"inter_company_reference", self.name, notify=1)
+
+	def validate_deposit_against(self):
+		for d in self.accounts:
+			if not d.deposit_against_type or not d.deposit_against:
+				d.deposit_against_type = None
+				d.deposit_against = None
+				d.deposit_against_detail_no = None
+				continue
+
+			docstatus = frappe.db.get_value(d.deposit_against_type, d.deposit_against, "docstatus")
+			if docstatus != 1:
+				frappe.throw(_("Row #{0}: Deposit Against Document {1} is not submitted").format(
+					d.idx, frappe.get_desk_link(d.deposit_against_type, d.deposit_against)
+				))
+
+			if d.deposit_against_detail_no:
+				deposit_against_detail_dt = self.get_deposit_against_child_doctype(d.deposit_against_type)
+				is_deposited = frappe.db.get_value(deposit_against_detail_dt, d.deposit_against_detail_no, 'deposit_date')
+			else:
+				is_deposited = frappe.db.get_value(d.deposit_against_type, d.deposit_against, 'deposit_date')
+
+			if is_deposited:
+				frappe.throw(_("{0} is already deposited").format(
+					frappe.get_desk_link(d.deposit_against_type, d.deposit_against)
+				))
 
 	def update_invoice_discounting(self):
 		def _validate_invoice_discounting_status(inv_disc, id_status, expected_status, row_id):
@@ -144,6 +172,61 @@ class JournalEntry(AccountsController):
 			if status:
 				inv_disc_doc.set_status(status=status)
 
+	def update_deposit_dates(self):
+		deposit_against_list = set()
+		for d in self.accounts:
+			if d.deposit_against_type and d.deposit_against:
+				deposit_against_list.add((d.deposit_against_type, d.deposit_against, d.deposit_against_detail_no or None))
+
+		if self.docstatus == 1:
+			deposit_date = self.cheque_date or self.posting_date
+		else:
+			deposit_date = None
+
+		for deposit_against_type, deposit_against, deposit_against_detail_no in deposit_against_list:
+			deposit_against_detail_dt = self.get_deposit_against_child_doctype(deposit_against_type)
+
+			if deposit_against_detail_no:
+				frappe.db.set_value(
+					deposit_against_detail_dt,
+					deposit_against_detail_no,
+					'deposit_date',
+					deposit_date,
+				)
+			else:
+				frappe.db.set_value(
+					deposit_against_type,
+					deposit_against,
+					'deposit_date',
+					deposit_date,
+					notify=True,
+				)
+
+			if deposit_date:
+				comment = _("Deposited on {0} by {1} with Deposit No {2}").format(
+					frappe.utils.formatdate(deposit_date),
+					frappe.get_desk_link(self.doctype, self.name),
+					self.cheque_no,
+				)
+			else:
+				comment = _("Cancelled Deposit Entry").format(frappe.utils.formatdate(deposit_date))
+
+			frappe.get_doc(dict(
+				doctype='Version',
+				ref_doctype=deposit_against_type,
+				docname=deposit_against,
+				data=frappe.as_json(dict(comment_type="Label", comment=comment))
+			)).insert(ignore_permissions=True)
+
+	@staticmethod
+	def get_deposit_against_child_doctype(deposit_against_type):
+		deposit_against_detail_dt = deposit_against_type
+		if deposit_against_type == "Sales Invoice":
+			deposit_against_detail_dt = "Sales Invoice Payment"
+		elif deposit_against_type == "Journal Entry":
+			deposit_against_detail_dt = "Journal Entry Account"
+
+		return deposit_against_detail_dt
 
 	def unlink_advance_entry_reference(self):
 		for d in self.get("accounts"):

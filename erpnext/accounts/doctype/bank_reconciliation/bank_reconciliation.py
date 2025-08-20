@@ -184,10 +184,10 @@ class BankReconciliation(Document):
 
 		if row.voucher_detail_dn:
 			row.previous_clearance_date = frappe.db.get_value(row.voucher_detail_dt, row.voucher_detail_dn,
-				'clearance_date', row.clearance_date, for_update=True)
+				'clearance_date', for_update=True)
 		else:
 			row.previous_clearance_date = frappe.db.get_value(row.voucher_type, row.voucher_no,
-				'clearance_date', row.clearance_date, for_update=True)
+				'clearance_date', for_update=True)
 		row.previous_clearance_date = getdate(row.previous_clearance_date) if row.previous_clearance_date else None
 
 		if (

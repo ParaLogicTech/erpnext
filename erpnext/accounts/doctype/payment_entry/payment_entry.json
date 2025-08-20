@@ -35,6 +35,7 @@
   "reference_date",
   "column_break_29",
   "deposit_no",
+  "deposit_date",
   "clearance_date",
   "bank_details_section",
   "bank_account",
@@ -492,7 +493,8 @@
    "label": "Clearance Date",
    "no_copy": 1,
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "section_break_12",
@@ -949,11 +951,19 @@
    "no_copy": 1,
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "deposit_date",
+   "fieldtype": "Date",
+   "label": "Deposit Date",
+   "no_copy": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-17 20:08:32.148429",
+ "modified": "2025-08-19 13:50:14.243188",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",
@@ -1016,6 +1026,7 @@
    "role": "Auditor"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "payment_type, party_type, party",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",
