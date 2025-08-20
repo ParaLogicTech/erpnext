@@ -22,6 +22,7 @@ class StockAgeingReport:
 		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
 
 	def run(self):
+		self.validate_ageing_filter()
 		self.get_columns()
 
 		self.get_items()
@@ -133,10 +134,21 @@ class StockAgeingReport:
 
 				"uom": item_details.stock_uom,
 				"bal_qty": fifo_dict.get("total_qty"),
+				"bal_val": get_total_value(fifo_dict.get("total_qty"), fifo_dict.get("last_valuation_rate")),
+				"total_in_qty": fifo_dict.get("total_in_qty")
 			}
-
 			ageing_details = get_ageing_details(fifo_queue, self.filters.to_date)
 			row.update(ageing_details)
+
+			total_in_qty, total_in_value = get_total_in_qty_value(fifo_dict)
+
+			row["total_in_qty"] = total_in_qty
+			row["total_in_value"] = total_in_value
+
+			ageing_data = get_ageing_data(self.ageing_range, self.filters.to_date, fifo_dict, self.filters.ageing_based_on)
+
+			for i, age_range_value in enumerate(ageing_data):
+				row["range{0}".format(i+1)] = age_range_value
 
 			self.rows.append(row)
 
@@ -160,6 +172,12 @@ class StockAgeingReport:
 				"width": 50},
 			{"label": _("Available Qty"), "fieldname": "bal_qty", "fieldtype": "Float",
 				"width": 90},
+			{"label": _("Balance Value"), "fieldname": "bal_val", "fieldtype": "Currency",
+				"width": 90},
+			{"label": _("Total In Qty"), "fieldname": "total_in_qty", "fieldtype": "Currency",
+				"width": 90},
+			{"label": _("Total In Value"), "fieldname": "total_in_value", "fieldtype": "Currency",
+				"width": 90},
 			{"label": _("Average Age"), "fieldname": "average_age", "fieldtype": "Float",
 				"width": 90},
 			{"label": _("Earliest Age"), "fieldname": "earliest_age", "fieldtype": "Int",
@@ -181,14 +199,47 @@ class StockAgeingReport:
 
 		if not self.show_item_name:
 			self.columns = [c for c in self.columns if c.get('fieldname') != 'item_name']
+		
+		self.ageing_columns = self.get_ageing_columns()
+		self.columns += self.ageing_columns
 
 		return self.columns
+	
+	def get_ageing_columns(self):
+		ageing_columns = []
+		lower_limit = 0
+		for i, upper_limit in enumerate(self.ageing_range):
+			ageing_columns.append({
+				"label": "{0}-{1}".format(lower_limit, upper_limit),
+				"fieldname": "range{}".format(i+1),
+				"fieldtype": "Currency",
+				"options": "currency",
+				"ageing_column": 1,
+				"width": 110
+			})
+			lower_limit = upper_limit + 1
+
+		ageing_columns.append({
+			"label": "{0}-Above".format(lower_limit),
+			"fieldname": "range{}".format(self.ageing_column_count),
+			"fieldtype": "Currency",
+			"options": "currency",
+			"ageing_column": 1,
+			"width": 100
+		})
+		return ageing_columns
+
+	def validate_ageing_filter(self):
+		self.ageing_range = [cint(r.strip()) for r in self.filters.get('ageing_range', "").split(",") if r]
+		self.ageing_range = sorted(list(set(self.ageing_range)))
+		self.ageing_column_count = len(self.ageing_range) + 1
 
 
 def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 	fifo_queue_map = {}
 	transferred_item_details = {}
 	serial_no_batch_purchase_details = {}
+	total_in_qty = 0
 
 	for sle in sles:
 		fifo_dict = get_fifo_dict(sle, fifo_queue_map,
@@ -198,10 +249,12 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 		)
 
 		fifo_queue = fifo_dict["fifo_queue"]
+		in_queue = fifo_dict["in_queue"]
 		transferred_item_details.setdefault((sle.voucher_no, sle.item_code), [])
 		serial_no_list = get_serial_nos(sle.serial_no) if sle.serial_no else []
 
 		if sle.actual_qty > 0:
+			in_queue.append([sle.actual_qty, sle.posting_date, sle.incoming_rate])
 			if transferred_item_details.get((sle.voucher_no, sle.item_code)):
 				batch = transferred_item_details[(sle.voucher_no, sle.item_code)][0]
 				fifo_queue.append(batch)
@@ -242,6 +295,10 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 			fifo_dict["total_qty"] = sle.actual_qty
 		else:
 			fifo_dict["total_qty"] += sle.actual_qty
+		
+		fifo_dict["last_valuation_rate"] = sle.valuation_rate
+
+		fifo_dict["total_in_qty"] = total_in_qty
 
 	# sort and filter
 	sort_key = lambda x: x[1]
@@ -263,7 +320,7 @@ def get_fifo_dict(sle, fifo_queue_map, include_warehouse, include_batch, include
 		key_dict = frappe._dict(zip(key_fields, key))
 
 		fifo_queue_map[key] = frappe._dict({
-			"details": key_dict, "fifo_queue": []
+			"details": key_dict, "fifo_queue": [], "in_queue": []
 		})
 
 	return fifo_queue_map[key]
@@ -277,6 +334,11 @@ def get_ageing_details(fifo_queue, to_date):
 		"earliest_age": date_diff(to_date, fifo_queue[0][1]),
 		"latest_age": date_diff(to_date, fifo_queue[-1][1])
 	})
+
+def get_total_value(total_qty,last_valuation_rate):
+	total_value = 0
+	total_value = total_qty*last_valuation_rate
+	return total_value
 
 
 def get_average_age(fifo_queue, to_date):
@@ -294,3 +356,55 @@ def get_average_age(fifo_queue, to_date):
 			total_qty += 1
 
 	return (age_qty / total_qty) if total_qty else 0.0
+
+def get_ageing_data(ageing_range, age_as_on, fifo_dict, ageing_based_on=None):
+
+	age_index_dict = {}
+
+	if ageing_based_on == "Balance Value":
+		fifo_queue = fifo_dict.get("fifo_queue")
+	else:
+		fifo_queue = fifo_dict.get("in_queue")
+
+	value_range = [0.0] * (len(ageing_range) + 1)
+
+	if not (age_as_on):
+		return 0, value_range
+
+	for each_queue in fifo_queue:
+
+		if ageing_based_on == "Balance Value":
+			age_period_delta = flt(each_queue[0]*fifo_dict.get("last_valuation_rate"),2)
+		else:
+			age_period_delta = flt(each_queue[0]*each_queue[2],2)
+
+
+		age = (getdate(age_as_on) - getdate(each_queue[1])).days or 0
+		index = None
+		for i, days in enumerate(ageing_range):
+			if age <= days:
+				index = i
+				break
+
+		if index is None:
+			index = len(ageing_range)
+
+		if age_index_dict.get(index):
+			age_index_dict[index] = age_index_dict[index] + age_period_delta
+		else:
+			age_index_dict[index] = age_period_delta
+
+		value_range[index] = age_index_dict.get(index)
+
+	return value_range
+
+def get_total_in_qty_value(fifo_dict):
+	total_in_qty = 0
+	total_in_value = 0
+
+	for each_list in fifo_dict.get("in_queue"):
+		if each_list:
+			total_in_qty += each_list[0]
+			total_in_value = total_in_value + each_list[0]*each_list[2]
+	
+	return total_in_qty, flt(total_in_value,2)

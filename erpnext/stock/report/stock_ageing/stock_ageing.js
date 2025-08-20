@@ -47,6 +47,21 @@ frappe.query_reports["Stock Ageing"] = {
 			hidden: 1
 		},
 		{
+			"fieldname":"ageing_based_on",
+			"label": __("Ageing Based On"),
+			"fieldtype": "Select",
+			"options": 'Purchase Rate\nBalance Value',
+			"default": "Purchase Rate",
+			"reqd":1
+		},
+		{
+			"fieldname":"ageing_range",
+			"label": __("Ageing Range"),
+			"fieldtype": "Data",
+			"default": "30, 60, 90, 120",
+			"reqd": 0
+		},
+		{
 			fieldname: "warehouse",
 			label: __("Warehouse"),
 			fieldtype: "Link",
@@ -109,16 +124,6 @@ frappe.query_reports["Stock Ageing"] = {
 			fieldtype: "Check",
 		},
 	],
-
-	formatter: function (value, row, column, data, default_formatter) {
-		var style = {};
-
-		if (["average_age"].includes(column.fieldname)) {
-			style['font-weight'] = 'bold';
-		}
-
-		return default_formatter(value, row, column, data, {css: style});
-	},
 }
 
 erpnext.utils.add_additional_sle_filters("Stock Ageing");
