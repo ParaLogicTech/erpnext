@@ -239,6 +239,7 @@ def get_service_template_tasks(
 			task_details=task_details,
 			service_template=service_template,
 			service_template_detail=service_template_detail,
+			template_task_row=template_task_row,
 		)
 
 		tasks.append(task_details)
