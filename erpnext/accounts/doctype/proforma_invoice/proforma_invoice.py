@@ -184,11 +184,18 @@ class ProformaInvoice(SellingController):
 
 
 @frappe.whitelist()
-def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postprocess=False):
+def make_sales_invoice(
+	source_name,
+	target_doc=None,
+	ignore_permissions=False,
+	only_items=None,
+	skip_postprocess=False,
+):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
 
 	def postprocess(source, target):
+		target.flags.ignore_permissions = ignore_permissions
 		target.ignore_pricing_rule = 1
 		target.update_stock = 0
 		target.run_method("postprocess_after_mapping")
@@ -222,9 +229,15 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 	if only_items:
 		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Proforma Invoice Item"}
 
-	doc = get_mapped_doc("Proforma Invoice", source_name, mapping, target_doc,
+	doc = get_mapped_doc(
+		"Proforma Invoice",
+		source_name,
+		mapping,
+		target_doc=target_doc,
+		ignore_permissions=ignore_permissions,
 		postprocess=postprocess if not skip_postprocess else None,
-		explicit_child_tables=only_items)
+		explicit_child_tables=only_items,
+	)
 
 	return doc
 
