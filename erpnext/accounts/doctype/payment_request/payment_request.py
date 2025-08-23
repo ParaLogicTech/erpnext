@@ -33,7 +33,7 @@ class PaymentRequest(StatusUpdaterERP):
 		self.request_payment_gateway_url()
 
 	def on_submit(self):
-		self.trigger_notifications()
+		self.trigger_payment_request_notification()
 
 	def before_cancel(self):
 		self.check_if_payment_entry_exists()
@@ -102,6 +102,13 @@ class PaymentRequest(StatusUpdaterERP):
 			frappe.throw(_("Company {0} in Payment Request does not match with Company {1} in Reference Document").format(
 				frappe.bold(self.company),
 				frappe.bold(reference_doc.company),
+			))
+
+		if self.project and reference_doc.get("project") and self.project != reference_doc.get("project"):
+			frappe.throw(_("{0} {1} in Payment Request does not match with {1} in Reference Document").format(
+				_("Project"),
+				frappe.bold(self.project),
+				frappe.bold(reference_doc.project),
 			))
 
 	def validate_payment_gateway(self):
@@ -218,6 +225,7 @@ class PaymentRequest(StatusUpdaterERP):
 			"title": self.company,
 			"order_id": self.name,
 			"order_name": self.reference_name,
+			"order_info": self.project,
 			"amount": flt(self.grand_total, self.precision("grand_total")),
 			"currency": self.currency,
 			"description": self.subject,
@@ -228,12 +236,15 @@ class PaymentRequest(StatusUpdaterERP):
 			"reference_docname": self.name,
 		})
 
-	def trigger_notifications(self):
+	def trigger_payment_request_notification(self):
 		if self.mute_notification or self.flags.mute_notification:
 			return
-		if self.docstatus != 1:
+		if self.payment_request_type != "Inward":
+			return
+		if self.docstatus != 1 or self.status == "Paid":
 			return
 
+		self.run_method("notify_payment_request")
 		if self.payment_url:
 			self.run_method("notify_payment_url")
 
@@ -312,7 +323,7 @@ class PaymentRequest(StatusUpdaterERP):
 				limit=1
 			)
 			if pref:
-				frappe.throw(_("Payment Entry already exists"), title=_('Error'))
+				frappe.throw(_("Payment Entry is already submitted"), title=_('Error'))
 
 	@classmethod
 	def get_reference_document_details(cls, reference_doc, exclude=None):
@@ -322,6 +333,7 @@ class PaymentRequest(StatusUpdaterERP):
 
 		out.company = reference_doc.get("company")
 		out.branch = reference_doc.get("branch")
+		out.project = reference_doc.get("project")
 
 		out.party_type, out.party, out.party_name = PaymentRequest.get_reference_document_party(reference_doc)
 
@@ -501,11 +513,11 @@ def get_reference_document_details(reference_doctype, reference_name, exclude=No
 
 
 @frappe.whitelist()
-def get_print_format_list(ref_doctype):
+def get_print_format_list(reference_doctype):
 	print_format_list = ["Standard"]
+	print_formats = frappe.get_all("Print Format", filters={"doc_type": reference_doctype, "disabled": 0})
 
-	print_format_list.extend([p.name for p in frappe.get_all("Print Format",
-		filters={"doc_type": ref_doctype})])
+	print_format_list.extend([p.name for p in print_formats])
 
 	return {
 		"print_format": print_format_list
@@ -513,13 +525,15 @@ def get_print_format_list(ref_doctype):
 
 
 @frappe.whitelist()
-def resend_payment_notification(docname):
-	return frappe.get_doc("Payment Request", docname).trigger_notifications()
+def trigger_payment_request_notification(payment_request):
+	doc = frappe.get_doc("Payment Request", payment_request)
+	doc.check_permission("read")
+	doc.trigger_payment_request_notification()
 
 
 @frappe.whitelist()
-def make_payment_entry(docname):
-	doc = frappe.get_doc("Payment Request", docname)
+def make_payment_entry(payment_request):
+	doc = frappe.get_doc("Payment Request", payment_request)
 	return doc.create_payment_entry(submit=False)
 
 

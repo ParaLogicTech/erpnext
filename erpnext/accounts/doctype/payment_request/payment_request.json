@@ -9,6 +9,7 @@
   "payment_request_type",
   "reference_doctype",
   "reference_name",
+  "project",
   "make_sales_invoice",
   "mute_notification",
   "column_break_2",
@@ -125,6 +126,7 @@
    "fieldname": "reference_name",
    "fieldtype": "Dynamic Link",
    "in_global_search": 1,
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Reference Document",
    "no_copy": 1,
@@ -374,12 +376,19 @@
    "fieldtype": "Data",
    "label": "Party Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "search_index": 1
   }
  ],
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-23 00:11:15.449909",
+ "modified": "2025-08-23 13:49:42.634427",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Request",
@@ -429,5 +438,6 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "party_name"
 }
