@@ -89,7 +89,7 @@ class PaymentEntry(AccountsController):
 		self.set_missing_reference_details()
 		self.update_payment_schedule()
 		self.update_project()
-		self.set_payment_req_status()
+		self.update_payment_request_status()
 		self.set_status()
 
 	def on_cancel(self):
@@ -100,7 +100,7 @@ class PaymentEntry(AccountsController):
 		self.delink_advance_entry_references()
 		self.update_payment_schedule(cancel=1)
 		self.update_project()
-		self.set_payment_req_status()
+		self.update_payment_request_status()
 		self.set_status(update=True)
 		self.db_set("clearance_date", None)
 
@@ -131,9 +131,30 @@ class PaymentEntry(AccountsController):
 		self.set_exchange_rate()
 		self.set_amounts()
 
-	def set_payment_req_status(self):
-		from erpnext.accounts.doctype.payment_request.payment_request import update_payment_req_status
-		update_payment_req_status(self)
+	def update_payment_request_status(self):
+		payment_requests = set()
+		if self.payment_request:
+			payment_requests.add(self.payment_request)
+
+		reference_documents = set()
+		for ref in self.references:
+			if ref.reference_doctype and ref.reference_name:
+				reference_documents.add((ref.reference_doctype, ref.reference_name))
+
+		if reference_documents:
+			payment_request_by_reference = frappe.db.sql_list("""
+				select name
+				from `tabPayment Request`
+				where (reference_doctype, reference_name) in %s and docstatus = 1
+			""", [reference_documents])
+
+			for payment_request in payment_request_by_reference:
+				payment_requests.add(payment_request)
+
+		for payment_request_name in payment_requests:
+			pay_req_doc = frappe.get_doc('Payment Request', payment_request_name)
+			pay_req_doc.set_status(update=True)
+			pay_req_doc.notify_update()
 
 	def validate_duplicate_entry(self):
 		reference_names = []

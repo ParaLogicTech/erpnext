@@ -7,15 +7,14 @@
  "field_order": [
   "naming_series",
   "payment_request_type",
-  "party_type",
-  "party",
-  "party_name",
+  "reference_doctype",
+  "reference_name",
+  "make_sales_invoice",
+  "mute_notification",
   "column_break_2",
   "payment_gateway_account",
   "mode_of_payment",
   "payment_account",
-  "make_sales_invoice",
-  "mute_notification",
   "column_break_fmzy",
   "company",
   "branch",
@@ -23,12 +22,12 @@
   "status",
   "amended_from",
   "transaction_details",
+  "party_type",
+  "party",
+  "party_name",
+  "column_break_4",
   "grand_total",
   "currency",
-  "column_break_4",
-  "reference_doctype",
-  "reference_name",
-  "payment_order",
   "bank_account_details",
   "bank_account",
   "bank",
@@ -42,7 +41,6 @@
   "contact_display",
   "column_break_9",
   "contact_mobile",
-  "contact_phone",
   "column_break_9zfd",
   "contact_email",
   "section_break_10",
@@ -132,7 +130,8 @@
    "no_copy": 1,
    "options": "reference_doctype",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "transaction_details",
@@ -293,13 +292,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "payment_order",
-   "fieldtype": "Link",
-   "label": "Payment Order",
-   "options": "Payment Order",
-   "read_only": 1
-  },
-  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -346,11 +338,6 @@
    "options": "Phone"
   },
   {
-   "fieldname": "contact_phone",
-   "fieldtype": "Data",
-   "label": "Contact Phone"
-  },
-  {
    "fieldname": "contact_display",
    "fieldtype": "Data",
    "label": "Contact Name"
@@ -392,7 +379,7 @@
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-17 21:28:13.829290",
+ "modified": "2025-08-23 00:11:15.449909",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Request",

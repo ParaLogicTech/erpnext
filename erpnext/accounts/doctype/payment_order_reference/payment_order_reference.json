@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2018-07-20 16:38:06.630813",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -62,7 +63,8 @@
    "fieldtype": "Link",
    "label": "Payment Request",
    "options": "Payment Request",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fetch_from": "payment_request.mode_of_payment",
@@ -109,18 +111,23 @@
    "fieldtype": "Link",
    "label": "Payment Entry",
    "options": "Payment Entry",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
- "modified": "2020-03-03 15:37:29.450158",
+ "links": [],
+ "modified": "2025-08-22 23:59:29.699154",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Order Reference",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
