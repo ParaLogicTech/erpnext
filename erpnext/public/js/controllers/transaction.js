@@ -413,7 +413,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	make_payment_request() {
 		return frappe.call({
-			method:"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request",
+			method: "erpnext.accounts.doctype.payment_request.payment_request.make_payment_request",
 			args: {
 				reference_doctype: this.frm.doc.doctype,
 				reference_name: this.frm.doc.name,
