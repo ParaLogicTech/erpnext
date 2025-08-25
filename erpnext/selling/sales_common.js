@@ -99,6 +99,18 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			});
 		}
 
+		if (this.frm.fields_dict.debit_to) {
+			this.frm.set_query("debit_to", function(doc) {
+				return {
+					filters: {
+						'account_type': 'Receivable',
+						'is_group': 0,
+						'company': doc.company
+					}
+				}
+			});
+		}
+
 		if(!this.frm.fields_dict["items"]) {
 			return;
 		}

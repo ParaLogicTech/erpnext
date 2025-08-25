@@ -1119,6 +1119,7 @@
   {
    "collapsible": 1,
    "collapsible_depends_on": "advances",
+   "depends_on": "eval:!doc.is_return",
    "fieldname": "advances_section",
    "fieldtype": "Section Break",
    "label": "Advance Payments",
@@ -2356,11 +2357,12 @@
    "print_hide": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-file-text",
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-10 16:29:03.334440",
+ "modified": "2025-08-24 16:58:29.229374",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
@@ -2470,6 +2472,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "posting_date, due_date, customer,bill_to, base_grand_total, outstanding_amount",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

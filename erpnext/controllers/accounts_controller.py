@@ -381,11 +381,13 @@ class AccountsController(TransactionBase):
 	@frappe.whitelist()
 	def set_advances(self, include_unallocated=True, against_project=None):
 		"""Returns list of advances against Account, Party, Reference"""
+		self.set("advances", [])
+		if self.get("is_return"):
+			return
+
 		include_unallocated = cint(include_unallocated)
 		res = self.get_advance_entries(include_unallocated=include_unallocated, against_project=against_project)
 		company_currency = erpnext.get_company_currency(self.company)
-
-		self.set("advances", [])
 
 		total_advance_allocated = 0
 		if self.get("party_account_currency") and self.get("party_account_currency") == company_currency:
