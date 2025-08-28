@@ -63,7 +63,7 @@ class SalesInvoice(SellingController):
 		self.validate_debit_to_acc()
 		self.validate_return_against()
 
-		self.check_advance_payment_against_order("sales_order")
+		self.check_advance_payment_against_order(["proforma_invoice", "sales_order"])
 
 		self.validate_write_off_account()
 		self.validate_account_for_change_amount()

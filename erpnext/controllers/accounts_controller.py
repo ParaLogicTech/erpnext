@@ -522,18 +522,33 @@ class AccountsController(TransactionBase):
 		if self.get("is_return"):
 			return
 
-		order_list = list(set([d.get(order_field) for d in self.get("items") if d.get(order_field)]))
+		if isinstance(order_field, str):
+			order_field = [order_field]
+
+		order_list = set()
+		for f in order_field:
+			for d in self.get("items"):
+				if d.get(f):
+					order_list.add(d.get(f))
 		if not order_list:
 			return
 
-		advance_entries = self.get_advance_entries(include_unallocated=False)
+		advance_entries = self.get_advance_entries(
+			include_unallocated=True if self.get("project") else False,
+			against_project=self.get("project")
+		)
 		if advance_entries:
 			advance_entries_against_si = [d.reference_name for d in self.get("advances")]
 			for d in advance_entries:
 				if not advance_entries_against_si or d.reference_name not in advance_entries_against_si:
-					frappe.msgprint(_(
-						"Payment Entry {0} is linked against Order {1}, check if it should be pulled as advance in this invoice.")
-							.format(d.reference_name, d.against_order))
+					against_document_type = d.against_order_doctype
+					against_document = d.against_order
+					if not d.against_order and d.project:
+						against_document_type = "Project"
+						against_document = d.project
+
+					frappe.msgprint(_("Payment Entry {0} is linked against {1} {2}, check if it should be pulled as advance in this invoice.")
+							.format(d.reference_name, _(against_document_type), against_document))
 
 	def update_against_document_in_jv(self):
 		"""
@@ -785,6 +800,7 @@ def get_advance_journal_entries(
 				jea.name as reference_row,
 				jea.reference_name as against_order,
 				jea.reference_type as against_order_doctype,
+				if(ifnull(jea.project, '') != '', jea.project, je.project) as project,
 				je.posting_date
 			from
 				`tabJournal Entry` je, `tabJournal Entry Account` jea
@@ -903,6 +919,7 @@ def get_advance_payment_entries(
 				pref.name as reference_row,
 				pref.reference_name as against_order,
 				pref.reference_doctype as against_order_doctype,
+				pe.project,
 				pe.posting_date
 			from `tabPayment Entry` pe, `tabPayment Entry Reference` pref
 			where
@@ -936,6 +953,7 @@ def get_advance_payment_entries(
 				pe.unallocated_amount as amount,
 				pe.total_taxes_and_charges,
 				if(pe.payment_type = 'Receive', pe.paid_amount_before_tax, pe.received_amount_before_tax) as total_paid_amount,
+				pe.project,
 				pe.posting_date
 			from `tabPayment Entry` pe
 			where

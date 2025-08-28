@@ -56,13 +56,13 @@ def make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc
 	# Map Proforma Invoices
 	for d in proforma_invoices:
 		target_doc = invoice_from_proforma_invoice(d.name, target_doc=target_doc, only_items=bill_multiple_projects,
-			skip_postprocess=bill_multiple_projects)
+			skip_postprocess=bill_multiple_projects, set_advances=False)
 
 	# Postprocess
 	if not bill_multiple_projects:
 		set_cash_or_credit(target_doc, project)
 		target_doc.run_method("postprocess_after_mapping")
-		# set_advances()
+		set_advances(target_doc, project)
 
 	if bill_multiple_projects:
 		frappe.flags.postprocess_after_mapping = postprocess_bill_multiple_projects
@@ -112,11 +112,6 @@ def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_t
 		if project.invoice_terms_template:
 			target_doc.tc_name = project.invoice_terms_template
 
-	def set_advances():
-		target_doc.set_advances(against_project=project.name)
-		if target_doc.advances:
-			target_doc.run_method("calculate_taxes_and_totals")
-
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Sales Invoice")
 
@@ -161,7 +156,7 @@ def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_t
 		set_depreciation_in_invoice_items(target_doc.get('items'), project, force=True)
 		target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
 
-		set_advances()
+		set_advances(target_doc, project)
 
 	if bill_multiple_projects:
 		frappe.flags.postprocess_after_mapping = postprocess_bill_multiple_projects
@@ -247,6 +242,8 @@ def make_proforma_invoice(project_name, target_doc=None, depreciation_type=None)
 	target_doc.run_method("set_missing_values")
 	set_depreciation_in_invoice_items(target_doc.get('items'), project, force=True)
 	target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
+
+	set_advances(target_doc, project)
 
 	project.validate_for_transaction(target_doc)
 
@@ -614,7 +611,7 @@ def make_payment_entry(project_name, is_refund=False):
 			})
 			pe.set_reference_row_details(row)
 
-	set_taxes = frappe.get_cached_value("Projects Settings", None, "apply_taxes_on_advance_payment")
+	set_taxes = frappe.get_cached_value("Accounts Settings", None, "apply_taxes_on_advance_payment")
 	pe.run_method("postprocess_after_mapping", reset_taxes=set_taxes)
 
 	return pe
@@ -749,6 +746,12 @@ def set_missing_insurance_details(target_doc):
 def set_invoice_remarks(target_doc, project):
 	if project.get("invoice_remarks"):
 		target_doc.remarks = project.get("invoice_remarks")
+
+
+def set_advances(target_doc, project):
+	target_doc.set_advances(against_project=project.name)
+	if target_doc.advances:
+		target_doc.run_method("calculate_taxes_and_totals")
 
 
 def set_sales_person_in_target_doc(target_doc, project):

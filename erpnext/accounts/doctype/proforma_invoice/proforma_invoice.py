@@ -231,15 +231,26 @@ def make_sales_invoice(
 	ignore_permissions=False,
 	only_items=None,
 	skip_postprocess=False,
+	set_advances=True,
 ):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
+
+	set_advances = cint(set_advances)
 
 	def postprocess(source, target):
 		target.flags.ignore_permissions = ignore_permissions
 		target.ignore_pricing_rule = 1
 		target.update_stock = 0
 		target.run_method("postprocess_after_mapping")
+
+		if set_advances:
+			target.set_advances(
+				include_unallocated=True if target.project else False,
+				against_project=target.project,
+			)
+			if target.advances:
+				target.run_method("calculate_taxes_and_totals")
 
 	mapping = {
 		"Proforma Invoice": {
