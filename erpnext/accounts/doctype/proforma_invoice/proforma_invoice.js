@@ -50,7 +50,7 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 				}
 
 				if (frappe.model.can_create("Payment Entry") || frappe.model.can_create("Journal Entry")) {
-					this.frm.add_custom_button(__('Payment'), () => this.make_payment_entry(),
+					this.frm.add_custom_button(__('Payment'), () => this.make_payment_entry(true),
 						__('Create'));
 				}
 			}

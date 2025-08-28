@@ -2334,32 +2334,44 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		}
 	}
 
-	make_payment_entry() {
+	make_payment_entry(is_advance) {
+		if (this.frm.doc.__onload?.make_payment_via_journal_entry) {
+			return this.make_payment_journal_entry();
+		}
+
 		return frappe.call({
-			method: cur_frm.cscript.get_method_for_payment(),
+			method: "erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry",
 			args: {
-				"dt": cur_frm.doc.doctype,
-				"dn": cur_frm.doc.name
+				dt: this.frm.doc.doctype,
+				dn: this.frm.doc.name,
+				is_advance: cint(is_advance),
 			},
-			callback: function(r) {
-				var doclist = frappe.model.sync(r.message);
+			callback: (r) => {
+				let doclist = frappe.model.sync(r.message);
 				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-				// cur_frm.refresh_fields()
 			}
 		});
 	}
 
-	get_method_for_payment() {
-		var method = "erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry";
-		if(cur_frm.doc.__onload && cur_frm.doc.__onload.make_payment_via_journal_entry){
-			if(in_list(['Sales Invoice', 'Purchase Invoice'],  cur_frm.doc.doctype)){
-				method = "erpnext.accounts.doctype.journal_entry.journal_entry.get_payment_entry_against_invoice";
-			}else {
-				method= "erpnext.accounts.doctype.journal_entry.journal_entry.get_payment_entry_against_order";
-			}
+	make_payment_journal_entry() {
+		let method;
+		if (['Sales Invoice', 'Purchase Invoice'].includes(this.frm.doc.doctype)) {
+			method = "erpnext.accounts.doctype.journal_entry.journal_entry.get_payment_entry_against_invoice";
+		} else {
+			method = "erpnext.accounts.doctype.journal_entry.journal_entry.get_payment_entry_against_order";
 		}
 
-		return method
+		return frappe.call({
+			method: method,
+			args: {
+				dt: this.frm.doc.doctype,
+				dn: this.frm.doc.name
+			},
+			callback: (r) => {
+				let doclist = frappe.model.sync(r.message);
+				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+			}
+		});
 	}
 
 	set_query_for_batch(doc, cdt, cdn) {

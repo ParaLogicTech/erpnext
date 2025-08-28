@@ -259,6 +259,7 @@ class PaymentRequest(StatusUpdaterERP):
 			bank_amount=self.grand_total,
 			bank_account=self.payment_account,
 			mode_of_payment=self.mode_of_payment,
+			is_advance=True,
 		)
 
 		payment_entry.update({

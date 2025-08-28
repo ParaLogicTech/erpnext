@@ -22,7 +22,6 @@
   "ignore_employee_time_overlap",
   "auto_schedule_next_service_templates",
   "validate_po_for_billing_company_customer",
-  "apply_taxes_on_advance_payment",
   "require_attendance_for_task_start"
  ],
  "fields": [
@@ -112,12 +111,6 @@
   },
   {
    "default": "0",
-   "fieldname": "apply_taxes_on_advance_payment",
-   "fieldtype": "Check",
-   "label": "Apply Taxes on Advance Payment"
-  },
-  {
-   "default": "0",
    "fieldname": "require_attendance_for_task_start",
    "fieldtype": "Check",
    "label": "Require Attendance for Starting Tasks"
@@ -143,7 +136,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-07-18 13:19:46.499197",
+ "modified": "2025-08-28 13:19:46.499197",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",

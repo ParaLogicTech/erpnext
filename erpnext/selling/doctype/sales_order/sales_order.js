@@ -264,7 +264,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 					}
 
 					if (frappe.model.can_create("Payment Entry") || frappe.model.can_create("Journal Entry")) {
-						me.frm.add_custom_button(__('Payment'), () => me.make_payment_entry(), __('Create'));
+						me.frm.add_custom_button(__('Payment'), () => me.make_payment_entry(true), __('Create'));
 					}
 				}
 				me.frm.page.set_inner_btn_group_as_primary(__('Create'));

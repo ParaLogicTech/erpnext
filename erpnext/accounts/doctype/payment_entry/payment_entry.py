@@ -1657,12 +1657,22 @@ def get_reference_details(reference_doctype, reference_name, party_account_curre
 
 
 @frappe.whitelist()
-def get_payment_entry(dt, dn, party_amount=None, bank_account=None, bank_amount=None, is_advance_return=False,
-		party_type=None, mode_of_payment=None):
+def get_payment_entry(
+	dt,
+	dn,
+	party_amount=None,
+	bank_account=None,
+	bank_amount=None,
+	is_advance=False,
+	is_advance_return=False,
+	party_type=None,
+	mode_of_payment=None,
+):
 	doc = frappe.get_doc(dt, dn)
 	if dt in ("Sales Order", "Purchase Order", "Proforma Invoice") and flt(doc.per_billed, 2) > 0:
 		frappe.throw(_("Can only make payment against unbilled {0}").format(dt))
 
+	is_advance = cint(is_advance)
 	is_advance_return = cint(is_advance_return)
 
 	if dt in ("Sales Invoice", "Proforma Invoice", "Sales Order"):
@@ -1818,7 +1828,9 @@ def get_payment_entry(dt, dn, party_amount=None, bank_account=None, bank_amount=
 			})
 
 	frappe.utils.call_hook_method("get_payment_entry", doc, pe)
-	pe.run_method("postprocess_after_mapping")
+
+	set_taxes = is_advance and frappe.get_cached_value("Accounts Settings", None, "apply_taxes_on_advance_payment")
+	pe.run_method("postprocess_after_mapping", reset_taxes=set_taxes)
 
 	return pe
 
