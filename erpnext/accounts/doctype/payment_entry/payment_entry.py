@@ -1015,7 +1015,7 @@ class PaymentEntry(AccountsController):
 				)
 
 	def update_project(self):
-		is_advance = not [d for d in self.references if d.original_reference_name and d.original_reference_name not in ('Sales Order', 'Proforma Invoice')]
+		is_advance = not [d for d in self.references if d.original_reference_name and d.original_reference_doctype not in ('Sales Order', 'Proforma Invoice')]
 		if self.get("project") and self.party_type == "Customer" and is_advance:
 			project = frappe.get_doc("Project", self.project)
 			project.set_advance_received_amount(update=True)

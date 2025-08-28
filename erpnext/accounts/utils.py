@@ -536,7 +536,7 @@ def update_reference_in_journal_entry(d, jv_doc, do_not_save=False):
 			ch.cheque_date = jvd.cheque_date
 			ch.user_remark = jvd.user_remark
 			ch.original_reference_type = jvd.original_reference_type
-			ch.original_reference_name = jvd.original_reference_type
+			ch.original_reference_name = jvd.original_reference_name
 			ch.against_account = cstr(jvd.against_account)
 
 			from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
