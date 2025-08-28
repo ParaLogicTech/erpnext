@@ -93,7 +93,11 @@ class SalesPurchaseDetailsReport(object):
 	def set_fieldnames(self):
 		self.date_field = "s.posting_date" if self.doc_meta.has_field("posting_date") else "s.transaction_date"
 
-		self.party_field = scrub(self.filters.party_type)
+		if self.filters.doctype == "Sales Invoice":
+			self.party_field = "bill_to"
+		else:
+			self.party_field = scrub(self.filters.party_type)
+
 		self.party_name_field = self.party_field + "_name"
 
 		filter_to_qty_field = {
@@ -170,7 +174,10 @@ class SalesPurchaseDetailsReport(object):
 
 		# Party
 		if self.filters.party_type == "Customer":
-			joins.append("inner join `tabCustomer` cus on cus.name = s.customer")
+			if self.filters.doctype == "Sales Invoice":
+				joins.append("inner join `tabCustomer` cus on cus.name = s.bill_to")
+			else:
+				joins.append("inner join `tabCustomer` cus on cus.name = s.customer")
 			select_fields += ["cus.customer_group as party_group", "'Customer Group' as party_group_dt", "cus.account_manager"]
 		elif self.filters.party_type == "Supplier":
 			joins.append("inner join `tabSupplier` sup on sup.name = s.supplier")
@@ -226,7 +233,10 @@ class SalesPurchaseDetailsReport(object):
 			conditions.append("s.branch = %(branch)s")
 
 		if self.filters.get("customer"):
-			conditions.append("s.customer = %(customer)s")
+			if self.filters.doctype == "Sales Invoice":
+				conditions.append("s.bill_to = %(customer)s")
+			else:
+				conditions.append("s.customer = %(customer)s")
 
 		if self.filters.get("account_manager"):
 			lft, rgt = frappe.db.get_value("Sales Person", self.filters.account_manager, ["lft", "rgt"])
