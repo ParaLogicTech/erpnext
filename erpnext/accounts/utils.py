@@ -454,7 +454,7 @@ def check_if_advance_entry_modified(args):
 					pe.name = pref.parent and pe.docstatus = 1
 					and pe.name = %(voucher_no)s and pref.name = %(voucher_detail_no)s
 					and pe.party_type = %(party_type)s and pe.party = %(party)s and pe.{0} = %(account)s
-					and pref.reference_doctype in ('Sales Order', 'Purchase Order', 'Employee Advance')
+					and pref.reference_doctype in ('Sales Order', 'Purchase Order', 'Proforma Invoice', 'Employee Advance')
 					and pref.allocated_amount = %(unadjusted_amount)s
 			""".format(party_account_field), args)
 		else:

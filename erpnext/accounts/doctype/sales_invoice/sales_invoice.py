@@ -302,6 +302,7 @@ class SalesInvoice(SellingController):
 			doc = frappe.get_doc("Proforma Invoice", name)
 			doc.set_billing_status(update=True)
 			doc.validate_billed_qty(from_doctype=self.doctype, row_names=proforma_invoice_row_names)
+			doc.set_outstanding_amount(update=True)
 			doc.set_status(update=True)
 			doc.notify_update()
 

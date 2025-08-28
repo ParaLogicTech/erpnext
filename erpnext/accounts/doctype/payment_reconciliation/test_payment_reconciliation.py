@@ -197,7 +197,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 
 	def test_reconcile_advance_payment_entries(self):
 		self.assertFalse(get_advance_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
-			"Sales Order", against_all_orders=True))
+			order_doctype="Sales Order", against_all_orders=True))
 
 		# Test records
 		_jv_receivable = make_payment_jv(self.customer, -100)
@@ -209,7 +209,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 
 		# Test get_advance_payment_entries
 		advances = get_advance_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
-			"Sales Order", against_all_orders=True)
+			order_doctype="Sales Order", against_all_orders=True)
 		advance_vouchers = {}
 		for d in advances:
 			advance_vouchers.setdefault(d.reference_name, [])
@@ -295,7 +295,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 
 		# Test get_advance_payment_entries after reconciliation
 		advances = get_advance_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
-			"Sales Order", against_all_orders=True)
+			order_doctype="Sales Order", against_all_orders=True)
 		advance_vouchers = {}
 		for d in advances:
 			advance_vouchers.setdefault(d.reference_name, [])

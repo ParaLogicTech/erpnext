@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 from erpnext.controllers.selling_controller import SellingController
+from erpnext.accounts.utils import get_balance_on_voucher
 from frappe.model.mapper import get_mapped_doc
 
 
@@ -27,6 +28,7 @@ class ProformaInvoice(SellingController):
 		self.validate_campaign()
 		self.validate_with_previous_doc()
 		self.set_billing_status()
+		self.set_outstanding_amount()
 		self.set_status()
 		self.set_title()
 
@@ -37,8 +39,17 @@ class ProformaInvoice(SellingController):
 		self.update_previous_doc_status()
 
 	def on_cancel(self):
+		self.unlink_payments_on_order_cancel()
 		self.update_status_on_cancel()
+		self.set_outstanding_amount(update=True)
 		self.update_previous_doc_status()
+
+	def on_gl_against_voucher(self, account, party_type, party, on_cancel):
+		if not party_type or not party:
+			return
+
+		self.set_outstanding_amount(update=True)
+		self.notify_update()
 
 	def validate_with_previous_doc(self):
 		super().validate_with_previous_doc({
@@ -181,6 +192,36 @@ class ProformaInvoice(SellingController):
 	def validate_billed_qty(self, from_doctype=None, row_names=None):
 		self.validate_completed_qty('billed_qty', 'qty', self.items,
 			allowance_type=None, from_doctype=from_doctype, row_names=row_names)
+
+	def set_outstanding_amount(self, update=False, update_modified=True):
+		if self.party_account_currency == self.currency:
+			grand_total = self.rounded_total or self.grand_total
+		else:
+			grand_total = self.base_rounded_total or self.base_grand_total
+
+		payable_amount = grand_total - flt(self.total_advance)
+
+		party_type, party, party_name = self.get_billing_party()
+		self.advance_paid = get_balance_on_voucher(
+			self.doctype,
+			self.name,
+			party_type,
+			party,
+			self.debit_to,
+			include_original_references=True,
+			dr_or_cr="credit_in_account_currency - debit_in_account_currency"
+		)
+
+		if self.per_billed or self.docstatus == 2:
+			self.outstanding_amount = 0
+		else:
+			self.outstanding_amount = payable_amount - self.advance_paid
+
+		if update:
+			self.db_set({
+				"outstanding_amount": self.outstanding_amount,
+				"advance_paid": self.advance_paid,
+			}, update_modified=update_modified)
 
 
 @frappe.whitelist()
