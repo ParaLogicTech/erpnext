@@ -6,9 +6,10 @@ import frappe
 import erpnext
 from frappe import _
 from erpnext.controllers.status_updater import StatusUpdaterERP
-from frappe.utils import flt, nowdate, cint
+from frappe.utils import flt, getdate, cint, validate_email_address
 from erpnext.accounts.party import get_party_bank_account, get_party_name
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry, get_company_defaults
+from frappe.regional.regional import validate_mobile_no
 from payments.utils import get_payment_gateway_controller
 
 
@@ -27,6 +28,7 @@ class PaymentRequest(StatusUpdaterERP):
 		self.validate_payment_gateway()
 		self.validate_payment_account()
 		self.validate_amount()
+		self.validate_contact()
 		self.set_status()
 
 	def before_submit(self):
@@ -174,6 +176,15 @@ class PaymentRequest(StatusUpdaterERP):
 				frappe.format(outstanding_amount, df=self.meta.get_field("grand_total")),
 				frappe.get_desk_link(self.reference_doctype, self.reference_name),
 			))
+
+	def validate_contact(self):
+		if not self.contact_mobile and not self.contact_email:
+			frappe.throw(_("Either Contact Email or Contact Mobile is required"))
+
+		if self.contact_email:
+			validate_email_address(self.contact_email, throw=True)
+		if self.contact_mobile:
+			validate_mobile_no(self.contact_mobile, throw=True)
 
 	def get_reference_document(self, reload=False):
 		if not self.get("reference_doc") or reload:
