@@ -1231,6 +1231,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 		if parent.get("is_subcontracted"):
 			parent.update_reserved_qty_for_subcontract()
 	else:
+		parent.set_skip_delivery_note_for_order(update=True)
 		parent.update_reserved_qty()
 		parent.set_delivery_status(update=True)
 		parent.set_billing_status(update=True)
