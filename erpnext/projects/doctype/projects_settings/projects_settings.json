@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "project_naming_by",
+  "apply_taxes_on_advance_payment",
   "column_break_cplg",
   "sales_order_print_heading",
   "default_sales_transaction_type",
@@ -190,11 +191,17 @@
   {
    "fieldname": "column_break_mttl",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "apply_taxes_on_advance_payment",
+   "fieldtype": "Check",
+   "label": "Apply Taxes on Advance Payment"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-08-29 15:46:51.950484",
+ "modified": "2025-08-29 16:43:07.483977",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
