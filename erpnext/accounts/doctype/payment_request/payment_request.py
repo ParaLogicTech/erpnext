@@ -39,6 +39,7 @@ class PaymentRequest(StatusUpdaterERP):
 
 	def before_cancel(self):
 		self.check_if_payment_entry_exists()
+		self.expire_payment_url()
 
 	def on_cancel(self):
 		self.db_set("status", "Cancelled")
@@ -252,6 +253,18 @@ class PaymentRequest(StatusUpdaterERP):
 			"reference_doctype": self.doctype,
 			"reference_docname": self.name,
 		})
+
+	def expire_payment_url(self):
+		if self.payment_request_type != "Inward":
+			return
+		if not self.payment_gateway or not self.payment_url:
+			return
+
+		controller = get_payment_gateway_controller(self.payment_gateway)
+		if not hasattr(controller, "expire_payment_url"):
+			return False
+
+		return controller.expire_payment_url(self.payment_url)
 
 	def trigger_payment_request_notification(self):
 		if self.mute_notification or self.flags.mute_notification:
