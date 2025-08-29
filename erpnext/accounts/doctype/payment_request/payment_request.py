@@ -43,12 +43,18 @@ class PaymentRequest(StatusUpdaterERP):
 	def on_cancel(self):
 		self.db_set("status", "Cancelled")
 
-	def on_payment_authorized(self, status=None):
+	def on_payment_authorized(self, status, **kwargs):
 		if not status:
 			return
 
+		args = frappe._dict(kwargs)
 		if status in ["Authorized", "Completed"]:
-			self.create_payment_entry(submit=True)
+			self.create_payment_entry(
+				submit=True,
+				reference_no=args.reference_no,
+				reference_date=args.reference_date,
+				amount=args.amount,
+			)
 			frappe.db.commit()
 			self.create_sales_invoice()
 
@@ -259,23 +265,28 @@ class PaymentRequest(StatusUpdaterERP):
 		if self.payment_url:
 			self.run_method("notify_payment_url")
 
-	def create_payment_entry(self, submit=False):
+	def create_payment_entry(self, submit=False, reference_no=None, reference_date=None, amount=None):
 		"""create entry"""
 		frappe.flags.ignore_account_permission = True
+
+		if amount is None:
+			amount = self.grand_total
+
+		amount = flt(amount)
 
 		payment_entry = get_payment_entry(
 			self.reference_doctype,
 			self.reference_name,
-			party_amount=self.grand_total,
-			bank_amount=self.grand_total,
+			party_amount=amount,
+			bank_amount=amount,
 			bank_account=self.payment_account,
 			mode_of_payment=self.mode_of_payment,
-			is_advance=True,
+			# is_advance=True,  # todo advance for certain doctypes and error
 		)
 
 		payment_entry.update({
-			"reference_no": self.name,
-			"reference_date": nowdate(),
+			"reference_no": reference_no or self.name,
+			"reference_date": getdate(reference_date),
 			"remarks": _("Payment Entry against {0} {1} via Payment Request {2}").format(
 				self.reference_doctype,
 				self.reference_name,
