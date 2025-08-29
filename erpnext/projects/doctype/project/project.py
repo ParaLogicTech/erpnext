@@ -760,6 +760,7 @@ class Project(StatusUpdaterERP):
 		self.check_undelivered_sales_orders()
 		self.check_unordered_service_templates()
 		self.check_insurance_details_on_ready_to_close()
+		self.check_margin_on_ready_to_close()
 
 	def check_sales_order_on_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_sales_order_mandatory"):
@@ -819,6 +820,28 @@ class Project(StatusUpdaterERP):
 	def check_insurance_details_on_ready_to_close(self):
 		if self.get('insurance_company') and not self.get('insurance_loss_no'):
 			frappe.throw(_("{0} is missing").format(self.meta.get_label("insurance_loss_no")))
+
+	def check_margin_on_ready_to_close(self):
+		validate_gross_margin = cint(frappe.get_cached_value("Projects Settings", None, "validate_gross_margin"))
+		validate_labour_margin = cint(frappe.get_cached_value("Projects Settings", None, "validate_labour_margin"))
+		if not validate_gross_margin and not validate_labour_margin:
+			return
+
+		margin_validation_override_role = frappe.get_cached_value("Projects Settings", None, "margin_validation_override_role")
+		if margin_validation_override_role:
+			if margin_validation_override_role in frappe.get_roles():
+				return
+
+		self.set_costing(update=True)
+
+		if validate_gross_margin:
+			if flt(self.gross_margin, self.precision("gross_margin")) < 0:
+				frappe.throw(_("Gross Margin is negative, please check sales and costing amount before closing"))
+
+		if validate_labour_margin:
+			labour_margin = flt(self.labour_sales_amount) - flt(self.timesheet_costing_amount)
+			if flt(labour_margin, self.precision("gross_margin")) < 0:
+				frappe.throw(_("Labour Margin is negative, please check sales and costing amount before closing"))
 
 	def reopen_status(self, update=True):
 		self.ready_to_close = 0

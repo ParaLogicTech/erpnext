@@ -6,24 +6,33 @@
  "engine": "InnoDB",
  "field_order": [
   "project_naming_by",
-  "materials_item_group",
-  "lubricants_item_group",
-  "consumables_item_group",
-  "sublet_item_group",
-  "paint_item_group",
+  "column_break_cplg",
   "sales_order_print_heading",
   "default_sales_transaction_type",
+  "item_groups_section",
+  "materials_item_group",
+  "lubricants_item_group",
+  "column_break_1gun",
+  "consumables_item_group",
+  "paint_item_group",
+  "column_break_ofno",
+  "sublet_item_group",
+  "column_break_jew4",
   "insurance_excess_item",
-  "column_break_2",
+  "validations_and_permissions_section",
   "appointment_required",
   "validate_ready_to_close",
   "validate_sales_order_mandatory",
   "validate_service_template_sales_order",
+  "column_break_mttl",
   "ignore_employee_time_overlap",
-  "auto_schedule_next_service_templates",
+  "require_attendance_for_task_start",
   "validate_po_for_billing_company_customer",
-  "apply_taxes_on_advance_payment",
-  "require_attendance_for_task_start"
+  "auto_schedule_next_service_templates",
+  "column_break_xs7b",
+  "validate_gross_margin",
+  "validate_labour_margin",
+  "margin_validation_override_role"
  ],
  "fields": [
   {
@@ -39,10 +48,6 @@
    "in_list_view": 1,
    "label": "Project Naming By",
    "options": "Project Name\nNaming Series"
-  },
-  {
-   "fieldname": "column_break_2",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "sublet_item_group",
@@ -112,12 +117,6 @@
   },
   {
    "default": "0",
-   "fieldname": "apply_taxes_on_advance_payment",
-   "fieldtype": "Check",
-   "label": "Apply Taxes on Advance Payment"
-  },
-  {
-   "default": "0",
    "fieldname": "require_attendance_for_task_start",
    "fieldtype": "Check",
    "label": "Require Attendance for Starting Tasks"
@@ -139,11 +138,63 @@
    "fieldtype": "Link",
    "label": "Paint Material Item Group",
    "options": "Item Group"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_gross_margin",
+   "fieldtype": "Check",
+   "label": "Validate Gross Margin on Ready to Close"
+  },
+  {
+   "default": "0",
+   "fieldname": "validate_labour_margin",
+   "fieldtype": "Check",
+   "label": "Validate Labour Margin on Ready to Close"
+  },
+  {
+   "fieldname": "column_break_cplg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_groups_section",
+   "fieldtype": "Section Break",
+   "label": "Item Groups"
+  },
+  {
+   "fieldname": "column_break_1gun",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_ofno",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_jew4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "validations_and_permissions_section",
+   "fieldtype": "Section Break",
+   "label": "Validations and Permissions"
+  },
+  {
+   "fieldname": "column_break_xs7b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "margin_validation_override_role",
+   "fieldtype": "Link",
+   "label": "Role Allowed to Override Margin Validation",
+   "options": "Role"
+  },
+  {
+   "fieldname": "column_break_mttl",
+   "fieldtype": "Column Break"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-07-18 13:19:46.499197",
+ "modified": "2025-08-29 15:46:51.950484",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
@@ -169,6 +220,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
