@@ -19,6 +19,20 @@ frappe.query_reports["Stock Ageing"] = {
 			reqd: 1
 		},
 		{
+			fieldname: "ageing_based_on",
+			label: __("Ageing Based On"),
+			fieldtype: "Select",
+			options: "Purchase Rate\nBalance Value",
+			default: "Purchase Rate",
+			reqd:1
+		},
+		{
+			fieldname: "ageing_range",
+			label: __("Ageing Range"),
+			fieldtype: "Data",
+			default: "30, 60, 90, 120",
+		},
+		{
 			fieldname: "item_code",
 			label: __("Item"),
 			fieldtype: "Link",
@@ -45,21 +59,6 @@ frappe.query_reports["Stock Ageing"] = {
 			label: __("Item Name"),
 			fieldtype: "Data",
 			hidden: 1
-		},
-		{
-			"fieldname":"ageing_based_on",
-			"label": __("Ageing Based On"),
-			"fieldtype": "Select",
-			"options": 'Purchase Rate\nBalance Value',
-			"default": "Purchase Rate",
-			"reqd":1
-		},
-		{
-			"fieldname":"ageing_range",
-			"label": __("Ageing Range"),
-			"fieldtype": "Data",
-			"default": "30, 60, 90, 120",
-			"reqd": 0
 		},
 		{
 			fieldname: "warehouse",

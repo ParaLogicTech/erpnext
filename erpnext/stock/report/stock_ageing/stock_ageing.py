@@ -184,6 +184,12 @@ class StockAgeingReport:
 				"width": 80},
 			{"label": _("Latest Age"), "fieldname": "latest_age", "fieldtype": "Int",
 				"width": 80},
+		]
+
+		self.ageing_columns = self.get_ageing_columns()
+		self.columns += self.ageing_columns
+
+		self.columns += [
 			{"label": _("Item Group"), "fieldname": "item_group", "fieldtype": "Link", "options": "Item Group",
 				"width": 100},
 			{"label": _("Brand"), "fieldname": "brand", "fieldtype": "Link", "options": "Brand",
@@ -199,9 +205,6 @@ class StockAgeingReport:
 
 		if not self.show_item_name:
 			self.columns = [c for c in self.columns if c.get('fieldname') != 'item_name']
-		
-		self.ageing_columns = self.get_ageing_columns()
-		self.columns += self.ageing_columns
 
 		return self.columns
 	
@@ -295,7 +298,7 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 			fifo_dict["total_qty"] = sle.actual_qty
 		else:
 			fifo_dict["total_qty"] += sle.actual_qty
-		
+
 		fifo_dict["last_valuation_rate"] = sle.valuation_rate
 
 		fifo_dict["total_in_qty"] = total_in_qty
@@ -335,9 +338,9 @@ def get_ageing_details(fifo_queue, to_date):
 		"latest_age": date_diff(to_date, fifo_queue[-1][1])
 	})
 
-def get_total_value(total_qty,last_valuation_rate):
-	total_value = 0
-	total_value = total_qty*last_valuation_rate
+
+def get_total_value(total_qty, last_valuation_rate):
+	total_value = total_qty * last_valuation_rate
 	return total_value
 
 
@@ -357,8 +360,8 @@ def get_average_age(fifo_queue, to_date):
 
 	return (age_qty / total_qty) if total_qty else 0.0
 
-def get_ageing_data(ageing_range, age_as_on, fifo_dict, ageing_based_on=None):
 
+def get_ageing_data(ageing_range, age_as_on, fifo_dict, ageing_based_on=None):
 	age_index_dict = {}
 
 	if ageing_based_on == "Balance Value":
@@ -378,7 +381,6 @@ def get_ageing_data(ageing_range, age_as_on, fifo_dict, ageing_based_on=None):
 		else:
 			age_period_delta = flt(each_queue[0]*each_queue[2],2)
 
-
 		age = (getdate(age_as_on) - getdate(each_queue[1])).days or 0
 		index = None
 		for i, days in enumerate(ageing_range):
@@ -397,6 +399,7 @@ def get_ageing_data(ageing_range, age_as_on, fifo_dict, ageing_based_on=None):
 		value_range[index] = age_index_dict.get(index)
 
 	return value_range
+
 
 def get_total_in_qty_value(fifo_dict):
 	total_in_qty = 0
