@@ -1,0 +1,249 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-08-03 10:24:30.274056",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "undeposited_account",
+  "deposit_to_account",
+  "currency",
+  "column_break_ozda",
+  "remarks",
+  "column_break_rxqx",
+  "company",
+  "branch",
+  "deposit_date",
+  "deposit_no",
+  "undeposited_entry_filters_section",
+  "from_date",
+  "to_date",
+  "column_break_awme",
+  "min_amount",
+  "max_amount",
+  "column_break_xccv",
+  "limit",
+  "undeposited_entries_section",
+  "reload_undeposited_entries",
+  "undeposited_entries",
+  "totals_section",
+  "undeposited_account_balance",
+  "column_break_ik8d",
+  "selected_deposit_amount",
+  "column_break_dnzs",
+  "actual_deposit_amount",
+  "column_break_c6sc",
+  "difference_amount",
+  "deposit_adjustments_section",
+  "adjustment_entries"
+ ],
+ "fields": [
+  {
+   "fieldname": "undeposited_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Undeposited Funds Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_ozda",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "deposit_to_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Deposit To Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "deposit_date",
+   "fieldtype": "Date",
+   "label": "Deposit Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "column_break_awme",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xccv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1000",
+   "fieldname": "limit",
+   "fieldtype": "Int",
+   "label": "Limit",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "undeposited_entries",
+   "fieldtype": "Table",
+   "label": "Undeposited Entries",
+   "options": "Bank Deposit Undeposited Entry"
+  },
+  {
+   "fieldname": "column_break_dnzs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "deposit_adjustments_section",
+   "fieldtype": "Section Break",
+   "label": "Deposit Adjustments"
+  },
+  {
+   "fieldname": "adjustment_entries",
+   "fieldtype": "Table",
+   "label": "Adjustment Entries",
+   "options": "Bank Deposit Adjustment"
+  },
+  {
+   "fieldname": "difference_amount",
+   "fieldtype": "Currency",
+   "label": "Difference Amount",
+   "no_copy": 1,
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "remember_last_selected_value": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "selected_deposit_amount",
+   "fieldtype": "Currency",
+   "label": "Selected Deposit Amount",
+   "no_copy": 1,
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rxqx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "deposit_no",
+   "fieldtype": "Data",
+   "label": "Deposit Voucher No",
+   "reqd": 1
+  },
+  {
+   "fieldname": "undeposited_entry_filters_section",
+   "fieldtype": "Section Break",
+   "label": "Undeposited Entry Filters"
+  },
+  {
+   "fieldname": "min_amount",
+   "fieldtype": "Currency",
+   "label": "Minimum Amount",
+   "options": "currency"
+  },
+  {
+   "fieldname": "max_amount",
+   "fieldtype": "Currency",
+   "label": "Maximum Amount",
+   "options": "currency"
+  },
+  {
+   "fieldname": "undeposited_entries_section",
+   "fieldtype": "Section Break",
+   "label": "Undeposited Entries"
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "fieldname": "column_break_ik8d",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_c6sc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "actual_deposit_amount",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Actual Deposit Amount",
+   "non_negative": 1,
+   "options": "currency"
+  },
+  {
+   "fetch_from": "undeposited_account.account_currency",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reload_undeposited_entries",
+   "fieldtype": "Button",
+   "label": "Reload Undeposited Entries"
+  },
+  {
+   "fieldname": "undeposited_account_balance",
+   "fieldtype": "Currency",
+   "label": "Undeposited Account Balance",
+   "no_copy": 1,
+   "options": "currency",
+   "read_only": 1
+  }
+ ],
+ "hide_toolbar": 1,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-08-20 05:28:22.498019",
+ "modified_by": "Administrator",
+ "module": "Accounts",
+ "name": "Bank Deposit Tool",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

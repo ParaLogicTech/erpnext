@@ -77,6 +77,10 @@ frappe.ui.form.on('Expense Entry', {
 	},
 
 	get_other_company_accounts_and_cost_centers: function (frm) {
+		if (!frm.doc.company) {
+			return;
+		}
+
 		let accounts = [];
 		let cost_centers = [];
 

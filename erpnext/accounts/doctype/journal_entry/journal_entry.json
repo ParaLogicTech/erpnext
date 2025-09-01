@@ -92,7 +92,7 @@
    "label": "Entry Type",
    "oldfieldname": "voucher_type",
    "oldfieldtype": "Select",
-   "options": "Journal Entry\nBank Entry\nCash Entry\nWrite Off Entry\nOpening Entry\nDepreciation Entry\nExchange Rate Revaluation\nBank Clearance Entry\nPayment Reconciliation",
+   "options": "Journal Entry\nBank Entry\nCash Entry\nWrite Off Entry\nOpening Entry\nDepreciation Entry\nExchange Rate Revaluation\nBank Clearance Entry\nDeposit Entry\nPayment Reconciliation",
    "reqd": 1,
    "search_index": 1
   },
@@ -557,7 +557,7 @@
  "idx": 176,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-01 01:45:26.510054",
+ "modified": "2025-08-19 04:36:44.699368",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Journal Entry",
@@ -604,6 +604,7 @@
    "role": "Auditor"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "voucher_type, posting_date, due_date, bill_no",
  "sort_field": "posting_date",
  "sort_order": "DESC",

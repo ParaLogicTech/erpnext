@@ -163,15 +163,31 @@ class Project(StatusUpdaterERP):
 			},
 			order_by="transaction_date, creation"
 		)
+
 		delivery_notes = frappe.get_all("Delivery Note", fields=['billing_status', 'status'], filters={
 			"project": self.name, "docstatus": 1, "is_return": 0,
 		})
+
+		has_unbilled_standalone_proforma = frappe.db.sql("""
+			select p.name
+			from `tabProforma Invoice Item` i
+			inner join `tabProforma Invoice` p on p.name = i.parent
+			where p.docstatus = 1
+				and p.project = %s
+				and p.status != 'Closed'
+				and abs(i.billed_qty) < abs(i.qty)
+				and ifnull(i.delivery_note, '') = ''
+				and ifnull(i.sales_order, '') = ''
+			limit 1
+		""", self.name)
+
 		material_requests = frappe.get_all("Material Request", fields=['receipt_status', 'status', 'per_received'], filters={
 			"project": self.name, "docstatus": 1, "material_request_type": "Material Issue",
 		})
+
 		sales_invoices = self.get_sales_invoices()
 
-		self.billing_status, self.to_bill = self.get_billing_status(sales_orders, delivery_notes, sales_invoices, self.total_billed_amount)
+		self.billing_status, self.to_bill = self.get_billing_status(sales_orders, delivery_notes, sales_invoices, has_unbilled_standalone_proforma, self.total_billed_amount)
 		self.delivery_status, self.to_deliver = self.get_delivery_status(sales_orders, delivery_notes, material_requests)
 
 		self.first_sales_order_date = sales_orders[0].transaction_date if sales_orders else None
@@ -194,7 +210,7 @@ class Project(StatusUpdaterERP):
 				'first_sales_order_date': self.first_sales_order_date,
 			}, None, update_modified=update_modified)
 
-	def get_billing_status(self, sales_orders, delivery_notes, sales_invoices, total_billed_amount):
+	def get_billing_status(self, sales_orders, delivery_notes, sales_invoices, has_unbilled_standalone_proforma, total_billed_amount):
 		has_billables = False
 		has_unbilled = False
 		has_sales_invoice = False
@@ -204,6 +220,10 @@ class Project(StatusUpdaterERP):
 				has_billables = True
 				if d.billing_status == "To Bill":
 					has_unbilled = True
+
+		if has_unbilled_standalone_proforma:
+			has_billables = True
+			has_unbilled = True
 
 		if self.insurance_excess_amount or self.additional_insurance_excess_amount:
 			positive_excess, negative_excess = self.get_insurance_excess_billed()
@@ -740,6 +760,7 @@ class Project(StatusUpdaterERP):
 		self.check_undelivered_sales_orders()
 		self.check_unordered_service_templates()
 		self.check_insurance_details_on_ready_to_close()
+		self.check_margin_on_ready_to_close()
 
 	def check_sales_order_on_ready_to_close(self):
 		if not frappe.get_cached_value("Projects Settings", None, "validate_sales_order_mandatory"):
@@ -799,6 +820,28 @@ class Project(StatusUpdaterERP):
 	def check_insurance_details_on_ready_to_close(self):
 		if self.get('insurance_company') and not self.get('insurance_loss_no'):
 			frappe.throw(_("{0} is missing").format(self.meta.get_label("insurance_loss_no")))
+
+	def check_margin_on_ready_to_close(self):
+		validate_gross_margin = cint(frappe.get_cached_value("Projects Settings", None, "validate_gross_margin"))
+		validate_labour_margin = cint(frappe.get_cached_value("Projects Settings", None, "validate_labour_margin"))
+		if not validate_gross_margin and not validate_labour_margin:
+			return
+
+		margin_validation_override_role = frappe.get_cached_value("Projects Settings", None, "margin_validation_override_role")
+		if margin_validation_override_role:
+			if margin_validation_override_role in frappe.get_roles():
+				return
+
+		self.set_costing(update=True)
+
+		if validate_gross_margin:
+			if flt(self.gross_margin, self.precision("gross_margin")) < 0:
+				frappe.throw(_("Gross Margin is negative, please check sales and costing amount before closing"))
+
+		if validate_labour_margin:
+			labour_margin = flt(self.labour_sales_amount) - flt(self.timesheet_costing_amount)
+			if flt(labour_margin, self.precision("gross_margin")) < 0:
+				frappe.throw(_("Labour Margin is negative, please check sales and costing amount before closing"))
 
 	def reopen_status(self, update=True):
 		self.ready_to_close = 0
@@ -1614,7 +1657,7 @@ def get_material_items(project, get_sales_invoice=True):
 		inner join `tabDelivery Note` p on p.name = i.parent
 		where p.docstatus = 1
 			and {is_material_condition}
-			and i.proforma_qty < i.qty
+			and abs(i.proforma_qty) < abs(i.qty)
 			and p.project = %s
 	""", project.name, as_dict=1)
 	pre_process_items_data(dn_data, project)

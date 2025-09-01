@@ -547,6 +547,10 @@ erpnext.accounts.JournalEntry = class JournalEntry extends frappe.ui.form.Contro
 	}
 
 	get_other_company_accounts_and_cost_centers() {
+		if (!this.frm.doc.company) {
+			return;
+		}
+
 		let accounts = [];
 		let cost_centers = [];
 
