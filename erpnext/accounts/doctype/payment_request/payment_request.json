@@ -20,6 +20,8 @@
   "company",
   "branch",
   "transaction_date",
+  "expiry_date",
+  "expiry_time",
   "status",
   "amended_from",
   "transaction_details",
@@ -52,6 +54,9 @@
   "message",
   "section_break_7",
   "payment_gateway",
+  "expiry_date_allowed",
+  "expiry_time_allowed",
+  "is_expired",
   "column_break_2xn5",
   "payment_url"
  ],
@@ -71,7 +76,8 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Request Date"
+   "label": "Request Date",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_2",
@@ -282,8 +288,9 @@
   {
    "fetch_from": "payment_gateway_account.payment_gateway",
    "fieldname": "payment_gateway",
-   "fieldtype": "Read Only",
-   "label": "Payment Gateway"
+   "fieldtype": "Link",
+   "label": "Payment Gateway",
+   "options": "Payment Gateway"
   },
   {
    "fetch_from": "payment_gateway_account.payment_account",
@@ -383,12 +390,51 @@
    "label": "Project",
    "options": "Project",
    "search_index": 1
+  },
+  {
+   "depends_on": "expiry_date_allowed",
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "label": "Expiry Date",
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_expired",
+   "fieldtype": "Check",
+   "label": "Is Expired",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "expiry_time_allowed",
+   "fieldname": "expiry_time",
+   "fieldtype": "Time",
+   "label": "Expiry Time"
+  },
+  {
+   "default": "0",
+   "fieldname": "expiry_date_allowed",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Expiry Date Allowed",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "expiry_time_allowed",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Expiry Time Allowed",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-28 13:53:14.113674",
+ "modified": "2025-08-30 16:07:31.991150",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Request",

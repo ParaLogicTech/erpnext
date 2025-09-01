@@ -6,7 +6,7 @@ import frappe
 import erpnext
 from frappe import _
 from erpnext.controllers.status_updater import StatusUpdaterERP
-from frappe.utils import flt, getdate, cint, validate_email_address
+from frappe.utils import flt, getdate, cint, validate_email_address, combine_datetime, now_datetime
 from erpnext.accounts.party import get_party_bank_account, get_party_name
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry, get_company_defaults
 from frappe.regional.regional import validate_mobile_no
@@ -17,9 +17,11 @@ class PaymentRequest(StatusUpdaterERP):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.force_fields = [
-			'currency',
-			'payment_gateway',
-			'payment_account',
+			"currency",
+			"payment_gateway",
+			"payment_account",
+			"expiry_date_allowed",
+			"expiry_time_allowed",
 		]
 
 	def validate(self):
@@ -29,6 +31,7 @@ class PaymentRequest(StatusUpdaterERP):
 		self.validate_payment_account()
 		self.validate_amount()
 		self.validate_contact()
+		self.validate_expiry_date()
 		self.set_status()
 
 	def before_submit(self):
@@ -121,10 +124,6 @@ class PaymentRequest(StatusUpdaterERP):
 			))
 
 	def validate_payment_gateway(self):
-		if self.payment_request_type == "Outward":
-			self.payment_gateway_account = None
-			self.payment_gateway = None
-
 		if not self.payment_gateway_account:
 			return
 
@@ -154,6 +153,10 @@ class PaymentRequest(StatusUpdaterERP):
 				self.set(k, v)
 
 	def set_payment_gateway_details(self):
+		if self.payment_request_type != "Inward":
+			self.payment_gateway_account = None
+			self.payment_gateway = None
+
 		gateway_details = get_payment_gateway_account_details(self.payment_gateway_account)
 		for k, v in gateway_details.items():
 			if self.meta.has_field(k) and (not self.get(k) or k in self.force_fields):
@@ -193,6 +196,27 @@ class PaymentRequest(StatusUpdaterERP):
 		if self.contact_mobile:
 			validate_mobile_no(self.contact_mobile, throw=True)
 
+	def validate_expiry_date(self):
+		if not self.expiry_date_allowed:
+			self.expiry_date = None
+		if not self.expiry_time_allowed:
+			self.expiry_time = None
+
+		if not self.expiry_date:
+			self.expiry_time = None
+
+		if self.expiry_date and self.expiry_time:
+			expiry_dt = combine_datetime(self.expiry_date, self.expiry_time)
+			if expiry_dt <= now_datetime():
+				frappe.throw(_("Expiry Date/Time cannot be in the past"))
+		elif self.expiry_date:
+			if getdate(self.expiry_date) < getdate():
+				frappe.throw(_("Expiry Date cannot be in the past"))
+
+		if self.expiry_date and self.transaction_date:
+			if getdate(self.expiry_date) < getdate(self.transaction_date):
+				frappe.throw(_("Expiry Date cannot be before Request Date"))
+
 	def get_reference_document(self, reload=False):
 		if not self.get("reference_doc") or reload:
 			if self.reference_doctype and self.reference_name:
@@ -209,6 +233,9 @@ class PaymentRequest(StatusUpdaterERP):
 				frappe.throw(_("Payment Account Currency must be the same as Transaction Currency"))
 
 	def request_payment_gateway_url(self):
+		self.payment_url = None
+		self.is_expired = 0
+
 		if self.payment_request_type != "Inward":
 			return
 		if not self.payment_gateway or not self.payment_account:
@@ -219,8 +246,10 @@ class PaymentRequest(StatusUpdaterERP):
 			return
 
 		self.payment_url = self.get_payment_url()
-		if self.payment_url:
-			self.db_set('payment_url', self.payment_url)
+		self.db_set({
+			"payment_url": self.payment_url,
+			"is_expired": 0,
+		}, commit=True)
 
 	def payment_gateway_validation(self):
 		try:
@@ -252,6 +281,8 @@ class PaymentRequest(StatusUpdaterERP):
 			"payer_mobile": self.contact_mobile,
 			"reference_doctype": self.doctype,
 			"reference_docname": self.name,
+			"expiry_date": self.get("expiry_date"),
+			"expiry_time": self.get("expiry_time"),
 		})
 
 	def expire_payment_url(self):
@@ -264,7 +295,11 @@ class PaymentRequest(StatusUpdaterERP):
 		if not hasattr(controller, "expire_payment_url"):
 			return False
 
-		return controller.expire_payment_url(self.payment_url)
+		is_expired = controller.expire_payment_url(self.payment_url)
+		if is_expired:
+			self.db_set("is_expired", 1, commit=True)
+
+		return is_expired
 
 	def trigger_payment_request_notification(self):
 		if self.mute_notification or self.flags.mute_notification:
@@ -534,11 +569,27 @@ def get_payment_gateway_account(company, currency, payment_gateway=None):
 @frappe.whitelist()
 def get_payment_gateway_account_details(payment_gateway_account):
 	doc = frappe.get_cached_doc("Payment Gateway Account", payment_gateway_account) if payment_gateway_account else frappe._dict()
+
+	expiry_date_allowed = 0
+	expiry_time_allowed = 0
+	if doc.payment_gateway:
+		try:
+			controller = get_payment_gateway_controller(doc.payment_gateway)
+			expiry_date_allowed = cint(getattr(controller, 'supports_expiry_date', False))
+			expiry_time_allowed = cint(getattr(controller, 'supports_expiry_time', False))
+		except Exception:
+			pass
+
+	if not expiry_date_allowed:
+		expiry_time_allowed = 0
+
 	return frappe._dict({
 		"payment_gateway": doc.payment_gateway,
 		"payment_account": doc.payment_account,
 		"mode_of_payment": doc.mode_of_payment,
 		"message": doc.message,
+		"expiry_date_allowed": expiry_date_allowed,
+		"expiry_time_allowed": expiry_time_allowed,
 	})
 
 

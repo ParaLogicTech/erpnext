@@ -54,6 +54,20 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 		});
 	}
 
+	payment_gateway_account() {
+		return frappe.call({
+			method: "erpnext.accounts.doctype.payment_request.payment_request.get_payment_gateway_account_details",
+			args: {
+				"payment_gateway_account": this.frm.doc.payment_gateway_account
+			},
+			callback: (r) => {
+				if (r.message) {
+					this.frm.set_value(r.message);
+				}
+			}
+		});
+	}
+
 	make_payment_entry() {
 		return frappe.call({
 			method: "erpnext.accounts.doctype.payment_request.payment_request.make_payment_entry",
