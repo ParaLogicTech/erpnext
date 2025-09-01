@@ -20,6 +20,11 @@
   "status",
   "progress",
   "priority",
+  "rework_section",
+  "rework_of",
+  "rework_column_break",
+  "rework_reason",
+  "is_rework_task",
   "assignment_section",
   "assigned_to",
   "assigned_to_name",
@@ -542,6 +547,42 @@
   {
    "fieldname": "column_break_mwlw",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_rework_task",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Rework Task",
+   "read_only": 1
+  },
+  {
+   "depends_on": "is_rework_task",
+   "fieldname": "rework_of",
+   "fieldtype": "Link",
+   "label": "Rework For",
+   "mandatory_depends_on": "is_rework_task",
+   "options": "Task"
+  },
+  {
+   "depends_on": "is_rework_task",
+   "fieldname": "rework_reason",
+   "fieldtype": "Small Text",
+   "label": "Rework Reason",
+   "mandatory_depends_on": "is_rework_task"
+  },
+  {
+   "depends_on": "is_rework_task",
+   "fieldname": "rework_section",
+   "fieldtype": "Section Break",
+   "label": "Rework"
+  },
+  {
+   "fieldname": "rework_column_break",
+   "fieldtype": "Column Break",
+   "oldfieldtype": "Column Break",
+   "print_width": "50%",
+   "width": "50%"
   }
  ],
  "icon": "fa fa-check",
@@ -549,7 +590,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-07-02 12:29:30.295539",
+ "modified": "2025-07-11 11:25:29.385970",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",

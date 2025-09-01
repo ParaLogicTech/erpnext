@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2015-04-29 04:52:48.868079",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -24,28 +25,33 @@
   },
   {
    "columns": 6,
+   "fetch_from": "task.subject",
    "fieldname": "subject",
-   "fieldtype": "Text",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Subject",
    "read_only": 1
   },
   {
    "columns": 2,
+   "fetch_from": "task.project",
    "fieldname": "project",
-   "fieldtype": "Text",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Project",
+   "options": "Project",
    "read_only": 1
   }
  ],
  "istable": 1,
- "modified": "2022-05-17 17:47:59.143281",
+ "links": [],
+ "modified": "2025-07-07 10:12:15.775310",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task Depends On",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }
