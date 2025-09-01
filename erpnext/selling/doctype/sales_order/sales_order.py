@@ -94,6 +94,7 @@ class SalesOrder(SellingController):
 		self.update_blanket_order()
 
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
+		self.add_service_template_rows()
 		if self.coupon_code:
 			from erpnext.accounts.doctype.pricing_rule.utils import update_coupon_code_count
 			update_coupon_code_count(self.coupon_code, 'used')
@@ -939,6 +940,50 @@ class SalesOrder(SellingController):
 				frappe.throw(_("Cannot ensure delivery by Serial No as \
 				Item {0} is added with and without Ensure Delivery by \
 				Serial No.").format(item.item_code))
+
+	def add_service_template_rows(self):
+		project_name = self.get("project")
+
+		if not project_name:
+			return
+
+		project = frappe.get_doc("Project", project_name)
+		updated = False
+		service_template_rows = []
+
+		for item in self.items:
+			service_template = item.get("service_template")
+			if not service_template:
+				continue
+
+			existing_service_template_row = next((row for row in project.service_templates if row.service_template == service_template), None)
+			if existing_service_template_row:
+				is_service_template_row_linked = frappe.db.exists("Sales Order Item", {"service_template_detail": existing_service_template_row.name})
+
+				if is_service_template_row_linked:
+					frappe.throw(
+						_("Service template: {0} already linked to item: {1} and will not be linked to new sales order.").format(service_template, item.item_name))
+					continue
+
+			new_service_template_row = project.append("service_templates", {
+				"service_template": service_template,
+				"has_sales_order": 1,
+			})
+
+			service_template_rows.append((item.name, new_service_template_row))
+			updated = True
+
+		if not updated:
+			return
+
+		for service_template_row in service_template_rows:
+			service_template_row[1].insert(ignore_permissions=True)
+
+		for item_name, service_template_row in service_template_rows:
+			if service_template_row.name:
+				frappe.db.set_value("Sales Order Item", item_name, "service_template_detail", service_template_row.name)
+
+		project.set_service_template_has_transaction(update=True)
 
 
 @frappe.whitelist()
