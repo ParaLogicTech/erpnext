@@ -13,6 +13,7 @@
   "customer_name",
   "bill_to",
   "bill_to_name",
+  "bill_to_group",
   "has_stin",
   "po_no",
   "po_date",
@@ -2354,13 +2355,23 @@
    "label": "Product Bundles",
    "options": "fa fa-suitcase",
    "print_hide": 1
+  },
+  {
+   "fieldname": "bill_to_group",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "in_standard_filter": 1,
+   "label": "Bill To Group",
+   "options": "Customer Group",
+   "print_hide": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-file-text",
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-10 16:29:03.334440",
+ "modified": "2025-09-02 18:02:01.740064",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
@@ -2470,6 +2481,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "posting_date, due_date, customer,bill_to, base_grand_total, outstanding_amount",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",
