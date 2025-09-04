@@ -122,6 +122,11 @@ frappe.query_reports["Stock Ageing"] = {
 			label: __("Batch Wise Stock"),
 			fieldtype: "Check",
 		},
+		{
+			fieldname: "show_age_range",
+			label: __("Show Age Range"),
+			fieldtype: "Check"
+		},
 	],
 }
 

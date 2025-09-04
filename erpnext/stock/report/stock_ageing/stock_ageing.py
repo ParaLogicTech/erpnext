@@ -38,6 +38,10 @@ class StockAgeingReport:
 		self.get_packing_slip_map()
 		self.get_rows()
 
+		if not self.filters.show_age_range:
+			# frappe.throw("stop")
+			self.post_process_rows()
+
 		return self.columns, self.rows
 
 	def get_items(self):
@@ -45,7 +49,11 @@ class StockAgeingReport:
 		return self.items
 
 	def get_stock_ledger_entries(self):
-		self.sles = get_stock_ledger_entries_for_stock_report(self.filters, self.items)
+		updated_filters = self.filters.copy()
+		if self.filters and not self.filters.show_age_range and self.filters.warehouse:
+			updated_filters.pop("warehouse", None)
+
+		self.sles = get_stock_ledger_entries_for_stock_report(updated_filters, self.items)
 		return self.sles
 
 	def get_item_details_map(self):
@@ -70,7 +78,7 @@ class StockAgeingReport:
 		return self.item_map
 
 	def get_fifo_queue_map(self):
-		self.fifo_queue_map = get_fifo_queue(self.sles,
+		self.fifo_queue_map = get_fifo_queue(self.filters, self.sles,
 			include_warehouse=self.is_warehouse_included(),
 			include_batch=self.is_batch_included(),
 			include_package=self.is_package_included(),
@@ -153,6 +161,13 @@ class StockAgeingReport:
 			self.rows.append(row)
 
 		return self.rows
+	
+	def post_process_rows(self):
+		if not self.filters.show_age_range and self.filters.warehouse:
+			self.rows = [
+				row for row in self.rows
+				if row.get("warehouse") == self.filters.warehouse
+			]
 
 	def get_columns(self):
 		self.columns = [
@@ -179,15 +194,16 @@ class StockAgeingReport:
 			{"label": _("Total In Value"), "fieldname": "total_in_value", "fieldtype": "Currency",
 				"width": 90},
 			{"label": _("Average Age"), "fieldname": "average_age", "fieldtype": "Float",
-				"width": 90},
+				"width": 90, "hidden":True if self.filters.show_age_range else False},
 			{"label": _("Earliest Age"), "fieldname": "earliest_age", "fieldtype": "Int",
-				"width": 80},
+				"width": 80, "hidden":True if self.filters.show_age_range else False},
 			{"label": _("Latest Age"), "fieldname": "latest_age", "fieldtype": "Int",
-				"width": 80},
+				"width": 80, "hidden":True if self.filters.show_age_range else False},
 		]
 
-		self.ageing_columns = self.get_ageing_columns()
-		self.columns += self.ageing_columns
+		if self.filters.show_age_range:
+			self.ageing_columns = self.get_ageing_columns()
+			self.columns += self.ageing_columns
 
 		self.columns += [
 			{"label": _("Item Group"), "fieldname": "item_group", "fieldtype": "Link", "options": "Item Group",
@@ -238,7 +254,7 @@ class StockAgeingReport:
 		self.ageing_column_count = len(self.ageing_range) + 1
 
 
-def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
+def get_fifo_queue(filters, sles, include_warehouse, include_batch, include_package):
 	fifo_queue_map = {}
 	transferred_item_details = {}
 	serial_no_batch_purchase_details = {}
@@ -253,15 +269,19 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 
 		fifo_queue = fifo_dict["fifo_queue"]
 		in_queue = fifo_dict["in_queue"]
-		transferred_item_details.setdefault((sle.voucher_no, sle.item_code, sle.warehouse), [])
+
+		warehouse_key = sle.warehouse if filters.show_age_range else None
+		
+		transferred_item_details.setdefault((sle.voucher_no, sle.item_code, warehouse_key), [])
+
 		serial_no_list = get_serial_nos(sle.serial_no) if sle.serial_no else []
 
 		if sle.actual_qty > 0:
 			in_queue.append([sle.actual_qty, sle.posting_date, sle.incoming_rate])
-			if transferred_item_details.get((sle.voucher_no, sle.item_code)):
-				batch = transferred_item_details[(sle.voucher_no, sle.item_code, sle.warehouse)][0]
+			if transferred_item_details.get((sle.voucher_no, sle.item_code, warehouse_key)):
+				batch = transferred_item_details[(sle.voucher_no, sle.item_code, warehouse_key)][0]
 				fifo_queue.append(batch)
-				transferred_item_details[((sle.voucher_no, sle.item_code, sle.warehouse))].pop(0)
+				transferred_item_details[((sle.voucher_no, sle.item_code, warehouse_key))].pop(0)
 			else:
 				if serial_no_list:
 					for serial_no in serial_no_list:
@@ -285,11 +305,11 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 						# if batch qty > 0
 						# not enough or exactly same qty in current batch, clear batch
 						qty_to_pop -= flt(batch[0])
-						transferred_item_details[(sle.voucher_no, sle.item_code, sle.warehouse)].append(fifo_queue.pop(0))
+						transferred_item_details[(sle.voucher_no, sle.item_code, warehouse_key)].append(fifo_queue.pop(0))
 					else:
 						# all from current batch
 						batch[0] = flt(batch[0]) - qty_to_pop
-						transferred_item_details[(sle.voucher_no, sle.item_code, sle.warehouse)].append([qty_to_pop, batch[1]])
+						transferred_item_details[(sle.voucher_no, sle.item_code, warehouse_key)].append([qty_to_pop, batch[1]])
 						qty_to_pop = 0
 
 		fifo_dict["qty_after_transaction"] = sle.qty_after_transaction
