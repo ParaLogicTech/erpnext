@@ -225,7 +225,6 @@ scheduler_events = {
 		"erpnext.hr.doctype.shift_type.shift_type.process_auto_attendance_for_all_shifts",
 		"erpnext.support.doctype.issue.issue.set_service_level_agreement_variance",
 		"erpnext.selling.doctype.customer.customer.send_customer_birthday_notifications",
-		"erpnext.erpnext_integrations.fbr_pos_integration.post_fbr_pos_invoices_without_number",
 	],
 	"daily": [
 		"erpnext.stock.reorder_item.reorder_item",

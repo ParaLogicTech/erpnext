@@ -341,6 +341,7 @@ execute:frappe.delete_doc_if_exists("Custom Field", "Delivery Note-cost_center")
 erpnext.patches.v15_0.rename_sending_bank_field
 erpnext.patches.v15_0.rename_vehicle_checklist_item
 execute:frappe.delete_doc_if_exists("Report", "Dimension-Wise Trial Balance")
+erpnext.patches.v15_0.fbr_integration_app_separation
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay
