@@ -37,9 +37,6 @@ class BankReconciliation(Document):
 		entries = self.get_payment_entries()
 		self.set('payment_entries', [])
 		for d in entries:
-			print(d.debit)
-			print(d.credit)
-			print(d.voucher_type)
 			d.amount = flt(d.get('debit', 0)) - flt(d.get('credit', 0))
 			self.append('payment_entries', d)
 
@@ -76,8 +73,8 @@ class BankReconciliation(Document):
 			select
 				'Payment Entry' as voucher_type, name as voucher_no,
 				reference_no as cheque_number, reference_date as cheque_date,
-				if(paid_from=%(account)s, 0, received_amount_after_tax) as debit,
-				if(paid_from=%(account)s, paid_amount_after_tax, 0) as credit,
+				if(paid_from=%(account)s, 0, received_amount) as debit,
+				if(paid_from=%(account)s, paid_amount, 0) as credit,
 				posting_date,
 				if(paid_from=%(account)s, paid_to, paid_from) as against_account,
 				if(paid_to=%(account)s, paid_to_account_currency, paid_from_account_currency) as account_currency,
