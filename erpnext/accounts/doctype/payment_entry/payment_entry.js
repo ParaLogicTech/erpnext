@@ -455,6 +455,7 @@ frappe.ui.form.on('Payment Entry', {
 				return frm.call({
 					doc: frm.doc,
 					method: "set_missing_values",
+					freeze: 1,
 					callback: function(r) {
 						if(!r.exc) {
 							frappe.model.set_default_values(frm.doc);

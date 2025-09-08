@@ -23,7 +23,7 @@ from erpnext.accounts.general_ledger import get_round_off_account_and_cost_cente
 from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty_program_details_with_points,\
 	validate_loyalty_points
 from erpnext.accounts.deferred_revenue import validate_service_stop_date
-from erpnext.accounts.doctype.pos_profile.pos_profile import set_account_for_mode_of_payment, get_pos_profile, check_is_pos_open
+from erpnext.accounts.doctype.pos_profile.pos_profile import set_account_for_mode_of_payment, get_pos_profile
 from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
 
 from erpnext.healthcare.utils import manage_invoice_submit_cancel
@@ -527,11 +527,6 @@ class SalesInvoice(SellingController):
 
 					elif asset.status in ("Scrapped", "Cancelled", "Sold"):
 						frappe.throw(_("Row #{0}: Asset {1} cannot be submitted, it is already {2}").format(d.idx, d.asset, asset.status))
-
-	def validate_pos_is_open(self, throw=True):
-		if self.is_pos and self.pos_profile:
-			user = self.cashier or self.owner
-			check_is_pos_open(user, self.pos_profile, self.posting_date, throw=throw)
 
 	def validate_pos_payments(self):
 		if not self.is_pos:

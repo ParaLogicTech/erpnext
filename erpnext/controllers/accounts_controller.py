@@ -729,9 +729,15 @@ class AccountsController(TransactionBase):
 	def set_cashier(self, force=False):
 		if cint(self.get("is_pos")):
 			if not self.cashier or force:
-				self.cashier = frappe.session.user or self.owner
+				self.cashier = frappe.flags.current_cashier or frappe.session.user or self.owner
 		else:
 			self.cashier = None
+
+	def validate_pos_is_open(self, throw=True):
+		from erpnext.accounts.doctype.pos_profile.pos_profile import check_is_pos_open
+		if self.is_pos and self.pos_profile:
+			user = self.cashier or self.owner
+			check_is_pos_open(user, self.pos_profile, self.get("posting_date") or self.get("transaction_date"), throw=throw)
 
 
 def validate_conversion_rate(currency, conversion_rate, conversion_rate_label, company):

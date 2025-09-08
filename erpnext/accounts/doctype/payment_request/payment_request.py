@@ -5,27 +5,31 @@
 import frappe
 import erpnext
 from frappe import _
-from erpnext.controllers.status_updater import StatusUpdaterERP
+from erpnext.controllers.accounts_controller import AccountsController
 from frappe.utils import flt, getdate, cint, validate_email_address, combine_datetime, now_datetime
 from erpnext.accounts.party import get_party_bank_account, get_party_name
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry, get_company_defaults
 from frappe.regional.regional import validate_mobile_no
+from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
 from payments.utils import get_payment_gateway_controller
 
 
-class PaymentRequest(StatusUpdaterERP):
+class PaymentRequest(AccountsController):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.force_fields = [
 			"currency",
 			"payment_gateway",
-			"payment_account",
 			"expiry_date_allowed",
 			"expiry_time_allowed",
 		]
 
+	def before_validate(self):
+		self.set_cashier(force=True)
+
 	def validate(self):
 		self.set_missing_values()
+		self.validate_pos()
 		self.validate_reference_document()
 		self.validate_payment_gateway()
 		self.validate_payment_account()
@@ -53,6 +57,9 @@ class PaymentRequest(StatusUpdaterERP):
 
 		args = frappe._dict(kwargs)
 		if status in ["Authorized", "Completed"]:
+			frappe.flags.current_cashier = self.cashier or None
+			frappe.flags.from_payment_gateway = True
+
 			self.create_payment_entry(
 				submit=True,
 				reference_no=args.reference_no,
@@ -138,11 +145,51 @@ class PaymentRequest(StatusUpdaterERP):
 				frappe.bold(doc.company),
 			))
 
+		if not self.payment_account:
+			frappe.throw(_("Payment Account is mandatory for Payment Gateway Request"))
+
 	@frappe.whitelist()
-	def set_missing_values(self):
+	def set_missing_values(self, for_validate=False):
 		self.set_reference_document_details()
 		self.set_payment_gateway_details()
+		self.set_pos_fields()
+		self.set_payment_account()
 		self.party_name = get_party_name(self.party_type, self.party)
+
+	def set_pos_fields(self):
+		self.set_cashier()
+		if not cint(self.is_pos):
+			self.pos_profile = None
+			return
+
+		pos_profile = self.get("pos_profile")
+		if not pos_profile:
+			pos_profile = get_pos_profile(company=self.company, branch=self.get("branch"), user=self.cashier)
+			self.pos_profile = pos_profile
+
+		self.validate_pos_is_open(throw=False)
+
+		pos = frappe.get_cached_doc("POS Profile", self.pos_profile) if self.pos_profile else frappe._dict()
+		if pos:
+			force_fields = ["branch"]
+			missing_fields = ["company"]
+
+			for fieldname in force_fields:
+				if pos.get(fieldname):
+					self.set(fieldname, pos.get(fieldname))
+
+			for fieldname in missing_fields:
+				if pos.get(fieldname) and not self.get(fieldname):
+					self.set(fieldname, pos.get(fieldname))
+
+	def validate_pos(self):
+		if self.is_pos and not self.pos_profile:
+			frappe.throw(_("POS Profile is mandatory for POS Payment"))
+
+		self.validate_pos_is_open(throw=True)
+
+		if self.is_pos and not self.mode_of_payment:
+			frappe.throw(_("Mode of Payment is mandatory for POS Payment"))
 
 	def set_reference_document_details(self):
 		reference_doc = self.get_reference_document()
@@ -161,6 +208,20 @@ class PaymentRequest(StatusUpdaterERP):
 		for k, v in gateway_details.items():
 			if self.meta.has_field(k) and (not self.get(k) or k in self.force_fields):
 				self.set(k, v)
+
+	def set_payment_account(self):
+		from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
+
+		if self.payment_gateway_account:
+			gateway_account_doc = frappe.get_cached_doc("Payment Gateway Account", self.payment_gateway_account)
+			if gateway_account_doc.mode_of_payment:
+				self.mode_of_payment = gateway_account_doc.mode_of_payment
+			if gateway_account_doc.payment_account:
+				self.payment_account = gateway_account_doc.payment_account
+
+		if (not self.payment_account or self.is_pos) and self.mode_of_payment:
+			account = get_bank_cash_account(self.mode_of_payment, self.company, pos_profile=self.pos_profile).get("account")
+			self.payment_account = account
 
 	def validate_amount(self):
 		reference_doc = self.get_reference_document()
@@ -329,9 +390,12 @@ class PaymentRequest(StatusUpdaterERP):
 			bank_account=self.payment_account,
 			mode_of_payment=self.mode_of_payment,
 			is_advance=self.is_advance_payment(self.reference_doctype),
+			is_pos=self.is_pos,
+			pos_profile=self.pos_profile,
 		)
 
 		payment_entry.update({
+			"payment_request": self.name,
 			"reference_no": reference_no or self.name,
 			"reference_date": getdate(reference_date),
 			"remarks": _("Payment Entry against {0} {1} via Payment Request {2}").format(
@@ -339,7 +403,6 @@ class PaymentRequest(StatusUpdaterERP):
 				self.reference_name,
 				self.name,
 			),
-			"payment_request": self.name,
 		})
 
 		if payment_entry.difference_amount:

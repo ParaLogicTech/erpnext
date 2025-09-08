@@ -16,7 +16,7 @@ from erpnext.accounts.doctype.bank_account.bank_account import get_party_bank_ac
 from erpnext.controllers.accounts_controller import AccountsController, get_supplier_block_status
 from erpnext.controllers.transaction_controller import validate_taxes_and_charges
 from erpnext.accounts.doctype.invoice_discounting.invoice_discounting import get_party_account_based_on_invoice_discounting
-from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile, check_is_pos_open, is_cashier
+from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile, is_cashier
 
 
 class InvalidPaymentEntry(ValidationError):
@@ -269,9 +269,17 @@ class PaymentEntry(AccountsController):
 			frappe.throw(_("Mode of Payment is mandatory for POS Payment"))
 
 	def validate_pos_is_open(self, throw=True):
-		if self.is_pos and self.pos_profile:
-			user = self.cashier or self.owner
-			check_is_pos_open(user, self.pos_profile, self.posting_date, throw=throw)
+		if frappe.flags.from_payment_gateway and not throw:
+			return
+
+		try:
+			self.defer_pos_closing = 0
+			super().validate_pos_is_open(throw=throw)
+		except frappe.ValidationError:
+			if frappe.flags.from_payment_gateway:
+				self.defer_pos_closing = 1
+			else:
+				raise
 
 	def set_missing_party_details(self):
 		if self.party_type and self.party:
@@ -1670,6 +1678,8 @@ def get_payment_entry(
 	is_advance_return=False,
 	party_type=None,
 	mode_of_payment=None,
+	is_pos=False,
+	pos_profile=None,
 ):
 	doc = frappe.get_doc(dt, dn)
 	if dt in ("Sales Order", "Purchase Order", "Proforma Invoice") and flt(doc.per_billed, 2) > 0:
@@ -1767,6 +1777,9 @@ def get_payment_entry(
 	pe.contact_person = doc.get("contact_person")
 	pe.contact_email = doc.get("contact_email")
 	pe.ensure_supplier_is_not_blocked(is_payment=True)
+
+	pe.is_pos = cint(is_pos)
+	pe.pos_profile = pos_profile if pe.is_pos else None
 
 	pe.paid_from = party_account if payment_type=="Receive" else bank.account
 	pe.paid_to = party_account if payment_type=="Pay" else bank.account
