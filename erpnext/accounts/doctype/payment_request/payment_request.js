@@ -3,6 +3,10 @@ frappe.provide("erpnext.accounts");
 erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Controller {
 	setup() {
 		this.setup_queries();
+		this.frm.custom_make_buttons = {
+			'Payment Entry': 'Payment Entry',
+			'Payment Order': 'Payment Order',
+		};
 	}
 
 	refresh() {
@@ -53,7 +57,7 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 		if (
 			this.frm.doc.docstatus == 1
 			&& this.frm.doc.payment_request_type == "Inward"
-			&& this.frm.doc.status != "Paid"
+			&& this.frm.doc.status == "Requested"
 		) {
 			this.frm.add_custom_button(__("Resend Payment Request Notification"), () => this.trigger_payment_request_notification(),
 				__("Notify"));
@@ -61,8 +65,8 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 
 		if (
 			this.frm.doc.docstatus == 1
-			&& !this.frm.doc.payment_gateway_account
-			&& this.frm.doc.status == "Initiated"
+			&& (!this.frm.doc.payment_gateway_account || this.frm.doc.payment_entry_creation_failed)
+			&& this.frm.doc.status != "Paid"
 		) {
 			this.frm.add_custom_button(__('Payment Entry'), () => this.make_payment_entry(),
 				__("Create"));

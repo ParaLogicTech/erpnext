@@ -54,12 +54,15 @@ class PaymentRequest(AccountsController):
 	def on_payment_authorized(self, status, **kwargs):
 		if not status:
 			return
+		if status not in ["Authorized", "Completed"]:
+			return
 
 		args = frappe._dict(kwargs)
-		if status in ["Authorized", "Completed"]:
-			frappe.flags.current_cashier = self.cashier or None
-			frappe.flags.from_payment_gateway = True
 
+		frappe.flags.current_cashier = self.cashier or None
+		frappe.flags.from_payment_gateway = True
+
+		try:
 			self.create_payment_entry(
 				submit=True,
 				reference_no=args.reference_no,
@@ -67,7 +70,25 @@ class PaymentRequest(AccountsController):
 				amount=args.amount,
 			)
 			frappe.db.commit()
+		except Exception as e:
+			frappe.db.rollback()
+			self.db_set("payment_entry_creation_failed", 1, commit=True)
+			self.add_comment(
+				"Comment",
+				_("Automated Payment Entry creation failed after Payment Gateway's payment was authorized") + "<br><br>" + str(e)
+			)
+			self.reload()
+			self.set_status(update=True)
+			self.notify_update()
+			frappe.db.commit()
+			raise e
+
+		try:
 			self.create_sales_invoice()
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			raise
 
 	def set_status(self, update=False, status=None, update_modified=True):
 		previous_status = self.status
@@ -87,7 +108,10 @@ class PaymentRequest(AccountsController):
 				self.status = "Partially Paid"
 			else:
 				if self.payment_request_type == "Inward":
-					self.status = "Requested"
+					if self.payment_entry_creation_failed:
+						self.status = "Failed"
+					else:
+						self.status = "Requested"
 				elif self.payment_request_type == "Outward":
 					payment_order = frappe.db.get_value("Payment Order Reference", {
 						"payment_request": self.name, "docstatus": 1
@@ -367,7 +391,7 @@ class PaymentRequest(AccountsController):
 			return
 		if self.payment_request_type != "Inward":
 			return
-		if self.docstatus != 1 or self.status == "Paid":
+		if self.docstatus != 1 or self.status != "Requested":
 			return
 
 		self.run_method("notify_payment_request")
@@ -394,10 +418,15 @@ class PaymentRequest(AccountsController):
 			pos_profile=self.pos_profile,
 		)
 
+		if not reference_no and submit:
+			reference_no = self.name
+		if not reference_date and submit:
+			reference_date = getdate()
+
 		payment_entry.update({
 			"payment_request": self.name,
-			"reference_no": reference_no or self.name,
-			"reference_date": getdate(reference_date),
+			"reference_no": reference_no if reference_no else None,
+			"reference_date": getdate(reference_date) if reference_date else None,
 			"remarks": _("Payment Entry against {0} {1} via Payment Request {2}").format(
 				self.reference_doctype,
 				self.reference_name,

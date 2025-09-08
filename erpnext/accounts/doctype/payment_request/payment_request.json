@@ -60,6 +60,7 @@
   "expiry_date_allowed",
   "expiry_time_allowed",
   "is_expired",
+  "payment_entry_creation_failed",
   "column_break_2xn5",
   "payment_url"
  ],
@@ -454,12 +455,21 @@
    "fieldname": "is_pos",
    "fieldtype": "Check",
    "label": "Is POS Payment"
+  },
+  {
+   "default": "0",
+   "depends_on": "payment_entry_creation_failed",
+   "fieldname": "payment_entry_creation_failed",
+   "fieldtype": "Check",
+   "label": "Payment Entry Creation Failed",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-08 21:00:56.511859",
+ "modified": "2025-09-08 23:24:10.816477",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Request",
