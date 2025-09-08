@@ -24,8 +24,6 @@ from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty
 	validate_loyalty_points
 from erpnext.accounts.deferred_revenue import validate_service_stop_date
 from erpnext.accounts.doctype.pos_profile.pos_profile import set_account_for_mode_of_payment, get_pos_profile, check_is_pos_open
-from erpnext.erpnext_integrations.fbr_pos_integration import validate_fbr_pos_invoice, before_cancel_fbr_pos_invoice,\
-	on_submit_fbr_pos_invoice
 from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
 
 from erpnext.healthcare.utils import manage_invoice_submit_cancel
@@ -122,8 +120,6 @@ class SalesInvoice(SellingController):
 		self.set_status()
 		self.set_title()
 
-		validate_fbr_pos_invoice(self)
-
 	def on_update(self):
 		self.set_paid_amount()
 
@@ -182,11 +178,8 @@ class SalesInvoice(SellingController):
 		if "Healthcare" in frappe.get_active_domains():
 			manage_invoice_submit_cancel(self, "on_submit")
 
-		on_submit_fbr_pos_invoice(self)
-
 	def before_cancel(self):
 		self.update_time_sheet(None)
-		before_cancel_fbr_pos_invoice(self)
 
 	def on_cancel(self):
 		self.unlink_payments_on_invoice_cancel()

@@ -44,17 +44,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		let me = this;
 		let doc = me.frm.doc;
 
-		if (
-			doc.docstatus == 1
-			&& cint(doc.is_fbr_pos_invoice)
-			&& !doc.fbr_pos_invoice_no
-			&& this.frm.has_perm("submit")
-		) {
-			this.frm.add_custom_button(__('Sync FBR POS Invoice'), () => {
-				this.sync_fbr_pos_invoice();
-			});
-		}
-
 		// "View" Buttons
 		this.show_general_ledger();
 		if (doc.update_stock) {
@@ -205,23 +194,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 					} else if (doc.base_returned_amount) {
 						return "grey";
 					}
-				}
-			}
-		});
-	}
-
-	sync_fbr_pos_invoice() {
-		var me = this;
-		frappe.call({
-			"method": "erpnext.erpnext_integrations.fbr_pos_integration.sync_fbr_pos_invoice",
-			"args": {
-				"sales_invoice": this.frm.doc.name
-			},
-			"freeze": 1,
-			"freeze_message": __("Syncing with FBR POS Service"),
-			callback: function(r) {
-				if (!r.exc && r.message) {
-					me.frm.reload_doc();
 				}
 			}
 		});
