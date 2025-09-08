@@ -1580,25 +1580,29 @@ def get_company_defaults(company):
 
 @frappe.whitelist()
 def get_reference_details(reference_doctype, reference_name, party_account_currency, party_type, party, account, payment_type):
+	ref_doc = frappe.get_doc(reference_doctype, reference_name)
+	return _get_reference_details(ref_doc, party_account_currency, party_type, party, account, payment_type)
+
+
+def _get_reference_details(ref_doc, party_account_currency, party_type, party, account, payment_type):
 	total_amount = outstanding_amount = bill_no = None
 	exchange_rate = 1
 
-	ref_doc = frappe.get_doc(reference_doctype, reference_name)
 	company_currency = ref_doc.get("company_currency") or erpnext.get_company_currency(ref_doc.company)
 
-	if reference_doctype == "Fees":
+	if ref_doc.doctype == "Fees":
 		total_amount = ref_doc.get("grand_total")
 		exchange_rate = 1
 		outstanding_amount = ref_doc.get("outstanding_amount")
-	elif reference_doctype == "Journal Entry" and ref_doc.docstatus == 1:
+	elif ref_doc.doctype == "Journal Entry" and ref_doc.docstatus == 1:
 		bill_no = ref_doc.get("bill_no")
 		total_amount = ref_doc.get("total_amount")
 		if ref_doc.multi_currency:
-			exchange_rate = get_average_party_exchange_rate_on_journal_entry(reference_name, party_type, party, account)
+			exchange_rate = get_average_party_exchange_rate_on_journal_entry(ref_doc.name, party_type, party, account)
 		else:
 			exchange_rate = 1
-		outstanding_amount = get_balance_on_voucher("Journal Entry", reference_name, party_type, party, account)
-	elif reference_doctype == "Payment Entry":
+		outstanding_amount = get_balance_on_voucher("Journal Entry", ref_doc.name, party_type, party, account)
+	elif ref_doc.doctype == "Payment Entry":
 		ref_doc.setup_party_account_field()
 		total_amount = ref_doc.paid_amount_after_tax if ref_doc.payment_type == "Receive" else ref_doc.received_amount_after_tax
 		outstanding_amount = ref_doc.unallocated_amount
@@ -1609,7 +1613,7 @@ def get_reference_details(reference_doctype, reference_name, party_account_curre
 		if ref_doc.payment_type == negative_payment_type:
 			total_amount *= -1
 			outstanding_amount *= -1
-	elif reference_doctype != "Journal Entry":
+	elif ref_doc.doctype != "Journal Entry":
 		if party_account_currency == company_currency:
 			if ref_doc.doctype == "Expense Claim":
 				total_amount = ref_doc.total_sanctioned_amount
@@ -1629,12 +1633,12 @@ def get_reference_details(reference_doctype, reference_name, party_account_curre
 			exchange_rate = ref_doc.get("conversion_rate") or \
 				get_exchange_rate(party_account_currency, company_currency, ref_doc.posting_date)
 
-		if reference_doctype in ("Sales Invoice", "Proforma Invoice", "Purchase Invoice", "Landed Cost Voucher"):
+		if ref_doc.doctype in ("Sales Invoice", "Proforma Invoice", "Purchase Invoice", "Landed Cost Voucher"):
 			outstanding_amount = ref_doc.get("outstanding_amount")
 			bill_no = ref_doc.get("bill_no")
-		elif reference_doctype == "Expense Claim":
+		elif ref_doc.doctype == "Expense Claim":
 			outstanding_amount = ref_doc.get("outstanding_amount")
-		elif reference_doctype == "Employee Advance":
+		elif ref_doc.doctype == "Employee Advance":
 			if payment_type == "Receive":
 				outstanding_amount = -ref_doc.balance_amount
 			else:
@@ -1660,7 +1664,6 @@ def get_reference_details(reference_doctype, reference_name, party_account_curre
 def get_payment_entry(
 	dt,
 	dn,
-	party_amount=None,
 	bank_account=None,
 	bank_amount=None,
 	is_advance=False,
@@ -1675,6 +1678,7 @@ def get_payment_entry(
 	is_advance = cint(is_advance)
 	is_advance_return = cint(is_advance_return)
 
+	party = doc.get('bill_to') or doc.get(scrub(party_type)) or doc.get("party")
 	if dt in ("Sales Invoice", "Proforma Invoice", "Sales Order"):
 		party_type = "Customer"
 	elif dt == "Purchase Order":
@@ -1704,10 +1708,7 @@ def get_payment_entry(
 	else:
 		party_account = get_party_account(party_type, doc.get(scrub(party_type)), doc.company)
 
-	if dt not in ("Sales Invoice", "Proforma Invoice", "Purchase Invoice"):
-		party_account_currency = get_account_currency(party_account)
-	else:
-		party_account_currency = doc.get("party_account_currency") or get_account_currency(party_account)
+	party_account_currency = doc.get("party_account_currency") or get_account_currency(party_account)
 
 	# payment type
 	if (
@@ -1721,34 +1722,9 @@ def get_payment_entry(
 		payment_type = "Pay"
 
 	# amounts
-	grand_total = outstanding_amount = 0
-	if party_amount:
-		grand_total = outstanding_amount = party_amount
-	elif dt in ("Sales Invoice", "Proforma Invoice", "Purchase Invoice", "Landed Cost Voucher"):
-		if party_account_currency == doc.company_currency:
-			grand_total = doc.get("base_rounded_total") or doc.base_grand_total
-		else:
-			grand_total = doc.get("rounded_total") or doc.grand_total
-		outstanding_amount = doc.outstanding_amount
-	elif dt == "Expense Claim":
-		grand_total = doc.total_sanctioned_amount
-		outstanding_amount = doc.outstanding_amount
-	elif dt == "Employee Advance":
-		if is_advance_return:
-			grand_total = doc.paid_amount
-			outstanding_amount = -doc.balance_amount
-		else:
-			grand_total = doc.advance_amount
-			outstanding_amount = flt(doc.advance_amount) - flt(doc.paid_amount)
-	elif dt == "Fees":
-		grand_total = doc.grand_total
-		outstanding_amount = doc.outstanding_amount
-	else:
-		if party_account_currency == doc.company_currency:
-			grand_total = flt(doc.get("base_rounded_total") or doc.base_grand_total)
-		else:
-			grand_total = flt(doc.get("rounded_total") or doc.grand_total)
-		outstanding_amount = grand_total - flt(doc.advance_paid)
+	reference_details = _get_reference_details(doc, party_account_currency, party_type, party, party_account_currency, payment_type)
+	grand_total = reference_details.total_amount
+	outstanding_amount = reference_details.outstanding_amount
 
 	# bank or cash
 	bank = get_default_bank_cash_account(doc.company, "Bank", mode_of_payment=mode_of_payment or doc.get("mode_of_payment"),
@@ -1787,16 +1763,15 @@ def get_payment_entry(
 	pe.posting_date = nowdate()
 	pe.mode_of_payment = mode_of_payment or doc.get("mode_of_payment")
 	pe.party_type = party_type
-	pe.party = doc.get('bill_to') or doc.get(scrub(party_type)) or doc.get("party")
+	pe.party = party
 	pe.contact_person = doc.get("contact_person")
 	pe.contact_email = doc.get("contact_email")
 	pe.ensure_supplier_is_not_blocked(is_payment=True)
 
 	pe.paid_from = party_account if payment_type=="Receive" else bank.account
 	pe.paid_to = party_account if payment_type=="Pay" else bank.account
-	pe.paid_from_account_currency = party_account_currency \
-		if payment_type=="Receive" else bank.account_currency
-	pe.paid_to_account_currency = party_account_currency if payment_type=="Pay" else bank.account_currency
+	pe.paid_from_account_currency = party_account_currency if payment_type == "Receive" else bank.account_currency
+	pe.paid_to_account_currency = party_account_currency if payment_type == "Pay" else bank.account_currency
 	pe.paid_amount = paid_amount
 	pe.received_amount = received_amount
 	pe.letter_head = doc.get("letter_head")
@@ -1806,32 +1781,39 @@ def get_payment_entry(
 		pe.set("bank_account", bank_account)
 		pe.set_bank_account_data()
 
-	# only Purchase Invoice can be blocked individually
-	if doc.doctype == "Purchase Invoice" and doc.invoice_is_blocked():
-		frappe.msgprint(_('{0} is on hold till {1}'.format(doc.name, doc.release_date)))
-	else:
-		if (doc.doctype in ('Sales Invoice', 'Purchase Invoice')
-			and frappe.get_value('Payment Terms Template',
-			{'name': doc.payment_terms_template}, 'allocate_payment_based_on_payment_terms')):
-
-			for reference in get_reference_as_per_payment_terms(doc.payment_schedule, dt, dn, doc, grand_total, outstanding_amount):
-				pe.append('references', reference)
-		else:
-			pe.append("references", {
-				'reference_doctype': dt,
-				'reference_name': dn,
-				"bill_no": doc.get("bill_no"),
-				"due_date": doc.get("due_date"),
-				'total_amount': grand_total,
-				'outstanding_amount': outstanding_amount,
-				'allocated_amount': flt(bank_amount) or outstanding_amount
-			})
-
 	frappe.utils.call_hook_method("get_payment_entry", doc, pe)
 
 	set_taxes = is_advance and frappe.get_cached_value("Accounts Settings", None, "apply_taxes_on_advance_payment")
 	pe.run_method("postprocess_after_mapping", reset_taxes=set_taxes)
 
+	amount_before_tax_field = "paid_amount_before_tax" if payment_type == "Receive" else "received_amount_before_tax"
+	amount_before_tax = flt(pe.get(amount_before_tax_field))
+
+	# only Purchase Invoice can be blocked individually
+	if doc.doctype == "Purchase Invoice" and doc.invoice_is_blocked():
+		frappe.msgprint(_('{0} is on hold till {1}'.format(doc.name, doc.release_date)))
+	else:
+		if (
+			doc.doctype in ('Sales Invoice', 'Purchase Invoice')
+			and frappe.get_cached_value('Payment Terms Template', doc.payment_terms_template, 'allocate_payment_based_on_payment_terms')
+		):
+			for r in get_reference_as_per_payment_terms(doc.payment_schedule, dt, dn, doc, grand_total, outstanding_amount):
+				pe.append('references', r)
+		else:
+			to_allocate_amount = amount_before_tax or outstanding_amount
+			allocated_amount = min(to_allocate_amount, outstanding_amount)
+			if allocated_amount:
+				pe.append("references", {
+					'reference_doctype': dt,
+					'reference_name': dn,
+					"bill_no": doc.get("bill_no"),
+					"due_date": doc.get("due_date"),
+					'total_amount': grand_total,
+					'outstanding_amount': outstanding_amount,
+					'allocated_amount': allocated_amount,
+				})
+
+	pe.run_method("postprocess_after_mapping", reset_taxes=False)
 	return pe
 
 

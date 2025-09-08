@@ -325,11 +325,10 @@ class PaymentRequest(StatusUpdaterERP):
 		payment_entry = get_payment_entry(
 			self.reference_doctype,
 			self.reference_name,
-			party_amount=amount,
 			bank_amount=amount,
 			bank_account=self.payment_account,
 			mode_of_payment=self.mode_of_payment,
-			# is_advance=True,  # todo advance for certain doctypes and error
+			is_advance=self.is_advance_payment(self.reference_doctype),
 		)
 
 		payment_entry.update({
@@ -485,6 +484,13 @@ class PaymentRequest(StatusUpdaterERP):
 	@classmethod
 	def get_reference_document_party(cls, reference_doc):
 		return reference_doc.get_billing_party()
+
+	@classmethod
+	def is_advance_payment(cls, reference_doctype):
+		if reference_doctype in ("Sales Order", "Proforma Invoice"):
+			return True
+		else:
+			return False
 
 
 @frappe.whitelist()

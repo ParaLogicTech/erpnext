@@ -426,6 +426,13 @@ class AccountsController(TransactionBase):
 
 	def set_advance_tax_amounts(self):
 		payment_entries = list(set([d.reference_name for d in self.advances if d.reference_type == "Payment Entry"]))
+		advance_tax_map = self.get_advance_tax_map(payment_entries)
+
+		for d in self.advances:
+			if d.reference_type == "Payment Entry":
+				d.advance_tax_detail = json.dumps(advance_tax_map.get(d.reference_name)) if advance_tax_map.get(d.reference_name) else None
+
+	def get_advance_tax_map(self, payment_entries):
 		advance_tax_map = {}
 		if payment_entries:
 			advance_tax_data = frappe.db.sql("""
@@ -438,9 +445,7 @@ class AccountsController(TransactionBase):
 				advance_tax_map.setdefault(d.payment_entry, {}).setdefault(d.account_head, 0)
 				advance_tax_map[d.payment_entry][d.account_head] += d.tax_amount
 
-		for d in self.advances:
-			if d.reference_type == "Payment Entry":
-				d.advance_tax_detail = json.dumps(advance_tax_map.get(d.reference_name)) if advance_tax_map.get(d.reference_name) else None
+		return advance_tax_map
 
 	def clear_unallocated_advances(self, parentfield="advances"):
 		self.set(parentfield, self.get(parentfield, {"allocated_amount": ["not in", [0, None, ""]]}))
@@ -595,6 +600,10 @@ class AccountsController(TransactionBase):
 		lst = []
 		for d in self.get('advances'):
 			if flt(d.allocated_amount) > 0 and d.reference_type != 'Employee Advance':
+				allocated_amount = flt(d.allocated_amount)
+				if flt(d.get("allocated_tax")):
+					allocated_amount = flt(allocated_amount - flt(d.get("allocated_tax")), 9)
+
 				args = frappe._dict({
 					'voucher_type': d.reference_type,
 					'voucher_no': d.reference_name,
@@ -606,7 +615,7 @@ class AccountsController(TransactionBase):
 					'party': party,
 					'dr_or_cr': dr_or_cr,
 					'unadjusted_amount': flt(d.advance_amount),
-					'allocated_amount': flt(d.allocated_amount) - flt(d.get("allocated_tax")),
+					'allocated_amount': allocated_amount,
 					'outstanding_amount': self.outstanding_amount
 				})
 				args.update(invoice_amounts)
