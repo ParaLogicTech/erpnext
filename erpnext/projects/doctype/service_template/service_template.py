@@ -121,6 +121,8 @@ def add_service_template_items(
 
 	service_template_doc = frappe.get_cached_doc("Service Template", service_template)
 
+	print(service_template_doc)
+
 	if not service_template_detail and service_template:
 		service_template_detail = frappe._dict({
 			'service_template': service_template,
@@ -143,6 +145,17 @@ def add_service_template_items(
 		applies_to_item=applies_to_item, applies_to_customer=applies_to_customer,
 		item_group=item_group, items_type=items_type
 	)
+
+	print(service_template)
+	print(items_table)
+
+	print(applies_to_item)
+	print(applies_to_customer)
+	print(item_group)
+	print(items_type)
+	print("here we go")
+
+	print(service_template_items)
 
 	append_applicable_items(target_doc, service_template_items, check_duplicate=check_duplicate,
 		service_template_detail=service_template_detail)
@@ -189,12 +202,19 @@ def get_service_template_items(
 
 	for pt_item in service_template_doc.get(items_table):
 		selection_group = cstr(pt_item.get("selection_group")).upper()
+		print(pt_item)
+
+		print(selection_group)
+		print("select group")
 		if selection_group and selection_group in selection_groups_selected:
+			print("continue 1")
 			continue
 
 		if filter_applicable_item(pt_item, item_groups, items_type=items_type):
+			print("continue 2")
 			continue
 		if service_template_doc.filter_applicable_item(pt_item, applies_to_item, applies_to_customer):
+			print("continue 3")
 			continue
 
 		service_template_items.append(pt_item)

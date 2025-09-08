@@ -22,8 +22,8 @@ frappe.query_reports["Stock Ageing"] = {
 			fieldname: "ageing_based_on",
 			label: __("Ageing Based On"),
 			fieldtype: "Select",
-			options: "Purchase Rate\nBalance Value",
-			default: "Purchase Rate",
+			options: "Balance Value\nPurchase Rate",
+			default: "Balance Value",
 			reqd:1
 		},
 		{

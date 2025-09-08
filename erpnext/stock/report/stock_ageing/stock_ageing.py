@@ -37,10 +37,7 @@ class StockAgeingReport:
 		self.get_fifo_queue_map()
 		self.get_packing_slip_map()
 		self.get_rows()
-
-		if not self.filters.show_age_range:
-			# frappe.throw("stop")
-			self.post_process_rows()
+		self.post_process_rows()
 
 		return self.columns, self.rows
 
@@ -188,11 +185,11 @@ class StockAgeingReport:
 			{"label": _("Available Qty"), "fieldname": "bal_qty", "fieldtype": "Float",
 				"width": 90},
 			{"label": _("Balance Value"), "fieldname": "bal_val", "fieldtype": "Currency",
-				"width": 90},
+				"width": 90, "hidden":False if (self.filters.ageing_based_on == "Balance Value") else True},
 			{"label": _("Total In Qty"), "fieldname": "total_in_qty", "fieldtype": "Currency",
-				"width": 90},
+				"width": 90, "hidden":False if (self.filters.ageing_based_on == "Purchase Rate") else True},
 			{"label": _("Total In Value"), "fieldname": "total_in_value", "fieldtype": "Currency",
-				"width": 90},
+				"width": 90, "hidden":False if (self.filters.ageing_based_on == "Purchase Rate") else True},
 			{"label": _("Average Age"), "fieldname": "average_age", "fieldtype": "Float",
 				"width": 90, "hidden":True if self.filters.show_age_range else False},
 			{"label": _("Earliest Age"), "fieldname": "earliest_age", "fieldtype": "Int",
