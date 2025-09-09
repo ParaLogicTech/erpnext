@@ -97,14 +97,14 @@ class PaymentRequest(AccountsController):
 			self.status = "Draft"
 		elif self.docstatus == 1:
 			reference_doc = self.get_reference_document(reload=True)
-			grand_total = flt(self.get_reference_document_grand_total(reference_doc),
-				self.precision("grand_total"))
-			outstanding_amount = flt(self.get_reference_document_outstanding_amount(reference_doc),
+
+			request_grand_total = flt(self.grand_total, self.precision("grand_total"))
+			reference_paid_amount = flt(self.get_reference_document_paid_amount(reference_doc),
 				self.precision("grand_total"))
 
-			if outstanding_amount <= 0:
+			if reference_paid_amount >= request_grand_total:
 				self.status = "Paid"
-			elif outstanding_amount < grand_total:
+			elif reference_paid_amount > 0:
 				self.status = "Partially Paid"
 			else:
 				if self.payment_request_type == "Inward":
@@ -547,6 +547,11 @@ class PaymentRequest(AccountsController):
 	def get_reference_document_paid_amount(cls, reference_doc):
 		if reference_doc.meta.has_field("advance_paid"):
 			return flt(reference_doc.get("advance_paid"))
+
+		if reference_doc.meta.has_field("outstanding_amount"):
+			grand_tatal = cls.get_reference_document_grand_total(reference_doc)
+			outstanding_amount = flt(reference_doc.get("outstanding_amount"))
+			return max(grand_tatal - outstanding_amount, 0)
 
 		return 0
 
