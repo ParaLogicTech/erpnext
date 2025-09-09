@@ -81,11 +81,6 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 			},
 			freeze: true,
 			freeze_message: __("Sending"),
-			callback: (r) =>{
-				if (!r.exc) {
-					frappe.msgprint(__("Notification Triggered"));
-				}
-			}
 		});
 	}
 

@@ -720,6 +720,11 @@ def trigger_payment_request_notification(payment_request):
 	doc.check_permission("read")
 	doc.trigger_payment_request_notification()
 
+	if doc.flags.notifications_executed:
+		frappe.msgprint(_("Payment Request notification triggered"))
+	else:
+		frappe.msgprint(_("No notifications configured"))
+
 
 @frappe.whitelist()
 def make_payment_entry(payment_request):
