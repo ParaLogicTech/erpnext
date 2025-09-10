@@ -45,7 +45,6 @@ class PaymentReconciliation(Document):
 			SELECT i.name, i.posting_date, i.outstanding_amount, i.currency
 			FROM `tab{invoice_doctype}` i
 			WHERE i.{party_field} = %s
-			AND i.is_return = 1
 			AND i.outstanding_amount < 0
 			AND i.docstatus = 1
 			AND EXISTS (
@@ -234,12 +233,16 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 
 		company_currency = erpnext.get_company_currency(company)
 
+		branch, cost_center = frappe.db.get_value(d.voucher_type, d.voucher_no, ["branch", "cost_center"])
+
 		jv = frappe.get_doc({
 			"doctype": "Journal Entry",
 			"voucher_type": "Payment Reconciliation",
 			"posting_date": today(),
 			"company": company,
 			"multi_currency": 1 if d.currency != company_currency else 0,
+			"branch": branch,
+			"cost_center": cost_center,
 			"accounts": [
 				{
 					'account': d.account,
@@ -247,8 +250,7 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 					'party_type': d.party_type,
 					d.dr_or_cr: abs(d.allocated_amount),
 					'reference_type': d.against_voucher_type,
-					'reference_name': d.against_voucher,
-					'cost_center': erpnext.get_default_cost_center(company)
+					'reference_name': d.against_voucher
 				},
 				{
 					'account': d.account,
@@ -257,8 +259,7 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 					reconcile_dr_or_cr: (abs(d.allocated_amount)
 						if abs(d.unadjusted_amount) > abs(d.allocated_amount) else abs(d.unadjusted_amount)),
 					'reference_type': d.voucher_type,
-					'reference_name': d.voucher_no,
-					'cost_center': erpnext.get_default_cost_center(company)
+					'reference_name': d.voucher_no
 				}
 			]
 		})
