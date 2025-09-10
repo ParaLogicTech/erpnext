@@ -587,7 +587,6 @@ class PaymentRequest(AccountsController):
 					"doctype": "Payment Entry",
 					"name": payment_entry,
 					"print_letterhead": with_letterhead,
-					"lang": "en",
 				})
 			return out
 
@@ -597,11 +596,7 @@ class PaymentRequest(AccountsController):
 					"print_format_attachment": 1,
 					"doctype": self.reference_doctype,
 					"name": self.reference_name,
-					"print_format": self.print_format,
 					"print_letterhead": with_letterhead,
-					"lang": frappe.db.get_value("Print Format", self.print_format, "default_print_language")
-					if self.print_format
-					else "en",
 				}
 			]
 
@@ -818,18 +813,6 @@ def get_payment_gateway_account_details(payment_gateway_account):
 def get_reference_document_details(reference_doctype, reference_name, exclude=None):
 	reference_doc = frappe.get_doc(reference_doctype, reference_name)
 	return PaymentRequest.get_reference_document_details(reference_doc, exclude=exclude)
-
-
-@frappe.whitelist()
-def get_print_format_list(reference_doctype):
-	print_format_list = ["Standard"]
-	print_formats = frappe.get_all("Print Format", filters={"doc_type": reference_doctype, "disabled": 0})
-
-	print_format_list.extend([p.name for p in print_formats])
-
-	return {
-		"print_format": print_format_list
-	}
 
 
 @frappe.whitelist()

@@ -12,7 +12,6 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 	refresh() {
 		this.setup_buttons();
 		this.setup_dashboard();
-		this.get_print_format_list();
 	}
 
 	setup_queries() {
@@ -181,20 +180,6 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 				}
 			}
 		});
-	}
-
-	get_print_format_list() {
-		if (this.frm.doc.reference_doctype && this.frm.doc.docstatus == 0) {
-			return frappe.call({
-				method: "erpnext.accounts.doctype.payment_request.payment_request.get_print_format_list",
-				args: {
-					"reference_doctype": this.frm.doc.reference_doctype,
-				},
-				callback: (r) => {
-					set_field_options("print_format", r.message["print_format"]);
-				}
-			})
-		}
 	}
 }
 
