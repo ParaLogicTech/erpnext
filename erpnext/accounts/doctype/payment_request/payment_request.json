@@ -62,7 +62,8 @@
   "is_expired",
   "payment_entry_creation_failed",
   "column_break_2xn5",
-  "payment_url"
+  "payment_url",
+  "payment_entry_creation_error"
  ],
  "fields": [
   {
@@ -464,12 +465,20 @@
    "label": "Payment Entry Creation Failed",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "payment_entry_creation_error",
+   "fieldtype": "Small Text",
+   "label": "Payment Entry Creation Error",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-08 23:24:10.816477",
+ "modified": "2025-09-09 22:55:31.254578",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Request",
@@ -477,6 +486,8 @@
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -486,18 +497,7 @@
    "report": 1,
    "role": "Accounts User",
    "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Payments User",
-   "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -510,7 +510,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Accounts Manager",
+   "role": "Payments User",
    "share": 1,
    "submit": 1,
    "write": 1

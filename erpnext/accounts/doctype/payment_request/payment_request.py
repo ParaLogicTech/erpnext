@@ -7,6 +7,7 @@ import erpnext
 from frappe import _
 from erpnext.controllers.accounts_controller import AccountsController
 from frappe.utils import flt, getdate, cint, validate_email_address, combine_datetime, now_datetime
+from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
 from erpnext.accounts.party import get_party_bank_account, get_party_name
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry, get_company_defaults
 from frappe.regional.regional import validate_mobile_no
@@ -24,11 +25,16 @@ class PaymentRequest(AccountsController):
 			"expiry_time_allowed",
 		]
 
+	def onload(self):
+		super().onload()
+		self.set_onload('notification_count', get_all_notification_count(self.doctype, self.name))
+
 	def before_validate(self):
 		self.set_cashier(force=True)
 
 	def validate(self):
 		self.set_missing_values()
+		self.clear_payment_url()
 		self.validate_pos()
 		self.validate_reference_document()
 		self.validate_payment_gateway()
@@ -70,17 +76,27 @@ class PaymentRequest(AccountsController):
 				amount=args.amount,
 			)
 			frappe.db.commit()
+
+			self.reload()
+			self.trigger_payment_received_notification()
+			frappe.db.commit()
 		except Exception as e:
 			frappe.db.rollback()
 			self.db_set("payment_entry_creation_failed", 1, commit=True)
+
+			self.reload()
+			self.db_set("payment_entry_creation_error", str(e))
 			self.add_comment(
 				"Comment",
 				_("Automated Payment Entry creation failed after Payment Gateway's payment was authorized") + "<br><br>" + str(e)
 			)
-			self.reload()
 			self.set_status(update=True)
 			self.notify_update()
 			frappe.db.commit()
+
+			self.trigger_payment_error_notification()
+			frappe.db.commit()
+
 			raise e
 
 		try:
@@ -247,6 +263,12 @@ class PaymentRequest(AccountsController):
 			account = get_bank_cash_account(self.mode_of_payment, self.company, pos_profile=self.pos_profile).get("account")
 			self.payment_account = account
 
+	def clear_payment_url(self):
+		self.payment_url = None
+		self.is_expired = 0
+		self.payment_entry_creation_failed = 0
+		self.payment_entry_creation_error = None
+
 	def validate_amount(self):
 		reference_doc = self.get_reference_document()
 
@@ -318,9 +340,6 @@ class PaymentRequest(AccountsController):
 				frappe.throw(_("Payment Account Currency must be the same as Transaction Currency"))
 
 	def request_payment_gateway_url(self):
-		self.payment_url = None
-		self.is_expired = 0
-
 		if self.payment_request_type != "Inward":
 			return
 		if not self.payment_gateway or not self.payment_account:
@@ -331,10 +350,7 @@ class PaymentRequest(AccountsController):
 			return
 
 		self.payment_url = self.get_payment_url()
-		self.db_set({
-			"payment_url": self.payment_url,
-			"is_expired": 0,
-		}, commit=True)
+		self.db_set("payment_url", self.payment_url, commit=True)
 
 	def payment_gateway_validation(self):
 		try:
@@ -389,14 +405,32 @@ class PaymentRequest(AccountsController):
 	def trigger_payment_request_notification(self):
 		if self.mute_notification or self.flags.mute_notification:
 			return
+		if self.docstatus != 1:
+			return
 		if self.payment_request_type != "Inward":
 			return
-		if self.docstatus != 1 or self.status != "Requested":
+		if self.status == "Paid":
 			return
 
 		self.run_method("notify_payment_request")
 		if self.payment_url:
 			self.run_method("notify_payment_url")
+
+	def trigger_payment_error_notification(self):
+		if not self.payment_entry_creation_failed:
+			return
+
+		self.run_method("notify_payment_error")
+
+	def trigger_payment_received_notification(self):
+		if self.docstatus != 1:
+			return
+		if self.payment_request_type != "Inward":
+			return
+		if self.status != "Paid":
+			return
+
+		self.run_method("notify_payment_received")
 
 	def create_payment_entry(self, submit=False, reference_no=None, reference_date=None, amount=None):
 		"""create entry"""
@@ -486,6 +520,90 @@ class PaymentRequest(AccountsController):
 			)
 			if pref:
 				frappe.throw(_("Payment Entry is already submitted"), title=_('Error'))
+
+	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
+		if notification_type == ("Payment Link", "Payment Received"):
+			if self.docstatus != 1:
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because Payment Request is not submitted").format(
+						notification_type
+					))
+				return False
+
+			if self.payment_request_type != "Inward":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because Payment Request Type is not 'Inward'").format(
+						notification_type
+					))
+				return False
+
+		if notification_type == "Payment Link":
+			if self.mute_notification:
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because notifications are muted for this Payment Request").format(
+						notification_type
+					))
+
+			if not self.payment_url:
+				if throw:
+					frappe.throw(_("Cannot send Payment Link notification because payment link is not available"))
+				return False
+
+			if self.status == "Paid":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because reference document is already paid").format(
+						notification_type
+					))
+				return False
+
+		if notification_type == "Payment Received":
+			if self.status != "Paid":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because Payment Request is not fully paid").format(
+						notification_type
+					))
+				return False
+
+		if notification_type == "Payment Error":
+			if not self.payment_entry_creation_failed:
+				if throw:
+					frappe.throw(_("Cannot send Payment Error notification because payment entry creation did not fail"))
+				return False
+
+		return True
+
+	def get_notification_attachment(self, notification_type=None):
+		with_letterhead = frappe.get_cached_value("Print Settings", "Print Settings", "with_letterhead")
+		if notification_type == "Payment Received":
+			payment_entries = frappe.db.get_all("Payment Entry", {
+				"docstatus": 1,
+				"payment_request": self.name,
+			}, pluck="name")
+
+			out = []
+			for payment_entry in payment_entries:
+				out.append({
+					"print_format_attachment": 1,
+					"doctype": "Payment Entry",
+					"name": payment_entry,
+					"print_letterhead": with_letterhead,
+					"lang": "en",
+				})
+			return out
+
+		elif self.reference_doctype and self.reference_name:
+			return [
+				{
+					"print_format_attachment": 1,
+					"doctype": self.reference_doctype,
+					"name": self.reference_name,
+					"print_format": self.print_format,
+					"print_letterhead": with_letterhead,
+					"lang": frappe.db.get_value("Print Format", self.print_format, "default_print_language")
+					if self.print_format
+					else "en",
+				}
+			]
 
 	@classmethod
 	def get_reference_document_details(cls, reference_doc, exclude=None):

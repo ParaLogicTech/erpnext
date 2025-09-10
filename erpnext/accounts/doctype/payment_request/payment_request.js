@@ -11,6 +11,7 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 
 	refresh() {
 		this.setup_buttons();
+		this.setup_dashboard();
 		this.get_print_format_list();
 	}
 
@@ -54,6 +55,12 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 	}
 
 	setup_buttons() {
+		if (this.frm.doc.reference_doctype && this.frm.doc.reference_name) {
+			this.frm.add_custom_button(__('Open {0}', [this.frm.doc.reference_name]), () => {
+				frappe.set_route("Form", this.frm.doc.reference_doctype, this.frm.doc.reference_name);
+			});
+		}
+
 		if (
 			this.frm.doc.docstatus == 1
 			&& this.frm.doc.payment_request_type == "Inward"
@@ -70,6 +77,34 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 		) {
 			this.frm.add_custom_button(__('Payment Entry'), () => this.make_payment_entry(),
 				__("Create"));
+		}
+	}
+
+	setup_dashboard() {
+		if (this.frm.doc.docstatus == 0) {
+			return;
+		}
+
+		let payment_link_count = frappe.get_notification_count(this.frm, 'Payment Link');
+		let payment_received_count = frappe.get_notification_count(this.frm, 'Payment Received');
+		let payment_error_count = frappe.get_notification_count(this.frm, 'Payment Error');
+
+		if (payment_link_count || this.frm.doc.payment_gateway || this.frm.doc.payment_url) {
+			let payment_link_color = payment_link_count ? "green" : "light-gray";
+			let payment_link_status = frappe.get_notification_count_str(this.frm, 'Payment Link');
+			this.frm.dashboard.add_indicator(__('Payment Link: {0}', [payment_link_status]), payment_link_color);
+		}
+
+		if (payment_received_count || (this.frm.doc.payment_request_type == "Inward" && this.frm.doc.status == "Paid")) {
+			let payment_received_color = payment_received_count ? "green" : "light-gray";
+			let payment_received_status = frappe.get_notification_count_str(this.frm, 'Payment Link');
+			this.frm.dashboard.add_indicator(__('Payment Received: {0}', [payment_received_status]), payment_received_color);
+		}
+
+		if (payment_error_count || this.frm.doc.payment_entry_creation_failed) {
+			let payment_error_color = payment_error_count ? "red" : "yellow";
+			let payment_error_status = frappe.get_notification_count_str(this.frm, 'Payment Error');
+			this.frm.dashboard.add_indicator(__('Payment Error: {0}', [payment_error_status]), payment_error_color);
 		}
 	}
 
