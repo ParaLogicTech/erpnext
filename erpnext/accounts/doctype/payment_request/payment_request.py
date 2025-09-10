@@ -99,12 +99,13 @@ class PaymentRequest(AccountsController):
 
 			raise e
 
-		try:
-			self.create_sales_invoice()
-			frappe.db.commit()
-		except Exception:
-			frappe.db.rollback()
-			raise
+		if self.status == "Paid":
+			try:
+				self.create_sales_invoice()
+				frappe.db.commit()
+			except Exception:
+				frappe.db.rollback()
+				raise
 
 	def set_status(self, update=False, status=None, update_modified=True):
 		previous_status = self.status
