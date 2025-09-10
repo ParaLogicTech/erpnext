@@ -576,9 +576,10 @@ class PaymentRequest(AccountsController):
 		with_letterhead = frappe.get_cached_value("Print Settings", "Print Settings", "with_letterhead")
 		if notification_type == "Payment Received":
 			payment_entries = frappe.db.get_all("Payment Entry", {
-				"docstatus": 1,
+				"payment_type": "Receive",
 				"payment_request": self.name,
-			}, pluck="name")
+				"docstatus": 1,
+			}, pluck="name", order_by="posting_date desc, posting_time desc, creation desc")
 
 			out = []
 			for payment_entry in payment_entries:
