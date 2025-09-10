@@ -25,6 +25,7 @@ class ProformaInvoice(SellingController):
 		self.validate_uom_is_integer("stock_uom", "qty")
 		self.validate_project_customer()
 		self.check_sales_order_on_hold_or_close()
+		self.validate_debit_to_acc()
 		self.validate_campaign()
 		self.validate_with_previous_doc()
 		self.set_billing_status()

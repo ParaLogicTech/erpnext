@@ -612,6 +612,25 @@ class SellingController(TransactionController):
 				self.bill_to = self.customer
 				self.bill_to_name = self.customer_name
 
+	def validate_debit_to_acc(self):
+		account = frappe.get_cached_value("Account", self.debit_to,
+			["account_type", "report_type", "account_currency"], as_dict=True)
+
+		if not account:
+			frappe.throw(_("Debit To is required"), title=_("Account Missing"))
+
+		if account.report_type != "Balance Sheet":
+			frappe.throw(_("Please ensure {} account is a Balance Sheet account. \
+					You can change the parent account to a Balance Sheet account or select a different account.")
+				.format(frappe.bold("Debit To")), title=_("Invalid Account"))
+
+		if self.customer and account.account_type != "Receivable":
+			frappe.throw(_("Please ensure {} account is a Receivable account. \
+					Change the account type to Receivable or select a different account.")
+				.format(frappe.bold("Debit To")), title=_("Invalid Account"))
+
+		self.party_account_currency = account.account_currency
+
 	def validate_for_duplicate_items(self):
 		check_list, chk_dupl_itm = [], []
 		if cint(frappe.get_cached_value("Selling Settings", None, "allow_multiple_items")):

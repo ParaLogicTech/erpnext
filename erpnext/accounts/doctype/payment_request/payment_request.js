@@ -54,7 +54,7 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 	}
 
 	setup_buttons() {
-		if (this.frm.doc.reference_doctype && this.frm.doc.reference_name) {
+		if (this.frm.doc.reference_doctype && this.frm.doc.reference_name && !this.frm.doc.__islocal) {
 			this.frm.add_custom_button(__('Open {0}', [this.frm.doc.reference_name]), () => {
 				frappe.set_route("Form", this.frm.doc.reference_doctype, this.frm.doc.reference_name);
 			});
