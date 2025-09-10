@@ -28,6 +28,7 @@ class ProformaInvoice(SellingController):
 		self.validate_debit_to_acc()
 		self.validate_campaign()
 		self.validate_with_previous_doc()
+		self.sort_items()
 		self.set_billing_status()
 		self.set_outstanding_amount()
 		self.set_status()
