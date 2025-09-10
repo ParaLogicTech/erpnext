@@ -202,9 +202,9 @@ erpnext.buying.PurchaseOrderController = class PurchaseOrderController extends e
 				if (
 					flt(doc.per_billed) == 0
 					&& doc.status != "Delivered"
-					&& (frappe.model.can_create("Purchase Entry") || frappe.model.can_create("Journal Entry"))
+					&& (frappe.model.can_create("Payment Entry") || frappe.model.can_create("Journal Entry"))
 				) {
-					this.frm.add_custom_button(__('Payment'), this.frm.cscript.make_payment_entry,
+					this.frm.add_custom_button(__('Payment'), () => this.make_payment_entry(true),
 						__('Create'));
 				}
 

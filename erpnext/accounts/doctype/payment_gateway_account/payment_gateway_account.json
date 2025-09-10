@@ -1,14 +1,17 @@
 {
+ "actions": [],
  "creation": "2015-12-23 21:31:52.699821",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "payment_gateway",
+  "currency",
   "is_default",
   "column_break_4",
+  "company",
   "payment_account",
-  "currency",
+  "mode_of_payment",
   "payment_request_message",
   "message",
   "message_examples"
@@ -18,9 +21,11 @@
    "fieldname": "payment_gateway",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Payment Gateway",
    "options": "Payment Gateway",
-   "reqd": 1
+   "reqd": 1,
+   "set_only_once": 1
   },
   {
    "default": "0",
@@ -41,10 +46,12 @@
    "reqd": 1
   },
   {
-   "fetch_from": "payment_account.account_currency",
    "fieldname": "currency",
-   "fieldtype": "Read Only",
-   "label": "Currency"
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1,
+   "set_only_once": 1
   },
   {
    "fieldname": "payment_request_message",
@@ -61,9 +68,26 @@
    "fieldtype": "HTML",
    "label": "Message Examples",
    "options": "<pre><h5>Message Example</h5>\n\n&lt;p&gt; Thank You for being a part of {{ doc.company }}! We hope you are enjoying the service.&lt;/p&gt;\n\n&lt;p&gt; Please find enclosed the E Bill statement. The outstanding amount is {{ doc.grand_total }}.&lt;/p&gt;\n\n&lt;p&gt; We don't want you to be spending time running around in order to pay for your Bill.<br>After all, life is beautiful and the time you have in hand should be spent to enjoy it!<br>So here are our little ways to help you get more time for life! &lt;/p&gt;\n\n&lt;a href=\"{{ payment_url }}\"&gt; click here to pay &lt;/a&gt;\n\n</pre>\n"
+  },
+  {
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Mode of Payment",
+   "options": "Mode of Payment"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "set_only_once": 1
   }
  ],
- "modified": "2020-03-03 15:42:05.502760",
+ "grid_page_length": 500,
+ "links": [],
+ "modified": "2025-08-20 22:09:37.455246",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Gateway Account",
@@ -82,6 +106,8 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

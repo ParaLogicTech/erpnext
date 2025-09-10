@@ -997,7 +997,6 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:!doc.is_paid",
    "fieldname": "total_advance",
    "fieldtype": "Currency",
    "label": "Total Advance",
@@ -1130,6 +1129,7 @@
   {
    "collapsible": 1,
    "collapsible_depends_on": "advances",
+   "depends_on": "eval:!doc.is_paid && !doc.is_return",
    "fieldname": "advances_section",
    "fieldtype": "Section Break",
    "label": "Advance Payments",
@@ -1139,14 +1139,13 @@
   },
   {
    "default": "0",
-   "depends_on": "eval:!doc.is_paid",
    "fieldname": "allocate_advances_automatically",
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Set Advances and Allocate (FIFO)"
   },
   {
-   "depends_on": "eval:!doc.allocate_advances_automatically && !doc.is_paid && doc.docstatus == 0",
+   "depends_on": "eval:!doc.allocate_advances_automatically && doc.docstatus == 0",
    "fieldname": "get_advances",
    "fieldtype": "Button",
    "label": "Get Advances Paid",
@@ -1154,7 +1153,6 @@
    "print_hide": 1
   },
   {
-   "depends_on": "eval:!doc.is_paid",
    "fieldname": "advances",
    "fieldtype": "Table",
    "label": "Advances",
@@ -1890,11 +1888,12 @@
    "options": "Branch"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-file-text",
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-17 20:12:44.036107",
+ "modified": "2025-08-24 17:00:13.210629",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",
@@ -1974,6 +1973,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "posting_date, supplier, bill_no, base_grand_total, outstanding_amount",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

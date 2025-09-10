@@ -3,96 +3,354 @@
 # For license information, please see license.txt
 
 import frappe
+import erpnext
 from frappe import _
-from frappe.model.document import Document
-from frappe.utils import flt, nowdate
-from erpnext.accounts.party import get_party_account, get_party_bank_account
-from erpnext.accounts.utils import get_account_currency
+from erpnext.controllers.accounts_controller import AccountsController
+from frappe.utils import flt, getdate, cint, validate_email_address, combine_datetime, now_datetime
+from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
+from erpnext.accounts.party import get_party_bank_account, get_party_name
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry, get_company_defaults
+from frappe.regional.regional import validate_mobile_no
+from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
 from payments.utils import get_payment_gateway_controller
-from frappe.utils.background_jobs import enqueue
-from erpnext.erpnext_integrations.stripe_integration import create_stripe_subscription
-from erpnext.accounts.doctype.subscription_plan.subscription_plan import get_plan_rate
 
 
-class PaymentRequest(Document):
+class PaymentRequest(AccountsController):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.force_fields = [
+			"currency",
+			"payment_gateway",
+			"expiry_date_allowed",
+			"expiry_time_allowed",
+		]
+
+	def onload(self):
+		super().onload()
+		self.set_onload('notification_count', get_all_notification_count(self.doctype, self.name))
+
+	def before_validate(self):
+		self.set_cashier(force=True)
+
 	def validate(self):
-		if self.get("__islocal"):
-			self.status = 'Draft'
+		self.set_missing_values()
+		self.clear_payment_url()
+		self.validate_pos()
 		self.validate_reference_document()
-		self.validate_payment_request_amount()
-		self.validate_currency()
-		self.validate_subscription_details()
+		self.validate_payment_gateway()
+		self.validate_payment_account()
+		self.validate_amount()
+		self.validate_contact()
+		self.validate_expiry_date()
+		self.set_status()
+
+	def before_submit(self):
+		self.request_payment_gateway_url()
+
+	def on_submit(self):
+		self.trigger_payment_request_notification()
+
+	def before_cancel(self):
+		self.check_if_payment_entry_exists()
+		self.expire_payment_url()
+
+	def on_cancel(self):
+		self.db_set("status", "Cancelled")
+
+	def on_payment_authorized(self, status, **kwargs):
+		if not status:
+			return
+		if status not in ["Authorized", "Completed"]:
+			return
+
+		args = frappe._dict(kwargs)
+
+		frappe.flags.current_cashier = self.cashier or None
+		frappe.flags.from_payment_gateway = True
+
+		try:
+			self.create_payment_entry(
+				submit=True,
+				reference_no=args.reference_no,
+				reference_date=args.reference_date,
+				amount=args.amount,
+			)
+			frappe.db.commit()
+
+			self.reload()
+			self.trigger_payment_received_notification()
+			frappe.db.commit()
+		except Exception as e:
+			frappe.db.rollback()
+			self.db_set("payment_entry_creation_failed", 1, commit=True)
+
+			self.reload()
+			self.db_set("payment_entry_creation_error", str(e))
+			self.add_comment(
+				"Comment",
+				_("Automated Payment Entry creation failed after Payment Gateway's payment was authorized") + "<br><br>" + str(e)
+			)
+			self.set_status(update=True)
+			self.notify_update()
+			frappe.db.commit()
+
+			self.trigger_payment_error_notification()
+			frappe.db.commit()
+
+			raise e
+
+		try:
+			self.create_sales_invoice()
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			raise
+
+	def set_status(self, update=False, status=None, update_modified=True):
+		previous_status = self.status
+
+		if self.docstatus == 0:
+			self.status = "Draft"
+		elif self.docstatus == 1:
+			reference_doc = self.get_reference_document(reload=True)
+
+			request_grand_total = flt(self.grand_total, self.precision("grand_total"))
+			reference_paid_amount = flt(self.get_reference_document_paid_amount(reference_doc),
+				self.precision("grand_total"))
+
+			if reference_paid_amount >= request_grand_total:
+				self.status = "Paid"
+			elif reference_paid_amount > 0:
+				self.status = "Partially Paid"
+			else:
+				if self.payment_request_type == "Inward":
+					if self.payment_entry_creation_failed:
+						self.status = "Failed"
+					else:
+						self.status = "Requested"
+				elif self.payment_request_type == "Outward":
+					payment_order = frappe.db.get_value("Payment Order Reference", {
+						"payment_request": self.name, "docstatus": 1
+					})
+					if payment_order:
+						self.status = "Payment Ordered"
+					else:
+						self.status = "Initiated"
+
+		else:
+			self.status = "Cancelled"
+
+		self.add_status_comment(previous_status)
+
+		if update:
+			self.db_set("status", self.status, update_modified=update_modified)
 
 	def validate_reference_document(self):
 		if not self.reference_doctype or not self.reference_name:
-			frappe.throw(_("To create a Payment Request reference document is required"))
+			frappe.throw(_("Reference Document is mandatory for Payment Request"))
 
-	def validate_payment_request_amount(self):
-		existing_payment_request_amount = \
-			get_existing_payment_request_amount(self.reference_doctype, self.reference_name)
+		if self.reference_doctype not in self.get_allowed_reference_doctypes():
+			frappe.throw(_("Reference Document Type {0} is not allowed").format(self.reference_doctype))
 
-		if existing_payment_request_amount:
-			ref_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
-			if (hasattr(ref_doc, "order_type") \
-					and getattr(ref_doc, "order_type") != "Shopping Cart"):
-				ref_amount = get_amount(ref_doc)
+		reference_doc = self.get_reference_document()
 
-				if existing_payment_request_amount + flt(self.grand_total)> ref_amount:
-					frappe.throw(_("Total Payment Request amount cannot be greater than {0} amount"
-						.format(self.reference_doctype)))
+		if reference_doc.docstatus != 1:
+			frappe.throw(_("{0} is not submitted").format(frappe.get_desk_link(self.reference_doctype, self.reference_name)))
 
-	def validate_currency(self):
-		ref_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
-		if self.payment_account and ref_doc.currency != frappe.db.get_value("Account", self.payment_account, "account_currency"):
-			frappe.throw(_("Transaction currency must be same as Payment Gateway currency"))
+		if reference_doc.get("company") and self.company != reference_doc.get("company"):
+			frappe.throw(_("Company {0} in Payment Request does not match with Company {1} in Reference Document").format(
+				frappe.bold(self.company),
+				frappe.bold(reference_doc.company),
+			))
 
-	def validate_subscription_details(self):
-		if self.is_a_subscription:
-			amount = 0
-			for subscription_plan in self.subscription_plans:
-				payment_gateway = frappe.db.get_value("Subscription Plan", subscription_plan.plan, "payment_gateway")
-				if payment_gateway != self.payment_gateway_account:
-					frappe.throw(_('The payment gateway account in plan {0} is different from the payment gateway account in this payment request'.format(subscription_plan.name)))
+		if self.project and reference_doc.get("project") and self.project != reference_doc.get("project"):
+			frappe.throw(_("{0} {1} in Payment Request does not match with {1} in Reference Document").format(
+				_("Project"),
+				frappe.bold(self.project),
+				frappe.bold(reference_doc.project),
+			))
 
-				rate = get_plan_rate(subscription_plan.plan, quantity=subscription_plan.qty)
-
-				amount += rate
-
-			if amount != self.grand_total:
-				frappe.msgprint(_("The amount of {0} set in this payment request is different from the calculated amount of all payment plans: {1}. Make sure this is correct before submitting the document.".format(self.grand_total, amount)))
-
-	def on_submit(self):
-		if self.payment_request_type == 'Outward':
-			self.db_set('status', 'Initiated')
+	def validate_payment_gateway(self):
+		if not self.payment_gateway_account:
 			return
-		elif self.payment_request_type == 'Inward':
-			self.db_set('status', 'Requested')
 
-		send_mail = self.payment_gateway_validation() if self.payment_gateway else None
-		ref_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
+		doc = frappe.get_cached_doc("Payment Gateway Account", self.payment_gateway_account)
 
-		if (hasattr(ref_doc, "order_type") and getattr(ref_doc, "order_type") == "Shopping Cart") \
-			or self.flags.mute_email:
-			send_mail = False
+		if doc.currency != self.currency:
+			frappe.throw(_("Payment Gateway Account Currency must be {0}").format(self.currency))
 
-		if send_mail:
-			self.set_payment_request_url()
-			self.send_email()
-			self.make_communication_entry()
+		if doc.company != self.company:
+			frappe.throw(_("Company {0} in Payment Request does not match with Company {1} in Payment Gateway Account").format(
+				frappe.bold(self.company),
+				frappe.bold(doc.company),
+			))
 
-	def on_cancel(self):
-		self.check_if_payment_entry_exists()
-		self.set_as_cancelled()
+		if not self.payment_account:
+			frappe.throw(_("Payment Account is mandatory for Payment Gateway Request"))
 
-	def make_invoice(self):
-		ref_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
-		if (hasattr(ref_doc, "order_type") and getattr(ref_doc, "order_type") == "Shopping Cart"):
-			from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-			si = make_sales_invoice(self.reference_name, ignore_permissions=True)
-			si.allocate_advances_automatically = True
-			si = si.insert(ignore_permissions=True)
-			si.submit()
+	@frappe.whitelist()
+	def set_missing_values(self, for_validate=False):
+		self.set_reference_document_details()
+		self.set_payment_gateway_details()
+		self.set_pos_fields()
+		self.set_payment_account()
+		self.party_name = get_party_name(self.party_type, self.party)
+
+	def set_pos_fields(self):
+		self.set_cashier()
+		if not cint(self.is_pos):
+			self.pos_profile = None
+			return
+
+		pos_profile = self.get("pos_profile")
+		if not pos_profile:
+			pos_profile = get_pos_profile(company=self.company, branch=self.get("branch"), user=self.cashier)
+			self.pos_profile = pos_profile
+
+		self.validate_pos_is_open(throw=False)
+
+		pos = frappe.get_cached_doc("POS Profile", self.pos_profile) if self.pos_profile else frappe._dict()
+		if pos:
+			force_fields = ["branch"]
+			missing_fields = ["company"]
+
+			for fieldname in force_fields:
+				if pos.get(fieldname):
+					self.set(fieldname, pos.get(fieldname))
+
+			for fieldname in missing_fields:
+				if pos.get(fieldname) and not self.get(fieldname):
+					self.set(fieldname, pos.get(fieldname))
+
+	def validate_pos(self):
+		if self.is_pos and not self.pos_profile:
+			frappe.throw(_("POS Profile is mandatory for POS Payment"))
+
+		self.validate_pos_is_open(throw=True)
+
+		if self.is_pos and not self.mode_of_payment:
+			frappe.throw(_("Mode of Payment is mandatory for POS Payment"))
+
+	def set_reference_document_details(self):
+		reference_doc = self.get_reference_document()
+		reference_details = self.get_reference_document_details(reference_doc, exclude=self.name)
+
+		for k, v in reference_details.items():
+			if self.meta.has_field(k) and (not self.get(k) or k in self.force_fields):
+				self.set(k, v)
+
+	def set_payment_gateway_details(self):
+		if self.payment_request_type != "Inward":
+			self.payment_gateway_account = None
+			self.payment_gateway = None
+
+		gateway_details = get_payment_gateway_account_details(self.payment_gateway_account)
+		for k, v in gateway_details.items():
+			if self.meta.has_field(k) and (not self.get(k) or k in self.force_fields):
+				self.set(k, v)
+
+	def set_payment_account(self):
+		from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
+
+		if self.payment_gateway_account:
+			gateway_account_doc = frappe.get_cached_doc("Payment Gateway Account", self.payment_gateway_account)
+			if gateway_account_doc.mode_of_payment:
+				self.mode_of_payment = gateway_account_doc.mode_of_payment
+			if gateway_account_doc.payment_account:
+				self.payment_account = gateway_account_doc.payment_account
+
+		if (not self.payment_account or self.is_pos) and self.mode_of_payment:
+			account = get_bank_cash_account(self.mode_of_payment, self.company, pos_profile=self.pos_profile).get("account")
+			self.payment_account = account
+
+	def clear_payment_url(self):
+		self.payment_url = None
+		self.is_expired = 0
+		self.payment_entry_creation_failed = 0
+		self.payment_entry_creation_error = None
+
+	def validate_amount(self):
+		reference_doc = self.get_reference_document()
+
+		existing_payment_request = self.get_existing_payment_request_amount(
+			self.reference_doctype,
+			self.reference_name,
+			exclude=self.name,
+		)
+
+		payment_request_total = flt(flt(self.grand_total) + existing_payment_request)
+		grand_total = self.get_reference_document_grand_total(reference_doc)
+		outstanding_amount = self.get_reference_document_outstanding_amount(reference_doc)
+
+		if flt(payment_request_total, self.precision("grand_total")) > flt(grand_total, self.precision("grand_total")):
+			frappe.throw(_("Total Payment Request Amount cannot be greater than the Grand Total {0} of {1}").format(
+				frappe.format(grand_total, df=self.meta.get_field("grand_total")),
+				frappe.get_desk_link(self.reference_doctype, self.reference_name),
+			))
+
+		if flt(payment_request_total, self.precision("grand_total")) > flt(outstanding_amount, self.precision("grand_total")):
+			frappe.throw(_("Total Payment Request Amount cannot be greater than the Outstanding Amount {0} of {1}").format(
+				frappe.format(outstanding_amount, df=self.meta.get_field("grand_total")),
+				frappe.get_desk_link(self.reference_doctype, self.reference_name),
+			))
+
+	def validate_contact(self):
+		if not self.contact_mobile and not self.contact_email:
+			frappe.throw(_("Either Contact Email or Contact Mobile is required"))
+
+		if self.contact_email:
+			validate_email_address(self.contact_email, throw=True)
+		if self.contact_mobile:
+			validate_mobile_no(self.contact_mobile, throw=True)
+
+	def validate_expiry_date(self):
+		if not self.expiry_date_allowed:
+			self.expiry_date = None
+		if not self.expiry_time_allowed:
+			self.expiry_time = None
+
+		if not self.expiry_date:
+			self.expiry_time = None
+
+		if self.expiry_date and self.expiry_time:
+			expiry_dt = combine_datetime(self.expiry_date, self.expiry_time)
+			if expiry_dt <= now_datetime():
+				frappe.throw(_("Expiry Date/Time cannot be in the past"))
+		elif self.expiry_date:
+			if getdate(self.expiry_date) < getdate():
+				frappe.throw(_("Expiry Date cannot be in the past"))
+
+		if self.expiry_date and self.transaction_date:
+			if getdate(self.expiry_date) < getdate(self.transaction_date):
+				frappe.throw(_("Expiry Date cannot be before Request Date"))
+
+	def get_reference_document(self, reload=False):
+		if not self.get("reference_doc") or reload:
+			if self.reference_doctype and self.reference_name:
+				self.reference_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
+			else:
+				self.reference_doc = frappe._dict()
+
+		return self.reference_doc
+
+	def validate_payment_account(self):
+		if self.payment_account:
+			payment_account_currency = frappe.db.get_value("Account", self.payment_account, "account_currency")
+			if self.currency != payment_account_currency:
+				frappe.throw(_("Payment Account Currency must be the same as Transaction Currency"))
+
+	def request_payment_gateway_url(self):
+		if self.payment_request_type != "Inward":
+			return
+		if not self.payment_gateway or not self.payment_account:
+			return
+
+		payment_gateway_validation = self.payment_gateway_validation()
+		if not payment_gateway_validation:
+			return
+
+		self.payment_url = self.get_payment_url()
+		self.db_set("payment_url", self.payment_url, commit=True)
 
 	def payment_gateway_validation(self):
 		try:
@@ -104,23 +362,7 @@ class PaymentRequest(Document):
 		except Exception:
 			return False
 
-	def set_payment_request_url(self):
-		if self.payment_account:
-			self.payment_url = self.get_payment_url()
-
-		if self.payment_url:
-			self.db_set('payment_url', self.payment_url)
-
-		if self.payment_url or not self.payment_gateway_account:
-			self.db_set('status', 'Initiated')
-
 	def get_payment_url(self):
-		if self.reference_doctype != "Fees":
-			data = frappe.db.get_value(self.reference_doctype, self.reference_name, ["company", "customer_name"], as_dict=1)
-		else:
-			data = frappe.db.get_value(self.reference_doctype, self.reference_name, ["student_name"], as_dict=1)
-			data.update({"company": frappe.defaults.get_defaults().company})
-
 		controller = get_payment_gateway_controller(self.payment_gateway)
 		controller.validate_transaction_currency(self.currency)
 
@@ -128,56 +370,106 @@ class PaymentRequest(Document):
 			controller.validate_minimum_transaction_amount(self.currency, self.grand_total)
 
 		return controller.get_payment_url(**{
-			"amount": flt(self.grand_total, self.precision("grand_total")),
-			"title": frappe.as_unicode(data.company),
-			"description": frappe.as_unicode(self.subject),
-			"reference_doctype": "Payment Request",
-			"reference_docname": self.name,
-			"payer_email": self.email_to or frappe.session.user,
-			"payer_name": frappe.as_unicode(data.customer_name),
+			"title": self.company,
 			"order_id": self.name,
-			"currency": self.currency
+			"order_name": self.reference_name,
+			"order_info": self.project,
+			"amount": flt(self.grand_total, self.precision("grand_total")),
+			"currency": self.currency,
+			"description": self.subject,
+			"payer_name": self.party_name or self.contact_display,
+			"payer_email": self.contact_email,
+			"payer_mobile": self.contact_mobile,
+			"reference_doctype": self.doctype,
+			"reference_docname": self.name,
+			"expiry_date": self.get("expiry_date"),
+			"expiry_time": self.get("expiry_time"),
 		})
 
-	def set_as_paid(self):
-		payment_entry = self.create_payment_entry()
-		self.make_invoice()
+	def expire_payment_url(self):
+		if self.payment_request_type != "Inward":
+			return
+		if not self.payment_gateway or not self.payment_url:
+			return
 
-		return payment_entry
+		controller = get_payment_gateway_controller(self.payment_gateway)
+		if not hasattr(controller, "expire_payment_url"):
+			return False
 
-	def create_payment_entry(self, submit=True):
+		is_expired = controller.expire_payment_url(self.payment_url)
+		if is_expired:
+			self.db_set("is_expired", 1, commit=True)
+
+		return is_expired
+
+	def trigger_payment_request_notification(self):
+		if self.mute_notification or self.flags.mute_notification:
+			return
+		if self.docstatus != 1:
+			return
+		if self.payment_request_type != "Inward":
+			return
+		if self.status == "Paid":
+			return
+
+		self.run_method("notify_payment_request")
+		if self.payment_url:
+			self.run_method("notify_payment_url")
+
+	def trigger_payment_error_notification(self):
+		if not self.payment_entry_creation_failed:
+			return
+
+		self.run_method("notify_payment_error")
+
+	def trigger_payment_received_notification(self):
+		if self.docstatus != 1:
+			return
+		if self.payment_request_type != "Inward":
+			return
+		if self.status != "Paid":
+			return
+
+		self.run_method("notify_payment_received")
+
+	def create_payment_entry(self, submit=False, reference_no=None, reference_date=None, amount=None):
 		"""create entry"""
 		frappe.flags.ignore_account_permission = True
 
-		ref_doc = frappe.get_doc(self.reference_doctype, self.reference_name)
+		if amount is None:
+			amount = self.grand_total
 
-		if self.reference_doctype == "Sales Invoice":
-			party_account = ref_doc.debit_to
-		elif self.reference_doctype == "Purchase Invoice":
-			party_account = ref_doc.credit_to
-		else:
-			party_account = get_party_account("Customer", ref_doc.get("customer"), ref_doc.company)
+		amount = flt(amount)
 
-		party_account_currency = ref_doc.get("party_account_currency") or get_account_currency(party_account)
+		payment_entry = get_payment_entry(
+			self.reference_doctype,
+			self.reference_name,
+			bank_amount=amount,
+			bank_account=self.payment_account,
+			mode_of_payment=self.mode_of_payment,
+			is_advance=self.is_advance_payment(self.reference_doctype),
+			is_pos=self.is_pos,
+			pos_profile=self.pos_profile,
+		)
 
-		bank_amount = self.grand_total
-		if party_account_currency == ref_doc.company_currency and party_account_currency != self.currency:
-			party_amount = ref_doc.base_grand_total
-		else:
-			party_amount = self.grand_total
-
-		payment_entry = get_payment_entry(self.reference_doctype, self.reference_name,
-			party_amount=party_amount, bank_account=self.payment_account, bank_amount=bank_amount)
+		if not reference_no and submit:
+			reference_no = self.name
+		if not reference_date and submit:
+			reference_date = getdate()
 
 		payment_entry.update({
-			"reference_no": self.name,
-			"reference_date": nowdate(),
-			"remarks": "Payment Entry against {0} {1} via Payment Request {2}".format(self.reference_doctype,
-				self.reference_name, self.name)
+			"payment_request": self.name,
+			"reference_no": reference_no if reference_no else None,
+			"reference_date": getdate(reference_date) if reference_date else None,
+			"remarks": _("Payment Entry against {0} {1} via Payment Request {2}").format(
+				self.reference_doctype,
+				self.reference_name,
+				self.name,
+			),
 		})
 
 		if payment_entry.difference_amount:
-			company_details = get_company_defaults(ref_doc.company)
+			company_details = get_company_defaults(self.company)
 
 			payment_entry.append("deductions", {
 				"account": company_details.exchange_gain_loss_account,
@@ -186,290 +478,366 @@ class PaymentRequest(Document):
 			})
 
 		if submit:
-			payment_entry.insert(ignore_permissions=True)
+			payment_entry.flags.ignore_permissions = True
+			payment_entry.insert()
 			payment_entry.submit()
+		else:
+			payment_entry.run_method("set_missing_values")
 
 		return payment_entry
 
-	def send_email(self):
-		"""send email with payment link"""
-		email_args = {
-			"recipients": self.email_to,
-			"sender": None,
-			"subject": self.subject,
-			"message": self.get_message(),
-			"now": True,
-			"attachments": [frappe.attach_print(self.reference_doctype, self.reference_name,
-				file_name=self.reference_name, print_format=self.print_format)]}
-		enqueue(method=frappe.sendmail, queue='short', timeout=300, is_async=True, **email_args)
+	def create_sales_invoice(self):
+		if not self.make_sales_invoice:
+			return
 
-	def get_message(self):
-		"""return message with payment gateway link"""
+		if self.reference_doctype == "Sales Order":
+			from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+			sales_invoice = make_sales_invoice(self.reference_name, ignore_permissions=True)
+		elif self.reference_doctype == "Proforma Invoice":
+			from erpnext.accounts.doctype.proforma_invoice.proforma_invoice import make_sales_invoice
+			sales_invoice = make_sales_invoice(self.reference_name, ignore_permissions=True)
+		else:
+			return
 
-		context = {
-			"doc": frappe.get_doc(self.reference_doctype, self.reference_name),
-			"payment_url": self.payment_url
-		}
+		sales_invoice.flags.ignore_permissions = True
+		sales_invoice.set_advances(include_unallocated=False)
+		sales_invoice.insert()
+		sales_invoice.submit()
 
-		if self.message:
-			return frappe.render_template(self.message, context)
-
-	def set_failed(self):
-		pass
-
-	def set_as_cancelled(self):
-		self.db_set("status", "Cancelled")
+		return sales_invoice
 
 	def check_if_payment_entry_exists(self):
 		if self.status == "Paid":
-			if frappe.get_all("Payment Entry Reference",
-				filters={"reference_name": self.reference_name, "docstatus": ["<", 2]},
+			pref = frappe.get_all(
+				"Payment Entry Reference",
+				filters={
+					"reference_doctype": self.reference_doctype,
+					"reference_name": self.reference_name,
+					"docstatus": ["<", 2]
+				},
 				fields=["parent"],
-				limit=1):
-				frappe.throw(_("Payment Entry already exists"), title=_('Error'))
+				limit=1
+			)
+			if pref:
+				frappe.throw(_("Payment Entry is already submitted"), title=_('Error'))
 
-	def make_communication_entry(self):
-		"""Make communication entry"""
-		comm = frappe.get_doc({
-			"doctype":"Communication",
-			"subject": self.subject,
-			"content": self.get_message(),
-			"sent_or_received": "Sent",
-			"reference_doctype": self.reference_doctype,
-			"reference_name": self.reference_name
-		})
-		comm.insert(ignore_permissions=True)
+	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
+		if notification_type == ("Payment Link", "Payment Received"):
+			if self.docstatus != 1:
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because Payment Request is not submitted").format(
+						notification_type
+					))
+				return False
 
-	def get_payment_success_url(self):
-		return self.payment_success_url
+			if self.payment_request_type != "Inward":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because Payment Request Type is not 'Inward'").format(
+						notification_type
+					))
+				return False
 
-	def on_payment_authorized(self, status=None):
-		if not status:
-			return
+		if notification_type == "Payment Link":
+			if self.mute_notification:
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because notifications are muted for this Payment Request").format(
+						notification_type
+					))
 
-		if status in ["Authorized", "Completed"]:
-			redirect_to = None
-			self.set_as_paid()
+			if not self.payment_url:
+				if throw:
+					frappe.throw(_("Cannot send Payment Link notification because payment link is not available"))
+				return False
 
-			return redirect_to
+			if self.status == "Paid":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because reference document is already paid").format(
+						notification_type
+					))
+				return False
 
-	def create_subscription(self, payment_provider, gateway_controller, data):
-		if payment_provider == "stripe":
-			return create_stripe_subscription(gateway_controller, data)
+		if notification_type == "Payment Received":
+			if self.status != "Paid":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because Payment Request is not fully paid").format(
+						notification_type
+					))
+				return False
+
+		if notification_type == "Payment Error":
+			if not self.payment_entry_creation_failed:
+				if throw:
+					frappe.throw(_("Cannot send Payment Error notification because payment entry creation did not fail"))
+				return False
+
+		return True
+
+	def get_notification_attachment(self, notification_type=None):
+		with_letterhead = frappe.get_cached_value("Print Settings", "Print Settings", "with_letterhead")
+		if notification_type == "Payment Received":
+			payment_entries = frappe.db.get_all("Payment Entry", {
+				"payment_type": "Receive",
+				"payment_request": self.name,
+				"docstatus": 1,
+			}, pluck="name", order_by="posting_date desc, posting_time desc, creation desc")
+
+			out = []
+			for payment_entry in payment_entries:
+				out.append({
+					"print_format_attachment": 1,
+					"doctype": "Payment Entry",
+					"name": payment_entry,
+					"print_letterhead": with_letterhead,
+				})
+			return out
+
+		elif self.reference_doctype and self.reference_name:
+			return [
+				{
+					"print_format_attachment": 1,
+					"doctype": self.reference_doctype,
+					"name": self.reference_name,
+					"print_letterhead": with_letterhead,
+				}
+			]
+
+	@classmethod
+	def get_reference_document_details(cls, reference_doc, exclude=None):
+		out = frappe._dict()
+		if reference_doc.doctype not in cls.get_allowed_reference_doctypes():
+			return out
+
+		out.company = reference_doc.get("company")
+		out.branch = reference_doc.get("branch")
+		out.project = reference_doc.get("project")
+
+		out.party_type, out.party, out.party_name = PaymentRequest.get_reference_document_party(reference_doc)
+
+		out.contact_person = reference_doc.get("contact_person")
+		out.contact_display = reference_doc.get("contact_display")
+		out.contact_email = reference_doc.get("contact_email")
+		out.contact_mobile = reference_doc.get("contact_mobile")
+
+		out.grand_total = PaymentRequest.get_balance_payment_request_amount(reference_doc, exclude=exclude)
+		out.currency = reference_doc.get("currency") or erpnext.get_default_currency()
+
+		out.subject = _("Payment Request for {0}").format(reference_doc.get("reference_name"))
+
+		return out
+
+	@classmethod
+	def get_allowed_reference_doctypes(cls):
+		return [
+			"Sales Order",
+			"Purchase Order",
+			"Sales Invoice",
+			"Purchase Invoice",
+			"Proforma Invoice",
+		]
+
+	@classmethod
+	def get_balance_payment_request_amount(cls, reference_doc, exclude=None):
+		existing_payment_request_amount = cls.get_existing_payment_request_amount(
+			reference_doc.doctype,
+			reference_doc.name,
+			exclude=exclude,
+		)
+		outstanding_amount = cls.get_reference_document_outstanding_amount(reference_doc)
+
+		return max(outstanding_amount - existing_payment_request_amount, 0)
+
+	@classmethod
+	def get_reference_document_outstanding_amount(cls, reference_doc):
+		if reference_doc.meta.has_field("outstanding_amount"):
+			return flt(reference_doc.get("outstanding_amount"))
+
+		grand_total = cls.get_reference_document_grand_total(reference_doc)
+		paid_amount = cls.get_reference_document_paid_amount(reference_doc)
+
+		outstanding_amount = grand_total - paid_amount
+		return outstanding_amount
+
+	@classmethod
+	def get_reference_document_paid_amount(cls, reference_doc):
+		if reference_doc.meta.has_field("advance_paid"):
+			return flt(reference_doc.get("advance_paid"))
+
+		if reference_doc.meta.has_field("outstanding_amount"):
+			grand_tatal = cls.get_reference_document_grand_total(reference_doc)
+			outstanding_amount = flt(reference_doc.get("outstanding_amount"))
+			return max(grand_tatal - outstanding_amount, 0)
+
+		return 0
+
+	@classmethod
+	def get_reference_document_grand_total(cls, reference_doc):
+		return flt(reference_doc.get("rounded_total") or reference_doc.get("grand_total"))
+
+	@classmethod
+	def get_existing_payment_request_amount(cls, reference_doctype, reference_name, exclude=None):
+		exclude_condition = ""
+		if exclude:
+			exclude_condition = f" and name != {frappe.db.escape(exclude)}"
+
+		existing_payment_request_amount = frappe.db.sql(f"""
+			select sum(grand_total)
+			from `tabPayment Request`
+			where docstatus = 1
+				and reference_doctype = %s
+				and reference_name = %s
+				{exclude_condition}
+		""", (reference_doctype, reference_name))
+
+		existing_payment_request_amount = flt(
+			existing_payment_request_amount[0][0]) if existing_payment_request_amount else 0
+		return existing_payment_request_amount
+
+	@classmethod
+	def get_reference_document_party(cls, reference_doc):
+		return reference_doc.get_billing_party()
+
+	@classmethod
+	def is_advance_payment(cls, reference_doctype):
+		if reference_doctype in ("Sales Order", "Proforma Invoice"):
+			return True
+		else:
+			return False
 
 
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def make_payment_request(**args):
 	"""Make payment request"""
 
 	args = frappe._dict(args)
 
-	ref_doc = frappe.get_doc(args.dt, args.dn)
-	grand_total = get_amount(ref_doc)
-	if args.loyalty_points and args.dt == "Sales Order":
-		from erpnext.accounts.doctype.loyalty_program.loyalty_program import validate_loyalty_points
-		loyalty_amount = validate_loyalty_points(ref_doc, int(args.loyalty_points))
-		frappe.db.set_value("Sales Order", args.dn, "loyalty_points", int(args.loyalty_points), update_modified=False)
-		frappe.db.set_value("Sales Order", args.dn, "loyalty_amount", loyalty_amount, update_modified=False)
-		grand_total = grand_total - loyalty_amount
+	reference_doctype = args.reference_doctype or args.dt
+	reference_name = args.reference_name or args.dn
 
-	gateway_account = get_gateway_details(args) or frappe._dict()
+	if not reference_doctype or not reference_name:
+		frappe.throw(_("Reference Document not provided"))
+	if reference_doctype not in PaymentRequest.get_allowed_reference_doctypes():
+		frappe.throw(_("Reference Document Type {0} is not allowed").format(reference_doctype))
 
-	bank_account = (get_party_bank_account(args.get('party_type'), args.get('party'))
-		if args.get('party_type') else '')
+	reference_doc = frappe.get_doc(reference_doctype, reference_name)
 
-	existing_payment_request = None
-	if args.order_type == "Shopping Cart":
-		existing_payment_request = frappe.db.get_value("Payment Request",
-			{"reference_doctype": args.dt, "reference_name": args.dn, "docstatus": ("!=", 2)})
-
-	if existing_payment_request:
-		frappe.db.set_value("Payment Request", existing_payment_request, "grand_total", grand_total, update_modified=False)
-		pr = frappe.get_doc("Payment Request", existing_payment_request)
-	else:
-		if args.order_type != "Shopping Cart":
-			existing_payment_request_amount = \
-				get_existing_payment_request_amount(args.dt, args.dn)
-
-			if existing_payment_request_amount:
-				grand_total -= existing_payment_request_amount
-
-		pr = frappe.new_doc("Payment Request")
-		pr.update({
-			"payment_gateway_account": gateway_account.get("name"),
-			"payment_gateway": gateway_account.get("payment_gateway"),
-			"payment_account": gateway_account.get("payment_account"),
-			"payment_request_type": args.get("payment_request_type"),
-			"currency": ref_doc.currency,
-			"grand_total": grand_total,
-			"email_to": args.recipient_id or ref_doc.owner,
-			"subject": _("Payment Request for {0}").format(args.dn),
-			"message": gateway_account.get("message") or get_dummy_message(ref_doc),
-			"reference_doctype": args.dt,
-			"reference_name": args.dn,
-			"party_type": args.get("party_type") or "Customer",
-			"party": args.get("party") or ref_doc.get("customer"),
-			"bank_account": bank_account
-		})
-
-		if args.order_type == "Shopping Cart" or args.mute_email:
-			pr.flags.mute_email = True
-
-		if args.submit_doc:
-			pr.insert(ignore_permissions=True)
-			pr.submit()
-
-	if args.order_type == "Shopping Cart":
-		frappe.db.commit()
-		frappe.local.response["type"] = "redirect"
-		frappe.local.response["location"] = pr.get_payment_url()
-
-	if args.return_doc:
-		return pr
-
-	return pr.as_dict()
-
-
-def get_amount(ref_doc):
-	"""get amount based on doctype"""
-	dt = ref_doc.doctype
-	if dt in ["Sales Order", "Purchase Order"]:
-		grand_total = flt(ref_doc.grand_total) - flt(ref_doc.advance_paid)
-
-	elif dt in ["Sales Invoice", "Purchase Invoice"]:
-		if ref_doc.party_account_currency == ref_doc.currency:
-			grand_total = flt(ref_doc.outstanding_amount)
+	payment_request_type = args.get("payment_request_type")
+	if not payment_request_type:
+		if reference_doctype in ("Purchase Order", "Purchase Invoice"):
+			payment_request_type = "Outward"
 		else:
-			grand_total = flt(ref_doc.outstanding_amount) / ref_doc.conversion_rate
+			payment_request_type = "Inward"
 
-	elif dt == "Fees":
-		grand_total = ref_doc.outstanding_amount
+	company = reference_doc.get("company") or erpnext.get_default_company()
+	amount = PaymentRequest.get_balance_payment_request_amount(reference_doc)
+	currency = reference_doc.get("currency") or erpnext.get_default_currency()
 
-	if grand_total > 0 :
-		return grand_total
-
+	if args.get("party_type") and args.get("party"):
+		party_type = args.get("party_type")
+		party = args.get("party")
 	else:
-		frappe.throw(_("Payment Entry is already created"))
+		party_type, party, party_name = PaymentRequest.get_reference_document_party(reference_doc)
+
+	payment_gateway_account = None
+	if company and payment_request_type == "Inward":
+		payment_gateway_account = get_payment_gateway_account(company, currency, args.get("payment_gateway"))
+
+	bank_account = None
+	if payment_request_type == "Outward" and party:
+		bank_account = get_party_bank_account(party_type, party)
+
+	preq_doc = frappe.new_doc("Payment Request")
+	preq_doc.update({
+		"company": company,
+		"payment_request_type": payment_request_type,
+		"reference_doctype": reference_doctype,
+		"reference_name": reference_name,
+		"grand_total": amount,
+		"currency": currency,
+		"contact_display": args.get("contact_display") or args.get("contact_name"),
+		"contact_email": args.get("contact_email"),
+		"contact_mobile": args.get("contact_mobile"),
+		"subject": args.get("subject") or _("Payment Request for {0}").format(reference_name),
+		"message": args.get("message"),
+		"party_type": party_type,
+		"party": party,
+		"payment_gateway_account": payment_gateway_account,
+		"bank_account": bank_account,
+		"mute_notification": cint(args.get("mute_notification")),
+	})
+
+	preq_doc.run_method("set_missing_values")
+	return preq_doc
 
 
-def get_existing_payment_request_amount(ref_dt, ref_dn):
-	existing_payment_request_amount = frappe.db.sql("""
-		select sum(grand_total)
-		from `tabPayment Request`
-		where
-			reference_doctype = %s
-			and reference_name = %s
-			and docstatus = 1
-			and status != 'Paid'
-	""", (ref_dt, ref_dn))
-	return flt(existing_payment_request_amount[0][0]) if existing_payment_request_amount else 0
-
-
-def get_gateway_details(args):
-	"""return gateway and payment account of default payment gateway"""
-	if args.get("payment_gateway"):
-		return get_payment_gateway_account(args.get("payment_gateway"))
-
-	gateway_account = get_payment_gateway_account({"is_default": 1})
-
-	return gateway_account
-
-
-def get_payment_gateway_account(args):
-	return frappe.db.get_value("Payment Gateway Account", args,
-		["name", "payment_gateway", "payment_account", "message"],
-			as_dict=1)
-
-
-@frappe.whitelist()
-def get_print_format_list(ref_doctype):
-	print_format_list = ["Standard"]
-
-	print_format_list.extend([p.name for p in frappe.get_all("Print Format",
-		filters={"doc_type": ref_doctype})])
-
-	return {
-		"print_format": print_format_list
+def get_payment_gateway_account(company, currency, payment_gateway=None):
+	filters = {
+		"company": company,
+		"currency": currency
 	}
 
+	if payment_gateway:
+		filters["payment_gateway"] = payment_gateway
+	else:
+		filters["is_default"] = 1
 
-@frappe.whitelist(allow_guest=True)
-def resend_payment_email(docname):
-	return frappe.get_doc("Payment Request", docname).send_email()
-
-
-@frappe.whitelist()
-def make_payment_entry(docname):
-	doc = frappe.get_doc("Payment Request", docname)
-	return doc.create_payment_entry(submit=False).as_dict()
-
-
-def update_payment_req_status(doc):
-	from erpnext.accounts.doctype.payment_entry.payment_entry import get_reference_details
-
-	for ref in doc.references:
-		payment_request_name = frappe.db.get_value("Payment Request",
-			{"reference_doctype": ref.reference_doctype, "reference_name": ref.reference_name,
-			"docstatus": 1})
-
-		if payment_request_name:
-			ref_details = get_reference_details(
-				ref.reference_doctype,
-				ref.reference_name,
-				doc.party_account_currency,
-				doc.party_type,
-				doc.party,
-				doc.paid_from if doc.payment_type == "Receive" else doc.paid_to,
-				doc.payment_type
-			)
-			pay_req_doc = frappe.get_doc('Payment Request', payment_request_name)
-			status = pay_req_doc.status
-
-			if status != "Paid" and not ref_details.outstanding_amount:
-				status = 'Paid'
-			elif status != "Partially Paid" and ref_details.outstanding_amount != ref_details.total_amount:
-				status = 'Partially Paid'
-			elif ref_details.outstanding_amount == ref_details.total_amount:
-				if pay_req_doc.payment_request_type == 'Outward':
-					status = 'Initiated'
-				elif pay_req_doc.payment_request_type == 'Inward':
-					status = 'Requested'
-
-			pay_req_doc.db_set('status', status)
-			frappe.db.commit()
-
-
-def get_dummy_message(doc):
-	return frappe.render_template("""{% if doc.contact_person -%}
-<p>Dear {{ doc.contact_person }},</p>
-{%- else %}<p>Hello,</p>{% endif %}
-
-<p>{{ _("Requesting payment against {0} {1} for amount {2}").format(doc.doctype,
-	doc.name, doc.get_formatted("grand_total")) }}</p>
-
-<a href="{{ payment_url }}">{{ _("Make Payment") }}</a>
-
-<p>{{ _("If you have any questions, please get back to us.") }}</p>
-
-<p>{{ _("Thank you for your business!") }}</p>
-""", dict(doc=doc, payment_url = '{{ payment_url }}'))
+	return frappe.db.get_value("Payment Gateway Account", filters)
 
 
 @frappe.whitelist()
-def get_subscription_details(reference_doctype, reference_name):
-	if reference_doctype == "Sales Invoice":
-		subscriptions = frappe.db.sql("""SELECT parent as sub_name FROM `tabSubscription Invoice` WHERE invoice=%s""",reference_name, as_dict=1)
-		subscription_plans = []
-		for subscription in subscriptions:
-			plans = frappe.get_doc("Subscription", subscription.sub_name).plans
-			for plan in plans:
-				subscription_plans.append(plan)
-		return subscription_plans
+def get_payment_gateway_account_details(payment_gateway_account):
+	doc = frappe.get_cached_doc("Payment Gateway Account", payment_gateway_account) if payment_gateway_account else frappe._dict()
+
+	expiry_date_allowed = 0
+	expiry_time_allowed = 0
+	if doc.payment_gateway:
+		try:
+			controller = get_payment_gateway_controller(doc.payment_gateway)
+			expiry_date_allowed = cint(getattr(controller, 'supports_expiry_date', False))
+			expiry_time_allowed = cint(getattr(controller, 'supports_expiry_time', False))
+		except Exception:
+			pass
+
+	if not expiry_date_allowed:
+		expiry_time_allowed = 0
+
+	return frappe._dict({
+		"payment_gateway": doc.payment_gateway,
+		"payment_account": doc.payment_account,
+		"mode_of_payment": doc.mode_of_payment,
+		"message": doc.message,
+		"expiry_date_allowed": expiry_date_allowed,
+		"expiry_time_allowed": expiry_time_allowed,
+	})
+
+
+@frappe.whitelist()
+def get_reference_document_details(reference_doctype, reference_name, exclude=None):
+	reference_doc = frappe.get_doc(reference_doctype, reference_name)
+	return PaymentRequest.get_reference_document_details(reference_doc, exclude=exclude)
+
+
+@frappe.whitelist()
+def trigger_payment_request_notification(payment_request):
+	doc = frappe.get_doc("Payment Request", payment_request)
+	doc.check_permission("read")
+	doc.trigger_payment_request_notification()
+
+	if doc.flags.notifications_executed:
+		frappe.msgprint(_("Payment Request notification triggered"))
+	else:
+		frappe.msgprint(_("No notifications configured"))
+
+
+@frappe.whitelist()
+def make_payment_entry(payment_request):
+	doc = frappe.get_doc("Payment Request", payment_request)
+	return doc.create_payment_entry(submit=False)
 
 
 @frappe.whitelist()
 def make_payment_order(source_name, target_doc=None):
 	from frappe.model.mapper import get_mapped_doc
+
 	def set_missing_values(source, target):
 		target.payment_order_type = "Payment Request"
 		target.append('references', {

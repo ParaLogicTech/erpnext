@@ -25,11 +25,11 @@ def get_data():
 			},
 			{
 				'label': _('Accounting'),
-				'items': ['Journal Entry', 'Payment Entry', 'Service Warranty']
+				'items': ['Journal Entry', 'Payment Entry', 'Payment Request']
 			},
 			{
 				'label': _('Expenses'),
-				'items': ['Employee Advance', 'Expense Claim']
+				'items': ['Employee Advance', 'Expense Claim', 'Service Warranty']
 			},
 		]
 	}

@@ -186,7 +186,7 @@ erpnext.payments = class Payments extends erpnext.stock.StockController {
 		this.frm.doc.write_off_amount = flt(write_off_amount, precision("write_off_amount"));
 		this.frm.doc.base_write_off_amount = flt(this.frm.doc.write_off_amount * this.frm.doc.conversion_rate,
 			precision("base_write_off_amount"));
-		this.calculate_outstanding_amount(false)
+		this.calculate_outstanding_amount()
 		this.show_amounts()
 	}
 
@@ -224,7 +224,7 @@ erpnext.payments = class Payments extends erpnext.stock.StockController {
 			}
 		})
 
-		this.calculate_outstanding_amount(false);
+		this.calculate_outstanding_amount();
 		this.show_amounts();
 	}
 

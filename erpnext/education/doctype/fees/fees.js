@@ -71,9 +71,6 @@ frappe.ui.form.on("Fees", {
 			}, __("View"));
 		}
 		if(frm.doc.docstatus===1 && frm.doc.outstanding_amount>0) {
-			frm.add_custom_button(__("Payment Request"), function() {
-				frm.events.make_payment_request(frm);
-			}, __('Create'));
 			frm.page.set_inner_btn_group_as_primary(__('Create'));
 		}
 		if(frm.doc.docstatus===1 && frm.doc.outstanding_amount!=0) {
@@ -97,29 +94,6 @@ frappe.ui.form.on("Fees", {
 						$.each(r.message, function(i, d) {
 							frm.set_value(i,d);
 						});
-					}
-				}
-			});
-		}
-	},
-
-	make_payment_request: function(frm) {
-		if (!frm.doc.student_email) {
-			frappe.msgprint(__("Please set the Email ID for the Student to send the Payment Request"));
-		} else {
-			frappe.call({
-				method:"erpnext.accounts.doctype.payment_request.payment_request.make_payment_request",
-				args: {
-					"dt": frm.doc.doctype,
-					"dn": frm.doc.name,
-					"party_type": "Student",
-					"party": frm.doc.student,
-					"recipient_id": frm.doc.student_email
-				},
-				callback: function(r) {
-					if(!r.exc){
-						var doc = frappe.model.sync(r.message);
-						frappe.set_route("Form", doc[0].doctype, doc[0].name);
 					}
 				}
 			});

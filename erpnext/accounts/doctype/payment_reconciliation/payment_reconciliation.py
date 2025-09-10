@@ -9,6 +9,7 @@ from erpnext.accounts.utils import (get_outstanding_invoices,
 	update_reference_in_payment_entry, reconcile_against_document)
 from erpnext.controllers.accounts_controller import get_advance_payment_entries, get_advance_journal_entries
 
+
 class PaymentReconciliation(Document):
 	@frappe.whitelist()
 	def get_unreconciled_entries(self):
@@ -18,14 +19,34 @@ class PaymentReconciliation(Document):
 	def get_nonreconciled_payment_entries(self):
 		self.check_mandatory_to_fetch()
 
-		order_doctype = "Sales Order" if self.party_type == "Customer" else "Purchase Order"
+		if self.party_type == "Customer":
+			order_doctype = ["Sales Order", "Proforma Invoice"]
+		elif self.party_type == "Supplier":
+			order_doctype = "Purchase Order"
+		else:
+			order_doctype = None
 
-		payment_entries = get_advance_payment_entries(self.party_type, self.party, self.receivable_payable_account,
-			order_doctype, against_all_orders=True, against_account=self.bank_cash_account, limit=self.limit)
-		journal_entries = get_advance_journal_entries(self.party_type, self.party, self.receivable_payable_account,
-			order_doctype, against_all_orders=True, limit=self.limit)
+		payment_entries = get_advance_payment_entries(
+			self.party_type,
+			self.party,
+			self.receivable_payable_account,
+			order_doctype=order_doctype,
+			against_all_orders=True,
+			against_account=self.bank_cash_account,
+			limit=self.limit
+		)
+
+		journal_entries = get_advance_journal_entries(
+			self.party_type,
+			self.party,
+			self.receivable_payable_account,
+			order_doctype=order_doctype,
+			against_all_orders=True,
+			limit=self.limit
+		)
+
 		dr_cr_notes_entries = self.get_dr_cr_notes_entries()
-				
+
 		self.add_payment_entries(payment_entries + journal_entries + dr_cr_notes_entries)
 
 	def add_payment_entries(self, entries):
@@ -225,6 +246,7 @@ class PaymentReconciliation(Document):
 			cond += " and `{0}` <= {1}".format(dr_or_cr, flt(self.maximum_amount))
 
 		return cond
+
 
 def reconcile_dr_cr_note(dr_cr_notes, company):
 	for d in dr_cr_notes:

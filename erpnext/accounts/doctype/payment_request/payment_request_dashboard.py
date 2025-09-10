@@ -9,6 +9,10 @@ def get_data():
 		},
 		'transactions': [
 			{
+				'label': _('Payment'),
+				'items': ['Payment Entry', 'Payment Order']
+			},
+			{
 				'label': _('Payment Gateway'),
 				'items': ['Integration Request']
 			},

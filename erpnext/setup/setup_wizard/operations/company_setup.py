@@ -5,7 +5,6 @@ import frappe
 from frappe import _
 from frappe.utils import cstr, getdate
 from .default_website import website_maker
-from erpnext.accounts.doctype.account.account import RootNotEditable
 
 def create_fiscal_year_and_company(args):
 	if (args.get('fy_start_date')):
@@ -29,29 +28,6 @@ def create_fiscal_year_and_company(args):
 			'chart_of_accounts': args.get('chart_of_accounts'),
 			'domain': args.get('domains')[0]
 		}).insert()
-
-def create_bank_account(args):
-	if args.get("bank_account"):
-		company_name = args.get('company_name')
-		bank_account_group =  frappe.db.get_value("Account",
-			{"account_type": "Bank", "is_group": 1, "root_type": "Asset",
-				"company": company_name})
-		if bank_account_group:
-			bank_account = frappe.get_doc({
-				"doctype": "Account",
-				'account_name': args.get("bank_account"),
-				'parent_account': bank_account_group,
-				'is_group':0,
-				'company': company_name,
-				"account_type": "Bank",
-			})
-			try:
-				return bank_account.insert()
-			except RootNotEditable:
-				frappe.throw(_("Bank account cannot be named as {0}").format(args.get("bank_account")))
-			except frappe.DuplicateEntryError:
-				# bank account same as a CoA entry
-				pass
 
 def create_email_digest():
 	from frappe.utils.user import get_system_managers

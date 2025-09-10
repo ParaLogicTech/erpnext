@@ -8,6 +8,8 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 
 		this.frm.custom_make_buttons = {
 			'Sales Invoice': 'Sales Invoice',
+			'Payment Request': 'Payment Request',
+			'Payment Entry': 'Payment',
 		};
 
 		this.setup_queries();
@@ -35,10 +37,22 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			}
 		}
 
-		if (this.frm.doc.docstatus == 1 && this.frm.doc.status != "Closed" && flt(this.frm.doc.per_billed) < 100) {
-			if (frappe.model.can_create("Sales Invoice")) {
+		if (this.frm.doc.docstatus == 1 && this.frm.doc.status != "Closed") {
+			if (flt(this.frm.doc.per_billed) < 100 && frappe.model.can_create("Sales Invoice")) {
 				this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(),
 					__('Create'));
+			}
+
+			if (flt(this.frm.doc.per_billed) == 0) {
+				if (frappe.model.can_create("Payment Request")) {
+					this.frm.add_custom_button(__('Payment Request'), () => this.make_payment_request(),
+						__('Create'));
+				}
+
+				if (frappe.model.can_create("Payment Entry") || frappe.model.can_create("Journal Entry")) {
+					this.frm.add_custom_button(__('Payment'), () => this.make_payment_entry(true),
+						__('Create'));
+				}
 			}
 		}
 
@@ -159,6 +173,16 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			method: "erpnext.accounts.doctype.proforma_invoice.proforma_invoice.make_sales_invoice",
 			frm: this.frm
 		})
+	}
+
+	allocated_amount() {
+		this.calculate_total_advance();
+		this.calculate_outstanding_amount();
+		this.frm.refresh_fields();
+	}
+
+	advances_remove() {
+		this.allocated_amount();
 	}
 };
 
