@@ -602,7 +602,7 @@ def get_stock_ledger_entries_for_stock_report(filters, item_list=None):
 	sles = frappe.db.sql("""
 		select
 			item_code, warehouse, company, batch_no, packing_slip, serial_no,
-			actual_qty, valuation_rate, qty_after_transaction, stock_value_difference,
+			actual_qty, valuation_rate, qty_after_transaction, stock_value_difference, incoming_rate,
 			posting_date, posting_time, voucher_type, voucher_no, is_transfer
 		from `tabStock Ledger Entry` force index (posting_sort_index)
 		where docstatus < 2 {0} {1}
