@@ -22,6 +22,10 @@ erpnext.hr.EmployeeController = class EmployeeController extends frappe.ui.form.
 		me.setup_buttons();
 	}
 
+	validate() {
+		frappe.regional.format_mobile_no(frm, "cell_number");
+	}
+
 	setup_buttons() {
 		var me = this;
 
@@ -149,6 +153,9 @@ frappe.ui.form.on('Employee',{
 	},
 	tax_cnic: function(frm) {
 		frappe.regional.format_cnic(frm, "tax_cnic");
+	},
+	cell_number: function (frm) {
+		frappe.regional.format_mobile_no(frm, "cell_number");
 	},
 });
 

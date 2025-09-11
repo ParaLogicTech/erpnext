@@ -2,9 +2,19 @@
 // License: GNU General Public License v3. See license.txt
 
 frappe.ui.form.on('Payment Gateway Account', {
-	refresh(frm) {
-		if(!frm.doc.__islocal) {
-			frm.set_df_property('payment_gateway', 'read_only', 1);
-		}
+	setup(frm) {
+		frm.events.setup_queries(frm);
+	},
+
+	setup_queries(frm) {
+		frm.set_query("payment_account", function() {
+			return {
+				filters: {
+					company: frm.doc.company,
+					account_currency: frm.doc.currency,
+					is_group: 0,
+				}
+			};
+		});
 	}
 });

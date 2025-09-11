@@ -1177,7 +1177,7 @@ def get_ageing_data(ageing_range, age_as_on, entry_date, outstanding_amount):
 
 
 def get_advance_against_voucher_types():
-	advance_against_voucher_types = ["Sales Order", "Purchase Order"]
+	advance_against_voucher_types = ["Sales Order", "Purchase Order", "Proforma Invoice"]
 
 	for voucher_types in frappe.get_hooks("advance_against_voucher_types"):
 		if isinstance(voucher_types, str):

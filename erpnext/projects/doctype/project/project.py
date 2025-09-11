@@ -458,7 +458,7 @@ class Project(StatusUpdaterERP):
 					and not exists(
 						select pref.name
 						from `tabPayment Entry Reference` pref
-						where pref.parent = pe.name and ifnull(pref.original_reference_doctype, '') not in ('', 'Sales Order', 'Payment Entry')
+						where pref.parent = pe.name and ifnull(pref.original_reference_doctype, '') not in ('', 'Sales Order', 'Proforma Invoice', 'Payment Entry')
 					)
 			""", {
 				"customers": customers,

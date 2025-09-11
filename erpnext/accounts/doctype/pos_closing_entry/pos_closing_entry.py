@@ -164,37 +164,58 @@ class POSClosingEntry(Document):
 		}, as_dict=1)
 
 	def get_payment_entries(self):
-		return frappe.db.sql("""
-			select
-				'Payment Entry' as document_type,
-				pe.name as document_name,
-				pe.mode_of_payment,
-				pe.posting_date,
-				pe.reference_no,
-				pe.reference_date,
-				pe.card_type,
-				pe.party_bank,
-				if(pe.payment_type = 'Receive', pe.base_received_amount_after_tax, -1 * pe.base_paid_amount_after_tax) as paid_amount,
-				if(pe.payment_type = 'Receive', pe.paid_to, pe.paid_from) as account
-			from `tabPayment Entry` pe
-			where pe.docstatus = 1
-			and pe.is_pos = 1
-			and pe.posting_date between %(from_date)s and %(to_date)s
-			and pe.company = %(company)s
-			and pe.pos_profile = %(pos_profile)s
-			and pe.cashier = %(user)s
-			and not exists(
+		fields = [
+			"'Payment Entry' as document_type",
+			"pe.name as document_name",
+			"pe.mode_of_payment",
+			"pe.posting_date",
+			"pe.reference_no",
+			"pe.reference_date",
+			"pe.card_type",
+			"pe.party_bank",
+			"if(pe.payment_type = 'Receive', pe.base_received_amount_after_tax, -1 * pe.base_paid_amount_after_tax) as paid_amount",
+			"if(pe.payment_type = 'Receive', pe.paid_to, pe.paid_from) as account",
+		]
+		fields = ", ".join(fields)
+
+		conditions = [
+			"pe.docstatus = 1",
+			"pe.is_pos = 1",
+			"pe.company = %(company)s",
+			"pe.pos_profile = %(pos_profile)s",
+			"pe.cashier = %(user)s",
+			"""not exists(
 				select closed.name
 				from `tabPOS Closing Entry Detail` closed
 				where closed.document_name = pe.name and document_type = 'Payment Entry' and closed.docstatus = 1
-			)
-		""", {
+			)""",
+		]
+		conditions = " and ".join(conditions)
+
+		args = {
 			"pos_profile": self.pos_profile,
 			"user": self.user or frappe.session.user,
 			"from_date": getdate(self.period_start_date),
 			"to_date": getdate(self.period_end_date),
 			"company": self.company,
-		}, as_dict=1)
+		}
+
+		payment_entries = frappe.db.sql(f"""
+			select {fields}
+			from `tabPayment Entry` pe
+			where pe.posting_date between %(from_date)s and %(to_date)s
+				and {conditions}
+		""", args, as_dict=1)
+
+		if not self.is_backdated:
+			payment_entries += frappe.db.sql(f"""
+				select {fields}, defer_pos_closing
+				from `tabPayment Entry` pe
+				where pe.defer_pos_closing = 1
+					and {conditions}
+			""", args, as_dict=1)
+
+		return payment_entries
 
 	def set_payment_details(self, payment_details):
 		self.payment_details = []

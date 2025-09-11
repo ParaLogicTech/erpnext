@@ -16,7 +16,8 @@
   "card_type",
   "party_bank",
   "paid_amount",
-  "account"
+  "account",
+  "defer_pos_closing"
  ],
  "fields": [
   {
@@ -120,12 +121,19 @@
    "hidden": 1,
    "label": "Document Detail No",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "defer_pos_closing",
+   "fieldtype": "Check",
+   "label": "Deferred POS Closing",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
  "istable": 1,
  "links": [],
- "modified": "2025-08-19 14:48:30.814581",
+ "modified": "2025-09-08 23:02:57.029066",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "POS Closing Entry Detail",

@@ -244,8 +244,6 @@
   "campaign_voucher_code_required",
   "column_break_ioc8",
   "campaign_voucher_code",
-  "fbr_pos_details_tab",
-  "sec_fbr_pos_transaction_details",
   "settings_tab",
   "print_settings_section",
   "letter_head",
@@ -1120,6 +1118,7 @@
   {
    "collapsible": 1,
    "collapsible_depends_on": "advances",
+   "depends_on": "eval:!doc.is_return",
    "fieldname": "advances_section",
    "fieldtype": "Section Break",
    "label": "Advance Payments",
@@ -2063,12 +2062,6 @@
    "label": "Default Depreciation (%)"
   },
   {
-   "depends_on": "eval:doc.has_stin && doc.is_fbr_pos_invoice",
-   "fieldname": "sec_fbr_pos_transaction_details",
-   "fieldtype": "Section Break",
-   "label": "FBR POS Transaction Details"
-  },
-  {
    "fetch_from": "applies_to_item.variant_of",
    "fieldname": "applies_to_variant_of",
    "fieldtype": "Link",
@@ -2192,12 +2185,6 @@
    "fieldtype": "Link",
    "label": "Applies to Serial No",
    "options": "Serial No"
-  },
-  {
-   "depends_on": "eval:doc.has_stin && doc.is_fbr_pos_invoice",
-   "fieldname": "fbr_pos_details_tab",
-   "fieldtype": "Tab Break",
-   "label": "FBR POS Details"
   },
   {
    "fieldname": "retail_price_list",
@@ -2371,7 +2358,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-02 18:02:01.740064",
+ "modified": "2025-09-11 15:09:16.335468",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

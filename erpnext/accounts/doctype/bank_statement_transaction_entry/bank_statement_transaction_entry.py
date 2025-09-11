@@ -158,7 +158,8 @@ class BankStatementTransactionEntry(Document):
 			if (payment is None):
 				order_doctype = "Sales Order" if entry.party_type=="Customer" else "Purchase Order"
 				from erpnext.controllers.accounts_controller import get_advance_payment_entries
-				payment_entries = get_advance_payment_entries(entry.party_type, entry.party, entry.account, order_doctype, against_all_orders=True)
+				payment_entries = get_advance_payment_entries(entry.party_type, entry.party, entry.account,
+					order_doctype=order_doctype, against_all_orders=True)
 				payment_entries += self.get_matching_payments(entry.party, amount, entry.transaction_date)
 				payment = next((payment for payment in payment_entries if payment.amount == amount and payment not in added_payments), None)
 				if (payment is None):

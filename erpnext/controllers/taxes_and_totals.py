@@ -28,8 +28,11 @@ class calculate_taxes_and_totals(object):
 			self.set_discount_amount()
 			self.apply_discount_amount()
 
-		if self.doc.doctype in ["Sales Invoice", "Purchase Invoice"]:
+		if self.doc.doctype in ("Sales Invoice", "Proforma Invoice", "Purchase Invoice"):
 			self.calculate_total_advance()
+			if self.doc.docstatus == 0:
+				self.calculate_outstanding_amount()
+				self.calculate_customer_outstanding_amount()
 
 		if self.doc.doctype == "Quotation":
 			self.calculate_including_previous_grand_total()
@@ -111,7 +114,7 @@ class calculate_taxes_and_totals(object):
 					item.amount = flt(item.rate * item.qty,	item.precision("amount"))
 
 				# Depreciation
-				if self.doc.doctype == "Sales Invoice":
+				if self.doc.doctype in ("Sales Invoice", "Proforma Invoice"):
 					item.amount_before_depreciation = item.amount_before_discount
 
 					if item.ignore_depreciation:
@@ -279,7 +282,7 @@ class calculate_taxes_and_totals(object):
 				item.tax_exclusive_total_discount = flt(item.tax_exclusive_amount_before_discount - item.tax_exclusive_amount,
 					item.precision("tax_exclusive_total_discount"))
 
-				if self.doc.doctype == "Sales Invoice":
+				if self.doc.doctype in ("Sales Invoice", "Proforma Invoice"):
 					item.tax_exclusive_amount_before_depreciation = flt(item.amount_before_depreciation / (1 + item.cumulated_tax_fraction))
 					item.tax_exclusive_depreciation_amount = flt(
 						item.tax_exclusive_amount_before_depreciation * flt(item.depreciation_percentage) / 100,
@@ -368,7 +371,7 @@ class calculate_taxes_and_totals(object):
 		if self.doc.meta.has_field('total_net_weight'):
 			self.doc.total_net_weight = 0.0
 
-		if self.doc.doctype == "Sales Invoice":
+		if self.doc.doctype in ("Sales Invoice", "Proforma Invoice"):
 			self.doc.base_total_before_depreciation = self.doc.total_before_depreciation = 0.0
 			self.doc.base_total_depreciation = self.doc.total_depreciation = 0.0
 			self.doc.base_total_underinsurance = self.doc.total_underinsurance = 0.0
@@ -408,7 +411,7 @@ class calculate_taxes_and_totals(object):
 			self.doc.net_total += item.net_amount
 			self.doc.base_net_total += item.base_net_amount
 
-			if self.doc.doctype == "Sales Invoice":
+			if self.doc.doctype in ("Sales Invoice", "Proforma Invoice"):
 				self.doc.total_before_depreciation += item.amount_before_depreciation
 				self.doc.base_total_before_depreciation += item.base_amount_before_depreciation
 
@@ -817,6 +820,9 @@ class calculate_taxes_and_totals(object):
 				tax.advance_tax = 0
 				tax.base_advance_tax = 0
 
+		if self.doc.get("is_return"):
+			self.doc.advances = []
+
 		for adv in self.doc.get("advances"):
 			adv.allocated_amount = flt(adv.allocated_amount, self.doc.precision("total_advance"))
 			self.doc.total_advance += adv.allocated_amount
@@ -842,47 +848,42 @@ class calculate_taxes_and_totals(object):
 
 		self.doc.total_advance = flt(self.doc.total_advance, self.doc.precision("total_advance"))
 
-		if self.doc.docstatus == 0:
-			self.calculate_outstanding_amount()
-			self.calculate_customer_outstanding_amount()
-
 	def calculate_outstanding_amount(self):
-		# NOTE:
-		# write_off_amount is only for POS Invoice
 		if self.doc.doctype == "Sales Invoice":
 			self.calculate_paid_amount()
 
-		if self.doc.is_return and self.doc.return_against and not self.doc.get('is_pos'):
-			self.outstanding_amount = 0
-			return
+		if self.doc.meta.has_field("write_off_amount"):
+			if self.should_round_transaction_currency():
+				self.doc.round_floats_in(self.doc, ["write_off_amount"])
+			self._set_in_company_currency(self.doc, ['write_off_amount'])
 
-		if self.should_round_transaction_currency():
-			self.doc.round_floats_in(self.doc, ["grand_total", "total_advance", "write_off_amount"])
-		self._set_in_company_currency(self.doc, ['write_off_amount'])
-
-		if self.doc.doctype in ["Sales Invoice", "Purchase Invoice"]:
-			total_amount_to_pay = self.get_total_amount_to_pay()
-
+		paid_amount = 0
+		if self.doc.meta.has_field("paid_amount"):
 			self.doc.round_floats_in(self.doc, ["paid_amount"])
-			change_amount = 0
+			self._set_in_company_currency(self.doc, ["paid_amount"])
+			paid_amount = flt(
+				self.doc.paid_amount
+				if self.doc.party_account_currency == self.doc.currency
+				else self.doc.base_paid_amount
+			)
 
-			if self.doc.doctype == "Sales Invoice" and not self.doc.get('is_return'):
-				self.calculate_write_off_amount()
-				self.calculate_change_amount()
-				change_amount = self.doc.change_amount \
-					if self.doc.party_account_currency == self.doc.currency else self.doc.base_change_amount
+		change_amount = 0
+		if self.doc.doctype == "Sales Invoice":
+			self.calculate_change_amount()
+			change_amount = flt(
+				self.doc.change_amount
+				if self.doc.party_account_currency == self.doc.currency
+				else self.doc.base_change_amount
+			)
 
-			paid_amount = self.doc.paid_amount \
-				if self.doc.party_account_currency == self.doc.currency else self.doc.base_paid_amount
-
-			if self.doc.is_return and self.doc.return_against:
-				self.outstanding_amount = 0
-			else:
-				self.doc.outstanding_amount = flt(total_amount_to_pay - flt(paid_amount) + flt(change_amount),
-					self.doc.precision("outstanding_amount"))
-
-			if self.doc.doctype == 'Sales Invoice' and self.doc.get('is_pos') and self.doc.get('is_return'):
-				self.update_paid_amount_for_return(total_amount_to_pay)
+		if self.doc.get("is_return") and self.doc.get("return_against"):
+			self.outstanding_amount = 0
+		else:
+			total_amount_to_pay = self.get_total_amount_to_pay()
+			self.doc.outstanding_amount = flt(
+				total_amount_to_pay - paid_amount + change_amount,
+				self.doc.precision("outstanding_amount")
+			)
 
 	def calculate_customer_outstanding_amount(self):
 		if self.doc.doctype == "Sales Invoice" and self.doc.meta.has_field('customer_outstanding_amount'):
@@ -896,13 +897,15 @@ class calculate_taxes_and_totals(object):
 
 	def get_total_amount_to_pay(self):
 		grand_total = self.doc.rounded_total or self.doc.grand_total
+		total_advance = flt(self.doc.get("total_advance"))
+
 		if self.doc.party_account_currency == self.doc.currency:
-			total_amount_to_pay = flt(grand_total - self.doc.total_advance
-				- flt(self.doc.write_off_amount), self.doc.precision("grand_total"))
+			total_amount_to_pay = grand_total - total_advance - flt(self.doc.get("write_off_amount"))
+			total_amount_to_pay = flt(total_amount_to_pay, self.doc.precision("grand_total"))
 		else:
-			total_amount_to_pay = flt(flt(grand_total *
-				self.doc.conversion_rate, self.doc.precision("grand_total")) - self.doc.total_advance
-					- flt(self.doc.base_write_off_amount), self.doc.precision("grand_total"))
+			base_grand_total = flt(grand_total * self.doc.conversion_rate, self.doc.precision("base_grand_total"))
+			total_amount_to_pay = base_grand_total - total_advance - flt(self.doc.get("base_write_off_amount"))
+			total_amount_to_pay = flt(total_amount_to_pay, self.doc.precision("base_grand_total"))
 
 		return total_amount_to_pay
 
@@ -910,11 +913,11 @@ class calculate_taxes_and_totals(object):
 		paid_amount = base_paid_amount = 0.0
 
 		if self.doc.is_pos:
-			for payment in self.doc.get('payments'):
-				payment.amount = flt(payment.amount)
-				payment.base_amount = payment.amount * flt(self.doc.conversion_rate)
-				paid_amount += payment.amount
-				base_paid_amount += payment.base_amount
+			for d in self.doc.get('payments'):
+				d.amount = flt(d.amount, d.precision("amount"))
+				d.base_amount = d.amount * flt(self.doc.conversion_rate)
+				paid_amount += d.amount
+				base_paid_amount += d.base_amount
 		else:
 			self.doc.set('payments', [])
 
@@ -934,7 +937,8 @@ class calculate_taxes_and_totals(object):
 
 		if (
 			self.doc.doctype == "Sales Invoice"
-			and paid_amount > grand_total and not self.doc.is_return
+			and paid_amount > grand_total
+			and not self.doc.is_return
 			and any([d.type == "Cash" for d in self.doc.payments])
 		):
 			self.doc.change_amount = flt(
@@ -945,20 +949,6 @@ class calculate_taxes_and_totals(object):
 			self.doc.base_change_amount = flt(
 				self.doc.change_amount * self.doc.conversion_rate,
 				self.doc.precision("base_change_amount")
-			)
-
-	def calculate_write_off_amount(self):
-		if flt(self.doc.change_amount) > 0:
-			grand_total = self.doc.rounded_total or self.doc.grand_total
-			paid_amount = self.doc.paid_amount + self.doc.total_advance
-
-			self.doc.write_off_amount = flt(
-				grand_total - paid_amount + self.doc.change_amount,
-				self.doc.precision("write_off_amount")
-			)
-			self.doc.base_write_off_amount = flt(
-				self.doc.write_off_amount * self.doc.conversion_rate,
-				self.doc.precision("base_write_off_amount")
 			)
 
 	def calculate_margin(self, item):
@@ -990,23 +980,6 @@ class calculate_taxes_and_totals(object):
 
 	def set_item_wise_tax_breakup(self):
 		self.doc.other_charges_calculation = get_itemised_tax_breakup_html(self.doc)
-
-	def update_paid_amount_for_return(self, total_amount_to_pay):
-		if self.doc.pos_profile:
-			default_mode_of_payment = frappe.db.get_value('Sales Invoice Payment',
-				{'parent': self.doc.pos_profile, 'default': 1},
-				['mode_of_payment', 'type', 'account'], as_dict=1)
-
-			if default_mode_of_payment:
-				self.doc.payments = []
-				self.doc.append('payments', {
-					'mode_of_payment': default_mode_of_payment.mode_of_payment,
-					'type': default_mode_of_payment.type,
-					'account': default_mode_of_payment.account,
-					'amount': total_amount_to_pay
-				})
-
-		self.calculate_paid_amount()
 
 	def calculate_including_previous_grand_total(self):
 		self.doc.previous_grand_total = 0
