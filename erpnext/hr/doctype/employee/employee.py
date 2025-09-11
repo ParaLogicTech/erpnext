@@ -45,6 +45,7 @@ class Employee(NestedSet):
 		self.set_employee_name()
 		self.validate_date()
 		self.validate_email()
+		self.validate_mobile_no()
 		self.validate_status()
 		self.validate_reports_to()
 		self.validate_preferred_email()
@@ -173,6 +174,9 @@ class Employee(NestedSet):
 					# already exists
 					pass
 
+		if self.cell_number:
+			user.mobile_no = self.cell_number
+
 		user.save()
 
 	def update_employee_checkins(self):
@@ -220,6 +224,11 @@ class Employee(NestedSet):
 			validate_email_address(self.company_email, True)
 		if self.personal_email:
 			validate_email_address(self.personal_email, True)
+
+	def validate_mobile_no(self):
+		from frappe.regional.regional import validate_mobile_no
+		if self.cell_number:
+			validate_mobile_no(self.cell_number, throw=True)
 
 	def validate_status(self):
 		if self.status == 'Left':
@@ -452,7 +461,7 @@ def create_user(employee, user = None, email=None):
 		"last_name": last_name,
 		"gender": emp.gender,
 		"birth_date": emp.date_of_birth,
-		"phone": emp.cell_number,
+		"mobile_no": emp.cell_number,
 		"bio": emp.bio
 	})
 	user.insert()
