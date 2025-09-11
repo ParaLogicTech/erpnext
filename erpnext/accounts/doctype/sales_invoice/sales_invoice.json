@@ -11,8 +11,10 @@
   "naming_series",
   "customer",
   "customer_name",
+  "customer_group",
   "bill_to",
   "bill_to_name",
+  "bill_to_group",
   "has_stin",
   "po_no",
   "po_date",
@@ -219,7 +221,6 @@
   "cb_1",
   "shipping_address_name",
   "shipping_address",
-  "customer_group",
   "territory",
   "cb_2",
   "company_address",
@@ -1341,7 +1342,8 @@
    "hidden": 1,
    "label": "Customer Group",
    "options": "Customer Group",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "fieldname": "campaign",
@@ -2341,6 +2343,15 @@
    "label": "Product Bundles",
    "options": "fa fa-suitcase",
    "print_hide": 1
+  },
+  {
+   "fieldname": "bill_to_group",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Bill To Group",
+   "options": "Customer Group",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -2348,7 +2359,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-04 15:09:16.335467",
+ "modified": "2025-09-11 14:35:12.608795",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
