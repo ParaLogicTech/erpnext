@@ -358,7 +358,7 @@ def get_ageing_details(fifo_queue, to_date):
 
 def get_total_value(total_qty, last_valuation_rate):
 	total_value = total_qty * last_valuation_rate
-	return total_value
+	return flt(total_value, 9)
 
 
 def get_average_age(fifo_queue, to_date):
