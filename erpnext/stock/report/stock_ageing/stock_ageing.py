@@ -295,14 +295,13 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 		)
 
 		fifo_queue = fifo_dict["fifo_queue"]
-		transferred_item_details.setdefault((sle.voucher_no, sle.item_code), [])
 		serial_no_list = get_serial_nos(sle.serial_no) if sle.serial_no else []
 
 		if sle.actual_qty > 0:
-			if transferred_item_details.get((sle.voucher_no, sle.item_code)):
-				batch = transferred_item_details[(sle.voucher_no, sle.item_code)][0]
-				fifo_queue.append(batch)
-				transferred_item_details[((sle.voucher_no, sle.item_code))].pop(0)
+			if transferred_item_details.get((sle.voucher_no, sle.voucher_detail_no, sle.item_code)):
+				for batch in transferred_item_details[(sle.voucher_no, sle.voucher_detail_no, sle.item_code)]:
+					fifo_queue.append(batch)
+				del transferred_item_details[(sle.voucher_no, sle.voucher_detail_no, sle.item_code)]
 			else:
 				if serial_no_list:
 					for serial_no in serial_no_list:
@@ -326,11 +325,19 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 						# if batch qty > 0
 						# not enough or exactly same qty in current batch, clear batch
 						qty_to_pop -= flt(batch[0])
-						transferred_item_details[(sle.voucher_no, sle.item_code)].append(fifo_queue.pop(0))
+
+						batch_to_remove = fifo_queue.pop(0) if fifo_queue else None
+						if sle.is_transfer and batch_to_remove:
+							transferred_item_details.setdefault((sle.voucher_no, sle.voucher_detail_no, sle.item_code), []).append(
+								batch_to_remove
+							)
 					else:
 						# all from current batch
 						batch[0] = flt(batch[0]) - qty_to_pop
-						transferred_item_details[(sle.voucher_no, sle.item_code)].append([qty_to_pop, batch[1], batch[2]])
+						if sle.is_transfer:
+							transferred_item_details.setdefault((sle.voucher_no, sle.voucher_detail_no, sle.item_code), []).append(
+								[qty_to_pop, batch[1], batch[2]]
+							)
 						qty_to_pop = 0
 
 		fifo_dict["qty_after_transaction"] = sle.qty_after_transaction
