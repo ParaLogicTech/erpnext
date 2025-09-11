@@ -492,10 +492,7 @@ class PaymentEntry(AccountsController):
 			frappe.throw(_("Row #{0}: Journal Entry {1} does not have account {2} or is already matched against a voucher")
 				.format(d.idx, d.reference_name, self.party_account))
 		else:
-			if self.payment_type == "Receive":
-				dr_or_cr = "debit" if flt(d.allocated_amount) >= 0 else "credit"
-			else:
-				dr_or_cr = "credit" if flt(d.allocated_amount) >= 0 else "debit"
+			dr_or_cr = "debit" if self.payment_type == "Receive" else "credit"
 
 			valid = False
 			for jvd in je_accounts:
