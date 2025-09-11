@@ -286,7 +286,7 @@ class SellingController(TransactionController):
 		from erpnext.stock.stock_ledger import get_valuation_rate
 
 		def throw_message(row, min_rate):
-			frappe.throw(_("Row #{0}: Selling Rate for Item {1} cannot be less than {2}").format(
+			frappe.throw(_("Row #{0}: Net Selling Rate for Item {1} cannot be less than {2}").format(
 				row.idx,
 				frappe.bold(row.item_code),
 				frappe.bold(frappe.format(min_rate, df=row.meta.get_field("rate"))),
@@ -321,7 +321,7 @@ class SellingController(TransactionController):
 
 			if valuation_rate > 0:
 				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
-				if flt(d.base_rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
+				if flt(d.base_net_rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
 					throw_message(d, valuation_rate_in_sales_uom)
 
 	def get_item_list(self):
