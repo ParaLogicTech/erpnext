@@ -23,7 +23,7 @@ from erpnext.accounts.general_ledger import get_round_off_account_and_cost_cente
 from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty_program_details_with_points,\
 	validate_loyalty_points
 from erpnext.accounts.deferred_revenue import validate_service_stop_date
-from erpnext.accounts.doctype.pos_profile.pos_profile import set_account_for_mode_of_payment, get_pos_profile, check_is_pos_open
+from erpnext.accounts.doctype.pos_profile.pos_profile import set_account_for_mode_of_payment, get_pos_profile
 from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
 
 from erpnext.healthcare.utils import manage_invoice_submit_cancel
@@ -61,7 +61,7 @@ class SalesInvoice(SellingController):
 		self.validate_debit_to_acc()
 		self.validate_return_against()
 
-		self.check_advance_payment_against_order("sales_order")
+		self.check_advance_payment_against_order(["proforma_invoice", "sales_order"])
 
 		self.validate_write_off_account()
 		self.validate_account_for_change_amount()
@@ -295,6 +295,7 @@ class SalesInvoice(SellingController):
 			doc = frappe.get_doc("Proforma Invoice", name)
 			doc.set_billing_status(update=True)
 			doc.validate_billed_qty(from_doctype=self.doctype, row_names=proforma_invoice_row_names)
+			doc.set_outstanding_amount(update=True)
 			doc.set_status(update=True)
 			doc.notify_update()
 
@@ -526,11 +527,6 @@ class SalesInvoice(SellingController):
 
 					elif asset.status in ("Scrapped", "Cancelled", "Sold"):
 						frappe.throw(_("Row #{0}: Asset {1} cannot be submitted, it is already {2}").format(d.idx, d.asset, asset.status))
-
-	def validate_pos_is_open(self, throw=True):
-		if self.is_pos and self.pos_profile:
-			user = self.cashier or self.owner
-			check_is_pos_open(user, self.pos_profile, self.posting_date, throw=throw)
 
 	def validate_pos_payments(self):
 		if not self.is_pos:
@@ -795,25 +791,6 @@ class SalesInvoice(SellingController):
 
 	def get_company_abbr(self):
 		return frappe.db.sql("select abbr from tabCompany where name=%s", self.company)[0][0]
-
-	def validate_debit_to_acc(self):
-		account = frappe.get_cached_value("Account", self.debit_to,
-			["account_type", "report_type", "account_currency"], as_dict=True)
-
-		if not account:
-			frappe.throw(_("Debit To is required"), title=_("Account Missing"))
-
-		if account.report_type != "Balance Sheet":
-			frappe.throw(_("Please ensure {} account is a Balance Sheet account. \
-					You can change the parent account to a Balance Sheet account or select a different account.")
-				.format(frappe.bold("Debit To")), title=_("Invalid Account"))
-
-		if self.customer and account.account_type != "Receivable":
-			frappe.throw(_("Please ensure {} account is a Receivable account. \
-					Change the account type to Receivable or select a different account.")
-				.format(frappe.bold("Debit To")), title=_("Invalid Account"))
-
-		self.party_account_currency = account.account_currency
 
 	def validate_with_previous_doc(self):
 		sales_order_compare = [["currency", "="], ["branch", "="]]

@@ -594,7 +594,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 
 	allocated_amount() {
 		this.calculate_total_advance();
-		this.frm.refresh_fields();
+		this.write_off_outstanding_amount_automatically();
 	}
 
 	advances_remove() {
@@ -602,20 +602,24 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 	}
 
 	write_off_outstanding_amount_automatically() {
-		var grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
-		if(cint(this.frm.doc.write_off_outstanding_amount_automatically)) {
+		let grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
+		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance);
+
+		if (cint(this.frm.doc.write_off_outstanding_amount_automatically)) {
 			frappe.model.round_floats_in(this.frm.doc, ["grand_total", "paid_amount"]);
 			// this will make outstanding amount 0
-			this.frm.doc.write_off_amount = flt(grand_total - this.frm.doc.paid_amount - this.frm.doc.total_advance,
-				precision("write_off_amount"));
+			if (paid_amount < grand_total) {
+				this.frm.doc.write_off_amount = flt(grand_total - paid_amount, precision("write_off_amount"));
+			} else {
+				this.frm.doc.write_off_amount = 0;
+			}
 			this.set_in_company_currency(this.frm.doc, ["write_off_amount"]);
 			this.frm.toggle_enable("write_off_amount", false);
-
 		} else {
 			this.frm.toggle_enable("write_off_amount", true);
 		}
 
-		this.calculate_outstanding_amount(false);
+		this.calculate_outstanding_amount();
 		this.frm.refresh_fields();
 	}
 
@@ -769,14 +773,20 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		else this.frm.trigger("refresh");
 	}
 
-	amount() {
-		this.write_off_outstanding_amount_automatically()
+	amount(doc, cdt, cdn) {
+		if (cdt == "Sales Invoice Payment") {
+			this.calculate_paid_amount();
+			this.write_off_outstanding_amount_automatically();
+		}
 	}
 
 	change_amount() {
-		if(this.frm.doc.paid_amount > this.frm.doc.grand_total){
+		let grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
+		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance);
+
+		if (paid_amount > grand_total) {
 			this.calculate_write_off_amount();
-		}else {
+		} else {
 			this.frm.set_value("change_amount", 0.0);
 			this.frm.set_value("base_change_amount", 0.0);
 		}
@@ -872,16 +882,6 @@ cur_frm.cscript.income_account = function(doc, cdt, cdn) {
 cur_frm.cscript.expense_account = function(doc, cdt, cdn) {
 	erpnext.utils.copy_value_in_all_rows(doc, cdt, cdn, "items", "expense_account");
 }
-
-cur_frm.set_query("debit_to", function(doc) {
-	return {
-		filters: {
-			'account_type': 'Receivable',
-			'is_group': 0,
-			'company': doc.company
-		}
-	}
-});
 
 cur_frm.set_query("asset", "items", function(doc, cdt, cdn) {
 	var d = locals[cdt][cdn];

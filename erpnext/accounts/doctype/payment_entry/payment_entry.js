@@ -110,7 +110,7 @@ frappe.ui.form.on('Payment Entry', {
 
 		frm.set_query("reference_doctype", "references", function() {
 			if (frm.doc.party_type=="Customer") {
-				var doctypes = ["Sales Order", "Sales Invoice", "Journal Entry", "Payment Entry"];
+				var doctypes = ["Sales Invoice", "Proforma Invoice", "Sales Order", "Journal Entry", "Payment Entry"];
 			} else if (frm.doc.party_type=="Supplier") {
 				var doctypes = ["Purchase Order", "Purchase Invoice", "Landed Cost Voucher", "Journal Entry", "Payment Entry"];
 			} else if (frm.doc.party_type=="Letter of Credit") {
@@ -158,11 +158,14 @@ frappe.ui.form.on('Payment Entry', {
 			}
 
 			const filters = {"docstatus": 1, "company": doc.company};
-			const party_type_doctypes = ['Sales Invoice', 'Sales Order', 'Purchase Invoice',
-				'Purchase Order', 'Expense Claim', 'Fees'];
+			const party_type_doctypes = [
+				'Sales Invoice', 'Proforma Invoice', 'Sales Order',
+				'Purchase Invoice', 'Purchase Order',
+				'Expense Claim', 'Fees',
+			];
 
-			if (in_list(party_type_doctypes, child.reference_doctype)) {
-				if (child.reference_doctype == "Sales Invoice") {
+			if (party_type_doctypes.includes(child.reference_doctype)) {
+				if (["Sales Invoice", "Proforma Invoice", "Sales Order"].includes(child.reference_doctype)) {
 					filters['bill_to'] = doc.party;
 				} else {
 					filters[frappe.model.scrub(doc.party_type)] = doc.party;
@@ -452,6 +455,7 @@ frappe.ui.form.on('Payment Entry', {
 				return frm.call({
 					doc: frm.doc,
 					method: "set_missing_values",
+					freeze: 1,
 					callback: function(r) {
 						if(!r.exc) {
 							frappe.model.set_default_values(frm.doc);

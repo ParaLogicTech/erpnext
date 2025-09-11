@@ -9,6 +9,7 @@ from erpnext.accounts.utils import (get_outstanding_invoices,
 	update_reference_in_payment_entry, reconcile_against_document)
 from erpnext.controllers.accounts_controller import get_advance_payment_entries, get_advance_journal_entries
 
+
 class PaymentReconciliation(Document):
 	@frappe.whitelist()
 	def get_unreconciled_entries(self):
@@ -18,14 +19,34 @@ class PaymentReconciliation(Document):
 	def get_nonreconciled_payment_entries(self):
 		self.check_mandatory_to_fetch()
 
-		order_doctype = "Sales Order" if self.party_type == "Customer" else "Purchase Order"
+		if self.party_type == "Customer":
+			order_doctype = ["Sales Order", "Proforma Invoice"]
+		elif self.party_type == "Supplier":
+			order_doctype = "Purchase Order"
+		else:
+			order_doctype = None
 
-		payment_entries = get_advance_payment_entries(self.party_type, self.party, self.receivable_payable_account,
-			order_doctype, against_all_orders=True, against_account=self.bank_cash_account, limit=self.limit)
-		journal_entries = get_advance_journal_entries(self.party_type, self.party, self.receivable_payable_account,
-			order_doctype, against_all_orders=True, limit=self.limit)
+		payment_entries = get_advance_payment_entries(
+			self.party_type,
+			self.party,
+			self.receivable_payable_account,
+			order_doctype=order_doctype,
+			against_all_orders=True,
+			against_account=self.bank_cash_account,
+			limit=self.limit
+		)
+
+		journal_entries = get_advance_journal_entries(
+			self.party_type,
+			self.party,
+			self.receivable_payable_account,
+			order_doctype=order_doctype,
+			against_all_orders=True,
+			limit=self.limit
+		)
+
 		dr_cr_notes_entries = self.get_dr_cr_notes_entries()
-				
+
 		self.add_payment_entries(payment_entries + journal_entries + dr_cr_notes_entries)
 
 	def add_payment_entries(self, entries):
@@ -45,7 +66,6 @@ class PaymentReconciliation(Document):
 			SELECT i.name, i.posting_date, i.outstanding_amount, i.currency
 			FROM `tab{invoice_doctype}` i
 			WHERE i.{party_field} = %s
-			AND i.is_return = 1
 			AND i.outstanding_amount < 0
 			AND i.docstatus = 1
 			AND EXISTS (
@@ -226,6 +246,7 @@ class PaymentReconciliation(Document):
 
 		return cond
 
+
 def reconcile_dr_cr_note(dr_cr_notes, company):
 	for d in dr_cr_notes:
 
@@ -234,12 +255,16 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 
 		company_currency = erpnext.get_company_currency(company)
 
+		branch, cost_center = frappe.db.get_value(d.voucher_type, d.voucher_no, ["branch", "cost_center"])
+
 		jv = frappe.get_doc({
 			"doctype": "Journal Entry",
 			"voucher_type": "Payment Reconciliation",
 			"posting_date": today(),
 			"company": company,
 			"multi_currency": 1 if d.currency != company_currency else 0,
+			"branch": branch,
+			"cost_center": cost_center,
 			"accounts": [
 				{
 					'account': d.account,
@@ -247,8 +272,7 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 					'party_type': d.party_type,
 					d.dr_or_cr: abs(d.allocated_amount),
 					'reference_type': d.against_voucher_type,
-					'reference_name': d.against_voucher,
-					'cost_center': erpnext.get_default_cost_center(company)
+					'reference_name': d.against_voucher
 				},
 				{
 					'account': d.account,
@@ -257,8 +281,7 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 					reconcile_dr_or_cr: (abs(d.allocated_amount)
 						if abs(d.unadjusted_amount) > abs(d.allocated_amount) else abs(d.unadjusted_amount)),
 					'reference_type': d.voucher_type,
-					'reference_name': d.voucher_no,
-					'cost_center': erpnext.get_default_cost_center(company)
+					'reference_name': d.voucher_no
 				}
 			]
 		})

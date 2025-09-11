@@ -268,8 +268,6 @@ get_translated_dict = {
 
 get_site_info = 'erpnext.utilities.get_site_info'
 
-payment_gateway_enabled = "erpnext.accounts.utils.create_payment_gateway_account"
-
 get_customer_feedback_contact_details = [
 	"erpnext.overrides.customer_feedback.customer_feedback_hooks.get_customer_feedback_contact_details_hook"
 ]

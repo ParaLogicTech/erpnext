@@ -424,7 +424,12 @@ erpnext.accounts.PurchaseInvoice = class PurchaseInvoice extends erpnext.buying.
 
 	allocated_amount() {
 		this.calculate_total_advance();
+		this.calculate_outstanding_amount();
 		this.frm.refresh_fields();
+	}
+
+	advances_remove() {
+		this.allocated_amount();
 	}
 
 	items_add(doc, cdt, cdn) {

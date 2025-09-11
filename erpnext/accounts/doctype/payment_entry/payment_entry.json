@@ -16,10 +16,12 @@
   "tax_cnic",
   "column_break_9",
   "user_remark",
+  "payment_order",
+  "payment_request",
   "pos_profile",
   "cashier",
   "is_pos",
-  "payment_order",
+  "defer_pos_closing",
   "column_break_5",
   "company",
   "branch",
@@ -483,8 +485,7 @@
    "fieldtype": "Date",
    "label": "Cheque/Reference Date",
    "mandatory_depends_on": "eval:(doc.payment_type == \"Receive\" ? doc.account_paid_to_type : doc.account_paid_from_type) == \"Bank\"",
-   "no_copy": 1,
-   "search_index": 1
+   "no_copy": 1
   },
   {
    "depends_on": "eval:doc.docstatus==1",
@@ -950,7 +951,8 @@
    "label": "Cashier",
    "no_copy": 1,
    "options": "User",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "deposit_date",
@@ -959,11 +961,31 @@
    "no_copy": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "payment_request",
+   "fieldtype": "Link",
+   "label": "Payment Request",
+   "no_copy": 1,
+   "options": "Payment Request",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "0",
+   "depends_on": "defer_pos_closing",
+   "description": "This POS Entry was created by the system when the Cashier's POS was not open",
+   "fieldname": "defer_pos_closing",
+   "fieldtype": "Check",
+   "label": "Deferred POS Closing",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-19 13:50:14.243188",
+ "modified": "2025-09-08 22:58:45.119803",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",

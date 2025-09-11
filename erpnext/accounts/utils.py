@@ -454,7 +454,7 @@ def check_if_advance_entry_modified(args):
 					pe.name = pref.parent and pe.docstatus = 1
 					and pe.name = %(voucher_no)s and pref.name = %(voucher_detail_no)s
 					and pe.party_type = %(party_type)s and pe.party = %(party)s and pe.{0} = %(account)s
-					and pref.reference_doctype in ('Sales Order', 'Purchase Order', 'Employee Advance')
+					and pref.reference_doctype in ('Sales Order', 'Purchase Order', 'Proforma Invoice', 'Employee Advance')
 					and pref.allocated_amount = %(unadjusted_amount)s
 			""".format(party_account_field), args)
 		else:
@@ -536,7 +536,7 @@ def update_reference_in_journal_entry(d, jv_doc, do_not_save=False):
 			ch.cheque_date = jvd.cheque_date
 			ch.user_remark = jvd.user_remark
 			ch.original_reference_type = jvd.original_reference_type
-			ch.original_reference_name = jvd.original_reference_type
+			ch.original_reference_name = jvd.original_reference_name
 			ch.against_account = cstr(jvd.against_account)
 
 			from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
@@ -983,49 +983,6 @@ def get_children(doctype, parent, company, is_root=False):
 				each["balance_in_account_currency"] = flt(get_balance_on(each.get("value"), company=company))
 
 	return acc
-
-
-def create_payment_gateway_account(gateway):
-	from erpnext.setup.setup_wizard.operations.company_setup import create_bank_account
-
-	company = frappe.db.get_value("Global Defaults", None, "default_company")
-	if not company:
-		return
-
-	# NOTE: we translate Payment Gateway account name because that is going to be used by the end user
-	bank_account = frappe.db.get_value("Account", {"account_name": _(gateway), "company": company},
-		["name", 'account_currency'], as_dict=1)
-
-	if not bank_account:
-		# check for untranslated one
-		bank_account = frappe.db.get_value("Account", {"account_name": gateway, "company": company},
-			["name", 'account_currency'], as_dict=1)
-
-	if not bank_account:
-		# try creating one
-		bank_account = create_bank_account({"company_name": company, "bank_account": _(gateway)})
-
-	if not bank_account:
-		frappe.msgprint(_("Payment Gateway Account not created, please create one manually."))
-		return
-
-	# if payment gateway account exists, return
-	if frappe.db.exists("Payment Gateway Account",
-		{"payment_gateway": gateway, "currency": bank_account.account_currency}):
-		return
-
-	try:
-		frappe.get_doc({
-			"doctype": "Payment Gateway Account",
-			"is_default": 1,
-			"payment_gateway": gateway,
-			"payment_account": bank_account.name,
-			"currency": bank_account.account_currency
-		}).insert(ignore_permissions=True)
-
-	except frappe.DuplicateEntryError:
-		# already exists, due to a reinstall?
-		pass
 
 
 @frappe.whitelist()

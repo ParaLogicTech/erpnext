@@ -25,6 +25,7 @@
   "unlink_payment_on_cancellation_of_invoice",
   "unlink_advance_on_cancellation_of_payment",
   "unlink_advance_payment_on_cancelation_of_order",
+  "apply_taxes_on_advance_payment",
   "validate_over_billing_in_sales_invoice",
   "validate_over_billing_in_purchase_invoice",
   "check_supplier_invoice_uniqueness",
@@ -311,13 +312,20 @@
    "fieldname": "cost_center_mandatory_in_entry_of_bs_account",
    "fieldtype": "Check",
    "label": "Cost Center Mandatory in Entry of Balance Sheet Account"
+  },
+  {
+   "default": "0",
+   "fieldname": "apply_taxes_on_advance_payment",
+   "fieldtype": "Check",
+   "label": "Apply Taxes on Advance Payment"
   }
  ],
+ "grid_page_length": 500,
  "icon": "icon-cog",
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-02-20 13:47:07.014721",
+ "modified": "2025-08-28 14:27:21.809120",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounts Settings",
@@ -343,6 +351,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": [],

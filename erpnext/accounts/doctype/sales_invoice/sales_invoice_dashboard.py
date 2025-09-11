@@ -24,7 +24,7 @@ def get_data():
 		'transactions': [
 			{
 				'label': _('Payment'),
-				'items': ['Payment Entry', 'Journal Entry', 'POS Closing Entry']
+				'items': ['Payment Entry', 'Journal Entry', 'Payment Request', 'POS Closing Entry']
 			},
 			{
 				'label': _('Previous Documents'),

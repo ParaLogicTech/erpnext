@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 from erpnext.controllers.selling_controller import SellingController
+from erpnext.accounts.utils import get_balance_on_voucher
 from frappe.model.mapper import get_mapped_doc
 
 
@@ -24,9 +25,12 @@ class ProformaInvoice(SellingController):
 		self.validate_uom_is_integer("stock_uom", "qty")
 		self.validate_project_customer()
 		self.check_sales_order_on_hold_or_close()
+		self.validate_debit_to_acc()
 		self.validate_campaign()
 		self.validate_with_previous_doc()
+		self.sort_items()
 		self.set_billing_status()
+		self.set_outstanding_amount()
 		self.set_status()
 		self.set_title()
 
@@ -37,8 +41,17 @@ class ProformaInvoice(SellingController):
 		self.update_previous_doc_status()
 
 	def on_cancel(self):
+		self.unlink_payments_on_order_cancel()
 		self.update_status_on_cancel()
+		self.set_outstanding_amount(update=True)
 		self.update_previous_doc_status()
+
+	def on_gl_against_voucher(self, account, party_type, party, on_cancel):
+		if not party_type or not party:
+			return
+
+		self.set_outstanding_amount(update=True)
+		self.notify_update()
 
 	def validate_with_previous_doc(self):
 		super().validate_with_previous_doc({
@@ -182,16 +195,102 @@ class ProformaInvoice(SellingController):
 		self.validate_completed_qty('billed_qty', 'qty', self.items,
 			allowance_type=None, from_doctype=from_doctype, row_names=row_names)
 
+	def set_outstanding_amount(self, update=False, update_modified=True):
+		if self.party_account_currency == self.currency:
+			grand_total = self.rounded_total or self.grand_total
+		else:
+			grand_total = self.base_rounded_total or self.base_grand_total
+
+		payable_amount = grand_total - flt(self.total_advance)
+
+		party_type, party, party_name = self.get_billing_party()
+		self.advance_paid = get_balance_on_voucher(
+			self.doctype,
+			self.name,
+			party_type,
+			party,
+			self.debit_to,
+			include_original_references=True,
+			dr_or_cr="credit_in_account_currency - debit_in_account_currency"
+		)
+
+		self.advance_paid += self.get_advance_tax_allocated()
+
+		if self.per_billed or self.docstatus == 2:
+			self.outstanding_amount = 0
+		else:
+			self.outstanding_amount = payable_amount - self.advance_paid
+
+		if update:
+			self.db_set({
+				"outstanding_amount": self.outstanding_amount,
+				"advance_paid": self.advance_paid,
+			}, update_modified=update_modified)
+
+	def get_advance_tax_allocated(self):
+		advance_tax_allocated = 0
+
+		payment_entry_data = frappe.db.sql("""
+			select
+				pe.name as payment_entry,
+				sum(pref.allocated_amount) as allocated_amount,
+				if(pe.payment_type = 'Receive', pe.paid_amount_before_tax, pe.received_amount_before_tax) as total_paid_amount
+			from `tabPayment Entry Reference` pref
+			inner join `tabPayment Entry` pe on pe.name = pref.parent
+			where pref.docstatus = 1 and (
+				(pref.reference_doctype = 'Proforma Invoice' and pref.reference_name = %(proforma_invoice)s)
+				or (pref.original_reference_doctype = 'Proforma Invoice' and pref.original_reference_name = %(proforma_invoice)s)
+			)
+			group by pe.name
+		""", {"proforma_invoice": self.name}, as_dict=True)
+
+		payment_entries = list(set(d.payment_entry for d in payment_entry_data))
+		payment_entry_map = {}
+		for d in payment_entry_data:
+			payment_entry_map[d.payment_entry] = d
+
+		advance_tax_map = self.get_advance_tax_map(payment_entries)
+		for payment_entry, advance_tax_accounts in advance_tax_map.items():
+			pe_details = payment_entry_map[payment_entry]
+			for tax_account, tax_amount in advance_tax_accounts.items():
+				tax = [tax for tax in self.get("taxes") if tax.account_head == tax_account]
+				tax = tax[0] if tax else None
+				if not tax:
+					continue
+
+				allocated_tax = tax_amount * pe_details.allocated_amount / pe_details.total_paid_amount if pe_details.total_paid_amount else 0
+				advance_tax_allocated += allocated_tax
+
+		return flt(advance_tax_allocated, self.precision("advance_paid"))
+
 
 @frappe.whitelist()
-def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postprocess=False):
+def make_sales_invoice(
+	source_name,
+	target_doc=None,
+	ignore_permissions=False,
+	only_items=None,
+	skip_postprocess=False,
+	set_advances=True,
+):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
 
+	set_advances = cint(set_advances)
+
 	def postprocess(source, target):
+		target.flags.ignore_permissions = ignore_permissions
 		target.ignore_pricing_rule = 1
 		target.update_stock = 0
 		target.run_method("postprocess_after_mapping")
+
+		if set_advances:
+			target.set_advances(
+				include_unallocated=True if target.project else False,
+				against_project=target.project,
+			)
+			if target.advances:
+				target.run_method("calculate_taxes_and_totals")
 
 	mapping = {
 		"Proforma Invoice": {
@@ -222,9 +321,15 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 	if only_items:
 		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Proforma Invoice Item"}
 
-	doc = get_mapped_doc("Proforma Invoice", source_name, mapping, target_doc,
+	doc = get_mapped_doc(
+		"Proforma Invoice",
+		source_name,
+		mapping,
+		target_doc=target_doc,
+		ignore_permissions=ignore_permissions,
 		postprocess=postprocess if not skip_postprocess else None,
-		explicit_child_tables=only_items)
+		explicit_child_tables=only_items,
+	)
 
 	return doc
 
