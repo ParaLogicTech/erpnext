@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.utils import getdate, today, date_diff, flt, cint, cstr
+from erpnext.stock.utils import has_valuation_read_permission
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 from erpnext.stock.report.stock_balance.stock_balance import get_items_for_stock_report,\
 	get_stock_ledger_entries_for_stock_report, is_warehouse_included, is_batch_included, is_package_included,\
@@ -19,6 +20,7 @@ class StockAgeingReport:
 		self.filters = frappe._dict(filters or {})
 		self.filters.to_date = getdate(self.filters.to_date or today())
 
+		self.show_amounts = has_valuation_read_permission()
 		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
 
 	def run(self):
@@ -134,7 +136,7 @@ class StockAgeingReport:
 				continue
 
 			fifo_queue = fifo_dict["fifo_queue"]
-			if not fifo_queue or (not fifo_dict.get("total_qty")):
+			if not flt(fifo_dict.get("total_qty"), 9) and not flt(fifo_dict.get("total_value"), 9):
 				continue
 
 			item_details = self.item_map.get(fifo_dict["details"].item_code, {})
@@ -155,15 +157,19 @@ class StockAgeingReport:
 
 				"uom": item_details.stock_uom,
 				"bal_qty": fifo_dict.get("total_qty"),
-				"bal_val": fifo_dict.get("total_value"),
 			})
+
+			if self.show_amounts:
+				row.update({
+					"bal_val": fifo_dict.get("total_value"),
+				})
+
+				ageing_range_data = self.get_ageing_range_data(fifo_dict)
+				for i, age_range_value in enumerate(ageing_range_data):
+					row["range{0}".format(i + 1)] = age_range_value
 
 			ageing_details = get_ageing_details(fifo_queue, self.filters.to_date)
 			row.update(ageing_details)
-
-			ageing_rage_data = self.get_ageing_range_data(fifo_dict)
-			for i, age_range_value in enumerate(ageing_rage_data):
-				row["range{0}".format(i + 1)] = age_range_value
 
 			self.rows.append(row)
 
@@ -191,7 +197,10 @@ class StockAgeingReport:
 		value_range = [0.0] * (len(self.ageing_range) + 1)
 
 		for batch in fifo_queue:
-			value = flt(batch[0]) * flt(batch[2])
+			if self.filters.ageing_based_on == "Incoming Rate":
+				value = flt(batch[0]) * flt(batch[2])
+			else:
+				value = flt(batch[0]) * flt(fifo_dict.get("average_rate"))
 
 			age = (self.filters.to_date - getdate(batch[1])).days or 0
 			index = None
@@ -225,8 +234,8 @@ class StockAgeingReport:
 				"width": 50},
 			{"label": _("Available Qty"), "fieldname": "bal_qty", "fieldtype": "Float",
 				"width": 90},
-			{"label": _("Balance Value"), "fieldname": "bal_val", "fieldtype": "Currency", "options": "Company:company:default_currency",
-				"width": 90},
+			{"label": _("Balance Value"), "fieldname": "bal_val", "fieldtype": "Currency",
+				"width": 95, "options": "Company:company:default_currency", "is_value": 1},
 			{"label": _("Average Age"), "fieldname": "average_age", "fieldtype": "Float",
 				"width": 90},
 			{"label": _("Earliest Age"), "fieldname": "earliest_age", "fieldtype": "Int",
@@ -254,6 +263,8 @@ class StockAgeingReport:
 
 		if not self.show_item_name:
 			self.columns = [c for c in self.columns if c.get('fieldname') != 'item_name']
+		if not self.show_amounts:
+			self.columns = [c for c in self.columns if not c.get("is_value")]
 
 		return self.columns
 
@@ -267,6 +278,7 @@ class StockAgeingReport:
 				"fieldtype": "Currency",
 				"options": "currency",
 				"ageing_column": 1,
+				"is_value": 1,
 				"width": 90
 			})
 			lower_limit = upper_limit + 1
@@ -277,6 +289,7 @@ class StockAgeingReport:
 			"fieldtype": "Currency",
 			"options": "currency",
 			"ageing_column": 1,
+			"is_value": 1,
 			"width": 90
 		})
 		return ageing_columns
@@ -341,6 +354,7 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 						qty_to_pop = 0
 
 		fifo_dict["qty_after_transaction"] = sle.qty_after_transaction
+		fifo_dict["valuation_rate"] = sle.valuation_rate
 
 		fifo_dict.setdefault("total_qty", 0)
 		fifo_dict["total_qty"] += sle.actual_qty
@@ -348,9 +362,15 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 		fifo_dict.setdefault("total_value", 0)
 		fifo_dict["total_value"] += sle.stock_value_difference
 
+		if flt(fifo_dict["total_qty"], 9):
+			fifo_dict["average_rate"] = flt(fifo_dict["total_value"] / fifo_dict["total_qty"], 9)
+
 	# sort and filter
 	sort_key = lambda x: x[1]
 	for key in fifo_queue_map:
+		fifo_queue_map[key]['total_qty'] = flt(fifo_queue_map[key]['total_qty'], 9)
+		fifo_queue_map[key]['total_value'] = flt(fifo_queue_map[key]['total_value'], 9)
+
 		fifo_queue_map[key]['fifo_queue'] = sorted(filter(sort_key, fifo_queue_map[key]['fifo_queue']), key=sort_key)
 
 	return fifo_queue_map
@@ -379,8 +399,8 @@ def get_ageing_details(fifo_queue, to_date):
 
 	return frappe._dict({
 		"average_age": get_average_age(fifo_queue, to_date),
-		"earliest_age": date_diff(to_date, fifo_queue[0][1]),
-		"latest_age": date_diff(to_date, fifo_queue[-1][1])
+		"earliest_age": date_diff(to_date, fifo_queue[0][1]) if fifo_queue else None,
+		"latest_age": date_diff(to_date, fifo_queue[-1][1]) if fifo_queue else None
 	})
 
 

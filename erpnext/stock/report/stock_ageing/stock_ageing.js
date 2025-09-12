@@ -25,6 +25,14 @@ frappe.query_reports["Stock Ageing"] = {
 			default: "30, 60, 90, 120",
 		},
 		{
+			fieldname: "ageing_based_on",
+			label: __("Ageing Value Based On"),
+			fieldtype: "Select",
+			options: "Average Rate\nIncoming Rate",
+			default: "Average Rate",
+			reqd: 1,
+		},
+		{
 			fieldname: "item_code",
 			label: __("Item"),
 			fieldtype: "Link",
