@@ -289,6 +289,11 @@ class BankReconciliation(Document):
 				"cheque_no": d.cheque_number,
 				"cheque_date": d.cheque_date,
 				"clearance_date": clearance_date,
+				"clear_against_type": d.voucher_type,
+				"clear_against": d.voucher_no,
+				"custom_clear_against_detail_type":d.voucher_detail_dt,
+				"custom_clear_against_detail_name":d.voucher_detail_dn,
+				"is_reversal":is_reversal
 			})
 
 			suspense_row = je.append("accounts", {
@@ -298,6 +303,11 @@ class BankReconciliation(Document):
 				"cheque_no": d.cheque_number,
 				"cheque_date": d.cheque_date,
 				"clearance_date": clearance_date,
+				"clear_against_type": d.voucher_type,
+				"clear_against": d.voucher_no,
+				"custom_clear_against_detail_type":d.voucher_detail_dt,
+				"custom_clear_against_detail_name":d.voucher_detail_dn,
+				"is_reversal":is_reversal
 			})
 
 			additional_values = self.get_row_additional_values(d)

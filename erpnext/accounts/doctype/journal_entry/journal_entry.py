@@ -96,12 +96,35 @@ class JournalEntry(AccountsController):
 		self.unlink_asset_adjustment_entry()
 		self.update_invoice_discounting()
 		self.update_deposit_dates()
+		self.update_clearance_date()
 
 	def get_title(self):
 		return self.pay_to_recd_from or self.accounts[0].account
 
 	def update_advance_paid(self):
 		pass
+
+	def update_clearance_date(self):
+		for d in self.accounts:
+			if d.clear_against_type and d.clear_against:
+				clear_against_doctype = d.custom_clear_against_detail_type if d.custom_clear_against_detail_type else d.clear_against_type
+				clear_against_docname = d.custom_clear_against_detail_name if d.custom_clear_against_detail_name else d.clear_against
+				if frappe.db.get_value(clear_against_doctype,  clear_against_docname, 'clearance_date'):
+					frappe.db.set_value(clear_against_doctype, clear_against_docname, 'clearance_date', None,
+					notify=True)
+					frappe.get_doc(dict(
+						doctype='Version',
+						ref_doctype=d.clear_against_type,
+						docname=d.clear_against,
+						data=frappe.as_json(dict(comment_type="Label", comment=_("Removed Clearance Date by Canceling Clearance Document {0}".format(
+							self.name))))
+					)).insert(ignore_permissions=True)
+				d.db_set({
+					"clear_against_type": None,
+					"clear_against": None,
+					"custom_clear_against_detail_type": None,
+					"custom_clear_against_detail_name": None,
+				})
 
 	def validate_inter_company_accounts(self):
 		if self.inter_company_reference:
