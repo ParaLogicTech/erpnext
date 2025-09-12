@@ -648,7 +648,7 @@ class SalesInvoice(SellingController):
 				d.project = self.project
 
 		if not self.debit_to:
-			self.debit_to = get_party_account("Customer", self.customer, self.company,
+			self.debit_to = get_party_account("Customer", self.bill_to, self.company,
 				transaction_type=self.get('transaction_type'))
 			self.party_account_currency = frappe.get_cached_value("Account", self.debit_to, "account_currency")
 		if not self.due_date and self.customer:
