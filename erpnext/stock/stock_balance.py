@@ -292,18 +292,27 @@ def repost_gle_for_stock_transactions(posting_date=None, posting_time=None, for_
 
 def repost_stock_mismatch_gle(company=None, from_date=None, to_date=None, auto_commit=False):
 	from erpnext.stock.report.stock_and_account_value_comparison.stock_and_account_value_comparison import get_data
+	from erpnext.controllers.stock_controller import get_sales_invoices_with_unbilled_stock, update_gl_entries_for_stock_voucher, delete_voucher_gl_entries
+
 	mismatch_data = get_data({"company": company, "from_date": from_date, "to_date": to_date})
+	stock_vouchers = [(d.voucher_type, d.voucher_no) for d in mismatch_data]
+	count = len(stock_vouchers)
 
-	count = len(mismatch_data)
-	for i, d in enumerate(mismatch_data):
-		print("{0}/{1}: {2} | {3}".format(i + 1, count, d.voucher_type, d.voucher_no))
-		doc = frappe.get_doc(d.voucher_type, d.voucher_no)
-		frappe.db.sql("""delete from `tabGL Entry` where voucher_type=%s and voucher_no=%s""",
-			(d.voucher_type, d.voucher_no))
+	print("REPOSTING Stock Vouchers with GLE And SLE mismatch")
+	for i, (voucher_type, voucher_no) in enumerate(stock_vouchers):
+		print("{0}/{1}: {2} | {3}".format(i + 1, count, voucher_type, voucher_no))
+		doc = frappe.get_doc(voucher_type, voucher_no)
+		delete_voucher_gl_entries(voucher_type, voucher_no)
 		doc.make_gl_entries(repost_future_gle=False, from_repost=True)
-
 		doc.clear_cache()
+		if auto_commit:
+			frappe.db.commit()
 
+	sales_invoices = get_sales_invoices_with_unbilled_stock(stock_vouchers)
+	if sales_invoices:
+		print()
+		print("REPOSTING linked Sales Invoices with Unbilled Stock Accounts")
+		update_gl_entries_for_stock_voucher([("Sales Invoice", d) for d in sales_invoices], verbose=True)
 		if auto_commit:
 			frappe.db.commit()
 
