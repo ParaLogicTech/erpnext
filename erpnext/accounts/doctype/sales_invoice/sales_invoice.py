@@ -793,12 +793,12 @@ class SalesInvoice(SellingController):
 		return frappe.db.sql("select abbr from tabCompany where name=%s", self.company)[0][0]
 
 	def validate_with_previous_doc(self):
-		sales_order_compare = [["currency", "="], ["branch", "="]]
-		delivery_note_compare = [["company", "="], ["branch", "="], ["currency", "="]]
+		sales_order_compare = [["currency", "="]]
+		delivery_note_compare = [["company", "="], ["currency", "="]]
 
 		if not self.get('bill_multiple_projects'):
-			sales_order_compare += [["project", "="]]
-			delivery_note_compare += [["project", "="]]
+			sales_order_compare += [["project", "="], ["branch", "="]]
+			delivery_note_compare += [["project", "="], ["branch", "="]]
 
 		if not self.get('claim_billing'):
 			sales_order_compare += [["customer", "="]]

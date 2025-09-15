@@ -891,6 +891,9 @@ def get_item_mapper_for_invoice(allow_duplicate=False, target_doctype="Sales Inv
 		target.delivered_qty = source.qty
 		target.depreciation_percentage = None
 
+		if target.meta.has_field("branch") and source_parent.get("branch"):
+			target.branch = source_parent.get("branch")
+
 		if target_parent:
 			target_parent.adjust_rate_for_claim_item(source, target)
 

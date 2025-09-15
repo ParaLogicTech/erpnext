@@ -490,7 +490,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 					fieldname: 'branch',
 					fieldtype: 'Link',
 					options: 'Branch',
-					default: me.frm.doc.branch || undefined,
 				},
 				{
 					fieldtype: 'DateRange',

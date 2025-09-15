@@ -1667,6 +1667,9 @@ def get_item_mapper_for_invoice(sales_order, allow_duplicate=False, target_docty
 		if target.meta.has_field("project"):
 			target.project = source_parent.get('project')
 
+		if target.meta.has_field("branch") and source_parent.get("branch"):
+			target.branch = source_parent.get("branch")
+
 		if target_parent:
 			target_parent.adjust_rate_for_claim_item(source, target)
 

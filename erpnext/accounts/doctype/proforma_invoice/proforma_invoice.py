@@ -346,6 +346,9 @@ def get_item_mapper_for_invoice(allow_duplicate=False):
 	def update_item(source, target, source_parent, target_parent):
 		target.project = source_parent.get('project')
 
+		if target.meta.has_field("branch") and source_parent.get("branch"):
+			target.branch = source_parent.get("branch")
+
 	return {
 		"doctype": "Sales Invoice Item",
 		"field_map": {
