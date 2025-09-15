@@ -23,7 +23,7 @@ erpnext.hr.EmployeeController = class EmployeeController extends frappe.ui.form.
 	}
 
 	validate() {
-		frappe.regional.format_mobile_no(frm, "cell_number");
+		frappe.regional.format_mobile_no(this.frm, "cell_number");
 	}
 
 	setup_buttons() {
