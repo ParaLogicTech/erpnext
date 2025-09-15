@@ -187,7 +187,7 @@ frappe.query_reports["General Ledger"] = {
 			"fieldname": "merge_similar_entries",
 			"label": __("Merge Similar Entries"),
 			"fieldtype": "Check",
-			"default": 1
+			"default": 0
 		},
 		{
 			"fieldname": "merge_dimensions",
