@@ -639,7 +639,7 @@ class Project(StatusUpdaterERP):
 		)
 
 		self.gross_margin = total_revenue - total_expense
-		self.per_gross_margin = self.gross_margin / total_revenue * 100 if total_revenue else 0
+		self.per_gross_margin = flt(self.gross_margin / total_revenue, 6) * 100 if total_revenue else 0
 
 		if update:
 			self.db_set({
