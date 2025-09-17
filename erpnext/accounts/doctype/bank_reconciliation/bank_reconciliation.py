@@ -291,8 +291,8 @@ class BankReconciliation(Document):
 				"clearance_date": clearance_date,
 				"clear_against_type": d.voucher_type,
 				"clear_against": d.voucher_no,
-				"custom_clear_against_detail_type":d.voucher_detail_dt,
-				"custom_clear_against_detail_name":d.voucher_detail_dn,
+				"clear_against_detail_type":d.voucher_detail_dt,
+				"clear_against_detail_name":d.voucher_detail_dn,
 				"is_reversal":is_reversal
 			})
 
@@ -305,8 +305,8 @@ class BankReconciliation(Document):
 				"clearance_date": clearance_date,
 				"clear_against_type": d.voucher_type,
 				"clear_against": d.voucher_no,
-				"custom_clear_against_detail_type":d.voucher_detail_dt,
-				"custom_clear_against_detail_name":d.voucher_detail_dn,
+				"clear_against_detail_type":d.voucher_detail_dt,
+				"clear_against_detail_name":d.voucher_detail_dn,
 				"is_reversal":is_reversal
 			})
 
