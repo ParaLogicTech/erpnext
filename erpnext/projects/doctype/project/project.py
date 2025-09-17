@@ -629,16 +629,15 @@ class Project(StatusUpdaterERP):
 			}, None, update_modified=update_modified)
 
 	def set_gross_margin(self, update=False, update_modified=False):
-		total_revenue = flt(self.total_sales_amount)
-		total_expense = (
+		total_revenue = flt(self.total_sales_amount, 9)
+		total_expense = flt(
 			flt(self.timesheet_costing_amount)
 			+ flt(self.total_expense_claim)
 			+ flt(self.total_purchase_cost)
 			+ flt(self.total_consumed_material_cost)
-			+ flt(self.material_cost_of_sales)
-		)
+			+ flt(self.material_cost_of_sales), 9)
 
-		self.gross_margin = total_revenue - total_expense
+		self.gross_margin = flt(total_revenue - total_expense, 9)
 		self.per_gross_margin = flt(self.gross_margin / total_revenue, 6) * 100 if total_revenue else 0
 
 		if update:
