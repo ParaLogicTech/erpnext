@@ -56,6 +56,7 @@ class JournalEntry(AccountsController):
 		self.validate_inter_company_accounts()
 		self.validate_deposit_against()
 		self.set_original_reference()
+		self.clear_clerance_date_details()
 
 		if not self.title:
 			self.title = self.get_title()
@@ -104,11 +105,21 @@ class JournalEntry(AccountsController):
 	def update_advance_paid(self):
 		pass
 
+	def clear_clerance_date_details(self):
+		if self.get("amended_from"):
+			for d in self.accounts:
+				d.db_set({
+					"clear_against_type": None,
+					"clear_against": None,
+					"clear_against_detail_type": None,
+					"clear_against_detail_type": None,
+				})
+
 	def update_clearance_date(self):
 		for d in self.accounts:
 			if d.clear_against_type and d.clear_against:
-				clear_against_doctype = d.custom_clear_against_detail_type if d.custom_clear_against_detail_type else d.clear_against_type
-				clear_against_docname = d.custom_clear_against_detail_name if d.custom_clear_against_detail_name else d.clear_against
+				clear_against_doctype = d.clear_against_detail_type if d.clear_against_detail_type else d.clear_against_type
+				clear_against_docname = d.clear_against_detail_name if d.clear_against_detail_name else d.clear_against
 				if frappe.db.get_value(clear_against_doctype,  clear_against_docname, 'clearance_date'):
 					frappe.db.set_value(clear_against_doctype, clear_against_docname, 'clearance_date', None,
 					notify=True)
@@ -119,12 +130,6 @@ class JournalEntry(AccountsController):
 						data=frappe.as_json(dict(comment_type="Label", comment=_("Removed Clearance Date by Canceling Clearance Document {0}".format(
 							self.name))))
 					)).insert(ignore_permissions=True)
-				d.db_set({
-					"clear_against_type": None,
-					"clear_against": None,
-					"custom_clear_against_detail_type": None,
-					"custom_clear_against_detail_name": None,
-				})
 
 	def validate_inter_company_accounts(self):
 		if self.inter_company_reference:
