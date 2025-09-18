@@ -84,9 +84,6 @@ class JournalEntry(AccountsController):
 		unlink_ref_doc_from_payment_entries(self, validate_permission=True)
 		unlink_ref_doc_from_salary_slip(self.name)
 
-		for d in self.accounts:
-			d.db_set("clearance_date", None)
-
 		self.make_gl_entries(1)
 		self.update_advance_paid()
 		self.update_expense_claim()
@@ -109,6 +106,7 @@ class JournalEntry(AccountsController):
 		if self.get("amended_from"):
 			for d in self.accounts:
 				d.db_set({
+					"clearance_date": None,
 					"clear_against_type": None,
 					"clear_against": None,
 					"clear_against_detail_type": None,
