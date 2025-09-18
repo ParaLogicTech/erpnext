@@ -40,6 +40,9 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		// advance, payments and outstanding
 		if (["Sales Invoice", "Proforma Invoice", "Purchase Invoice"].includes(this.frm.doc.doctype)) {
 			this.calculate_total_advance();
+		}
+
+		if (frappe.meta.has_field(this.frm.doc.doctype, "outstanding_amount")) {
 			if (this.frm.doc.docstatus == 0) {
 				this.calculate_outstanding_amount();
 				this.calculate_customer_outstanding_amount();
@@ -502,8 +505,11 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			"total_before_discount", "total_discount", "base_total_before_discount", "base_total_discount",
 			"tax_exclusive_total_before_discount", "tax_exclusive_total_discount",
 			"base_tax_exclusive_total_before_discount", "base_tax_exclusive_total_discount",
-			"total_net_weight",
 		]);
+
+		if (frappe.meta.has_field(me.frm.doc.doctype, 'total_net_weight')) {
+			frappe.model.round_floats_in(this.frm.doc, ["total_net_weight",]);
+		}
 	}
 
 	calculate_taxes() {

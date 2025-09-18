@@ -30,6 +30,8 @@ class calculate_taxes_and_totals(object):
 
 		if self.doc.doctype in ("Sales Invoice", "Proforma Invoice", "Purchase Invoice"):
 			self.calculate_total_advance()
+
+		if self.doc.meta.has_field("outstanding_amount"):
 			if self.doc.docstatus == 0:
 				self.calculate_outstanding_amount()
 				self.calculate_customer_outstanding_amount()
@@ -441,8 +443,10 @@ class calculate_taxes_and_totals(object):
 			"total_before_discount", "total_discount", "base_total_before_discount", "base_total_discount",
 			"tax_exclusive_total_before_discount", "tax_exclusive_total_discount",
 			"base_tax_exclusive_total_before_discount", "base_tax_exclusive_total_discount",
-			"total_net_weight",
 		])
+
+		if self.doc.meta.has_field('total_net_weight'):
+			self.doc.round_floats_in(self.doc, ["total_net_weight"])
 
 		if self.doc.doctype == 'Sales Invoice' and self.doc.is_pos:
 			self.doc.pos_total_qty = self.doc.total_qty
