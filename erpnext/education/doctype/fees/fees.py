@@ -26,6 +26,12 @@ class Fees(AccountsController):
 		self.calculate_total()
 		self.set_missing_accounts_and_fields()
 
+	def get_party(self):
+		return "Student", self.student, self.student_name
+
+	def get_party_account(self):
+		return self.receivable_account
+
 	def set_missing_accounts_and_fields(self):
 		if not self.company:
 			self.company = frappe.defaults.get_defaults().company

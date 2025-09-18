@@ -6,8 +6,7 @@ import frappe
 import erpnext
 from frappe import _
 from frappe.utils import flt, nowdate, cint
-from erpnext.controllers.status_updater import StatusUpdaterERP
-from six import string_types
+from erpnext.controllers.accounts_controller import AccountsController
 import json
 
 
@@ -15,7 +14,7 @@ class EmployeeAdvanceOverPayment(frappe.ValidationError):
 	pass
 
 
-class EmployeeAdvance(StatusUpdaterERP):
+class EmployeeAdvance(AccountsController):
 	def __init__(self, *args, **kwargs):
 		super(EmployeeAdvance, self).__init__(*args, **kwargs)
 		self.status_map = [
@@ -53,6 +52,12 @@ class EmployeeAdvance(StatusUpdaterERP):
 		self.set_payment_and_claimed_amount(update=True)
 		self.set_status(update=True)
 		self.notify_update()
+
+	def get_party(self):
+		return "Employee", self.employee, self.employee_name
+
+	def get_party_account(self):
+		return self.advance_account
 
 	def validate_employee_advance_account(self):
 		if not self.advance_account and self.company:
@@ -205,7 +210,7 @@ def make_multiple_bank_entries(names):
 	if not frappe.has_permission("Journal Entry", "write"):
 		frappe.throw(_("Not Permitted"), frappe.PermissionError)
 
-	if isinstance(names, string_types):
+	if isinstance(names, str):
 		names = json.loads(names)
 
 	je = frappe.new_doc("Journal Entry")

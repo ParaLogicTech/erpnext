@@ -87,6 +87,9 @@ class ExpenseClaim(AccountsController):
 	def get_party(self):
 		return "Employee", self.employee, self.employee_name
 
+	def get_party_account(self):
+		return self.payable_account
+
 	@frappe.whitelist()
 	def set_advances(self, include_unallocated=True):
 		include_unallocated = cint(include_unallocated)

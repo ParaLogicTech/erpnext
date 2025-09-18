@@ -1685,53 +1685,38 @@ def get_payment_entry(
 	is_advance = cint(is_advance)
 	is_advance_return = cint(is_advance_return)
 
-	party = doc.get('bill_to') or doc.get(scrub(party_type)) or doc.get("party")
-	if dt in ("Sales Invoice", "Proforma Invoice", "Sales Order"):
-		party_type = "Customer"
-	elif dt == "Purchase Order":
-		party_type = "Supplier"
-	elif dt == "Purchase Invoice":
-		party_type = "Letter of Credit" if doc.letter_of_credit else "Supplier"
-	elif dt == "Landed Cost Voucher":
-		party_type = doc.party_type
-	elif dt in ("Expense Claim", "Employee Advance"):
-		party_type = "Employee"
-	elif dt in ("Fees"):
-		party_type = "Student"
+	if hasattr(doc, "get_billing_party"):
+		party_type, party, party_name = doc.get_billing_party()
+	else:
+		if not party_type:
+			frappe.throw(_("Party Type not provided and could not be determined"))
+		party = doc.get(scrub(party_type)) or doc.get("party")
 
 	# party account
+	party_account = None
 	if dt == "Sales Invoice":
-		party_account = get_party_account_based_on_invoice_discounting(dn) or doc.debit_to
-	elif dt == "Proforma Invoice":
-		party_account = doc.debit_to
-	elif dt in ["Purchase Invoice", "Landed Cost Voucher"]:
-		party_account = doc.credit_to
-	elif dt == "Fees":
-		party_account = doc.receivable_account
-	elif dt == "Employee Advance":
-		party_account = doc.advance_account
-	elif dt == "Expense Claim":
-		party_account = doc.payable_account
-	else:
-		party_account = get_party_account(party_type, doc.get(scrub(party_type)), doc.company)
+		party_account = get_party_account_based_on_invoice_discounting(dn) or doc.get_party_account()
+	elif hasattr(doc, "get_party_account"):
+		party_account = doc.get_party_account()
+
+	if not party_account:
+		party_account = get_party_account(party_type, party, doc.company)
 
 	party_account_currency = doc.get("party_account_currency") or get_account_currency(party_account)
 
-	# payment type
-	if (
-		dt in ("Sales Order", "Proforma Invoice")
-		or (dt in ("Sales Invoice", "Fees") and doc.outstanding_amount > 0)
-		or (dt == "Purchase Invoice" and doc.outstanding_amount < 0)
-		or (dt == "Employee Advance" and is_advance_return)
-	):
-		payment_type = "Receive"
-	else:
+	payment_type = "Receive" if erpnext.get_party_account_type(party_type) == "Receivable" else "Pay"
+	if dt in ("Sales Invoice", "Fees") and doc.outstanding_amount < 0:
 		payment_type = "Pay"
+	if dt == "Purchase Invoice" and doc.outstanding_amount < 0:
+		payment_type = "Receive"
+	elif dt == "Employee Advance" and is_advance_return:
+		payment_type = "Receive"
 
 	# amounts
 	reference_details = _get_reference_details(doc, party_account_currency, party_type, party, party_account_currency, payment_type)
 	grand_total = reference_details.total_amount
 	outstanding_amount = reference_details.outstanding_amount
+	exchange_rate = flt(reference_details.exchange_rate) or 1
 
 	# bank or cash
 	bank = get_default_bank_cash_account(doc.company, "Bank", mode_of_payment=mode_of_payment or doc.get("mode_of_payment"),
@@ -1752,14 +1737,14 @@ def get_payment_entry(
 		if bank_amount:
 			received_amount = bank_amount
 		else:
-			received_amount = paid_amount * doc.conversion_rate
+			received_amount = paid_amount * exchange_rate
 	else:
 		received_amount = abs(outstanding_amount)
 		if bank_amount:
 			paid_amount = bank_amount
 		else:
 			# if party account currency and bank currency is different then populate paid amount as well
-			paid_amount = received_amount * doc.conversion_rate
+			paid_amount = received_amount * exchange_rate
 
 	pe = frappe.new_doc("Payment Entry")
 	pe.payment_type = payment_type

@@ -75,6 +75,12 @@ class SellingController(TransactionController):
 
 		return super().get_billing_party()
 
+	def get_party_account(self):
+		if self.meta.has_field("debit_to"):
+			return self.debit_to
+		else:
+			return super().get_party_account()
+
 	def set_missing_values(self, for_validate=False):
 		super(SellingController, self).set_missing_values(for_validate)
 

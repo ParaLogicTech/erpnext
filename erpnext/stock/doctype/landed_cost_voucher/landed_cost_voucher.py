@@ -71,6 +71,9 @@ class LandedCostVoucher(AccountsController):
 		self.set_status(update=True)
 		self.notify_update()
 
+	def get_party_account(self):
+		return self.credit_to
+
 	@frappe.whitelist()
 	def get_purchase_receipts_from_letter_of_credit(self):
 		if self.party_type != "Letter of Credit" or not self.party:
