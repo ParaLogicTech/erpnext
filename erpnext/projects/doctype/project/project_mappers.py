@@ -13,7 +13,7 @@ import json
 
 
 @frappe.whitelist()
-def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None):
+def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None, goodwill=None):
 	from erpnext.controllers.queries import _get_proforma_invoices_to_be_billed
 
 	if frappe.flags.args and bill_multiple_projects is None:
@@ -32,13 +32,16 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 
 	proforma_invoices = _get_proforma_invoices_to_be_billed(filters=proforma_invoice_filters)
 
+	# if goodwill:
+		# return make_sales_invoice_from_orders(project_name, target_doc, depreciation_type, bill_multiple_projects)
+
 	if proforma_invoices:
-		return make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc, bill_multiple_projects)
+		return make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc, bill_multiple_projects, goodwill)
 	else:
-		return make_sales_invoice_from_orders(project_name, target_doc, depreciation_type, bill_multiple_projects)
+		return make_sales_invoice_from_orders(project_name, target_doc, depreciation_type, bill_multiple_projects, goodwill)
 
 
-def make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc=None, bill_multiple_projects=None):
+def make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc=None, bill_multiple_projects=None, goodwill=None):
 	from erpnext.accounts.doctype.proforma_invoice.proforma_invoice import make_sales_invoice as invoice_from_proforma_invoice
 
 	project = frappe.get_doc("Project", project_name)
@@ -73,7 +76,7 @@ def make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc
 	return target_doc
 
 
-def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None):
+def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None, goodwill=None):
 	def get_filters():
 		filters = {"project": project.name}
 		if project.company:
@@ -163,6 +166,8 @@ def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_t
 
 	project.check_po_no_is_set(target_doc)
 	project.validate_for_transaction(target_doc)
+
+	set_goodwill_in_target(target_doc, project, goodwill)
 
 	return target_doc
 
@@ -732,6 +737,16 @@ def set_po_no_in_transaction(target_doc, project):
 	if project.po_no and not project.bill_to or target_bill_to == project.bill_to:
 		target_doc.po_no = project.po_no
 		target_doc.po_date = project.po_date
+
+
+def set_goodwill_in_target(target_doc, project, goodwill):
+	from erpnext.accounts.utils import get_company_default
+	if goodwill:
+		if project.bill_to:
+			if frappe.get_cached_value("Customer", project.bill_to, "is_goodwill_customer"):
+				target_doc.is_goodwill_customer = goodwill
+				target_doc.write_off_amount = target_doc.outstanding_amount
+				target_doc.write_off_account = get_company_default(target_doc.company, "goodwill_account")
 
 
 def remove_taxes_from_transaction(target_doc):

@@ -17,6 +17,7 @@
   "lead_name",
   "disabled",
   "is_insurance_company",
+  "is_goodwill_customer",
   "column_break0",
   "customer_type",
   "territory",
@@ -708,13 +709,20 @@
   {
    "fieldname": "column_break_kmwz",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_goodwill_customer",
+   "fieldtype": "Check",
+   "label": "Is Goodwill Customer",
+   "permlevel": 1
   }
  ],
  "icon": "fa fa-user",
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2025-03-17 20:11:01.390606",
+ "modified": "2025-09-18 12:12:44.663724",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",
@@ -834,6 +842,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "customer_name, customer_group, reference, mobile_no, mobile_no_2, phone_no, email_id, tax_id, tax_cnic",
  "show_name_in_global_search": 1,
  "show_preview_popup": 1,

@@ -257,6 +257,17 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				}, __("Sales"));
 			}
 
+			if (me.frm.doc.bill_to) {
+				frappe.db.get_value('Customer', me.frm.doc.bill_to, 'is_goodwill_customer')
+				.then(r => {
+					if (r.message.is_goodwill_customer && frappe.model.can_create("Sales Invoice")) {
+						me.frm.add_custom_button(__("Goodwill Sales Invoice"), () => {
+							me.show_invoice_dialog(((depreciation_type, goodwill=1) => me.make_sales_invoice(depreciation_type, goodwill=1)), 1);
+						}, __("Sales"));
+					}
+				})
+			}
+
 			if (
 				(me.frm.doc.service_templates || []).some(d => d.includes_service_warranty && !d.has_service_warranty)
 				&& me.frm.doc.ready_to_close
@@ -752,17 +763,18 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	show_invoice_dialog(callback) {
+	show_invoice_dialog(callback, goodwill=null) {
 		let me = this;
 		me.frm.check_if_unsaved();
 
 		if (
-			me.frm.doc.default_depreciation_percentage
+			(me.frm.doc.default_depreciation_percentage
 			|| me.frm.doc.default_underinsurance_percentage
 			|| me.frm.doc.insurance_excess_amount
 			|| me.frm.doc.insurance_excess_percentage
 			|| (me.frm.doc.non_standard_depreciation || []).length
-			|| (me.frm.doc.non_standard_underinsurance || []).length
+			|| (me.frm.doc.non_standard_underinsurance || []).length) && 
+			(!goodwill)
 		) {
 			let html = `
 <div class="text-center">
@@ -794,12 +806,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		}
 	}
 
-	make_sales_invoice(depreciation_type) {
+	make_sales_invoice(depreciation_type, goodwill = null) {
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project_mappers.make_sales_invoice",
 			args: {
 				"project_name": this.frm.doc.name,
 				"depreciation_type": depreciation_type,
+				"goodwill": goodwill
 			},
 			callback: function (r) {
 				if (!r.exc) {

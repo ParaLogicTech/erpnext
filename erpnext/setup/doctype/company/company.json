@@ -95,6 +95,7 @@
   "default_bank_account",
   "default_cash_account",
   "section_break_xy8g",
+  "goodwill_account",
   "write_off_account",
   "round_off_account",
   "round_off_cost_center",
@@ -1035,6 +1036,13 @@
    "fieldtype": "Float",
    "label": "Standard Break Hours",
    "non_negative": 1
+  },
+  {
+   "fieldname": "goodwill_account",
+   "fieldtype": "Link",
+   "label": "Goodwill Account",
+   "link_filters": "[[\"Account\",\"account_type\",\"=\",\"Expense Account\"]]",
+   "options": "Account"
   }
  ],
  "icon": "fa fa-building",
@@ -1042,7 +1050,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2025-06-12 12:35:05.388441",
+ "modified": "2025-09-18 16:21:05.229293",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
@@ -1112,6 +1120,7 @@
    "role": "CR User"
   }
  ],
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",

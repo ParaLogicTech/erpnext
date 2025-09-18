@@ -27,6 +27,7 @@
   "return_against",
   "reopen_order",
   "is_pos",
+  "is_goodwill_customer",
   "pos_profile",
   "cashier",
   "offline_pos_name",
@@ -2352,6 +2353,14 @@
    "options": "Customer Group",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_goodwill_customer",
+   "fieldtype": "Check",
+   "label": "Is Goodwill Customer",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -2359,7 +2368,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-11 14:35:12.608795",
+ "modified": "2025-09-18 12:41:06.512993",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

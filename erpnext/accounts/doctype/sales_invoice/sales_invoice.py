@@ -114,7 +114,7 @@ class SalesInvoice(SellingController):
 		self.validate_with_previous_doc()
 
 		self.sort_items()
-
+		self.set_goodwill_configuration()
 		self.set_delivery_status()
 		self.set_returned_status()
 		self.set_status()
@@ -875,6 +875,11 @@ class SalesInvoice(SellingController):
 			if against_doc.debit_to != self.debit_to:
 				frappe.throw(_("Return Against Sales Invoice {0} must have the same Debit To account").format(self.return_against))
 
+	def set_goodwill_configuration(self):
+		if self.is_goodwill_customer:
+			self.write_off_amount = self.rounded_total
+			self.write_off_account = self.get_company_default("goodwill_account")
+	
 	def set_against_income_account(self):
 		"""Set against account for debit to account"""
 		against_acc = []
