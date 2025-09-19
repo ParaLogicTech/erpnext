@@ -70,7 +70,6 @@ class JournalEntry(AccountsController):
 	def on_submit(self):
 		self.check_credit_limit()
 		self.make_gl_entries()
-		self.update_advance_paid()
 		self.update_expense_claim()
 		self.update_loan()
 		self.update_inter_company_jv()
@@ -87,7 +86,6 @@ class JournalEntry(AccountsController):
 			d.db_set("clearance_date", None)
 
 		self.make_gl_entries(1)
-		self.update_advance_paid()
 		self.update_expense_claim()
 		self.update_loan()
 		self.unlink_advance_entry_reference()
@@ -100,8 +98,22 @@ class JournalEntry(AccountsController):
 	def get_title(self):
 		return self.pay_to_recd_from or self.accounts[0].account
 
-	def update_advance_paid(self):
-		pass
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		outstanding_amount = get_balance_on_voucher("Journal Entry", self.name, party_type, party, account)
+
+		if self.multi_currency:
+			exchange_rate = get_average_party_exchange_rate_on_journal_entry(self.name, party_type, party, account)
+		else:
+			exchange_rate = 1
+
+		return {
+			"total_amount": flt(self.get("total_amount")),
+			"outstanding_amount": outstanding_amount,
+			"exchange_rate": exchange_rate,
+			"bill_no": self.bill_no,
+			"posting_date": self.posting_date,
+			"due_date": self.due_date,
+		}
 
 	def validate_inter_company_accounts(self):
 		if self.inter_company_reference:

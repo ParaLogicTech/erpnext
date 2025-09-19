@@ -131,6 +131,23 @@ class SalesOrder(SellingController):
 		self.set_status(update=True)
 		self.notify_update()
 
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		if self.currency == self.company_currency:
+			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
+			exchange_rate = 1
+		else:
+			total_amount = flt(self.get("rounded_total") or self.get("grand_total"))
+			exchange_rate = flt(self.get("conversion_rate"))
+
+		outstanding_amount = flt(total_amount) - flt(self.advance_paid)
+
+		return {
+			"total_amount": total_amount,
+			"outstanding_amount": outstanding_amount,
+			"exchange_rate": exchange_rate,
+			"posting_date": self.transaction_date,
+		}
+
 	def update_status(self, status):
 		self.check_modified_date()
 		self.set_status(status=status)

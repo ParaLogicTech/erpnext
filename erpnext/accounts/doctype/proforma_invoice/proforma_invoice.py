@@ -53,6 +53,21 @@ class ProformaInvoice(SellingController):
 		self.set_outstanding_amount(update=True)
 		self.notify_update()
 
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		if self.currency == self.company_currency:
+			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
+			exchange_rate = 1
+		else:
+			total_amount = flt(self.get("rounded_total") or self.get("grand_total"))
+			exchange_rate = flt(self.get("conversion_rate"))
+
+		return {
+			"total_amount": total_amount,
+			"outstanding_amount": flt(self.outstanding_amount),
+			"exchange_rate": exchange_rate,
+			"posting_date": self.transaction_date,
+		}
+
 	def validate_with_previous_doc(self):
 		super().validate_with_previous_doc({
 			"Sales Order": {

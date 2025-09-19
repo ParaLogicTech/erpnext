@@ -231,6 +231,22 @@ class SalesInvoice(SellingController):
 			or super().get_party_account_for_payment(fallback_default_account)
 		)
 
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		if self.currency == self.company_currency:
+			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
+			exchange_rate = 1
+		else:
+			total_amount = flt(self.get("rounded_total") or self.get("grand_total"))
+			exchange_rate = flt(self.get("conversion_rate"))
+
+		return {
+			"total_amount": total_amount,
+			"outstanding_amount": flt(self.outstanding_amount),
+			"exchange_rate": exchange_rate,
+			"posting_date": self.posting_date,
+			"due_date": self.due_date,
+		}
+
 	def before_calculate_taxes_and_totals(self):
 		super().before_calculate_taxes_and_totals()
 

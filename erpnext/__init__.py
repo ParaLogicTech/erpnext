@@ -152,15 +152,15 @@ def get_default_finance_book(company=None):
 	return frappe.local.default_finance_book[company]
 
 
+def get_all_party_types():
+	def generator():
+		return frappe.get_all("Party Type", pluck="name")
+
+	return frappe.cache.get_value("all_party_types", generator)
+
+
 def get_party_account_type(party_type):
-	if not hasattr(frappe.local, 'party_account_types'):
-		frappe.local.party_account_types = {}
-
-	if not party_type in frappe.local.party_account_types:
-		frappe.local.party_account_types[party_type] = frappe.db.get_value("Party Type",
-			party_type, "account_type") or ''
-
-	return frappe.local.party_account_types[party_type]
+	return frappe.get_cached_value("Party Type", party_type, "account_type") or ""
 
 
 def get_region(company=None):

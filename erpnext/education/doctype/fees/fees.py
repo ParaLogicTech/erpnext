@@ -32,6 +32,13 @@ class Fees(AccountsController):
 	def get_party_account(self):
 		return self.receivable_account
 
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		return {
+			"total_amount": self.grand_total,
+			"outstanding_amount": self.outstanding_amount,
+			"posting_date": self.posting_date,
+		}
+
 	def set_missing_accounts_and_fields(self):
 		if not self.company:
 			self.company = frappe.defaults.get_defaults().company

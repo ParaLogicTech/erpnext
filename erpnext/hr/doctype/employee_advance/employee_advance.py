@@ -59,6 +59,20 @@ class EmployeeAdvance(AccountsController):
 	def get_party_account(self):
 		return self.advance_account
 
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		if payment_type == "Receive":
+			total_amount = self.paid_amount
+			outstanding_amount = -self.balance_amount
+		else:
+			total_amount = self.advance_amount
+			outstanding_amount = self.advance_amount - flt(self.paid_amount)
+
+		return {
+			"total_amount": total_amount,
+			"outstanding_amount": outstanding_amount,
+			"posting_date": self.posting_date,
+		}
+
 	def validate_employee_advance_account(self):
 		if not self.advance_account and self.company:
 			self.advance_account = frappe.get_cached_value("Company", self.company, "default_employee_advance_account")

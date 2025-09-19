@@ -90,6 +90,13 @@ class ExpenseClaim(AccountsController):
 	def get_party_account(self):
 		return self.payable_account
 
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		return {
+			"total_amount": self.total_sanctioned_amount,
+			"outstanding_amount": self.outstanding_amount,
+			"posting_date": self.posting_date,
+		}
+
 	@frappe.whitelist()
 	def set_advances(self, include_unallocated=True):
 		include_unallocated = cint(include_unallocated)

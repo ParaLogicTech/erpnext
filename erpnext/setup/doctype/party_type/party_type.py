@@ -5,8 +5,10 @@
 import frappe
 from frappe.model.document import Document
 
+
 class PartyType(Document):
 	pass
+
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
