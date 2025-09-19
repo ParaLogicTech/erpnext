@@ -25,6 +25,8 @@ from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty
 from erpnext.accounts.deferred_revenue import validate_service_stop_date
 from erpnext.accounts.doctype.pos_profile.pos_profile import set_account_for_mode_of_payment, get_pos_profile
 from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
+from erpnext.accounts.doctype.invoice_discounting.invoice_discounting import \
+	get_party_account_based_on_invoice_discounting
 
 from erpnext.healthcare.utils import manage_invoice_submit_cancel
 
@@ -222,6 +224,12 @@ class SalesInvoice(SellingController):
 		self.set_outstanding_amount(update=True)
 		self.set_status(update=True)
 		self.notify_update()
+
+	def get_party_account_for_payment(self, fallback_default_account=True):
+		return (
+			get_party_account_based_on_invoice_discounting(self.name)
+			or super().get_party_account_for_payment(fallback_default_account)
+		)
 
 	def before_calculate_taxes_and_totals(self):
 		super().before_calculate_taxes_and_totals()

@@ -202,6 +202,7 @@ class SalesOrder(SellingController):
 				dr_or_cr="credit_in_account_currency - debit_in_account_currency",
 				include_original_references=True
 			)
+			self.advance_paid += self.get_advance_tax_allocated()
 		else:
 			self.advance_paid = 0
 

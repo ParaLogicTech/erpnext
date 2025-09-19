@@ -121,8 +121,15 @@ class AccountsController(TransactionBase):
 		return self.get_party()
 
 	def get_party_account(self):
-		party_type, party, party_name = self.get_billing_party()
-		return get_party_account(party_type, party, self.company, transaction_type=self.get("transaction_type"))
+		return None
+
+	def get_party_account_for_payment(self, fallback_default_account=True):
+		party_account = self.get_party_account()
+		if not party_account and fallback_default_account:
+			party_type, party, party_name = self.get_billing_party()
+			party_account = get_party_account(party_type, party, self.company, transaction_type=self.get("transaction_type"))
+
+		return party_account
 
 	def ensure_supplier_is_not_blocked(self, is_payment=False, supplier=None):
 		if not supplier:
