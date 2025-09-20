@@ -467,10 +467,6 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		})
 	}
 
-	tc_name() {
-		this.get_terms();
-	}
-
 	set_skip_delivery_note() {
 		let items = (this.frm.doc.items || []).filter(d => d.item_code);
 		if (!items.length) {

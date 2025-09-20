@@ -518,10 +518,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		});
 	}
 
-	tc_name() {
-		this.get_terms();
-	}
-
 	customer() {
 		var me = this;
 

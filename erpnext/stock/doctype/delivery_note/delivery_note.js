@@ -348,10 +348,6 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 		}
 	}
 
-	tc_name() {
-		this.get_terms();
-	}
-
 	items_on_form_rendered() {
 		erpnext.setup_serial_no();
 	}

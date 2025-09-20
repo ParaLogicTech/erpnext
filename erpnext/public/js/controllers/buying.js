@@ -356,10 +356,6 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 			"poa_address_display");
 	}
 
-	tc_name() {
-		this.get_terms();
-	}
-
 	make_landed_cost_voucher() {
 		return frappe.call({
 			method: "erpnext.stock.doctype.landed_cost_voucher.landed_cost_voucher.get_landed_cost_voucher",

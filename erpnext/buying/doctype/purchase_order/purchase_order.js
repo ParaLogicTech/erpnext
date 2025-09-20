@@ -491,10 +491,6 @@ erpnext.buying.PurchaseOrderController = class PurchaseOrderController extends e
 		this.set_from_product_bundle();
 	}
 
-	tc_name() {
-		this.get_terms();
-	}
-
 	unhold_purchase_order() {
 		cur_frm.cscript.update_status("Resume", "Draft")
 	}

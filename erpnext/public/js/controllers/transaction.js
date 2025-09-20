@@ -1970,12 +1970,14 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		return valid;
 	}
 
-	get_terms() {
-		var me = this;
+	tc_name() {
+		this.get_terms();
+	}
 
-		erpnext.utils.get_terms(this.frm.doc.tc_name, this.frm.doc, function(r) {
-			if(!r.exc) {
-				me.frm.set_value("terms", r.message);
+	get_terms() {
+		erpnext.utils.get_terms(this.frm.doc.tc_name, this.frm.doc, (r) => {
+			if (!r.exc) {
+				this.frm.set_value("terms", r.message);
 			}
 		});
 	}

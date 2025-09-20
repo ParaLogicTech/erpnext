@@ -193,7 +193,10 @@ class TransactionBase(StatusUpdaterERP):
 			frappe.throw(_("Total allocated percentage for Sales Team should be 100%"))
 
 	def set_terms_and_conditions(self):
-		if self.get("tc_name") and self.meta.has_field("terms"):
+		if not self.meta.has_field("tc_name") or not self.meta.has_field("terms"):
+			return
+
+		if self.tc_name:
 			doc = self.as_dict()
 			self.terms = get_terms_and_conditions(self.tc_name, doc)
 

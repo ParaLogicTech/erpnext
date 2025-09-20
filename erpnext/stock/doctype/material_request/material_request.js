@@ -228,10 +228,6 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		this.get_project_details();
 	}
 
-	tc_name() {
-		this.get_terms();
-	}
-
 	item_code(doc, cdt, cdn) {
 		let row = locals[cdt][cdn];
 		row.rate = 0;
