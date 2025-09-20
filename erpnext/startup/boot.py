@@ -29,8 +29,7 @@ def boot_session(bootinfo):
 			from `tabCompany`
 		""", as_dict=1, update={"doctype": ":Company"})
 
-		party_account_types = frappe.db.sql("""select name, ifnull(account_type, '') from `tabParty Type`""")
-		bootinfo.party_account_types = frappe._dict(party_account_types)
+		update_party_type_details(bootinfo)
 
 
 def load_country_and_currency(bootinfo):
@@ -43,6 +42,17 @@ def load_country_and_currency(bootinfo):
 		from tabCurrency
 		where enabled = 1
 	""", as_dict=1, update={"doctype": ":Currency"})
+
+
+def update_party_type_details(bootinfo):
+	from erpnext.accounts.doctype.payment_entry.payment_entry import get_valid_payment_reference_doctypes
+
+	party_account_types = frappe.db.sql("select name, ifnull(account_type, '') from `tabParty Type`")
+	bootinfo.party_account_types = frappe._dict(party_account_types)
+
+	bootinfo.valid_payment_reference_doctypes = {}
+	for party_type in bootinfo.party_account_types.keys():
+		bootinfo.valid_payment_reference_doctypes[party_type] = get_valid_payment_reference_doctypes(party_type)
 
 
 def update_page_info(bootinfo):

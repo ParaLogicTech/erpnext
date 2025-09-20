@@ -1,7 +1,70 @@
 // Copyright (c) 2016, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
+frappe.provide("erpnext.accounts");
+
 cur_frm.cscript.tax_table = "Advance Taxes and Charges";
+
+erpnext.accounts.PaymentEntry = class PaymentEntry extends frappe.ui.form.Controller {
+	setup() {
+
+	}
+
+	reference_document_query(row) {
+		if (row.reference_doctype == "Journal Entry") {
+			return {
+				query: "erpnext.accounts.doctype.journal_entry.journal_entry.get_against_jv",
+				filters: {
+					account: this.frm.doc.payment_type == "Receive" ? this.frm.doc.paid_from : this.frm.doc.paid_to,
+					party_type: this.frm.doc.party_type,
+					party: this.frm.doc.party
+				}
+			};
+		}
+
+		const filters = {
+			"docstatus": 1,
+			"company": this.frm.doc.company,
+		};
+
+		if (row.reference_doctype == "Payment Entry") {
+			filters["party_type"] = this.frm.doc.party_type;
+			filters["party"] = this.frm.doc.party;
+			filters["payment_type"] = this.frm.doc.payment_type == "Receive" ? "Pay" : "Receive";
+
+		} else if (["Sales Order", "Sales Invoice", "Proforma Invoice"].includes(row.reference_doctype)) {
+			if (this.frm.doc.party_type == "Customer") {
+				filters["bill_to"] = this.frm.doc.party;
+			}
+
+		} else if (row.reference_doctype == "Purchase Order") {
+			if (this.frm.doc.party_type == "Supplier") {
+				filters["supplier"] = this.frm.doc.party;
+			}
+
+		} else if (row.reference_doctype == "Purchase Invoice") {
+			if (this.frm.doc.party_type == "Supplier") {
+				filters["supplier"] = this.frm.doc.party;
+				filters["letter_of_credit"] = ["is", "not set"];
+			} else if (this.frm.doc.party_type == "Letter of Credit") {
+				filters["letter_of_credit"] = this.frm.doc.party;
+			}
+
+		} else if (row.reference_doctype == "Landed Cost Voucher") {
+			filters["party_type"] = this.frm.doc.party_type;
+			filters["party"] = this.frm.doc.party;
+
+		} else if (["Expense Claim", "Employee Advance"].includes(row.reference_doctype)) {
+			if (this.frm.doc.party_type == "Employee") {
+				filters["employee"] = this.frm.doc.party;
+			}
+		}
+
+		return {
+			filters: filters
+		};
+	}
+}
 
 {% include "erpnext/public/js/controllers/accounts.js" %}
 
@@ -109,22 +172,13 @@ frappe.ui.form.on('Payment Entry', {
 		});
 
 		frm.set_query("reference_doctype", "references", function() {
-			if (frm.doc.party_type=="Customer") {
-				var doctypes = ["Sales Invoice", "Proforma Invoice", "Sales Order", "Journal Entry", "Payment Entry"];
-			} else if (frm.doc.party_type=="Supplier") {
-				var doctypes = ["Purchase Order", "Purchase Invoice", "Landed Cost Voucher", "Journal Entry", "Payment Entry"];
-			} else if (frm.doc.party_type=="Letter of Credit") {
-				var doctypes = ["Purchase Invoice", "Landed Cost Voucher", "Journal Entry", "Payment Entry"];
-			} else if (frm.doc.party_type=="Employee") {
-				var doctypes = ["Expense Claim", "Journal Entry", "Employee Advance", "Payment Entry"];
-			} else if (frm.doc.party_type=="Student") {
-				var doctypes = ["Fees"];
-			} else {
-				var doctypes = ["Journal Entry", "Payment Entry"];
+			let valid_doctypes = frappe.boot.valid_payment_reference_doctypes?.[frm.doc.party_type] || [];
+			if (!valid_doctypes?.length) {
+				valid_doctypes = ["Journal Entry", "Payment Entry"];
 			}
 
 			return {
-				filters: { "name": ["in", doctypes] }
+				filters: { "name": ["in", valid_doctypes] }
 			};
 		});
 
@@ -144,47 +198,8 @@ frappe.ui.form.on('Payment Entry', {
 		});
 
 		frm.set_query("reference_name", "references", function(doc, cdt, cdn) {
-			const child = locals[cdt][cdn];
-
-			if(child.reference_doctype == "Journal Entry") {
-				return {
-					query: "erpnext.accounts.doctype.journal_entry.journal_entry.get_against_jv",
-					filters: {
-						account: doc.payment_type=="Receive" ? doc.paid_from : doc.paid_to,
-						party_type: doc.party_type,
-						party: doc.party
-					}
-				};
-			}
-
-			const filters = {"docstatus": 1, "company": doc.company};
-			const party_type_doctypes = [
-				'Sales Invoice', 'Proforma Invoice', 'Sales Order',
-				'Purchase Invoice', 'Purchase Order',
-				'Expense Claim', 'Fees',
-			];
-
-			if (party_type_doctypes.includes(child.reference_doctype)) {
-				if (["Sales Invoice", "Proforma Invoice", "Sales Order"].includes(child.reference_doctype)) {
-					filters['bill_to'] = doc.party;
-				} else {
-					filters[frappe.model.scrub(doc.party_type)] = doc.party;
-				}
-			}
-
-			if (child.reference_doctype == "Expense Claim") {
-				filters["is_paid"] = 0;
-			}
-
-			if (child.reference_doctype == "Payment Entry") {
-				filters["party_type"] = doc.party_type;
-				filters["party"] = doc.party;
-				filters["payment_type"] = doc.payment_type == "Receive" ? "Pay" : "Receive";
-			}
-
-			return {
-				filters: filters
-			};
+			let row = frappe.get_doc(cdt, cdn);
+			return frm.cscript.reference_document_query(row);
 		});
 
 		frm.set_query("sales_taxes_and_charges_template", function () {
@@ -1615,3 +1630,5 @@ function get_included_taxes(frm) {
 
 	return included_taxes;
 }
+
+cur_frm.script_manager.make(erpnext.accounts.PaymentEntry);

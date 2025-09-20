@@ -433,7 +433,7 @@ class PaymentEntry(AccountsController):
 				frappe.throw(_("{0} is mandatory").format(self.meta.get_label(field)))
 
 	def validate_reference_documents(self):
-		valid_reference_doctypes = get_party_type_payment_reference_doctypes(self.party_type)
+		valid_reference_doctypes = get_valid_payment_reference_doctypes(self.party_type)
 
 		for d in self.get("references"):
 			if not d.allocated_amount:
@@ -1800,16 +1800,16 @@ def get_party_and_account_balance(company, date, paid_from=None, paid_to=None, p
 	})
 
 
-def get_valid_payment_reference_doctypes():
+def get_all_payment_reference_doctypes():
 	valid_reference_doctypes = []
 	for party_type in erpnext.get_all_party_types():
-		valid_reference_doctypes += get_party_type_payment_reference_doctypes(party_type)
+		valid_reference_doctypes += get_valid_payment_reference_doctypes(party_type)
 
 	valid_reference_doctypes = set(valid_reference_doctypes)
 	return valid_reference_doctypes
 
 
-def get_party_type_payment_reference_doctypes(party_type):
+def get_valid_payment_reference_doctypes(party_type):
 	valid_reference_doctypes = []
 	if party_type == "Customer":
 		valid_reference_doctypes = ["Sales Invoice", "Proforma Invoice", "Sales Order"]
@@ -1822,7 +1822,7 @@ def get_party_type_payment_reference_doctypes(party_type):
 	elif party_type == "Student":
 		valid_reference_doctypes = ["Fees"]
 
-	hooked_reference_doctypes_map = frappe.get_hooks("allowed_payment_reference_doctypes") or {}
+	hooked_reference_doctypes_map = frappe.get_hooks("valid_payment_reference_doctypes") or {}
 	hooked_reference_doctypes = hooked_reference_doctypes_map.get(party_type) or []
 	for doctype in hooked_reference_doctypes:
 		if doctype not in valid_reference_doctypes:
