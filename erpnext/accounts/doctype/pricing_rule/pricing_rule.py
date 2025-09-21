@@ -305,7 +305,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 
 	elif args.get("pricing_rules"):
 		item_details = remove_pricing_rule_for_item(args.get("pricing_rules"),
-			item_details, args.get('item_code'))
+			item_details, args.get('item_code'), force=True)
 
 	return item_details
 
@@ -450,7 +450,7 @@ def set_discount_amount(rate, item_details):
 			item_details.rate = rate
 
 
-def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None):
+def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None, force=False):
 	from erpnext.accounts.doctype.pricing_rule.utils import (get_applied_pricing_rules,
 		get_pricing_rule_items)
 
@@ -461,7 +461,7 @@ def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None):
 		if not d or not frappe.db.exists("Pricing Rule", d): continue
 		pricing_rule = frappe.get_cached_doc('Pricing Rule', d)
 
-		if pricing_rule.prevent_ignore_pricing_rule:
+		if pricing_rule.prevent_ignore_pricing_rule and not force:
 			keep_pricing_rules.append(pricing_rule.name)
 			continue
 

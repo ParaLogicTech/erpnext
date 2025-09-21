@@ -1802,7 +1802,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 			if (d.pricing_rule_for == "Discount Amount") {
 				frappe.model.set_value(d.doctype, d.child_docname || d.name, "discount_amount", flt(d.discount_amount));
-			} else {
+			} else if (d.pricing_rule_for == "Discount Percentage" || d.hasOwnProperty("discount_percentage")) {
 				frappe.model.set_value(d.doctype, d.child_docname || d.name, "discount_percentage", flt(d.discount_percentage));
 			}
 
