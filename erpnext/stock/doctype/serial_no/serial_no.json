@@ -56,7 +56,7 @@
   "column_break6",
   "warranty_expiry_date",
   "column_break7",
-  "maintenance_status",
+  "warranty_status",
   "reservation_section",
   "sales_order",
   "is_reserved",
@@ -363,17 +363,6 @@
    "width": "50%"
   },
   {
-   "fieldname": "maintenance_status",
-   "fieldtype": "Select",
-   "label": "Warranty Status",
-   "oldfieldname": "maintenance_status",
-   "oldfieldtype": "Select",
-   "options": "\nUnder Warranty\nOut of Warranty",
-   "read_only": 1,
-   "search_index": 1,
-   "width": "150px"
-  },
-  {
    "fieldname": "warranty_period",
    "fieldtype": "Int",
    "label": "Warranty Period (Days)",
@@ -513,13 +502,24 @@
   {
    "fieldname": "maintenance_schedule_html",
    "fieldtype": "HTML"
+  },
+  {
+   "fieldname": "warranty_status",
+   "fieldtype": "Select",
+   "label": "Warranty Status",
+   "oldfieldname": "maintenance_status",
+   "oldfieldtype": "Select",
+   "options": "\nUnder Warranty\nOut of Warranty",
+   "read_only": 1,
+   "search_index": 1,
+   "width": "150px"
   }
  ],
  "grid_page_length": 500,
  "icon": "fa fa-barcode",
  "idx": 1,
  "links": [],
- "modified": "2025-09-22 22:33:20.551262",
+ "modified": "2025-09-22 22:44:24.350957",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Serial No",

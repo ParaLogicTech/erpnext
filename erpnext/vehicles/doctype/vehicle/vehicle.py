@@ -21,7 +21,7 @@ class Vehicle(Document):
 		'supplier', 'supplier_name',
 		'purchase_document_type', 'purchase_document_no', 'purchase_date', 'purchase_time', 'purchase_rate',
 		'delivery_document_type', 'delivery_document_no', 'delivery_date', 'delivery_time', 'sales_invoice',
-		'maintenance_status',
+		'warranty_status',
 	]
 
 	_sync_fields = [

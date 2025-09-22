@@ -53,7 +53,7 @@
   "column_break_40",
   "warranty_expiry_date",
   "column_break_64",
-  "maintenance_status",
+  "warranty_status",
   "additional_information_section",
   "tracker_company",
   "tracker_company_name",
@@ -419,17 +419,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "maintenance_status",
-   "fieldtype": "Select",
-   "label": "Warranty Status",
-   "oldfieldname": "maintenance_status",
-   "oldfieldtype": "Select",
-   "options": "\nUnder Warranty\nOut of Warranty",
-   "read_only": 1,
-   "search_index": 1,
-   "width": "150px"
-  },
-  {
    "allow_in_quick_entry": 1,
    "fieldname": "additional_information_section",
    "fieldtype": "Section Break",
@@ -735,12 +724,23 @@
    "fieldtype": "Link",
    "label": "Model Year",
    "options": "Vehicle Model Year"
+  },
+  {
+   "fieldname": "warranty_status",
+   "fieldtype": "Select",
+   "label": "Warranty Status",
+   "oldfieldname": "maintenance_status",
+   "oldfieldtype": "Select",
+   "options": "\nUnder Warranty\nOut of Warranty",
+   "read_only": 1,
+   "search_index": 1,
+   "width": "150px"
   }
  ],
  "grid_page_length": 500,
  "image_field": "image",
  "links": [],
- "modified": "2025-09-22 22:33:43.433220",
+ "modified": "2025-09-22 22:44:16.219706",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",

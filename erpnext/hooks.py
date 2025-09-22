@@ -235,7 +235,7 @@ scheduler_events = {
 		"erpnext.hr.doctype.employee.employee.send_employee_anniversary_notification",
 		"erpnext.projects.doctype.task.task.set_tasks_as_overdue",
 		"erpnext.hr.doctype.daily_work_summary_group.daily_work_summary_group.send_summary",
-		"erpnext.stock.doctype.serial_no.serial_no.update_maintenance_status",
+		"erpnext.stock.doctype.serial_no.serial_no.update_warranty_status",
 		"erpnext.buying.doctype.supplier_scorecard.supplier_scorecard.refresh_scorecards",
 		"erpnext.setup.doctype.company.company.cache_companies_monthly_sales_history",
 		"erpnext.assets.doctype.asset.asset.update_maintenance_status",

@@ -41,7 +41,7 @@ class SerialNo(StockController):
 		self.validate_warehouse()
 		self.update_customer_from_sales_order()
 
-		self.set_maintenance_status()
+		self.set_warranty_status()
 		self.set_status()
 
 	def on_update(self):
@@ -85,15 +85,19 @@ class SerialNo(StockController):
 		else:
 			self.status = "Active"
 
-	def set_maintenance_status(self):
+	def set_warranty_status(self, update=False, update_modified=True):
 		if not self.warranty_expiry_date:
-			self.maintenance_status = None
+			self.warranty_status = None
+		elif getdate(self.warranty_expiry_date) >= getdate():
+			self.warranty_status = "Under Warranty"
+		else:
+			self.warranty_status = "Out of Warranty"
 
-		if self.warranty_expiry_date and getdate(self.warranty_expiry_date) < getdate(nowdate()):
-			self.maintenance_status = "Out of Warranty"
-
-		if self.warranty_expiry_date and getdate(self.warranty_expiry_date) >= getdate(nowdate()):
-			self.maintenance_status = "Under Warranty"
+		if update:
+			self.db_set("warranty_status", self.warranty_status, update_modified=update_modified)
+			if self.vehicle:
+				frappe.db.set_value("Vehicle", self.vehicle, "warranty_status", self.warranty_status,
+					update_modified=update_modified)
 
 	def validate_warehouse(self):
 		if not self.get("__islocal"):
@@ -252,7 +256,7 @@ class SerialNo(StockController):
 		self.set_purchase_details(last_sle.get("purchase_sle"))
 		self.set_sales_details(last_sle.get("delivery_sle"))
 		self.set_party_details(last_sle.get("purchase_sle"), last_sle.get("delivery_sle"))
-		self.set_maintenance_status()
+		self.set_warranty_status()
 		self.set_status()
 
 	def update_vehicle_reference(self):
@@ -690,17 +694,16 @@ def update_serial_nos_after_submit(controller, parentfield):
 							break
 
 
-def update_maintenance_status():
+def update_warranty_status():
 	serial_nos = frappe.db.sql_list("""
 		select name
 		from `tabSerial No`
-		where warranty_expiry_date < %s and maintenance_status != 'Out of Warranty'
+		where warranty_expiry_date < %s and warranty_status != 'Out of Warranty'
 	""", nowdate())
 
 	for serial_no in serial_nos:
 		doc = frappe.get_doc("Serial No", serial_no)
-		doc.set_maintenance_status()
-		frappe.db.set_value('Serial No', doc.name, 'maintenance_status', doc.maintenance_status)
+		doc.set_warranty_status(update=True)
 
 
 def get_delivery_note_serial_no(item_code, qty, delivery_note):
