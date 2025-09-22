@@ -5,9 +5,13 @@ import frappe, erpnext
 from frappe.utils import flt, today
 from frappe import msgprint, _
 from frappe.model.document import Document
-from erpnext.accounts.utils import (get_outstanding_invoices,
-	update_reference_in_payment_entry, reconcile_against_document)
 from erpnext.controllers.accounts_controller import get_advance_payment_entries, get_advance_journal_entries
+from erpnext.accounts.utils import (
+	get_outstanding_invoices,
+	update_reference_in_payment_entry,
+	reconcile_against_document,
+	get_advance_against_voucher_types
+)
 
 
 class PaymentReconciliation(Document):
@@ -19,18 +23,13 @@ class PaymentReconciliation(Document):
 	def get_nonreconciled_payment_entries(self):
 		self.check_mandatory_to_fetch()
 
-		if self.party_type == "Customer":
-			order_doctype = ["Sales Order", "Proforma Invoice"]
-		elif self.party_type == "Supplier":
-			order_doctype = "Purchase Order"
-		else:
-			order_doctype = None
+		order_doctypes = get_advance_against_voucher_types()
 
 		payment_entries = get_advance_payment_entries(
 			self.party_type,
 			self.party,
 			self.receivable_payable_account,
-			order_doctype=order_doctype,
+			order_doctype=order_doctypes,
 			against_all_orders=True,
 			against_account=self.bank_cash_account,
 			limit=self.limit
@@ -40,7 +39,7 @@ class PaymentReconciliation(Document):
 			self.party_type,
 			self.party,
 			self.receivable_payable_account,
-			order_doctype=order_doctype,
+			order_doctype=order_doctypes,
 			against_all_orders=True,
 			limit=self.limit
 		)
