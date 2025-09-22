@@ -86,17 +86,11 @@ class SerialNo(StockController):
 			self.status = "Active"
 
 	def set_maintenance_status(self):
-		if not self.warranty_expiry_date and not self.amc_expiry_date:
+		if not self.warranty_expiry_date:
 			self.maintenance_status = None
 
 		if self.warranty_expiry_date and getdate(self.warranty_expiry_date) < getdate(nowdate()):
 			self.maintenance_status = "Out of Warranty"
-
-		if self.amc_expiry_date and getdate(self.amc_expiry_date) < getdate(nowdate()):
-			self.maintenance_status = "Out of AMC"
-
-		if self.amc_expiry_date and getdate(self.amc_expiry_date) >= getdate(nowdate()):
-			self.maintenance_status = "Under AMC"
 
 		if self.warranty_expiry_date and getdate(self.warranty_expiry_date) >= getdate(nowdate()):
 			self.maintenance_status = "Under Warranty"
@@ -697,11 +691,14 @@ def update_serial_nos_after_submit(controller, parentfield):
 
 
 def update_maintenance_status():
-	serial_nos = frappe.db.sql('''select name from `tabSerial No` where (amc_expiry_date<%s or
-		warranty_expiry_date<%s) and maintenance_status not in ('Out of Warranty', 'Out of AMC')''',
-		(nowdate(), nowdate()))
+	serial_nos = frappe.db.sql_list("""
+		select name
+		from `tabSerial No`
+		where warranty_expiry_date < %s and maintenance_status != 'Out of Warranty'
+	""", nowdate())
+
 	for serial_no in serial_nos:
-		doc = frappe.get_doc("Serial No", serial_no[0])
+		doc = frappe.get_doc("Serial No", serial_no)
 		doc.set_maintenance_status()
 		frappe.db.set_value('Serial No', doc.name, 'maintenance_status', doc.maintenance_status)
 

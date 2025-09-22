@@ -21,7 +21,7 @@ class Vehicle(Document):
 		'supplier', 'supplier_name',
 		'purchase_document_type', 'purchase_document_no', 'purchase_date', 'purchase_time', 'purchase_rate',
 		'delivery_document_type', 'delivery_document_no', 'delivery_date', 'delivery_time', 'sales_invoice',
-		'warranty_expiry_date', 'amc_expiry_date', 'maintenance_status'
+		'maintenance_status',
 	]
 
 	_sync_fields = [
@@ -29,6 +29,7 @@ class Vehicle(Document):
 		'is_reserved', 'reserved_customer', 'reserved_customer_name',
 		'vehicle_owner', 'vehicle_owner_name',
 		'sales_order', 'delivery_date',
+		'warranty_expiry_date',
 	]
 
 	def __init__(self, *args, **kwargs):

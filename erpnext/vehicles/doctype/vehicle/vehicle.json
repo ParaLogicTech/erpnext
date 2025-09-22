@@ -95,7 +95,6 @@
   "warehouse",
   "column_break_60",
   "employee",
-  "amc_expiry_date",
   "company",
   "sec_maintenance_schedule",
   "maintenance_schedule_html"
@@ -422,10 +421,10 @@
   {
    "fieldname": "maintenance_status",
    "fieldtype": "Select",
-   "label": "Maintenance Status",
+   "label": "Warranty Status",
    "oldfieldname": "maintenance_status",
    "oldfieldtype": "Select",
-   "options": "\nUnder Warranty\nOut of Warranty\nUnder AMC\nOut of AMC",
+   "options": "\nUnder Warranty\nOut of Warranty",
    "read_only": 1,
    "search_index": 1,
    "width": "150px"
@@ -701,14 +700,6 @@
    "options": "Employee"
   },
   {
-   "fieldname": "amc_expiry_date",
-   "fieldtype": "Date",
-   "label": "AMC Expiry Date",
-   "oldfieldname": "amc_expiry_date",
-   "oldfieldtype": "Date",
-   "width": "150px"
-  },
-  {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -746,9 +737,10 @@
    "options": "Vehicle Model Year"
   }
  ],
+ "grid_page_length": 500,
  "image_field": "image",
  "links": [],
- "modified": "2025-02-23 22:39:35.913327",
+ "modified": "2025-09-22 22:33:43.433220",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",
@@ -862,6 +854,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "item_code, item_name, license_plate, chassis_no, engine_no, color, customer, customer_name, reference_no",
  "show_name_in_global_search": 1,
  "show_preview_popup": 1,

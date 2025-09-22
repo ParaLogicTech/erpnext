@@ -343,6 +343,7 @@ erpnext.patches.v15_0.rename_vehicle_checklist_item
 execute:frappe.delete_doc_if_exists("Report", "Dimension-Wise Trial Balance")
 erpnext.patches.v15_0.move_apply_taxes_on_advance_payment_accounts_settings
 erpnext.patches.v15_0.fbr_integration_app_separation
+execute:frappe.delete_doc_if_exists("Report", "Serial No Service Contract Expiry")
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay
