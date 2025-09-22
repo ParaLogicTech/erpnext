@@ -1762,31 +1762,6 @@ class SalesInvoice(SellingController):
 		else:
 			frappe.throw(_("Sales Invoice Grand Total cannot be 0"))
 
-	def validate_zero_outstanding(self):
-		super().validate_zero_outstanding()
-
-		if not self.is_return and self.is_opening != "Yes":
-			bill_to = self.bill_to or self.customer
-
-			if self.project:
-				project_details = frappe.db.get_value("Project", self.project,
-					["cash_billing", "insurance_company"], as_dict=1) or frappe._dict()
-
-				if (
-					project_details.cash_billing
-					and self.outstanding_amount != 0
-					and (not project_details.insurance_company or bill_to != project_details.insurance_company)
-				):
-					frappe.throw(_("Outstanding Amount must be 0 for Cash {0}").format(
-						frappe.get_desk_link("Project", self.project)
-					))
-			else:
-				cash_billing = frappe.get_cached_value("Customer", bill_to, "cash_billing")
-				if cash_billing and self.outstanding_amount != 0:
-					frappe.throw(_("Outstanding Amount must be 0 for Cash Customer {0}").format(
-						frappe.utils.get_link_to_form("Customer", self.bill_to)
-					))
-
 
 def get_discounting_status(sales_invoice):
 	status = None
