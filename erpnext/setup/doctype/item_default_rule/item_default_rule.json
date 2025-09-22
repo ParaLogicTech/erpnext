@@ -45,6 +45,10 @@
   "column_break_29",
   "claim_customer",
   "claim_customer_name",
+  "deferred_revenue_expense_section",
+  "deferred_revenue_account",
+  "column_break_cvya",
+  "deferred_expense_account",
   "other_defaults_section",
   "show_item_code",
   "default_price_list",
@@ -339,10 +343,34 @@
    "ignore_user_permissions": 1,
    "label": "Discount Allowed Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "deferred_revenue_expense_section",
+   "fieldtype": "Section Break",
+   "label": "Deferred Revenue & Expense"
+  },
+  {
+   "fieldname": "deferred_revenue_account",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Deferred Revenue Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "column_break_cvya",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "deferred_expense_account",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Deferred Expense Account",
+   "options": "Account"
   }
  ],
+ "grid_page_length": 500,
  "links": [],
- "modified": "2025-03-12 22:17:50.377939",
+ "modified": "2025-09-21 23:23:36.802467",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Item Default Rule",
@@ -390,6 +418,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

@@ -523,22 +523,24 @@ def calculate_service_end_date(args, item=None):
 
 	doctype = args.get("parenttype") or args.get("doctype")
 	if doctype == "Sales Invoice":
-		enable_deferred = "enable_deferred_revenue"
-		no_of_months = "no_of_months"
-		account = "deferred_revenue_account"
+		enable_field = "enable_deferred_revenue"
+		months_field = "no_of_months"
+		account_field = "deferred_revenue_account"
+		account = get_default_deferred_revenue_account(item, args)
 	else:
-		enable_deferred = "enable_deferred_expense"
-		no_of_months = "no_of_months_exp"
-		account = "deferred_expense_account"
+		enable_field = "enable_deferred_expense"
+		months_field = "no_of_months_exp"
+		account_field = "deferred_expense_account"
+		account = get_default_deferred_expense_account(item, args)
 
 	service_start_date = args.service_start_date if args.service_start_date else args.transaction_date
-	service_end_date = add_months(service_start_date, item.get(no_of_months))
-	deferred_detail = {
+	service_end_date = add_months(service_start_date, item.get(months_field))
+	deferred_detail = frappe._dict({
 		"service_start_date": service_start_date,
-		"service_end_date": service_end_date
-	}
-	deferred_detail[enable_deferred] = item.get(enable_deferred)
-	deferred_detail[account] = get_default_deferred_account(args, item, fieldname=account)
+		"service_end_date": service_end_date,
+		enable_field: item.get(enable_field),
+		account_field: account if item.get(enable_field) else None
+	})
 
 	return deferred_detail
 
@@ -598,13 +600,30 @@ def get_default_expense_account(item, args):
 	return account or args.expense_account
 
 
-def get_default_deferred_account(args, item, fieldname=None):
-	if item.get("enable_deferred_revenue") or item.get("enable_deferred_expense"):
-		return (item.get(fieldname)
-			or args.get(fieldname)
-			or frappe.get_cached_value('Company',  args.company,  "default_"+fieldname))
-	else:
-		return None
+def get_default_deferred_revenue_account(item, args):
+	if isinstance(item, str):
+		item = frappe.get_cached_doc("Item", item)
+
+	default_values = get_item_default_values(item, args)
+
+	account = default_values.get("deferred_revenue_account")
+	if not account and args.company:
+		account = frappe.get_cached_value("Company", args.company, "default_deferred_revenue_account")
+
+	return account or args.deferred_revenue_account
+
+
+def get_default_deferred_expense_account(item, args):
+	if isinstance(item, str):
+		item = frappe.get_cached_doc("Item", item)
+
+	default_values = get_item_default_values(item, args)
+
+	account = default_values.get("deferred_expense_account")
+	if not account and args.company:
+		account = frappe.get_cached_value("Company", args.company, "default_deferred_expense_account")
+
+	return account or args.deferred_expense_account
 
 
 def get_default_cost_center(item, args, selling_or_buying=None):

@@ -957,16 +957,6 @@ frappe.ui.form.on('Sales Invoice', {
 			}
 		}
 
-		frm.fields_dict['items'].grid.get_field('deferred_revenue_account').get_query = function(doc) {
-			return {
-				filters: {
-					'root_type': 'Liability',
-					'company': doc.company,
-					"is_group": 0
-				}
-			}
-		}
-
 		frm.set_query('pos_profile', function(doc) {
 			if(!doc.company) {
 				frappe.throw(__('Please set Company'));
