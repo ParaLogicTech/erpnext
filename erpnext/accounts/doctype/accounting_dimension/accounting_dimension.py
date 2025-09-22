@@ -172,39 +172,7 @@ def toggle_disabling(doc):
 
 
 def get_doctypes_with_dimensions():
-	doclist = [
-		"GL Entry",
-
-		"Sales Invoice", "Sales Invoice Item", "POS Profile",
-		"Purchase Invoice", "Purchase Invoice Item",
-		"Opening Invoice Creation Tool", "Opening Invoice Creation Tool Item",
-
-		"Delivery Note", "Delivery Note Item",
-		"Purchase Receipt", "Purchase Receipt Item",
-		"Sales Taxes and Charges", "Purchase Taxes and Charges",
-
-		"Journal Entry", "Journal Entry Account",
-		"Expense Entry", "Expense Entry Detail",
-		"Payment Entry", "Payment Entry Deduction", "Advance Taxes and Charges",
-
-		"Stock Entry", "Stock Entry Detail",
-		"Packing Slip", "Packing Slip Item", "Packing Slip Packaging Material",
-		"Stock Reconciliation", "Stock Reconciliation Item",
-		"Landed Cost Voucher", "Landed Cost Taxes and Charges",
-
-		"Service Warranty",
-		"Expense Claim", "Expense Claim Detail", "Expense Taxes and Charges",
-
-		"Loyalty Program", "Shipping Rule",
-		"Asset", "Asset Value Adjustment",
-		"Fees", "Fee Schedule", "Fee Structure",
-		"Budget",
-		"Payroll Entry",
-		"Travel Request",
-		"Subscription", "Subscription Plan",
-	]
-
-	return doclist
+	return frappe.get_hooks("accounting_dimension_doctypes")
 
 
 def get_all_valid_dimension_fields(doctype):

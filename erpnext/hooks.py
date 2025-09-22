@@ -302,6 +302,40 @@ regional_overrides = {
 	}
 }
 
+accounting_dimension_doctypes = [
+	"GL Entry",
+
+	"Sales Invoice", "Sales Invoice Item",
+	"Purchase Invoice", "Purchase Invoice Item",
+
+	"POS Profile",
+	"Opening Invoice Creation Tool", "Opening Invoice Creation Tool Item",
+
+	"Delivery Note", "Delivery Note Item",
+	"Purchase Receipt", "Purchase Receipt Item",
+	"Sales Taxes and Charges", "Purchase Taxes and Charges",
+
+	"Journal Entry", "Journal Entry Account",
+	"Expense Entry", "Expense Entry Detail",
+	"Payment Entry", "Payment Entry Deduction", "Advance Taxes and Charges",
+
+	"Stock Entry", "Stock Entry Detail",
+	"Packing Slip", "Packing Slip Item", "Packing Slip Packaging Material",
+	"Stock Reconciliation", "Stock Reconciliation Item",
+	"Landed Cost Voucher", "Landed Cost Taxes and Charges",
+
+	"Service Warranty",
+	"Expense Claim", "Expense Claim Detail", "Expense Taxes and Charges",
+
+	"Loyalty Program", "Shipping Rule",
+	"Asset", "Asset Value Adjustment",
+	"Fees", "Fee Schedule", "Fee Structure",
+	"Budget",
+	"Payroll Entry",
+	"Travel Request",
+	"Subscription", "Subscription Plan",
+]
+
 # ERPNext doctypes for Global Search
 global_search_doctypes = {
 	"Default": [
