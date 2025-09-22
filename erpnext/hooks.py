@@ -302,6 +302,8 @@ regional_overrides = {
 	}
 }
 
+advance_against_voucher_types = ["Sales Order", "Purchase Order", "Proforma Invoice", "Employee Advance"]
+
 accounting_dimension_doctypes = [
 	"GL Entry",
 

@@ -28,7 +28,7 @@ class calculate_taxes_and_totals(object):
 			self.set_discount_amount()
 			self.apply_discount_amount()
 
-		if self.doc.doctype in ("Sales Invoice", "Proforma Invoice", "Purchase Invoice"):
+		if self.doc.meta.has_field("total_advance"):
 			self.calculate_total_advance()
 
 		if self.doc.meta.has_field("outstanding_amount"):

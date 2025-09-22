@@ -74,7 +74,7 @@ class PurchaseInvoice(BuyingController):
 		self.validate_credit_to_acc()
 
 		if not self.is_paid:
-			self.check_advance_payment_against_order("purchase_order")
+			self.check_advance_payment_against_order()
 
 		self.validate_zero_amount()
 		self.check_on_hold_or_closed_status()
@@ -180,6 +180,10 @@ class PurchaseInvoice(BuyingController):
 			"due_date": self.due_date,
 			"bill_no": self.bill_no,
 		}
+
+	def get_orders_for_advance_entries(self):
+		orders = set([("Purchase Order", d.get("purchase_order")) for d in self.get("items") if d.get("purchase_order")])
+		return list(orders)
 
 	def before_calculate_taxes_and_totals(self):
 		super().before_calculate_taxes_and_totals()

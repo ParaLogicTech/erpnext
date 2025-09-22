@@ -68,6 +68,10 @@ class ProformaInvoice(SellingController):
 			"posting_date": self.transaction_date,
 		}
 
+	def get_orders_for_advance_entries(self):
+		orders = set([("Sales Order", d.get("sales_order")) for d in self.get("items") if d.get("sales_order")])
+		return list(orders)
+
 	def validate_with_previous_doc(self):
 		super().validate_with_previous_doc({
 			"Sales Order": {

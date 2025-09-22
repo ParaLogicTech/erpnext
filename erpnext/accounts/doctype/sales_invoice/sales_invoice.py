@@ -63,7 +63,7 @@ class SalesInvoice(SellingController):
 		self.validate_debit_to_acc()
 		self.validate_return_against()
 
-		self.check_advance_payment_against_order(["proforma_invoice", "sales_order"])
+		self.check_advance_payment_against_order()
 
 		self.validate_write_off_account()
 		self.validate_account_for_change_amount()
@@ -246,6 +246,16 @@ class SalesInvoice(SellingController):
 			"posting_date": self.posting_date,
 			"due_date": self.due_date,
 		}
+
+	def get_orders_for_advance_entries(self):
+		order_list = set()
+		for d in self.get("items"):
+			if d.get("sales_order"):
+				order_list.add(("Sales Order", d.sales_order))
+			if d.get("proforma_invoice"):
+				order_list.add(("Proforma Invoice", d.proforma_invoice))
+
+		return list(order_list)
 
 	def before_calculate_taxes_and_totals(self):
 		super().before_calculate_taxes_and_totals()

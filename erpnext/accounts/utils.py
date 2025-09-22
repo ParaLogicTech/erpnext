@@ -419,16 +419,22 @@ def check_if_advance_entry_modified(args):
 		check if jv is submitted
 	"""
 	ret = None
+
+	args = args.copy()
+
 	if args.voucher_type == "Journal Entry":
 		if args.voucher_detail_no:
-			ret = frappe.db.sql("""select je.name
+			args["advance_against_voucher_types"] = [""] + get_advance_against_voucher_types()
+			ret = frappe.db.sql("""
+				select je.name
 				from `tabJournal Entry` je, `tabJournal Entry Account` jea
 				where
 					je.name = jea.parent and jea.account = %(account)s and je.docstatus=1
 					and je.name = %(voucher_no)s and jea.name = %(voucher_detail_no)s
 					and jea.party_type = %(party_type)s and jea.party = %(party)s
-					and ifnull(jea.reference_type, '') in ('', 'Sales Order', 'Purchase Order', 'Proforma Invoice', 'Employee Advance')
-					and jea.{dr_or_cr} = %(unadjusted_amount)s""".format(dr_or_cr=args.dr_or_cr), args)
+					and ifnull(jea.reference_type, '') in %(advance_against_voucher_types)s
+					and jea.{dr_or_cr} = %(unadjusted_amount)s
+				""".format(dr_or_cr=args.dr_or_cr), args)
 		else:
 			if erpnext.get_party_account_type(args.party_type) == 'Receivable':
 				dr_or_cr = "credit_in_account_currency - debit_in_account_currency"
@@ -442,23 +448,26 @@ def check_if_advance_entry_modified(args):
 				((voucher_type='Journal Entry' and voucher_no=%(voucher_no)s and (against_voucher is null or against_voucher=''))
 					or (against_voucher_type='Journal Entry' and against_voucher=%(voucher_no)s))
 				and party_type=%(party_type)s and party=%(party)s and account=%(account)s
-				having outstanding_amount=%(unadjusted_amount)s""".format(dr_or_cr=dr_or_cr), args)
+				having outstanding_amount=%(unadjusted_amount)s
+			""".format(dr_or_cr=dr_or_cr), args)
 	else:
-		party_account_field = ("paid_from"
-			if erpnext.get_party_account_type(args.party_type) == 'Receivable' else "paid_to")
+		party_account_field = ("paid_from" if erpnext.get_party_account_type(args.party_type) == 'Receivable' else "paid_to")
 
 		if args.voucher_detail_no:
-			ret = frappe.db.sql("""select pe.name
+			args["advance_against_voucher_types"] = get_advance_against_voucher_types()
+			ret = frappe.db.sql("""
+				select pe.name
 				from `tabPayment Entry` pe, `tabPayment Entry Reference` pref
 				where
 					pe.name = pref.parent and pe.docstatus = 1
 					and pe.name = %(voucher_no)s and pref.name = %(voucher_detail_no)s
 					and pe.party_type = %(party_type)s and pe.party = %(party)s and pe.{0} = %(account)s
-					and pref.reference_doctype in ('Sales Order', 'Purchase Order', 'Proforma Invoice', 'Employee Advance')
+					and pref.reference_doctype in %(advance_against_voucher_types)s
 					and pref.allocated_amount = %(unadjusted_amount)s
 			""".format(party_account_field), args)
 		else:
-			ret = frappe.db.sql("""select name from `tabPayment Entry`
+			ret = frappe.db.sql("""
+				select name from `tabPayment Entry`
 				where
 					name = %(voucher_no)s and docstatus = 1
 					and party_type = %(party_type)s and party = %(party)s and {0} = %(account)s
@@ -467,6 +476,10 @@ def check_if_advance_entry_modified(args):
 
 	if not ret:
 		throw(_("""Payment Entry has been modified after you pulled it. Please pull it again."""))
+
+
+def get_advance_against_voucher_types():
+	return frappe.get_hooks("advance_against_voucher_types")
 
 
 def validate_allocated_amount(args):

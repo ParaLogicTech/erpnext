@@ -38,7 +38,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		this.calculate_discount_amount();
 
 		// advance, payments and outstanding
-		if (["Sales Invoice", "Proforma Invoice", "Purchase Invoice"].includes(this.frm.doc.doctype)) {
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_advance")) {
 			this.calculate_total_advance();
 		}
 

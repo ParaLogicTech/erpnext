@@ -38,7 +38,7 @@
   "advances",
   "accounting_dimensions_section",
   "cost_center",
-  "dimension_col_break_column",
+  "dimension_col_break",
   "more_information",
   "status",
   "column_break_24",
@@ -299,10 +299,6 @@
    "permlevel": 2
   },
   {
-   "fieldname": "dimension_col_break_column",
-   "fieldtype": "Column Break"
-  },
-  {
    "fetch_from": "employee.designation",
    "fieldname": "designation",
    "fieldtype": "Link",
@@ -331,13 +327,18 @@
   {
    "fieldname": "column_break_pegxa",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "dimension_col_break",
+   "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-money",
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-07 14:29:27.857351",
+ "modified": "2025-09-22 21:38:35.092666",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Expense Claim",
@@ -427,6 +428,7 @@
    "role": "All"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "employee,employee_name, outstanding_amount",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

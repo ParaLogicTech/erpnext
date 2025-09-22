@@ -131,6 +131,9 @@ class AccountsController(TransactionBase):
 
 		return party_account
 
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		return {}
+
 	def ensure_supplier_is_not_blocked(self, is_payment=False, supplier=None):
 		if not supplier:
 			if self.get("party") and self.get("party_type") == "Supplier":
@@ -432,7 +435,8 @@ class AccountsController(TransactionBase):
 
 			total_advance_allocated += flt(allocated_amount)
 
-		if self.doctype in ("Sales Invoice", "Proforma Invoice"):
+		advance_doctype = self.meta.get_options("advances")
+		if frappe.get_meta(advance_doctype).has_field("advance_tax_detail"):
 			self.set_advance_tax_amounts()
 
 	def set_advance_tax_amounts(self):
@@ -500,54 +504,27 @@ class AccountsController(TransactionBase):
 			d.idx = i + 1
 
 	def get_advance_entries(self, include_unallocated=True, against_project=None):
-		order_doctype = None
-		order_list = []
+		party_account = self.get_party_account()
+		party_type, party, party_name = self.get_billing_party()
+		order_list = self.get_orders_for_advance_entries()
 
-		if self.doctype == "Sales Invoice":
-			party_account = self.debit_to
-			party_type, party, party_name = self.get_billing_party()
-			order_doctype = ("Sales Order", "Proforma Invoice")
-			order_list = set()
-			for d in self.get("items"):
-				if d.get("sales_order"):
-					order_list.add(("Sales Order", d.sales_order))
-				if d.get("proforma_invoice"):
-					order_list.add(("Proforma Invoice", d.proforma_invoice))
-			order_list = list(order_list)
-
-		elif self.doctype == "Proforma Invoice":
-			party_account = self.debit_to
-			party_type, party, party_name = self.get_billing_party()
-			order_doctype = "Sales Order"
-			order_list = list(set([("Sales Order", d.get("sales_order")) for d in self.get("items") if d.get("sales_order")]))
-
-		elif self.doctype == "Purchase Invoice":
-			party_account = self.credit_to
-			party_type, party, party_name = self.get_billing_party()
-			order_doctype = "Purchase Order"
-			order_list = list(set([("Purchase Order", d.get("purchase_order")) for d in self.get("items") if d.get("purchase_order")]))
-
-		elif self.doctype == "Expense Claim":
-			party_account = self.payable_account
-			party_type = "Employee"
-			party = self.employee
-
-		else:
-			party_account = self.credit_to
-			party_type = self.party_type
-			party = self.party
+		if not party_account or not party_type or not party:
+			return []
 
 		journal_entries = get_advance_journal_entries(party_type, party, party_account,
-			order_doctype=order_doctype, order_list=order_list, include_unallocated=include_unallocated,
+			order_list=order_list, include_unallocated=include_unallocated,
 			against_all_orders=False, against_project=against_project)
 
 		payment_entries = get_advance_payment_entries(party_type, party, party_account,
-			order_doctype=order_doctype, order_list=order_list, include_unallocated=include_unallocated,
+			order_list=order_list, include_unallocated=include_unallocated,
 			against_all_orders=False, against_project=against_project)
 
 		res = sorted(journal_entries + payment_entries, key=lambda d: (not bool(d.against_order), d.posting_date))
 
 		return res
+
+	def get_orders_for_advance_entries(self):
+		return []
 
 	def validate_total_advance_amount(self):
 		grand_total = self.rounded_total or self.grand_total
@@ -570,18 +547,11 @@ class AccountsController(TransactionBase):
 				frappe.format(invoice_total, df=self.meta.get_field("grand_total"))
 			))
 
-	def check_advance_payment_against_order(self, order_field):
+	def check_advance_payment_against_order(self):
 		if self.get("is_return"):
 			return
 
-		if isinstance(order_field, str):
-			order_field = [order_field]
-
-		order_list = set()
-		for f in order_field:
-			for d in self.get("items"):
-				if d.get(f):
-					order_list.add(d.get(f))
+		order_list = self.get_orders_for_advance_entries()
 		if not order_list:
 			return
 
@@ -610,63 +580,48 @@ class AccountsController(TransactionBase):
 				3. submit advance voucher
 		"""
 
-		if self.doctype == "Sales Invoice":
-			party_type, party, party_name = self.get_billing_party()
-			party_account = self.debit_to
-			dr_or_cr = "credit_in_account_currency"
-		elif self.doctype == "Purchase Invoice":
-			party_type, party, party_name = self.get_billing_party()
-			party_account = self.credit_to
-			dr_or_cr = "debit_in_account_currency"
-		elif self.doctype == "Expense Claim":
-			party_type, party, party_name = self.get_billing_party()
-			party_account = self.payable_account
-			dr_or_cr = "debit_in_account_currency"
-		else:
-			party_type = self.party_type
-			party = self.party
-			party_account = self.credit_to
-			dr_or_cr = "debit_in_account_currency"
+		party_type, party, party_name = self.get_billing_party()
+		party_account = self.get_party_account()
+		if not party_type or not party or not party_account:
+			return
 
-		if self.doctype in ["Sales Invoice", "Purchase Invoice"]:
-			invoice_amounts = {
-				'exchange_rate': (self.conversion_rate if self.party_account_currency != self.company_currency else 1),
-				'grand_total': (self.base_grand_total if self.party_account_currency == self.company_currency else self.grand_total)
-			}
-		elif self.doctype == "Expense Claim":
-			invoice_amounts = {
-				'exchange_rate': 1,
-				'grand_total': self.total_sanctioned_amount
-			}
-		else:
-			invoice_amounts = {
-				'exchange_rate': 1,
-				'grand_total': self.grand_total
-			}
+		party_account_type = erpnext.get_party_account_type(party_type)
+		payment_type = "Receive" if party_account_type == "Receivable" else "Pay"
+		dr_or_cr = "credit_in_account_currency" if party_account_type == "Receivable" else "debit_in_account_currency"
+
+		payment_reference_details = self.get_reference_details_for_payment(party_type, party, party_account, payment_type)
+		invoice_amounts = {
+			"grand_total": flt(payment_reference_details.get("total_amount")),
+			"exchange_rate": flt(payment_reference_details.get("exchange_rate")) or 1,
+			"outstanding_amount": flt(payment_reference_details.get("outstanding_amount"))
+		}
 
 		lst = []
 		for d in self.get('advances'):
-			if flt(d.allocated_amount) > 0 and d.reference_type != 'Employee Advance':
-				allocated_amount = flt(d.allocated_amount)
-				if flt(d.get("allocated_tax")):
-					allocated_amount = flt(allocated_amount - flt(d.get("allocated_tax")), 9)
+			if flt(d.allocated_amount) <= 0:
+				continue
+			if d.reference_type == "Employee Advance":
+				continue
 
-				args = frappe._dict({
-					'voucher_type': d.reference_type,
-					'voucher_no': d.reference_name,
-					'voucher_detail_no': d.reference_row,
-					'against_voucher_type': self.doctype,
-					'against_voucher': self.name,
-					'account': party_account,
-					'party_type': party_type,
-					'party': party,
-					'dr_or_cr': dr_or_cr,
-					'unadjusted_amount': flt(d.advance_amount),
-					'allocated_amount': allocated_amount,
-					'outstanding_amount': self.outstanding_amount
-				})
-				args.update(invoice_amounts)
-				lst.append(args)
+			allocated_amount = flt(d.allocated_amount)
+			if flt(d.get("allocated_tax")):
+				allocated_amount = flt(allocated_amount - flt(d.get("allocated_tax")), 9)
+
+			args = frappe._dict({
+				'voucher_type': d.reference_type,
+				'voucher_no': d.reference_name,
+				'voucher_detail_no': d.reference_row,
+				'against_voucher_type': self.doctype,
+				'against_voucher': self.name,
+				'account': party_account,
+				'party_type': party_type,
+				'party': party,
+				'dr_or_cr': dr_or_cr,
+				'unadjusted_amount': flt(d.advance_amount),
+				'allocated_amount': allocated_amount,
+			})
+			args.update(invoice_amounts)
+			lst.append(args)
 
 		if lst:
 			from erpnext.accounts.utils import reconcile_against_document
