@@ -7,7 +7,6 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	setup() {
 		this.setup_make_methods();
 		erpnext.setup_applies_to_fields(this.frm);
-		this.frm.add_fetch("service_template", "includes_service_warranty", "includes_service_warranty", "Project Service Template");
 	}
 
 	onload() {
@@ -556,10 +555,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 	get_service_template_details(row) {
 		if (row && row.service_template) {
+			let args = this.get_service_template_args(row);
+
 			return frappe.call({
 				method: "erpnext.projects.doctype.service_template.service_template.get_service_template_details",
 				args: {
-					service_template: row.service_template
+					service_template: row.service_template,
+					args: args,
 				},
 				callback: (r) => {
 					if (r.message) {
@@ -567,6 +569,16 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					}
 				}
 			});
+		}
+	}
+
+	get_service_template_args(row) {
+		return {
+			customer: this.frm.doc.customer,
+			bill_to: this.frm.doc.bill_to,
+			applies_to_item: this.frm.doc.applies_to_item,
+			project: this.frm.is_new() ? null : this.frm.doc.name,
+			project_date: this.frm.doc.project_date,
 		}
 	}
 
