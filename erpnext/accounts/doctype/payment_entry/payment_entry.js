@@ -67,19 +67,26 @@ erpnext.accounts.PaymentEntry = class PaymentEntry extends frappe.ui.form.Contro
 
 	check_reference_no_auotmation () {
         if(this.frm.doc.payment_type && this.frm.doc.mode_of_payment) {
-            frappe.call({
-                method: "erpnext.accounts.doctype.payment_entry.payment_entry.check_payment_reference_no_automation",
-                args: {
-                    payment_type: this.frm.doc.payment_type,
-                    mode_of_payment: this.frm.doc.mode_of_payment
-                },
-                freeze: 1,
-                freeze_message: __("Fetching.."),
-                callback: (r) => {
-                    if(r && r.message && r.message.length>0) {
-                        this.frm.toggle_reqd("reference_no", false);
-                    }
-                    else {
+
+			let the_required_field = null;
+
+			if (this.frm.doc.payment_type == "Receive") {
+				the_required_field = "receive_reference_no_series"
+			}
+			else if(this.frm.doc.payment_type == "Pay") {
+				the_required_field = "pay_reference_no_series"
+			}
+			else if(this.frm.doc.payment_type == "Internal Transfer") {
+				the_required_field = "internal_transfer_reference_no_series"
+			}
+
+			if(the_required_field) {
+				frappe.db.get_value('Mode Of Payment', this.frm.doc.mode_of_payment, the_required_field)
+					.then(r => {
+					if(r.message && r.message[the_required_field]) {
+						this.frm.toggle_reqd("reference_no", false);
+					}
+					else {
 						if ((this.frm.doc.payment_type === "Receive") && (this.frm.doc.account_paid_to_type === "Bank")) {
 							this.frm.toggle_reqd("reference_no", true);
 						} else if(((this.frm.doc.payment_type === "Pay") || (this.frm.doc.payment_type === "Internal Transfer")) && (this.frm.doc.account_paid_to_type === "Bank")) {   
@@ -88,9 +95,9 @@ erpnext.accounts.PaymentEntry = class PaymentEntry extends frappe.ui.form.Contro
 						else {
 							this.frm.toggle_reqd("reference_no", false);
 						}
-                    }
-                }
-            });
+					}
+				})
+			}
         }
     }
 }

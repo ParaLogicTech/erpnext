@@ -783,10 +783,10 @@ class PaymentEntry(AccountsController):
 	def validate_transaction_reference(self):
 
 		if self.docstatus == 1:
-			reference_doc = check_payment_reference_no_automation(self.payment_type, self.mode_of_payment)
-			if reference_doc:
+			reference_series = check_payment_reference_no_automation(self.payment_type, self.mode_of_payment)
+			if reference_series:
 				from frappe.model.naming import make_autoname
-				self.reference_no = make_autoname("{0}".format(reference_doc[1] + ".####"))
+				self.reference_no = make_autoname("{0}".format(reference_series))
 		
 		bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
 		bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
@@ -1876,12 +1876,15 @@ def make_payment_order(source_name, target_doc=None):
 
 	return doclist
 
-@frappe.whitelist()
+
 def check_payment_reference_no_automation(payment_type, mode_of_payment):
-	if frappe.db.exists(
-		"System Generate Reference Number Details", {"payment_type":payment_type, "parent":mode_of_payment,"parenttype": "Mode of Payment"}
-	):
-		payment_type, series = frappe.db.get_value( "System Generate Reference Number Details", 
-															{"payment_type":payment_type, "parent":mode_of_payment, "parenttype": "Mode of Payment"},
-										["payment_type", "series"])
-		return (payment_type, series)
+	the_required_field = None
+	if (payment_type == "Receive"):
+		the_required_field = "receive_reference_no_series"
+	elif(payment_type == "Pay"):
+		the_required_field = "pay_reference_no_series"
+	elif(payment_type == "Internal Transfer"):
+		the_required_field = "internal_transfer_reference_no_series"
+	series_value = frappe.get_cached_value("Mode of Payment", mode_of_payment, the_required_field)
+	if series_value:
+		return series_value

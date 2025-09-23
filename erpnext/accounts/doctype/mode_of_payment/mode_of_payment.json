@@ -18,7 +18,10 @@
   "party_bank_mandatory",
   "section_break_zkxj",
   "accounts",
-  "system_reference_number_details"
+  "system_reference_number_details",
+  "pay_reference_no_series",
+  "internal_transfer_reference_no_series",
+  "receive_reference_no_series"
  ],
  "fields": [
   {
@@ -87,15 +90,29 @@
   {
    "depends_on": "eval:doc.type == \"Bank\"",
    "fieldname": "system_reference_number_details",
-   "fieldtype": "Table",
-   "label": "System Generated Reference Number Details",
-   "options": "System Generate Reference Number Details"
+   "fieldtype": "Section Break",
+   "label": "System Generated Reference No"
+  },
+  {
+   "fieldname": "pay_reference_no_series",
+   "fieldtype": "Data",
+   "label": "Pay Reference No Series"
+  },
+  {
+   "fieldname": "internal_transfer_reference_no_series",
+   "fieldtype": "Data",
+   "label": "Internal Transfer Reference No Series"
+  },
+  {
+   "fieldname": "receive_reference_no_series",
+   "fieldtype": "Data",
+   "label": "Receive Reference No Series"
   }
  ],
  "icon": "fa fa-credit-card",
  "idx": 1,
  "links": [],
- "modified": "2025-09-23 12:54:40.825059",
+ "modified": "2025-09-23 18:14:58.665711",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Mode of Payment",
