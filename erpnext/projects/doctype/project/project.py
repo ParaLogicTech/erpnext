@@ -85,7 +85,7 @@ class Project(StatusUpdaterERP):
 	def validate(self):
 		self.set_service_template_has_transaction()
 		if self.status not in ('Completed', 'Closed', 'Cancelled'):
-			self.set_missing_values()
+			self.set_missing_values(for_validate=True)
 
 		self.validate_appointment()
 		self.validate_phone_nos()
@@ -1189,11 +1189,11 @@ class Project(StatusUpdaterERP):
 		if self.get('contact_mobile') == self.get('contact_mobile_2'):
 			self.contact_mobile_2 = ''
 
-	def set_missing_values(self):
+	def set_missing_values(self, for_validate=False):
 		self.set_project_type_defaults()
 		self.set_appointment_details()
 		self.set_customer_details()
-		self.set_applies_to_details()
+		self.set_applies_to_details(for_validate=for_validate)
 		self.set_service_template_details()
 		self.set_material_and_service_item_groups()
 
@@ -1217,9 +1217,9 @@ class Project(StatusUpdaterERP):
 				self.set(k, v)
 
 	@frappe.whitelist()
-	def set_applies_to_details(self):
+	def set_applies_to_details(self, for_validate=False):
 		args = self.as_dict()
-		applies_to_details = get_applies_to_details(args, for_validate=True)
+		applies_to_details = get_applies_to_details(args, for_validate=for_validate)
 
 		for k, v in applies_to_details.items():
 			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
