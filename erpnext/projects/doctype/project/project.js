@@ -578,7 +578,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			bill_to: this.frm.doc.bill_to,
 			applies_to_item: this.frm.doc.applies_to_item,
 			project: this.frm.is_new() ? null : this.frm.doc.name,
-			project_date: this.frm.doc.project_date,
+			date: this.frm.doc.project_date,
 		}
 	}
 
