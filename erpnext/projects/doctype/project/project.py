@@ -83,6 +83,7 @@ class Project(StatusUpdaterERP):
 		pass
 
 	def validate(self):
+		self.set_service_template_has_transaction()
 		if self.status not in ('Completed', 'Closed', 'Cancelled'):
 			self.set_missing_values()
 
@@ -103,7 +104,6 @@ class Project(StatusUpdaterERP):
 		self.set_billing_and_delivery_status()
 		self.set_procurement_status()
 		self.set_costing()
-		self.set_service_template_has_transaction()
 		self.run_method("set_additional_status")
 		self.set_status(from_doctype=self.doctype, action=self.get("_action"))
 
@@ -740,13 +740,10 @@ class Project(StatusUpdaterERP):
 		if not previous_ready_to_close:
 			self.ready_to_close_dt = now_datetime()
 
-		self.status = "To Close"
-
 		if update:
 			self.db_set({
 				'ready_to_close': self.ready_to_close,
 				'ready_to_close_dt': self.ready_to_close_dt,
-				'status': self.status,
 			}, None)
 
 		if self.ready_to_close != previous_ready_to_close:
@@ -845,13 +842,11 @@ class Project(StatusUpdaterERP):
 	def reopen_status(self, update=True):
 		self.ready_to_close = 0
 		self.ready_to_close_dt = None
-		self.status = "Open"
 
 		if update:
 			self.db_set({
 				'ready_to_close': self.ready_to_close,
 				'ready_to_close_dt': self.ready_to_close_dt,
-				'status': self.status,
 			}, None)
 
 	def validate_for_transaction(self, doc):
@@ -966,49 +961,48 @@ class Project(StatusUpdaterERP):
 		action=None,
 	):
 		if self.is_new():
-			previous_status, previous_project_status, previous_indicator_color = self.status, self.project_status, self.indicator_color
+			self.flags.previous_status, self.flags.previous_project_status, self.flags.previous_indicator_color = (
+				self.status, self.project_status, self.indicator_color
+			)
 		else:
-			previous_status, previous_project_status, previous_indicator_color = self.db_get(["status", "project_status", "indicator_color"])
+			self.flags.previous_status, self.flags.previous_project_status, self.flags.previous_indicator_color = self.db_get([
+				"status", "project_status", "indicator_color"
+			])
 
 		# set/reset manual status
 		if reset:
 			self.project_status = None
+			self.status = status or "Open"
 		elif status:
 			set_manual_project_status(self, status)
 		else:
 			apply_project_status_transition(self, from_doctype, action)
 
 		# get evaulated status
-		project_status = get_auto_project_status(self)
+		project_status = get_auto_project_status(self) or frappe._dict()
 
-		# no applicable status
-		if not project_status:
-			if self.status != previous_status:
-				self.flags.status_changed = True
-			if update:
-				self.handle_on_status_change()
-
-			return
+		# do not set status if no auto status
+		if project_status:
+			self.status = project_status.status
 
 		# set status
 		self.project_status = project_status.name
-		self.status = project_status.status
 		self.indicator_color = project_status.indicator_color
-		self.show_task_type = project_status.show_task_type
+		self.show_task_type = cint(project_status.show_task_type)
 
 		# status comment only if project status changed
-		if not self.is_new() and self.project_status != previous_project_status:
+		if not self.is_new() and self.project_status and self.project_status != self.flags.previous_project_status:
 			self.add_comment("Label", _(self.project_status))
 
-		if self.status != previous_status:
+		if self.status != self.flags.previous_status:
 			self.flags.status_changed = True
 
 		# update database only if changed
 		if update:
 			if (
-				self.project_status != previous_project_status
-				or self.status != previous_status
-				or cstr(self.indicator_color) != cstr(previous_indicator_color)
+				self.project_status != self.flags.previous_project_status
+				or self.status != self.flags.previous_status
+				or cstr(self.indicator_color) != cstr(self.flags.previous_indicator_color)
 			):
 				self.db_set({
 					'project_status': self.project_status,
@@ -2308,7 +2302,7 @@ def set_project_ready_to_close(project):
 
 	project.set_ready_to_close(update=True)
 	project.set_timesheet_values(update=True)
-	project.set_status(update=True, reset=True, from_doctype="Project", action="ready_to_close")
+	project.set_status(update=True, status="To Close", reset=True, from_doctype="Project", action="ready_to_close")
 	project.run_method('notify_ready_to_close')
 	project.notify_update()
 
@@ -2320,7 +2314,7 @@ def reopen_project_status(project):
 
 	project.reopen_status(update=True)
 	project.set_timesheet_values(update=True)
-	project.set_status(update=True, reset=True, from_doctype="Project", action="reopen")
+	project.set_status(update=True, status="Open", reset=True, from_doctype="Project", action="reopen")
 	project.notify_update()
 
 
@@ -2490,7 +2484,7 @@ def get_project_details(project, doctype, purpose=None):
 def get_service_template_quoted_set(project):
 	service_template_quoted_set = []
 
-	service_template_details = [d.name for d in project.service_templates]
+	service_template_details = [d.name for d in project.service_templates if d.name]
 	if service_template_details:
 		service_template_quoted_set = frappe.db.sql_list("""
 			select distinct item.service_template_detail
@@ -2505,7 +2499,7 @@ def get_service_template_quoted_set(project):
 def get_service_template_ordered_set(project, group_by_item_type=False):
 	service_template_ordered_set = []
 
-	service_template_details = [d.name for d in project.service_templates]
+	service_template_details = [d.name for d in project.service_templates if d.name]
 	if service_template_details:
 		service_template_ordered_set = frappe.db.sql("""
 			select distinct item.service_template_detail, item.is_stock_item
@@ -2520,7 +2514,7 @@ def get_service_template_ordered_set(project, group_by_item_type=False):
 def get_service_template_requested_set(project):
 	service_template_requested_set = []
 
-	service_template_details = [d.name for d in project.service_templates]
+	service_template_details = [d.name for d in project.service_templates if d.name]
 	if service_template_details:
 		service_template_requested_set = frappe.db.sql_list("""
 			select distinct item.service_template_detail
@@ -2535,7 +2529,7 @@ def get_service_template_requested_set(project):
 def get_service_template_warranty_set(project):
 	service_template_warranty_set = []
 
-	service_template_details = [d.name for d in project.service_templates]
+	service_template_details = [d.name for d in project.service_templates if d.name]
 	if service_template_details:
 		service_template_warranty_set = frappe.db.sql_list("""
 			select distinct wty.service_template_detail
