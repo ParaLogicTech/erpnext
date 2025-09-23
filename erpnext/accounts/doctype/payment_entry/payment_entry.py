@@ -781,20 +781,32 @@ class PaymentEntry(AccountsController):
 			self.title = self.paid_from + " - " + self.paid_to
 
 	def validate_transaction_reference(self):
-		if not self.reference_no or not self.reference_date:
+
+		if self.docstatus == 1:
+			reference_doc = check_payment_reference_no_automation(self.payment_type, self.mode_of_payment)
+			if reference_doc:
+				from frappe.model.naming import make_autoname
+				self.reference_no = make_autoname("{0}".format(reference_doc[1] + ".####"))
+		
+		if ((not self.reference_no or not self.reference_date) and (self.docstatus == 1)):
 			bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
 			bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
 			if bank_account_type == "Bank":
-				frappe.throw(_("Reference No and Reference Date is mandatory for Bank transaction"))
+				if (not self.reference_no and not self.reference_date):
+					frappe.throw(_("Reference No and Reference Date are mandatory for Bank transaction"))
+				elif not self.reference_no:
+					frappe.throw(_("Reference No is mandatory for Bank transaction"))
+				elif not self.reference_date:
+					frappe.throw(_("Reference Date is mandatory for Bank transaction"))
 
 		mode = frappe.get_cached_doc("Mode of Payment", self.mode_of_payment) if self.mode_of_payment else frappe._dict()
 
-		if not self.reference_no and mode.reference_no_mandatory:
+		if ((not self.reference_no and mode.reference_no_mandatory) and (self.docstatus == 1)):
 			frappe.throw(_("Reference No is mandatory for Mode of Payment {0}").format(
 				frappe.bold(self.mode_of_payment)
 			))
 
-		if not self.reference_date and mode.reference_date_mandatory:
+		if ((not self.reference_date and mode.reference_date_mandatory) and (self.docstatus == 1)):
 			frappe.throw(_("Reference Date is mandatory for Mode of Payment {0}").format(
 				frappe.bold(self.mode_of_payment)
 			))
@@ -1290,7 +1302,6 @@ class PaymentEntry(AccountsController):
 			tax_template_field = "purchase_taxes_and_charges_template"
 
 		return tax_template_field
-
 
 def validate_inclusive_tax(tax, doc):
 	def _on_previous_row_error(row_range):
@@ -1866,3 +1877,13 @@ def make_payment_order(source_name, target_doc=None):
 	}, target_doc, set_missing_values)
 
 	return doclist
+
+@frappe.whitelist()
+def check_payment_reference_no_automation(payment_type, mode_of_payment):
+	if frappe.db.exists(
+		"System Generate Reference Number Details", {"payment_type":payment_type, "parent":mode_of_payment,"parenttype": "Mode of Payment"}
+	):
+		payment_type, series = frappe.db.get_value( "System Generate Reference Number Details", 
+															{"payment_type":payment_type, "parent":mode_of_payment, "parenttype": "Mode of Payment"},
+										["payment_type", "series"])
+		return (payment_type, series)

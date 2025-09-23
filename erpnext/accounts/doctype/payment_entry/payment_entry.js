@@ -64,6 +64,39 @@ erpnext.accounts.PaymentEntry = class PaymentEntry extends frappe.ui.form.Contro
 			filters: filters
 		};
 	}
+
+	check_reference_no_auotmation () {
+        if(this.frm.doc.payment_type && this.frm.doc.mode_of_payment) {
+            frappe.call({
+                method: "erpnext.accounts.doctype.payment_entry.payment_entry.check_payment_reference_no_automation",
+                args: {
+                    payment_type: this.frm.doc.payment_type,
+                    mode_of_payment: this.frm.doc.mode_of_payment
+                },
+                freeze: 1,
+                freeze_message: __("Fetching.."),
+                callback: (r) => {
+                    if(r && r.message && r.message.length>0) {
+                        this.frm.toggle_reqd("reference_no", false);
+                        this.frm.toggle_reqd("reference_date", false);
+                    }
+                    else {
+						if ((this.frm.doc.payment_type === "Receive") && (this.frm.doc.account_paid_to_type === "Bank")) {
+							this.frm.toggle_reqd("reference_no", true);
+							this.frm.toggle_reqd("reference_date", true);
+						} else if(((this.frm.doc.payment_type === "Pay") || (this.frm.doc.payment_type === "Internal Transfer")) && (this.frm.doc.account_paid_to_type === "Bank")) {   
+							this.frm.toggle_reqd("reference_no", true);
+							this.frm.toggle_reqd("reference_date", true);
+						}
+						else {
+							this.frm.toggle_reqd("reference_no", false);
+							this.frm.toggle_reqd("reference_date", false);
+						}
+                    }
+                }
+            });
+        }
+    }
 }
 
 {% include "erpnext/public/js/controllers/accounts.js" %}
@@ -74,6 +107,7 @@ frappe.ui.form.on('Payment Entry', {
 			if (!frm.doc.paid_from) frm.set_value("paid_from_account_currency", null);
 			if (!frm.doc.paid_to) frm.set_value("paid_to_account_currency", null);
 		}
+		frm.cscript.check_reference_no_auotmation();
 	},
 
 	setup: function(frm) {
@@ -238,6 +272,8 @@ frappe.ui.form.on('Payment Entry', {
 				filters: filters,
 			};
 		});
+
+		frm.cscript.check_reference_no_auotmation();
 	},
 
 	refresh: function(frm) {
@@ -246,7 +282,10 @@ frappe.ui.form.on('Payment Entry', {
 		frm.events.set_dynamic_labels(frm);
 		frm.events.show_general_ledger(frm);
 		frm.events.set_up_reference_row_selection(frm);
+		frm.cscript.check_reference_no_auotmation();
 	},
+
+
 
 	set_up_reference_row_selection: frm => {
 		frm.fields_dict.references.grid.wrapper.on('click', '.grid-row-check', (e) => {
@@ -451,6 +490,7 @@ frappe.ui.form.on('Payment Entry', {
 				frm.events.mode_of_payment(frm);
 			}
 		}
+		frm.cscript.check_reference_no_auotmation();
 	},
 
 	is_pos: function (frm) {

@@ -122,6 +122,10 @@ frappe.ui.form.on('Payment Entry', {
 			var payment_account_field = frm.doc.payment_type == "Receive" ? "paid_to" : "paid_from";
 			frm.set_value(payment_account_field, account);
 		})
+		frm.cscript.check_reference_no_auotmation();
+	},
+	account_paid_to_type: function(frm) {
+		frm.cscript.check_reference_no_auotmation();
 	}
 })
 

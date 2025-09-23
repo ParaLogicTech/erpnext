@@ -11,6 +11,7 @@ class ModeofPayment(Document):
 		self.validate_accounts()
 		self.validate_repeating_companies()
 		self.validate_pos_mode_of_payment()
+		self.validate_reference_no_series()
 	
 	def validate_repeating_companies(self):
 		"""Error when Same Company is entered multiple times in accounts"""
@@ -38,4 +39,12 @@ class ModeofPayment(Document):
 				message = "POS Profile " + frappe.bold(", ".join(pos_profiles)) + " contains \
 					Mode of Payment " + frappe.bold(str(self.name)) + ". Please remove them to disable this mode."
 				frappe.throw(_(message), title="Not Allowed")
+	
+	def validate_reference_no_series(self):
+		for each_row in self.system_reference_number_details:
+			if not frappe.db.exists("Series", each_row.series):
+				frappe.db.sql(
+					"INSERT INTO `tabSeries` (name, current) VALUES (%s, %s)",
+					(each_row.series, 0)
+				)
 
