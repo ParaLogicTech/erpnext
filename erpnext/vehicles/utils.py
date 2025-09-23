@@ -20,12 +20,14 @@ def format_vehicle_id(value):
 	return re.sub(r"\s+", "", cstr(value).upper())
 
 
-def get_vehicle_identifier(vehicle):
+def get_vehicle_identifier(vehicle, vehicle_details=None):
 	if not vehicle:
 		return ""
 
-	vehicle_details = frappe.db.get_value("Vehicle", vehicle,
-		("license_plate", "chassis_no"), as_dict=1, cache=1)
+	if not vehicle_details:
+		vehicle_details = frappe.db.get_value("Vehicle", vehicle,
+			("license_plate", "chassis_no"), as_dict=1, cache=1)
+
 	if not vehicle_details:
 		return vehicle
 
