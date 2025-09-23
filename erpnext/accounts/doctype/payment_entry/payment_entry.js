@@ -68,17 +68,7 @@ erpnext.accounts.PaymentEntry = class PaymentEntry extends frappe.ui.form.Contro
 	check_reference_no_auotmation () {
         if(this.frm.doc.payment_type && this.frm.doc.mode_of_payment) {
 
-			let the_required_field = null;
-
-			if (this.frm.doc.payment_type == "Receive") {
-				the_required_field = "receive_reference_no_series"
-			}
-			else if(this.frm.doc.payment_type == "Pay") {
-				the_required_field = "pay_reference_no_series"
-			}
-			else if(this.frm.doc.payment_type == "Internal Transfer") {
-				the_required_field = "internal_transfer_reference_no_series"
-			}
+			let the_required_field = this.frm.doc.payment_type.trim().toLowerCase().replace(/\s+/g, "_");
 
 			if(the_required_field) {
 				frappe.db.get_value('Mode Of Payment', this.frm.doc.mode_of_payment, the_required_field)
@@ -87,9 +77,8 @@ erpnext.accounts.PaymentEntry = class PaymentEntry extends frappe.ui.form.Contro
 						this.frm.toggle_reqd("reference_no", false);
 					}
 					else {
-						if ((this.frm.doc.payment_type === "Receive") && (this.frm.doc.account_paid_to_type === "Bank")) {
-							this.frm.toggle_reqd("reference_no", true);
-						} else if(((this.frm.doc.payment_type === "Pay") || (this.frm.doc.payment_type === "Internal Transfer")) && (this.frm.doc.account_paid_to_type === "Bank")) {   
+						if (((this.frm.doc.payment_type === "Receive") && (this.frm.doc.account_paid_to_type === "Bank")) ||
+							((this.frm.doc.payment_type != "Receive") && (this.frm.doc.account_paid_to_type === "Bank"))) {
 							this.frm.toggle_reqd("reference_no", true);
 						}
 						else {

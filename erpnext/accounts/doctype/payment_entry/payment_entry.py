@@ -1878,13 +1878,8 @@ def make_payment_order(source_name, target_doc=None):
 
 
 def check_payment_reference_no_automation(payment_type, mode_of_payment):
-	the_required_field = None
-	if (payment_type == "Receive"):
-		the_required_field = "receive_reference_no_series"
-	elif(payment_type == "Pay"):
-		the_required_field = "pay_reference_no_series"
-	elif(payment_type == "Internal Transfer"):
-		the_required_field = "internal_transfer_reference_no_series"
-	series_value = frappe.get_cached_value("Mode of Payment", mode_of_payment, the_required_field)
+	series_value = frappe.get_cached_value(
+		"Mode of Payment", mode_of_payment, payment_type.strip().lower().replace(" ", "_")
+	)
 	if series_value:
 		return series_value
