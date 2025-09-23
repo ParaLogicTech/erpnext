@@ -78,19 +78,15 @@ erpnext.accounts.PaymentEntry = class PaymentEntry extends frappe.ui.form.Contro
                 callback: (r) => {
                     if(r && r.message && r.message.length>0) {
                         this.frm.toggle_reqd("reference_no", false);
-                        this.frm.toggle_reqd("reference_date", false);
                     }
                     else {
 						if ((this.frm.doc.payment_type === "Receive") && (this.frm.doc.account_paid_to_type === "Bank")) {
 							this.frm.toggle_reqd("reference_no", true);
-							this.frm.toggle_reqd("reference_date", true);
 						} else if(((this.frm.doc.payment_type === "Pay") || (this.frm.doc.payment_type === "Internal Transfer")) && (this.frm.doc.account_paid_to_type === "Bank")) {   
 							this.frm.toggle_reqd("reference_no", true);
-							this.frm.toggle_reqd("reference_date", true);
 						}
 						else {
 							this.frm.toggle_reqd("reference_no", false);
-							this.frm.toggle_reqd("reference_date", false);
 						}
                     }
                 }

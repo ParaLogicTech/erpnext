@@ -788,16 +788,14 @@ class PaymentEntry(AccountsController):
 				from frappe.model.naming import make_autoname
 				self.reference_no = make_autoname("{0}".format(reference_doc[1] + ".####"))
 		
-		if ((not self.reference_no or not self.reference_date) and (self.docstatus == 1)):
-			bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
-			bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
-			if bank_account_type == "Bank":
-				if (not self.reference_no and not self.reference_date):
-					frappe.throw(_("Reference No and Reference Date are mandatory for Bank transaction"))
-				elif not self.reference_no:
-					frappe.throw(_("Reference No is mandatory for Bank transaction"))
-				elif not self.reference_date:
-					frappe.throw(_("Reference Date is mandatory for Bank transaction"))
+		bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
+		bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
+
+		if bank_account_type == "Bank":
+			if not self.reference_date:
+				frappe.throw(_("Reference Date is mandatory for Bank transaction"))
+			if not self.reference_no and self.docstatus == 1:
+				frappe.throw(_("Reference No is mandatory for Bank transaction"))
 
 		mode = frappe.get_cached_doc("Mode of Payment", self.mode_of_payment) if self.mode_of_payment else frappe._dict()
 
@@ -806,7 +804,7 @@ class PaymentEntry(AccountsController):
 				frappe.bold(self.mode_of_payment)
 			))
 
-		if ((not self.reference_date and mode.reference_date_mandatory) and (self.docstatus == 1)):
+		if ((not self.reference_date and mode.reference_date_mandatory)):
 			frappe.throw(_("Reference Date is mandatory for Mode of Payment {0}").format(
 				frappe.bold(self.mode_of_payment)
 			))
