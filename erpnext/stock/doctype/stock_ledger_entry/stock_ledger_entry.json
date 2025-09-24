@@ -118,6 +118,7 @@
   {
    "fieldname": "posting_time",
    "fieldtype": "Time",
+   "in_list_view": 1,
    "label": "Posting Time",
    "oldfieldname": "posting_time",
    "oldfieldtype": "Time",
@@ -142,6 +143,7 @@
    "fieldname": "voucher_no",
    "fieldtype": "Dynamic Link",
    "in_filter": 1,
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Voucher No",
    "oldfieldname": "voucher_no",
@@ -360,7 +362,6 @@
    "fieldname": "packing_slip",
    "fieldtype": "Link",
    "in_filter": 1,
-   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Package",
    "oldfieldname": "warehouse",
@@ -438,12 +439,13 @@
    "width": "150px"
   }
  ],
+ "grid_page_length": 500,
  "hide_toolbar": 1,
  "icon": "fa fa-list",
  "idx": 1,
  "in_create": 1,
  "links": [],
- "modified": "2025-06-18 10:54:11.933639",
+ "modified": "2025-09-24 15:34:26.099534",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Ledger Entry",
@@ -506,7 +508,9 @@
    "role": "Manufacturing User"
   }
  ],
- "sort_field": "modified",
+ "row_format": "Dynamic",
+ "sort_field": "creation",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "item_code"
 }
