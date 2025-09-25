@@ -1758,7 +1758,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					"price_list_rate": d.price_list_rate,
 					"conversion_factor": d.conversion_factor || 1.0,
 					"apply_taxes_on_retail": d.apply_taxes_on_retail,
-					"allow_zero_valuation_rate": d.allow_zero_valuation_rate
+					"allow_zero_valuation_rate": d.allow_zero_valuation_rate,
+					"service_template": d.service_template,
+					"service_template_detail": d.service_template_detail,
 				}
 
 				// if doctype is Quotation Item / Sales Order Iten then add Margin Type and rate in item_list

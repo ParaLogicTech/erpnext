@@ -1255,6 +1255,8 @@ def get_item_mapper_for_delivery(allow_duplicate=False):
 			"parent": "sales_order",
 			"quotation": "quotation",
 			"quotation_item": "quotation_item",
+			"service_template": "service_template",
+			"service_template_detail": "service_template_detail",
 		},
 		"postprocess": update_item,
 		"condition": item_condition,
