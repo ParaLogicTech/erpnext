@@ -103,6 +103,7 @@ class Item(Document):
 		self.validate_item_type()
 		self.validate_naming_series()
 		self.check_for_active_boms()
+		self.set_is_product_bundle()
 		self.fill_customer_code()
 		self.validate_barcode()
 		self.validate_warehouse_for_reorder()
@@ -317,6 +318,10 @@ class Item(Document):
 			if bom_item not in (self.name, self.variant_of):
 				frappe.throw(
 					_("Default BOM ({0}) must be active for this item or its template").format(bom_item))
+
+	def set_is_product_bundle(self):
+		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+		self.is_product_bundle = is_product_bundle(self.name, cache=False) if not self.is_new() else 0
 
 	def fill_customer_code(self):
 		""" Append all the customer codes and insert into "customer_code" field of item table """

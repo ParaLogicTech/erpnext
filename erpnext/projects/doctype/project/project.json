@@ -1049,7 +1049,7 @@
    "default": "Today",
    "fieldname": "project_date",
    "fieldtype": "Date",
-   "label": "Project Date",
+   "label": "Job Date",
    "read_only": 1,
    "search_index": 1
   },
@@ -1773,11 +1773,12 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-puzzle-piece",
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-05-29 23:44:50.517415",
+ "modified": "2025-09-25 13:39:40.808788",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",
@@ -1878,6 +1879,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "customer, reference_no, status, priority, is_active",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

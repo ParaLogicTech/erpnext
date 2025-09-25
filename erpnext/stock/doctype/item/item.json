@@ -35,6 +35,7 @@
   "disabled",
   "section_break_31",
   "is_stock_item",
+  "is_product_bundle",
   "is_vehicle",
   "is_fixed_asset",
   "auto_create_assets",
@@ -1094,6 +1095,15 @@
    "fieldname": "do_not_restrict_uom_selection",
    "fieldtype": "Check",
    "label": "Do Not Restrict UOM Selection"
+  },
+  {
+   "default": "0",
+   "depends_on": "is_product_bundle",
+   "fieldname": "is_product_bundle",
+   "fieldtype": "Check",
+   "label": "Is Product Bundle",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -1101,7 +1111,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2025-09-21 23:18:04.883409",
+ "modified": "2025-09-25 13:48:01.718160",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

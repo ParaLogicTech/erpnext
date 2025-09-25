@@ -314,19 +314,21 @@ def get_sales_order_bundled_items(sales_order, sales_order_item):
 	return frappe.local_cache("get_sales_order_bundled_items", (sales_order, sales_order_item), generator)
 
 
-def is_product_bundle(item_code):
-	return get_product_bundle_from_item_code(item_code)
+def is_product_bundle(item_code, cache=True):
+	return 1 if get_product_bundle_from_item_code(item_code, cache=cache) else 0
 
 
-def get_product_bundle_from_item_code(item_code):
+def get_product_bundle_from_item_code(item_code, cache=True):
 	if not item_code:
 		return None
 
-	return frappe.local_cache(
-		"get_product_bundle_from_item_code",
-		item_code,
-		lambda: frappe.db.get_value("Product Bundle", {"new_item_code": item_code})
-	)
+	def generator():
+		return frappe.db.get_value("Product Bundle", {"new_item_code": item_code})
+
+	if cache:
+		return frappe.local_cache("get_product_bundle_from_item_code", item_code, generator)
+	else:
+		return generator()
 
 
 def on_doctype_update():

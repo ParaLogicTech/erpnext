@@ -10,7 +10,7 @@ import json
 
 class ClaimItemsToBeBilled(ItemsToBeBilled):
 	def sort_data(self):
-		if self.filters.date_type == "Project Date":
+		if self.filters.date_type == "Job Date":
 			self.data = sorted(self.data, key=lambda d: (getdate(d.project_date), cstr(d.project), getdate(d.transaction_date), d.creation, cint(d.idx)))
 		else:
 			super().sort_data()
@@ -38,7 +38,7 @@ class ClaimItemsToBeBilled(ItemsToBeBilled):
 		return select_fields, joins
 
 	def get_date_field(self, doctype):
-		if self.filters.date_type == "Project Date":
+		if self.filters.date_type == "Job Date":
 			return "proj.project_date"
 		else:
 			return super().get_date_field(doctype)
@@ -65,11 +65,11 @@ class ClaimItemsToBeBilled(ItemsToBeBilled):
 	def get_columns(self):
 		columns = super().get_columns()
 
-		if self.filters.date_type == "Project Date":
+		if self.filters.date_type == "Job Date":
 			transaction_date = next((c for c in columns if c.get("fieldname") == "transaction_date"), None)
 			if transaction_date:
 				transaction_date["fieldname"] = "project_date"
-				transaction_date["label"] = _("Project Date")
+				transaction_date["label"] = _("Job Date")
 
 		index = next((i for i, c in enumerate(columns) if c.get("fieldname") == "doctype"), 0)
 		columns[index:index] = [
