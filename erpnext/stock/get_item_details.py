@@ -813,8 +813,13 @@ def get_item_defaults_details(args, set_warehouse=False):
 def get_claim_customer(item, args):
 	claim_customer = None
 
+	# from project service template
+	if args.service_template and args.service_template_detail:
+		claim_customer = frappe.db.get_value("Project Service Template", args.service_template_detail,
+			"claim_customer", cache=True)
+
 	# from campaign
-	if args.campaign:
+	if args.campaign and not claim_customer:
 		claim_customer = frappe.get_cached_value("Campaign", args.campaign, 'claim_customer')
 
 	# from item defaults

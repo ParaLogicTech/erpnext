@@ -1240,12 +1240,26 @@ class Project(StatusUpdaterERP):
 		return out
 
 	def set_service_template_details(self):
-		for d in self.service_templates:
-			if d.service_template and not d.service_template_name:
-				d.service_template_name = frappe.get_cached_value("Service Template", d.service_template, "service_template_name")
+		for row in self.service_templates:
+			self.set_service_template_details_for_row(row)
+			if self.status not in ('Completed', 'Closed', 'Cancelled') and not row.has_sales_order:
+				self.set_service_template_claim_customer_for_row(row)
+				row.claim_customer_name = frappe.get_cached_value("Customer", row.claim_customer, "customer_name")
 
-			if self.status not in ('Completed', 'Closed', 'Cancelled'):
-				d.includes_service_warranty = frappe.get_cached_value("Service Template", d.service_template, "includes_service_warranty")
+	def set_service_template_details_for_row(self, row):
+		if row.service_template and not row.service_template_name:
+			row.service_template_name = frappe.get_cached_value("Service Template", row.service_template,
+				"service_template_name")
+
+		if self.status not in ('Completed', 'Closed', 'Cancelled'):
+			row.includes_service_warranty = frappe.get_cached_value("Service Template", row.service_template,
+				"includes_service_warranty")
+
+			if not row.has_sales_order:
+				self.set_service_template_claim_customer_for_row(row)
+
+	def set_service_template_claim_customer_for_row(self, row):
+		row.claim_customer = None
 
 	def set_appointment_details(self):
 		if self.appointment:
@@ -1579,6 +1593,39 @@ class Project(StatusUpdaterERP):
 			self.db_set({
 				'pending_quotation_amount': self.pending_quotation_amount,
 			}, update_modified=update_modified)
+
+	def add_template_items_to_order(self, target_doc, bill_to=None, items_type=None):
+		bill_to = bill_to or target_doc.get("bill_to") or self.bill_to or self.customer
+		for row in self.service_templates:
+			target_doc = self.add_template_items_to_order_for_row(target_doc, row, bill_to, items_type=items_type)
+
+		return target_doc
+
+	def add_template_items_to_order_for_row(self, target_doc, row, bill_to, items_type=None):
+		from erpnext.projects.doctype.service_template.service_template import add_service_template_items
+
+		project_customers = (self.to_bill, self.customer, self.insurance_company)
+		project_customers = (d for d in project_customers if d)
+		claim_customers = set([d.claim_customer for d in self.service_templates
+			if d.claim_customer and d.claim_customer not in project_customers])
+
+		if (
+			row.service_template
+			and not row.get('sales_order')
+			and (bill_to not in claim_customers or (row.claim_customer and bill_to == row.claim_customer))
+		):
+			target_doc = add_service_template_items(
+				target_doc,
+				row.service_template,
+				applies_to_item=self.applies_to_item,
+				applies_to_customer=bill_to,
+				check_duplicate=False,
+				service_template_detail=row,
+				items_type=items_type,
+				postprocess=False,
+			)
+
+		return target_doc
 
 
 def get_material_items(project, get_sales_invoice=True):

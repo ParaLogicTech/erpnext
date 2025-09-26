@@ -301,6 +301,8 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 				row.rate = flt(project.additional_insurance_excess_amount)
 				if depreciation_type == "After Depreciation Amount":
 					row.rate *= -1
+	else:
+		target_doc.bill_to = project.bill_to or project.customer
 
 
 def postprocess_bill_multiple_projects(target_doc):
@@ -355,9 +357,13 @@ def make_delivery_note(project_name):
 
 
 @frappe.whitelist()
-def make_sales_order(project_name, items_type=None, without_items=False, skip_postprocess=False):
-	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
-
+def make_sales_order(
+	project_name,
+	bill_to=None,
+	items_type=None,
+	without_items=False,
+	skip_postprocess=False
+):
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Sales Order")
 
@@ -378,13 +384,12 @@ def make_sales_order(project_name, items_type=None, without_items=False, skip_po
 		if target_doc.meta.has_field(k):
 			target_doc.set(k, v)
 
+	target_doc.bill_to = bill_to or project.bill_to or project.customer
+	set_sales_person_in_target_doc(target_doc, project)
+
+	# Add Items
 	if not without_items:
-		# Get Service Template Items
-		for d in project.service_templates:
-			if not d.get('sales_order') and d.service_template:
-				target_doc = add_service_template_items(target_doc, d.service_template,
-					applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-					check_duplicate=False, service_template_detail=d, items_type=items_type)
+		project.add_template_items_to_order(target_doc, bill_to=target_doc.bill_to, items_type=items_type)
 
 		# Remove already ordered items
 		service_template_ordered_set = get_service_template_ordered_set(project, group_by_item_type=True)
@@ -402,8 +407,6 @@ def make_sales_order(project_name, items_type=None, without_items=False, skip_po
 		for i, d in enumerate(target_doc.items):
 			d.idx = i + 1
 
-	set_sales_person_in_target_doc(target_doc, project)
-
 	# Missing Values and Forced Values
 	if not skip_postprocess:
 		target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
@@ -414,9 +417,7 @@ def make_sales_order(project_name, items_type=None, without_items=False, skip_po
 
 
 @frappe.whitelist()
-def make_quotation(project_name, items_type=None):
-	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
-
+def make_quotation(project_name, bill_to=None, items_type=None):
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Quotation")
 
@@ -433,14 +434,11 @@ def make_quotation(project_name, items_type=None):
 		if target_doc.meta.has_field(k):
 			target_doc.set(k, v)
 
-	# Get Service Template Items
-	for d in project.service_templates:
-		if not d.get('sales_order') and d.service_template:
-			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-				check_duplicate=False, service_template_detail=d, items_type=items_type)
-
+	target_doc.bill_to = bill_to or project.bill_to or project.customer
 	set_sales_person_in_target_doc(target_doc, project)
+
+	# Add Items
+	project.add_template_items_to_order(target_doc, bill_to=target_doc.bill_to, items_type=items_type)
 
 	# Remove already ordered items
 	service_template_quoted_set = get_service_template_quoted_set(project)
@@ -500,7 +498,7 @@ def make_material_request(project_name):
 	for d in project.service_templates:
 		if not d.get('sales_order') and d.service_template:
 			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
+				applies_to_item=project.applies_to_item,
 				check_duplicate=False, service_template_detail=d, items_type="stock")
 
 	# Remove already ordered items
