@@ -18,7 +18,7 @@ class GrossProfitGenerator(object):
 		self.filters.from_date = getdate(self.filters.from_date or nowdate())
 		self.filters.to_date = getdate(self.filters.to_date or nowdate())
 
-		self.has_depreciation = False
+		self.has_split_billing = False
 
 		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
 
@@ -45,6 +45,7 @@ class GrossProfitGenerator(object):
 				si.name as parent, si_item.parenttype, si_item.name, si_item.idx, si.docstatus,
 				si.posting_date, si.posting_time, si.transaction_type,
 				si.customer, si.customer_name, c.customer_group, c.territory,
+				si.bill_to, dn_item.claim_customer, dn_item.discount_percentage as claim_discount_percentage,
 				si.project as parent_project, si_item.project as item_project,
 				si.cost_center as parent_cost_center, si_item.cost_center as item_cost_center,
 				si_item.item_code, si_item.item_name, si_item.batch_no, si_item.uom,
@@ -59,6 +60,7 @@ class GrossProfitGenerator(object):
 				si_item.returned_qty, si_item.base_returned_amount
 			from `tabSales Invoice` si
 			inner join `tabSales Invoice Item` si_item on si_item.parent = si.name
+			left join `tabDelivery Note Item` dn_item on dn_item.name = si_item.delivery_note_item
 			left join `tabCustomer` c on c.name = si.customer
 			left join `tabItem` i on i.name = si_item.item_code
 			left join `tabSales Team` sp on sp.parent = si.name and sp.parenttype = 'Sales Invoice'
@@ -86,12 +88,20 @@ class GrossProfitGenerator(object):
 			d["cost_center"] = d.parent_cost_center or d.item_cost_center
 			d["applies_to_variant_of"] = d.applies_to_variant_of or d.applies_to_item
 
+			d.split_percentage = 100
+
 			if d.depreciation_type:
-				self.has_depreciation = True
 				d.split_percentage = 100 - d.depreciation_percentage if d.depreciation_type == "After Depreciation Amount"\
 					else d.depreciation_percentage
-			else:
-				d.split_percentage = 100
+
+			if d.claim_customer:
+				if d.claim_customer != d.bill_to:
+					d.split_percentage *= flt(d.claim_discount_percentage) / 100
+				else:
+					d.split_percentage *= 1 - (flt(d.claim_discount_percentage) / 100)
+
+			if d.split_percentage != 100:
+				self.has_split_billing = True
 
 	def get_cogs(self):
 		update_item_valuation_rates(self.data)
@@ -538,9 +548,8 @@ class GrossProfitGenerator(object):
 			columns = [c for c in columns if c.get('fieldname') != 'item_name']
 		if not show_party_name:
 			columns = [c for c in columns if c.get('fieldname') != 'customer_name']
-		if not self.has_depreciation:
+		if not self.has_split_billing:
 			columns = [c for c in columns if c.get('fieldname') != 'split_percentage']
-
 
 		return columns
 
