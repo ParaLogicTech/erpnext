@@ -186,6 +186,7 @@ def cleanup_packing_list(doc):
 
 	doc.packed_items = sorted(doc.get("packed_items"), key=lambda d: sorter(d))
 	for i, child_row in enumerate(doc.get("packed_items")):
+		child_row.flags.is_updated = None
 		child_row.idx = i + 1
 
 
