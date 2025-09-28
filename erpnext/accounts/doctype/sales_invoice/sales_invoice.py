@@ -1097,6 +1097,8 @@ class SalesInvoice(SellingController):
 					d.cost_center = depreciation_cost_center
 
 	def set_unbilled_stock_account(self):
+		bill_to = self.get('bill_to') or self.get('customer')
+
 		if (
 			self.update_stock
 			or self.depreciation_type == "Depreciation Amount Only"
@@ -1108,7 +1110,7 @@ class SalesInvoice(SellingController):
 			unbilled_stock_account_map = {}
 			if delivery_note_items:
 				dn_data = frappe.db.sql("""
-					select i.name, i.unbilled_stock_account, dn.is_return
+					select i.name, i.unbilled_stock_account, dn.is_return, i.claim_customer
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` dn on dn.name = i.parent
 					where i.name in %s
@@ -1122,6 +1124,8 @@ class SalesInvoice(SellingController):
 					dn_row_data = unbilled_stock_account_map.get(d.delivery_note_item, {})
 
 					if self.is_return and not self.reopen_order and not dn_row_data.get("is_return"):
+						d.unbilled_stock_account = None
+					elif dn_row_data.claim_customer and dn_row_data.claim_customer != bill_to:
 						d.unbilled_stock_account = None
 					else:
 						d.unbilled_stock_account = dn_row_data.get("unbilled_stock_account")
