@@ -831,8 +831,8 @@ class SalesInvoice(SellingController):
 		delivery_note_compare = [["company", "="], ["currency", "="]]
 
 		if not self.get('bill_multiple_projects'):
-			sales_order_compare += [["project", "="], ["branch", "="]]
-			delivery_note_compare += [["project", "="], ["branch", "="]]
+			sales_order_compare += [["project", "="]]
+			delivery_note_compare += [["project", "="]]
 
 		if not self.get('claim_billing'):
 			sales_order_compare += [["customer", "="]]
