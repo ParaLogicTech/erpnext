@@ -600,7 +600,7 @@ class SalesInvoice(SellingController):
 			return
 
 		# Validate total paid amount zero
-		if not flt(self.paid_amount) and not flt(self.total_advance):
+		if not flt(self.paid_amount) and not flt(self.total_advance) and not flt(self.prepaid_deferred_revenue):
 			frappe.throw(_("Paid Amount cannot be zero for POS Invoice"))
 
 		# Validate total return payment amount
@@ -1162,6 +1162,7 @@ class SalesInvoice(SellingController):
 		gl_entries = merge_similar_entries(gl_entries)
 
 		self.make_advance_reversal_gl_entries(gl_entries)
+		self.make_prepaid_deferred_revenue_gl_entry(gl_entries)
 		self.make_loyalty_point_redemption_gle(gl_entries)
 		self.make_pos_gl_entries(gl_entries)
 		self.make_gle_for_change_amount(gl_entries)
@@ -1293,6 +1294,29 @@ class SalesInvoice(SellingController):
 						}, discount_account_currency, item=item)
 					)
 
+				if item.is_prepaid_deferred_revenue and item.net_amount:
+					deferred_revenue_account = item.deferred_revenue_account
+					if not deferred_revenue_account:
+						frappe.throw(_("Deferred Revenue Account is mandatory for Prepaid Deferred Revenue Item {0} at Row {1}").format(
+							item.item_code, item.idx
+						))
+
+					deferred_revenue_account_currency = get_account_currency(deferred_revenue_account)
+					gl_entries.append(
+						self.get_gl_dict({
+							"account": deferred_revenue_account,
+							"against": billing_party_name or billing_party,
+							"debit": item.base_net_amount,
+							"debit_in_account_currency": (
+								item.base_net_amount
+								if deferred_revenue_account_currency == self.company_currency
+								else item.net_amount
+							),
+							"cost_center": item.cost_center or self.cost_center,
+							"project": item.get('project') or self.project
+						}, deferred_revenue_account_currency, item=item)
+					)
+
 		# expense account gl entries
 		if cint(self.update_stock) and \
 			erpnext.is_perpetual_inventory_enabled(self.company):
@@ -1394,6 +1418,27 @@ class SalesInvoice(SellingController):
 						"reference_no": reference_no,
 					}, self.party_account_currency, item=self)
 				)
+
+	def make_prepaid_deferred_revenue_gl_entry(self, gl_entries):
+		if self.prepaid_deferred_revenue:
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			deferred_revenue_accounts = set([d.deferred_revenue_account for d in self.get("items") if d.deferred_revenue_account])
+			base_prepaid_deferred_revenue = flt(self.prepaid_deferred_revenue) * flt(self.conversion_rate)
+
+			gl_entries.append(
+				self.get_gl_dict({
+					"account": self.debit_to,
+					"party_type": billing_party_type,
+					"party": billing_party,
+					"against": ", ".join(deferred_revenue_accounts),
+					"credit": flt(base_prepaid_deferred_revenue, self.precision("grand_total")),
+					"credit_in_account_currency": flt(self.prepaid_deferred_revenue, self.precision("grand_total")),
+					"against_voucher": self.return_against if cint(self.is_return) and self.return_against else self.name,
+					"against_voucher_type": self.doctype,
+					"cost_center": self.cost_center,
+					"project": self.project,
+				}, self.party_account_currency, item=self)
+			)
 
 	def make_loyalty_point_redemption_gle(self, gl_entries):
 		if cint(self.redeem_loyalty_points):

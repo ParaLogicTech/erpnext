@@ -31,6 +31,9 @@ class calculate_taxes_and_totals(object):
 		if self.doc.meta.has_field("total_advance"):
 			self.calculate_total_advance()
 
+		if self.doc.meta.has_field("prepaid_deferred_revenue"):
+			self.calculate_prepaid_deferred_revenue()
+
 		if self.doc.meta.has_field("outstanding_amount"):
 			if self.doc.docstatus == 0:
 				self.calculate_outstanding_amount()
@@ -852,6 +855,19 @@ class calculate_taxes_and_totals(object):
 
 		self.doc.total_advance = flt(self.doc.total_advance, self.doc.precision("total_advance"))
 
+	def calculate_prepaid_deferred_revenue(self):
+		self.doc.prepaid_deferred_revenue = 0
+
+		for item in self.doc.items:
+			if item.is_prepaid_deferred_revenue:
+				if self.doc.party_account_currency == self.doc.currency:
+					self.doc.prepaid_deferred_revenue += flt(item.net_amount)
+				else:
+					self.doc.prepaid_deferred_revenue += flt(item.base_net_amount)
+
+		self.doc.prepaid_deferred_revenue = flt(self.doc.prepaid_deferred_revenue,
+			self.doc.precision("prepaid_deferred_revenue"))
+
 	def calculate_outstanding_amount(self):
 		if self.doc.doctype == "Sales Invoice":
 			self.calculate_paid_amount()
@@ -901,7 +917,7 @@ class calculate_taxes_and_totals(object):
 
 	def get_total_amount_to_pay(self):
 		grand_total = self.doc.rounded_total or self.doc.grand_total
-		total_advance = flt(self.doc.get("total_advance"))
+		total_advance = flt(self.doc.get("total_advance")) + flt(self.doc.get("prepaid_deferred_revenue"))
 
 		if self.doc.party_account_currency == self.doc.currency:
 			total_amount_to_pay = grand_total - total_advance - flt(self.doc.get("write_off_amount"))
@@ -937,7 +953,7 @@ class calculate_taxes_and_totals(object):
 		self.doc.base_change_amount = 0.0
 
 		grand_total = self.doc.rounded_total or self.doc.grand_total
-		paid_amount = self.doc.paid_amount + self.doc.total_advance
+		paid_amount = self.doc.paid_amount + self.doc.total_advance + self.doc.prepaid_deferred_revenue
 
 		if (
 			self.doc.doctype == "Sales Invoice"

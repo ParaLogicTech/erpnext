@@ -279,6 +279,9 @@ class AccountsController(TransactionBase):
 		if self.get("total_advance"):
 			grand_total -= flt(self.get("total_advance"))
 
+		if self.get("prepaid_deferred_revenue"):
+			grand_total -= flt(self.get("prepaid_deferred_revenue"))
+
 		return grand_total
 
 	def set_due_date(self):
@@ -530,14 +533,17 @@ class AccountsController(TransactionBase):
 		grand_total = self.rounded_total or self.grand_total
 
 		if self.party_account_currency == self.currency:
-			invoice_total = flt(grand_total - flt(self.write_off_amount), self.precision("grand_total"))
+			invoice_total = flt(
+				grand_total - flt(self.write_off_amount) - flt(self.get("prepaid_deferred_revenue")),
+				self.precision("grand_total")
+			)
 		else:
 			base_write_off_amount = flt(
 				flt(self.write_off_amount) * self.conversion_rate,
 				self.precision("base_write_off_amount")
 			)
 			invoice_total = flt(
-				(grand_total * self.conversion_rate) - base_write_off_amount,
+				(grand_total * self.conversion_rate) - base_write_off_amount - flt(self.get("prepaid_deferred_revenue")),
 				self.precision("grand_total")
 			)
 

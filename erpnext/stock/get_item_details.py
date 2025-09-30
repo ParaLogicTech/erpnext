@@ -312,6 +312,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 
 	out.update(get_item_defaults_details(args))
 
+	out.is_prepaid_deferred_revenue = 0
 	if item.get("enable_deferred_revenue") or item.get("enable_deferred_expense"):
 		out.update(calculate_service_end_date(args, item))
 

@@ -220,7 +220,7 @@ class ProformaInvoice(SellingController):
 		else:
 			grand_total = self.base_rounded_total or self.base_grand_total
 
-		payable_amount = grand_total - flt(self.total_advance)
+		payable_amount = grand_total - flt(self.total_advance) - flt(self.prepaid_deferred_revenue)
 
 		party_type, party, party_name = self.get_billing_party()
 		self.advance_paid = get_balance_on_voucher(

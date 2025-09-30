@@ -236,7 +236,7 @@ def get_columns(invoice_list, additional_table_columns):
 		invoice_names = [inv.name for inv in invoice_list]
 
 		income_and_discount_accounts = frappe.db.sql("""
-			select distinct income_account, discount_account
+			select distinct income_account, discount_account, deferred_revenue_account
 			from `tabSales Invoice Item`
 			where parent in %s
 		""", [invoice_names], as_dict=1)
@@ -247,6 +247,8 @@ def get_columns(invoice_list, additional_table_columns):
 				income_accounts.add(d.income_account)
 			if d.discount_account:
 				income_accounts.add(d.discount_account)
+			if d.deferred_revenue_account:
+				income_accounts.add(d.deferred_revenue_account)
 
 		income_accounts = sorted(list(income_accounts))
 
