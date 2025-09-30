@@ -93,6 +93,10 @@ erpnext.AppointmentERP = class AppointmentERP extends crm.Appointment {
 			date: this.frm.doc.scheduled_date,
 		}
 	}
+
+	add_service_template(service_template, check_duplicate) {
+		return erpnext.utils.add_service_template_row(this.frm, service_template, check_duplicate);
+	}
 }
 
 extend_cscript(cur_frm.cscript, new erpnext.AppointmentERP({ frm: cur_frm }));

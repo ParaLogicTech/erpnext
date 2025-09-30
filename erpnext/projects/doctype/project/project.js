@@ -551,24 +551,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	}
 
 	add_service_template(service_template, check_duplicate) {
-		if (!service_template) {
-			return;
-		}
-
-		if (check_duplicate) {
-			let existing_rows = (this.frm.doc.service_templates || []).filter(d => d.service_template == service_template);
-			let existing_row = existing_rows.length ? existing_rows[0] : null;
-
-			if (existing_row) {
-				frappe.msgprint(__("Service Template {0}: {1} is already selected",
-					[service_template, existing_row.service_template_name]));
-				return;
-			}
-		}
-
-		let new_row = this.frm.add_child("service_templates");
-		this.frm.refresh_field("service_templates");
-		return frappe.model.set_value(new_row.doctype, new_row.name, "service_template", service_template);
+		return erpnext.utils.add_service_template_row(this.frm, service_template, check_duplicate);
 	}
 
 	service_template(doc, cdt, cdn) {
