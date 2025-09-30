@@ -1,0 +1,67 @@
+{
+ "add_total_row": 0,
+ "add_translate_data": 0,
+ "columns": [],
+ "creation": "2025-09-24 17:45:14.838433",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "modified": "2025-09-24 17:47:19.609429",
+ "modified_by": "Administrator",
+ "module": "Buying",
+ "name": "Purchase Report Order",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "select \n    distinct tp.name\nfrom \n    `tabPurchase Order` tp\njoin \n    `tabPurchase Order Item` tpi\non\n    tpi.parent = tp.name\njoin \n    `tabItem` ti\non\n    ti.name = tpi.item_code\nwhere \n    ti.is_fixed_asset = 1 and tp.docstatus !=2;",
+ "ref_doctype": "Purchase Order",
+ "report_name": "Purchase Report Order",
+ "report_type": "Query Report",
+ "roles": [
+  {
+   "role": "Purchase User"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Purchase Manager"
+  },
+  {
+   "role": "Stock User"
+  },
+  {
+   "role": "Stock User"
+  },
+  {
+   "role": "Purchase Officer"
+  },
+  {
+   "role": "CEO"
+  },
+  {
+   "role": "Autocare GM"
+  },
+  {
+   "role": "Management"
+  },
+  {
+   "role": "Finance Manager"
+  },
+  {
+   "role": "Executive Assistant"
+  },
+  {
+   "role": "Strategy Officer"
+  },
+  {
+   "role": "Accounting Clerk"
+  },
+  {
+   "role": "Stock User with Purchase Order Write"
+  }
+ ],
+ "timeout": 0
+}
