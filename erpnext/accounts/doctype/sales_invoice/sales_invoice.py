@@ -1099,10 +1099,7 @@ class SalesInvoice(SellingController):
 	def set_unbilled_stock_account(self):
 		bill_to = self.get('bill_to') or self.get('customer')
 
-		if (
-			self.update_stock
-			or self.depreciation_type == "Depreciation Amount Only"
-		):
+		if self.update_stock:
 			for d in self.get("items"):
 				d.unbilled_stock_account = None
 		else:
@@ -1126,6 +1123,8 @@ class SalesInvoice(SellingController):
 					if self.is_return and not self.reopen_order and not dn_row_data.get("is_return"):
 						d.unbilled_stock_account = None
 					elif dn_row_data.claim_customer and dn_row_data.claim_customer != bill_to:
+						d.unbilled_stock_account = None
+					elif self.depreciation_type == "Depreciation Amount Only" and not d.ignore_depreciation:
 						d.unbilled_stock_account = None
 					else:
 						d.unbilled_stock_account = dn_row_data.get("unbilled_stock_account")

@@ -248,13 +248,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 			if (frappe.model.can_create("Proforma Invoice")) {
 				me.frm.add_custom_button(__("Proforma Invoice"), () => {
-					me.show_invoice_dialog((depreciation_type) => me.make_proforma_invoice(depreciation_type));
+					return me.show_invoice_dialog((args) => me.make_proforma_invoice(args));
 				}, __("Sales"));
 			}
 
 			if (frappe.model.can_create("Sales Invoice")) {
 				me.frm.add_custom_button(__("Sales Invoice"), () => {
-					me.show_invoice_dialog((depreciation_type) => me.make_sales_invoice(depreciation_type));
+					return me.show_invoice_dialog((args) => me.make_sales_invoice(args));
 				}, __("Sales"));
 			}
 
@@ -766,54 +766,82 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	show_invoice_dialog(callback) {
+	async show_invoice_dialog(callback) {
 		let me = this;
 		me.frm.check_if_unsaved();
 
-		if (
-			me.frm.doc.default_depreciation_percentage
-			|| me.frm.doc.default_underinsurance_percentage
-			|| me.frm.doc.insurance_excess_amount
-			|| me.frm.doc.insurance_excess_percentage
-			|| (me.frm.doc.non_standard_depreciation || []).length
-			|| (me.frm.doc.non_standard_underinsurance || []).length
-		) {
-			let html = `
-<div class="text-center">
-	<button type="button" class="btn btn-primary btn-bill-customer">${__("Bill Excess/Depreciation to <b>Customer (User)</b>")}</button>
-	<br/><br/>
-	<button type="button" class="btn btn-primary btn-bill-insurance">${__("Bill to <b>Insurance Company</b>")}</button>
-</div>
-`;
-
-			let dialog = new frappe.ui.Dialog({
-				title: __("Insurance Split Billing"),
-				fields: [
-					{fieldtype: "HTML", options: html}
-				],
+		let billable_customers = await this.get_billable_customers();
+		if (billable_customers.length < 2) {
+			callback({
+				bill_to: null,
+				bill_to_filter: null,
 			});
-
-			dialog.show();
-
-			$('.btn-bill-customer', dialog.$wrapper).click(function () {
-				dialog.hide();
-				callback('Depreciation Amount Only');
-			});
-			$('.btn-bill-insurance', dialog.$wrapper).click(function () {
-				dialog.hide();
-				callback('After Depreciation Amount');
-			});
-		} else {
-			callback();
+			return
 		}
+
+		let bill_to_options = billable_customers.map(d => {
+			return {
+				label: d.customer_name || d.customer,
+				value: d.customer,
+			}
+		});
+
+		let fields = [
+			{
+				label: __("Pick Items From"),
+				fieldname: "pick_items_from",
+				fieldtype: "Select",
+				options: [
+					"Based on Billable Customer",
+					"Pick All Items",
+				],
+				default: "Based on Billable Customer",
+				reqd: 1,
+			},
+			{
+				label: __("Bill To"),
+				fieldname: "bill_to",
+				fieldtype: "Select",
+				options: bill_to_options,
+				reqd: 1,
+			},
+		];
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Split Billing"),
+			fields: fields,
+		});
+
+		dialog.set_primary_action(__("Create"), () => {
+			let values = dialog.get_values();
+			let bill_to_filter = null;
+			if (values.pick_items_from == "Based on Billable Customer") {
+				bill_to_filter = values.bill_to;
+			}
+			callback({
+				bill_to: values.bill_to,
+				bill_to_filter: bill_to_filter,
+			});
+			dialog.hide();
+		});
+
+		dialog.show();
 	}
 
-	make_sales_invoice(depreciation_type) {
+	async get_billable_customers() {
+		return frappe.xcall(
+			"erpnext.projects.doctype.project.project_mappers.get_billable_customers",
+			{"project_name": this.frm.doc.name},
+		)
+	}
+
+	make_sales_invoice(args) {
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project_mappers.make_sales_invoice",
 			args: {
 				"project_name": this.frm.doc.name,
-				"depreciation_type": depreciation_type,
+				"bill_to": args.bill_to,
+				"bill_to_filter": args.bill_to_filter,
 			},
 			callback: function (r) {
 				if (!r.exc) {
@@ -824,12 +852,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	make_proforma_invoice(depreciation_type) {
+	make_proforma_invoice(args) {
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project_mappers.make_proforma_invoice",
 			args: {
 				"project_name": this.frm.doc.name,
-				"depreciation_type": depreciation_type,
+				"bill_to": args.bill_to,
+				"bill_to_filter": args.bill_to_filter,
 			},
 			callback: function (r) {
 				if (!r.exc) {
@@ -935,7 +964,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			fields: fields,
 		});
 
-		dialog.set_primary_action(__("Make"), () => {
+		dialog.set_primary_action(__("Create"), () => {
 			callback(dialog.get_values());
 		});
 

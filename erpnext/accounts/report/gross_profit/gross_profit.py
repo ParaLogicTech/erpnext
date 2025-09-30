@@ -54,7 +54,7 @@ class GrossProfitGenerator(object):
 				si.update_stock, si_item.delivery_note_item, si_item.delivery_note,
 				si_item.qty, si_item.stock_qty, si_item.conversion_factor, si_item.alt_uom_size,
 				si_item.base_net_amount,
-				si.depreciation_type, si_item.depreciation_percentage,
+				si.depreciation_type, si_item.ignore_depreciation, si_item.depreciation_percentage,
 				GROUP_CONCAT(DISTINCT sp.sales_person SEPARATOR ', ') as sales_person,
 				sum(ifnull(sp.allocated_percentage, 100)) as allocated_percentage,
 				si_item.returned_qty, si_item.base_returned_amount
@@ -90,7 +90,7 @@ class GrossProfitGenerator(object):
 
 			d.split_percentage = 100
 
-			if d.depreciation_type:
+			if d.depreciation_type and not d.ignore_depreciation:
 				d.split_percentage = 100 - d.depreciation_percentage if d.depreciation_type == "After Depreciation Amount"\
 					else d.depreciation_percentage
 

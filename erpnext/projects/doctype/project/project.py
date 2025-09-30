@@ -149,7 +149,7 @@ class Project(StatusUpdaterERP):
 		self.customer_billable_amount = sales_data.totals.customer_grand_total
 
 		self.additional_insurance_excess_amount = flt(
-			sales_data.totals.net_total * flt(self.insurance_excess_percentage) / 100,
+			sales_data.totals.insurance_net_total * flt(self.insurance_excess_percentage) / 100,
 			self.precision("additional_insurance_excess_amount")
 		)
 
@@ -852,7 +852,8 @@ class Project(StatusUpdaterERP):
 	def validate_for_transaction(self, doc):
 		if doc.doctype in ("Sales Invoice", "Proforma Invoice"):
 			if not self.is_insurance_excess_invoice_for_customer(doc):
-				self.check_is_ready_to_close()
+				if doc.doctype == "Sales Invoice" or doc.docstatus == 1:
+					self.check_is_ready_to_close()
 				self.check_undelivered_sales_orders()
 
 		if doc.doctype == "Payment Entry":
@@ -896,18 +897,8 @@ class Project(StatusUpdaterERP):
 		if billing_customer:
 			allowed_customers.append(billing_customer)
 
-		if self.insurance_company:
-			has_depreciation_rate = (
-				self.default_depreciation_percentage
-				or self.default_underinsurance_percentage
-				or self.non_standard_depreciation
-				or self.non_standard_underinsurance
-			)
-
-			has_excess_amount = self.insurance_excess_amount or self.additional_insurance_excess_amount
-
-			if has_depreciation_rate or has_excess_amount:
-				allowed_customers.append(self.customer)
+		if self.customer_billable_amount:
+			allowed_customers.append(self.customer)
 
 		allowed_customers = list(set(allowed_customers))
 
@@ -1605,7 +1596,7 @@ class Project(StatusUpdaterERP):
 		from erpnext.projects.doctype.service_template.service_template import add_service_template_items
 
 		project_customers = (self.to_bill, self.customer, self.insurance_company)
-		project_customers = (d for d in project_customers if d)
+		project_customers = set(d for d in project_customers if d)
 		claim_customers = set([d.claim_customer for d in self.service_templates
 			if d.claim_customer and d.claim_customer not in project_customers])
 
@@ -1638,9 +1629,9 @@ def get_material_items(project, get_sales_invoice=True):
 	pfinv_data = frappe.db.sql(f"""
 		select
 			p.name as proforma_invoice,
+			p.bill_to,
 			i.delivery_note,
 			i.sales_order,
-			p.bill_to,
 			if(so.transaction_date is null, p.transaction_date, so.transaction_date) as transaction_date,
 			dn.posting_date, dn.posting_time,
 			i.idx,
@@ -1673,6 +1664,7 @@ def get_material_items(project, get_sales_invoice=True):
 	dn_data = frappe.db.sql(f"""
 		select
 			p.name as delivery_note,
+			so.bill_to,
 			i.sales_order,
 			p.posting_date, p.posting_time,
 			i.idx,
@@ -1695,6 +1687,7 @@ def get_material_items(project, get_sales_invoice=True):
 			i.claim_customer
 		from `tabDelivery Note Item` i
 		inner join `tabDelivery Note` p on p.name = i.parent
+		left join `tabSales Order` so on so.name = i.sales_order
 		where p.docstatus = 1
 			and {is_material_condition}
 			and abs(i.proforma_qty) < abs(i.qty)
@@ -1705,6 +1698,7 @@ def get_material_items(project, get_sales_invoice=True):
 	so_data = frappe.db.sql(f"""
 		select
 			p.name as sales_order,
+			p.bill_to,
 			p.transaction_date,
 			i.idx,
 			i.item_code,
@@ -1743,10 +1737,10 @@ def get_material_items(project, get_sales_invoice=True):
 	sinv_data = frappe.db.sql(f"""
 		select
 			p.name as sales_invoice,
+			p.bill_to,
 			i.delivery_note,
 			i.sales_order,
 			i.proforma_invoice,
-			p.bill_to,
 			p.posting_date, p.posting_time,
 			i.idx,
 			i.item_code,
@@ -1833,9 +1827,9 @@ def get_service_items(project, get_sales_invoice=True):
 	pfinv_data = frappe.db.sql(f"""
 		select
 			p.name as proforma_invoice,
+			p.bill_to,
 			i.delivery_note,
 			i.sales_order,
-			p.bill_to,
 			if(so.transaction_date is null, p.transaction_date, so.transaction_date) as transaction_date,
 			i.idx,
 			i.item_code,
@@ -1867,6 +1861,7 @@ def get_service_items(project, get_sales_invoice=True):
 	so_data = frappe.db.sql(f"""
 		select
 			p.name as sales_order,
+			p.bill_to,
 			p.transaction_date,
 			i.idx,
 			i.item_code,
@@ -1906,10 +1901,10 @@ def get_service_items(project, get_sales_invoice=True):
 		sinv_data = frappe.db.sql(f"""
 			select
 				p.name as sales_invoice,
+				p.bill_to,
 				i.delivery_note,
 				i.sales_order,
 				i.proforma_invoice,
-				p.bill_to,
 				p.posting_date as transaction_date,
 				i.idx,
 				i.item_code,
@@ -2047,6 +2042,7 @@ def get_items_data_template():
 
 		'net_total': 0,
 		'customer_net_total': 0,
+		'insurance_net_total': 0,
 
 		'total_discount': 0,
 
@@ -2091,8 +2087,13 @@ def adjust_sales_data_fulfilled_qty(data):
 
 
 def set_sales_data_customer_amounts(data, project):
+	project_customers = (project.customer, project.bill_to)
+	project_customers = set(c for c in project_customers if c)
+
 	for d in data:
+		d.bill_to = d.bill_to or project.bill_to or project.customer
 		d.has_customer_depreciation = 0
+		d.is_claim_item = 0
 
 		if d.get('claim_customer') and project.customer and d.get('claim_customer') != project.customer:
 			d.is_claim_item = 1
@@ -2105,29 +2106,31 @@ def set_sales_data_customer_amounts(data, project):
 			else:
 				d.customer_net_amount = 0
 				d.customer_net_rate = 0
+
+		elif (
+			project.insurance_company
+			and project.customer != project.insurance_company
+			and d.bill_to == project.insurance_company
+		):
+			d.has_customer_depreciation = 1
+
+			depreciation_amount = d.net_amount * flt(d.depreciation_percentage) / 100
+			underinsurance_amount = (d.net_amount - depreciation_amount) * flt(d.underinsurance_percentage) / 100
+			d.customer_net_amount = depreciation_amount + underinsurance_amount
+
+			depreciation_rate = d.net_rate * flt(d.depreciation_percentage) / 100
+			underinsurance_rate = (d.net_rate - depreciation_rate) * flt(d.underinsurance_percentage) / 100
+			d.customer_net_rate = depreciation_rate + underinsurance_rate
+
+			d.cumulative_depreciation_percentage = d.customer_net_amount / d.net_amount * 100 if d.net_amount else 0
+
+		elif d.bill_to in project_customers:
+			d.customer_net_amount = d.net_amount
+			d.customer_net_rate = d.net_rate
+
 		else:
-			d.is_claim_item = 0
-
-			if (
-				project.insurance_company
-				and project.bill_to
-				and project.bill_to != project.customer
-				and (not d.bill_to or d.bill_to != project.customer)
-			):
-				d.has_customer_depreciation = 1
-
-				depreciation_amount = d.net_amount * flt(d.depreciation_percentage) / 100
-				underinsurance_amount = (d.net_amount - depreciation_amount) * flt(d.underinsurance_percentage) / 100
-				d.customer_net_amount = depreciation_amount + underinsurance_amount
-
-				depreciation_rate = d.net_rate * flt(d.depreciation_percentage) / 100
-				underinsurance_rate = (d.net_rate - depreciation_rate) * flt(d.underinsurance_percentage) / 100
-				d.customer_net_rate = depreciation_rate + underinsurance_rate
-
-				d.cumulative_depreciation_percentage = d.customer_net_amount / d.net_amount * 100 if d.net_amount else 0
-			else:
-				d.customer_net_amount = d.net_amount
-				d.customer_net_rate = d.net_rate
+			d.customer_net_amount = 0
+			d.customer_net_rate = 0
 
 
 def get_item_taxes(project, data, company):
@@ -2192,6 +2195,8 @@ def post_process_items_data(data):
 
 		data.net_total += flt(d.net_amount)
 		data.customer_net_total += flt(d.customer_net_amount)
+		if d.has_customer_depreciation:
+			data.insurance_net_total += flt(d.net_amount)
 
 		data.total_discount += flt(d.total_discount)
 
@@ -2240,6 +2245,7 @@ def get_totals_data(project, items_dataset):
 
 		'net_total': 0,
 		'customer_net_total': 0,
+		'insurance_net_total': 0,
 
 		'total_discount': 0,
 
@@ -2256,6 +2262,7 @@ def get_totals_data(project, items_dataset):
 	for data in items_dataset:
 		totals_data.net_total += flt(data.net_total)
 		totals_data.customer_net_total += flt(data.customer_net_total)
+		totals_data.insurance_net_total += flt(data.insurance_net_total)
 
 		totals_data.total_discount += flt(data.total_discount)
 
@@ -2291,13 +2298,12 @@ def get_totals_data(project, items_dataset):
 	# Insurance Excess
 	if (
 		project.insurance_company
-		and project.bill_to
-		and project.bill_to != project.customer
+		and project.insurance_company != project.customer
 		and (flt(project.insurance_excess_amount) or flt(project.insurance_excess_percentage))
 	):
 		insurance_excess_total = 0
 		if flt(project.insurance_excess_percentage):
-			insurance_excess_total += totals_data.net_total * flt(project.insurance_excess_percentage) / 100
+			insurance_excess_total += totals_data.insurance_net_total * flt(project.insurance_excess_percentage) / 100
 		if flt(project.insurance_excess_amount):
 			insurance_excess_total += flt(project.insurance_excess_amount)
 

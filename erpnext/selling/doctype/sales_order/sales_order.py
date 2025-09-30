@@ -579,8 +579,9 @@ class SalesOrder(SellingController):
 			if row_names:
 				# Billed By Sales Invoice
 				billed_by_sinv = frappe.db.sql("""
-					select i.sales_order_item, i.qty, i.amount, p.depreciation_type, p.is_return, p.reopen_order,
-						p.customer, p.bill_to
+					select i.sales_order_item, i.qty, i.amount, p.is_return, p.reopen_order,
+						p.customer, p.bill_to,
+						p.depreciation_type, i.ignore_depreciation
 					from `tabSales Invoice Item` i
 					inner join `tabSales Invoice` p on p.name = i.parent
 					where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
@@ -588,28 +589,10 @@ class SalesOrder(SellingController):
 				""", [row_names], as_dict=1)
 
 				for d in billed_by_sinv:
-					bill_to = d.bill_to or d.customer
-					so_row = self.getone('items', {'name': d.sales_order_item})
-					claim_customer = so_row.claim_customer if so_row else None
-
 					out.billed_amount_map.setdefault(d.sales_order_item, 0)
 					out.billed_amount_map[d.sales_order_item] += d.amount
 
-					depreciation_type = d.depreciation_type or 'No Depreciation'
-					out.depreciation_type_qty.setdefault(d.sales_order_item, {}).setdefault(depreciation_type, 0)
-					out.depreciation_type_qty[d.sales_order_item][depreciation_type] += d.qty
-
-					if d.depreciation_type != 'Depreciation Amount Only' and (not claim_customer or bill_to == claim_customer):
-						out.billed_qty_map.setdefault(d.sales_order_item, 0)
-						out.billed_qty_map[d.sales_order_item] += d.qty
-
-				# Do not mark as billed if both depreciation type invoices not created
-				for so_item, depreciation_types in out.depreciation_type_qty.items():
-					if 'No Depreciation' not in depreciation_types:
-						depreciation_qty = flt(depreciation_types.get('Depreciation Amount Only'), 6)
-						after_depreciation_qty = flt(depreciation_types.get('After Depreciation Amount'), 6)
-						if not depreciation_qty or not after_depreciation_qty:
-							out.billed_qty_map[so_item] = 0
+				out.billed_qty_map = self.get_billed_qty_map(billed_by_sinv, "sales_order_item")
 
 				# Returned By Delivery Note
 				delivered_by_dn = frappe.db.sql("""
@@ -634,13 +617,16 @@ class SalesOrder(SellingController):
 		if self.docstatus == 1:
 			row_names = [d.name for d in self.items]
 			if row_names:
-				proforma_qty_map = dict(frappe.db.sql("""
-					select i.sales_order_item, sum(i.qty)
+				billed_by_pfinv = frappe.db.sql("""
+					select i.sales_order_item, i.qty, i.amount,
+						p.customer, p.bill_to,
+						p.depreciation_type, i.ignore_depreciation
 					from `tabProforma Invoice Item` i
 					inner join `tabProforma Invoice` p on p.name = i.parent
 					where p.docstatus = 1 and i.sales_order_item in %s
-					group by i.sales_order_item
-				""", [row_names]))
+				""", [row_names], as_dict=1)
+
+				proforma_qty_map = self.get_billed_qty_map(billed_by_pfinv, "sales_order_item")
 
 		return proforma_qty_map
 
@@ -1516,7 +1502,9 @@ def make_sales_invoice(
 	ignore_permissions=False,
 	only_items=None,
 	skip_item_mapping=False,
-	skip_postprocess=False
+	skip_postprocess=False,
+	item_condition=None,
+	update_item=None,
 ):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
@@ -1565,7 +1553,11 @@ def make_sales_invoice(
 	}
 
 	if not skip_item_mapping:
-		mapping["Sales Order Item"] = get_item_mapper_for_invoice(source_name)
+		mapping["Sales Order Item"] = get_item_mapper_for_invoice(
+			source_name,
+			additional_item_condition=item_condition,
+			additional_update_item=update_item,
+		)
 
 	if only_items:
 		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Sales Order Item"}
@@ -1591,7 +1583,9 @@ def make_proforma_invoice(
 	ignore_permissions=False,
 	only_items=None,
 	skip_item_mapping=False,
-	skip_postprocess=False
+	skip_postprocess=False,
+	item_condition=None,
+	update_item=None,
 ):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
@@ -1631,7 +1625,12 @@ def make_proforma_invoice(
 	}
 
 	if not skip_item_mapping:
-		mapping["Sales Order Item"] = get_item_mapper_for_invoice(source_name, target_doctype="Proforma Invoice Item")
+		mapping["Sales Order Item"] = get_item_mapper_for_invoice(
+			source_name,
+			target_doctype="Proforma Invoice Item",
+			additional_item_condition=item_condition,
+			additional_update_item=update_item,
+		)
 
 	if only_items:
 		mapping = {dt: dt_mapping for dt, dt_mapping in mapping.items() if dt == "Sales Order Item"}
@@ -1650,7 +1649,13 @@ def make_proforma_invoice(
 	return doclist
 
 
-def get_item_mapper_for_invoice(sales_order, allow_duplicate=False, target_doctype="Sales Invoice Item"):
+def get_item_mapper_for_invoice(
+	sales_order,
+	allow_duplicate=False,
+	target_doctype="Sales Invoice Item",
+	additional_item_condition=None,
+	additional_update_item=None,
+):
 	unbilled_dn_qty_map = get_unbilled_dn_qty_map(sales_order)
 
 	def get_pending_qty(source):
@@ -1670,15 +1675,21 @@ def get_item_mapper_for_invoice(sales_order, allow_duplicate=False, target_docty
 				return False
 
 		if cint(target_parent.get('claim_billing')):
-			bill_to = target_parent.get('bill_to') or target_parent.get('customer')
-			if bill_to:
-				if source.claim_customer != bill_to:
+			target_bill_to = target_parent.get('bill_to') or target_parent.get('customer')
+			if target_bill_to:
+				if source.claim_customer != target_bill_to:
 					return False
 			else:
 				if not source.claim_customer:
 					return False
 
-		return get_pending_qty(source)
+		if not get_pending_qty(source):
+			return False
+
+		if additional_item_condition and not additional_item_condition(source, source_parent, target_parent):
+			return False
+
+		return True
 
 	def update_item(source, target, source_parent, target_parent):
 		target.qty = get_pending_qty(source)
@@ -1692,6 +1703,9 @@ def get_item_mapper_for_invoice(sales_order, allow_duplicate=False, target_docty
 
 		if target_parent:
 			target_parent.adjust_rate_for_claim_item(source, target)
+
+		if additional_update_item:
+			additional_update_item(source, target, source_parent, target_parent)
 
 	return {
 		"doctype": target_doctype,
