@@ -67,7 +67,7 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 	}
 
 	setup_buttons() {
-		if(!this.frm.is_new()) {
+		if (!this.frm.is_new()) {
 			this.frm.add_custom_button(__("View Ledger"), () => {
 				frappe.route_options = {
 					serial_no: this.frm.doc.name,
@@ -75,7 +75,12 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 					to_date: frappe.defaults.get_user_default("year_end_date")
 				};
 				frappe.set_route("query-report", "Stock Ledger");
-			});
+			}, __("View"));
+
+			this.frm.add_custom_button(__("Update Odometer"), () => this.make_vehicle_odometer_log(),
+				__("Update"));
+			this.frm.add_custom_button(__("Update Customer"), () => this.make_vehicle_customer_log(),
+				__("Update"));
 		}
 	}
 
@@ -159,6 +164,33 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 				(license_plate) => this.frm.set_value("license_plate", license_plate)
 			);
 		}
+	}
+
+	make_vehicle_odometer_log() {
+		this.frm.check_if_unsaved();
+		erpnext.utils.make_vehicle_odometer_log({
+			vehicle: this.frm.doc.name,
+			item_name: this.frm.doc.item_name,
+			license_plate: this.frm.doc.license_plate,
+			chassis_no: this.frm.doc.chassis_no,
+			previous_odometer: this.frm.doc.last_odometer,
+			callback: () => {
+				this.frm.reload_doc();
+			}
+		});
+	}
+
+	make_vehicle_customer_log() {
+		this.frm.check_if_unsaved();
+		erpnext.utils.make_vehicle_customer_log({
+			vehicle: this.frm.doc.name,
+			item_name: this.frm.doc.item_name,
+			license_plate: this.frm.doc.license_plate,
+			chassis_no: this.frm.doc.chassis_no,
+			callback: () => {
+				this.frm.reload_doc();
+			}
+		});
 	}
 
 	render_maintenance_schedules() {

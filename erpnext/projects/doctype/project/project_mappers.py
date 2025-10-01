@@ -13,7 +13,13 @@ import json
 
 
 @frappe.whitelist()
-def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None):
+def make_sales_invoice(
+	project_name,
+	target_doc=None,
+	bill_to=None,
+	bill_to_filter=None,
+	bill_multiple_projects=None,
+):
 	from erpnext.controllers.queries import _get_proforma_invoices_to_be_billed
 
 	if frappe.flags.args and bill_multiple_projects is None:
@@ -22,23 +28,37 @@ def make_sales_invoice(project_name, target_doc=None, depreciation_type=None, bi
 	bill_multiple_projects = cint(bill_multiple_projects)
 
 	proforma_invoice_filters = {"project": project_name}
-	if depreciation_type:
-		project_details = frappe.db.get_value("Project", project_name,
-			["customer", "bill_to", "insurance_company"], as_dict=1)
-		if depreciation_type == "Depreciation Amount Only":
-			proforma_invoice_filters["bill_to"] = project_details.customer
-		elif depreciation_type == "After Depreciation Amount":
-			proforma_invoice_filters["bill_to"] = project_details.bill_to or project_details.insurance_company
+	if bill_to_filter:
+		proforma_invoice_filters["bill_to"] = bill_to_filter
 
 	proforma_invoices = _get_proforma_invoices_to_be_billed(filters=proforma_invoice_filters)
-
 	if proforma_invoices:
-		return make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc, bill_multiple_projects)
+		return make_sales_invoice_from_proforma(
+			project_name,
+			proforma_invoices,
+			target_doc=target_doc,
+			bill_to=bill_to,
+			bill_to_filter=bill_to_filter,
+			bill_multiple_projects=bill_multiple_projects,
+		)
 	else:
-		return make_sales_invoice_from_orders(project_name, target_doc, depreciation_type, bill_multiple_projects)
+		return make_sales_invoice_from_orders(
+			project_name,
+			target_doc=target_doc,
+			bill_to=bill_to,
+			bill_to_filter=bill_to_filter,
+			bill_multiple_projects=bill_multiple_projects,
+		)
 
 
-def make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc=None, bill_multiple_projects=None):
+def make_sales_invoice_from_proforma(
+	project_name,
+	proforma_invoices,
+	target_doc=None,
+	bill_to=None,
+	bill_to_filter=None,
+	bill_multiple_projects=None,
+):
 	from erpnext.accounts.doctype.proforma_invoice.proforma_invoice import make_sales_invoice as invoice_from_proforma_invoice
 
 	project = frappe.get_doc("Project", project_name)
@@ -51,12 +71,24 @@ def make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc
 	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Sales Invoice")
 	if not bill_multiple_projects:
 		set_default_transaction_type(target_doc)
-		set_project_details_in_transaction(target_doc, project_details, project)
+		set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
 
 	# Map Proforma Invoices
 	for d in proforma_invoices:
-		target_doc = invoice_from_proforma_invoice(d.name, target_doc=target_doc, only_items=bill_multiple_projects,
-			skip_postprocess=bill_multiple_projects, set_advances=False)
+		target_doc = invoice_from_proforma_invoice(
+			d.name,
+			target_doc=target_doc,
+			only_items=bill_multiple_projects,
+			skip_postprocess=bill_multiple_projects,
+			do_not_map_bill_to=True,
+			set_advances=False,
+		)
+
+	# Map missing Delivery Note and Sales Order Items
+	target_doc = map_delivery_notes(target_doc, project, bill_to_filter=bill_to_filter,
+		only_items=True, skip_postprocess=True)
+	target_doc = map_sales_orders(target_doc, project, bill_to_filter=bill_to_filter,
+		only_items=True, skip_postprocess=True)
 
 	# Postprocess
 	if not bill_multiple_projects:
@@ -73,41 +105,13 @@ def make_sales_invoice_from_proforma(project_name, proforma_invoices, target_doc
 	return target_doc
 
 
-def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_type=None, bill_multiple_projects=None):
-	def get_filters():
-		filters = {"project": project.name}
-		if project.company:
-			filters['company'] = project.company
-
-		return filters
-
-	def map_delivery_notes(target, only_items=False, skip_postprocess=False):
-		from erpnext.controllers.queries import _get_delivery_notes_to_be_billed
-		from erpnext.stock.doctype.delivery_note.delivery_note import make_sales_invoice as invoice_from_delivery_note
-
-		delivery_note_filters = get_filters()
-		delivery_note_filters['is_return'] = 0
-		delivery_notes = _get_delivery_notes_to_be_billed(filters=delivery_note_filters)
-
-		for d in delivery_notes:
-			target = invoice_from_delivery_note(d.name, target_doc=target, only_items=only_items,
-				skip_postprocess=skip_postprocess)
-
-		return target
-
-	def map_sales_orders(target, only_items=False, skip_postprocess=False):
-		from erpnext.controllers.queries import _get_sales_orders_to_be_billed
-		from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice as invoice_from_sales_order
-
-		sales_order_filters = get_filters()
-		sales_orders = _get_sales_orders_to_be_billed(filters=sales_order_filters)
-
-		for d in sales_orders:
-			target = invoice_from_sales_order(d.name, target_doc=target, only_items=only_items,
-				skip_postprocess=skip_postprocess)
-
-		return target
-
+def make_sales_invoice_from_orders(
+	project_name,
+	target_doc=None,
+	bill_to=None,
+	bill_to_filter=None,
+	bill_multiple_projects=None,
+):
 	def set_terms_template():
 		if project.invoice_terms_template:
 			target_doc.tc_name = project.invoice_terms_template
@@ -123,27 +127,17 @@ def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_t
 
 	if not bill_multiple_projects:
 		set_default_transaction_type(target_doc)
-		set_project_details_in_transaction(target_doc, project_details, project)
+		set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
 
-	has_depreciation_rate = (
-		project.default_depreciation_percentage
-		or project.default_underinsurance_percentage
-		or project.non_standard_depreciation
-		or project.non_standard_underinsurance
-	)
-
-	has_excess_amount = project.insurance_excess_amount or project.insurance_excess_percentage
-
-	if has_excess_amount and not has_depreciation_rate and depreciation_type != "After Depreciation Amount":
-		pass
-	else:
-		target_doc = map_delivery_notes(target_doc, only_items=bill_multiple_projects, skip_postprocess=bill_multiple_projects)
-		target_doc = map_sales_orders(target_doc, only_items=bill_multiple_projects, skip_postprocess=bill_multiple_projects)
+	target_doc = map_delivery_notes(target_doc, project, bill_to_filter=bill_to_filter,
+		only_items=True, skip_postprocess=bill_multiple_projects)
+	target_doc = map_sales_orders(target_doc, project, bill_to_filter=bill_to_filter,
+		only_items=bill_multiple_projects, skip_postprocess=bill_multiple_projects)
 
 	if not bill_multiple_projects:
 		remove_taxes_from_transaction(target_doc)
-		set_project_details_in_transaction(target_doc, project_details, project)
-		set_depreciation_type_and_customer(target_doc, project, depreciation_type, has_depreciation_rate, has_excess_amount)
+		set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
+		set_depreciation_and_excess(target_doc, project)
 		set_cash_or_credit(target_doc, project)
 		set_contact_and_address_in_transaction(target_doc, project)
 		set_po_no_in_transaction(target_doc, project)
@@ -168,41 +162,12 @@ def make_sales_invoice_from_orders(project_name, target_doc=None, depreciation_t
 
 
 @frappe.whitelist()
-def make_proforma_invoice(project_name, target_doc=None, depreciation_type=None):
-	def get_filters():
-		filters = {"project": project.name}
-		if project.company:
-			filters['company'] = project.company
-
-		return filters
-
-	def map_delivery_notes(target, only_items=False, skip_postprocess=False):
-		from erpnext.controllers.queries import _get_delivery_notes_to_be_billed
-		from erpnext.stock.doctype.delivery_note.delivery_note import make_proforma_invoice as invoice_from_delivery_note
-
-		delivery_note_filters = get_filters()
-		delivery_note_filters['is_return'] = 0
-		delivery_notes = _get_delivery_notes_to_be_billed(filters=delivery_note_filters)
-
-		for d in delivery_notes:
-			target = invoice_from_delivery_note(d.name, target_doc=target, only_items=only_items,
-				skip_postprocess=skip_postprocess)
-
-		return target
-
-	def map_sales_orders(target, only_items=False, skip_postprocess=False):
-		from erpnext.controllers.queries import _get_sales_orders_to_be_billed
-		from erpnext.selling.doctype.sales_order.sales_order import make_proforma_invoice as invoice_from_sales_order
-
-		sales_order_filters = get_filters()
-		sales_orders = _get_sales_orders_to_be_billed(filters=sales_order_filters)
-
-		for d in sales_orders:
-			target = invoice_from_sales_order(d.name, target_doc=target, only_items=only_items,
-				skip_postprocess=skip_postprocess)
-
-		return target
-
+def make_proforma_invoice(
+	project_name,
+	target_doc=None,
+	bill_to=None,
+	bill_to_filter=None
+):
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Proforma Invoice")
 
@@ -213,26 +178,14 @@ def make_proforma_invoice(project_name, target_doc=None, depreciation_type=None)
 	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Proforma Invoice")
 
 	set_default_transaction_type(target_doc)
-	set_project_details_in_transaction(target_doc, project_details, project)
+	set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
 
-	has_depreciation_rate = (
-		project.default_depreciation_percentage
-		or project.default_underinsurance_percentage
-		or project.non_standard_depreciation
-		or project.non_standard_underinsurance
-	)
-
-	has_excess_amount = project.insurance_excess_amount or project.insurance_excess_percentage
-
-	if has_excess_amount and not has_depreciation_rate and depreciation_type != "After Depreciation Amount":
-		pass
-	else:
-		target_doc = map_delivery_notes(target_doc)
-		target_doc = map_sales_orders(target_doc)
+	target_doc = map_delivery_notes(target_doc, project, only_items=True, bill_to_filter=bill_to_filter)
+	target_doc = map_sales_orders(target_doc, project, bill_to_filter=bill_to_filter)
 
 	remove_taxes_from_transaction(target_doc)
-	set_project_details_in_transaction(target_doc, project_details, project)
-	set_depreciation_type_and_customer(target_doc, project, depreciation_type, has_depreciation_rate, has_excess_amount)
+	set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
+	set_depreciation_and_excess(target_doc, project)
 	set_contact_and_address_in_transaction(target_doc, project)
 	set_po_no_in_transaction(target_doc, project)
 	set_missing_insurance_details(target_doc)
@@ -250,16 +203,12 @@ def make_proforma_invoice(project_name, target_doc=None, depreciation_type=None)
 	return target_doc
 
 
-def set_depreciation_type_and_customer(target_doc, project, depreciation_type, has_depreciation_rate, has_excess_amount):
+def set_depreciation_and_excess(target_doc, project):
+	depreciation_type, has_depreciation_rate, has_excess_amount = determine_depreciation_type(target_doc, project)
+
 	if depreciation_type and (has_depreciation_rate or has_excess_amount):
 		if has_depreciation_rate:
 			target_doc.depreciation_type = depreciation_type
-
-		if depreciation_type == "Depreciation Amount Only":
-			target_doc.bill_to = target_doc.customer
-		elif depreciation_type == "After Depreciation Amount":
-			if not project.bill_to and project.insurance_company:
-				target_doc.bill_to = project.insurance_company
 
 		insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")
 		insurance_excess_item_name = frappe.get_cached_value("Item", insurance_excess_item, "item_name") or _("Insurance Excess")
@@ -275,6 +224,7 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 			if balance_excess > 0:
 				row = target_doc.append("items", frappe.new_doc(target_doc.doctype + " Item"))
 				row.item_code = insurance_excess_item
+				row.ignore_depreciation = 1
 				row.qty = 1
 				row.price_list_rate = 0
 				row.rate = balance_excess
@@ -284,6 +234,7 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 			if flt(project.insurance_excess_amount):
 				row = target_doc.append("items", frappe.new_doc(target_doc.doctype + " Item"))
 				row.item_code = insurance_excess_item
+				row.ignore_depreciation = 1
 				row.qty = 1
 				row.price_list_rate = 0
 				row.rate = flt(project.insurance_excess_amount)
@@ -296,11 +247,249 @@ def set_depreciation_type_and_customer(target_doc, project, depreciation_type, h
 				row.item_name = insurance_excess_item_name + " ({0})".format(
 					project.get_formatted("insurance_excess_percentage", precision=1)
 				)
+				row.ignore_depreciation = 1
 				row.qty = 1
 				row.price_list_rate = 0
 				row.rate = flt(project.additional_insurance_excess_amount)
 				if depreciation_type == "After Depreciation Amount":
 					row.rate *= -1
+
+
+def determine_depreciation_type(target_doc, project):
+	has_depreciation_rate = (
+		project.default_depreciation_percentage
+		or project.default_underinsurance_percentage
+		or project.non_standard_depreciation
+		or project.non_standard_underinsurance
+	)
+	has_excess_amount = project.insurance_excess_amount or project.insurance_excess_percentage
+
+	depreciation_type = None
+	if project.insurance_company and (has_depreciation_rate or has_excess_amount):
+		if target_doc.bill_to == project.insurance_company:
+			depreciation_type = "After Depreciation Amount"
+		elif target_doc.bill_to == project.customer:
+			depreciation_type = "Depreciation Amount Only"
+
+	return depreciation_type, has_depreciation_rate, has_excess_amount
+
+
+def map_delivery_notes(target, project, only_items=False, skip_postprocess=False, bill_to_filter=None):
+	from erpnext.controllers.queries import _get_delivery_notes_to_be_billed
+	from erpnext.stock.doctype.delivery_note.delivery_note import make_proforma_invoice
+	from erpnext.stock.doctype.delivery_note.delivery_note import make_sales_invoice
+
+	delivery_note_filters = {"project": project.name, "is_return": 0}
+	if project.company:
+		delivery_note_filters['company'] = project.company
+
+	delivery_notes = _get_delivery_notes_to_be_billed(filters=delivery_note_filters)
+
+	if not bill_to_filter:
+		bill_to_filter = []
+	if bill_to_filter and isinstance(bill_to_filter, str):
+		bill_to_filter = [bill_to_filter]
+
+	depreciation_type, has_depreciation_rate, has_insurance_excess = determine_depreciation_type(target, project)
+	if depreciation_type == "Depreciation Amount Only" and has_depreciation_rate and bill_to_filter:
+		bill_to_filter = bill_to_filter + [project.insurance_company]
+
+	for d in delivery_notes:
+		if target.doctype == "Proforma Invoice":
+			target = make_proforma_invoice(d.name,
+				target_doc=target,
+				only_items=only_items,
+				skip_postprocess=skip_postprocess,
+				item_condition=lambda source, source_parent, target_parent: bill_to_item_condition(
+					project, bill_to_filter, source, source_parent, target_parent
+				),
+				update_item=lambda source, target, source_parent, target_parent: update_ignore_depreciation(
+					project, source, target, source_parent
+				),
+			)
+		else:
+			target = make_sales_invoice(
+				d.name,
+				target_doc=target,
+				only_items=only_items,
+				skip_postprocess=skip_postprocess,
+				item_condition=lambda source, source_parent, target_parent: bill_to_item_condition(
+					project, bill_to_filter, source, source_parent, target_parent
+				),
+				update_item=lambda source, target, source_parent, target_parent: update_ignore_depreciation(
+					project, source, target, source_parent
+				),
+			)
+
+	return target
+
+
+def map_sales_orders(target, project, only_items=False, skip_postprocess=False, bill_to_filter=None):
+	from erpnext.controllers.queries import _get_sales_orders_to_be_billed
+	from erpnext.selling.doctype.sales_order.sales_order import make_proforma_invoice
+	from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+
+	filters = {"project": project.name}
+	if project.company:
+		filters['company'] = project.company
+
+	all_sales_orders = _get_sales_orders_to_be_billed(filters=filters)
+
+	if not bill_to_filter:
+		bill_to_filter = []
+	if bill_to_filter and isinstance(bill_to_filter, str):
+		bill_to_filter = [bill_to_filter]
+
+	depreciation_type, has_depreciation_rate, has_insurance_excess = determine_depreciation_type(target, project)
+	if depreciation_type == "Depreciation Amount Only" and has_depreciation_rate and bill_to_filter:
+		bill_to_filter = bill_to_filter + [project.insurance_company]
+
+	if bill_to_filter:
+		filters_with_bill_to = filters.copy()
+		filters_with_bill_to['bill_to'] = ["in", bill_to_filter]
+		bill_to_sales_orders = _get_sales_orders_to_be_billed(filters=filters_with_bill_to)
+		bill_to_sales_orders = [d.name for d in bill_to_sales_orders]
+
+		for d in all_sales_orders:
+			if d.name not in bill_to_sales_orders:
+				d.only_items = True
+
+	for d in all_sales_orders:
+		if target.doctype == "Proforma Invoice":
+			target = make_proforma_invoice(
+				d.name,
+				target_doc=target,
+				only_items=d.only_items or only_items,
+				skip_postprocess=skip_postprocess,
+				item_condition=lambda source, source_parent, target_parent: bill_to_item_condition(
+					project, bill_to_filter, source, source_parent, target_parent
+				),
+				update_item=lambda source, target, source_parent, target_parent: update_ignore_depreciation(
+					project, source, target, source_parent
+				),
+			)
+		else:
+			target = make_sales_invoice(d.name,
+				target_doc=target,
+				only_items=d.only_items or only_items,
+				skip_postprocess=skip_postprocess,
+				item_condition=lambda source, source_parent, target_parent: bill_to_item_condition(
+					project, bill_to_filter, source, source_parent, target_parent
+				),
+				update_item=lambda source, target, source_parent, target_parent: update_ignore_depreciation(
+					project, source, target, source_parent
+				),
+			)
+
+	return target
+
+
+def bill_to_item_condition(project, bill_to_filter, source, source_parent, target_parent):
+	if bill_to_filter:
+		target_bill_to = target_parent.get("bill_to") or target_parent.get("customer")
+
+		if source_parent.doctype == "Delivery Note":
+			source_bill_to = project.bill_to or source_parent.customer
+			if source.sales_order:
+				source_bill_to = frappe.db.get_value("Sales Order", source.sales_order, "bill_to", cache=1)
+		else:
+			source_bill_to = source_parent.bill_to or source_parent.customer
+
+		if source.claim_customer:
+			if source.claim_customer not in bill_to_filter and target_bill_to != source_parent.customer:
+				return False
+		elif source_bill_to not in bill_to_filter:
+			return False
+
+	return True
+
+
+def update_ignore_depreciation(project, source, target, source_parent):
+	if not project.insurance_company:
+		return
+
+	if source_parent.doctype == "Delivery Note":
+		source_bill_to = project.bill_to or source_parent.customer
+		if source.sales_order:
+			source_bill_to = frappe.db.get_value("Sales Order", source.sales_order, "bill_to", cache=1)
+	else:
+		source_bill_to = source_parent.bill_to or source_parent.customer
+
+	if source_bill_to != project.insurance_company:
+		target.ignore_depreciation = 1
+
+
+@frappe.whitelist()
+def get_billable_customers(project_name):
+	project = frappe.get_doc("Project", project_name)
+
+	sales_order_bill_to = dict(frappe.db.sql("""
+		select bill_to, bill_to_name
+		from `tabSales Order`
+		where project = %s and docstatus = 1
+		order by transaction_date, creation
+	""", project.name))
+
+	sales_order_claim_customers = dict(frappe.db.sql("""
+		select i.claim_customer, c.customer_name as claim_customer_name
+		from `tabSales Order Item` i
+		inner join `tabCustomer` c on c.name = i.claim_customer
+		inner join `tabSales Order` p on p.name = i.parent
+		where p.project = %s and p.docstatus = 1
+	""", project.name))
+
+	delivery_note_claim_customers = dict(frappe.db.sql("""
+		select i.claim_customer, c.customer_name as claim_customer_name
+		from `tabDelivery Note Item` i
+		inner join `tabCustomer` c on c.name = i.claim_customer
+		inner join `tabDelivery Note` p on p.name = i.parent
+		where p.project = %s and p.docstatus = 1
+	""", project.name))
+
+	has_depreciation_rate = (
+		project.default_depreciation_percentage
+		or project.default_underinsurance_percentage
+		or project.non_standard_depreciation
+		or project.non_standard_underinsurance
+	)
+
+	has_excess_amount = project.insurance_excess_amount or project.insurance_excess_percentage
+
+	visited_customers = set()
+	billable_customers = []
+
+	if (
+		project.customer
+		and project.customer not in visited_customers
+		and (project.customer in sales_order_bill_to or has_depreciation_rate or has_excess_amount)
+	):
+		visited_customers.add(project.customer)
+		billable_customers.append({
+			"customer": project.customer,
+			"customer_name": project.customer_name,
+		})
+
+	if (
+		project.bill_to
+		and project.bill_to not in visited_customers
+		and (project.bill_to in sales_order_bill_to or has_depreciation_rate or has_excess_amount)
+	):
+		visited_customers.add(project.bill_to)
+		billable_customers.append({
+			"customer": project.bill_to,
+			"customer_name": project.bill_to_name,
+		})
+
+	for dataset in (sales_order_bill_to, sales_order_claim_customers, delivery_note_claim_customers):
+		for customer, customer_name in dataset.items():
+			if customer not in visited_customers:
+				visited_customers.add(customer)
+				billable_customers.append({
+					"customer": customer,
+					"customer_name": customer_name,
+				})
+
+	return billable_customers
 
 
 def postprocess_bill_multiple_projects(target_doc):
@@ -340,10 +529,8 @@ def make_delivery_note(project_name):
 	remove_taxes_from_transaction(target_doc)
 
 	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
+	set_project_details_in_transaction(target_doc, project_details, project)
+	set_contact_and_address_in_transaction(target_doc, project)
 	set_sales_person_in_target_doc(target_doc, project)
 
 	# Missing Values and Forced Values
@@ -355,9 +542,13 @@ def make_delivery_note(project_name):
 
 
 @frappe.whitelist()
-def make_sales_order(project_name, items_type=None, without_items=False, skip_postprocess=False):
-	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
-
+def make_sales_order(
+	project_name,
+	bill_to=None,
+	items_type=None,
+	without_items=False,
+	skip_postprocess=False
+):
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Sales Order")
 
@@ -374,17 +565,13 @@ def make_sales_order(project_name, items_type=None, without_items=False, skip_po
 	set_default_transaction_type(target_doc, force=True)
 
 	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
+	set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
+	set_contact_and_address_in_transaction(target_doc, project)
+	set_sales_person_in_target_doc(target_doc, project)
 
+	# Add Items
 	if not without_items:
-		# Get Service Template Items
-		for d in project.service_templates:
-			if not d.get('sales_order') and d.service_template:
-				target_doc = add_service_template_items(target_doc, d.service_template,
-					applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-					check_duplicate=False, service_template_detail=d, items_type=items_type)
+		project.add_template_items_to_order(target_doc, bill_to=target_doc.bill_to, items_type=items_type)
 
 		# Remove already ordered items
 		service_template_ordered_set = get_service_template_ordered_set(project, group_by_item_type=True)
@@ -402,8 +589,6 @@ def make_sales_order(project_name, items_type=None, without_items=False, skip_po
 		for i, d in enumerate(target_doc.items):
 			d.idx = i + 1
 
-	set_sales_person_in_target_doc(target_doc, project)
-
 	# Missing Values and Forced Values
 	if not skip_postprocess:
 		target_doc.run_method("postprocess_after_mapping", reset_taxes=True)
@@ -414,9 +599,7 @@ def make_sales_order(project_name, items_type=None, without_items=False, skip_po
 
 
 @frappe.whitelist()
-def make_quotation(project_name, items_type=None):
-	from erpnext.projects.doctype.service_template.service_template import add_service_template_items
-
+def make_quotation(project_name, bill_to=None, items_type=None):
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Quotation")
 
@@ -429,18 +612,11 @@ def make_quotation(project_name, items_type=None):
 	set_default_transaction_type(target_doc, force=True)
 
 	# Set Project Details
-	for k, v in project_details.items():
-		if target_doc.meta.has_field(k):
-			target_doc.set(k, v)
-
-	# Get Service Template Items
-	for d in project.service_templates:
-		if not d.get('sales_order') and d.service_template:
-			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
-				check_duplicate=False, service_template_detail=d, items_type=items_type)
-
+	set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
 	set_sales_person_in_target_doc(target_doc, project)
+
+	# Add Items
+	project.add_template_items_to_order(target_doc, bill_to=target_doc.bill_to, items_type=items_type)
 
 	# Remove already ordered items
 	service_template_quoted_set = get_service_template_quoted_set(project)
@@ -500,7 +676,7 @@ def make_material_request(project_name):
 	for d in project.service_templates:
 		if not d.get('sales_order') and d.service_template:
 			target_doc = add_service_template_items(target_doc, d.service_template,
-				applies_to_item=project.applies_to_item, applies_to_customer=project.customer,
+				applies_to_item=project.applies_to_item,
 				check_duplicate=False, service_template_detail=d, items_type="stock")
 
 	# Remove already ordered items
@@ -695,7 +871,7 @@ def get_returnable_consumables(project):
 	return out
 
 
-def set_project_details_in_transaction(target_doc, project_details, project):
+def set_project_details_in_transaction(target_doc, project_details, project, bill_to=None):
 	target_doc.company = project.company
 	target_doc.project = project.name
 
@@ -703,28 +879,34 @@ def set_project_details_in_transaction(target_doc, project_details, project):
 		if target_doc.meta.has_field(k):
 			target_doc.set(k, v)
 
+	if target_doc.meta.has_field("bill_to"):
+		target_doc.bill_to = bill_to or project.bill_to or project.customer
+
 
 def set_cash_or_credit(target_doc, project):
 	invoice_bill_to = target_doc.bill_to or target_doc.customer
-	project_bill_to = project.bill_to or project.customer
 	if target_doc.insurance_company and invoice_bill_to == target_doc.insurance_company:
 		target_doc.is_pos = 0
-	elif target_doc.insurance_company and invoice_bill_to != project_bill_to:
-		target_doc.is_pos = frappe.get_cached_value("Customer", invoice_bill_to, "cash_billing") or project.cash_billing
 	else:
-		target_doc.is_pos = project.cash_billing
+		target_doc.is_pos = cint(
+			frappe.get_cached_value("Customer", invoice_bill_to, "cash_billing")
+			or project.cash_billing
+		)
 
 
 def set_contact_and_address_in_transaction(target_doc, project):
-	target_bill_to = target_doc.bill_to or target_doc.customer
+	target_bill_to = target_doc.get("bill_to") or target_doc.customer
 	if project.bill_to and target_bill_to == project.bill_to:
 		target_doc.contact_person = project.billing_contact_person
 		target_doc.customer_address = project.billing_address
-	else:
+	elif project.customer and target_bill_to == project.customer:
 		target_doc.contact_person = project.contact_person
 		target_doc.contact_mobile = project.contact_mobile
 		target_doc.contact_phone = project.contact_phone
 		target_doc.customer_address = project.customer_address
+	else:
+		target_doc.contact_person = None
+		target_doc.customer_address = None
 
 
 def set_po_no_in_transaction(target_doc, project):

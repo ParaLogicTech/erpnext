@@ -600,7 +600,7 @@ class SalesInvoice(SellingController):
 			return
 
 		# Validate total paid amount zero
-		if not flt(self.paid_amount) and not flt(self.total_advance):
+		if not flt(self.paid_amount) and not flt(self.total_advance) and not flt(self.prepaid_deferred_revenue):
 			frappe.throw(_("Paid Amount cannot be zero for POS Invoice"))
 
 		# Validate total return payment amount
@@ -831,8 +831,8 @@ class SalesInvoice(SellingController):
 		delivery_note_compare = [["company", "="], ["currency", "="]]
 
 		if not self.get('bill_multiple_projects'):
-			sales_order_compare += [["project", "="], ["branch", "="]]
-			delivery_note_compare += [["project", "="], ["branch", "="]]
+			sales_order_compare += [["project", "="]]
+			delivery_note_compare += [["project", "="]]
 
 		if not self.get('claim_billing'):
 			sales_order_compare += [["customer", "="]]
@@ -1097,10 +1097,9 @@ class SalesInvoice(SellingController):
 					d.cost_center = depreciation_cost_center
 
 	def set_unbilled_stock_account(self):
-		if (
-			self.update_stock
-			or self.depreciation_type == "Depreciation Amount Only"
-		):
+		bill_to = self.get('bill_to') or self.get('customer')
+
+		if self.update_stock:
 			for d in self.get("items"):
 				d.unbilled_stock_account = None
 		else:
@@ -1108,7 +1107,7 @@ class SalesInvoice(SellingController):
 			unbilled_stock_account_map = {}
 			if delivery_note_items:
 				dn_data = frappe.db.sql("""
-					select i.name, i.unbilled_stock_account, dn.is_return
+					select i.name, i.unbilled_stock_account, dn.is_return, i.claim_customer
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` dn on dn.name = i.parent
 					where i.name in %s
@@ -1122,6 +1121,10 @@ class SalesInvoice(SellingController):
 					dn_row_data = unbilled_stock_account_map.get(d.delivery_note_item, {})
 
 					if self.is_return and not self.reopen_order and not dn_row_data.get("is_return"):
+						d.unbilled_stock_account = None
+					elif dn_row_data.claim_customer and dn_row_data.claim_customer != bill_to:
+						d.unbilled_stock_account = None
+					elif self.depreciation_type == "Depreciation Amount Only" and not d.ignore_depreciation:
 						d.unbilled_stock_account = None
 					else:
 						d.unbilled_stock_account = dn_row_data.get("unbilled_stock_account")
@@ -1159,6 +1162,7 @@ class SalesInvoice(SellingController):
 		gl_entries = merge_similar_entries(gl_entries)
 
 		self.make_advance_reversal_gl_entries(gl_entries)
+		self.make_prepaid_deferred_revenue_gl_entry(gl_entries)
 		self.make_loyalty_point_redemption_gle(gl_entries)
 		self.make_pos_gl_entries(gl_entries)
 		self.make_gle_for_change_amount(gl_entries)
@@ -1290,6 +1294,29 @@ class SalesInvoice(SellingController):
 						}, discount_account_currency, item=item)
 					)
 
+				if item.is_prepaid_deferred_revenue and item.net_amount:
+					deferred_revenue_account = item.deferred_revenue_account
+					if not deferred_revenue_account:
+						frappe.throw(_("Deferred Revenue Account is mandatory for Prepaid Deferred Revenue Item {0} at Row {1}").format(
+							item.item_code, item.idx
+						))
+
+					deferred_revenue_account_currency = get_account_currency(deferred_revenue_account)
+					gl_entries.append(
+						self.get_gl_dict({
+							"account": deferred_revenue_account,
+							"against": billing_party_name or billing_party,
+							"debit": item.base_net_amount,
+							"debit_in_account_currency": (
+								item.base_net_amount
+								if deferred_revenue_account_currency == self.company_currency
+								else item.net_amount
+							),
+							"cost_center": item.cost_center or self.cost_center,
+							"project": item.get('project') or self.project
+						}, deferred_revenue_account_currency, item=item)
+					)
+
 		# expense account gl entries
 		if cint(self.update_stock) and \
 			erpnext.is_perpetual_inventory_enabled(self.company):
@@ -1391,6 +1418,27 @@ class SalesInvoice(SellingController):
 						"reference_no": reference_no,
 					}, self.party_account_currency, item=self)
 				)
+
+	def make_prepaid_deferred_revenue_gl_entry(self, gl_entries):
+		if self.prepaid_deferred_revenue:
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			deferred_revenue_accounts = set([d.deferred_revenue_account for d in self.get("items") if d.deferred_revenue_account])
+			base_prepaid_deferred_revenue = flt(self.prepaid_deferred_revenue) * flt(self.conversion_rate)
+
+			gl_entries.append(
+				self.get_gl_dict({
+					"account": self.debit_to,
+					"party_type": billing_party_type,
+					"party": billing_party,
+					"against": ", ".join(deferred_revenue_accounts),
+					"credit": flt(base_prepaid_deferred_revenue, self.precision("grand_total")),
+					"credit_in_account_currency": flt(self.prepaid_deferred_revenue, self.precision("grand_total")),
+					"against_voucher": self.return_against if cint(self.is_return) and self.return_against else self.name,
+					"against_voucher_type": self.doctype,
+					"cost_center": self.cost_center,
+					"project": self.project,
+				}, self.party_account_currency, item=self)
+			)
 
 	def make_loyalty_point_redemption_gle(self, gl_entries):
 		if cint(self.redeem_loyalty_points):

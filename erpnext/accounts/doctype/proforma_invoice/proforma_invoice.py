@@ -220,7 +220,7 @@ class ProformaInvoice(SellingController):
 		else:
 			grand_total = self.base_rounded_total or self.base_grand_total
 
-		payable_amount = grand_total - flt(self.total_advance)
+		payable_amount = grand_total - flt(self.total_advance) - flt(self.prepaid_deferred_revenue)
 
 		party_type, party, party_name = self.get_billing_party()
 		self.advance_paid = get_balance_on_voucher(
@@ -254,11 +254,13 @@ def make_sales_invoice(
 	ignore_permissions=False,
 	only_items=None,
 	skip_postprocess=False,
+	do_not_map_bill_to=False,
 	set_advances=True,
 ):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
 
+	do_not_map_bill_to = cint(do_not_map_bill_to)
 	set_advances = cint(set_advances)
 
 	def postprocess(source, target):
@@ -283,7 +285,8 @@ def make_sales_invoice(
 			},
 			"validation": {
 				"docstatus": ["=", 1],
-			}
+			},
+			"field_no_map": [],
 		},
 		"Proforma Invoice Item": get_item_mapper_for_invoice(),
 		"Sales Taxes and Charges": {
@@ -298,6 +301,9 @@ def make_sales_invoice(
 			"add_if_empty": True
 		}
 	}
+
+	if do_not_map_bill_to:
+		mapping["Proforma Invoice"]["field_no_map"] += ["bill_to", "bill_to_name"]
 
 	frappe.utils.call_hook_method("update_sales_invoice_from_proforma_invoice_mapper", mapping, "Sales Invoice")
 

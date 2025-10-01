@@ -7,8 +7,10 @@ from frappe import msgprint, _
 from frappe.model.meta import get_field_precision
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, get_dimension_with_children
 
+
 def execute(filters=None):
 	return _execute(filters)
+
 
 def _execute(filters, additional_table_columns=None, additional_query_columns=None):
 	if not filters: filters = frappe._dict({})
@@ -100,6 +102,7 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 		data.append(row)
 
 	return columns, data
+
 
 def get_columns(invoice_list, additional_table_columns):
 	"""return columns based on filters"""
@@ -233,7 +236,7 @@ def get_columns(invoice_list, additional_table_columns):
 		invoice_names = [inv.name for inv in invoice_list]
 
 		income_and_discount_accounts = frappe.db.sql("""
-			select distinct income_account, discount_account
+			select distinct income_account, discount_account, deferred_revenue_account
 			from `tabSales Invoice Item`
 			where parent in %s
 		""", [invoice_names], as_dict=1)
@@ -244,6 +247,8 @@ def get_columns(invoice_list, additional_table_columns):
 				income_accounts.add(d.income_account)
 			if d.discount_account:
 				income_accounts.add(d.discount_account)
+			if d.deferred_revenue_account:
+				income_accounts.add(d.deferred_revenue_account)
 
 		income_accounts = sorted(list(income_accounts))
 
@@ -315,41 +320,64 @@ def get_columns(invoice_list, additional_table_columns):
 
 	return columns, income_accounts, tax_accounts
 
+
 def get_conditions(filters):
 	conditions = ""
 
-	if filters.get("company"): conditions += " and company=%(company)s"
-	if filters.get("customer"): conditions += " and bill_to = %(customer)s"
+	if filters.get("company"):
+		conditions += " and inv.company = %(company)s"
 
-	if filters.get("from_date"): conditions += " and posting_date >= %(from_date)s"
-	if filters.get("to_date"): conditions += " and posting_date <= %(to_date)s"
+	if filters.get("customer"):
+		conditions += " and inv.bill_to = %(customer)s"
 
-	if filters.get("owner"): conditions += " and owner = %(owner)s"
+	if filters.get("customer_group"):
+		lft, rgt = frappe.db.get_value("Customer Group", filters.get("customer_group"), ["lft", "rgt"])
+		conditions += """ and c.customer_group in (
+			select name from `tabCustomer Group` where lft >= {0} and rgt <= {1}
+		)""".format(lft, rgt)
+
+	if filters.get("from_date"):
+		conditions += " and posting_date >= %(from_date)s"
+	if filters.get("to_date"):
+		conditions += " and posting_date <= %(to_date)s"
+
+	if filters.get("owner"):
+		conditions += " and owner = %(owner)s"
 
 	if filters.get("mode_of_payment"):
-		conditions += """ and exists(select name from `tabSales Invoice Payment`
-			 where parent=`tabSales Invoice`.name
-			 	and `tabSales Invoice Payment`.mode_of_payment = %(mode_of_payment)s)"""
+		conditions += """ and exists(
+			select name
+			from `tabSales Invoice Payment`
+			where parent = `tabSales Invoice`.name and `tabSales Invoice Payment`.mode_of_payment = %(mode_of_payment)s
+		)"""
 
 	if filters.get("cost_center"):
-		conditions +=  """ and exists(select name from `tabSales Invoice Item`
-			 where parent=`tabSales Invoice`.name
-			 	and `tabSales Invoice Item`.cost_center = %(cost_center)s)"""
+		conditions += """ and exists(
+			select name
+			from `tabSales Invoice Item`
+			where parent = `tabSales Invoice`.name and `tabSales Invoice Item`.cost_center = %(cost_center)s
+		)"""
 
 	if filters.get("warehouse"):
-		conditions +=  """ and exists(select name from `tabSales Invoice Item`
-			 where parent=`tabSales Invoice`.name
-			 	and `tabSales Invoice Item`.warehouse = %(warehouse)s)"""
+		conditions += """ and exists(
+			select name
+			from `tabSales Invoice Item`
+			where parent = `tabSales Invoice`.name and `tabSales Invoice Item`.warehouse = %(warehouse)s
+		)"""
 
 	if filters.get("brand"):
-		conditions +=  """ and exists(select name from `tabSales Invoice Item`
-			 where parent=`tabSales Invoice`.name
-			 	and `tabSales Invoice Item`.brand = %(brand)s)"""
+		conditions += """ and exists(
+			select name
+			from `tabSales Invoice Item`
+			where parent = `tabSales Invoice`.name and `tabSales Invoice Item`.brand = %(brand)s
+		)"""
 
 	if filters.get("item_group"):
-		conditions +=  """ and exists(select name from `tabSales Invoice Item`
-			 where parent=`tabSales Invoice`.name
-			 	and `tabSales Invoice Item`.item_group = %(item_group)s)"""
+		conditions += """ and exists(
+			select name
+			from `tabSales Invoice Item`
+			where parent = `tabSales Invoice`.name and `tabSales Invoice Item`.item_group = %(item_group)s
+		)"""
 
 	accounting_dimensions = get_accounting_dimensions(as_list=False)
 
@@ -359,7 +387,7 @@ def get_conditions(filters):
 				where parent=`tabSales Invoice`.name
 			"""
 		for dimension in accounting_dimensions:
-			if filters.get(dimension.fieldname):
+			if filters.get(dimension.fieldname) and dimension.fieldname not in ("customer_group", "item_group"):
 				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
 					filters[dimension.fieldname] = get_dimension_with_children(dimension.document_type,
 						filters.get(dimension.fieldname))
@@ -370,18 +398,25 @@ def get_conditions(filters):
 
 	return conditions
 
+
 def get_invoices(filters, additional_query_columns):
 	if additional_query_columns:
 		additional_query_columns = ', ' + ', '.join(additional_query_columns)
 
 	conditions = get_conditions(filters)
-	return frappe.db.sql("""
-		select name, posting_date, debit_to, project, customer,
-		customer_name, bill_to, bill_to_name, owner, remarks, territory, tax_id, customer_group,
-		base_net_total, base_grand_total, base_rounded_total, outstanding_amount {0}
-		from `tabSales Invoice`
-		where docstatus = 1 %s order by posting_date desc, name desc""".format(additional_query_columns or '') %
-		conditions, filters, as_dict=1)
+	return frappe.db.sql(f"""
+		select
+			inv.name, inv.posting_date, inv.debit_to, inv.project,
+			inv.customer, inv.customer_name, inv.bill_to, inv.bill_to_name,
+			inv.owner, inv.remarks, inv.territory, inv.tax_id, c.customer_group,
+			inv.base_net_total, inv.base_grand_total, inv.base_rounded_total, inv.outstanding_amount
+			{additional_query_columns}
+		from `tabSales Invoice` inv
+		left join `tabCustomer` c on c.name = inv.bill_to
+		where inv.docstatus = 1 {conditions}
+		order by inv.posting_date desc, inv.creation desc
+	""", filters, as_dict=1)
+
 
 def get_invoice_income_map(invoice_list, income_accounts):
 	invoice_names = [inv.name for inv in invoice_list]
@@ -401,6 +436,7 @@ def get_invoice_income_map(invoice_list, income_accounts):
 
 	return invoice_income_map
 
+
 def get_invoice_tax_map(invoice_list, income_accounts):
 	tax_details = frappe.db.sql("""select parent, account_head,
 		sum(base_tax_amount_after_discount_amount) as tax_amount
@@ -414,6 +450,7 @@ def get_invoice_tax_map(invoice_list, income_accounts):
 			invoice_tax_map[d.parent][d.account_head] += flt(d.tax_amount)
 
 	return invoice_tax_map
+
 
 def get_invoice_so_dn_map(invoice_list):
 	si_items = frappe.db.sql("""
@@ -440,6 +477,7 @@ def get_invoice_so_dn_map(invoice_list):
 
 	return invoice_so_dn_map
 
+
 def get_invoice_cc_wh_map(invoice_list):
 	si_items = frappe.db.sql("""
 		select parent, cost_center, warehouse
@@ -459,6 +497,7 @@ def get_invoice_cc_wh_map(invoice_list):
 				"warehouse", []).append(d.warehouse)
 
 	return invoice_cc_wh_map
+
 
 def get_mode_of_payments(invoice_list):
 	mode_of_payments = {}

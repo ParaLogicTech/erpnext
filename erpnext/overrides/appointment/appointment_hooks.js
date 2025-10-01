@@ -61,6 +61,42 @@ erpnext.AppointmentERP = class AppointmentERP extends crm.Appointment {
 			frm: this.frm
 		});
 	}
+
+	service_template(doc, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		this.get_service_template_details(row);
+	}
+
+	get_service_template_details(row) {
+		if (row && row.service_template) {
+			let args = this.get_service_template_args(row);
+
+			return frappe.call({
+				method: "erpnext.projects.doctype.service_template.service_template.get_service_template_details",
+				args: {
+					service_template: row.service_template,
+					args: args,
+				},
+				callback: (r) => {
+					if (r.message) {
+						frappe.model.set_value(row.doctype, row.name, r.message);
+					}
+				}
+			});
+		}
+	}
+
+	get_service_template_args(row) {
+		return {
+			customer: this.frm.doc.appointment_for == "Customer" ? this.frm.doc.party_name : null,
+			applies_to_item: this.frm.doc.applies_to_item,
+			date: this.frm.doc.scheduled_date,
+		}
+	}
+
+	add_service_template(service_template, check_duplicate) {
+		return erpnext.utils.add_service_template_row(this.frm, service_template, check_duplicate);
+	}
 }
 
 extend_cscript(cur_frm.cscript, new erpnext.AppointmentERP({ frm: cur_frm }));

@@ -191,6 +191,7 @@
   "get_advances",
   "advances",
   "total_advance",
+  "prepaid_deferred_revenue",
   "payments_section",
   "payments",
   "section_break_poqs",
@@ -2352,6 +2353,15 @@
    "options": "Customer Group",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "depends_on": "prepaid_deferred_revenue",
+   "fieldname": "prepaid_deferred_revenue",
+   "fieldtype": "Currency",
+   "label": "Prepaid Deferred Revenue",
+   "options": "party_account_currency",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -2359,7 +2369,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-11 14:35:12.608795",
+ "modified": "2025-09-30 18:45:09.144946",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

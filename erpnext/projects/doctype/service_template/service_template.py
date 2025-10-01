@@ -57,11 +57,13 @@ class ServiceTemplate(Document):
 			frappe.throw(_("Next Maintenance Due After cannot be negative"))
 
 	def validate_service_warranty(self):
-		if not self.includes_service_warranty:
-			return
+		if not self.includes_service_warranty and self.db_get("includes_service_warranty"):
+			if frappe.db.exists("Service Warranty", {"service_template": self.name, "docstatus": 1}):
+				frappe.throw(_("Cannot disable 'Includes Service Warranty' because there are Service Warranties against this Template"))
 
-		if cint(self.warranty_validity) <= 0:
-			frappe.throw(_("Please set Warranty Validity"))
+		if self.includes_service_warranty:
+			if cint(self.warranty_validity) <= 0:
+				frappe.throw(_("Please set Warranty Validity"))
 
 	def filter_applicable_item(self, pt_item, applies_to_item=None, applies_to_customer=None):
 		from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
@@ -88,15 +90,21 @@ class ServiceTemplate(Document):
 
 
 @frappe.whitelist()
-def get_service_template_details(service_template):
+def get_service_template_details(service_template, args=None):
 	out = frappe._dict()
 	if not service_template:
 		return out
 
+	if args and isinstance(args, str):
+		args = json.loads(args)
+
+	args = frappe._dict(args)
+
 	template_doc = frappe.get_cached_doc("Service Template", service_template)
 	out.service_template_name = template_doc.service_template_name
+	out.includes_service_warranty = template_doc.includes_service_warranty
 
-	frappe.utils.call_hook_method("get_service_template_details", service_template, out)
+	frappe.utils.call_hook_method("get_service_template_details", service_template, out, args)
 
 	return out
 

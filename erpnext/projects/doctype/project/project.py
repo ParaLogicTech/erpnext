@@ -83,8 +83,9 @@ class Project(StatusUpdaterERP):
 		pass
 
 	def validate(self):
+		self.set_service_template_has_transaction()
 		if self.status not in ('Completed', 'Closed', 'Cancelled'):
-			self.set_missing_values()
+			self.set_missing_values(for_validate=True)
 
 		self.validate_appointment()
 		self.validate_phone_nos()
@@ -103,7 +104,6 @@ class Project(StatusUpdaterERP):
 		self.set_billing_and_delivery_status()
 		self.set_procurement_status()
 		self.set_costing()
-		self.set_service_template_has_transaction()
 		self.run_method("set_additional_status")
 		self.set_status(from_doctype=self.doctype, action=self.get("_action"))
 
@@ -149,7 +149,7 @@ class Project(StatusUpdaterERP):
 		self.customer_billable_amount = sales_data.totals.customer_grand_total
 
 		self.additional_insurance_excess_amount = flt(
-			sales_data.totals.net_total * flt(self.insurance_excess_percentage) / 100,
+			sales_data.totals.insurance_net_total * flt(self.insurance_excess_percentage) / 100,
 			self.precision("additional_insurance_excess_amount")
 		)
 
@@ -740,13 +740,10 @@ class Project(StatusUpdaterERP):
 		if not previous_ready_to_close:
 			self.ready_to_close_dt = now_datetime()
 
-		self.status = "To Close"
-
 		if update:
 			self.db_set({
 				'ready_to_close': self.ready_to_close,
 				'ready_to_close_dt': self.ready_to_close_dt,
-				'status': self.status,
 			}, None)
 
 		if self.ready_to_close != previous_ready_to_close:
@@ -845,19 +842,18 @@ class Project(StatusUpdaterERP):
 	def reopen_status(self, update=True):
 		self.ready_to_close = 0
 		self.ready_to_close_dt = None
-		self.status = "Open"
 
 		if update:
 			self.db_set({
 				'ready_to_close': self.ready_to_close,
 				'ready_to_close_dt': self.ready_to_close_dt,
-				'status': self.status,
 			}, None)
 
 	def validate_for_transaction(self, doc):
 		if doc.doctype in ("Sales Invoice", "Proforma Invoice"):
 			if not self.is_insurance_excess_invoice_for_customer(doc):
-				self.check_is_ready_to_close()
+				if doc.doctype == "Sales Invoice" or doc.docstatus == 1:
+					self.check_is_ready_to_close()
 				self.check_undelivered_sales_orders()
 
 		if doc.doctype == "Payment Entry":
@@ -901,18 +897,8 @@ class Project(StatusUpdaterERP):
 		if billing_customer:
 			allowed_customers.append(billing_customer)
 
-		if self.insurance_company:
-			has_depreciation_rate = (
-				self.default_depreciation_percentage
-				or self.default_underinsurance_percentage
-				or self.non_standard_depreciation
-				or self.non_standard_underinsurance
-			)
-
-			has_excess_amount = self.insurance_excess_amount or self.additional_insurance_excess_amount
-
-			if has_depreciation_rate or has_excess_amount:
-				allowed_customers.append(self.customer)
+		if self.customer_billable_amount:
+			allowed_customers.append(self.customer)
 
 		allowed_customers = list(set(allowed_customers))
 
@@ -966,49 +952,48 @@ class Project(StatusUpdaterERP):
 		action=None,
 	):
 		if self.is_new():
-			previous_status, previous_project_status, previous_indicator_color = self.status, self.project_status, self.indicator_color
+			self.flags.previous_status, self.flags.previous_project_status, self.flags.previous_indicator_color = (
+				self.status, self.project_status, self.indicator_color
+			)
 		else:
-			previous_status, previous_project_status, previous_indicator_color = self.db_get(["status", "project_status", "indicator_color"])
+			self.flags.previous_status, self.flags.previous_project_status, self.flags.previous_indicator_color = self.db_get([
+				"status", "project_status", "indicator_color"
+			])
 
 		# set/reset manual status
 		if reset:
 			self.project_status = None
+			self.status = status or "Open"
 		elif status:
 			set_manual_project_status(self, status)
 		else:
 			apply_project_status_transition(self, from_doctype, action)
 
 		# get evaulated status
-		project_status = get_auto_project_status(self)
+		project_status = get_auto_project_status(self) or frappe._dict()
 
-		# no applicable status
-		if not project_status:
-			if self.status != previous_status:
-				self.flags.status_changed = True
-			if update:
-				self.handle_on_status_change()
-
-			return
+		# do not set status if no auto status
+		if project_status:
+			self.status = project_status.status
 
 		# set status
 		self.project_status = project_status.name
-		self.status = project_status.status
 		self.indicator_color = project_status.indicator_color
-		self.show_task_type = project_status.show_task_type
+		self.show_task_type = cint(project_status.show_task_type)
 
 		# status comment only if project status changed
-		if not self.is_new() and self.project_status != previous_project_status:
+		if not self.is_new() and self.project_status and self.project_status != self.flags.previous_project_status:
 			self.add_comment("Label", _(self.project_status))
 
-		if self.status != previous_status:
+		if self.status != self.flags.previous_status:
 			self.flags.status_changed = True
 
 		# update database only if changed
 		if update:
 			if (
-				self.project_status != previous_project_status
-				or self.status != previous_status
-				or cstr(self.indicator_color) != cstr(previous_indicator_color)
+				self.project_status != self.flags.previous_project_status
+				or self.status != self.flags.previous_status
+				or cstr(self.indicator_color) != cstr(self.flags.previous_indicator_color)
 			):
 				self.db_set({
 					'project_status': self.project_status,
@@ -1195,11 +1180,11 @@ class Project(StatusUpdaterERP):
 		if self.get('contact_mobile') == self.get('contact_mobile_2'):
 			self.contact_mobile_2 = ''
 
-	def set_missing_values(self):
+	def set_missing_values(self, for_validate=False):
 		self.set_project_type_defaults()
 		self.set_appointment_details()
 		self.set_customer_details()
-		self.set_applies_to_details()
+		self.set_applies_to_details(for_validate=for_validate)
 		self.set_service_template_details()
 		self.set_material_and_service_item_groups()
 
@@ -1223,9 +1208,9 @@ class Project(StatusUpdaterERP):
 				self.set(k, v)
 
 	@frappe.whitelist()
-	def set_applies_to_details(self):
+	def set_applies_to_details(self, for_validate=False):
 		args = self.as_dict()
-		applies_to_details = get_applies_to_details(args, for_validate=True)
+		applies_to_details = get_applies_to_details(args, for_validate=for_validate)
 
 		for k, v in applies_to_details.items():
 			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
@@ -1246,12 +1231,26 @@ class Project(StatusUpdaterERP):
 		return out
 
 	def set_service_template_details(self):
-		for d in self.service_templates:
-			if d.service_template and not d.service_template_name:
-				d.service_template_name = frappe.get_cached_value("Service Template", d.service_template, "service_template_name")
+		for row in self.service_templates:
+			self.set_service_template_details_for_row(row)
+			if self.status not in ('Completed', 'Closed', 'Cancelled') and not row.has_sales_order:
+				self.set_service_template_claim_customer_for_row(row)
+				row.claim_customer_name = frappe.get_cached_value("Customer", row.claim_customer, "customer_name")
 
-			if self.status not in ('Completed', 'Closed', 'Cancelled'):
-				d.includes_service_warranty = frappe.get_cached_value("Service Template", d.service_template, "includes_service_warranty")
+	def set_service_template_details_for_row(self, row):
+		if row.service_template and not row.service_template_name:
+			row.service_template_name = frappe.get_cached_value("Service Template", row.service_template,
+				"service_template_name")
+
+		if self.status not in ('Completed', 'Closed', 'Cancelled'):
+			row.includes_service_warranty = frappe.get_cached_value("Service Template", row.service_template,
+				"includes_service_warranty")
+
+			if not row.has_sales_order:
+				self.set_service_template_claim_customer_for_row(row)
+
+	def set_service_template_claim_customer_for_row(self, row):
+		row.claim_customer = None
 
 	def set_appointment_details(self):
 		if self.appointment:
@@ -1586,6 +1585,39 @@ class Project(StatusUpdaterERP):
 				'pending_quotation_amount': self.pending_quotation_amount,
 			}, update_modified=update_modified)
 
+	def add_template_items_to_order(self, target_doc, bill_to=None, items_type=None):
+		bill_to = bill_to or target_doc.get("bill_to") or self.bill_to or self.customer
+		for row in self.service_templates:
+			target_doc = self.add_template_items_to_order_for_row(target_doc, row, bill_to, items_type=items_type)
+
+		return target_doc
+
+	def add_template_items_to_order_for_row(self, target_doc, row, bill_to, items_type=None):
+		from erpnext.projects.doctype.service_template.service_template import add_service_template_items
+
+		project_customers = (self.to_bill, self.customer, self.insurance_company)
+		project_customers = set(d for d in project_customers if d)
+		claim_customers = set([d.claim_customer for d in self.service_templates
+			if d.claim_customer and d.claim_customer not in project_customers])
+
+		if (
+			row.service_template
+			and not row.get('sales_order')
+			and (bill_to not in claim_customers or (row.claim_customer and bill_to == row.claim_customer))
+		):
+			target_doc = add_service_template_items(
+				target_doc,
+				row.service_template,
+				applies_to_item=self.applies_to_item,
+				applies_to_customer=bill_to,
+				check_duplicate=False,
+				service_template_detail=row,
+				items_type=items_type,
+				postprocess=False,
+			)
+
+		return target_doc
+
 
 def get_material_items(project, get_sales_invoice=True):
 	is_material_condition = "i.is_stock_item = 1"
@@ -1597,9 +1629,9 @@ def get_material_items(project, get_sales_invoice=True):
 	pfinv_data = frappe.db.sql(f"""
 		select
 			p.name as proforma_invoice,
+			p.bill_to,
 			i.delivery_note,
 			i.sales_order,
-			p.bill_to,
 			if(so.transaction_date is null, p.transaction_date, so.transaction_date) as transaction_date,
 			dn.posting_date, dn.posting_time,
 			i.idx,
@@ -1632,6 +1664,7 @@ def get_material_items(project, get_sales_invoice=True):
 	dn_data = frappe.db.sql(f"""
 		select
 			p.name as delivery_note,
+			so.bill_to,
 			i.sales_order,
 			p.posting_date, p.posting_time,
 			i.idx,
@@ -1654,6 +1687,7 @@ def get_material_items(project, get_sales_invoice=True):
 			i.claim_customer
 		from `tabDelivery Note Item` i
 		inner join `tabDelivery Note` p on p.name = i.parent
+		left join `tabSales Order` so on so.name = i.sales_order
 		where p.docstatus = 1
 			and {is_material_condition}
 			and abs(i.proforma_qty) < abs(i.qty)
@@ -1664,6 +1698,7 @@ def get_material_items(project, get_sales_invoice=True):
 	so_data = frappe.db.sql(f"""
 		select
 			p.name as sales_order,
+			p.bill_to,
 			p.transaction_date,
 			i.idx,
 			i.item_code,
@@ -1702,10 +1737,10 @@ def get_material_items(project, get_sales_invoice=True):
 	sinv_data = frappe.db.sql(f"""
 		select
 			p.name as sales_invoice,
+			p.bill_to,
 			i.delivery_note,
 			i.sales_order,
 			i.proforma_invoice,
-			p.bill_to,
 			p.posting_date, p.posting_time,
 			i.idx,
 			i.item_code,
@@ -1792,9 +1827,9 @@ def get_service_items(project, get_sales_invoice=True):
 	pfinv_data = frappe.db.sql(f"""
 		select
 			p.name as proforma_invoice,
+			p.bill_to,
 			i.delivery_note,
 			i.sales_order,
-			p.bill_to,
 			if(so.transaction_date is null, p.transaction_date, so.transaction_date) as transaction_date,
 			i.idx,
 			i.item_code,
@@ -1826,6 +1861,7 @@ def get_service_items(project, get_sales_invoice=True):
 	so_data = frappe.db.sql(f"""
 		select
 			p.name as sales_order,
+			p.bill_to,
 			p.transaction_date,
 			i.idx,
 			i.item_code,
@@ -1865,10 +1901,10 @@ def get_service_items(project, get_sales_invoice=True):
 		sinv_data = frappe.db.sql(f"""
 			select
 				p.name as sales_invoice,
+				p.bill_to,
 				i.delivery_note,
 				i.sales_order,
 				i.proforma_invoice,
-				p.bill_to,
 				p.posting_date as transaction_date,
 				i.idx,
 				i.item_code,
@@ -2006,6 +2042,7 @@ def get_items_data_template():
 
 		'net_total': 0,
 		'customer_net_total': 0,
+		'insurance_net_total': 0,
 
 		'total_discount': 0,
 
@@ -2050,8 +2087,13 @@ def adjust_sales_data_fulfilled_qty(data):
 
 
 def set_sales_data_customer_amounts(data, project):
+	project_customers = (project.customer, project.bill_to)
+	project_customers = set(c for c in project_customers if c)
+
 	for d in data:
+		d.bill_to = d.bill_to or project.bill_to or project.customer
 		d.has_customer_depreciation = 0
+		d.is_claim_item = 0
 
 		if d.get('claim_customer') and project.customer and d.get('claim_customer') != project.customer:
 			d.is_claim_item = 1
@@ -2064,29 +2106,31 @@ def set_sales_data_customer_amounts(data, project):
 			else:
 				d.customer_net_amount = 0
 				d.customer_net_rate = 0
+
+		elif (
+			project.insurance_company
+			and project.customer != project.insurance_company
+			and d.bill_to == project.insurance_company
+		):
+			d.has_customer_depreciation = 1
+
+			depreciation_amount = d.net_amount * flt(d.depreciation_percentage) / 100
+			underinsurance_amount = (d.net_amount - depreciation_amount) * flt(d.underinsurance_percentage) / 100
+			d.customer_net_amount = depreciation_amount + underinsurance_amount
+
+			depreciation_rate = d.net_rate * flt(d.depreciation_percentage) / 100
+			underinsurance_rate = (d.net_rate - depreciation_rate) * flt(d.underinsurance_percentage) / 100
+			d.customer_net_rate = depreciation_rate + underinsurance_rate
+
+			d.cumulative_depreciation_percentage = d.customer_net_amount / d.net_amount * 100 if d.net_amount else 0
+
+		elif d.bill_to in project_customers:
+			d.customer_net_amount = d.net_amount
+			d.customer_net_rate = d.net_rate
+
 		else:
-			d.is_claim_item = 0
-
-			if (
-				project.insurance_company
-				and project.bill_to
-				and project.bill_to != project.customer
-				and (not d.bill_to or d.bill_to != project.customer)
-			):
-				d.has_customer_depreciation = 1
-
-				depreciation_amount = d.net_amount * flt(d.depreciation_percentage) / 100
-				underinsurance_amount = (d.net_amount - depreciation_amount) * flt(d.underinsurance_percentage) / 100
-				d.customer_net_amount = depreciation_amount + underinsurance_amount
-
-				depreciation_rate = d.net_rate * flt(d.depreciation_percentage) / 100
-				underinsurance_rate = (d.net_rate - depreciation_rate) * flt(d.underinsurance_percentage) / 100
-				d.customer_net_rate = depreciation_rate + underinsurance_rate
-
-				d.cumulative_depreciation_percentage = d.customer_net_amount / d.net_amount * 100 if d.net_amount else 0
-			else:
-				d.customer_net_amount = d.net_amount
-				d.customer_net_rate = d.net_rate
+			d.customer_net_amount = 0
+			d.customer_net_rate = 0
 
 
 def get_item_taxes(project, data, company):
@@ -2151,6 +2195,8 @@ def post_process_items_data(data):
 
 		data.net_total += flt(d.net_amount)
 		data.customer_net_total += flt(d.customer_net_amount)
+		if d.has_customer_depreciation:
+			data.insurance_net_total += flt(d.net_amount)
 
 		data.total_discount += flt(d.total_discount)
 
@@ -2199,6 +2245,7 @@ def get_totals_data(project, items_dataset):
 
 		'net_total': 0,
 		'customer_net_total': 0,
+		'insurance_net_total': 0,
 
 		'total_discount': 0,
 
@@ -2215,6 +2262,7 @@ def get_totals_data(project, items_dataset):
 	for data in items_dataset:
 		totals_data.net_total += flt(data.net_total)
 		totals_data.customer_net_total += flt(data.customer_net_total)
+		totals_data.insurance_net_total += flt(data.insurance_net_total)
 
 		totals_data.total_discount += flt(data.total_discount)
 
@@ -2250,13 +2298,12 @@ def get_totals_data(project, items_dataset):
 	# Insurance Excess
 	if (
 		project.insurance_company
-		and project.bill_to
-		and project.bill_to != project.customer
+		and project.insurance_company != project.customer
 		and (flt(project.insurance_excess_amount) or flt(project.insurance_excess_percentage))
 	):
 		insurance_excess_total = 0
 		if flt(project.insurance_excess_percentage):
-			insurance_excess_total += totals_data.net_total * flt(project.insurance_excess_percentage) / 100
+			insurance_excess_total += totals_data.insurance_net_total * flt(project.insurance_excess_percentage) / 100
 		if flt(project.insurance_excess_amount):
 			insurance_excess_total += flt(project.insurance_excess_amount)
 
@@ -2308,7 +2355,7 @@ def set_project_ready_to_close(project):
 
 	project.set_ready_to_close(update=True)
 	project.set_timesheet_values(update=True)
-	project.set_status(update=True, reset=True, from_doctype="Project", action="ready_to_close")
+	project.set_status(update=True, status="To Close", reset=True, from_doctype="Project", action="ready_to_close")
 	project.run_method('notify_ready_to_close')
 	project.notify_update()
 
@@ -2320,7 +2367,7 @@ def reopen_project_status(project):
 
 	project.reopen_status(update=True)
 	project.set_timesheet_values(update=True)
-	project.set_status(update=True, reset=True, from_doctype="Project", action="reopen")
+	project.set_status(update=True, status="Open", reset=True, from_doctype="Project", action="reopen")
 	project.notify_update()
 
 
@@ -2490,7 +2537,7 @@ def get_project_details(project, doctype, purpose=None):
 def get_service_template_quoted_set(project):
 	service_template_quoted_set = []
 
-	service_template_details = [d.name for d in project.service_templates]
+	service_template_details = [d.name for d in project.service_templates if d.name]
 	if service_template_details:
 		service_template_quoted_set = frappe.db.sql_list("""
 			select distinct item.service_template_detail
@@ -2505,7 +2552,7 @@ def get_service_template_quoted_set(project):
 def get_service_template_ordered_set(project, group_by_item_type=False):
 	service_template_ordered_set = []
 
-	service_template_details = [d.name for d in project.service_templates]
+	service_template_details = [d.name for d in project.service_templates if d.name]
 	if service_template_details:
 		service_template_ordered_set = frappe.db.sql("""
 			select distinct item.service_template_detail, item.is_stock_item
@@ -2520,7 +2567,7 @@ def get_service_template_ordered_set(project, group_by_item_type=False):
 def get_service_template_requested_set(project):
 	service_template_requested_set = []
 
-	service_template_details = [d.name for d in project.service_templates]
+	service_template_details = [d.name for d in project.service_templates if d.name]
 	if service_template_details:
 		service_template_requested_set = frappe.db.sql_list("""
 			select distinct item.service_template_detail
@@ -2535,7 +2582,7 @@ def get_service_template_requested_set(project):
 def get_service_template_warranty_set(project):
 	service_template_warranty_set = []
 
-	service_template_details = [d.name for d in project.service_templates]
+	service_template_details = [d.name for d in project.service_templates if d.name]
 	if service_template_details:
 		service_template_warranty_set = frappe.db.sql_list("""
 			select distinct wty.service_template_detail

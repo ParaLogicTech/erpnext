@@ -388,13 +388,16 @@ class DeliveryNote(SellingController):
 		if self.docstatus == 1:
 			row_names = [d.name for d in self.items]
 			if row_names:
-				proforma_qty_map = dict(frappe.db.sql("""
-					select i.delivery_note_item, sum(i.qty)
+				billed_by_pfinv = frappe.db.sql("""
+					select i.delivery_note_item, i.qty, i.amount,
+						p.customer, p.bill_to,
+						p.depreciation_type, i.ignore_depreciation
 					from `tabProforma Invoice Item` i
 					inner join `tabProforma Invoice` p on p.name = i.parent
 					where p.docstatus = 1 and i.delivery_note_item in %s
-					group by i.delivery_note_item
-				""", [row_names]))
+				""", [row_names], as_dict=1)
+
+				proforma_qty_map = self.get_billed_qty_map(billed_by_pfinv, "delivery_note_item")
 
 		return proforma_qty_map
 
@@ -642,7 +645,7 @@ def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_
 
 	billed = frappe.db.sql("""
 		select i.qty, i.amount, inv.is_return, inv.update_stock, inv.reopen_order,
-			inv.depreciation_type, inv.bill_to
+			inv.depreciation_type, i.ignore_depreciation, inv.bill_to
 		from `tabSales Invoice Item` i
 		inner join `tabSales Invoice` inv on inv.name = i.parent
 		where i.delivery_note_item=%s and inv.docstatus = 1
@@ -658,7 +661,7 @@ def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modi
 	# Billed against Sales Order directly
 	billed_against_so = frappe.db.sql("""
 		select item.qty, item.amount, inv.is_return, inv.update_stock, inv.reopen_order,
-			inv.depreciation_type, inv.bill_to
+			inv.depreciation_type, item.ignore_depreciation, inv.bill_to
 		from `tabSales Invoice Item` item, `tabSales Invoice` inv
 		where inv.name = item.parent and inv.docstatus = 1
 			and item.sales_order_item=%s and (item.delivery_note_item is null or item.delivery_note_item = '')
@@ -692,7 +695,7 @@ def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modi
 			# Get billed qty directly against Delivery Note
 			billed_against_dn = frappe.db.sql("""
 				select item.qty, item.amount, inv.is_return, inv.update_stock, inv.reopen_order,
-					inv.depreciation_type, inv.bill_to
+					inv.depreciation_type, item.ignore_depreciation, inv.bill_to
 				from `tabSales Invoice Item` item, `tabSales Invoice` inv
 				where inv.name=item.parent and item.delivery_note_item=%s and item.docstatus=1
 			""", dnd.name, as_dict=1)
@@ -737,11 +740,14 @@ def calculate_billed_qty_and_amount(billed_data, for_delivery_return=False, deli
 		if for_delivery_return or not d.is_return or (d.reopen_order and not d.update_stock):
 			billed_amt += d.amount
 
-			depreciation_type = d.depreciation_type or 'No Depreciation'
+			depreciation_type = d.depreciation_type
+			if not depreciation_type or d.ignore_depreciation:
+				depreciation_type = 'No Depreciation'
+
 			depreciation_type_qty.setdefault(depreciation_type, 0)
 			depreciation_type_qty[depreciation_type] += d.qty
 
-			if d.depreciation_type != 'Depreciation Amount Only' and (not claim_customer or d.bill_to == claim_customer):
+			if depreciation_type != 'Depreciation Amount Only' and (not claim_customer or d.bill_to == claim_customer):
 				billed_qty += d.qty
 
 	if 'No Depreciation' not in depreciation_type_qty:
@@ -754,7 +760,14 @@ def calculate_billed_qty_and_amount(billed_data, for_delivery_return=False, deli
 
 
 @frappe.whitelist()
-def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postprocess=False):
+def make_sales_invoice(
+	source_name,
+	target_doc=None,
+	only_items=None,
+	skip_postprocess=False,
+	item_condition=None,
+	update_item=None,
+):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
 
@@ -778,7 +791,10 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 				"docstatus": ["=", 1]
 			}
 		},
-		"Delivery Note Item": get_item_mapper_for_invoice(),
+		"Delivery Note Item": get_item_mapper_for_invoice(
+			additional_item_condition=item_condition,
+			additional_update_item=update_item,
+		),
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
 			"add_if_empty": True
@@ -805,7 +821,14 @@ def make_sales_invoice(source_name, target_doc=None, only_items=None, skip_postp
 
 
 @frappe.whitelist()
-def make_proforma_invoice(source_name, target_doc=None, only_items=None, skip_postprocess=False):
+def make_proforma_invoice(
+	source_name,
+	target_doc=None,
+	only_items=None,
+	skip_postprocess=False,
+	item_condition=None,
+	update_item=None,
+):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
 
@@ -828,7 +851,11 @@ def make_proforma_invoice(source_name, target_doc=None, only_items=None, skip_po
 				"is_return": ["=", 0],
 			}
 		},
-		"Delivery Note Item": get_item_mapper_for_invoice(target_doctype="Proforma Invoice Item"),
+		"Delivery Note Item": get_item_mapper_for_invoice(
+			target_doctype="Proforma Invoice Item",
+			additional_item_condition=item_condition,
+			additional_update_item=update_item,
+		),
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
 			"add_if_empty": True
@@ -854,7 +881,12 @@ def make_proforma_invoice(source_name, target_doc=None, only_items=None, skip_po
 	return doc
 
 
-def get_item_mapper_for_invoice(allow_duplicate=False, target_doctype="Sales Invoice Item"):
+def get_item_mapper_for_invoice(
+	allow_duplicate=False,
+	target_doctype="Sales Invoice Item",
+	additional_item_condition=None,
+	additional_update_item=None,
+):
 	def get_pending_qty(source_doc):
 		to_bill_qty = flt(source_doc.qty) - flt(source_doc.billed_qty) - flt(source_doc.returned_qty)
 		if target_doctype == "Proforma Invoice Item":
@@ -869,9 +901,9 @@ def get_item_mapper_for_invoice(allow_duplicate=False, target_doctype="Sales Inv
 				return False
 
 		if cint(target_parent.get('claim_billing')):
-			bill_to = target_parent.get('bill_to') or target_parent.get('customer')
-			if bill_to:
-				if source.claim_customer != bill_to:
+			target_bill_to = target_parent.get('bill_to') or target_parent.get('customer')
+			if target_bill_to:
+				if source.claim_customer != target_bill_to:
 					return False
 			else:
 				if not source.claim_customer:
@@ -881,9 +913,16 @@ def get_item_mapper_for_invoice(allow_duplicate=False, target_doctype="Sales Inv
 			return False
 
 		if source_parent.get('is_return'):
-			return get_pending_qty(source) <= 0
+			if get_pending_qty(source) > 0:
+				return False
 		else:
-			return get_pending_qty(source) > 0
+			if get_pending_qty(source) <= 0:
+				return False
+
+		if additional_item_condition and not additional_item_condition(source, source_parent, target_parent):
+			return False
+
+		return True
 
 	def update_item(source, target, source_parent, target_parent):
 		target.project = source_parent.get('project')
@@ -900,6 +939,9 @@ def get_item_mapper_for_invoice(allow_duplicate=False, target_doctype="Sales Inv
 		if source.serial_no and source_parent.per_billed > 0:
 			target.serial_no = get_delivery_note_serial_no(source.item_code,
 				target.qty, source_parent.name)
+
+		if additional_update_item:
+			additional_update_item(source, target, source_parent, target_parent)
 
 	return {
 		"doctype": target_doctype,

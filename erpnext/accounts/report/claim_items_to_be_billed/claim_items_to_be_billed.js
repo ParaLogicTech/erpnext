@@ -24,8 +24,8 @@ frappe.query_reports["Claim Items To Be Billed"] = {
 			fieldname: "date_type",
 			label: __("Date Type"),
 			fieldtype: "Select",
-			options: ["Transaction Date", "Project Date"],
-			default: "Project Date",
+			options: ["Transaction Date", "Job Date"],
+			default: "Job Date",
 			reqd: 1
 		},
 		{
