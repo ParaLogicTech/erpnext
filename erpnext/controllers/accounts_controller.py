@@ -534,12 +534,12 @@ class AccountsController(TransactionBase):
 
 		if self.party_account_currency == self.currency:
 			invoice_total = flt(
-				grand_total - flt(self.write_off_amount) - flt(self.get("prepaid_deferred_revenue")),
+				grand_total - flt(self.get("write_off_amount")) - flt(self.get("prepaid_deferred_revenue")),
 				self.precision("grand_total")
 			)
 		else:
 			base_write_off_amount = flt(
-				flt(self.write_off_amount) * self.conversion_rate,
+				flt(self.get("write_off_amount")) * self.conversion_rate,
 				self.precision("base_write_off_amount")
 			)
 			invoice_total = flt(
