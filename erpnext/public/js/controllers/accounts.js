@@ -116,15 +116,6 @@ frappe.ui.form.on("Payment Schedule", {
 
 });
 
-frappe.ui.form.on('Payment Entry', {
-	mode_of_payment: function(frm) {
-		erpnext.utils.get_payment_mode_account(frm, frm.doc.mode_of_payment, function(account){
-			var payment_account_field = frm.doc.payment_type == "Receive" ? "paid_to" : "paid_from";
-			frm.set_value(payment_account_field, account);
-		})
-	}
-})
-
 frappe.ui.form.on('Salary Structure', {
 	mode_of_payment: function(frm) {
 		erpnext.utils.get_payment_mode_account(frm, frm.doc.mode_of_payment, function(account){

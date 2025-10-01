@@ -16,6 +16,7 @@ from erpnext.accounts.doctype.bank_account.bank_account import get_party_bank_ac
 from erpnext.controllers.accounts_controller import AccountsController, get_supplier_block_status
 from erpnext.controllers.transaction_controller import validate_taxes_and_charges
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile, is_cashier
+from frappe.model.naming import make_autoname
 
 
 class InvalidPaymentEntry(ValidationError):
@@ -77,6 +78,7 @@ class PaymentEntry(AccountsController):
 		self.set_original_reference()
 
 	def before_submit(self):
+		self.auto_generate_reference_no()
 		self.set_remarks()
 
 	def on_submit(self):
@@ -433,6 +435,8 @@ class PaymentEntry(AccountsController):
 				frappe.throw(_("{0} is mandatory").format(self.meta.get_label(field)))
 
 	def validate_reference_documents(self):
+		self.clean_remarks()
+
 		valid_reference_doctypes = get_valid_payment_reference_doctypes(self.party_type)
 
 		for d in self.get("references"):
@@ -781,15 +785,19 @@ class PaymentEntry(AccountsController):
 			self.title = self.paid_from + " - " + self.paid_to
 
 	def validate_transaction_reference(self):
-		if not self.reference_no or not self.reference_date:
-			bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
-			bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
-			if bank_account_type == "Bank":
-				frappe.throw(_("Reference No and Reference Date is mandatory for Bank transaction"))
+		reference_no_series = get_reference_no_series(self.payment_type, self.mode_of_payment)
+		bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
+		bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
+
+		if bank_account_type == "Bank":
+			if not self.reference_no and not reference_no_series:
+				frappe.throw(_("Reference No is mandatory for Bank transaction"))
+			if not self.reference_date:
+				frappe.throw(_("Reference Date is mandatory for Bank transaction"))
 
 		mode = frappe.get_cached_doc("Mode of Payment", self.mode_of_payment) if self.mode_of_payment else frappe._dict()
 
-		if not self.reference_no and mode.reference_no_mandatory:
+		if not self.reference_no and mode.reference_no_mandatory and not reference_no_series:
 			frappe.throw(_("Reference No is mandatory for Mode of Payment {0}").format(
 				frappe.bold(self.mode_of_payment)
 			))
@@ -808,6 +816,14 @@ class PaymentEntry(AccountsController):
 			frappe.throw(_("Party Bank is mandatory for Mode of Payment {0}").format(
 				frappe.bold(self.mode_of_payment)
 			))
+
+	def auto_generate_reference_no(self):
+		if self.reference_no:
+			return
+
+		reference_no_series = get_reference_no_series(self.payment_type, self.mode_of_payment)
+		if reference_no_series:
+			self.reference_no = make_autoname(reference_no_series, self.doctype, self)
 
 	def set_remarks(self):
 		if self.user_remark:
@@ -1866,3 +1882,24 @@ def make_payment_order(source_name, target_doc=None):
 	}, target_doc, set_missing_values)
 
 	return doclist
+
+
+@frappe.whitelist()
+def get_reference_no_series(payment_type, mode_of_payment):
+	if not payment_type or not mode_of_payment:
+		return None
+
+	field_map = {
+		"Pay": "series_pay",
+		"Receive": "series_receive",
+		"Internal Transfer": "series_internal_transfer",
+	}
+	fieldname = field_map.get(payment_type)
+	if not fieldname:
+		return None
+
+	series = frappe.get_cached_value("Mode of Payment", mode_of_payment, fieldname)
+	if not cstr(series).strip():
+		return None
+
+	return series
