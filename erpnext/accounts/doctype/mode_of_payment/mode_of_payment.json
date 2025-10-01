@@ -90,7 +90,6 @@
    "label": "Party Bank Mandatory"
   },
   {
-   "depends_on": "eval:doc.type == \"Bank\"",
    "fieldname": "auto_generate_reference_no_section",
    "fieldtype": "Section Break",
    "label": "Auto Generate Reference No"
@@ -122,7 +121,7 @@
  "icon": "fa fa-credit-card",
  "idx": 1,
  "links": [],
- "modified": "2025-10-02 00:59:17.733750",
+ "modified": "2025-10-02 01:47:33.152535",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Mode of Payment",
