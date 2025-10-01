@@ -474,6 +474,8 @@ class Asset(AccountsController):
 		if asset_bought_with_invoice:
 			expense_booked = frappe.db.sql("""SELECT name FROM `tabGL Entry` WHERE voucher_no = %s and account = %s""",
 				(purchase_document, fixed_asset_account), as_dict=1)
+			cwip_booked = frappe.db.sql("""SELECT name FROM `tabGL Entry` WHERE voucher_no = %s and account = %s""",
+				(purchase_document, cwip_account), as_dict=1)
 		else:
 			cwip_booked = frappe.db.sql("""SELECT name FROM `tabGL Entry` WHERE voucher_no = %s and account = %s""",
 				(purchase_document, cwip_account), as_dict=1)
