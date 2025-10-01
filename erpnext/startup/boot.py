@@ -29,6 +29,12 @@ def boot_session(bootinfo):
 			from `tabCompany`
 		""", as_dict=1, update={"doctype": ":Company"})
 
+		bootinfo.docs += frappe.db.sql("""
+			select
+				name, series_pay, series_receive, series_internal_transfer, reference_no_mandatory
+			from `tabMode of Payment`
+		""", as_dict=1, update={"doctype": ":Mode of Payment"})
+
 		update_party_type_details(bootinfo)
 
 

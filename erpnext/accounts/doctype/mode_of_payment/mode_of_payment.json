@@ -18,10 +18,12 @@
   "party_bank_mandatory",
   "section_break_zkxj",
   "accounts",
-  "system_reference_number_details",
-  "pay",
-  "internal_transfer",
-  "receive"
+  "auto_generate_reference_no_section",
+  "series_pay",
+  "column_break_ccgc",
+  "series_internal_transfer",
+  "column_break_orff",
+  "series_receive"
  ],
  "fields": [
   {
@@ -89,30 +91,38 @@
   },
   {
    "depends_on": "eval:doc.type == \"Bank\"",
-   "fieldname": "system_reference_number_details",
+   "fieldname": "auto_generate_reference_no_section",
    "fieldtype": "Section Break",
-   "label": "System Generated Reference No. Series"
+   "label": "Auto Generate Reference No"
   },
   {
-   "fieldname": "pay",
+   "fieldname": "series_pay",
    "fieldtype": "Data",
-   "label": "Pay Reference No. Series"
+   "label": "Reference No Series for Payment Type Pay"
   },
   {
-   "fieldname": "internal_transfer",
-   "fieldtype": "Data",
-   "label": "Internal Transfer Reference No. Series"
+   "fieldname": "column_break_ccgc",
+   "fieldtype": "Column Break"
   },
   {
-   "fieldname": "receive",
+   "fieldname": "series_internal_transfer",
    "fieldtype": "Data",
-   "label": "Receive Reference No. Series"
+   "label": "Reference No Series for Payment Type Internal Transfer"
+  },
+  {
+   "fieldname": "column_break_orff",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "series_receive",
+   "fieldtype": "Data",
+   "label": "Reference No Series for Payment Type Receive"
   }
  ],
  "icon": "fa fa-credit-card",
  "idx": 1,
  "links": [],
- "modified": "2025-09-23 20:36:15.549899",
+ "modified": "2025-10-02 00:59:17.733750",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Mode of Payment",
