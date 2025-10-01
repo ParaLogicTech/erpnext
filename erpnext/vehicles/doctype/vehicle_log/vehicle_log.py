@@ -88,6 +88,8 @@ def make_odometer_log(vehicle, odometer, date=None, project=None, reference_type
 		reference_type=reference_type, reference_name=reference_name,
 		ignore_permissions=False)
 
+	return get_vehicle_odometer(vehicle, project=project)
+
 
 def make_vehicle_log(
 	vehicle,
