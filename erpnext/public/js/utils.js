@@ -614,6 +614,123 @@ $.extend(erpnext.utils, {
 		}
 	},
 
+	make_vehicle_odometer_log(args) {
+		args = args || {};
+
+		if (!args.vehicle) {
+			return;
+		}
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Vehicle Odometer Log"),
+			fields: [
+				{"fieldtype": "Int", "label": __("New Odometer Reading"), "fieldname": "new_odometer", "reqd": 1},
+				{"fieldtype": "Int", "label": __("Previous Odometer Reading"), "fieldname": "previous_odometer",
+					"default": cint(args.previous_odometer), "read_only": 1},
+				{"fieldtype": "Date", "label": __("Reading Date"), "fieldname": "date", "default": "Today"},
+
+				{"fieldtype": "Section Break"},
+				{"fieldtype": "Link", "label": __("Vehicle"), "fieldname": "vehicle",
+					"default": args.vehicle, "read_only": 1, "options": "Vehicle"},
+				{"fieldtype": "Data", "label": __("Vehicle Item Name"), "fieldname": "item_name",
+					"default": args.item_name, "read_only": 1},
+				{"fieldtype": "Data", "label": __("License Plate"), "fieldname": "license_plate",
+					"default": args.license_plate, "read_only": 1},
+				{"fieldtype": "Data", "label": __("Chassis No"), "fieldname": "chassis_no",
+					"default": args.chassis_no, "read_only": 1},
+			]
+		});
+
+		dialog.set_primary_action(__("Submit"), () => {
+			let values = dialog.get_values();
+			return frappe.call({
+				method: "erpnext.vehicles.doctype.vehicle_log.vehicle_log.make_odometer_log",
+				args: {
+					"vehicle": args.vehicle,
+					"odometer": cint(values.new_odometer),
+					"date": values.date,
+					"project": args.project,
+					"reference_type": args.reference_type,
+					"reference_name": args.reference_name,
+				},
+				callback: function (r) {
+					if (!r.exc) {
+						dialog.hide();
+						args.callback && args.callback(cint(r.message));
+					}
+				}
+			});
+		});
+
+		dialog.show();
+	},
+
+	make_vehicle_customer_log(args) {
+		args = args || {};
+
+		if (!args.vehicle) {
+			return;
+		}
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Vehicle Customer Log"),
+			fields: [
+				{
+					"label": __("New Customer"),
+					"fieldname": "new_customer",
+					"reqd": 1,
+					"fieldtype": "Link",
+					"options": "Customer",
+					"onchange": () => {
+						let customer = dialog.get_value('new_customer');
+						if (customer) {
+							frappe.db.get_value("Customer", customer, ['customer_name'], (r) => {
+								if (r) {
+									dialog.set_value('new_customer_name', r.customer_name);
+								}
+							});
+						} else {
+							dialog.set_value('new_customer_name', null);
+						}
+					},
+				},
+				{"fieldtype": "Data", "label": __("New Customer Name"), "fieldname": "new_customer_name", "read_only": 1},
+
+				{"fieldtype": "Section Break"},
+				{"fieldtype": "Link", "label": __("Vehicle"), "fieldname": "vehicle",
+					"default": args.vehicle, "read_only": 1, "options": "Vehicle"},
+				{"fieldtype": "Data", "label": __("Vehicle Item Name"), "fieldname": "item_name",
+					"default": args.item_name, "read_only": 1},
+				{"fieldtype": "Data", "label": __("License Plate"), "fieldname": "license_plate",
+					"default": args.license_plate, "read_only": 1},
+				{"fieldtype": "Data", "label": __("Chassis No"), "fieldname": "chassis_no",
+					"default": args.chassis_no, "read_only": 1},
+			]
+		});
+
+		dialog.set_primary_action(__("Submit"), () => {
+			let values = dialog.get_values();
+			return frappe.call({
+				method: "erpnext.vehicles.doctype.vehicle_log.vehicle_log.make_customer_log",
+				args: {
+					"vehicle": args.vehicle,
+					"customer": values.new_customer,
+					"project": args.project,
+					"reference_type": args.reference_type,
+					"reference_name": args.reference_name,
+				},
+				callback: function (r) {
+					if (!r.exc) {
+						dialog.hide();
+						args.callback && args.callback();
+					}
+				}
+			});
+		});
+
+		dialog.show();
+	},
+
 	setup_projected_qty_formatter(doctype, fieldname) {
 		let df = frappe.meta.get_docfield(doctype, fieldname);
 		if (df) {

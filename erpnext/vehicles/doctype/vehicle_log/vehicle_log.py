@@ -91,6 +91,13 @@ def make_odometer_log(vehicle, odometer, date=None, project=None, reference_type
 	return get_vehicle_odometer(vehicle, project=project)
 
 
+@frappe.whitelist()
+def make_customer_log(vehicle, customer, date=None, project=None, reference_type=None, reference_name=None):
+	make_vehicle_log(vehicle, customer=customer, date=date, project=project,
+		reference_type=reference_type, reference_name=reference_name,
+		ignore_permissions=False)
+
+
 def make_vehicle_log(
 	vehicle,
 	odometer=None,
