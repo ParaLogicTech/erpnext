@@ -170,6 +170,7 @@ def _get_party_details(
 
 	if doctype == "Sales Invoice":
 		set_previous_outstanding_balance(party_details, billing_party_doc, posting_date, account, company, doctype)
+		set_goodwill_invoicing_details(party_details, billing_party_doc, company)
 
 	# supplier tax withholding category
 	if party_type == "Supplier" and party:
@@ -443,6 +444,39 @@ def set_previous_outstanding_balance(party_details, party, posting_date, account
 		party_details["previous_outstanding_amount"] = get_balance_on(account, posting_date,
 			party_type=party.doctype, party=party.name, company=company,
 			ignore_account_permission=1)
+
+
+def set_goodwill_invoicing_details(party_details, billing_party_doc, company):
+	party_details.is_goodwill_invoice = cint(billing_party_doc.get('is_goodwill_customer'))
+	if party_details.is_goodwill_invoice:
+		goodwill_details = get_goodwill_account_details(billing_party_doc.name, company)
+		if goodwill_details.account:
+			party_details.write_off_account = goodwill_details.account
+		if goodwill_details.cost_center:
+			party_details.write_off_cost_center = goodwill_details.cost_center
+
+
+@frappe.whitelist()
+def get_goodwill_account_details(customer, company):
+	if not customer or not company:
+		return None
+
+	account = None
+	cost_center = None
+
+	party_doc = frappe.get_cached_doc("Customer", customer)
+	account_row = party_doc.get('goodwill_accounts', filters={'company': company})
+	if account_row:
+		account = account_row[0].account
+		cost_center = account_row[0].cost_center
+
+	if not account:
+		account = frappe.get_cached_value('Company',  company, "default_goodwill_account")
+
+	return frappe._dict({
+		'account': account,
+		'cost_center': cost_center,
+	})
 
 
 @frappe.whitelist()

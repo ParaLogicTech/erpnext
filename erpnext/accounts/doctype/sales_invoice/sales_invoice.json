@@ -26,6 +26,7 @@
   "is_return",
   "return_against",
   "reopen_order",
+  "is_goodwill_invoice",
   "is_pos",
   "pos_profile",
   "cashier",
@@ -203,7 +204,6 @@
   "column_break4",
   "write_off_amount",
   "base_write_off_amount",
-  "write_off_outstanding_amount_automatically",
   "column_break_74",
   "write_off_account",
   "column_break_184",
@@ -1263,14 +1263,6 @@
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
-  },
-  {
-   "default": "0",
-   "depends_on": "is_pos",
-   "fieldname": "write_off_outstanding_amount_automatically",
-   "fieldtype": "Check",
-   "label": "Write Off Outstanding Amount",
-   "print_hide": 1
   },
   {
    "fieldname": "column_break_74",
@@ -2362,6 +2354,13 @@
    "options": "party_account_currency",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_goodwill_invoice",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is Goodwill Invoice"
   }
  ],
  "grid_page_length": 500,
@@ -2369,7 +2368,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-30 18:45:09.144946",
+ "modified": "2025-10-02 15:51:31.879517",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

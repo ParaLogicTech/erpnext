@@ -2092,8 +2092,10 @@ def set_sales_data_customer_amounts(data, project):
 
 	for d in data:
 		d.bill_to = d.bill_to or project.bill_to or project.customer
+		is_goodwill_customer = frappe.get_cached_value("Customer", d.bill_to, "is_goodwill_customer")
 		d.has_customer_depreciation = 0
 		d.is_claim_item = 0
+		d.is_other_customer_item = 0
 
 		if d.get('claim_customer') and project.customer and d.get('claim_customer') != project.customer:
 			d.is_claim_item = 1
@@ -2124,11 +2126,15 @@ def set_sales_data_customer_amounts(data, project):
 
 			d.cumulative_depreciation_percentage = d.customer_net_amount / d.net_amount * 100 if d.net_amount else 0
 
-		elif d.bill_to in project_customers:
+		elif (
+			d.bill_to in project_customers
+			and (not is_goodwill_customer or d.bill_to == project.customer)
+		):
 			d.customer_net_amount = d.net_amount
 			d.customer_net_rate = d.net_rate
 
 		else:
+			d.is_other_customer_item = 1
 			d.customer_net_amount = 0
 			d.customer_net_rate = 0
 
@@ -2160,7 +2166,9 @@ def get_item_taxes(project, data, company):
 					tax_amount = flt(amount)
 					tax_amount *= conversion_rate
 
-					customer_tax_amount = 0 if d.get('is_claim_item') and not d.get('total_discount') else flt(amount)
+					customer_tax_amount = flt(amount)
+					if d.get('is_other_customer_item') or (d.get('is_claim_item') and not d.get('total_discount')):
+						customer_tax_amount = 0
 					if d.has_customer_depreciation:
 						customer_tax_amount *= d.cumulative_depreciation_percentage / 100
 

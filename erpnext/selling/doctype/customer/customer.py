@@ -652,6 +652,7 @@ def get_customer_override_values(args, validate=False):
 	customer_fields = {
 		'customer_type': 'Data',
 		'cash_billing': 'YesNo',
+		'is_goodwill_customer': 'YesNo',
 	}
 
 	hooks = frappe.get_hooks('update_customer_override_fields')

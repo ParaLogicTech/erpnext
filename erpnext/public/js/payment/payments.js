@@ -194,7 +194,7 @@ erpnext.payments = class Payments extends erpnext.stock.StockController {
 		var me = this;
 
 		this.frm.doc.change_amount = flt(change_amount, precision("change_amount"));
-		this.calculate_write_off_amount()
+		this.calculate_write_off_for_change_amount()
 		this.show_amounts()
 	}
 

@@ -872,11 +872,6 @@ class calculate_taxes_and_totals(object):
 		if self.doc.doctype == "Sales Invoice":
 			self.calculate_paid_amount()
 
-		if self.doc.meta.has_field("write_off_amount"):
-			if self.should_round_transaction_currency():
-				self.doc.round_floats_in(self.doc, ["write_off_amount"])
-			self._set_in_company_currency(self.doc, ['write_off_amount'])
-
 		paid_amount = 0
 		if self.doc.meta.has_field("paid_amount"):
 			self.doc.round_floats_in(self.doc, ["paid_amount"])
@@ -886,6 +881,9 @@ class calculate_taxes_and_totals(object):
 				if self.doc.party_account_currency == self.doc.currency
 				else self.doc.base_paid_amount
 			)
+
+		if self.doc.meta.has_field("write_off_amount"):
+			self.calculate_write_off_amount()
 
 		change_amount = 0
 		if self.doc.doctype == "Sales Invoice":
@@ -904,6 +902,19 @@ class calculate_taxes_and_totals(object):
 				total_amount_to_pay - paid_amount + change_amount,
 				self.doc.precision("outstanding_amount")
 			)
+
+	def calculate_write_off_amount(self):
+		if self.doc.is_goodwill_invoice:
+			grand_total = self.doc.rounded_total or self.doc.grand_total
+			paid_amount = flt(self.doc.paid_amount) + flt(self.doc.total_advance) + flt(self.doc.prepaid_deferred_revenue)
+			if paid_amount < grand_total:
+				self.doc.write_off_amount = flt(grand_total - paid_amount)
+			else:
+				self.doc.write_off_amount = 0
+
+		if self.should_round_transaction_currency():
+			self.doc.round_floats_in(self.doc, ["write_off_amount"])
+		self._set_in_company_currency(self.doc, ['write_off_amount'])
 
 	def calculate_customer_outstanding_amount(self):
 		if self.doc.doctype == "Sales Invoice" and self.doc.meta.has_field('customer_outstanding_amount'):
