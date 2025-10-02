@@ -38,8 +38,15 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		this.calculate_discount_amount();
 
 		// advance, payments and outstanding
-		if (["Sales Invoice", "Proforma Invoice", "Purchase Invoice"].includes(this.frm.doc.doctype)) {
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_advance")) {
 			this.calculate_total_advance();
+		}
+
+		if (frappe.meta.has_field(this.frm.doc.doctype, "prepaid_deferred_revenue")) {
+			this.calculate_prepaid_deferred_revenue();
+		}
+
+		if (frappe.meta.has_field(this.frm.doc.doctype, "outstanding_amount")) {
 			if (this.frm.doc.docstatus == 0) {
 				this.calculate_outstanding_amount();
 				this.calculate_customer_outstanding_amount();
@@ -502,8 +509,11 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			"total_before_discount", "total_discount", "base_total_before_discount", "base_total_discount",
 			"tax_exclusive_total_before_discount", "tax_exclusive_total_discount",
 			"base_tax_exclusive_total_before_discount", "base_tax_exclusive_total_discount",
-			"total_net_weight",
 		]);
+
+		if (frappe.meta.has_field(me.frm.doc.doctype, 'total_net_weight')) {
+			frappe.model.round_floats_in(this.frm.doc, ["total_net_weight",]);
+		}
 	}
 
 	calculate_taxes() {
@@ -1059,6 +1069,23 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		this.frm.doc.total_advance = flt(this.frm.doc.total_advance, precision("total_advance"))
 	}
 
+	calculate_prepaid_deferred_revenue() {
+		this.frm.doc.prepaid_deferred_revenue = 0;
+
+		for (let item of this.frm.doc.items || []) {
+			if (item.is_prepaid_deferred_revenue) {
+				if (this.frm.doc.party_account_currency == this.frm.doc.currency) {
+					this.frm.doc.prepaid_deferred_revenue += flt(item.net_amount);
+				} else {
+					this.frm.doc.prepaid_deferred_revenue += flt(item.base_net_amount);
+				}
+			}
+		}
+
+		this.frm.doc.prepaid_deferred_revenue = flt(this.frm.doc.prepaid_deferred_revenue,
+			precision("prepaid_deferred_revenue"));
+	}
+
 	calculate_outstanding_amount() {
 		if (this.frm.doc.doctype == "Sales Invoice") {
 			this.calculate_paid_amount();
@@ -1120,7 +1147,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 	get_total_amount_to_pay() {
 		let grand_total = flt(this.frm.doc.rounded_total) || flt(this.frm.doc.grand_total);
-		let total_advance = flt(this.frm.doc.total_advance);
+		let total_advance = flt(this.frm.doc.total_advance) + flt(this.frm.doc.prepaid_deferred_revenue);
 
 		let total_amount_to_pay = 0;
 		if(this.frm.doc.party_account_currency == this.frm.doc.currency) {
@@ -1165,7 +1192,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		this.frm.doc.base_change_amount = 0.0;
 
 		let grand_total = flt(this.frm.doc.rounded_total) || flt(this.frm.doc.grand_total);
-		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance);
+		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance) + flt(this.frm.doc.prepaid_deferred_revenue);
 
 		if (
 			this.frm.doc.doctype === "Sales Invoice"
@@ -1187,7 +1214,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 	calculate_write_off_amount() {
 		let grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
-		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance);
+		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance) + flt(this.frm.doc.prepaid_deferred_revenue);
 
 		if (paid_amount > grand_total) {
 			this.frm.doc.write_off_amount = flt(

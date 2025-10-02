@@ -35,6 +35,7 @@
   "disabled",
   "section_break_31",
   "is_stock_item",
+  "is_product_bundle",
   "is_vehicle",
   "is_fixed_asset",
   "auto_create_assets",
@@ -131,11 +132,9 @@
   "column_break_59",
   "customs_tariff_number",
   "deferred_revenue",
-  "deferred_revenue_account",
   "no_of_months",
   "enable_deferred_revenue",
   "column_break_85",
-  "deferred_expense_account",
   "no_of_months_exp",
   "enable_deferred_expense",
   "manufacturing",
@@ -660,14 +659,6 @@
    "label": "Deferred Revenue & Expense"
   },
   {
-   "depends_on": "enable_deferred_revenue",
-   "fieldname": "deferred_revenue_account",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Deferred Revenue Account",
-   "options": "Account"
-  },
-  {
    "default": "0",
    "fieldname": "enable_deferred_revenue",
    "fieldtype": "Check",
@@ -682,14 +673,6 @@
    "fieldname": "no_of_months",
    "fieldtype": "Int",
    "label": "No of Months"
-  },
-  {
-   "depends_on": "enable_deferred_expense",
-   "fieldname": "deferred_expense_account",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Deferred Expense Account",
-   "options": "Account"
   },
   {
    "default": "0",
@@ -1112,13 +1095,23 @@
    "fieldname": "do_not_restrict_uom_selection",
    "fieldtype": "Check",
    "label": "Do Not Restrict UOM Selection"
+  },
+  {
+   "default": "0",
+   "depends_on": "is_product_bundle",
+   "fieldname": "is_product_bundle",
+   "fieldtype": "Check",
+   "label": "Is Product Bundle",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-tag",
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2025-01-13 16:59:47.966847",
+ "modified": "2025-09-25 13:48:01.718160",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",
@@ -1220,6 +1213,7 @@
    "role": "CR User"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "item_name,item_group,brand,item_source,customer_code",
  "show_name_in_global_search": 1,
  "show_preview_popup": 1,

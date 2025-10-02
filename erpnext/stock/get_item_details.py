@@ -56,8 +56,7 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		args['transaction_date'] = doc.get('transaction_date') or doc.get('posting_date')
 
 	out["item_tax_template"] = get_item_tax_template(args, item)
-	out["item_tax_rate"] = get_item_tax_map(out.get("item_tax_template"), args.company,
-		transaction_date=args.bill_date or args.transaction_date, as_json=True)
+	out["item_tax_rate"] = get_item_tax_map(out.get("item_tax_template"), args, as_json=True)
 
 	get_party_item_code(args, item, out)
 
@@ -313,6 +312,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 
 	out.update(get_item_defaults_details(args))
 
+	out.is_prepaid_deferred_revenue = 0
 	if item.get("enable_deferred_revenue") or item.get("enable_deferred_expense"):
 		out.update(calculate_service_end_date(args, item))
 
@@ -431,31 +431,6 @@ def update_barcode_value(out):
 		out['barcode'] = barcode_data.get(out.item_code)[0]
 
 
-@frappe.whitelist()
-def get_multiple_item_tax_templates(args, item_codes):
-	out = {}
-
-	if isinstance(args, str):
-		args = json.loads(args)
-	if isinstance(item_codes, str):
-		item_codes = json.loads(item_codes)
-
-	args = frappe._dict(args)
-
-	for item_code in item_codes:
-		if not item_code or item_code in out:
-			continue
-
-		item = frappe.get_cached_doc("Item", item_code)
-
-		out[item_code] = {}
-		out[item_code]["item_tax_template"] = get_item_tax_template(args, item)
-		out[item_code]["item_tax_rate"] = get_item_tax_map(out[item_code].get("item_tax_template"), args.company,
-			transaction_date=args.bill_date or args.transaction_date or args.posting_date, as_json=True)
-
-	return out
-
-
 def get_item_tax_template(args, item):
 	"""
 		args = {
@@ -483,34 +458,64 @@ def _get_item_tax_template(args, taxes):
 
 
 @frappe.whitelist()
-def get_multiple_item_tax_maps(item_tax_templates, company, transaction_date=None, as_json=True):
+def get_multiple_item_tax_maps(args, with_item_tax_tamplate=False, as_json=True):
+	if isinstance(args, str):
+		args = json.loads(args)
+
+	with_item_tax_tamplate = cint(with_item_tax_tamplate)
+	as_json = cint(as_json)
+
+	args = frappe._dict(args)
+	item_list = args.pop("items", [])
+	doctype = args.get("doctype")
+	name = args.get("name")
+
 	out = {}
+	for item_args in item_list:
+		args_copy = args.copy()
+		args_copy.update(item_args)
+		args_copy.doctype = doctype
+		args_copy.name = name
 
-	if isinstance(item_tax_templates, str):
-		item_tax_templates = json.loads(item_tax_templates)
+		item_tax_template = item_args.get("item_tax_template")
+		if with_item_tax_tamplate:
+			args_copy.pop("item_tax_template", None)
 
-	for item_tax_template in item_tax_templates:
-		out[item_tax_template] = get_item_tax_map(item_tax_template, company,
-			transaction_date=transaction_date, as_json=as_json)
+		out[item_args['name']] = row_obj = frappe._dict()
+
+		if with_item_tax_tamplate:
+			item = frappe.get_cached_doc("Item", item_args.get("item_code"))
+			row_obj["item_tax_template"] = get_item_tax_template(args_copy, item)
+			item_tax_template = row_obj["item_tax_template"]
+
+		row_obj["item_tax_rate"] = get_item_tax_map(item_tax_template, args_copy, as_json=as_json)
 
 	return out
 
 
 @frappe.whitelist()
-def get_item_tax_map(item_tax_template, company, transaction_date=None, as_json=True):
-	item_tax_map = {}
+def get_item_tax_map(item_tax_template, args, as_json=True):
+	item_tax_map = frappe._dict()
 
-	if item_tax_template:
+	if isinstance(args, str):
+		args = json.loads(args)
+
+	args = frappe._dict(args)
+	transaction_date = getdate(args.bill_date or args.transaction_date or args.posting_date)
+
+	if item_tax_template and args.company:
 		template = frappe.get_cached_doc("Item Tax Template", item_tax_template)
 
 		sorted_taxes = sorted(template.get("taxes"), key=lambda t: (bool(t.valid_from), getdate(t.valid_from)))
 		for d in sorted_taxes:
-			if frappe.get_cached_value("Account", d.tax_type, "company") != company:
+			if frappe.get_cached_value("Account", d.tax_type, "company") != args.company:
 				continue
-			if d.valid_from and getdate(d.valid_from) > getdate(transaction_date):
+			if d.valid_from and getdate(d.valid_from) > transaction_date:
 				continue
 
 			item_tax_map[d.tax_type] = d.tax_rate
+
+	frappe.utils.call_hook_method("update_item_tax_map", item_tax_template, args, item_tax_map)
 
 	return json.dumps(item_tax_map) if cint(as_json) else item_tax_map
 
@@ -523,22 +528,24 @@ def calculate_service_end_date(args, item=None):
 
 	doctype = args.get("parenttype") or args.get("doctype")
 	if doctype == "Sales Invoice":
-		enable_deferred = "enable_deferred_revenue"
-		no_of_months = "no_of_months"
-		account = "deferred_revenue_account"
+		enable_field = "enable_deferred_revenue"
+		months_field = "no_of_months"
+		account_field = "deferred_revenue_account"
+		account = get_default_deferred_revenue_account(item, args)
 	else:
-		enable_deferred = "enable_deferred_expense"
-		no_of_months = "no_of_months_exp"
-		account = "deferred_expense_account"
+		enable_field = "enable_deferred_expense"
+		months_field = "no_of_months_exp"
+		account_field = "deferred_expense_account"
+		account = get_default_deferred_expense_account(item, args)
 
 	service_start_date = args.service_start_date if args.service_start_date else args.transaction_date
-	service_end_date = add_months(service_start_date, item.get(no_of_months))
-	deferred_detail = {
+	service_end_date = add_months(service_start_date, item.get(months_field))
+	deferred_detail = frappe._dict({
 		"service_start_date": service_start_date,
-		"service_end_date": service_end_date
-	}
-	deferred_detail[enable_deferred] = item.get(enable_deferred)
-	deferred_detail[account] = get_default_deferred_account(args, item, fieldname=account)
+		"service_end_date": service_end_date,
+		enable_field: item.get(enable_field),
+		account_field: account if item.get(enable_field) else None
+	})
 
 	return deferred_detail
 
@@ -598,13 +605,30 @@ def get_default_expense_account(item, args):
 	return account or args.expense_account
 
 
-def get_default_deferred_account(args, item, fieldname=None):
-	if item.get("enable_deferred_revenue") or item.get("enable_deferred_expense"):
-		return (item.get(fieldname)
-			or args.get(fieldname)
-			or frappe.get_cached_value('Company',  args.company,  "default_"+fieldname))
-	else:
-		return None
+def get_default_deferred_revenue_account(item, args):
+	if isinstance(item, str):
+		item = frappe.get_cached_doc("Item", item)
+
+	default_values = get_item_default_values(item, args)
+
+	account = default_values.get("deferred_revenue_account")
+	if not account and args.company:
+		account = frappe.get_cached_value("Company", args.company, "default_deferred_revenue_account")
+
+	return account or args.deferred_revenue_account
+
+
+def get_default_deferred_expense_account(item, args):
+	if isinstance(item, str):
+		item = frappe.get_cached_doc("Item", item)
+
+	default_values = get_item_default_values(item, args)
+
+	account = default_values.get("deferred_expense_account")
+	if not account and args.company:
+		account = frappe.get_cached_value("Company", args.company, "default_deferred_expense_account")
+
+	return account or args.deferred_expense_account
 
 
 def get_default_cost_center(item, args, selling_or_buying=None):
@@ -790,8 +814,13 @@ def get_item_defaults_details(args, set_warehouse=False):
 def get_claim_customer(item, args):
 	claim_customer = None
 
+	# from project service template
+	if args.service_template and args.service_template_detail:
+		claim_customer = frappe.db.get_value("Project Service Template", args.service_template_detail,
+			"claim_customer", cache=True)
+
 	# from campaign
-	if args.campaign:
+	if args.campaign and not claim_customer:
 		claim_customer = frappe.get_cached_value("Campaign", args.campaign, 'claim_customer')
 
 	# from item defaults

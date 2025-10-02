@@ -180,6 +180,18 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 				return me.set_query_for_batch(doc, cdt, cdn)
 			});
 		}
+
+		if (this.frm.fields_dict["items"]?.grid?.get_field("deferred_revenue_account")) {
+			this.frm.fields_dict["items"].grid.get_field("deferred_revenue_account").get_query = function(doc) {
+				return {
+					filters: {
+						report_type: "Balance Sheet",
+						company: doc.company,
+						is_group: 0
+					}
+				}
+			}
+		}
 	}
 
 	refresh() {

@@ -86,6 +86,7 @@ class ItemsToBeBilled:
 					AND (i.billed_qty + i.returned_qty) < i.qty
 					AND (
 						im.is_stock_item = 1
+						OR im.is_product_bundle = 1
 						OR im.is_fixed_asset = 1
 						OR (i.{order_reference_field} = '' or i.{order_reference_field} is null)
 					)

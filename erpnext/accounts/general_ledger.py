@@ -381,11 +381,7 @@ def add_to_reference_documents_for_update(reference_documents_for_update, entry)
 	# 		entry.get("party"),
 	# 	))
 
-	if (
-		entry.get("original_against_voucher_type")
-		and entry.get("original_against_voucher")
-		and entry.get("original_against_voucher_type") in ('Sales Order', 'Purchase Order', 'Employee Advance')
-	):
+	if entry.get("original_against_voucher_type") and entry.get("original_against_voucher"):
 		reference_documents_for_update.add((
 			entry.get("original_against_voucher_type"),
 			entry.get("original_against_voucher"),

@@ -157,6 +157,7 @@
   "allocate_advances_automatically",
   "advances",
   "total_advance",
+  "prepaid_deferred_revenue",
   "section_break_whmg",
   "in_words",
   "base_in_words",
@@ -1810,12 +1811,21 @@
   {
    "fieldname": "column_break_jcdl",
    "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "prepaid_deferred_revenue",
+   "fieldname": "prepaid_deferred_revenue",
+   "fieldtype": "Currency",
+   "label": "Prepaid Deferred Revenue",
+   "options": "party_account_currency",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-25 14:56:01.074404",
+ "modified": "2025-09-30 18:45:10.529347",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",

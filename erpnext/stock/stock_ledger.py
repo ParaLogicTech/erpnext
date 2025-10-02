@@ -37,7 +37,7 @@ def make_sl_entries(sl_entries, is_amended=None, allow_negative_stock=False, via
 			if sle.get("actual_qty") or sle.get("voucher_type") == "Stock Reconciliation":
 				sle_doc = make_entry(sle, sle_allow_negative_stock or allow_negative_stock, via_landed_cost_voucher)
 				sle_id = sle_doc.get('name')
-				creation = sle_doc.get('creation')
+				creation = None if cancel else sle_doc.get('creation')
 
 			args = sle.copy()
 			args.update({
@@ -282,6 +282,8 @@ class update_entries_after(object):
 		# update SLE and Serial Nos
 		sle.doctype = "Stock Ledger Entry"
 		sle.is_processed = 1
+		sle.modified = now()
+		sle.modified_by = frappe.session.user
 		frappe.get_doc(sle).db_update()
 
 		for serial_no in serial_nos:

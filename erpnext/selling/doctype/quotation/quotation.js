@@ -252,10 +252,6 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		}
 	}
 
-	tc_name() {
-		this.get_terms();
-	}
-
 	address_query(doc) {
 		return {
 			query: 'frappe.contacts.doctype.address.address.address_query',

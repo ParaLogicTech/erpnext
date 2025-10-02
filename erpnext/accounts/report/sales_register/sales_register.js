@@ -4,6 +4,13 @@
 frappe.query_reports["Sales Register"] = {
 	"filters": [
 		{
+			"fieldname":"company",
+			"label": __("Company"),
+			"fieldtype": "Link",
+			"options": "Company",
+			"default": frappe.defaults.get_user_default("Company")
+		},
+		{
 			"fieldname":"from_date",
 			"label": __("From Date"),
 			"fieldtype": "Date",
@@ -23,11 +30,10 @@ frappe.query_reports["Sales Register"] = {
 			"options": "Customer"
 		},
 		{
-			"fieldname":"company",
-			"label": __("Company"),
+			"fieldname":"customer_group",
+			"label": __("Customer Group"),
 			"fieldtype": "Link",
-			"options": "Company",
-			"default": frappe.defaults.get_user_default("Company")
+			"options": "Customer Group"
 		},
 		{
 			"fieldname":"mode_of_payment",
@@ -72,4 +78,3 @@ frappe.query_reports["Sales Register"] = {
 }
 
 erpnext.utils.add_dimensions('Sales Register', 7);
-

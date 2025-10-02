@@ -43,6 +43,11 @@
   "cheque_date",
   "deposit_date",
   "clearance_date",
+  "clear_against_type",
+  "clear_against",
+  "clear_against_detail_type",
+  "clear_against_detail_name",
+  "is_reversal",
   "column_break_30",
   "user_remark",
   "against_account"
@@ -352,12 +357,45 @@
    "no_copy": 1,
    "options": "deposit_against_type",
    "read_only": 1
+  },
+  {
+   "fieldname": "clear_against_type",
+   "fieldtype": "Link",
+   "label": "Clear Against Type",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clear_against",
+   "fieldtype": "Dynamic Link",
+   "label": "Clear Against",
+   "options": "clear_against_type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clear_against_detail_type",
+   "fieldtype": "Data",
+   "label": "Clear Against Detail Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clear_against_detail_name",
+   "fieldtype": "Data",
+   "label": "Clear Against Detail Name",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_reversal",
+   "fieldtype": "Check",
+   "label": "Is Reversal",
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-19 15:12:34.864977",
+ "modified": "2025-09-12 16:07:24.232471",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Journal Entry Account",

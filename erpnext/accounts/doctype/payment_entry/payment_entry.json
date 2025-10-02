@@ -472,7 +472,6 @@
    "fieldname": "reference_no",
    "fieldtype": "Data",
    "label": "Cheque/Reference No",
-   "mandatory_depends_on": "eval:(doc.payment_type == \"Receive\" ? doc.account_paid_to_type : doc.account_paid_from_type) == \"Bank\"",
    "no_copy": 1
   },
   {
@@ -985,7 +984,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-08 22:58:45.119803",
+ "modified": "2025-09-23 17:39:04.814261",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",

@@ -343,6 +343,8 @@ erpnext.patches.v15_0.rename_vehicle_checklist_item
 execute:frappe.delete_doc_if_exists("Report", "Dimension-Wise Trial Balance")
 erpnext.patches.v15_0.move_apply_taxes_on_advance_payment_accounts_settings
 erpnext.patches.v15_0.fbr_integration_app_separation
+execute:frappe.delete_doc_if_exists("Report", "Serial No Service Contract Expiry")
+erpnext.patches.v15_0.rename_serial_no_warranty_status
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay
@@ -402,3 +404,5 @@ erpnext.patches.v15_0.set_payment_entry_reference_posting_date #1
 erpnext.patches.v15_0.set_lcv_receipt_missing_details
 erpnext.patches.v15_0.set_proforma_invoice_outstanding_amount
 erpnext.patches.v15_0.set_sales_invoice_bill_to_group
+erpnext.patches.v15_0.set_delivery_note_item_service_template
+erpnext.patches.v15_0.set_item_is_product_bundle

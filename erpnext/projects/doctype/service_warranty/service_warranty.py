@@ -5,7 +5,6 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, getdate
 from erpnext.projects.doctype.project.project import get_project_details
-from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import get_terms_and_conditions
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from erpnext.controllers.accounts_controller import AccountsController
 from dateutil import relativedelta
@@ -148,8 +147,7 @@ class ServiceWarranty(AccountsController):
 
 	def set_terms(self):
 		if self.get('tc_name'):
-			doc = self.as_dict()
-			self.terms = get_terms_and_conditions(self.tc_name, doc)
+			self.set_terms_and_conditions()
 		else:
 			self.terms = None
 

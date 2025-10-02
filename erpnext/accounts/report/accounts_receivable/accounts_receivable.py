@@ -7,7 +7,7 @@ from frappe import _, scrub
 from frappe.utils import getdate, flt, cint, formatdate, cstr
 from frappe.desk.query_report import group_report_data
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
-from erpnext.accounts.utils import get_currency_precision
+from erpnext.accounts.utils import get_currency_precision, get_advance_against_voucher_types
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 
@@ -484,7 +484,7 @@ class ReceivablePayableReport(object):
 			(not gle.against_voucher)
 
 			# against sales order/purchase order
-			or (gle.against_voucher_type in self.advance_against_voucher_types)
+			or (gle.against_voucher_type in self.advance_against_voucher_types and gle.against_voucher_type != "Employee Advance")
 
 			# entries adjusted with future vouchers
 			or ((gle.against_voucher_type, gle.against_voucher) in self.future_vouchers)
@@ -1174,15 +1174,3 @@ def get_ageing_data(ageing_range, age_as_on, entry_date, outstanding_amount):
 	outstanding_range[index] = outstanding_amount
 
 	return age, outstanding_range
-
-
-def get_advance_against_voucher_types():
-	advance_against_voucher_types = ["Sales Order", "Purchase Order", "Proforma Invoice"]
-
-	for voucher_types in frappe.get_hooks("advance_against_voucher_types"):
-		if isinstance(voucher_types, str):
-			voucher_types = [voucher_types]
-
-		advance_against_voucher_types += voucher_types
-
-	return advance_against_voucher_types

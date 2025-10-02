@@ -35,6 +35,26 @@ frappe.ui.form.on('Item Default Rule', {
 			}
 		});
 
+		frm.set_query("deferred_revenue_account", function(doc) {
+			return {
+				filters: {
+					report_type: 'Balance Sheet',
+					company: doc.company,
+					is_group: 0
+				}
+			}
+		});
+
+		frm.set_query("deferred_expense_account", function(doc) {
+			return {
+				filters: {
+					report_type: 'Balance Sheet',
+					company: doc.company,
+					is_group: 0
+				}
+			}
+		});
+
 		frm.set_query("claim_customer", erpnext.queries.customer);
 		frm.set_query('default_supplier', erpnext.queries.supplier);
 		frm.set_query("item_code", function () {

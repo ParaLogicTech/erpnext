@@ -345,10 +345,6 @@ erpnext.buying.RequestforQuotationController = class RequestforQuotationControll
 	calculate_taxes_and_totals() {
 		return;
 	}
-
-	tc_name() {
-		this.get_terms();
-	}
 };
 
 

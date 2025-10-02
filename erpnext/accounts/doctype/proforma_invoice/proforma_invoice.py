@@ -53,6 +53,25 @@ class ProformaInvoice(SellingController):
 		self.set_outstanding_amount(update=True)
 		self.notify_update()
 
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		if self.currency == self.company_currency:
+			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
+			exchange_rate = 1
+		else:
+			total_amount = flt(self.get("rounded_total") or self.get("grand_total"))
+			exchange_rate = flt(self.get("conversion_rate"))
+
+		return {
+			"total_amount": total_amount,
+			"outstanding_amount": flt(self.outstanding_amount),
+			"exchange_rate": exchange_rate,
+			"posting_date": self.transaction_date,
+		}
+
+	def get_orders_for_advance_entries(self):
+		orders = set([("Sales Order", d.get("sales_order")) for d in self.get("items") if d.get("sales_order")])
+		return list(orders)
+
 	def validate_with_previous_doc(self):
 		super().validate_with_previous_doc({
 			"Sales Order": {
@@ -201,7 +220,7 @@ class ProformaInvoice(SellingController):
 		else:
 			grand_total = self.base_rounded_total or self.base_grand_total
 
-		payable_amount = grand_total - flt(self.total_advance)
+		payable_amount = grand_total - flt(self.total_advance) - flt(self.prepaid_deferred_revenue)
 
 		party_type, party, party_name = self.get_billing_party()
 		self.advance_paid = get_balance_on_voucher(
@@ -227,42 +246,6 @@ class ProformaInvoice(SellingController):
 				"advance_paid": self.advance_paid,
 			}, update_modified=update_modified)
 
-	def get_advance_tax_allocated(self):
-		advance_tax_allocated = 0
-
-		payment_entry_data = frappe.db.sql("""
-			select
-				pe.name as payment_entry,
-				sum(pref.allocated_amount) as allocated_amount,
-				if(pe.payment_type = 'Receive', pe.paid_amount_before_tax, pe.received_amount_before_tax) as total_paid_amount
-			from `tabPayment Entry Reference` pref
-			inner join `tabPayment Entry` pe on pe.name = pref.parent
-			where pref.docstatus = 1 and (
-				(pref.reference_doctype = 'Proforma Invoice' and pref.reference_name = %(proforma_invoice)s)
-				or (pref.original_reference_doctype = 'Proforma Invoice' and pref.original_reference_name = %(proforma_invoice)s)
-			)
-			group by pe.name
-		""", {"proforma_invoice": self.name}, as_dict=True)
-
-		payment_entries = list(set(d.payment_entry for d in payment_entry_data))
-		payment_entry_map = {}
-		for d in payment_entry_data:
-			payment_entry_map[d.payment_entry] = d
-
-		advance_tax_map = self.get_advance_tax_map(payment_entries)
-		for payment_entry, advance_tax_accounts in advance_tax_map.items():
-			pe_details = payment_entry_map[payment_entry]
-			for tax_account, tax_amount in advance_tax_accounts.items():
-				tax = [tax for tax in self.get("taxes") if tax.account_head == tax_account]
-				tax = tax[0] if tax else None
-				if not tax:
-					continue
-
-				allocated_tax = tax_amount * pe_details.allocated_amount / pe_details.total_paid_amount if pe_details.total_paid_amount else 0
-				advance_tax_allocated += allocated_tax
-
-		return flt(advance_tax_allocated, self.precision("advance_paid"))
-
 
 @frappe.whitelist()
 def make_sales_invoice(
@@ -271,11 +254,13 @@ def make_sales_invoice(
 	ignore_permissions=False,
 	only_items=None,
 	skip_postprocess=False,
+	do_not_map_bill_to=False,
 	set_advances=True,
 ):
 	if frappe.flags.args and only_items is None:
 		only_items = cint(frappe.flags.args.only_items)
 
+	do_not_map_bill_to = cint(do_not_map_bill_to)
 	set_advances = cint(set_advances)
 
 	def postprocess(source, target):
@@ -300,7 +285,8 @@ def make_sales_invoice(
 			},
 			"validation": {
 				"docstatus": ["=", 1],
-			}
+			},
+			"field_no_map": [],
 		},
 		"Proforma Invoice Item": get_item_mapper_for_invoice(),
 		"Sales Taxes and Charges": {
@@ -315,6 +301,9 @@ def make_sales_invoice(
 			"add_if_empty": True
 		}
 	}
+
+	if do_not_map_bill_to:
+		mapping["Proforma Invoice"]["field_no_map"] += ["bill_to", "bill_to_name"]
 
 	frappe.utils.call_hook_method("update_sales_invoice_from_proforma_invoice_mapper", mapping, "Sales Invoice")
 

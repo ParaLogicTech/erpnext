@@ -23,7 +23,6 @@
   "column_break1",
   "warranty_amc_status",
   "warranty_expiry_date",
-  "amc_expiry_date",
   "resolution_section",
   "resolution_date",
   "resolved_by",
@@ -167,18 +166,13 @@
   {
    "fieldname": "warranty_amc_status",
    "fieldtype": "Select",
-   "label": "Warranty / AMC Status",
+   "label": "Warranty Status",
    "options": "\nUnder Warranty\nOut of Warranty\nUnder AMC\nOut of AMC"
   },
   {
    "fieldname": "warranty_expiry_date",
    "fieldtype": "Date",
    "label": "Warranty Expiry Date"
-  },
-  {
-   "fieldname": "amc_expiry_date",
-   "fieldtype": "Date",
-   "label": "AMC Expiry Date"
   },
   {
    "fieldname": "resolution_section",
@@ -369,10 +363,11 @@
    "options": "Project"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-bug",
  "idx": 1,
  "links": [],
- "modified": "2025-03-17 20:13:25.528574",
+ "modified": "2025-09-22 22:27:18.047290",
  "modified_by": "Administrator",
  "module": "Support",
  "name": "Warranty Claim",
@@ -399,6 +394,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "status,customer,customer_name,territory",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

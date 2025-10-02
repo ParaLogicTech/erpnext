@@ -75,6 +75,12 @@ class SellingController(TransactionController):
 
 		return super().get_billing_party()
 
+	def get_party_account(self):
+		if self.meta.has_field("debit_to"):
+			return self.debit_to
+		else:
+			return super().get_party_account()
+
 	def set_missing_values(self, for_validate=False):
 		super(SellingController, self).set_missing_values(for_validate)
 
@@ -321,7 +327,8 @@ class SellingController(TransactionController):
 
 			if valuation_rate > 0:
 				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
-				if flt(d.base_net_rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
+				rate = d.base_rate if self.get("depreciation_type") and not d.get("ignore_depreciation") else d.base_net_rate
+				if flt(rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
 					throw_message(d, valuation_rate_in_sales_uom)
 
 	def get_item_list(self):
@@ -710,18 +717,19 @@ class SellingController(TransactionController):
 				frappe.bold(self.customer), frappe.get_desk_link("Project", self.project)
 			))
 
-		if self.meta.has_field("bill_to"):
-			trn_bill_to = self.bill_to or self.customer
-			allowed_bill_to = []
-			if project_details.bill_to:
-				allowed_bill_to.append(project_details.bill_to)
-			if project_details.customer:
-				allowed_bill_to.append(project_details.customer)
-
-			if allowed_bill_to and trn_bill_to not in allowed_bill_to:
-				frappe.throw(_("Bill To {0} does not belong to {1}").format(
-					frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
-				))
+		# ALLOWING non-project bill to for split billing
+		# if self.meta.has_field("bill_to"):
+		# 	trn_bill_to = self.bill_to or self.customer
+		# 	allowed_bill_to = []
+		# 	if project_details.bill_to:
+		# 		allowed_bill_to.append(project_details.bill_to)
+		# 	if project_details.customer:
+		# 		allowed_bill_to.append(project_details.customer)
+		#
+		# 	if allowed_bill_to and trn_bill_to not in allowed_bill_to:
+		# 		frappe.throw(_("Bill To {0} does not belong to {1}").format(
+		# 			frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
+		# 		))
 
 	def update_project_billing_and_sales(self, material_cost_of_sales=False, validate_insurance_excess=False):
 		projects = []
@@ -868,6 +876,63 @@ class SellingController(TransactionController):
 		self.items = sorted(self.items, key=sorter)
 		for i, d in enumerate(self.items):
 			d.idx = i + 1
+
+	def validate_zero_outstanding(self):
+		super().validate_zero_outstanding()
+
+		if not self.get("is_return") and self.get("is_opening") != "Yes":
+			bill_to = self.get("bill_to") or self.customer
+
+			if self.get("project"):
+				project_details = frappe.db.get_value("Project", self.project,
+					["cash_billing", "insurance_company"], as_dict=1) or frappe._dict()
+
+				if (
+					project_details.cash_billing
+					and self.outstanding_amount != 0
+					and (not project_details.insurance_company or bill_to != project_details.insurance_company)
+				):
+					frappe.throw(_("Outstanding Amount must be 0 for Cash {0}").format(
+						frappe.get_desk_link("Project", self.project)
+					))
+
+			cash_billing = frappe.get_cached_value("Customer", bill_to, "cash_billing")
+			if cash_billing and self.outstanding_amount != 0:
+				frappe.throw(_("Outstanding Amount must be 0 for Cash Customer {0}").format(
+					frappe.utils.get_link_to_form("Customer", bill_to)
+				))
+
+	def get_billed_qty_map(self, billing_data, item_ref_field):
+		billed_qty_map = {}
+		depreciation_type_qty = {}
+
+		for d in billing_data:
+			item_row_name = d.get(item_ref_field)
+
+			bill_to = d.bill_to or d.customer
+			so_row = self.getone('items', {'name': item_row_name})
+			claim_customer = so_row.claim_customer if so_row else None
+
+			depreciation_type = d.depreciation_type
+			if not depreciation_type or d.ignore_depreciation:
+				depreciation_type = 'No Depreciation'
+
+			depreciation_type_qty.setdefault(item_row_name, {}).setdefault(depreciation_type, 0)
+			depreciation_type_qty[item_row_name][depreciation_type] += d.qty
+
+			if depreciation_type != 'Depreciation Amount Only' and (not claim_customer or bill_to == claim_customer):
+				billed_qty_map.setdefault(item_row_name, 0)
+				billed_qty_map[item_row_name] += d.qty
+
+		# Do not mark as billed if both depreciation type invoices not created
+		for row_name, depreciation_types in depreciation_type_qty.items():
+			if 'No Depreciation' not in depreciation_types:
+				depreciation_qty = flt(depreciation_types.get('Depreciation Amount Only'), 6)
+				after_depreciation_qty = flt(depreciation_types.get('After Depreciation Amount'), 6)
+				if not depreciation_qty or not after_depreciation_qty:
+					billed_qty_map[row_name] = 0
+
+		return billed_qty_map
 
 
 @frappe.whitelist()

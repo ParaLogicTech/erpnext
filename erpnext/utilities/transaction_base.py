@@ -5,6 +5,7 @@ import frappe
 import frappe.share
 from frappe import _
 from frappe.utils import cstr, now_datetime, cint, flt, get_time, get_link_to_form, date_diff, add_days, getdate
+from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import get_terms_and_conditions
 from erpnext.controllers.status_updater import StatusUpdaterERP
 
 
@@ -190,6 +191,14 @@ class TransactionBase(StatusUpdaterERP):
 
 		if sales_team and total_allocated_percentage != 100.0:
 			frappe.throw(_("Total allocated percentage for Sales Team should be 100%"))
+
+	def set_terms_and_conditions(self):
+		if not self.meta.has_field("tc_name") or not self.meta.has_field("terms"):
+			return
+
+		if self.tc_name:
+			doc = self.as_dict()
+			self.terms = get_terms_and_conditions(self.tc_name, doc)
 
 
 def delete_events(ref_type, ref_name):

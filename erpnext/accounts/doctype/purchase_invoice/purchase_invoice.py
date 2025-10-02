@@ -4,7 +4,7 @@
 
 import frappe, erpnext
 from frappe.utils import cint, cstr, formatdate, flt, getdate, nowdate
-from frappe import _, throw
+from frappe import _
 import frappe.defaults
 
 from erpnext.assets.doctype.asset_category.asset_category import get_asset_category_account
@@ -74,7 +74,7 @@ class PurchaseInvoice(BuyingController):
 		self.validate_credit_to_acc()
 
 		if not self.is_paid:
-			self.check_advance_payment_against_order("purchase_order")
+			self.check_advance_payment_against_order()
 
 		self.validate_zero_amount()
 		self.check_on_hold_or_closed_status()
@@ -82,7 +82,8 @@ class PurchaseInvoice(BuyingController):
 		self.validate_return_against()
 		self.validate_uom_is_integer("uom", "qty")
 		self.validate_uom_is_integer("stock_uom", "stock_qty")
-		self.set_expense_account(for_validate=True)
+		self.set_expense_account()
+		self.validate_expense_account()
 		self.set_against_expense_account()
 		self.validate_write_off_account()
 		self.create_remarks()
@@ -162,6 +163,27 @@ class PurchaseInvoice(BuyingController):
 		self.set_outstanding_amount(update=True)
 		self.set_status(update=True)
 		self.notify_update()
+
+	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
+		if self.currency == self.company_currency:
+			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
+			exchange_rate = 1
+		else:
+			total_amount = flt(self.get("rounded_total") or self.get("grand_total"))
+			exchange_rate = flt(self.get("conversion_rate"))
+
+		return {
+			"total_amount": total_amount,
+			"outstanding_amount": flt(self.outstanding_amount),
+			"exchange_rate": exchange_rate,
+			"posting_date": self.posting_date,
+			"due_date": self.due_date,
+			"bill_no": self.bill_no,
+		}
+
+	def get_orders_for_advance_entries(self):
+		orders = set([("Purchase Order", d.get("purchase_order")) for d in self.get("items") if d.get("purchase_order")])
+		return list(orders)
 
 	def before_calculate_taxes_and_totals(self):
 		super().before_calculate_taxes_and_totals()
@@ -562,14 +584,14 @@ class PurchaseInvoice(BuyingController):
 			)
 
 		super(PurchaseInvoice, self).set_missing_values(for_validate)
-		self.set_expense_account(for_validate)
+		self.set_expense_account()
 
 	def check_conversion_rate(self):
 		default_currency = erpnext.get_company_currency(self.company)
 		if not default_currency:
-			throw(_('Please enter default currency in Company Master'))
+			frappe.throw(_('Please enter default currency in Company Master'))
 		if (self.currency == default_currency and flt(self.conversion_rate) != 1.00) or not self.conversion_rate or (self.currency != default_currency and flt(self.conversion_rate) == 1.00):
-			throw(_("Conversion rate cannot be 0 or 1"))
+			frappe.throw(_("Conversion rate cannot be 0 or 1"))
 
 	def validate_credit_to_acc(self):
 		account = frappe.db.get_value("Account", self.credit_to,
@@ -620,7 +642,7 @@ class PurchaseInvoice(BuyingController):
 			if not d.item_code:
 				frappe.msgprint(_("Item Code required at Row No {0}").format(d.idx), raise_exception=True)
 
-	def set_expense_account(self, for_validate=False):
+	def set_expense_account(self):
 		auto_accounting_for_stock = erpnext.is_perpetual_inventory_enabled(self.company)
 
 		if auto_accounting_for_stock:
@@ -644,22 +666,34 @@ class PurchaseInvoice(BuyingController):
 			if item.item_code:
 				asset_category = frappe.get_cached_value("Item", item.item_code, "asset_category")
 
-			if auto_accounting_for_stock and item.item_code in stock_items \
-				and self.is_opening == 'No' and not item.is_fixed_asset \
-				and (not item.purchase_order_item or
-					not frappe.db.get_value("Purchase Order Item", item.purchase_order_item, "delivered_by_supplier")):
-
+			if (
+				auto_accounting_for_stock
+				and item.item_code in stock_items
+				and self.is_opening == 'No'
+				and not item.is_fixed_asset
+				and (not item.purchase_order_item or not frappe.db.get_value("Purchase Order Item", item.purchase_order_item, "delivered_by_supplier", cache=1))
+			):
 				if self.update_stock:
 					item.expense_account = warehouse_account[item.warehouse]["account"]
 				else:
 					item.expense_account = stock_not_billed_account
+
 			elif item.is_fixed_asset and not is_cwip_accounting_enabled(asset_category):
-				item.expense_account = get_asset_category_account('fixed_asset_account', item=item.item_code,
-					company = self.company)
+				item.expense_account = get_asset_category_account(
+					'fixed_asset_account',
+					item=item.item_code,
+					company=self.company
+				)
+
 			elif item.is_fixed_asset and item.purchase_receipt_item:
 				item.expense_account = asset_received_but_not_billed
-			elif not item.expense_account and for_validate:
-				throw(_("Expense account is mandatory for item {0}").format(item.item_code or item.item_name))
+
+	def validate_expense_account(self):
+		for item in self.get("items"):
+			if not item.expense_account:
+				frappe.throw(_("Row #{0}: Expense account is mandatory for Item {1}").format(
+					item.idx, item.item_code or item.item_name
+				))
 
 	def set_against_expense_account(self):
 		against_accounts = []
@@ -705,7 +739,7 @@ class PurchaseInvoice(BuyingController):
 
 	def validate_write_off_account(self):
 		if self.write_off_amount and not self.write_off_account:
-			throw(_("Please enter Write Off Account"))
+			frappe.throw(_("Please enter Write Off Account"))
 
 	def validate_purchase_receipt_if_update_stock(self):
 		if not cint(self.is_return) and cint(self.update_stock):

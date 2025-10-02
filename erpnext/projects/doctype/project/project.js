@@ -7,7 +7,6 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	setup() {
 		this.setup_make_methods();
 		erpnext.setup_applies_to_fields(this.frm);
-		this.frm.add_fetch("service_template", "includes_service_warranty", "includes_service_warranty", "Project Service Template");
 	}
 
 	onload() {
@@ -144,7 +143,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 		me.frm.custom_make_buttons = {
 			'Quotation': 'Quotation',
-			'Sales Order': 'Sales Order (All)',
+			'Sales Order': 'Sales Order',
 			'Delivery Note': 'Delivery Note',
 			'Sales Invoice': 'Sales Invoice',
 			'Proforma Invoice': 'Proforma Invoice',
@@ -220,13 +219,15 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			}
 
 			if (frappe.model.can_create("Sales Order")) {
-				me.frm.add_custom_button(__("Sales Order (All)"), () => me.make_sales_order(), __("Sales"));
-				me.frm.add_custom_button(__("Sales Order (Services)"), () => me.make_sales_order("service"), __("Sales"));
-				me.frm.add_custom_button(__("Sales Order (Materials)"), () => me.make_sales_order("stock"), __("Sales"));
+				me.frm.add_custom_button(__("Sales Order"), () => {
+					me.show_order_dialog((args) => me.make_sales_order(args));
+				}, __("Sales"));
 			}
 
 			if (frappe.model.can_create("Quotation")) {
-				me.frm.add_custom_button(__("Quotation"), () => me.make_quotation(), __("Sales"));
+				me.frm.add_custom_button(__("Quotation"), () => {
+					me.show_order_dialog((args) => me.make_quotation(args));
+				}, __("Sales"));
 			}
 
 			if (frappe.model.can_create("Payment Entry")) {
@@ -247,25 +248,14 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 			if (frappe.model.can_create("Proforma Invoice")) {
 				me.frm.add_custom_button(__("Proforma Invoice"), () => {
-					me.show_invoice_dialog((depreciation_type) => me.make_proforma_invoice(depreciation_type));
+					return me.show_invoice_dialog((args) => me.make_proforma_invoice(args));
 				}, __("Sales"));
 			}
 
 			if (frappe.model.can_create("Sales Invoice")) {
 				me.frm.add_custom_button(__("Sales Invoice"), () => {
-					me.show_invoice_dialog((depreciation_type) => me.make_sales_invoice(depreciation_type));
+					return me.show_invoice_dialog((args) => me.make_sales_invoice(args));
 				}, __("Sales"));
-			}
-
-			if (me.frm.doc.bill_to) {
-				frappe.db.get_value('Customer', me.frm.doc.bill_to, 'is_goodwill_customer')
-				.then(r => {
-					if (r.message.is_goodwill_customer && frappe.model.can_create("Sales Invoice")) {
-						me.frm.add_custom_button(__("Goodwill Sales Invoice"), () => {
-							me.show_invoice_dialog(((depreciation_type, goodwill=1) => me.make_sales_invoice(depreciation_type, goodwill=1)), 1);
-						}, __("Sales"));
-					}
-				})
 			}
 
 			if (
@@ -560,6 +550,10 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		erpnext.utils.get_address_display(this.frm, "billing_address", "billing_address_display");
 	}
 
+	add_service_template(service_template, check_duplicate) {
+		return erpnext.utils.add_service_template_row(this.frm, service_template, check_duplicate);
+	}
+
 	service_template(doc, cdt, cdn) {
 		let row = frappe.get_doc(cdt, cdn);
 		this.get_service_template_details(row);
@@ -567,10 +561,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 	get_service_template_details(row) {
 		if (row && row.service_template) {
+			let args = this.get_service_template_args(row);
+
 			return frappe.call({
 				method: "erpnext.projects.doctype.service_template.service_template.get_service_template_details",
 				args: {
-					service_template: row.service_template
+					service_template: row.service_template,
+					args: args,
 				},
 				callback: (r) => {
 					if (r.message) {
@@ -578,6 +575,16 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					}
 				}
 			});
+		}
+	}
+
+	get_service_template_args(row) {
+		return {
+			customer: this.frm.doc.customer,
+			bill_to: this.frm.doc.bill_to,
+			applies_to_item: this.frm.doc.applies_to_item,
+			project: this.frm.is_new() ? null : this.frm.doc.name,
+			date: this.frm.doc.project_date,
 		}
 	}
 
@@ -763,56 +770,82 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	show_invoice_dialog(callback, goodwill=null) {
+	async show_invoice_dialog(callback) {
 		let me = this;
 		me.frm.check_if_unsaved();
 
-		if (
-			(me.frm.doc.default_depreciation_percentage
-			|| me.frm.doc.default_underinsurance_percentage
-			|| me.frm.doc.insurance_excess_amount
-			|| me.frm.doc.insurance_excess_percentage
-			|| (me.frm.doc.non_standard_depreciation || []).length
-			|| (me.frm.doc.non_standard_underinsurance || []).length) && 
-			(!goodwill)
-		) {
-			let html = `
-<div class="text-center">
-	<button type="button" class="btn btn-primary btn-bill-customer">${__("Bill Excess/Depreciation to <b>Customer (User)</b>")}</button>
-	<br/><br/>
-	<button type="button" class="btn btn-primary btn-bill-insurance">${__("Bill to <b>Insurance Company</b>")}</button>
-</div>
-`;
-
-			let dialog = new frappe.ui.Dialog({
-				title: __("Insurance Split Billing"),
-				fields: [
-					{fieldtype: "HTML", options: html}
-				],
+		let billable_customers = await this.get_billable_customers();
+		if (billable_customers.length < 2) {
+			callback({
+				bill_to: null,
+				bill_to_filter: null,
 			});
-
-			dialog.show();
-
-			$('.btn-bill-customer', dialog.$wrapper).click(function () {
-				dialog.hide();
-				callback('Depreciation Amount Only');
-			});
-			$('.btn-bill-insurance', dialog.$wrapper).click(function () {
-				dialog.hide();
-				callback('After Depreciation Amount');
-			});
-		} else {
-			callback();
+			return
 		}
+
+		let bill_to_options = billable_customers.map(d => {
+			return {
+				label: d.customer_name || d.customer,
+				value: d.customer,
+			}
+		});
+
+		let fields = [
+			{
+				label: __("Pick Items From"),
+				fieldname: "pick_items_from",
+				fieldtype: "Select",
+				options: [
+					"Based on Billable Customer",
+					"Pick All Items",
+				],
+				default: "Based on Billable Customer",
+				reqd: 1,
+			},
+			{
+				label: __("Bill To"),
+				fieldname: "bill_to",
+				fieldtype: "Select",
+				options: bill_to_options,
+				reqd: 1,
+			},
+		];
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Split Billing"),
+			fields: fields,
+		});
+
+		dialog.set_primary_action(__("Create"), () => {
+			let values = dialog.get_values();
+			let bill_to_filter = null;
+			if (values.pick_items_from == "Based on Billable Customer") {
+				bill_to_filter = values.bill_to;
+			}
+			callback({
+				bill_to: values.bill_to,
+				bill_to_filter: bill_to_filter,
+			});
+			dialog.hide();
+		});
+
+		dialog.show();
 	}
 
-	make_sales_invoice(depreciation_type, goodwill = null) {
+	async get_billable_customers() {
+		return frappe.xcall(
+			"erpnext.projects.doctype.project.project_mappers.get_billable_customers",
+			{"project_name": this.frm.doc.name},
+		)
+	}
+
+	make_sales_invoice(args) {
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project_mappers.make_sales_invoice",
 			args: {
 				"project_name": this.frm.doc.name,
-				"depreciation_type": depreciation_type,
-				"goodwill": goodwill
+				"bill_to": args.bill_to,
+				"bill_to_filter": args.bill_to_filter,
 			},
 			callback: function (r) {
 				if (!r.exc) {
@@ -823,12 +856,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	make_proforma_invoice(depreciation_type) {
+	make_proforma_invoice(args) {
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project_mappers.make_proforma_invoice",
 			args: {
 				"project_name": this.frm.doc.name,
-				"depreciation_type": depreciation_type,
+				"bill_to": args.bill_to,
+				"bill_to_filter": args.bill_to_filter,
 			},
 			callback: function (r) {
 				if (!r.exc) {
@@ -856,16 +890,103 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	make_sales_order(items_type) {
-		let me = this;
-		me.frm.check_if_unsaved();
+	show_order_dialog(callback, items_type_filter) {
+		this.frm.check_if_unsaved();
+
+		let customers = [];
+		let bill_to_options = [];
+
+		if (this.frm.doc.bill_to && !customers.includes(this.frm.doc.bill_to)) {
+			customers.push(this.frm.doc.bill_to);
+			bill_to_options.push({
+				label: this.frm.doc.bill_to_name,
+				value: this.frm.doc.bill_to,
+			});
+		}
+
+		if (this.frm.doc.customer && !customers.includes(this.frm.doc.customer)) {
+			customers.push(this.frm.doc.customer);
+			bill_to_options.push({
+				label: this.frm.doc.customer_name,
+				value: this.frm.doc.customer,
+			});
+		}
+
+		if (this.frm.doc.insurance_company && !customers.includes(this.frm.doc.insurance_company)) {
+			customers.push(this.frm.doc.insurance_company);
+			bill_to_options.push({
+				label: this.frm.doc.insurance_company_name,
+				value: this.frm.doc.insurance_company,
+			});
+		}
+
+		for (let d of this.frm.doc.service_templates || []) {
+			if (d.claim_customer && !customers.includes(d.claim_customer)) {
+				customers.push(d.claim_customer);
+				bill_to_options.push({
+					label: d.claim_customer_name || d.claim_customer,
+					value: d.claim_customer,
+				});
+			}
+		}
+
+		if (bill_to_options.length < 2 && !items_type_filter) {
+			callback({
+				bill_to: null,
+				items_type: null,
+			});
+			return;
+		}
+
+		let fields = [
+			{
+				label: __("Bill To"),
+				fieldname: "bill_to",
+				fieldtype: "Select",
+				options: bill_to_options,
+				reqd: 1,
+				default: bill_to_options.length == 1 ? bill_to_options[0].value : null,
+			},
+		];
+
+		if (items_type_filter) {
+			fields.push({
+				label: __("Items Type Filter"),
+				fieldname: "items_type",
+				fieldtype: "Select",
+				options: [
+					{label: __("All Item Types"), value: ""},
+					{label: __("Service Items Only"), value: "service"},
+					{label: __("Material Items Only"), value: "stock"},
+				],
+				default: ""
+			});
+		}
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Select Bill To"),
+			fields: fields,
+		});
+
+		dialog.set_primary_action(__("Create"), () => {
+			callback(dialog.get_values());
+		});
+
+		dialog.show();
+	}
+
+	make_sales_order(args) {
+		this.frm.check_if_unsaved();
+
+		args = args || {};
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project_mappers.make_sales_order",
 			args: {
-				"project_name": me.frm.doc.name,
-				"items_type": items_type,
+				"project_name": this.frm.doc.name,
+				"bill_to": args.bill_to,
+				"items_type": args.items_type,
 			},
-			callback: function (r) {
+			callback: (r) => {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
@@ -874,12 +995,16 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	make_quotation() {
+	make_quotation(args) {
 		this.frm.check_if_unsaved();
+
+		args = args || {};
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project_mappers.make_quotation",
 			args: {
 				"project_name": this.frm.doc.name,
+				"bill_to": args.bill_to,
+				"items_type": args.items_type,
 			},
 			callback: function (r) {
 				if (!r.exc) {

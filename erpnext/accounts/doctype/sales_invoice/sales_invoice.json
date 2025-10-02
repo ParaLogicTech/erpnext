@@ -27,7 +27,6 @@
   "return_against",
   "reopen_order",
   "is_pos",
-  "is_goodwill_customer",
   "pos_profile",
   "cashier",
   "offline_pos_name",
@@ -192,6 +191,7 @@
   "get_advances",
   "advances",
   "total_advance",
+  "prepaid_deferred_revenue",
   "payments_section",
   "payments",
   "section_break_poqs",
@@ -2355,10 +2355,11 @@
    "read_only": 1
   },
   {
-   "default": "0",
-   "fieldname": "is_goodwill_customer",
-   "fieldtype": "Check",
-   "label": "Is Goodwill Customer",
+   "depends_on": "prepaid_deferred_revenue",
+   "fieldname": "prepaid_deferred_revenue",
+   "fieldtype": "Currency",
+   "label": "Prepaid Deferred Revenue",
+   "options": "party_account_currency",
    "print_hide": 1,
    "read_only": 1
   }
@@ -2368,7 +2369,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-18 12:41:06.512993",
+ "modified": "2025-09-30 18:45:09.144946",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

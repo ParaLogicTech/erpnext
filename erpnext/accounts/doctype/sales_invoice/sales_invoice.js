@@ -518,10 +518,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		});
 	}
 
-	tc_name() {
-		this.get_terms();
-	}
-
 	customer() {
 		var me = this;
 
@@ -955,16 +951,6 @@ frappe.ui.form.on('Sales Invoice', {
 			return {
 				filters: {
 					'report_type': 'Profit and Loss',
-					'company': doc.company,
-					"is_group": 0
-				}
-			}
-		}
-
-		frm.fields_dict['items'].grid.get_field('deferred_revenue_account').get_query = function(doc) {
-			return {
-				filters: {
-					'root_type': 'Liability',
 					'company': doc.company,
 					"is_group": 0
 				}

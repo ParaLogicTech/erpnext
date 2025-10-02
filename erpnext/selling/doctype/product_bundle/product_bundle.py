@@ -3,6 +3,7 @@
 
 import frappe
 from frappe import _
+from frappe.utils import cint
 from frappe.model.document import Document
 
 
@@ -15,6 +16,20 @@ class ProductBundle(Document):
 		self.validate_child_items()
 		from erpnext.utilities.transaction_base import validate_uom_is_integer
 		validate_uom_is_integer(self, "uom", "qty")
+
+	def on_update(self):
+		self.set_item_is_product_bundle()
+
+	def after_delete(self):
+		self.set_item_is_product_bundle()
+
+	def set_item_is_product_bundle(self):
+		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+		if self.new_item_code:
+			new_is_product_bundle = is_product_bundle(self.new_item_code, cache=False)
+			old_is_product_bundle = frappe.db.get_value("Item", self.new_item_code, "is_product_bundle")
+			if cint(new_is_product_bundle) != cint(old_is_product_bundle):
+				frappe.db.set_value("Item", self.new_item_code, "is_product_bundle", cint(new_is_product_bundle), notify=1)
 
 	def validate_main_item(self):
 		"""Validates, main Item is not a stock item"""
