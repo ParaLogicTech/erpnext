@@ -684,9 +684,16 @@ class PurchaseInvoice(BuyingController):
 					item=item.item_code,
 					company=self.company
 				)
-
+			
 			elif item.is_fixed_asset and item.purchase_receipt_item:
 				item.expense_account = asset_received_but_not_billed
+			
+			elif item.is_fixed_asset and is_cwip_accounting_enabled(asset_category):
+				item.expense_account = get_asset_category_account(
+					'capital_work_in_progress_account',
+					item=item.item_code,
+					company=self.company
+				)
 
 	def validate_expense_account(self):
 		for item in self.get("items"):
