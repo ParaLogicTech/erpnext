@@ -144,7 +144,6 @@ class TransactionController(StockController):
 		self.validate_tax_account_company()
 		self.validate_transaction_type()
 		self.validate_item_project_mandatory()
-		self.validate_goodwill_customer()
 
 		if self.doctype != 'Material Request':
 			apply_pricing_rule_on_transaction(self)
@@ -289,13 +288,6 @@ class TransactionController(StockController):
 	def dynamic_bundling_enabled(self):
 		return self.doctype in ['Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice'] and\
 			frappe.get_cached_value('Stock Settings', None, "enable_dynamic_bundling")
-	
-	def validate_goodwill_customer(self):
-		if self.doctype in ["Sales Invoice"]:
-			if self.is_goodwill_customer:
-				if not frappe.get_cached_value('Customer', self.bill_to, "is_goodwill_customer"):
-					customer_form_link = frappe.utils.get_link_to_form("Customer", self.bill_to)
-					frappe.throw("<b>Goodwill</b> not enabled for the customer {customer}".format(customer=customer_form_link))
 
 	def set_previous_document_reference_before_print(self):
 		if self.doctype == "Sales Order":

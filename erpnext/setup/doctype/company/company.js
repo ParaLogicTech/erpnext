@@ -223,6 +223,7 @@ erpnext.company.setup_queries = function(frm) {
 		["default_payroll_payable_account", {"report_type": "Balance Sheet"}],
 		["round_off_account", {"report_type": "Profit and Loss"}],
 		["write_off_account", {"report_type": "Profit and Loss"}],
+		["default_goodwill_account", {"report_type": "Profit and Loss"}],
 		["temporary_opening_account", {"account_type": "Temporary"}],
 		["sales_tax_account", {"account_type": "Tax"}],
 		["sales_tax_on_purchase_account", {"account_type": "Tax"}],

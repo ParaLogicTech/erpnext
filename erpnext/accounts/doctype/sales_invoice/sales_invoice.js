@@ -589,38 +589,18 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 
 	allocated_amount() {
 		this.calculate_total_advance();
-		this.write_off_outstanding_amount_automatically();
+		this.calculate_outstanding_amount();
+		this.frm.refresh_fields();
 	}
 
 	advances_remove() {
 		this.allocated_amount();
 	}
 
-	write_off_outstanding_amount_automatically() {
-		let grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
-		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance);
-
-		if (cint(this.frm.doc.write_off_outstanding_amount_automatically)) {
-			frappe.model.round_floats_in(this.frm.doc, ["grand_total", "paid_amount"]);
-			// this will make outstanding amount 0
-			if (paid_amount < grand_total) {
-				this.frm.doc.write_off_amount = flt(grand_total - paid_amount, precision("write_off_amount"));
-			} else {
-				this.frm.doc.write_off_amount = 0;
-			}
-			this.set_in_company_currency(this.frm.doc, ["write_off_amount"]);
-			this.frm.toggle_enable("write_off_amount", false);
-		} else {
-			this.frm.toggle_enable("write_off_amount", true);
-		}
-
-		this.calculate_outstanding_amount();
-		this.frm.refresh_fields();
-	}
-
 	write_off_amount() {
 		this.set_in_company_currency(this.frm.doc, ["write_off_amount"]);
-		this.write_off_outstanding_amount_automatically();
+		this.calculate_outstanding_amount();
+		this.frm.refresh_fields();
 	}
 
 	items_add(doc, cdt, cdn) {
@@ -634,6 +614,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 
 	set_dynamic_labels() {
 		this.hide_fields(this.frm.doc);
+		this.set_write_off_read_only();
 		this.set_project_read_only();
 		super.set_dynamic_labels();
 	}
@@ -771,22 +752,77 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 	amount(doc, cdt, cdn) {
 		if (cdt == "Sales Invoice Payment") {
 			this.calculate_paid_amount();
-			this.write_off_outstanding_amount_automatically();
+			this.calculate_outstanding_amount();
+			this.frm.refresh_fields();
 		}
 	}
 
 	change_amount() {
 		let grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
-		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance);
+		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance) + flt(this.frm.doc.prepaid_deferred_revenue);
 
 		if (paid_amount > grand_total) {
-			this.calculate_write_off_amount();
+			this.calculate_write_off_for_change_amount();
 		} else {
 			this.frm.set_value("change_amount", 0.0);
 			this.frm.set_value("base_change_amount", 0.0);
 		}
 
 		this.frm.refresh_fields();
+	}
+
+	calculate_write_off_for_change_amount() {
+		let grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
+		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance) + flt(this.frm.doc.prepaid_deferred_revenue);
+
+		if (paid_amount > grand_total) {
+			this.frm.doc.write_off_amount = flt(
+				grand_total - paid_amount + flt(this.frm.doc.change_amount),
+				precision("write_off_amount")
+			);
+		}
+
+		this.calculate_outstanding_amount();
+	}
+
+	is_goodwill_invoice() {
+		if (this.frm.doc.is_goodwill_invoice) {
+			this.set_goodwill_account_details();
+		} else {
+			this.frm.doc.write_off_amount = 0;
+			this.frm.doc.write_off_account = null;
+			this.frm.doc.write_off_cost_center = null;
+		}
+
+		this.set_write_off_read_only();
+		this.calculate_outstanding_amount();
+		this.frm.refresh_fields();
+	}
+
+	set_goodwill_account_details() {
+		let bill_to = this.frm.doc.bill_to || this.frm.doc.customer;
+
+		if (bill_to && this.frm.doc.company) {
+			return frappe.call({
+				method: "erpnext.accounts.party.get_goodwill_account_details",
+				args: {
+					customer: bill_to,
+					company: this.frm.doc.company,
+				},
+				callback: (r) => {
+					if (r.message.account) {
+						this.frm.set_value("write_off_account", r.message.account);
+					}
+					if (r.message.cost_center) {
+						this.frm.set_value("write_off_cost_center", r.message.cost_center);
+					}
+				},
+			});
+		}
+	}
+
+	set_write_off_read_only() {
+		this.frm.toggle_enable("write_off_amount", !this.frm.doc.is_goodwill_invoice);
 	}
 
 	loyalty_amount() {
@@ -807,8 +843,6 @@ cur_frm.cscript.hide_fields = function(doc, refresh) {
 	var hidden = cint(frappe.boot.sysdefaults.country != 'India');
 	this.frm.set_df_property("c_form_applicable", "hidden", hidden);
 	this.frm.set_df_property("c_form_no", "hidden", hidden);
-
-	this.frm.toggle_enable("write_off_amount", !!!cint(doc.write_off_outstanding_amount_automatically));
 
 	if (refresh) {
 		cur_frm.refresh_fields();
@@ -1078,7 +1112,12 @@ frappe.ui.form.on('Sales Invoice', {
 	set_loyalty_points: function(frm) {
 		if (frm.redemption_conversion_factor) {
 			let loyalty_amount = flt(frm.redemption_conversion_factor*flt(frm.doc.loyalty_points), precision("loyalty_amount"));
-			var remaining_amount = flt(frm.doc.grand_total) - flt(frm.doc.total_advance) - flt(frm.doc.write_off_amount);
+			var remaining_amount = (
+				flt(frm.doc.grand_total)
+				- flt(frm.doc.total_advance)
+				- flt(frm.doc.prepaid_deferred_revenue)
+				- flt(frm.doc.write_off_amount)
+			);
 			if (frm.doc.grand_total && (remaining_amount < loyalty_amount)) {
 				let redeemable_points = parseInt(remaining_amount/frm.redemption_conversion_factor);
 				frappe.throw(__("You can only redeem max {0} points in this order.",[redeemable_points]));

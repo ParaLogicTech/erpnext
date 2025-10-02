@@ -6,7 +6,7 @@ import erpnext
 import frappe.defaults
 from frappe.utils import cint, flt, getdate, add_days, cstr
 from frappe import _
-from erpnext.accounts.party import get_party_account, get_due_date
+from erpnext.accounts.party import get_party_account, get_due_date, get_goodwill_account_details
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
 from frappe.model.mapper import get_mapped_doc
 from erpnext.accounts.doctype.sales_invoice.pos import update_multi_mode_option
@@ -105,6 +105,7 @@ class SalesInvoice(SellingController):
 		self.set_billing_hours_and_amount()
 		self.update_timesheet_billing_for_project()
 		self.validate_campaign()
+		self.validate_goodwill_invoicing()
 
 		self.validate_total_advance_amount()
 		self.validate_pos_is_open(throw=True)
@@ -116,7 +117,6 @@ class SalesInvoice(SellingController):
 		self.validate_with_previous_doc()
 
 		self.sort_items()
-		self.set_goodwill_configuration()
 		self.set_delivery_status()
 		self.set_returned_status()
 		self.set_status()
@@ -693,7 +693,12 @@ class SalesInvoice(SellingController):
 				company=self.company
 			)
 
+		if self.is_new() and not for_validate:
+			# set null so it will be set based on customer details
+			self.is_goodwill_invoice = None
+
 		super(SalesInvoice, self).set_missing_values(for_validate)
+		self.set_goodwill_invoicing_details()
 
 		print_format = pos.get("print_format_for_online") if pos else None
 		if not print_format and not cint(frappe.db.get_value('Print Format', 'POS Invoice', 'disabled')):
@@ -706,6 +711,15 @@ class SalesInvoice(SellingController):
 				"allow_edit_discount": pos.get("allow_user_to_edit_discount"),
 				"campaign": pos.get("campaign")
 			}
+
+	def set_goodwill_invoicing_details(self):
+		if self.is_goodwill_invoice:
+			bill_to = self.bill_to or self.customer
+			account_details = get_goodwill_account_details(bill_to, self.company)
+			if account_details.account:
+				self.write_off_account = account_details.account
+			if account_details.cost_center:
+				self.write_off_cost_center = account_details.cost_center
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
@@ -909,11 +923,15 @@ class SalesInvoice(SellingController):
 			if against_doc.debit_to != self.debit_to:
 				frappe.throw(_("Return Against Sales Invoice {0} must have the same Debit To account").format(self.return_against))
 
-	def set_goodwill_configuration(self):
-		if self.is_goodwill_customer:
-			self.write_off_amount = self.rounded_total
-			self.write_off_account = self.get_company_default("goodwill_account")
-	
+	def validate_goodwill_invoicing(self):
+		if self.is_goodwill_invoice:
+			bill_to = self.bill_to or self.customer
+			is_goodwill_customer = cint(frappe.get_cached_value('Customer', bill_to, "is_goodwill_customer"))
+			if not is_goodwill_customer:
+				frappe.throw(_("{0} is not enabled for Goodwill Invoicing").format(
+					frappe.get_desk_link("Customer", bill_to)
+				))
+
 	def set_against_income_account(self):
 		"""Set against account for debit to account"""
 		against_acc = []

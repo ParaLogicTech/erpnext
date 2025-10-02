@@ -1091,13 +1091,6 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			this.calculate_paid_amount();
 		}
 
-		if (frappe.meta.has_field(this.frm.doc.doctype, "write_off_amount")) {
-			if (this.should_round_transaction_currency()) {
-				frappe.model.round_floats_in(this.frm.doc, ["write_off_amount"]);
-			}
-			this.set_in_company_currency(this.frm.doc, ["write_off_amount"]);
-		}
-
 		let paid_amount = 0;
 		if (frappe.meta.has_field(this.frm.doc.doctype, "paid_amount")) {
 			frappe.model.round_floats_in(this.frm.doc, ["paid_amount"]);
@@ -1106,6 +1099,10 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 				? this.frm.doc.paid_amount
 				: this.frm.doc.base_paid_amount
 			);
+		}
+
+		if (frappe.meta.has_field(this.frm.doc.doctype, "write_off_amount")) {
+			this.calculate_write_off_amount();
 		}
 
 		let change_amount = 0;
@@ -1129,6 +1126,23 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		}
 
 		this.calculate_customer_outstanding_amount();
+	}
+
+	calculate_write_off_amount() {
+		if (this.frm.doc.is_goodwill_invoice) {
+			let grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
+			let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance) + flt(this.frm.doc.prepaid_deferred_revenue);
+			if (paid_amount < grand_total) {
+				this.frm.doc.write_off_amount = flt(grand_total - paid_amount);
+			} else {
+				this.frm.doc.write_off_amount = 0;
+			}
+		}
+
+		if (this.should_round_transaction_currency()) {
+			frappe.model.round_floats_in(this.frm.doc, ["write_off_amount"]);
+		}
+		this.set_in_company_currency(this.frm.doc, ["write_off_amount"]);
 	}
 
 	calculate_customer_outstanding_amount() {
@@ -1210,25 +1224,6 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 				precision("base_change_amount")
 			);
 		}
-	}
-
-	calculate_write_off_amount() {
-		let grand_total = this.frm.doc.rounded_total || this.frm.doc.grand_total;
-		let paid_amount = flt(this.frm.doc.paid_amount) + flt(this.frm.doc.total_advance) + flt(this.frm.doc.prepaid_deferred_revenue);
-
-		if (paid_amount > grand_total) {
-			this.frm.doc.write_off_amount = flt(
-				grand_total - paid_amount + this.frm.doc.change_amount,
-				precision("write_off_amount")
-			);
-
-			this.frm.doc.base_write_off_amount = flt(
-				this.frm.doc.write_off_amount * this.frm.doc.conversion_rate,
-				precision("base_write_off_amount")
-			);
-		}
-
-		this.calculate_outstanding_amount();
 	}
 
 	calculate_including_previous_grand_total() {

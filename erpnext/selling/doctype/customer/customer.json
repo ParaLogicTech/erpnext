@@ -17,7 +17,6 @@
   "lead_name",
   "disabled",
   "is_insurance_company",
-  "is_goodwill_customer",
   "column_break0",
   "customer_type",
   "territory",
@@ -83,6 +82,7 @@
   "default_currency",
   "default_price_list",
   "cash_billing",
+  "is_goodwill_customer",
   "column_break_41",
   "taxes_and_charges_template",
   "tax_category",
@@ -95,6 +95,8 @@
   "internal_customer_details_section",
   "represents_company",
   "companies",
+  "goodwill_account_section",
+  "goodwill_accounts",
   "accounting_defaults_section",
   "accounts",
   "credit_limit_section",
@@ -346,10 +348,9 @@
    "read_only": 1
   },
   {
-   "description": "Mention if non-standard receivable account",
    "fieldname": "accounts",
    "fieldtype": "Table",
-   "label": "Accounts",
+   "label": "Receivable Accounts",
    "options": "Party Account"
   },
   {
@@ -662,7 +663,7 @@
   {
    "fieldname": "accounting_defaults_section",
    "fieldtype": "Section Break",
-   "label": "Accounting Defaults"
+   "label": "Receivable Account"
   },
   {
    "allow_in_quick_entry": 1,
@@ -716,13 +717,25 @@
    "fieldtype": "Check",
    "label": "Is Goodwill Customer",
    "permlevel": 1
+  },
+  {
+   "depends_on": "is_goodwill_customer",
+   "fieldname": "goodwill_account_section",
+   "fieldtype": "Section Break",
+   "label": "Goodwill Account"
+  },
+  {
+   "fieldname": "goodwill_accounts",
+   "fieldtype": "Table",
+   "label": "Goodwill Accounts",
+   "options": "Party Account"
   }
  ],
  "icon": "fa fa-user",
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2025-09-18 12:12:44.663724",
+ "modified": "2025-10-02 16:13:51.049296",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",

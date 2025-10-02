@@ -95,7 +95,6 @@
   "default_bank_account",
   "default_cash_account",
   "section_break_xy8g",
-  "goodwill_account",
   "write_off_account",
   "round_off_account",
   "round_off_cost_center",
@@ -105,6 +104,7 @@
   "column_break0",
   "discount_allowed_account",
   "discount_received_account",
+  "default_goodwill_account",
   "use_discount_allowed_account_in_sales_invoice",
   "section_break_w2s5",
   "default_employee_advance_account",
@@ -1038,10 +1038,9 @@
    "non_negative": 1
   },
   {
-   "fieldname": "goodwill_account",
+   "fieldname": "default_goodwill_account",
    "fieldtype": "Link",
-   "label": "Goodwill Account",
-   "link_filters": "[[\"Account\",\"account_type\",\"=\",\"Expense Account\"]]",
+   "label": "Default Goodwill Account",
    "options": "Account"
   }
  ],
@@ -1050,7 +1049,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2025-09-18 16:21:05.229293",
+ "modified": "2025-10-02 16:10:43.842630",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",

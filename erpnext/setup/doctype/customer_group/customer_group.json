@@ -22,6 +22,8 @@
   "customer_type",
   "column_break_anpg",
   "cash_billing",
+  "column_break_vlrx",
+  "is_goodwill_customer",
   "default_receivable_account",
   "accounts",
   "credit_limit_section",
@@ -159,13 +161,24 @@
    "fieldtype": "Select",
    "label": "Cash Billing",
    "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "column_break_vlrx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "is_goodwill_customer",
+   "fieldtype": "Select",
+   "label": "Is Goodwill Customer",
+   "options": "\nNo\nYes"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-sitemap",
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-12-16 14:31:04.312557",
+ "modified": "2025-10-02 12:53:47.161319",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Customer Group",
@@ -254,6 +267,7 @@
    "role": "Auditor"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "parent_customer_group",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
