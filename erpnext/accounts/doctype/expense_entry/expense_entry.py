@@ -89,8 +89,10 @@ class ExpenseEntry(Document):
 
 	def calculate_taxes(self):
 		for d in self.accounts:
-			d.tax_rate = get_item_tax_map(d.item_tax_template, self.company,
-				transaction_date=d.bill_date or self.transaction_date)
+			d.tax_rate = get_item_tax_map(d.item_tax_template, args={
+				"company": self.company,
+				"transaction_date": d.bill_date or self.transaction_date,
+			})
 
 			tax_map = json.loads(d.tax_rate or '{}')
 			tax_amount = 0
