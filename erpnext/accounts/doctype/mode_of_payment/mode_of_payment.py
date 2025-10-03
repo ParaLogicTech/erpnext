@@ -7,6 +7,9 @@ from frappe import _
 
 
 class ModeofPayment(Document):
+	def on_update(self):
+		frappe.cache.delete_key("bootinfo")
+
 	def validate(self):
 		self.validate_accounts()
 		self.validate_repeating_companies()
