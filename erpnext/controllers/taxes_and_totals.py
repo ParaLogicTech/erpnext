@@ -904,7 +904,7 @@ class calculate_taxes_and_totals(object):
 			)
 
 	def calculate_write_off_amount(self):
-		if self.doc.is_goodwill_invoice:
+		if self.doc.get("is_goodwill_invoice"):
 			grand_total = self.doc.rounded_total or self.doc.grand_total
 			paid_amount = flt(self.doc.paid_amount) + flt(self.doc.total_advance) + flt(self.doc.prepaid_deferred_revenue)
 			if paid_amount < grand_total:
