@@ -701,6 +701,16 @@ class PurchaseInvoice(BuyingController):
 				frappe.throw(_("Row #{0}: Expense account is mandatory for Item {1}").format(
 					item.idx, item.item_code or item.item_name
 				))
+			
+			# stop booking asset ledgers on non asset items
+			if not item.is_fixed_asset and item.expense_account:
+				item_exp_acc_type = frappe.db.get_value('Account', item.expense_account, 'account_type')
+				asset_accounts_type_list = ['Asset Received But Not Billed', 'Fixed Asset', 'Capital Work in Progress']
+				if (item_exp_acc_type in asset_accounts_type_list): 
+					frappe.throw(_("Row #{0}: Expense account's types should not be {1} for Non Asset item").format(
+						item.idx, 
+						",".join([f'"{each_asset_accounts_type}"' for each_asset_accounts_type in asset_accounts_type_list])
+					))
 
 	def set_against_expense_account(self):
 		against_accounts = []
