@@ -182,7 +182,7 @@ def _get_party_details(
 def set_basic_values(party_details, party):
 	to_copy = []
 	if party.doctype == "Customer":
-		to_copy = ["customer_name", "customer_group", "territory", "language", "default_sales_partner", "default_commission_rate"]
+		to_copy = ["customer_name", "customer_group", "territory", "language", "default_sales_partner", "default_commission_rate", "account_manager"]
 	elif party.doctype == "Supplier":
 		to_copy = ["supplier_name", "supplier_group", "language"]
 	elif party.doctype == "Lead":

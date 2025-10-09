@@ -34,7 +34,7 @@ class Analytics(object):
 	def get_columns(self):
 		self.columns = [{
 			"label": _(self.filters.tree_type),
-			"options": self.filters.tree_type,
+			"options": self.get_group_by_doctype(),
 			"fieldname": "entity",
 			"fieldtype": "Link",
 			"width": 140
@@ -77,6 +77,12 @@ class Analytics(object):
 				"width": 120
 			})
 
+	def get_group_by_doctype(self):
+		if self.filters.tree_type == "Account Manager":
+			return "Sales Person"
+		else:
+			return self.filters.tree_type
+
 	def get_data(self):
 		if self.filters.get('company'):
 			self.company_currency = frappe.get_cached_value('Company', self.filters.get("company"), "default_currency")
@@ -87,7 +93,7 @@ class Analytics(object):
 			self.get_entries("s.customer", "s.customer_name")
 			self.get_rows()
 
-		if self.filters.tree_type == 'Supplier':
+		elif self.filters.tree_type == 'Supplier':
 			self.get_entries("s.supplier", "s.supplier_name")
 			self.get_rows()
 
@@ -97,6 +103,10 @@ class Analytics(object):
 
 		elif self.filters.tree_type == 'Brand':
 			self.get_entries("im.brand")
+			self.get_rows()
+
+		elif self.filters.tree_type == 'Account Manager':
+			self.get_entries("cus.account_manager")
 			self.get_rows()
 
 		elif self.filters.tree_type in ["Customer Group", "Supplier Group", "Territory", "Item Group", "Sales Person"]:
@@ -196,6 +206,11 @@ class Analytics(object):
 		if self.filters.get("customer_group"):
 			lft, rgt = frappe.db.get_value("Customer Group", self.filters.customer_group, ["lft", "rgt"])
 			conditions.append("""cus.customer_group in (select name from `tabCustomer Group`
+				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
+
+		if self.filters.get("account_manager"):
+			lft, rgt = frappe.db.get_value("Sales Person", self.filters.account_manager, ["lft", "rgt"])
+			conditions.append("""cus.account_manager in (select name from `tabSales Person`
 				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
 		if self.filters.get("supplier"):
@@ -396,7 +411,7 @@ class Analytics(object):
 			parent = 'parent_item_group'
 		if self.filters.tree_type == "Supplier Group":
 			parent = 'parent_supplier_group'
-		if self.filters.tree_type == "Sales Person":
+		if self.filters.tree_type in ("Sales Person", "Account Manager"):
 			parent = 'parent_sales_person'
 
 		self.depth_map = frappe._dict()

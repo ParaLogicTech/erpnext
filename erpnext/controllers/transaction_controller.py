@@ -28,6 +28,7 @@ class TransactionController(StockController):
 		self.force_party_fields = [
 			"customer_name", "bill_to_name", "supplier_name",
 			"customer_group", "bill_to_group", "supplier_group",
+			"account_manager",
 			"contact_display", "contact_mobile", "contact_phone", "contact_email",
 			"address_display", "company_address_display",
 			"customer_credit_limit", "customer_credit_balance", "customer_outstanding_amount",
