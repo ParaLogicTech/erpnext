@@ -819,9 +819,6 @@ class PaymentEntry(AccountsController):
 			))
 
 	def auto_generate_reference_no(self):
-		if self.reference_no:
-			return
-
 		reference_no_series = get_reference_no_series(self.payment_type, self.mode_of_payment)
 		if reference_no_series:
 			self.reference_no = make_autoname(reference_no_series, self.doctype, self)
