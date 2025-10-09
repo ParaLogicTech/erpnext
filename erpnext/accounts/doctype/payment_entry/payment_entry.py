@@ -1371,7 +1371,7 @@ def get_outstanding_reference_documents(args):
 
 	# Add cost center condition
 	if args.get("cost_center") and get_allow_cost_center_in_entry_of_bs_account():
-		condition += f" and cost_center = {frappe.db.escape(args.get("cost_center"))}"
+		condition += f" and cost_center = {frappe.db.escape(args.get('cost_center'))}"
 
 	date_fields_dict = {
 		'posting_date': ['from_posting_date', 'to_posting_date'],
