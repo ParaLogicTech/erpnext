@@ -222,10 +222,10 @@ class SellingController(TransactionController):
 				continue
 
 			# skip if pricing rule discount applied
-			if not self.get("ignore_pricing_rule"):
-				discount_from_pricing_rule = False
-				for pricing_rule in get_applied_pricing_rules(d.get('pricing_rules')):
-					pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+			discount_from_pricing_rule = False
+			for pricing_rule in get_applied_pricing_rules(d.get('pricing_rules')):
+				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+				if not self.get("ignore_pricing_rule") or pricing_rule_doc.prevent_ignore_pricing_rule:
 					if pricing_rule_doc.rate_or_discount == "Discount Percentage":
 						if flt(d.discount_percentage, percent_precision) == flt(pricing_rule_doc.discount_percentage, percent_precision):
 							discount_from_pricing_rule = True
@@ -235,8 +235,8 @@ class SellingController(TransactionController):
 							discount_from_pricing_rule = True
 							break
 
-				if discount_from_pricing_rule:
-					continue
+			if discount_from_pricing_rule:
+				continue
 
 			if d.is_new():
 				if d.get("delivery_note_item"):
@@ -933,6 +933,30 @@ class SellingController(TransactionController):
 					billed_qty_map[row_name] = 0
 
 		return billed_qty_map
+
+	def validate_coupon_code(self):
+		if not self.get("coupon_code"):
+			return
+
+		from erpnext.accounts.doctype.pricing_rule.utils import validate_coupon_code
+		validate_coupon_code(self.coupon_code)
+
+	def update_coupon_code(self, transaction_type):
+		if not self.get("coupon_code"):
+			return
+
+		already_updated = False
+		if self.doctype != "Sales Order":
+			sales_orders = set([d.sales_order for d in self.get("items") if d.get("sales_order")])
+			already_updated = frappe.db.exists("Sales Order", {
+				"coupon_code": self.coupon_code, "name": ["in", sales_orders], "docstatus": 1,
+			})
+
+		if already_updated:
+			return
+
+		from erpnext.accounts.doctype.pricing_rule.utils import update_coupon_code_count
+		update_coupon_code_count(self.coupon_code, transaction_type)
 
 
 @frappe.whitelist()

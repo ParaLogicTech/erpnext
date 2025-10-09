@@ -29,8 +29,8 @@ def get_pricing_rules(args, doc=None):
 		pricing_rules.extend(_get_pricing_rules(apply_on, args, values))
 
 	pricing_rules = filter_pricing_rules_with_item_price_check(pricing_rules, args)
-
 	pricing_rules = filter_pricing_rules_based_on_condition(pricing_rules, args, doc=doc)
+	pricing_rules = filter_pricing_rules_based_on_coupon_code(pricing_rules, args)
 
 	rules = []
 
@@ -124,6 +124,21 @@ def filter_pricing_rules_based_on_condition(pricing_rules, args, doc=None):
 	for d in pricing_rules:
 		if cstr(d.condition).strip():
 			if evaluate_pricing_rule_condition(d, args, doc=doc):
+				filtered.append(d)
+		else:
+			filtered.append(d)
+
+	return filtered
+
+
+def filter_pricing_rules_based_on_coupon_code(pricing_rules, args):
+	filtered = []
+	for d in pricing_rules:
+		if d.coupon_code_based:
+			if (
+				args.coupon_code
+				and frappe.db.get_value("Coupon Code", args.coupon_code, "pricing_rule", cache=1) == d.name
+			):
 				filtered.append(d)
 		else:
 			filtered.append(d)
@@ -644,17 +659,18 @@ def validate_coupon_code(coupon_name):
 	coupon = frappe.get_doc("Coupon Code", coupon_name)
 
 	if coupon.valid_from:
-		if coupon.valid_from > getdate(today()):
+		if getdate(coupon.valid_from) > getdate():
 			frappe.throw(_("Sorry, this coupon code's validity has not started"))
-	elif coupon.valid_upto:
-		if coupon.valid_upto < getdate(today()):
+	if coupon.valid_upto:
+		if getdate(coupon.valid_upto) < getdate():
 			frappe.throw(_("Sorry, this coupon code's validity has expired"))
-	elif coupon.used >= coupon.maximum_use:
+
+	if coupon.used >= coupon.maximum_use:
 		frappe.throw(_("Sorry, this coupon code is no longer valid"))
 
 
-def update_coupon_code_count(coupon_name,transaction_type):
-	coupon=frappe.get_doc("Coupon Code",coupon_name)
+def update_coupon_code_count(coupon_name, transaction_type):
+	coupon=frappe.get_doc("Coupon Code", coupon_name, for_update=True)
 	if coupon:
 		if transaction_type=='used':
 			if coupon.used<coupon.maximum_use:

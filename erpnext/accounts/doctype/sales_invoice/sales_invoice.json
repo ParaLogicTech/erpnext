@@ -100,7 +100,6 @@
   "total_billing_amount",
   "section_break_30",
   "total_qty",
-  "total_stock_qty",
   "col_break_86",
   "total_alt_uom_qty",
   "column_break_88",
@@ -244,8 +243,9 @@
   "campaign_section",
   "campaign",
   "campaign_voucher_code_required",
-  "column_break_ioc8",
   "campaign_voucher_code",
+  "column_break_ioc8",
+  "coupon_code",
   "settings_tab",
   "print_settings_section",
   "letter_head",
@@ -2364,11 +2364,10 @@
    "label": "Is Goodwill Invoice"
   },
   {
-   "fieldname": "total_stock_qty",
-   "fieldtype": "Float",
-   "hidden": 1,
-   "label": "Total Stock Quantity",
-   "read_only": 1
+   "fieldname": "coupon_code",
+   "fieldtype": "Link",
+   "label": "Coupon Code",
+   "options": "Coupon Code"
   }
  ],
  "grid_page_length": 500,
@@ -2376,7 +2375,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-09 10:40:59.406192",
+ "modified": "2025-10-10 01:29:07.641669",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

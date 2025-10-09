@@ -196,8 +196,9 @@
   "campaign_section",
   "campaign",
   "campaign_voucher_code_required",
-  "column_break_ioc8",
   "campaign_voucher_code",
+  "column_break_ioc8",
+  "coupon_code",
   "settings_tab",
   "print_settings_section",
   "letter_head",
@@ -1820,12 +1821,18 @@
    "options": "party_account_currency",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "coupon_code",
+   "fieldtype": "Link",
+   "label": "Coupon Code",
+   "options": "Coupon Code"
   }
  ],
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-30 18:45:10.529347",
+ "modified": "2025-10-10 01:38:24.544322",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",

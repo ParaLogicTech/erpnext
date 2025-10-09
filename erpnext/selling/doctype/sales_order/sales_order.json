@@ -135,8 +135,6 @@
   "column_break_50",
   "discount_amount",
   "base_discount_amount",
-  "column_break_140",
-  "coupon_code",
   "section_break_111",
   "grand_total",
   "base_grand_total",
@@ -182,8 +180,9 @@
   "campaign_section",
   "campaign",
   "campaign_voucher_code_required",
-  "column_break_gaap",
   "campaign_voucher_code",
+  "column_break_gaap",
+  "coupon_code",
   "printing_details",
   "letter_head",
   "group_same_items",
@@ -779,7 +778,7 @@
    "collapsible_depends_on": "discount_amount",
    "fieldname": "section_break_48",
    "fieldtype": "Section Break",
-   "label": "Additional Discount and Coupon Code"
+   "label": "Additional Discount"
   },
   {
    "fieldname": "coupon_code",
@@ -1657,10 +1656,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "column_break_140",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "col_break_applies_to",
    "fieldtype": "Column Break"
   },
@@ -1851,12 +1846,13 @@
    "print_hide": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-file-text",
  "idx": 105,
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-10 16:27:32.401142",
+ "modified": "2025-10-10 01:26:29.019339",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",
@@ -1960,6 +1956,7 @@
    "role": "Packing User"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "status,transaction_date,customer,customer_name, territory,order_type,company",
  "show_name_in_global_search": 1,
  "sort_field": "transaction_date",

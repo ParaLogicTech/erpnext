@@ -105,6 +105,7 @@ class SalesInvoice(SellingController):
 		self.set_billing_hours_and_amount()
 		self.update_timesheet_billing_for_project()
 		self.validate_campaign()
+		self.validate_coupon_code()
 		self.validate_goodwill_invoicing()
 
 		self.validate_total_advance_amount()
@@ -139,6 +140,7 @@ class SalesInvoice(SellingController):
 
 		self.validate_previous_docstatus()
 		self.update_previous_doc_status()
+		self.update_coupon_code("used")
 
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating reserved qty in bin depends upon updated delivered qty in SO
@@ -187,6 +189,7 @@ class SalesInvoice(SellingController):
 		self.unlink_payments_on_invoice_cancel()
 		self.update_status_on_cancel()
 		self.update_previous_doc_status()
+		self.update_coupon_code("cancelled")
 
 		if not self.is_return:
 			self.update_serial_no(in_cancel=True)

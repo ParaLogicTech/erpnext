@@ -58,11 +58,9 @@ class SalesOrder(SellingController):
 		self.validate_drop_ship()
 		self.validate_serial_no_based_delivery()
 		self.validate_campaign()
-		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
+		self.validate_coupon_code()
 
-		if self.coupon_code:
-			from erpnext.accounts.doctype.pricing_rule.utils import validate_coupon_code
-			validate_coupon_code(self.coupon_code)
+		validate_inter_company_party(self.doctype, self.customer, self.company, self.inter_company_reference)
 
 		make_bundled_item_list(self)
 		validate_bundled_item_list(self)
@@ -94,9 +92,7 @@ class SalesOrder(SellingController):
 		self.update_blanket_order()
 
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
-		if self.coupon_code:
-			from erpnext.accounts.doctype.pricing_rule.utils import update_coupon_code_count
-			update_coupon_code_count(self.coupon_code, 'used')
+		self.update_coupon_code("used")
 
 	def on_cancel(self):
 		self.unlink_payments_on_order_cancel()
@@ -111,10 +107,7 @@ class SalesOrder(SellingController):
 		self.update_previous_doc_status()
 
 		self.update_blanket_order()
-
-		if self.coupon_code:
-			from erpnext.accounts.doctype.pricing_rule.utils import update_coupon_code_count
-			update_coupon_code_count(self.coupon_code, 'cancelled')
+		self.update_coupon_code("cancelled")
 
 	def before_update_after_submit(self):
 		super(SalesOrder, self).before_update_after_submit()

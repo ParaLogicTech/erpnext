@@ -718,6 +718,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 							name: me.frm.doc.name,
 							project: item.project || me.frm.doc.project,
 							campaign: me.frm.doc.campaign,
+							coupon_code: me.frm.doc.coupon_code,
 							qty: item.qty || 1,
 							stock_qty: item.stock_qty,
 							manufacturer: item.manufacturer,
@@ -2483,8 +2484,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	}
 
 	coupon_code() {
-		var me = this;
-		me.apply_pricing_rule();
+		this.apply_pricing_rule();
 	}
 
 	campaign() {
