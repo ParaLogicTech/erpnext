@@ -431,6 +431,10 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		this.frm.doc.base_tax_exclusive_total_before_discount = this.frm.doc.tax_exclusive_total_before_discount = 0.0;
 		this.frm.doc.base_tax_exclusive_total_discount = this.frm.doc.tax_exclusive_total_discount = 0.0;
 
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_stock_qty")) {
+			this.frm.doc.total_stock_qty = 0.0
+		}
+
 		if (frappe.meta.has_field(this.frm.doc.doctype, "total_net_weight")) {
 			this.frm.doc.total_net_weight = 0.0
 		}
@@ -447,6 +451,10 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		$.each(this.frm.doc["items"] || [], function(i, item) {
 			me.frm.doc.total_qty += item.qty;
 			me.frm.doc.total_alt_uom_qty += item.alt_uom_qty;
+
+			if (frappe.meta.has_field(me.frm.doc.doctype, 'total_stock_qty') && frappe.meta.has_field(item.doctype, 'stock_qty')) {
+				me.frm.doc.total_stock_qty += item.stock_qty;
+			}
 
 			if (frappe.meta.has_field(me.frm.doc.doctype, 'total_net_weight') && frappe.meta.has_field(item.doctype, 'net_weight')) {
 				me.frm.doc.total_net_weight += item.net_weight;

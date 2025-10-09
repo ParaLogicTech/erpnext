@@ -373,6 +373,9 @@ class calculate_taxes_and_totals(object):
 		self.doc.base_tax_exclusive_total_before_discount = self.doc.tax_exclusive_total_before_discount = 0.0
 		self.doc.base_tax_exclusive_total_discount = self.doc.tax_exclusive_total_discount = 0.0
 
+		if self.doc.meta.has_field('total_stock_qty'):
+			self.doc.total_stock_qty = 0.0
+
 		if self.doc.meta.has_field('total_net_weight'):
 			self.doc.total_net_weight = 0.0
 
@@ -387,6 +390,9 @@ class calculate_taxes_and_totals(object):
 		for item in self.doc.get("items"):
 			self.doc.total_qty += item.qty
 			self.doc.total_alt_uom_qty += item.alt_uom_qty
+
+			if self.doc.meta.has_field('total_stock_qty') and item.meta.has_field('stock_qty'):
+				self.doc.total_stock_qty += item.stock_qty
 
 			if self.doc.meta.has_field('total_net_weight') and item.meta.has_field('net_weight'):
 				self.doc.total_net_weight += item.net_weight

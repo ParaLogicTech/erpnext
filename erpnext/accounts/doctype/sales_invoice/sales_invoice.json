@@ -100,6 +100,7 @@
   "total_billing_amount",
   "section_break_30",
   "total_qty",
+  "total_stock_qty",
   "col_break_86",
   "total_alt_uom_qty",
   "column_break_88",
@@ -2361,6 +2362,13 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Is Goodwill Invoice"
+  },
+  {
+   "fieldname": "total_stock_qty",
+   "fieldtype": "Float",
+   "hidden": 1,
+   "label": "Total Stock Quantity",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -2368,7 +2376,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-02 15:51:31.879517",
+ "modified": "2025-10-09 10:40:59.406192",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
