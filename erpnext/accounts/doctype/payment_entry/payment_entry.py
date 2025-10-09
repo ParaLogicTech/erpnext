@@ -16,6 +16,7 @@ from erpnext.accounts.doctype.bank_account.bank_account import get_party_bank_ac
 from erpnext.controllers.accounts_controller import AccountsController, get_supplier_block_status
 from erpnext.controllers.transaction_controller import validate_taxes_and_charges
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile, is_cashier
+from erpnext.accounts.utils import get_allow_cost_center_in_entry_of_bs_account
 from frappe.model.naming import make_autoname
 
 
@@ -1372,8 +1373,8 @@ def get_outstanding_reference_documents(args):
 			.format(frappe.db.escape(args["voucher_type"]), frappe.db.escape(args["voucher_no"]))
 
 	# Add cost center condition
-	if args.get("cost_center"):
-		condition += " and cost_center='%s'" % args.get("cost_center")
+	if args.get("cost_center") and get_allow_cost_center_in_entry_of_bs_account():
+		condition += f" and cost_center = {frappe.db.escape(args.get("cost_center"))}"
 
 	date_fields_dict = {
 		'posting_date': ['from_posting_date', 'to_posting_date'],
