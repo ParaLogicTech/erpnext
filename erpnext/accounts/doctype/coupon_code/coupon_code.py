@@ -22,5 +22,3 @@ class CouponCode(Document):
 	def validate(self):
 		if self.coupon_type == "Gift Card":
 			self.maximum_use = 1
-			if not self.customer:
-				frappe.throw(_("Please select the customer."))
