@@ -70,7 +70,6 @@ class PaymentEntry(AccountsController):
 		self.set_amounts()
 		self.clear_unallocated_reference_document_rows()
 		self.validate_payment_against_negative_invoice()
-		self.validate_transaction_reference()
 		self.set_title()
 		self.validate_duplicate_entry()
 		self.validate_allocated_amount()
@@ -80,6 +79,7 @@ class PaymentEntry(AccountsController):
 
 	def before_submit(self):
 		self.auto_generate_reference_no()
+		self.validate_transaction_reference()
 		self.set_remarks()
 
 	def on_submit(self):
@@ -786,19 +786,18 @@ class PaymentEntry(AccountsController):
 			self.title = self.paid_from + " - " + self.paid_to
 
 	def validate_transaction_reference(self):
-		reference_no_series = get_reference_no_series(self.payment_type, self.mode_of_payment)
 		bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
 		bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
 
 		if bank_account_type == "Bank":
-			if not self.reference_no and not reference_no_series:
+			if not self.reference_no:
 				frappe.throw(_("Reference No is mandatory for Bank transaction"))
 			if not self.reference_date:
 				frappe.throw(_("Reference Date is mandatory for Bank transaction"))
 
 		mode = frappe.get_cached_doc("Mode of Payment", self.mode_of_payment) if self.mode_of_payment else frappe._dict()
 
-		if not self.reference_no and mode.reference_no_mandatory and not reference_no_series:
+		if not self.reference_no and mode.reference_no_mandatory:
 			frappe.throw(_("Reference No is mandatory for Mode of Payment {0}").format(
 				frappe.bold(self.mode_of_payment)
 			))

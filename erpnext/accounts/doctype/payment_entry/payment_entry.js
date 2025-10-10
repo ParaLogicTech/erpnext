@@ -64,21 +64,6 @@ erpnext.accounts.PaymentEntry = class PaymentEntry extends frappe.ui.form.Contro
 			filters: filters
 		};
 	}
-
-	set_reference_fields_mandatory() {
-		let account_type = this.frm.doc.payment_type == "Receive" ? this.frm.doc.account_paid_to_type : this.frm.doc.account_paid_from_type;
-
-		let mode = {};
-		if (this.frm.doc.mode_of_payment) {
-			mode = frappe.get_doc(":Mode of Payment", this.frm.doc.mode_of_payment) || {};
-		}
-
-		let series_field = this.frm.doc.payment_type ? "series_" + frappe.model.scrub(this.frm.doc.payment_type) : null;
-		let reference_no_series = series_field ? mode[series_field] : null;
-
-		let reference_no_mandatory = !reference_no_series && (account_type == "Bank" || mode.reference_no_mandatory);
-		this.frm.toggle_reqd("reference_no", reference_no_mandatory);
-    }
 }
 
 {% include "erpnext/public/js/controllers/accounts.js" %}
@@ -261,7 +246,6 @@ frappe.ui.form.on('Payment Entry', {
 		frm.events.set_dynamic_labels(frm);
 		frm.events.show_general_ledger(frm);
 		frm.events.set_up_reference_row_selection(frm);
-		frm.cscript.set_reference_fields_mandatory();
 	},
 
 	set_up_reference_row_selection: frm => {
@@ -467,7 +451,6 @@ frappe.ui.form.on('Payment Entry', {
 				frm.events.mode_of_payment(frm);
 			}
 		}
-		frm.cscript.set_reference_fields_mandatory();
 	},
 
 	mode_of_payment: function(frm) {
@@ -475,11 +458,6 @@ frappe.ui.form.on('Payment Entry', {
 			var payment_account_field = frm.doc.payment_type == "Receive" ? "paid_to" : "paid_from";
 			frm.set_value(payment_account_field, account);
 		})
-		frm.cscript.set_reference_fields_mandatory();
-	},
-
-	account_paid_to_type: function(frm) {
-		frm.cscript.set_reference_fields_mandatory();
 	},
 
 	is_pos: function (frm) {
