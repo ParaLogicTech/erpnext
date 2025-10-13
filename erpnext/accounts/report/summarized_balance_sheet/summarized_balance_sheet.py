@@ -62,18 +62,24 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 				"label": _("Actual ({0})").format(frappe.format(self.filters.report_date)),
 				"fieldtype": "Currency",
 				"width": 175,
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
 			},
 			{
 				"fieldname": "prev_year_display",
 				"label": _("Previous Year ({0})").format(frappe.format(self.filters.prev_year_date)),
 				"fieldtype": "Currency",
 				"width": 175,
+				"from_date": self.filters.prev_year_start,
+				"to_date": self.filters.prev_year_date,
 			},
 			{
 				"fieldname": "prev_closing_display",
 				"label": _("Prev. Year Closing ({0})").format(frappe.format(self.filters.prev_year_end)),
 				"fieldtype": "Currency",
 				"width": 190,
+				"from_date": self.filters.prev_year_start,
+				"to_date": self.filters.prev_year_end,
 			},
 		]
 

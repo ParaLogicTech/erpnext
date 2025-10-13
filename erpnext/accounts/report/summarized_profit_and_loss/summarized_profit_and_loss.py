@@ -233,7 +233,9 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"fieldname": "mtd_actual_display",
 				"label": _("M.T.D Actual"),
 				"fieldtype": "Currency",
-				"width": 140
+				"width": 140,
+				"from_date": self.filters.month_start_date,
+				"to_date": self.filters.report_date,
 			},
 			{
 				"fieldname": "mtd_budget_display",
@@ -245,13 +247,17 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"fieldname": "mtd_prev_year_display",
 				"label": _("M.T.D Previous Year"),
 				"fieldtype": "Currency",
-				"width": 140
+				"width": 140,
+				"from_date": self.filters.prev_year_month_start,
+				"to_date": self.filters.prev_year_date,
 			},
 			{
 				"fieldname": "ytd_actual_display",
 				"label": _("Y.T.D Actual"),
 				"fieldtype": "Currency",
-				"width": 140
+				"width": 140,
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
 			},
 			{
 				"fieldname": "ytd_budget_display",
@@ -263,7 +269,9 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"fieldname": "ytd_prev_year_display",
 				"label": _("Y.T.D Previous Year"),
 				"fieldtype": "Currency",
-				"width": 140
+				"width": 140,
+				"from_date": self.filters.prev_year_start,
+				"to_date": self.filters.prev_year_date,
 			}
 		]
 
