@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, getdate, get_first_day, get_year_start, add_years
+from frappe.utils import flt, cint, getdate, get_first_day, get_year_start, add_years, get_year_ending
 from erpnext import get_default_company
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
@@ -26,10 +26,12 @@ class SummarizedFinancialReport:
 		self.filters.report_date = getdate(self.filters.report_date)
 		self.filters.month_start_date = get_first_day(self.filters.report_date)
 		self.filters.year_start_date = get_year_start(self.filters.report_date)
+		self.filters.year_end_date = get_year_ending(self.filters.report_date)
 
 		self.filters.prev_year_date = add_years(self.filters.report_date, -1)
 		self.filters.prev_year_month_start = add_years(self.filters.month_start_date, -1)
 		self.filters.prev_year_start = add_years(self.filters.year_start_date, -1)
+		self.filters.prev_year_end = add_years(self.filters.year_end_date, -1)
 
 	def get_data(self):
 		report_type = self.get_report_type()

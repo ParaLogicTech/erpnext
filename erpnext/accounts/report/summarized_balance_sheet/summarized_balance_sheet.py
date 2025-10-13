@@ -12,7 +12,7 @@ def execute(filters=None):
 
 class SummarizedBalanceSheet(SummarizedFinancialReport):
 	gl_fields = [
-		'actual', 'prev_year',
+		'actual', 'prev_year', 'prev_closing',
 	]
 
 	total_fields = gl_fields
@@ -27,6 +27,7 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 
 		current_gl_data = self.get_gl_data(all_accounts, to_date=self.filters.report_date, aggregate=True)
 		prev_year_gl_data = self.get_gl_data(all_accounts, to_date=self.filters.prev_year_date, aggregate=True)
+		prev_closing_gl_data = self.get_gl_data(all_accounts, to_date=self.filters.prev_year_end, aggregate=True)
 
 		account_totals = {}
 
@@ -37,7 +38,11 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 		for d in prev_year_gl_data:
 			group = account_totals.setdefault(d.account, template.copy())
 			group["prev_year"] += d.debit - d.credit
-			
+
+		for d in prev_closing_gl_data:
+			group = account_totals.setdefault(d.account, template.copy())
+			group["prev_closing"] += d.debit - d.credit
+
 		return account_totals
 
 	def get_display_value_multiplier(self, row):
@@ -56,14 +61,20 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 				"fieldname": "actual_display",
 				"label": _("Actual ({0})").format(frappe.format(self.filters.report_date)),
 				"fieldtype": "Currency",
-				"width": 175
+				"width": 175,
 			},
 			{
 				"fieldname": "prev_year_display",
 				"label": _("Previous Year ({0})").format(frappe.format(self.filters.prev_year_date)),
 				"fieldtype": "Currency",
-				"width": 175
-			}
+				"width": 175,
+			},
+			{
+				"fieldname": "prev_closing_display",
+				"label": _("Prev. Year Closing ({0})").format(frappe.format(self.filters.prev_year_end)),
+				"fieldtype": "Currency",
+				"width": 190,
+			},
 		]
 
 	@staticmethod
