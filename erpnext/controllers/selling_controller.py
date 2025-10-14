@@ -290,6 +290,7 @@ class SellingController(TransactionController):
 
 	def validate_selling_price(self):
 		from erpnext.stock.stock_ledger import get_valuation_rate
+		from erpnext.accounts.report.gross_profit.gross_profit import get_sle_outgoing_rate
 
 		def throw_message(row, min_rate):
 			frappe.throw(_("Row #{0}: Net Selling Rate for Item {1} cannot be less than {2}").format(
@@ -303,6 +304,13 @@ class SellingController(TransactionController):
 		if not frappe.get_cached_value("Selling Settings", None, "validate_selling_price"):
 			return
 
+		delivery_note_items = []
+		for d in self.get("items"):
+			if d.get("delivery_note_item"):
+				delivery_note_items.append(("Delivery Note", d.delivery_note_item))
+
+		sle_outgoing_rate = get_sle_outgoing_rate(delivery_note_items)
+
 		for d in self.get("items"):
 			if not d.item_code:
 				continue
@@ -311,14 +319,17 @@ class SellingController(TransactionController):
 			if not is_stock_item:
 				continue
 
-			valuation_rate = flt(get_valuation_rate(
-				d.item_code,
-				d.get("warehouse"),
-				self.doctype,
-				self.name,
-				raise_error_if_no_rate=False,
-				ignore_zero_rate=True,
-			))
+			if d.get("delivery_note_item") and flt(sle_outgoing_rate.get(("Delivery Note", d.delivery_note_item))):
+				valuation_rate = flt(sle_outgoing_rate.get(("Delivery Note", d.delivery_note_item)))
+			else:
+				valuation_rate = flt(get_valuation_rate(
+					d.item_code,
+					d.get("warehouse"),
+					self.doctype,
+					self.name,
+					raise_error_if_no_rate=False,
+					ignore_zero_rate=True,
+				))
 
 			if valuation_rate <= 0:
 				last_purchase_rate = get_last_purchase_rate(d.item_code, d.get("warehouse"))
