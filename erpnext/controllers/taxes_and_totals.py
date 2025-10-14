@@ -714,8 +714,12 @@ class calculate_taxes_and_totals(object):
 				self.doc.rounded_total = self.doc.base_rounded_total = 0
 				return
 
-			self.doc.rounded_total = round_based_on_smallest_currency_fraction(self.doc.grand_total,
-				self.doc.currency, self.doc.precision("rounded_total"))
+			self.doc.rounded_total = round_based_on_smallest_currency_fraction(
+				self.doc.grand_total,
+				self.doc.currency,
+				self.doc.precision("rounded_total"),
+				self.doc.get("smallest_currency_fraction_value") or None,
+			)
 
 			# if print_in_rate is set, we would have already calculated rounding adjustment
 			self.doc.rounding_adjustment += flt(self.doc.rounded_total - self.doc.grand_total,

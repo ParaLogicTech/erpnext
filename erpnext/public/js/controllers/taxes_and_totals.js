@@ -877,8 +877,12 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		}
 
 		if(frappe.meta.get_docfield(this.frm.doc.doctype, "rounded_total", this.frm.doc.name)) {
-			this.frm.doc.rounded_total = round_based_on_smallest_currency_fraction(this.frm.doc.grand_total,
-				this.frm.doc.currency, precision("rounded_total"));
+			this.frm.doc.rounded_total = round_based_on_smallest_currency_fraction(
+                this.frm.doc.grand_total,
+				this.frm.doc.currency,
+                precision("rounded_total"),
+                this.frm.doc.smallest_currency_fraction_value || null,
+            );
 			this.frm.doc.rounding_adjustment += flt(this.frm.doc.rounded_total - this.frm.doc.grand_total,
 				precision("rounding_adjustment"));
 
