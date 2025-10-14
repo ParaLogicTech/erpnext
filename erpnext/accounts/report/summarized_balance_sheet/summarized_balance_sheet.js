@@ -45,11 +45,13 @@ frappe.query_reports["Summarized Balance Sheet"] = {
 		};
 
 		if (data) {
-			if (data.account_group && column.to_date && data.row_type === "Account Group") {
+            let report_date = frappe.query_report.get_filter_value("report_date");
+
+			if (data.account_group && report_date && data.row_type === "Account Group") {
 				options.link_href = erpnext.financial_statements.get_summarized_statement_link(
 					"Summarized Balance Sheet",
 					data.account_group,
-					column.to_date,
+					report_date,
 				);
 			}
 
