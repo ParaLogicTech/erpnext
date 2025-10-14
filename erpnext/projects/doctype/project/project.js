@@ -775,9 +775,10 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		me.frm.check_if_unsaved();
 
 		let billable_customers = await this.get_billable_customers();
-		if (billable_customers.length < 2) {
+		if (billable_customers.length <= 1) {
+            let bill_to = billable_customers.length ? billable_customers[0].customer : null;
 			callback({
-				bill_to: null,
+				bill_to: bill_to,
 				bill_to_filter: null,
 			});
 			return
