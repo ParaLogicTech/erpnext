@@ -19,7 +19,6 @@ from erpnext.projects.doctype.timesheet.timesheet import get_projectwise_timeshe
 from erpnext.assets.doctype.asset.depreciation import get_disposal_account_and_cost_center,\
 	get_gl_entries_on_asset_disposal
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos, get_delivery_note_serial_no
-from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty_program_details_with_points,\
 	validate_loyalty_points
 from erpnext.accounts.deferred_revenue import validate_service_stop_date
@@ -1224,25 +1223,6 @@ class SalesInvoice(SellingController):
 				}, self.party_account_currency, item=self)
 			)
 
-	def make_tax_gl_entries(self, gl_entries):
-		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
-
-		for tax in self.get("taxes"):
-			if flt(tax.base_tax_amount_after_discount_amount):
-				account_currency = get_account_currency(tax.account_head)
-				gl_entries.append(
-					self.get_gl_dict({
-						"account": tax.account_head,
-						"against": billing_party_name or billing_party,
-						"credit": flt(tax.base_tax_amount_after_discount_amount,
-							tax.precision("tax_amount_after_discount_amount")),
-						"credit_in_account_currency": (flt(tax.base_tax_amount_after_discount_amount,
-							tax.precision("base_tax_amount_after_discount_amount")) if account_currency==self.company_currency else
-							flt(tax.tax_amount_after_discount_amount, tax.precision("tax_amount_after_discount_amount"))),
-						"cost_center": tax.cost_center or self.cost_center
-					}, account_currency, item=tax)
-				)
-
 	def make_item_gl_entries(self, gl_entries):
 		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
@@ -1401,50 +1381,6 @@ class SalesInvoice(SellingController):
 				}, item=item)
 			)
 
-	def make_advance_reversal_gl_entries(self, gl_entries):
-		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
-
-		for tax in self.get("taxes"):
-			if flt(tax.base_advance_tax):
-				reference_no = set([adv.reference_name for adv in self.advances if adv.advance_tax])
-				reference_no = ", ".join(reference_no)
-
-				account_currency = get_account_currency(tax.account_head)
-				gl_entries.append(
-					self.get_gl_dict({
-						"account": tax.account_head,
-						"against": billing_party_name or billing_party,
-						"debit": flt(tax.base_advance_tax, tax.precision("tax_amount_after_discount_amount")),
-						"debit_in_account_currency": (
-							flt(tax.base_advance_tax, tax.precision("base_advance_tax"))
-							if account_currency == self.company_currency else
-							flt(tax.advance_tax, tax.precision("advance_tax"))
-						),
-						"cost_center": tax.cost_center or self.cost_center,
-						"reference_no": reference_no,
-					}, account_currency, item=tax)
-				)
-
-				gl_entries.append(
-					self.get_gl_dict({
-						"account": self.debit_to,
-						"party_type": billing_party_type,
-						"party": billing_party,
-						"against": self.against_income_account,
-						"credit": flt(tax.base_advance_tax, self.precision("grand_total")),
-						"credit_in_account_currency": (
-							flt(tax.base_advance_tax, self.precision("grand_total"))
-							if account_currency == self.company_currency else
-							flt(tax.advance_tax, self.precision("grand_total"))
-						),
-						"against_voucher": self.return_against if cint(self.is_return) and self.return_against else self.name,
-						"against_voucher_type": self.doctype,
-						"cost_center": self.cost_center,
-						"project": self.project,
-						"reference_no": reference_no,
-					}, self.party_account_currency, item=self)
-				)
-
 	def make_prepaid_deferred_revenue_gl_entry(self, gl_entries):
 		if self.prepaid_deferred_revenue:
 			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
@@ -1599,26 +1535,6 @@ class SalesInvoice(SellingController):
 					"cost_center": self.cost_center or self.write_off_cost_center or default_cost_center
 				}, write_off_account_currency, item=self)
 			)
-
-	def make_gle_for_rounding_adjustment(self, gl_entries):
-		if flt(self.rounding_adjustment, self.precision("rounding_adjustment")) and self.base_rounding_adjustment:
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
-
-			round_off_account, round_off_cost_center = \
-				get_round_off_account_and_cost_center(self.company)
-			round_off_account_currency = get_account_currency(round_off_account)
-
-			gl_entries.append(
-				self.get_gl_dict({
-					"account": round_off_account,
-					"against": billing_party_name or billing_party,
-					"credit_in_account_currency": (flt(self.base_rounding_adjustment,
-						self.precision('base_rounding_adjustment')) if round_off_account_currency == self.company_currency
-						else flt(self.rounding_adjustment, self.precision("rounding_adjustment"))),
-					"credit": flt(self.base_rounding_adjustment,
-						self.precision("base_rounding_adjustment")),
-					"cost_center": self.cost_center or round_off_cost_center,
-				}, round_off_account_currency, item=self))
 
 	def on_recurring(self, reference_doc, auto_repeat_doc):
 		for fieldname in ("c_form_applicable", "c_form_no", "write_off_amount"):

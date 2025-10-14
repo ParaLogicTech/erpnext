@@ -10,6 +10,8 @@ from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
+from erpnext.accounts.utils import get_account_currency
 
 
 class SellingController(TransactionController):
@@ -968,6 +970,91 @@ class SellingController(TransactionController):
 
 		from erpnext.accounts.doctype.pricing_rule.utils import update_coupon_code_count
 		update_coupon_code_count(self.coupon_code, transaction_type)
+
+	def make_tax_gl_entries(self, gl_entries):
+		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+
+		for tax in self.get("taxes"):
+			if flt(tax.base_tax_amount_after_discount_amount):
+				account_currency = get_account_currency(tax.account_head)
+				gl_entries.append(
+					self.get_gl_dict({
+						"account": tax.account_head,
+						"against": billing_party_name or billing_party,
+						"credit": flt(tax.base_tax_amount_after_discount_amount,
+							tax.precision("tax_amount_after_discount_amount")),
+						"credit_in_account_currency": (flt(tax.base_tax_amount_after_discount_amount,
+							tax.precision("base_tax_amount_after_discount_amount")) if account_currency==self.company_currency else
+							flt(tax.tax_amount_after_discount_amount, tax.precision("tax_amount_after_discount_amount"))),
+						"cost_center": tax.cost_center or self.cost_center
+					}, account_currency, item=tax)
+				)
+
+	def make_advance_reversal_gl_entries(self, gl_entries):
+		debit_to = self.get_party_account()
+		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+
+		for tax in self.get("taxes"):
+			if flt(tax.base_advance_tax):
+				reference_no = set([adv.reference_name for adv in self.advances if adv.advance_tax])
+				reference_no = ", ".join(reference_no)
+
+				account_currency = get_account_currency(tax.account_head)
+				gl_entries.append(
+					self.get_gl_dict({
+						"account": tax.account_head,
+						"against": billing_party_name or billing_party,
+						"debit": flt(tax.base_advance_tax, tax.precision("tax_amount_after_discount_amount")),
+						"debit_in_account_currency": (
+							flt(tax.base_advance_tax, tax.precision("base_advance_tax"))
+							if account_currency == self.company_currency else
+							flt(tax.advance_tax, tax.precision("advance_tax"))
+						),
+						"cost_center": tax.cost_center or self.cost_center,
+						"reference_no": reference_no,
+					}, account_currency, item=tax)
+				)
+
+				gl_entries.append(
+					self.get_gl_dict({
+						"account": debit_to,
+						"party_type": billing_party_type,
+						"party": billing_party,
+						"against": tax.account_head,
+						"credit": flt(tax.base_advance_tax, self.precision("grand_total")),
+						"credit_in_account_currency": (
+							flt(tax.base_advance_tax, self.precision("grand_total"))
+							if account_currency == self.company_currency else
+							flt(tax.advance_tax, self.precision("grand_total"))
+						),
+						"against_voucher": self.get("return_against")\
+							if cint(self.get("is_return")) and self.get("return_against") else self.name,
+						"against_voucher_type": self.doctype,
+						"cost_center": self.get("cost_center"),
+						"project": self.get("project"),
+						"reference_no": reference_no,
+					}, self.party_account_currency, item=self)
+				)
+
+	def make_gle_for_rounding_adjustment(self, gl_entries):
+		if flt(self.rounding_adjustment, self.precision("rounding_adjustment")) and self.base_rounding_adjustment:
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+
+			round_off_account, round_off_cost_center = get_round_off_account_and_cost_center(self.company)
+			round_off_account_currency = get_account_currency(round_off_account)
+
+			gl_entries.append(
+				self.get_gl_dict({
+					"account": round_off_account,
+					"against": billing_party_name or billing_party,
+					"credit_in_account_currency": (
+						flt(self.base_rounding_adjustment, self.precision('base_rounding_adjustment'))
+						if round_off_account_currency == self.company_currency
+						else flt(self.rounding_adjustment, self.precision("rounding_adjustment"))
+					),
+					"credit": flt(self.base_rounding_adjustment, self.precision("base_rounding_adjustment")),
+					"cost_center": self.cost_center or round_off_cost_center,
+				}, round_off_account_currency, item=self))
 
 
 @frappe.whitelist()

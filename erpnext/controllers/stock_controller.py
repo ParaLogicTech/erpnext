@@ -28,7 +28,7 @@ class StockController(AccountsController):
 		self.validate_customer_provided_item()
 		self.validate_vehicle_item()
 
-	def make_gl_entries(self, gl_entries=None, repost_future_gle=True, from_repost=False):
+	def make_gl_entries(self, gl_entries=None, repost_future_gle=True, from_repost=False, merge_entries=True):
 		if self.docstatus == 2:
 			delete_gl_entries(voucher_type=self.doctype, voucher_no=self.name)
 
@@ -36,7 +36,7 @@ class StockController(AccountsController):
 			if self.docstatus == 1:
 				if not gl_entries:
 					gl_entries = self.get_gl_entries()
-				make_gl_entries(gl_entries, from_repost=from_repost)
+				make_gl_entries(gl_entries, from_repost=from_repost, merge_entries=merge_entries)
 
 			if repost_future_gle or self.flags.repost_future_gle:
 				update_gl_entries_for_reposted_stock_vouchers((self.doctype, self.name))
@@ -44,7 +44,7 @@ class StockController(AccountsController):
 		elif self.doctype in ['Purchase Receipt', 'Purchase Invoice'] and self.docstatus == 1:
 			gl_entries = []
 			gl_entries = self.get_asset_gl_entry(gl_entries)
-			make_gl_entries(gl_entries, from_repost=from_repost)
+			make_gl_entries(gl_entries, from_repost=from_repost, merge_entries=merge_entries)
 
 	def validate_serialized_batch(self):
 		from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
