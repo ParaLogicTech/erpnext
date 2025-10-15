@@ -602,7 +602,10 @@ class SalesInvoice(SellingController):
 			return
 
 		# Validate total paid amount zero
-		if not flt(self.paid_amount) and not flt(self.total_advance) and not flt(self.prepaid_deferred_revenue):
+		if (
+			flt(self.get_payable_amount(), self.precision("grand_total"))
+			and not flt(self.paid_amount)
+		):
 			frappe.throw(_("Paid Amount cannot be zero for POS Invoice"))
 
 		# Validate total return payment amount
