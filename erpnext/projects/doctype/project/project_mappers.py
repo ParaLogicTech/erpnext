@@ -884,14 +884,18 @@ def set_project_details_in_transaction(target_doc, project_details, project, bil
 
 
 def set_cash_or_credit(target_doc, project):
+	project_customers = (project.customer, project.bill_to)
+	project_customers = set(c for c in project_customers if c)
+
 	invoice_bill_to = target_doc.bill_to or target_doc.customer
+	is_cash_customer = frappe.get_cached_value("Customer", invoice_bill_to, "cash_billing")
+
 	if target_doc.insurance_company and invoice_bill_to == target_doc.insurance_company:
 		target_doc.is_pos = 0
+	elif invoice_bill_to in project_customers:
+		target_doc.is_pos = cint(is_cash_customer or project.cash_billing)
 	else:
-		target_doc.is_pos = cint(
-			frappe.get_cached_value("Customer", invoice_bill_to, "cash_billing")
-			or project.cash_billing
-		)
+		target_doc.is_pos = cint(is_cash_customer)
 
 
 def set_contact_and_address_in_transaction(target_doc, project):
