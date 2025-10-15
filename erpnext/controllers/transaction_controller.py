@@ -794,6 +794,14 @@ class TransactionController(StockController):
 	def is_rounded_total_disabled(self):
 		if self.meta.get_field("calculate_tax_on_company_currency") and cint(self.get("calculate_tax_on_company_currency")) and self.currency != self.company_currency:
 			return True
+
+		if (
+			flt(self.get("prepaid_deferred_revenue"))
+			and self.get("party_account_currency") == self.currency
+			and flt(self.prepaid_deferred_revenue) == flt(self.grand_total)
+		):
+			return True
+
 		if self.meta.get_field("disable_rounded_total"):
 			return self.disable_rounded_total
 		else:

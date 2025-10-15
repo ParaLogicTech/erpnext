@@ -863,30 +863,45 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 	}
 
 	set_rounded_total() {
-		var disable_rounded_total = 0;
-		if(frappe.meta.get_docfield(this.frm.doc.doctype, "disable_rounded_total", this.frm.doc.name)) {
-			disable_rounded_total = this.frm.doc.disable_rounded_total;
-		} else if (frappe.sys_defaults.disable_rounded_total) {
-			disable_rounded_total = frappe.sys_defaults.disable_rounded_total;
-		}
-
-		if (cint(disable_rounded_total) || !this.should_round_transaction_currency()) {
-			this.frm.doc.rounded_total = 0;
-			this.frm.doc.base_rounded_total = 0;
+		if (!frappe.meta.get_docfield(this.frm.doc.doctype, "rounded_total", this.frm.doc.name)) {
 			return;
 		}
 
-		if(frappe.meta.get_docfield(this.frm.doc.doctype, "rounded_total", this.frm.doc.name)) {
-			this.frm.doc.rounded_total = round_based_on_smallest_currency_fraction(
-                this.frm.doc.grand_total,
-				this.frm.doc.currency,
-                precision("rounded_total"),
-                this.frm.doc.smallest_currency_fraction_value || null,
-            );
-			this.frm.doc.rounding_adjustment += flt(this.frm.doc.rounded_total - this.frm.doc.grand_total,
-				precision("rounding_adjustment"));
+		if (this.is_rounded_total_disabled()) {
+			this.frm.doc.rounded_total = this.frm.doc.grand_total;
+			this.frm.doc.base_rounded_total = this.frm.doc.base_grand_total;
+			return;
+		}
 
-			this.set_in_company_currency(this.frm.doc, ["rounding_adjustment", "rounded_total"]);
+		this.frm.doc.rounded_total = round_based_on_smallest_currency_fraction(
+			this.frm.doc.grand_total,
+			this.frm.doc.currency,
+			precision("rounded_total"),
+			this.frm.doc.smallest_currency_fraction_value || null,
+		);
+		this.frm.doc.rounding_adjustment += flt(this.frm.doc.rounded_total - this.frm.doc.grand_total,
+			precision("rounding_adjustment"));
+
+		this.set_in_company_currency(this.frm.doc, ["rounding_adjustment", "rounded_total"]);
+	}
+
+	is_rounded_total_disabled() {
+		if (!this.should_round_transaction_currency()) {
+			return true;
+		}
+
+		if (
+			flt(this.frm.doc.prepaid_deferred_revenue)
+			&& this.frm.doc.party_account_currency == this.frm.doc.currency
+			&& flt(this.frm.doc.prepaid_deferred_revenue) == flt(this.frm.doc.grand_total)
+		) {
+			return true;
+		}
+
+		if (frappe.meta.get_docfield(this.frm.doc.doctype, "disable_rounded_total", this.frm.doc.name)) {
+			return this.frm.doc.disable_rounded_total;
+		} else if (frappe.sys_defaults.disable_rounded_total) {
+			return frappe.sys_defaults.disable_rounded_total;
 		}
 	}
 
