@@ -13,8 +13,10 @@
   "column_break_gygm",
   "company",
   "is_root_level",
-  "section_break_tnce",
-  "rows"
+  "rows_section",
+  "rows",
+  "variables_section",
+  "variables"
  ],
  "fields": [
   {
@@ -49,10 +51,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "section_break_tnce",
-   "fieldtype": "Section Break"
-  },
-  {
    "fieldname": "report_type",
    "fieldtype": "Select",
    "in_list_view": 1,
@@ -69,12 +67,28 @@
    "label": "Root Type",
    "options": "Income\nExpense\nAsset\nLiability\nEquity",
    "reqd": 1
+  },
+  {
+   "fieldname": "rows_section",
+   "fieldtype": "Section Break",
+   "label": "Rows"
+  },
+  {
+   "fieldname": "variables_section",
+   "fieldtype": "Section Break",
+   "label": "Variables"
+  },
+  {
+   "fieldname": "variables",
+   "fieldtype": "Table",
+   "label": "Variables",
+   "options": "Account Group Variable"
   }
  ],
  "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-13 13:25:54.607586",
+ "modified": "2025-10-17 12:51:59.916761",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group",

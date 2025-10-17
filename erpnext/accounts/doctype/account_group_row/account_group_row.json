@@ -19,7 +19,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Row Type",
-   "options": "Account\nAccount Group\nSection Break\nSection Total\nProfit and Loss",
+   "options": "Account\nAccount Group\nFormula\nSection Break\nSection Total\nProfit and Loss",
    "reqd": 1
   },
   {
@@ -68,7 +68,7 @@
  "grid_page_length": 500,
  "istable": 1,
  "links": [],
- "modified": "2025-10-17 12:14:33.068394",
+ "modified": "2025-10-17 13:39:08.028777",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group Row",

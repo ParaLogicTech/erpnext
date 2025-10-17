@@ -1,0 +1,44 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-17 12:51:09.933320",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "variable_name",
+  "expression"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "variable_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Variable Name",
+   "reqd": 1
+  },
+  {
+   "columns": 8,
+   "fieldname": "expression",
+   "fieldtype": "Code",
+   "in_list_view": 1,
+   "label": "Expression",
+   "options": "Python"
+  }
+ ],
+ "grid_page_length": 500,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-10-17 12:53:53.300449",
+ "modified_by": "Administrator",
+ "module": "Accounts",
+ "name": "Account Group Variable",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

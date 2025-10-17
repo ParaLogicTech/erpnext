@@ -9,7 +9,7 @@ class AccountGroup(Document):
 		self.validate_root_level()
 		self.validate_root_type()
 		self.validate_rows()
-		self.clean_labels()
+		self.cleanup()
 
 	def validate_root_level(self):
 		"""Validate root level account group type."""
@@ -124,9 +124,12 @@ class AccountGroup(Document):
 				row.account_group = None
 				row.options = None
 
-	def clean_labels(self):
-		for row in self.rows:
-			row.section_name = clean_whitespace(row.section_name)
+	def cleanup(self):
+		for d in self.rows:
+			d.section_name = clean_whitespace(d.section_name)
+
+		for d in self.variables:
+			d.variable_name = clean_whitespace(d.variable_name)
 
 
 @frappe.whitelist()

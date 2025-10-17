@@ -1,4 +1,5 @@
 import frappe
+import erpnext
 from frappe import _
 from frappe.utils import flt, cint, cstr, getdate, get_first_day, get_year_start, add_years, get_year_ending
 from erpnext import get_default_company
@@ -153,21 +154,25 @@ class SummarizedFinancialReport:
 
 		group_account_map = self.get_accounts_in_account_group(group)
 		all_accounts = group_account_map.get(group.name, [])
-		account_totals = self.get_account_totals(all_accounts)
+		self.account_totals = self.get_account_totals(all_accounts)
+		self.child_group_totals = self.get_child_group_totals(group, group_account_map)
 
-		# Calculate Child Group Totals
-		child_group_totals = {}
-		for row in group.rows:
-			if row.row_type != "Account Group":
-				continue
+		self.account_totals_by_field = {}
+		self.group_totals_by_field = {}
+		for f in self.total_fields:
+			self.account_totals_by_field[f] = {}
+			self.group_totals_by_field[f] = {}
+			for key, tot in self.account_totals.items():
+				self.account_totals_by_field[f][key] = flt(tot.get(f))
+			for key, tot in self.child_group_totals.items():
+				self.group_totals_by_field[f][key] = flt(tot.get(f))
 
-			child_group_doc = self.get_account_group_doc(row.account_group)
-
-			group_accounts = group_account_map.get(row.account_group) or set()
-			group_totals = self.get_group_totals(group_accounts, account_totals)
-			group_totals["root_type"] = child_group_doc.root_type
-
-			child_group_totals[row.account_group] = group_totals
+		self.variable_totals = self.calculate_variable_totals(group)
+		self.variable_totals_by_field = {}
+		for f in self.total_fields:
+			self.variable_totals_by_field[f] = frappe._dict()
+			for key, tot in self.variable_totals.items():
+				self.variable_totals_by_field[f][key] = tot.get(f)
 
 		running_grand_totals = {f: 0 for f in self.total_fields}
 		running_section_totals = {f: 0 for f in self.total_fields}
@@ -175,7 +180,7 @@ class SummarizedFinancialReport:
 
 		for row in group.rows:
 			if row.row_type == "Account":
-				totals = account_totals.get(row.account) or {}
+				totals = self.account_totals.get(row.account) or {}
 				data.append(self.get_row(
 					row.row_type,
 					row_value=row.account,
@@ -190,7 +195,7 @@ class SummarizedFinancialReport:
 					running_section_totals[f] += flt(totals.get(f))
 
 			elif row.row_type == "Account Group":
-				totals = child_group_totals.get(row.account_group) or {}
+				totals = self.child_group_totals.get(row.account_group) or {}
 				data.append(self.get_row(
 					row.row_type,
 					row_value=row.account_group,
@@ -204,6 +209,27 @@ class SummarizedFinancialReport:
 					running_grand_totals[f] += flt(totals.get(f))
 					running_section_totals[f] += flt(totals.get(f))
 
+			elif row.row_type == "Formula":
+				formula_totals = self.calculate_formula_totals(
+					row,
+					previous_section_totals,
+					running_grand_totals,
+					running_section_totals,
+				)
+
+				data.append(self.get_row(
+					row.row_type,
+					row_value=row.options or row.section_name,
+					row_label=row.section_name,
+					totals=formula_totals,
+					group_root_type=group_root_type,
+					reverse_sign=row.reverse_sign,
+				))
+
+				for f in self.total_fields:
+					running_grand_totals[f] += flt(formula_totals.get(f))
+					running_section_totals[f] += flt(formula_totals.get(f))
+
 			elif row.row_type == "Section Break":
 				data.append(self.get_row(
 					row.row_type,
@@ -216,8 +242,6 @@ class SummarizedFinancialReport:
 			elif row.row_type == "Section Total":
 				section_totals = self.calculate_section_totals(
 					row,
-					child_group_totals,
-					account_totals,
 					previous_section_totals,
 					running_grand_totals,
 					running_section_totals,
@@ -272,11 +296,27 @@ class SummarizedFinancialReport:
 	def get_account_totals(self, all_accounts):
 		raise NotImplementedError("get_account_totals not implemented")
 
-	def get_group_totals(self, group_accounts, account_totals):
+	def get_child_group_totals(self, group_doc, group_account_map):
+		child_group_totals = {}
+		for row in group_doc.rows:
+			if row.row_type != "Account Group":
+				continue
+
+			child_group_doc = self.get_account_group_doc(row.account_group)
+
+			group_accounts = group_account_map.get(row.account_group) or set()
+			group_totals = self.get_group_totals(group_accounts)
+			group_totals["root_type"] = child_group_doc.root_type
+
+			child_group_totals[row.account_group] = group_totals
+
+		return child_group_totals
+
+	def get_group_totals(self, group_accounts):
 		group_totals = frappe._dict({f: 0 for f in self.total_fields})
 
 		for account in group_accounts:
-			totals = account_totals.get(account)
+			totals = self.account_totals.get(account)
 			if not totals:
 				continue
 
@@ -285,11 +325,97 @@ class SummarizedFinancialReport:
 
 		return group_totals
 
+	def calculate_variable_totals(self, group_doc):
+		if not group_doc.variables:
+			return {}
+
+		from frappe.utils.safe_exec import get_safe_globals
+		eval_globals = get_safe_globals()
+
+		variable_totals = frappe._dict()
+		for d in group_doc.variables:
+			totals = frappe._dict({f: 0 for f in self.total_fields})
+
+			variable_totals_by_field = {}
+			for f in self.total_fields:
+				variable_totals_by_field[f] = {}
+				for key, tot in variable_totals.items():
+					variable_totals_by_field[f][key] = flt(tot.get(f))
+
+			for f in self.total_fields:
+				try:
+					totals[f] = frappe.safe_eval(d.expression, eval_globals, eval_locals={
+						"accounts": self.account_totals_by_field[f],
+						"groups": self.group_totals_by_field[f],
+						"account_totals": self.account_totals,
+						"group_totals": self.child_group_totals,
+						"variables": variable_totals_by_field[f],
+						"variable_totals": variable_totals,
+
+						"total_field": f,
+						"filters": self.filters,
+					})
+				except Exception as e:
+					frappe.msgprint(_("Error evaluating variable {0}: {1}".format(
+						frappe.bold(d.variable_name), repr(e)
+					)), indicator="orange")
+
+			variable_totals[d.variable_name] = totals
+
+		return variable_totals
+
+	def calculate_formula_totals(
+		self,
+		row,
+		previous_section_totals,
+		running_grand_totals,
+		running_section_totals,
+	):
+		from frappe.utils.safe_exec import get_safe_globals
+		eval_globals = get_safe_globals()
+
+		previous_section_totals_by_field = {}
+		for f in self.total_fields:
+			previous_section_totals_by_field[f] = {}
+			for key, tot in previous_section_totals.items():
+				previous_section_totals_by_field[f][key] = flt(tot.get(f))
+
+		formula_totals = {}
+
+		for f in self.total_fields:
+			try:
+				formula_totals[f] = frappe.safe_eval(row.options, eval_globals, eval_locals={
+					"accounts": self.account_totals_by_field[f],
+					"account_totals": self.account_totals,
+
+					"groups": self.group_totals_by_field[f],
+					"group_totals": self.child_group_totals,
+
+					"variables": self.variable_totals_by_field[f],
+					"variable_totals": self.variable_totals,
+
+					"previous_sections": previous_section_totals_by_field[f],
+					"previous_section_totals": previous_section_totals,
+
+					"running_grand_total": running_grand_totals[f],
+					"all_running_grand_totals": running_grand_totals,
+
+					"running_section_total": running_section_totals[f],
+					"all_running_section_totals": running_section_totals,
+
+					"total_field": f,
+					"filters": self.filters,
+				})
+			except Exception as e:
+				frappe.msgprint(_("Error evaluating formula {0} on Row #{1}: {2}".format(
+					frappe.bold(row.section_name), row.idx, e
+				)), indicator="orange")
+
+		return formula_totals
+
 	def calculate_section_totals(
 		self,
 		row,
-		child_child_groups,
-		account_totals,
 		previous_section_totals,
 		running_grand_totals,
 		running_section_totals,
@@ -309,10 +435,10 @@ class SummarizedFinancialReport:
 				continue
 
 			totals_obj = None
-			if group_code in child_child_groups:
-				totals_obj = child_child_groups[group_code]
-			elif group_code in account_totals:
-				totals_obj = account_totals[group_code]
+			if group_code in self.child_group_totals:
+				totals_obj = self.child_group_totals[group_code]
+			elif group_code in self.account_totals:
+				totals_obj = self.account_totals[group_code]
 			elif group_code in previous_section_totals:
 				totals_obj = previous_section_totals[group_code]
 			elif group_code in ("Section Total", "_Section Total_"):
@@ -372,6 +498,7 @@ class SummarizedFinancialReport:
 		row["account_display"] = row_label or row_value or ""
 		row["root_type"] = totals.get("root_type") or group_root_type
 		row["is_bold"] = cint(is_bold)
+		row["currency"] = erpnext.get_company_currency(self.filters.company)
 
 		if row_type == "Account":
 			row["account_display"] = row_label or row_value or ""
