@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, getdate, get_first_day, get_year_start, add_years, get_year_ending
+from frappe.utils import flt, cint, cstr, getdate, get_first_day, get_year_start, add_years, get_year_ending
 from erpnext import get_default_company
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
@@ -169,7 +169,10 @@ class SummarizedFinancialReport:
 
 			child_group_totals[row.account_group] = group_totals
 
-		running_totals = {f: 0 for f in self.total_fields}
+		running_grand_totals = {f: 0 for f in self.total_fields}
+		running_section_totals = {f: 0 for f in self.total_fields}
+		previous_section_totals = {}
+
 		for row in group.rows:
 			if row.row_type == "Account":
 				totals = account_totals.get(row.account) or {}
@@ -183,7 +186,8 @@ class SummarizedFinancialReport:
 				))
 
 				for f in self.total_fields:
-					running_totals[f] += flt(totals.get(f))
+					running_grand_totals[f] += flt(totals.get(f))
+					running_section_totals[f] += flt(totals.get(f))
 
 			elif row.row_type == "Account Group":
 				totals = child_group_totals.get(row.account_group) or {}
@@ -197,7 +201,8 @@ class SummarizedFinancialReport:
 				))
 
 				for f in self.total_fields:
-					running_totals[f] += flt(totals.get(f))
+					running_grand_totals[f] += flt(totals.get(f))
+					running_section_totals[f] += flt(totals.get(f))
 
 			elif row.row_type == "Section Break":
 				data.append(self.get_row(
@@ -208,8 +213,16 @@ class SummarizedFinancialReport:
 					group_root_type=group_root_type,
 				))
 
-			elif row.row_type == "Section Group":
-				section_totals = self.calculate_section_totals(row, child_group_totals, running_totals)
+			elif row.row_type == "Section Total":
+				section_totals = self.calculate_section_totals(
+					row,
+					child_group_totals,
+					account_totals,
+					previous_section_totals,
+					running_grand_totals,
+					running_section_totals,
+				)
+
 				data.append(self.get_row(
 					row.row_type,
 					row_value=row.section_name,
@@ -219,6 +232,9 @@ class SummarizedFinancialReport:
 					group_root_type=group_root_type,
 					reverse_sign=row.reverse_sign,
 				))
+
+				previous_section_totals[row.section_name] = section_totals
+				running_section_totals = {f: 0 for f in self.total_fields}
 
 			elif row.row_type == "Profit and Loss":
 				net_profit_loss = self.get_net_profit_loss()
@@ -269,24 +285,55 @@ class SummarizedFinancialReport:
 
 		return group_totals
 
-	def calculate_section_totals(self, row, child_groups, running_totals):
-		if not row.section_account_groups:
-			return running_totals.copy()
+	def calculate_section_totals(
+		self,
+		row,
+		child_child_groups,
+		account_totals,
+		previous_section_totals,
+		running_grand_totals,
+		running_section_totals,
+	):
+		options = cstr(row.options).strip()
+		if not options or options == "Running Total":
+			return running_grand_totals.copy()
+		elif options == "Section Total":
+			return running_section_totals.copy()
 
-		included_groups = []
+		included_totals = []
 		included_categories = set()
 
-		for line in row.section_account_groups.split('\n'):
+		for line in options.split('\n'):
 			group_code = line.strip()
-			if group_code and group_code in child_groups:
-				group_info = child_groups[group_code]
-				included_groups.append(group_info)
-				included_categories.add(group_info["root_type"])
+			if not group_code:
+				continue
+
+			totals_obj = None
+			if group_code in child_child_groups:
+				totals_obj = child_child_groups[group_code]
+			elif group_code in account_totals:
+				totals_obj = account_totals[group_code]
+			elif group_code in previous_section_totals:
+				totals_obj = previous_section_totals[group_code]
+			elif group_code in ("Section Total", "_Section Total_"):
+				totals_obj = running_section_totals
+			elif group_code in ("Running Total", "_Running Total_"):
+				totals_obj = running_grand_totals
+
+			if totals_obj:
+				included_totals.append(totals_obj)
+				if totals_obj.get("root_type"):
+					included_categories.add(totals_obj["root_type"])
+			else:
+				frappe.msgprint(_("Invalid Section Total reference to {0} in Section {1}").format(
+					frappe.bold(group_code), frappe.bold(row.section_name)
+				), indicator="orange")
 
 		section_totals = {key: 0 for key in self.total_fields}
-		for group_info in included_groups:
+
+		for totals_obj in included_totals:
 			for key in section_totals:
-				section_totals[key] += flt(group_info.get(key))
+				section_totals[key] += flt(totals_obj.get(key))
 
 		if len(included_categories) == 1:
 			section_totals["root_type"] = list(included_categories)[0]

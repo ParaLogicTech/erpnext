@@ -9,7 +9,7 @@
   "account",
   "account_group",
   "section_name",
-  "section_account_groups",
+  "options",
   "reverse_sign"
  ],
  "fields": [
@@ -19,7 +19,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Row Type",
-   "options": "Account\nAccount Group\nSection Break\nSection Group\nProfit and Loss",
+   "options": "Account\nAccount Group\nSection Break\nSection Total\nProfit and Loss",
    "reqd": 1
   },
   {
@@ -47,14 +47,7 @@
    "fieldname": "section_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Section Name"
-  },
-  {
-   "columns": 2,
-   "fieldname": "section_account_groups",
-   "fieldtype": "Text",
-   "in_list_view": 1,
-   "label": "Section Account Groups"
+   "label": "Description"
   },
   {
    "columns": 1,
@@ -63,16 +56,25 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Reverse Sign"
+  },
+  {
+   "columns": 2,
+   "fieldname": "options",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Options"
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
  "links": [],
- "modified": "2025-05-22 00:19:44.785825",
+ "modified": "2025-10-17 12:14:33.068394",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group Row",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

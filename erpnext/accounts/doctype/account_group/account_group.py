@@ -60,7 +60,7 @@ class AccountGroup(Document):
 			if row.row_type == 'Account':
 				# Clear irrelevant fields
 				row.account_group = None
-				row.section_account_groups = None
+				row.options = None
 
 				# Validate company and reporting type
 				account = frappe.get_doc("Account", row.account)
@@ -87,7 +87,7 @@ class AccountGroup(Document):
 			elif row.row_type == 'Account Group':
 				# Clear irrelevant fields
 				row.account = None
-				row.section_account_groups = None
+				row.options = None
 
 				# Validate company and reporting type
 				if row.account_group == self.name:
@@ -114,7 +114,7 @@ class AccountGroup(Document):
 					))
 				seen_groups.add(row.account_group)
 
-			elif row.row_type in ('Section Break', 'Section Group'):
+			elif row.row_type in ('Section Break', 'Section Total'):
 				# Clear irrelevant fields
 				row.account = None
 				row.account_group = None
@@ -122,7 +122,7 @@ class AccountGroup(Document):
 			elif row.row_type == "Profit and Loss":
 				row.account = None
 				row.account_group = None
-				row.section_account_groups = None
+				row.options = None
 
 	def clean_labels(self):
 		for row in self.rows:
