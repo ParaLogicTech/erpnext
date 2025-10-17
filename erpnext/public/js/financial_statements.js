@@ -45,6 +45,7 @@ erpnext.financial_statements = {
 	"name_field": "account",
 	"parent_field": "parent_account",
 	"initial_depth": 3,
+
 	onload: function(report) {
 		// dropdown for links to other financial statements
 		erpnext.financial_statements.filters = get_filters()
@@ -61,6 +62,46 @@ erpnext.financial_statements = {
 			var filters = report.get_values();
 			frappe.set_route('query-report', 'Cash Flow', {company: filters.company});
 		}, __('Financial Statements'));
+	},
+
+	summarized_statement_formatter: function(value, row, column, data, default_formatter) {
+		let options = {
+			css: {},
+			link_target: "_blank",
+		};
+
+		if (data) {
+            let report_date = frappe.query_report.get_filter_value("report_date");
+
+			if (column.fieldname == "account_display") {
+				if (data.link_type == "Account Group" && data.account_group) {
+					options.link_href = frappe.utils.get_form_link("Account Group", data.account_group);
+				} else if (data.link_type == "Account" && data.account) {
+					options.link_href = frappe.utils.get_form_link("Account", data.account);
+				}
+			}
+
+			if (column.is_value_field) {
+				if (data.account_group && report_date && data.row_type === "Account Group") {
+					options.link_href = erpnext.financial_statements.get_summarized_statement_link(
+						frappe.query_report.report_name,
+						data.account_group,
+						report_date,
+					);
+				} else if (data.account && column.from_date && column.to_date && data.row_type === "Account") {
+					options.link_href = erpnext.financial_statements.get_account_ledger_link(
+						data.account,
+						column.from_date,
+						column.to_date,
+					);
+				}
+			}
+
+			if (data.is_bold) {
+				options.css['font-weight'] = 'bold';
+			}
+		}
+		return default_formatter(value, row, column, data, options);
 	},
 
 	get_account_ledger_link: function(account, from_date, to_date) {

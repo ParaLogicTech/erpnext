@@ -64,7 +64,7 @@ class SummarizedFinancialReport:
 
 			data.append(frappe._dict({
 				'row_type': 'Total',
-				'account_name': 'Total',
+				'account_display': 'Total',
 				'is_bold': 1,
 				**totals
 			}))
@@ -175,7 +175,8 @@ class SummarizedFinancialReport:
 				totals = account_totals.get(row.account) or {}
 				data.append(self.get_row(
 					row.row_type,
-					row.account,
+					row_value=row.account,
+					row_label=row.section_name,
 					totals=totals,
 					group_root_type=group_root_type,
 					reverse_sign=row.reverse_sign,
@@ -188,7 +189,8 @@ class SummarizedFinancialReport:
 				totals = child_group_totals.get(row.account_group) or {}
 				data.append(self.get_row(
 					row.row_type,
-					row.account_group,
+					row_value=row.account_group,
+					row_label=row.section_name,
 					totals=totals,
 					group_root_type=group_root_type,
 					reverse_sign=row.reverse_sign,
@@ -200,7 +202,8 @@ class SummarizedFinancialReport:
 			elif row.row_type == "Section Break":
 				data.append(self.get_row(
 					row.row_type,
-					row.section_name,
+					row_value=row.section_name,
+					row_label=row.section_name,
 					is_bold=True,
 					group_root_type=group_root_type,
 				))
@@ -209,7 +212,8 @@ class SummarizedFinancialReport:
 				section_totals = self.calculate_section_totals(row, child_group_totals, running_totals)
 				data.append(self.get_row(
 					row.row_type,
-					row.section_name,
+					row_value=row.section_name,
+					row_label=row.section_name,
 					totals=section_totals,
 					is_bold=True,
 					group_root_type=group_root_type,
@@ -220,7 +224,8 @@ class SummarizedFinancialReport:
 				net_profit_loss = self.get_net_profit_loss()
 				data.append(self.get_row(
 					row.row_type,
-					row.section_name,
+					row_value=row.section_name,
+					row_label=row.section_name,
 					totals=net_profit_loss,
 					is_bold=True,
 					group_root_type=group_root_type,
@@ -291,7 +296,16 @@ class SummarizedFinancialReport:
 	def get_net_profit_loss(self):
 		return {f: 0 for f in self.total_fields}
 
-	def get_row(self, row_type, row_value, totals=None, is_bold=False, group_root_type=None, reverse_sign=False):
+	def get_row(
+		self,
+		row_type,
+		row_value,
+		row_label,
+		totals=None,
+		is_bold=False,
+		group_root_type=None,
+		reverse_sign=False,
+	):
 		row = frappe._dict()
 
 		no_values = True
@@ -308,11 +322,12 @@ class SummarizedFinancialReport:
 		row.update(totals)
 
 		row["row_type"] = row_type
-		row["account_name"] = row_value or ""
+		row["account_display"] = row_label or row_value or ""
 		row["root_type"] = totals.get("root_type") or group_root_type
 		row["is_bold"] = cint(is_bold)
 
 		if row_type == "Account":
+			row["account_display"] = row_label or row_value or ""
 			row["account"] = row_value
 			row["link_type"] = "Account"
 		elif row_type == "Account Group":

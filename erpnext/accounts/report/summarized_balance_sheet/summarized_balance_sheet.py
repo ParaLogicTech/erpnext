@@ -51,11 +51,10 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 	def get_columns(self):
 		return [
 			{
-				"fieldname": "account_name",
+				"fieldname": "account_display",
 				"label": _("Account"),
-				"fieldtype": "Dynamic Link",
-				"options": "link_type",
-				"width": 300
+				"fieldtype": "Data",
+				"width": 350,
 			},
 			{
 				"fieldname": "actual_display",
@@ -64,6 +63,7 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 				"width": 175,
 				"from_date": self.filters.year_start_date,
 				"to_date": self.filters.report_date,
+				"is_value_field": 1,
 			},
 			{
 				"fieldname": "prev_year_display",
@@ -72,6 +72,7 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 				"width": 175,
 				"from_date": self.filters.prev_year_start,
 				"to_date": self.filters.prev_year_date,
+				"is_value_field": 1,
 			},
 			{
 				"fieldname": "prev_closing_display",
@@ -80,6 +81,7 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 				"width": 190,
 				"from_date": self.filters.prev_year_start,
 				"to_date": self.filters.prev_year_end,
+				"is_value_field": 1,
 			},
 		]
 

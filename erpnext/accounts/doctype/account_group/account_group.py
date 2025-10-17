@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import comma_or
+from frappe.utils import comma_or, clean_whitespace
 
 
 class AccountGroup(Document):
@@ -9,6 +9,7 @@ class AccountGroup(Document):
 		self.validate_root_level()
 		self.validate_root_type()
 		self.validate_rows()
+		self.clean_labels()
 
 	def validate_root_level(self):
 		"""Validate root level account group type."""
@@ -59,7 +60,6 @@ class AccountGroup(Document):
 			if row.row_type == 'Account':
 				# Clear irrelevant fields
 				row.account_group = None
-				row.section_name = None
 				row.section_account_groups = None
 
 				# Validate company and reporting type
@@ -87,7 +87,6 @@ class AccountGroup(Document):
 			elif row.row_type == 'Account Group':
 				# Clear irrelevant fields
 				row.account = None
-				row.section_name = None
 				row.section_account_groups = None
 
 				# Validate company and reporting type
@@ -124,6 +123,10 @@ class AccountGroup(Document):
 				row.account = None
 				row.account_group = None
 				row.section_account_groups = None
+
+	def clean_labels(self):
+		for row in self.rows:
+			row.section_name = clean_whitespace(row.section_name)
 
 
 @frappe.whitelist()

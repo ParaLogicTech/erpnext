@@ -39,35 +39,7 @@ frappe.query_reports["Summarized Cash Flow"] = {
 	],
 
 	formatter: function(value, row, column, data, default_formatter) {
-		let options = {
-			css: {},
-			link_target: "_blank",
-		};
-
-		if (data) {
-            let report_date = frappe.query_report.get_filter_value("report_date");
-
-			if (data.account_group && report_date && data.row_type === "Account Group") {
-				options.link_href = erpnext.financial_statements.get_summarized_statement_link(
-					"Summarized Cash Flow",
-					data.account_group,
-					report_date,
-				);
-			}
-
-			if (data.account && column.from_date && column.to_date && data.row_type === "Account") {
-				options.link_href = erpnext.financial_statements.get_account_ledger_link(
-					data.account,
-					column.from_date,
-					column.to_date,
-				);
-			}
-
-			if (data.is_bold) {
-				options.css['font-weight'] = 'bold';
-			}
-		}
-		return default_formatter(value, row, column, data, options);
+		return erpnext.financial_statements.summarized_statement_formatter(value, row, column, data, default_formatter);
 	},
 };
 

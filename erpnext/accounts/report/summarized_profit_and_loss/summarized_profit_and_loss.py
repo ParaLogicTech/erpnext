@@ -223,10 +223,9 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 	def get_columns(self):
 		return [
 			{
-				"fieldname": "account_name",
+				"fieldname": "account_display",
 				"label": _("Account"),
-				"fieldtype": "Dynamic Link",
-				"options": "link_type",
+				"fieldtype": "Data",
 				"width": 300
 			},
 			{
@@ -236,6 +235,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"width": 140,
 				"from_date": self.filters.month_start_date,
 				"to_date": self.filters.report_date,
+				"is_value_field": 1,
 			},
 			{
 				"fieldname": "mtd_budget_display",
@@ -250,6 +250,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"width": 140,
 				"from_date": self.filters.prev_year_month_start,
 				"to_date": self.filters.prev_year_date,
+				"is_value_field": 1,
 			},
 			{
 				"fieldname": "ytd_actual_display",
@@ -258,6 +259,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"width": 140,
 				"from_date": self.filters.year_start_date,
 				"to_date": self.filters.report_date,
+				"is_value_field": 1,
 			},
 			{
 				"fieldname": "ytd_budget_display",
@@ -272,6 +274,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"width": 140,
 				"from_date": self.filters.prev_year_start,
 				"to_date": self.filters.prev_year_date,
+				"is_value_field": 1,
 			}
 		]
 
