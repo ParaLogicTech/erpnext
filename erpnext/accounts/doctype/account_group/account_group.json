@@ -58,7 +58,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Report Type",
-   "options": "Profit and Loss\nBalance Sheet",
+   "options": "Profit and Loss\nBalance Sheet\nCash Flow",
    "reqd": 1
   },
   {
@@ -71,9 +71,10 @@
    "reqd": 1
   }
  ],
+ "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-21 12:27:34.613644",
+ "modified": "2025-10-13 13:25:54.607586",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group",
@@ -114,6 +115,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

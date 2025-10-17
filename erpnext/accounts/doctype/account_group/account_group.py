@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import comma_or
 
 
 class AccountGroup(Document):
@@ -12,8 +13,9 @@ class AccountGroup(Document):
 	def validate_root_level(self):
 		"""Validate root level account group type."""
 		if self.is_root_level:
-			if self.report_type not in ['Profit and Loss', 'Balance Sheet']:
-				frappe.throw(_("Root level Account Groups must be either 'Profit and Loss' or 'Balance Sheet'"))
+			report_types = ['Profit and Loss', 'Balance Sheet', 'Cash Flow']
+			if self.report_type not in report_types:
+				frappe.throw(_("Root level Account Groups must be either {0}").format(comma_or(report_types)))
 
 			# Check if another root level group exists for this reporting type
 			existing_root = frappe.db.get_value('Account Group',
@@ -38,11 +40,15 @@ class AccountGroup(Document):
 
 		if self.report_type == "Profit and Loss":
 			if self.root_type not in pnl_root_types:
-				frappe.throw(_("Root Type must be either Income or Expense for 'Profit and Loss' Account Group"))
+				frappe.throw(_("Root Type must be either {0} for {1} Account Group").format(
+					comma_or(pnl_root_types), self.report_type
+				))
 
-		elif self.report_type == "Balance Sheet":
+		elif self.report_type in ("Balance Sheet", "Cash Flow"):
 			if self.root_type not in bs_root_types:
-				frappe.throw(_("Root Type must be either Asset, Liability or Equity for 'Balance Sheet' Account Group"))
+				frappe.throw(_("Root Type must be either {0} for {1} Account Group").format(
+					comma_or(bs_root_types), self.report_type
+				))
 
 	def validate_rows(self):
 		"""Validate rows for duplicates and clear irrelevant fields."""
@@ -62,8 +68,8 @@ class AccountGroup(Document):
 					frappe.throw(_("Row #{0}: Account {1} must not be group Account").format(
 						row.idx, frappe.bold(row.account)
 					))
-				if account.report_type != self.report_type:
-					frappe.throw(_("Row #{0}: Account {1} must of report type {2}").format(
+				if self.report_type != "Cash Flow" and account.report_type != self.report_type:
+					frappe.throw(_("Row #{0}: Account {1} must be of report type {2}").format(
 						row.idx, frappe.bold(row.account), frappe.bold(self.report_type)
 					))
 				if account.company != self.company:
@@ -89,8 +95,12 @@ class AccountGroup(Document):
 					frappe.throw(_("Row #{0}: Account Group must not be the same this one").format(row.idx))
 
 				account_group = frappe.get_doc("Account Group", row.account_group)
-				if account_group.report_type != self.report_type and not account_group.is_root_level:
-					frappe.throw(_("Row #{0}: Account Group {1} must of reporting type {2}").format(
+				if (
+					self.report_type != "Cash Flow"
+					and account_group.report_type != self.report_type
+					and not (account_group.is_root_level and account_group.report_type == "Profit and Loss")
+				):
+					frappe.throw(_("Row #{0}: Account Group {1} must of Report Type {2}").format(
 						row.idx, frappe.bold(row.account_group), frappe.bold(self.report_type)
 					))
 				if account_group.company != self.company:
@@ -115,18 +125,40 @@ class AccountGroup(Document):
 				row.account_group = None
 				row.section_account_groups = None
 
+
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
-def get_account_groups_for_balance_sheet(doctype, txt, searchfield, start, page_len, filters):
-	company = filters.get("company")
-	report_type = filters.get("report_type")
-	exclude_name = filters.get("exclude_name")
+def account_group_query(doctype, txt, searchfield, start, page_len, filters):
+	from erpnext.controllers.queries import get_fields
+	from frappe.desk.reportview import get_filters_cond
+
+	fields = get_fields("Account Group", ["name", "root_type"])
+	report_type = filters.pop("report_type", None)
+
+	report_type_condition = ""
+	if report_type:
+		report_type_condition = "AND (report_type = %(report_type)s OR (is_root_level = 1 and report_type = 'Profit and Loss'))"
+
 	return frappe.db.sql("""
-		SELECT name, group_name
+		SELECT {fields}
 		FROM `tabAccount Group`
-		WHERE company = %s
-		AND (report_type = %s OR is_root_level = 1)
-		AND name != %s
-		AND (name LIKE %s OR group_name LIKE %s)
-		LIMIT %s OFFSET %s
-	""", (company, report_type, exclude_name, f"%{txt}%", f"%{txt}%", page_len, start))
+		WHERE
+			name LIKE %(txt)s
+			{report_type_condition}
+			{fcond}
+		order by
+			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
+			modified desc,
+			name
+		LIMIT %(start)s, %(page_len)s
+	""".format(**{
+		"fields": ", ".join(fields),
+		"fcond": get_filters_cond(doctype, filters, []).replace('%', '%%'),
+		"report_type_condition": report_type_condition,
+	}), {
+		'txt': "%%%s%%" % txt,
+		'_txt': txt.replace("%", ""),
+		'start': start,
+		'page_len': page_len,
+		'report_type': report_type,
+	})
