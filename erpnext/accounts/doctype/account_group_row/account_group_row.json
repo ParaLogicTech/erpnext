@@ -6,11 +6,17 @@
  "engine": "InnoDB",
  "field_order": [
   "row_type",
+  "section_name",
   "account",
   "account_group",
-  "section_name",
+  "column_break_xfas",
   "options",
-  "reverse_sign"
+  "formatting_section",
+  "value_type",
+  "format_precision",
+  "column_break_zpfb",
+  "reverse_sign",
+  "is_bold"
  ],
  "fields": [
   {
@@ -63,12 +69,47 @@
    "fieldtype": "Text",
    "in_list_view": 1,
    "label": "Options"
+  },
+  {
+   "fieldname": "format_precision",
+   "fieldtype": "Select",
+   "label": "Precision",
+   "non_negative": 1,
+   "options": "\n0\n1\n2\n3\n4\n5\n6"
+  },
+  {
+   "fieldname": "formatting_section",
+   "fieldtype": "Section Break",
+   "label": "Formatting"
+  },
+  {
+   "fieldname": "column_break_zpfb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_bold",
+   "fieldtype": "Check",
+   "label": "Bold"
+  },
+  {
+   "fieldname": "column_break_xfas",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "default": "Currency",
+   "depends_on": "eval:doc.row_type == \"Formula\"",
+   "fieldname": "value_type",
+   "fieldtype": "Select",
+   "label": "Value Type",
+   "options": "Currency\nFloat\nPercent\nData"
   }
  ],
  "grid_page_length": 500,
  "istable": 1,
  "links": [],
- "modified": "2025-10-17 13:39:08.028777",
+ "modified": "2025-10-18 13:29:11.408848",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group Row",

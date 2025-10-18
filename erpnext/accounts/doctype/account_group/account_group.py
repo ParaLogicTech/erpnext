@@ -57,11 +57,16 @@ class AccountGroup(Document):
 		seen_groups = set()
 
 		for row in self.rows:
-			if row.row_type == 'Account':
-				# Clear irrelevant fields
+			if row.row_type != "Account":
+				row.account = None
+			if row.row_type != "Account Group":
 				row.account_group = None
+			if row.row_type not in ("Section Total", "Formula"):
 				row.options = None
+			if row.row_type != "Formula":
+				row.value_type = "Currency"
 
+			if row.row_type == 'Account':
 				# Validate company and reporting type
 				account = frappe.get_doc("Account", row.account)
 				if account.is_group:
@@ -85,10 +90,6 @@ class AccountGroup(Document):
 				seen_accounts.add(row.account)
 
 			elif row.row_type == 'Account Group':
-				# Clear irrelevant fields
-				row.account = None
-				row.options = None
-
 				# Validate company and reporting type
 				if row.account_group == self.name:
 					frappe.throw(_("Row #{0}: Account Group must not be the same this one").format(row.idx))
@@ -109,20 +110,10 @@ class AccountGroup(Document):
 
 				# Check for duplicates
 				if row.account_group in seen_groups:
-					frappe.throw(_("Row {0}: Account Group {1} appears multiple times").format(
+					frappe.throw(_("Row {0}: Account Group {1} is duplicated").format(
 						row.idx, row.account_group
 					))
 				seen_groups.add(row.account_group)
-
-			elif row.row_type in ('Section Break', 'Section Total'):
-				# Clear irrelevant fields
-				row.account = None
-				row.account_group = None
-
-			elif row.row_type == "Profit and Loss":
-				row.account = None
-				row.account_group = None
-				row.options = None
 
 	def cleanup(self):
 		for d in self.rows:

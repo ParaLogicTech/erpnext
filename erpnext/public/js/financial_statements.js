@@ -74,14 +74,14 @@ erpnext.financial_statements = {
             let report_date = frappe.query_report.get_filter_value("report_date");
 
 			if (column.fieldname == "account_display") {
-				if (data.link_type == "Account Group" && data.account_group) {
+				if (data.row_type == "Account Group" && data.account_group) {
 					options.link_href = frappe.utils.get_form_link("Account Group", data.account_group);
-				} else if (data.link_type == "Account" && data.account) {
+				} else if (data.row_type == "Account" && data.account) {
 					options.link_href = frappe.utils.get_form_link("Account", data.account);
 				}
 			}
 
-			if (column.is_value_field) {
+			if (column.format_link) {
 				if (data.account_group && report_date && data.row_type === "Account Group") {
 					options.link_href = erpnext.financial_statements.get_summarized_statement_link(
 						frappe.query_report.report_name,
@@ -99,6 +99,13 @@ erpnext.financial_statements = {
 
 			if (data.is_bold) {
 				options.css['font-weight'] = 'bold';
+			}
+
+			if (column.is_value_field) {
+				column = Object.assign({}, column);
+				column.fieldtype = data.value_type || "Currency";
+				column.precision = data.format_precision;
+				column.options = column.fieldtype == "Currency" ? "currency" : null;
 			}
 		}
 		return default_formatter(value, row, column, data, options);

@@ -53,20 +53,22 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 			{
 				"fieldname": "actual_display",
 				"label": _("As on {0}").format(frappe.format(self.filters.report_date)),
-				"fieldtype": "Currency",
+				"fieldtype": "Float",
 				"width": 175,
 				"from_date": self.filters.year_start_date,
 				"to_date": self.filters.report_date,
 				"is_value_field": 1,
+				"format_link": 1,
 			},
 			{
 				"fieldname": "prev_closing_display",
 				"label": _("As on {0}").format(frappe.format(self.filters.prev_year_end)),
-				"fieldtype": "Currency",
+				"fieldtype": "Float",
 				"width": 175,
 				"from_date": self.filters.prev_year_start,
 				"to_date": self.filters.prev_year_end,
 				"is_value_field": 1,
+				"format_link": 1,
 			},
 		]
 
