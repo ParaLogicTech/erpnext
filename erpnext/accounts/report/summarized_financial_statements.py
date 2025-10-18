@@ -11,18 +11,9 @@ from erpnext.accounts.report.financial_statements import get_cost_centers_with_c
 
 
 class SummarizedFinancialReport:
-	total_fields = []
-	total_with_display_fields = []
-
 	def __init__(self, filters=None):
 		self._account_group_docs = {}
 		self.filters = frappe._dict(filters or {})
-
-	def validate_filters(self):
-		if not self.filters.company:
-			self.filters.company = get_default_company()
-		if not self.filters.company:
-			frappe.throw(_("Company is mandatory"))
 
 		self.filters.report_date = getdate(self.filters.report_date)
 		self.filters.month_start_date = get_first_day(self.filters.report_date)
@@ -33,6 +24,20 @@ class SummarizedFinancialReport:
 		self.filters.prev_year_month_start = add_years(self.filters.month_start_date, -1)
 		self.filters.prev_year_start = add_years(self.filters.year_start_date, -1)
 		self.filters.prev_year_end = add_years(self.filters.year_end_date, -1)
+
+		self.value_fields = {}
+		self.setup_fields()
+		self.value_fieldnames = list(self.value_fields.keys())
+		self.value_and_display_fieldnames = self.value_fieldnames + [f"{f}_display" for f in self.value_fieldnames]
+
+	def setup_fields(self):
+		pass
+
+	def validate_filters(self):
+		if not self.filters.company:
+			self.filters.company = get_default_company()
+		if not self.filters.company:
+			frappe.throw(_("Company is mandatory"))
 
 	def get_data(self):
 		report_type = self.get_report_type()
@@ -57,11 +62,14 @@ class SummarizedFinancialReport:
 		data = self.get_account_group_data(current_account_group)
 
 		if not is_root:
-			totals = {k: 0 for k in self.total_with_display_fields}
+			totals = {k: 0 for k in self.value_fieldnames}
 			for row in data:
 				if row.get('row_type') in ['Account', 'Account Group']:
-					for key in totals:
-						totals[key] += flt(row.get(key))
+					for f in totals:
+						totals[f] += flt(row.get(f))
+
+			for f in self.value_fieldnames:
+				totals[f"{f}_display"] = totals[f]
 
 			data.append(frappe._dict({
 				'row_type': 'Total',
@@ -159,7 +167,7 @@ class SummarizedFinancialReport:
 
 		self.account_totals_by_field = {}
 		self.group_totals_by_field = {}
-		for f in self.total_fields:
+		for f in self.value_fieldnames:
 			self.account_totals_by_field[f] = {}
 			self.group_totals_by_field[f] = {}
 			for key, tot in self.account_totals.items():
@@ -169,13 +177,13 @@ class SummarizedFinancialReport:
 
 		self.variable_values = self.evaluate_variables_values(group)
 		self.variable_values_by_field = {}
-		for f in self.total_fields:
+		for f in self.value_fieldnames:
 			self.variable_values_by_field[f] = frappe._dict()
 			for key, tot in self.variable_values.items():
 				self.variable_values_by_field[f][key] = tot.get(f)
 
-		running_grand_totals = {f: 0 for f in self.total_fields}
-		running_section_totals = {f: 0 for f in self.total_fields}
+		running_grand_totals = {f: 0 for f in self.value_fieldnames}
+		running_section_totals = {f: 0 for f in self.value_fieldnames}
 		previous_section_totals = {}
 
 		for row in group.rows:
@@ -187,7 +195,7 @@ class SummarizedFinancialReport:
 					group_root_type=group_root_type,
 				))
 
-				for f in self.total_fields:
+				for f in self.value_fieldnames:
 					running_grand_totals[f] += flt(totals.get(f))
 					running_section_totals[f] += flt(totals.get(f))
 
@@ -199,7 +207,7 @@ class SummarizedFinancialReport:
 					group_root_type=group_root_type,
 				))
 
-				for f in self.total_fields:
+				for f in self.value_fieldnames:
 					running_grand_totals[f] += flt(totals.get(f))
 					running_section_totals[f] += flt(totals.get(f))
 
@@ -218,7 +226,7 @@ class SummarizedFinancialReport:
 				))
 
 				if row.value_type == "Currency" or not row.value_type:
-					for f in self.total_fields:
+					for f in self.value_fieldnames:
 						running_grand_totals[f] += flt(formula_values.get(f))
 						running_section_totals[f] += flt(formula_values.get(f))
 
@@ -245,7 +253,7 @@ class SummarizedFinancialReport:
 				))
 
 				previous_section_totals[row.section_name] = section_totals
-				running_section_totals = {f: 0 for f in self.total_fields}
+				running_section_totals = {f: 0 for f in self.value_fieldnames}
 
 			elif row.row_type == "Profit and Loss":
 				net_profit_loss = self.get_net_profit_loss()
@@ -280,6 +288,27 @@ class SummarizedFinancialReport:
 	def get_account_totals(self, all_accounts):
 		raise NotImplementedError("get_account_totals not implemented")
 
+	def _get_account_totals(self, all_accounts, gl_fields, dr_or_cr):
+		template = frappe._dict({f: 0 for f in self.value_fieldnames})
+
+		account_totals = {}
+		for fieldname, field_info in gl_fields.items():
+			gl_data = self.get_gl_data(
+				all_accounts,
+				from_date=field_info.from_date,
+				to_date=field_info.to_date,
+				aggregate=True,
+			)
+
+			for d in gl_data:
+				group = account_totals.setdefault(d.account, template.copy())
+				if dr_or_cr == "credit":
+					group[fieldname] += d.credit - d.debit
+				else:
+					group[fieldname] += d.debit - d.credit
+
+		return account_totals
+
 	def get_child_group_totals(self, group_doc, group_account_map):
 		child_group_totals = {}
 		for row in group_doc.rows:
@@ -297,14 +326,14 @@ class SummarizedFinancialReport:
 		return child_group_totals
 
 	def get_group_totals(self, group_accounts):
-		group_totals = frappe._dict({f: 0 for f in self.total_fields})
+		group_totals = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 		for account in group_accounts:
 			totals = self.account_totals.get(account)
 			if not totals:
 				continue
 
-			for f in self.total_fields:
+			for f in self.value_fieldnames:
 				group_totals[f] += flt(totals.get(f))
 
 		return group_totals
@@ -318,25 +347,28 @@ class SummarizedFinancialReport:
 
 		variable_values = frappe._dict()
 		for d in group_doc.variables:
-			totals = frappe._dict({f: 0 for f in self.total_fields})
+			totals = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 			variable_values_by_field = {}
-			for f in self.total_fields:
+			for f in self.value_fieldnames:
 				variable_values_by_field[f] = {}
 				for key, tot in variable_values.items():
 					variable_values_by_field[f][key] = flt(tot.get(f))
 
-			for f in self.total_fields:
+			for f, field_info in self.value_fields.items():
 				try:
 					totals[f] = frappe.safe_eval(d.expression, eval_globals, eval_locals={
 						"accounts": self.account_totals_by_field[f],
-						"groups": self.group_totals_by_field[f],
 						"account_totals": self.account_totals,
+
+						"groups": self.group_totals_by_field[f],
 						"group_totals": self.child_group_totals,
+
 						"variables": variable_values_by_field[f],
 						"variable_values": variable_values,
 
-						"total_field": f,
+						"fieldname": f,
+						"field_info": field_info,
 						"filters": self.filters,
 					})
 				except Exception as e:
@@ -359,14 +391,14 @@ class SummarizedFinancialReport:
 		eval_globals = get_safe_globals()
 
 		previous_section_totals_by_field = {}
-		for f in self.total_fields:
+		for f in self.value_fieldnames:
 			previous_section_totals_by_field[f] = {}
 			for key, tot in previous_section_totals.items():
 				previous_section_totals_by_field[f][key] = flt(tot.get(f))
 
 		formula_values = {}
 
-		for f in self.total_fields:
+		for f, field_info in self.value_fields.items():
 			try:
 				formula_values[f] = frappe.safe_eval(row.options, eval_globals, eval_locals={
 					"accounts": self.account_totals_by_field[f],
@@ -387,7 +419,8 @@ class SummarizedFinancialReport:
 					"running_section_total": running_section_totals[f],
 					"all_running_section_totals": running_section_totals,
 
-					"total_field": f,
+					"fieldname": f,
+					"field_info": field_info,
 					"filters": self.filters,
 				})
 			except Exception as e:
@@ -439,7 +472,7 @@ class SummarizedFinancialReport:
 					frappe.bold(group_code), frappe.bold(row.section_name)
 				), indicator="orange")
 
-		section_totals = {key: 0 for key in self.total_fields}
+		section_totals = {key: 0 for key in self.value_fieldnames}
 
 		for totals_obj in included_totals:
 			for key in section_totals:
@@ -451,7 +484,7 @@ class SummarizedFinancialReport:
 		return section_totals
 
 	def get_net_profit_loss(self):
-		return {f: 0 for f in self.total_fields}
+		return {f: 0 for f in self.value_fieldnames}
 
 	def get_row(
 		self,
@@ -467,7 +500,7 @@ class SummarizedFinancialReport:
 			no_values = False
 
 		if not no_values:
-			for f in self.total_fields:
+			for f in self.value_fieldnames:
 				row[f] = 0
 
 		if not totals:
@@ -492,14 +525,14 @@ class SummarizedFinancialReport:
 
 		if not no_values:
 			if row.value_type == "Data":
-				for f in self.total_fields:
+				for f in self.value_fieldnames:
 					row[f"{f}_display"] = row[f]
 			else:
 				multiplier = self.get_display_value_multiplier(row)
 				if d.reverse_sign:
 					multiplier = multiplier * -1
 
-				for f in self.total_fields:
+				for f in self.value_fieldnames:
 					row[f"{f}_display"] = row[f] * multiplier
 
 		return row

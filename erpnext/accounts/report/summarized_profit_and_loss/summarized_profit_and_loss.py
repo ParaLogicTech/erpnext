@@ -14,47 +14,57 @@ def execute(filters=None):
 
 
 class SummarizedProfitAndLossReport(SummarizedFinancialReport):
-	gl_fields = [
-		'mtd_actual', 'mtd_prev_year',
-		'ytd_actual', 'ytd_prev_year',
-	]
-	budget_fields = [
-		'mtd_budget', 'ytd_budget'
-	]
+	def setup_fields(self):
+		self.gl_fields = frappe._dict({
+			"mtd_actual": frappe._dict({
+				"from_date": self.filters.month_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 1,
+			}),
+			"ytd_actual": frappe._dict({
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 1,
+			}),
+			"mtd_prev_year": frappe._dict({
+				"from_date": self.filters.prev_year_month_start,
+				"to_date": self.filters.prev_year_date,
+				"is_gl_value": 1,
+			}),
+			"ytd_prev_year": frappe._dict({
+				"from_date": self.filters.prev_year_start,
+				"to_date": self.filters.prev_year_date,
+				"is_gl_value": 1,
+			}),
+		})
 
-	total_fields = gl_fields + budget_fields
-	total_with_display_fields = total_fields + [f"{f}_display" for f in total_fields]
+		self.budget_fields = frappe._dict({
+			"mtd_budget": frappe._dict({
+				"from_date": self.filters.month_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 0,
+				"is_budget_value": 1,
+			}),
+			"ytd_budget": frappe._dict({
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 0,
+				"is_budget_value": 1,
+			}),
+		})
+
+		self.value_fields = frappe._dict({**self.gl_fields, **self.budget_fields})
+		self.gl_fieldnames = list(self.gl_fields.keys())
+		self.budget_fieldnames = list(self.budget_fields.keys())
 
 	def run(self):
 		self.validate_filters()
 		return self.get_columns(), self.get_data()
 
 	def get_account_totals(self, all_accounts):
-		template = frappe._dict({f: 0 for f in self.gl_fields + self.budget_fields})
+		template = frappe._dict({f: 0 for f in self.value_fieldnames})
 
-		current_mtd_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.month_start_date, to_date=self.filters.report_date,
-			aggregate=True)
-		current_ytd_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.year_start_date, to_date=self.filters.report_date,
-			aggregate=True)
-		prev_year_mtd_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.prev_year_month_start, to_date=self.filters.prev_year_date,
-			aggregate=True)
-		prev_year_ytd_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.prev_year_start, to_date=self.filters.prev_year_date,
-			aggregate=True)
-
-		account_totals = {}
-
-		for d in current_mtd_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["mtd_actual"] += d.credit - d.debit
-		for d in current_ytd_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["ytd_actual"] += d.credit - d.debit
-		for d in prev_year_mtd_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["mtd_prev_year"] += d.credit - d.debit
-		for d in prev_year_ytd_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["ytd_prev_year"] += d.credit - d.debit
+		account_totals = self._get_account_totals(all_accounts, self.gl_fields, "credit")
 
 		# Fetch budgets for all fiscal years overlapping the calendar YTD
 		budget_data = self.get_budget_data(all_accounts, self.filters.year_start_date, self.filters.report_date)
@@ -72,7 +82,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		return account_totals
 
 	def get_net_profit_loss(self):
-		result = frappe._dict({f: 0 for f in self.total_fields})
+		result = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 		accounts = frappe.get_all(
 			"Account",
@@ -86,14 +96,8 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		if not accounts:
 			return result
 
-		periods = {
-			"mtd_actual": (self.filters.month_start_date, self.filters.report_date),
-			"mtd_prev_year": (self.filters.prev_year_month_start, self.filters.prev_year_date),
-			"ytd_actual": (self.filters.year_start_date, self.filters.report_date),
-			"ytd_prev_year": (self.filters.prev_year_start, self.filters.prev_year_date),
-		}
-		for key, (from_date, to_date) in periods.items():
-			result[key] = self.get_net_profit_loss_for_period(accounts, from_date, to_date)
+		for fieldname, field_info in self.gl_fields.items():
+			result[fieldname] = self.get_net_profit_loss_for_period(accounts, field_info.from_date, field_info.to_date)
 
 		# --- Budget Calculation ---
 		budget_data = self.get_budget_data(accounts, self.filters.year_start_date, self.filters.report_date)
@@ -236,8 +240,8 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"label": _("M.T.D Actual"),
 				"fieldtype": "Float",
 				"width": 140,
-				"from_date": self.filters.month_start_date,
-				"to_date": self.filters.report_date,
+				"from_date": self.value_fields["mtd_actual"].from_date,
+				"to_date": self.value_fields["mtd_actual"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
@@ -246,6 +250,8 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"label": _("M.T.D Budget"),
 				"fieldtype": "Float",
 				"width": 140,
+				"from_date": self.value_fields["mtd_budget"].from_date,
+				"to_date": self.value_fields["mtd_budget"].to_date,
 				"is_value_field": 1,
 			},
 			{
@@ -253,8 +259,8 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"label": _("M.T.D Previous Year"),
 				"fieldtype": "Float",
 				"width": 140,
-				"from_date": self.filters.prev_year_month_start,
-				"to_date": self.filters.prev_year_date,
+				"from_date": self.value_fields["mtd_prev_year"].from_date,
+				"to_date": self.value_fields["mtd_prev_year"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
@@ -263,8 +269,8 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"label": _("Y.T.D Actual"),
 				"fieldtype": "Float",
 				"width": 140,
-				"from_date": self.filters.year_start_date,
-				"to_date": self.filters.report_date,
+				"from_date": self.value_fields["ytd_actual"].from_date,
+				"to_date": self.value_fields["ytd_actual"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
@@ -273,6 +279,8 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"label": _("Y.T.D Budget"),
 				"fieldtype": "Float",
 				"width": 140,
+				"from_date": self.value_fields["ytd_budget"].from_date,
+				"to_date": self.value_fields["ytd_budget"].to_date,
 				"is_value_field": 1,
 			},
 			{
@@ -280,8 +288,8 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"label": _("Y.T.D Previous Year"),
 				"fieldtype": "Float",
 				"width": 140,
-				"from_date": self.filters.prev_year_start,
-				"to_date": self.filters.prev_year_date,
+				"from_date": self.value_fields["ytd_prev_year"].from_date,
+				"to_date": self.value_fields["ytd_prev_year"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			}

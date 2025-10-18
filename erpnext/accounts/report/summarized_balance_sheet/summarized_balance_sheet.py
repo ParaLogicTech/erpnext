@@ -1,6 +1,3 @@
-# Copyright (c) 2024, Frappe Technologies Pvt. Ltd. and contributors
-# For license information, please see license.txt
-
 import frappe
 from frappe import _
 from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
@@ -11,39 +8,28 @@ def execute(filters=None):
 
 
 class SummarizedBalanceSheet(SummarizedFinancialReport):
-	gl_fields = [
-		'actual', 'prev_year', 'prev_closing',
-	]
-
-	total_fields = gl_fields
-	total_with_display_fields = total_fields + [f"{f}_display" for f in total_fields]
+	def setup_fields(self):
+		self.value_fields = frappe._dict({
+			"actual": frappe._dict({
+				"to_date": self.filters.report_date,
+				"is_gl_value": 1,
+			}),
+			"prev_year": frappe._dict({
+				"to_date": self.filters.prev_year_date,
+				"is_gl_value": 1,
+			}),
+			"prev_closing": frappe._dict({
+				"to_date": self.filters.prev_year_end,
+				"is_gl_value": 1,
+			}),
+		})
 
 	def run(self):
 		self.validate_filters()
 		return self.get_columns(), self.get_data()
 
 	def get_account_totals(self, all_accounts):
-		template = frappe._dict({f: 0 for f in self.gl_fields})
-
-		current_gl_data = self.get_gl_data(all_accounts, to_date=self.filters.report_date, aggregate=True)
-		prev_year_gl_data = self.get_gl_data(all_accounts, to_date=self.filters.prev_year_date, aggregate=True)
-		prev_closing_gl_data = self.get_gl_data(all_accounts, to_date=self.filters.prev_year_end, aggregate=True)
-
-		account_totals = {}
-
-		for d in current_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["actual"] += d.debit - d.credit
-
-		for d in prev_year_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["prev_year"] += d.debit - d.credit
-
-		for d in prev_closing_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["prev_closing"] += d.debit - d.credit
-
-		return account_totals
+		return self._get_account_totals(all_accounts, self.value_fields, "debit")
 
 	def get_display_value_multiplier(self, row):
 		return -1 if row.get("root_type") in ("Liability", "Equity", "Income") else 1
@@ -58,31 +44,31 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 			},
 			{
 				"fieldname": "actual_display",
-				"label": _("Actual ({0})").format(frappe.format(self.filters.report_date)),
+				"label": _("Actual ({0})").format(frappe.format(self.value_fields["actual"].to_date)),
 				"fieldtype": "Float",
 				"width": 175,
 				"from_date": self.filters.year_start_date,
-				"to_date": self.filters.report_date,
+				"to_date": self.value_fields["actual"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
 			{
 				"fieldname": "prev_year_display",
-				"label": _("Previous Year ({0})").format(frappe.format(self.filters.prev_year_date)),
+				"label": _("Previous Year ({0})").format(frappe.format(self.value_fields["prev_year"].to_date)),
 				"fieldtype": "Float",
 				"width": 175,
 				"from_date": self.filters.prev_year_start,
-				"to_date": self.filters.prev_year_date,
+				"to_date": self.value_fields["prev_year"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
 			{
 				"fieldname": "prev_closing_display",
-				"label": _("Prev. Year Closing ({0})").format(frappe.format(self.filters.prev_year_end)),
+				"label": _("Prev. Year Closing ({0})").format(frappe.format(self.value_fields["prev_closing"].to_date)),
 				"fieldtype": "Float",
 				"width": 190,
 				"from_date": self.filters.prev_year_start,
-				"to_date": self.filters.prev_year_end,
+				"to_date": self.value_fields["prev_closing"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},

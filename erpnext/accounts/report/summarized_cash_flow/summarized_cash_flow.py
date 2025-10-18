@@ -8,36 +8,26 @@ def execute(filters=None):
 
 
 class SummarizedCashFlow(SummarizedFinancialReport):
-	gl_fields = [
-		'actual', 'prev_closing',
-	]
-
-	total_fields = gl_fields
-	total_with_display_fields = total_fields + [f"{f}_display" for f in total_fields]
+	def setup_fields(self):
+		self.value_fields = frappe._dict({
+			"actual": frappe._dict({
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 1,
+			}),
+			"prev_closing": frappe._dict({
+				"from_date": self.filters.prev_year_start,
+				"to_date": self.filters.prev_year_end,
+				"is_gl_value": 1,
+			}),
+		})
 
 	def run(self):
 		self.validate_filters()
 		return self.get_columns(), self.get_data()
 
 	def get_account_totals(self, all_accounts):
-		template = frappe._dict({f: 0 for f in self.gl_fields})
-
-		current_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.year_start_date, to_date=self.filters.report_date,
-			aggregate=True)
-		prev_closing_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.prev_year_start, to_date=self.filters.prev_year_end,
-			aggregate=True)
-
-		account_totals = {}
-
-		for d in current_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["actual"] += d.credit - d.debit
-
-		for d in prev_closing_gl_data:
-			group = account_totals.setdefault(d.account, template.copy())
-			group["prev_closing"] += d.credit - d.debit
-
-		return account_totals
+		return self._get_account_totals(all_accounts, self.value_fields, "credit")
 
 	# def get_display_value_multiplier(self, row):
 	# 	return -1 if row.get("root_type") in ("Liability", "Equity", "Income") else 1
@@ -52,21 +42,21 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 			},
 			{
 				"fieldname": "actual_display",
-				"label": _("As on {0}").format(frappe.format(self.filters.report_date)),
+				"label": _("As on {0}").format(frappe.format(self.value_fields["actual"].to_date)),
 				"fieldtype": "Float",
 				"width": 175,
-				"from_date": self.filters.year_start_date,
-				"to_date": self.filters.report_date,
+				"from_date": self.value_fields["actual"].from_date,
+				"to_date": self.value_fields["actual"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
 			{
 				"fieldname": "prev_closing_display",
-				"label": _("As on {0}").format(frappe.format(self.filters.prev_year_end)),
+				"label": _("As on {0}").format(frappe.format(self.value_fields["prev_closing"].to_date)),
 				"fieldtype": "Float",
 				"width": 175,
-				"from_date": self.filters.prev_year_start,
-				"to_date": self.filters.prev_year_end,
+				"from_date": self.value_fields["prev_closing"].from_date,
+				"to_date": self.value_fields["prev_closing"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
