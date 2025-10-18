@@ -32,26 +32,29 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 	def get_account_totals(self, all_accounts):
 		template = frappe._dict({f: 0 for f in self.gl_fields + self.budget_fields})
 
-		# GL Data
-		current_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.year_start_date, to_date=self.filters.report_date)
-		prev_year_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.prev_year_start, to_date=self.filters.prev_year_date)
+		current_mtd_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.month_start_date, to_date=self.filters.report_date,
+			aggregate=True)
+		current_ytd_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.year_start_date, to_date=self.filters.report_date,
+			aggregate=True)
+		prev_year_mtd_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.prev_year_month_start, to_date=self.filters.prev_year_date,
+			aggregate=True)
+		prev_year_ytd_gl_data = self.get_gl_data(all_accounts, from_date=self.filters.prev_year_start, to_date=self.filters.prev_year_date,
+			aggregate=True)
 
 		account_totals = {}
-		for d in current_gl_data:
-			if self.filters.month_start_date <= d.posting_date <= self.filters.report_date:
-				group = account_totals.setdefault(d.account, template.copy())
-				group["mtd_actual"] += d.credit - d.debit
-			if self.filters.year_start_date <= d.posting_date <= self.filters.report_date:
-				group = account_totals.setdefault(d.account, template.copy())
-				group["ytd_actual"] += d.credit - d.debit
 
-		for d in prev_year_gl_data:
-			if self.filters.prev_year_month_start <= d.posting_date <= self.filters.prev_year_date:
-				group = account_totals.setdefault(d.account, template.copy())
-				group["mtd_prev_year"] += d.credit - d.debit
-			if self.filters.prev_year_start <= d.posting_date <= self.filters.prev_year_date:
-				group = account_totals.setdefault(d.account, template.copy())
-				group["ytd_prev_year"] += d.credit - d.debit
+		for d in current_mtd_gl_data:
+			group = account_totals.setdefault(d.account, template.copy())
+			group["mtd_actual"] += d.credit - d.debit
+		for d in current_ytd_gl_data:
+			group = account_totals.setdefault(d.account, template.copy())
+			group["ytd_actual"] += d.credit - d.debit
+		for d in prev_year_mtd_gl_data:
+			group = account_totals.setdefault(d.account, template.copy())
+			group["mtd_prev_year"] += d.credit - d.debit
+		for d in prev_year_ytd_gl_data:
+			group = account_totals.setdefault(d.account, template.copy())
+			group["ytd_prev_year"] += d.credit - d.debit
 
 		# Fetch budgets for all fiscal years overlapping the calendar YTD
 		budget_data = self.get_budget_data(all_accounts, self.filters.year_start_date, self.filters.report_date)
