@@ -13,6 +13,7 @@ from erpnext.assets.doctype.asset.depreciation \
 from erpnext.accounts.general_ledger import make_gl_entries, delete_gl_entries
 from erpnext.accounts.utils import get_account_currency
 from erpnext.controllers.accounts_controller import AccountsController
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 class Asset(AccountsController):
 	def validate(self):
@@ -696,6 +697,12 @@ def make_journal_entry(asset_name):
 	je.naming_series = depreciation_series
 	je.company = asset.company
 	je.remark = "Depreciation Entry against asset {0}".format(asset_name)
+	je.cost_center = depreciation_cost_center
+
+	accounting_dimensions = get_accounting_dimensions()
+	for dimension_field in accounting_dimensions:
+		if asset.get(dimension_field):
+			je.set(dimension_field, asset.get(dimension_field))
 
 	je.append("accounts", {
 		"account": depreciation_expense_account,

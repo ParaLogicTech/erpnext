@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
@@ -203,7 +204,8 @@
    "no_copy": 1,
    "options": "Journal Entry",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "section_break_5",
@@ -459,10 +461,12 @@
    "label": "Allow Monthly Depreciation"
   }
  ],
+ "grid_page_length": 500,
  "idx": 72,
  "image_field": "image",
  "is_submittable": 1,
- "modified": "2021-11-03 13:09:20.494786",
+ "links": [],
+ "modified": "2025-10-20 23:24:21.850655",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Asset",
@@ -499,8 +503,10 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "asset_name"
 }

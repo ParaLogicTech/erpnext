@@ -167,6 +167,11 @@ def scrap_asset(asset_name):
 	je.company = asset.company
 	je.remark = "Scrap Entry for asset {0}".format(asset_name)
 
+	accounting_dimensions = get_accounting_dimensions()
+	for dimension_field in accounting_dimensions + ["cost_center"]:
+		if asset.get(dimension_field):
+			je.set(dimension_field, asset.get(dimension_field))
+
 	for entry in get_gl_entries_on_asset_disposal(asset):
 		entry.update({
 			"reference_type": "Asset",
