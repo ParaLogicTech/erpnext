@@ -40,26 +40,17 @@ class SummarizedFinancialReport:
 			frappe.throw(_("Company is mandatory"))
 
 	def get_data(self):
-		report_type = self.get_report_type()
-
-		current_account_group = self.filters.get('account_group')
+		self.current_account_group = self.filters.get('account_group')
 		is_root = False
-		if not current_account_group:
+		if not self.current_account_group:
 			is_root = True
-			current_account_group = frappe.db.get_value(
-				"Account Group",
-				{
-					"company": self.filters.get('company'),
-					"is_root_level": 1,
-					"report_type": report_type,
-				},
-				"name",
-			)
+			self.current_account_group = self.get_root_account_group()
+			if not self.current_account_group:
+				frappe.throw(_("Please configure Root Level {0} Group or filter by Account Group").format(
+					self.get_report_type()
+				))
 
-			if not current_account_group:
-				frappe.throw(_("Please configure Root Level {0} Group or filter by Account Group").format(report_type))
-
-		data = self.get_account_group_data(current_account_group)
+		data = self.get_account_group_data(self.current_account_group)
 
 		if not is_root:
 			totals = {k: 0 for k in self.value_fieldnames}
@@ -79,6 +70,17 @@ class SummarizedFinancialReport:
 			}))
 
 		return data
+
+	def get_root_account_group(self):
+		return frappe.db.get_value(
+			"Account Group",
+			{
+				"company": self.filters.get('company'),
+				"is_root_level": 1,
+				"report_type": self.get_report_type(),
+			},
+			"name",
+		)
 
 	def get_gl_data(self, accounts, to_date, from_date=None, aggregate=False):
 		if not accounts:
@@ -114,6 +116,8 @@ class SummarizedFinancialReport:
 				"debit",
 				"credit",
 				"posting_date",
+				"voucher_type",
+				"voucher_no",
 			]
 			order_by = "ORDER BY posting_date"
 
@@ -284,6 +288,22 @@ class SummarizedFinancialReport:
 				account_map.setdefault(root_group_name, set()).add(row.account)
 			elif row.row_type == "Account Group":
 				self.get_accounts_in_child_account_group(row.account_group, root_group_name, account_map)
+
+	def get_account_details(self, all_accounts):
+		if not all_accounts:
+			return {}
+
+		accounts_data = frappe.db.sql("""
+			select name, account_type
+			from `tabAccount`
+			where name in %s
+		""", [all_accounts], as_dict=1)
+
+		account_details = {}
+		for d in accounts_data:
+			account_details[d.name] = d
+
+		return account_details
 
 	def get_account_totals(self, all_accounts):
 		raise NotImplementedError("get_account_totals not implemented")
@@ -522,6 +542,14 @@ class SummarizedFinancialReport:
 		elif d.row_type == "Account Group":
 			row["account_group"] = d.account_group
 			row["account_display"] = row["account_display"] or d.account_group
+
+		row["is_fixed_asset_root"] = 0
+		if (
+			d.row_type == "Account Group"
+			and self.get_report_type() == "Balance Sheet"
+			and frappe.get_cached_value("Account Group", d.account_group, "is_fixed_asset_root")
+		):
+			row["is_fixed_asset_root"] = 1
 
 		if not no_values:
 			if row.value_type == "Data":

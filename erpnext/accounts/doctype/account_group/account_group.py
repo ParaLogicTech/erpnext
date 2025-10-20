@@ -35,6 +35,27 @@ class AccountGroup(Document):
 					frappe.get_desk_link("Account Group", existing_root.name), self.report_type
 				))
 
+		if self.report_type != "Balance Sheet":
+			self.is_fixed_asset_root = 0
+
+		if self.is_fixed_asset_root:
+			existing_root = frappe.db.get_value(
+				'Account Group',
+				filters={
+					'company': self.company,
+					'is_fixed_asset_root': 1,
+					'report_type': self.report_type,
+					'name': ['!=', self.name],
+				},
+				fieldname=['name', 'group_name'],
+				as_dict=1,
+			)
+
+			if existing_root:
+				frappe.throw(_("Another Fxied Asset Root {0} already exists").format(
+					frappe.get_desk_link("Account Group", existing_root.name)
+				))
+
 	def validate_root_type(self):
 		pnl_root_types = ("Income", "Expense")
 		bs_root_types = ("Asset", "Liability", "Equity")

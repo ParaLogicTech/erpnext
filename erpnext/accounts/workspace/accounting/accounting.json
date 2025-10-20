@@ -1116,7 +1116,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "More Reports",
-   "link_count": 7,
+   "link_count": 8,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -1147,6 +1147,16 @@
    "label": "Summarized Cash Flow",
    "link_count": 0,
    "link_to": "Summarized Cash Flow",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Fixed Assets Statement",
+   "link_count": 0,
+   "link_to": "Fixed Assets Statement",
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
@@ -1194,7 +1204,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-10-17 10:31:28.654131",
+ "modified": "2025-10-20 23:45:59.217079",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting",

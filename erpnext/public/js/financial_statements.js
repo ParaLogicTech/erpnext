@@ -71,8 +71,6 @@ erpnext.financial_statements = {
 		};
 
 		if (data) {
-            let report_date = frappe.query_report.get_filter_value("report_date");
-
 			if (column.fieldname == "account_display") {
 				if (data.row_type == "Account Group" && data.account_group) {
 					options.link_href = frappe.utils.get_form_link("Account Group", data.account_group);
@@ -82,9 +80,15 @@ erpnext.financial_statements = {
 			}
 
 			if (column.format_link) {
+				let report_date = frappe.query_report.get_filter_value("report_date");
+
 				if (data.account_group && report_date && data.row_type === "Account Group") {
+					let report_name = frappe.query_report.report_name;
+					if (data.is_fixed_asset_root) {
+						report_name = "Fixed Assets Statement";
+					}
 					options.link_href = erpnext.financial_statements.get_summarized_statement_link(
-						frappe.query_report.report_name,
+						report_name,
 						data.account_group,
 						report_date,
 					);
