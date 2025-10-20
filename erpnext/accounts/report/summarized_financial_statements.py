@@ -371,7 +371,6 @@ class SummarizedFinancialReport:
 						"field_info": field_info,
 						"filters": self.filters,
 					})
-					frappe.msgprint(str(values[f]))
 				except Exception as e:
 					frappe.msgprint(_("Error evaluating variable {0}: {1}".format(
 						frappe.bold(d.variable_name), repr(e)
@@ -534,7 +533,7 @@ class SummarizedFinancialReport:
 					multiplier = multiplier * -1
 
 				for f in self.value_fieldnames:
-					row[f"{f}_display"] = row[f] * multiplier
+					row[f"{f}_display"] = row[f] * multiplier if row[f] is not None else None
 
 		return row
 
