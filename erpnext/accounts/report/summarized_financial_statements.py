@@ -349,9 +349,9 @@ class SummarizedFinancialReport:
 		for d in group_doc.variables:
 			totals = frappe._dict({f: 0 for f in self.value_fieldnames})
 
-			variable_values_by_field = {}
+			variable_values_by_field = frappe._dict()
 			for f in self.value_fieldnames:
-				variable_values_by_field[f] = {}
+				variable_values_by_field[f] = frappe._dict()
 				for key, tot in variable_values.items():
 					variable_values_by_field[f][key] = flt(tot.get(f))
 
