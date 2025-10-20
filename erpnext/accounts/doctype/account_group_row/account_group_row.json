@@ -103,13 +103,13 @@
    "fieldname": "value_type",
    "fieldtype": "Select",
    "label": "Value Type",
-   "options": "Currency\nFloat\nPercent\nData"
+   "options": "Currency\nFloat\nPercent\nInt\nData"
   }
  ],
  "grid_page_length": 500,
  "istable": 1,
  "links": [],
- "modified": "2025-10-18 13:29:11.408848",
+ "modified": "2025-10-20 13:48:26.237660",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group Row",

@@ -175,7 +175,7 @@ class SummarizedFinancialReport:
 			for key, tot in self.child_group_totals.items():
 				self.group_totals_by_field[f][key] = flt(tot.get(f))
 
-		self.variable_values = self.evaluate_variables_values(group)
+		self.variable_values = self.evaluate_variable_values(group)
 		self.variable_values_by_field = {}
 		for f in self.value_fieldnames:
 			self.variable_values_by_field[f] = frappe._dict()
@@ -338,7 +338,7 @@ class SummarizedFinancialReport:
 
 		return group_totals
 
-	def evaluate_variables_values(self, group_doc):
+	def evaluate_variable_values(self, group_doc):
 		if not group_doc.variables:
 			return {}
 
@@ -347,17 +347,17 @@ class SummarizedFinancialReport:
 
 		variable_values = frappe._dict()
 		for d in group_doc.variables:
-			totals = frappe._dict({f: 0 for f in self.value_fieldnames})
+			values = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 			variable_values_by_field = frappe._dict()
 			for f in self.value_fieldnames:
 				variable_values_by_field[f] = frappe._dict()
 				for key, tot in variable_values.items():
-					variable_values_by_field[f][key] = flt(tot.get(f))
+					variable_values_by_field[f][key] = tot.get(f)
 
 			for f, field_info in self.value_fields.items():
 				try:
-					totals[f] = frappe.safe_eval(d.expression, eval_globals, eval_locals={
+					values[f] = frappe.safe_eval(d.expression, eval_globals, eval_locals={
 						"accounts": self.account_totals_by_field[f],
 						"account_totals": self.account_totals,
 
@@ -371,12 +371,13 @@ class SummarizedFinancialReport:
 						"field_info": field_info,
 						"filters": self.filters,
 					})
+					frappe.msgprint(str(values[f]))
 				except Exception as e:
 					frappe.msgprint(_("Error evaluating variable {0}: {1}".format(
 						frappe.bold(d.variable_name), repr(e)
 					)), indicator="orange")
 
-			variable_values[d.variable_name] = totals
+			variable_values[d.variable_name] = values
 
 		return variable_values
 
