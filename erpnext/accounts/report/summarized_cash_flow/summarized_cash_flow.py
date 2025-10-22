@@ -31,6 +31,8 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 		return self._get_account_totals(all_accounts, self.value_fields, "credit")
 
 	def extend_eval_context(self, context):
+		super().extend_eval_context(context)
+
 		def get_opening_balance(account_group):
 			return self.get_account_group_balance(account_group, add_days(context.field_info.from_date, -1))
 

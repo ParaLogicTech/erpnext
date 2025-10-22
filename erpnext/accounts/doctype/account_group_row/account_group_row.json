@@ -16,7 +16,9 @@
   "format_precision",
   "column_break_zpfb",
   "reverse_sign",
-  "is_bold"
+  "hidden",
+  "is_bold",
+  "right_align"
  ],
  "fields": [
   {
@@ -34,6 +36,7 @@
    "fieldname": "account",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Account",
    "mandatory_depends_on": "eval:doc.row_type=='Account'",
    "options": "Account"
@@ -104,12 +107,24 @@
    "fieldtype": "Select",
    "label": "Value Type",
    "options": "Currency\nFloat\nPercent\nInt\nData"
+  },
+  {
+   "default": "0",
+   "fieldname": "hidden",
+   "fieldtype": "Check",
+   "label": "Hidden"
+  },
+  {
+   "default": "0",
+   "fieldname": "right_align",
+   "fieldtype": "Check",
+   "label": "Right Align"
   }
  ],
  "grid_page_length": 500,
  "istable": 1,
  "links": [],
- "modified": "2025-10-20 13:48:26.237660",
+ "modified": "2025-10-22 15:45:15.172043",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group Row",

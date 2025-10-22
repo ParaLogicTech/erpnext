@@ -14,7 +14,7 @@ class AccountGroup(Document):
 	def validate_root_level(self):
 		"""Validate root level account group type."""
 		if self.is_root_level:
-			report_types = ['Profit and Loss', 'Balance Sheet', 'Cash Flow']
+			report_types = ['Profit and Loss', 'Balance Sheet', 'Cash Flow', 'Ratios']
 			if self.report_type not in report_types:
 				frappe.throw(_("Root level Account Groups must be either {0}").format(comma_or(report_types)))
 
@@ -94,7 +94,7 @@ class AccountGroup(Document):
 					frappe.throw(_("Row #{0}: Account {1} must not be group Account").format(
 						row.idx, frappe.bold(row.account)
 					))
-				if self.report_type != "Cash Flow" and account.report_type != self.report_type:
+				if self.report_type in ("Profit and Loss", "Balance Sheet") and account.report_type != self.report_type:
 					frappe.throw(_("Row #{0}: Account {1} must be of report type {2}").format(
 						row.idx, frappe.bold(row.account), frappe.bold(self.report_type)
 					))
@@ -117,7 +117,7 @@ class AccountGroup(Document):
 
 				account_group = frappe.get_doc("Account Group", row.account_group)
 				if (
-					self.report_type != "Cash Flow"
+					self.report_type in ("Profit and Loss", "Balance Sheet")
 					and account_group.report_type != self.report_type
 					and not (account_group.is_root_level and account_group.report_type == "Profit and Loss")
 				):
@@ -150,7 +150,7 @@ def account_group_query(doctype, txt, searchfield, start, page_len, filters):
 	from erpnext.controllers.queries import get_fields
 	from frappe.desk.reportview import get_filters_cond
 
-	fields = get_fields("Account Group", ["name", "root_type"])
+	fields = get_fields("Account Group", ["name", "report_type", "root_type"])
 	report_type = filters.pop("report_type", None)
 
 	report_type_condition = ""

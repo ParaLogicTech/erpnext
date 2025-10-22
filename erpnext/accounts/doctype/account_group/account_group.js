@@ -22,7 +22,7 @@ frappe.ui.form.on('Account Group', {
 				is_group: 0,
 			};
 
-            if (frm.doc.report_type != "Cash Flow") {
+            if (["Profit and Loss", "Balance Sheet"].includes(frm.doc.report_type)) {
 				filters["report_type"] = frm.doc.report_type;
             }
 
@@ -35,7 +35,7 @@ frappe.ui.form.on('Account Group', {
                 company: frm.doc.company,
             };
 
-            if (frm.doc.report_type != "Cash Flow") {
+            if (["Profit and Loss", "Balance Sheet"].includes(frm.doc.report_type)) {
 				filters["report_type"] = frm.doc.report_type;
             }
 

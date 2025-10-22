@@ -120,6 +120,9 @@ class SummarizedFinancialReport:
 
 		for row in group.rows:
 			if row.row_type == "Account":
+				if row.hidden and not self.filters.show_hidden:
+					continue
+
 				totals = self.account_totals.get(row.account) or {}
 				data.append(self.get_row(
 					row,
@@ -132,6 +135,9 @@ class SummarizedFinancialReport:
 					running_section_totals[f] += flt(totals.get(f))
 
 			elif row.row_type == "Account Group":
+				if row.hidden and not self.filters.show_hidden:
+					continue
+
 				totals = self.child_group_totals.get(row.account_group) or {}
 				data.append(self.get_row(
 					row,
@@ -150,20 +156,25 @@ class SummarizedFinancialReport:
 					running_grand_totals,
 					running_section_totals,
 				)
-
-				data.append(self.get_row(
-					row,
-					totals=formula_values,
-					group_root_type=group_root_type,
-				))
-
 				previous_section_totals[row.section_name] = formula_values
-				if row.value_type == "Currency" or not row.value_type:
-					for f in self.value_fieldnames:
-						running_grand_totals[f] += flt(formula_values.get(f))
-						running_section_totals[f] += flt(formula_values.get(f))
+
+				if not row.hidden:
+					if row.value_type == "Currency" or not row.value_type:
+						for f in self.value_fieldnames:
+							running_grand_totals[f] += flt(formula_values.get(f))
+							running_section_totals[f] += flt(formula_values.get(f))
+
+				if not row.hidden or self.filters.show_hidden:
+					data.append(self.get_row(
+						row,
+						totals=formula_values,
+						group_root_type=group_root_type,
+					))
 
 			elif row.row_type == "Section Break":
+				if row.hidden and not self.filters.show_hidden:
+					continue
+
 				data.append(self.get_row(
 					row,
 					is_bold=True,
@@ -177,18 +188,23 @@ class SummarizedFinancialReport:
 					running_grand_totals,
 					running_section_totals,
 				)
-
-				data.append(self.get_row(
-					row,
-					totals=section_totals,
-					is_bold=True,
-					group_root_type=group_root_type,
-				))
-
 				previous_section_totals[row.section_name] = section_totals
-				running_section_totals = {f: 0 for f in self.value_fieldnames}
+
+				if not row.hidden:
+					running_section_totals = {f: 0 for f in self.value_fieldnames}
+
+				if not row.hidden or self.filters.show_hidden:
+					data.append(self.get_row(
+						row,
+						totals=section_totals,
+						is_bold=True,
+						group_root_type=group_root_type,
+					))
 
 			elif row.row_type == "Profit and Loss":
+				if row.hidden and not self.filters.show_hidden:
+					continue
+
 				net_profit_loss = self.get_net_profit_loss()
 				data.append(self.get_row(
 					row,
@@ -223,7 +239,7 @@ class SummarizedFinancialReport:
 			return {}
 
 		accounts_data = frappe.db.sql("""
-			select name, account_type
+			select name, account_type, report_type
 			from `tabAccount`
 			where name in %s
 		""", [all_accounts], as_dict=1)
@@ -319,8 +335,8 @@ class SummarizedFinancialReport:
 					"field_info": field_info,
 					"filters": self.filters,
 				})
-				variable_context.update(self.get_context_functions())
 				self.extend_eval_context(variable_context)
+				variable_context.update(self.get_context_functions())
 
 				try:
 					values[f] = frappe.safe_eval(d.expression, eval_globals, eval_locals=variable_context)
@@ -375,8 +391,8 @@ class SummarizedFinancialReport:
 				"field_info": field_info,
 				"filters": self.filters,
 			})
-			formula_context.update(self.get_context_functions())
 			self.extend_eval_context(formula_context)
+			formula_context.update(self.get_context_functions())
 
 			try:
 				formula_values[f] = frappe.safe_eval(row.options, eval_globals, eval_locals=formula_context)
@@ -388,7 +404,7 @@ class SummarizedFinancialReport:
 		return formula_values
 
 	def extend_eval_context(self, context):
-		pass
+		frappe.utils.call_hook_method("extend_financial_statement_eval_context", context)
 
 	def get_context_functions(self):
 		return {
@@ -546,6 +562,7 @@ class SummarizedFinancialReport:
 		row["value_type"] = d.value_type or "Currency"
 		row["format_precision"] = d.format_precision
 		row["currency"] = erpnext.get_company_currency(self.filters.company)
+		row["right_align"] = d.right_align
 
 		if d.row_type == "Account":
 			row["account"] = d.account

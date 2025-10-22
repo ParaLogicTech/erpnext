@@ -110,6 +110,10 @@ erpnext.financial_statements = {
 				column.fieldtype = data.value_type || "Currency";
 				column.precision = data.format_precision;
 				column.options = column.fieldtype == "Currency" ? "currency" : null;
+
+				if (data.right_align) {
+					options.right_align = 1;
+				}
 			}
 		}
 		return default_formatter(value, row, column, data, options);
