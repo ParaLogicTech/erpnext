@@ -13,6 +13,10 @@ from erpnext.accounts.report.financial_statements import get_cost_centers_with_c
 class SummarizedFinancialReport:
 	def __init__(self, filters=None):
 		self._account_group_docs = {}
+		self._get_account_group_balance = {}
+		self._get_asset_additions_and_disposals = {}
+		self._asset_disposal_jvs = None
+
 		self.filters = frappe._dict(filters or {})
 
 		self.filters.report_date = getdate(self.filters.report_date)
@@ -389,15 +393,73 @@ class SummarizedFinancialReport:
 	def get_context_functions(self):
 		return {
 			"get_account_group_balance": self.get_account_group_balance,
+			"get_asset_additions_and_disposals": self.get_asset_additions_and_disposals,
 		}
 
 	def get_account_group_balance(self, account_group, to_date):
-		account_map = {}
-		self.get_accounts_in_child_account_group(account_group, account_group, account_map)
+		if not to_date:
+			return 0
 
-		accounts = account_map.get(account_group, [])
-		balance = self.get_gl_data(accounts, to_date=to_date, aggregate=True, group_by_account=False)
-		return flt(balance[0].debit) - flt(balance[0].credit) if balance else 0
+		to_date = getdate(to_date)
+
+		def generator():
+			account_map = {}
+			self.get_accounts_in_child_account_group(account_group, account_group, account_map)
+			accounts = account_map.get(account_group, [])
+
+			balance = self.get_gl_data(accounts, to_date=to_date, aggregate=True, group_by_account=False)
+			return flt(balance[0].debit) - flt(balance[0].credit) if balance else 0
+
+		key = (account_group, to_date)
+		if key not in self._get_account_group_balance:
+			self._get_account_group_balance[key] = generator()
+
+		return self._get_account_group_balance[key]
+
+	def get_asset_additions_and_disposals(self, account_group, from_date, to_date):
+		template = frappe._dict({"additions": 0, "disposals": 0})
+		if not to_date:
+			return template
+
+		to_date = getdate(to_date)
+		from_date = getdate(from_date) if from_date else None
+
+		def generator():
+			out = template.copy()
+			account_map = {}
+			self.get_accounts_in_child_account_group(account_group, account_group, account_map)
+			accounts = account_map.get(account_group, [])
+			disposal_jvs = self.get_asset_disposal_jvs()
+
+			gl_data = self.get_gl_data(accounts, from_date=from_date, to_date=to_date, aggregate=False)
+			for d in gl_data:
+				is_disposal = d.voucher_type == "Sales Invoice" or (d.voucher_type == "Journal Entry" and d.voucher_no in disposal_jvs)
+
+				if is_disposal:
+					out["disposals"] += d.credit - d.debit
+				else:
+					out["additions"] += d.debit - d.credit
+
+			return out
+
+		key = (account_group, from_date, to_date)
+		if key not in self._get_asset_additions_and_disposals:
+			self._get_asset_additions_and_disposals[key] = generator()
+
+		return self._get_asset_additions_and_disposals[key]
+
+	def get_asset_disposal_jvs(self):
+		def generator():
+			return set(frappe.db.sql_list("""
+				select distinct journal_entry_for_scrap
+				from `tabAsset`
+				where journal_entry_for_scrap != '' and journal_entry_for_scrap is not null
+			"""))
+
+		if self._asset_disposal_jvs is None:
+			self._asset_disposal_jvs = generator()
+
+		return self._asset_disposal_jvs
 
 	def calculate_section_totals(
 		self,

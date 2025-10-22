@@ -37,8 +37,20 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 		def get_closing_balance(account_group):
 			return self.get_account_group_balance(account_group, context.field_info.to_date)
 
+		def get_fixed_asset_additions(account_group):
+			return self.get_asset_additions_and_disposals(
+				account_group, context.field_info.from_date, context.field_info.to_date
+			)["additions"]
+
+		def get_fixed_asset_disposals(account_group):
+			return self.get_asset_additions_and_disposals(
+				account_group, context.field_info.from_date, context.field_info.to_date
+			)["disposals"]
+
 		context["get_group_opening_balance"] = get_opening_balance
 		context["get_group_closing_balance"] = get_closing_balance
+		context["get_fixed_asset_additions"] = get_fixed_asset_additions
+		context["get_fixed_asset_disposals"] = get_fixed_asset_disposals
 
 	def get_columns(self):
 		return [

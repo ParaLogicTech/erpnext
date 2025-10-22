@@ -101,11 +101,7 @@ class FixedAssetsStatement(SummarizedBalanceSheet):
 			aggregate=False,
 		)
 
-		disposal_jvs = set(frappe.db.sql_list("""
-			select distinct journal_entry_for_scrap
-			from `tabAsset`
-			where journal_entry_for_scrap != '' and journal_entry_for_scrap is not null
-		"""))
+		disposal_jvs = self.get_asset_disposal_jvs()
 
 		account_totals = {}
 		for d in opening_gl_totals:
