@@ -1,4 +1,19 @@
 frappe.ui.form.on('Account Group', {
+	setup(frm) {
+		// setup formatters for fieldtype
+		frappe.meta.docfield_map["Account Group Row"].row_type.formatter = (value) => {
+			const prefix = {
+				"Section Total": "--red-600",
+				"Section Break": "--blue-600",
+				"Formula": "--yellow-600",
+			};
+			if (prefix[value]) {
+				value = `<span class="bold" style="color: var(${prefix[value]})">${value}</span>`;
+			}
+			return value;
+		};
+	},
+
 	refresh(frm) {
 		// Set filters for account selection
 		frm.set_query('account', 'rows', () => {

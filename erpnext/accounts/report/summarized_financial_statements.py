@@ -82,92 +82,16 @@ class SummarizedFinancialReport:
 			"name",
 		)
 
-	def get_gl_data(self, accounts, to_date, from_date=None, aggregate=False):
-		if not accounts:
-			return []
-
-		dimension_conditions, dimension_args = self.get_dimension_conditions()
-
-		args = {
-			"company": self.filters.company,
-			"accounts": accounts,
-			"to_date": to_date,
-			"from_date": from_date,
-			**dimension_args,
-		}
-		if from_date:
-			date_condition = "and posting_date between %(from_date)s and %(to_date)s"
-		else:
-			date_condition = "and posting_date <= %(to_date)s"
-
-		fields = ["account"]
-
-		group_by = ""
-		order_by = ""
-
-		if aggregate:
-			fields += [
-				"sum(debit) as debit",
-				"sum(credit) as credit",
-			]
-			group_by = "GROUP BY account"
-		else:
-			fields += [
-				"debit",
-				"credit",
-				"posting_date",
-				"voucher_type",
-				"voucher_no",
-			]
-			order_by = "ORDER BY posting_date"
-
-		fields_str = ", ".join(fields)
-
-		return frappe.db.sql(f"""
-			SELECT {fields_str}
-			FROM `tabGL Entry`
-			WHERE
-				company = %(company)s
-				and account in %(accounts)s
-				{date_condition}
-				{dimension_conditions}
-			{group_by}
-			{order_by}
-		""", args, as_dict=1)
-
-	def get_dimension_conditions(self):
-		dimension_conditions = []
-		args = {}
-
-		if self.filters.get("cost_center"):
-			args["cost_center"] = get_cost_centers_with_children(self.filters.cost_center)
-			dimension_conditions.append("cost_center in %(cost_center)s")
-
-		accounting_dimensions = get_accounting_dimensions(as_list=False)
-
-		for dimension in accounting_dimensions:
-			if self.filters.get(dimension.fieldname):
-				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
-					args[dimension.fieldname] = get_dimension_with_children(dimension.document_type, self.filters.get(dimension.fieldname))
-					dimension_conditions.append("{0} in %({0})s".format(dimension.fieldname))
-				else:
-					args[dimension.fieldname] = self.filters.get(dimension.fieldname)
-					dimension_conditions.append("{0} = %({0})s".format(dimension.fieldname))
-
-		dimension_conditions = " AND " + " AND ".join(dimension_conditions) if dimension_conditions else ""
-
-		return dimension_conditions, args
-
 	def get_account_group_data(self, group_name):
 		"""Aggregate account and group data for a given group."""
 		data = []
 		group = self.get_account_group_doc(group_name)
 		group_root_type = group.root_type
 
-		group_account_map = self.get_accounts_in_account_group(group)
-		all_accounts = group_account_map.get(group.name, [])
+		self.group_account_map = self.get_accounts_in_account_group(group)
+		all_accounts = self.group_account_map.get(group.name, [])
 		self.account_totals = self.get_account_totals(all_accounts)
-		self.child_group_totals = self.get_child_group_totals(group, group_account_map)
+		self.child_group_totals = self.get_child_group_totals(group, self.group_account_map)
 
 		self.account_totals_by_field = {}
 		self.group_totals_by_field = {}
@@ -229,6 +153,7 @@ class SummarizedFinancialReport:
 					group_root_type=group_root_type,
 				))
 
+				previous_section_totals[row.section_name] = formula_values
 				if row.value_type == "Currency" or not row.value_type:
 					for f in self.value_fieldnames:
 						running_grand_totals[f] += flt(formula_values.get(f))
@@ -376,21 +301,25 @@ class SummarizedFinancialReport:
 					variable_values_by_field[f][key] = tot.get(f)
 
 			for f, field_info in self.value_fields.items():
+				variable_context = frappe._dict({
+					"accounts": self.account_totals_by_field[f],
+					"account_totals": self.account_totals,
+
+					"groups": self.group_totals_by_field[f],
+					"group_totals": self.child_group_totals,
+
+					"variables": variable_values_by_field[f],
+					"variable_values": variable_values,
+
+					"fieldname": f,
+					"field_info": field_info,
+					"filters": self.filters,
+				})
+				variable_context.update(self.get_context_functions())
+				self.extend_eval_context(variable_context)
+
 				try:
-					values[f] = frappe.safe_eval(d.expression, eval_globals, eval_locals={
-						"accounts": self.account_totals_by_field[f],
-						"account_totals": self.account_totals,
-
-						"groups": self.group_totals_by_field[f],
-						"group_totals": self.child_group_totals,
-
-						"variables": variable_values_by_field[f],
-						"variable_values": variable_values,
-
-						"fieldname": f,
-						"field_info": field_info,
-						"filters": self.filters,
-					})
+					values[f] = frappe.safe_eval(d.expression, eval_globals, eval_locals=variable_context)
 				except Exception as e:
 					frappe.msgprint(_("Error evaluating variable {0}: {1}".format(
 						frappe.bold(d.variable_name), repr(e)
@@ -419,36 +348,56 @@ class SummarizedFinancialReport:
 		formula_values = {}
 
 		for f, field_info in self.value_fields.items():
+			formula_context = frappe._dict({
+				"accounts": self.account_totals_by_field[f],
+				"account_totals": self.account_totals,
+
+				"groups": self.group_totals_by_field[f],
+				"group_totals": self.child_group_totals,
+
+				"variables": self.variable_values_by_field[f],
+				"variable_values": self.variable_values,
+
+				"previous_sections": previous_section_totals_by_field[f],
+				"previous_section_totals": previous_section_totals,
+
+				"running_grand_total": running_grand_totals[f],
+				"all_running_grand_totals": running_grand_totals,
+
+				"running_section_total": running_section_totals[f],
+				"all_running_section_totals": running_section_totals,
+
+				"fieldname": f,
+				"field_info": field_info,
+				"filters": self.filters,
+			})
+			formula_context.update(self.get_context_functions())
+			self.extend_eval_context(formula_context)
+
 			try:
-				formula_values[f] = frappe.safe_eval(row.options, eval_globals, eval_locals={
-					"accounts": self.account_totals_by_field[f],
-					"account_totals": self.account_totals,
-
-					"groups": self.group_totals_by_field[f],
-					"group_totals": self.child_group_totals,
-
-					"variables": self.variable_values_by_field[f],
-					"variable_values": self.variable_values,
-
-					"previous_sections": previous_section_totals_by_field[f],
-					"previous_section_totals": previous_section_totals,
-
-					"running_grand_total": running_grand_totals[f],
-					"all_running_grand_totals": running_grand_totals,
-
-					"running_section_total": running_section_totals[f],
-					"all_running_section_totals": running_section_totals,
-
-					"fieldname": f,
-					"field_info": field_info,
-					"filters": self.filters,
-				})
+				formula_values[f] = frappe.safe_eval(row.options, eval_globals, eval_locals=formula_context)
 			except Exception as e:
 				frappe.msgprint(_("Error evaluating formula {0} on Row #{1}: {2}".format(
 					frappe.bold(row.section_name), row.idx, repr(e)
 				)), indicator="orange")
 
 		return formula_values
+
+	def extend_eval_context(self, context):
+		pass
+
+	def get_context_functions(self):
+		return {
+			"get_account_group_balance": self.get_account_group_balance,
+		}
+
+	def get_account_group_balance(self, account_group, to_date):
+		account_map = {}
+		self.get_accounts_in_child_account_group(account_group, account_group, account_map)
+
+		accounts = account_map.get(account_group, [])
+		balance = self.get_gl_data(accounts, to_date=to_date, aggregate=True, group_by_account=False)
+		return flt(balance[0].debit) - flt(balance[0].credit) if balance else 0
 
 	def calculate_section_totals(
 		self,
@@ -564,6 +513,85 @@ class SummarizedFinancialReport:
 					row[f"{f}_display"] = row[f] * multiplier if row[f] is not None else None
 
 		return row
+
+	def get_gl_data(self, accounts, to_date, from_date=None, aggregate=False, group_by_account=True):
+		if not accounts:
+			return []
+
+		dimension_conditions, dimension_args = self.get_dimension_conditions()
+
+		args = {
+			"company": self.filters.company,
+			"accounts": accounts,
+			"to_date": to_date,
+			"from_date": from_date,
+			**dimension_args,
+		}
+		if from_date:
+			date_condition = "and posting_date between %(from_date)s and %(to_date)s"
+		else:
+			date_condition = "and posting_date <= %(to_date)s"
+
+		fields = []
+		group_by = ""
+		order_by = ""
+
+		if aggregate:
+			fields += [
+				"sum(debit) as debit",
+				"sum(credit) as credit",
+			]
+
+			if group_by_account:
+				fields.append("account")
+				group_by = "GROUP BY account"
+		else:
+			fields += [
+				"account",
+				"debit",
+				"credit",
+				"posting_date",
+				"voucher_type",
+				"voucher_no",
+			]
+			order_by = "ORDER BY posting_date"
+
+		fields_str = ", ".join(fields)
+
+		return frappe.db.sql(f"""
+			SELECT {fields_str}
+			FROM `tabGL Entry`
+			WHERE
+				company = %(company)s
+				and account in %(accounts)s
+				{date_condition}
+				{dimension_conditions}
+			{group_by}
+			{order_by}
+		""", args, as_dict=1)
+
+	def get_dimension_conditions(self):
+		dimension_conditions = []
+		args = {}
+
+		if self.filters.get("cost_center"):
+			args["cost_center"] = get_cost_centers_with_children(self.filters.cost_center)
+			dimension_conditions.append("cost_center in %(cost_center)s")
+
+		accounting_dimensions = get_accounting_dimensions(as_list=False)
+
+		for dimension in accounting_dimensions:
+			if self.filters.get(dimension.fieldname):
+				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
+					args[dimension.fieldname] = get_dimension_with_children(dimension.document_type, self.filters.get(dimension.fieldname))
+					dimension_conditions.append("{0} in %({0})s".format(dimension.fieldname))
+				else:
+					args[dimension.fieldname] = self.filters.get(dimension.fieldname)
+					dimension_conditions.append("{0} = %({0})s".format(dimension.fieldname))
+
+		dimension_conditions = " AND " + " AND ".join(dimension_conditions) if dimension_conditions else ""
+
+		return dimension_conditions, args
 
 	def get_display_value_multiplier(self, row):
 		return 1

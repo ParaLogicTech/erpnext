@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import add_days
 from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
 
 
@@ -10,12 +11,12 @@ def execute(filters=None):
 class SummarizedCashFlow(SummarizedFinancialReport):
 	def setup_fields(self):
 		self.value_fields = frappe._dict({
-			"actual": frappe._dict({
+			"ytd_actual": frappe._dict({
 				"from_date": self.filters.year_start_date,
 				"to_date": self.filters.report_date,
 				"is_gl_value": 1,
 			}),
-			"prev_closing": frappe._dict({
+			"ytd_prev_closing": frappe._dict({
 				"from_date": self.filters.prev_year_start,
 				"to_date": self.filters.prev_year_end,
 				"is_gl_value": 1,
@@ -29,8 +30,15 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 	def get_account_totals(self, all_accounts):
 		return self._get_account_totals(all_accounts, self.value_fields, "credit")
 
-	# def get_display_value_multiplier(self, row):
-	# 	return -1 if row.get("root_type") in ("Liability", "Equity", "Income") else 1
+	def extend_eval_context(self, context):
+		def get_opening_balance(account_group):
+			return self.get_account_group_balance(account_group, add_days(context.field_info.from_date, -1))
+
+		def get_closing_balance(account_group):
+			return self.get_account_group_balance(account_group, context.field_info.to_date)
+
+		context["get_group_opening_balance"] = get_opening_balance
+		context["get_group_closing_balance"] = get_closing_balance
 
 	def get_columns(self):
 		return [
@@ -41,22 +49,22 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 				"width": 350,
 			},
 			{
-				"fieldname": "actual_display",
-				"label": _("As on {0}").format(frappe.format(self.value_fields["actual"].to_date)),
+				"fieldname": "ytd_actual_display",
+				"label": _("As on {0}").format(frappe.format(self.value_fields["ytd_actual"].to_date)),
 				"fieldtype": "Float",
 				"width": 175,
-				"from_date": self.value_fields["actual"].from_date,
-				"to_date": self.value_fields["actual"].to_date,
+				"from_date": self.value_fields["ytd_actual"].from_date,
+				"to_date": self.value_fields["ytd_actual"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
 			{
-				"fieldname": "prev_closing_display",
-				"label": _("As on {0}").format(frappe.format(self.value_fields["prev_closing"].to_date)),
+				"fieldname": "ytd_prev_closing_display",
+				"label": _("As on {0}").format(frappe.format(self.value_fields["ytd_prev_closing"].to_date)),
 				"fieldtype": "Float",
 				"width": 175,
-				"from_date": self.value_fields["prev_closing"].from_date,
-				"to_date": self.value_fields["prev_closing"].to_date,
+				"from_date": self.value_fields["ytd_prev_closing"].from_date,
+				"to_date": self.value_fields["ytd_prev_closing"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
