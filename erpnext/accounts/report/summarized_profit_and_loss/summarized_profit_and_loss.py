@@ -67,17 +67,17 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		account_totals = self._get_account_totals(all_accounts, self.gl_fields, "credit")
 
 		# Fetch budgets for all fiscal years overlapping the calendar YTD
-		budget_data = self.get_budget_data(all_accounts, self.filters.year_start_date, self.filters.report_date)
-		budget_totals = self.calculate_budget_totals(
-			budget_data,
-			self.filters.month_start_date, self.filters.report_date,
-			self.filters.year_start_date, self.filters.report_date
+		budget_data = self.get_budget_data(
+			all_accounts,
+			self.budget_fields.ytd_budget.from_date,
+			self.budget_fields.ytd_budget.to_date,
 		)
 
+		budget_totals = self.calculate_budget_totals(budget_data)
 		for account, budget in budget_totals.items():
 			group = account_totals.setdefault(account, template.copy())
-			group["mtd_budget"] = flt(budget.get("mtd_budget"))
-			group["ytd_budget"] = flt(budget.get("ytd_budget"))
+			for fieldname in self.budget_fieldnames:
+				group[fieldname] = flt(budget.get(fieldname))
 
 		return account_totals
 
@@ -99,17 +99,14 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		for fieldname, field_info in self.gl_fields.items():
 			result[fieldname] = self.get_net_profit_loss_for_period(accounts, field_info.from_date, field_info.to_date)
 
-		# --- Budget Calculation ---
-		budget_data = self.get_budget_data(accounts, self.filters.year_start_date, self.filters.report_date)
-		budget_totals = self.calculate_budget_totals(
-			budget_data,
-			self.filters.month_start_date, self.filters.report_date,
-			self.filters.year_start_date, self.filters.report_date
+		budget_data = self.get_budget_data(
+			accounts,
+			self.budget_fields.ytd_budget.from_date,
+			self.budget_fields.ytd_budget.to_date,
 		)
-
-		# Sum budget for all accounts
-		result["mtd_budget"] = sum(flt(b.get("mtd_budget")) for b in budget_totals.values())
-		result["ytd_budget"] = sum(flt(b.get("ytd_budget")) for b in budget_totals.values())
+		budget_totals = self.calculate_budget_totals(budget_data)
+		for fieldname in self.budget_fieldnames:
+			result[fieldname] = sum(flt(b.get(fieldname)) for b in budget_totals.values())
 
 		return result
 
@@ -176,51 +173,38 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		)
 		return fiscal_years
 
-	def calculate_budget_totals(self, budget_records, mtd_start, mtd_end, ytd_start, ytd_end):
-		"""Calculate MTD and YTD budget for each account from raw budget records, supporting multi-fiscal-year."""
+	def calculate_budget_totals(self, budget_records):
 		budget_data = {}
+		budget_template = frappe._dict({f: 0 for f in self.budget_fieldnames})
+
 		for row in budget_records:
-			account = row.account
-			budget = row.budget_amount or 0
-			monthly_distribution = row.monthly_distribution
+			total_budget = flt(row.budget_amount) or 0
 
 			fy_start = getdate(row.fy_start)
 			fy_end = getdate(row.fy_end)
-
-			# MTD overlap
-			mtd_overlap_start = max(mtd_start, fy_start)
-			mtd_overlap_end = min(mtd_end, fy_end)
-
-			mtd_days = (mtd_overlap_end - mtd_overlap_start).days + 1 if mtd_overlap_end >= mtd_overlap_start else 0
 			fy_days = (fy_end - fy_start).days + 1 if fy_end and fy_start else 365
-			mtd_budget = 0
-			if mtd_days > 0:
-				if monthly_distribution:
-					mtd_budget = (
-						get_accumulated_monthly_budget(monthly_distribution, mtd_overlap_end, row.fiscal_year, budget)
-						- get_accumulated_monthly_budget(monthly_distribution, mtd_overlap_start - timedelta(days=1), row.fiscal_year, budget)
-					)
-				else:
-					mtd_budget = (budget * mtd_days / fy_days)
 
-			# YTD overlap
-			ytd_overlap_start = max(ytd_start, fy_start)
-			ytd_overlap_end = min(ytd_end, fy_end)
+			entry = budget_data.setdefault(row.account, budget_template.copy())
 
-			ytd_days = (ytd_overlap_end - ytd_overlap_start).days + 1 if ytd_overlap_end >= ytd_overlap_start else 0
-			ytd_budget = 0
-			if ytd_days > 0:
-				if monthly_distribution:
-					ytd_budget = (
-						get_accumulated_monthly_budget(monthly_distribution, ytd_overlap_end, row.fiscal_year, budget)
-						- get_accumulated_monthly_budget(monthly_distribution, ytd_overlap_start - timedelta(days=1), row.fiscal_year, budget)
-					)
-				else:
-					ytd_budget = (budget * ytd_days / fy_days)
+			for fieldname, field_info in self.budget_fields.items():
+				from_date = field_info.from_date
+				to_date = field_info.to_date
 
-			entry = budget_data.setdefault(account, {"mtd_budget": 0, "ytd_budget": 0})
-			entry["mtd_budget"] += mtd_budget
-			entry["ytd_budget"] += ytd_budget
+				overlap_start = max(from_date, fy_start)
+				overlap_end = min(to_date, fy_end)
+
+				budget_days = (overlap_end - overlap_start).days + 1 if overlap_end >= overlap_start else 0
+				calculated_budget = 0
+				if budget_days > 0:
+					if row.monthly_distribution:
+						calculated_budget = (
+							get_accumulated_monthly_budget(row.monthly_distribution, overlap_end, row.fiscal_year, total_budget)
+							- get_accumulated_monthly_budget(row.monthly_distribution, overlap_start - timedelta(days=1), row.fiscal_year, total_budget)
+						)
+					else:
+						calculated_budget = (total_budget * budget_days / fy_days)
+
+				entry[fieldname] += -1 * calculated_budget
 
 		return budget_data
 
