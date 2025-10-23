@@ -253,24 +253,49 @@ class SummarizedFinancialReport:
 	def get_account_totals(self, all_accounts):
 		raise NotImplementedError("get_account_totals not implemented")
 
-	def _get_account_totals(self, all_accounts, gl_fields, dr_or_cr):
+	def _get_account_totals(self, all_accounts, gl_fields, dr_or_cr, aggregate=True):
+		def accumulate(gle, fieldname):
+			if dr_or_cr == "credit":
+				group[fieldname] += gle.credit - gle.debit
+			else:
+				group[fieldname] += gle.debit - gle.credit
+
 		template = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 		account_totals = {}
-		for fieldname, field_info in gl_fields.items():
+
+		if aggregate:
+			for fieldname, field_info in gl_fields.items():
+				gl_data = self.get_gl_data(
+					all_accounts,
+					from_date=field_info.from_date,
+					to_date=field_info.to_date,
+					aggregate=aggregate,
+				)
+
+				for d in gl_data:
+					group = account_totals.setdefault(d.account, template.copy())
+					accumulate(d, fieldname)
+		else:
+			from_date = min([f.from_date for f in gl_fields.values()])
+			to_date = max([f.to_date for f in gl_fields.values()])
+
 			gl_data = self.get_gl_data(
 				all_accounts,
-				from_date=field_info.from_date,
-				to_date=field_info.to_date,
-				aggregate=True,
+				from_date=from_date,
+				to_date=to_date,
+				aggregate=aggregate,
 			)
 
 			for d in gl_data:
-				group = account_totals.setdefault(d.account, template.copy())
-				if dr_or_cr == "credit":
-					group[fieldname] += d.credit - d.debit
-				else:
-					group[fieldname] += d.debit - d.credit
+				if d.account not in account_totals:
+					account_totals[d.account] = template.copy()
+
+				group = account_totals[d.account]
+
+				for fieldname, field_info in gl_fields.items():
+					if field_info.from_date <= d.posting_date <= field_info.to_date:
+						accumulate(d, fieldname)
 
 		return account_totals
 

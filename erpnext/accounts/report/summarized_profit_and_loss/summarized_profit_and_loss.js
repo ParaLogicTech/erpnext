@@ -16,6 +16,16 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			reqd: 1
 		},
 		{
+			fieldname: "format",
+			label: __("Format"),
+			fieldtype: "Select",
+			options: [
+				"MTD/YTD",
+				"Monthly",
+			],
+			default: "MTD/YTD",
+		},
+		{
 			fieldname: "account_group",
 			label: __("Account Group"),
 			fieldtype: "Link",
@@ -35,6 +45,11 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			get_query: () => {
 				return { filters: { company: frappe.query_report.get_filter_value("company") } };
 			},
+		},
+		{
+			fieldname: "hide_budget",
+			label: __("Hide Budget"),
+			fieldtype: "Check",
 		},
 	],
 
