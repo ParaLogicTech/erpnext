@@ -38,7 +38,7 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 		return [
 			{
 				"fieldname": "account_display",
-				"label": _("Account"),
+				"label": _("Particulars"),
 				"fieldtype": "Data",
 				"width": 350,
 			},
