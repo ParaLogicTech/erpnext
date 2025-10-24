@@ -29,7 +29,7 @@ class SummarizedBalanceSheet(SummarizedFinancialReport):
 		return self.get_columns(), self.get_data()
 
 	def get_account_totals(self, all_accounts):
-		return self._get_account_totals(all_accounts, self.value_fields, "debit")
+		return self._get_account_totals_data(all_accounts, self.value_fields, "debit").account_totals
 
 	def get_display_value_multiplier(self, row):
 		return -1 if row.get("root_type") in ("Liability", "Equity", "Income") else 1

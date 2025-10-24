@@ -1,11 +1,11 @@
 import frappe
 import erpnext
-from frappe import _
+from frappe import _, scrub, unscrub
 from frappe.utils import flt, cint, cstr, getdate, get_first_day, get_year_start, add_years, get_year_ending
 from erpnext import get_default_company
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
-	get_dimension_with_children
+	get_dimension_with_children, get_all_dimension_fields,
 )
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 
@@ -31,8 +31,10 @@ class SummarizedFinancialReport:
 
 		self.value_fields = {}
 		self.setup_fields()
-		self.value_fieldnames = list(self.value_fields.keys())
-		self.value_and_display_fieldnames = self.value_fieldnames + [f"{f}_display" for f in self.value_fieldnames]
+
+	@property
+	def value_fieldnames(self):
+		return list(self.value_fields.keys())
 
 	def setup_fields(self):
 		pass
@@ -42,6 +44,9 @@ class SummarizedFinancialReport:
 			self.filters.company = get_default_company()
 		if not self.filters.company:
 			frappe.throw(_("Company is mandatory"))
+
+		if self.filters.dimension_field and self.filters.dimension_field not in get_all_dimension_fields():
+			frappe.throw(_("Invalid Dimension Field {0}").format(self.filters.dimension_field))
 
 	def get_data(self):
 		self.current_account_group = self.filters.get('account_group')
@@ -253,16 +258,27 @@ class SummarizedFinancialReport:
 	def get_account_totals(self, all_accounts):
 		raise NotImplementedError("get_account_totals not implemented")
 
-	def _get_account_totals(self, all_accounts, gl_fields, dr_or_cr, aggregate=True):
-		def accumulate(gle, fieldname):
+	def _get_account_totals_data(self, all_accounts, gl_fields, dr_or_cr, aggregate=True, dimension_field=None):
+		def accumulate(gle, group, fieldname):
 			if dr_or_cr == "credit":
-				group[fieldname] += gle.credit - gle.debit
+				diff = gle.credit - gle.debit
 			else:
-				group[fieldname] += gle.debit - gle.credit
+				diff = gle.debit - gle.credit
+
+			group[fieldname] += diff
+
+			if dimension_field:
+				dimension_value = cstr(gle.get(dimension_field))
+				dimension_values.add(dimension_value)
+				dimension_key = self.get_dimension_key(fieldname, dimension_value)
+
+				group.setdefault(dimension_key, 0)
+				group[dimension_key] += diff
 
 		template = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 		account_totals = {}
+		dimension_values = set()
 
 		if aggregate:
 			for fieldname, field_info in gl_fields.items():
@@ -271,11 +287,12 @@ class SummarizedFinancialReport:
 					from_date=field_info.from_date,
 					to_date=field_info.to_date,
 					aggregate=aggregate,
+					dimension_field=dimension_field,
 				)
 
 				for d in gl_data:
 					group = account_totals.setdefault(d.account, template.copy())
-					accumulate(d, fieldname)
+					accumulate(d, group, fieldname)
 		else:
 			from_date = min([f.from_date for f in gl_fields.values()])
 			to_date = max([f.to_date for f in gl_fields.values()])
@@ -285,6 +302,7 @@ class SummarizedFinancialReport:
 				from_date=from_date,
 				to_date=to_date,
 				aggregate=aggregate,
+				dimension_field=dimension_field,
 			)
 
 			for d in gl_data:
@@ -295,9 +313,26 @@ class SummarizedFinancialReport:
 
 				for fieldname, field_info in gl_fields.items():
 					if field_info.from_date <= d.posting_date <= field_info.to_date:
-						accumulate(d, fieldname)
+						accumulate(d, group, fieldname)
 
-		return account_totals
+		return frappe._dict({
+			"account_totals": account_totals,
+			"dimension_values": dimension_values,
+		})
+
+	@staticmethod
+	def get_dimension_key(fieldname, dimension_value):
+		return f"{fieldname}_dim_{scrub(dimension_value)}"
+
+	@staticmethod
+	def get_dimension_label(dimension_field, dimension_value):
+		if not dimension_value:
+			return _("No {0}").format(unscrub(dimension_field))
+
+		if dimension_field == "cost_center":
+			return frappe.get_cached_value("Cost Center", dimension_value, "cost_center_name")
+		else:
+			return dimension_value
 
 	def get_child_group_totals(self, group_doc, group_account_map):
 		child_group_totals = {}
@@ -437,7 +472,7 @@ class SummarizedFinancialReport:
 			"get_asset_additions_and_disposals": self.get_asset_additions_and_disposals,
 		}
 
-	def get_account_group_balance(self, account_group, to_date):
+	def get_account_group_balance(self, account_group, to_date, dimension_field=None, dimension_value=None):
 		if not to_date:
 			return 0
 
@@ -448,16 +483,30 @@ class SummarizedFinancialReport:
 			self.get_accounts_in_child_account_group(account_group, account_group, account_map)
 			accounts = account_map.get(account_group, [])
 
-			balance = self.get_gl_data(accounts, to_date=to_date, aggregate=True, group_by_account=False)
+			balance = self.get_gl_data(
+				accounts,
+				to_date=to_date,
+				aggregate=True,
+				grouped=False,
+				dimension_field=dimension_field,
+				dimension_value=dimension_value,
+			)
 			return flt(balance[0].debit) - flt(balance[0].credit) if balance else 0
 
-		key = (account_group, to_date)
+		key = (account_group, to_date, cstr(dimension_field), cstr(dimension_value))
 		if key not in self._get_account_group_balance:
 			self._get_account_group_balance[key] = generator()
 
 		return self._get_account_group_balance[key]
 
-	def get_asset_additions_and_disposals(self, account_group, from_date, to_date):
+	def get_asset_additions_and_disposals(
+		self,
+		account_group,
+		from_date,
+		to_date,
+		dimension_field=None,
+		dimension_value=None,
+	):
 		template = frappe._dict({"additions": 0, "disposals": 0})
 		if not to_date:
 			return template
@@ -472,7 +521,14 @@ class SummarizedFinancialReport:
 			accounts = account_map.get(account_group, [])
 			disposal_jvs = self.get_asset_disposal_jvs()
 
-			gl_data = self.get_gl_data(accounts, from_date=from_date, to_date=to_date, aggregate=False)
+			gl_data = self.get_gl_data(
+				accounts,
+				from_date=from_date,
+				to_date=to_date,
+				aggregate=False,
+				dimension_field=dimension_field,
+				dimension_value=dimension_value,
+			)
 			for d in gl_data:
 				is_disposal = d.voucher_type == "Sales Invoice" or (d.voucher_type == "Journal Entry" and d.voucher_no in disposal_jvs)
 
@@ -483,7 +539,7 @@ class SummarizedFinancialReport:
 
 			return out
 
-		key = (account_group, from_date, to_date)
+		key = (account_group, from_date, to_date, cstr(dimension_field), cstr(dimension_value))
 		if key not in self._get_asset_additions_and_disposals:
 			self._get_asset_additions_and_disposals[key] = generator()
 
@@ -571,14 +627,12 @@ class SummarizedFinancialReport:
 		if totals is not None:
 			no_values = False
 
-		if not no_values:
-			for f in self.value_fieldnames:
-				row[f] = 0
-
 		if not totals:
 			totals = frappe._dict()
 
-		row.update(totals)
+		if not no_values:
+			for f in self.value_fieldnames:
+				row[f] = totals.get(f)
 
 		row["row_type"] = d.row_type
 		row["account_display"] = d.section_name or ""
@@ -618,7 +672,16 @@ class SummarizedFinancialReport:
 
 		return row
 
-	def get_gl_data(self, accounts, to_date, from_date=None, aggregate=False, group_by_account=True):
+	def get_gl_data(
+		self,
+		accounts,
+		to_date,
+		from_date=None,
+		aggregate=False,
+		grouped=True,
+		dimension_field=None,
+		dimension_value=None,
+	):
 		if not accounts:
 			return []
 
@@ -636,6 +699,13 @@ class SummarizedFinancialReport:
 		else:
 			date_condition = "and posting_date <= %(to_date)s"
 
+		additional_dimension_condition = ""
+		if dimension_field and dimension_value is not None:
+			if dimension_value:
+				additional_dimension_condition = f"and {dimension_field} = {frappe.db.escape(dimension_value)}"
+			else:
+				additional_dimension_condition = f"and ({dimension_field} = '' or {dimension_field} is null)"
+
 		fields = []
 		group_by = ""
 		order_by = ""
@@ -646,9 +716,13 @@ class SummarizedFinancialReport:
 				"sum(credit) as credit",
 			]
 
-			if group_by_account:
+			if grouped:
 				fields.append("account")
 				group_by = "GROUP BY account"
+
+				if dimension_field:
+					fields.append(dimension_field)
+					group_by += ", " + dimension_field
 		else:
 			fields += [
 				"account",
@@ -658,6 +732,10 @@ class SummarizedFinancialReport:
 				"voucher_type",
 				"voucher_no",
 			]
+
+			if dimension_field:
+				fields.append(self.filters.dimension_field)
+
 			order_by = "ORDER BY posting_date"
 
 		fields_str = ", ".join(fields)
@@ -670,6 +748,7 @@ class SummarizedFinancialReport:
 				and account in %(accounts)s
 				{date_condition}
 				{dimension_conditions}
+				{additional_dimension_condition}
 			{group_by}
 			{order_by}
 		""", args, as_dict=1)

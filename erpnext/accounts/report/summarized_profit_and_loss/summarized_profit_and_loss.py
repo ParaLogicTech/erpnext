@@ -14,113 +14,216 @@ def execute(filters=None):
 
 
 class SummarizedProfitAndLossReport(SummarizedFinancialReport):
+	@property
+	def gl_fields(self):
+		return frappe._dict({f: field_info for f, field_info in self.value_fields.items() if field_info.is_gl_value})
+
+	@property
+	def budget_fields(self):
+		return frappe._dict({f: field_info for f, field_info in self.value_fields.items() if field_info.is_budget_value})
+
+	@property
+	def gl_fieldnames(self):
+		return list(self.gl_fields.keys())
+
+	@property
+	def budget_fieldnames(self):
+		return list(self.budget_fields.keys())
+
 	def setup_fields(self):
 		if not self.filters.format:
 			self.filters.format = "MTD/YTD"
 
+		if self.filters.format not in ("Dimension MTD", "Dimension YTD"):
+			self.filters.dimension_field = None
+
 		if self.filters.format == "Monthly":
-			current_start_date = self.filters.year_start_date
-			while current_start_date <= self.filters.report_date:
-				actual_key = self.get_month_key(current_start_date, "actual")
-				budget_key = self.get_month_key(current_start_date, "budget")
-
-				current_end_date = get_last_day(current_start_date)
-				if current_end_date > self.filters.report_date:
-					current_end_date = self.filters.report_date
-
-				month_label = self.get_month_label(current_start_date, current_end_date)
-
-				self.value_fields[actual_key] = frappe._dict({
-					"label": _("{0} Actual").format(month_label),
-					"from_date": current_start_date,
-					"to_date": current_end_date,
-					"is_gl_value": 1,
-				})
-				self.value_fields[budget_key] = frappe._dict({
-					"label": _("{0} Budget").format(month_label),
-					"from_date": current_start_date,
-					"to_date": current_end_date,
-					"is_gl_value": 0,
-					"is_budget_value": 1,
-				})
-
-				current_start_date = add_months(current_start_date, 1)
-
-			self.value_fields.update({
-				"ytd_actual": frappe._dict({
-					"label": _("Y.T.D Actual"),
-					"from_date": self.filters.year_start_date,
-					"to_date": self.filters.report_date,
-					"is_gl_value": 1,
-				}),
-				"ytd_budget": frappe._dict({
-					"label": _("Y.T.D Budget"),
-					"from_date": self.filters.year_start_date,
-					"to_date": self.filters.report_date,
-					"is_gl_value": 0,
-					"is_budget_value": 1,
-				}),
-			})
+			self.setup_monthly_fields()
+		elif self.filters.format == "Dimension MTD":
+			self.setup_dimension_fields("MTD")
+		elif self.filters.format == "Dimension YTD":
+			self.setup_dimension_fields("YTD")
 		else:
-			self.value_fields = frappe._dict({
-				"mtd_actual": frappe._dict({
-					"label": _("M.T.D Actual"),
-					"from_date": self.filters.month_start_date,
-					"to_date": self.filters.report_date,
-					"is_gl_value": 1,
-				}),
-				"mtd_budget": frappe._dict({
-					"label": _("M.T.D Budget"),
-					"from_date": self.filters.month_start_date,
-					"to_date": self.filters.report_date,
-					"is_gl_value": 0,
-					"is_budget_value": 1,
-				}),
-				"mtd_prev_year": frappe._dict({
-					"label": _("M.T.D Previous Year"),
-					"from_date": self.filters.prev_year_month_start,
-					"to_date": self.filters.prev_year_date,
-					"is_gl_value": 1,
-				}),
-				"ytd_actual": frappe._dict({
-					"label": _("Y.T.D Actual"),
-					"from_date": self.filters.year_start_date,
-					"to_date": self.filters.report_date,
-					"is_gl_value": 1,
-				}),
-				"ytd_budget": frappe._dict({
-					"label": _("Y.T.D Budget"),
-					"from_date": self.filters.year_start_date,
-					"to_date": self.filters.report_date,
-					"is_gl_value": 0,
-					"is_budget_value": 1,
-				}),
-				"ytd_prev_year": frappe._dict({
-					"label": _("Y.T.D Previous Year"),
-					"from_date": self.filters.prev_year_start,
-					"to_date": self.filters.prev_year_date,
-					"is_gl_value": 1,
-				}),
-			})
+			self.setup_mtd_ytd_fields()
 
 		if self.filters.hide_budget:
 			self.value_fields = frappe._dict({f: field_info for f, field_info in self.value_fields.items() if not field_info.is_budget_value})
 
-		self.gl_fields = frappe._dict({f: field_info for f, field_info in self.value_fields.items() if field_info.is_gl_value})
-		self.budget_fields = frappe._dict({f: field_info for f, field_info in self.value_fields.items() if field_info.is_budget_value})
+	def setup_mtd_ytd_fields(self):
+		self.value_fields = frappe._dict({
+			"mtd_actual": frappe._dict({
+				"label": _("M.T.D Actual"),
+				"from_date": self.filters.month_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 1,
+				"is_current_year": 1,
+				"is_mtd": 1,
+			}),
+			"mtd_budget": frappe._dict({
+				"label": _("M.T.D Budget"),
+				"from_date": self.filters.month_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 0,
+				"is_budget_value": 1,
+				"is_current_year": 1,
+				"is_mtd": 1,
+			}),
+			"mtd_prev_year": frappe._dict({
+				"label": _("M.T.D Previous Year"),
+				"from_date": self.filters.prev_year_month_start,
+				"to_date": self.filters.prev_year_date,
+				"is_gl_value": 1,
+				"is_prev_year": 1,
+				"is_mtd": 1,
+			}),
+			"ytd_actual": frappe._dict({
+				"label": _("Y.T.D Actual"),
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 1,
+				"is_current_year": 1,
+				"is_ytd": 1,
+			}),
+			"ytd_budget": frappe._dict({
+				"label": _("Y.T.D Budget"),
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 0,
+				"is_budget_value": 1,
+				"is_current_year": 1,
+				"is_ytd": 1,
+			}),
+			"ytd_prev_year": frappe._dict({
+				"label": _("Y.T.D Previous Year"),
+				"from_date": self.filters.prev_year_start,
+				"to_date": self.filters.prev_year_date,
+				"is_gl_value": 1,
+				"is_prev_year": 1,
+				"is_ytd": 1,
+			}),
+		})
 
-		self.gl_fieldnames = list(self.gl_fields.keys())
-		self.budget_fieldnames = list(self.budget_fields.keys())
+	def setup_monthly_fields(self):
+		current_start_date = self.filters.year_start_date
+		while current_start_date <= self.filters.report_date:
+			actual_key = self.get_month_key(current_start_date, "actual")
+			budget_key = self.get_month_key(current_start_date, "budget")
+
+			current_end_date = get_last_day(current_start_date)
+			if current_end_date > self.filters.report_date:
+				current_end_date = self.filters.report_date
+
+			current_month_label = self.get_month_label(current_start_date, current_end_date)
+
+			self.value_fields[actual_key] = frappe._dict({
+				"label": _("{0} Actual").format(current_month_label),
+				"from_date": current_start_date,
+				"to_date": current_end_date,
+				"is_gl_value": 1,
+				"is_current_year": 1,
+				"is_monthly": 1,
+			})
+			self.value_fields[budget_key] = frappe._dict({
+				"label": _("{0} Budget").format(current_month_label),
+				"from_date": current_start_date,
+				"to_date": current_end_date,
+				"is_gl_value": 0,
+				"is_budget_value": 1,
+				"is_current_year": 1,
+				"is_monthly": 1,
+			})
+
+			current_start_date = add_months(current_start_date, 1)
+
+		self.value_fields.update({
+			"ytd_actual": frappe._dict({
+				"label": _("Y.T.D Actual"),
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 1,
+				"is_current_year": 1,
+				"is_ytd": 1,
+			}),
+			"ytd_budget": frappe._dict({
+				"label": _("Y.T.D Budget"),
+				"from_date": self.filters.year_start_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 0,
+				"is_budget_value": 1,
+				"is_current_year": 1,
+				"is_ytd": 1,
+			}),
+		})
+
+	def setup_dimension_fields(self, mtd_ytd):
+		current_from_date = self.filters.year_start_date if mtd_ytd == "YTD" else self.filters.month_start_date
+		prev_year_from_date = self.filters.prev_year_start if mtd_ytd == "YTD" else self.filters.prev_year_month_start
+
+		current_month_label = self.get_month_label(current_from_date, self.filters.report_date)
+		prev_year_month_label = self.get_month_label(prev_year_from_date, self.filters.prev_year_date)
+
+		self.value_fields = frappe._dict({
+			"ytd_actual": frappe._dict({
+				"label": _("Total {0} {1}").format(current_month_label, mtd_ytd),
+				"dimension_label_suffix": _("{0} {1}").format(current_month_label, mtd_ytd),
+				"from_date": current_from_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 1,
+				"is_current_year": 1,
+				"is_ytd": 1,
+			}),
+			"ytd_budget": frappe._dict({
+				"label": _("Budget {0} {1}").format(current_month_label, mtd_ytd),
+				"from_date": current_from_date,
+				"to_date": self.filters.report_date,
+				"is_gl_value": 0,
+				"is_budget_value": 1,
+				"is_current_year": 1,
+				"is_ytd": 1,
+			}),
+			"ytd_prev_year": frappe._dict({
+				"label": _("Total {0} {1}").format(prev_year_month_label, mtd_ytd),
+				"dimension_label_suffix": _("{0} {1}").format(current_month_label, mtd_ytd),
+				"from_date": prev_year_from_date,
+				"to_date": self.filters.prev_year_date,
+				"is_gl_value": 1,
+				"is_prev_year": 1,
+				"is_ytd": 1,
+			}),
+		})
 
 	def run(self):
 		self.validate_filters()
-		return self.get_columns(), self.get_data()
+		data = self.get_data()
+		columns = self.get_columns()
+		return columns, data
 
 	def get_account_totals(self, all_accounts):
 		template = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 		aggregate = self.filters.format != "Monthly"
-		account_totals = self._get_account_totals(all_accounts, self.gl_fields, "credit", aggregate=aggregate)
+		data = self._get_account_totals_data(
+			all_accounts,
+			self.gl_fields,
+			"credit",
+			aggregate=aggregate,
+			dimension_field=self.filters.dimension_field,
+		)
+
+		account_totals = data.account_totals
+
+		if self.filters.dimension_field:
+			dimension_values = sorted(list(data.dimension_values))
+			for fieldname, field_info in self.gl_fields.items():
+				for dimension_value in dimension_values:
+					dimension_key = self.get_dimension_key(fieldname, dimension_value)
+					dimension_label = self.get_dimension_label(self.filters.dimension_field, dimension_value)
+					self.value_fields[dimension_key] = field_info.copy()
+					self.value_fields[dimension_key].update({
+						"label": f"{dimension_label} {field_info.dimension_label_suffix}",
+						"dimension_field": self.filters.dimension_field,
+						"dimension_value": dimension_value,
+					})
 
 		if self.budget_fields:
 			budget_data = self.get_budget_data(
@@ -153,7 +256,13 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 			return result
 
 		for fieldname, field_info in self.gl_fields.items():
-			result[fieldname] = self.get_net_profit_loss_for_period(accounts, field_info.from_date, field_info.to_date)
+			result[fieldname] = self.get_net_profit_loss_for_period(
+				accounts,
+				field_info.from_date,
+				field_info.to_date,
+				field_info.dimension_field,
+				field_info.dimension_value,
+			)
 
 		if self.budget_fields:
 			budget_data = self.get_budget_data(
@@ -167,8 +276,16 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 
 		return result
 
-	def get_net_profit_loss_for_period(self, accounts, from_date, to_date):
-		gl_data = self.get_gl_data(accounts, from_date=from_date, to_date=to_date, aggregate=True)
+	def get_net_profit_loss_for_period(self, accounts, from_date, to_date, dimension_field, dimension_value):
+		gl_data = self.get_gl_data(
+			accounts,
+			from_date=from_date,
+			to_date=to_date,
+			aggregate=True,
+			grouped=False,
+			dimension_field=dimension_field,
+			dimension_value=dimension_value,
+		)
 
 		net = 0
 		for row in gl_data:
@@ -279,9 +396,9 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		last_date = get_last_day(to_date)
 
 		if from_date == first_day and to_date == last_date:
-			return format_date(to_date, "MMM y")
+			return format_date(to_date, "MMM yy")
 		else:
-			return format_date(to_date, "dd MMM y")
+			return format_date(to_date, "dd MMM yy")
 
 	def get_columns(self):
 		columns = [
@@ -293,9 +410,26 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 			},
 		]
 
-		value_width = 120 if self.filters.format == "Monthly" else 140
+		value_width = 120 if self.filters.format == "Monthly" else 150
 
-		for fieldname, field_info in self.value_fields.items():
+		field_order = self.value_fieldnames
+		if self.filters.format in ("Dimension MTD", "Dimension YTD"):
+			dimension_current_fields = [f for f, field_info in self.value_fields.items()
+				if field_info.is_current_year and field_info.dimension_field and field_info.is_gl_value]
+			total_current_field = [f for f, field_info in self.value_fields.items()
+				if field_info.is_current_year and not field_info.dimension_field and field_info.is_gl_value]
+			total_budget_field = [f for f, field_info in self.value_fields.items()
+				if field_info.is_current_year and not field_info.dimension_field and field_info.is_budget_value]
+
+			dimension_prev_year_fields = [f for f, field_info in self.value_fields.items()
+				if field_info.is_prev_year and field_info.dimension_field and field_info.is_gl_value]
+			total_prev_year_field = [f for f, field_info in self.value_fields.items()
+				if field_info.is_prev_year and not field_info.dimension_field and field_info.is_gl_value]
+
+			field_order = dimension_current_fields + total_current_field + total_budget_field + dimension_prev_year_fields + total_prev_year_field
+
+		for fieldname in field_order:
+			field_info = self.value_fields[fieldname]
 			columns.append({
 				"fieldname": f"{fieldname}_display",
 				"label": field_info.label,
@@ -303,8 +437,10 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"width": value_width,
 				"from_date": field_info.from_date,
 				"to_date": field_info.to_date,
+				"dimension_field": field_info.dimension_field,
+				"dimension_value": field_info.dimension_value,
 				"is_value_field": 1,
-				"format_link": 1 if field_info.is_gl_field else 0,
+				"format_link": 1 if field_info.is_gl_value else 0,
 			})
 
 		return columns

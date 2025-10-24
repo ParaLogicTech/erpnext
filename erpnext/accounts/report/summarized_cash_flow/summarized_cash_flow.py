@@ -28,25 +28,43 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 		return self.get_columns(), self.get_data()
 
 	def get_account_totals(self, all_accounts):
-		return self._get_account_totals(all_accounts, self.value_fields, "credit")
+		return self._get_account_totals_data(all_accounts, self.value_fields, "credit").account_totals
 
 	def extend_eval_context(self, context):
 		super().extend_eval_context(context)
 
 		def get_opening_balance(account_group):
-			return self.get_account_group_balance(account_group, add_days(context.field_info.from_date, -1))
+			return self.get_account_group_balance(
+				account_group,
+				add_days(context.field_info.from_date, -1),
+				context.field_info.dimension_field,
+				context.field_info.dimension_value,
+			)
 
 		def get_closing_balance(account_group):
-			return self.get_account_group_balance(account_group, context.field_info.to_date)
+			return self.get_account_group_balance(
+				account_group,
+				context.field_info.to_date,
+				context.field_info.dimension_field,
+				context.field_info.dimension_value,
+			)
 
 		def get_fixed_asset_additions(account_group):
 			return self.get_asset_additions_and_disposals(
-				account_group, context.field_info.from_date, context.field_info.to_date
+				account_group,
+				context.field_info.from_date,
+				context.field_info.to_date,
+				context.field_info.dimension_field,
+				context.field_info.dimension_value,
 			)["additions"]
 
 		def get_fixed_asset_disposals(account_group):
 			return self.get_asset_additions_and_disposals(
-				account_group, context.field_info.from_date, context.field_info.to_date
+				account_group,
+				context.field_info.from_date,
+				context.field_info.to_date,
+				context.field_info.dimension_field,
+				context.field_info.dimension_value,
 			)["disposals"]
 
 		context["get_group_opening_balance"] = get_opening_balance

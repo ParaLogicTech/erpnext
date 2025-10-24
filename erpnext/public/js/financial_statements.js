@@ -97,6 +97,8 @@ erpnext.financial_statements = {
 						data.account,
 						column.from_date,
 						column.to_date,
+						column.dimension_field,
+						column.dimension_value,
 					);
 				}
 			}
@@ -119,11 +121,15 @@ erpnext.financial_statements = {
 		return default_formatter(value, row, column, data, options);
 	},
 
-	get_account_ledger_link: function(account, from_date, to_date) {
+	get_account_ledger_link: function(account, from_date, to_date, dimension_field, dimension_value) {
 		const params = this.get_params_for_link();
 		params["account"] = account;
 		params["from_date"] = from_date;
 		params["to_date"] = to_date;
+
+		if (dimension_field && dimension_value) {
+			params[dimension_field] = dimension_value;
+		}
 
 		const query_string = Object.entries(params)
 			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
@@ -136,6 +142,16 @@ erpnext.financial_statements = {
 		let params = this.get_params_for_link();
 		params["report_date"] = report_date;
 		params["account_group"] = account_group;
+
+		let format = frappe.query_report.get_filter_value('format');
+		if (format) {
+			params["format"] = format;
+		}
+
+		let dimension_field = frappe.query_report.get_filter_value('dimension_field');
+		if (dimension_field) {
+			params["dimension_field"] = dimension_field;
+		}
 
 		const query_string = Object.entries(params)
 			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
@@ -167,6 +183,15 @@ erpnext.financial_statements = {
 		}
 
 		return params;
+	},
+
+	get_dimension_options() {
+		return erpnext.dimension_filters.map((dimension) => {
+			return {
+				"label": __(dimension["label"]),
+				"value": dimension["fieldname"],
+			}
+		});
 	}
 };
 
