@@ -58,6 +58,11 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			},
 		},
 		{
+			fieldname: "tree_view",
+			label: __("Tree View"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "hide_budget",
 			label: __("Hide Budget"),
 			fieldtype: "Check",
@@ -67,6 +72,8 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 	formatter: function(value, row, column, data, default_formatter) {
 		return erpnext.financial_statements.summarized_statement_formatter(value, row, column, data, default_formatter);
 	},
+
+	initial_depth: 0,
 };
 
 erpnext.utils.add_dimensions('Summarized Profit and Loss', 5);

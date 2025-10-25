@@ -36,11 +36,18 @@ frappe.query_reports["Summarized Balance Sheet"] = {
 				return { filters: { company: frappe.query_report.get_filter_value("company") } };
 			},
 		},
+		{
+			fieldname: "tree_view",
+			label: __("Tree View"),
+			fieldtype: "Check",
+		},
 	],
 
 	formatter: function(value, row, column, data, default_formatter) {
 		return erpnext.financial_statements.summarized_statement_formatter(value, row, column, data, default_formatter);
 	},
+
+	initial_depth: 0,
 };
 
-erpnext.utils.add_dimensions('Summarized Balance Sheet', 5);
+erpnext.utils.add_dimensions('Summarized Balance Sheet', 4);

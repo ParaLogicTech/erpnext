@@ -37,6 +37,11 @@ frappe.query_reports["Financial Ratios"] = {
 			},
 		},
 		{
+			fieldname: "tree_view",
+			label: __("Tree View"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "show_hidden",
 			label: __("Show Hidden Working"),
 			fieldtype: "Check",
@@ -46,6 +51,8 @@ frappe.query_reports["Financial Ratios"] = {
 	formatter: function(value, row, column, data, default_formatter) {
 		return erpnext.financial_statements.summarized_statement_formatter(value, row, column, data, default_formatter);
 	},
+
+	initial_depth: 0,
 };
 
 erpnext.utils.add_dimensions('Financial Ratios', 4);

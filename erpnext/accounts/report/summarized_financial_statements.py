@@ -100,7 +100,7 @@ class SummarizedFinancialReport:
 		self.group_account_map = self.get_accounts_in_account_group(group)
 		all_accounts = self.group_account_map.get(group.name, [])
 		self.account_totals = self.get_account_totals(all_accounts)
-		self.child_group_totals = self.get_child_group_totals(group, self.group_account_map)
+		self.child_group_totals = self.get_child_group_totals(self.group_account_map)
 
 		self.account_totals_by_field = {}
 		self.group_totals_by_field = {}
@@ -144,11 +144,15 @@ class SummarizedFinancialReport:
 					continue
 
 				totals = self.child_group_totals.get(row.account_group) or {}
-				data.append(self.get_row(
+				parent_row = self.get_row(
 					row,
 					totals=totals,
 					group_root_type=group_root_type,
-				))
+				)
+				data.append(parent_row)
+
+				if self.filters.tree_view:
+					data += self.get_child_rows(row, root_value_multiplier=self.get_multiplier(parent_row))
 
 				for f in self.value_fieldnames:
 					running_grand_totals[f] += flt(totals.get(f))
@@ -226,18 +230,23 @@ class SummarizedFinancialReport:
 		self.get_accounts_in_child_account_group(account_group.name, account_group.name, account_map)
 		for row in account_group.rows:
 			if row.row_type == "Account Group":
-				self.get_accounts_in_child_account_group(row.account_group, row.account_group, account_map)
+				account_map.setdefault(row.account_group, set())
+				self.get_accounts_in_child_account_group(row.account_group, row.account_group, account_map,
+					tree_view=self.filters.tree_view)
 
 		return account_map
 
-	def get_accounts_in_child_account_group(self, current_group_name, root_group_name, account_map):
+	def get_accounts_in_child_account_group(self, current_group_name, root_group_name, account_map, tree_view=False):
 		current_group = self.get_account_group_doc(current_group_name)
 
 		for row in current_group.rows:
 			if row.row_type == "Account":
 				account_map.setdefault(root_group_name, set()).add(row.account)
 			elif row.row_type == "Account Group":
-				self.get_accounts_in_child_account_group(row.account_group, root_group_name, account_map)
+				account_map.setdefault(row.account_group, set())
+				self.get_accounts_in_child_account_group(row.account_group, root_group_name, account_map, tree_view=tree_view)
+				if tree_view:
+					self.get_accounts_in_child_account_group(row.account_group, row.account_group, account_map, tree_view=tree_view)
 
 	def get_account_details(self, all_accounts):
 		if not all_accounts:
@@ -334,19 +343,14 @@ class SummarizedFinancialReport:
 		else:
 			return dimension_value
 
-	def get_child_group_totals(self, group_doc, group_account_map):
+	def get_child_group_totals(self, group_account_map):
 		child_group_totals = {}
-		for row in group_doc.rows:
-			if row.row_type != "Account Group":
-				continue
 
-			child_group_doc = self.get_account_group_doc(row.account_group)
-
-			group_accounts = group_account_map.get(row.account_group) or set()
+		for account_group, group_accounts in group_account_map.items():
+			child_group_doc = self.get_account_group_doc(account_group)
 			group_totals = self.get_group_totals(group_accounts)
 			group_totals["root_type"] = child_group_doc.root_type
-
-			child_group_totals[row.account_group] = group_totals
+			child_group_totals[account_group] = group_totals
 
 		return child_group_totals
 
@@ -614,12 +618,46 @@ class SummarizedFinancialReport:
 	def get_net_profit_loss(self):
 		return {f: 0 for f in self.value_fieldnames}
 
+	def get_child_rows(self, parent_row, root_value_multiplier=1, indent=1):
+		if not parent_row.account_group:
+			return []
+
+		parent_group = self.get_account_group_doc(parent_row.account_group)
+		group_root_type = parent_group.root_type
+
+		rows = []
+		for row in parent_group.rows:
+			if row.row_type == "Account":
+				totals = self.account_totals.get(row.account) or {}
+				rows.append(self.get_row(
+					row,
+					totals=totals,
+					group_root_type=group_root_type,
+					indent=indent,
+					root_value_multiplier=root_value_multiplier,
+				))
+			elif row.row_type == "Account Group":
+				totals = self.child_group_totals.get(row.account_group) or {}
+				rows.append(self.get_row(
+					row,
+					totals=totals,
+					group_root_type=group_root_type,
+					indent=indent,
+					root_value_multiplier=root_value_multiplier,
+				))
+
+				rows += self.get_child_rows(row, root_value_multiplier=root_value_multiplier, indent=indent + 1)
+
+		return rows
+
 	def get_row(
 		self,
 		d,
 		totals=None,
 		is_bold=False,
 		group_root_type=None,
+		indent=0,
+		root_value_multiplier=None,
 	):
 		row = frappe._dict()
 
@@ -642,6 +680,7 @@ class SummarizedFinancialReport:
 		row["format_precision"] = d.format_precision
 		row["currency"] = erpnext.get_company_currency(self.filters.company)
 		row["right_align"] = d.right_align
+		row["indent"] = cint(indent)
 
 		if d.row_type == "Account":
 			row["account"] = d.account
@@ -663,9 +702,10 @@ class SummarizedFinancialReport:
 				for f in self.value_fieldnames:
 					row[f"{f}_display"] = row[f]
 			else:
-				multiplier = self.get_display_value_multiplier(row)
-				if d.reverse_sign:
-					multiplier = multiplier * -1
+				if root_value_multiplier:
+					multiplier = root_value_multiplier
+				else:
+					multiplier = self.get_multiplier(row)
 
 				for f in self.value_fieldnames:
 					row[f"{f}_display"] = row[f] * multiplier if row[f] is not None else None
@@ -775,6 +815,13 @@ class SummarizedFinancialReport:
 		dimension_conditions = " AND " + " AND ".join(dimension_conditions) if dimension_conditions else ""
 
 		return dimension_conditions, args
+
+	def get_multiplier(self, row):
+		multiplier = self.get_display_value_multiplier(row)
+		if row.reverse_sign:
+			multiplier = multiplier * -1
+
+		return multiplier
 
 	def get_display_value_multiplier(self, row):
 		return 1
