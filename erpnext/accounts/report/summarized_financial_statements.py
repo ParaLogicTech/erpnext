@@ -59,11 +59,11 @@ class SummarizedFinancialReport:
 					self.get_report_type()
 				))
 
-		data = self.get_account_group_data(self.current_account_group)
+		rows = self.get_account_group_rows(self.current_account_group)
 
 		if not is_root:
 			totals = {k: 0 for k in self.value_fieldnames}
-			for row in data:
+			for row in rows:
 				if row.get('row_type') in ['Account', 'Account Group']:
 					for f in totals:
 						totals[f] += flt(row.get(f))
@@ -71,14 +71,14 @@ class SummarizedFinancialReport:
 			for f in self.value_fieldnames:
 				totals[f"{f}_display"] = totals[f]
 
-			data.append(frappe._dict({
+			rows.append(frappe._dict({
 				'row_type': 'Total',
 				'account_display': 'Total',
 				'is_bold': 1,
 				**totals
 			}))
 
-		return data
+		return rows
 
 	def get_root_account_group(self):
 		return frappe.db.get_value(
@@ -91,7 +91,7 @@ class SummarizedFinancialReport:
 			"name",
 		)
 
-	def get_account_group_data(self, group_name):
+	def get_account_group_rows(self, group_name):
 		"""Aggregate account and group data for a given group."""
 		data = []
 		group = self.get_account_group_doc(group_name)
@@ -248,101 +248,6 @@ class SummarizedFinancialReport:
 				if tree_view:
 					self.get_accounts_in_child_account_group(row.account_group, row.account_group, account_map, tree_view=tree_view)
 
-	def get_account_details(self, all_accounts):
-		if not all_accounts:
-			return {}
-
-		accounts_data = frappe.db.sql("""
-			select name, account_type, report_type
-			from `tabAccount`
-			where name in %s
-		""", [all_accounts], as_dict=1)
-
-		account_details = {}
-		for d in accounts_data:
-			account_details[d.name] = d
-
-		return account_details
-
-	def get_account_totals(self, all_accounts):
-		raise NotImplementedError("get_account_totals not implemented")
-
-	def _get_account_totals_data(self, all_accounts, gl_fields, dr_or_cr, aggregate=True, dimension_field=None):
-		def accumulate(gle, group, fieldname):
-			if dr_or_cr == "credit":
-				diff = gle.credit - gle.debit
-			else:
-				diff = gle.debit - gle.credit
-
-			group[fieldname] += diff
-
-			if dimension_field:
-				dimension_value = cstr(gle.get(dimension_field))
-				dimension_values.add(dimension_value)
-				dimension_key = self.get_dimension_key(fieldname, dimension_value)
-
-				group.setdefault(dimension_key, 0)
-				group[dimension_key] += diff
-
-		template = frappe._dict({f: 0 for f in self.value_fieldnames})
-
-		account_totals = {}
-		dimension_values = set()
-
-		if aggregate:
-			for fieldname, field_info in gl_fields.items():
-				gl_data = self.get_gl_data(
-					all_accounts,
-					from_date=field_info.from_date,
-					to_date=field_info.to_date,
-					aggregate=aggregate,
-					dimension_field=dimension_field,
-				)
-
-				for d in gl_data:
-					group = account_totals.setdefault(d.account, template.copy())
-					accumulate(d, group, fieldname)
-		else:
-			from_date = min([f.from_date for f in gl_fields.values()])
-			to_date = max([f.to_date for f in gl_fields.values()])
-
-			gl_data = self.get_gl_data(
-				all_accounts,
-				from_date=from_date,
-				to_date=to_date,
-				aggregate=aggregate,
-				dimension_field=dimension_field,
-			)
-
-			for d in gl_data:
-				if d.account not in account_totals:
-					account_totals[d.account] = template.copy()
-
-				group = account_totals[d.account]
-
-				for fieldname, field_info in gl_fields.items():
-					if field_info.from_date <= d.posting_date <= field_info.to_date:
-						accumulate(d, group, fieldname)
-
-		return frappe._dict({
-			"account_totals": account_totals,
-			"dimension_values": dimension_values,
-		})
-
-	@staticmethod
-	def get_dimension_key(fieldname, dimension_value):
-		return f"{fieldname}_dim_{scrub(dimension_value)}"
-
-	@staticmethod
-	def get_dimension_label(dimension_field, dimension_value):
-		if not dimension_value:
-			return _("No {0}").format(unscrub(dimension_field))
-
-		if dimension_field == "cost_center":
-			return frappe.get_cached_value("Cost Center", dimension_value, "cost_center_name")
-		else:
-			return dimension_value
-
 	def get_child_group_totals(self, group_account_map):
 		child_group_totals = {}
 
@@ -366,6 +271,59 @@ class SummarizedFinancialReport:
 				group_totals[f] += flt(totals.get(f))
 
 		return group_totals
+
+	def calculate_section_totals(
+		self,
+		row,
+		previous_section_totals,
+		running_grand_totals,
+		running_section_totals,
+	):
+		options = cstr(row.options).strip()
+		if not options or options == "Running Total":
+			return running_grand_totals.copy()
+		elif options == "Section Total":
+			return running_section_totals.copy()
+
+		included_totals = []
+		included_categories = set()
+
+		for line in options.split('\n'):
+			group_code = line.strip()
+			if not group_code:
+				continue
+
+			totals_obj = None
+			if group_code in self.child_group_totals:
+				totals_obj = self.child_group_totals[group_code]
+			elif group_code in self.account_totals:
+				totals_obj = self.account_totals[group_code]
+			elif group_code in previous_section_totals:
+				totals_obj = previous_section_totals[group_code]
+			elif group_code in ("Section Total", "_Section Total_"):
+				totals_obj = running_section_totals
+			elif group_code in ("Running Total", "_Running Total_"):
+				totals_obj = running_grand_totals
+
+			if totals_obj:
+				included_totals.append(totals_obj)
+				if totals_obj.get("root_type"):
+					included_categories.add(totals_obj["root_type"])
+			else:
+				frappe.msgprint(_("Invalid Section Total reference to {0} in Section {1}").format(
+					frappe.bold(group_code), frappe.bold(row.section_name)
+				), indicator="orange")
+
+		section_totals = {key: 0 for key in self.value_fieldnames}
+
+		for totals_obj in included_totals:
+			for key in section_totals:
+				section_totals[key] += flt(totals_obj.get(key))
+
+		if len(included_categories) == 1:
+			section_totals["root_type"] = list(included_categories)[0]
+
+		return section_totals
 
 	def evaluate_variable_values(self, group_doc):
 		if not group_doc.variables:
@@ -562,59 +520,6 @@ class SummarizedFinancialReport:
 
 		return self._asset_disposal_jvs
 
-	def calculate_section_totals(
-		self,
-		row,
-		previous_section_totals,
-		running_grand_totals,
-		running_section_totals,
-	):
-		options = cstr(row.options).strip()
-		if not options or options == "Running Total":
-			return running_grand_totals.copy()
-		elif options == "Section Total":
-			return running_section_totals.copy()
-
-		included_totals = []
-		included_categories = set()
-
-		for line in options.split('\n'):
-			group_code = line.strip()
-			if not group_code:
-				continue
-
-			totals_obj = None
-			if group_code in self.child_group_totals:
-				totals_obj = self.child_group_totals[group_code]
-			elif group_code in self.account_totals:
-				totals_obj = self.account_totals[group_code]
-			elif group_code in previous_section_totals:
-				totals_obj = previous_section_totals[group_code]
-			elif group_code in ("Section Total", "_Section Total_"):
-				totals_obj = running_section_totals
-			elif group_code in ("Running Total", "_Running Total_"):
-				totals_obj = running_grand_totals
-
-			if totals_obj:
-				included_totals.append(totals_obj)
-				if totals_obj.get("root_type"):
-					included_categories.add(totals_obj["root_type"])
-			else:
-				frappe.msgprint(_("Invalid Section Total reference to {0} in Section {1}").format(
-					frappe.bold(group_code), frappe.bold(row.section_name)
-				), indicator="orange")
-
-		section_totals = {key: 0 for key in self.value_fieldnames}
-
-		for totals_obj in included_totals:
-			for key in section_totals:
-				section_totals[key] += flt(totals_obj.get(key))
-
-		if len(included_categories) == 1:
-			section_totals["root_type"] = list(included_categories)[0]
-
-		return section_totals
-
 	def get_net_profit_loss(self):
 		return {f: 0 for f in self.value_fieldnames}
 
@@ -711,6 +616,71 @@ class SummarizedFinancialReport:
 					row[f"{f}_display"] = row[f] * multiplier if row[f] is not None else None
 
 		return row
+
+	def get_account_totals(self, all_accounts):
+		raise NotImplementedError("get_account_totals not implemented")
+
+	def _get_account_totals_data(self, all_accounts, gl_fields, dr_or_cr, aggregate=True, dimension_field=None):
+		def accumulate(gle, group, fieldname):
+			if dr_or_cr == "credit":
+				diff = gle.credit - gle.debit
+			else:
+				diff = gle.debit - gle.credit
+
+			group[fieldname] += diff
+
+			if dimension_field:
+				dimension_value = cstr(gle.get(dimension_field))
+				dimension_values.add(dimension_value)
+				dimension_key = self.get_dimension_key(fieldname, dimension_value)
+
+				group.setdefault(dimension_key, 0)
+				group[dimension_key] += diff
+
+		template = frappe._dict({f: 0 for f in self.value_fieldnames})
+
+		account_totals = {}
+		dimension_values = set()
+
+		if aggregate:
+			for fieldname, field_info in gl_fields.items():
+				gl_data = self.get_gl_data(
+					all_accounts,
+					from_date=field_info.from_date,
+					to_date=field_info.to_date,
+					aggregate=aggregate,
+					dimension_field=dimension_field,
+				)
+
+				for d in gl_data:
+					group = account_totals.setdefault(d.account, template.copy())
+					accumulate(d, group, fieldname)
+		else:
+			from_date = min([f.from_date for f in gl_fields.values()])
+			to_date = max([f.to_date for f in gl_fields.values()])
+
+			gl_data = self.get_gl_data(
+				all_accounts,
+				from_date=from_date,
+				to_date=to_date,
+				aggregate=aggregate,
+				dimension_field=dimension_field,
+			)
+
+			for d in gl_data:
+				if d.account not in account_totals:
+					account_totals[d.account] = template.copy()
+
+				group = account_totals[d.account]
+
+				for fieldname, field_info in gl_fields.items():
+					if field_info.from_date <= d.posting_date <= field_info.to_date:
+						accumulate(d, group, fieldname)
+
+		return frappe._dict({
+			"account_totals": account_totals,
+			"dimension_values": dimension_values,
+		})
 
 	def get_gl_data(
 		self,
@@ -831,6 +801,37 @@ class SummarizedFinancialReport:
 			self._account_group_docs[group_name] = frappe.get_doc("Account Group", group_name)
 
 		return self._account_group_docs[group_name]
+
+	@staticmethod
+	def get_account_details(all_accounts):
+		if not all_accounts:
+			return {}
+
+		accounts_data = frappe.db.sql("""
+			select name, account_type, report_type
+			from `tabAccount`
+			where name in %s
+		""", [all_accounts], as_dict=1)
+
+		account_details = {}
+		for d in accounts_data:
+			account_details[d.name] = d
+
+		return account_details
+
+	@staticmethod
+	def get_dimension_key(fieldname, dimension_value):
+		return f"{fieldname}_dim_{scrub(dimension_value)}"
+
+	@staticmethod
+	def get_dimension_label(dimension_field, dimension_value):
+		if not dimension_value:
+			return _("No {0}").format(unscrub(dimension_field))
+
+		if dimension_field == "cost_center":
+			return frappe.get_cached_value("Cost Center", dimension_value, "cost_center_name")
+		else:
+			return dimension_value
 
 	@staticmethod
 	def get_report_type():
