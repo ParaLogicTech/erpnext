@@ -100,6 +100,7 @@ class SummarizedFinancialReport:
 		self.group_account_map = self.get_accounts_in_account_group(group)
 		all_accounts = self.group_account_map.get(group.name, [])
 		self.account_totals = self.get_account_totals(all_accounts)
+		self.set_missing_account_zeroes(all_accounts)
 		self.child_group_totals = self.get_child_group_totals(self.group_account_map)
 
 		self.account_totals_by_field = {}
@@ -619,6 +620,11 @@ class SummarizedFinancialReport:
 
 	def get_account_totals(self, all_accounts):
 		raise NotImplementedError("get_account_totals not implemented")
+
+	def set_missing_account_zeroes(self, all_accounts):
+		for account in all_accounts:
+			if not self.account_totals.get(account):
+				self.account_totals[account] = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 	def _get_account_totals_data(self, all_accounts, gl_fields, dr_or_cr, aggregate=True, dimension_field=None):
 		def accumulate(gle, group, fieldname):
