@@ -599,7 +599,12 @@ def make_sales_order(
 
 
 @frappe.whitelist()
-def make_quotation(project_name, bill_to=None, items_type=None):
+def make_quotation(
+	project_name,
+	bill_to=None,
+	items_type=None,
+	skip_item_mapping=False,
+):
 	project = frappe.get_doc("Project", project_name)
 	project_details = get_project_details(project, "Quotation")
 
@@ -616,27 +621,29 @@ def make_quotation(project_name, bill_to=None, items_type=None):
 	set_sales_person_in_target_doc(target_doc, project)
 
 	# Add Items
-	project.add_template_items_to_order(target_doc, bill_to=target_doc.bill_to, items_type=items_type)
+	skip_item_mapping = cint(skip_item_mapping)
+	if not skip_item_mapping:
+		project.add_template_items_to_order(target_doc, bill_to=target_doc.bill_to, items_type=items_type)
 
-	# Remove already ordered items
-	service_template_quoted_set = get_service_template_quoted_set(project)
-	service_template_ordered_set = get_service_template_ordered_set(project)
+		# Remove already ordered items
+		service_template_quoted_set = get_service_template_quoted_set(project)
+		service_template_ordered_set = get_service_template_ordered_set(project)
 
-	to_remove = []
-	for d in target_doc.get('items'):
-		if (
-			d.service_template_detail
-			and (
-				d.service_template_detail in service_template_quoted_set
-				or d.service_template_detail in service_template_ordered_set
-			)
-		):
-			to_remove.append(d)
+		to_remove = []
+		for d in target_doc.get('items'):
+			if (
+				d.service_template_detail
+				and (
+					d.service_template_detail in service_template_quoted_set
+					or d.service_template_detail in service_template_ordered_set
+				)
+			):
+				to_remove.append(d)
 
-	for d in to_remove:
-		target_doc.remove(d)
-	for i, d in enumerate(target_doc.items):
-		d.idx = i + 1
+		for d in to_remove:
+			target_doc.remove(d)
+		for i, d in enumerate(target_doc.items):
+			d.idx = i + 1
 
 	# Set Previous Orders
 	sales_orders = frappe.get_all("Sales Order", filters={
