@@ -426,6 +426,23 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 			"price_list_rate": pricing_rule_rate,
 		})
 
+	if (
+		pricing_rule.rate_or_discount in ("Price List Rate", "Rate", "Valuation Rate", "Last Purchase Rate")
+		and pricing_rule.include_margin_in_price_list_rate
+		and item_details.margin_type
+		and item_details.margin_rate_or_amount
+	):
+		if item_details.margin_type == "Percentage":
+			margin_amount = flt(item_details.price_list_rate) * flt(item_details.margin_rate_or_amount) / 100
+			item_details.price_list_rate += margin_amount
+			item_details.price_list_rate = flt(item_details.price_list_rate, 9)
+			item_details.margin_rate_or_amount = 0
+		else:
+			item_details.price_list_rate += flt(item_details.margin_rate_or_amount)
+			item_details.margin_rate_or_amount = 0
+
+		del item_details["margin_type"]
+
 	for apply_on in ['Discount Amount', 'Discount Percentage']:
 		if pricing_rule.rate_or_discount != apply_on:
 			continue
