@@ -183,7 +183,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 			}),
 			"ytd_prev_year": frappe._dict({
 				"label": _("Total {0} {1}").format(prev_year_month_label, mtd_ytd),
-				"dimension_label_suffix": _("{0} {1}").format(current_month_label, mtd_ytd),
+				"dimension_label_suffix": _("{0} {1}").format(prev_year_month_label, mtd_ytd),
 				"from_date": prev_year_from_date,
 				"to_date": self.filters.prev_year_date,
 				"is_gl_value": 1,
