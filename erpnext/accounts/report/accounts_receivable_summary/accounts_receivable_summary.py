@@ -5,7 +5,6 @@ from copy import deepcopy
 import frappe
 from frappe import _
 from frappe.utils import flt
-from erpnext.accounts.party import get_partywise_advance_payment_amount
 from erpnext.accounts.report.accounts_receivable.accounts_receivable import ReceivablePayableReport
 
 
@@ -144,14 +143,6 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 		partywise_total = self.get_partywise_total()
 		self.get_party_map(list(partywise_total.keys()))
 
-		partywise_advance_amount = frappe._dict()
-		if self.filters.party_type != "Employee":
-			partywise_advance_amount = get_partywise_advance_payment_amount(
-				self.filters.company,
-				self.filters.party_type,
-				self.filters.get("report_date")
-			) or frappe._dict()
-
 		data = []
 		for party, party_dict in partywise_total.items():
 			row = frappe._dict()
@@ -159,7 +150,7 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 			row["party"] = party
 			row["party_name"] = self.get_party_name(party)
 
-			row["advance_amount"] = partywise_advance_amount.get(party, 0)
+			row["advance_amount"] = party_dict.advance_amount
 			row["invoiced_amount"] = party_dict.invoiced_amount
 			row["paid_amount"] = party_dict.paid_amount
 			row["return_amount"] = party_dict.return_amount
@@ -185,6 +176,7 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 
 		template = frappe._dict({
 			"invoiced_amount": 0,
+			"advance_amount": 0,
 			"paid_amount": 0,
 			"return_amount": 0,
 			"outstanding_amount": 0,
@@ -202,6 +194,9 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 					party_total[d.party][k] += flt(d.get(k, 0))
 
 			party_total[d.party].currency = d.currency
+
+			if d.voucher_type in ("Payment Entry", "Journal Entry") and d.paid_amount > 0 and not d.invoiced_amount:
+				party_total[d.party].advance_amount += flt(d.get("paid_amount", 0))
 
 			if d.sales_person:
 				party_total[d.party].sales_person.add(d.sales_person)
