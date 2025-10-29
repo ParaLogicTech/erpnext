@@ -1896,6 +1896,38 @@ def get_service_items(project, get_sales_invoice=True):
 	""", project.name, as_dict=1)
 	pre_process_items_data(so_data, project)
 
+	dn_data = frappe.db.sql(f"""
+		select
+			p.name as delivery_note,
+			p.posting_date, p.posting_time,
+			i.idx,
+			i.item_code,
+			i.item_name,
+			i.description,
+			i.item_group,
+			i.is_stock_item,
+			i.qty,
+			i.proforma_qty as fulfilled_qty,
+			i.uom,
+			i.stock_uom,
+			i.conversion_factor,
+			i.base_net_amount as net_amount,
+			i.base_net_rate as net_rate,
+			i.base_taxable_amount as taxable_amount,
+			i.base_tax_exclusive_total_discount as total_discount,
+			i.item_tax_detail,
+			p.conversion_rate,
+			i.claim_customer
+		from `tabDelivery Note Item` i
+		inner join `tabDelivery Note` p on p.name = i.parent
+		where p.docstatus = 1
+			and {is_service_condition}
+			and abs(i.proforma_qty) < abs(i.qty)
+			and p.project = %s
+			and ifnull(i.sales_order, '') = ''
+	""", project.name, as_dict=1)
+	pre_process_items_data(dn_data, project)
+
 	sinv_data = []
 	if get_sales_invoice:
 		sinv_data = frappe.db.sql(f"""
@@ -1941,7 +1973,7 @@ def get_service_items(project, get_sales_invoice=True):
 	sublet_data = get_items_data_template()
 
 	sublet_item_groups = project.get_item_groups_subtree(project.sublet_item_group)
-	for d in pfinv_data + so_data + sinv_data:
+	for d in pfinv_data + so_data + dn_data + sinv_data:
 		service_data['items'].append(d)
 
 		if d.item_group in sublet_item_groups:
