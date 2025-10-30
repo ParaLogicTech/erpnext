@@ -1821,7 +1821,7 @@ def get_service_items(project, get_sales_invoice=True):
 	is_service_condition = "(i.is_stock_item = 0 and i.is_fixed_asset = 0)"
 	materials_item_groups = project.get_item_groups_subtree(project.materials_item_group)
 	if materials_item_groups:
-		is_service_condition = "(i.is_stock_item = 0 and i.is_fixed_asset = 0 and i.item_group not in ({0}))"\
+		is_service_condition = "(i.is_stock_item = 0 and i.is_fixed_asset = 0 and (i.item_group not in ({0}) or i.item_group is null))"\
 			.format(", ".join([frappe.db.escape(d) for d in materials_item_groups]))
 
 	insurance_excess_item = frappe.get_cached_value("Projects Settings", None, "insurance_excess_item")

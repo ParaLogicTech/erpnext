@@ -1028,12 +1028,15 @@ def set_sales_order_defaults(parent_doctype, parent_doctype_name, child_docname,
 	item = frappe.get_cached_doc("Item", trans_item.get('item_code'))
 	child_item.item_code = item.item_code
 	child_item.item_name = item.item_name
+	child_item.item_group = item.item_group
 	child_item.description = item.description
 	child_item.delivery_date = trans_item.get('delivery_date') or p_doc.delivery_date
 	child_item.conversion_factor = flt(trans_item.get('conversion_factor')) or get_conversion_factor(item.item_code, item.stock_uom).get("conversion_factor") or 1.0
 	child_item.uom = item.stock_uom
 	child_item.stock_uom = item.stock_uom
 	child_item.is_stock_item = item.is_stock_item
+	child_item.is_fixed_asset = item.is_fixed_asset
+	p_doc.set_skip_delivery_note_for_row(child_item)
 
 	if p_doc.get('set_warehouse'):
 		child_item.warehouse = p_doc.get('set_warehouse')
