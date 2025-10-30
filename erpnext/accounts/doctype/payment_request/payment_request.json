@@ -109,13 +109,15 @@
    "fieldname": "party_type",
    "fieldtype": "Link",
    "label": "Party Type",
-   "options": "DocType"
+   "options": "DocType",
+   "reqd": 1
   },
   {
    "fieldname": "party",
    "fieldtype": "Dynamic Link",
    "label": "Party",
-   "options": "party_type"
+   "options": "party_type",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_4",
@@ -471,7 +473,7 @@
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-10 15:16:37.242216",
+ "modified": "2025-10-30 23:45:32.848436",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Request",

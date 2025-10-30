@@ -1201,6 +1201,15 @@ class Project(StatusUpdaterERP):
 			if self.meta.has_field(k) and not self.get(k) or k in self.force_customer_fields:
 				self.set(k, v)
 
+	def get_billing_party(self):
+		if self.get("bill_to"):
+			return "Customer", self.bill_to, self.bill_to_name
+
+		return self.get_party()
+
+	def get_party(self):
+		return "Customer", self.customer, self.customer_name
+
 	@frappe.whitelist()
 	def set_applies_to_details(self, for_validate=False):
 		args = self.as_dict()

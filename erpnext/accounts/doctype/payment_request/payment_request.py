@@ -10,6 +10,7 @@ from frappe.utils import flt, getdate, cint, validate_email_address, combine_dat
 from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
 from erpnext.accounts.party import get_party_bank_account, get_party_name
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_company_defaults
+from erpnext.accounts.utils import get_advance_against_voucher_types
 from frappe.regional.regional import validate_mobile_no
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
 from payments.utils import get_payment_gateway_controller
@@ -155,12 +156,12 @@ class PaymentRequest(AccountsController):
 		if not self.reference_doctype or not self.reference_name:
 			frappe.throw(_("Reference Document is mandatory for Payment Request"))
 
-		if self.reference_doctype not in self.get_allowed_reference_doctypes():
+		if self.reference_doctype not in self.get_valid_reference_doctypes():
 			frappe.throw(_("Reference Document Type {0} is not allowed").format(self.reference_doctype))
 
 		reference_doc = self.get_reference_document()
 
-		if reference_doc.docstatus != 1 and reference_doc.doctype != "Project":
+		if reference_doc.docstatus != 1 and reference_doc.meta.is_submittable:
 			frappe.throw(_("{0} is not submitted").format(frappe.get_desk_link(self.reference_doctype, self.reference_name)))
 
 		if reference_doc.get("company") and self.company != reference_doc.get("company"):
@@ -176,6 +177,15 @@ class PaymentRequest(AccountsController):
 
 			reference_doc.validate_for_transaction(self)
 		else:
+			party_type, party, party_name = self.get_reference_document_party(reference_doc)
+			if self.party_type != party_type or self.party != party:
+				frappe.throw(_("{0} {1} in Payment Request does not match with {2} {3} in Reference Document").format(
+					self.party_type,
+					frappe.bold(self.party),
+					party_type,
+					frappe.bold(party),
+				))
+
 			if self.project and reference_doc.get("project") and self.project != reference_doc.get("project"):
 				frappe.throw(_("{0} {1} in Payment Request does not match with {1} in Reference Document").format(
 					_("Project"),
@@ -303,12 +313,12 @@ class PaymentRequest(AccountsController):
 			)
 
 			payment_request_total = flt(self.grand_total + existing_payment_request)
-			grand_total = self.get_reference_document_grand_total(reference_doc)
+			reference_payable_amount = self.get_reference_document_payable_amount(reference_doc)
 			outstanding_amount = self.get_reference_document_outstanding_amount(reference_doc)
 
-			if flt(payment_request_total, self.precision("grand_total")) > flt(grand_total, self.precision("grand_total")):
-				frappe.throw(_("Total Payment Request Amount cannot be greater than the Grand Total {0} of {1}").format(
-					frappe.format(grand_total, df=self.meta.get_field("grand_total")),
+			if flt(payment_request_total, self.precision("grand_total")) > flt(reference_payable_amount, self.precision("grand_total")):
+				frappe.throw(_("Total Payment Request Amount cannot be greater than the Total Payable Amount {0} of {1}").format(
+					frappe.format(reference_payable_amount, df=self.meta.get_field("grand_total")),
 					frappe.get_desk_link(self.reference_doctype, self.reference_name),
 				))
 
@@ -639,7 +649,7 @@ class PaymentRequest(AccountsController):
 			]
 
 	def get_payment_request_paid_amount(self):
-		payment_type = "Receive" if self.payment_request_type == "Inward" else "Pay"
+		payment_type = self.get_payment_type()
 		amount_field = "received_amount_after_tax" if payment_type == "Receive" else "paid_amount_after_tax"
 
 		payment_request_paid_amount = frappe.db.sql(f"""
@@ -650,18 +660,22 @@ class PaymentRequest(AccountsController):
 
 		return flt(payment_request_paid_amount[0][0]) if payment_request_paid_amount else 0
 
+	def get_payment_type(self):
+		return "Receive" if self.payment_request_type == "Inward" else "Pay"
+
 	@classmethod
 	def get_reference_document_details(cls, reference_doc, exclude=None, customer=None):
 		out = frappe._dict()
-		if reference_doc.doctype not in cls.get_allowed_reference_doctypes():
+		if reference_doc.doctype not in cls.get_valid_reference_doctypes():
 			return out
 
 		out.company = reference_doc.get("company")
 		out.branch = reference_doc.get("branch")
 
+		out.party_type, out.party, out.party_name = PaymentRequest.get_reference_document_party(reference_doc)
+
 		if reference_doc.doctype == "Project":
 			out.project = reference_doc.name
-			out.party_type = "Customer"
 
 			if customer:
 				out.party = customer
@@ -677,8 +691,6 @@ class PaymentRequest(AccountsController):
 					out.contact_mobile = reference_doc.get("billing_contact_mobile")
 		else:
 			out.project = reference_doc.get("project")
-			out.party_type, out.party, out.party_name = PaymentRequest.get_reference_document_party(reference_doc)
-
 			out.contact_person = reference_doc.get("contact_person")
 			out.contact_display = reference_doc.get("contact_display")
 			out.contact_email = reference_doc.get("contact_email")
@@ -692,8 +704,8 @@ class PaymentRequest(AccountsController):
 		return out
 
 	@classmethod
-	def get_allowed_reference_doctypes(cls):
-		return [
+	def get_valid_reference_doctypes(cls):
+		valid_reference_doctype = [
 			"Sales Order",
 			"Purchase Order",
 			"Sales Invoice",
@@ -701,6 +713,10 @@ class PaymentRequest(AccountsController):
 			"Proforma Invoice",
 			"Project",
 		]
+
+		valid_reference_doctype += frappe.get_hooks("valid_payment_request_reference_doctypes") or []
+
+		return valid_reference_doctype
 
 	@classmethod
 	def get_balance_payment_request_amount(cls, reference_doc, exclude=None):
@@ -718,7 +734,7 @@ class PaymentRequest(AccountsController):
 		if reference_doc.meta.has_field("outstanding_amount"):
 			return flt(reference_doc.get("outstanding_amount"))
 
-		grand_total = cls.get_reference_document_grand_total(reference_doc)
+		grand_total = cls.get_reference_document_payable_amount(reference_doc)
 		paid_amount = cls.get_reference_document_paid_amount(reference_doc)
 
 		outstanding_amount = grand_total - paid_amount
@@ -730,11 +746,18 @@ class PaymentRequest(AccountsController):
 			return flt(reference_doc.get("advance_paid"))
 
 		if reference_doc.meta.has_field("outstanding_amount"):
-			grand_tatal = cls.get_reference_document_grand_total(reference_doc)
+			grand_tatal = cls.get_reference_document_payable_amount(reference_doc)
 			outstanding_amount = flt(reference_doc.get("outstanding_amount"))
 			return max(grand_tatal - outstanding_amount, 0)
 
 		return 0
+
+	@classmethod
+	def get_reference_document_payable_amount(cls, reference_doc):
+		if hasattr(reference_doc, "get_payable_amount"):
+			return reference_doc.get_payable_amount()
+		else:
+			return cls.get_reference_document_grand_total(reference_doc)
 
 	@classmethod
 	def get_reference_document_grand_total(cls, reference_doc):
@@ -765,7 +788,7 @@ class PaymentRequest(AccountsController):
 
 	@classmethod
 	def is_advance_payment(cls, reference_doctype):
-		if reference_doctype in ("Sales Order", "Proforma Invoice", "Project"):
+		if reference_doctype in get_advance_against_voucher_types() or reference_doctype == "Project":
 			return True
 		else:
 			return False
@@ -782,7 +805,7 @@ def make_payment_request(**args):
 
 	if not reference_doctype or not reference_name:
 		frappe.throw(_("Reference Document not provided"))
-	if reference_doctype not in PaymentRequest.get_allowed_reference_doctypes():
+	if reference_doctype not in PaymentRequest.get_valid_reference_doctypes():
 		frappe.throw(_("Reference Document Type {0} is not allowed").format(reference_doctype))
 
 	reference_doc = frappe.get_doc(reference_doctype, reference_name)
