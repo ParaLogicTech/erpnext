@@ -430,14 +430,17 @@ class Project(StatusUpdaterERP):
 				"advance_received_amount": self.advance_received_amount
 			}, update_modified=update_modified)
 
-	def get_advance_payment_entries(self):
+	def get_advance_payment_entries(self, customer=None):
 		payment_entries = []
 
 		customers = []
-		if self.customer:
-			customers.append(self.customer)
-		if self.bill_to and self.bill_to != self.customer:
-			customers.append(self.bill_to)
+		if customer:
+			customers.append(customer)
+		else:
+			if self.customer:
+				customers.append(self.customer)
+			if self.bill_to and self.bill_to != self.customer:
+				customers.append(self.bill_to)
 
 		if customers and not self.is_new():
 			payment_entries = frappe.db.sql("""
@@ -856,8 +859,8 @@ class Project(StatusUpdaterERP):
 					self.check_is_ready_to_close()
 				self.check_undelivered_sales_orders()
 
-		if doc.doctype == "Payment Entry":
-			self.validate_payment_entry_customer(doc)
+		if doc.doctype in ("Payment Entry", "Payment Request"):
+			self.validate_payment_customer(doc)
 
 		if doc.doctype == "Service Warranty":
 			self.check_is_ready_to_close()
@@ -890,20 +893,11 @@ class Project(StatusUpdaterERP):
 				frappe.get_desk_link("Project", self.name), pending_so_txt
 			), title=_("Undelivered Sales Orders"))
 
-	def validate_payment_entry_customer(self, doc):
-		billing_customer = self.bill_to or self.customer
-
-		allowed_customers = []
-		if billing_customer:
-			allowed_customers.append(billing_customer)
-
-		if self.customer_billable_amount:
-			allowed_customers.append(self.customer)
-
-		allowed_customers = list(set(allowed_customers))
-
+	def validate_payment_customer(self, doc):
+		allowed_customers = [self.customer, self.bill_to]
+		allowed_customers = list(set([c for c in allowed_customers if c]))
 		if allowed_customers and doc.party_type == "Customer" and doc.party not in allowed_customers:
-			frappe.throw(_("Customer in Payment Entry does not match with {0}. Customer must be {1}").format(
+			frappe.throw(_("Payment Customer does not match with {0}. Customer must be {1}").format(
 				frappe.get_desk_link("Project", self.name), comma_or(allowed_customers)
 			))
 

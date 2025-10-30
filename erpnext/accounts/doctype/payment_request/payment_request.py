@@ -9,7 +9,7 @@ from erpnext.controllers.accounts_controller import AccountsController
 from frappe.utils import flt, getdate, cint, validate_email_address, combine_datetime, now_datetime
 from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
 from erpnext.accounts.party import get_party_bank_account, get_party_name
-from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry, get_company_defaults
+from erpnext.accounts.doctype.payment_entry.payment_entry import get_company_defaults
 from frappe.regional.regional import validate_mobile_no
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
 from payments.utils import get_payment_gateway_controller
@@ -116,12 +116,17 @@ class PaymentRequest(AccountsController):
 			reference_doc = self.get_reference_document(reload=True)
 
 			request_grand_total = flt(self.grand_total, self.precision("grand_total"))
-			reference_paid_amount = flt(self.get_reference_document_paid_amount(reference_doc),
-				self.precision("grand_total"))
 
-			if reference_paid_amount >= request_grand_total:
+			if reference_doc.doctype == "Project":
+				paid_amount = self.get_payment_request_paid_amount()
+			else:
+				paid_amount = self.get_reference_document_paid_amount(reference_doc)
+
+			paid_amount = flt(paid_amount, self.precision("grand_total"))
+
+			if paid_amount >= request_grand_total:
 				self.status = "Paid"
-			elif reference_paid_amount > 0:
+			elif paid_amount > 0:
 				self.status = "Partially Paid"
 			else:
 				if self.payment_request_type == "Inward":
@@ -155,7 +160,7 @@ class PaymentRequest(AccountsController):
 
 		reference_doc = self.get_reference_document()
 
-		if reference_doc.docstatus != 1:
+		if reference_doc.docstatus != 1 and reference_doc.doctype != "Project":
 			frappe.throw(_("{0} is not submitted").format(frappe.get_desk_link(self.reference_doctype, self.reference_name)))
 
 		if reference_doc.get("company") and self.company != reference_doc.get("company"):
@@ -164,12 +169,19 @@ class PaymentRequest(AccountsController):
 				frappe.bold(reference_doc.company),
 			))
 
-		if self.project and reference_doc.get("project") and self.project != reference_doc.get("project"):
-			frappe.throw(_("{0} {1} in Payment Request does not match with {1} in Reference Document").format(
-				_("Project"),
-				frappe.bold(self.project),
-				frappe.bold(reference_doc.project),
-			))
+		if reference_doc.doctype == "Project":
+			self.project = reference_doc.name
+			if self.party_type != "Customer":
+				frappe.throw(_("Party Type must be Customer for Payment Request against {0}").format(_("Project")))
+
+			reference_doc.validate_for_transaction(self)
+		else:
+			if self.project and reference_doc.get("project") and self.project != reference_doc.get("project"):
+				frappe.throw(_("{0} {1} in Payment Request does not match with {1} in Reference Document").format(
+					_("Project"),
+					frappe.bold(self.project),
+					frappe.bold(reference_doc.project),
+				))
 
 	def validate_payment_gateway(self):
 		if not self.payment_gateway_account:
@@ -234,7 +246,11 @@ class PaymentRequest(AccountsController):
 
 	def set_reference_document_details(self):
 		reference_doc = self.get_reference_document()
-		reference_details = self.get_reference_document_details(reference_doc, exclude=self.name)
+		reference_details = self.get_reference_document_details(
+			reference_doc,
+			exclude=self.name,
+			customer=self.party if self.party_type == "Customer" else None,
+		)
 
 		for k, v in reference_details.items():
 			if self.meta.has_field(k) and (not self.get(k) or k in self.force_fields):
@@ -273,27 +289,34 @@ class PaymentRequest(AccountsController):
 	def validate_amount(self):
 		reference_doc = self.get_reference_document()
 
-		existing_payment_request = self.get_existing_payment_request_amount(
-			self.reference_doctype,
-			self.reference_name,
-			exclude=self.name,
-		)
+		self.grand_total = flt(self.grand_total, self.precision("grand_total"))
+		if not self.grand_total:
+			frappe.throw(_("Payment Request Amount cannot be zero"))
+		if self.grand_total < 0:
+			frappe.throw(_("Payment Request Amount cannot be negative"))
 
-		payment_request_total = flt(flt(self.grand_total) + existing_payment_request)
-		grand_total = self.get_reference_document_grand_total(reference_doc)
-		outstanding_amount = self.get_reference_document_outstanding_amount(reference_doc)
+		if reference_doc.doctype != "Project":
+			existing_payment_request = self.get_existing_payment_request_amount(
+				self.reference_doctype,
+				self.reference_name,
+				exclude=self.name,
+			)
 
-		if flt(payment_request_total, self.precision("grand_total")) > flt(grand_total, self.precision("grand_total")):
-			frappe.throw(_("Total Payment Request Amount cannot be greater than the Grand Total {0} of {1}").format(
-				frappe.format(grand_total, df=self.meta.get_field("grand_total")),
-				frappe.get_desk_link(self.reference_doctype, self.reference_name),
-			))
+			payment_request_total = flt(self.grand_total + existing_payment_request)
+			grand_total = self.get_reference_document_grand_total(reference_doc)
+			outstanding_amount = self.get_reference_document_outstanding_amount(reference_doc)
 
-		if flt(payment_request_total, self.precision("grand_total")) > flt(outstanding_amount, self.precision("grand_total")):
-			frappe.throw(_("Total Payment Request Amount cannot be greater than the Outstanding Amount {0} of {1}").format(
-				frappe.format(outstanding_amount, df=self.meta.get_field("grand_total")),
-				frappe.get_desk_link(self.reference_doctype, self.reference_name),
-			))
+			if flt(payment_request_total, self.precision("grand_total")) > flt(grand_total, self.precision("grand_total")):
+				frappe.throw(_("Total Payment Request Amount cannot be greater than the Grand Total {0} of {1}").format(
+					frappe.format(grand_total, df=self.meta.get_field("grand_total")),
+					frappe.get_desk_link(self.reference_doctype, self.reference_name),
+				))
+
+			if flt(payment_request_total, self.precision("grand_total")) > flt(outstanding_amount, self.precision("grand_total")):
+				frappe.throw(_("Total Payment Request Amount cannot be greater than the Outstanding Amount {0} of {1}").format(
+					frappe.format(outstanding_amount, df=self.meta.get_field("grand_total")),
+					frappe.get_desk_link(self.reference_doctype, self.reference_name),
+				))
 
 	def validate_contact(self):
 		if not self.contact_mobile and not self.contact_email:
@@ -442,16 +465,29 @@ class PaymentRequest(AccountsController):
 
 		amount = flt(amount)
 
-		payment_entry = get_payment_entry(
-			self.reference_doctype,
-			self.reference_name,
-			bank_amount=amount,
-			bank_account=self.payment_account,
-			mode_of_payment=self.mode_of_payment,
-			is_advance=self.is_advance_payment(self.reference_doctype),
-			is_pos=self.is_pos,
-			pos_profile=self.pos_profile,
-		)
+		if self.reference_doctype == "Project":
+			from erpnext.projects.doctype.project.project_mappers import make_payment_entry
+			payment_entry = make_payment_entry(
+				self.reference_name,
+				customer=self.party,
+				bank_amount=amount,
+				bank_account=self.payment_account,
+				mode_of_payment=self.mode_of_payment,
+				is_pos=self.is_pos,
+				pos_profile=self.pos_profile,
+			)
+		else:
+			from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+			payment_entry = get_payment_entry(
+				self.reference_doctype,
+				self.reference_name,
+				bank_amount=amount,
+				bank_account=self.payment_account,
+				mode_of_payment=self.mode_of_payment,
+				is_advance=self.is_advance_payment(self.reference_doctype),
+				is_pos=self.is_pos,
+				pos_profile=self.pos_profile,
+			)
 
 		if not reference_no and submit:
 			reference_no = self.name
@@ -602,22 +638,51 @@ class PaymentRequest(AccountsController):
 				}
 			]
 
+	def get_payment_request_paid_amount(self):
+		payment_type = "Receive" if self.payment_request_type == "Inward" else "Pay"
+		amount_field = "received_amount_after_tax" if payment_type == "Receive" else "paid_amount_after_tax"
+
+		payment_request_paid_amount = frappe.db.sql(f"""
+			select sum({amount_field})
+			from `tabPayment Entry`
+			where docstatus = 1 and payment_request = %s and payment_type = %s
+		""", (self.name, payment_type))
+
+		return flt(payment_request_paid_amount[0][0]) if payment_request_paid_amount else 0
+
 	@classmethod
-	def get_reference_document_details(cls, reference_doc, exclude=None):
+	def get_reference_document_details(cls, reference_doc, exclude=None, customer=None):
 		out = frappe._dict()
 		if reference_doc.doctype not in cls.get_allowed_reference_doctypes():
 			return out
 
 		out.company = reference_doc.get("company")
 		out.branch = reference_doc.get("branch")
-		out.project = reference_doc.get("project")
 
-		out.party_type, out.party, out.party_name = PaymentRequest.get_reference_document_party(reference_doc)
+		if reference_doc.doctype == "Project":
+			out.project = reference_doc.name
+			out.party_type = "Customer"
 
-		out.contact_person = reference_doc.get("contact_person")
-		out.contact_display = reference_doc.get("contact_display")
-		out.contact_email = reference_doc.get("contact_email")
-		out.contact_mobile = reference_doc.get("contact_mobile")
+			if customer:
+				out.party = customer
+				if reference_doc.customer and customer == reference_doc.customer:
+					out.contact_person = reference_doc.get("contact_person")
+					out.contact_display = reference_doc.get("contact_display")
+					out.contact_email = reference_doc.get("contact_email")
+					out.contact_mobile = reference_doc.get("contact_mobile")
+				elif reference_doc.bill_to and customer == reference_doc.bill_to:
+					out.contact_person = reference_doc.get("billing_contact_person")
+					out.contact_display = reference_doc.get("billing_contact_display")
+					out.contact_email = reference_doc.get("billing_contact_email")
+					out.contact_mobile = reference_doc.get("billing_contact_mobile")
+		else:
+			out.project = reference_doc.get("project")
+			out.party_type, out.party, out.party_name = PaymentRequest.get_reference_document_party(reference_doc)
+
+			out.contact_person = reference_doc.get("contact_person")
+			out.contact_display = reference_doc.get("contact_display")
+			out.contact_email = reference_doc.get("contact_email")
+			out.contact_mobile = reference_doc.get("contact_mobile")
 
 		out.grand_total = PaymentRequest.get_balance_payment_request_amount(reference_doc, exclude=exclude)
 		out.currency = reference_doc.get("currency") or erpnext.get_default_currency()
@@ -634,6 +699,7 @@ class PaymentRequest(AccountsController):
 			"Sales Invoice",
 			"Purchase Invoice",
 			"Proforma Invoice",
+			"Project",
 		]
 
 	@classmethod
@@ -699,7 +765,7 @@ class PaymentRequest(AccountsController):
 
 	@classmethod
 	def is_advance_payment(cls, reference_doctype):
-		if reference_doctype in ("Sales Order", "Proforma Invoice"):
+		if reference_doctype in ("Sales Order", "Proforma Invoice", "Project"):
 			return True
 		else:
 			return False

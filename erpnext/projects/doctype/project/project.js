@@ -150,6 +150,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			'Material Request': 'Consumables Request',
 			'Stock Entry': 'Consumables Issue',
 			'Payment Entry': 'Advance Payment',
+			'Payment Request': 'Advance Payment Request',
 			'Task': 'Create Custom Task',
 		};
 
@@ -230,20 +231,28 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				}, __("Sales"));
 			}
 
-			if (frappe.model.can_create("Payment Entry")) {
-				if (
-					me.frm.doc.billing_status != "Fully Billed"
-					&& !me.frm.doc.ready_to_close
-				) {
-					me.frm.add_custom_button(__("Advance Payment"), () => me.make_payment_entry(false), __("Sales"));
+			if (me.frm.doc.billing_status != "Fully Billed" && !me.frm.doc.ready_to_close) {
+				if (frappe.model.can_create("Payment Entry")) {
+					me.frm.add_custom_button(__("Advance Payment"), () => {
+						me.show_payment_dialog((args) => me.make_payment_entry(args.party, false));
+					}, __("Sales"));
 				}
 
-				if (
-					me.frm.doc.advance_received_amount
-					&& (!me.frm.doc.total_billed_amount || flt(me.frm.doc.total_billed_amount) < flt(me.frm.doc.total_billable_amount))
-				) {
-					me.frm.add_custom_button(__("Refund Payment"), () => me.make_payment_entry(true), __("Sales"));
+				if (frappe.model.can_create("Payment Request")) {
+					me.frm.add_custom_button(__("Advance Payment Request"), () => {
+						me.show_payment_dialog((args) => me.make_payment_request(args.party));
+					}, __("Sales"));
 				}
+			}
+
+			if (
+				frappe.model.can_create("Payment Entry")
+				&& me.frm.doc.advance_received_amount
+				&& (!me.frm.doc.total_billed_amount || flt(me.frm.doc.total_billed_amount) < flt(me.frm.doc.total_billable_amount))
+			) {
+				me.frm.add_custom_button(__("Refund Payment"), () => {
+					me.show_payment_dialog((args) => me.make_payment_entry(args.party, true));
+				}, __("Sales"));
 			}
 
 			if (frappe.model.can_create("Proforma Invoice")) {
@@ -976,6 +985,58 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		dialog.show();
 	}
 
+	show_payment_dialog(callback) {
+		this.frm.check_if_unsaved();
+
+		let customers = [];
+		let party_options = [];
+
+		if (this.frm.doc.customer && !customers.includes(this.frm.doc.customer)) {
+			customers.push(this.frm.doc.customer);
+			party_options.push({
+				label: this.frm.doc.customer_name,
+				value: this.frm.doc.customer,
+			});
+		}
+
+		if (this.frm.doc.bill_to && !customers.includes(this.frm.doc.bill_to)) {
+			customers.push(this.frm.doc.bill_to);
+			party_options.push({
+				label: this.frm.doc.bill_to_name,
+				value: this.frm.doc.bill_to,
+			});
+		}
+
+		if (party_options.length == 1) {
+			callback({
+				party: party_options[0].value,
+			});
+			return;
+		}
+
+		let fields = [
+			{
+				label: __("Payment Customer"),
+				fieldname: "party",
+				fieldtype: "Select",
+				options: party_options,
+				reqd: 1,
+				default: party_options.length == 1 ? party_options[0].value : null,
+			},
+		];
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Select Payment Customer"),
+			fields: fields,
+		});
+
+		dialog.set_primary_action(__("Create"), () => {
+			callback(dialog.get_values());
+		});
+
+		dialog.show();
+	}
+
 	make_sales_order(args) {
 		this.frm.check_if_unsaved();
 
@@ -1078,12 +1139,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		});
 	}
 
-	make_payment_entry(is_refund) {
+	make_payment_entry(customer, is_refund) {
 		this.frm.check_if_unsaved();
 		return frappe.call({
 			method: "erpnext.projects.doctype.project.project_mappers.make_payment_entry",
 			args: {
 				"project_name": this.frm.doc.name,
+				"customer": customer,
 				"is_refund": cint(is_refund),
 			},
 			callback: function (r) {
@@ -1093,6 +1155,24 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				}
 			}
 		});
+	}
+
+	make_payment_request(customer) {
+		return frappe.call({
+			method: "erpnext.accounts.doctype.payment_request.payment_request.make_payment_request",
+			args: {
+				reference_doctype: this.frm.doc.doctype,
+				reference_name: this.frm.doc.name,
+				party_type: "Customer",
+				party: customer,
+			},
+			callback: (r) => {
+				if (r.message) {
+					frappe.model.sync(r.message);
+					frappe.set_route("Form", r.message.doctype, r.message.name);
+				}
+			}
+		})
 	}
 };
 

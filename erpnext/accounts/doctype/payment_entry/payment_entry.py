@@ -1636,6 +1636,7 @@ def get_payment_entry(
 
 	is_advance = cint(is_advance)
 	is_advance_return = cint(is_advance_return)
+	is_pos = cint(is_pos)
 
 	if hasattr(doc, "get_billing_party"):
 		party_type, party, party_name = doc.get_billing_party()
@@ -1669,12 +1670,24 @@ def get_payment_entry(
 	exchange_rate = flt(reference_details.exchange_rate) or 1
 
 	# bank or cash
-	bank = get_default_bank_cash_account(doc.company, "Bank", mode_of_payment=mode_of_payment or doc.get("mode_of_payment"),
-		account=bank_account)
+	mode_of_payment = mode_of_payment or doc.get("mode_of_payment")
+
+	bank = get_default_bank_cash_account(
+		doc.company,
+		"Bank",
+		mode_of_payment=mode_of_payment,
+		pos_profile=pos_profile if is_pos else None,
+		account=bank_account,
+	)
 
 	if not bank:
-		bank = get_default_bank_cash_account(doc.company, "Cash", mode_of_payment=mode_of_payment or doc.get("mode_of_payment"),
-			account=bank_account)
+		bank = get_default_bank_cash_account(
+			doc.company,
+			"Cash",
+			mode_of_payment=mode_of_payment,
+			pos_profile=pos_profile if is_pos else None,
+			account=bank_account,
+		)
 
 	paid_amount = received_amount = 0
 	if party_account_currency == bank.account_currency:
@@ -1703,14 +1716,14 @@ def get_payment_entry(
 	pe.cost_center = doc.get("cost_center")
 	pe.project = doc.get("project")
 	pe.posting_date = nowdate()
-	pe.mode_of_payment = mode_of_payment or doc.get("mode_of_payment")
+	pe.mode_of_payment = mode_of_payment
 	pe.party_type = party_type
 	pe.party = party
 	pe.contact_person = doc.get("contact_person")
 	pe.contact_email = doc.get("contact_email")
 	pe.ensure_supplier_is_not_blocked(is_payment=True)
 
-	pe.is_pos = cint(is_pos)
+	pe.is_pos = is_pos
 	pe.pos_profile = pos_profile if pe.is_pos else None
 
 	pe.paid_from = party_account if payment_type=="Receive" else bank.account
@@ -1722,8 +1735,8 @@ def get_payment_entry(
 	pe.letter_head = doc.get("letter_head")
 
 	if pe.party_type in ["Customer", "Supplier"]:
-		bank_account = get_party_bank_account(pe.party_type, pe.party)
-		pe.set("bank_account", bank_account)
+		party_bank_account = get_party_bank_account(pe.party_type, pe.party)
+		pe.set("bank_account", party_bank_account)
 		pe.set_bank_account_data()
 
 	frappe.utils.call_hook_method("get_payment_entry", doc, pe)

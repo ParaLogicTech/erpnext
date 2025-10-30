@@ -9,6 +9,8 @@ from erpnext.projects.doctype.project.project import (
 	get_service_template_quoted_set,
 	get_service_template_requested_set,
 )
+from erpnext.accounts.party import get_party_account
+from erpnext.accounts.doctype.journal_entry.journal_entry import get_default_bank_cash_account
 import json
 
 
@@ -764,9 +766,19 @@ def make_stock_entry(project_name, purpose):
 
 
 @frappe.whitelist()
-def make_payment_entry(project_name, is_refund=False):
+def make_payment_entry(
+	project_name,
+	customer=None,
+	bank_account=None,
+	bank_amount=None,
+	mode_of_payment=None,
+	is_pos=False,
+	pos_profile=None,
+	is_refund=False,
+):
 	project = frappe.get_doc("Project", project_name)
 
+	is_pos = cint(is_pos)
 	is_refund = cint(is_refund)
 
 	pe = frappe.new_doc("Payment Entry")
@@ -778,13 +790,44 @@ def make_payment_entry(project_name, is_refund=False):
 
 	pe.payment_type = "Pay" if is_refund else "Receive"
 	pe.party_type = "Customer"
-	pe.party = project.bill_to or project.customer
-	pe.contact_person = project.billing_contact_person if project.bill_to else project.contact_person
+	pe.party = customer or project.bill_to or project.customer
+
+	pe.mode_of_payment = mode_of_payment
+	pe.is_pos = cint(is_pos)
+	pe.pos_profile = pos_profile if pe.is_pos else None
+
+	party_account = get_party_account(pe.party_type, pe.party, pe.company)
+	bank = get_default_bank_cash_account(
+		project.company,
+		"Bank",
+		mode_of_payment=mode_of_payment,
+		pos_profile=pe.pos_profile,
+		account=bank_account,
+	)
+	if not bank:
+		bank = get_default_bank_cash_account(
+			project.company,
+			"Cash",
+			mode_of_payment=mode_of_payment,
+			pos_profile=pe.pos_profile,
+			account=bank_account,
+		)
+
+	pe.paid_from = party_account if pe.payment_type == "Receive" else bank.account
+	pe.paid_to = party_account if pe.payment_type == "Pay" else bank.account
+
+	pe.paid_amount = flt(bank_amount)
+	pe.received_amount = flt(bank_amount)
+
+	if project.customer and pe.party == project.customer:
+		pe.contact_person = project.contact_person
+	elif project.bill_to and pe.party == project.bill_to:
+		pe.contact_person = project.billing_contact_person
 
 	frappe.utils.call_hook_method("get_payment_entry", project, pe)
 
 	if is_refund:
-		payment_entries = project.get_advance_payment_entries()
+		payment_entries = project.get_advance_payment_entries(pe.party)
 		payment_entries = [d for d in payment_entries if d.payment_type == "Receive" and d.unallocated_amount > 0]
 
 		for d in payment_entries:

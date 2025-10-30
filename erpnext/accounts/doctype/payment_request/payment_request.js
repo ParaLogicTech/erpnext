@@ -71,7 +71,7 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 
 		if (
 			this.frm.doc.docstatus == 1
-			&& (!this.frm.doc.payment_gateway_account || this.frm.doc.payment_entry_creation_failed)
+			// && (!this.frm.doc.payment_gateway_account || this.frm.doc.payment_entry_creation_failed)
 			&& this.frm.doc.status != "Paid"
 		) {
 			this.frm.add_custom_button(__('Payment Entry'), () => this.make_payment_entry(),
