@@ -11,6 +11,10 @@ from erpnext.accounts.party import validate_party_accounts, get_dashboard_info, 
 from frappe.contacts.address_and_contact import load_address_and_contact, delete_contact_and_address
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from frappe.contacts.doctype.address.address import get_default_address
+from frappe.core.doctype.notification_count.notification_count import (
+	get_notification_last_scheduled,
+	set_notification_last_scheduled,
+)
 from frappe.model.mapper import get_mapped_doc
 import json
 
@@ -713,8 +717,13 @@ def send_customer_birthday_notifications():
 	if now_dt < notification_dt:
 		return
 
-	notification_last_sent_date = frappe.db.get_global("customer_birthday_notification_last_sent_date")
-	if notification_last_sent_date and getdate(notification_last_sent_date) >= date_today:
+	last_scheduled = get_notification_last_scheduled(
+		"Customer",
+		"",
+		"Customer Birthday",
+		"",
+	)
+	if last_scheduled and getdate(last_scheduled) >= date_today:
 		return
 
 	customer_birthday_data = get_customers_for_birthday_notifications(date_today)
@@ -722,7 +731,13 @@ def send_customer_birthday_notifications():
 		doc = frappe.get_doc("Customer", d.name)
 		doc.send_customer_birthday_notification()
 
-	frappe.db.set_global("customer_birthday_notification_last_sent_date", date_today)
+	set_notification_last_scheduled(
+		"Customer",
+		"",
+		"Customer Birthday",
+		"",
+		now_dt=now_dt,
+	)
 
 
 def automated_customer_birthday_enabled():
