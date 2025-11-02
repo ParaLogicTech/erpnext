@@ -271,11 +271,15 @@ def get_avg_purchase_rate(serial_nos):
 def get_valuation_method(item_code):
 	def generator():
 		"""get valuation method from item or default"""
-		val_method, has_batch_no, has_serial_no = frappe.db.get_value('Item', item_code,
-			['valuation_method', 'has_batch_no', 'has_serial_no'])
+		item_details = frappe.db.get_value('Item', item_code, [
+			'valuation_method', 'has_batch_no', 'has_serial_no'
+		])
+		if not item_details:
+			frappe.throw(_("Item {0} does not exist").format(item_code))
 
+		val_method, has_batch_no, has_serial_no = item_details
 		if not val_method:
-			val_method = frappe.db.get_single_value("Stock Settings", "valuation_method", cache=True) or "FIFO"
+			val_method = frappe.db.get_single_value("Stock Settings", "valuation_method") or "FIFO"
 
 		batch_wise_valuation = bool(has_batch_no and not has_serial_no)
 		if batch_wise_valuation:
