@@ -569,7 +569,7 @@ class PaymentRequest(AccountsController):
 				frappe.throw(_("Payment Entry is already submitted"), title=_('Error'))
 
 	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if notification_type == ("Payment Link", "Payment Received"):
+		if notification_type in ("Payment Link", "Payment Received"):
 			if self.docstatus != 1:
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Payment Request is not submitted").format(
