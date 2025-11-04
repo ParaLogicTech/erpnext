@@ -70,7 +70,7 @@ class PaymentRequest(AccountsController):
 		frappe.flags.from_payment_gateway = True
 
 		try:
-			self.create_payment_entry(
+			payment_entry = self.create_payment_entry(
 				submit=True,
 				reference_no=args.reference_no,
 				reference_date=args.reference_date,
@@ -79,7 +79,7 @@ class PaymentRequest(AccountsController):
 			frappe.db.commit()
 
 			self.reload()
-			self.trigger_payment_received_notification()
+			self.trigger_payment_received_notification(payment_entry)
 			frappe.db.commit()
 		except Exception as e:
 			frappe.db.rollback()
@@ -456,7 +456,7 @@ class PaymentRequest(AccountsController):
 
 		self.run_method("notify_payment_error")
 
-	def trigger_payment_received_notification(self):
+	def trigger_payment_received_notification(self, payment_entry):
 		if self.docstatus != 1:
 			return
 		if self.payment_request_type != "Inward":
@@ -464,7 +464,7 @@ class PaymentRequest(AccountsController):
 		if self.status != "Paid":
 			return
 
-		self.run_method("notify_payment_received")
+		self.run_method("notify_payment_received", context={"payment_entry": payment_entry or frappe._dict()})
 
 	def create_payment_entry(self, submit=False, reference_no=None, reference_date=None, amount=None):
 		"""create entry"""
