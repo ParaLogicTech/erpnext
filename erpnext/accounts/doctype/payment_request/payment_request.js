@@ -96,7 +96,7 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 
 		if (payment_received_count || (this.frm.doc.payment_request_type == "Inward" && this.frm.doc.status == "Paid")) {
 			let payment_received_color = payment_received_count ? "green" : "light-gray";
-			let payment_received_status = frappe.get_notification_count_str(this.frm, 'Payment Link');
+			let payment_received_status = frappe.get_notification_count_str(this.frm, 'Payment Received');
 			this.frm.dashboard.add_indicator(__('Payment Received: {0}', [payment_received_status]), payment_received_color);
 		}
 

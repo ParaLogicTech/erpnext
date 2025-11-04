@@ -626,7 +626,7 @@ class PaymentRequest(AccountsController):
 				"payment_type": "Receive",
 				"payment_request": self.name,
 				"docstatus": 1,
-			}, pluck="name", order_by="posting_date desc, posting_time desc, creation desc")
+			}, pluck="name", order_by="posting_date desc, creation desc")
 
 			out = []
 			for payment_entry in payment_entries:
