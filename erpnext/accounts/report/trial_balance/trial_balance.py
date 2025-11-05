@@ -17,6 +17,14 @@ def execute(filters=None):
 
 	data = get_data(filters)
 	columns = get_columns(filters)
+
+	frappe.utils.call_hook_method(
+		"update_monthly_trial_balance_report",
+		data=data,
+		columns=columns,
+		filters=filters,
+	)
+
 	return columns, data
 
 
