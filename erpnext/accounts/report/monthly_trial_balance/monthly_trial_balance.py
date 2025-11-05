@@ -38,7 +38,7 @@ def execute(filters=None):
 
 def get_data(filters, period_list):
 	accounts = frappe.db.sql("""
-		select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt, is_group
+		select main_code, sub_code, epms_code, name, account_number, parent_account, account_name, root_type, report_type, lft, rgt, is_group
 		from `tabAccount`
 		where company=%s order by lft
 	""", filters.company, as_dict=True)
@@ -210,6 +210,9 @@ def prepare_data(accounts, filters, total_rows, parent_children_map, company_cur
 		for d in sources:
 			has_value = False
 			row = {
+				"main_code":d.main_code,
+				"sub_code":d.sub_code,
+				"epms_code":d.epms_code,
 				"account": d.name,
 				"account_number": d.account_number,
 				"account_name": d.account_name,
@@ -266,10 +269,28 @@ def get_columns(filters, period_list):
 				"label": _("Account"),
 				"fieldtype": "Data",
 				"width": 300,
-			},
+			}
 		]
 	else:
 		columns = [
+			{
+				"fieldname": "main_code",
+				"label": _("Main Code"),
+				"fieldtype": "Data",
+				"width": 108,
+			},
+			{
+				"fieldname": "sub_code",
+				"label": _("Sub Code"),
+				"fieldtype": "Data",
+				"width": 108,
+			},
+			{
+				"fieldname": "epms_code",
+				"label": _("EPMS Code"),
+				"fieldtype": "Data",
+				"width": 108,
+			},
 			{
 				"fieldname": "account_number",
 				"label": _("Account Number"),
