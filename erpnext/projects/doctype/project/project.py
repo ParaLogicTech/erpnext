@@ -1357,13 +1357,12 @@ class Project(StatusUpdaterERP):
 			return positive_excess, negative_excess
 
 		sinv_data = frappe.db.sql("""
-			SELECT p.bill_to, i.base_amount
+			SELECT p.bill_to, i.base_amount, p.is_return
 			FROM `tabSales Invoice Item` i
 			INNER JOIN `tabSales Invoice` p ON i.parent = p.name
 			WHERE p.docstatus = 1
 				AND i.project = %s
 				AND i.item_code = %s
-				AND (p.is_return = 0 or p.reopen_order = 1)
 		""", (self.name, insurance_excess_item), as_dict=1)
 
 		pfinv_data = []
@@ -1380,9 +1379,15 @@ class Project(StatusUpdaterERP):
 
 		for d in sinv_data + pfinv_data:
 			if d.base_amount < 0:
-				negative_excess -= d.base_amount
+				if d.is_return:
+					positive_excess += d.base_amount
+				else:
+					negative_excess -= d.base_amount
 			else:
-				positive_excess += d.base_amount
+				if d.is_return:
+					negative_excess -= d.base_amount
+				else:
+					positive_excess += d.base_amount
 
 		return positive_excess, negative_excess
 
