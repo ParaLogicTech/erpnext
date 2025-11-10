@@ -718,7 +718,7 @@ def set_additional_task_values(task_doc, additional_values):
 		additional_values = json.loads(additional_values)
 
 	for k, v in additional_values.items():
-		if task_doc.meta.has_field(k) and v:
+		if task_doc.meta.has_field(k):
 			task_doc.set(k, v)
 
 
@@ -923,8 +923,6 @@ def update_task_checklist(task, task_checklist=None):
 	task_doc.set_missing_checklist()
 	task_doc.set_updated_checklist(task_checklist)
 	task_doc.save(ignore_permissions=True)
-
-	frappe.db.commit()
 
 	frappe.msgprint(_("{0} checklist updated").format(
 		get_link(task_doc)
