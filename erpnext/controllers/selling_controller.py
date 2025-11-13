@@ -10,6 +10,8 @@ from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
+from erpnext.accounts.utils import get_account_currency
 
 
 class SellingController(TransactionController):
@@ -222,10 +224,10 @@ class SellingController(TransactionController):
 				continue
 
 			# skip if pricing rule discount applied
-			if not self.get("ignore_pricing_rule"):
-				discount_from_pricing_rule = False
-				for pricing_rule in get_applied_pricing_rules(d.get('pricing_rules')):
-					pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+			discount_from_pricing_rule = False
+			for pricing_rule in get_applied_pricing_rules(d.get('pricing_rules')):
+				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+				if not self.get("ignore_pricing_rule") or pricing_rule_doc.prevent_ignore_pricing_rule:
 					if pricing_rule_doc.rate_or_discount == "Discount Percentage":
 						if flt(d.discount_percentage, percent_precision) == flt(pricing_rule_doc.discount_percentage, percent_precision):
 							discount_from_pricing_rule = True
@@ -235,8 +237,8 @@ class SellingController(TransactionController):
 							discount_from_pricing_rule = True
 							break
 
-				if discount_from_pricing_rule:
-					continue
+			if discount_from_pricing_rule:
+				continue
 
 			if d.is_new():
 				if d.get("delivery_note_item"):
@@ -290,6 +292,7 @@ class SellingController(TransactionController):
 
 	def validate_selling_price(self):
 		from erpnext.stock.stock_ledger import get_valuation_rate
+		from erpnext.accounts.report.gross_profit.gross_profit import get_sle_outgoing_rate
 
 		def throw_message(row, min_rate):
 			frappe.throw(_("Row #{0}: Net Selling Rate for Item {1} cannot be less than {2}").format(
@@ -303,6 +306,13 @@ class SellingController(TransactionController):
 		if not frappe.get_cached_value("Selling Settings", None, "validate_selling_price"):
 			return
 
+		delivery_note_items = []
+		for d in self.get("items"):
+			if d.get("delivery_note_item"):
+				delivery_note_items.append(("Delivery Note", d.delivery_note_item))
+
+		sle_outgoing_rate = get_sle_outgoing_rate(delivery_note_items)
+
 		for d in self.get("items"):
 			if not d.item_code:
 				continue
@@ -311,14 +321,17 @@ class SellingController(TransactionController):
 			if not is_stock_item:
 				continue
 
-			valuation_rate = flt(get_valuation_rate(
-				d.item_code,
-				d.get("warehouse"),
-				self.doctype,
-				self.name,
-				raise_error_if_no_rate=False,
-				ignore_zero_rate=True,
-			))
+			if d.get("delivery_note_item") and flt(sle_outgoing_rate.get(("Delivery Note", d.delivery_note_item))):
+				valuation_rate = flt(sle_outgoing_rate.get(("Delivery Note", d.delivery_note_item)))
+			else:
+				valuation_rate = flt(get_valuation_rate(
+					d.item_code,
+					d.get("warehouse"),
+					self.doctype,
+					self.name,
+					raise_error_if_no_rate=False,
+					ignore_zero_rate=True,
+				))
 
 			if valuation_rate <= 0:
 				last_purchase_rate = get_last_purchase_rate(d.item_code, d.get("warehouse"))
@@ -327,7 +340,8 @@ class SellingController(TransactionController):
 
 			if valuation_rate > 0:
 				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
-				if flt(d.base_net_rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
+				rate = d.base_rate if self.get("depreciation_type") and not d.get("ignore_depreciation") else d.base_net_rate
+				if flt(rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
 					throw_message(d, valuation_rate_in_sales_uom)
 
 	def get_item_list(self):
@@ -716,18 +730,19 @@ class SellingController(TransactionController):
 				frappe.bold(self.customer), frappe.get_desk_link("Project", self.project)
 			))
 
-		if self.meta.has_field("bill_to"):
-			trn_bill_to = self.bill_to or self.customer
-			allowed_bill_to = []
-			if project_details.bill_to:
-				allowed_bill_to.append(project_details.bill_to)
-			if project_details.customer:
-				allowed_bill_to.append(project_details.customer)
-
-			if allowed_bill_to and trn_bill_to not in allowed_bill_to:
-				frappe.throw(_("Bill To {0} does not belong to {1}").format(
-					frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
-				))
+		# ALLOWING non-project bill to for split billing
+		# if self.meta.has_field("bill_to"):
+		# 	trn_bill_to = self.bill_to or self.customer
+		# 	allowed_bill_to = []
+		# 	if project_details.bill_to:
+		# 		allowed_bill_to.append(project_details.bill_to)
+		# 	if project_details.customer:
+		# 		allowed_bill_to.append(project_details.customer)
+		#
+		# 	if allowed_bill_to and trn_bill_to not in allowed_bill_to:
+		# 		frappe.throw(_("Bill To {0} does not belong to {1}").format(
+		# 			frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
+		# 		))
 
 	def update_project_billing_and_sales(self, material_cost_of_sales=False, validate_insurance_excess=False):
 		projects = []
@@ -893,12 +908,153 @@ class SellingController(TransactionController):
 					frappe.throw(_("Outstanding Amount must be 0 for Cash {0}").format(
 						frappe.get_desk_link("Project", self.project)
 					))
-			else:
-				cash_billing = frappe.get_cached_value("Customer", bill_to, "cash_billing")
-				if cash_billing and self.outstanding_amount != 0:
-					frappe.throw(_("Outstanding Amount must be 0 for Cash Customer {0}").format(
-						frappe.utils.get_link_to_form("Customer", bill_to)
-					))
+
+			cash_billing = frappe.get_cached_value("Customer", bill_to, "cash_billing")
+			if cash_billing and self.outstanding_amount != 0:
+				frappe.throw(_("Outstanding Amount must be 0 for Cash Customer {0}").format(
+					frappe.utils.get_link_to_form("Customer", bill_to)
+				))
+
+	def get_billed_qty_map(self, billing_data, item_ref_field):
+		billed_qty_map = {}
+		depreciation_type_qty = {}
+
+		for d in billing_data:
+			item_row_name = d.get(item_ref_field)
+
+			bill_to = d.bill_to or d.customer
+			so_row = self.getone('items', {'name': item_row_name})
+			claim_customer = so_row.claim_customer if so_row else None
+
+			depreciation_type = d.depreciation_type
+			if not depreciation_type or d.ignore_depreciation:
+				depreciation_type = 'No Depreciation'
+
+			depreciation_type_qty.setdefault(item_row_name, {}).setdefault(depreciation_type, 0)
+			depreciation_type_qty[item_row_name][depreciation_type] += d.qty
+
+			if depreciation_type != 'Depreciation Amount Only' and (not claim_customer or bill_to == claim_customer):
+				billed_qty_map.setdefault(item_row_name, 0)
+				billed_qty_map[item_row_name] += d.qty
+
+		# Do not mark as billed if both depreciation type invoices not created
+		for row_name, depreciation_types in depreciation_type_qty.items():
+			if 'No Depreciation' not in depreciation_types:
+				depreciation_qty = flt(depreciation_types.get('Depreciation Amount Only'), 6)
+				after_depreciation_qty = flt(depreciation_types.get('After Depreciation Amount'), 6)
+				if not depreciation_qty or not after_depreciation_qty:
+					billed_qty_map[row_name] = 0
+
+		return billed_qty_map
+
+	def validate_coupon_code(self):
+		if not self.get("coupon_code"):
+			return
+
+		from erpnext.accounts.doctype.pricing_rule.utils import validate_coupon_code
+		validate_coupon_code(self.coupon_code)
+
+	def update_coupon_code(self, transaction_type):
+		if not self.get("coupon_code"):
+			return
+
+		already_updated = False
+		if self.doctype != "Sales Order":
+			sales_orders = set([d.sales_order for d in self.get("items") if d.get("sales_order")])
+			already_updated = frappe.db.exists("Sales Order", {
+				"coupon_code": self.coupon_code, "name": ["in", sales_orders], "docstatus": 1,
+			})
+
+		if already_updated:
+			return
+
+		from erpnext.accounts.doctype.pricing_rule.utils import update_coupon_code_count
+		update_coupon_code_count(self.coupon_code, transaction_type)
+
+	def make_tax_gl_entries(self, gl_entries):
+		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+
+		for tax in self.get("taxes"):
+			if flt(tax.base_tax_amount_after_discount_amount):
+				account_currency = get_account_currency(tax.account_head)
+				gl_entries.append(
+					self.get_gl_dict({
+						"account": tax.account_head,
+						"against": billing_party_name or billing_party,
+						"credit": flt(tax.base_tax_amount_after_discount_amount,
+							tax.precision("tax_amount_after_discount_amount")),
+						"credit_in_account_currency": (flt(tax.base_tax_amount_after_discount_amount,
+							tax.precision("base_tax_amount_after_discount_amount")) if account_currency==self.company_currency else
+							flt(tax.tax_amount_after_discount_amount, tax.precision("tax_amount_after_discount_amount"))),
+						"cost_center": tax.cost_center or self.cost_center
+					}, account_currency, item=tax)
+				)
+
+	def make_advance_reversal_gl_entries(self, gl_entries):
+		debit_to = self.get_party_account()
+		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+
+		for tax in self.get("taxes"):
+			if flt(tax.base_advance_tax):
+				reference_no = set([adv.reference_name for adv in self.advances if adv.advance_tax])
+				reference_no = ", ".join(reference_no)
+
+				account_currency = get_account_currency(tax.account_head)
+				gl_entries.append(
+					self.get_gl_dict({
+						"account": tax.account_head,
+						"against": billing_party_name or billing_party,
+						"debit": flt(tax.base_advance_tax, tax.precision("tax_amount_after_discount_amount")),
+						"debit_in_account_currency": (
+							flt(tax.base_advance_tax, tax.precision("base_advance_tax"))
+							if account_currency == self.company_currency else
+							flt(tax.advance_tax, tax.precision("advance_tax"))
+						),
+						"cost_center": tax.cost_center or self.cost_center,
+						"reference_no": reference_no,
+					}, account_currency, item=tax)
+				)
+
+				gl_entries.append(
+					self.get_gl_dict({
+						"account": debit_to,
+						"party_type": billing_party_type,
+						"party": billing_party,
+						"against": tax.account_head,
+						"credit": flt(tax.base_advance_tax, self.precision("grand_total")),
+						"credit_in_account_currency": (
+							flt(tax.base_advance_tax, self.precision("grand_total"))
+							if account_currency == self.company_currency else
+							flt(tax.advance_tax, self.precision("grand_total"))
+						),
+						"against_voucher": self.get("return_against")\
+							if cint(self.get("is_return")) and self.get("return_against") else self.name,
+						"against_voucher_type": self.doctype,
+						"cost_center": self.get("cost_center"),
+						"project": self.get("project"),
+						"reference_no": reference_no,
+					}, self.party_account_currency, item=self)
+				)
+
+	def make_gle_for_rounding_adjustment(self, gl_entries):
+		if flt(self.rounding_adjustment, self.precision("rounding_adjustment")) and self.base_rounding_adjustment:
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+
+			round_off_account, round_off_cost_center = get_round_off_account_and_cost_center(self.company)
+			round_off_account_currency = get_account_currency(round_off_account)
+
+			gl_entries.append(
+				self.get_gl_dict({
+					"account": round_off_account,
+					"against": billing_party_name or billing_party,
+					"credit_in_account_currency": (
+						flt(self.base_rounding_adjustment, self.precision('base_rounding_adjustment'))
+						if round_off_account_currency == self.company_currency
+						else flt(self.rounding_adjustment, self.precision("rounding_adjustment"))
+					),
+					"credit": flt(self.base_rounding_adjustment, self.precision("base_rounding_adjustment")),
+					"cost_center": self.cost_center or round_off_cost_center,
+				}, round_off_account_currency, item=self))
 
 
 @frappe.whitelist()

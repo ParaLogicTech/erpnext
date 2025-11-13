@@ -1,25 +1,51 @@
 frappe.ui.form.on('Account Group', {
+	setup(frm) {
+		// setup formatters for fieldtype
+		frappe.meta.docfield_map["Account Group Row"].row_type.formatter = (value) => {
+			const prefix = {
+				"Section Total": "--red-600",
+				"Section Break": "--blue-600",
+				"Formula": "--yellow-600",
+			};
+			if (prefix[value]) {
+				value = `<span class="bold" style="color: var(${prefix[value]})">${value}</span>`;
+			}
+			return value;
+		};
+	},
+
 	refresh(frm) {
 		// Set filters for account selection
-		frm.set_query('account', 'rows', function(doc, cdt, cdn) {
+		frm.set_query('account', 'rows', () => {
 			let filters = {
-				'company': frm.doc.company,
-				'report_type': frm.doc.report_type,
-				'is_group': 0
+				company: frm.doc.company,
+				is_group: 0,
 			};
+
+            if (["Profit and Loss", "Balance Sheet"].includes(frm.doc.report_type)) {
+				filters["report_type"] = frm.doc.report_type;
+            }
 
 			return { filters };
 		});
 
 		// Set filters for account group selection
-		frm.set_query('account_group', 'rows', function(doc, cdt, cdn) {
+		frm.set_query('account_group', 'rows', () => {
+            let filters = {
+                company: frm.doc.company,
+            };
+
+            if (["Profit and Loss", "Balance Sheet"].includes(frm.doc.report_type)) {
+				filters["report_type"] = frm.doc.report_type;
+            }
+
+            if (!frm.is_new()) {
+                filters["name"] = ['!=', frm.doc.name];
+            }
+
 			return {
-				query: "erpnext.accounts.doctype.account_group.account_group.get_account_groups_for_balance_sheet",
-				filters: {
-					company: frm.doc.company,
-					report_type: frm.doc.report_type,
-					exclude_name: frm.doc.name
-				}
+				query: "erpnext.accounts.doctype.account_group.account_group.account_group_query",
+				filters: filters,
 			};
 		});
 

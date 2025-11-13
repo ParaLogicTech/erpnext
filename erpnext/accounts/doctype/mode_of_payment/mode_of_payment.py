@@ -2,16 +2,19 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
 from frappe.model.document import Document
 from frappe import _
 
+
 class ModeofPayment(Document):
+	def on_update(self):
+		frappe.cache.delete_key("bootinfo")
+
 	def validate(self):
 		self.validate_accounts()
 		self.validate_repeating_companies()
 		self.validate_pos_mode_of_payment()
-	
+
 	def validate_repeating_companies(self):
 		"""Error when Same Company is entered multiple times in accounts"""
 		accounts_list = []
@@ -38,4 +41,3 @@ class ModeofPayment(Document):
 				message = "POS Profile " + frappe.bold(", ".join(pos_profiles)) + " contains \
 					Mode of Payment " + frappe.bold(str(self.name)) + ". Please remove them to disable this mode."
 				frappe.throw(_(message), title="Not Allowed")
-

@@ -8,6 +8,10 @@ from dateutil.relativedelta import relativedelta
 from frappe.utils import add_days, getdate, get_time, now_datetime, combine_datetime, add_to_date, cstr, cint
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from erpnext.accounts.party import get_contact_details
+from frappe.core.doctype.notification_count.notification_count import (
+	get_notification_last_scheduled,
+	set_notification_last_scheduled,
+)
 
 
 class MaintenanceSchedule(TransactionBase):
@@ -359,8 +363,13 @@ def send_maintenance_schedule_reminder_notifications():
 	if now_dt < reminder_dt:
 		return
 
-	notification_last_sent_date = frappe.db.get_global("maintenance_schedule_notification_last_sent_date")
-	if notification_last_sent_date and getdate(notification_last_sent_date) >= reminder_date:
+	last_scheduled = get_notification_last_scheduled(
+		"Maintenance Schedule",
+		"",
+		"Maintenance Reminder",
+		"",
+	)
+	if last_scheduled and getdate(last_scheduled) >= reminder_date:
 		return
 
 	schedules_to_remind = get_maintenance_schedules_for_reminder_notification(reminder_date)
@@ -369,7 +378,13 @@ def send_maintenance_schedule_reminder_notifications():
 		doc = frappe.get_doc("Maintenance Schedule", d.ms_name)
 		doc.send_maintenance_schedule_reminder_notification(d.row_name)
 
-	frappe.db.set_global("maintenance_schedule_notification_last_sent_date", reminder_date)
+	set_notification_last_scheduled(
+		"Maintenance Schedule",
+		"",
+		"Maintenance Reminder",
+		"",
+		now_dt=now_dt,
+	)
 
 
 def get_maintenance_schedules_for_reminder_notification(reminder_date=None):

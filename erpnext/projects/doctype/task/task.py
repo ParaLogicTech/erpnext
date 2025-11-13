@@ -529,7 +529,11 @@ def create_service_template_tasks(project):
 			continue
 
 		template_doc = frappe.get_cached_doc("Service Template", service_template_row.service_template)
-		template_tasks = get_service_template_tasks(service_template_row.service_template, service_template_detail=service_template_row)
+		template_tasks = get_service_template_tasks(
+			project_doc,
+			service_template_row.service_template,
+			service_template_detail=service_template_row,
+		)
 		for template_task_details in template_tasks:
 			task_doc = frappe.new_doc("Task")
 			for k, v in template_task_details.items():

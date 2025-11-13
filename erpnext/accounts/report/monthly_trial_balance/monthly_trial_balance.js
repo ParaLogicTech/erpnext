@@ -49,8 +49,8 @@ frappe.query_reports["Monthly Trial Balance"] = {
 			"label": __("Group by Dimensions"),
 			"fieldtype": "MultiSelectList",
 			"options": [
-				{label: __("Cost Center"), value: "cost_center"}
-			],
+				{label: __("Cost Center"), value: "cost_center"},
+			].concat(erpnext.financial_statements.get_dimension_options()),
 		},
 		{
 			"fieldname": "cost_center",

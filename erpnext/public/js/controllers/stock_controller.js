@@ -208,8 +208,8 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 	}
 
 	get_service_template_items(items_type) {
-		let customer = this.frm.doc.customer;
-		if (this.frm.doc.doctype == "Quotation" && this.frm.doc.quotation_to == "Customer") {
+		let customer = this.frm.doc.bill_to || this.frm.doc.customer;
+		if (!customer && this.frm.doc.doctype == "Quotation" && this.frm.doc.quotation_to == "Customer") {
 			customer = this.frm.doc.party_name;
 		}
 

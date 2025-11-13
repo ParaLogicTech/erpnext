@@ -6,7 +6,7 @@ import erpnext
 import frappe.defaults
 from frappe.utils import cint, flt, getdate, add_days, cstr
 from frappe import _
-from erpnext.accounts.party import get_party_account, get_due_date
+from erpnext.accounts.party import get_party_account, get_due_date, get_goodwill_account_details
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
 from frappe.model.mapper import get_mapped_doc
 from erpnext.accounts.doctype.sales_invoice.pos import update_multi_mode_option
@@ -19,7 +19,6 @@ from erpnext.projects.doctype.timesheet.timesheet import get_projectwise_timeshe
 from erpnext.assets.doctype.asset.depreciation import get_disposal_account_and_cost_center,\
 	get_gl_entries_on_asset_disposal
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos, get_delivery_note_serial_no
-from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty_program_details_with_points,\
 	validate_loyalty_points
 from erpnext.accounts.deferred_revenue import validate_service_stop_date
@@ -105,6 +104,8 @@ class SalesInvoice(SellingController):
 		self.set_billing_hours_and_amount()
 		self.update_timesheet_billing_for_project()
 		self.validate_campaign()
+		self.validate_coupon_code()
+		self.validate_goodwill_invoicing()
 
 		self.validate_total_advance_amount()
 		self.validate_pos_is_open(throw=True)
@@ -116,7 +117,6 @@ class SalesInvoice(SellingController):
 		self.validate_with_previous_doc()
 
 		self.sort_items()
-
 		self.set_delivery_status()
 		self.set_returned_status()
 		self.set_status()
@@ -139,6 +139,7 @@ class SalesInvoice(SellingController):
 
 		self.validate_previous_docstatus()
 		self.update_previous_doc_status()
+		self.update_coupon_code("used")
 
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating reserved qty in bin depends upon updated delivered qty in SO
@@ -187,6 +188,7 @@ class SalesInvoice(SellingController):
 		self.unlink_payments_on_invoice_cancel()
 		self.update_status_on_cancel()
 		self.update_previous_doc_status()
+		self.update_coupon_code("cancelled")
 
 		if not self.is_return:
 			self.update_serial_no(in_cancel=True)
@@ -600,7 +602,10 @@ class SalesInvoice(SellingController):
 			return
 
 		# Validate total paid amount zero
-		if not flt(self.paid_amount) and not flt(self.total_advance):
+		if (
+			flt(self.get_payable_amount(), self.precision("grand_total"))
+			and not flt(self.paid_amount)
+		):
 			frappe.throw(_("Paid Amount cannot be zero for POS Invoice"))
 
 		# Validate total return payment amount
@@ -693,7 +698,12 @@ class SalesInvoice(SellingController):
 				company=self.company
 			)
 
+		if self.is_new() and not for_validate:
+			# set null so it will be set based on customer details
+			self.is_goodwill_invoice = None
+
 		super(SalesInvoice, self).set_missing_values(for_validate)
+		self.set_goodwill_invoicing_details()
 
 		print_format = pos.get("print_format_for_online") if pos else None
 		if not print_format and not cint(frappe.db.get_value('Print Format', 'POS Invoice', 'disabled')):
@@ -706,6 +716,15 @@ class SalesInvoice(SellingController):
 				"allow_edit_discount": pos.get("allow_user_to_edit_discount"),
 				"campaign": pos.get("campaign")
 			}
+
+	def set_goodwill_invoicing_details(self):
+		if self.is_goodwill_invoice:
+			bill_to = self.bill_to or self.customer
+			account_details = get_goodwill_account_details(bill_to, self.company)
+			if account_details.account:
+				self.write_off_account = account_details.account
+			if account_details.cost_center:
+				self.write_off_cost_center = account_details.cost_center
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
@@ -831,8 +850,8 @@ class SalesInvoice(SellingController):
 		delivery_note_compare = [["company", "="], ["currency", "="]]
 
 		if not self.get('bill_multiple_projects'):
-			sales_order_compare += [["project", "="], ["branch", "="]]
-			delivery_note_compare += [["project", "="], ["branch", "="]]
+			sales_order_compare += [["project", "="]]
+			delivery_note_compare += [["project", "="]]
 
 		if not self.get('claim_billing'):
 			sales_order_compare += [["customer", "="]]
@@ -908,6 +927,15 @@ class SalesInvoice(SellingController):
 				frappe.throw(_("Return Against Sales Invoice {0} must be against the same Billing Customer").format(self.return_against))
 			if against_doc.debit_to != self.debit_to:
 				frappe.throw(_("Return Against Sales Invoice {0} must have the same Debit To account").format(self.return_against))
+
+	def validate_goodwill_invoicing(self):
+		if self.is_goodwill_invoice:
+			bill_to = self.bill_to or self.customer
+			is_goodwill_customer = cint(frappe.get_cached_value('Customer', bill_to, "is_goodwill_customer"))
+			if not is_goodwill_customer:
+				frappe.throw(_("{0} is not enabled for Goodwill Invoicing").format(
+					frappe.get_desk_link("Customer", bill_to)
+				))
 
 	def set_against_income_account(self):
 		"""Set against account for debit to account"""
@@ -1097,10 +1125,9 @@ class SalesInvoice(SellingController):
 					d.cost_center = depreciation_cost_center
 
 	def set_unbilled_stock_account(self):
-		if (
-			self.update_stock
-			or self.depreciation_type == "Depreciation Amount Only"
-		):
+		bill_to = self.get('bill_to') or self.get('customer')
+
+		if self.update_stock:
 			for d in self.get("items"):
 				d.unbilled_stock_account = None
 		else:
@@ -1108,7 +1135,7 @@ class SalesInvoice(SellingController):
 			unbilled_stock_account_map = {}
 			if delivery_note_items:
 				dn_data = frappe.db.sql("""
-					select i.name, i.unbilled_stock_account, dn.is_return
+					select i.name, i.unbilled_stock_account, dn.is_return, i.claim_customer
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` dn on dn.name = i.parent
 					where i.name in %s
@@ -1122,6 +1149,10 @@ class SalesInvoice(SellingController):
 					dn_row_data = unbilled_stock_account_map.get(d.delivery_note_item, {})
 
 					if self.is_return and not self.reopen_order and not dn_row_data.get("is_return"):
+						d.unbilled_stock_account = None
+					elif dn_row_data.claim_customer and dn_row_data.claim_customer != bill_to:
+						d.unbilled_stock_account = None
+					elif self.depreciation_type == "Depreciation Amount Only" and not d.ignore_depreciation:
 						d.unbilled_stock_account = None
 					else:
 						d.unbilled_stock_account = dn_row_data.get("unbilled_stock_account")
@@ -1159,6 +1190,7 @@ class SalesInvoice(SellingController):
 		gl_entries = merge_similar_entries(gl_entries)
 
 		self.make_advance_reversal_gl_entries(gl_entries)
+		self.make_prepaid_deferred_revenue_gl_entry(gl_entries)
 		self.make_loyalty_point_redemption_gle(gl_entries)
 		self.make_pos_gl_entries(gl_entries)
 		self.make_gle_for_change_amount(gl_entries)
@@ -1193,25 +1225,6 @@ class SalesInvoice(SellingController):
 					"project": self.project
 				}, self.party_account_currency, item=self)
 			)
-
-	def make_tax_gl_entries(self, gl_entries):
-		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
-
-		for tax in self.get("taxes"):
-			if flt(tax.base_tax_amount_after_discount_amount):
-				account_currency = get_account_currency(tax.account_head)
-				gl_entries.append(
-					self.get_gl_dict({
-						"account": tax.account_head,
-						"against": billing_party_name or billing_party,
-						"credit": flt(tax.base_tax_amount_after_discount_amount,
-							tax.precision("tax_amount_after_discount_amount")),
-						"credit_in_account_currency": (flt(tax.base_tax_amount_after_discount_amount,
-							tax.precision("base_tax_amount_after_discount_amount")) if account_currency==self.company_currency else
-							flt(tax.tax_amount_after_discount_amount, tax.precision("tax_amount_after_discount_amount"))),
-						"cost_center": tax.cost_center or self.cost_center
-					}, account_currency, item=tax)
-				)
 
 	def make_item_gl_entries(self, gl_entries):
 		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
@@ -1290,6 +1303,29 @@ class SalesInvoice(SellingController):
 						}, discount_account_currency, item=item)
 					)
 
+				if item.is_prepaid_deferred_revenue and item.net_amount:
+					deferred_revenue_account = item.deferred_revenue_account
+					if not deferred_revenue_account:
+						frappe.throw(_("Deferred Revenue Account is mandatory for Prepaid Deferred Revenue Item {0} at Row {1}").format(
+							item.item_code, item.idx
+						))
+
+					deferred_revenue_account_currency = get_account_currency(deferred_revenue_account)
+					gl_entries.append(
+						self.get_gl_dict({
+							"account": deferred_revenue_account,
+							"against": billing_party_name or billing_party,
+							"debit": item.base_net_amount,
+							"debit_in_account_currency": (
+								item.base_net_amount
+								if deferred_revenue_account_currency == self.company_currency
+								else item.net_amount
+							),
+							"cost_center": item.cost_center or self.cost_center,
+							"project": item.get('project') or self.project
+						}, deferred_revenue_account_currency, item=item)
+					)
+
 		# expense account gl entries
 		if cint(self.update_stock) and \
 			erpnext.is_perpetual_inventory_enabled(self.company):
@@ -1348,49 +1384,26 @@ class SalesInvoice(SellingController):
 				}, item=item)
 			)
 
-	def make_advance_reversal_gl_entries(self, gl_entries):
-		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+	def make_prepaid_deferred_revenue_gl_entry(self, gl_entries):
+		if self.prepaid_deferred_revenue:
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			deferred_revenue_accounts = set([d.deferred_revenue_account for d in self.get("items") if d.deferred_revenue_account])
+			base_prepaid_deferred_revenue = flt(self.prepaid_deferred_revenue) * flt(self.conversion_rate)
 
-		for tax in self.get("taxes"):
-			if flt(tax.base_advance_tax):
-				reference_no = set([adv.reference_name for adv in self.advances if adv.advance_tax])
-				reference_no = ", ".join(reference_no)
-
-				account_currency = get_account_currency(tax.account_head)
-				gl_entries.append(
-					self.get_gl_dict({
-						"account": tax.account_head,
-						"against": billing_party_name or billing_party,
-						"debit": flt(tax.base_advance_tax, tax.precision("tax_amount_after_discount_amount")),
-						"debit_in_account_currency": (
-							flt(tax.base_advance_tax, tax.precision("base_advance_tax"))
-							if account_currency == self.company_currency else
-							flt(tax.advance_tax, tax.precision("advance_tax"))
-						),
-						"cost_center": tax.cost_center or self.cost_center,
-						"reference_no": reference_no,
-					}, account_currency, item=tax)
-				)
-
-				gl_entries.append(
-					self.get_gl_dict({
-						"account": self.debit_to,
-						"party_type": billing_party_type,
-						"party": billing_party,
-						"against": self.against_income_account,
-						"credit": flt(tax.base_advance_tax, self.precision("grand_total")),
-						"credit_in_account_currency": (
-							flt(tax.base_advance_tax, self.precision("grand_total"))
-							if account_currency == self.company_currency else
-							flt(tax.advance_tax, self.precision("grand_total"))
-						),
-						"against_voucher": self.return_against if cint(self.is_return) and self.return_against else self.name,
-						"against_voucher_type": self.doctype,
-						"cost_center": self.cost_center,
-						"project": self.project,
-						"reference_no": reference_no,
-					}, self.party_account_currency, item=self)
-				)
+			gl_entries.append(
+				self.get_gl_dict({
+					"account": self.debit_to,
+					"party_type": billing_party_type,
+					"party": billing_party,
+					"against": ", ".join(deferred_revenue_accounts),
+					"credit": flt(base_prepaid_deferred_revenue, self.precision("grand_total")),
+					"credit_in_account_currency": flt(self.prepaid_deferred_revenue, self.precision("grand_total")),
+					"against_voucher": self.return_against if cint(self.is_return) and self.return_against else self.name,
+					"against_voucher_type": self.doctype,
+					"cost_center": self.cost_center,
+					"project": self.project,
+				}, self.party_account_currency, item=self)
+			)
 
 	def make_loyalty_point_redemption_gle(self, gl_entries):
 		if cint(self.redeem_loyalty_points):
@@ -1525,26 +1538,6 @@ class SalesInvoice(SellingController):
 					"cost_center": self.cost_center or self.write_off_cost_center or default_cost_center
 				}, write_off_account_currency, item=self)
 			)
-
-	def make_gle_for_rounding_adjustment(self, gl_entries):
-		if flt(self.rounding_adjustment, self.precision("rounding_adjustment")) and self.base_rounding_adjustment:
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
-
-			round_off_account, round_off_cost_center = \
-				get_round_off_account_and_cost_center(self.company)
-			round_off_account_currency = get_account_currency(round_off_account)
-
-			gl_entries.append(
-				self.get_gl_dict({
-					"account": round_off_account,
-					"against": billing_party_name or billing_party,
-					"credit_in_account_currency": (flt(self.base_rounding_adjustment,
-						self.precision('base_rounding_adjustment')) if round_off_account_currency == self.company_currency
-						else flt(self.rounding_adjustment, self.precision("rounding_adjustment"))),
-					"credit": flt(self.base_rounding_adjustment,
-						self.precision("base_rounding_adjustment")),
-					"cost_center": self.cost_center or round_off_cost_center,
-				}, round_off_account_currency, item=self))
 
 	def on_recurring(self, reference_doc, auto_repeat_doc):
 		for fieldname in ("c_form_applicable", "c_form_no", "write_off_amount"):

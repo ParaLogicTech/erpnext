@@ -8,8 +8,10 @@ frappe.query_reports["Sales Analytics"] = {
 			fieldname: "tree_type",
 			label: __("Tree Type"),
 			fieldtype: "Select",
-			options: ["Customer Group","Customer","Item Group","Item","Brand","Territory","Sales Person"],
-			default: "Item",
+			options: [
+                "Customer Group", "Customer" ,"Item Group", "Item", "Brand", "Territory", "Sales Person", "Account Manager"
+            ],
+			default: "Customer",
 			reqd: 1
 		},
 		{
@@ -142,6 +144,12 @@ frappe.query_reports["Sales Analytics"] = {
 		{
 			fieldname: "sales_person",
 			label: __("Sales Person"),
+			fieldtype: "Link",
+			options: "Sales Person"
+		},
+		{
+			fieldname: "account_manager",
+			label: __("Account Manager"),
 			fieldtype: "Link",
 			options: "Sales Person"
 		},

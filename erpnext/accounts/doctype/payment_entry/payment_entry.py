@@ -16,6 +16,8 @@ from erpnext.accounts.doctype.bank_account.bank_account import get_party_bank_ac
 from erpnext.controllers.accounts_controller import AccountsController, get_supplier_block_status
 from erpnext.controllers.transaction_controller import validate_taxes_and_charges
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile, is_cashier
+from erpnext.accounts.utils import get_allow_cost_center_in_entry_of_bs_account
+from frappe.model.naming import make_autoname
 
 
 class InvalidPaymentEntry(ValidationError):
@@ -68,7 +70,6 @@ class PaymentEntry(AccountsController):
 		self.set_amounts()
 		self.clear_unallocated_reference_document_rows()
 		self.validate_payment_against_negative_invoice()
-		self.validate_transaction_reference()
 		self.set_title()
 		self.validate_duplicate_entry()
 		self.validate_allocated_amount()
@@ -77,6 +78,8 @@ class PaymentEntry(AccountsController):
 		self.set_original_reference()
 
 	def before_submit(self):
+		self.auto_generate_reference_no()
+		self.validate_transaction_reference()
 		self.set_remarks()
 
 	def on_submit(self):
@@ -433,6 +436,8 @@ class PaymentEntry(AccountsController):
 				frappe.throw(_("{0} is mandatory").format(self.meta.get_label(field)))
 
 	def validate_reference_documents(self):
+		self.clean_remarks()
+
 		valid_reference_doctypes = get_valid_payment_reference_doctypes(self.party_type)
 
 		for d in self.get("references"):
@@ -781,11 +786,14 @@ class PaymentEntry(AccountsController):
 			self.title = self.paid_from + " - " + self.paid_to
 
 	def validate_transaction_reference(self):
-		if not self.reference_no or not self.reference_date:
-			bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
-			bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
-			if bank_account_type == "Bank":
-				frappe.throw(_("Reference No and Reference Date is mandatory for Bank transaction"))
+		bank_account = self.paid_to if self.payment_type == "Receive" else self.paid_from
+		bank_account_type = frappe.get_cached_value("Account", bank_account, "account_type")
+
+		if bank_account_type == "Bank":
+			if not self.reference_no:
+				frappe.throw(_("Reference No is mandatory for Bank transaction"))
+			if not self.reference_date:
+				frappe.throw(_("Reference Date is mandatory for Bank transaction"))
 
 		mode = frappe.get_cached_doc("Mode of Payment", self.mode_of_payment) if self.mode_of_payment else frappe._dict()
 
@@ -808,6 +816,11 @@ class PaymentEntry(AccountsController):
 			frappe.throw(_("Party Bank is mandatory for Mode of Payment {0}").format(
 				frappe.bold(self.mode_of_payment)
 			))
+
+	def auto_generate_reference_no(self):
+		reference_no_series = get_reference_no_series(self.payment_type, self.mode_of_payment)
+		if reference_no_series:
+			self.reference_no = make_autoname(reference_no_series, self.doctype, self)
 
 	def set_remarks(self):
 		if self.user_remark:
@@ -1356,8 +1369,8 @@ def get_outstanding_reference_documents(args):
 			.format(frappe.db.escape(args["voucher_type"]), frappe.db.escape(args["voucher_no"]))
 
 	# Add cost center condition
-	if args.get("cost_center"):
-		condition += " and cost_center='%s'" % args.get("cost_center")
+	if args.get("cost_center") and get_allow_cost_center_in_entry_of_bs_account():
+		condition += f" and cost_center = {frappe.db.escape(args.get('cost_center'))}"
 
 	date_fields_dict = {
 		'posting_date': ['from_posting_date', 'to_posting_date'],
@@ -1623,6 +1636,7 @@ def get_payment_entry(
 
 	is_advance = cint(is_advance)
 	is_advance_return = cint(is_advance_return)
+	is_pos = cint(is_pos)
 
 	if hasattr(doc, "get_billing_party"):
 		party_type, party, party_name = doc.get_billing_party()
@@ -1656,12 +1670,24 @@ def get_payment_entry(
 	exchange_rate = flt(reference_details.exchange_rate) or 1
 
 	# bank or cash
-	bank = get_default_bank_cash_account(doc.company, "Bank", mode_of_payment=mode_of_payment or doc.get("mode_of_payment"),
-		account=bank_account)
+	mode_of_payment = mode_of_payment or doc.get("mode_of_payment")
+
+	bank = get_default_bank_cash_account(
+		doc.company,
+		"Bank",
+		mode_of_payment=mode_of_payment,
+		pos_profile=pos_profile if is_pos else None,
+		account=bank_account,
+	)
 
 	if not bank:
-		bank = get_default_bank_cash_account(doc.company, "Cash", mode_of_payment=mode_of_payment or doc.get("mode_of_payment"),
-			account=bank_account)
+		bank = get_default_bank_cash_account(
+			doc.company,
+			"Cash",
+			mode_of_payment=mode_of_payment,
+			pos_profile=pos_profile if is_pos else None,
+			account=bank_account,
+		)
 
 	paid_amount = received_amount = 0
 	if party_account_currency == bank.account_currency:
@@ -1690,14 +1716,14 @@ def get_payment_entry(
 	pe.cost_center = doc.get("cost_center")
 	pe.project = doc.get("project")
 	pe.posting_date = nowdate()
-	pe.mode_of_payment = mode_of_payment or doc.get("mode_of_payment")
+	pe.mode_of_payment = mode_of_payment
 	pe.party_type = party_type
 	pe.party = party
 	pe.contact_person = doc.get("contact_person")
 	pe.contact_email = doc.get("contact_email")
 	pe.ensure_supplier_is_not_blocked(is_payment=True)
 
-	pe.is_pos = cint(is_pos)
+	pe.is_pos = is_pos
 	pe.pos_profile = pos_profile if pe.is_pos else None
 
 	pe.paid_from = party_account if payment_type=="Receive" else bank.account
@@ -1709,8 +1735,8 @@ def get_payment_entry(
 	pe.letter_head = doc.get("letter_head")
 
 	if pe.party_type in ["Customer", "Supplier"]:
-		bank_account = get_party_bank_account(pe.party_type, pe.party)
-		pe.set("bank_account", bank_account)
+		party_bank_account = get_party_bank_account(pe.party_type, pe.party)
+		pe.set("bank_account", party_bank_account)
 		pe.set_bank_account_data()
 
 	frappe.utils.call_hook_method("get_payment_entry", doc, pe)
@@ -1866,3 +1892,24 @@ def make_payment_order(source_name, target_doc=None):
 	}, target_doc, set_missing_values)
 
 	return doclist
+
+
+@frappe.whitelist()
+def get_reference_no_series(payment_type, mode_of_payment):
+	if not payment_type or not mode_of_payment:
+		return None
+
+	field_map = {
+		"Pay": "series_pay",
+		"Receive": "series_receive",
+		"Internal Transfer": "series_internal_transfer",
+	}
+	fieldname = field_map.get(payment_type)
+	if not fieldname:
+		return None
+
+	series = frappe.get_cached_value("Mode of Payment", mode_of_payment, fieldname)
+	if not cstr(series).strip():
+		return None
+
+	return series

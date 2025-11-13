@@ -88,6 +88,9 @@ class ServiceTemplate(Document):
 
 		return False
 
+	def filter_template_task(self, template_task_row, service_template_detail, project_doc):
+		return False
+
 
 @frappe.whitelist()
 def get_service_template_details(service_template, args=None):
@@ -214,6 +217,7 @@ def get_service_template_items(
 
 
 def get_service_template_tasks(
+	project_doc,
 	service_template,
 	service_template_detail=None,
 ):
@@ -228,6 +232,9 @@ def get_service_template_tasks(
 		})
 
 	for template_task_row in service_template_doc.tasks:
+		if service_template_doc.filter_template_task(template_task_row, service_template_detail, project_doc):
+			continue
+
 		task_details = frappe._dict()
 		task_details.subject = template_task_row.subject
 		task_details.description = template_task_row.description

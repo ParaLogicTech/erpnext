@@ -13,8 +13,11 @@
   "column_break_gygm",
   "company",
   "is_root_level",
-  "section_break_tnce",
-  "rows"
+  "is_fixed_asset_root",
+  "rows_section",
+  "rows",
+  "variables_section",
+  "variables"
  ],
  "fields": [
   {
@@ -49,16 +52,12 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "section_break_tnce",
-   "fieldtype": "Section Break"
-  },
-  {
    "fieldname": "report_type",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Report Type",
-   "options": "Profit and Loss\nBalance Sheet",
+   "options": "Profit and Loss\nBalance Sheet\nCash Flow\nRatios",
    "reqd": 1
   },
   {
@@ -69,11 +68,35 @@
    "label": "Root Type",
    "options": "Income\nExpense\nAsset\nLiability\nEquity",
    "reqd": 1
+  },
+  {
+   "fieldname": "rows_section",
+   "fieldtype": "Section Break",
+   "label": "Rows"
+  },
+  {
+   "fieldname": "variables_section",
+   "fieldtype": "Section Break",
+   "label": "Variables"
+  },
+  {
+   "fieldname": "variables",
+   "fieldtype": "Table",
+   "label": "Variables",
+   "options": "Account Group Variable"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.report_type == \"Balance Sheet\"",
+   "fieldname": "is_fixed_asset_root",
+   "fieldtype": "Check",
+   "label": "Is Fixed Asset Root"
   }
  ],
+ "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-21 12:27:34.613644",
+ "modified": "2025-10-22 13:32:38.282155",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account Group",
@@ -114,6 +137,8 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
+ "search_fields": "report_type, root_type",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

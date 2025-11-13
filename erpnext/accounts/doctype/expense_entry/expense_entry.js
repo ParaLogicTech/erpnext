@@ -328,8 +328,11 @@ $.extend(erpnext.accounts.expense_entry, {
 			frappe.call({
 				method: "erpnext.stock.get_item_details.get_item_tax_map",
 				args: {
-					company: frm.doc.company,
-					item_tax_template: row.item_tax_template
+					item_tax_template: row.item_tax_template,
+					args: {
+						company: frm.doc.company,
+						transaction_date: row.bill_date || frm.doc.transaction_date,
+					}
 				},
 				callback: function (r) {
 					if (!r.exc) {

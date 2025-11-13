@@ -59,6 +59,7 @@
   "discount_amount",
   "apply_taxes_on_retail",
   "is_free_item",
+  "is_prepaid_deferred_revenue",
   "pricing_rules",
   "section_break1",
   "rate",
@@ -153,7 +154,6 @@
   "delivery_note_item",
   "packing_slip",
   "packing_slip_item",
-  "claim_customer",
   "status_section",
   "billed_qty",
   "column_break_urhn",
@@ -1350,14 +1350,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "claim_customer",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Claim Customer",
-   "options": "Customer",
-   "read_only": 1
-  },
-  {
    "fieldname": "status_section",
    "fieldtype": "Section Break",
    "label": "Status"
@@ -1382,11 +1374,18 @@
    "options": "currency",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_prepaid_deferred_revenue",
+   "fieldtype": "Check",
+   "label": "Is Prepaid Deferred Revenue",
+   "read_only": 1
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2025-08-11 15:49:02.232646",
+ "modified": "2025-09-30 18:05:10.770688",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice Item",

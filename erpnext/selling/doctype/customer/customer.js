@@ -116,7 +116,32 @@ frappe.ui.form.on("Customer", {
 				filters: filters
 			}
 		});
+
 		frm.set_query('cost_center', 'accounts', function(doc, cdt, cdn) {
+			var d  = locals[cdt][cdn];
+			var filters = {
+				'company': d.company,
+				"is_group": 0
+			};
+			return {
+				filters: filters
+			}
+		});
+
+		frm.set_query('account', 'goodwill_accounts', function(doc, cdt, cdn) {
+			var d  = locals[cdt][cdn];
+			var filters = {
+				'report_type': 'Profit and Loss',
+				'company': d.company,
+				"is_group": 0
+			};
+
+			return {
+				filters: filters
+			}
+		});
+
+		frm.set_query('cost_center', 'goodwill_accounts', function(doc, cdt, cdn) {
 			var d  = locals[cdt][cdn];
 			var filters = {
 				'company': d.company,

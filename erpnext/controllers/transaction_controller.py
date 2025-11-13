@@ -28,6 +28,7 @@ class TransactionController(StockController):
 		self.force_party_fields = [
 			"customer_name", "bill_to_name", "supplier_name",
 			"customer_group", "bill_to_group", "supplier_group",
+			"account_manager",
 			"contact_display", "contact_mobile", "contact_phone", "contact_email",
 			"address_display", "company_address_display",
 			"customer_credit_limit", "customer_credit_balance", "customer_outstanding_amount",
@@ -41,9 +42,8 @@ class TransactionController(StockController):
 			"stock_uom", "alt_uom", "alt_uom_size",
 			"item_tax_rate", "pricing_rules", "allow_zero_valuation_rate",
 			"is_stock_item", "is_fixed_asset", "has_batch_no", "has_serial_no", "is_vehicle",
-			"claim_customer", "force_default_warehouse",
+			"claim_customer", "force_default_warehouse", "is_prepaid_deferred_revenue",
 			"sales_commission_category", "commission_rate", "retail_rate",
-			"ignore_depreciation",
 		]
 
 		self.merge_items_sum_fields = [
@@ -794,6 +794,14 @@ class TransactionController(StockController):
 	def is_rounded_total_disabled(self):
 		if self.meta.get_field("calculate_tax_on_company_currency") and cint(self.get("calculate_tax_on_company_currency")) and self.currency != self.company_currency:
 			return True
+
+		if (
+			flt(self.get("prepaid_deferred_revenue"))
+			and self.get("party_account_currency") == self.currency
+			and flt(self.prepaid_deferred_revenue) == flt(self.grand_total)
+		):
+			return True
+
 		if self.meta.get_field("disable_rounded_total"):
 			return self.disable_rounded_total
 		else:

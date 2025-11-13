@@ -269,6 +269,14 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 				pricing_rule = frappe.get_cached_doc("Pricing Rule", pricing_rule)
 				pricing_rule.apply_rule_on_other_items = get_pricing_rule_items(pricing_rule)
 
+			if pricing_rule.coupon_code_based:
+				if not args.coupon_code:
+					continue
+
+				coupon_pricing_rule = frappe.db.get_value("Coupon Code", args.coupon_code, "pricing_rule", cache=1)
+				if coupon_pricing_rule != pricing_rule.name:
+					continue
+
 			if pricing_rule.get('suggestion'): continue
 
 			item_details.validate_applied_rule = pricing_rule.get("validate_applied_rule", 0)
@@ -287,9 +295,6 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 					'apply_rule_on': (frappe.scrub(pricing_rule.apply_rule_on_other)
 						if pricing_rule.apply_rule_on_other else frappe.scrub(pricing_rule.get('apply_on')))
 				})
-
-			if pricing_rule.coupon_code_based==1 and args.coupon_code==None:
-				return item_details
 
 			if not pricing_rule.validate_applied_rule:
 				if pricing_rule.price_or_product_discount == "Price":
@@ -420,6 +425,23 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 		item_details.update({
 			"price_list_rate": pricing_rule_rate,
 		})
+
+	if (
+		pricing_rule.rate_or_discount in ("Price List Rate", "Rate", "Valuation Rate", "Last Purchase Rate")
+		and pricing_rule.include_margin_in_price_list_rate
+		and item_details.margin_type
+		and item_details.margin_rate_or_amount
+	):
+		if item_details.margin_type == "Percentage":
+			margin_amount = flt(item_details.price_list_rate) * flt(item_details.margin_rate_or_amount) / 100
+			item_details.price_list_rate += margin_amount
+			item_details.price_list_rate = flt(item_details.price_list_rate, 9)
+			item_details.margin_rate_or_amount = 0
+		else:
+			item_details.price_list_rate += flt(item_details.margin_rate_or_amount)
+			item_details.margin_rate_or_amount = 0
+
+		del item_details["margin_type"]
 
 	for apply_on in ['Discount Amount', 'Discount Percentage']:
 		if pricing_rule.rate_or_discount != apply_on:

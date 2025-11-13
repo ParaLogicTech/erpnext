@@ -31,6 +31,9 @@ class calculate_taxes_and_totals(object):
 		if self.doc.meta.has_field("total_advance"):
 			self.calculate_total_advance()
 
+		if self.doc.meta.has_field("prepaid_deferred_revenue"):
+			self.calculate_prepaid_deferred_revenue()
+
 		if self.doc.meta.has_field("outstanding_amount"):
 			if self.doc.docstatus == 0:
 				self.calculate_outstanding_amount()
@@ -370,6 +373,9 @@ class calculate_taxes_and_totals(object):
 		self.doc.base_tax_exclusive_total_before_discount = self.doc.tax_exclusive_total_before_discount = 0.0
 		self.doc.base_tax_exclusive_total_discount = self.doc.tax_exclusive_total_discount = 0.0
 
+		if self.doc.meta.has_field('total_stock_qty'):
+			self.doc.total_stock_qty = 0.0
+
 		if self.doc.meta.has_field('total_net_weight'):
 			self.doc.total_net_weight = 0.0
 
@@ -384,6 +390,9 @@ class calculate_taxes_and_totals(object):
 		for item in self.doc.get("items"):
 			self.doc.total_qty += item.qty
 			self.doc.total_alt_uom_qty += item.alt_uom_qty
+
+			if self.doc.meta.has_field('total_stock_qty') and item.meta.has_field('stock_qty'):
+				self.doc.total_stock_qty += item.stock_qty
 
 			if self.doc.meta.has_field('total_net_weight') and item.meta.has_field('net_weight'):
 				self.doc.total_net_weight += item.net_weight
@@ -700,19 +709,26 @@ class calculate_taxes_and_totals(object):
 		self.set_rounded_total()
 
 	def set_rounded_total(self):
-		if self.doc.meta.get_field("rounded_total"):
-			if self.doc.is_rounded_total_disabled():
-				self.doc.rounded_total = self.doc.base_rounded_total = 0
-				return
+		if not self.doc.meta.get_field("rounded_total"):
+			return
 
-			self.doc.rounded_total = round_based_on_smallest_currency_fraction(self.doc.grand_total,
-				self.doc.currency, self.doc.precision("rounded_total"))
+		if self.doc.is_rounded_total_disabled():
+			self.doc.rounded_total = self.doc.grand_total
+			self.doc.base_rounded_total = self.doc.base_grand_total
+			return
 
-			# if print_in_rate is set, we would have already calculated rounding adjustment
-			self.doc.rounding_adjustment += flt(self.doc.rounded_total - self.doc.grand_total,
-				self.doc.precision("rounding_adjustment"))
+		self.doc.rounded_total = round_based_on_smallest_currency_fraction(
+			self.doc.grand_total,
+			self.doc.currency,
+			self.doc.precision("rounded_total"),
+			self.doc.get("smallest_currency_fraction_value") or None,
+		)
 
-			self._set_in_company_currency(self.doc, ["rounding_adjustment", "rounded_total"])
+		# if print_in_rate is set, we would have already calculated rounding adjustment
+		self.doc.rounding_adjustment += flt(self.doc.rounded_total - self.doc.grand_total,
+			self.doc.precision("rounding_adjustment"))
+
+		self._set_in_company_currency(self.doc, ["rounding_adjustment", "rounded_total"])
 
 	def set_total_in_words(self):
 		if self.doc.meta.get_field("base_in_words"):
@@ -852,14 +868,22 @@ class calculate_taxes_and_totals(object):
 
 		self.doc.total_advance = flt(self.doc.total_advance, self.doc.precision("total_advance"))
 
+	def calculate_prepaid_deferred_revenue(self):
+		self.doc.prepaid_deferred_revenue = 0
+
+		for item in self.doc.items:
+			if item.is_prepaid_deferred_revenue:
+				if self.doc.party_account_currency == self.doc.currency:
+					self.doc.prepaid_deferred_revenue += flt(item.net_amount)
+				else:
+					self.doc.prepaid_deferred_revenue += flt(item.base_net_amount)
+
+		self.doc.prepaid_deferred_revenue = flt(self.doc.prepaid_deferred_revenue,
+			self.doc.precision("prepaid_deferred_revenue"))
+
 	def calculate_outstanding_amount(self):
 		if self.doc.doctype == "Sales Invoice":
 			self.calculate_paid_amount()
-
-		if self.doc.meta.has_field("write_off_amount"):
-			if self.should_round_transaction_currency():
-				self.doc.round_floats_in(self.doc, ["write_off_amount"])
-			self._set_in_company_currency(self.doc, ['write_off_amount'])
 
 		paid_amount = 0
 		if self.doc.meta.has_field("paid_amount"):
@@ -870,6 +894,9 @@ class calculate_taxes_and_totals(object):
 				if self.doc.party_account_currency == self.doc.currency
 				else self.doc.base_paid_amount
 			)
+
+		if self.doc.meta.has_field("write_off_amount"):
+			self.calculate_write_off_amount()
 
 		change_amount = 0
 		if self.doc.doctype == "Sales Invoice":
@@ -889,6 +916,19 @@ class calculate_taxes_and_totals(object):
 				self.doc.precision("outstanding_amount")
 			)
 
+	def calculate_write_off_amount(self):
+		if self.doc.get("is_goodwill_invoice"):
+			grand_total = self.doc.rounded_total or self.doc.grand_total
+			paid_amount = flt(self.doc.paid_amount) + flt(self.doc.total_advance) + flt(self.doc.prepaid_deferred_revenue)
+			if paid_amount < grand_total:
+				self.doc.write_off_amount = flt(grand_total - paid_amount)
+			else:
+				self.doc.write_off_amount = 0
+
+		if self.should_round_transaction_currency():
+			self.doc.round_floats_in(self.doc, ["write_off_amount"])
+		self._set_in_company_currency(self.doc, ['write_off_amount'])
+
 	def calculate_customer_outstanding_amount(self):
 		if self.doc.doctype == "Sales Invoice" and self.doc.meta.has_field('customer_outstanding_amount'):
 			if self.doc.is_return and self.doc.return_against and not self.doc.get('is_pos'):
@@ -901,7 +941,7 @@ class calculate_taxes_and_totals(object):
 
 	def get_total_amount_to_pay(self):
 		grand_total = self.doc.rounded_total or self.doc.grand_total
-		total_advance = flt(self.doc.get("total_advance"))
+		total_advance = flt(self.doc.get("total_advance")) + flt(self.doc.get("prepaid_deferred_revenue"))
 
 		if self.doc.party_account_currency == self.doc.currency:
 			total_amount_to_pay = grand_total - total_advance - flt(self.doc.get("write_off_amount"))
@@ -937,7 +977,7 @@ class calculate_taxes_and_totals(object):
 		self.doc.base_change_amount = 0.0
 
 		grand_total = self.doc.rounded_total or self.doc.grand_total
-		paid_amount = self.doc.paid_amount + self.doc.total_advance
+		paid_amount = self.doc.paid_amount + self.doc.total_advance + self.doc.prepaid_deferred_revenue
 
 		if (
 			self.doc.doctype == "Sales Invoice"

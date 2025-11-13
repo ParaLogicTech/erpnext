@@ -45,6 +45,7 @@ erpnext.financial_statements = {
 	"name_field": "account",
 	"parent_field": "parent_account",
 	"initial_depth": 3,
+
 	onload: function(report) {
 		// dropdown for links to other financial statements
 		erpnext.financial_statements.filters = get_filters()
@@ -63,11 +64,72 @@ erpnext.financial_statements = {
 		}, __('Financial Statements'));
 	},
 
-	get_account_ledger_link: function(account, from_date, to_date) {
+	summarized_statement_formatter: function(value, row, column, data, default_formatter) {
+		let options = {
+			css: {},
+			link_target: "_blank",
+		};
+
+		if (data) {
+			if (column.fieldname == "account_display") {
+				if (data.row_type == "Account Group" && data.account_group) {
+					options.link_href = frappe.utils.get_form_link("Account Group", data.account_group);
+				} else if (data.row_type == "Account" && data.account) {
+					options.link_href = frappe.utils.get_form_link("Account", data.account);
+				}
+			}
+
+			if (column.format_link) {
+				let report_date = frappe.query_report.get_filter_value("report_date");
+
+				if (data.account_group && report_date && data.row_type === "Account Group") {
+					let report_name = frappe.query_report.report_name;
+					if (data.is_fixed_asset_root) {
+						report_name = "Fixed Assets Statement";
+					}
+					options.link_href = erpnext.financial_statements.get_summarized_statement_link(
+						report_name,
+						data.account_group,
+						report_date,
+					);
+				} else if (data.account && column.from_date && column.to_date && data.row_type === "Account") {
+					options.link_href = erpnext.financial_statements.get_account_ledger_link(
+						data.account,
+						column.from_date,
+						column.to_date,
+						column.dimension_field,
+						column.dimension_value,
+					);
+				}
+			}
+
+			if (data.is_bold) {
+				options.css['font-weight'] = 'bold';
+			}
+
+			if (column.is_value_field) {
+				column = Object.assign({}, column);
+				column.fieldtype = data.value_type || "Currency";
+				column.precision = data.format_precision;
+				column.options = column.fieldtype == "Currency" ? "currency" : null;
+
+				if (data.right_align) {
+					options.right_align = 1;
+				}
+			}
+		}
+		return default_formatter(value, row, column, data, options);
+	},
+
+	get_account_ledger_link: function(account, from_date, to_date, dimension_field, dimension_value) {
 		const params = this.get_params_for_link();
 		params["account"] = account;
 		params["from_date"] = from_date;
 		params["to_date"] = to_date;
+
+		if (dimension_field && dimension_value) {
+			params[dimension_field] = dimension_value;
+		}
 
 		const query_string = Object.entries(params)
 			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
@@ -80,6 +142,16 @@ erpnext.financial_statements = {
 		let params = this.get_params_for_link();
 		params["report_date"] = report_date;
 		params["account_group"] = account_group;
+
+		let format = frappe.query_report.get_filter_value('format');
+		if (format) {
+			params["format"] = format;
+		}
+
+		let dimension_field = frappe.query_report.get_filter_value('dimension_field');
+		if (dimension_field) {
+			params["dimension_field"] = dimension_field;
+		}
 
 		const query_string = Object.entries(params)
 			.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
@@ -111,6 +183,15 @@ erpnext.financial_statements = {
 		}
 
 		return params;
+	},
+
+	get_dimension_options() {
+		return erpnext.dimension_filters.map((dimension) => {
+			return {
+				"label": __(dimension["label"]),
+				"value": dimension["fieldname"],
+			}
+		});
 	}
 };
 

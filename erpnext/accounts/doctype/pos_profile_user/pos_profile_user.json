@@ -25,15 +25,17 @@
    "options": "User"
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
  "links": [],
- "modified": "2025-05-27 01:16:53.781116",
+ "modified": "2025-10-06 14:56:17.547791",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "POS Profile User",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

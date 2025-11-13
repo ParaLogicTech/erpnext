@@ -17,7 +17,13 @@
   "card_type_mandatory",
   "party_bank_mandatory",
   "section_break_zkxj",
-  "accounts"
+  "accounts",
+  "auto_generate_reference_no_section",
+  "series_pay",
+  "column_break_ccgc",
+  "series_internal_transfer",
+  "column_break_orff",
+  "series_receive"
  ],
  "fields": [
   {
@@ -82,12 +88,40 @@
    "fieldname": "party_bank_mandatory",
    "fieldtype": "Check",
    "label": "Party Bank Mandatory"
+  },
+  {
+   "fieldname": "auto_generate_reference_no_section",
+   "fieldtype": "Section Break",
+   "label": "Auto Generate Reference No"
+  },
+  {
+   "fieldname": "series_pay",
+   "fieldtype": "Data",
+   "label": "Reference No Series for Payment Type Pay"
+  },
+  {
+   "fieldname": "column_break_ccgc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "series_internal_transfer",
+   "fieldtype": "Data",
+   "label": "Reference No Series for Payment Type Internal Transfer"
+  },
+  {
+   "fieldname": "column_break_orff",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "series_receive",
+   "fieldtype": "Data",
+   "label": "Reference No Series for Payment Type Receive"
   }
  ],
  "icon": "fa fa-credit-card",
  "idx": 1,
  "links": [],
- "modified": "2025-06-14 08:13:20.973289",
+ "modified": "2025-10-06 14:56:29.080448",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Mode of Payment",
@@ -125,6 +159,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
