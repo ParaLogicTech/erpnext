@@ -163,16 +163,6 @@ class Employee(NestedSet):
 		if self.image:
 			if not user.user_image:
 				user.user_image = self.image
-				try:
-					frappe.get_doc({
-						"doctype": "File",
-						"file_name": self.image,
-						"attached_to_doctype": "User",
-						"attached_to_name": self.user_id
-					}).insert()
-				except frappe.DuplicateEntryError:
-					# already exists
-					pass
 
 		if self.cell_number:
 			user.mobile_no = self.cell_number
