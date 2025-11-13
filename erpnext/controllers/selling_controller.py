@@ -183,6 +183,23 @@ class SellingController(TransactionController):
 			self.total_commission = flt(self.base_net_total * self.commission_rate / 100.0,
 				self.precision("total_commission"))
 
+	def set_restricted_price_list_rate(self, item, price_list_rate):
+		restrict_selling_price_list_rate = frappe.get_cached_value("Selling Settings", None, "restrict_price_list_rate")
+		if not restrict_selling_price_list_rate:
+			return
+
+		if item.get("delivery_note") and item.get("delivery_note_item"):
+			prev_rate = frappe.db.get_value("Delivery Note Item", item.delivery_note_item, "price_list_rate", cache=1)
+			item.set("price_list_rate", prev_rate)
+		elif item.get("sales_order") and item.get("sales_order_item"):
+			prev_rate = frappe.db.get_value("Sales Order Item", item.sales_order_item, "price_list_rate", cache=1)
+			item.set("price_list_rate", prev_rate)
+		elif item.get("quotation") and item.get("quotation_item"):
+			prev_rate = frappe.db.get_value("Quotation Item", item.quotation_item, "price_list_rate", cache=1)
+			item.set("price_list_rate", prev_rate)
+		else:
+			item.set("price_list_rate", price_list_rate)
+
 	def validate_max_discount(self):
 		for d in self.get("items"):
 			if d.item_code:

@@ -79,14 +79,6 @@ class calculate_taxes_and_totals(object):
 					'margin_rate_or_amount', 'rate_with_margin', 'net_weight_per_unit']
 				self.doc.round_floats_in(item, excluding=exclude_round_fieldnames)
 
-				if item.discount_percentage == 100:
-					item.rate = 0.0
-				elif item.price_list_rate:
-					if item.discount_amount and item.pricing_rules:
-						item.rate = item.price_list_rate - item.discount_amount
-					elif not item.rate or (item.pricing_rules and item.discount_percentage > 0):
-						item.rate = flt(item.price_list_rate * (1.0 - (item.discount_percentage / 100.0)))
-
 				if has_margin_field:
 					self.calculate_margin(item)
 
@@ -102,6 +94,12 @@ class calculate_taxes_and_totals(object):
 					item.discount_percentage = item.discount_amount / item.rate_with_margin * 100
 				elif flt(item.price_list_rate):
 					rate_before_discount = item.price_list_rate
+
+					if item.discount_amount and item.pricing_rules:
+						item.rate = item.price_list_rate - item.discount_amount
+					else:
+						item.rate = flt(item.price_list_rate * (1.0 - (item.discount_percentage / 100.0)))
+
 					item.discount_amount = item.price_list_rate - item.rate
 					item.discount_percentage = item.discount_amount / item.price_list_rate * 100
 				else:
@@ -1000,19 +998,19 @@ class calculate_taxes_and_totals(object):
 		base_rate_with_margin = 0.0
 
 		if flt(item.price_list_rate):
-			if not item.pricing_rules:
-				discount_reversed_rate = flt(flt(item.rate) / (1 - flt(item.discount_percentage) / 100), 9) if \
-					flt(item.discount_percentage) != 100 else flt(item.price_list_rate)
-				if discount_reversed_rate > flt(item.price_list_rate):
-					margin_amount = discount_reversed_rate - flt(item.price_list_rate)
-
-					if not item.margin_type:
-						item.margin_type = "Amount"
-
-					if item.margin_type == "Amount":
-						item.margin_rate_or_amount = margin_amount
-					elif item.margin_type == "Percentage":
-						item.margin_rate_or_amount = margin_amount / flt(item.price_list_rate) * 100
+			# if not item.pricing_rules:
+			# 	discount_reversed_rate = flt(flt(item.rate) / (1 - flt(item.discount_percentage) / 100), 9) if \
+			# 		flt(item.discount_percentage) != 100 else flt(item.price_list_rate)
+			# 	if discount_reversed_rate > flt(item.price_list_rate):
+			# 		margin_amount = discount_reversed_rate - flt(item.price_list_rate)
+			#
+			# 		if not item.margin_type:
+			# 			item.margin_type = "Amount"
+			#
+			# 		if item.margin_type == "Amount":
+			# 			item.margin_rate_or_amount = margin_amount
+			# 		elif item.margin_type == "Percentage":
+			# 			item.margin_rate_or_amount = margin_amount / flt(item.price_list_rate) * 100
 
 			if item.margin_type and item.margin_rate_or_amount:
 				margin_value = item.margin_rate_or_amount if item.margin_type == 'Amount' else flt(item.price_list_rate) * flt(item.margin_rate_or_amount) / 100

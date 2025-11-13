@@ -222,10 +222,16 @@ class TransactionController(StockController):
 						if item_qty != len(get_serial_nos(item.get('serial_no'))):
 							item.set(fieldname, value)
 
+					if fieldname == "price_list_rate":
+						self.set_restricted_price_list_rate(item, value)
+
 				if ret.get("pricing_rules") and not self.get("ignore_pricing_rule"):
 					self.apply_pricing_rule_on_item(item, ret)
 
 		self.set_missing_applies_to_details()
+
+	def set_restricted_price_list_rate(self, item, price_list_rate):
+		pass
 
 	def apply_pricing_rule_on_item(self, item, pricing_rule_args):
 		if not pricing_rule_args.get("do_not_force_pricing_rule") and not pricing_rule_args.get("validate_applied_rule"):

@@ -21,7 +21,7 @@
   "validate_duplicate_customer_cnic",
   "validate_duplicate_customer_ntn",
   "maintain_same_sales_rate",
-  "editable_price_list_rate",
+  "restrict_price_list_rate",
   "allow_multiple_items",
   "allow_against_multiple_purchase_orders",
   "validate_selling_price"
@@ -92,12 +92,6 @@
    "label": "Maintain Same Rate Throughout Sales Cycle"
   },
   {
-   "default": "1",
-   "fieldname": "editable_price_list_rate",
-   "fieldtype": "Check",
-   "label": "Allow user to edit Price List Rate in transactions"
-  },
-  {
    "default": "0",
    "fieldname": "allow_multiple_items",
    "fieldtype": "Check",
@@ -144,13 +138,20 @@
    "fieldtype": "Select",
    "label": "Validate Duplicate Customer Mobile No",
    "options": "\nFor All Customers\nFor Individual Customers"
+  },
+  {
+   "default": "1",
+   "fieldname": "restrict_price_list_rate",
+   "fieldtype": "Check",
+   "label": "Restrict Price List Rate Change"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-cog",
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-03-20 13:48:17.586330",
+ "modified": "2025-11-10 20:18:31.847164",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling Settings",
@@ -175,6 +176,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

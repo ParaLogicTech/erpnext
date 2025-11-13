@@ -293,8 +293,8 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"base_amount": 0.0,
 		"net_rate": 0.0,
 		"net_amount": 0.0,
-		"discount_percentage": 0.0,
-		"discount_amount": 0.0,
+		"discount_percentage": flt(args.discount_percentage) or 0.0,
+		"discount_amount": flt(args.discount_amount) or 0.0,
 		"depreciation_percentage": get_depreciation_percentage(item, args),
 		"underinsurance_percentage": flt(args.get("default_underinsurance_percentage")),
 		"ignore_depreciation": get_ignore_depreciation(item),
@@ -867,11 +867,6 @@ def get_price_list_data(args, item_doc, out):
 		if not price_list_rate:
 			if args.price_list and args.rate:
 				insert_item_price(args)
-
-		out.discount_percentage = 0
-		if args.margin_type:
-			out.margin_type = None
-			out.margin_rate_or_amount = 0
 
 		out.price_list_rate = flt(price_list_rate) * flt(args.plc_conversion_rate) \
 			/ flt(args.conversion_rate)
