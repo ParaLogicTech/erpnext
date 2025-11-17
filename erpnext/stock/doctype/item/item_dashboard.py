@@ -12,7 +12,8 @@ def get_data():
 			'Product Bundle': 'new_item_code',
 			'BOM': 'item',
 			'Batch': 'item',
-			'Project': 'applies_to_item'
+			'Project': 'applies_to_item',
+			'Service Template': 'applicable_item_code',
 		},
 		'transactions': [
 			{
@@ -33,7 +34,7 @@ def get_data():
 			},
 			{
 				'label': _('Configuration'),
-				'items': ['BOM', 'Item Alternative', 'Item Default Rule']
+				'items': ['BOM', 'Service Template', 'Item Alternative', 'Item Default Rule']
 			},
 			{
 				'label': _('Pricing'),
