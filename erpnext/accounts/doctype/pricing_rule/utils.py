@@ -156,7 +156,7 @@ def evaluate_pricing_rule_condition(pricing_rule, args, doc=None):
 	context = frappe._dict({
 		"item_code": args.get("item_code"),
 		"args": args,
-		"doc": doc,
+		"doc": doc or frappe._dict(),
 		"rule": pricing_rule,
 	})
 
