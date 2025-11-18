@@ -377,6 +377,7 @@ frappe.ui.form.on('Asset', {
 	set_values_from_purchase_doc: function(frm, doctype, purchase_doc) {
 		frm.set_value('company', purchase_doc.company);
 		frm.set_value('purchase_date', purchase_doc.posting_date);
+		frm.set_value('purchase_vendor', purchase_doc.supplier);
 		const item = purchase_doc.items.find(item => item.item_code === frm.doc.item_code);
 		if (!item) {
 			doctype_field = frappe.scrub(doctype)
