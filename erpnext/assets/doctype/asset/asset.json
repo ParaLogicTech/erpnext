@@ -487,7 +487,6 @@
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Asset",
- "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
