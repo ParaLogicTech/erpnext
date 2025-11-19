@@ -213,6 +213,7 @@ class SellingController(TransactionController):
 		from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
 		_customer_changed = None
+		_previous_additional_discount = None
 
 		def customer_changed():
 			if self.is_new():
@@ -229,7 +230,14 @@ class SellingController(TransactionController):
 			percent_precision = d.precision("discount_percentage")
 			rate_precision = d.precision("discount_amount")
 
-			if not d.item_code or not flt(d.get("discount_percentage")):
+			total_discount_percentage = flt(d.get("discount_percentage"))
+			has_additional_discount = flt(self.get("discount_amount")) != 0
+			if has_additional_discount:
+				total_discount = flt(d.tax_exclusive_amount_before_discount) - flt(d.net_amount)
+				total_discount_percentage = total_discount / flt(d.tax_exclusive_amount_before_discount) * 100\
+					if flt(d.tax_exclusive_amount_before_discount) else 0
+
+			if not d.item_code or not total_discount_percentage:
 				continue
 
 			discount_rule_values = get_discount_rule_values(d.item_code, self)
@@ -237,7 +245,7 @@ class SellingController(TransactionController):
 				continue
 
 			max_discount = flt(discount_rule_values.get("max_discount"))
-			if flt(d.discount_percentage, percent_precision) <= max_discount:
+			if flt(total_discount_percentage, percent_precision) <= max_discount:
 				continue
 
 			# skip if pricing rule discount applied
@@ -254,11 +262,15 @@ class SellingController(TransactionController):
 							discount_from_pricing_rule = True
 							break
 
-			if discount_from_pricing_rule:
+			if discount_from_pricing_rule and not has_additional_discount:
 				continue
 
 			if d.is_new():
-				if d.get("delivery_note_item"):
+				if d.get("proforma_invoice_item"):
+					previous_discount = flt(frappe.db.get_value("Proforma Invoice Item", {
+						"name": d.proforma_invoice_item, "item_code": d.item_code,
+					}, "discount_percentage"))
+				elif d.get("delivery_note_item"):
 					previous_discount = flt(frappe.db.get_value("Delivery Note Item", {
 						"name": d.delivery_note_item, "item_code": d.item_code,
 					}, "discount_percentage"))
@@ -283,6 +295,13 @@ class SellingController(TransactionController):
 				if _customer_changed is None:
 					_customer_changed = customer_changed()
 				if _customer_changed:
+					check_rule = True
+
+			if not check_rule and has_additional_discount:
+				if _previous_additional_discount is None:
+					_previous_additional_discount = 0 if self.is_new() else flt(self.db_get("discount_amount"))
+
+				if flt(_previous_additional_discount, rate_precision) != flt(self.discount_amount, rate_precision):
 					check_rule = True
 
 			if check_rule:
