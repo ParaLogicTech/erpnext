@@ -662,7 +662,7 @@ class SalesInvoice(SellingController):
 
 		validate_against_credit_limit = False
 		bypass_credit_limit_check_at_sales_order = frappe.db.get_value("Customer Credit Limit",
-			filters={'parent': self.customer, 'parenttype': 'Customer', 'company': self.company},
+			filters={'parent': self.bill_to, 'parenttype': 'Customer', 'company': self.company},
 			fieldname=["bypass_credit_limit_check"])
 
 		if bypass_credit_limit_check_at_sales_order:
@@ -673,7 +673,7 @@ class SalesInvoice(SellingController):
 				validate_against_credit_limit = True
 				break
 		if validate_against_credit_limit:
-			check_credit_limit(self.customer, self.company, bypass_credit_limit_check_at_sales_order)
+			check_credit_limit(self.bill_to, self.company, bypass_credit_limit_check_at_sales_order)
 
 	@frappe.whitelist()
 	def set_missing_values(self, for_validate=False):

@@ -465,8 +465,10 @@ def check_credit_limit(customer, company, ignore_outstanding_sales_order=False, 
 		# If not authorized person raise exception
 		credit_controller = frappe.db.get_value('Accounts Settings', None, 'credit_controller')
 		if not credit_controller or credit_controller not in frappe.get_roles():
-			frappe.throw(_("Please contact to the user who have Sales Master Manager {0} role")
-				.format(" / " + credit_controller if credit_controller else ""))
+			frappe.throw(_("Credit limit has been crossed for customer {1}, " \
+			"Please contact to the user who have Sales Master Manager {0} role")
+				.format(" / " + credit_controller if credit_controller else "", customer))
+		
 
 
 def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=False, cost_center=None):
