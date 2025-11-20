@@ -312,9 +312,3 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 };
 
 cur_frm.script_manager.make(erpnext.selling.QuotationController);
-
-frappe.ui.form.on("Quotation Item", "stock_balance", function(frm, cdt, cdn) {
-	var d = frappe.model.get_doc(cdt, cdn);
-	frappe.route_options = {"item_code": d.item_code};
-	frappe.set_route("query-report", "Stock Balance");
-})

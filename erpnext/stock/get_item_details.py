@@ -91,7 +91,6 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 	if cint(args.get("is_subcontracted")):
 		out.bom = args.get('bom') or get_default_bom(args.item_code)
 
-	get_gross_profit(out)
 	if args.doctype == 'Material Request':
 		out.rate = args.rate or out.price_list_rate
 		out.amount = flt(args.qty * out.rate)
@@ -1506,15 +1505,6 @@ def get_valuation_rate(item_code, company, warehouse=None, transaction_type_name
 			return {"valuation_rate": valuation_rate[0][0] or 0.0}
 	else:
 		return {"valuation_rate": 0.0}
-
-
-def get_gross_profit(out):
-	if out.valuation_rate:
-		out.update({
-			"gross_profit": ((out.base_rate - out.valuation_rate) * out.stock_qty)
-		})
-
-	return out
 
 
 @frappe.whitelist()

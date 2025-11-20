@@ -116,10 +116,6 @@
   "col_break_94",
   "taxable_amount",
   "base_taxable_amount",
-  "billing_and_profit_section",
-  "valuation_rate",
-  "column_break_100",
-  "gross_profit",
   "drop_ship_section",
   "supplier",
   "delivered_by_supplier",
@@ -142,8 +138,9 @@
   "service_template",
   "service_template_detail",
   "planning_section",
-  "projected_qty",
   "actual_qty",
+  "projected_qty",
+  "valuation_rate",
   "column_break_115",
   "ordered_qty",
   "planned_qty",
@@ -614,16 +611,6 @@
    "fieldname": "valuation_rate",
    "fieldtype": "Currency",
    "label": "Valuation Rate",
-   "no_copy": 1,
-   "options": "Company:company:default_currency",
-   "print_hide": 1,
-   "read_only": 1,
-   "report_hide": 1
-  },
-  {
-   "fieldname": "gross_profit",
-   "fieldtype": "Currency",
-   "label": "Gross Profit",
    "no_copy": 1,
    "options": "Company:company:default_currency",
    "print_hide": 1,
@@ -1178,16 +1165,6 @@
    "read_only": 1
   },
   {
-   "collapsible": 1,
-   "fieldname": "billing_and_profit_section",
-   "fieldtype": "Section Break",
-   "label": "Gross Profit"
-  },
-  {
-   "fieldname": "column_break_100",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "column_break_94",
    "fieldtype": "Column Break"
   },
@@ -1439,13 +1416,14 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-10 13:52:16.621272",
+ "modified": "2025-11-20 22:45:42.763501",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order Item",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

@@ -17,6 +17,10 @@ from erpnext.accounts.utils import get_account_currency
 class SellingController(TransactionController):
 	selling_or_buying = "selling"
 
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.force_item_fields += ["valuation_rate", "gross_profit"]
+
 	def __setup__(self):
 		if hasattr(self, "taxes"):
 			self.flags.print_taxes_with_zero_amount = cint(frappe.get_cached_value("Print Settings", None,
