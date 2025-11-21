@@ -660,20 +660,15 @@ class SalesInvoice(SellingController):
 	def check_credit_limit(self):
 		from erpnext.selling.doctype.customer.customer import check_credit_limit
 
-		validate_against_credit_limit = False
+		extra_amount = 0
+		
 		bypass_credit_limit_check_at_sales_order = frappe.db.get_value("Customer Credit Limit",
 			filters={'parent': self.bill_to, 'parenttype': 'Customer', 'company': self.company},
 			fieldname=["bypass_credit_limit_check"])
-
-		if bypass_credit_limit_check_at_sales_order:
-			validate_against_credit_limit = True
-
-		for d in self.get("items"):
-			if not (d.sales_order or d.delivery_note):
-				validate_against_credit_limit = True
-				break
-		if validate_against_credit_limit:
-			check_credit_limit(self.bill_to, self.company, bypass_credit_limit_check_at_sales_order)
+		
+		extra_amount = self.base_grand_total
+		
+		check_credit_limit(self.bill_to, self.company, bypass_credit_limit_check_at_sales_order, extra_amount)
 
 	@frappe.whitelist()
 	def set_missing_values(self, for_validate=False):

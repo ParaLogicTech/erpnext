@@ -319,8 +319,11 @@ class JournalEntry(AccountsController):
 			if d.party_type=="Customer" and d.party and flt(d.debit) > 0]))
 		if customers:
 			from erpnext.selling.doctype.customer.customer import check_credit_limit
+
 			for customer in customers:
-				check_credit_limit(customer, self.company)
+				extra_amount = sum([flt(d.debit) for d in self.get("accounts")
+					if d.party_type=="Customer" and d.party==customer and flt(d.debit) > 0])
+				check_credit_limit(customer, self.company, extra_amount=extra_amount)
 
 	def validate_cheque_info(self):
 		for row in self.accounts:
