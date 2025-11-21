@@ -281,10 +281,10 @@ def get_maintenance_schedule_from_serial_no(serial_no):
 
 
 def create_opportunity_from_schedule(for_date=None):
-	if not frappe.db.get_single_value("CRM Settings", "auto_create_opportunity_from_schedule"):
+	if not frappe.db.get_single_value("Projects Settings", "auto_create_opportunity_from_schedule"):
 		return
 
-	days_in_advance = frappe.get_cached_value("CRM Settings", None, "maintenance_opportunity_reminder_days")
+	days_in_advance = frappe.get_cached_value("Projects Settings", None, "maintenance_opportunity_reminder_days")
 
 	for_date = getdate(for_date)
 	target_date = getdate(add_days(for_date, days_in_advance))
@@ -321,7 +321,7 @@ def get_maintenance_schedule_opportunity(maintenance_schedule, row):
 @frappe.whitelist()
 def create_maintenance_opportunity(maintenance_schedule, row):
 	schedule_doc = frappe.get_doc('Maintenance Schedule', maintenance_schedule)
-	default_opportunity_type = frappe.get_cached_value("CRM Settings", None, "default_opportunity_type_for_schedule")
+	default_opportunity_type = frappe.get_cached_value("Projects Settings", None, "default_opportunity_type_for_schedule")
 	schedule = schedule_doc.getone('schedules', {'name': row})
 
 	if not schedule:
@@ -390,7 +390,7 @@ def send_maintenance_schedule_reminder_notifications():
 def get_maintenance_schedules_for_reminder_notification(reminder_date=None):
 	reminder_date = getdate(reminder_date)
 
-	remind_days_before = cint(frappe.db.get_single_value("CRM Settings", "maintenance_reminder_days_before"))
+	remind_days_before = cint(frappe.db.get_single_value("Projects Settings", "maintenance_reminder_days_before"))
 	if remind_days_before < 1:
 		return
 
@@ -426,19 +426,19 @@ def automated_maintenance_reminder_enabled():
 
 
 def get_maintenance_reminder_scheduled_time(reminder_date=None):
-	crm_settings = frappe.get_cached_doc("CRM Settings", None)
+	settings = frappe.get_cached_doc("Projects Settings", None)
 	reminder_date = getdate(reminder_date)
-	reminder_time = crm_settings.maintenance_reminder_time or get_time("00:00:00")
+	reminder_time = settings.maintenance_reminder_time or get_time("00:00:00")
 	reminder_dt = combine_datetime(reminder_date, reminder_time)
 
 	return reminder_dt
 
 
 def get_reminder_date_from_schedule_date(schedule_date):
-	crm_settings = frappe.get_cached_doc("CRM Settings", None)
+	settings = frappe.get_cached_doc("Projects Settings", None)
 	schedule_date = getdate(schedule_date)
 
-	remind_days_before = cint(crm_settings.maintenance_reminder_days_before)
+	remind_days_before = cint(settings.maintenance_reminder_days_before)
 	if remind_days_before < 0:
 		remind_days_before = 0
 

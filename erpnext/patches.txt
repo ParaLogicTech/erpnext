@@ -345,6 +345,7 @@ erpnext.patches.v15_0.move_apply_taxes_on_advance_payment_accounts_settings
 erpnext.patches.v15_0.fbr_integration_app_separation
 execute:frappe.delete_doc_if_exists("Report", "Serial No Service Contract Expiry")
 erpnext.patches.v15_0.rename_serial_no_warranty_status
+erpnext.patches.v15_0.move_maintenance_schedule_settings_to_projects_settings
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay

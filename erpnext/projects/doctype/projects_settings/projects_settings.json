@@ -19,6 +19,14 @@
   "sublet_item_group",
   "column_break_jew4",
   "insurance_excess_item",
+  "maintenance_schedule_section",
+  "maintenance_opportunity_reminder_days",
+  "default_opportunity_type_for_schedule",
+  "auto_create_opportunity_from_schedule",
+  "auto_schedule_next_service_templates",
+  "column_break_esfa",
+  "maintenance_reminder_days_before",
+  "maintenance_reminder_time",
   "validations_and_permissions_section",
   "appointment_required",
   "validate_ready_to_close",
@@ -28,7 +36,6 @@
   "ignore_employee_time_overlap",
   "require_attendance_for_task_start",
   "validate_po_for_billing_company_customer",
-  "auto_schedule_next_service_templates",
   "column_break_xs7b",
   "validate_gross_margin",
   "validate_labour_margin",
@@ -190,11 +197,48 @@
   {
    "fieldname": "column_break_mttl",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "maintenance_schedule_section",
+   "fieldtype": "Section Break",
+   "label": "Maintenance Schedule"
+  },
+  {
+   "fieldname": "maintenance_reminder_days_before",
+   "fieldtype": "Int",
+   "label": "Maintenance Notification Reminder Days Before Schedule"
+  },
+  {
+   "fieldname": "maintenance_reminder_time",
+   "fieldtype": "Time",
+   "label": "Maintenance Notification Reminder Time of Day"
+  },
+  {
+   "fieldname": "column_break_esfa",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "maintenance_opportunity_reminder_days",
+   "fieldtype": "Int",
+   "label": "Maintenance Opportunity Creation Days Before Schedule"
+  },
+  {
+   "depends_on": "auto_create_opportunity_from_schedule",
+   "fieldname": "default_opportunity_type_for_schedule",
+   "fieldtype": "Link",
+   "label": "Default Opportunity Type For Maintenance Schedule",
+   "options": "Opportunity Type"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_create_opportunity_from_schedule",
+   "fieldtype": "Check",
+   "label": "Auto Create Opportunity From Maintenance Schedule"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-08-29 16:44:37.341750",
+ "modified": "2025-11-21 10:31:56.510870",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
