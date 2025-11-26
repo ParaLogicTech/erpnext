@@ -69,8 +69,8 @@ class JournalEntry(AccountsController):
 		self.create_remarks()
 
 	def on_submit(self):
-		self.check_credit_limit()
 		self.make_gl_entries()
+		self.check_credit_limit()
 		self.update_expense_claim()
 		self.update_loan()
 		self.update_inter_company_jv()
@@ -319,11 +319,8 @@ class JournalEntry(AccountsController):
 			if d.party_type=="Customer" and d.party and flt(d.debit) > 0]))
 		if customers:
 			from erpnext.selling.doctype.customer.customer import check_credit_limit
-
 			for customer in customers:
-				extra_amount = sum([flt(d.debit) for d in self.get("accounts")
-					if d.party_type=="Customer" and d.party==customer and flt(d.debit) > 0])
-				check_credit_limit(customer, self.company, extra_amount=extra_amount)
+				check_credit_limit(customer, self.company)
 
 	def validate_cheque_info(self):
 		for row in self.accounts:
