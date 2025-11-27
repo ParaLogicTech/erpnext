@@ -69,8 +69,8 @@ class JournalEntry(AccountsController):
 		self.create_remarks()
 
 	def on_submit(self):
-		self.check_credit_limit()
 		self.make_gl_entries()
+		self.check_credit_limit()
 		self.update_expense_claim()
 		self.update_loan()
 		self.update_inter_company_jv()
