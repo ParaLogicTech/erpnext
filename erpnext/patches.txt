@@ -410,3 +410,4 @@ erpnext.patches.v15_0.set_item_is_product_bundle
 erpnext.patches.v15_0.add_missing_pos_profile_user_parent
 erpnext.patches.v15_0.update_total_stock_qty_field
 erpnext.patches.v15_0.rename_account_group_section_total
+erpnext.patches.v15_0.set_maintenance_schedule_type

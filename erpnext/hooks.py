@@ -214,9 +214,11 @@ naming_series_variables = {
 }
 
 scheduler_events = {
-	"all": [
-		"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.send_maintenance_schedule_reminder_notifications",
-	],
+	"cron": {
+		"0/15 * * * *": [
+			"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.send_maintenance_schedule_reminder_notifications",
+		],
+	},
 	"hourly": [
 		'erpnext.hr.doctype.daily_work_summary_group.daily_work_summary_group.trigger_emails',
 		"erpnext.accounts.doctype.subscription.subscription.process_all",

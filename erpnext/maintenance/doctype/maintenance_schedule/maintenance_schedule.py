@@ -74,14 +74,14 @@ class MaintenanceSchedule(TransactionBase):
 		msd_doctype = "Maintenance Schedule Detail"
 		ms_row = [d for d in self.schedules if d.name == row_name]
 		if not ms_row:
-			frappe.throw(_("Invalid Maintenance Schedule"))
+			return
 
 		ms_row = ms_row[0]
-		context = {'row': ms_row}
-		self.run_method("notify_maintenance_reminder", context=context, child_doctype=msd_doctype, child_name=row_name)
+		context = {'row': ms_row, "child_doctype": msd_doctype, "child_name": row_name}
+		self.run_method("notify_maintenance_reminder", context=context)
 
 	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if notification_type in ("Maintenance Reminder"):
+		if notification_type in ("Maintenance Reminder",):
 			ms_row = [d for d in self.schedules if d.name == child_name]
 			if not ms_row:
 				frappe.throw(_("Invalid Maintenance Schedule"))
@@ -120,6 +120,7 @@ def auto_schedule_next_service_templates():
 		inner join `tabService Template` pt on pt.name = msd.service_template
 		where
 			msd.scheduled_date = %s
+			and msd.service_type = 'Maintenance'
 			and ms.status = 'Active'
 			and ifnull(ms.serial_no, '') != ''
 			and ifnull(pt.next_service_template, '') != ''
@@ -129,12 +130,19 @@ def auto_schedule_next_service_templates():
 		schedule_next_service_template(
 			schedule.service_template,
 			schedule.serial_no,
+			service_type="Maintenance",
 			args={"reference_date": schedule_date},
 			overwrite_existing=False
 		)
 
 
-def schedule_next_service_template(service_template, serial_no, args=None, overwrite_existing=True):
+def schedule_next_service_template(
+	service_template,
+	serial_no,
+	service_type="Maintenance",
+	args=None,
+	overwrite_existing=True,
+):
 	if not service_template:
 		return
 
@@ -144,21 +152,25 @@ def schedule_next_service_template(service_template, serial_no, args=None, overw
 	if not template_details or not template_details.next_due_after or not template_details.next_service_template:
 		return
 
+	service_type = service_type or "Maintenance"
+
 	doc = get_maintenance_schedule_doc(serial_no)
 
 	schedule = frappe._dict({
 		'service_template': template_details.next_service_template,
+		'service_type': service_type,
 		'reference_doctype': args.reference_doctype,
 		'reference_name': args.reference_name,
 		'reference_date': getdate(args.reference_date)
 	})
 	schedule.scheduled_date = schedule.reference_date + relativedelta(months=template_details.next_due_after)
 
-	existing_row = [
-		d for d in doc.get('schedules')
-		if d.get("service_template") == template_details.next_service_template
-		and d.get("scheduled_date") >= schedule.reference_date
-	]
+	future_rows = [d for d in doc.get('schedules') if getdate(d.get("scheduled_date")) >= schedule.reference_date]
+	if service_type == "Maintenance":
+		existing_row = [d for d in future_rows if d.get("service_type") == "Maintenance"]
+	else:
+		existing_row = [d for d in future_rows if d.get("service_template") == template_details.next_service_template]
+
 	existing_row = existing_row[0] if existing_row else None
 	if existing_row and not overwrite_existing:
 		return
@@ -185,7 +197,8 @@ def schedule_service_templates_after_delivery(serial_no, args):
 	schedule_template = frappe._dict({
 		'reference_doctype': args.reference_doctype,
 		'reference_name': args.reference_name,
-		'reference_date': getdate(args.reference_date)
+		'reference_date': getdate(args.reference_date),
+		'service_type': 'Maintenance',
 	})
 
 	service_templates = get_service_templates_due_after_delivery(item_code)
@@ -295,16 +308,26 @@ def create_opportunity_from_schedule(for_date=None):
 		inner join `tabMaintenance Schedule` ms on ms.name = msd.parent
 		where ms.status = 'Active' and msd.scheduled_date = %s
 			and not exists(select opp.name from `tabOpportunity` opp
-				where opp.maintenance_schedule = ms.name
-					and opp.maintenance_schedule_row = msd.name
+				where opp.maintenance_schedule = ms.name and opp.maintenance_schedule_row = msd.name
 			)
 	""", target_date, as_dict=1)
 
 	for schedule in schedule_data:
-		opportunity_doc = create_maintenance_opportunity(schedule.parent, schedule.name)
-		opportunity_doc.flags.ignore_mandatory = True
-		opportunity_doc.save(ignore_permissions=True)
-
+		try:
+			opportunity_doc = create_maintenance_opportunity(schedule.parent, schedule.name)
+			opportunity_doc.flags.ignore_mandatory = True
+			opportunity_doc.flags.is_system_generated = True
+			opportunity_doc.save(ignore_permissions=True)
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			frappe.log_error(
+				title="Error Creating Maintenance Opportunity",
+				message=frappe.get_traceback(),
+				reference_doctype="Maintenance Schedule",
+				reference_name=schedule.name,
+			)
+			frappe.db.commit()
 
 def get_maintenance_schedule_opportunity(maintenance_schedule, row):
 	maintenance_opp = frappe.db.get_value("Opportunity", filters={
@@ -340,13 +363,13 @@ def create_maintenance_opportunity(maintenance_schedule, row):
 	target_doc.maintenance_schedule = schedule_doc.name
 	target_doc.maintenance_schedule_row = schedule.name
 
-	if schedule.service_template:
-		service_template = frappe.get_cached_doc('Service Template', schedule.service_template)
-		for d in service_template.sales_items:
-			target_doc.append("items", {
-				"item_code": d.applicable_item_code,
-				"qty": d.applicable_qty,
-			})
+	# if schedule.service_template:
+	# 	service_template = frappe.get_cached_doc('Service Template', schedule.service_template)
+	# 	for d in service_template.sales_items:
+	# 		target_doc.append("items", {
+	# 			"item_code": d.applicable_item_code,
+	# 			"qty": d.applicable_qty,
+	# 		})
 
 	target_doc.run_method("set_missing_values")
 	target_doc.run_method("validate_maintenance_schedule")
@@ -398,11 +421,11 @@ def get_maintenance_schedules_for_reminder_notification(reminder_date=None):
 
 	schedule_to_remind = frappe.db.sql("""
 		SELECT ms.name AS ms_name, msd.name AS row_name, msd.scheduled_date
-		FROM `tabMaintenance Schedule` ms
-		INNER JOIN `tabMaintenance Schedule Detail` msd ON msd.parent = ms.name
-		LEFT JOIN `tabNotification Count` AS nc
-			ON nc.reference_doctype =  'Maintenance Schedule' AND nc.reference_name = ms.name
-			And nc.child_doctype = 'Maintenance Schedule Detail' AND nc.child_name = msd.name
+		FROM `tabMaintenance Schedule Detail` msd
+		INNER JOIN `tabMaintenance Schedule` ms ON msd.parent = ms.name
+		LEFT JOIN `tabNotification Count` nc ON
+			nc.reference_doctype =  'Maintenance Schedule' AND nc.reference_name = ms.name
+			AND nc.child_doctype = 'Maintenance Schedule Detail' AND nc.child_name = msd.name
 		WHERE ms.status = 'Active'
 			AND msd.scheduled_date = %(schedule_date)s
 			AND %(reminder_date)s <= msd.scheduled_date
