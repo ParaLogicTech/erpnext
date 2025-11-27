@@ -375,7 +375,6 @@ frappe.ui.form.on('Asset', {
 	},
 
 	set_values_from_purchase_doc: function(frm, doctype, purchase_doc) {
-
 		frappe.call({
 			method: "set_values_from_purchase_doc",
 			doc:frm.doc,

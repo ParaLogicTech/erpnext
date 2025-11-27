@@ -46,16 +46,6 @@ class Asset(AccountsController):
 		self.db_set('booked_fixed_asset', 0)
 
 	def validate_asset_and_reference(self):
-		if self.purchase_invoice or self.purchase_receipt:
-			reference_doc = 'Purchase Invoice' if self.purchase_invoice else 'Purchase Receipt'
-			reference_name = self.purchase_invoice or self.purchase_receipt
-			reference_doc = frappe.get_doc(reference_doc, reference_name)
-			if reference_doc.get('company') != self.company:
-				frappe.throw(_("Company of asset {0} and purchase document {1} doesn't matches.").format(self.name, reference_doc.get('name')))
-			if reference_doc.get("supplier") != self.purchase_vendor:
-				frappe.throw(_("Purchase Vendor of asset {0} and purchase document {1} doesn't matches.").format(self.name, reference_doc.get('name')))
-
-
 		if self.is_existing_asset and self.purchase_invoice:
 			frappe.throw(_("Purchase Invoice cannot be made against an existing asset {0}").format(self.name))
 
