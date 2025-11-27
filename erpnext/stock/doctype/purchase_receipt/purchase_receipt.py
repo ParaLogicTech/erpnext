@@ -68,6 +68,9 @@ class PurchaseReceipt(BuyingController):
 		self.update_previous_doc_status()
 		self.update_project_purchase_status()
 
+		if not self.get('is_return'):
+			self.update_last_purchase_rate()
+
 		from erpnext.accounts.doctype.sales_invoice.sales_invoice import update_linked_doc
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
 
@@ -96,6 +99,9 @@ class PurchaseReceipt(BuyingController):
 
 		self.update_previous_doc_status()
 		self.update_project_purchase_status()
+
+		if not self.get('is_return'):
+			self.update_last_purchase_rate()
 
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating ordered qty in bin depends upon updated ordered qty in PO

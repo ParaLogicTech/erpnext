@@ -74,6 +74,7 @@ class PurchaseOrder(BuyingController):
 		self.update_previous_doc_status()
 		self.update_requested_qty()
 		self.update_ordered_qty()
+		self.update_last_purchase_rate()
 		self.validate_budget()
 
 		if self.is_subcontracted:
@@ -104,6 +105,7 @@ class PurchaseOrder(BuyingController):
 		# Must be called after updating ordered qty in Material Request
 		self.update_requested_qty()
 		self.update_ordered_qty()
+		self.update_last_purchase_rate()
 
 		self.update_blanket_order()
 

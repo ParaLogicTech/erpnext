@@ -112,6 +112,9 @@ class PurchaseInvoice(BuyingController):
 		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype,
 			self.company, self.base_grand_total)
 
+		if not self.get('is_return'):
+			self.update_last_purchase_rate()
+
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating ordered qty in bin depends upon updated ordered qty in PO
 		if self.update_stock == 1:
@@ -139,6 +142,9 @@ class PurchaseInvoice(BuyingController):
 		self.unlink_payments_on_invoice_cancel()
 		self.update_status_on_cancel()
 		self.update_previous_doc_status()
+
+		if not self.get('is_return'):
+			self.update_last_purchase_rate()
 
 		# Updating stock ledger should always be called after updating prevdoc status,
 		# because updating ordered qty in bin depends upon updated ordered qty in PO
