@@ -316,7 +316,6 @@ def create_opportunity_from_schedule(for_date=None):
 		try:
 			opportunity_doc = create_maintenance_opportunity(schedule.parent, schedule.name)
 			opportunity_doc.flags.ignore_mandatory = True
-			opportunity_doc.flags.is_system_generated = True
 			opportunity_doc.save(ignore_permissions=True)
 			frappe.db.commit()
 		except Exception:
