@@ -6,25 +6,28 @@
  "document_type": "Other",
  "engine": "InnoDB",
  "field_order": [
+  "defaults_section",
   "cust_master_name",
   "customer_group",
   "territory",
+  "column_break_5",
   "selling_price_list",
   "retail_price_list",
   "default_valid_till",
-  "role_allowed_to_duplicate_customer_ntn",
-  "column_break_5",
-  "so_required",
-  "dn_required",
-  "sales_update_frequency",
-  "validate_duplicate_customer_mobile",
+  "pricing_restrictions_section",
   "validate_duplicate_customer_cnic",
   "validate_duplicate_customer_ntn",
   "maintain_same_sales_rate",
-  "restrict_price_list_rate",
   "allow_multiple_items",
   "allow_against_multiple_purchase_orders",
-  "validate_selling_price"
+  "validate_selling_price",
+  "restrict_price_list_rate",
+  "column_break_byhj",
+  "so_required",
+  "dn_required",
+  "validate_duplicate_customer_mobile",
+  "role_allowed_to_duplicate_customer_ntn",
+  "price_list_rate_change_restriction_override_section"
  ],
  "fields": [
   {
@@ -76,14 +79,6 @@
    "fieldtype": "Select",
    "label": "Delivery Note Required",
    "options": "No\nYes\nEither Delivery Note or Sales Order"
-  },
-  {
-   "default": "Daily",
-   "description": "How often should company be updated based on Sales Transactions.",
-   "fieldname": "sales_update_frequency",
-   "fieldtype": "Select",
-   "label": "Sales Update Frequency",
-   "options": "Daily\nMonthly"
   },
   {
    "default": "0",
@@ -144,6 +139,25 @@
    "fieldname": "restrict_price_list_rate",
    "fieldtype": "Check",
    "label": "Restrict Price List Rate Change"
+  },
+  {
+   "fieldname": "pricing_restrictions_section",
+   "fieldtype": "Section Break",
+   "label": "Restrictions and Validations"
+  },
+  {
+   "fieldname": "defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Defaults"
+  },
+  {
+   "fieldname": "column_break_byhj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "price_list_rate_change_restriction_override_section",
+   "fieldtype": "Section Break",
+   "label": "Price List Rate Change Restriction Override"
   }
  ],
  "grid_page_length": 500,
@@ -151,7 +165,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-10 20:18:31.847164",
+ "modified": "2025-11-28 10:46:10.566205",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling Settings",
