@@ -21,8 +21,8 @@ class Asset(AccountsController):
 		self.validate_asset_and_reference()
 		self.validate_item()
 		self.set_missing_values()
+		self.set_values_from_purchase_doc()
 		self.prepare_depreciation_data()
-		self.validate_gross_and_purchase_amount()
 		if self.get("schedules"):
 			self.validate_expected_value_after_useful_life()
 
@@ -46,14 +46,6 @@ class Asset(AccountsController):
 		self.db_set('booked_fixed_asset', 0)
 
 	def validate_asset_and_reference(self):
-		if self.purchase_invoice or self.purchase_receipt:
-			reference_doc = 'Purchase Invoice' if self.purchase_invoice else 'Purchase Receipt'
-			reference_name = self.purchase_invoice or self.purchase_receipt
-			reference_doc = frappe.get_doc(reference_doc, reference_name)
-			if reference_doc.get('company') != self.company:
-				frappe.throw(_("Company of asset {0} and purchase document {1} doesn't matches.").format(self.name, reference_doc.get('name')))
-
-
 		if self.is_existing_asset and self.purchase_invoice:
 			frappe.throw(_("Purchase Invoice cannot be made against an existing asset {0}").format(self.name))
 
@@ -125,13 +117,23 @@ class Asset(AccountsController):
 		if self.available_for_use_date and getdate(self.available_for_use_date) < getdate(self.purchase_date):
 			frappe.throw(_("Available-for-use Date should be after purchase date"))
 	
-	def validate_gross_and_purchase_amount(self):
-		if self.is_existing_asset: return
-		
-		if self.gross_purchase_amount and self.gross_purchase_amount != self.purchase_receipt_amount:
-			frappe.throw(_("Gross Purchase Amount should be {} to purchase amount of one single Asset. {}\
-				Please do not book expense of multiple assets against one single Asset.")
-				.format(frappe.bold("equal"), "<br>"), title=_("Invalid Gross Purchase Amount"))
+	@frappe.whitelist()
+	def set_values_from_purchase_doc(self):
+		document_name = self.purchase_receipt or self.purchase_invoice
+		if document_name:
+			document_type = 'Purchase Receipt' if self.purchase_receipt else 'Purchase Invoice'
+			purchase_document = frappe.get_doc(document_type, document_name)
+			for each_item in purchase_document.items:
+				if each_item.item_code == self.item_code:
+					break
+			else:
+				frappe.throw("The selected {document_name} doesn't contains selected Asset Item.".format(document_name=document_name))
+			self.company = purchase_document.company
+			self.purchase_date = purchase_document.posting_date
+			self.gross_purchase_amount = each_item.base_net_rate + each_item.item_tax_amount
+			self.purchase_receipt_amount = each_item.base_net_rate + each_item.item_tax_amount
+			self.location = each_item.asset_location
+			self.purchase_vendor = purchase_document.supplier
 
 	def cancel_auto_gen_movement(self):
 		movements = frappe.db.sql(

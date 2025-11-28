@@ -375,21 +375,14 @@ frappe.ui.form.on('Asset', {
 	},
 
 	set_values_from_purchase_doc: function(frm, doctype, purchase_doc) {
-		frm.set_value('company', purchase_doc.company);
-		frm.set_value('purchase_date', purchase_doc.posting_date);
-		const item = purchase_doc.items.find(item => item.item_code === frm.doc.item_code);
-		if (!item) {
-			doctype_field = frappe.scrub(doctype)
-			frm.set_value(doctype_field, '');
-			frappe.msgprint({
-				title: __(`Invalid ${doctype}`),
-				message: __(`The selected ${doctype} doesn't contains selected Asset Item.`),
-				indicator: 'red'
-			});
-		}
-		frm.set_value('gross_purchase_amount', item.base_net_rate + item.item_tax_amount);
-		frm.set_value('purchase_receipt_amount', item.base_net_rate + item.item_tax_amount);
-		frm.set_value('location', item.asset_location);
+		frappe.call({
+			method: "set_values_from_purchase_doc",
+			doc:frm.doc,
+			callback: function(r) {
+				frm.refresh();
+				frm.dirty();
+			}
+		});
 	},
 
 	set_depreciation_rate: function(frm, row) {
