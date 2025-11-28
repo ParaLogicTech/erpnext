@@ -192,17 +192,21 @@ class SellingController(TransactionController):
 		if not restrict_selling_price_list_rate:
 			return
 
-		if item.get("delivery_note") and item.get("delivery_note_item"):
-			prev_rate = frappe.db.get_value("Delivery Note Item", item.delivery_note_item, "price_list_rate", cache=1)
-			item.set("price_list_rate", prev_rate)
-		elif item.get("sales_order") and item.get("sales_order_item"):
-			prev_rate = frappe.db.get_value("Sales Order Item", item.sales_order_item, "price_list_rate", cache=1)
-			item.set("price_list_rate", prev_rate)
-		elif item.get("quotation") and item.get("quotation_item"):
-			prev_rate = frappe.db.get_value("Quotation Item", item.quotation_item, "price_list_rate", cache=1)
-			item.set("price_list_rate", prev_rate)
+		previous_doc_rate = self.get_previous_doc_price_list_rate(item)
+		if previous_doc_rate is not None:
+			item.set("price_list_rate", previous_doc_rate)
 		else:
 			item.set("price_list_rate", price_list_rate)
+
+	def get_previous_doc_price_list_rate(self, item):
+		if item.get("delivery_note") and item.get("delivery_note_item"):
+			return frappe.db.get_value("Delivery Note Item", item.delivery_note_item, "price_list_rate", cache=1)
+		elif item.get("sales_order") and item.get("sales_order_item"):
+			return frappe.db.get_value("Sales Order Item", item.sales_order_item, "price_list_rate", cache=1)
+		elif item.get("quotation") and item.get("quotation_item"):
+			return frappe.db.get_value("Quotation Item", item.quotation_item, "price_list_rate", cache=1)
+
+		return None
 
 	def validate_max_discount(self):
 		for d in self.get("items"):
