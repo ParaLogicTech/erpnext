@@ -22,12 +22,12 @@
   "allow_against_multiple_purchase_orders",
   "validate_selling_price",
   "restrict_price_list_rate",
+  "restrict_price_list_rate_overrides",
   "column_break_byhj",
   "so_required",
   "dn_required",
   "validate_duplicate_customer_mobile",
-  "role_allowed_to_duplicate_customer_ntn",
-  "price_list_rate_change_restriction_override_section"
+  "role_allowed_to_duplicate_customer_ntn"
  ],
  "fields": [
   {
@@ -155,9 +155,11 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "price_list_rate_change_restriction_override_section",
-   "fieldtype": "Section Break",
-   "label": "Price List Rate Change Restriction Override"
+   "depends_on": "restrict_price_list_rate",
+   "fieldname": "restrict_price_list_rate_overrides",
+   "fieldtype": "Table",
+   "label": "Price List Rate Restriction Overrides",
+   "options": "Pricing Restriction Override"
   }
  ],
  "grid_page_length": 500,
@@ -165,7 +167,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-28 10:46:10.566205",
+ "modified": "2025-11-28 10:53:27.929563",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling Settings",

@@ -36,6 +36,7 @@ def boot_session(bootinfo):
 		""", as_dict=1, update={"doctype": ":Mode of Payment"})
 
 		update_party_type_details(bootinfo)
+		update_price_list_rate_restriction(bootinfo)
 
 
 def load_country_and_currency(bootinfo):
@@ -59,6 +60,17 @@ def update_party_type_details(bootinfo):
 	bootinfo.valid_payment_reference_doctypes = {}
 	for party_type in bootinfo.party_account_types.keys():
 		bootinfo.valid_payment_reference_doctypes[party_type] = get_valid_payment_reference_doctypes(party_type)
+
+
+def update_price_list_rate_restriction(bootinfo):
+	selling_settings = frappe.get_single("Selling Settings")
+	bootinfo.restrict_price_list_rate = cint(selling_settings.restrict_price_list_rate)
+
+	if bootinfo.restrict_price_list_rate:
+		for override in selling_settings.restrict_price_list_rate_overrides:
+			if override.role and override.role in frappe.get_roles():
+				bootinfo.restrict_price_list_rate_overriden = 1
+				break
 
 
 def update_page_info(bootinfo):

@@ -12,6 +12,7 @@ from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_
 from erpnext.controllers.transaction_controller import TransactionController
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.utils import get_account_currency
+from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
 
 
 class SellingController(TransactionController):
@@ -188,9 +189,29 @@ class SellingController(TransactionController):
 				self.precision("total_commission"))
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
-		restrict_selling_price_list_rate = frappe.get_cached_value("Selling Settings", None, "restrict_price_list_rate")
-		if not restrict_selling_price_list_rate:
+		selling_settings = frappe.get_cached_doc("Selling Settings", None)
+		if not cint(selling_settings.restrict_price_list_rate):
 			return
+
+		# restriction override for role / item group
+		for override in selling_settings.restrict_price_list_rate_overrides:
+			if not override.role or override.role not in frappe.get_roles():
+				continue
+
+			if override.item_group:
+				override_for_item_groups = get_item_group_subtree(override.item_group)
+				current_item_group = frappe.get_cached_value("Item", item.item_code, "item_group")
+				if current_item_group and current_item_group in override_for_item_groups:
+					return
+			else:
+				return
+
+		# if no change, do not force new price
+		if not item.is_new():
+			price_list_rate_before = flt(item.db_get("price_list_rate"), item.precision("price_list_rate"))
+			price_list_rate_now = flt(item.price_list_rate, item.precision("price_list_rate"))
+			if price_list_rate_before == price_list_rate_now:
+				return
 
 		previous_doc_rate = self.get_previous_doc_price_list_rate(item)
 		if previous_doc_rate is not None:

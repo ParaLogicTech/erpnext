@@ -11,9 +11,11 @@ from frappe.model.document import Document
 
 class SellingSettings(Document):
 	def validate(self):
-		for key in ["cust_master_name", "customer_group", "territory",
-			"maintain_same_sales_rate", "restrict_price_list_rate", "selling_price_list"]:
-				frappe.db.set_default(key, self.get(key, ""))
+		for key in [
+			"cust_master_name", "customer_group", "territory",
+			"maintain_same_sales_rate", "selling_price_list"
+		]:
+			frappe.db.set_default(key, self.get(key, ""))
 
 		from erpnext.setup.doctype.naming_series.naming_series import set_by_naming_series
 		set_by_naming_series("Customer", "customer_name",
