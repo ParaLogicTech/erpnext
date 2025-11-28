@@ -1730,7 +1730,7 @@ def get_material_items(project, get_sales_invoice=True):
 		inner join `tabSales Order` p on p.name = i.parent
 		where p.docstatus = 1
 			and {is_material_condition}
-			and (i.delivered_qty < i.qty or i.is_stock_item = 0)
+			and (i.delivered_qty < i.qty or i.skip_delivery_note = 1)
 			and i.proforma_qty < i.qty
 			and i.qty > 0
 			and (p.status != 'Closed' or exists(select sum(si_item.amount)
