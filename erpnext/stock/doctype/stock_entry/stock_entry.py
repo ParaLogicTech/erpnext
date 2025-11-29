@@ -47,7 +47,7 @@ class StockEntry(TransactionController):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.force_item_fields = [
-			"stock_uom", "has_batch_no", "has_serial_no", "is_vehicle", "alt_uom", "alt_uom_size"
+			"stock_uom", "has_batch_no", "has_serial_no", "is_vehicle", "alt_uom", "alt_uom_size", "conversion_factor"
 		]
 
 	def get_feed(self):

@@ -283,6 +283,7 @@
    "width": "100px"
   },
   {
+   "default": "1",
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
    "label": "UOM Conversion Factor",
@@ -290,11 +291,7 @@
    "oldfieldtype": "Currency",
    "precision": "9",
    "print_hide": 1,
-   "print_width": "100px",
-   "read_only": 1,
-   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom",
-   "reqd": 1,
-   "width": "100px"
+   "read_only": 1
   },
   {
    "fieldname": "sec_break1",
@@ -1263,10 +1260,11 @@
    "width": "70px"
   }
  ],
+ "grid_page_length": 500,
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-21 22:18:21.517891",
+ "modified": "2025-11-28 14:18:01.112697",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Purchase Order Item",
@@ -1274,6 +1272,7 @@
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "item_name",
  "sort_field": "modified",
  "sort_order": "DESC",

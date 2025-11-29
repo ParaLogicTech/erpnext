@@ -71,7 +71,7 @@ class StockReconciliation(StockController):
 					item.conversion_factor = 1
 				elif item.loose_uom == item.stock_uom:
 					item.conversion_factor = 1
-				elif not flt(item.conversion_factor):
+				else:
 					item.conversion_factor = get_conversion_factor(item.item_code, item.loose_uom)["conversion_factor"]
 
 				item.stock_loose_qty = flt(item.loose_qty) * flt(item.conversion_factor)

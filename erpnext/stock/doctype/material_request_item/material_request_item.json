@@ -143,12 +143,13 @@
    "width": "70px"
   },
   {
+   "default": "1",
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
    "label": "UOM Conversion Factor",
    "precision": "9",
    "print_hide": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "stock_uom",
@@ -481,16 +482,18 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-11 15:28:36.840668",
+ "modified": "2025-11-28 14:15:44.577183",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Material Request Item",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

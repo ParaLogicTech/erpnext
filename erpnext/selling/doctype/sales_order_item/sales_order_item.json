@@ -295,9 +295,7 @@
    "label": "UOM Conversion Factor",
    "precision": "9",
    "print_hide": 1,
-   "read_only": 1,
-   "read_only_depends_on": "eval:doc.stock_uom && doc.uom == doc.stock_uom",
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "stock_qty",
@@ -1416,7 +1414,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-20 22:45:42.763501",
+ "modified": "2025-11-28 14:11:30.094967",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order Item",

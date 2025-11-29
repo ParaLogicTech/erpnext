@@ -39,7 +39,7 @@ class TransactionController(StockController):
 
 		self.force_item_fields = [
 			"item_group", "brand", "item_source",
-			"stock_uom", "alt_uom", "alt_uom_size",
+			"stock_uom", "alt_uom", "alt_uom_size", "conversion_factor",
 			"item_tax_rate", "pricing_rules", "allow_zero_valuation_rate",
 			"is_stock_item", "is_fixed_asset", "has_batch_no", "has_serial_no", "is_vehicle",
 			"claim_customer", "force_default_warehouse", "is_prepaid_deferred_revenue",
@@ -213,18 +213,18 @@ class TransactionController(StockController):
 
 					if item.get(fieldname) is None or fieldname in self.force_item_fields:
 						item.set(fieldname, value)
-					elif fieldname in ['cost_center', 'conversion_factor'] and not item.get(fieldname):
+					elif fieldname in ['cost_center'] and not item.get(fieldname):
 						item.set(fieldname, value)
-					elif fieldname == "serial_no":
-						# Ensure that serial numbers are matched against Stock UOM
-						item_conversion_factor = item.get("conversion_factor") or 1.0
-						item_qty = abs(item.get("qty")) * item_conversion_factor
-						if item_qty != len(get_serial_nos(item.get('serial_no'))):
-							item.set(fieldname, value)
 
-					if fieldname == "price_list_rate":
-						self.set_restricted_price_list_rate(item, value)
+				# auto serial no
+				if ret.get("serial_no") and item.meta.has_field("serial_no"):
+					item_qty = abs(flt(item.get("qty"))) * flt(item.get("conversion_factor") or 1)
+					if flt(item_qty, item.precision("qty")) != len(get_serial_nos(item.get("serial_no"))):
+						item.set("serial_no", ret.get("serial_no"))
 
+				# price list rate and pricing rules
+				if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
+					self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
 				if ret.get("pricing_rules") and not self.get("ignore_pricing_rule"):
 					self.apply_pricing_rule_on_item(item, ret)
 

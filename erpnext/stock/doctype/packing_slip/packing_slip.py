@@ -21,7 +21,7 @@ class PackingSlip(TransactionController):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.force_item_fields = [
-			"stock_uom", "has_batch_no", "has_serial_no", "force_default_warehouse", "item_group"
+			"stock_uom", "has_batch_no", "has_serial_no", "force_default_warehouse", "item_group", "conversion_factor"
 		]
 
 	def get_feed(self):

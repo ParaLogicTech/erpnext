@@ -95,9 +95,7 @@
    "label": "UOM Conversion Factor",
    "precision": "9",
    "print_hide": 1,
-   "print_width": "100px",
-   "read_only": 1,
-   "width": "100px"
+   "read_only": 1
   },
   {
    "fieldname": "stock_qty",
@@ -149,15 +147,17 @@
    "options": "Warehouse"
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
  "links": [],
- "modified": "2024-06-01 16:08:52.180229",
+ "modified": "2025-11-28 14:18:19.790720",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Package Type Packaging Material",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

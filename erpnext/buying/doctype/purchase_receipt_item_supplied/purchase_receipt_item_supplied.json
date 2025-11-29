@@ -114,12 +114,14 @@
    "read_only": 1
   },
   {
+   "default": "1",
    "fieldname": "conversion_factor",
    "fieldtype": "Float",
    "label": "Conversion Factor",
    "oldfieldname": "conversion_factor",
    "oldfieldtype": "Currency",
    "precision": "9",
+   "print_hide": 1,
    "read_only": 1
   },
   {
@@ -170,15 +172,17 @@
    "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 500,
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-09-28 14:54:02.339599",
+ "modified": "2025-11-28 14:17:28.822874",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Purchase Receipt Item Supplied",
  "owner": "wasim@webnotestech.com",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
