@@ -223,14 +223,26 @@ class SellingController(TransactionController):
 		if not item.item_code:
 			return None
 
-		if item.get("delivery_note") and item.get("delivery_note_item"):
+		if item.get("sales_invoice") and item.get("sales_invoice_item"):
+			return frappe.db.get_value("Sales Invoice Item", {
+				"name": item.sales_invoice_item, "item_code": item.item_code,
+			}, "price_list_rate")
+
+		elif item.get("proforma_invoice") and item.get("proforma_invoice_item"):
+			return frappe.db.get_value("Proforma Invoice Item", {
+				"name": item.proforma_invoice_item, "item_code": item.item_code,
+			}, "price_list_rate")
+
+		elif item.get("delivery_note") and item.get("delivery_note_item"):
 			return frappe.db.get_value("Delivery Note Item", {
 				"name": item.delivery_note_item, "item_code": item.item_code,
 			}, "price_list_rate")
+
 		elif item.get("sales_order") and item.get("sales_order_item"):
 			return frappe.db.get_value("Sales Order Item", {
 				"name": item.sales_order_item, "item_code": item.item_code,
 			}, "price_list_rate")
+
 		elif item.get("quotation") and item.get("quotation_item"):
 			return frappe.db.get_value("Quotation Item", {
 				"name": item.quotation_item, "item_code": item.item_code,
