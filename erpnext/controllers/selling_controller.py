@@ -220,12 +220,21 @@ class SellingController(TransactionController):
 			item.set("price_list_rate", price_list_rate)
 
 	def get_previous_doc_price_list_rate(self, item):
+		if not item.item_code:
+			return None
+
 		if item.get("delivery_note") and item.get("delivery_note_item"):
-			return frappe.db.get_value("Delivery Note Item", item.delivery_note_item, "price_list_rate", cache=1)
+			return frappe.db.get_value("Delivery Note Item", {
+				"name": item.delivery_note_item, "item_code": item.item_code,
+			}, "price_list_rate")
 		elif item.get("sales_order") and item.get("sales_order_item"):
-			return frappe.db.get_value("Sales Order Item", item.sales_order_item, "price_list_rate", cache=1)
+			return frappe.db.get_value("Sales Order Item", {
+				"name": item.sales_order_item, "item_code": item.item_code,
+			}, "price_list_rate")
 		elif item.get("quotation") and item.get("quotation_item"):
-			return frappe.db.get_value("Quotation Item", item.quotation_item, "price_list_rate", cache=1)
+			return frappe.db.get_value("Quotation Item", {
+				"name": item.quotation_item, "item_code": item.item_code,
+			}, "price_list_rate")
 
 		return None
 
