@@ -1778,6 +1778,28 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					"item_tax_template": d.item_tax_template,
 					"service_template": d.service_template,
 					"service_template_detail": d.service_template_detail,
+
+					"quotation": d.quotation,
+					"quotation_item": d.quotation_item,
+					"sales_order": d.sales_order,
+					"sales_order_item": d.sales_order_item,
+					"delivery_note": d.delivery_note,
+					"delivery_note_item": d.delivery_note_item,
+					"proforma_invoice": d.proforma_invoice,
+					"proforma_invoice_item": d.proforma_invoice_item,
+					"sales_invoice": d.sales_invoice,
+					"sales_invoice_item": d.sales_invoice_item,
+
+					"material_request": d.material_request,
+					"material_request_item": d.material_request_item,
+					"supplier_quotation": d.supplier_quotation,
+					"supplier_quotation_item": d.supplier_quotation_item,
+					"purchase_order": d.purchase_order,
+					"purchase_order_item": d.purchase_order_item,
+					"purchase_receipt": d.purchase_receipt,
+					"purchase_receipt_item": d.purchase_receipt_item,
+					"purchase_invoice": d.purchase_invoice,
+					"purchase_invoice_item": d.purchase_invoice_item,
 				}
 
 				// if doctype is Quotation Item / Sales Order Iten then add Margin Type and rate in item_list
