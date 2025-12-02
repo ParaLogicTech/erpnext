@@ -933,6 +933,38 @@ def update_task_checklist(task, task_checklist=None):
 	), alert=True, indicator="green")
 
 
+@frappe.whitelist()
+def update_vhc_template(task, vhc_template):
+	if not vhc_template:
+		frappe.throw(_("VHC Template not provided"))
+
+	task_doc = frappe.get_doc("Task", task)
+	task_doc.check_clocking_permission()
+
+	task_doc.vehicle_health_check_template = vhc_template
+	task_doc.save(ignore_permissions=True)
+
+	frappe.msgprint(_("{0} VHC Template updated").format(
+		get_link(task_doc)
+	), alert=True, indicator="green")
+
+
+@frappe.whitelist()
+def update_vhc_mandatory(task, vhc_mandatory):
+	if not vhc_mandatory:
+		frappe.throw(_("Value not provided"))
+
+	task_doc = frappe.get_doc("Task", task)
+	task_doc.check_clocking_permission()
+
+	task_doc.vehicle_health_check_mandatory = vhc_mandatory
+	task_doc.save(ignore_permissions=True)
+
+	frappe.msgprint(_("{0} VHC Mandatory updated").format(
+		get_link(task_doc)
+	), alert=True, indicator="green")
+
+
 def add_timesheet_log(task, assigned_to, project=None):
 	filters = {
 		"employee": assigned_to,
