@@ -134,6 +134,7 @@ class Asset(AccountsController):
 			self.purchase_receipt_amount = each_item.base_net_rate + each_item.item_tax_amount
 			self.location = each_item.asset_location
 			self.purchase_vendor = purchase_document.supplier
+			self.purchase_vendor_name = purchase_document.supplier_name
 
 	def cancel_auto_gen_movement(self):
 		movements = frappe.db.sql(
