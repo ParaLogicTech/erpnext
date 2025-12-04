@@ -22,11 +22,13 @@
   "maintenance_schedule_section",
   "maintenance_opportunity_reminder_days",
   "default_opportunity_type_for_schedule",
-  "auto_create_opportunity_from_schedule",
-  "auto_schedule_next_service_templates",
   "column_break_esfa",
   "maintenance_reminder_days_before",
   "maintenance_reminder_time",
+  "column_break_mrca",
+  "maintenance_schedule_holiday_list",
+  "auto_create_opportunity_from_schedule",
+  "auto_schedule_next_service_templates",
   "validations_and_permissions_section",
   "appointment_required",
   "validate_ready_to_close",
@@ -223,7 +225,6 @@
    "label": "Maintenance Opportunity Creation Days Before Schedule"
   },
   {
-   "depends_on": "auto_create_opportunity_from_schedule",
    "fieldname": "default_opportunity_type_for_schedule",
    "fieldtype": "Link",
    "label": "Default Opportunity Type For Maintenance Schedule",
@@ -234,11 +235,21 @@
    "fieldname": "auto_create_opportunity_from_schedule",
    "fieldtype": "Check",
    "label": "Auto Create Opportunity From Maintenance Schedule"
+  },
+  {
+   "fieldname": "column_break_mrca",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "maintenance_schedule_holiday_list",
+   "fieldtype": "Link",
+   "label": "Holiday List for Maintenance Scheduling",
+   "options": "Holiday List"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-11-21 10:31:56.510870",
+ "modified": "2025-12-04 11:45:46.313761",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
