@@ -26,6 +26,14 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			reqd: 1,
 		},
 		{
+			fieldname: "document_status",
+			label: __("Asset Document Status"),
+			fieldtype: "Select",
+			options:["", "Submit", "Cancel", "Draft"],
+			default:"Submit",
+			reqd: 0,
+		},
+		{
 			fieldname: "group_by",
 			label: __("Group By"),
 			fieldtype: "Select",

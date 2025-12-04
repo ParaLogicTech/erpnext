@@ -80,7 +80,14 @@ def get_asset_categories_for_grouped_by_category(filters):
 		condition += " and a.asset_category = %(asset_category)s"
 	if filters.get("finance_book"):
 		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -133,7 +140,7 @@ def get_asset_categories_for_grouped_by_category(filters):
 								0
 						   end), 0) as value_of_capitalized_asset
 		from `tabAsset` a
-		where a.docstatus=1 and a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
+		where a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
 		group by a.asset_category
 	""",
 		{
@@ -155,7 +162,14 @@ def get_assets_for_grouped_by_category(filters):
 	if filters.get("finance_book"):
 		finance_book_filter += " and ifnull(gle.finance_book, '')=%(finance_book)s"
 		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -216,7 +230,7 @@ def get_assets_for_grouped_by_category(filters):
 							  end), 0) as depreciation_eliminated_during_the_period,
 				   0 as depreciation_amount_during_the_period
 			from `tabAsset` a
-			where a.docstatus=1 and a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
+			where a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
 			group by a.asset_category) as results
 		group by results.asset_category
 		""",
@@ -231,6 +245,15 @@ def get_assets_for_grouped_by_category(filters):
 
 
 def get_asset_value_adjustment_map_by_category(filters):
+	condition = ""
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	asset_value_adjustments = frappe.db.sql(
 		"""
 		SELECT
@@ -261,13 +284,12 @@ def get_asset_value_adjustment_map_by_category(filters):
 		JOIN `tabAsset Category Account` aca
 			ON aca.parent = a.asset_category
 			AND aca.company_name = %(company)s
-		WHERE a.docstatus = 1
-			AND a.company = %(company)s
+		WHERE a.company = %(company)s
 			AND a.purchase_date <= %(to_date)s
 			AND gle.account = aca.fixed_asset_account
-			AND gle.is_opening = 'No'
+			AND gle.is_opening = 'No' {condition}
 		GROUP BY a.asset_category
-	""",
+	""".format(condition=condition),
 		{"from_date": filters.from_date, "to_date": filters.to_date, "company": filters.company},
 		as_dict=1,
 	)
@@ -343,7 +365,14 @@ def get_asset_details_for_grouped_by_category(filters):
 		condition += " and a.name = %(asset)s"
 	if filters.get("finance_book"):
 		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -396,7 +425,7 @@ def get_asset_details_for_grouped_by_category(filters):
 								0
 						   end), 0) as value_of_capitalized_asset
 		from `tabAsset` a
-		where a.docstatus=1 and a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
+		where a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
 		group by a.name
 	""",
 		{
@@ -418,7 +447,14 @@ def get_assets_for_grouped_by_asset(filters):
 	if filters.get("finance_book"):
 		finance_book_filter += " and ifnull(gle.finance_book, '')=%(finance_book)s"
 		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -479,7 +515,7 @@ def get_assets_for_grouped_by_asset(filters):
 							  end), 0) as depreciation_eliminated_during_the_period,
 				   0 as depreciation_amount_during_the_period
 			from `tabAsset` a
-			where a.docstatus=1 and a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
+			where a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
 			group by a.name) as results
 		group by results.name
 		""",
@@ -494,6 +530,15 @@ def get_assets_for_grouped_by_asset(filters):
 
 
 def get_asset_value_adjustment_map(filters):
+	condition = ""
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	asset_with_value_adjustments = frappe.db.sql(
 		"""
 		SELECT
@@ -524,13 +569,12 @@ def get_asset_value_adjustment_map(filters):
 		JOIN `tabAsset Category Account` aca
 			ON aca.parent = a.asset_category
 			AND aca.company_name = %(company)s
-		WHERE a.docstatus = 1
-			AND a.company = %(company)s
+		WHERE a.company = %(company)s
 			AND a.purchase_date <= %(to_date)s
 			AND gle.account = aca.fixed_asset_account
-			AND gle.is_opening = 'No'
+			AND gle.is_opening = 'No' {condition}
 		GROUP BY a.name
-	""",
+	""".format(condition=condition),
 		{"from_date": filters.from_date, "to_date": filters.to_date, "company": filters.company},
 		as_dict=1,
 	)
