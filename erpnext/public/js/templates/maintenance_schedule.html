@@ -3,15 +3,17 @@
 {% endif %}
 
 {% if schedules && schedules.length  %}
-<table class="table table-bordered table-striped" style="margin:0">
+<table class="table table-bordered table-striped" style="margin-top:0; margin-bottom: 8px;">
 	<thead>
 		<tr>
-			<th style="width: 5%;" class="text-center">#</th>
-			<th style="width: 15%;">Scheduled Date</th>
-			<th style="width: 20%;">Service Template</th>
-			<th style="width: 20%;">Reference Type</th>
-			<th style="width: 20%;">Reference Name</th>
-			<th style="width: 20%;">Reference Date</th>
+			<th style="width: 3%;" class="text-center">#</th>
+			<th>Scheduled Date</th>
+			<th>Service Template</th>
+			<th>Service Template Name</th>
+			<th>Service Type</th>
+			<th>Reference Type</th>
+			<th>Reference Name</th>
+			<th>Reference Date</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -21,12 +23,14 @@
 			<th class="text-center">{{ count++ }}</th>
 			<td>{{ frappe.datetime.str_to_user(schedule.scheduled_date) }}</td>
 			<td>{{ schedule.service_template }}</td>
+			<td>{{ schedule.service_template_name }}</td>
+			<td>{{ schedule.service_type }}</td>
 			<td>{{ __(schedule.reference_doctype) }}</td>
 			<td>
 				{% var doctype = encodeURIComponent(frappe.router.slug(schedule.reference_doctype)) %}
 				{% var docname = encodeURIComponent(schedule.reference_name) %}
 
-				<a href="/app/{%= frappe.router.slug(doctype) %}/{%= encodeURIComponent(docname) %}">
+				<a href="/app/{%= doctype %}/{%= docname %}">
 					{{ schedule.reference_name }}
 				</a>
 			</td>
