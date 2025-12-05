@@ -10,9 +10,9 @@
  "field_order": [
   "uom_name",
   "category",
-  "must_be_whole_number",
+  "column_break_4ida",
   "disabled",
-  "column_break_4ida"
+  "must_be_whole_number"
  ],
  "fields": [
   {
@@ -56,7 +56,7 @@
  "icon": "fa fa-compass",
  "idx": 1,
  "links": [],
- "modified": "2025-09-06 18:17:14.665155",
+ "modified": "2025-12-05 16:35:01.481322",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "UOM",
