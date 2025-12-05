@@ -208,7 +208,8 @@
   {
    "fieldname": "maintenance_reminder_days_before",
    "fieldtype": "Int",
-   "label": "Maintenance Notification Reminder Days Before Schedule"
+   "label": "Maintenance Notification Reminder Days Before Schedule",
+   "non_negative": 1
   },
   {
    "fieldname": "maintenance_reminder_time",
@@ -222,7 +223,8 @@
   {
    "fieldname": "maintenance_opportunity_reminder_days",
    "fieldtype": "Int",
-   "label": "Maintenance Opportunity Creation Days Before Schedule"
+   "label": "Maintenance Opportunity Creation Days Before Schedule",
+   "non_negative": 1
   },
   {
    "fieldname": "default_opportunity_type_for_schedule",
@@ -249,7 +251,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-12-04 11:45:46.313761",
+ "modified": "2025-12-05 12:56:35.905889",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",

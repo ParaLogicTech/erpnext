@@ -45,7 +45,7 @@ class MaintenanceSchedule(TransactionBase):
 		date_template_pairs = set()
 
 		for d in self.schedules:
-			date_template_pair = (d.scheduled_date, cstr(d.service_template))
+			date_template_pair = (d.scheduled_date, cstr(d.service_type), cstr(d.service_template))
 			if date_template_pair not in date_template_pairs:
 				date_template_pairs.add(date_template_pair)
 			else:
@@ -168,11 +168,26 @@ def schedule_next_service_template(
 	})
 	schedule.scheduled_date = schedule.reference_date + relativedelta(months=template_details.next_due_after)
 
-	future_rows = [d for d in doc.get('schedules') if getdate(d.get("scheduled_date")) >= schedule.reference_date]
+	remind_days_before = cint(frappe.get_cached_value("Projects Settings", None, "maintenance_reminder_days_before"))
+	future_reference_date = add_days(schedule.reference_date, remind_days_before)
+	future_rows = [d for d in doc.get('schedules') if getdate(d.scheduled_date) > future_reference_date]
+
 	if service_type == "Maintenance":
-		existing_row = [d for d in future_rows if d.get("service_type") == "Maintenance"]
+		existing_row = [d for d in doc.get('schedules') if (
+			d.reference_doctype == schedule.reference_doctype
+			and d.reference_name == schedule.reference_name
+			and d.service_type == "Maintenance"
+		)]
+		if not existing_row:
+			existing_row = [d for d in future_rows if d.service_type == "Maintenance"]
 	else:
-		existing_row = [d for d in future_rows if d.get("service_template") == template_details.next_service_template]
+		existing_row = [d for d in doc.get('schedules') if (
+			d.reference_doctype == schedule.reference_doctype
+			and d.reference_name == schedule.reference_name
+			and d.service_template == template_details.next_service_template
+		)]
+		if not existing_row:
+			existing_row = [d for d in future_rows if d.service_template == template_details.next_service_template]
 
 	existing_row = existing_row[0] if existing_row else None
 	if existing_row and not overwrite_existing:
