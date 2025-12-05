@@ -80,18 +80,15 @@ def get_asset_categories_for_grouped_by_category(filters):
 		condition += " and a.asset_category = %(asset_category)s"
 	if filters.get("finance_book"):
 		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-	
-	if "document_status" in filters:
-		if filters.get("document_status"):
-			if filters.get("document_status") == "Submit":
-				document_status = 1
-			if filters.get("document_status") == "Draft":
-				document_status = 0
-			if filters.get("document_status") == "Cancel":
-				document_status = 2
-			condition += "and a.docstatus = {document_status}".format(document_status=document_status)
-	else:
-		condition += "and a.docstatus = 1"
+
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -167,18 +164,15 @@ def get_assets_for_grouped_by_category(filters):
 	if filters.get("finance_book"):
 		finance_book_filter += " and ifnull(gle.finance_book, '')=%(finance_book)s"
 		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-	
-	if "document_status" in filters:
-		if filters.get("document_status"):
-			if filters.get("document_status") == "Submit":
-				document_status = 1
-			if filters.get("document_status") == "Draft":
-				document_status = 0
-			if filters.get("document_status") == "Cancel":
-				document_status = 2
-			condition += "and a.docstatus = {document_status}".format(document_status=document_status)
-	else:
-		condition += "and a.docstatus = 1"
+
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -255,17 +249,14 @@ def get_assets_for_grouped_by_category(filters):
 
 def get_asset_value_adjustment_map_by_category(filters):
 	condition = ""
-	if "document_status" in filters:
-		if filters.get("document_status"):
-			if filters.get("document_status") == "Submit":
-				document_status = 1
-			if filters.get("document_status") == "Draft":
-				document_status = 0
-			if filters.get("document_status") == "Cancel":
-				document_status = 2
-			condition += "and a.docstatus = {document_status}".format(document_status=document_status)
-	else:
-		condition += "and a.docstatus = 1"
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 
 	asset_value_adjustments = frappe.db.sql(
 		"""
@@ -378,17 +369,15 @@ def get_asset_details_for_grouped_by_category(filters):
 		condition += " and a.name = %(asset)s"
 	if filters.get("finance_book"):
 		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-	if "document_status" in filters:
-		if filters.get("document_status"):
-			if filters.get("document_status") == "Submit":
-				document_status = 1
-			if filters.get("document_status") == "Draft":
-				document_status = 0
-			if filters.get("document_status") == "Cancel":
-				document_status = 2
-			condition += "and a.docstatus = {document_status}".format(document_status=document_status)
-	else:
-		condition += "and a.docstatus = 1"
+
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -463,17 +452,15 @@ def get_assets_for_grouped_by_asset(filters):
 	if filters.get("finance_book"):
 		finance_book_filter += " and ifnull(gle.finance_book, '')=%(finance_book)s"
 		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-	if "document_status" in filters:
-		if filters.get("document_status"):
-			if filters.get("document_status") == "Submit":
-				document_status = 1
-			if filters.get("document_status") == "Draft":
-				document_status = 0
-			if filters.get("document_status") == "Cancel":
-				document_status = 2
-			condition += "and a.docstatus = {document_status}".format(document_status=document_status)
-	else:
-		condition += "and a.docstatus = 1"
+
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -550,17 +537,14 @@ def get_assets_for_grouped_by_asset(filters):
 
 def get_asset_value_adjustment_map(filters):
 	condition = ""
-	if "document_status" in filters:
-		if filters.get("document_status"):
-			if filters.get("document_status") == "Submit":
-				document_status = 1
-			if filters.get("document_status") == "Draft":
-				document_status = 0
-			if filters.get("document_status") == "Cancel":
-				document_status = 2
-			condition += "and a.docstatus = {document_status}".format(document_status=document_status)
-	else:
-		condition += "and a.docstatus = 1"
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
 
 	asset_with_value_adjustments = frappe.db.sql(
 		"""
