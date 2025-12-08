@@ -326,7 +326,7 @@ $.extend(erpnext.accounts.expense_entry, {
 
 		if (row.item_tax_template) {
 			frappe.call({
-				method: "erpnext.stock.get_item_details.get_item_tax_map",
+				method: "erpnext.stock.get_item_details.get_item_tax_template_details",
 				args: {
 					item_tax_template: row.item_tax_template,
 					args: {
@@ -335,8 +335,8 @@ $.extend(erpnext.accounts.expense_entry, {
 					}
 				},
 				callback: function (r) {
-					if (!r.exc) {
-						frappe.model.set_value(cdt, cdn, 'tax_rate', r.message);
+					if (r.message) {
+						frappe.model.set_value(cdt, cdn, 'tax_rate', r.message.item_tax_rate);
 					}
 				}
 			});

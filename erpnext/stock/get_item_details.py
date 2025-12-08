@@ -56,7 +56,7 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		args['transaction_date'] = doc.get('transaction_date') or doc.get('posting_date')
 
 	out["item_tax_template"] = get_item_tax_template(args, item)
-	out["item_tax_rate"] = get_item_tax_map(out.get("item_tax_template"), args, as_json=True)
+	out.update(get_item_tax_template_details(out.get("item_tax_template"), args, as_json=True))
 
 	get_party_item_code(args, item, out)
 
@@ -457,11 +457,11 @@ def _get_item_tax_template(args, taxes):
 
 
 @frappe.whitelist()
-def get_multiple_item_tax_maps(args, with_item_tax_tamplate=False, as_json=True):
+def get_multiple_item_tax_maps(args, with_item_tax_template=False, as_json=True):
 	if isinstance(args, str):
 		args = json.loads(args)
 
-	with_item_tax_tamplate = cint(with_item_tax_tamplate)
+	with_item_tax_template = cint(with_item_tax_template)
 	as_json = cint(as_json)
 
 	args = frappe._dict(args)
@@ -477,24 +477,26 @@ def get_multiple_item_tax_maps(args, with_item_tax_tamplate=False, as_json=True)
 		args_copy.name = name
 
 		item_tax_template = item_args.get("item_tax_template")
-		if with_item_tax_tamplate:
+		if with_item_tax_template:
 			args_copy.pop("item_tax_template", None)
 
 		out[item_args['name']] = row_obj = frappe._dict()
 
-		if with_item_tax_tamplate:
+		if with_item_tax_template:
 			item = frappe.get_cached_doc("Item", item_args.get("item_code"))
 			row_obj["item_tax_template"] = get_item_tax_template(args_copy, item)
 			item_tax_template = row_obj["item_tax_template"]
 
-		row_obj["item_tax_rate"] = get_item_tax_map(item_tax_template, args_copy, as_json=as_json)
+		row_obj.update(get_item_tax_template_details(item_tax_template, args_copy, as_json=as_json))
 
 	return out
 
 
 @frappe.whitelist()
-def get_item_tax_map(item_tax_template, args, as_json=True):
-	item_tax_map = frappe._dict()
+def get_item_tax_template_details(item_tax_template, args, as_json=True):
+	out = frappe._dict({
+		"item_tax_rate": {}
+	})
 
 	if isinstance(args, str):
 		args = json.loads(args)
@@ -512,11 +514,14 @@ def get_item_tax_map(item_tax_template, args, as_json=True):
 			if d.valid_from and getdate(d.valid_from) > transaction_date:
 				continue
 
-			item_tax_map[d.tax_type] = d.tax_rate
+			out["item_tax_rate"][d.tax_type] = d.tax_rate
 
-	frappe.utils.call_hook_method("update_item_tax_map", item_tax_template, args, item_tax_map)
+	frappe.utils.call_hook_method("get_item_tax_template_details", item_tax_template, args, out)
 
-	return json.dumps(item_tax_map) if cint(as_json) else item_tax_map
+	if cint(as_json):
+		out["item_tax_rate"] = json.dumps(out["item_tax_rate"])
+
+	return out
 
 
 @frappe.whitelist()

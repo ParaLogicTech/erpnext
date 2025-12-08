@@ -2064,22 +2064,22 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	item_tax_template(doc, cdt, cdn) {
 		let item = frappe.get_doc(cdt, cdn);
-		return this.get_item_tax_map(item);
+		return this.get_item_tax_template_details(item);
 	}
 
-	get_item_tax_map(item) {
+	get_item_tax_template_details(item) {
 		let args = this._get_merged_args(item);
 
 		return this.frm.call({
-			method: "erpnext.stock.get_item_details.get_item_tax_map",
+			method: "erpnext.stock.get_item_details.get_item_tax_template_details",
 			args: {
 				item_tax_template: item.item_tax_template || "",
 				args: args,
 				as_json: 1,
 			},
 			callback: (r) => {
-				if (!r.exc) {
-					item.item_tax_rate = r.message;
+				if (r.message) {
+					frappe.model.set_value(item.doctype, item.name, r.message);
 					this.add_taxes_from_item_tax_template(item.item_tax_rate);
 					this.calculate_taxes_and_totals();
 				}
@@ -2087,7 +2087,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		});
 	}
 
-	get_multiple_item_tax_maps(with_item_tax_templates) {
+	get_multiple_item_tax_maps(with_item_tax_template) {
 		let args = this._get_args();
 
 		if (this.frm.doc.company && args.items.length) {
@@ -2095,20 +2095,27 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				method: "erpnext.stock.get_item_details.get_multiple_item_tax_maps",
 				args: {
 					args: args,
-					with_item_tax_templates: cint(with_item_tax_templates),
+					with_item_tax_template: cint(with_item_tax_template),
 					as_json: 1,
 				},
 				callback: (r) => {
 					if (!r.exc) {
 						$.each(this.frm.doc.items || [], (i, item) => {
 							if(r.message.hasOwnProperty(item.name)) {
-								if (with_item_tax_templates) {
-									item.item_tax_template = r.message[item.name].item_tax_template;
+								let details = Object.assign({}, r.message[item.name]);
+
+								if (with_item_tax_template) {
+									item.item_tax_template = details.item_tax_template;
 								}
-								item.item_tax_rate = r.message[item.name].item_tax_rate;
+								item.item_tax_rate = details.item_tax_rate;
+
+								delete details["item_tax_template"];
+								delete details["item_tax_rate"];
+
+								frappe.model.set_value(item.doctype, item.name, details);
 								this.add_taxes_from_item_tax_template(item.item_tax_rate);
 							} else {
-								if (with_item_tax_templates) {
+								if (with_item_tax_template) {
 									item.item_tax_template = null;
 								}
 								item.item_tax_rate = "{}";

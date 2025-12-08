@@ -9,7 +9,7 @@ from frappe import _
 from frappe.model.document import Document
 from erpnext.setup.utils import get_exchange_rate
 from erpnext import get_company_currency
-from erpnext.stock.get_item_details import get_item_tax_map
+from erpnext.stock.get_item_details import get_item_tax_template_details
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_dimension_fields
 import json
 
@@ -89,10 +89,10 @@ class ExpenseEntry(Document):
 
 	def calculate_taxes(self):
 		for d in self.accounts:
-			d.tax_rate = get_item_tax_map(d.item_tax_template, args={
+			d.tax_rate = get_item_tax_template_details(d.item_tax_template, args={
 				"company": self.company,
 				"transaction_date": d.bill_date or self.transaction_date,
-			})
+			}).get("item_tax_rate")
 
 			tax_map = json.loads(d.tax_rate or '{}')
 			tax_amount = 0
