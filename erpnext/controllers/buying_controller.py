@@ -221,20 +221,8 @@ class BuyingController(TransactionController):
 	def get_asset_items(self):
 		if self.doctype not in ['Purchase Order', 'Purchase Invoice', 'Purchase Receipt']:
 			return []
-		
-		asset_item_list =[]
-		for each_item in self.items:
-			if each_item.is_fixed_asset:
-				if not each_item.asset_location:
-					frappe.throw(
-						_("Please set the asset location for item {} at row {}.").format(
-							each_item.item_code, each_item.idx
-						),
-						title=_("Missing Asset Location"),
-					)
-				asset_item_list.append(each_item.item_code)
 
-		return asset_item_list
+		return [d.item_code for d in self.items if d.is_fixed_asset]
 
 	def set_landed_cost_voucher_amount(self):
 		if self.doctype == "Purchase Receipt":
@@ -1084,6 +1072,14 @@ class BuyingController(TransactionController):
 		for d in self.items:
 			if d.is_fixed_asset:
 				item_data = items_data.get(d.item_code)
+
+				if not d.asset_location:
+					frappe.throw(
+						_("Please set the asset location for item {} at row {}.").format(
+							d.item_code, d.idx
+						),
+						title=_("Missing Asset Location"),
+					)
 
 				if item_data.get('auto_create_assets'):
 					# If asset has to be auto created
