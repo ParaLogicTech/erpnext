@@ -91,12 +91,8 @@ class BuyingController(TransactionController):
 			self.process_fixed_asset()
 			self.update_fixed_asset(field)
 
-		if not self.get('is_return'):
-			self.update_last_purchase_rate()
-
 	def on_cancel(self):
 		if not self.get('is_return'):
-			self.update_last_purchase_rate()
 			if self.doctype in ['Purchase Receipt', 'Purchase Invoice']:
 				field = 'purchase_invoice' if self.doctype == 'Purchase Invoice' else 'purchase_receipt'
 
@@ -1306,12 +1302,12 @@ def get_last_purchase_details(item_code, warehouse=None, exclude=None, transacti
 	if exclude:
 		exclude_condition = " and p.name != {0}".format(frappe.db.escape(exclude))
 
-	po_date_condition = ""
-	prec_date_condition = ""
+	transaction_date_condition = ""
+	posting_date_condition = ""
 	if transaction_date:
 		transaction_date = getdate(transaction_date)
-		po_date_condition = " and p.transaction_date <= '{0}'".format(transaction_date)
-		prec_date_condition = " and p.posting_date <= '{0}'".format(transaction_date)
+		transaction_date_condition = " and p.transaction_date <= '{0}'".format(transaction_date)
+		posting_date_condition = " and p.posting_date <= '{0}'".format(transaction_date)
 
 	warehouse_condition = ""
 	if warehouse:
@@ -1325,8 +1321,8 @@ def get_last_purchase_details(item_code, warehouse=None, exclude=None, transacti
 			i.base_rate, i.base_net_rate
 		from `tabPurchase Order Item` i
 		inner join `tabPurchase Order` p on p.name = i.parent 
-		where p.docstatus = 1 and i.item_code = %s and i.base_net_amount != 0
-			{warehouse_condition} {po_date_condition} {exclude_condition}
+		where p.docstatus = 1 and i.item_code = %s and i.base_net_amount != 0 and i.received_qty = 0 and i.billed_qty = 0
+			{warehouse_condition} {transaction_date_condition} {exclude_condition}
 		order by p.transaction_date desc, p.creation desc
 		limit 1
 	""", item_code, as_dict=1)
@@ -1340,26 +1336,44 @@ def get_last_purchase_details(item_code, warehouse=None, exclude=None, transacti
 			i.base_rate, i.base_net_rate
 		from `tabPurchase Receipt Item` i
 		inner join `tabPurchase Receipt` p on p.name = i.parent 
-		where p.docstatus = 1 and p.is_return = 0 and i.item_code = %s and i.base_net_amount != 0
-			{warehouse_condition} {prec_date_condition} {exclude_condition}
+		where p.docstatus = 1 and p.is_return = 0 and i.item_code = %s and i.base_net_amount != 0 and i.billed_qty = 0
+			{warehouse_condition} {posting_date_condition} {exclude_condition}
 		order by p.posting_date desc, p.posting_time desc, p.creation desc
 		limit 1
 	""", item_code, as_dict=1)
 	last_purchase_receipt = last_purchase_receipt[0] if last_purchase_receipt else None
 
+	last_purchase_invoice = frappe.db.sql(f"""
+		select
+			p.name, p.posting_date, p.posting_time,
+			p.conversion_rate, i.conversion_factor,
+			i.base_price_list_rate, i.discount_percentage,
+			i.base_rate, i.base_net_rate
+		from `tabPurchase Invoice Item` i
+		inner join `tabPurchase Invoice` p on p.name = i.parent 
+		where p.docstatus = 1 and p.is_return = 0 and i.item_code = %s and i.base_net_amount != 0
+			{warehouse_condition} {posting_date_condition} {exclude_condition}
+		order by p.posting_date desc, p.posting_time desc, p.creation desc
+		limit 1
+	""", item_code, as_dict=1)
+	last_purchase_invoice = last_purchase_invoice[0] if last_purchase_invoice else None
+
 	purchase_order_date = getdate(last_purchase_order and last_purchase_order.transaction_date or "1900-01-01")
 	purchase_receipt_date = getdate(last_purchase_receipt and last_purchase_receipt.posting_date or "1900-01-01")
+	purchase_invoice_date = getdate(last_purchase_invoice and last_purchase_invoice.posting_date or "1900-01-01")
 
-	if last_purchase_order and (purchase_order_date >= purchase_receipt_date or not last_purchase_receipt):
+	if last_purchase_order and (purchase_order_date >= purchase_receipt_date and purchase_order_date >= purchase_invoice_date):
 		# use purchase order
 		last_purchase = last_purchase_order
 		last_purchase_date = purchase_order_date
-
-	elif last_purchase_receipt and (purchase_receipt_date > purchase_order_date or not last_purchase_order):
+	elif last_purchase_receipt and (purchase_receipt_date >= purchase_invoice_date):
 		# use purchase receipt
 		last_purchase = last_purchase_receipt
 		last_purchase_date = purchase_receipt_date
-
+	elif last_purchase_invoice:
+		# use purchase invoice
+		last_purchase = last_purchase_invoice
+		last_purchase_date = purchase_invoice_date
 	else:
 		return frappe._dict()
 
