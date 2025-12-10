@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import frappe, erpnext
-from frappe.utils import cint, cstr, formatdate, flt, getdate, nowdate
+from frappe.utils import cint, cstr, formatdate, flt, getdate, nowdate, get_link_to_form
 from frappe import _
 import frappe.defaults
 
@@ -671,6 +671,7 @@ class PurchaseInvoice(BuyingController):
 			# except epening entry, drop-ship entry and fixed asset items
 			if item.item_code:
 				asset_category = frappe.get_cached_value("Item", item.item_code, "asset_category")
+				asset_category_form_link = get_link_to_form("Asset Category", item.asset_category)
 
 			if (
 				auto_accounting_for_stock
@@ -685,21 +686,37 @@ class PurchaseInvoice(BuyingController):
 					item.expense_account = stock_not_billed_account
 
 			elif item.is_fixed_asset and not is_cwip_accounting_enabled(asset_category):
-				item.expense_account = get_asset_category_account(
+				asset_category_fixed_account = get_asset_category_account(
 					'fixed_asset_account',
 					item=item.item_code,
 					company=self.company
 				)
+				if not asset_category_fixed_account:
+					frappe.throw(
+						_("Please set Fixed Asset Account in {} against {}.").format(
+							asset_category_form_link, self.company
+						),
+						title=_("Missing Account"),
+					)
+				item.expense_account = asset_category_fixed_account
 			
 			elif item.is_fixed_asset and item.purchase_receipt_item:
 				item.expense_account = asset_received_but_not_billed
 			
 			elif item.is_fixed_asset and is_cwip_accounting_enabled(asset_category):
-				item.expense_account = get_asset_category_account(
+				asset_category_cwip_account = get_asset_category_account(
 					'capital_work_in_progress_account',
 					item=item.item_code,
 					company=self.company
 				)
+				if not asset_category_cwip_account:
+					frappe.throw(
+						_("Please set CWIP Account in {} against {}.").format(
+							asset_category_form_link, self.company
+						),
+						title=_("Missing Account"),
+					)
+				item.expense_account = asset_category_cwip_account
 
 	def validate_expense_account(self):
 		for item in self.get("items"):
