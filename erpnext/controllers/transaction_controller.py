@@ -213,7 +213,7 @@ class TransactionController(StockController):
 
 					if item.get(fieldname) is None or fieldname in self.force_item_fields:
 						item.set(fieldname, value)
-					elif fieldname in ['cost_center'] and not item.get(fieldname):
+					elif fieldname in ['cost_center', 'customs_tariff_number'] and not item.get(fieldname):
 						item.set(fieldname, value)
 
 				# auto serial no

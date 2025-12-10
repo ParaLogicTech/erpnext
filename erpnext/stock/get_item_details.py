@@ -298,6 +298,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"underinsurance_percentage": flt(args.get("default_underinsurance_percentage")),
 		"ignore_depreciation": get_ignore_depreciation(item),
 		"supplier": get_default_supplier(item, args),
+		"customs_tariff_number": get_customs_tariff_number(item, args),
 		"update_stock": args.get("update_stock") if args.get('doctype') in ['Sales Invoice', 'Purchase Invoice'] else 0,
 		"delivered_by_supplier": item.delivered_by_supplier if args.get("doctype") in ["Sales Order", "Sales Invoice"] else 0,
 		"net_weight_per_unit": get_weight_per_unit(item.name, weight_uom=args.weight_uom or item.weight_uom),
@@ -676,6 +677,33 @@ def get_default_supplier(item, args):
 
 	default_values = get_item_default_values(item, args)
 	return item.get("default_supplier") or default_values.get("default_supplier")
+
+
+def get_customs_tariff_number(item, args):
+	if args.get("customs_tariff_number"):
+		return args.get("customs_tariff_number")
+
+	if item.get("customs_tariff_number"):
+		return item.get("customs_tariff_number")
+
+	item_group_hs_code = get_item_group_customs_tariff_number(item.item_group)
+	if item_group_hs_code:
+		return item_group_hs_code
+
+	default_values = get_item_default_values(item, args)
+	return default_values.get("customs_tariff_number")
+
+
+def get_item_group_customs_tariff_number(item_group):
+	current_item_group = item_group
+	while current_item_group:
+		item_group_doc = frappe.get_cached_doc("Item Group", current_item_group)
+		if item_group_doc.customs_tariff_number:
+			return item_group_doc.customs_tariff_number
+
+		current_item_group = item_group_doc.parent_item_group
+
+	return None
 
 
 def get_default_terms(item, args):
