@@ -285,7 +285,7 @@ def get_conditions(filters, accounting_dimensions):
 	if filters.get("account_type"):
 		conditions.append("""gle.account in (
 			select name from tabAccount
-			where account_type=%(account_type)s and docstatus < 2
+			where account_type=%(account_type)s
 		)""")
 
 	if filters.get("cost_center"):
