@@ -1073,6 +1073,14 @@ class BuyingController(TransactionController):
 			if d.is_fixed_asset:
 				item_data = items_data.get(d.item_code)
 
+				if not d.asset_location:
+					frappe.throw(
+						_("Please set the asset location for item {} at row {}.").format(
+							d.item_code, d.idx
+						),
+						title=_("Missing Asset Location"),
+					)
+
 				if item_data.get('auto_create_assets'):
 					# If asset has to be auto created
 					# Check for asset naming series
