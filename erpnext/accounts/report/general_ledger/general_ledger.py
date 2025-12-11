@@ -281,6 +281,12 @@ def get_conditions(filters, accounting_dimensions):
 		lft, rgt = frappe.db.get_value("Account", filters["account"], ["lft", "rgt"])
 		conditions.append("""gle.account in (select name from tabAccount
 			where lft>=%s and rgt<=%s and docstatus<2)""" % (lft, rgt))
+	
+	if filters.get("account_type"):
+		conditions.append("""gle.account in (
+			select name from tabAccount
+			where account_type=%(account_type)s
+		)""")
 
 	if filters.get("cost_center"):
 		filters.cost_center = get_cost_centers_with_children(filters.cost_center)

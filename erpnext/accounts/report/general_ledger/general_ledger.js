@@ -88,6 +88,12 @@ frappe.query_reports["General Ledger"] = {
 			}
 		},
 		{
+			"fieldname":"account_type",
+			"label": __("Account Type"),
+			"fieldtype": "Select",
+			"default":""
+		},
+		{
 			"fieldname":"party_type",
 			"label": __("Party Type"),
 			"fieldtype": "Link",
@@ -217,7 +223,19 @@ frappe.query_reports["General Ledger"] = {
 			"fieldtype": "Data",
 			"hidden": 1
 		}
-	]
+	],
+	onload: function(report) {
+        frappe.model.with_doctype("Account", function() {
+            // Get account_type field options
+            let df = frappe.get_meta("Account").fields.find(f => f.fieldname === "account_type");
+            let options = df?.options ? df.options.split("\n") : [];
+
+            // Set filter options dynamically
+			report.get_filter('account_type').df.options = options;
+			report.get_filter('account_type').df.default = "";
+			report.get_filter('account_type').refresh();
+        });
+    }
 }
 
 erpnext.utils.add_dimensions('General Ledger', 15);
