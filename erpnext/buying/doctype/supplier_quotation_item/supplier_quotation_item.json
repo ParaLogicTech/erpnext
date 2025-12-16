@@ -427,8 +427,7 @@
    "fieldname": "weight_uom",
    "fieldtype": "Link",
    "label": "Weight UOM",
-   "options": "UOM",
-   "read_only": 1
+   "options": "UOM"
   },
   {
    "fieldname": "warehouse_and_reference",
@@ -1066,7 +1065,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-28 14:16:19.187270",
+ "modified": "2025-12-16 11:07:24.706626",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Supplier Quotation Item",

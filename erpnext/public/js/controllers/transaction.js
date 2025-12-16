@@ -1320,28 +1320,39 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	weight_uom(doc, cdt, cdn) {
 		let item = frappe.get_doc(cdt, cdn);
-
-		if (item.item_code && item.weight_uom) {
-			return this.frm.call({
-				method: "erpnext.stock.get_item_details.get_weight_per_unit",
-				args: {
-					item_code: item.item_code,
-					weight_uom: item.weight_uom
-				},
-				callback: function(r) {
-					if (!r.exc) {
-						frappe.model.set_value(cdt, cdn, "net_weight_per_unit", flt(r.message));
-					}
-				}
-			});
+		if (!item.item_code || !item.weight_uom) {
+			return;
 		}
+
+		let weight_fields = ['net_weight_per_unit', 'gross_weight_per_unit'].filter(f => {
+			return frappe.meta.has_field(item.doctype, f);
+		});
+		if (!weight_fields.length) {
+			return;
+		}
+
+		return this.frm.call({
+			method: "erpnext.stock.get_item_details.get_multiple_weights_per_unit",
+			args: {
+				item_code: item.item_code,
+				weight_uom: item.weight_uom,
+				weight_fields: weight_fields,
+			},
+			callback: function(r) {
+				if (r.message) {
+					frappe.model.set_value(cdt, cdn, r.message);
+				}
+			}
+		});
 	}
 
-	net_weight_per_unit(doc, cdt, cdn) {
-		let item = frappe.get_doc(cdt, cdn);
-		item.net_weight = flt(flt(item.net_weight_per_unit) * flt(item.stock_qty), precision("net_weight", item));
+	net_weight_per_unit() {
 		this.calculate_taxes_and_totals();
 		this.shipping_rule();
+	}
+
+	gross_weight_per_unit() {
+		this.calculate_taxes_and_totals();
 	}
 
 	shipping_rule() {
@@ -1763,6 +1774,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					"stock_uom": d.stock_uom,
 					"net_weight_per_unit": d.net_weight_per_unit,
 					"net_weight": d.net_weight,
+					"gross_weight_per_unit": d.gross_weight_per_unit,
+					"gross_weight": d.gross_weight,
 					"weight_uom": d.weight_uom,
 					"parenttype": d.parenttype,
 					"parent": d.parent,

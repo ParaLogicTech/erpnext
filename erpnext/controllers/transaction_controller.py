@@ -47,7 +47,7 @@ class TransactionController(StockController):
 		]
 
 		self.merge_items_sum_fields = [
-			'qty', 'stock_qty', 'alt_uom_qty', 'net_weight',
+			'qty', 'stock_qty', 'alt_uom_qty', 'net_weight', 'gross_weight',
 			'amount', 'taxable_amount', 'net_amount', 'total_discount', 'amount_before_discount',
 			'item_taxes', 'item_taxes_before_discount', 'tax_inclusive_amount', 'tax_inclusive_amount_before_discount',
 			'amount_before_depreciation', 'depreciation_amount', 'underinsurance_amount',
@@ -62,6 +62,7 @@ class TransactionController(StockController):
 			('tax_inclusive_rate', 'tax_inclusive_amount', 'qty'),
 			('tax_inclusive_rate_before_discount', 'tax_inclusive_amount_before_discount', 'qty'),
 			('net_weight_per_unit', 'net_weight', 'stock_qty'),
+			('gross_weight_per_unit', 'gross_weight', 'stock_qty'),
 			('alt_uom_rate', 'amount', 'stock_qty'),
 		]
 
@@ -70,6 +71,7 @@ class TransactionController(StockController):
 			('total_alt_uom_qty', 'alt_uom_qty'),
 			('total_stock_qty', 'stock_qty'),
 			('total_net_weight', 'net_weight'),
+			('total_gross_weight', 'gross_weight'),
 
 			('total', 'amount'),
 			('tax_exclusive_total', 'tax_exclusive_amount'),
@@ -495,9 +497,9 @@ class TransactionController(StockController):
 		for f in sum_fields:
 			group_item[f] = group_item.get(f, 0) + flt(item.get(f))
 
-		group_item_serial_nos = group_item.setdefault('serial_no', [])
+		group_item.setdefault('serial_no', [])
 		if item.get('serial_no'):
-			group_item_serial_nos += filter(lambda s: s, item.serial_no.split('\n'))
+			group_item['serial_no'] += filter(lambda s: s, item.serial_no.split('\n'))
 
 		group_item_tax_detail = group_item.setdefault('item_tax_detail', {})
 		item_tax_detail = json.loads(item.item_tax_detail or '{}')

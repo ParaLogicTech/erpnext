@@ -302,6 +302,8 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"update_stock": args.get("update_stock") if args.get('doctype') in ['Sales Invoice', 'Purchase Invoice'] else 0,
 		"delivered_by_supplier": item.delivered_by_supplier if args.get("doctype") in ["Sales Order", "Sales Invoice"] else 0,
 		"net_weight_per_unit": get_weight_per_unit(item.name, weight_uom=args.weight_uom or item.weight_uom),
+		"gross_weight_per_unit": get_weight_per_unit(item.name, weight_uom=args.weight_uom or item.weight_uom,
+			weight_field="gross_weight_per_unit"),
 		"weight_uom": args.weight_uom or item.weight_uom,
 		"transaction_date": args.get("transaction_date"),
 		"claim_customer": get_claim_customer(item, args),
@@ -1223,6 +1225,18 @@ def get_serial_no_batchwise(args, sales_order=None):
 				"qty": abs(cint(args.stock_qty)),
 				"sales_order": sales_order
 			}))
+
+
+@frappe.whitelist()
+def get_multiple_weights_per_unit(item_code, weight_fields, weight_uom=None):
+	if isinstance(weight_fields, str):
+		weight_fields = json.loads(weight_fields)
+
+	out = {}
+	for f in weight_fields:
+		out[f] = get_weight_per_unit(item_code, weight_uom, weight_field=f)
+
+	return out
 
 
 @frappe.whitelist()

@@ -76,7 +76,7 @@ class calculate_taxes_and_totals(object):
 				has_margin_field = item.meta.has_field("margin_type")
 
 				exclude_round_fieldnames = ['rate', 'price_list_rate', 'discount_percentage', 'discount_amount',
-					'margin_rate_or_amount', 'rate_with_margin', 'net_weight_per_unit']
+					'margin_rate_or_amount', 'rate_with_margin', 'net_weight_per_unit', 'gross_weight_per_unit']
 				self.doc.round_floats_in(item, excluding=exclude_round_fieldnames)
 
 				if has_margin_field:
@@ -196,6 +196,9 @@ class calculate_taxes_and_totals(object):
 				# Net Weight
 				if item.meta.has_field("net_weight") and item.meta.has_field("net_weight_per_unit"):
 					item.net_weight = flt(flt(item.net_weight_per_unit) * flt(stock_qty), item.precision("net_weight"))
+				# Gross Weight
+				if item.meta.has_field("gross_weight") and item.meta.has_field("gross_weight_per_unit"):
+					item.gross_weight = flt(flt(item.gross_weight_per_unit) * flt(stock_qty), item.precision("gross_weight"))
 
 				# Contents Qty
 				item.alt_uom_size = item.alt_uom_size if item.alt_uom else 1.0
@@ -376,6 +379,8 @@ class calculate_taxes_and_totals(object):
 
 		if self.doc.meta.has_field('total_net_weight'):
 			self.doc.total_net_weight = 0.0
+		if self.doc.meta.has_field('total_gross_weight'):
+			self.doc.total_gross_weight = 0.0
 
 		if self.doc.doctype in ("Sales Invoice", "Proforma Invoice"):
 			self.doc.base_total_before_depreciation = self.doc.total_before_depreciation = 0.0
@@ -394,6 +399,8 @@ class calculate_taxes_and_totals(object):
 
 			if self.doc.meta.has_field('total_net_weight') and item.meta.has_field('net_weight'):
 				self.doc.total_net_weight += item.net_weight
+			if self.doc.meta.has_field('total_gross_weight') and item.meta.has_field('gross_weight'):
+				self.doc.total_gross_weight += item.gross_weight
 
 			self.doc.total += item.amount
 			self.doc.base_total += item.base_amount
@@ -454,6 +461,8 @@ class calculate_taxes_and_totals(object):
 
 		if self.doc.meta.has_field('total_net_weight'):
 			self.doc.round_floats_in(self.doc, ["total_net_weight"])
+		if self.doc.meta.has_field('total_gross_weight'):
+			self.doc.round_floats_in(self.doc, ["total_gross_weight"])
 
 		if self.doc.doctype == 'Sales Invoice' and self.doc.is_pos:
 			self.doc.pos_total_qty = self.doc.total_qty

@@ -121,7 +121,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 				var has_margin_field = frappe.meta.has_field(item.doctype, 'margin_type');
 
 				var exclude_round_fieldnames = ['rate', 'price_list_rate', 'discount_percentage', 'discount_amount',
-					'margin_rate_or_amount', 'rate_with_margin', 'net_weight_per_unit'];
+					'margin_rate_or_amount', 'rate_with_margin', 'net_weight_per_unit', 'gross_weight_per_unit'];
 				frappe.model.round_floats_in(item, null, exclude_round_fieldnames);
 
 				var rate_before_discount;
@@ -231,6 +231,10 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 				// Net Weight
 				if (frappe.meta.has_field(item.doctype, "net_weight") && frappe.meta.has_field(item.doctype, "net_weight_per_unit")) {
 					item.net_weight = flt(flt(item.net_weight_per_unit) * flt(stock_qty), precision("net_weight", item));
+				}
+				// Gross Weight
+				if (frappe.meta.has_field(item.doctype, "gross_weight") && frappe.meta.has_field(item.doctype, "gross_weight_per_unit")) {
+					item.gross_weight = flt(flt(item.gross_weight_per_unit) * flt(stock_qty), precision("gross_weight", item));
 				}
 
 				// Contents Qty
@@ -438,6 +442,9 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		if (frappe.meta.has_field(this.frm.doc.doctype, "total_net_weight")) {
 			this.frm.doc.total_net_weight = 0.0
 		}
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_gross_weight")) {
+			this.frm.doc.total_gross_weight = 0.0
+		}
 
 		if (["Sales Invoice", "Proforma Invoice"].includes(this.frm.doc.doctype)) {
 			this.frm.doc.base_total_before_depreciation = this.frm.doc.total_before_depreciation = 0.0;
@@ -458,6 +465,9 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 			if (frappe.meta.has_field(me.frm.doc.doctype, 'total_net_weight') && frappe.meta.has_field(item.doctype, 'net_weight')) {
 				me.frm.doc.total_net_weight += item.net_weight;
+			}
+			if (frappe.meta.has_field(me.frm.doc.doctype, 'total_gross_weight') && frappe.meta.has_field(item.doctype, 'gross_weight')) {
+				me.frm.doc.total_gross_weight += item.gross_weight;
 			}
 
 			me.frm.doc.total += item.amount;
@@ -521,6 +531,9 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 		if (frappe.meta.has_field(me.frm.doc.doctype, 'total_net_weight')) {
 			frappe.model.round_floats_in(this.frm.doc, ["total_net_weight",]);
+		}
+		if (frappe.meta.has_field(me.frm.doc.doctype, 'total_gross_weight')) {
+			frappe.model.round_floats_in(this.frm.doc, ["total_gross_weight",]);
 		}
 	}
 
