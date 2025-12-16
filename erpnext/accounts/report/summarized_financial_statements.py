@@ -64,7 +64,7 @@ class SummarizedFinancialReport:
 		if not is_root:
 			totals = {k: 0 for k in self.value_fieldnames}
 			for row in rows:
-				if row.get('row_type') in ['Account', 'Account Group']:
+				if row.get('row_type') in ['Account', 'Account Group'] and not row.get('is_child'):
 					for f in totals:
 						totals[f] += flt(row.get(f))
 
@@ -587,6 +587,7 @@ class SummarizedFinancialReport:
 		row["currency"] = erpnext.get_company_currency(self.filters.company)
 		row["right_align"] = d.right_align
 		row["indent"] = cint(indent)
+		row["is_child"] = cint(indent) > 0
 
 		if d.row_type == "Account":
 			row["account"] = d.account
