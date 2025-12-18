@@ -72,7 +72,6 @@ def make_sales_invoice_from_proforma(
 
 	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Sales Invoice")
 	if not bill_multiple_projects:
-		set_default_transaction_type(target_doc)
 		set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
 
 	# Map Proforma Invoices
@@ -128,7 +127,6 @@ def make_sales_invoice_from_orders(
 	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Sales Invoice")
 
 	if not bill_multiple_projects:
-		set_default_transaction_type(target_doc)
 		set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
 
 	target_doc = map_delivery_notes(target_doc, project, bill_to_filter=bill_to_filter,
@@ -179,7 +177,6 @@ def make_proforma_invoice(
 
 	target_doc = frappe.get_doc(target_doc) if target_doc else frappe.new_doc("Proforma Invoice")
 
-	set_default_transaction_type(target_doc)
 	set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
 
 	target_doc = map_delivery_notes(target_doc, project, only_items=True, bill_to_filter=bill_to_filter)
@@ -511,7 +508,6 @@ def make_delivery_note(project_name):
 	target_doc = frappe.new_doc("Delivery Note")
 
 	# Set Project Details
-	set_default_transaction_type(target_doc, force=True)
 	set_project_details_in_transaction(target_doc, project_details, project)
 
 	# Get Sales Orders
@@ -564,8 +560,6 @@ def make_sales_order(
 	if sales_order_print_heading:
 		target_doc.select_print_heading = sales_order_print_heading
 
-	set_default_transaction_type(target_doc, force=True)
-
 	# Set Project Details
 	set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
 	set_contact_and_address_in_transaction(target_doc, project)
@@ -615,8 +609,6 @@ def make_quotation(
 	target_doc.company = project.company
 	target_doc.project = project.name
 	target_doc.delivery_date = project.expected_delivery_date if getdate(project.expected_delivery_date) >= getdate() else None
-
-	set_default_transaction_type(target_doc, force=True)
 
 	# Set Project Details
 	set_project_details_in_transaction(target_doc, project_details, project, bill_to=bill_to)
@@ -997,12 +989,3 @@ def set_sales_person_in_target_doc(target_doc, project):
 			"sales_person": project.service_advisor,
 			"allocated_percentage": 100
 		})
-
-
-def set_default_transaction_type(target_doc, force=False):
-	default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
-	if not default_transaction_type:
-		return
-
-	if not target_doc.transaction_type or force:
-		target_doc.transaction_type = default_transaction_type

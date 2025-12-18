@@ -2577,6 +2577,12 @@ def get_project_details(project, doctype, purpose=None):
 		elif purpose == "Material Receipt":
 			out.to_warehouse = default_warehouse
 
+	# Transaction Type
+	if is_sales_doctype:
+		default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
+		if default_transaction_type:
+			out.transaction_type = default_transaction_type
+
 	frappe.utils.call_hook_method("get_project_details", project, out, doctype)
 
 	return out
