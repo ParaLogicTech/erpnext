@@ -127,6 +127,9 @@ class OpportunityERP(Opportunity):
 
 
 def get_active_quotations(opportunity):
+	if not opportunity:
+		return []
+
 	quotations = frappe.get_all('Quotation', {
 		'opportunity': opportunity,
 		'status': ("not in", ['Lost', 'Closed']),
