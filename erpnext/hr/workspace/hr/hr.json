@@ -1,7 +1,8 @@
 {
  "charts": [],
- "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Human Resource Module</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Employee\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Payroll\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Attendance\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Leaves\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Advances and Loans\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Shift Management\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Leave Configuration\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Payroll Configuration\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Employee Tax\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Employee Benefits\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Employee Lifecycle\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Employee Lifecycle Configuration\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Recruitment\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Training\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Performance\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}}]",
+ "content": "[{\"id\":\"NsVQWEV68d\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Human Resource Module</b></span>\",\"col\":12}},{\"id\":\"qQeykOGoC_\",\"type\":\"card\",\"data\":{\"card_name\":\"Employee\",\"col\":3}},{\"id\":\"MhJRB0aqnN\",\"type\":\"card\",\"data\":{\"card_name\":\"Payroll\",\"col\":3}},{\"id\":\"JjpXLRilVU\",\"type\":\"card\",\"data\":{\"card_name\":\"Attendance\",\"col\":3}},{\"id\":\"RQ5uEr_rIs\",\"type\":\"card\",\"data\":{\"card_name\":\"Leaves\",\"col\":3}},{\"id\":\"SaWjl_wiiD\",\"type\":\"card\",\"data\":{\"card_name\":\"Advances and Loans\",\"col\":3}},{\"id\":\"zAZocU6K-H\",\"type\":\"card\",\"data\":{\"card_name\":\"Shift Management\",\"col\":3}},{\"id\":\"WOrUGDVFpQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Leave Configuration\",\"col\":3}},{\"id\":\"ltYDBFGATk\",\"type\":\"card\",\"data\":{\"card_name\":\"Payroll Configuration\",\"col\":3}},{\"id\":\"8pBIhxiwEL\",\"type\":\"card\",\"data\":{\"card_name\":\"Employee Tax\",\"col\":3}},{\"id\":\"kkfDFjjnP9\",\"type\":\"card\",\"data\":{\"card_name\":\"Employee Benefits\",\"col\":3}},{\"id\":\"LPPi4_2bYf\",\"type\":\"card\",\"data\":{\"card_name\":\"Employee Lifecycle\",\"col\":3}},{\"id\":\"hKurcAWLVl\",\"type\":\"card\",\"data\":{\"card_name\":\"Employee Lifecycle Configuration\",\"col\":3}},{\"id\":\"NB_pvPUXyz\",\"type\":\"card\",\"data\":{\"card_name\":\"Recruitment\",\"col\":3}},{\"id\":\"gX07IPUgDV\",\"type\":\"card\",\"data\":{\"card_name\":\"Training\",\"col\":3}},{\"id\":\"xRa-WleB12\",\"type\":\"card\",\"data\":{\"card_name\":\"Performance\",\"col\":3}},{\"id\":\"4VsC5LeGBL\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"vSjlGbk-w0\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}}]",
  "creation": "2022-11-16 04:31:55.818294",
+ "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -11,92 +12,6 @@
  "is_hidden": 0,
  "label": "HR",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employee",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employee",
-   "link_count": 0,
-   "link_to": "Employee",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Department",
-   "link_count": 0,
-   "link_to": "Department",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Designation",
-   "link_count": 0,
-   "link_to": "Designation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Branch",
-   "link_count": 0,
-   "link_to": "Branch",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employment Type",
-   "link_count": 0,
-   "link_to": "Employment Type",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employee Grade",
-   "link_count": 0,
-   "link_to": "Employee Grade",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "Employee",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Employee Group",
-   "link_count": 0,
-   "link_to": "Employee Group",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
   {
    "hidden": 0,
    "is_query_report": 0,
@@ -1053,9 +968,105 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee",
+   "link_count": 8,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee",
+   "link_count": 0,
+   "link_to": "Employee",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Department",
+   "link_count": 0,
+   "link_to": "Department",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Designation",
+   "link_count": 0,
+   "link_to": "Designation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Branch",
+   "link_count": 0,
+   "link_to": "Branch",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employment Type",
+   "link_count": 0,
+   "link_to": "Employment Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee Grade",
+   "link_count": 0,
+   "link_to": "Employee Grade",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Employee",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Employee Group",
+   "link_count": 0,
+   "link_to": "Employee Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Organization Chart",
+   "link_count": 0,
+   "link_to": "organization-chart",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2023-08-30 22:29:35.270760",
+ "modified": "2025-12-18 12:40:07.465849",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "HR",
