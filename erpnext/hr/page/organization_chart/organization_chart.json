@@ -1,0 +1,25 @@
+{
+ "content": null,
+ "creation": "2025-12-18 12:29:18.717348",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-12-18 12:29:18.717348",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "organization-chart",
+ "owner": "Administrator",
+ "page_name": "organization-chart",
+ "roles": [
+  {
+   "role": "HR User"
+  },
+  {
+   "role": "HR Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0
+}
