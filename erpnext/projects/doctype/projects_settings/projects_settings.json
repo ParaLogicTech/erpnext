@@ -34,14 +34,16 @@
   "validate_ready_to_close",
   "validate_sales_order_mandatory",
   "validate_service_template_sales_order",
-  "column_break_mttl",
-  "ignore_employee_time_overlap",
-  "require_attendance_for_task_start",
   "validate_po_for_billing_company_customer",
-  "column_break_xs7b",
+  "column_break_mttl",
+  "require_attendance_for_task_start",
+  "restrict_expected_time",
+  "ignore_employee_time_overlap",
   "validate_gross_margin",
   "validate_labour_margin",
-  "margin_validation_override_role"
+  "column_break_xs7b",
+  "margin_validation_override_role",
+  "restrict_expected_time_override_role"
  ],
  "fields": [
   {
@@ -247,11 +249,23 @@
    "fieldtype": "Link",
    "label": "Holiday List for Maintenance Scheduling",
    "options": "Holiday List"
+  },
+  {
+   "default": "0",
+   "fieldname": "restrict_expected_time",
+   "fieldtype": "Check",
+   "label": "Restrict System Determined Task Expected Time Change"
+  },
+  {
+   "fieldname": "restrict_expected_time_override_role",
+   "fieldtype": "Link",
+   "label": "Role Allowed to Override Expected Time Change Validation",
+   "options": "Role"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-12-05 12:56:35.905889",
+ "modified": "2025-12-22 13:09:00.311839",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",

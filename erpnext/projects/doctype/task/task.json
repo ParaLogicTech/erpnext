@@ -33,6 +33,7 @@
   "column_break_21",
   "expected_time",
   "actual_time",
+  "system_expected_time",
   "column_break_29",
   "finish_date",
   "is_overdue",
@@ -183,7 +184,8 @@
    "fieldtype": "Float",
    "label": "Expected Time (Hrs)",
    "oldfieldname": "exp_total_hrs",
-   "oldfieldtype": "Data"
+   "oldfieldtype": "Data",
+   "read_only_depends_on": "eval:!doc.__onload?.action_conditions?.change_expected_time && !doc.__islocal"
   },
   {
    "fetch_from": "type.weight",
@@ -266,7 +268,7 @@
    "depends_on": "actual_time",
    "fieldname": "actual_time",
    "fieldtype": "Float",
-   "label": "Actual Time (in hours)",
+   "label": "Clocked Time (Hrs)",
    "read_only": 1
   },
   {
@@ -542,14 +544,23 @@
   {
    "fieldname": "column_break_mwlw",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "system_expected_time",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is System Determined Expected Time",
+   "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-check",
  "idx": 1,
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-07-02 12:29:30.295539",
+ "modified": "2025-12-22 13:42:05.876115",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",
@@ -578,6 +589,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "subject",
  "show_name_in_global_search": 1,
  "show_preview_popup": 1,

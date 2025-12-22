@@ -381,7 +381,7 @@
   {
    "fieldname": "actual_time",
    "fieldtype": "Float",
-   "label": "Actual Time (in Hours)",
+   "label": "Clocked Time (in Hours)",
    "read_only": 1
   },
   {
@@ -1778,7 +1778,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2025-09-25 13:39:40.808788",
+ "modified": "2025-12-22 13:03:47.720933",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

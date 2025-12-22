@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.desk.form.assign_to import clear, close_all_assignments
+from frappe.model import numeric_fieldtypes
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import (
 	add_days, flt, cstr, cint, date_diff, get_link_to_form, get_url_to_form, getdate, today, get_datetime, now_datetime
@@ -110,14 +111,22 @@ class Task(NestedSet):
 			})
 		else:
 			self._previous_values = frappe.db.get_value(self.doctype, self.name, fieldname=[
-				"status", "assigned_to", "project", "issue",
+				"status", "assigned_to", "project", "issue", "expected_time", "system_expected_time",
 			], as_dict=1)
 
 	def get_previous_value(self, fieldname):
 		return self._previous_values.get(fieldname)
 
 	def value_changed(self, fieldname):
-		return cstr(self.get(fieldname)) != cstr(self._previous_values.get(fieldname))
+		df = self.meta.get_field(fieldname)
+		fieldtype = df.get("fieldtype") if df else "Data"
+
+		if fieldtype in ("Int", "Check"):
+			return cint(self.get(fieldname)) != cint(self._previous_values.get(fieldname))
+		elif fieldtype in numeric_fieldtypes:
+			return flt(self.get(fieldname), self.precision(fieldname)) != flt(self._previous_values.get(fieldname), self.precision(fieldname))
+		else:
+			return cstr(self.get(fieldname)) != cstr(self._previous_values.get(fieldname))
 
 	def set_missing_values(self):
 		self.set_applies_to_details()
@@ -136,20 +145,38 @@ class Task(NestedSet):
 				self.set(k, v)
 
 	def validate_cant_change(self):
-		if self.value_changed("project") and not self.is_new():
+		if self.is_new():
+			return
+
+		if self.value_changed("project"):
 			if self.service_template_detail:
 				frappe.throw(_("Cannot change {0} for Service Template task").format(
-					_("Project")
+					frappe.bold(_("Project"))
 				))
 
 			if self.status != "Open":
 				frappe.throw(_("Cannot change {0} when status in {1}").format(
-					_("Project"), frappe.bold(self.status)
+					frappe.bold(_("Project")), frappe.bold(self.status)
 				))
 
-		if self.value_changed("issue") and not self.is_new():
+		if self.value_changed("issue"):
 			if self.status != "Open":
 				frappe.throw(_("Cannot change Issue when status in {0}").format(frappe.bold(self.status)))
+
+		if self.value_changed("system_expected_time"):
+			self.system_expected_time = cint(self._previous_values.get("system_expected_time"))
+
+		if (
+			self.is_expected_time_restricted()
+			and not self.flags.override_restricted_expected_time
+			and self.value_changed("expected_time")
+		):
+			frappe.throw(_("Cannot change {0} because it is a system determined value").format(
+				frappe.bold(self.meta.get_label("expected_time"))
+			))
+
+	def is_expected_time_restricted(self):
+		return is_expected_time_restricted(self)
 
 	def validate_project_status(self):
 		if not self.project:
@@ -550,6 +577,9 @@ def create_service_template_tasks(project):
 				if determined_time:
 					task_doc.expected_time = determined_time
 
+			if task_doc.expected_time:
+				task_doc.system_expected_time = 1
+
 			task_doc.save()
 			tasks_created.append(task_doc)
 
@@ -882,6 +912,10 @@ def split_task(task, expected_time=None):
 	previous_expected_time = flt(ref_task.expected_time, ref_task.precision("expected_time"))
 	if new_expected_time and new_expected_time != previous_expected_time:
 		ref_task.expected_time = new_expected_time
+
+		if new_expected_time <= previous_expected_time:
+			ref_task.flags.override_restricted_expected_time = True
+
 		ref_task.save()
 
 	copy_fields = [
@@ -889,6 +923,7 @@ def split_task(task, expected_time=None):
 		"priority", "service_template", "service_template_detail",
 		"expected_time", "weight", "color", "is_milestone", "task_weight",
 		"exp_start_date", "exp_end_date", "is_group", "company", "branch",
+		"system_expected_time",
 	]
 
 	new_task = frappe.new_doc("Task")
@@ -1067,6 +1102,8 @@ def _get_task_action_conditions(task, project=None):
 		"edit_task": has_task_write and task.status != "Completed",
 		"split_task": has_task_create and task.status not in ("Completed", "Cancelled"),
 		"cancel_task": has_task_write and task.status == "Open",
+
+		"change_expected_time": not is_expected_time_restricted(task),
 	})
 
 	frappe.utils.call_hook_method(
@@ -1077,6 +1114,25 @@ def _get_task_action_conditions(task, project=None):
 	)
 
 	return action_conditions
+
+
+def is_expected_time_restricted(task, user=None):
+	return cint(task.system_expected_time) and is_system_expected_time_restricted(user)
+
+
+def is_system_expected_time_restricted(user=None):
+	if not user:
+		user = frappe.session.user
+
+	restrict_expected_time = cint(frappe.get_cached_value("Projects Settings", None, "restrict_expected_time"))
+	if not restrict_expected_time:
+		return False
+
+	override_role = frappe.get_cached_value("Projects Settings", None, "restrict_expected_time_override_role")
+	if restrict_expected_time and override_role and override_role in frappe.get_roles(user):
+		return False
+
+	return True
 
 
 def has_task_clocking_permission(assigned_to):
