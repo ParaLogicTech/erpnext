@@ -14,9 +14,6 @@ class Bin(Document):
 		self.set_projected_qty()
 
 	def update_stock(self, args, allow_negative_stock=False, via_landed_cost_voucher=False):
-		'''Called from erpnext.stock.utils.update_bin'''
-		self.update_qty(args)
-
 		if args.get("actual_qty") or args.get("voucher_type") == "Stock Reconciliation":
 			from erpnext.stock.stock_ledger import update_entries_after
 
@@ -36,22 +33,6 @@ class Bin(Document):
 				"sle_id": args.get("sle_id"),
 				"voucher_no": args.get("voucher_no")
 			}, allow_negative_stock=allow_negative_stock, via_landed_cost_voucher=via_landed_cost_voucher)
-
-	def update_qty(self, args):
-		# update the stock values (for current quantities)
-		if args.get("voucher_type")=="Stock Reconciliation":
-			if args.get('is_cancelled') == 'No':
-				self.actual_qty = args.get("qty_after_transaction")
-		else:
-			self.actual_qty = flt(self.actual_qty) + flt(args.get("actual_qty"))
-
-		self.ordered_qty = flt(self.ordered_qty) + flt(args.get("ordered_qty"))
-		self.reserved_qty = flt(self.reserved_qty) + flt(args.get("reserved_qty"))
-		self.indented_qty = flt(self.indented_qty) + flt(args.get("indented_qty"))
-		self.planned_qty = flt(self.planned_qty) + flt(args.get("planned_qty"))
-
-		self.set_projected_qty()
-		self.db_update()
 
 	def set_projected_qty(self):
 		self.projected_qty = (flt(self.actual_qty) + flt(self.ordered_qty)

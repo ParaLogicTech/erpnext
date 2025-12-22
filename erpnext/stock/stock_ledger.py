@@ -4,7 +4,7 @@ import frappe
 import erpnext
 from frappe import _
 from frappe.utils import cint, flt, now, cstr, getdate, get_time
-from erpnext.stock.utils import get_valuation_method
+from erpnext.stock.utils import get_valuation_method, get_bin
 import json
 import datetime
 
@@ -181,21 +181,7 @@ class update_entries_after(object):
 			}, allow_negative_stock=self.allow_negative_stock, via_landed_cost_voucher=self.via_landed_cost_voucher)
 
 	def update_bin(self):
-		# update bin
-		bin_name = frappe.db.get_value("Bin", {
-			"item_code": self.item_code,
-			"warehouse": self.warehouse
-		})
-
-		if not bin_name:
-			bin_doc = frappe.get_doc({
-				"doctype": "Bin",
-				"item_code": self.item_code,
-				"warehouse": self.warehouse
-			})
-			bin_doc.insert(ignore_permissions=True)
-		else:
-			bin_doc = frappe.get_doc("Bin", bin_name)
+		bin_doc = get_bin(self.item_code, self.warehouse)
 
 		bin_doc.update({
 			"valuation_rate": self.valuation_rate,
