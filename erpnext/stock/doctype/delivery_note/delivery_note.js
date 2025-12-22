@@ -16,7 +16,24 @@ frappe.ui.form.on("Delivery Note", {
 			'Auto Repeat': 'Subscription',
 			'Delivery Trip': 'Delivery Trip',
 		};
+	},
 
+	print_without_amount: function(frm) {
+		erpnext.stock.delivery_note.set_print_hide(frm.doc);
+	},
+
+	refresh: function(frm) {
+		if (frm.doc.docstatus === 1 && frm.doc.is_return && frm.doc.billing_status == "To Bill" && frappe.model.can_create("Sales Invoice")) {
+			frm.add_custom_button(__('Credit Note'), function() {
+				frappe.model.open_mapped_doc({
+					method: "erpnext.stock.doctype.delivery_note.delivery_note.make_sales_invoice",
+					frm: cur_frm,
+				})
+			}, __('Create'));
+		}
+	},
+
+	onload: function (frm) {
 		erpnext.queries.setup_queries(frm, "Warehouse", function() {
 			return erpnext.queries.warehouse(frm.doc);
 		});
@@ -40,7 +57,6 @@ frappe.ui.form.on("Delivery Note", {
 			}
 		});
 
-
 		frm.set_query('expense_account', 'items', function(doc, cdt, cdn) {
 			if (erpnext.is_perpetual_inventory_enabled(doc.company)) {
 				return {
@@ -63,23 +79,6 @@ frappe.ui.form.on("Delivery Note", {
 				}
 			}
 		});
-
-
-	},
-
-	print_without_amount: function(frm) {
-		erpnext.stock.delivery_note.set_print_hide(frm.doc);
-	},
-
-	refresh: function(frm) {
-		if (frm.doc.docstatus === 1 && frm.doc.is_return && frm.doc.billing_status == "To Bill" && frappe.model.can_create("Sales Invoice")) {
-			frm.add_custom_button(__('Credit Note'), function() {
-				frappe.model.open_mapped_doc({
-					method: "erpnext.stock.doctype.delivery_note.delivery_note.make_sales_invoice",
-					frm: cur_frm,
-				})
-			}, __('Create'));
-		}
 	}
 });
 
