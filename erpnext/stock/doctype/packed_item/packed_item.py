@@ -144,11 +144,12 @@ def update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_de
 
 	child_row.stock_qty = flt(child_row.qty, 6)
 
-	if parent_row.warehouse:
-		child_row.warehouse = parent_row.warehouse
-	elif not child_row.warehouse and item.is_stock_item:
-		args = doc.get_item_details_child_args(parent_row, doc.get_item_details_parent_args())
-		child_row.warehouse = get_default_warehouse(item, args, overwrite_warehouse=False)
+	if not child_row.warehouse:
+		if parent_row.warehouse:
+			child_row.warehouse = parent_row.warehouse
+		elif item.is_stock_item:
+			args = doc.get_item_details_child_args(parent_row, doc.get_item_details_parent_args())
+			child_row.warehouse = get_default_warehouse(item, args, overwrite_warehouse=False)
 
 	if parent_row.get("target_warehouse"):
 		child_row.target_warehouse = parent_row.get("target_warehouse")
