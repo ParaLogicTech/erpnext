@@ -298,7 +298,7 @@ class StockAgeingReport:
 def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 	fifo_queue_map = {}
 	transferred_item_details = {}
-	serial_no_batch_purchase_details = {}
+	serial_no_batch_date = {}
 
 	for sle in sles:
 		fifo_dict = get_fifo_dict(sle, fifo_queue_map,
@@ -310,47 +310,74 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 		fifo_queue = fifo_dict["fifo_queue"]
 		serial_no_list = get_serial_nos(sle.serial_no) if sle.serial_no else []
 
-		if sle.actual_qty > 0:
-			if transferred_item_details.get((sle.voucher_no, sle.voucher_detail_no, sle.item_code)):
-				for batch in transferred_item_details[(sle.voucher_no, sle.voucher_detail_no, sle.item_code)]:
-					fifo_queue.append(batch)
-				del transferred_item_details[(sle.voucher_no, sle.voucher_detail_no, sle.item_code)]
+		# Serialized Inventory
+		if serial_no_list:
+			# Serialized Incoming
+			if sle.actual_qty > 0:
+				for serial_no in serial_no_list:
+					if serial_no_batch_date.get(serial_no):
+						fifo_queue.append([serial_no, serial_no_batch_date.get(serial_no), sle.incoming_rate])
+					else:
+						serial_no_batch_date.setdefault(serial_no, sle.posting_date)
+						fifo_queue.append([serial_no, sle.posting_date, sle.incoming_rate])
+
+			# Serialized Outgoing
 			else:
-				if serial_no_list:
-					for serial_no in serial_no_list:
-						if serial_no_batch_purchase_details.get(serial_no):
-							fifo_queue.append([serial_no, serial_no_batch_purchase_details.get(serial_no), sle.incoming_rate])
-						else:
-							serial_no_batch_purchase_details.setdefault(serial_no, sle.posting_date)
-							fifo_queue.append([serial_no, sle.posting_date, sle.incoming_rate])
-				else:
-					fifo_queue.append([sle.actual_qty, sle.posting_date, sle.incoming_rate])
+				for serial_batch in fifo_queue:
+					if serial_batch[0] in serial_no_list:
+						fifo_queue.remove(serial_batch)
+
+		# Non Serialized Inventory
 		else:
-			if serial_no_list:
-				for serial_no in fifo_queue:
-					if serial_no[0] in serial_no_list:
-						fifo_queue.remove(serial_no)
+			# Normal Incoming
+			if sle.actual_qty > 0:
+				new_batches = []
+				if transferred_item_details.get((sle.voucher_no, sle.voucher_detail_no, sle.item_code)):
+					for batch in transferred_item_details[(sle.voucher_no, sle.voucher_detail_no, sle.item_code)]:
+						new_batches.append(batch)
+					del transferred_item_details[(sle.voucher_no, sle.voucher_detail_no, sle.item_code)]
+				else:
+					new_batches.append([sle.actual_qty, sle.posting_date, sle.incoming_rate])
+
+				for batch in new_batches:
+					# add to negative batch first
+					if fifo_queue and fifo_queue[-1][0] < 0:
+						new_qty = flt(batch[0] + fifo_queue[-1][0], 9)
+						fifo_queue[-1] = [new_qty, batch[1], batch[2]]
+					else:
+						fifo_queue.append(batch)
+
+			# Normal Outgoing
 			else:
 				qty_to_pop = abs(sle.actual_qty)
 				while qty_to_pop:
-					batch = fifo_queue[0] if fifo_queue else [0, None, 0]
+					batch = fifo_queue[0] if fifo_queue else (fifo_dict["previous_batch"] or [0, None, 0])
 					if 0 < flt(batch[0]) <= qty_to_pop:
 						# if batch qty > 0
 						# not enough or exactly same qty in current batch, clear batch
-						qty_to_pop -= flt(batch[0])
+						qty_to_pop = flt(qty_to_pop - flt(batch[0]), 9)
 
-						batch_to_remove = fifo_queue.pop(0) if fifo_queue else None
-						if sle.is_transfer and batch_to_remove:
-							transferred_item_details.setdefault((sle.voucher_no, sle.voucher_detail_no, sle.item_code), []).append(
-								batch_to_remove
-							)
+						removed_batch = fifo_queue.pop(0) if fifo_queue else None
+						if removed_batch:
+							fifo_dict["previous_batch"] = removed_batch.copy()
+							fifo_dict["previous_batch"][0] = 0
+							if sle.is_transfer:
+								transferred_item_details.setdefault((sle.voucher_no, sle.voucher_detail_no, sle.item_code), []).append(
+									removed_batch
+								)
 					else:
 						# all from current batch
-						batch[0] = flt(batch[0]) - qty_to_pop
+						batch[0] = flt(flt(batch[0]) - qty_to_pop, 9)
+
+						# Negative batch
+						if batch[0] < 0 and batch not in fifo_queue:
+							fifo_queue.append(batch.copy())
+
 						if sle.is_transfer:
 							transferred_item_details.setdefault((sle.voucher_no, sle.voucher_detail_no, sle.item_code), []).append(
 								[qty_to_pop, batch[1], batch[2]]
 							)
+
 						qty_to_pop = 0
 
 		fifo_dict["qty_after_transaction"] = sle.qty_after_transaction
@@ -388,7 +415,7 @@ def get_fifo_dict(sle, fifo_queue_map, include_warehouse, include_batch, include
 		key_dict = frappe._dict(zip(key_fields, key))
 
 		fifo_queue_map[key] = frappe._dict({
-			"details": key_dict, "fifo_queue": []
+			"details": key_dict, "fifo_queue": [], "previous_batch": None,
 		})
 
 	return fifo_queue_map[key]
