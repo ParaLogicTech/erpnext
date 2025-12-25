@@ -216,25 +216,49 @@ class BuyingController(TransactionController):
 				title=_("Not Allowed"))
 	
 	def validate_qty_not_exceed(self):
+		pre_doc_qty_analyze_list = []
 		for each_item in self.get("items"):
 			if each_item.get("purchase_receipt") and each_item.get("purchase_receipt_item"):
-				purchase_receipt_item_doc = frappe.get_doc("Purchase Receipt Item", each_item.purchase_receipt_item)
-				if purchase_receipt_item_doc and (purchase_receipt_item_doc.stock_qty<each_item.stock_qty):
-					self.raise_qty_not_exceed_error(purchase_receipt_item_doc, each_item)
+				self.update_pre_doc_qty_analyze_list(pre_doc_qty_analyze_list, "Purchase Receipt Item" ,each_item)
 			if each_item.get("purchase_order") and each_item.get("purchase_order_item"):
-				purchase_order_item_doc = frappe.get_doc("Purchase Order Item", each_item.get("purchase_order_item"))
-				if purchase_order_item_doc and (purchase_order_item_doc.stock_qty<each_item.stock_qty):
-					self.raise_qty_not_exceed_error(purchase_order_item_doc, each_item)
+				self.update_pre_doc_qty_analyze_list(pre_doc_qty_analyze_list, "Purchase Order Item" ,each_item)
+		
+		for each_pre_doc_qty_analyze in pre_doc_qty_analyze_list:
+			prev_doc_item = frappe.get_doc(each_pre_doc_qty_analyze.get('previous_doc_doctype'),each_pre_doc_qty_analyze.get('previous_doc_docname'))
+			if each_pre_doc_qty_analyze.get("current_doc_qty")>prev_doc_item.stock_qty:
+				self.raise_qty_not_exceed_error(prev_doc_item, each_pre_doc_qty_analyze.get("current_doc_qty"))
 	
-	def raise_qty_not_exceed_error(self, previous_doc_item, current_item_doc):
-		frappe.throw('The stock quantity <b>{current_item_stock_qty}</b> of the item "<b>{current_item_code}</b>"' \
-			' at row {current_item_idx} \
-			exceeds the quantity of the same item on {previous_doc_parent_link}, \
+	def update_pre_doc_qty_analyze_list(self, analyze_list, previous_item_document_type, current_item_row):
+		previous_item_field_map = {
+			"Purchase Receipt Item": "purchase_receipt_item",
+			"Purchase Order Item": "purchase_order_item",
+			"Purchase Invoice Item": "purchase_invoice_item",
+		}
+		previous_item_document_fieldname = previous_item_field_map.get(previous_item_document_type)
+		if not previous_item_document_fieldname:
+			return
+		
+		previous_docname = current_item_row.get(previous_item_document_fieldname)
+
+		for each_pre_doc_qty_analyze in analyze_list:
+			if each_pre_doc_qty_analyze.get("previous_doc_doctype") == previous_item_document_type \
+				and (each_pre_doc_qty_analyze.get("previous_doc_docname") == previous_docname):
+				each_pre_doc_qty_analyze["current_doc_qty"] += current_item_row.stock_qty
+				break
+		else:
+			analyze_list.append({
+				"previous_doc_doctype":previous_item_document_type, 
+				"previous_doc_docname":previous_docname,
+				"current_doc_qty":current_item_row.stock_qty
+			})
+	
+	def raise_qty_not_exceed_error(self, previous_doc_item, current_item_qty):
+		frappe.throw('The total stock quantity <b>{current_item_stock_qty}</b> of the item "<b>{current_item_code}</b>"' \
+		'	exceeds the quantity of the same item on {previous_doc_parent_link}, \
 			which is <b>{previous_doc_stock_qty}</b> at row {previous_doc_row_number}.'.
 		format(
-			current_item_stock_qty = current_item_doc.stock_qty,
-			current_item_code = current_item_doc.item_code,
-			current_item_idx = current_item_doc.idx,
+			current_item_stock_qty = current_item_qty,
+			current_item_code = previous_doc_item.item_code,
 			previous_doc_parent_link = get_link_from_name(previous_doc_item.parenttype, previous_doc_item.parent),
 			previous_doc_stock_qty = previous_doc_item.stock_qty,
 			previous_doc_row_number = previous_doc_item.idx
