@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, cstr, getdate
 from frappe.model.utils import get_fetch_values
-from frappe.query_builder.functions import Count
+from frappe.query_builder.functions import Sum
 from erpnext.accounts.party import get_party_details
 from erpnext.stock.get_item_details import get_conversion_factor, get_default_supplier, get_default_warehouse
 from erpnext.buying.utils import validate_for_items
@@ -261,7 +261,7 @@ class BuyingController(TransactionController):
 		current_doc_item_document_doctype = frappe.qb.DocType(self.doctype+" Item")
 		result = (
 			frappe.qb.from_(current_doc_item_document_doctype)
-			.select(Count(current_doc_item_document_doctype.stock_qty).as_("total_stock_qty_submitted_doc"))
+			.select(Sum(current_doc_item_document_doctype.stock_qty).as_("total_stock_qty_submitted_doc"))
 			.where(
 				(current_doc_item_document_doctype.docstatus == 1) &
 				(getattr(current_doc_item_document_doctype, previous_item_document_fieldname) == previous_docname)
@@ -269,7 +269,7 @@ class BuyingController(TransactionController):
 			.run(as_dict=True)
 		)
 		total_stock_qty_submitted_doc = result[0].total_stock_qty_submitted_doc if result else 0
-		return total_stock_qty_submitted_doc
+		return total_stock_qty_submitted_doc if total_stock_qty_submitted_doc else 0
 	
 	def raise_qty_not_exceed_error(self, previous_doc_item, current_item_qty):
 		frappe.throw('The total stock quantity <b>{current_item_stock_qty}</b> of the item "<b>{current_item_code}</b>"' \
