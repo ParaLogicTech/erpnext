@@ -23,7 +23,8 @@
   "update_buying_prices_on_submission_of_purchase_order",
   "column_break_qrkq3",
   "maintain_same_rate",
-  "do_not_allow_zero_amount"
+  "do_not_allow_zero_amount",
+  "do_not_exceed_previous_documents_qty"
  ],
  "fields": [
   {
@@ -130,13 +131,20 @@
    "fieldname": "do_not_allow_zero_amount",
    "fieldtype": "Check",
    "label": "Do Not Allow Zero Amount"
+  },
+  {
+   "default": "0",
+   "fieldname": "do_not_exceed_previous_documents_qty",
+   "fieldtype": "Check",
+   "label": "Do Not Exceed Previous Documents Qty"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-cog",
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-12-27 15:16:57.138619",
+ "modified": "2025-12-25 12:10:51.387063",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Buying Settings",
@@ -156,6 +164,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

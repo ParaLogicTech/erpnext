@@ -8,6 +8,7 @@ from frappe.model.utils import get_fetch_values
 from erpnext.accounts.party import get_party_details
 from erpnext.stock.get_item_details import get_conversion_factor, get_default_supplier, get_default_warehouse
 from erpnext.buying.utils import validate_for_items
+from erpnext.projects.doctype.task.task import get_link_from_name
 from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
 from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
 from erpnext.controllers.transaction_controller import TransactionController
@@ -55,6 +56,9 @@ class BuyingController(TransactionController):
 		self.validate_stock_or_nonstock_items()
 		self.validate_warehouse()
 		self.validate_asset_return()
+		
+		if frappe.get_cached_value("Buying Settings", None, "do_not_exceed_previous_documents_qty"):
+			self.validate_qty_not_exceed()
 
 		if self.doctype == "Purchase Invoice":
 			self.validate_purchase_receipt_if_update_stock()
@@ -210,6 +214,31 @@ class BuyingController(TransactionController):
 		if self.is_return and len(not_cancelled_asset):
 			frappe.throw(_("{} has submitted assets linked to it. You need to cancel the assets to create purchase return.".format(self.return_against)),
 				title=_("Not Allowed"))
+	
+	def validate_qty_not_exceed(self):
+		for each_item in self.get("items"):
+			if each_item.get("purchase_receipt") and each_item.get("purchase_receipt_item"):
+				purchase_receipt_item_doc = frappe.get_doc("Purchase Receipt Item", each_item.purchase_receipt_item)
+				if purchase_receipt_item_doc and (purchase_receipt_item_doc.stock_qty<each_item.stock_qty):
+					self.raise_qty_not_exceed_error(purchase_receipt_item_doc, each_item)
+			if each_item.get("purchase_order") and each_item.get("purchase_order_item"):
+				purchase_order_item_doc = frappe.get_doc("Purchase Order Item", each_item.get("purchase_order_item"))
+				if purchase_order_item_doc and (purchase_order_item_doc.stock_qty<each_item.stock_qty):
+					self.raise_qty_not_exceed_error(purchase_order_item_doc, each_item)
+	
+	def raise_qty_not_exceed_error(self, previous_doc_item, current_item_doc):
+		frappe.throw('The stock quantity <b>{current_item_stock_qty}</b> of the item "<b>{current_item_code}</b>"' \
+			' at row {current_item_idx} \
+			exceeds the quantity of the same item on {previous_doc_parent_link}, \
+			which is <b>{previous_doc_stock_qty}</b> at row {previous_doc_row_number}.'.
+		format(
+			current_item_stock_qty = current_item_doc.stock_qty,
+			current_item_code = current_item_doc.item_code,
+			current_item_idx = current_item_doc.idx,
+			previous_doc_parent_link = get_link_from_name(previous_doc_item.parenttype, previous_doc_item.parent),
+			previous_doc_stock_qty = previous_doc_item.stock_qty,
+			previous_doc_row_number = previous_doc_item.idx
+		))
 
 	def validate_transaction_type(self):
 		super(BuyingController, self).validate_transaction_type()
