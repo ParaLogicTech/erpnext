@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, cstr, getdate
 from frappe.model.utils import get_fetch_values
+from frappe.query_builder.functions import Count
 from erpnext.accounts.party import get_party_details
 from erpnext.stock.get_item_details import get_conversion_factor, get_default_supplier, get_default_warehouse
 from erpnext.buying.utils import validate_for_items
@@ -243,25 +244,45 @@ class BuyingController(TransactionController):
 		for each_pre_doc_qty_analyze in analyze_list:
 			if each_pre_doc_qty_analyze.get("previous_doc_doctype") == previous_item_document_type \
 				and (each_pre_doc_qty_analyze.get("previous_doc_docname") == previous_docname):
-				each_pre_doc_qty_analyze["current_doc_qty"] += current_item_row.stock_qty
+				qty_from_another_submitted_doc = self.get_submitted_doc_qty(previous_item_document_fieldname, previous_docname)
+				total_qty_validate = qty_from_another_submitted_doc+current_item_row.stock_qty
+				each_pre_doc_qty_analyze["current_doc_qty"] += total_qty_validate
 				break
 		else:
+			qty_from_another_submitted_doc = self.get_submitted_doc_qty(previous_item_document_fieldname, previous_docname)
+			total_qty_validate = qty_from_another_submitted_doc+current_item_row.stock_qty
 			analyze_list.append({
 				"previous_doc_doctype":previous_item_document_type, 
 				"previous_doc_docname":previous_docname,
-				"current_doc_qty":current_item_row.stock_qty
+				"current_doc_qty":total_qty_validate
 			})
+	
+	def get_submitted_doc_qty(self, previous_item_document_fieldname, previous_docname):
+		current_doc_item_document_doctype = frappe.qb.DocType(self.doctype+" Item")
+		result = (
+			frappe.qb.from_(current_doc_item_document_doctype)
+			.select(Count(current_doc_item_document_doctype.stock_qty).as_("total_stock_qty_submitted_doc"))
+			.where(
+				(current_doc_item_document_doctype.docstatus == 1) &
+				(getattr(current_doc_item_document_doctype, previous_item_document_fieldname) == previous_docname)
+			)
+			.run(as_dict=True)
+		)
+		total_stock_qty_submitted_doc = result[0].total_stock_qty_submitted_doc if result else 0
+		return total_stock_qty_submitted_doc
 	
 	def raise_qty_not_exceed_error(self, previous_doc_item, current_item_qty):
 		frappe.throw('The total stock quantity <b>{current_item_stock_qty}</b> of the item "<b>{current_item_code}</b>"' \
 		'	exceeds the quantity of the same item on {previous_doc_parent_link}, \
-			which is <b>{previous_doc_stock_qty}</b> at row {previous_doc_row_number}.'.
+			which is <b>{previous_doc_stock_qty}</b> at row {previous_doc_row_number}.' \
+			'<br/>Please note that the total stock quantity count can be derived from the sum of stock qty of another submitted {current_doctype}s'.
 		format(
 			current_item_stock_qty = current_item_qty,
 			current_item_code = previous_doc_item.item_code,
 			previous_doc_parent_link = get_link_from_name(previous_doc_item.parenttype, previous_doc_item.parent),
 			previous_doc_stock_qty = previous_doc_item.stock_qty,
-			previous_doc_row_number = previous_doc_item.idx
+			previous_doc_row_number = previous_doc_item.idx,
+			current_doctype=self.doctype
 		))
 
 	def validate_transaction_type(self):
