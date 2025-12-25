@@ -285,6 +285,7 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "user_id",
    "fieldname": "erpnext_user",
    "fieldtype": "Section Break",
    "label": "ERPNext User"
@@ -882,11 +883,12 @@
    "options": "User"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-user",
  "idx": 24,
  "image_field": "image",
  "links": [],
- "modified": "2025-03-05 14:15:07.351886",
+ "modified": "2025-12-24 17:31:22.431336",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
@@ -945,7 +947,8 @@
   }
  ],
  "quick_entry": 1,
- "search_fields": "employee_name",
+ "row_format": "Dynamic",
+ "search_fields": "employee_name,designation,branch",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

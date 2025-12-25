@@ -9,6 +9,7 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.utils import (
 	add_days, flt, cstr, cint, date_diff, get_link_to_form, get_url_to_form, getdate, today, get_datetime, now_datetime
 )
+import frappe.share
 from frappe.utils.nestedset import NestedSet
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from erpnext.hr.doctype.employee.employee import get_employee_from_user
@@ -93,6 +94,7 @@ class Task(NestedSet):
 		self.reschedule_dependent_tasks()
 		self.update_project()
 		self.unassign_todo()
+		self.share_with_assigned_to()
 		self.populate_depends_on()
 
 	def on_trash(self):
@@ -111,7 +113,14 @@ class Task(NestedSet):
 			})
 		else:
 			self._previous_values = frappe.db.get_value(self.doctype, self.name, fieldname=[
-				"status", "assigned_to", "project", "issue", "expected_time", "system_expected_time",
+				"status",
+				"assigned_to",
+				"project",
+				"issue",
+				"branch",
+				"company",
+				"expected_time",
+				"system_expected_time",
 			], as_dict=1)
 
 	def get_previous_value(self, fieldname):
@@ -261,6 +270,16 @@ class Task(NestedSet):
 			close_all_assignments(self.doctype, self.name)
 		if self.status == "Cancelled":
 			clear(self.doctype, self.name)
+
+	def share_with_assigned_to(self):
+		if not self.assigned_to:
+			return
+
+		assigned_to_user = frappe.db.get_value("Employee", self.assigned_to, "user_id")
+		if assigned_to_user:
+			frappe.share.add_docshare(
+				self.doctype, self.name, assigned_to_user, flags={"ignore_share_permission": True}
+			)
 
 	def update_total_expense_claim(self):
 		self.total_expense_claim = frappe.db.sql("""
@@ -1140,14 +1159,14 @@ def has_task_clocking_permission(assigned_to):
 
 
 def is_assigned_employee(assigned_to):
-	def generator():
-		employee = get_employee_from_user()
-		return employee and assigned_to == employee
-
 	if not assigned_to:
 		return False
-	else:
-		return frappe.local_cache("is_assigned_employee", assigned_to, generator)
+
+	employee = get_employee_from_user()
+	if not employee:
+		return False
+
+	return assigned_to == employee
 
 
 def check_employee_attendance(employee, date=None, throw=False):

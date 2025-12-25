@@ -64,6 +64,8 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 				}
 			};
 		});
+
+		this.frm.set_query("assigned_to", () => erpnext.queries.employee());
 	}
 
 	setup_buttons() {

@@ -20,9 +20,10 @@ def employee_query(doctype, txt, searchfield, start, page_len, filters):
 	searchfields = frappe.get_meta("Employee").get_search_fields()
 	searchfields = " or ".join([field + " like %(txt)s" for field in searchfields])
 
-	return frappe.db.sql("""select {fields} from `tabEmployee`
+	return frappe.db.sql("""
+		select {fields}
+		from `tabEmployee`
 		where status = 'Active'
-			and docstatus < 2
 			and ({scond})
 			{fcond} {mcond}
 		order by
@@ -30,9 +31,10 @@ def employee_query(doctype, txt, searchfield, start, page_len, filters):
 			if(locate(%(_txt)s, employee_name), locate(%(_txt)s, employee_name), 99999),
 			modified desc,
 			name, employee_name
-		limit %(start)s, %(page_len)s""".format(**{
+		limit %(start)s, %(page_len)s
+	""".format(**{
 			'fields': ", ".join(fields),
-			"scond": searchfields,
+			'scond': searchfields,
 			'key': searchfield,
 			'fcond': get_filters_cond(doctype, filters, conditions),
 			'mcond': get_match_cond(doctype)
@@ -60,16 +62,19 @@ def customer_query(doctype, txt, searchfield, start, page_len, filters):
 	searchfields = frappe.get_meta("Customer").get_search_fields()
 	searchfields = " or ".join([field + " like %(txt)s" for field in searchfields])
 
-	return frappe.db.sql("""select {fields} from `tabCustomer`
-		where docstatus < 2
-			and ({scond}) and disabled=0
+	return frappe.db.sql("""
+		select {fields}
+		from `tabCustomer`
+		where disabled = 0
+			and ({scond})
 			{fcond} {mcond}
 		order by
 			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
 			if(locate(%(_txt)s, customer_name), locate(%(_txt)s, customer_name), 99999),
 			modified desc,
 			name, customer_name
-		limit %(start)s, %(page_len)s""".format(**{
+		limit %(start)s, %(page_len)s
+	""".format(**{
 			"fields": ", ".join(fields),
 			"scond": searchfields,
 			"mcond": get_match_cond(doctype),
@@ -86,6 +91,7 @@ def customer_query(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def supplier_query(doctype, txt, searchfield, start, page_len, filters):
+	conditions = []
 	supp_master_name = frappe.defaults.get_user_default("supp_master_name")
 
 	if supp_master_name == "Supplier Name":
@@ -95,20 +101,27 @@ def supplier_query(doctype, txt, searchfield, start, page_len, filters):
 
 	fields = get_fields("Supplier", fields)
 
-	return frappe.db.sql("""select {field} from `tabSupplier`
-		where docstatus < 2
-			and ({key} like %(txt)s
-				or supplier_name like %(txt)s) and disabled=0
-			{mcond}
+	searchfields = frappe.get_meta("Supplier").get_search_fields()
+	searchfields = " or ".join([field + " like %(txt)s" for field in searchfields])
+
+	return frappe.db.sql("""
+		select {fields}
+		from `tabSupplier`
+		where disabled = 0
+			and ({scond})
+			{fcond} {mcond}
 		order by
 			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
 			if(locate(%(_txt)s, supplier_name), locate(%(_txt)s, supplier_name), 99999),
 			modified desc,
 			name, supplier_name
-		limit %(start)s, %(page_len)s """.format(**{
-			'field': ', '.join(fields),
+		limit %(start)s, %(page_len)s
+	""".format(**{
+			'fields': ', '.join(fields),
 			'key': searchfield,
-			'mcond':get_match_cond(doctype)
+			'scond': searchfields,
+			'mcond': get_match_cond(doctype),
+			'fcond': get_filters_cond(doctype, filters, conditions).replace('%', '%%'),
 		}), {
 			'txt': "%%%s%%" % txt,
 			'_txt': txt.replace("%", ""),
@@ -130,9 +143,8 @@ def tax_account_query(doctype, txt, searchfield, start, page_len, filters):
 		accounts = frappe.db.sql("""
 			SELECT name, parent_account
 			FROM `tabAccount`
-			WHERE `tabAccount`.docstatus!=2
+			WHERE is_group = 0
 				{account_type_condition}
-				AND is_group = 0
 				AND company = %(company)s
 				AND account_currency = %(currency)s
 				AND `{searchfield}` LIKE %(txt)s
@@ -266,19 +278,19 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 
 	default_conditions = "and {0}".format(" and ".join(default_conditions)) if default_conditions else ""
 
-	return frappe.db.sql("""select tabItem.name,
-		if(length(tabItem.item_name) > 50,
-			concat(substr(tabItem.item_name, 1, 50), "..."), item_name) as item_name,
-		tabItem.item_group, tabItem.brand
-		{columns}
+	return frappe.db.sql("""
+		select tabItem.name,
+			if(length(tabItem.item_name) > 50, concat(substr(tabItem.item_name, 1, 50), "..."), item_name) as item_name,
+			tabItem.item_group,
+			tabItem.brand
+			{columns}
 		from tabItem
-		where tabItem.docstatus < 2
-			{default_conditions}
-			and (
+		where (
 				{scond}
 				or tabItem.name IN (select parent from `tabItem Barcode` where barcode LIKE %(txt)s)
 				{description_cond}
 			)
+			{default_conditions}
 			{fcond}
 			{mcond}
 			{has_applicable_items_cond}
@@ -288,7 +300,8 @@ def item_query(doctype, txt, searchfield, start, page_len, filters, as_dict=Fals
 			if(locate(%(_txt)s, item_name), locate(%(_txt)s, item_name), 99999),
 			idx desc,
 			name, item_name
-		limit %(start)s, %(page_len)s """.format(
+		limit %(start)s, %(page_len)s
+	""".format(
 			columns=columns,
 			default_conditions=default_conditions,
 			scond=searchfields,
@@ -947,7 +960,6 @@ def get_expense_account(doctype, txt, searchfield, start, page_len, filters):
 		where (tabAccount.report_type = "Profit and Loss"
 				or tabAccount.account_type in ("Expense Account", "Fixed Asset", "Temporary", "Asset Received But Not Billed", "Capital Work in Progress"))
 			and tabAccount.is_group=0
-			and tabAccount.docstatus!=2
 			and tabAccount.{key} LIKE %(txt)s
 			{condition} {match_condition}"""
 		.format(condition=condition, key=searchfield,
