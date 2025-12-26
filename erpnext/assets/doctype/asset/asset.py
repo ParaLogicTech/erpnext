@@ -108,14 +108,6 @@ class Asset(AccountsController):
 
 		if self.is_existing_asset:
 			return
-
-		docname = self.purchase_receipt or self.purchase_invoice
-		if docname:
-			doctype = 'Purchase Receipt' if self.purchase_receipt else 'Purchase Invoice'
-			date = frappe.db.get_value(doctype, docname, 'posting_date')
-
-		if self.available_for_use_date and getdate(self.available_for_use_date) < getdate(self.purchase_date):
-			frappe.throw(_("Available-for-use Date should be after purchase date"))
 	
 	@frappe.whitelist()
 	def set_values_from_purchase_doc(self):
@@ -135,6 +127,9 @@ class Asset(AccountsController):
 			self.location = each_item.asset_location
 			self.purchase_vendor = purchase_document.supplier
 			self.purchase_vendor_name = purchase_document.supplier_name
+		
+		if self.available_for_use_date and getdate(self.available_for_use_date) < getdate(self.purchase_date):
+			frappe.throw(_("Available-for-use Date should be after purchase date"))
 
 	def cancel_auto_gen_movement(self):
 		movements = frappe.db.sql(
