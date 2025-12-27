@@ -75,20 +75,8 @@ def get_group_by_asset_category_data(filters):
 
 
 def get_asset_categories_for_grouped_by_category(filters):
-	condition = ""
-	if filters.get("asset_category"):
-		condition += " and a.asset_category = %(asset_category)s"
-	if filters.get("finance_book"):
-		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-
-	if filters.get("document_status"):
-		if filters.get("document_status") == "Submit":
-			document_status = 1
-		if filters.get("document_status") == "Draft":
-			document_status = 0
-		if filters.get("document_status") == "Cancel":
-			document_status = 2
-		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
+	
+	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -144,35 +132,14 @@ def get_asset_categories_for_grouped_by_category(filters):
 		where a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
 		group by a.asset_category
 	""",
-		{
-			"to_date": filters.to_date,
-			"from_date": filters.from_date,
-			"company": filters.company,
-			"asset_category": filters.get("asset_category"),
-			"finance_book": filters.get("finance_book"),
-		},
+		condition_values_dict,
 		as_dict=1,
 	)
 
 
 def get_assets_for_grouped_by_category(filters):
-	condition = ""
-	if filters.get("asset_category"):
-		condition = f" and a.asset_category = '{filters.get('asset_category')}'"
 	
-	finance_book_filter = ""
-	if filters.get("finance_book"):
-		finance_book_filter += " and ifnull(gle.finance_book, '')=%(finance_book)s"
-		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-
-	if filters.get("document_status"):
-		if filters.get("document_status") == "Submit":
-			document_status = 1
-		if filters.get("document_status") == "Draft":
-			document_status = 0
-		if filters.get("document_status") == "Cancel":
-			document_status = 2
-		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
+	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -237,26 +204,14 @@ def get_assets_for_grouped_by_category(filters):
 			group by a.asset_category) as results
 		group by results.asset_category
 		""",
-		{
-			"to_date": filters.to_date,
-			"from_date": filters.from_date,
-			"company": filters.company,
-			"finance_book": filters.get("finance_book", ""),
-		},
+		condition_values_dict,
 		as_dict=1,
 	)
 
 
 def get_asset_value_adjustment_map_by_category(filters):
-	condition = ""
-	if filters.get("document_status"):
-		if filters.get("document_status") == "Submit":
-			document_status = 1
-		if filters.get("document_status") == "Draft":
-			document_status = 0
-		if filters.get("document_status") == "Cancel":
-			document_status = 2
-		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
+	
+	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 
 	asset_value_adjustments = frappe.db.sql(
 		"""
@@ -294,7 +249,7 @@ def get_asset_value_adjustment_map_by_category(filters):
 			AND gle.is_opening = 'No' {condition}
 		GROUP BY a.asset_category
 	""".format(condition=condition),
-		{"from_date": filters.from_date, "to_date": filters.to_date, "company": filters.company},
+		condition_values_dict,
 		as_dict=1,
 	)
 
@@ -364,24 +319,12 @@ def get_group_by_asset_data(filters):
 
 
 def get_asset_details_for_grouped_by_category(filters):
-	condition = ""
-	if filters.get("asset"):
-		condition += " and a.name = %(asset)s"
-	if filters.get("finance_book"):
-		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-
-	if filters.get("document_status"):
-		if filters.get("document_status") == "Submit":
-			document_status = 1
-		if filters.get("document_status") == "Draft":
-			document_status = 0
-		if filters.get("document_status") == "Cancel":
-			document_status = 2
-		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
+	
+	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
-		SELECT a.name, a.asset_name,
+		SELECT a.name, a.asset_name, a.cost_center, a.asset_category,
 			   ifnull(sum(case when a.purchase_date < %(from_date)s then
 							   case when ifnull(a.disposal_date, 0) = 0 or a.disposal_date >= %(from_date)s then
 									a.gross_purchase_amount
@@ -433,34 +376,14 @@ def get_asset_details_for_grouped_by_category(filters):
 		where a.company=%(company)s and a.purchase_date <= %(to_date)s {condition}
 		group by a.name
 	""",
-		{
-			"to_date": filters.to_date,
-			"from_date": filters.from_date,
-			"company": filters.company,
-			"asset": filters.get("asset"),
-			"finance_book": filters.get("finance_book"),
-		},
+		condition_values_dict,
 		as_dict=1,
 	)
 
 
 def get_assets_for_grouped_by_asset(filters):
-	condition = ""
-	if filters.get("asset"):
-		condition = f" and a.name = '{filters.get('asset')}'"
-	finance_book_filter = ""
-	if filters.get("finance_book"):
-		finance_book_filter += " and ifnull(gle.finance_book, '')=%(finance_book)s"
-		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
-
-	if filters.get("document_status"):
-		if filters.get("document_status") == "Submit":
-			document_status = 1
-		if filters.get("document_status") == "Draft":
-			document_status = 0
-		if filters.get("document_status") == "Cancel":
-			document_status = 2
-		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
+	
+	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -525,26 +448,14 @@ def get_assets_for_grouped_by_asset(filters):
 			group by a.name) as results
 		group by results.name
 		""",
-		{
-			"to_date": filters.to_date,
-			"from_date": filters.from_date,
-			"company": filters.company,
-			"finance_book": filters.get("finance_book", ""),
-		},
+		condition_values_dict,
 		as_dict=1,
 	)
 
 
 def get_asset_value_adjustment_map(filters):
-	condition = ""
-	if filters.get("document_status"):
-		if filters.get("document_status") == "Submit":
-			document_status = 1
-		if filters.get("document_status") == "Draft":
-			document_status = 0
-		if filters.get("document_status") == "Cancel":
-			document_status = 2
-		condition += "and a.docstatus = {document_status}".format(document_status=document_status)
+	
+	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 
 	asset_with_value_adjustments = frappe.db.sql(
 		"""
@@ -582,7 +493,7 @@ def get_asset_value_adjustment_map(filters):
 			AND gle.is_opening = 'No' {condition}
 		GROUP BY a.name
 	""".format(condition=condition),
-		{"from_date": filters.from_date, "to_date": filters.to_date, "company": filters.company},
+		condition_values_dict,
 		as_dict=1,
 	)
 
@@ -596,6 +507,35 @@ def get_asset_value_adjustment_map(filters):
 
 	return asset_value_adjustment_map
 
+def get_conditions(filters):
+	condition_values_dict = {
+			"to_date": filters.to_date,
+			"from_date": filters.from_date,
+			"company": filters.company,
+			"finance_book": filters.get("finance_book"),
+	}
+	condition = ""
+	if filters.get("asset_category"):
+		condition += " and a.asset_category in %(asset_category)s"
+		condition_values_dict["asset_category"] = tuple(filters.get("asset_category"))
+	
+	finance_book_filter = ""
+	if filters.get("finance_book"):
+		finance_book_filter += " and ifnull(gle.finance_book, '')=%(finance_book)s"
+		condition += " and exists (select 1 from `tabAsset Depreciation Schedule` ads where ads.asset = a.name and ads.finance_book = %(finance_book)s)"
+
+	if filters.get("document_status"):
+		if filters.get("document_status") == "Submit":
+			document_status = 1
+		if filters.get("document_status") == "Draft":
+			document_status = 0
+		if filters.get("document_status") == "Cancel":
+			document_status = 2
+		condition += " and a.docstatus = {document_status}".format(document_status=document_status)
+	
+	if filters.get("cost_center"):
+		condition += " and a.cost_center = '{cost_center}'".format(cost_center=filters.get("cost_center"))
+	return condition_values_dict, condition, finance_book_filter
 
 def get_columns(filters):
 	columns = []
@@ -625,6 +565,24 @@ def get_columns(filters):
 				"label": _("Asset Name"),
 				"fieldname": "asset_name",
 				"fieldtype": "Data",
+				"width": 140,
+			}
+		)
+		columns.append(
+			{
+				"label": _("Asset Categroy"),
+				"fieldname": "asset_category",
+				"fieldtype": "Link",
+				"options":"Asset Category",
+				"width": 140,
+			}
+		)
+		columns.append(
+			{
+				"label": _("Cost Center"),
+				"fieldname": "cost_center",
+				"fieldtype": "Link",
+				"options":"Cost Center",
 				"width": 140,
 			}
 		)
