@@ -26,6 +26,15 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			reqd: 1,
 		},
 		{
+			fieldname: "asset_category_group",
+			label: __("Asset Category Group"),
+			fieldtype: "MultiSelectList",
+			options:"Asset Category Group",
+			get_data: function (txt) {
+				return frappe.db.get_link_options("Asset Category Group", txt);
+			}
+		},
+		{
 			fieldname: "cost_center",
 			label: __("Cost Center"),
 			fieldtype: "Link",
@@ -44,8 +53,8 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			fieldname: "group_by",
 			label: __("Group By"),
 			fieldtype: "Select",
-			options: ["Asset Category", "Asset"],
-			default: "Asset Category",
+			options: ["Asset Category Group", "Asset Category", "Asset"],
+			default: "Asset Category Group"
 		},
 		{
 			fieldname: "asset",
@@ -61,7 +70,7 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			options: "Asset Category",
 			get_data: function (txt) {
 				return frappe.db.get_link_options("Asset Category", txt);
-			},
+			}
 		},
 		{
 			fieldname: "finance_book",

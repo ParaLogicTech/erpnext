@@ -9,7 +9,6 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.utils import (
 	add_days, flt, cstr, cint, date_diff, get_link_to_form, get_url_to_form, getdate, today, get_datetime, now_datetime
 )
-import frappe.share
 from frappe.utils.nestedset import NestedSet
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from erpnext.hr.doctype.employee.employee import get_employee_from_user
@@ -19,7 +18,6 @@ from erpnext.controllers.checklist_editor import (
 	validate_mandatory_checklist,
 	set_updated_checklist,
 )
-from erpnext.hr.doctype.holiday_list.holiday_list import adjust_date_for_holidays, get_default_holiday_list
 
 import json
 
@@ -80,7 +78,6 @@ class Task(NestedSet):
 	def validate_after_status(self):
 		self.validate_cant_change()
 		self.validate_project_status()
-		self.validate_expected_time()
 		self.set_time_and_costing()
 		self.validate_progress()
 		self.validate_status_depedency()
@@ -96,7 +93,6 @@ class Task(NestedSet):
 		self.reschedule_dependent_tasks()
 		self.update_project()
 		self.unassign_todo()
-		self.share_with_assigned_to()
 		self.populate_depends_on()
 
 	def on_trash(self):
@@ -115,16 +111,7 @@ class Task(NestedSet):
 			})
 		else:
 			self._previous_values = frappe.db.get_value(self.doctype, self.name, fieldname=[
-				"status",
-				"assigned_to",
-				"project",
-				"issue",
-				"branch",
-				"company",
-				"expected_time",
-				"system_expected_time",
-				"exp_start_date",
-				"exp_end_date",
+				"status", "assigned_to", "project", "issue", "expected_time", "system_expected_time",
 			], as_dict=1)
 
 	def get_previous_value(self, fieldname):
@@ -142,22 +129,12 @@ class Task(NestedSet):
 			return cstr(self.get(fieldname)) != cstr(self._previous_values.get(fieldname))
 
 	def set_missing_values(self):
-		self.set_project_details()
 		self.set_applies_to_details()
-		self.set_assigned_to_details()
 
-	def set_project_details(self):
-		if not self.project:
-			return
-
-		project_details = frappe.db.get_value("Project", self.project, [
-			"company", "branch", "cost_center", "applies_to_serial_no",
-		], as_dict=True) or frappe._dict()
-
-		self.company = project_details.company
-		self.branch = project_details.branch
-		self.cost_center = project_details.cost_center
-		self.applies_to_serial_no = project_details.applies_to_serial_no
+		if self.assigned_to:
+			self.assigned_to_name = frappe.get_cached_value("Employee", self.assigned_to, "employee_name")
+		else:
+			self.assigned_to_name = None
 
 	def set_applies_to_details(self):
 		args = self.as_dict()
@@ -166,9 +143,6 @@ class Task(NestedSet):
 		for k, v in applies_to_details.items():
 			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
 				self.set(k, v)
-
-	def set_assigned_to_details(self):
-		self.assigned_to_name = frappe.get_cached_value("Employee", self.assigned_to, "employee_name")
 
 	def validate_cant_change(self):
 		if self.is_new():
@@ -190,7 +164,7 @@ class Task(NestedSet):
 				frappe.throw(_("Cannot change Issue when status in {0}").format(frappe.bold(self.status)))
 
 		if self.value_changed("system_expected_time"):
-			self.system_expected_time = cint(self.get_previous_value("system_expected_time"))
+			self.system_expected_time = cint(self._previous_values.get("system_expected_time"))
 
 		if (
 			self.is_expected_time_restricted()
@@ -233,58 +207,11 @@ class Task(NestedSet):
 			))
 
 	def validate_dates(self):
-		self.set_expected_dates(expected_days=self.flags.expected_days)
-
 		if self.exp_start_date and self.exp_end_date and getdate(self.exp_start_date) > getdate(self.exp_end_date):
-			frappe.throw(_("{0} can not be before {1}").format(
-				frappe.bold(_("Expected End Date")),
-				frappe.bold(_("Expected Start Date")),
+			frappe.throw(_("{0} can not be greater than {1}").format(
+				frappe.bold("Expected Start Date"),
+				frappe.bold("Expected End Date")
 			))
-
-		if self.exp_start_date and self.project and self.value_changed("exp_start_date"):
-			project_date = frappe.db.get_value("Project", self.project, "project_date", cache=True)
-			if project_date and getdate(self.exp_start_date) < getdate(project_date):
-				frappe.throw(_("Expected Start Date cannot be before {0} {1} {2}").format(
-					self.project,
-					frappe.get_meta("Project").get_label("project_date"),
-					frappe.bold(frappe.utils.format_date(project_date))
-				))
-
-	def set_expected_dates(self, expected_days=1):
-		expected_days = max(1, cint(expected_days))
-
-		if not self.exp_start_date:
-			self.exp_start_date = getdate(self.creation)
-			if self.exp_end_date and getdate(self.exp_start_date) > getdate(self.exp_end_date):
-				self.exp_end_date = getdate(self.exp_start_date)
-
-		if not self.exp_end_date:
-			self.exp_end_date = add_days(self.exp_start_date, expected_days - 1)
-
-			if getdate(self.exp_end_date) > getdate(self.exp_start_date):
-				self.exp_end_date = self.adjust_date_for_holidays(self.exp_end_date)
-
-	def adjust_date_for_holidays(self, date):
-		holiday_list = self.get_holiday_list()
-		return adjust_date_for_holidays(date, holiday_list)
-
-	def get_holiday_list(self):
-		return get_default_holiday_list(self.company)
-
-	def validate_expected_time(self):
-		expected_time_label = self.meta.get_label("expected_time")
-
-		if flt(self.expected_time) < 0:
-			frappe.throw(_("{0} cannot be negative").format(expected_time_label))
-
-		expected_time_mandatory = cint(frappe.get_cached_value("Projects Settings", None, "expected_time_mandatory"))
-		if (
-			expected_time_mandatory
-			and not flt(self.expected_time)
-			and not self.flags.ignore_expected_time_mandatory
-			and (self.status in ("Open", "Working") or self.value_changed("expected_time"))
-		):
-			frappe.throw(_("{0} is mandatory").format(expected_time_label))
 
 	def validate_progress(self):
 		if flt(self.progress) > 100:
@@ -334,16 +261,6 @@ class Task(NestedSet):
 			close_all_assignments(self.doctype, self.name)
 		if self.status == "Cancelled":
 			clear(self.doctype, self.name)
-
-	def share_with_assigned_to(self):
-		if not self.assigned_to:
-			return
-
-		assigned_to_user = frappe.db.get_value("Employee", self.assigned_to, "user_id")
-		if assigned_to_user:
-			frappe.share.add_docshare(
-				self.doctype, self.name, assigned_to_user, flags={"ignore_share_permission": True}
-			)
 
 	def update_total_expense_claim(self):
 		self.total_expense_claim = frappe.db.sql("""
@@ -617,7 +534,7 @@ def add_multiple_tasks(data, parent):
 
 
 @frappe.whitelist()
-def create_service_template_tasks(project, exp_start_date=None):
+def create_service_template_tasks(project):
 	from erpnext.projects.doctype.service_template.service_template import get_service_template_tasks
 
 	frappe.has_permission("Task", "create", throw=True)
@@ -653,7 +570,6 @@ def create_service_template_tasks(project, exp_start_date=None):
 			task_doc.project = project_doc.name
 			task_doc.service_template = service_template_row.service_template
 			task_doc.service_template_detail = service_template_row.name
-			task_doc.exp_start_date = getdate(exp_start_date) if exp_start_date else None
 
 			if template_task_details.determine_time:
 				determined_time = determine_time_from_service_item(project_doc, template_doc,
@@ -664,8 +580,6 @@ def create_service_template_tasks(project, exp_start_date=None):
 			if task_doc.expected_time:
 				task_doc.system_expected_time = 1
 
-			task_doc.flags.expected_days = cint(template_task_details.expected_days)
-			task_doc.flags.ignore_expected_time_mandatory = True
 			task_doc.save()
 			tasks_created.append(task_doc)
 
@@ -762,16 +676,7 @@ def determine_time_from_service_item(project_doc, template_doc, service_template
 
 
 @frappe.whitelist()
-def create_project_task(
-	subject,
-	project=None,
-	task_type=None,
-	description=None,
-	expected_time=None,
-	exp_start_date=None,
-	expected_days=None,
-	additional_values=None,
-):
+def create_project_task(subject, project=None, task_type=None, description=None, expected_time=None, additional_values=None):
 	frappe.has_permission("Task", "create", throw=True)
 
 	if not subject:
@@ -783,8 +688,6 @@ def create_project_task(
 		task_type=task_type,
 		description=description,
 		expected_time=expected_time,
-		exp_start_date=exp_start_date,
-		expected_days=expected_days,
 		additional_values=additional_values,
 	)
 
@@ -797,16 +700,7 @@ def create_project_task(
 
 
 @frappe.whitelist()
-def edit_task(
-	task,
-	subject,
-	task_type=None,
-	description=None,
-	expected_time=None,
-	exp_start_date=None,
-	exp_end_date=None,
-	additional_values=None,
-):
+def edit_task(task, subject, task_type=None, description=None, expected_time=None, additional_values=None):
 	task_doc = frappe.get_doc("Task", task)
 	task_doc.check_permission("write")
 
@@ -826,14 +720,8 @@ def edit_task(
 	task_doc.subject = subject
 	task_doc.task_type = task_type
 	task_doc.description = description
-
 	if flt(expected_time):
 		task_doc.expected_time = flt(expected_time)
-
-	if exp_start_date:
-		task_doc.exp_start_date = getdate(exp_start_date)
-	if exp_end_date:
-		task_doc.exp_start_date = getdate(exp_end_date)
 
 	task_doc.save()
 
@@ -842,16 +730,7 @@ def edit_task(
 
 	return {"message": message}
 
-def get_new_task(
-	subject,
-	project=None,
-	task_type=None,
-	description=None,
-	expected_time=None,
-	exp_start_date=None,
-	expected_days=None,
-	additional_values=None,
-):
+def get_new_task(subject, project=None, task_type=None, description=None, expected_time=None, additional_values=None):
 	task_doc = frappe.new_doc("Task")
 
 	set_additional_task_values(task_doc, additional_values)
@@ -861,11 +740,6 @@ def get_new_task(
 	task_doc.task_type = task_type
 	task_doc.description = description
 	task_doc.expected_time = flt(expected_time)
-
-	if exp_start_date:
-		task_doc.exp_start_date = exp_start_date
-
-	task_doc.flags.expected_days = cint(expected_days)
 
 	return task_doc
 
@@ -1055,12 +929,6 @@ def split_task(task, expected_time=None):
 	new_task = frappe.new_doc("Task")
 	for f in copy_fields:
 		new_task.set(f, ref_task.get(f))
-
-	if getdate(new_task.exp_start_date) < getdate():
-		new_task.exp_start_date = getdate()
-
-	if getdate(new_task.exp_end_date) < getdate(new_task.exp_start_date):
-		new_task.exp_end_date = new_task.exp_start_date
 
 	new_task.save()
 
@@ -1272,14 +1140,14 @@ def has_task_clocking_permission(assigned_to):
 
 
 def is_assigned_employee(assigned_to):
+	def generator():
+		employee = get_employee_from_user()
+		return employee and assigned_to == employee
+
 	if not assigned_to:
 		return False
-
-	employee = get_employee_from_user()
-	if not employee:
-		return False
-
-	return assigned_to == employee
+	else:
+		return frappe.local_cache("is_assigned_employee", assigned_to, generator)
 
 
 def check_employee_attendance(employee, date=None, throw=False):

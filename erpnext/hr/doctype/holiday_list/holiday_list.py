@@ -3,7 +3,7 @@
 
 import frappe
 import json
-from frappe.utils import cint, getdate, formatdate, add_days
+from frappe.utils import cint, getdate, formatdate, today
 from frappe import throw, _
 from frappe.model.document import Document
 
@@ -118,24 +118,6 @@ def get_holiday_dates_between(holiday_list, start_date, end_date):
 			dates.append(holiday_date)
 
 	return sorted(dates)
-
-
-def adjust_date_for_holidays(date, holiday_list, backward=False):
-	if not date:
-		return None
-
-	date = getdate(date)
-	if not holiday_list:
-		return date
-
-	holiday_list_doc = frappe.get_cached_doc("Holiday List", holiday_list)
-	holiday_dates = {getdate(d.holiday_date) for d in holiday_list_doc.holidays}
-
-	days = -1 if backward else 1
-	while date in holiday_dates:
-		date = add_days(date, days)
-
-	return date
 
 
 def get_default_holiday_list(company):

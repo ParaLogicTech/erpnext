@@ -35,13 +35,12 @@
   "validate_sales_order_mandatory",
   "validate_service_template_sales_order",
   "validate_po_for_billing_company_customer",
-  "validate_gross_margin",
-  "validate_labour_margin",
   "column_break_mttl",
+  "require_attendance_for_task_start",
   "restrict_expected_time",
   "ignore_employee_time_overlap",
-  "expected_time_mandatory",
-  "require_attendance_for_task_start",
+  "validate_gross_margin",
+  "validate_labour_margin",
   "column_break_xs7b",
   "margin_validation_override_role",
   "restrict_expected_time_override_role"
@@ -262,17 +261,11 @@
    "fieldtype": "Link",
    "label": "Role Allowed to Override Expected Time Change Validation",
    "options": "Role"
-  },
-  {
-   "default": "0",
-   "fieldname": "expected_time_mandatory",
-   "fieldtype": "Check",
-   "label": "Expected Time Mandatory in Tasks"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-12-28 12:28:46.351599",
+ "modified": "2025-12-22 13:09:00.311839",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",

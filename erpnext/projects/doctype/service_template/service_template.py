@@ -12,7 +12,6 @@ import json
 class ServiceTemplate(Document):
 	def validate(self):
 		self.validate_items()
-		self.validate_tasks()
 		self.validate_duplicate_applicable_item_groups()
 		self.validate_due_after()
 		self.validate_service_warranty()
@@ -34,11 +33,6 @@ class ServiceTemplate(Document):
 				is_stock_item = frappe.get_cached_value("Item", d.applicable_item_code, "is_stock_item")
 				if not is_stock_item:
 					frappe.throw(_("Row #{0}: Item {1} is not a Stock Item").format(d.idx, d.applicable_item_code))
-
-	def validate_tasks(self):
-		for d in self.tasks:
-			if not cint(d.expected_days):
-				d.expected_days = 1
 
 	def validate_duplicate_applicable_item_groups(self):
 		visited = set()
@@ -246,7 +240,6 @@ def get_service_template_tasks(
 		task_details.description = template_task_row.description
 		task_details.task_type = template_task_row.task_type
 		task_details.expected_time = template_task_row.expected_time
-		task_details.expected_days = template_task_row.expected_days
 		task_details.service_template = service_template_detail.service_template
 		task_details.service_template_detail = service_template_detail.name
 		task_details.determine_time = template_task_row.determine_time

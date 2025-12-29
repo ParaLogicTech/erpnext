@@ -17,12 +17,12 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import g
 
 class Asset(AccountsController):
 	def validate(self):
+		self.set_asset_category_values()
 		self.validate_asset_values()
 		self.validate_asset_and_reference()
 		self.validate_item()
 		self.set_missing_values()
 		self.set_values_from_purchase_doc()
-		self.validate_asset_date()
 		self.prepare_depreciation_data()
 		if self.get("schedules"):
 			self.validate_expected_value_after_useful_life()
@@ -76,10 +76,17 @@ class Asset(AccountsController):
 	def validate_in_use_date(self):
 		if not self.available_for_use_date:
 			frappe.throw(_("Available for use date is required"))
+	
+	def set_asset_category_values(self):
+		self.asset_category = frappe.get_cached_value("Item", self.item_code, "asset_category")
+		self.asset_category_group = frappe.get_cached_value("Asset Category", self.asset_category, "asset_category_group")
 
 	def set_missing_values(self, for_validate=False):
 		if not self.asset_category:
 			self.asset_category = frappe.get_cached_value("Item", self.item_code, "asset_category")
+		
+		if not self.asset_category_group:
+			self.asset_category_group = frappe.get_cached_value("Asset Category", self.asset_category, "asset_category_group")
 
 		if self.item_code and not self.get('finance_books'):
 			finance_books = get_item_details(self.item_code, self.asset_category)
@@ -109,8 +116,12 @@ class Asset(AccountsController):
 
 		if self.is_existing_asset:
 			return
-	
-	def validate_asset_date(self):
+
+		docname = self.purchase_receipt or self.purchase_invoice
+		if docname:
+			doctype = 'Purchase Receipt' if self.purchase_receipt else 'Purchase Invoice'
+			date = frappe.db.get_value(doctype, docname, 'posting_date')
+
 		if self.available_for_use_date and getdate(self.available_for_use_date) < getdate(self.purchase_date):
 			frappe.throw(_("Available-for-use Date should be after purchase date"))
 	

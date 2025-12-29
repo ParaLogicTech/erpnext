@@ -510,17 +510,11 @@ def has_user_permission_for_employee(user_name, employee_name):
 
 
 def get_employee_from_user(user=None):
-	def generator():
-		employee = frappe.db.get_value('Employee', filters={"user_id": user, "status": "Active"})
-		return employee
-
 	if not user:
 		user = frappe.session.user
 
-	if user == "Guest":
-		return None
-
-	return frappe.local_cache("get_employee_from_user", user, generator)
+	employee = frappe.db.get_value('Employee', filters={"user_id": user, "status": "Active"})
+	return employee
 
 
 def send_employee_birthday_notification():
