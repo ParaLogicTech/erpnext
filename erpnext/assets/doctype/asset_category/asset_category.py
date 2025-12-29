@@ -12,6 +12,7 @@ class AssetCategory(Document):
 		self.validate_finance_books()
 		self.validate_account_types()
 		self.validate_account_currency()
+		self.flags.group_changed = not self.is_new() and self.asset_category_group != self.db_get("asset_category_group")
 
 	def validate_finance_books(self):
 		for d in self.finance_books:
@@ -58,21 +59,20 @@ class AssetCategory(Document):
 							.format(d.idx, frappe.unscrub(key_to_match), frappe.bold(selected_account), frappe.bold(expected_key_type)),
 							title=_("Invalid Account"))
 	
-	@frappe.whitelist()
-	def update_after_save(self):
-		frappe.db.sql("""
-			UPDATE `tabAsset` a
-			INNER JOIN `tabAsset Category` ac
-				ON ac.name = a.asset_category
-			SET a.asset_category_group = '{asset_category_group}'
-			WHERE
-				a.asset_category = '{asset_category}'
-		""".format(
-			asset_category_group=self.asset_category_group,
-			asset_category=self.name
-		))
-		frappe.db.commit()
-		frappe.reload_doctype("Asset")
+	def on_update(self):
+		if self.flags.group_changed:
+			frappe.db.sql(
+				"""
+					update `tabAsset` a
+					inner join `tabAsset Category` ac
+						on ac.name = a.asset_category
+					set a.asset_category_group = %s
+					where a.asset_category = %s
+				""",
+				(self.asset_category_group, self.name)
+			)
+			frappe.db.commit()
+			frappe.reload_doctype("Asset")
 
 
 @frappe.whitelist()
