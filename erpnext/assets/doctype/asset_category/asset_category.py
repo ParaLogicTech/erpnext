@@ -57,6 +57,22 @@ class AssetCategory(Document):
 						frappe.throw(_("Row #{}: {} of {} should be {}. Please modify the account or select a different account.")
 							.format(d.idx, frappe.unscrub(key_to_match), frappe.bold(selected_account), frappe.bold(expected_key_type)),
 							title=_("Invalid Account"))
+	
+	@frappe.whitelist()
+	def update_after_save(self):
+		frappe.db.sql("""
+			UPDATE `tabAsset` a
+			INNER JOIN `tabAsset Category` ac
+				ON ac.name = a.asset_category
+			SET a.asset_category_group = '{asset_category_group}'
+			WHERE
+				a.asset_category = '{asset_category}'
+		""".format(
+			asset_category_group=self.asset_category_group,
+			asset_category=self.name
+		))
+		frappe.db.commit()
+		frappe.reload_doctype("Asset")
 
 
 @frappe.whitelist()

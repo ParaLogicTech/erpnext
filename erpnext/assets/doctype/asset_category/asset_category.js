@@ -51,5 +51,17 @@ frappe.ui.form.on('Asset Category', {
 			};
 		});
 
+	},
+	after_save: function(frm) {
+		return frm.call({
+			doc: frm.doc,
+			method: "update_after_save",
+			freeze: 1,
+			callback: (r) => {
+				if (!r.exc) {
+					frm.refresh()
+				}
+			}
+		});
 	}
 });
