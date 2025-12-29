@@ -2,9 +2,6 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Asset Category', {
-	setup: function(frm) {
-		frm.set_query('asset_category_group', {'name': ['!=', __("All Asset Category Group")]});
-	},
 	onload: function(frm) {
 		frm.add_fetch('company_name', 'accumulated_depreciation_account', 'accumulated_depreciation_account');
 		frm.add_fetch('company_name', 'depreciation_expense_account', 'accumulated_depreciation_account');
