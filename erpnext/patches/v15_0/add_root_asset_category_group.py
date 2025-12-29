@@ -5,7 +5,7 @@ def execute():
         asset_category_group_root_record = [{'doctype': 'Asset Category Group', 
                 'asset_category_group_name': frappe._('All Asset Categories'), 
                 'is_group': 1, 'name': frappe._('All Asset Categories'), 
-                'parent_asset_category_group': '', 'lft':1}]
+                'parent_asset_category_group': '', 'lft':1,'rgt':1}]
         from frappe.desk.page.setup_wizard.setup_wizard import make_records
         make_records(asset_category_group_root_record)
         frappe.db.commit()
