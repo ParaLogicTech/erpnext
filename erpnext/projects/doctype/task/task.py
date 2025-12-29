@@ -1347,3 +1347,4 @@ def get_timelog_totals(timelogs):
 
 def on_doctype_update():
 	frappe.db.add_index("Task", ["lft", "rgt"])
+	
