@@ -57,21 +57,13 @@ class MaintenanceSchedule(TransactionBase):
 			d.idx = index + 1
 
 	def adjust_scheduled_date_for_holiday(self, scheduled_date):
-		from erpnext.hr.doctype.holiday_list.holiday_list import get_default_holiday_list
+		from erpnext.hr.doctype.holiday_list.holiday_list import get_default_holiday_list, adjust_date_for_holidays
 
-		holiday_list_name = frappe.get_cached_value("Projects Settings", None, "maintenance_schedule_holiday_list")
-		if not holiday_list_name:
-			holiday_list_name = get_default_holiday_list(self.company)
+		holiday_list = frappe.get_cached_value("Projects Settings", None, "maintenance_schedule_holiday_list")
+		if not holiday_list:
+			holiday_list = get_default_holiday_list(self.company)
 
-		if holiday_list_name:
-			holiday_list_doc = frappe.get_cached_doc("Holiday List", holiday_list_name)
-			holiday_dates = [getdate(d.holiday_date) for d in holiday_list_doc.holidays]
-			if holiday_dates:
-				scheduled_date = getdate(scheduled_date)
-				while scheduled_date in holiday_dates:
-					scheduled_date = add_days(scheduled_date, 1)
-
-		return scheduled_date
+		return adjust_date_for_holidays(scheduled_date, holiday_list)
 
 	def send_maintenance_schedule_reminder_notification(self, row_name):
 		msd_doctype = "Maintenance Schedule Detail"
