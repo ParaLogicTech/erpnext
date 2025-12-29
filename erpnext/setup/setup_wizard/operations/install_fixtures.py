@@ -126,6 +126,9 @@ def install(country=None):
 		{'doctype': 'Supplier Group', 'supplier_group_name': _('Pharmaceutical'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
 		{'doctype': 'Supplier Group', 'supplier_group_name': _('Distributor'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
 
+		# asset category group
+		{'doctype': 'Asset Category Group', 'asset_category_group_name': _('All Asset Categories'), 'is_group': 1, 'name': _('All Asset Categories'), 'parent_asset_category_group': '', 'lft':1, 'rgt':1},
+
 		# Mode of Payment
 		{'doctype': 'Mode of Payment',
 			'mode_of_payment': 'Check' if country=="United States" else _('Cheque'),
