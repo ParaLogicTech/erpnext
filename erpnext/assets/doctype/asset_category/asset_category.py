@@ -71,8 +71,6 @@ class AssetCategory(Document):
 				""",
 				(self.asset_category_group, self.name)
 			)
-			frappe.db.commit()
-			frappe.reload_doctype("Asset")
 
 
 @frappe.whitelist()
