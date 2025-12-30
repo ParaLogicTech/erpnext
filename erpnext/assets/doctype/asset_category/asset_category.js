@@ -2,6 +2,9 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Asset Category', {
+	refresh: function(frm) {
+		frm.trigger("get_asset_category_group");
+	},
 	onload: function(frm) {
 		frm.add_fetch('company_name', 'accumulated_depreciation_account', 'accumulated_depreciation_account');
 		frm.add_fetch('company_name', 'depreciation_expense_account', 'accumulated_depreciation_account');
@@ -50,6 +53,23 @@ frappe.ui.form.on('Asset Category', {
 				}
 			};
 		});
+		frm.trigger("get_asset_category_group");
 
+	},
+	get_asset_category_group: function(frm) {
+		frappe.call({
+			method: 'erpnext.controllers.accounts_controller.get_asset_category_group',
+			freeze: true,
+			callback: function(r) {
+				if(r.message) {
+					r.message.unshift("")
+					frm.set_df_property('asset_category_group', 'options', r.message);
+				}
+				else {
+					frm.set_df_property('asset_category_group', 'options', [""]);
+				}
+				frm.refresh_field('asset_category_group');
+			}
+		});
 	}
 });
