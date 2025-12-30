@@ -1097,6 +1097,20 @@ def validate_and_delete_children(parent, data):
 		d.cancel()
 		d.delete(ignore_permissions=True)
 
+def get_asset_category_group():
+	asset_group_list = frappe.db.sql("""
+		select 
+			tagr.account_group
+		from 
+			`tabAccount Group Row` tagr 
+		join 
+			`tabAccount Group` tag 
+		on 
+			tagr.parent = tag.name 
+		where tag.is_fixed_asset_root = 1 and tagr.row_type = "Account Group";
+	""", as_dict=True, pluck="account_group")
+	return asset_group_list
+
 @frappe.whitelist()
 def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, child_docname="items"):
 	def check_doc_permissions(doc, perm_type='create'):
