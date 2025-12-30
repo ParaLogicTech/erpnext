@@ -67,14 +67,15 @@
   },
   {
    "fieldname": "asset_category_group",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Asset Category Group",
-   "link_filters": "[]"
+   "link_filters": "[]",
+   "options": "Account Group"
   }
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2025-12-30 17:06:15.803533",
+ "modified": "2025-12-30 18:12:50.994416",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Asset Category",
