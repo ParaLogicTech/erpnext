@@ -833,7 +833,7 @@ def edit_task(
 	if exp_start_date:
 		task_doc.exp_start_date = getdate(exp_start_date)
 	if exp_end_date:
-		task_doc.exp_start_date = getdate(exp_end_date)
+		task_doc.exp_end_date = getdate(exp_end_date)
 
 	task_doc.save()
 
