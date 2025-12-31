@@ -12,7 +12,6 @@ frappe.ui.form.on('Employee Skill Map', {
 				designation.skills.forEach(designation_skill => {
 					let row = frappe.model.add_child(frm.doc, 'Employee Skill', 'employee_skills');
 					row.skill = designation_skill.skill;
-					row.proficiency = 1;
 				});
 				refresh_field('employee_skills');
 			});
