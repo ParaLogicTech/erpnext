@@ -12,6 +12,5 @@ def execute():
             ON ac.name = a.asset_category
         SET a.asset_category_group = ac.asset_category_group
         WHERE
-            (((a.asset_category IS NOT NULL) AND (a.asset_category != '')) AND 
-                  ((ac.asset_category_group IS NOT NULL) AND (ac.asset_category_group != ''))
+            ((a.asset_category IS NOT NULL) AND (ac.asset_category_group IS NOT NULL));
     """)
