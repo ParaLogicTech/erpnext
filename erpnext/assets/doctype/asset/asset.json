@@ -13,6 +13,7 @@
   "item_code",
   "item_name",
   "asset_category",
+  "asset_category_group",
   "asset_owner",
   "asset_owner_company",
   "supplier",
@@ -476,6 +477,16 @@
    "fieldtype": "Data",
    "label": "Purchase Vendor Name",
    "read_only": 1
+  },
+  {
+   "fetch_from": "asset_category.asset_category_group",
+   "fieldname": "asset_category_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Asset Category Group",
+   "options": "Account Group",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -483,10 +494,11 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-18 16:49:59.367402",
+ "modified": "2025-12-30 18:44:13.378495",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Asset",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {

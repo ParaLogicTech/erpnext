@@ -5,28 +5,25 @@
 import frappe, erpnext, math, json
 from frappe import _
 from six import string_types
-from frappe.utils import flt, add_months, cint, nowdate, getdate, today, date_diff, month_diff, add_days, get_last_day, get_datetime
-from frappe.model.document import Document
+from frappe.utils import flt, add_months, cint, nowdate, getdate, today, date_diff, month_diff, add_days, get_datetime
 from erpnext.assets.doctype.asset_category.asset_category import get_asset_category_account
 from erpnext.assets.doctype.asset.depreciation \
 	import get_disposal_account_and_cost_center, get_depreciation_accounts
-from erpnext.accounts.general_ledger import make_gl_entries, delete_gl_entries
-from erpnext.accounts.utils import get_account_currency
+from erpnext.accounts.general_ledger import  delete_gl_entries
 from erpnext.controllers.accounts_controller import AccountsController
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 class Asset(AccountsController):
 	def validate(self):
+		self.set_values_from_purchase_doc()
+		self.set_missing_values()
 		self.validate_asset_values()
 		self.validate_asset_and_reference()
 		self.validate_item()
-		self.set_missing_values()
-		self.set_values_from_purchase_doc()
 		self.validate_asset_date()
 		self.prepare_depreciation_data()
 		if self.get("schedules"):
 			self.validate_expected_value_after_useful_life()
-
 		self.status = self.get_status()
 
 	def on_submit(self):
@@ -80,14 +77,15 @@ class Asset(AccountsController):
 	def set_missing_values(self, for_validate=False):
 		if not self.asset_category:
 			self.asset_category = frappe.get_cached_value("Item", self.item_code, "asset_category")
+		
+		if not self.asset_category_group:
+			self.asset_category_group = frappe.get_cached_value("Asset Category", self.asset_category, "asset_category_group")
 
 		if self.item_code and not self.get('finance_books'):
 			finance_books = get_item_details(self.item_code, self.asset_category)
 			self.set('finance_books', finance_books)
 
 	def validate_asset_values(self):
-		if not self.asset_category:
-			self.asset_category = frappe.get_cached_value("Item", self.item_code, "asset_category")
 
 		if not flt(self.gross_purchase_amount):
 			frappe.throw(_("Gross Purchase Amount is mandatory"), frappe.MandatoryError)
@@ -122,6 +120,7 @@ class Asset(AccountsController):
 			purchase_document = frappe.get_doc(document_type, document_name)
 			for each_item in purchase_document.items:
 				if each_item.item_code == self.item_code:
+					self.asset_category = each_item.asset_category
 					break
 			else:
 				frappe.throw("The selected {document_name} doesn't contains selected Asset Item.".format(document_name=document_name))
