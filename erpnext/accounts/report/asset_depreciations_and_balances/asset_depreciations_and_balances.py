@@ -808,7 +808,7 @@ def get_columns(filters):
 				"label": _("Asset Categroy Group"),
 				"fieldname": "asset_category_group",
 				"fieldtype": "Link",
-				"options":"Asset Category Group",
+				"options":"Account Group",
 				"width": 140,
 			}
 		)
@@ -844,7 +844,7 @@ def get_columns(filters):
 				"label": _("Asset Categroy Group"),
 				"fieldname": "asset_category_group",
 				"fieldtype": "Link",
-				"options":"Asset Category Group",
+				"options":"Account Group",
 				"width": 140,
 			}
 		)
