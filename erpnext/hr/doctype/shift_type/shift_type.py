@@ -2,21 +2,37 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from datetime import timedelta
-
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, getdate, get_datetime, date_diff, add_days
+from frappe.utils import cint, getdate, get_datetime, date_diff, add_days, to_timedelta, flt
 from erpnext.hr.doctype.shift_assignment.shift_assignment import get_actual_start_end_datetime_of_shift, get_employee_shift
 from erpnext.hr.doctype.employee_checkin.employee_checkin import mark_attendance_and_link_log, calculate_working_hours
 from erpnext.hr.doctype.attendance.attendance import get_marked_attendance_dates_between, mark_absent
 from erpnext.hr.doctype.employee.employee import get_holiday_list_for_employee
 from erpnext.hr.doctype.holiday_list.holiday_list import is_holiday, get_holiday_dates_between
 from collections import OrderedDict
+import datetime
 
 
 class ShiftType(Document):
+	def validate(self):
+		self.set_working_hours()
+
+	def set_working_hours(self):
+		if not self.start_time or not self.end_time:
+			self.working_hours = 0
+			return
+
+		start_time = to_timedelta(self.start_time)
+		end_time = to_timedelta(self.end_time)
+
+		diff = end_time - start_time
+		if end_time < start_time:
+			diff += datetime.timedelta(days=1)
+
+		self.working_hours = flt(diff.total_seconds() / 3600, 6)
+
 	@frappe.whitelist()
 	def enqueue_auto_attendance(self):
 		frappe.has_permission("Shift Type", "write", throw=True)
@@ -106,22 +122,22 @@ class ShiftType(Document):
 
 			# Late Entry
 			if cint(self.enable_entry_grace_period) and in_time and not missing_checkin_no_late_entry\
-					and in_time > logs[0].shift_start + timedelta(minutes=cint(self.late_entry_grace_period)):
+					and in_time > logs[0].shift_start + datetime.timedelta(minutes=cint(self.late_entry_grace_period)):
 				late_entry = True
 
 			# Early Exit
 			if cint(self.enable_exit_grace_period) and out_time\
-					and out_time < logs[0].shift_end - timedelta(minutes=cint(self.early_exit_grace_period)):
+					and out_time < logs[0].shift_end - datetime.timedelta(minutes=cint(self.early_exit_grace_period)):
 				early_exit = True
 
 			# Half Day if Late Minutes
 			if cint(self.half_day_if_late_minutes) and in_time and not missing_checkin_no_half_day\
-					and in_time > logs[0].shift_start + timedelta(minutes=cint(self.half_day_if_late_minutes)):
+					and in_time > logs[0].shift_start + datetime.timedelta(minutes=cint(self.half_day_if_late_minutes)):
 				status = 'Half Day'
 
 			# Half Day if Early Exit Minutes
 			if cint(self.half_day_if_exit_minutes) and out_time\
-					and out_time < logs[0].shift_end - timedelta(minutes=cint(self.half_day_if_exit_minutes)):
+					and out_time < logs[0].shift_end - datetime.timedelta(minutes=cint(self.half_day_if_exit_minutes)):
 				if cint(self.half_day_if_monthly_early_exit_count) > 0:
 					if self.is_half_day_on_multiple_early_exit_applicable(employee, logs[0].shift_start):
 						status = 'Half Day'
@@ -182,7 +198,7 @@ class ShiftType(Document):
 		start_date = max(getdate(self.process_attendance_after), date_of_joining)
 		actual_shift_datetime = get_actual_start_end_datetime_of_shift(employee, get_datetime(self.last_sync_of_checkin), True)
 		last_shift_time = actual_shift_datetime[0] if actual_shift_datetime[0] else get_datetime(self.last_sync_of_checkin)
-		prev_shift = get_employee_shift(employee, last_shift_time.date()-timedelta(days=1), True, 'reverse')
+		prev_shift = get_employee_shift(employee, last_shift_time.date() - datetime.timedelta(days=1), True, 'reverse')
 		if prev_shift:
 			end_date = min(prev_shift.start_datetime.date(), relieving_date) if relieving_date else prev_shift.start_datetime.date()
 		else:

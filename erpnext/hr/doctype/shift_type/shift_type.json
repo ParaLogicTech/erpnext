@@ -8,8 +8,10 @@
  "field_order": [
   "start_time",
   "end_time",
-  "break_hours",
   "column_break_3",
+  "working_hours",
+  "break_hours",
+  "column_break_xzpl",
   "holiday_list",
   "enable_auto_attendance",
   "auto_attendance_settings_section",
@@ -221,10 +223,23 @@
    "fieldtype": "Float",
    "label": "Break Hours",
    "precision": "1"
+  },
+  {
+   "fieldname": "working_hours",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Working Hours",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_xzpl",
+   "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 500,
  "links": [],
- "modified": "2025-06-12 12:12:02.193517",
+ "modified": "2026-01-03 14:18:49.765371",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Shift Type",
@@ -259,6 +274,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

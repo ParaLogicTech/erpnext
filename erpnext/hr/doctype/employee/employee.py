@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import throw, _, scrub
-from frappe.utils import getdate, validate_email_address, today, add_years, cstr, clean_whitespace
+from frappe.utils import getdate, validate_email_address, today, add_years, cstr, clean_whitespace, flt
 from frappe.model.naming import set_name_by_naming_series
 from frappe.permissions import add_user_permission, remove_user_permission, has_permission
 from erpnext.utilities.transaction_base import delete_events
@@ -421,6 +421,46 @@ def is_holiday(employee, date=None, raise_exception=True):
 
 	if holiday_list:
 		return frappe.get_all('Holiday List', dict(name=holiday_list, holiday_date=date)) and True or False
+
+
+def get_standard_working_hours_for_employee(employee, company=None):
+	standard_working_hours = 0
+
+	# Standard hours from hooks
+	if employee:
+		standard_working_hours = flt(frappe.utils.call_hook_method("get_standard_working_hours_for_employee", employee))
+
+	# Default standard hours from Company
+	if not standard_working_hours:
+		if not company and employee:
+			company = frappe.get_cached_value("Employee", employee, "company")
+		if not company:
+			company = frappe.db.get_single_value("Global Defaults", "default_company")
+
+		if company:
+			standard_working_hours = flt(frappe.get_cached_value("Company", company, "standard_working_hours"))
+
+	return standard_working_hours
+
+
+def get_standard_break_hours_for_employee(employee, company=None):
+	standard_break_hours = 0
+
+	# Standard hours from hooks
+	if employee:
+		standard_break_hours = flt(frappe.utils.call_hook_method("get_standard_break_hours_for_employee", employee))
+
+	# Default standard hours from Company
+	if not standard_break_hours:
+		if not company and employee:
+			company = frappe.get_cached_value("Employee", employee, "company")
+		if not company:
+			company = frappe.db.get_single_value("Global Defaults", "default_company")
+
+		if company:
+			standard_break_hours = flt(frappe.get_cached_value("Company", company, "standard_break_hours"))
+
+	return standard_break_hours
 
 
 @frappe.whitelist()

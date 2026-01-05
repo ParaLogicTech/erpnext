@@ -11,6 +11,6 @@ cur_frm.fields_dict.employee.get_query = function(doc,cdt,cdn) {
 }
 frappe.ui.form.on('Attendance', {
 	refresh: function () {
-		erpnext.hide_company();
+		// erpnext.hide_company();
 	}
 });

@@ -3,8 +3,13 @@
 
 import frappe
 from frappe import _
+from frappe.model.utils import get_fetch_values
 from frappe.utils import getdate, nowdate, flt, cstr
 from frappe.model.document import Document
+from erpnext.hr.doctype.employee.employee import (
+	get_standard_working_hours_for_employee,
+	get_standard_break_hours_for_employee,
+)
 
 
 class Attendance(Document):
@@ -14,6 +19,8 @@ class Attendance(Document):
 		self.validate_duplicate_record()
 		self.check_leave_record()
 		self.check_attendance_request_record()
+		# self.set_employee_details()
+		self.set_standard_hours()
 		self.set_available_hours()
 		validate_status(self.status, ["Present", "Absent", "On Leave", "Half Day"])
 
@@ -103,7 +110,30 @@ class Attendance(Document):
 			if date_of_joining and getdate(self.attendance_date) < getdate(date_of_joining):
 				frappe.throw(_("Attendance Date can not be before Joining Date for Employee {0}").format(self.employee))
 
+	def set_employee_details(self):
+		self.update(get_fetch_values("Attendance", "employee", self.employee))
+
+	def set_standard_hours(self):
+		self.standard_working_hours = 0
+		self.standard_break_hours = 0
+
+		if self.shift:
+			shift_doc = frappe.get_cached_doc("Shift Type", self.shift)
+			self.standard_working_hours = flt(shift_doc.working_hours)
+			self.standard_break_hours = flt(shift_doc.break_hours)
+
+		if not self.standard_working_hours:
+			self.standard_working_hours = get_standard_working_hours_for_employee(self.employee, company=self.company)
+		if not self.standard_break_hours:
+			self.standard_break_hours = get_standard_break_hours_for_employee(self.employee, company=self.company)
+
+		if flt(self.standard_break_hours) >= flt(self.standard_working_hours):
+			self.standard_break_hours = 0
+
+		self.standard_available_hours = flt(self.standard_working_hours) - flt(self.standard_break_hours)
+
 	def set_available_hours(self):
+		self.break_hours = flt(self.standard_break_hours)
 		if flt(self.break_hours) >= flt(self.working_hours):
 			self.break_hours = 0
 
