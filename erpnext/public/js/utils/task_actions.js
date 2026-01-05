@@ -20,6 +20,8 @@ $.extend(erpnext.task_actions, {
 						project: values.project,
 						task_type: values.task_type,
 						expected_time: values.expected_time,
+						exp_start_date: values.exp_start_date,
+						expected_days: values.expected_days,
 						description: values.description,
 						additional_values: values,
 					},
@@ -293,6 +295,7 @@ $.extend(erpnext.task_actions, {
 				"fieldname": "expected_time",
 				"fieldtype": "Float",
 				"default": flt(task_data.expected_time),
+				"reqd": 1,
 			},
 		];
 
@@ -301,6 +304,25 @@ $.extend(erpnext.task_actions, {
 		fields = fields.concat(additional_fields);
 
 		fields = fields.concat([
+			{
+				fieldtype: "Section Break",
+			},
+			{
+				"label": __("Expected Start Date"),
+				"fieldname": "exp_start_date",
+				"fieldtype": "Date",
+				"default": task_data.exp_start_date || frappe.datetime.now_date(),
+				"reqd": 1,
+			},
+			{
+				"label": __("Expected Days"),
+				"fieldname": "expected_days",
+				"fieldtype": "Int",
+				"default": 1,
+			},
+			{
+				fieldtype: "Section Break",
+			},
 			{
 				"label": __("Description"),
 				"fieldname": "description",
