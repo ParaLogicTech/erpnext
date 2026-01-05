@@ -5,5 +5,5 @@
 import frappe
 from frappe.model.document import Document
 
-class ItemGroupOrder(Document):
+class ItemGroupOption(Document):
 	pass
