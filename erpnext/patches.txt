@@ -20,7 +20,6 @@ erpnext.patches.v10_0.update_assessment_result
 erpnext.patches.v10_0.set_default_payment_terms_based_on_company
 erpnext.patches.v10_0.update_sales_order_link_to_purchase_order
 erpnext.patches.v10_0.rename_price_to_rate_in_pricing_rule
-erpnext.patches.v10_0.rename_brand_order_and _item_group_order
 erpnext.patches.v10_0.set_currency_in_pricing_rule
 erpnext.patches.v10_0.set_b2c_limit
 erpnext.patches.v10_0.update_translatable_fields
@@ -347,6 +346,7 @@ execute:frappe.delete_doc_if_exists("Report", "Serial No Service Contract Expiry
 erpnext.patches.v15_0.rename_serial_no_warranty_status
 erpnext.patches.v15_0.move_maintenance_schedule_settings_to_projects_settings
 execute:frappe.delete_doc_if_exists("Custom Field", "Item Group-customs_tariff_number")
+erpnext.patches.v15_0.rename_brand_order_and_item_group_order
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay
