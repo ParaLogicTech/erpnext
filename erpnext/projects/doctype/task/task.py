@@ -209,16 +209,24 @@ class Task(NestedSet):
 			return
 
 		if self.status not in ("Completed", "Cancelled") and self.value_changed("status"):
+			project_status = frappe.db.get_value("Project", self.project, "status", cache=1)
+			if project_status in ("Completed", "Closed", "Cancelled"):
+				frappe.throw(_("Cannot change task status to {0} because {1} status is {2}").format(
+					frappe.bold(self.status),
+					get_link_from_name("Project", self.project),
+					frappe.bold(project_status),
+				))
+
 			ready_to_close = frappe.db.get_value("Project", self.project, "ready_to_close", cache=1)
 			if ready_to_close:
-				frappe.throw(_("Cannot change status to {0} because {1} is Ready to Close").format(
+				frappe.throw(_("Cannot change task status to {0} because {1} is Ready to Close").format(
 					frappe.bold(self.status), get_link_from_name("Project", self.project)
 				))
 
 		if self.status == "Working" and self.value_changed("status"):
 			project_status = frappe.db.get_value("Project", self.project, "status", cache=1)
 			if project_status == "Draft":
-				frappe.throw(_("Cannot change status to {0} because {1} is Draft").format(
+				frappe.throw(_("Cannot change task status to {0} because {1} is Draft").format(
 					frappe.bold(self.status), get_link_from_name("Project", self.project)
 				))
 
@@ -226,10 +234,17 @@ class Task(NestedSet):
 		if not self.project:
 			return
 
+		project_status = frappe.db.get_value("Project", self.project, "status", cache=1)
+		if project_status in ("Completed", "Closed", "Cancelled"):
+			frappe.throw(_("Cannot create Task against {0} because its status is {1}").format(
+				get_link_from_name("Project", self.project),
+				frappe.bold(project_status),
+			))
+
 		ready_to_close = frappe.db.get_value("Project", self.project, "ready_to_close", cache=1)
 		if ready_to_close:
-			frappe.throw(_("Cannot create Task against {1} because it is Ready to Close").format(
-				frappe.bold(self.status), get_link_from_name("Project", self.project)
+			frappe.throw(_("Cannot create Task against {0} because it is Ready to Close").format(
+				get_link_from_name("Project", self.project)
 			))
 
 	def validate_dates(self):

@@ -130,7 +130,8 @@ class Project(StatusUpdaterERP):
 		self.update_appointment()
 
 	def on_status_change(self):
-		pass
+		if self.status in ("Completed", "Closed", "Cancelled") or self.ready_to_close:
+			self.check_incomplete_tasks()
 
 	def set_additional_status(self):
 		pass
