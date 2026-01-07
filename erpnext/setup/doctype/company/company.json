@@ -1049,7 +1049,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2025-10-02 16:10:43.842630",
+ "modified": "2026-01-06 11:36:03.822544",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
@@ -1084,6 +1084,10 @@
   },
   {
    "read": 1,
+   "role": "Sales User (Read Only)"
+  },
+  {
+   "read": 1,
    "role": "Purchase User"
   },
   {
@@ -1100,10 +1104,6 @@
   },
   {
    "read": 1,
-   "role": "Sales User (Read Only)"
-  },
-  {
-   "read": 1,
    "role": "Auditor"
   },
   {
@@ -1117,6 +1117,10 @@
   {
    "read": 1,
    "role": "CR User"
+  },
+  {
+   "read": 1,
+   "role": "Trainer"
   }
  ],
  "row_format": "Dynamic",

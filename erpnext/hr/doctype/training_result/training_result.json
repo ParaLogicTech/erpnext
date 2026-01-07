@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_rename": 1,
  "autoname": "HR-TRR-.YYYY.-.#####",
  "creation": "2016-11-04 02:13:48.407576",
@@ -49,11 +50,14 @@
    "options": "Email"
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
- "modified": "2020-03-03 15:41:04.663069",
+ "links": [],
+ "modified": "2026-01-06 11:32:38.156132",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Training Result",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -70,9 +74,35 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Trainer",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "training_event"
 }

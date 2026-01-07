@@ -68,10 +68,11 @@
    "fieldtype": "Section Break"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-code-fork",
  "idx": 1,
  "links": [],
- "modified": "2025-03-17 20:13:17.256120",
+ "modified": "2026-01-06 11:34:02.833928",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Branch",
@@ -139,6 +140,14 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Service User (Read Only)",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "Auditor",
    "share": 1
   },
@@ -163,11 +172,20 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Trainer",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "CR User",
    "share": 1
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],

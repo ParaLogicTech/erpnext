@@ -888,7 +888,7 @@
  "idx": 24,
  "image_field": "image",
  "links": [],
- "modified": "2025-12-24 17:31:22.431336",
+ "modified": "2026-01-06 11:29:16.412873",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
@@ -938,8 +938,8 @@
    "select": 1
   },
   {
-   "read": 1,
-   "role": "Service User (Read Only)"
+   "role": "Service User (Read Only)",
+   "select": 1
   },
   {
    "role": "Stock User",

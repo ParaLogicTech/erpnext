@@ -139,23 +139,16 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-27 22:53:55.418439",
+ "modified": "2026-01-06 11:37:07.117007",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Transfer",
  "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
-  {
-   "email": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Employee",
-   "share": 1
-  },
   {
    "create": 1,
    "email": 1,
@@ -182,9 +175,26 @@
    "share": 1,
    "submit": 1,
    "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Trainer",
+   "share": 1
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
