@@ -358,7 +358,7 @@ class Analytics(object):
 
 	def get_period(self, posting_date):
 		if self.filters.range == 'Weekly':
-			period = "Week " + str(posting_date.isocalendar()[1]) + " " + str(posting_date.year)
+			period = "Week " + str(posting_date.isocalendar().week) + " " + str(posting_date.isocalendar().year)
 		elif self.filters.range == 'Monthly':
 			period = str(self.months[posting_date.month - 1]) + " " + str(posting_date.year)
 		elif self.filters.range == 'Quarterly':
