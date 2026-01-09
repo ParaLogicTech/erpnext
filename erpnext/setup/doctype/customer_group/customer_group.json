@@ -178,7 +178,7 @@
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-10-02 12:53:47.161319",
+ "modified": "2026-01-08 14:26:10.032091",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Customer Group",
@@ -272,5 +272,6 @@
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

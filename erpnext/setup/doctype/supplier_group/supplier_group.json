@@ -104,11 +104,12 @@
    "report_hide": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-flag",
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2023-01-12 13:28:09.633502",
+ "modified": "2026-01-08 14:26:21.343512",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Supplier Group",
@@ -168,8 +169,10 @@
    "role": "Stock User"
   }
  ],
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }
