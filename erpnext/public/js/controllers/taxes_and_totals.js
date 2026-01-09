@@ -67,11 +67,17 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			this.frm.doc.paid_amount = flt(this.frm.doc.grand_total, precision("grand_total"));
 		}
 
+		this.additional_calculate_taxes_and_totals();
+
 		for (let func of erpnext.taxes_and_totals_hooks || []) {
 			func.apply(this);
 		}
 
 		this.frm.refresh_fields();
+	}
+
+	additional_calculate_taxes_and_totals() {
+
 	}
 
 	calculate_discount_amount() {
@@ -890,7 +896,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			this.frm.doc.grand_total,
 			this.frm.doc.currency,
 			precision("rounded_total"),
-			this.frm.doc.smallest_currency_fraction_value || null,
+			this.frm.doc.round_to_nearest || null,
 		);
 		this.frm.doc.rounding_adjustment += flt(this.frm.doc.rounded_total - this.frm.doc.grand_total,
 			precision("rounding_adjustment"));
