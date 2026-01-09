@@ -331,9 +331,13 @@ class TransactionController(StockController):
 			if not d.meta.has_field("pricing_rules"):
 				continue
 
+			d.print_pricing_rule_descriptions = []
+
 			pricing_rules = get_applied_pricing_rules(d.pricing_rules)
 			for pricing_rule in pricing_rules:
 				if frappe.get_cached_value("Pricing Rule", pricing_rule, "show_in_print"):
+					description = cstr(frappe.get_cached_value("Pricing Rule", pricing_rule, "rule_description")).strip()
+					d.print_pricing_rule_descriptions = description or pricing_rule
 					self.print_pricing_rules.add(pricing_rule)
 
 		self.print_pricing_rules = list(self.print_pricing_rules)
