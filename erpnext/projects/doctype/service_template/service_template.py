@@ -79,12 +79,19 @@ class ServiceTemplate(Document):
 		applies_to_customer_doc = frappe.get_cached_doc("Customer", applies_to_customer) if applies_to_customer else frappe._dict()
 
 		if pt_item.get("applies_to_item"):
-			if pt_item.get("applies_to_item") != applies_to_item:
+			applicable_items = [pt_item.get("applies_to_item")]
+			applicable_items += get_variant_item_codes(pt_item.get("applies_to_item"))
+
+			if applies_to_item not in applicable_items:
 				return True
 
 		if pt_item.get("applies_to_item_group"):
 			applicable_item_groups = get_item_group_subtree(pt_item.get("applies_to_item_group"))
 			if applies_to_item_doc.item_group not in applicable_item_groups:
+				return True
+
+		if pt_item.get("applies_to_customer"):
+			if pt_item.get("applies_to_customer") != applies_to_customer:
 				return True
 
 		if pt_item.get("applies_to_customer_group"):
@@ -285,3 +292,15 @@ def guess_service_template(service_template_category, applies_to_item):
 			})
 
 	return service_template
+
+
+def get_variant_item_codes(template_item_code):
+	def generator():
+		return frappe.db.get_all("Item", {"variant_of": template_item_code}, pluck="name")
+
+	if not template_item_code:
+		return []
+	if not cint(frappe.get_cached_value("Item", template_item_code, "has_variants")):
+		return []
+
+	return frappe.local_cache("get_variant_item_codes", template_item_code, generator)
