@@ -298,7 +298,6 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"underinsurance_percentage": flt(args.get("default_underinsurance_percentage")),
 		"ignore_depreciation": get_ignore_depreciation(item),
 		"supplier": get_default_supplier(item, args),
-		"customs_tariff_number": get_customs_tariff_number(item, args),
 		"update_stock": args.get("update_stock") if args.get('doctype') in ['Sales Invoice', 'Purchase Invoice'] else 0,
 		"delivered_by_supplier": item.delivered_by_supplier if args.get("doctype") in ["Sales Order", "Sales Invoice"] else 0,
 		"net_weight_per_unit": get_weight_per_unit(item.name, weight_uom=args.weight_uom or item.weight_uom),
@@ -342,6 +341,10 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 	# Sales Commission Category
 	out.sales_commission_category = get_sales_commission_category(item, args)
 	out.commission_rate = get_commission_rate(out.sales_commission_category)
+
+	# Customs Tariff Number
+	out.customs_tariff_number = get_customs_tariff_number(item, args)
+	args.customs_tariff_number = out.customs_tariff_number
 
 	# calculate last purchase rate
 	if child_meta.has_field("last_purchase_rate"):
@@ -441,9 +444,10 @@ def get_item_tax_template(args, item):
 		}
 	"""
 	item_tax_template = args.get("item_tax_template")
+	customs_tariff_number = args.get("customs_tariff_number")
 
-	if not item_tax_template and item.customs_tariff_number:
-		customs_tariff_no_doc = frappe.get_cached_doc("Customs Tariff Number", item.customs_tariff_number)
+	if not item_tax_template and customs_tariff_number:
+		customs_tariff_no_doc = frappe.get_cached_doc("Customs Tariff Number", customs_tariff_number)
 		item_tax_template = _get_item_tax_template(args, customs_tariff_no_doc.taxes)
 
 	if not item_tax_template:

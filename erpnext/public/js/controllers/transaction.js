@@ -1788,6 +1788,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					"conversion_factor": d.conversion_factor || 1.0,
 					"apply_taxes_on_retail": d.apply_taxes_on_retail,
 					"allow_zero_valuation_rate": d.allow_zero_valuation_rate,
+					"customs_tariff_number": d.customs_tariff_number,
 					"item_tax_template": d.item_tax_template,
 					"service_template": d.service_template,
 					"service_template_detail": d.service_template_detail,
@@ -2075,6 +2076,11 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		]);
 	}
 
+	customs_tariff_number(doc, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		this.get_multiple_item_tax_maps(true, row);
+	}
+
 	item_tax_template(doc, cdt, cdn) {
 		let item = frappe.get_doc(cdt, cdn);
 		return this.get_item_tax_template_details(item);
@@ -2100,8 +2106,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		});
 	}
 
-	get_multiple_item_tax_maps(with_item_tax_template) {
-		let args = this._get_args();
+	get_multiple_item_tax_maps(with_item_tax_template, item=null) {
+		let args = this._get_args(item);
 
 		if (this.frm.doc.company && args.items.length) {
 			return this.frm.call({
@@ -2113,25 +2119,25 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				},
 				callback: (r) => {
 					if (!r.exc) {
-						$.each(this.frm.doc.items || [], (i, item) => {
-							if(r.message.hasOwnProperty(item.name)) {
-								let details = Object.assign({}, r.message[item.name]);
+						$.each(this.frm.doc.items || [], (i, row) => {
+							if(r.message.hasOwnProperty(row.name)) {
+								let details = Object.assign({}, r.message[row.name]);
 
 								if (with_item_tax_template) {
-									item.item_tax_template = details.item_tax_template;
+									row.item_tax_template = details.item_tax_template;
 								}
-								item.item_tax_rate = details.item_tax_rate;
+								row.item_tax_rate = details.item_tax_rate;
 
 								delete details["item_tax_template"];
 								delete details["item_tax_rate"];
 
-								frappe.model.set_value(item.doctype, item.name, details);
-								this.add_taxes_from_item_tax_template(item.item_tax_rate);
-							} else {
+								frappe.model.set_value(row.doctype, row.name, details);
+								this.add_taxes_from_item_tax_template(row.item_tax_rate);
+							} else if (!item) {
 								if (with_item_tax_template) {
-									item.item_tax_template = null;
+									row.item_tax_template = null;
 								}
-								item.item_tax_rate = "{}";
+								row.item_tax_rate = "{}";
 							}
 						});
 						this.calculate_taxes_and_totals();
