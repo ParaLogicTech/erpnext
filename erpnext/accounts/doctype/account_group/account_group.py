@@ -70,8 +70,8 @@ class AccountGroup(Document):
 				if row.row_type == "Account Group" and row.account_group:
 					row_group_level = frappe.get_cached_value("Account Group", row.account_group, "group_level")
 					if row_group_level != "Fixed Asset Category":
-						frappe.throw(_("Row #{0}: Child Account Group {1} cannot be {2} for Fixed Asset Root, it must be a Fixed Asset Category").format(
-							row.idx, frappe.bold(row.account_group), frappe.bold(row_group_level)
+						frappe.throw(_("Row #{0}: {1} must be {2} for Fixed Asset Root's Child Account Group").format(
+							row.idx, frappe.bold(row.account_group), frappe.bold(_("Fixed Asset Category"))
 						))
 
 	def validate_root_type(self):
