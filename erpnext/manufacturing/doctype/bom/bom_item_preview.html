@@ -1,23 +1,35 @@
-<div style="padding: 15px;">
+{% if data.item_code %}
+<div style="padding: 15px 10px 15px 0;">
 	{% if data.image %}
 	<img class="responsive" src={{ data.image }}>
-	<hr style="margin: 15px -15px;">
+	<hr>
 	{% endif %}
-	<h4>
-		{{ __("Description") }}
-	</h4>
-	<div style="padding-top: 10px;">
-		{{ data.description }}
-	</div>
-	<hr style="margin: 15px -15px;">
-	<p>
+
+	<h3>
+		{{ data.item_code }}
+	</h3>
+	<div><b>Item Name:</b> {{ data.item_name }}</div>
+	<div><b>Item Group:</b> {{ data.item_group }}</div>
+	<div><b>Qty:</b> {{ data.qty }} {{ data.uom }}</div>
+
+	{% if data.description %}
+		<hr>
+		<h4>{{ __("Description") }}</h4>
+		<p>{{ data.description }}</p>
+	{% endif %}
+
+	<hr>
+
+	<div>
 		{% if data.value %}
-		<a style="margin-right: 7px; margin-bottom: 7px" class="btn btn-default btn-xs" href="/app/bom/{{ encodeURIComponent(data.value) }}">
-			{{ __("Open BOM {0}", [data.value.bold()]) }}</a>
+		<a class="btn btn-default btn-sm mr-2" href="{{ frappe.utils.get_form_link('BOM', data.value) }}">
+			{{ __("Open {0}", [data.value.bold()]) }}</a>
 		{% endif %}
+
 		{% if data.item_code %}
-		<a class="btn btn-default btn-xs" href="/app/item/{{ encodeURIComponent(data.item_code) }}">
+		<a class="btn btn-default btn-sm" href="{{ frappe.utils.get_form_link('Item', data.item_code) }}">
 			{{ __("Open Item {0}", [data.item_code.bold()]) }}</a>
 		{% endif %}
-	</p>
+	</div>
 </div>
+{% endif %}

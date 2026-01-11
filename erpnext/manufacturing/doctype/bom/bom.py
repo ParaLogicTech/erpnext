@@ -3,7 +3,7 @@
 
 import frappe
 import erpnext
-from frappe.utils import cint, cstr, flt
+from frappe.utils import cint, cstr, flt, sbool
 from frappe import _
 from erpnext.setup.utils import get_exchange_rate
 from frappe.model.document import Document
@@ -830,40 +830,41 @@ def validate_bom_no(item, bom_no):
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, is_root=False, **filters):
-	if not parent or parent=="BOM":
-		frappe.msgprint(_('Please select a BOM'))
-		return
+	is_root = sbool(is_root)
 
-	if parent:
-		frappe.form_dict.parent = parent
+	if not parent or parent == "BOM":
+		return []
 
-	if frappe.form_dict.parent:
-		bom_doc = frappe.get_doc("BOM", frappe.form_dict.parent)
-		frappe.has_permission("BOM", doc=bom_doc, throw=True)
+	bom_doc = frappe.get_doc("BOM", parent)
+	bom_doc.check_permission()
 
-		bom_items = frappe.get_all('BOM Item',
-			fields=['item_code', 'bom_no as value', 'stock_qty'],
-			filters=[['parent', '=', frappe.form_dict.parent]],
-			order_by='idx')
+	if is_root:
+		bom_items = [frappe._dict({
+			"item_code": bom_doc.item, "value": bom_doc.name, "qty": bom_doc.quantity, "uom": bom_doc.uom
+		})]
+	else:
+		bom_items = [
+			frappe._dict({"item_code": d.item_code, "value": d.bom_no, "qty": d.qty, "uom": d.uom})
+			for d in bom_doc.items
+		]
 
-		item_names = tuple(d.get('item_code') for d in bom_items)
+	item_codes = list(set(d.get("item_code") for d in bom_items))
+	items_map = {}
+	if item_codes:
+		items_data = frappe.get_all(
+			"Item",
+			fields=["name as item_code", "item_name", "item_group", "description", "stock_uom", "image"],
+			filters={"name": ['in', item_codes]}
+		)
+		for d in items_data:
+			items_map[d.item_code] = d
 
-		items = frappe.get_list('Item',
-			fields=['image', 'description', 'name', 'stock_uom', 'item_name'],
-			filters=[['name', 'in', item_names]]) # to get only required item dicts
+	for bom_item in bom_items:
+		bom_item.update(items_map.get(bom_item.item_code, {}))
+		bom_item.parent_bom_qty = bom_doc.quantity
+		bom_item.expandable = 1 if bom_item.value else 0
 
-		for bom_item in bom_items:
-			# extend bom_item dict with respective item dict
-			bom_item.update(
-				# returns an item dict from items list which matches with item_code
-				next(item for item in items if item.get('name')
-					== bom_item.get('item_code'))
-			)
-
-			bom_item.parent_bom_qty = bom_doc.quantity
-			bom_item.expandable = 0 if bom_item.value in ('', None)  else 1
-
-		return bom_items
+	return bom_items
 
 
 def get_boms_in_bottom_up_order(bom_no=None):
