@@ -72,7 +72,7 @@ class FixedAssetsStatement(SummarizedBalanceSheet):
 			"Account Group",
 			{
 				"company": self.filters.get('company'),
-				"is_fixed_asset_root": 1,
+				"group_level": "Fixed Asset Root",
 				"report_type": self.get_report_type(),
 			},
 			"name",

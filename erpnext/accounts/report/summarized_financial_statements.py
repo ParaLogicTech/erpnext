@@ -85,7 +85,7 @@ class SummarizedFinancialReport:
 			"Account Group",
 			{
 				"company": self.filters.get('company'),
-				"is_root_level": 1,
+				"group_level": "Report Root",
 				"report_type": self.get_report_type(),
 			},
 			"name",
@@ -596,13 +596,9 @@ class SummarizedFinancialReport:
 			row["account_group"] = d.account_group
 			row["account_display"] = row["account_display"] or d.account_group
 
-		row["is_fixed_asset_root"] = 0
-		if (
-			d.row_type == "Account Group"
-			and self.get_report_type() == "Balance Sheet"
-			and frappe.get_cached_value("Account Group", d.account_group, "is_fixed_asset_root")
-		):
-			row["is_fixed_asset_root"] = 1
+		row["group_level"] = d.row_type
+		if d.row_type == "Account Group":
+			row["group_level"] = frappe.get_cached_value("Account Group", d.account_group, "group_level")
 
 		if not no_values:
 			if row.value_type == "Data":

@@ -39,6 +39,10 @@ frappe.ui.form.on('Account Group', {
 				filters["report_type"] = frm.doc.report_type;
             }
 
+			if (frm.doc.group_level == "Fixed Asset Root") {
+				filters["group_level"] = "Fixed Asset Category";
+			}
+
             if (!frm.is_new()) {
                 filters["name"] = ['!=', frm.doc.name];
             }
@@ -52,11 +56,15 @@ frappe.ui.form.on('Account Group', {
 		let account_group_field = frm.get_docfield("rows", "account_group");
 		if (account_group_field) {
 			account_group_field.get_route_options_for_new_doc = function(row) {
-				return {
+				let options = {
 					"company": frm.doc.company,
 					"report_type": frm.doc.report_type,
 					"root_type": frm.doc.root_type,
+				};
+				if (frm.doc.group_level == "Fixed Asset Root") {
+					options["group_level"] = "Fixed Asset Category";
 				}
+				return options;
 			};
 		}
 	},

@@ -31,7 +31,9 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			fieldtype: "MultiSelectList",
 			options:"Account Group",
 			get_data: function (txt) {
-				return frappe.boot.asset_category_group || frappe.db.get_link_options("Account Group", txt)
+				return frappe.db.get_link_options("Account Group", txt, {
+					"group_level": "Fixed Asset Category"
+				})
 			}
 		},
 		{

@@ -6,14 +6,14 @@ from frappe.utils import comma_or, clean_whitespace
 
 class AccountGroup(Document):
 	def validate(self):
-		self.validate_root_level()
+		self.validate_group_level()
 		self.validate_root_type()
 		self.validate_rows()
 		self.cleanup()
 
-	def validate_root_level(self):
+	def validate_group_level(self):
 		"""Validate root level account group type."""
-		if self.is_root_level:
+		if self.group_level == "Report Root":
 			report_types = ['Profit and Loss', 'Balance Sheet', 'Cash Flow', 'Ratios']
 			if self.report_type not in report_types:
 				frappe.throw(_("Root level Account Groups must be either {0}").format(comma_or(report_types)))
@@ -22,7 +22,7 @@ class AccountGroup(Document):
 			existing_root = frappe.db.get_value('Account Group',
 				filters={
 					'company': self.company,
-					'is_root_level': 1,
+					'group_level': "Report Root",
 					'report_type': self.report_type,
 					'name': ['!=', self.name],
 				},
@@ -31,19 +31,28 @@ class AccountGroup(Document):
 			)
 
 			if existing_root:
-				frappe.throw(_("Another root level {0} already exists for report type {1}.").format(
+				frappe.throw(_("Another Report Root level {0} already exists for report type {1}.").format(
 					frappe.get_desk_link("Account Group", existing_root.name), self.report_type
 				))
 
-		if self.report_type != "Balance Sheet":
-			self.is_fixed_asset_root = 0
+		if self.group_level in ("Fixed Asset Root", "Fixed Asset Category"):
+			if self.report_type != "Balance Sheet":
+				frappe.throw(_("Report Type must be {0} for Group Level {1}").format(
+					frappe.bold(_("Balance Sheet")),
+					frappe.bold(self.group_level),
+				))
+			if self.root_type != "Asset":
+				frappe.throw(_("Root Type must be {0} for Group Level {1}").format(
+					frappe.bold(_("Asset")),
+					frappe.bold(self.group_level),
+				))
 
-		if self.is_fixed_asset_root:
+		if self.group_level == "Fixed Asset Root":
 			existing_root = frappe.db.get_value(
 				'Account Group',
 				filters={
 					'company': self.company,
-					'is_fixed_asset_root': 1,
+					'group_level': "Fixed Asset Root",
 					'report_type': self.report_type,
 					'name': ['!=', self.name],
 				},
@@ -52,9 +61,18 @@ class AccountGroup(Document):
 			)
 
 			if existing_root:
-				frappe.throw(_("Another Fxied Asset Root {0} already exists").format(
+				frappe.throw(_("Another Fixed Asset Root {0} already exists").format(
 					frappe.get_desk_link("Account Group", existing_root.name)
 				))
+
+			# Child account groups must be Fixed Asset Category
+			for row in self.rows:
+				if row.row_type == "Account Group" and row.account_group:
+					row_group_level = frappe.get_cached_value("Account Group", row.account_group, "group_level")
+					if row_group_level != "Fixed Asset Category":
+						frappe.throw(_("Row #{0}: Child Account Group {1} cannot be {2} for Fixed Asset Root, it must be a Fixed Asset Category").format(
+							row.idx, frappe.bold(row.account_group), frappe.bold(row_group_level)
+						))
 
 	def validate_root_type(self):
 		pnl_root_types = ("Income", "Expense")
@@ -119,7 +137,7 @@ class AccountGroup(Document):
 				if (
 					self.report_type in ("Profit and Loss", "Balance Sheet")
 					and account_group.report_type != self.report_type
-					and not (account_group.is_root_level and account_group.report_type == "Profit and Loss")
+					and not (account_group.group_level == "Report Root" and account_group.report_type == "Profit and Loss")
 				):
 					frappe.throw(_("Row #{0}: Account Group {1} must of Report Type {2}").format(
 						row.idx, frappe.bold(row.account_group), frappe.bold(self.report_type)
@@ -155,7 +173,7 @@ def account_group_query(doctype, txt, searchfield, start, page_len, filters):
 
 	report_type_condition = ""
 	if report_type:
-		report_type_condition = "AND (report_type = %(report_type)s OR (is_root_level = 1 and report_type = 'Profit and Loss'))"
+		report_type_condition = "AND (report_type = %(report_type)s OR (group_level = 'Report Root' and report_type = 'Profit and Loss'))"
 
 	return frappe.db.sql("""
 		SELECT {fields}

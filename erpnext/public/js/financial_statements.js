@@ -84,7 +84,7 @@ erpnext.financial_statements = {
 
 				if (data.account_group && report_date && data.row_type === "Account Group") {
 					let report_name = frappe.query_report.report_name;
-					if (data.is_fixed_asset_root) {
+					if (data.group_level == "Fixed Asset Root") {
 						report_name = "Fixed Assets Statement";
 					}
 					options.link_href = erpnext.financial_statements.get_summarized_statement_link(
@@ -171,6 +171,16 @@ erpnext.financial_statements = {
 		let cost_center = frappe.query_report.get_filter_value('cost_center');
 		if (cost_center) {
 			params["cost_center"] = cost_center;
+		}
+
+		let hide_budget = frappe.query_report.get_filter_value('hide_budget');
+		if (hide_budget) {
+			params["hide_budget"] = hide_budget;
+		}
+
+		let tree_view = frappe.query_report.get_filter_value('tree_view');
+		if (tree_view) {
+			params["tree_view"] = tree_view;
 		}
 
 		for (let dimension of erpnext.dimension_filters) {
