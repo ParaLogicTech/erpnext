@@ -337,7 +337,7 @@ class TransactionController(StockController):
 			for pricing_rule in pricing_rules:
 				if frappe.get_cached_value("Pricing Rule", pricing_rule, "show_in_print"):
 					description = cstr(frappe.get_cached_value("Pricing Rule", pricing_rule, "rule_description")).strip()
-					d.print_pricing_rule_descriptions = description or pricing_rule
+					d.print_pricing_rule_descriptions.append(description or pricing_rule)
 					self.print_pricing_rules.add(pricing_rule)
 
 		self.print_pricing_rules = list(self.print_pricing_rules)
