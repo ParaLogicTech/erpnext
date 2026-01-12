@@ -1126,7 +1126,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 				transitions.append(transition.as_dict())
 
 		if not transitions:
-			if doc.db_get("workflow_state") == current_state:
+			if doc.db_get(workflow_doc.workflow_state_field) == current_state:
 				states_edit_roles = [
 					each_state.allow_edit for each_state in workflow_doc.states if each_state.state == current_state
 				]
