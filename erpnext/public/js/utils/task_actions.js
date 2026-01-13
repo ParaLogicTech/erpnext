@@ -305,9 +305,6 @@ $.extend(erpnext.task_actions, {
 
 		fields = fields.concat([
 			{
-				fieldtype: "Section Break",
-			},
-			{
 				"label": __("Expected Start Date"),
 				"fieldname": "exp_start_date",
 				"fieldtype": "Date",
@@ -319,6 +316,19 @@ $.extend(erpnext.task_actions, {
 				"fieldname": "expected_days",
 				"fieldtype": "Int",
 				"default": 1,
+			},
+			{
+				label: __("Vehicle Health Check Template"),
+				fieldname: "vehicle_health_check_template",
+				fieldtype: "Link",
+				options: "Vehicle Health Check Template",
+				default: task_data.vehicle_health_check_template,
+			},
+			{
+				label: __("Vehicle Health Check Mandatory"),
+				fieldname: "vehicle_health_check_mandatory",
+				fieldtype: "Check",
+				options: "Vehicle Health Check Mandatory",
 			},
 			{
 				fieldtype: "Section Break",
