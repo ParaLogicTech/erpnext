@@ -10,6 +10,7 @@ from frappe.utils import (
 	clean_whitespace, cint,
 )
 from frappe.model.workflow import get_workflow_name, is_transition_condition_satisfied
+from frappe.query_builder import Criterion
 from erpnext.stock.get_item_details import get_conversion_factor
 from erpnext.accounts.utils import get_fiscal_years, validate_fiscal_year, get_account_currency
 from erpnext.utilities.transaction_base import TransactionBase
@@ -892,6 +893,26 @@ def get_advance_journal_entries(
 
 	return list(journal_entries)
 
+def get_accounts_with_children(accounts):
+	if not isinstance(accounts, list):
+		accounts = [d.strip() for d in accounts.strip().split(",") if d]
+
+	if not accounts:
+		return
+
+	doctype = frappe.qb.DocType("Account")
+	accounts_data = (
+		frappe.qb.from_(doctype)
+		.select(doctype.lft, doctype.rgt)
+		.where(doctype.name.isin(accounts))
+		.run(as_dict=True)
+	)
+
+	conditions = []
+	for account in accounts_data:
+		conditions.append((doctype.lft >= account.lft) & (doctype.rgt <= account.rgt))
+
+	return frappe.qb.from_(doctype).select(doctype.name).where(Criterion.any(conditions)).run(pluck=True)
 
 def get_advance_payment_entries(
 	party_type,

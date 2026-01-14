@@ -6,6 +6,7 @@ from erpnext.accounts.report.utils import get_currency, convert_to_presentation_
 from erpnext import get_default_company
 from frappe.utils import getdate, cstr, flt
 from frappe import _, _dict
+from erpnext.controllers.accounts_controller import get_accounts_with_children
 from erpnext.accounts.utils import get_account_currency
 from erpnext.accounts.party import set_party_name_in_list
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
@@ -46,9 +47,12 @@ def execute(filters=None):
 def validate_filters(filters, account_details):
 	if not filters.get("from_date") and not filters.get("to_date"):
 		frappe.throw(_("{0} and {1} are mandatory").format(frappe.bold(_("From Date")), frappe.bold(_("To Date"))))
-
-	if filters.get("account") and not account_details.get(filters.account):
-		frappe.throw(_("Account {0} does not exists").format(filters.account))
+	
+	if filters.get("account"):
+		filters.account = frappe.parse_json(filters.get("account"))
+		for account in filters.account:
+			if not account_details.get(account):
+				frappe.throw(_("Account {0} does not exists").format(account))
 
 	if filters.from_date > filters.to_date:
 		frappe.throw(_("From Date must be before To Date"))
@@ -112,7 +116,17 @@ def set_account_currency(filters):
 		account_currency = None
 
 		if filters.get("account"):
-			account_currency = get_account_currency(filters.account)
+			if len(filters.get("account")) == 1:
+				account_currency = get_account_currency(filters.account[0])
+			else:
+				currency = get_account_currency(filters.account[0])
+				is_same_account_currency = True
+				for account in filters.get("account"):
+					if get_account_currency(account) != currency:
+						is_same_account_currency = False
+						break
+				if is_same_account_currency:
+					account_currency = currency
 		elif filters.get("party_type") and filters.get("party") and filters.get("company"):
 			gle_currency = frappe.db.get_value(
 				"GL Entry", {
@@ -278,9 +292,9 @@ def get_conditions(filters, accounting_dimensions):
 		conditions.append("gle.company=%(company)s")
 
 	if filters.get("account"):
-		lft, rgt = frappe.db.get_value("Account", filters["account"], ["lft", "rgt"])
-		conditions.append("""gle.account in (select name from tabAccount
-			where lft>=%s and rgt<=%s and docstatus<2)""" % (lft, rgt))
+		filters.account = get_accounts_with_children(filters.account)
+		if filters.account:
+			conditions.append("account in %(account)s")
 	
 	if filters.get("account_type"):
 		conditions.append("""gle.account in (
@@ -359,7 +373,6 @@ def get_conditions(filters, accounting_dimensions):
 		frappe.get_attr(method)(filters, conditions, alias="gle")
 
 	return "{}".format(" and ".join(conditions)) if conditions else ""
-
 
 def calculate_opening_closing(filters, gl_entries, group_field, group_value, grouped_by):
 	totals = get_totals_dict()
