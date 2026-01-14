@@ -881,7 +881,7 @@ $.extend(erpnext.manufacturing, {
 		return erpnext.utils.show_progress_for_qty({
 			frm: frm,
 			as_html: !frm,
-			title: __('Production Status'),
+			title: opts.title || __('Production Status'),
 			total_qty: doc.qty,
 			progress_bars: [
 				{

@@ -662,7 +662,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 					});
 					return;
 				}
-				return erpnext.manufacturing.make_work_orders_from_order_dialog(r.message, this.frm.doc, true);
+				return erpnext.manufacturing.make_work_orders_from_order_dialog(r.message, this.frm.doc);
 			}
 		});
 	}

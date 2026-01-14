@@ -1133,11 +1133,19 @@ class WorkOrder(StatusUpdaterERP):
 					"description": d.description,
 					"bom_no": bom_no,
 					"warehouse": default_rm_warehouse if for_raw_material_request else d.source_warehouse,
+					"wip_warehouse": self.get("wip_warehouse"),
+					"source_warehouse": self.get("source_warehouse"),
 					"stock_uom": d.get("stock_uom") or d.get("uom"),
+
+					"company": self.get("company"),
+					"cost_center": self.get("cost_center") or d.get("cost_center"),
+					"project": self.get("project"),
+					"customer": self.get("customer"),
+					"customer_name": self.get("customer_name"),
+					"delivery_date": self.get("expected_delivery_date"),
+
 					"parent_work_order": self.name,
 					"work_order_item": d.name,
-					"project": self.project,
-					"cost_center": self.get("cost_center") or d.get("cost_center")
 				}
 
 				if for_raw_material_request:
@@ -1227,124 +1235,154 @@ def make_work_order(bom_no, item, qty=0, project=None):
 def create_work_orders(
 	items,
 	company,
+	use_multi_level_bom=None,
+	create_sub_assembly_work_orders=False,
 	ignore_version=True,
 	ignore_feed=False,
-	create_sub_assembly_work_orders=False
 ):
-	return _create_work_orders(
+	wo_docs = _create_work_orders(
 		items,
-		company,
+		company=company,
+		use_multi_level_bom=use_multi_level_bom,
 		ignore_version=ignore_version,
 		ignore_feed=ignore_feed,
 		create_sub_assembly_work_orders=create_sub_assembly_work_orders,
 	)
+	return [doc.name for doc in wo_docs]
 
 
 def _create_work_orders(
 	items,
-	company,
+	company=None,
+	use_multi_level_bom=None,
+	create_sub_assembly_work_orders=False,
 	ignore_permissions=False,
 	ignore_version=True,
 	ignore_feed=False,
-	create_sub_assembly_work_orders=False
 ):
 	'''Make Work Orders against the given Sales Order for the given `items`'''
 	if isinstance(items, str):
 		items = json.loads(items)
 
+	create_sub_assembly_work_orders = cint(create_sub_assembly_work_orders)
+	if create_sub_assembly_work_orders:
+		use_multi_level_bom = 0
+
 	work_order_docs = []
-
-	for d in items:
-		if not d.get("bom_no"):
-			frappe.throw(_("Please select BOM No against Item {0}").format(d.get("item_code")))
-		if not d.get("production_qty"):
-			frappe.throw(_("Please select Qty against Item {0}").format(d.get("item_code")))
-
-		sales_order = d.get("sales_order")
-		parent_work_order = d.get("parent_work_order")
-		customer = d.get("customer")
-		customer_name = d.get("customer_name") if d.get("customer") else None
-		delivery_date = d.get("delivery_date") or d.get("schedule_date") or d.get("expected_delivery_date")
-
-		# set missing customer
-		if not customer and sales_order:
-			customer = frappe.db.get_value("Sales Order", sales_order, "customer", cache=1)
-			customer_name = frappe.db.get_value("Sales Order", sales_order, "customer_name", cache=1)
-
-		if not customer and parent_work_order:
-			customer = frappe.db.get_value("Work Order", parent_work_order, "customer", cache=1)
-			customer_name = frappe.db.get_value("Work Order", parent_work_order, "customer_name", cache=1)
-
-		# set missing delivery date from sales order
-		if not delivery_date and sales_order:
-			delivery_date = frappe.db.get_value("Sales Order", sales_order, "delivery_date", cache=1)
-
-		# set missing customer name
-		if not customer_name and customer:
-			customer_name = frappe.get_cached_value("Customer", customer, "customer_name")
-
-		# set missing order line no
-		order_line_no = cint(d.get("order_line_no"))
-		if not order_line_no and d.get("sales_order_item"):
-			order_line_no = frappe.db.get_value("Sales Order Item", d.get("sales_order_item"), 'idx')
-
-		# create work order
-		work_order = frappe.new_doc("Work Order")
-		work_order.flags.ignore_permissions = cint(ignore_permissions)
-		work_order.flags.ignore_version = cint(ignore_version)
-		work_order.flags.ignore_feed = cint(ignore_feed)
-
-		work_order.update({
-			"production_item": d.get("item_code"),
-			"item_name": d.get("item_name"),
-			"description": d.get("description"),
-			"bom_no": d.get("bom_no"),
-			"qty": flt(d.get("production_qty")),
-			"fg_warehouse": d.get("warehouse"),
-			"company": company or d.get("company"),
-			"sales_order": sales_order,
-			"sales_order_item": d.get("sales_order_item"),
-			"parent_work_order": parent_work_order,
-			"work_order_item": d.get("work_order_item"),
-			"customer": customer,
-			"customer_name": customer_name,
-			"project": d.get("project"),
-			"order_line_no": order_line_no,
-			"expected_delivery_date": delivery_date,
-		})
-
-		if parent_work_order:
-			work_order.packing_slip_required = 0
-
-		if work_order.meta.has_field("cost_center") and d.get("cost_center"):
-			work_order.cost_center = d.get("cost_center")
-
-		frappe.utils.call_hook_method("update_work_order_on_create", work_order, d)
-
-		work_order.set_work_order_operations()
-		work_order.save()
-
-		if frappe.db.get_single_value("Manufacturing Settings", "auto_submit_work_order"):
-			work_order.submit()
-
+	for row in items:
+		work_order = create_work_order(
+			row,
+			company=company,
+			use_multi_level_bom=use_multi_level_bom,
+			ignore_permissions=ignore_permissions,
+			ignore_version=ignore_version,
+			ignore_feed=ignore_feed,
+		)
 		work_order_docs.append(work_order)
 
-	work_order_names = [p.name for p in work_order_docs]
-
-	if cint(create_sub_assembly_work_orders):
+	if create_sub_assembly_work_orders:
 		for work_order in work_order_docs:
 			sub_assembly_items = work_order.get_sub_assembly_items()
 			if sub_assembly_items:
-				work_order_names += _create_work_orders(
+				work_order_docs += _create_work_orders(
 					sub_assembly_items,
 					company=company,
+					use_multi_level_bom=0,
+					create_sub_assembly_work_orders=True,
 					ignore_permissions=ignore_permissions,
 					ignore_version=ignore_version,
 					ignore_feed=ignore_feed,
-					create_sub_assembly_work_orders=True
 				)
 
-	return work_order_names
+	return work_order_docs
+
+
+def create_work_order(
+	row,
+	company=None,
+	use_multi_level_bom=None,
+	ignore_permissions=False,
+	ignore_version=True,
+	ignore_feed=False,
+):
+	if not row.get("bom_no"):
+		frappe.throw(_("Please select BOM No against Item {0}").format(row.get("item_code")))
+	if not row.get("production_qty"):
+		frappe.throw(_("Please select Qty against Item {0}").format(row.get("item_code")))
+
+	sales_order = row.get("sales_order")
+	parent_work_order = row.get("parent_work_order")
+	customer = row.get("customer")
+	customer_name = row.get("customer_name") if row.get("customer") else None
+	delivery_date = row.get("delivery_date") or row.get("schedule_date") or row.get("expected_delivery_date")
+
+	# set missing customer
+	if not customer and sales_order:
+		customer = frappe.db.get_value("Sales Order", sales_order, "customer", cache=1)
+		customer_name = frappe.db.get_value("Sales Order", sales_order, "customer_name", cache=1)
+
+	if not customer and parent_work_order:
+		customer = frappe.db.get_value("Work Order", parent_work_order, "customer", cache=1)
+		customer_name = frappe.db.get_value("Work Order", parent_work_order, "customer_name", cache=1)
+
+	# set missing delivery date from sales order
+	if not delivery_date and sales_order:
+		delivery_date = frappe.db.get_value("Sales Order", sales_order, "delivery_date", cache=1)
+
+	# set missing customer name
+	if not customer_name and customer:
+		customer_name = frappe.get_cached_value("Customer", customer, "customer_name")
+
+	# set missing order line no
+	order_line_no = cint(row.get("order_line_no"))
+	if not order_line_no and row.get("sales_order_item"):
+		order_line_no = frappe.db.get_value("Sales Order Item", row.get("sales_order_item"), 'idx')
+
+	# create work order
+	work_order = frappe.new_doc("Work Order")
+	work_order.flags.ignore_permissions = cint(ignore_permissions)
+	work_order.flags.ignore_version = cint(ignore_version)
+	work_order.flags.ignore_feed = cint(ignore_feed)
+
+	work_order.update({
+		"production_item": row.get("item_code"),
+		"item_name": row.get("item_name"),
+		"description": row.get("description"),
+		"bom_no": row.get("bom_no"),
+		"qty": flt(row.get("production_qty")),
+		"fg_warehouse": row.get("warehouse"),
+		"wip_warehouse": row.get("wip_warehouse") or None,
+		"source_warehouse": row.get("source_warehouse") or None,
+		"company": company or row.get("company"),
+		"sales_order": sales_order,
+		"sales_order_item": row.get("sales_order_item"),
+		"parent_work_order": parent_work_order,
+		"work_order_item": row.get("work_order_item"),
+		"customer": customer,
+		"customer_name": customer_name,
+		"project": row.get("project"),
+		"order_line_no": order_line_no,
+		"expected_delivery_date": delivery_date,
+	})
+
+	if parent_work_order:
+		work_order.packing_slip_required = 0
+
+	if work_order.meta.has_field("cost_center") and row.get("cost_center"):
+		work_order.cost_center = row.get("cost_center")
+
+	if use_multi_level_bom is not None:
+		work_order.use_multi_level_bom = cint(use_multi_level_bom)
+
+	frappe.utils.call_hook_method("update_work_order_on_create", work_order, row)
+
+	work_order.set_work_order_operations()
+	work_order.save()
+
+	if frappe.db.get_single_value("Manufacturing Settings", "auto_submit_work_order"):
+		work_order.submit()
+
+	return work_order
 
 
 @frappe.whitelist()
@@ -1677,7 +1715,10 @@ def create_pick_list(source_name, target_doc=None, for_qty=None):
 
 @frappe.whitelist()
 def make_packing_slip(work_orders, target_doc=None):
-	from erpnext.selling.doctype.sales_order.sales_order import make_packing_slip as make_packing_slip_from_so
+	from erpnext.selling.doctype.sales_order.sales_order import (
+		make_packing_slip as make_packing_slip_from_so,
+		postprocess_packing_slip_from_sales_order
+	)
 
 	if isinstance(work_orders, str):
 		work_orders = json.loads(work_orders)
@@ -1705,24 +1746,26 @@ def make_packing_slip(work_orders, target_doc=None):
 				frappe.throw(_("Cannot pack Work Orders for multiple customers"))
 
 		if wo_doc.sales_order and wo_doc.sales_order_item:
-			pack_from_sales_orders.setdefault(wo_doc.sales_order, []).append(wo_doc.sales_order_item)
+			pack_from_sales_orders.setdefault(wo_doc.sales_order, []).append(wo_doc)
 		else:
 			pack_from_work_orders.append(wo_doc)
 
-	# Empty packable work order list error
-	if not pack_from_sales_orders and not pack_from_work_orders:
-		frappe.throw(_("Selected Work Order(s) are not applicable for packing"))
-
-	# Map from Sales Orders first
-	for sales_order, sales_order_items in pack_from_sales_orders.items():
-		frappe.flags.selected_children = {"items": sales_order_items}
-		target_doc = make_packing_slip_from_so(sales_order, target_doc)
-		frappe.flags.selected_children = None
-
-	# Map from Work Orders
 	if not target_doc:
 		target_doc = frappe.new_doc("Packing Slip")
 
+	# Empty packable work order list
+	if not pack_from_sales_orders and not pack_from_work_orders:
+		return target_doc
+
+	# Map from Sales Orders first
+	for sales_order, wo_docs_against_so in pack_from_sales_orders.items():
+		so_doc = frappe.get_doc("Sales Order", sales_order)
+		for wo_doc in wo_docs_against_so:
+			target_doc = make_packing_slip_from_so(so_doc, target_doc, for_work_order=wo_doc, skip_postprocess=True)
+
+		postprocess_packing_slip_from_sales_order(so_doc, target_doc)
+
+	# Map from Work Orders
 	for wo_doc in pack_from_work_orders:
 		if wo_doc.customer and not target_doc.customer:
 			target_doc.customer = wo_doc.customer
@@ -1744,7 +1787,8 @@ def make_packing_slip(work_orders, target_doc=None):
 	# Post process if necessary
 	if pack_from_work_orders:
 		frappe.utils.call_hook_method("postprocess_work_orders_to_packing_slip", pack_from_work_orders, target_doc)
-		target_doc.run_method("postprocess_after_mapping")
+
+	target_doc.run_method("postprocess_after_mapping")
 
 	return target_doc
 
