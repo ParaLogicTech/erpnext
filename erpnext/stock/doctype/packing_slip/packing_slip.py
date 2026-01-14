@@ -729,8 +729,9 @@ class PackingSlip(TransactionController):
 					if item.stock_qty and item.meta.has_field("gross_weight_per_unit"):
 						item.gross_weight_per_unit = item.gross_weight / item.stock_qty
 
-				self.total_qty += item.qty
-				self.total_stock_qty += item.stock_qty
+				if field == "items":
+					self.total_qty += item.qty
+					self.total_stock_qty += item.stock_qty
 
 				if item.meta.has_field("rejected_qty"):
 					self.total_rejected_qty += item.rejected_qty
