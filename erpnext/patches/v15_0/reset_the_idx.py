@@ -12,7 +12,7 @@ def execute():
 				name,
 				ROW_NUMBER() OVER (
 					PARTITION BY parent
-					ORDER BY idx, creation
+					ORDER BY idx
 				) AS new_idx
 			FROM `tabPurchase Order Item`
 		) t ON t.name = poi.name
@@ -26,7 +26,7 @@ def execute():
 				name,
 				ROW_NUMBER() OVER (
 					PARTITION BY parent
-					ORDER BY idx, creation
+					ORDER BY idx
 				) AS new_idx
 			FROM `tabSales Order Item`
 		) t ON t.name = soi.name
