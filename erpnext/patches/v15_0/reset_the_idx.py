@@ -2,18 +2,33 @@ import frappe
 
 
 def execute():
-	# purchase order list
-	purchase_order_list = frappe.get_all("Purchase Order", pluck="name")
-	for each_po in purchase_order_list:
-		po_doc = frappe.get_doc("Purchase Order", each_po)
-		for idx, row in enumerate(po_doc.items, start=1):
-			row.idx = idx
-		po_doc.db_update_all()
-	
-	# sales order list
-	sales_order_list = frappe.get_all("Sales Order", pluck="name")
-	for each_so in sales_order_list:
-		so_doc = frappe.get_doc("Sales Order", each_so)
-		for idx, row in enumerate(so_doc.items, start=1):
-			row.idx = idx
-		so_doc.db_update_all()
+	frappe.reload_doc('buying', 'doctype', 'purchase_order_item')
+	frappe.reload_doc('selling', 'doctype', 'sales_order_item')
+
+	frappe.db.sql("""
+		UPDATE `tabPurchase Order Item` poi
+		JOIN (
+			SELECT
+				name,
+				ROW_NUMBER() OVER (
+					PARTITION BY parent
+					ORDER BY idx, creation
+				) AS new_idx
+			FROM `tabPurchase Order Item`
+		) t ON t.name = poi.name
+		SET poi.idx = t.new_idx;
+	""")
+
+	frappe.db.sql("""
+		UPDATE `tabSales Order Item` soi
+		JOIN (
+			SELECT
+				name,
+				ROW_NUMBER() OVER (
+					PARTITION BY parent
+					ORDER BY idx, creation
+				) AS new_idx
+			FROM `tabSales Order Item`
+		) t ON t.name = soi.name
+		SET soi.idx = t.new_idx;
+	""")

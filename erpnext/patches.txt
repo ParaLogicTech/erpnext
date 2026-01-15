@@ -417,3 +417,4 @@ erpnext.patches.v15_0.set_maintenance_schedule_type
 erpnext.patches.v15_0.set_task_missing_expected_dates
 erpnext.patches.v15_0.close_pending_task_against_closed_projects
 erpnext.patches.v15_0.set_attendance_shift_standard_hours
+erpnext.patches.v15_0.reset_the_idx
