@@ -884,8 +884,18 @@ class SellingController(TransactionController):
 		for item in self.items:
 			if item.get("item_code"):
 				item.rate = self.get_item_cost_rate(item)
-				item.discount_percentage = 0
-				item.margin_rate_or_amount = 0
+				if flt(item.price_list_rate):
+					if item.rate <= flt(item.price_list_rate):
+						item.margin_rate_or_amount = 0
+						item.discount_amount = flt(item.price_list_rate) - flt(item.rate)
+						item.discount_percentage = item.discount_amount / item.price_list_rate * 100
+					else:
+						item.discount_percentage = 0
+						item.margin_type = "Amount"
+						item.margin_rate_or_amount = flt(item.rate) - flt(item.price_list_rate)
+				else:
+					item.discount_percentage = 0
+					item.margin_rate_or_amount = 0
 
 		self.calculate_taxes_and_totals()
 
