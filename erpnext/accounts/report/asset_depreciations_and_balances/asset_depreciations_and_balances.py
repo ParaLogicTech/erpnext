@@ -627,11 +627,15 @@ def get_assets_for_grouped_by_asset(filters):
 	return frappe.db.sql(
 		f"""
 		SELECT results.name as asset,
+			   results.total_number_of_depreciations as total_number_of_depreciations,
+			   results.useful_life as useful_life,
 			   sum(results.accumulated_depreciation_as_on_from_date) as accumulated_depreciation_as_on_from_date,
 			   sum(results.depreciation_eliminated_via_reversal) as depreciation_eliminated_via_reversal,
 			   sum(results.depreciation_eliminated_during_the_period) as depreciation_eliminated_during_the_period,
 			   sum(results.depreciation_amount_during_the_period) as depreciation_amount_during_the_period
 		from (SELECT a.name as name,
+				   a.total_number_of_depreciations,
+				   a.useful_life,
 				   ifnull(sum(case when gle.posting_date < %(from_date)s and (ifnull(a.disposal_date, 0) = 0 or a.disposal_date >= %(from_date)s) then
 								   gle.debit
 							  else
@@ -670,6 +674,8 @@ def get_assets_for_grouped_by_asset(filters):
 			group by a.name
 			union
 			SELECT a.name as name,
+				   a.total_number_of_depreciations,
+				   a.useful_life,
 				   ifnull(sum(case when ifnull(a.disposal_date, 0) != 0 and a.disposal_date < %(from_date)s then
 									0
 							   else
@@ -854,6 +860,22 @@ def get_columns(filters):
 				"fieldname": "cost_center",
 				"fieldtype": "Link",
 				"options":"Cost Center",
+				"width": 140,
+			}
+		)
+		columns.append(
+			{
+				"label": _("Total Number Of Depreciations"),
+				"fieldname": "total_number_of_depreciations",
+				"fieldtype": "Int",
+				"width": 140,
+			}
+		)
+		columns.append(
+			{
+				"label": _("Useful Life (Years)"),
+				"fieldname": "useful_life",
+				"fieldtype": "Float",
 				"width": 140,
 			}
 		)
