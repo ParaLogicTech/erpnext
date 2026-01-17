@@ -1783,6 +1783,7 @@ def make_packing_slip(work_orders, target_doc=None):
 		row.uom = wo_doc.stock_uom
 
 		frappe.utils.call_hook_method("postprocess_work_order_to_packing_slip_item", wo_doc, target_doc, row)
+		frappe.utils.call_hook_method("postprocess_packing_slip_item", row, target_doc, work_order=wo_doc)
 
 	# Post process if necessary
 	if pack_from_work_orders:

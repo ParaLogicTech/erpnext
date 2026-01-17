@@ -1387,11 +1387,11 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 
 	def item_condition(source, source_parent, target_parent):
 		if for_work_order:
-			if not work_order_details:
+			if not wo_doc:
 				return False
-			if source.name != work_order_details.sales_order_item:
+			if source.name != wo_doc.sales_order_item:
 				return False
-			if work_order_details.name in [d.work_order for d in target_parent.get('items') if d.work_order]:
+			if wo_doc.name in [d.work_order for d in target_parent.get('items') if d.work_order]:
 				return False
 		else:
 			if source.name in [d.sales_order_item for d in target_parent.get('items') if d.sales_order_item and not d.work_order]:
@@ -1416,14 +1416,11 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 			target.run_method("postprocess_after_mapping")
 
 	def update_item(source, target, source_parent, target_parent):
-		target.work_order = work_order_details.name if work_order_details else None
+		target.work_order = wo_doc.name if wo_doc else None
 
 		# Source Warehouse
-		if work_order_details:
-			if work_order_details.produce_fg_in_wip_warehouse:
-				target.source_warehouse = work_order_details.wip_warehouse
-			else:
-				target.source_warehouse = work_order_details.fg_warehouse
+		if wo_doc:
+			target.source_warehouse = wo_doc.wip_warehouse if wo_doc.produce_fg_in_wip_warehouse else wo_doc.fg_warehouse
 		else:
 			target.source_warehouse = source.warehouse
 
@@ -1431,14 +1428,19 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 		undelivered_qty, unpacked_qty = get_remaining_qty(source, target_parent)
 		target.qty = min(undelivered_qty, unpacked_qty)
 
-	def get_remaining_qty(source, target_parent):
-		work_order = work_order_details.name if work_order_details else None
+		# Postprocess Hooks
+		if wo_doc:
+			frappe.utils.call_hook_method("postprocess_work_order_to_packing_slip_item", wo_doc, target_doc, target)
 
-		if work_order:
+		frappe.utils.call_hook_method("postprocess_packing_slip_item", target, target_parent, sales_order_row=source, sales_order=source_parent, work_order=wo_doc)
+
+	def get_remaining_qty(source, target_parent):
+		if wo_doc:
 			undelivered_qty = round_down(flt(source.qty) - flt(source.delivered_qty), source.precision("qty"))
 
-			packable_qty = flt(work_order_details.completed_qty) - flt(work_order_details.rejected_qty) - flt(work_order_details.reconciled_qty)
+			packable_qty = flt(wo_doc.completed_qty) - flt(wo_doc.rejected_qty) - flt(wo_doc.reconciled_qty)
 			packable_qty_order_uom = packable_qty / source.conversion_factor
+
 			unpacked_qty = round_down(packable_qty_order_uom - flt(source.packed_qty), source.precision("qty"))
 		else:
 			undelivered_qty = flt(source.qty) - flt(source.delivered_qty)
@@ -1448,26 +1450,21 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 
 		return undelivered_qty, unpacked_qty
 
-	def get_work_order_details():
+	def get_work_order():
 		if not for_work_order:
 			return None
 
-		fields = [
-			"name", "completed_qty", "rejected_qty", "reconciled_qty",
-			"fg_warehouse", "wip_warehouse", "produce_fg_in_wip_warehouse",
-			"sales_order", "sales_order_item", "docstatus", "packing_slip_required",
-		]
 		if isinstance(for_work_order, Document):
-			out = frappe._dict({f: for_work_order.get(f) for f in fields})
+			wo = for_work_order
 		else:
-			out = frappe.db.get_value("Work Order", for_work_order, fieldname=fields, as_dict=1)
+			wo = frappe.get_doc("Work Order", for_work_order)
 
-		if out.docstatus != 1 or not out.packing_slip_required or not out.sales_order or not out.sales_order_item:
+		if wo.docstatus != 1 or not wo.packing_slip_required or not wo.sales_order or not wo.sales_order_item:
 			return None
 
-		return out
+		return wo
 
-	work_order_details = get_work_order_details()
+	wo_doc = get_work_order()
 
 	mapper = {
 		"Sales Order": {
