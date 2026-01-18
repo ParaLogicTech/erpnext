@@ -1150,9 +1150,45 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 		if parent_doctype == "Purchase Order" and flt(d.get("qty")) < flt(child_item.received_qty):
 			frappe.throw(_("Cannot set quantity less than received quantity"))
+	
+	def validate_maintain_same_rate(parent_doctype, child_item):
+		setting_doctype_config = {
+			"Sales Order": {
+				"settings_page": "Selling Settings",
+				"settings_field": "maintain_same_sales_rate",
+				"label": "Maintain same rate throughout Sales cycle",
+			},
+			"Purchase Order": {
+				"settings_page": "Buying Settings",
+				"settings_field": "maintain_same_rate",
+				"label": "Maintain same rate throughout Purchase cycle",
+			},
+		}
+
+		if parent_doctype not in setting_doctype_config:
+			return
+		
+		if not any(
+			flt(child_item.get(field)) > 0
+			for field in ("received_qty", "billed_qty", "delivered_qty")
+		):
+			return
+
+		setting_doctype_config_dict = setting_doctype_config[parent_doctype]
+
+		if cint(frappe.get_cached_value(setting_doctype_config_dict["settings_page"], None, setting_doctype_config_dict["settings_field"])):
+			frappe.throw(
+				_("To allow different rates, disable the {0} checkbox in {1}.").format(
+					frappe.bold(_(setting_doctype_config_dict["label"])),
+					get_link_to_form(
+						setting_doctype_config_dict["settings_page"],
+						setting_doctype_config_dict["settings_page"],
+						frappe.bold(setting_doctype_config_dict["settings_page"]),
+					),
+				)
+			)
 
 	data = json.loads(trans_items)
-
 	sales_doctypes = ['Sales Order', 'Sales Invoice', 'Delivery Note', 'Quotation']
 	parent = frappe.get_doc(parent_doctype, parent_doctype_name)
 	
@@ -1184,6 +1220,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 			date_unchanged = prev_date == new_date if prev_date and new_date else False # in case of delivery note etc
 			if rate_unchanged and qty_unchanged and conversion_factor_unchanged and date_unchanged:
 				continue
+			validate_maintain_same_rate(parent_doctype, child_item)
 
 		validate_quantity(child_item, d)
 
