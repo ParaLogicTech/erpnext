@@ -14,8 +14,7 @@ from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchas
 from erpnext.stock.doctype.material_request.test_material_request import make_material_request
 from erpnext.stock.doctype.material_request.material_request import make_purchase_order
 from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
-from erpnext.controllers.accounts_controller import update_child_qty_rate
-from frappe.utils.status_updater import OverAllowanceError
+from erpnext.controllers.transaction_controller import update_child_items
 from erpnext.stock.doctype.batch.test_batch import make_new_batch
 from erpnext.controllers.buying_controller import get_backflushed_subcontracted_raw_materials
 
@@ -104,7 +103,7 @@ class TestPurchaseOrder(unittest.TestCase):
 		existing_requested_qty = get_requested_qty()
 
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7, 'docname': po.items[0].name}])
-		update_child_qty_rate('Purchase Order', trans_item, po.name)
+		update_child_items('Purchase Order', po.name, trans_item)
 
 		mr.reload()
 		self.assertEqual(mr.items[0].ordered_qty, 7)
@@ -137,7 +136,7 @@ class TestPurchaseOrder(unittest.TestCase):
 			},
 			{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7}
 		])
-		update_child_qty_rate('Purchase Order', trans_item, po.name)
+		update_child_items('Purchase Order', po.name, trans_item)
 
 		po.reload()
 		self.assertEquals(len(po.get('items')), 2)
@@ -162,12 +161,12 @@ class TestPurchaseOrder(unittest.TestCase):
 				'docname': first_item_of_po.name
 			},
 			{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7}])
-		update_child_qty_rate('Purchase Order', trans_item, po.name)
+		update_child_items('Purchase Order', po.name, trans_item)
 
 		po.reload()
 		# check if can remove received item
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7, 'docname': po.get("items")[1].name}])
-		self.assertRaises(frappe.ValidationError, update_child_qty_rate, 'Purchase Order', trans_item, po.name)
+		self.assertRaises(frappe.ValidationError, update_child_items, 'Purchase Order', po.name, trans_item)
 
 		first_item_of_po = po.get("items")[0]
 		trans_item = json.dumps([
@@ -178,7 +177,7 @@ class TestPurchaseOrder(unittest.TestCase):
 				'docname': first_item_of_po.name
 			}
 		])
-		update_child_qty_rate('Purchase Order', trans_item, po.name)
+		update_child_items('Purchase Order', po.name, trans_item)
 
 		po.reload()
 		self.assertEquals(len(po.get('items')), 1)
@@ -194,11 +193,11 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		# update qty
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7, 'docname': po.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_qty_rate,'Purchase Order', trans_item, po.name)
+		self.assertRaises(frappe.ValidationError, update_child_items,'Purchase Order', po.name, trans_item)
 
 		# add new item
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 100, 'qty' : 2}])
-		self.assertRaises(frappe.ValidationError, update_child_qty_rate,'Purchase Order', trans_item, po.name)
+		self.assertRaises(frappe.ValidationError, update_child_items,'Purchase Order', po.name, trans_item)
 		frappe.set_user("Administrator")
 
 	def test_update_qty(self):

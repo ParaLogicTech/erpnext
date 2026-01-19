@@ -662,104 +662,93 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	}
 
 	item_code(doc, cdt, cdn) {
-		var me = this;
-		var item = frappe.get_doc(cdt, cdn);
-
-		var update_stock = 0;
-		if(['Sales Invoice'].includes(me.frm.doc.doctype)) {
-			update_stock = cint(me.frm.doc.update_stock);
-		}
+		let item = frappe.get_doc(cdt, cdn);
 
 		// clear barcode if setting item (else barcode will take priority)
-		if(!me.frm.from_barcode) {
+		if (!this.frm.from_barcode) {
 			item.barcode = null;
 		}
+		this.frm.from_barcode = false;
 
-		me.frm.from_barcode = false;
-		if(item.item_code || item.barcode || item.serial_no || item.vehicle) {
-			if(!me.validate_company_and_party()) {
-				me.frm.fields_dict["items"].grid.grid_rows[item.idx - 1].remove();
+		if (item.item_code || item.barcode || item.serial_no || item.vehicle) {
+			if (!this.validate_company_and_party()) {
+				this.frm.fields_dict["items"].grid.grid_rows[item.idx - 1].remove();
 			} else {
-				return me.frm.call({
-					method: "erpnext.stock.get_item_details.get_item_details",
-					child: item,
-					args: {
-						doc: me.frm.doc,
-						args: {
-							item_code: item.item_code,
-							hide_item_code: item.hide_item_code,
-							barcode: item.barcode,
-							serial_no: item.serial_no,
-							vehicle: item.vehicle,
-							batch_no: item.batch_no,
-							set_warehouse: me.frm.doc.set_warehouse,
-							default_depreciation_percentage: me.frm.doc.default_depreciation_percentage,
-							default_underinsurance_percentage: me.frm.doc.default_underinsurance_percentage,
-							warehouse: item.warehouse,
-							customer: me.frm.doc.customer || me.frm.doc.party_name,
-							bill_to: me.frm.doc.bill_to,
-							quotation_to: me.frm.doc.quotation_to,
-							supplier: me.frm.doc.supplier,
-							currency: me.frm.doc.currency,
-							update_stock: update_stock,
-							conversion_rate: me.frm.doc.conversion_rate,
-							retail_price_list: me.frm.doc.retail_price_list,
-							price_list: me.frm.doc.selling_price_list || me.frm.doc.buying_price_list,
-							price_list_currency: me.frm.doc.price_list_currency,
-							plc_conversion_rate: me.frm.doc.plc_conversion_rate,
-							company: me.frm.doc.company,
-							order_type: me.frm.doc.order_type,
-							transaction_type_name: me.frm.doc.transaction_type,
-							is_pos: cint(me.frm.doc.is_pos),
-							is_subcontracted: me.frm.doc.is_subcontracted,
-							transaction_date: me.frm.doc.transaction_date || me.frm.doc.posting_date,
-							ignore_pricing_rule: me.frm.doc.ignore_pricing_rule,
-							doctype: me.frm.doc.doctype,
-							name: me.frm.doc.name,
-							project: item.project || me.frm.doc.project,
-							campaign: me.frm.doc.campaign,
-							coupon_code: me.frm.doc.coupon_code,
-							qty: item.qty || 1,
-							stock_qty: item.stock_qty,
-							manufacturer: item.manufacturer,
-							stock_uom: item.stock_uom,
-							pos_profile: me.frm.doc.doctype == 'Sales Invoice' ? me.frm.doc.pos_profile : '',
-							cost_center: item.cost_center,
-							apply_taxes_on_retail: item.apply_taxes_on_retail,
-							allow_zero_valuation_rate: item.allow_zero_valuation_rate,
-							tax_category: me.frm.doc.tax_category,
-							applies_to_item: me.frm.doc.applies_to_item,
-							child_docname: item.name,
-						}
-					},
-
-					callback: function(r) {
-						if(!r.exc) {
-							frappe.run_serially([
-								() => {
-									var d = locals[cdt][cdn];
-									me.add_taxes_from_item_tax_template(d.item_tax_rate);
-									if (d.free_item_data) {
-										me.apply_product_discount(d.free_item_data);
-									}
-								},
-								() => me.frm.script_manager.trigger("price_list_rate", cdt, cdn),
-								() => me.conversion_factor(doc, cdt, cdn, true),
-								() => me.show_hide_select_batch_button && me.show_hide_select_batch_button(),
-								() => me.set_skip_delivery_note && me.set_skip_delivery_note(),
-								() => me.remove_pricing_rule(item),
-								() => {
-									if (item.apply_rule_on_other_items) {
-										let key = item.name;
-										me.apply_rule_on_other_items({key: item});
-									}
-								}
-							]);
-						}
+				return this.get_item_details(item, (r) => {
+					if (!r.exc) {
+						frappe.run_serially([
+							() => this.add_taxes_from_item_tax_template(item.item_tax_rate),
+							() => item.free_item_data && this.apply_product_discount(item.free_item_data),
+							() => this.frm.script_manager.trigger("price_list_rate", cdt, cdn),
+							() => this.conversion_factor(doc, cdt, cdn, true),
+							() => this.show_hide_select_batch_button && this.show_hide_select_batch_button(),
+							() => this.set_skip_delivery_note && this.set_skip_delivery_note(),
+							() => this.remove_pricing_rule(item),
+							() => item.apply_rule_on_other_items && this.apply_rule_on_other_items({key: item}),
+						]);
 					}
 				});
 			}
 		}
+	}
+
+	get_item_details(item, callback) {
+		return this.frm.call({
+			method: "erpnext.stock.get_item_details.get_item_details",
+			child: item,
+			args: {
+				doc: this.frm.doc,
+				args: {
+					item_code: item.item_code,
+					hide_item_code: item.hide_item_code,
+					barcode: item.barcode,
+					serial_no: item.serial_no,
+					vehicle: item.vehicle,
+					batch_no: item.batch_no,
+					set_warehouse: this.frm.doc.set_warehouse,
+					default_depreciation_percentage: this.frm.doc.default_depreciation_percentage,
+					default_underinsurance_percentage: this.frm.doc.default_underinsurance_percentage,
+					warehouse: item.warehouse,
+					customer: this.frm.doc.customer || this.frm.doc.party_name,
+					bill_to: this.frm.doc.bill_to,
+					quotation_to: this.frm.doc.quotation_to,
+					supplier: this.frm.doc.supplier,
+					currency: this.frm.doc.currency,
+					update_stock: cint(this.frm.doc.update_stock),
+					conversion_rate: this.frm.doc.conversion_rate,
+					retail_price_list: this.frm.doc.retail_price_list,
+					price_list: this.frm.doc.selling_price_list || this.frm.doc.buying_price_list,
+					price_list_currency: this.frm.doc.price_list_currency,
+					plc_conversion_rate: this.frm.doc.plc_conversion_rate,
+					company: this.frm.doc.company,
+					order_type: this.frm.doc.order_type,
+					transaction_type_name: this.frm.doc.transaction_type,
+					is_pos: cint(this.frm.doc.is_pos),
+					is_subcontracted: this.frm.doc.is_subcontracted,
+					transaction_date: this.frm.doc.transaction_date || this.frm.doc.posting_date,
+					ignore_pricing_rule: this.frm.doc.ignore_pricing_rule,
+					doctype: this.frm.doc.doctype,
+					name: this.frm.doc.name,
+					project: item.project || this.frm.doc.project,
+					campaign: this.frm.doc.campaign,
+					coupon_code: this.frm.doc.coupon_code,
+					qty: item.qty || 1,
+					stock_qty: item.stock_qty,
+					manufacturer: item.manufacturer,
+					stock_uom: item.stock_uom,
+					pos_profile: this.frm.doc.doctype == 'Sales Invoice' ? this.frm.doc.pos_profile : '',
+					cost_center: item.cost_center,
+					apply_taxes_on_retail: item.apply_taxes_on_retail,
+					allow_zero_valuation_rate: item.allow_zero_valuation_rate,
+					tax_category: this.frm.doc.tax_category,
+					applies_to_item: this.frm.doc.applies_to_item,
+					child_docname: item.name,
+				}
+			},
+			callback: (r) => {
+				callback && callback(r);
+			}
+		});
 	}
 
 	get_project_details() {

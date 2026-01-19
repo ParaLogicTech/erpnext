@@ -154,9 +154,14 @@ class SalesOrder(SellingController):
 		self.notify_update()
 		clear_doctype_notifications(self)
 
-	def set_missing_values(self, for_validate=False):
-		super().set_missing_values(for_validate=for_validate)
-		self.set_skip_delivery_note()
+	def set_missing_item_details_for_row(self, item, for_validate=False, skip_pricing_rules=False, parent_dict=None):
+		super().set_missing_item_details_for_row(
+			item,
+			for_validate=for_validate,
+			skip_pricing_rules=skip_pricing_rules,
+			parent_dict=parent_dict,
+		)
+		self.set_skip_delivery_note_for_row(item)
 
 	def set_skip_delivery_note(self):
 		for d in self.get("items"):

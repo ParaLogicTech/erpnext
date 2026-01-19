@@ -22,17 +22,16 @@ frappe.ui.form.on("Sales Order", {
 		}
 	},
 	refresh: function(frm) {
-		if (frm.doc.docstatus === 1
+		if (
+			frm.doc.docstatus === 1
 			&& frm.doc.status !== 'Closed'
 			&& (frm.doc.delivery_status == "To Deliver" || frm.doc.billing_status == "To Bill")
 		) {
 			frm.add_custom_button(__('Update Items'), () => {
 				erpnext.utils.update_child_items({
 					frm: frm,
-					child_docname: "items",
-					child_doctype: "Sales Order Detail",
 					cannot_add_row: false,
-				})
+				});
 			});
 		}
 	},

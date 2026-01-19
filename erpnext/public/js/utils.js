@@ -1049,106 +1049,203 @@ erpnext.utils.select_alternate_items = function(opts) {
 erpnext.utils.update_child_items = function(opts) {
 	const frm = opts.frm;
 	const cannot_add_row = (typeof opts.cannot_add_row === 'undefined') ? true : opts.cannot_add_row;
-	const child_docname = (typeof opts.cannot_add_row === 'undefined') ? "items" : opts.child_docname;
-	this.data = [];
-	const fields = [{
-		fieldtype:'Data',
-		fieldname:"docname",
-		read_only: 1,
-		hidden: 1,
-	}, {
-		fieldtype:'Link',
-		fieldname:"item_code",
-		options: 'Item',
-		in_list_view: 1,
-		read_only: 0,
-		disabled: 0,
-		label: __('Item Code')
-	}, {
-		fieldtype:'Float',
-		fieldname:"qty",
-		default: 0,
-		read_only: 0,
-		in_list_view: 1,
-		label: __('Qty')
-	}, {
-		fieldtype:'Currency',
-		fieldname:"rate",
-		default: 0,
-		read_only: 0,
-		in_list_view: 1,
-		label: __('Rate')
-	}];
 
-	if (frm.doc.doctype == 'Sales Order' || frm.doc.doctype == 'Purchase Order' ) {
-		fields.splice(2, 0, {
-			fieldtype: 'Date',
-			fieldname: frm.doc.doctype == 'Sales Order' ? "delivery_date" : "schedule_date",
+	this.data = [];
+
+	const fields = [
+		{
+			label: __("Item Code"),
+			fieldname: "item_code",
+			fieldtype: "Link",
+			options: "Item",
 			in_list_view: 1,
-			label: frm.doc.doctype == 'Sales Order' ? __("Delivery Date") : __("Reqd by date"),
-			reqd: 1
-		})
-		fields.splice(3, 0, {
-			fieldtype: 'Float',
-			fieldname: "conversion_factor",
+			reqd: 1,
+			read_only_depends_on: "docname",
+			columns: 2,
+			get_query: () => {
+				let filters = {};
+				if (frm.doc.doctype == "Sales Order") {
+					filters["is_sales_item"] = 1;
+				} else if (frm.doc.doctype == "Purchase Order") {
+					filters["is_purchase_item"] = 1;
+				}
+				return erpnext.queries.item(filters);
+			},
+			onchange: function () {
+				let row = this.doc;
+				if (row.item_code) {
+					frm.cscript.get_item_details(row, (r) => {
+						if (r.message) {
+							row.item_name = r.message.item_name;
+							row.uom = r.message.uom;
+
+							row.price_list_rate = flt(r.message.price_list_rate);
+							row.rate = row.price_list_rate;
+
+							if (r.message.margin_type && r.message.margin_rate_or_amount) {
+								let margin_value = r.message.margin_type == "Amount" ?
+									flt(r.message.margin_rate_or_amount)
+									: row.price_list_rate * flt(r.message.margin_rate_or_amount) / 100;
+								row.rate = row.price_list_rate + margin_value;
+							}
+
+							row.discount_percentage = flt(r.message.discount_percentage);
+							row.rate = flt(row.rate * (1 - row.discount_percentage / 100.0));
+
+							dialog.fields_dict.data.grid.refresh();
+						}
+					});
+				}
+			}
+		},
+		{
+			label: __("Item Name"),
+			fieldname: "item_name",
+			fieldtype: "Data",
 			in_list_view: 1,
-			label: __("Conversion Factor")
-		})
-	}
+			read_only_depends_on: "docname",
+			columns: 3,
+		},
+		{
+			label: __("Qty"),
+			fieldname: "qty",
+			fieldtype: "Float",
+			default: 0,
+			in_list_view: 1,
+			columns: 1,
+			reqd: 1,
+		},
+		{
+			label: __("UOM"),
+			fieldname: "uom",
+			fieldtype: "Link",
+			options: "UOM",
+			read_only: 1,
+			in_list_view: 1,
+			columns: 1,
+		},
+		{
+			label: __("List Rate"),
+			fieldname: "price_list_rate",
+			fieldtype: "Currency",
+			default: 0,
+			read_only: 1,
+			in_list_view: 1,
+			columns: 1,
+		},
+		{
+			label: __("Discount (%)"),
+			fieldname: "discount_percentage",
+			fieldtype: "Percent",
+			default: 0,
+			in_list_view: 1,
+			columns: 1,
+			onchange: function () {
+				let row = this.doc;
+				if (row.price_list_rate) {
+					let discount_amount = flt(row.price_list_rate) * flt(row.discount_percentage) / 100;
+					row.discount_percentage = discount_amount / flt(row.price_list_rate) * 100;
+					row.rate = row.price_list_rate - discount_amount;
+				} else {
+					row.discount_percentage = 0;
+				}
+
+				dialog.fields_dict.data.grid.refresh();
+			},
+		},
+		{
+			label: __("Rate"),
+			fieldname: "rate",
+			fieldtype: "Currency",
+			default: 0,
+			in_list_view: 1,
+			columns: 1,
+			reqd: 1,
+			onchange: function () {
+				let row = this.doc;
+				if (row.price_list_rate && flt(row.rate) < flt(row.price_list_rate)) {
+					let discount_amount = flt(row.price_list_rate) - flt(row.rate);
+					row.discount_percentage = discount_amount / flt(row.price_list_rate) * 100;
+				} else {
+					row.discount_percentage = 0;
+				}
+
+				dialog.fields_dict.data.grid.refresh();
+			},
+		},
+		{
+			fieldname: "docname",
+			fieldtype: "Data",
+			read_only: 1,
+			hidden: 1,
+		},
+		{
+			fieldname: "disable_item_formatter",
+			fieldtype: "Check",
+			read_only: 1,
+			hidden: 1,
+			default: 1,
+		},
+	];
 
 	const dialog = new frappe.ui.Dialog({
 		title: __("Update Items"),
 		size: "extra-large",
 		fields: [
 			{
-				fieldname: "trans_items",
+				fieldname: "data",
 				fieldtype: "Table",
 				label: "Items",
 				cannot_add_rows: cannot_add_row,
-				in_place_edit: true,
+				// in_place_edit: true,
 				reqd: 1,
 				data: this.data,
 				get_data: () => {
 					return this.data;
 				},
-				fields: fields
+				fields: fields,
 			},
 		],
 		primary_action: function() {
-			const trans_items = this.get_values()["trans_items"];
+			const data = this.get_values()["data"];
 			frappe.call({
-				method: 'erpnext.controllers.accounts_controller.update_child_qty_rate',
+				method: 'erpnext.controllers.transaction_controller.update_child_items',
 				freeze: true,
 				args: {
 					'parent_doctype': frm.doc.doctype,
-					'trans_items': trans_items,
-					'parent_doctype_name': frm.doc.name,
-					'child_docname': child_docname
+					'parent_name': frm.doc.name,
+					'data': data,
 				},
-				callback: function() {
+				callback: () => {
+					dialog.hide();
 					frm.reload_doc();
 				}
 			});
-			this.hide();
-			refresh_field("items");
 		},
-		primary_action_label: __('Update')
+		primary_action_label: __('Update'),
 	});
 
-	frm.doc[opts.child_docname].forEach(d => {
-		dialog.fields_dict.trans_items.df.data.push({
+	$(dialog.wrapper).on("grid-row-render", function (e, grid_row) {
+		grid_row.row.toggleClass("highlight", Boolean(grid_row.doc && !grid_row.doc.docname));
+	});
+
+	for (let d of frm.doc.items || []) {
+		dialog.fields_dict.data.df.data.push({
 			"docname": d.name,
 			"name": d.name,
 			"item_code": d.item_code,
-			"delivery_date": d.delivery_date,
-			"schedule_date": d.schedule_date,
-			"conversion_factor": d.conversion_factor,
+			"item_name": d.item_name,
 			"qty": d.qty,
-			"rate": d.rate,
+			"uom": d.uom,
+			"price_list_rate": flt(d.price_list_rate),
+			"discount_percentage": flt(d.discount_percentage),
+			"rate": flt(d.rate),
+			"disable_item_formatter": 1,
 		});
-		this.data = dialog.fields_dict.trans_items.df.data;
-		dialog.fields_dict.trans_items.grid.refresh();
-	})
+		this.data = dialog.fields_dict.data.df.data;
+		dialog.fields_dict.data.grid.refresh();
+	}
+
 	dialog.show();
 }
 
