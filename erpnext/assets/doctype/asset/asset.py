@@ -95,6 +95,8 @@ class Asset(AccountsController):
 		for each_fb_row in self.get('finance_books'):
 			self.total_number_of_depreciations += each_fb_row.total_number_of_depreciations
 			total_frequency_number_of_depreciation += (each_fb_row.total_number_of_depreciations * each_fb_row.frequency_of_depreciation)
+			# to take only first row
+			break
 		
 		if total_frequency_number_of_depreciation:
 			self.useful_life = flt(total_frequency_number_of_depreciation/12, self.precision('useful_life'))
