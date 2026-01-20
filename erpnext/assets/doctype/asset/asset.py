@@ -21,6 +21,8 @@ class Asset(AccountsController):
 		self.validate_asset_and_reference()
 		self.validate_item()
 		self.validate_asset_date()
+		self.validate_finance_books()
+		self.calculate_useful_life_and_total_number_of_depreciations()
 		self.prepare_depreciation_data()
 		if self.get("schedules"):
 			self.validate_expected_value_after_useful_life()
@@ -85,6 +87,20 @@ class Asset(AccountsController):
 			finance_books = get_item_details(self.item_code, self.asset_category)
 			self.set('finance_books', finance_books)
 
+	def calculate_useful_life_and_total_number_of_depreciations(self):
+		self.total_number_of_depreciations = 0
+		self.useful_life = 0
+		total_frequency_number_of_depreciation = 0
+		
+		for each_fb_row in self.get('finance_books'):
+			self.total_number_of_depreciations += each_fb_row.total_number_of_depreciations
+			total_frequency_number_of_depreciation += (each_fb_row.total_number_of_depreciations * each_fb_row.frequency_of_depreciation)
+			# to take only first row
+			break
+		
+		if total_frequency_number_of_depreciation:
+			self.useful_life = flt(total_frequency_number_of_depreciation/12, self.precision('useful_life'))
+
 	def validate_asset_values(self):
 
 		if not flt(self.gross_purchase_amount):
@@ -129,6 +145,8 @@ class Asset(AccountsController):
 			self.gross_purchase_amount = each_item.base_net_rate + each_item.item_tax_amount
 			self.purchase_receipt_amount = each_item.base_net_rate + each_item.item_tax_amount
 			self.location = each_item.asset_location
+			self.branch = purchase_document.branch
+			self.cost_center = purchase_document.cost_center
 			self.purchase_vendor = purchase_document.supplier
 			self.purchase_vendor_name = purchase_document.supplier_name
 
@@ -302,6 +320,27 @@ class Asset(AccountsController):
 			has_pro_rata = True
 
 		return has_pro_rata
+
+	def validate_finance_books(self):
+		if not self.calculate_depreciation or len(self.finance_books) == 1:
+			return
+
+		finance_books = set()
+
+		for d in self.finance_books:
+			if d.finance_book in finance_books:
+				frappe.throw(
+					_("Row #{}: Please use a different Finance Book.").format(d.idx),
+					title=_("Duplicate Finance Book"),
+				)
+			else:
+				finance_books.add(d.finance_book)
+
+			if not d.finance_book:
+				frappe.throw(
+					_("Row #{}: Finance Book should not be empty since you're using multiple.").format(d.idx),
+					title=_("Missing Finance Book"),
+				)
 
 	def validate_asset_finance_books(self, row):
 		if flt(row.expected_value_after_useful_life) >= flt(self.gross_purchase_amount):
