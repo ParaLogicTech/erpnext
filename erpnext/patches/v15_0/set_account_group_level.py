@@ -2,6 +2,8 @@ import frappe
 
 
 def execute():
+	if not frappe.db.exists("DocType", "Account Group"):
+		return
 	if not frappe.db.has_column("Account Group", "is_root_level"):
 		return
 
