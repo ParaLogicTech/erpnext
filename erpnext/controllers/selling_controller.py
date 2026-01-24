@@ -73,9 +73,15 @@ class SellingController(TransactionController):
 			self.title = self.customer_name or self.customer
 
 	def get_party(self):
+		party_type = "Customer"
 		party = self.get("customer")
+
+		if not party and self.get("quotation_to") and self.get("party_name"):
+			party_type = self.quotation_to
+			party = self.party_name
+
 		party_name = self.get("customer_name") if party else None
-		return "Customer", party, party_name
+		return party_type, party, party_name
 
 	def get_billing_party(self):
 		if self.get("bill_to"):
@@ -123,7 +129,7 @@ class SellingController(TransactionController):
 		if party_type and party:
 			from erpnext.accounts.party import _get_party_details
 
-			if self.get("customer"):
+			if self.meta.has_field("customer") and self.get("customer"):
 				self.update(get_fetch_values(self.doctype, "customer", self.customer))
 
 			party_details = _get_party_details(
@@ -723,11 +729,16 @@ class SellingController(TransactionController):
 				self.bill_to_name = self.customer_name
 
 	def validate_debit_to_acc(self):
+		if not self.meta.has_field("debit_to"):
+			return
+
+		if not self.debit_to:
+			frappe.throw(_("Debit To account is mandatory"), title=_("Account Missing"))
+
 		account = frappe.get_cached_value("Account", self.debit_to,
 			["account_type", "report_type", "account_currency"], as_dict=True)
-
 		if not account:
-			frappe.throw(_("Debit To is required"), title=_("Account Missing"))
+			frappe.throw(_("Invalid Debit To Account {0}").format(self.debit_to))
 
 		if account.report_type != "Balance Sheet":
 			frappe.throw(_("Please ensure {} account is a Balance Sheet account. \
