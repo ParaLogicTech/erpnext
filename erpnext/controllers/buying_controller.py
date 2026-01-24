@@ -5,7 +5,6 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, cstr, getdate
 from frappe.model.utils import get_fetch_values
-from erpnext.accounts.party import get_party_details
 from erpnext.stock.get_item_details import get_conversion_factor, get_default_supplier, get_default_warehouse
 from erpnext.buying.utils import validate_for_items
 from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
@@ -130,7 +129,7 @@ class BuyingController(TransactionController):
 			return super().get_party_account()
 
 	def set_missing_values(self, for_validate=False):
-		super(BuyingController, self).set_missing_values(for_validate)
+		super().set_missing_values(for_validate)
 
 		self.set_missing_project()
 		self.set_default_supplier_warehouse()
@@ -140,36 +139,40 @@ class BuyingController(TransactionController):
 
 		# set contact and address details for supplier, if they are not mentioned
 		if self.get("supplier"):
-			if self.get('supplier'):
-				self.update(get_fetch_values(self.doctype, 'supplier', self.supplier))
+			from erpnext.accounts.party import _get_party_details
+			self.update(get_fetch_values(self.doctype, "supplier", self.supplier))
 
-			self.update_if_missing(get_party_details(
-				party=self.supplier,
+			party_details = _get_party_details(
 				party_type="Supplier",
-				ignore_permissions=self.flags.ignore_permissions,
+				party=self.supplier,
 				letter_of_credit=self.get("letter_of_credit"),
 				doctype=self.doctype,
 				company=self.company,
 				branch=self.get("branch"),
-				project=self.get('project'),
+				posting_date=self.get("posting_date") or self.get("transaction_date"),
+				delivery_date=self.get("schedule_date"),
+				bill_date=self.get("bill_date"),
 				party_address=self.get("supplier_address"),
-				shipping_address=self.get('shipping_address'),
-				contact_person=self.get('contact_person'),
-				account=self.get('credit_to'),
-				posting_date=self.get('posting_date') or self.get('transaction_date'),
-				bill_date=self.get('bill_date'),
-				delivery_date=self.get('schedule_date'),
-				currency=self.get('currency'),
-				price_list=self.get('buying_price_list'),
-				transaction_type=self.get('transaction_type'),
-				set_warehouse=self.get('set_warehouse'),
-			), force_fields=self.force_party_fields)
+				shipping_address=self.get("shipping_address"),
+				company_address=self.get("company_address"),
+				contact_person=self.get("contact_person"),
+				transaction_type=self.get("transaction_type"),
+				project=self.get("project"),
+				currency=self.get("currency"),
+				price_list=self.get("buying_price_list"),
+				payment_terms_template=self.get("payment_terms_template"),
+				account=self.get("credit_to"),
+				cost_center=self.get("cost_center"),
+				set_warehouse=self.get("set_warehouse"),
+			)
+
+			self.update_if_missing(party_details, force_fields=self.force_party_fields)
 
 		self.set_price_list_currency("Buying")
 		self.set_missing_item_details(for_validate)
 
 		if self.get("customer"):
-			self.update(get_fetch_values(self.doctype, 'customer', self.customer))
+			self.update(get_fetch_values(self.doctype, "customer", self.customer))
 
 	def set_missing_project(self):
 		if self.meta.has_field("items") and self.meta.has_field("project") and self.get("project"):

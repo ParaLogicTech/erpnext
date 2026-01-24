@@ -628,7 +628,6 @@
    "read_only": 1
   },
   {
-   "description": "Add / Edit Taxes and Charges",
    "fieldname": "taxes_charges_section",
    "fieldtype": "Section Break",
    "label": "Taxes and Charges",
@@ -1615,11 +1614,12 @@
    "options": "Cost Center"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-truck",
  "idx": 261,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-17 20:12:41.885222",
+ "modified": "2026-01-22 22:07:24.624875",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt",
@@ -1719,6 +1719,7 @@
    "role": "Auditor"
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "status, posting_date, supplier",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

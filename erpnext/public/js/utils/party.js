@@ -3,108 +3,35 @@
 
 frappe.provide("erpnext.utils");
 
-erpnext.utils.get_party_details = function(frm, method, args, callback) {
-	if (!method) {
-		method = "erpnext.accounts.party.get_party_details";
-	}
+erpnext.utils.get_party_details = function(frm, args, callback) {
+	args = args || {};
 
-	if (args) {
-		if (in_list(['Sales Invoice', 'Sales Order', 'Delivery Note'], frm.doc.doctype)) {
-			if (frm.doc.company_address && (!args.company_address)) {
-				args.company_address = frm.doc.company_address;
-			}
-		}
-
-		if (in_list(['Purchase Invoice', 'Purchase Order', 'Purchase Receipt'], frm.doc.doctype)) {
-			if (frm.doc.shipping_address && (!args.shipping_address)) {
-				args.shipping_address = frm.doc.shipping_address;
-			}
-		}
-	}
-
-	if (!args) {
-		if ((frm.doctype != "Purchase Order" && frm.doc.customer)
-			|| (frm.doc.party_name && in_list(['Quotation', 'Opportunity'], frm.doc.doctype))) {
-
-			let party_type = "Customer";
-			if (frm.doc.quotation_to && frm.doc.quotation_to === "Lead") {
-				party_type = "Lead";
-			}
-
-			args = {
-				party: frm.doc.customer || frm.doc.party_name,
-				party_type: party_type,
-				price_list: frm.doc.selling_price_list
-			};
-		} else if (frm.doc.supplier) {
-			args = {
-				party: frm.doc.supplier,
-				party_type: "Supplier",
-				bill_date: frm.doc.bill_date,
-				price_list: frm.doc.buying_price_list
-			};
-		}
-
-		if (in_list(['Sales Invoice', 'Sales Order', 'Delivery Note'], frm.doc.doctype)) {
-			if (!args) {
-				args = {
-					party: frm.doc.customer || frm.doc.party_name,
-					party_type: 'Customer'
-				}
-			}
-			if (frm.doc.company_address && (!args.company_address)) {
-				args.company_address = frm.doc.company_address;
-			}
-
-			if (frm.doc.shipping_address_name &&(!args.shipping_address_name)) {
-				args.shipping_address_name = frm.doc.shipping_address_name;
-			}
-		}
-
-		if (in_list(['Purchase Invoice', 'Purchase Order', 'Purchase Receipt'], frm.doc.doctype)) {
-			if (!args) {
-				args = {
-					party: frm.doc.supplier,
-					party_type: 'Supplier'
-				}
-			}
-
-			if (frm.doc.shipping_address && (!args.shipping_address)) {
-				args.shipping_address = frm.doc.shipping_address;
-			}
-		}
-
-		if (args) {
-			args.posting_date = frm.doc.posting_date || frm.doc.transaction_date;
-		}
-	}
-	if (!args || !args.party) return;
-
-	if (frappe.meta.get_docfield(frm.doc.doctype, "taxes")) {
-		if (!erpnext.utils.validate_mandatory(frm, "Posting / Transaction Date",
-			args.posting_date, args.party_type=="Customer" ? "customer": "supplier")) return;
-	}
-
-	if (!erpnext.utils.validate_mandatory(frm, "Company", frm.doc.company, args.party_type=="Customer" ? "customer": "supplier")) {
+	if (!erpnext.utils.validate_mandatory(frm, "Company", frm.doc.company)) {
 		return;
 	}
 
+	if (!args?.party_type || !args?.party) {
+		return;
+	}
+
+	args.doctype = frm.doc.doctype;
 	args.company = frm.doc.company;
 	args.branch = frm.doc.branch;
-	args.doctype = frm.doc.doctype;
-	args.project = frm.doc.project;
-	args.transaction_type = frm.doc.transaction_type;
-	args.cost_center = frm.doc.cost_center;
 	args.bill_to = frm.doc.bill_to;
 	args.letter_of_credit = frm.doc.letter_of_credit;
+	args.transaction_type = frm.doc.transaction_type;
+	args.project = frm.doc.project;
+	args.cost_center = frm.doc.cost_center;
 	args.set_warehouse = frm.doc.set_warehouse;
+	args.posting_date = frm.doc.posting_date || frm.doc.transaction_date;
+	args.company_address = frm.doc.company_address;
 
 	if (frappe.meta.has_field(frm.doc.doctype, 'has_stin')) {
 		args["has_stin"] = cint(frm.doc.has_stin);
 	}
 
 	return frappe.call({
-		method: method,
+		method: "erpnext.accounts.party.get_party_details",
 		args: args,
 		callback: function(r) {
 			if (r.message) {
@@ -120,7 +47,10 @@ erpnext.utils.get_party_details = function(frm, method, args, callback) {
 					}
 				]);
 			}
-		}
+		},
+		always: () => {
+			frm.updating_party_details = false;
+		},
 	});
 }
 

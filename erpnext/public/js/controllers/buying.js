@@ -175,10 +175,27 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 	}
 
 	supplier() {
-		var me = this;
-		return erpnext.utils.get_party_details(this.frm, null, null, function(){
-			me.apply_price_list();
-		});
+		return this.get_party_details();
+	}
+
+	get_party_details() {
+		if (this.frm.updating_party_details) {
+			return;
+		}
+
+		return erpnext.utils.get_party_details(
+			this.frm,
+			{
+				party_type: "Supplier",
+				party: this.frm.doc.supplier,
+				letter_of_credit: this.frm.doc.letter_of_credit,
+				bill_date: this.frm.doc.bill_date,
+				shipping_address: this.frm.doc.shipping_address,
+			},
+			() => {
+				this.apply_pricing_rule();
+			}
+		);
 	}
 
 	supplier_address() {

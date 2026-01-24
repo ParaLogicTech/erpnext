@@ -13,6 +13,7 @@ from erpnext.controllers.transaction_controller import TransactionController
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
+from frappe.model.utils import get_fetch_values
 
 
 class SellingController(TransactionController):
@@ -115,35 +116,38 @@ class SellingController(TransactionController):
 		if self.get("customer"):
 			party_type = "Customer"
 			party = self.customer
-		elif self.doctype == "Quotation" and self.party_name:
+		elif self.get("quotation_to") and self.get("party_name"):
 			party_type = self.quotation_to
 			party = self.party_name
 
 		if party_type and party:
 			from erpnext.accounts.party import _get_party_details
 
+			if self.get("customer"):
+				self.update(get_fetch_values(self.doctype, "customer", self.customer))
+
 			party_details = _get_party_details(
-				party=party,
 				party_type=party_type,
+				party=party,
 				bill_to=self.get("bill_to"),
-				ignore_permissions=self.flags.ignore_permissions,
 				doctype=self.doctype,
 				company=self.company,
 				branch=self.get("branch"),
-				project=self.get('project'),
-				payment_terms_template=self.get('payment_terms_template'),
+				posting_date=self.get("posting_date") or self.get("transaction_date"),
+				delivery_date=self.get("delivery_date"),
 				party_address=self.get("customer_address"),
 				shipping_address=self.get("shipping_address_name"),
 				company_address=self.get("company_address"),
-				contact_person=self.get('contact_person'),
-				has_stin=self.get("has_stin"),
-				account=self.get('debit_to'),
-				cost_center=self.get('cost_center'),
-				posting_date=self.get('posting_date') or self.get('transaction_date'),
-				delivery_date=self.get('delivery_date'),
-				price_list=self.get('selling_price_list'),
-				currency=self.get("currency"),
+				contact_person=self.get("contact_person"),
 				transaction_type=self.get("transaction_type"),
+				project=self.get("project"),
+				currency=self.get("currency"),
+				price_list=self.get("selling_price_list"),
+				payment_terms_template=self.get('payment_terms_template'),
+				account=self.get("debit_to"),
+				cost_center=self.get("cost_center"),
+				has_stin=self.get("has_stin"),
+				set_warehouse=self.get("set_warehouse"),
 				pos_profile=self.get("pos_profile"),
 			)
 

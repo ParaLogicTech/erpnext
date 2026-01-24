@@ -48,7 +48,10 @@ erpnext.maintenance.MaintenanceSchedule = class MaintenanceSchedule extends frap
 	}
 
 	customer() {
-		return erpnext.utils.get_party_details(this.frm);
+		return erpnext.utils.get_party_details(this.frm, {
+			party_type: "Customer",
+			party: this.frm.doc.customer,
+		});
 	}
 
 	contact_person() {

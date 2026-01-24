@@ -31,4 +31,26 @@ frappe.ui.form.on(cur_frm.doctype, {
 			}
 		}
 	},
-})
+
+	set_default_quotation_validity: function(frm) {
+		if (frm.is_new() && !frm.doc.valid_till && !cint(frm.doc.quotation_validity_days)) {
+			if (frappe.boot.sysdefaults.quotation_valid_till) {
+				frm.set_value('quotation_validity_days', cint(frappe.boot.sysdefaults.quotation_valid_till));
+			} else {
+				let valid_till = frappe.datetime.add_months(frm.doc.transaction_date, 1);
+				valid_till = frappe.datetime.add_days(valid_till, -1);
+				frm.set_value('valid_till', valid_till);
+			}
+		}
+	},
+
+	set_dynamic_field_labels: function(frm) {
+		if (frm.doc.quotation_to) {
+			frm.set_df_property("party_name", "label", __(frm.doc.quotation_to));
+			frm.set_df_property("customer_address", "label", __(frm.doc.quotation_to + " Address"));
+		} else {
+			frm.set_df_property("party_name", "label", __("Party"));
+			frm.set_df_property("customer_address", "label", __("Party Address"));
+		}
+	}
+});

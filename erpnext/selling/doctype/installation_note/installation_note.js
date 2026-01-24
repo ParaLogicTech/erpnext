@@ -17,7 +17,10 @@ frappe.ui.form.on('Installation Note', {
 		}
 	},
 	customer: function(frm) {
-		return erpnext.utils.get_party_details(frm);
+		return erpnext.utils.get_party_details(frm, {
+			party_type: "Customer",
+			party: frm.doc.customer,
+		});
 	},
 	customer_address: function(frm) {
 		erpnext.utils.get_address_display(frm);

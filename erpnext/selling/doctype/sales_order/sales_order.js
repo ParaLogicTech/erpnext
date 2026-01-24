@@ -289,7 +289,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 
 	bill_to() {
 		this.set_dynamic_link();
-		return super.customer();
+		return this.get_party_details();
 	}
 
 	get_items_from_quotation() {

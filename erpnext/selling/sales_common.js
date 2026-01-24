@@ -217,10 +217,27 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 	}
 
 	customer() {
-		var me = this;
-		return erpnext.utils.get_party_details(this.frm, null, null, function() {
-			me.apply_price_list();
-		});
+		return this.get_party_details();
+	}
+
+	get_party_details() {
+		if (this.frm.updating_party_details) {
+			return;
+		}
+
+		return erpnext.utils.get_party_details(
+			this.frm,
+			{
+				party_type: "Customer",
+				party: this.frm.doc.customer,
+				bill_to: this.frm.doc.bill_to,
+				delivery_date: this.frm.doc.delivery_date,
+				company_address: this.frm.doc.company_address,
+			},
+			() => {
+				this.apply_pricing_rule();
+			}
+		);
 	}
 
 	customer_address() {

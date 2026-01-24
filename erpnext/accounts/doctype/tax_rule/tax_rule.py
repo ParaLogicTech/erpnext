@@ -5,7 +5,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cstr, cint
+from frappe.utils import cstr, getdate
 from frappe.contacts.doctype.address.address import get_default_address
 from frappe.utils.nestedset import get_root_of
 from erpnext.setup.doctype.customer_group.customer_group import get_parent_customer_groups
@@ -151,6 +151,7 @@ def get_party_details(party, party_type, args=None):
 def get_tax_template(posting_date, args):
 	"""Get matching tax rule"""
 	args = frappe._dict(args)
+	posting_date = getdate(posting_date)
 
 	if args.get("customer") and args.get("company"):
 		customer_tax_template = frappe.get_cached_value("Customer", args.get("customer"), "taxes_and_charges_template")
