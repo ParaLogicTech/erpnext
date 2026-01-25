@@ -159,8 +159,6 @@ class PricingRule(Document):
 
 @frappe.whitelist()
 def apply_pricing_rule(args, doc=None):
-	from erpnext.stock.get_item_details import determine_selling_or_buying
-
 	"""
 		args = {
 			"items": [{"doctype": "", "name": "", "item_code": "", "brand": "", "item_group": ""}, ...],
@@ -181,18 +179,16 @@ def apply_pricing_rule(args, doc=None):
 		}
 	"""
 
+	from erpnext.stock.get_item_details import process_args
+
 	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)
-
-	if not args.selling_or_buying:
-		determine_selling_or_buying(args)
-
-	# list of dictionaries
 	out = []
 
-	if args.get("doctype") == "Material Request": return out
+	if args.get("doctype") == "Material Request":
+		return out
 
 	item_list = args.get("items")
 	args.pop("items")
@@ -203,6 +199,8 @@ def apply_pricing_rule(args, doc=None):
 	for item in item_list:
 		args_copy = copy.deepcopy(args)
 		args_copy.update(item)
+		args_copy = process_args(args_copy)
+
 		data = get_pricing_rule_for_item(args_copy, item.get('price_list_rate'), doc=doc)
 		out.append(data)
 		if not item.get("serial_no") and set_serial_nos_based_on_fifo and not args.get('is_return'):

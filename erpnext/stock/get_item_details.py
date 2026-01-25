@@ -1397,7 +1397,11 @@ def apply_price_list(args, as_doc=False):
 			"ignore_pricing_rule": 0/1
 		}
 	"""
-	args = process_args(args)
+
+	if isinstance(args, str):
+		args = json.loads(args)
+
+	args = frappe._dict(args)
 
 	parent = get_price_list_currency_and_exchange_rate(args)
 	children = []
@@ -1407,8 +1411,10 @@ def apply_price_list(args, as_doc=False):
 		args.update(parent)
 
 		for item in item_list:
-			args_copy = frappe._dict(args.copy())
+			args_copy = args.copy()
 			args_copy.update(item)
+			args_copy = process_args(args_copy)
+
 			item_details = apply_price_list_on_item(args_copy)
 			children.append(item_details)
 
