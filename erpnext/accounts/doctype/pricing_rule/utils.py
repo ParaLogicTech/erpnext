@@ -333,7 +333,7 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 
 	if len(pricing_rules) > 1 and not args.for_shopping_cart:
 		frappe.throw(_("Multiple Price Rules exists with same criteria, please resolve conflict by assigning priority. Pricing Rules:<ol>{0}</ol>")
-			.format("".join([f"<li>{frappe.utils.get_link_to_form("Pricing Rule", d.name)}</li>" for d in pricing_rules])), MultiplePricingRuleConflict)
+			.format("".join([f"<li>{frappe.utils.get_link_to_form('Pricing Rule', d.name)}</li>" for d in pricing_rules])), MultiplePricingRuleConflict)
 	elif pricing_rules:
 		return pricing_rules[0]
 
