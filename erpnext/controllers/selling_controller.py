@@ -293,9 +293,12 @@ class SellingController(TransactionController):
 			total_discount_percentage = flt(d.get("discount_percentage"))
 			has_additional_discount = flt(self.get("discount_amount")) != 0
 			if has_additional_discount:
-				total_discount = flt(d.tax_exclusive_amount_before_discount) - flt(d.net_amount)
-				total_discount_percentage = total_discount / flt(d.tax_exclusive_amount_before_discount) * 100\
-					if flt(d.tax_exclusive_amount_before_discount) else 0
+				if not flt(d.get("discount_percentage")) and flt(self.get("additional_discount_percentage")):
+					total_discount_percentage = flt(self.get("additional_discount_percentage"))
+				else:
+					total_discount = flt(d.tax_exclusive_amount_before_discount) - flt(d.net_amount)
+					total_discount_percentage = total_discount / flt(d.tax_exclusive_amount_before_discount) * 100\
+						if flt(d.tax_exclusive_amount_before_discount) else 0
 
 			if not d.item_code or not total_discount_percentage:
 				continue
