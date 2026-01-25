@@ -4,7 +4,7 @@
 import frappe
 import erpnext
 from frappe import _
-from frappe.utils import flt, cint, cstr, ceil, getdate, clean_whitespace, now_datetime, comma_or
+from frappe.utils import flt, cint, cstr, ceil, getdate, clean_whitespace, now_datetime, comma_or, strip_html
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from frappe.model.naming import set_name_by_naming_series
 from frappe.contacts.doctype.address.address import get_default_address
@@ -1245,6 +1245,13 @@ class Project(StatusUpdaterERP):
 		if row.service_template and not row.service_template_name:
 			row.service_template_name = frappe.get_cached_value("Service Template", row.service_template,
 				"service_template_name")
+
+		if row.service_template and not row.description:
+			template_description = frappe.get_cached_value("Service Template", row.service_template,
+				"description")
+
+			if template_description and strip_html(template_description):
+				row.description = template_description
 
 		if self.status not in ('Completed', 'Closed', 'Cancelled'):
 			row.includes_service_warranty = frappe.get_cached_value("Service Template", row.service_template,
