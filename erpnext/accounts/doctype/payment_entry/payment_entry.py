@@ -5,10 +5,13 @@
 import frappe, erpnext, json
 from frappe import _, scrub, ValidationError
 from frappe.utils import flt, cint, comma_or, nowdate, getdate, cstr
-from erpnext.accounts.utils import get_outstanding_invoices, get_account_currency, get_balance_on, get_balance_on_voucher
-from erpnext.accounts.party import get_party_account, get_party_name, get_contact_details, get_default_contact
-from erpnext.accounts.doctype.journal_entry.journal_entry import get_default_bank_cash_account, \
-	get_average_party_exchange_rate_on_journal_entry
+from frappe.contacts.doctype.contact.contact import get_default_contact
+from erpnext.accounts.utils import get_outstanding_invoices, get_account_currency, get_balance_on
+from erpnext.accounts.party import get_party_account, get_party_name, _get_contact_details
+from erpnext.accounts.doctype.journal_entry.journal_entry import (
+	get_default_bank_cash_account,
+	get_average_party_exchange_rate_on_journal_entry,
+)
 from erpnext.setup.utils import get_exchange_rate
 from erpnext.accounts.general_ledger import make_gl_entries
 from erpnext.hr.doctype.expense_claim.expense_claim import update_reimbursed_amount
@@ -340,7 +343,7 @@ class PaymentEntry(AccountsController):
 				self.contact_person = get_default_contact(self.party_type, self.party)
 
 		if self.contact_person:
-			contact_details = get_contact_details(self.contact_person, project=self.project)
+			contact_details = _get_contact_details(self.contact_person, project=self.project)
 			for k, v in contact_details.items():
 				if self.meta.has_field(k):
 					self.set(k, v)

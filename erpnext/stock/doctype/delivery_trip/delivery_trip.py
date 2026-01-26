@@ -7,7 +7,7 @@ import datetime
 
 import frappe
 from frappe import _
-from erpnext.accounts.party import get_address_display
+from erpnext.accounts.party import render_address
 from frappe.model.document import Document
 from frappe.utils import cint, get_datetime, get_link_to_form
 
@@ -38,7 +38,7 @@ class DeliveryTrip(Document):
 	def validate_stop_addresses(self):
 		for stop in self.delivery_stops:
 			if not stop.customer_address:
-				stop.customer_address = get_address_display(frappe.get_doc("Address", stop.address).as_dict())
+				stop.customer_address = render_address(frappe.get_doc("Address", stop.address).as_dict())
 
 	def update_status(self):
 		status = {
@@ -157,7 +157,7 @@ class DeliveryTrip(Document):
 		if not self.driver_address:
 			frappe.throw(_("Cannot Calculate Arrival Time as Driver Address is Missing."))
 
-		home_address = get_address_display(frappe.get_doc("Address", self.driver_address).as_dict())
+		home_address = render_address(frappe.get_doc("Address", self.driver_address).as_dict())
 
 		route_list = []
 		# Initialize first leg with origin as the home address

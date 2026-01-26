@@ -9,7 +9,7 @@ from erpnext.stock.get_item_details import get_applies_to_details, get_force_app
 from frappe.model.naming import set_name_by_naming_series
 from frappe.contacts.doctype.address.address import get_default_address
 from frappe.contacts.doctype.contact.contact import get_default_contact, get_all_contact_nos
-from erpnext.accounts.party import get_contact_details, get_address_display
+from erpnext.accounts.party import _get_contact_details, render_address
 from erpnext.controllers.status_updater import StatusUpdaterERP
 from erpnext.projects.doctype.project_type.project_type import get_project_type_defaults
 from erpnext.stock.doctype.item.item import convert_item_uom_for
@@ -2462,17 +2462,17 @@ def get_customer_details(args):
 	if not out.customer_address and customer.name:
 		out.customer_address = get_default_address("Customer", customer.name)
 
-	out.address_display = get_address_display(out.customer_address)
+	out.address_display = render_address(out.customer_address)
 
 	# Contact
 	out.contact_person = args.contact_person
 	if not out.contact_person and customer.name:
 		out.contact_person = get_default_contact("Customer", customer.name)
 
-	out.update(get_contact_details(out.contact_person))
+	out.update(_get_contact_details(out.contact_person))
 
 	out.secondary_contact_person = args.secondary_contact_person
-	secondary_contact_details = get_contact_details(out.secondary_contact_person, prefix="secondary_")
+	secondary_contact_details = _get_contact_details(out.secondary_contact_person, prefix="secondary_")
 	out.update(secondary_contact_details)
 
 	out.contact_nos = get_all_contact_nos("Customer", customer.name)
@@ -2500,14 +2500,14 @@ def get_bill_to_details(args):
 	if not out.billing_contact_person and bill_to.name:
 		out.billing_contact_person = get_default_contact("Customer", bill_to.name)
 
-	out.update(get_contact_details(out.billing_contact_person, prefix="billing_"))
+	out.update(_get_contact_details(out.billing_contact_person, prefix="billing_"))
 
 	# Billing Address
 	out.billing_address = args.billing_address
 	if not out.billing_address and bill_to.name:
 		out.billing_address = get_default_address("Customer", bill_to.name)
 
-	out.billing_address_display = get_address_display(out.billing_address)
+	out.billing_address_display = render_address(out.billing_address)
 
 	return out
 

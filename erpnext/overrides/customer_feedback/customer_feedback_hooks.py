@@ -1,6 +1,6 @@
 import frappe
 from crm.crm.doctype.customer_feedback.customer_feedback import CustomerFeedback
-from erpnext.accounts.party import get_contact_details
+from erpnext.accounts.party import _get_contact_details
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 
 
@@ -65,4 +65,4 @@ def get_customer_feedback_contact_details_hook(args, out):
 		if party.name == project_details.customer:
 			out.contact_person = project_details.contact_person
 
-	out.update(get_contact_details(out.contact_person, lead=lead, project=args.project))
+	out.update(_get_contact_details(out.contact_person, lead=lead, project=args.project))

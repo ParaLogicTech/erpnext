@@ -7,7 +7,7 @@ from frappe import _, unscrub
 import frappe.defaults
 from frappe.utils import flt, cint, cstr, today, clean_whitespace, getdate, now_datetime, get_time, combine_datetime
 from erpnext.utilities.transaction_base import TransactionBase
-from erpnext.accounts.party import validate_party_accounts, get_dashboard_info, get_address_display
+from erpnext.accounts.party import validate_party_accounts, get_dashboard_info, render_address
 from frappe.contacts.address_and_contact import load_address_and_contact, delete_contact_and_address
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from frappe.contacts.doctype.address.address import get_default_address
@@ -251,7 +251,7 @@ class Customer(TransactionBase):
 				self.pull_primary_address(address)
 
 	def pull_primary_address(self, address):
-		to_set = {'customer_primary_address': address.name, 'primary_address': get_address_display(address.as_dict())}
+		to_set = {'customer_primary_address': address.name, 'primary_address': render_address(address.as_dict())}
 		for d in primary_address_fields:
 			if self.meta.has_field(d['customer_field']):
 				to_set[d['customer_field']] = address.get(d['address_field']) or None
@@ -630,7 +630,8 @@ def get_customer_primary_contact(doctype, txt, searchfield, start, page_len, fil
 @frappe.whitelist()
 def get_primary_address_details(address_name):
 	doc = frappe.get_doc("Address", address_name)
-	out = {'primary_address': get_address_display(doc.as_dict())}
+	doc.check_permissions()
+	out = {'primary_address': render_address(doc.as_dict())}
 	for field in primary_address_fields:
 		out[field['customer_field']] = doc.get(field['address_field'])
 
@@ -640,6 +641,7 @@ def get_primary_address_details(address_name):
 @frappe.whitelist()
 def get_primary_contact_details(contact_name):
 	doc = frappe.get_doc("Contact", contact_name)
+	doc.check_permissions()
 	out = {}
 	for field in primary_contact_fields:
 		out[field['customer_field']] = doc.get(field['contact_field'])

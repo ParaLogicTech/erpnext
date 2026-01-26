@@ -7,7 +7,7 @@ from frappe import _, scrub
 from frappe.core.doctype.user_permission.user_permission import get_permitted_documents
 from frappe.model.utils import get_fetch_values
 from frappe.utils import getdate, add_years, get_timestamp, nowdate, flt, cstr, cint
-from frappe.contacts.doctype.address.address import get_default_address, render_address
+from frappe.contacts.doctype.address.address import get_default_address
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from erpnext.exceptions import PartyFrozen, PartyDisabled, InvalidAccountCurrency
 from erpnext.accounts.utils import get_fiscal_year
@@ -273,7 +273,7 @@ def set_address_details(
 	# Billing Address
 	billing_address_field = "customer_address" if party_doc.doctype == "Lead" else scrub(party_doc.doctype) + "_address"
 	party_details[billing_address_field] = party_address or get_default_address(party_doc.doctype, bill_to or party_doc.name)
-	party_details.address_display = get_address_display(party_details[billing_address_field], lead=lead)
+	party_details.address_display = render_address(party_details[billing_address_field], lead=lead)
 	if doctype:
 		party_details.update(get_fetch_values(doctype, billing_address_field, party_details[billing_address_field]))
 
@@ -283,7 +283,7 @@ def set_address_details(
 		"company": company,
 		"branch": branch,
 	})
-	party_details["company_address_display"] = render_address(party_details["company_address"], check_permissions=False)
+	party_details["company_address_display"] = render_address(party_details["company_address"])
 
 	if doctype and frappe.get_meta(doctype).has_field('company_address'):
 		party_details.update(get_fetch_values(doctype, 'company_address', party_details.company_address))
@@ -291,7 +291,7 @@ def set_address_details(
 	# Shipping Address for Sales
 	if party_doc.doctype in ("Customer", "Lead"):
 		party_details.shipping_address_name = shipping_address or get_party_shipping_address(party_doc.doctype, party_doc.name)
-		party_details.shipping_address = get_address_display(party_details["shipping_address_name"])
+		party_details.shipping_address = render_address(party_details["shipping_address_name"])
 		if doctype:
 			party_details.update(get_fetch_values(doctype, 'shipping_address_name', party_details.shipping_address_name))
 
@@ -306,7 +306,7 @@ def set_address_details(
 		})
 
 		party_details["shipping_address"] = shipping_address or company_shipping_address or party_details.get("company_address")
-		party_details.shipping_address_display = get_address_display(party_details["shipping_address"])
+		party_details.shipping_address_display = render_address(party_details["shipping_address"])
 		party_details.update(get_fetch_values(doctype, 'shipping_address', party_details.shipping_address))
 
 	# Regional Address Details
@@ -345,7 +345,7 @@ def set_contact_details(party_details, party_doc, party_type, contact_person=Non
 	if party_type == "Lead":
 		lead = party_doc
 
-	party_details.update(get_contact_details(party_details.contact_person, project=project_details, lead=lead))
+	party_details.update(_get_contact_details(party_details.contact_person, project=project_details, lead=lead))
 
 	return party_details.contact_person
 
@@ -360,14 +360,37 @@ def get_contact_details(
 	link_name=None,
 	prefix=None,
 ):
-	from crm.crm.utils import get_contact_details
+	return _get_contact_details(
+		contact,
+		project=project,
+		lead=lead,
+		get_contact_no_list=get_contact_no_list,
+		link_doctype=link_doctype,
+		link_name=link_name,
+		prefix=prefix,
+		check_permissions=True,
+	)
 
-	out = get_contact_details(
+
+def _get_contact_details(
+	contact=None,
+	project=None,
+	lead=None,
+	get_contact_no_list=False,
+	link_doctype=None,
+	link_name=None,
+	prefix=None,
+	check_permissions=False,
+):
+	from crm.crm.utils import _get_contact_details
+
+	out = _get_contact_details(
 		contact,
 		lead=lead,
 		get_contact_no_list=get_contact_no_list,
 		link_doctype=link_doctype,
 		link_name=link_name,
+		check_permissions=check_permissions,
 	)
 	out = out or frappe._dict()
 
@@ -391,8 +414,12 @@ def get_contact_details(
 
 @frappe.whitelist()
 def get_address_display(address=None, lead=None):
-	from crm.crm.utils import get_address_display
-	return get_address_display(address, lead=lead)
+	return render_address(address, lead=lead, check_permissions=True)
+
+
+def render_address(address=None, lead=None, check_permissions=False):
+	from crm.crm.utils import render_address
+	return render_address(address, lead=lead, check_permissions=check_permissions)
 
 
 def get_default_price_list(party_doc):
