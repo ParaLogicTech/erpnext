@@ -585,7 +585,7 @@ class StockEntry(TransactionController):
 		for d in self.items:
 			if d.s_warehouse:
 				args = self.get_args_for_incoming_rate(d)
-				d.basic_rate = get_incoming_rate(args)
+				d.basic_rate = get_incoming_rate(args, raise_error_if_no_rate=False)
 			elif d.allow_zero_valuation_rate and not d.s_warehouse:
 				d.basic_rate = 0.0
 			elif d.t_warehouse and not d.basic_rate and not self.is_finished_good_item(d):
@@ -614,14 +614,14 @@ class StockEntry(TransactionController):
 		self.calculate_rate_and_amount()
 
 	def calculate_rate_and_amount(self, force=False,
-			update_finished_item_rate=True, raise_error_if_no_rate=True):
+			update_finished_item_rate=True, raise_error_if_no_rate=False):
 		self.set_basic_rate(force, update_finished_item_rate, raise_error_if_no_rate)
 		self.distribute_additional_costs()
 		self.update_valuation_rate()
 		self.set_total_incoming_outgoing_value()
 		self.set_total_amount()
 
-	def set_basic_rate(self, force=False, update_finished_item_rate=True, raise_error_if_no_rate=True):
+	def set_basic_rate(self, force=False, update_finished_item_rate=True, raise_error_if_no_rate=False):
 		"""get stock and incoming rate on posting date"""
 		for d in self.get('items'):
 			if self.customer_provided and not d.s_warehouse:
