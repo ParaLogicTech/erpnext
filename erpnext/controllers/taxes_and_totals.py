@@ -18,8 +18,8 @@ class calculate_taxes_and_totals(object):
 		frappe.utils.call_hook_method("calculate_taxes_and_totals", self)
 
 	def calculate(self):
-		if not len(self.doc.get("items")):
-			return
+		# if not len(self.doc.get("items")):
+		# 	return
 
 		self.discount_amount_applied = False
 		self._calculate()

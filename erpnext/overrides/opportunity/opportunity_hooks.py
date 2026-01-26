@@ -183,6 +183,7 @@ def make_quotation(source_name, target_doc=None):
 			"doctype": "Quotation",
 			"field_map": {
 				"opportunity_from": "quotation_to",
+				"party_name": "party_name",
 				"opportunity_type": "order_type",
 				"name": "opportunity",
 				"applies_to_serial_no": "applies_to_serial_no",

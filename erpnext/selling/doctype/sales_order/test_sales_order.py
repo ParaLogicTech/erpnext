@@ -9,7 +9,7 @@ from erpnext.selling.doctype.sales_order.sales_order \
 	import make_material_request, make_delivery_note, make_sales_invoice, WarehouseRequired
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 from erpnext.manufacturing.doctype.work_order.work_order import create_work_orders
-from erpnext.controllers.accounts_controller import update_child_qty_rate
+from erpnext.controllers.transaction_controller import update_child_items
 from erpnext.selling.doctype.sales_order.sales_order import make_raw_material_request
 from erpnext.selling.doctype.product_bundle.test_product_bundle import make_product_bundle
 from erpnext.stock.doctype.item.test_item import make_item
@@ -327,7 +327,7 @@ class TestSalesOrder(unittest.TestCase):
 				'qty' : first_item_of_so.qty, 'docname': first_item_of_so.name},
 			{'item_code' : '_Test Item 2', 'rate' : 200, 'qty' : 7}
 		])
-		update_child_qty_rate('Sales Order', trans_item, so.name)
+		update_child_items('Sales Order', so.name, trans_item)
 
 		so.reload()
 		self.assertEqual(so.get("items")[-1].item_code, '_Test Item 2')
@@ -352,7 +352,7 @@ class TestSalesOrder(unittest.TestCase):
 			{"item_code": '_Test Item', "qty": 5, "rate":1000, "docname": so.get("items")[0].name},
 			{"item_code": '_Test Item 2', "qty": 2, "rate":500}
 		])
-		update_child_qty_rate('Sales Order', trans_item, so.name)
+		update_child_items('Sales Order', so.name, trans_item)
 		so.reload()
 		self.assertEqual(len(so.get("items")), 2)
 
@@ -363,7 +363,7 @@ class TestSalesOrder(unittest.TestCase):
 			"rate":500,
 			"docname": so.get("items")[1].name
 		}])
-		self.assertRaises(frappe.ValidationError, update_child_qty_rate, 'Sales Order', trans_item, so.name)
+		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
 
 		#remove last added item
 		trans_item = json.dumps([{
@@ -372,7 +372,7 @@ class TestSalesOrder(unittest.TestCase):
 			"rate":1000,
 			"docname": so.get("items")[0].name
 		}])
-		update_child_qty_rate('Sales Order', trans_item, so.name)
+		update_child_items('Sales Order', so.name, trans_item)
 
 		so.reload()
 		self.assertEqual(len(so.get("items")), 1)
@@ -387,7 +387,7 @@ class TestSalesOrder(unittest.TestCase):
 		existing_reserved_qty = get_reserved_qty()
 
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7, 'docname': so.items[0].name}])
-		update_child_qty_rate('Sales Order', trans_item, so.name)
+		update_child_items('Sales Order', so.name, trans_item, so.name)
 
 		so.reload()
 		self.assertEqual(so.get("items")[0].rate, 200)
@@ -398,7 +398,7 @@ class TestSalesOrder(unittest.TestCase):
 		self.assertEqual(get_reserved_qty(), existing_reserved_qty + 3)
 
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 2, 'docname': so.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_qty_rate,'Sales Order', trans_item, so.name)
+		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
 
 	def test_update_child_qty_rate_perm(self):
 		so = make_sales_order(item_code= "_Test Item", qty=4)
@@ -410,11 +410,11 @@ class TestSalesOrder(unittest.TestCase):
 
 		# update qty
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7, 'docname': so.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_qty_rate,'Sales Order', trans_item, so.name)
+		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
 
 		# add new item
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 100, 'qty' : 2}])
-		self.assertRaises(frappe.ValidationError, update_child_qty_rate,'Sales Order', trans_item, so.name)
+		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
 		test_user.remove_roles("Accounts User")
 		frappe.set_user("Administrator")
 
@@ -434,7 +434,7 @@ class TestSalesOrder(unittest.TestCase):
 
 		# user shouldn't be able to edit since grand_total will become > 200 if qty is doubled
 		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 150, 'qty' : 2, 'docname': so.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_qty_rate, 'Sales Order', trans_item, so.name)
+		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
 
 		frappe.set_user("Administrator")
 		user2 = 'test2@example.com'
@@ -443,7 +443,7 @@ class TestSalesOrder(unittest.TestCase):
 		frappe.set_user(user2)
 
 		# Test Approver is allowed to edit with grand_total > 200
-		update_child_qty_rate("Sales Order", trans_item, so.name)
+		update_child_items("Sales Order", so.name, trans_item)
 		so.reload()
 		self.assertEqual(so.items[0].qty, 2)
 
@@ -468,7 +468,7 @@ class TestSalesOrder(unittest.TestCase):
 		so = make_sales_order(item_code = "_Test Item", warehouse=None)
 
 		added_item = json.dumps([{"item_code" : "_Product Bundle Item", "rate" : 200, 'qty' : 2}])
-		update_child_qty_rate('Sales Order', added_item, so.name)
+		update_child_items('Sales Order', so.name, added_item)
 
 		so.reload()
 		self.assertEqual(so.packed_items[0].qty, 4)

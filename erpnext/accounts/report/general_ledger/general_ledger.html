@@ -26,12 +26,25 @@ for(var i=0, l=data.length; i<l; i++) {
 
 <h2 class="text-center" style="margin-top:0;">{%= __("Statement of Account") %}</h2>
 
-<h4 class="text-center">
-	{% if (filters.account || group.account) { %}
-		{%= filters.account || group.account %}
-	{% } %}
-</h4>
+{% if (filters.account_group || group.account_group) { %}
+<h3 class="text-center">
+	{%= filters.account_group || group.account_group %}
+</h3>
+{% } %}
 
+{% if (filters.account || group.account) { %}
+<h4 class="text-center">
+	{%= filters.account || group.account %}
+</h4>
+{% } %}
+
+{% if (filters.accounts && !group.account) { %}
+<h5 class="text-center">
+	{%= filters.accounts.join("<br>") %}
+</h5>
+{% } %}
+
+{% if (filters.party || group.party) { %}
 <h4 class="text-center">
 	{% if (filters.party) { %}
 		{%= filters.party %}
@@ -45,11 +58,12 @@ for(var i=0, l=data.length; i<l; i++) {
 		{% } %}
 	{% } %}
 </h4>
+{% } %}
 
 {% if (filters.sales_person || group.sales_person) { %}
-	<h6 class="text-center">
-		{%= __("Sales Person: ")%}{%= filters.sales_person || group.sales_person %}
-	</h6>
+<h6 class="text-center">
+	{%= __("Sales Person: ")%}{%= filters.sales_person || group.sales_person %}
+</h6>
 {% } %}
 
 <h5 class="text-center">
@@ -57,6 +71,7 @@ for(var i=0, l=data.length; i<l; i++) {
 	{%= __("to") %}
 	{%= frappe.datetime.str_to_user(filters.to_date) %}
 </h5>
+
 <table class="table table-bordered">
 	<thead>
 		<tr>

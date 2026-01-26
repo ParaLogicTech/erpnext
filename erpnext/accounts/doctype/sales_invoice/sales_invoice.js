@@ -519,45 +519,52 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 	}
 
 	customer() {
-		var me = this;
-
-		if(this.frm.doc.customer) {
-			frappe.call({
-				"method": "erpnext.accounts.doctype.sales_invoice.sales_invoice.get_loyalty_programs",
-				"args": {
-					"customer": this.frm.doc.customer
-				},
-				callback: function(r) {
-					if(r.message && r.message.length) {
-						select_loyalty_program(me.frm, r.message);
-					}
-				}
-			});
-		}
-
+		this.get_loyalty_programs();
 		return this.frm.set_value("bill_to", this.frm.doc.customer);
 	}
 
 	bill_to() {
-		if (this.frm.doc.is_pos){
-			var pos_profile = this.frm.doc.pos_profile;
+		this.set_dynamic_link();
+		return this.get_party_details();
+	}
+
+	get_party_details() {
+		if (this.frm.updating_party_details) {
+			return;
 		}
 
-		this.set_dynamic_link();
-
-		var me = this;
-		if(this.frm.updating_party_details) return;
-		return erpnext.utils.get_party_details(this.frm,
-			"erpnext.accounts.party.get_party_details", {
-				posting_date: this.frm.doc.posting_date,
-				party: this.frm.doc.customer,
+		return erpnext.utils.get_party_details(
+			this.frm,
+			{
 				party_type: "Customer",
+				party: this.frm.doc.customer,
 				bill_to: this.frm.doc.bill_to,
+				delivery_date: this.frm.doc.delivery_date,
+				company_address: this.frm.doc.company_address,
+
 				price_list: this.frm.doc.selling_price_list,
-				pos_profile: pos_profile
-			}, function() {
-				me.apply_pricing_rule();
+				pos_profile: this.frm.doc.is_pos ? this.frm.doc.pos_profile : null,
+			},
+			() => {
+				this.apply_pricing_rule();
+			},
+		);
+	}
+
+	get_loyalty_programs() {
+		if (this.frm.doc.customer) {
+			frappe.call({
+				method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.get_loyalty_programs",
+				args: {
+					customer: this.frm.doc.customer
+				},
+				callback: (r) => {
+					if (r.message && r.message.length) {
+						select_loyalty_program(this.frm, r.message);
+					}
+				}
 			});
+		}
 	}
 
 	make_inter_company_invoice() {

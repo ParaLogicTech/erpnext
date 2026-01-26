@@ -2,17 +2,17 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from erpnext.accounts.report.utils import get_currency, convert_to_presentation_currency
-from erpnext import get_default_company
+from frappe import _
 from frappe.utils import getdate, cstr, flt
-from frappe import _, _dict
+from erpnext import get_default_company
+from erpnext.accounts.report.utils import get_currency, convert_to_presentation_currency
 from erpnext.accounts.utils import get_account_currency
 from erpnext.accounts.party import set_party_name_in_list
+from erpnext.accounts.doctype.account.account import get_accounts_with_children
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
-from frappe.desk.query_report import group_report_data
-from six import string_types
+from erpnext.accounts.doctype.account_group.account_group import get_accounts_in_account_group
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
-from collections import OrderedDict
+from frappe.desk.query_report import group_report_data
 
 
 def execute(filters=None):
@@ -20,11 +20,6 @@ def execute(filters=None):
 		return [], []
 
 	account_details = {}
-
-	if filters and filters.get('print_in_account_currency') and \
-		not filters.get('account'):
-		frappe.throw(_("Select an account to print in account currency"))
-
 	for acc in frappe.db.sql("""select name, is_group from tabAccount""", as_dict=1):
 		account_details.setdefault(acc.name, acc)
 
@@ -47,8 +42,26 @@ def validate_filters(filters, account_details):
 	if not filters.get("from_date") and not filters.get("to_date"):
 		frappe.throw(_("{0} and {1} are mandatory").format(frappe.bold(_("From Date")), frappe.bold(_("To Date"))))
 
-	if filters.get("account") and not account_details.get(filters.account):
-		frappe.throw(_("Account {0} does not exists").format(filters.account))
+	if not filters.account_filter:
+		filters.account_filter = "Account"
+
+	filters.account_list = []
+	if filters.account_filter == "Account":
+		if filters.account:
+			filters.account_list.append(filters.account)
+
+	elif filters.account_filter == "Account Group":
+		if filters.account_group:
+			filters.account_list = get_accounts_in_account_group(filters.account_group, cache="local")
+
+	elif filters.account_filter == "Multiple Accounts":
+		filters.account_list = frappe.parse_json(filters.accounts) or []
+
+	filters.account_list = get_accounts_with_children(filters.account_list)
+
+	for account in filters.account_list:
+		if not account_details.get(account):
+			frappe.throw(_("Account {0} does not exists").format(account))
 
 	if filters.from_date > filters.to_date:
 		frappe.throw(_("From Date must be before To Date"))
@@ -60,8 +73,8 @@ def validate_filters(filters, account_details):
 	# 	filters.cost_center = frappe.parse_json(filters.get('cost_center'))
 
 	if filters.get('party'):
-		# 	filters.party = frappe.parse_json(filters.get("party"))
-		if isinstance(filters.party, string_types):
+		# filters.party = frappe.parse_json(filters.get("party"))
+		if isinstance(filters.party, str):
 			filters.party = [filters.party]
 
 
@@ -108,11 +121,23 @@ def set_account_currency(filters):
 		frappe.throw(_("Company is mandatory"))
 
 	filters["company_currency"] = frappe.get_cached_value('Company', company,  "default_currency")
-	if filters.get("account") or (filters.get('party_list') and len(filters.party_list) == 1):
+	if filters.get("account_list") or (filters.get('party_list') and len(filters.party_list) == 1):
 		account_currency = None
 
-		if filters.get("account"):
-			account_currency = get_account_currency(filters.account)
+		if filters.get("account_list"):
+			if len(filters.get("account_list")) == 1:
+				account_currency = get_account_currency(filters.account_list[0])
+			else:
+				currency = get_account_currency(filters.account_list[0])
+				is_same_account_currency = True
+				for account in filters.get("account_list"):
+					if get_account_currency(account) != currency:
+						is_same_account_currency = False
+						break
+
+				if is_same_account_currency:
+					account_currency = currency
+
 		elif filters.get("party_type") and filters.get("party") and filters.get("company"):
 			gle_currency = frappe.db.get_value(
 				"GL Entry", {
@@ -157,9 +182,11 @@ def get_result(filters, account_details, accounting_dimensions):
 
 	group_by = []
 
-	if not (filters.get('group_by') == _("Group by Sales Person") and filters.get("sales_person"))\
-			and not (filters.get('group_by') == _("Group by Party") and filters.get("party"))\
-			and not (filters.get('group_by') == _("Group by Account") and filters.get("account")):
+	if (
+		not (filters.get('group_by') == _("Group by Sales Person") and filters.get("sales_person"))
+		and not (filters.get('group_by') == _("Group by Party") and len(filters.get("party_list")) == 1)
+		and not (filters.get('group_by') == _("Group by Account") and len(filters.get("account_list")) == 1)
+	):
 		group_by.append(None)
 
 	if filters.get('group_by') == _('Group by Party'):
@@ -225,7 +252,7 @@ def get_gl_entries(filters, accounting_dimensions):
 
 
 def merge_similar_entries(filters, gl_entries, supplier_invoice_details):
-	merged_gles = OrderedDict()
+	merged_gles = {}
 
 	out = []
 	for gle in gl_entries:
@@ -275,18 +302,13 @@ def get_conditions(filters, accounting_dimensions):
 	conditions = []
 
 	if filters.get("company"):
-		conditions.append("gle.company=%(company)s")
+		conditions.append("gle.company = %(company)s")
 
-	if filters.get("account"):
-		lft, rgt = frappe.db.get_value("Account", filters["account"], ["lft", "rgt"])
-		conditions.append("""gle.account in (select name from tabAccount
-			where lft>=%s and rgt<=%s and docstatus<2)""" % (lft, rgt))
-	
-	if filters.get("account_type"):
-		conditions.append("""gle.account in (
-			select name from tabAccount
-			where account_type=%(account_type)s
-		)""")
+	if filters.get("account_list"):
+		conditions.append("gle.account in %(account_list)s")
+
+	if filters.get("account_filter") == "Account Type" and filters.get("account_type"):
+		conditions.append("gle.account in (select name from tabAccount where account_type = %(account_type)s)")
 
 	if filters.get("cost_center"):
 		filters.cost_center = get_cost_centers_with_children(filters.cost_center)
@@ -317,8 +339,11 @@ def get_conditions(filters, accounting_dimensions):
 	if filters.get("party_list"):
 		conditions.append("(gle.party_type, gle.party) in %(party_list)s")
 
-	if filters.get("account") or filters.get("party") \
-			or filters.get("group_by") in [_("Group by Account"), _("Group by Party"), _("Group by Sales Person")]:
+	if (
+		filters.get("account_list")
+		or filters.get("party_list")
+		or filters.get("group_by") in [_("Group by Account"), _("Group by Party"), _("Group by Sales Person")]
+	):
 		conditions.append("(gle.posting_date <= %(to_date)s or gle.is_opening = 'Yes')")
 	else:
 		conditions.append("gle.posting_date between %(from_date)s and %(to_date)s")
@@ -469,7 +494,7 @@ def get_balance(row, balance, debit_field, credit_field):
 
 def get_totals_dict():
 	def _get_debit_credit_dict(label):
-		return _dict(
+		return frappe._dict(
 			account="'{0}'".format(label),
 			debit=0.0,
 			credit=0.0,
@@ -478,7 +503,7 @@ def get_totals_dict():
 			_isGroupTotal=True,
 			_bold=True
 		)
-	return _dict(
+	return frappe._dict(
 		opening=_get_debit_credit_dict(_('Opening')),
 		total=_get_debit_credit_dict(_('Total')),
 		closing=_get_debit_credit_dict(_('Closing')),

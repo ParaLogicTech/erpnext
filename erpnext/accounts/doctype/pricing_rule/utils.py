@@ -54,14 +54,15 @@ def get_pricing_rules(args, doc=None):
 def _get_pricing_rules(apply_on, args, values):
 	apply_on_field = frappe.scrub(apply_on)
 
-	if not args.get(apply_on_field): return []
+	if not args.get(apply_on_field):
+		return []
 
 	child_doc = '`tabPricing Rule {0}`'.format(apply_on)
 
 	conditions = item_variant_condition = item_conditions = ""
 	values[apply_on_field] = args.get(apply_on_field)
 	if apply_on_field in ['item_code', 'brand']:
-		item_conditions = "{child_doc}.{apply_on_field}= %({apply_on_field})s".format(child_doc=child_doc,
+		item_conditions = "{child_doc}.{apply_on_field} = %({apply_on_field})s".format(child_doc=child_doc,
 			apply_on_field = apply_on_field)
 
 		if apply_on_field == 'item_code':
@@ -72,7 +73,7 @@ def _get_pricing_rules(apply_on, args, values):
 				item_variant_condition = ' or {child_doc}.item_code=%(variant_of)s '.format(child_doc=child_doc)
 				values['variant_of'] = args.variant_of
 	elif apply_on_field == 'item_group':
-		item_conditions = _get_tree_conditions(args, "Item Group", child_doc, False)
+		item_conditions = _get_tree_conditions(args, "Item Group", child_doc, allow_blank=False)
 
 	conditions += get_other_conditions(conditions, values, args)
 	warehouse_conditions = _get_tree_conditions(args, "Warehouse", '`tabPricing Rule`')
@@ -178,30 +179,41 @@ def apply_multiple_pricing_rules(pricing_rules):
 def _get_tree_conditions(args, parenttype, table, allow_blank=True, field=None):
 	field = field or frappe.scrub(parenttype)
 	condition = ""
-	if args.get(field):
-		if not frappe.flags.tree_conditions:
-			frappe.flags.tree_conditions = {}
-		key = (parenttype, args.get(field))
-		if key in frappe.flags.tree_conditions:
-			return frappe.flags.tree_conditions[key]
 
-		try:
-			lft, rgt = frappe.db.get_value(parenttype, args.get(field), ["lft", "rgt"])
-		except TypeError:
-			frappe.throw(_("Invalid {0}").format(args.get(field)))
+	value = cstr(args.get(field))
+	key = (parenttype, value)
 
-		parent_groups = frappe.db.sql_list("""select name from `tab%s`
-			where lft<=%s and rgt>=%s""" % (parenttype, '%s', '%s'), (lft, rgt))
+	if not frappe.flags.tree_conditions:
+		frappe.flags.tree_conditions = {}
+	if key in frappe.flags.tree_conditions:
+		return frappe.flags.tree_conditions[key]
 
-		if parent_groups:
-			if allow_blank: parent_groups.append('')
-			condition = "ifnull({table}.{field}, '') in ({parent_groups})".format(
-				table=table,
-				field=field,
-				parent_groups=", ".join([frappe.db.escape(d) for d in parent_groups])
-			)
+	parent_groups = []
+	if value:
+		lft_rgt = frappe.db.get_value(parenttype, value, ["lft", "rgt"])
+		if not lft_rgt:
+			frappe.throw(_("Invalid {0} {1}").format(parenttype, frappe.bold(value)))
 
-			frappe.flags.tree_conditions[key] = condition
+		lft, rgt = lft_rgt
+		parent_groups = frappe.db.sql_list(f"""
+			select name
+			from `tab{parenttype}`
+			where lft <= {lft} and rgt >= {rgt}
+		""")
+
+	if parent_groups:
+		if allow_blank:
+			parent_groups.append('')
+
+		parent_groups_str = ", ".join([frappe.db.escape(d) for d in parent_groups])
+		condition = f"ifnull({table}.{field}, '') in ({parent_groups_str})"
+	else:
+		if allow_blank:
+			condition = f"ifnull({table}.{field}, '') = ''"
+		else:
+			condition = f"{table}.{field} = ''"
+
+	frappe.flags.tree_conditions[key] = condition
 	return condition
 
 
@@ -320,8 +332,8 @@ def filter_pricing_rules(args, pricing_rules, doc=None):
 				or pricing_rules
 
 	if len(pricing_rules) > 1 and not args.for_shopping_cart:
-		frappe.throw(_("Multiple Price Rules exists with same criteria, please resolve conflict by assigning priority. Price Rules: {0}")
-			.format("\n".join([d.name for d in pricing_rules])), MultiplePricingRuleConflict)
+		frappe.throw(_("Multiple Price Rules exists with same criteria, please resolve conflict by assigning priority. Pricing Rules:<ol>{0}</ol>")
+			.format("".join([f"<li>{frappe.utils.get_link_to_form('Pricing Rule', d.name)}</li>" for d in pricing_rules])), MultiplePricingRuleConflict)
 	elif pricing_rules:
 		return pricing_rules[0]
 

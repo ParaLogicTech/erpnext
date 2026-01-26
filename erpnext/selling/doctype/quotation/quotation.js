@@ -20,12 +20,10 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 
 	refresh() {
 		super.refresh();
-
 		this.set_dynamic_link();
-		this.set_default_validity();
+		this.frm.events.set_default_quotation_validity(this.frm);
+		this.frm.events.set_dynamic_field_labels(this.frm);
 		this.setup_buttons();
-		this.toggle_reqd_lead_customer();
-		this.set_dynamic_field_label();
 	}
 
 	setup_queries() {
@@ -49,9 +47,6 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			}
 		});
 
-		me.frm.set_query('customer_address', me.address_query);
-		me.frm.set_query('shipping_address_name', me.address_query);
-
 		me.frm.set_query('previous_sales_order', 'previous_orders', () => {
 			let filters = {
 				docstatus: 1,
@@ -65,15 +60,6 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 				filters: filters,
 			}
 		});
-	}
-
-	set_dynamic_link() {
-		if (this.frm.doc.bill_to) {
-			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'bill_to', doctype: 'Customer'};
-		} else {
-			let doctype = this.frm.doc.quotation_to == 'Lead' ? 'Lead' : 'Customer';
-			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'party_name', doctype: doctype};
-		}
 	}
 
 	setup_buttons() {
@@ -170,33 +156,17 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		}
 	}
 
-	set_dynamic_field_label() {
-		if (this.frm.doc.quotation_to) {
-			this.frm.set_df_property("party_name", "label", __(this.frm.doc.quotation_to));
-			this.frm.set_df_property("customer_address", "label", __(this.frm.doc.quotation_to + " Address"));
-		}
-	}
-
-	toggle_reqd_lead_customer() {
-		// to overwrite the customer_filter trigger from queries.js
-		this.frm.toggle_reqd("party_name", this.frm.doc.quotation_to);
-	}
-
-	set_default_validity() {
-		if (this.frm.is_new() && !this.frm.doc.valid_till && !cint(this.frm.doc.quotation_validity_days)) {
-			if (frappe.boot.sysdefaults.quotation_valid_till) {
-				this.frm.set_value('quotation_validity_days', cint(frappe.boot.sysdefaults.quotation_valid_till));
-			} else {
-				let valid_till = frappe.datetime.add_months(this.frm.doc.transaction_date, 1);
-				valid_till = frappe.datetime.add_days(valid_till, -1);
-				this.frm.set_value('valid_till', valid_till);
-			}
+	set_dynamic_link() {
+		if (this.frm.doc.bill_to) {
+			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'bill_to', doctype: 'Customer'};
+		} else {
+			let doctype = this.frm.doc.quotation_to == 'Lead' ? 'Lead' : 'Customer';
+			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'party_name', doctype: doctype};
 		}
 	}
 
 	quotation_to() {
-		this.toggle_reqd_lead_customer();
-		this.set_dynamic_field_label();
+		this.frm.events.set_dynamic_field_labels(this.frm);
 		this.set_dynamic_link();
 
 		this.frm.set_value("party_name", null);
@@ -217,9 +187,23 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 	}
 
 	get_party_details() {
-		return erpnext.utils.get_party_details(this.frm, null, null, () => {
-			this.apply_price_list();
-		});
+		if (this.frm.updating_party_details) {
+			return;
+		}
+
+		return erpnext.utils.get_party_details(
+			this.frm,
+			{
+				party_type: this.frm.doc.quotation_to,
+				party: this.frm.doc.party_name,
+				bill_to: this.frm.doc.bill_to,
+				delivery_date: this.frm.doc.delivery_date,
+				company_address: this.frm.doc.company_address,
+			},
+			() => {
+				this.apply_pricing_rule();
+			}
+		);
 	}
 
 	transaction_date() {
@@ -250,16 +234,6 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 				this.frm.refresh_field('lead_time_days');
 			}
 		}
-	}
-
-	address_query(doc) {
-		return {
-			query: 'frappe.contacts.doctype.address.address.address_query',
-			filters: {
-				link_doctype: frappe.dynamic_link.doctype,
-				link_name: doc.party_name
-			}
-		};
 	}
 
 	validate_company_and_party(party_field) {

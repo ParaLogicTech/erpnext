@@ -3,6 +3,7 @@ import erpnext
 from frappe import _, scrub, unscrub
 from frappe.utils import flt, cint, cstr, getdate, get_first_day, get_year_start, add_years, get_year_ending
 from erpnext import get_default_company
+from erpnext.accounts.doctype.account_group.account_group import get_account_group_doc, get_accounts_in_account_group
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
 	get_dimension_with_children, get_all_dimension_fields,
@@ -12,7 +13,6 @@ from erpnext.accounts.report.financial_statements import get_cost_centers_with_c
 
 class SummarizedFinancialReport:
 	def __init__(self, filters=None):
-		self._account_group_docs = {}
 		self._get_account_group_balance = {}
 		self._get_asset_additions_and_disposals = {}
 		self._asset_disposal_jvs = None
@@ -97,7 +97,7 @@ class SummarizedFinancialReport:
 		group = self.get_account_group_doc(group_name)
 		group_root_type = group.root_type
 
-		self.group_account_map = self.get_accounts_in_account_group(group)
+		self.group_account_map = self.get_accounts_in_account_group(group, as_map=True)
 		all_accounts = self.group_account_map.get(group.name, [])
 		self.account_totals = self.get_account_totals(all_accounts)
 		self.set_missing_account_zeroes(all_accounts)
@@ -225,29 +225,8 @@ class SummarizedFinancialReport:
 
 		return data
 
-	def get_accounts_in_account_group(self, account_group):
-		account_map = {}
-
-		self.get_accounts_in_child_account_group(account_group.name, account_group.name, account_map)
-		for row in account_group.rows:
-			if row.row_type == "Account Group":
-				account_map.setdefault(row.account_group, set())
-				self.get_accounts_in_child_account_group(row.account_group, row.account_group, account_map,
-					tree_view=self.filters.tree_view)
-
-		return account_map
-
-	def get_accounts_in_child_account_group(self, current_group_name, root_group_name, account_map, tree_view=False):
-		current_group = self.get_account_group_doc(current_group_name)
-
-		for row in current_group.rows:
-			if row.row_type == "Account":
-				account_map.setdefault(root_group_name, set()).add(row.account)
-			elif row.row_type == "Account Group":
-				account_map.setdefault(row.account_group, set())
-				self.get_accounts_in_child_account_group(row.account_group, root_group_name, account_map, tree_view=tree_view)
-				if tree_view:
-					self.get_accounts_in_child_account_group(row.account_group, row.account_group, account_map, tree_view=tree_view)
+	def get_accounts_in_account_group(self, account_group, as_map=False):
+		return get_accounts_in_account_group(account_group, as_map=as_map, tree_view=self.filters.tree_view, cache="local")
 
 	def get_child_group_totals(self, group_account_map):
 		child_group_totals = {}
@@ -442,10 +421,7 @@ class SummarizedFinancialReport:
 		to_date = getdate(to_date)
 
 		def generator():
-			account_map = {}
-			self.get_accounts_in_child_account_group(account_group, account_group, account_map)
-			accounts = account_map.get(account_group, [])
-
+			accounts = self.get_accounts_in_account_group(account_group, as_map=False)
 			balance = self.get_gl_data(
 				accounts,
 				to_date=to_date,
@@ -479,9 +455,7 @@ class SummarizedFinancialReport:
 
 		def generator():
 			out = template.copy()
-			account_map = {}
-			self.get_accounts_in_child_account_group(account_group, account_group, account_map)
-			accounts = account_map.get(account_group, [])
+			accounts = self.get_accounts_in_account_group(account_group, as_map=False)
 			disposal_jvs = self.get_asset_disposal_jvs()
 
 			gl_data = self.get_gl_data(
@@ -799,11 +773,9 @@ class SummarizedFinancialReport:
 	def get_display_value_multiplier(self, row):
 		return 1
 
-	def get_account_group_doc(self, group_name):
-		if not self._account_group_docs.get(group_name):
-			self._account_group_docs[group_name] = frappe.get_doc("Account Group", group_name)
-
-		return self._account_group_docs[group_name]
+	@staticmethod
+	def get_account_group_doc(group_name):
+		return get_account_group_doc(group_name, cache="local")
 
 	@staticmethod
 	def get_account_details(all_accounts):

@@ -329,37 +329,41 @@ erpnext.accounts.PurchaseInvoice = class PurchaseInvoice extends erpnext.buying.
 	}
 
 	supplier() {
-		this.set_party_details();
+		return this.get_party_details();
 	}
 
 	letter_of_credit() {
 		erpnext.utils.get_party_account_details(this.frm);
 	}
 
-	set_party_details() {
-		if(this.frm.updating_party_details)
+	get_party_details() {
+		if (this.frm.updating_party_details) {
 			return;
+		}
 
-		var me = this;
-		return erpnext.utils.get_party_details(this.frm, "erpnext.accounts.party.get_party_details",
+		return erpnext.utils.get_party_details(
+			this.frm,
 			{
-				posting_date: this.frm.doc.posting_date,
-				bill_date: this.frm.doc.bill_date,
 				party_type: "Supplier",
 				party: this.frm.doc.supplier,
 				letter_of_credit: this.frm.doc.letter_of_credit,
-				price_list: this.frm.doc.buying_price_list
-			}, function() {
-				me.apply_pricing_rule();
-				me.frm.doc.apply_tds = me.frm.supplier_tds ? 1 : 0;
-				me.frm.doc.tax_withholding_category = me.frm.supplier_tds;
-				me.frm.set_df_property("apply_tds", "read_only", me.frm.supplier_tds ? 0 : 1);
-				me.frm.set_df_property("apply_tds", "hidden", me.frm.supplier_tds ? 0 : 1);
-				me.frm.set_df_property("tax_withholding_category", "hidden", me.frm.supplier_tds ? 0 : 1);
-			})
+				bill_date: this.frm.doc.bill_date,
+				shipping_address: this.frm.doc.shipping_address,
+
+				price_list: this.frm.doc.buying_price_list,
+			},
+			() => {
+				this.apply_pricing_rule();
+				this.frm.doc.apply_tds = this.frm.supplier_tds ? 1 : 0;
+				this.frm.doc.tax_withholding_category = this.frm.supplier_tds;
+				this.frm.set_df_property("apply_tds", "read_only", this.frm.supplier_tds ? 0 : 1);
+				this.frm.set_df_property("apply_tds", "hidden", this.frm.supplier_tds ? 0 : 1);
+				this.frm.set_df_property("tax_withholding_category", "hidden", this.frm.supplier_tds ? 0 : 1);
+			}
+		);
 	}
 
-	apply_tds(frm) {
+	apply_tds() {
 		var me = this;
 
 		if (!me.frm.doc.apply_tds) {

@@ -253,6 +253,7 @@
    "oldfieldtype": "Link",
    "options": "quotation_to",
    "print_hide": 1,
+   "reqd": 1,
    "search_index": 1
   },
   {
@@ -920,15 +921,16 @@
    "read_only": 1
   },
   {
+   "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "no_copy": 1,
-   "options": "Draft\nOpen\nReplied\nOrdered\nLost\nCancelled\nExpired",
+   "options": "Draft\nOpen\nOrdered\nLost\nExpired\nCancelled",
    "print_hide": 1,
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "supplier_quotation",
@@ -950,6 +952,7 @@
    "fieldname": "lost_reasons",
    "fieldtype": "Table MultiSelect",
    "label": "Lost Reasons",
+   "no_copy": 1,
    "options": "Lost Reason Detail",
    "read_only": 1
   },
@@ -1316,7 +1319,8 @@
    "default": "0",
    "fieldname": "quotation_validity_days",
    "fieldtype": "Int",
-   "label": "Validity Days"
+   "label": "Validity Days",
+   "non_negative": 1
   },
   {
    "fieldname": "column_break_43",
@@ -1612,11 +1616,12 @@
    "mandatory_depends_on": "campaign_voucher_code_required"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-shopping-cart",
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-21 12:58:32.673772",
+ "modified": "2026-01-23 00:06:52.511257",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",
@@ -1700,7 +1705,8 @@
    "write": 1
   }
  ],
- "search_fields": "status,transaction_date,party_name,order_type",
+ "row_format": "Dynamic",
+ "search_fields": "party_name,transaction_date,status",
  "show_name_in_global_search": 1,
  "sort_field": "transaction_date",
  "sort_order": "DESC",

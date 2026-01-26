@@ -12,6 +12,8 @@
   "service_template_category",
   "column_break_4",
   "disabled",
+  "description_section",
+  "description",
   "applicability_section",
   "applies_to_item",
   "applies_to_item_name",
@@ -213,11 +215,22 @@
    "fieldname": "includes_service_warranty",
    "fieldtype": "Check",
    "label": "Includes Service Warranty"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
   }
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2025-12-03 13:01:21.625176",
+ "modified": "2026-01-24 19:14:52.938406",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Service Template",

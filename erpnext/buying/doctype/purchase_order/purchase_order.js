@@ -118,18 +118,16 @@ erpnext.buying.PurchaseOrderController = class PurchaseOrderController extends e
 			if(!in_list(["Closed", "Delivered"], doc.status)) {
 				if (
 					this.frm.doc.status !== 'Closed'
-					&& this.frm.doc.receipt_status == "To Receive"
-					&& this.frm.doc.billing_status == "To Bill"
+					&& (this.frm.doc.receipt_status == "To Receive" || this.frm.doc.billing_status == "To Bill")
 				) {
 					this.frm.add_custom_button(__('Update Items'), () => {
 						erpnext.utils.update_child_items({
 							frm: this.frm,
-							child_docname: "items",
-							child_doctype: "Purchase Order Detail",
 							cannot_add_row: false,
-						})
+						});
 					});
 				}
+
 				if (this.frm.has_perm("submit")) {
 					if(doc.billing_status == "To Bill" || doc.receipt_status == "To Receive") {
 						if (doc.status != "On Hold") {

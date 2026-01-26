@@ -1119,12 +1119,18 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 		this.frm.fields_dict["items"].grid.set_column_disp("additional_cost", doc.purpose!='Material Issue');
 	}
 
-	supplier(doc) {
-		return erpnext.utils.get_party_details(this.frm, null, null, null);
+	supplier() {
+		return erpnext.utils.get_party_details(this.frm, {
+			party_type: "Supplier",
+			party: this.frm.doc.supplier,
+		});
 	}
 
-	customer(doc) {
-		return erpnext.utils.get_party_details(this.frm, null, null, null);
+	customer() {
+		return erpnext.utils.get_party_details(this.frm, {
+			party_type: "Customer",
+			party: this.frm.doc.customer,
+		});
 	}
 
 	set_item_cost_centers(row) {

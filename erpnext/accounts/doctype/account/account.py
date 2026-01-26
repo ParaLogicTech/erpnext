@@ -5,6 +5,7 @@ import frappe
 from frappe.utils import cint, cstr, add_to_date, pretty_date
 from frappe import throw, _
 from frappe.utils.nestedset import NestedSet, get_ancestors_of, get_descendants_of
+from frappe.query_builder import Criterion
 
 
 class RootNotEditable(frappe.ValidationError): pass
@@ -406,6 +407,25 @@ def sync_update_account_number_in_child(
 
 	for d in frappe.db.get_values("Account", filters=filters, fieldname=["company", "name"], as_dict=True):
 		update_account_number(d["name"], account_name, account_number, from_descendant=True)
+
+
+def get_accounts_with_children(accounts):
+	if not accounts:
+		return []
+
+	doctype = frappe.qb.DocType("Account")
+	accounts_data = (
+		frappe.qb.from_(doctype)
+		.select(doctype.lft, doctype.rgt)
+		.where(doctype.name.isin(accounts))
+		.run(as_dict=True)
+	)
+
+	conditions = []
+	for account in accounts_data:
+		conditions.append((doctype.lft >= account.lft) & (doctype.rgt <= account.rgt))
+
+	return frappe.qb.from_(doctype).select(doctype.name).where(Criterion.any(conditions)).run(pluck=True)
 
 
 def _ensure_idle_system():

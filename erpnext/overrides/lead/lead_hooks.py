@@ -27,6 +27,9 @@ class LeadERP(Lead):
 			return self.has_quotation()
 
 	def has_quotation(self):
+		if self.is_new():
+			return False
+
 		quotation = frappe.db.get_value("Quotation", {
 			"quotation_to": "Lead",
 			"party_name": self.name,
@@ -43,6 +46,9 @@ class LeadERP(Lead):
 			return self.has_lost_quotation()
 
 	def has_lost_quotation(self):
+		if self.is_new():
+			return False
+
 		quotation = frappe.db.get_value("Quotation", {
 			"quotation_to": "Lead",
 			"party_name": self.name,

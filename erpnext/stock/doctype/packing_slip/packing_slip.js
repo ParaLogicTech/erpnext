@@ -167,8 +167,10 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 					}
 				}
 
-				this.frm.doc.total_qty += item.qty;
-				this.frm.doc.total_stock_qty += item.stock_qty;
+				if (field == "items") {
+					this.frm.doc.total_qty += item.qty;
+					this.frm.doc.total_stock_qty += item.stock_qty;
+				}
 
 				if (frappe.meta.has_field(item.doctype, "rejected_qty")) {
 					this.frm.doc.total_rejected_qty += item.rejected_qty;

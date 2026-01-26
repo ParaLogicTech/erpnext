@@ -125,7 +125,7 @@ class PackingSlip(TransactionController):
 		if package_type_details.weight_uom and (not self.weight_uom or force or self.is_new()):
 			self.weight_uom = package_type_details.weight_uom
 
-		if package_type_details.packaging_items:
+		if package_type_details.packaging_items and not self.is_unpack:
 			if force:
 				self.set("packaging_items", [])
 
@@ -729,8 +729,9 @@ class PackingSlip(TransactionController):
 					if item.stock_qty and item.meta.has_field("gross_weight_per_unit"):
 						item.gross_weight_per_unit = item.gross_weight / item.stock_qty
 
-				self.total_qty += item.qty
-				self.total_stock_qty += item.stock_qty
+				if field == "items":
+					self.total_qty += item.qty
+					self.total_stock_qty += item.stock_qty
 
 				if item.meta.has_field("rejected_qty"):
 					self.total_rejected_qty += item.rejected_qty
@@ -1003,7 +1004,7 @@ class PackingSlip(TransactionController):
 
 				# Include Packaging Material in Cost
 				for dep_row in self.get("packaging_items"):
-					if flt(dep_row.stock_qty):
+					if flt(dep_row.stock_qty) and d.cost_percentage:
 						sle_in.dependencies.append({
 							"dependent_voucher_type": self.doctype,
 							"dependent_voucher_no": self.name,

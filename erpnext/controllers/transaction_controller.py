@@ -196,41 +196,51 @@ class TransactionController(StockController):
 		return args
 
 	def set_missing_item_details(self, for_validate=False):
-		"""set missing item values"""
-		from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
-
 		if self.meta.has_field("items"):
 			parent_dict = self.get_item_details_parent_args()
-
 			for item in self.get("items"):
-				if not item.get("item_code"):
-					continue
-
-				args = self.get_item_details_child_args(item, parent_dict)
-				ret = get_item_details(args, self, for_validate=True, overwrite_warehouse=False)
-
-				for fieldname, value in ret.items():
-					if not item.meta.get_field(fieldname) or value is None:
-						continue
-
-					if item.get(fieldname) is None or fieldname in self.force_item_fields:
-						item.set(fieldname, value)
-					elif fieldname in ['cost_center', 'customs_tariff_number'] and not item.get(fieldname):
-						item.set(fieldname, value)
-
-				# auto serial no
-				if ret.get("serial_no") and item.meta.has_field("serial_no"):
-					item_qty = abs(flt(item.get("qty"))) * flt(item.get("conversion_factor") or 1)
-					if flt(item_qty, item.precision("qty")) != len(get_serial_nos(item.get("serial_no"))):
-						item.set("serial_no", ret.get("serial_no"))
-
-				# price list rate and pricing rules
-				if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
-					self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
-				if ret.get("pricing_rules") and not self.get("ignore_pricing_rule"):
-					self.apply_pricing_rule_on_item(item, ret)
+				self.set_missing_item_details_for_row(item, for_validate=for_validate, parent_dict=parent_dict)
 
 		self.set_missing_applies_to_details()
+
+	def set_missing_item_details_for_row(self, item, for_validate=False, skip_pricing_rules=False, parent_dict=None):
+		from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+
+		if not item.get("item_code"):
+			return
+
+		if not parent_dict:
+			parent_dict = self.get_item_details_parent_args()
+
+		args = self.get_item_details_child_args(item, parent_dict)
+		ret = get_item_details(args, self, for_validate=for_validate, overwrite_warehouse=False)
+
+		for fieldname, value in ret.items():
+			if not item.meta.get_field(fieldname) or value is None:
+				continue
+
+			if item.get(fieldname) is None or fieldname in self.force_item_fields:
+				item.set(fieldname, value)
+			elif fieldname in [
+				'cost_center',
+				'customs_tariff_number',
+				'net_weight_per_unit',
+				'gross_weight_per_unit'
+			] and not item.get(fieldname):
+				item.set(fieldname, value)
+
+		# auto serial no
+		if ret.get("serial_no") and item.meta.has_field("serial_no"):
+			item_qty = abs(flt(item.get("qty"))) * flt(item.get("conversion_factor") or 1)
+			if flt(item_qty, item.precision("qty")) != len(get_serial_nos(item.get("serial_no"))):
+				item.set("serial_no", ret.get("serial_no"))
+
+		# price list rate and pricing rules
+		if not skip_pricing_rules:
+			if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
+				self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
+			if ret.get("pricing_rules") and not self.get("ignore_pricing_rule"):
+				self.apply_pricing_rule_on_item(item, ret)
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
 		pass
@@ -1097,3 +1107,267 @@ def set_invoice_as_overdue():
 
 	frappe.db.sql(""" update `tabPurchase Invoice` set status = 'Overdue'
 		where due_date < CURDATE() and docstatus = 1 and outstanding_amount > 0""")
+
+
+@frappe.whitelist()
+def update_child_items(parent_doctype, parent_name, data):
+	from frappe.model.workflow import get_workflow_name, is_transition_condition_satisfied, WorkflowPermissionError
+	from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
+
+	def check_doc_permissions(doc, perm_type="create"):
+		try:
+			doc.check_permission(perm_type)
+		except frappe.PermissionError:
+			actions = {
+				"create": "add",
+				"write": "update",
+				"cancel": "remove",
+			}
+
+			frappe.throw(_("You do not have permissions to {} items in a {}.").format(
+				actions[perm_type], parent_doctype
+			), title=_("Insufficient Permissions"), exc=frappe.PermissionError)
+
+	def validate_workflow_conditions(doc):
+		workflow = get_workflow_name(doc.doctype)
+		if not workflow:
+			return
+
+		workflow_doc = frappe.get_cached_doc("Workflow", workflow)
+		current_state = doc.get(workflow_doc.workflow_state_field)
+		roles = frappe.get_roles()
+
+		permitted = False
+
+		# Has permission to transition
+		for transition in workflow_doc.transitions:
+			if transition.next_state == current_state and transition.allowed in roles:
+				if is_transition_condition_satisfied(transition, doc):
+					permitted = True
+					break
+
+		# Has permission to edit in current state
+		if not permitted:
+			states_edit_roles = [
+				each_state.allow_edit for each_state in workflow_doc.states if each_state.state == current_state
+			]
+			for each_states_edit_roles in states_edit_roles:
+				if each_states_edit_roles in roles:
+					permitted = True
+					break
+
+		if not permitted:
+			frappe.throw(
+				_("You are not allowed to update as per the {0} Workflow.").format(workflow),
+				title=_("Insufficient Permissions"),
+				exc=WorkflowPermissionError,
+			)
+
+	def validate_and_delete_children(parent_doc, user_data):
+		to_remove = []
+		updated_item_names = [d.get("docname") for d in user_data]
+		for item in parent_doc.items:
+			if item.name not in updated_item_names and not item.is_new():
+				to_remove.append(item)
+
+		for d in to_remove:
+			if parent_doc.doctype == "Sales Order":
+				if flt(d.get("packed_qty")):
+					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has already been packed").format(
+						d.idx, frappe.bold(d.item_code)
+					))
+				if flt(d.get("delivered_qty")) or flt(d.get("returned_qty")):
+					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has already been delivered").format(
+						d.idx, frappe.bold(d.item_code)
+					))
+				if flt(d.get("work_order_qty")):
+					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has Work Orders against it").format(
+						d.idx, frappe.bold(d.item_code)
+					))
+				if flt(d.get("ordered_qty")):
+					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has Purchase Orders against it").format(
+						d.idx, frappe.bold(d.item_code)
+					))
+
+			if parent_doc.doctype == "Purchase Order":
+				if flt(d.get("received_qty")) or flt(d.get("returned_qty")):
+					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has already been received").format(
+						d.idx, frappe.bold(d.item_code)
+					))
+
+			if flt(d.get("billed_amt")) or flt(d.get("billed_qty")) or flt(d.get("proforma_qty")):
+				frappe.throw(_("Row #{0}: Cannot remove Item {1} which has already been billed.").format(
+					d.idx, frappe.bold(d.item_code)
+				))
+
+		for d in to_remove:
+			parent_doc.remove(d)
+
+	def should_maintain_same_rate():
+		setting_doctype_config = {
+			"Sales Order": ("Selling Settings", "maintain_same_sales_rate"),
+			"Purchase Order": ("Buying Settings", "maintain_same_rate"),
+		}
+		if parent_doctype not in setting_doctype_config:
+			return False
+
+		settings_doctype, setting_field = setting_doctype_config[parent_doctype]
+		return cint(frappe.get_cached_value(settings_doctype, None, setting_field))
+
+	allowed_doctypes = ["Sales Order", "Purchase Order"]
+	if parent_doctype not in allowed_doctypes:
+		frappe.throw(_("Not allowed to update {0} items after submission").format(parent_doctype))
+
+	user_data = json.loads(data)
+
+	parent_doc = frappe.get_doc(parent_doctype, parent_name, for_update=True)
+	check_doc_permissions(parent_doc, "cancel")
+
+	for user_row in user_data:
+		qty_changed = False
+		rate_changed = False
+
+		# Find or add item
+		if not user_row.get("docname"):
+			if not user_row.get("item_code"):
+				continue
+
+			check_doc_permissions(parent_doc, 'create')
+
+			doc_row = parent_doc.append("items", frappe.new_doc(parent_doc.doctype + " Item"))
+			doc_row.item_code = user_row.get("item_code")
+			doc_row.item_name = user_row.get("item_name") or None
+
+			qty_changed = True
+			rate_changed = True
+		else:
+			doc_row = [d for d in parent_doc.items if d.name == user_row.get("docname")]
+			doc_row = doc_row[0] if doc_row else None
+			if not doc_row:
+				continue
+
+			check_doc_permissions(parent_doc, 'write')
+
+			# Skip if no change
+			qty_changed = flt(doc_row.get("qty"), doc_row.precision("qty")) != flt(user_row.get("qty"), doc_row.precision("qty"))
+			rate_changed = flt(doc_row.get("rate"), doc_row.precision("rate")) != flt(user_row.get("rate"), doc_row.precision("rate"))
+			if not rate_changed and not qty_changed:
+				continue
+
+		# Set missing values
+		parent_doc.set_missing_item_details_for_row(doc_row, for_validate=True, skip_pricing_rules=not doc_row.is_new())
+
+		# Change and validate qty
+		if qty_changed:
+			doc_row.qty = flt(user_row.get("qty"), doc_row.precision("qty"))
+			if doc_row.qty < 0:
+				frappe.throw(_("Row #{0}: Qty cannot be negative for Item {1}").format(
+					doc_row.idx,
+					frappe.bold(doc_row.item_code),
+				))
+			if doc_row.is_new() and doc_row.qty <= 0:
+				frappe.throw(_("Row #{0}: Qty must be positive for Item {1}").format(
+					doc_row.idx,
+					frappe.bold(doc_row.item_code),
+				))
+
+			for field in ["packed_qty", "delivered_qty", "received_qty", "proforma_qty", "billed_qty"]:
+				if doc_row.meta.has_field(field):
+					if doc_row.qty < flt(doc_row.get(field), doc_row.precision("qty")):
+						frappe.throw(_("Row #{0}: Cannot set Qty less than {1} for Item {2}").format(
+							doc_row.idx,
+							doc_row.meta.get_label(field),
+							frappe.bold(doc_row.item_code),
+						))
+
+		if rate_changed:
+			doc_row.rate = flt(user_row.get("rate"))
+			new_amount = flt(doc_row.rate * flt(doc_row.qty))
+
+			if flt(doc_row.billed_amt, doc_row.precision("amount")) > flt(new_amount, doc_row.precision("amount")):
+				frappe.throw(_("Row #{0}: Cannot set Rate if Amount is greater than Billed Amount for Item {1}").format(
+					doc_row.idx, doc_row.item_code
+				))
+
+			if should_maintain_same_rate() and any(
+				doc_row.meta.has_field(field) and flt(doc_row.get(field)) != 0
+				for field in ["delivered_qty", "received_qty", "proforma_qty", "billed_qty", "billed_amt"]
+			):
+				frappe.throw(_("Row #{0}: Cannot change rate because there are transactions against Item {1}").format(
+					doc_row.idx, frappe.bold(doc_row.item_code)
+				))
+
+			if flt(doc_row.price_list_rate):
+				if flt(doc_row.rate) > flt(doc_row.price_list_rate):
+					doc_row.discount_percentage = 0
+					if doc_row.meta.has_field("margin_type"):
+						doc_row.margin_type = "Amount"
+						doc_row.margin_rate_or_amount = flt(doc_row.rate - doc_row.price_list_rate,
+							doc_row.precision("margin_rate_or_amount"))
+						doc_row.rate_with_margin = doc_row.rate
+				else:
+					doc_row.discount_percentage = flt((1 - flt(doc_row.rate) / flt(doc_row.price_list_rate)) * 100.0,
+						doc_row.precision("discount_percentage"))
+					doc_row.discount_amount = flt(doc_row.price_list_rate) - flt(doc_row.rate)
+
+					if doc_row.meta.has_field("margin_type"):
+						doc_row.margin_rate_or_amount = 0
+						doc_row.rate_with_margin = 0
+
+	# Remove and Sort Items
+	validate_and_delete_children(parent_doc, user_data)
+	parent_doc.run_method("sort_items")
+	for i, doc_row in enumerate(parent_doc.items):
+		doc_row.idx = i + 1
+
+	# Calculate Taxes and Totals
+	parent_doc.calculate_taxes_and_totals()
+	parent_doc.set_payment_schedule()
+
+	# Validate before Save
+	if parent_doctype == "Sales Order":
+		parent_doc.set_skip_delivery_note_for_order()
+		parent_doc.set_gross_profit()
+		parent_doc.validate_delivery_date()
+		parent_doc.validate_max_discount()
+		parent_doc.validate_discount_rule()
+		parent_doc.validate_selling_price()
+		make_bundled_item_list(parent_doc)
+		validate_bundled_item_list(parent_doc)
+
+	elif parent_doctype == "Purchase Order":
+		parent_doc.validate_schedule_date()
+		parent_doc.validate_minimum_order_qty()
+		parent_doc.validate_budget()
+		parent_doc.validate_zero_amount()
+
+	frappe.get_doc('Authorization Control').validate_approving_authority(
+		parent_doc.doctype,
+		parent_doc.company,
+		parent_doc.base_grand_total,
+	)
+
+	parent_doc.flags.ignore_validate_update_after_submit = True
+	parent_doc.save()
+
+	# Update after save
+	if parent_doctype == "Sales Order":
+		parent_doc.set_delivery_status(update=True)
+		parent_doc.set_billing_status(update=True)
+		parent_doc.check_credit_limit()
+		parent_doc.update_reserved_qty()
+
+	elif parent_doctype == "Purchase Order":
+		parent_doc.set_receipt_status(update=True)
+		parent_doc.set_billing_status(update=True)
+		parent_doc.update_requested_qty()
+		parent_doc.update_ordered_qty()
+		parent_doc.update_last_purchase_rate()
+		if parent_doc.get("is_subcontracted"):
+			parent_doc.update_reserved_qty_for_subcontract()
+
+	validate_workflow_conditions(parent_doc)
+
+	parent_doc.update_blanket_order()
+	parent_doc.set_status(update=True)
+	parent_doc.update_previous_doc_status()

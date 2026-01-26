@@ -13,6 +13,7 @@ from erpnext.controllers.transaction_controller import TransactionController
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
+from frappe.model.utils import get_fetch_values
 
 
 class SellingController(TransactionController):
@@ -72,9 +73,15 @@ class SellingController(TransactionController):
 			self.title = self.customer_name or self.customer
 
 	def get_party(self):
+		party_type = "Customer"
 		party = self.get("customer")
+
+		if not party and self.get("quotation_to") and self.get("party_name"):
+			party_type = self.quotation_to
+			party = self.party_name
+
 		party_name = self.get("customer_name") if party else None
-		return "Customer", party, party_name
+		return party_type, party, party_name
 
 	def get_billing_party(self):
 		if self.get("bill_to"):
@@ -115,35 +122,38 @@ class SellingController(TransactionController):
 		if self.get("customer"):
 			party_type = "Customer"
 			party = self.customer
-		elif self.doctype == "Quotation" and self.party_name:
+		elif self.get("quotation_to") and self.get("party_name"):
 			party_type = self.quotation_to
 			party = self.party_name
 
 		if party_type and party:
 			from erpnext.accounts.party import _get_party_details
 
+			if self.meta.has_field("customer") and self.get("customer"):
+				self.update(get_fetch_values(self.doctype, "customer", self.customer))
+
 			party_details = _get_party_details(
-				party=party,
 				party_type=party_type,
+				party=party,
 				bill_to=self.get("bill_to"),
-				ignore_permissions=self.flags.ignore_permissions,
 				doctype=self.doctype,
 				company=self.company,
 				branch=self.get("branch"),
-				project=self.get('project'),
-				payment_terms_template=self.get('payment_terms_template'),
+				posting_date=self.get("posting_date") or self.get("transaction_date"),
+				delivery_date=self.get("delivery_date"),
 				party_address=self.get("customer_address"),
 				shipping_address=self.get("shipping_address_name"),
 				company_address=self.get("company_address"),
-				contact_person=self.get('contact_person'),
-				has_stin=self.get("has_stin"),
-				account=self.get('debit_to'),
-				cost_center=self.get('cost_center'),
-				posting_date=self.get('posting_date') or self.get('transaction_date'),
-				delivery_date=self.get('delivery_date'),
-				price_list=self.get('selling_price_list'),
-				currency=self.get("currency"),
+				contact_person=self.get("contact_person"),
 				transaction_type=self.get("transaction_type"),
+				project=self.get("project"),
+				currency=self.get("currency"),
+				price_list=self.get("selling_price_list"),
+				payment_terms_template=self.get('payment_terms_template'),
+				account=self.get("debit_to"),
+				cost_center=self.get("cost_center"),
+				has_stin=self.get("has_stin"),
+				set_warehouse=self.get("set_warehouse"),
 				pos_profile=self.get("pos_profile"),
 			)
 
@@ -283,9 +293,12 @@ class SellingController(TransactionController):
 			total_discount_percentage = flt(d.get("discount_percentage"))
 			has_additional_discount = flt(self.get("discount_amount")) != 0
 			if has_additional_discount:
-				total_discount = flt(d.tax_exclusive_amount_before_discount) - flt(d.net_amount)
-				total_discount_percentage = total_discount / flt(d.tax_exclusive_amount_before_discount) * 100\
-					if flt(d.tax_exclusive_amount_before_discount) else 0
+				if not flt(d.get("discount_percentage")) and flt(self.get("additional_discount_percentage")):
+					total_discount_percentage = flt(self.get("additional_discount_percentage"))
+				else:
+					total_discount = flt(d.tax_exclusive_amount_before_discount) - flt(d.net_amount)
+					total_discount_percentage = total_discount / flt(d.tax_exclusive_amount_before_discount) * 100\
+						if flt(d.tax_exclusive_amount_before_discount) else 0
 
 			if not d.item_code or not total_discount_percentage:
 				continue
@@ -719,11 +732,16 @@ class SellingController(TransactionController):
 				self.bill_to_name = self.customer_name
 
 	def validate_debit_to_acc(self):
+		if not self.meta.has_field("debit_to"):
+			return
+
+		if not self.debit_to:
+			frappe.throw(_("Debit To account is mandatory"), title=_("Account Missing"))
+
 		account = frappe.get_cached_value("Account", self.debit_to,
 			["account_type", "report_type", "account_currency"], as_dict=True)
-
 		if not account:
-			frappe.throw(_("Debit To is required"), title=_("Account Missing"))
+			frappe.throw(_("Invalid Debit To Account {0}").format(self.debit_to))
 
 		if account.report_type != "Balance Sheet":
 			frappe.throw(_("Please ensure {} account is a Balance Sheet account. \
@@ -884,8 +902,18 @@ class SellingController(TransactionController):
 		for item in self.items:
 			if item.get("item_code"):
 				item.rate = self.get_item_cost_rate(item)
-				item.discount_percentage = 0
-				item.margin_rate_or_amount = 0
+				if flt(item.price_list_rate):
+					if item.rate <= flt(item.price_list_rate):
+						item.margin_rate_or_amount = 0
+						item.discount_amount = flt(item.price_list_rate) - flt(item.rate)
+						item.discount_percentage = item.discount_amount / item.price_list_rate * 100
+					else:
+						item.discount_percentage = 0
+						item.margin_type = "Amount"
+						item.margin_rate_or_amount = flt(item.rate) - flt(item.price_list_rate)
+				else:
+					item.discount_percentage = 0
+					item.margin_rate_or_amount = 0
 
 		self.calculate_taxes_and_totals()
 
