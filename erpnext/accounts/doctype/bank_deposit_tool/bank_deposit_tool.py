@@ -93,6 +93,7 @@ class BankDepositTool(Document):
 				"voucher_detail_dt": row.get("voucher_detail_dt"),
 				"voucher_detail_dn": row.get("voucher_detail_dn"),
 				"amount": flt(row.get("amount")),
+				"mode_of_payment": row.get("mode_of_payment") or row.get("deposit_against_mode_of_payment"),
 				"reference_no": row.get("reference_no"),
 				"reference_date": row.get("reference_date"),
 				"posting_date": row.get("posting_date"),
@@ -134,6 +135,7 @@ class BankDepositTool(Document):
 				'Payment Entry' as voucher_type,
 				name as voucher_no,
 				paid_amount as amount,
+				mode_of_payment,
 				reference_no,
 				reference_date,
 				posting_date,
@@ -196,6 +198,7 @@ class BankDepositTool(Document):
 				sip.reference_no,
 				sip.reference_date,
 				sip.amount,
+				sip.mode_of_payment,
 				si.posting_date,
 				'Customer' as party_type,
 				si.customer as party,
@@ -262,7 +265,8 @@ class BankDepositTool(Document):
 				jea.name as voucher_detail_dn,
 				jea.cheque_no as reference_no,
 				jea.cheque_date as reference_date,
-				jea.debit_in_account_currency as amount,
+				jea.debit_in_account_currency - jea.credit_in_account_currency as amount,
+				je.mode_of_payment,
 				je.posting_date,
 				jea.against_account,
 				jea.party_type,
@@ -273,14 +277,15 @@ class BankDepositTool(Document):
 				pce.user as cashier,
 				pce.name as pos_closing_entry,
 				jea.deposit_against_type,
-				jea.deposit_against
+				jea.deposit_against,
+				jea.deposit_against_detail_no
 			from `tabJournal Entry Account` jea
 			inner join `tabJournal Entry` je on jea.parent = je.name
 			left join `tabPOS Closing Entry` pce on jea.reference_name = pce.name and jea.reference_type = 'POS Closing Entry'
 			where
 				je.docstatus = 1
 				and jea.account = %(account)s
-				and jea.debit_in_account_currency > 0
+				and (jea.debit_in_account_currency - jea.credit_in_account_currency) > 0
 				and (jea.deposit_date is null or jea.deposit_date = '')
 				and je.posting_date <= %(deposit_date)s
 				and je.is_opening != 'Yes'
@@ -291,26 +296,37 @@ class BankDepositTool(Document):
 
 		# Set original document info (deposited against)
 		deposit_jv_map = {}
+		jv_against_invoice_payments_map = {}
 		for jv in journal_entries:
-			if jv.deposit_against and jv.deposit_against_type:
+			if jv.deposit_against_type and jv.deposit_against:
 				deposit_jv_map.setdefault((jv.deposit_against_type, jv.deposit_against), []).append(jv)
+			if jv.deposit_against_type == "Sales Invoice" and jv.deposit_against_detail_no:
+				jv_against_invoice_payments_map.setdefault(jv.deposit_against_detail_no, []).append(jv)
 
-		deposit_against_data = self.get_deposit_against_data(journal_entries)
+		deposit_against_data, invoice_payments_data = self.get_deposit_against_data(journal_entries)
+
 		for d in deposit_against_data:
 			for jv in deposit_jv_map.get((d.doctype, d.name), []):
 				jv.deposit_against_date = d.posting_date
 				jv.deposit_against_party_type = d.party_type
 				jv.deposit_against_party = d.party
 				jv.deposit_against_party_name = d.party_name
+				jv.deposit_against_mode_of_payment = d.mode_of_payment
+
+		for d in invoice_payments_data:
+			for jv in jv_against_invoice_payments_map.get(d.name, []):
+				jv.deposit_against_mode_of_payment = d.mode_of_payment
 
 		return journal_entries
 
 	@staticmethod
 	def get_deposit_against_data(entries):
 		sales_invoices = [jv.deposit_against for jv in entries if jv.deposit_against_type == "Sales Invoice"]
+		invoice_payments = [jv.deposit_against_detail_no for jv in entries if jv.deposit_against_type == "Sales Invoice"]
 		payment_entries = [jv.deposit_against for jv in entries if jv.deposit_against_type == "Payment Entry"]
 
 		sales_invoice_data = []
+		invoice_payments_data = []
 		payment_entry_data = []
 
 		if sales_invoices:
@@ -325,12 +341,19 @@ class BankDepositTool(Document):
 		if payment_entries:
 			payment_entry_data = frappe.db.sql("""
 				select 'Payment Entry' as doctype, name,
-					party_type, party, party_name, posting_date
+					party_type, party, party_name, posting_date, mode_of_payment
 				from `tabPayment Entry`
 				where name in %s
 			""", [payment_entries], as_dict=1)
 
-		return sales_invoice_data + payment_entry_data
+		if invoice_payments:
+			invoice_payments_data = frappe.db.sql("""
+				select name, mode_of_payment
+				from `tabSales Invoice Payment`
+				where name in %s
+			""", [invoice_payments], as_dict=1)
+
+		return sales_invoice_data + payment_entry_data, invoice_payments_data
 
 	@staticmethod
 	def get_pos_closing_entries(voucher_type, voucher_nos, voucher_detail_nos=None):
