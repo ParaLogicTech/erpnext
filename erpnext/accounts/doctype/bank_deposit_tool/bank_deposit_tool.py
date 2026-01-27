@@ -82,6 +82,11 @@ class BankDepositTool(Document):
 		self.undeposited_entries = []
 
 		for row in entries:
+			if not row.party_type and not row.party:
+				row.party_type = row.deposit_against_party_type
+				row.party = row.deposit_against_party
+				row.party_name = row.deposit_against_party_name
+
 			self.append("undeposited_entries", {
 				"voucher_type": row.get("voucher_type"),
 				"voucher_no": row.get("voucher_no"),
@@ -93,7 +98,13 @@ class BankDepositTool(Document):
 				"posting_date": row.get("posting_date"),
 				"party": row.get("party"),
 				"party_type": row.get("party_type"),
-				"party_name": row.get("party_name")
+				"party_name": row.get("party_name"),
+				"pos_profile": row.get("pos_profile"),
+				"cashier": row.get("cashier"),
+				"pos_closing_entry": row.get("pos_closing_entry"),
+				"original_voucher_type": row.get("deposit_against_type") or row.get("voucher_type"),
+				"original_voucher_no": row.get("deposit_against") or row.get("voucher_no"),
+				"original_voucher_date": row.get("deposit_against_date") or row.get("posting_date"),
 			})
 
 	def get_undeposited_payment_entries(self):
@@ -128,7 +139,9 @@ class BankDepositTool(Document):
 				posting_date,
 				party_type,
 				party,
-				party_name
+				party_name,
+				pos_profile,
+				cashier
 			from `tabPayment Entry`
 			where
 				payment_type = 'Receive'
@@ -140,6 +153,15 @@ class BankDepositTool(Document):
 			order by posting_date, creation
 			{limit}
 		""", params, as_dict=1)
+
+		pe_map = {}
+		for pe in payment_entries:
+			pe_map[pe.voucher_no] = pe
+
+		pos_closing_map = self.get_pos_closing_entries("Payment Entry", list(pe_map.keys()))
+		for voucher_no, pce in pos_closing_map.items():
+			if pe_map.get(voucher_no):
+				pe_map[voucher_no].pos_closing_entry = pce
 
 		return payment_entries
 
@@ -177,7 +199,9 @@ class BankDepositTool(Document):
 				si.posting_date,
 				'Customer' as party_type,
 				si.customer as party,
-				si.customer_name as party_name
+				si.customer_name as party_name,
+				si.pos_profile,
+				si.cashier
 			from `tabSales Invoice Payment` sip
 			inner join `tabSales Invoice` si on sip.parent = si.name
 			inner join `tabAccount` account on account.name = sip.account
@@ -186,10 +210,25 @@ class BankDepositTool(Document):
 				and sip.account = %(account)s
 				and (sip.deposit_date is null or sip.deposit_date = '')
 				and si.posting_date <= %(deposit_date)s
+				and sip.amount != 0
 				{conditions}
 			order by si.posting_date, si.creation, sip.idx
 			{limit}
 		""", params, as_dict=1)
+
+		si_map = {}
+		voucher_nos = set()
+		voucher_detail_nos = []
+		for si in pos_sales_invoices:
+			if si.voucher_detail_dn:
+				si_map[(si.voucher_no, si.voucher_detail_dn)] = si
+				voucher_nos.add(si.voucher_no)
+				voucher_detail_nos.append(si.voucher_detail_dn)
+
+		pos_closing_map = self.get_pos_closing_entries("Sales Invoice", voucher_nos, voucher_detail_nos)
+		for (voucher_no, voucher_detail_no), pce in pos_closing_map.items():
+			if si_map.get((voucher_no, voucher_detail_no)):
+				si_map[(voucher_no, voucher_detail_no)].pos_closing_entry = pce
 
 		return pos_sales_invoices
 
@@ -217,15 +256,27 @@ class BankDepositTool(Document):
 
 		journal_entries = frappe.db.sql(f"""
 			select 
-				'Journal Entry' as voucher_type, je.name as voucher_no,
-				'Journal Entry Account' as voucher_detail_dt, jea.name as voucher_detail_dn,
-				jea.cheque_no as reference_no, jea.cheque_date as reference_date,
+				'Journal Entry' as voucher_type,
+				je.name as voucher_no,
+				'Journal Entry Account' as voucher_detail_dt,
+				jea.name as voucher_detail_dn,
+				jea.cheque_no as reference_no,
+				jea.cheque_date as reference_date,
 				jea.debit_in_account_currency as amount,
-				je.posting_date, jea.against_account,
-				jea.party_type, jea.party, jea.party_name,
-				jea.account_currency
+				je.posting_date,
+				jea.against_account,
+				jea.party_type,
+				jea.party,
+				jea.party_name,
+				jea.account_currency,
+				pce.pos_profile,
+				pce.user as cashier,
+				pce.name as pos_closing_entry,
+				jea.deposit_against_type,
+				jea.deposit_against
 			from `tabJournal Entry Account` jea
 			inner join `tabJournal Entry` je on jea.parent = je.name
+			left join `tabPOS Closing Entry` pce on jea.reference_name = pce.name and jea.reference_type = 'POS Closing Entry'
 			where
 				je.docstatus = 1
 				and jea.account = %(account)s
@@ -238,7 +289,79 @@ class BankDepositTool(Document):
 			{limit}
 		""", params, as_dict=1)
 
+		# Set original document info (deposited against)
+		deposit_jv_map = {}
+		for jv in journal_entries:
+			if jv.deposit_against and jv.deposit_against_type:
+				deposit_jv_map.setdefault((jv.deposit_against_type, jv.deposit_against), []).append(jv)
+
+		sales_invoices = [jv.deposit_against for jv in journal_entries if jv.deposit_against_type == "Sales Invoice"]
+		payment_entries = [jv.deposit_against for jv in journal_entries if jv.deposit_against_type == "Payment Entry"]
+
+		deposit_against_data = self.get_deposit_against_data(sales_invoices, payment_entries)
+		for d in deposit_against_data:
+			for jv in deposit_jv_map.get((d.doctype, d.name), []):
+				jv.deposit_against_date = d.posting_date
+				jv.deposit_against_party_type = d.party_type
+				jv.deposit_against_party = d.party
+				jv.deposit_against_party_name = d.party_name
+
 		return journal_entries
+
+	@staticmethod
+	def get_deposit_against_data(sales_invoices, payment_entries):
+		sales_invoice_data = []
+		payment_entry_data = []
+
+		if sales_invoices:
+			sales_invoice_data = frappe.db.sql("""
+				select 'Sales Invoice' as doctype, name,
+					'Customer' as party_type, bill_to as party, bill_to_name as party_name,
+					posting_date
+				from `tabSales Invoice`
+				where name in %s
+			""", [sales_invoices], as_dict=1)
+
+		if payment_entries:
+			payment_entry_data = frappe.db.sql("""
+				select 'Payment Entry' as doctype, name,
+					party_type, party, party_name, posting_date
+				from `tabPayment Entry`
+				where name in %s
+			""", [payment_entries], as_dict=1)
+
+		return sales_invoice_data + payment_entry_data
+
+	@staticmethod
+	def get_pos_closing_entries(voucher_type, voucher_nos, voucher_detail_nos=None):
+		if not voucher_nos:
+			return {}
+
+		voucher_detail_nos_condition = ""
+		if voucher_detail_nos:
+			voucher_detail_nos_condition = " and document_detail_no in %(voucher_detail_nos)s"
+
+		closing_data = frappe.db.sql(f"""
+			select parent as pos_closing_entry, document_name, document_detail_no
+			from `tabPOS Closing Entry Detail`
+			where docstatus = 1
+				and document_type = %(voucher_type)s
+				and document_name in %(voucher_nos)s
+				{voucher_detail_nos_condition}
+		""", {
+			"voucher_type": voucher_type,
+			"voucher_nos": voucher_nos,
+			"voucher_detail_nos": voucher_detail_nos,
+		}, as_dict=1)
+
+		out = {}
+		for d in closing_data:
+			if voucher_detail_nos:
+				out[(d.document_name, d.document_detail_no)] = d.pos_closing_entry
+			else:
+				out[d.document_name] = d.pos_closing_entry
+
+		return out
 
 	@frappe.whitelist()
 	def submit_deposit(self, selected_row_names):
@@ -340,6 +463,14 @@ class BankDepositTool(Document):
 			additional_values = self.get_entry_additional_values(d)
 			debit_row.update(additional_values)
 			credit_row.update(additional_values)
+
+			if d.pos_closing_entry:
+				against = {
+					"reference_type": "POS Closing Entry",
+					"reference_name": d.pos_closing_entry
+				}
+				debit_row.update(against)
+				credit_row.update(against)
 
 			credit_row.user_remark = je.user_remark or credit_row.user_remark
 

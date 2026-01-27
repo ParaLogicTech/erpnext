@@ -56,11 +56,14 @@ frappe.ui.form.on('POS Closing Entry', {
 			if (frm.doc.head_cashier_account) {
 				frm.add_custom_button(__("Transfer to Head Cashier"), () => frm.events.make_head_cashier_voucher(frm),
 					__("Create"));
+			} else {
+				frm.add_custom_button(__("Deposit to Clearing Accounts"), () => frm.events.make_deposit_voucher(frm),
+					__("Create"));
 			}
-			frm.add_custom_button(__("Transfer to Clearing Accounts"), () => frm.events.make_till_transfer_voucher(frm),
-				__("Create"));
 
-			frm.page.set_inner_btn_group_as_primary(__("Create"));
+			if (frm.page.get_inner_group_button(__("Create")).length) {
+				frm.page.set_inner_btn_group_as_primary(__("Create"));
+			}
 		}
 	},
 
@@ -174,9 +177,9 @@ frappe.ui.form.on('POS Closing Entry', {
 		});
 	},
 
-	make_till_transfer_voucher(frm) {
+	make_deposit_voucher(frm) {
 		return frappe.call({
-			method: "erpnext.accounts.doctype.pos_closing_entry.pos_closing_entry.make_till_transfer_voucher",
+			method: "erpnext.accounts.doctype.pos_closing_entry.pos_closing_entry.make_deposit_voucher",
 			args: {
 				"pos_closing_entry": frm.doc.name,
 			},

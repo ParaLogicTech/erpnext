@@ -6,17 +6,28 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "posting_date",
   "voucher_type",
   "voucher_no",
-  "posting_date",
+  "column_break_kwhs",
+  "original_voucher_date",
+  "original_voucher_type",
+  "original_voucher_no",
+  "section_break_umh6",
   "party_type",
   "party",
   "party_name",
+  "column_break_rrdd",
   "reference_no",
   "reference_date",
-  "amount",
   "voucher_detail_dt",
-  "voucher_detail_dn"
+  "voucher_detail_dn",
+  "column_break_3pmi",
+  "pos_profile",
+  "pos_closing_entry",
+  "cashier",
+  "section_break_csdi",
+  "amount"
  ],
  "fields": [
   {
@@ -83,7 +94,6 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Voucher Detail No",
-   "options": "voucher_detail_dt",
    "read_only": 1
   },
   {
@@ -107,12 +117,76 @@
    "in_list_view": 1,
    "label": "Reference Date",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_kwhs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_umh6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_rrdd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pos_profile",
+   "fieldtype": "Link",
+   "label": "POS Profile",
+   "options": "POS Profile",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cashier",
+   "fieldtype": "Link",
+   "label": "Cashier",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_csdi",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "pos_closing_entry",
+   "fieldtype": "Link",
+   "label": "POS Closing Entry",
+   "options": "POS Closing Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3pmi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "fieldname": "original_voucher_type",
+   "fieldtype": "Link",
+   "label": "Original Voucher Type",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "original_voucher_no",
+   "fieldtype": "Dynamic Link",
+   "label": "Original Voucher No",
+   "options": "original_voucher_type",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "original_voucher_date",
+   "fieldtype": "Date",
+   "label": "Original Voucher Date",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-19 04:18:50.640609",
+ "modified": "2026-01-27 16:24:18.376295",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Undeposited Entry",

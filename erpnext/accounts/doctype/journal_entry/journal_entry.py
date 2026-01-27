@@ -214,14 +214,18 @@ class JournalEntry(AccountsController):
 		deposit_against_list = set()
 		for d in self.accounts:
 			if d.deposit_against_type and d.deposit_against:
-				deposit_against_list.add((d.deposit_against_type, d.deposit_against, d.deposit_against_detail_no or None))
+				is_till_transfer = False
+				if d.reference_type == "POS Closing Entry" and self.voucher_type != "Deposit Entry":
+					is_till_transfer = True
+
+				deposit_against_list.add((d.deposit_against_type, d.deposit_against, d.deposit_against_detail_no or None, is_till_transfer))
 
 		if self.docstatus == 1:
 			deposit_date = self.cheque_date or self.posting_date
 		else:
 			deposit_date = None
 
-		for deposit_against_type, deposit_against, deposit_against_detail_no in deposit_against_list:
+		for deposit_against_type, deposit_against, deposit_against_detail_no, is_till_transfer in deposit_against_list:
 			deposit_against_detail_dt = self.get_deposit_against_child_doctype(deposit_against_type)
 
 			if deposit_against_detail_no:
@@ -241,10 +245,13 @@ class JournalEntry(AccountsController):
 				)
 
 			if deposit_date:
-				comment = _("Deposited on {0} by {1} with Deposit No {2}").format(
+				action_label = "Transferred to Head Cashier" if is_till_transfer else "Deposited"
+
+				comment = _("{0} on {1} by {2} {3}").format(
+					_(action_label),
 					frappe.utils.formatdate(deposit_date),
 					frappe.get_desk_link(self.doctype, self.name),
-					self.cheque_no,
+					_("with Deposit No {0}").format(self.cheque_no) if self.cheque_no else "",
 				)
 			else:
 				comment = _("Cancelled Deposit Entry").format(frappe.utils.formatdate(deposit_date))
