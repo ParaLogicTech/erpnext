@@ -295,10 +295,7 @@ class BankDepositTool(Document):
 			if jv.deposit_against and jv.deposit_against_type:
 				deposit_jv_map.setdefault((jv.deposit_against_type, jv.deposit_against), []).append(jv)
 
-		sales_invoices = [jv.deposit_against for jv in journal_entries if jv.deposit_against_type == "Sales Invoice"]
-		payment_entries = [jv.deposit_against for jv in journal_entries if jv.deposit_against_type == "Payment Entry"]
-
-		deposit_against_data = self.get_deposit_against_data(sales_invoices, payment_entries)
+		deposit_against_data = self.get_deposit_against_data(journal_entries)
 		for d in deposit_against_data:
 			for jv in deposit_jv_map.get((d.doctype, d.name), []):
 				jv.deposit_against_date = d.posting_date
@@ -309,7 +306,10 @@ class BankDepositTool(Document):
 		return journal_entries
 
 	@staticmethod
-	def get_deposit_against_data(sales_invoices, payment_entries):
+	def get_deposit_against_data(entries):
+		sales_invoices = [jv.deposit_against for jv in entries if jv.deposit_against_type == "Sales Invoice"]
+		payment_entries = [jv.deposit_against for jv in entries if jv.deposit_against_type == "Payment Entry"]
+
 		sales_invoice_data = []
 		payment_entry_data = []
 
