@@ -567,7 +567,7 @@ class SellingController(TransactionController):
 				return_rate = 0
 				return_dependency = []
 
-				if cint(self.is_return) and self.docstatus==1:
+				if (cint(self.is_return) or flt(d.qty) < 0) and self.docstatus == 1:
 					delivery_note = self.return_against if self.doctype == "Delivery Note" else d.get('delivery_note')
 					if d.get('delivery_note_item') and delivery_note:
 						return_dependency = [{
