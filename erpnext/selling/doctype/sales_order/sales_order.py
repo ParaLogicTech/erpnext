@@ -1686,7 +1686,13 @@ def get_item_mapper_for_invoice(
 
 		if target_doctype == "Proforma Invoice Item":
 			to_proforma_qty = flt(source.qty) - flt(source.proforma_qty) - flt(source.returned_qty) - unbilled_dn_qty
-			return max(min(to_bill_qty, to_proforma_qty), 0)
+			if flt(source.qty) < 0:
+				to_bill_qty = max(to_bill_qty, to_proforma_qty)
+			else:
+				to_bill_qty = min(to_bill_qty, to_proforma_qty)
+
+		if flt(source.qty) < 0:
+			return min(to_bill_qty, 0)
 		else:
 			return max(to_bill_qty, 0)
 

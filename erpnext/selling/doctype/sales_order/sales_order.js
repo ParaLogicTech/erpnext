@@ -107,6 +107,8 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 					} else {
 						return "orange";
 					}
+				} else if (doc.qty < 0 && doc.delivered_qty > doc.qty) {
+					return "yellow";
 				} else if (doc.delivered_qty < doc.qty) {
 					return "yellow";
 				} else {

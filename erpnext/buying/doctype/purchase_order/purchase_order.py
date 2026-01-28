@@ -738,7 +738,7 @@ def make_purchase_receipt(source_name, target_doc=None, warehouse=None):
 		# if not source.is_stock_item and not source.is_fixed_asset:
 		# 	return False
 
-		return abs(source.received_qty) < abs(source.qty)
+		return abs(get_pending_qty(source)) > 0
 
 	def update_item(source, target, source_parent, target_parent):
 		target.qty = get_pending_qty(source)
@@ -804,7 +804,12 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 	def get_pending_qty(source):
 		billable_qty = flt(source.qty) - flt(source.billed_qty) - flt(source.returned_qty)
 		unbilled_pr_qty = flt(unbilled_pr_qty_map.get(source.name))
-		return max(billable_qty - unbilled_pr_qty, 0)
+		to_bill_qty = billable_qty - unbilled_pr_qty
+
+		if flt(source.qty) < 0:
+			return min(to_bill_qty, 0)
+		else:
+			return max(to_bill_qty, 0)
 
 	def item_condition(source, source_parent, target_parent):
 		if source.name in [d.purchase_order_item for d in target_parent.get('items') if d.purchase_order_item and not d.purchase_receipt_item]:
