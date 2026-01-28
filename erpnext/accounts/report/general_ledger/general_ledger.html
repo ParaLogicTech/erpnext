@@ -144,15 +144,15 @@ for(var i=0, l=data.length; i<l; i++) {
 				</td>
 
 				<td class="text-right text-nowrap">
-					{%= format_currency(data[i].debit, filters.presentation_currency) %}
+					{%= format_currency(data[i].debit, data[i].currency) %}
 				</td>
 
 				<td class="text-right text-nowrap">
-					{%= format_currency(data[i].credit, filters.presentation_currency) %}
+					{%= format_currency(data[i].credit, data[i].currency) %}
 				</td>
 
 				<td class="text-right text-nowrap">
-					{%= format_currency(data[i].balance, filters.presentation_currency) %}
+					{%= format_currency(data[i].balance, data[i].currency) %}
 				</td>
 			{% } else { %}
 				{% if(!data[i].debit && !data[i].credit && !data[i].balance && !data[i].account) { %}
@@ -169,13 +169,13 @@ for(var i=0, l=data.length; i<l; i++) {
 
 					<td class="text-right" colspan="{%= colspan %}"><strong>{%= frappe.format(data[i].account, {fieldtype: "Link"}) || "&nbsp;" %}</strong></td>
 					<td class="text-right text-nowrap">
-						<b>{%= data[i].account && format_currency(data[i].debit, filters.presentation_currency) %}</b>
+						<b>{%= data[i].account && format_currency(data[i].debit, data[i].currency) %}</b>
 					</td>
 					<td class="text-right text-nowrap">
-						<b>{%= data[i].account && format_currency(data[i].credit, filters.presentation_currency) %}</b>
+						<b>{%= data[i].account && format_currency(data[i].credit, data[i].currency) %}</b>
 					</td>
 					<td class="text-right text-nowrap">
-						<b>{%= format_currency(data[i].balance, filters.presentation_currency) %}</b>
+						<b>{%= format_currency(data[i].balance, data[i].currency) %}</b>
 					</td>
 				{% } %}
 			{% } %}
