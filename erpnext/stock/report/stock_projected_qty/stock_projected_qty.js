@@ -85,31 +85,59 @@ frappe.query_reports["Stock Projected Qty"] = {
 		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {
-		var style = {};
+		let options = {
+			css: {},
+			link_target: "_blank",
+		};
+
 		if (['actual_qty', 'projected_qty', 'shortage_qty'].includes(column.fieldname)) {
 			if (flt(value) < 0) {
-				style['background-color'] = 'pink';
-				style['font-weight'] = 'bold';
+				options.css['background-color'] = 'pink';
+				options.css['font-weight'] = 'bold';
 			}
 		}
 
 		if (['projected_qty', 'ordered_qty', 'planned_qty', 'indented_qty'].includes(column.fieldname)) {
 			if (flt(value) > 0) {
-				style['color'] = 'green';
+				options.css['color'] = 'var(--green-700)';
 			} else if(flt(value) < 0 && column.fieldname !== 'projected_qty') {
-				style['color'] = 'red';
+				options.css['color'] = 'var(--red-500)';
 			}
 		}
 
 		if (['reserved_qty', 'reserved_qty_for_production', 'reserved_qty_for_sub_contract'].includes(column.fieldname)) {
 			if (flt(value) > 0) {
-				style['color'] = 'red';
+				options.css['color'] = 'var(--red-500)';
 			} else if(flt(value) < 0) {
-				style['color'] = 'green';
+				options.css['color'] = 'var(--green-700)';
 			}
 		}
 
-		return default_formatter(value, row, column, data, {css: style});
+		// URLS
+		let params = {};
+		if (data?.item_code) {
+			params["item_code"] = data.item_code;
+			if (data.warehouse) {
+				params["warehouse"] = data.warehouse;
+			}
+			const query_string = Object.entries(params)
+				.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
+				.join('&');
+
+			if (column.fieldname == "actual_qty") {
+				options.link_href = `/app/query-report/Stock Balance?${query_string}`;
+			}
+
+			if (column.fieldname == "reserved_qty") {
+				options.link_href = `/app/query-report/Sales Items To Be Delivered?${query_string}`;
+			}
+
+			if (column.fieldname == "ordered_qty") {
+				options.link_href = `/app/query-report/Purchase Items To Be Received?${query_string}`;
+			}
+		}
+
+		return default_formatter(value, row, column, data, options);
 	},
 	"initial_depth": 0
 }
