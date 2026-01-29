@@ -70,7 +70,7 @@ def make_sales_and_purchase_tax_templates(accounts, template_name=None):
 			"category": "Total",
 			"charge_type": "On Net Total",
 			"account_head": account.name,
-			"description": "{0} @ {1}".format(account.account_name, account.tax_rate),
+			"description": account.account_name,
 			"rate": account.tax_rate
 		})
 	# Sales
