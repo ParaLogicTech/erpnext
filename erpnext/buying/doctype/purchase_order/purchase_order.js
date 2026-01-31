@@ -212,6 +212,8 @@ erpnext.buying.PurchaseOrderController = class PurchaseOrderController extends e
 			me.add_from_mappers();
 		}
 
+		erpnext.utils.setup_remove_zero_qty_rows(this.frm);
+
 		this.frm.set_indicator_formatter('item_code', function(doc) {
 			if (doc.docstatus === 1) {
 				if (!doc.received_qty) {
@@ -487,6 +489,10 @@ erpnext.buying.PurchaseOrderController = class PurchaseOrderController extends e
 		}
 
 		this.set_from_product_bundle();
+
+		this.frm.add_custom_button(__("Item List"), () => {
+			return erpnext.utils.show_item_list_picker(this.frm);
+		}, __("Get Items From"));
 	}
 
 	unhold_purchase_order() {

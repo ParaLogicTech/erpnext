@@ -1371,3 +1371,40 @@ def update_child_items(parent_doctype, parent_name, data):
 	parent_doc.update_blanket_order()
 	parent_doc.set_status(update=True)
 	parent_doc.update_previous_doc_status()
+
+
+@frappe.whitelist()
+def add_multiple_items(item_codes, target_doc, items_field="items"):
+	if isinstance(item_codes, str):
+		item_codes = json.loads(item_codes)
+
+	if isinstance(target_doc, str):
+		target_doc = frappe.get_doc(json.loads(target_doc))
+
+	if not item_codes:
+		frappe.throw(_("Items not selected"))
+	if not target_doc:
+		frappe.throw(_("Target Document not provided"))
+
+	# remove first empty row
+	if target_doc.get("items") and not target_doc.items[0].item_code and not target_doc.items[0].item_name:
+		target_doc.remove(target_doc.items[0])
+
+	child_doctype = target_doc.meta.get_field(items_field).options
+
+	existing_item_codes = set([d.item_code for d in target_doc.get("items") if d.get("item_code")])
+	for item_code in item_codes:
+		if item_code in existing_item_codes:
+			continue
+
+		row = target_doc.append(items_field, frappe.new_doc(child_doctype))
+		row.item_code = item_code
+		row.qty = 0
+
+		existing_item_codes.add(item_code)
+
+	target_doc.run_method("set_missing_values")
+	target_doc.run_method("calculate_taxes_and_totals")
+	target_doc.run_method("sort_items")
+
+	return target_doc

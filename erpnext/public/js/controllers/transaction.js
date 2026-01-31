@@ -201,7 +201,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			},
 
 			items_remove: function (frm) {
-				frm.cscript.calculate_taxes_and_totals();
+				frm.cscript.debounced_calculate_taxes_and_totals();
 			},
 
 			project: function(frm, cdt, cdn) {

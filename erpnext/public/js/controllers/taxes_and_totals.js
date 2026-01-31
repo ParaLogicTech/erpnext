@@ -76,6 +76,10 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		this.frm.refresh_fields();
 	}
 
+	debounced_calculate_taxes_and_totals = frappe.utils.debounce(() => {
+		this.calculate_taxes_and_totals();
+	}, 100);
+
 	additional_calculate_taxes_and_totals() {
 
 	}

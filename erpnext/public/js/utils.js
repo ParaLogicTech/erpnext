@@ -878,7 +878,69 @@ $.extend(erpnext.utils, {
 		let new_row = frm.add_child("service_templates");
 		frm.refresh_field("service_templates");
 		return frappe.model.set_value(new_row.doctype, new_row.name, "service_template", service_template);
-	}
+	},
+
+	show_item_list_picker(frm) {
+		let msd = new frappe.ui.form.MultiSelectDialog({
+			doctype: "Item",
+			target: frm,
+			setters: [
+				{
+					label: __("Item Group"),
+					fieldname: "item_group",
+					fieldtype: "Link",
+					options: "Item Group",
+				},
+				{
+					label: __("Brand"),
+					fieldname: "brand",
+					fieldtype: "Link",
+					options: "Brand",
+				},
+				{
+					label: __("Default Supplier"),
+					fieldname: "default_supplier",
+					fieldtype: "Link",
+					options: "Supplier",
+				},
+			],
+			columns: ["item_name", "item_group", "brand", "default_supplier"],
+			name_label: __("Item Code"),
+			get_query: () => {
+				return {
+					filters: {
+						disabled: 0,
+						has_variants: 0,
+					}
+				}
+			},
+			initial_page_length: 500,
+			action: (selections) => {
+				if (selections.length === 0) {
+					frappe.msgprint(__("Please check mark to select {0}", [__("Item")]));
+					return;
+				}
+
+				frappe.call({
+					method: "erpnext.controllers.transaction_controller.add_multiple_items",
+					args: {
+						item_codes: selections,
+						target_doc: frm.doc,
+					},
+					freeze: 1,
+					freeze_message: __("Adding selected Items"),
+					callback: (r) => {
+						if (!r.exc) {
+							frappe.model.sync(r.message);
+							frm.dirty();
+							frm.refresh_fields();
+							msd.dialog.hide();
+						}
+					}
+				});
+			},
+		});
+	},
 });
 
 erpnext.utils.select_alternate_items = function(opts) {
@@ -1300,8 +1362,9 @@ erpnext.utils.map_current_doc = function(opts) {
 					})
 
 					if(already_set) {
-						frappe.msgprint(__("You have already selected items from {0} {1}",
-							[opts.source_doctype, src]));
+						frappe.msgprint(__("You have already selected items from {0} {1}", [
+							__(opts.source_doctype), src
+						]));
 						return;
 					}
 
@@ -1337,10 +1400,12 @@ erpnext.utils.map_current_doc = function(opts) {
 			setters: opts.setters,
 			columns: opts.columns,
 			get_query: opts.get_query,
+			name_label: opts.name_label,
+			initial_page_length: opts.initial_page_length,
 			action: function(selections, args) {
 				let values = selections;
 				if(values.length === 0){
-					frappe.msgprint(__("Please select {0}", [opts.source_doctype]))
+					frappe.msgprint(__("Please select {0}", [__(opts.source_doctype)]))
 					return;
 				}
 				opts.source_name = values;
