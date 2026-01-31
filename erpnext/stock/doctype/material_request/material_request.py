@@ -85,6 +85,7 @@ class MaterialRequest(BuyingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.run_method("set_missing_values")
+		self.run_method("sort_items")
 		self.run_method("calculate_totals")
 
 	def set_missing_values(self, for_validate=False):

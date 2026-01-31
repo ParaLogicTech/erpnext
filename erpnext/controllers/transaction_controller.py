@@ -158,6 +158,7 @@ class TransactionController(StockController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.run_method("set_missing_values")
+		self.run_method("sort_items")
 
 		if reset_taxes:
 			self.run_method("reset_taxes_and_charges")
@@ -997,6 +998,44 @@ class TransactionController(StockController):
 				self.conversion_rate = 1.0
 			elif not self.conversion_rate:
 				self.conversion_rate = get_exchange_rate(self.currency, self.company_currency, transaction_date, args)
+
+	def sort_items(self):
+		price_list_settings = frappe.get_cached_doc("Price List Settings", None)
+		sort_setting = None
+		sorting_field = None
+
+		selling_or_buying = is_doctype_selling_or_buying(self.doctype)
+		if selling_or_buying == "selling":
+			sort_setting = price_list_settings.sort_items_in_sales_transactions
+		elif selling_or_buying == "buying":
+			sort_setting = price_list_settings.sort_items_in_purchase_transactions
+
+		if sort_setting == "Order by Item Group":
+			sorting_field = "item_group"
+		elif sort_setting == "Order by Brand":
+			sorting_field = "brand"
+
+		if not sorting_field:
+			return
+
+		order_list = price_list_settings.get(f"{sorting_field}_order", [])
+		order_map = {d.get(sorting_field): cint(d.idx) for d in order_list}
+
+		if not order_map:
+			return
+
+		def sorter(d):
+			if sorting_field == "item_group":
+				key = self.get_item_group_print_heading(d)
+			else:
+				key = d.get(sorting_field)
+
+			sorting_idx = order_map[key] if key in order_map else 99999
+			return sorting_idx
+
+		self.items = sorted(self.items, key=sorter)
+		for i, d in enumerate(self.items):
+			d.idx = i + 1
 
 
 @frappe.whitelist()

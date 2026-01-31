@@ -56,6 +56,9 @@ class PurchaseOrder(BuyingController):
 
 		self.validate_zero_amount()
 		self.validate_with_previous_doc()
+
+		self.sort_items()
+
 		self.set_advance_paid_amount()
 		self.set_receipt_status()
 		self.set_billing_status()

@@ -92,6 +92,8 @@ class PurchaseInvoice(BuyingController):
 		self.set_revalue_purchase_receipt()
 		validate_inter_company_party(self.doctype, self.supplier, self.company, self.inter_company_reference)
 
+		self.sort_items()
+
 		self.set_returned_status()
 		self.set_status()
 		self.set_title()
