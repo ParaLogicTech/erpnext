@@ -1473,7 +1473,7 @@
    "allow_on_submit": 1,
    "fieldname": "contact_phone",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "read_only": 1
   },
   {
@@ -1832,7 +1832,7 @@
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-10 01:38:24.544322",
+ "modified": "2026-02-01 04:40:23.160984",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",

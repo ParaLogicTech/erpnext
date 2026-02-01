@@ -1250,7 +1250,7 @@
    "allow_on_submit": 1,
    "fieldname": "contact_phone",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "read_only": 1
   },
   {
@@ -1621,7 +1621,7 @@
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-23 00:06:52.511257",
+ "modified": "2026-02-01 04:43:54.066654",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",

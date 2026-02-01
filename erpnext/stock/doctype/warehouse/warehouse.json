@@ -29,9 +29,9 @@
   "column_break_swld",
   "restrict_to_roles",
   "warehouse_contact_info",
-  "email_id",
-  "mobile_no",
   "phone_no",
+  "mobile_no",
+  "email_id",
   "column_break0",
   "address_line_1",
   "address_line_2",
@@ -137,7 +137,7 @@
   {
    "fieldname": "phone_no",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "oldfieldname": "phone_no",
    "oldfieldtype": "Int"
   },
@@ -275,11 +275,12 @@
    "options": "Branch"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-building",
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-07-18 14:28:15.142427",
+ "modified": "2026-02-01 04:45:05.228157",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Warehouse",
@@ -366,6 +367,7 @@
    "select": 1
   }
  ],
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

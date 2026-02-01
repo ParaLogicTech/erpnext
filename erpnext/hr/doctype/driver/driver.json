@@ -72,7 +72,7 @@
   {
    "fieldname": "cell_number",
    "fieldtype": "Data",
-   "label": "Cellphone Number"
+   "label": "Mobile No"
   },
   {
    "fieldname": "license_details",
@@ -120,9 +120,10 @@
    "options": "Address"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-user",
  "links": [],
- "modified": "2024-11-18 00:46:12.575378",
+ "modified": "2026-02-01 04:41:17.038101",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Driver",
@@ -177,6 +178,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "full_name",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

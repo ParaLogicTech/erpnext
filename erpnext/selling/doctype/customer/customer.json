@@ -579,7 +579,7 @@
    "fieldname": "phone_no",
    "fieldtype": "Data",
    "in_preview": 1,
-   "label": "Phone No"
+   "label": "Landline No"
   },
   {
    "fieldname": "column_break_54",
@@ -735,7 +735,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2025-10-02 16:13:51.049296",
+ "modified": "2026-02-01 04:36:57.642981",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",

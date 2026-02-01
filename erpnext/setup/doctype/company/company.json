@@ -677,21 +677,21 @@
   {
    "fieldname": "phone_no",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "oldfieldname": "phone_no",
    "oldfieldtype": "Data"
   },
   {
    "fieldname": "fax",
    "fieldtype": "Data",
-   "label": "Fax",
+   "label": "Fax No",
    "oldfieldname": "fax",
    "oldfieldtype": "Data"
   },
   {
    "fieldname": "email",
    "fieldtype": "Data",
-   "label": "Email",
+   "label": "Email Address",
    "oldfieldname": "email",
    "oldfieldtype": "Data",
    "options": "Email"
@@ -1049,7 +1049,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-06 11:36:03.822544",
+ "modified": "2026-02-01 04:44:34.334027",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",

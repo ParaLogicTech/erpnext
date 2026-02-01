@@ -1783,7 +1783,7 @@
    "allow_on_submit": 1,
    "fieldname": "contact_phone",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "read_only": 1
   },
   {
@@ -1893,7 +1893,7 @@
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-24 17:00:13.210629",
+ "modified": "2026-02-01 04:40:34.106225",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",
