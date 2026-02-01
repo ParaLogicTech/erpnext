@@ -197,6 +197,8 @@ class Customer(TransactionBase):
 				self.push_primary_contact(contact)
 				self.pull_primary_contact(contact)
 
+			contact.add_link("Customer", self.name, update=True)
+
 	def pull_primary_contact(self, contact):
 		to_set = {'customer_primary_contact': contact.name}
 		for d in primary_contact_fields:
@@ -249,6 +251,8 @@ class Customer(TransactionBase):
 			elif push_or_pull == "push":
 				self.push_primary_address(address)
 				self.pull_primary_address(address)
+
+			address.add_link("Customer", self.name, update=True)
 
 	def pull_primary_address(self, address):
 		to_set = {'customer_primary_address': address.name, 'primary_address': render_address(address.as_dict())}
