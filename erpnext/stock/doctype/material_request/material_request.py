@@ -9,7 +9,7 @@ import frappe
 from frappe.utils import cstr, flt, getdate, new_line_sep, nowdate, ceil
 from frappe import msgprint, _
 from frappe.model.mapper import get_mapped_doc
-from frappe.contacts.doctype.address.address import get_default_address
+from crm.crm.utils import get_primary_address
 from erpnext.accounts.party import render_address
 from erpnext.stock.stock_balance import update_bin_qty, get_indented_qty
 from erpnext.controllers.buying_controller import BuyingController
@@ -93,10 +93,10 @@ class MaterialRequest(BuyingController):
 		self.set_warehouse_address()
 
 	def set_warehouse_address(self):
-		self.warehouse_address = (self.warehouse_address or get_default_address("Warehouse", self.set_warehouse)) if self.set_warehouse else None
+		self.warehouse_address = (self.warehouse_address or get_primary_address("Warehouse", self.set_warehouse)) if self.set_warehouse else None
 		self.address_display = render_address(self.warehouse_address)
 
-		self.source_warehouse_address = (self.source_warehouse_address or get_default_address("Warehouse", self.from_warehouse)) if self.from_warehouse else None
+		self.source_warehouse_address = (self.source_warehouse_address or get_primary_address("Warehouse", self.from_warehouse)) if self.from_warehouse else None
 		self.source_address_display = render_address(self.source_warehouse_address)
 
 	def validate_items(self):

@@ -4,9 +4,9 @@
 import frappe, erpnext
 import frappe.defaults
 from frappe import _
-from frappe.contacts.doctype.address.address import get_default_address
-from erpnext.accounts.party import render_address
 from frappe.utils import cstr, cint, flt, comma_or, nowdate
+from crm.crm.utils import get_primary_address
+from erpnext.accounts.party import render_address
 from erpnext.stock.utils import get_incoming_rate, get_latest_stock_qty
 from erpnext.stock.stock_ledger import get_previous_sle, get_valuation_rate
 from erpnext.stock.get_item_details import get_bin_details, get_default_cost_center, get_conversion_factor,\
@@ -534,9 +534,9 @@ class StockEntry(TransactionController):
 			self.target_warehouse_address = None
 
 		if self.from_warehouse and not self.source_warehouse_address:
-			self.source_warehouse_address = get_default_address("Warehouse", self.from_warehouse)
+			self.source_warehouse_address = get_primary_address("Warehouse", self.from_warehouse)
 		if self.to_warehouse and not self.target_warehouse_address:
-			self.target_warehouse_address = get_default_address("Warehouse", self.to_warehouse)
+			self.target_warehouse_address = get_primary_address("Warehouse", self.to_warehouse)
 
 		self.source_address_display = render_address(self.source_warehouse_address)
 		self.target_address_display = render_address(self.target_warehouse_address)

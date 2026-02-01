@@ -5,9 +5,9 @@
 import frappe, erpnext, json
 from frappe import _, scrub, ValidationError
 from frappe.utils import flt, cint, comma_or, nowdate, getdate, cstr
-from frappe.contacts.doctype.contact.contact import get_default_contact
 from erpnext.accounts.utils import get_outstanding_invoices, get_account_currency, get_balance_on
 from erpnext.accounts.party import get_party_account, get_party_name, _get_contact_details
+from crm.crm.utils import get_primary_contact
 from erpnext.accounts.doctype.journal_entry.journal_entry import (
 	get_default_bank_cash_account,
 	get_average_party_exchange_rate_on_journal_entry,
@@ -340,7 +340,7 @@ class PaymentEntry(AccountsController):
 				self.tax_cnic = None
 
 			if not self.contact_person:
-				self.contact_person = get_default_contact(self.party_type, self.party)
+				self.contact_person = get_primary_contact(self.party_type, self.party)
 
 		if self.contact_person:
 			contact_details = _get_contact_details(self.contact_person, project=self.project)

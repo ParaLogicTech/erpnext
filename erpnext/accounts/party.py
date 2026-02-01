@@ -7,8 +7,7 @@ from frappe import _, scrub
 from frappe.core.doctype.user_permission.user_permission import get_permitted_documents
 from frappe.model.utils import get_fetch_values
 from frappe.utils import getdate, add_years, get_timestamp, nowdate, flt, cstr, cint
-from frappe.contacts.doctype.address.address import get_default_address
-from frappe.contacts.doctype.contact.contact import get_default_contact
+from crm.crm.utils import get_primary_contact, get_primary_address, get_shipping_address
 from erpnext.exceptions import PartyFrozen, PartyDisabled, InvalidAccountCurrency
 from erpnext.accounts.utils import get_fiscal_year
 from erpnext import get_company_currency
@@ -272,7 +271,7 @@ def set_address_details(
 
 	# Billing Address
 	billing_address_field = "customer_address" if party_doc.doctype == "Lead" else scrub(party_doc.doctype) + "_address"
-	party_details[billing_address_field] = party_address or get_default_address(party_doc.doctype, bill_to or party_doc.name)
+	party_details[billing_address_field] = party_address or get_primary_address(party_doc.doctype, bill_to or party_doc.name)
 	party_details.address_display = render_address(party_details[billing_address_field], lead=lead)
 	if doctype:
 		party_details.update(get_fetch_values(doctype, billing_address_field, party_details[billing_address_field]))
@@ -290,7 +289,7 @@ def set_address_details(
 
 	# Shipping Address for Sales
 	if party_doc.doctype in ("Customer", "Lead"):
-		party_details.shipping_address_name = shipping_address or get_party_shipping_address(party_doc.doctype, party_doc.name)
+		party_details.shipping_address_name = shipping_address or get_shipping_address(party_doc.doctype, party_doc.name)
 		party_details.shipping_address = render_address(party_details["shipping_address_name"])
 		if doctype:
 			party_details.update(get_fetch_values(doctype, 'shipping_address_name', party_details.shipping_address_name))
@@ -339,7 +338,7 @@ def set_contact_details(party_details, party_doc, party_type, contact_person=Non
 			party_details.contact_person = project_details.billing_contact_person
 
 	if not party_details.contact_person:
-		party_details.contact_person = get_default_contact(party_type, party_doc.name)
+		party_details.contact_person = get_primary_contact(party_type, party_doc.name)
 
 	lead = None
 	if party_type == "Lead":
@@ -348,6 +347,22 @@ def set_contact_details(party_details, party_doc, party_type, contact_person=Non
 	party_details.update(_get_contact_details(party_details.contact_person, project=project_details, lead=lead))
 
 	return party_details.contact_person
+
+
+def get_primary_contact_hook(doctype, name):
+	if doctype == "Customer":
+		primary = frappe.get_cached_value("Customer", name, "customer_primary_contact")
+		return primary
+
+	return None
+
+
+def get_primary_address_hook(doctype, name):
+	if doctype == "Customer":
+		primary = frappe.get_cached_value("Customer", name, "customer_primary_address")
+		return primary
+
+	return None
 
 
 @frappe.whitelist()
@@ -1033,32 +1048,3 @@ def get_dashboard_info(party_type, party, loyalty_program=None):
 		company_wise_info.append(info)
 
 	return company_wise_info
-
-
-def get_party_shipping_address(doctype, name):
-	"""
-	Returns an Address name (best guess) for the given doctype and name for which `address_type == 'Shipping'` is true.
-	and/or `is_shipping_address = 1`.
-
-	It returns an empty string if there is no matching record.
-
-	:param doctype: Party Doctype
-	:param name: Party name
-	:return: String
-	"""
-	out = frappe.db.sql(
-		'SELECT dl.parent '
-		'from `tabDynamic Link` dl join `tabAddress` ta on dl.parent=ta.name '
-		'where '
-		'dl.link_doctype=%s '
-		'and dl.link_name=%s '
-		'and dl.parenttype="Address" '
-		'and ifnull(ta.disabled, 0) = 0 and'
-		'(ta.address_type="Shipping" or ta.is_shipping_address=1) '
-		'order by ta.is_shipping_address desc, ta.address_type desc limit 1',
-		(doctype, name)
-	)
-	if out:
-		return out[0][0]
-	else:
-		return ''

@@ -57,7 +57,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		}
 
 		return frappe.call({
-			method: "frappe.contacts.doctype.address.address.get_default_address",
+			method: "crm.crm.utils.get_primary_address",
 			args: {
 				doctype: "Warehouse",
 				name: warehouse
