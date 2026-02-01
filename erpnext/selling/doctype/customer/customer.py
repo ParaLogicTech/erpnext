@@ -630,7 +630,7 @@ def get_customer_primary_contact(doctype, txt, searchfield, start, page_len, fil
 @frappe.whitelist()
 def get_primary_address_details(address_name):
 	doc = frappe.get_doc("Address", address_name)
-	doc.check_permissions()
+	doc.check_permission()
 	out = {'primary_address': render_address(doc.as_dict())}
 	for field in primary_address_fields:
 		out[field['customer_field']] = doc.get(field['address_field'])
@@ -641,7 +641,7 @@ def get_primary_address_details(address_name):
 @frappe.whitelist()
 def get_primary_contact_details(contact_name):
 	doc = frappe.get_doc("Contact", contact_name)
-	doc.check_permissions()
+	doc.check_permission()
 	out = {}
 	for field in primary_contact_fields:
 		out[field['customer_field']] = doc.get(field['contact_field'])
