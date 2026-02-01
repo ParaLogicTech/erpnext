@@ -934,7 +934,7 @@ def get_valuation_rate(
 	batch_no=None,
 	allow_zero_rate=False,
 	company=None,
-	raise_error_if_no_rate=True,
+	raise_error_if_no_rate=False,
 	batch_wise_valuation=None,
 	posting_date=None,
 	posting_time=None,

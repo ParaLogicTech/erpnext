@@ -33,8 +33,8 @@
   "salutation",
   "column_break_53",
   "contact_first_name",
-  "contact_middle_name",
   "column_break_kmwz",
+  "contact_middle_name",
   "contact_last_name",
   "primary_contact_section",
   "mobile_no",
@@ -614,8 +614,8 @@
   {
    "fieldname": "contact_middle_name",
    "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Middle Name"
+   "label": "Middle Name",
+   "read_only": 1
   },
   {
    "fieldname": "contact_last_name",
@@ -737,7 +737,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2026-02-01 04:36:57.642981",
+ "modified": "2026-02-01 15:12:52.714420",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",
