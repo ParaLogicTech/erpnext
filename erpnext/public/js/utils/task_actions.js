@@ -300,6 +300,7 @@ $.extend(erpnext.task_actions, {
 		];
 
 		let additional_fields = erpnext.task_actions.get_additional_create_task_fields?.(project_data, task_data);
+		let vehicle_health_check_fields = erpnext.task_actions.get_vehicle_health_check_fields?.(task_data) || [];
 		additional_fields = additional_fields || [];
 		fields = fields.concat(additional_fields);
 
@@ -317,19 +318,10 @@ $.extend(erpnext.task_actions, {
 				"fieldtype": "Int",
 				"default": 1,
 			},
-			{
-				label: __("Vehicle Health Check Template"),
-				fieldname: "vehicle_health_check_template",
-				fieldtype: "Link",
-				options: "Vehicle Health Check Template",
-				default: task_data.vehicle_health_check_template,
-			},
-			{
-				label: __("Vehicle Health Check Mandatory"),
-				fieldname: "vehicle_health_check_mandatory",
-				fieldtype: "Check",
-				options: "Vehicle Health Check Mandatory",
-			},
+		])
+
+		fields = fields.concat(vehicle_health_check_fields);
+		fields = fields.concat([
 			{
 				fieldtype: "Section Break",
 			},
@@ -340,7 +332,7 @@ $.extend(erpnext.task_actions, {
 				"default": task_data.task_description || task_data.description,
 				"max_height": "100px",
 			},
-		])
+		]);
 
 		if (task_data.name) {
 			fields = fields.concat([
