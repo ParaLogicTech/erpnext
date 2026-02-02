@@ -124,8 +124,7 @@ class PurchaseInvoice(BuyingController):
 			from erpnext.stock.doctype.serial_no.serial_no import update_serial_nos_after_submit
 			update_serial_nos_after_submit(self, "items")
 
-		if (not self.is_return or not self.update_stock) and self.revalue_purchase_receipt:
-			self.update_receipts_valuation()
+		self.update_receipts_valuation()
 
 		# this sequence because outstanding may get -negative
 		self.make_gl_entries()
@@ -154,8 +153,7 @@ class PurchaseInvoice(BuyingController):
 			self.update_stock_ledger()
 			self.unlink_auto_created_batches()
 
-		if (not self.is_return or not self.update_stock) and self.revalue_purchase_receipt:
-			self.update_receipts_valuation()
+		self.update_receipts_valuation()
 
 		self.make_gl_entries_on_cancel()
 		self.set_outstanding_amount(update=True)
@@ -450,6 +448,10 @@ class PurchaseInvoice(BuyingController):
 			for item in doc.get("items"):
 				item.db_update()
 
+		if not self.revalue_purchase_receipt:
+			return
+
+		# repost stock valuation
 		excluded_vouchers = [(self.doctype, self.name)]
 		for doc in docs:
 			# update stock & gl entries for cancelled state of PR
