@@ -15,7 +15,7 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import g
 
 class Asset(AccountsController):
 	def validate(self):
-		self.set_values_from_purchase_doc()
+		self.set_values_from_purchase_doc(force_gross_purchase_amount=False)
 		self.set_missing_values()
 		self.validate_asset_values()
 		self.validate_asset_and_reference()
@@ -129,7 +129,7 @@ class Asset(AccountsController):
 			frappe.throw(_("Available-for-use Date should be after purchase date"))
 	
 	@frappe.whitelist()
-	def set_values_from_purchase_doc(self):
+	def set_values_from_purchase_doc(self, force_gross_purchase_amount=True):
 		document_name = self.purchase_receipt or self.purchase_invoice
 		if document_name:
 			document_type = 'Purchase Receipt' if self.purchase_receipt else 'Purchase Invoice'
@@ -142,7 +142,10 @@ class Asset(AccountsController):
 				frappe.throw("The selected {document_name} doesn't contains selected Asset Item.".format(document_name=document_name))
 			self.company = purchase_document.company
 			self.purchase_date = purchase_document.posting_date
-			self.gross_purchase_amount = each_item.base_net_rate + each_item.item_tax_amount
+			
+			if force_gross_purchase_amount:
+				self.gross_purchase_amount = each_item.base_net_rate + each_item.item_tax_amount
+
 			self.purchase_receipt_amount = each_item.base_net_rate + each_item.item_tax_amount
 			self.location = each_item.asset_location
 			self.branch = purchase_document.branch
