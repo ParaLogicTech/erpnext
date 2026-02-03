@@ -378,6 +378,9 @@ frappe.ui.form.on('Asset', {
 		frappe.call({
 			method: "set_values_from_purchase_doc",
 			doc:frm.doc,
+			 args: {
+				fetch_gross_purchase_amount: true
+			},
 			callback: function(r) {
 				frm.refresh();
 				frm.dirty();
