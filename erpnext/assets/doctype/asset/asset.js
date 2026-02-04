@@ -344,9 +344,7 @@ frappe.ui.form.on('Asset', {
 		frm.trigger('toggle_reference_doc');
 		if (frm.doc.purchase_receipt) {
 			if (frm.doc.item_code) {
-				frappe.db.get_doc('Purchase Receipt', frm.doc.purchase_receipt).then(pr_doc => {
-					frm.events.set_values_from_purchase_doc(frm, 'Purchase Receipt', pr_doc)
-				});
+				frm.events.validate_duplicate_item_code(frm, frm.doc.item_code, 'Purchase Receipt', frm.doc.purchase_receipt);
 			} else {
 				frm.set_value('purchase_receipt', '');
 				frappe.msgprint({
@@ -361,9 +359,7 @@ frappe.ui.form.on('Asset', {
 		frm.trigger('toggle_reference_doc');
 		if (frm.doc.purchase_invoice) {
 			if (frm.doc.item_code) {
-				frappe.db.get_doc('Purchase Invoice', frm.doc.purchase_invoice).then(pi_doc => {
-					frm.events.set_values_from_purchase_doc(frm, 'Purchase Invoice', pi_doc)
-				});
+				frm.events.validate_duplicate_item_code(frm, frm.doc.item_code, 'Purchase Invoice', frm.doc.purchase_invoice);
 			} else {
 				frm.set_value('purchase_invoice', '');
 				frappe.msgprint({
@@ -371,6 +367,126 @@ frappe.ui.form.on('Asset', {
 					message: __("Please select Item Code first")
 				});
 			}
+		}
+	},
+
+	validate_duplicate_item_code: function(frm, item_code, doctype, purchase_doc) {
+		frappe.call({
+			method: "erpnext.controllers.accounts_controller.get_invoice_duplicate_item_code_rows",
+			args: {
+				item_code: item_code,
+				doctype: doctype,
+				doc_name: purchase_doc,
+			},
+			callback: function(r) {
+				if(r.message.length>1) {
+					
+					const duplicate_item_code_details = r.message.map(item_row => ({
+						item_code: item_row.item_code,
+						item_name: item_row.item_name,
+						rate: (item_row.base_net_rate + item_row.item_tax_amount),
+						item_detail: item_row.name
+					}));
+
+					const d = new frappe.ui.Dialog({
+					title: "There are multiple rows for same item code.",
+					fields: [
+						{
+							fieldname: "duplicate_item_code_rows_table",
+							fieldtype: "Table",
+							label: "Duplicate Item",
+							fields: [
+								{
+									fieldname: "item_code",
+									fieldtype: "Link",
+									label: "Item Code",
+									read_only: 1,
+									in_list_view: 1
+								},
+								{
+									fieldname: "item_name",
+									fieldtype: "Data",
+									label: "Item Name",
+									read_only: 1,
+									in_list_view: 1
+								},
+								{
+									fieldname: "rate",
+									fieldtype: "Currency",
+									label: "Rate",
+									read_only: 1,
+									in_list_view: 1
+								},
+								{
+									fieldname: "item_detail",
+									fieldtype: "Data",
+									label: "Item Detail",
+									read_only: 1,
+									hidden:1,
+									in_list_view: 0
+								}
+							],
+							data: duplicate_item_code_details
+						}
+					],
+					size: 'extra-large',
+					primary_action_label: "Select Item",
+					primary_action(values) {
+						const duplicate_item_code_selected_values = values.duplicate_item_code_rows_table.filter(row => row.__checked);
+
+						if (duplicate_item_code_selected_values.length === 0) {
+							frappe.msgprint("Please select at least one row.");
+							return;
+						}
+						if (duplicate_item_code_selected_values.length != 1) {
+							frappe.msgprint("Please select only one row.");
+							return;
+						}
+
+						frm.set_value("item_detail", duplicate_item_code_selected_values[0].item_detail);
+						frm.events.trigger_set_value_method(frm, doctype, purchase_doc);
+						d.hide()
+					}
+
+				});
+				const primary_btn = d.get_primary_btn();
+				primary_btn.prop('disabled', true);
+
+				d.show();
+					setTimeout(() => {
+						const wrapper = d.$wrapper;
+						wrapper.find('.grid-remove-rows').hide(); // hide trash/delete buttons
+						wrapper.find('.grid-add-row').hide();
+						d.$wrapper.on('click', 'input[type="checkbox"]', () => {
+							const selected_values = d.get_values();
+							if (!selected_values) return;
+
+							const selected_values_check_box = selected_values.duplicate_item_code_rows_table?.filter(row => row.__checked) || [];
+							// Enable or disable the primary action button
+							primary_btn.prop('disabled', selected_values_check_box.length === 0);
+						});
+					}, 100);
+				}
+				else {
+					frm.events.trigger_set_value_method(frm, doctype, purchase_doc);
+				}
+			}
+		});
+
+	},
+
+	trigger_set_value_method: function(frm, doctype, purchase_doc) {
+		if(doctype == "Purchase Invoice") {
+			frm.set_value("purchase_invoice", purchase_doc);
+			frappe.db.get_doc('Purchase Invoice', frm.doc.purchase_invoice).then(pi_doc => {
+				frm.events.set_values_from_purchase_doc(frm, 'Purchase Invoice', pi_doc);
+			});	
+		}
+		else if(doctype == "Purchase Receipt"){
+			frm.set_value("purchase_receipt", purchase_doc);
+			frappe.db.get_doc('Purchase Receipt', frm.doc.purchase_receipt).then(pr_doc => {
+				frm.events.set_values_from_purchase_doc(frm, 'Purchase Receipt', pr_doc);
+			});		
 		}
 	},
 

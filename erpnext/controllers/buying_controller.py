@@ -1127,6 +1127,7 @@ class BuyingController(TransactionController):
 			'doctype': 'Asset',
 			'item_code': row.item_code,
 			'asset_name': row.item_name,
+			'item_detail':row.name,
 			'naming_series': item_data.get('asset_naming_series') or 'AST',
 			'asset_category': item_data.get('asset_category'),
 			'location': row.asset_location,
