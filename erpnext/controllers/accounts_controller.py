@@ -1024,15 +1024,6 @@ def get_supplier_block_status(party_name):
 	}
 	return info
 
-@frappe.whitelist()
-def get_invoice_duplicate_item_code_rows(item_code, doctype, doc_name):
-	pur_doc = frappe.get_doc(doctype, doc_name)
-	item_code_list = [] 
-	for each_pr_item in pur_doc.items:
-		if each_pr_item.item_code == item_code:
-			item_code_list.append(each_pr_item)
-	return item_code_list
-
 @erpnext.allow_regional
 def validate_regional(doc):
 	pass

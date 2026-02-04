@@ -232,6 +232,7 @@ frappe.ui.form.on('Asset', {
 
 
 	item_code: function (frm) {
+		frm.set_value("item_detail", null);
 		if (frm.doc.item_code && frm.doc.calculate_depreciation) {
 			frm.trigger("set_finance_book");
 		} else {
@@ -344,7 +345,7 @@ frappe.ui.form.on('Asset', {
 		frm.trigger('toggle_reference_doc');
 		if (frm.doc.purchase_receipt) {
 			if (frm.doc.item_code) {
-				frm.events.validate_duplicate_item_code(frm, frm.doc.item_code, 'Purchase Receipt', frm.doc.purchase_receipt);
+				frm.events.validate_duplicate_item_code(frm);
 			} else {
 				frm.set_value('purchase_receipt', '');
 				frappe.msgprint({
@@ -359,7 +360,7 @@ frappe.ui.form.on('Asset', {
 		frm.trigger('toggle_reference_doc');
 		if (frm.doc.purchase_invoice) {
 			if (frm.doc.item_code) {
-				frm.events.validate_duplicate_item_code(frm, frm.doc.item_code, 'Purchase Invoice', frm.doc.purchase_invoice);
+				frm.events.validate_duplicate_item_code(frm);
 			} else {
 				frm.set_value('purchase_invoice', '');
 				frappe.msgprint({
@@ -370,14 +371,10 @@ frappe.ui.form.on('Asset', {
 		}
 	},
 
-	validate_duplicate_item_code: function(frm, item_code, doctype, purchase_doc) {
+	validate_duplicate_item_code: function(frm) {
 		frappe.call({
-			method: "erpnext.controllers.accounts_controller.get_invoice_duplicate_item_code_rows",
-			args: {
-				item_code: item_code,
-				doctype: doctype,
-				doc_name: purchase_doc,
-			},
+			method: "get_invoice_duplicate_item_code_rows",
+			doc: frm.doc,
 			callback: function(r) {
 				if(r.message.length>1) {
 					
@@ -444,7 +441,7 @@ frappe.ui.form.on('Asset', {
 						}
 
 						frm.set_value("item_detail", duplicate_item_code_selected_values[0].item_detail);
-						frm.events.trigger_set_value_method(frm, doctype, purchase_doc);
+						frm.events.set_values_from_purchase_doc(frm);
 						d.hide()
 					}
 
@@ -468,29 +465,14 @@ frappe.ui.form.on('Asset', {
 					}, 100);
 				}
 				else {
-					frm.events.trigger_set_value_method(frm, doctype, purchase_doc);
+					frm.events.set_values_from_purchase_doc(frm);
 				}
 			}
 		});
 
 	},
 
-	trigger_set_value_method: function(frm, doctype, purchase_doc) {
-		if(doctype == "Purchase Invoice") {
-			frm.set_value("purchase_invoice", purchase_doc);
-			frappe.db.get_doc('Purchase Invoice', frm.doc.purchase_invoice).then(pi_doc => {
-				frm.events.set_values_from_purchase_doc(frm, 'Purchase Invoice', pi_doc);
-			});	
-		}
-		else if(doctype == "Purchase Receipt"){
-			frm.set_value("purchase_receipt", purchase_doc);
-			frappe.db.get_doc('Purchase Receipt', frm.doc.purchase_receipt).then(pr_doc => {
-				frm.events.set_values_from_purchase_doc(frm, 'Purchase Receipt', pr_doc);
-			});		
-		}
-	},
-
-	set_values_from_purchase_doc: function(frm, doctype, purchase_doc) {
+	set_values_from_purchase_doc: function(frm) {
 		frappe.call({
 			method: "set_values_from_purchase_doc",
 			doc:frm.doc,

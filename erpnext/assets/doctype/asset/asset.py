@@ -10,7 +10,7 @@ from erpnext.assets.doctype.asset_category.asset_category import get_asset_categ
 from erpnext.assets.doctype.asset.depreciation \
 	import get_disposal_account_and_cost_center, get_depreciation_accounts
 from erpnext.accounts.general_ledger import  delete_gl_entries
-from erpnext.controllers.accounts_controller import AccountsController, get_invoice_duplicate_item_code_rows
+from erpnext.controllers.accounts_controller import AccountsController
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 class Asset(AccountsController):
@@ -132,7 +132,16 @@ class Asset(AccountsController):
 	def validate_duplicate_item_code(self):
 		if self.item_detail:
 			return
+		
+		voucher_doctype, voucher_name = self.get_voucher_type_voucher_name()
 
+		if voucher_doctype and voucher_name:
+			duplicate_item_code_rows = self.get_invoice_duplicate_item_code_rows()
+			if len(duplicate_item_code_rows)>1:
+				frappe.throw(f"Multiple rows with the same item code {self.item_code} exist in voucher {get_link_to_form(voucher_doctype, voucher_name)}. \
+				 Please set the item details")
+	
+	def get_voucher_type_voucher_name(self):
 		voucher_name = None
 		voucher_doctype = None
 		if self.purchase_receipt:
@@ -141,12 +150,18 @@ class Asset(AccountsController):
 		if self.purchase_invoice:
 			voucher_name = self.purchase_invoice
 			voucher_doctype = "Purchase Invoice"
-
-		if voucher_doctype and voucher_name:
-			duplicate_item_code_rows = get_invoice_duplicate_item_code_rows(self.item_code, voucher_doctype, voucher_name)
-			if len(duplicate_item_code_rows)>1:
-				frappe.throw(f"Multiple rows with the same item code {self.item_code} exist in voucher {get_link_to_form(voucher_doctype, voucher_name)}. \
-				 Please set the item details")
+		return voucher_doctype, voucher_name
+	
+	@frappe.whitelist()
+	def get_invoice_duplicate_item_code_rows(self):
+		item_code = self.item_code
+		voucher_doctype, voucher_name = self.get_voucher_type_voucher_name()
+		pur_doc = frappe.get_doc(voucher_doctype, voucher_name)
+		item_code_list = [] 
+		for each_pr_item in pur_doc.items:
+			if each_pr_item.item_code == item_code:
+				item_code_list.append(each_pr_item)
+		return item_code_list
 	
 	@frappe.whitelist()
 	def set_values_from_purchase_doc(self, fetch_gross_purchase_amount=True):

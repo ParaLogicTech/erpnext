@@ -502,6 +502,7 @@
    "fieldtype": "Data",
    "hidden": 1,
    "label": "Item Detail",
+   "no_copy": 1,
    "read_only": 1
   }
  ],
@@ -510,7 +511,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-04 13:17:26.808548",
+ "modified": "2026-02-04 18:29:42.992239",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Asset",
