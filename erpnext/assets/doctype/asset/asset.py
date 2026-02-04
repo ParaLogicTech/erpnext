@@ -5,16 +5,17 @@
 import frappe, erpnext, math, json
 from frappe import _
 from six import string_types
-from frappe.utils import flt, add_months, cint, nowdate, getdate, today, date_diff, month_diff, add_days, get_datetime
+from frappe.utils import flt, add_months, cint, nowdate, getdate, today, date_diff, month_diff, add_days, get_datetime, get_link_to_form
 from erpnext.assets.doctype.asset_category.asset_category import get_asset_category_account
 from erpnext.assets.doctype.asset.depreciation \
 	import get_disposal_account_and_cost_center, get_depreciation_accounts
 from erpnext.accounts.general_ledger import  delete_gl_entries
-from erpnext.controllers.accounts_controller import AccountsController
+from erpnext.controllers.accounts_controller import AccountsController, get_invoice_duplicate_item_code_rows
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 class Asset(AccountsController):
 	def validate(self):
+		self.validate_duplicate_item_code()
 		self.set_values_from_purchase_doc(fetch_gross_purchase_amount=False)
 		self.set_missing_values()
 		self.validate_asset_values()
@@ -127,6 +128,25 @@ class Asset(AccountsController):
 	def validate_asset_date(self):
 		if self.available_for_use_date and getdate(self.available_for_use_date) < getdate(self.purchase_date):
 			frappe.throw(_("Available-for-use Date should be after purchase date"))
+
+	def validate_duplicate_item_code(self):
+		if self.item_detail:
+			return
+
+		voucher_name = None
+		voucher_doctype = None
+		if self.purchase_receipt:
+			voucher_name = self.purchase_receipt
+			voucher_doctype = "Purchase Receipt"
+		if self.purchase_invoice:
+			voucher_name = self.purchase_invoice
+			voucher_doctype = "Purchase Invoice"
+
+		if voucher_doctype and voucher_name:
+			duplicate_item_code_rows = get_invoice_duplicate_item_code_rows(self.item_code, voucher_doctype, voucher_name)
+			if len(duplicate_item_code_rows)>1:
+				frappe.throw(f"Multiple rows with the same item code {self.item_code} exist in voucher {get_link_to_form(voucher_doctype, voucher_name)}. \
+				 Please set the item details")
 	
 	@frappe.whitelist()
 	def set_values_from_purchase_doc(self, fetch_gross_purchase_amount=True):
@@ -135,11 +155,17 @@ class Asset(AccountsController):
 			document_type = 'Purchase Receipt' if self.purchase_receipt else 'Purchase Invoice'
 			purchase_document = frappe.get_doc(document_type, document_name)
 			for each_item in purchase_document.items:
-				if each_item.item_code == self.item_code:
+				if each_item.name == self.item_detail:
 					self.asset_category = each_item.asset_category
 					break
 			else:
-				frappe.throw("The selected {document_name} doesn't contains selected Asset Item.".format(document_name=document_name))
+				for each_item in purchase_document.items:
+					if each_item.item_code == self.item_code:
+						self.item_detail = each_item.name
+						self.asset_category = each_item.asset_category
+						break
+				else:
+					frappe.throw("The selected {document_name} doesn't contains selected Asset Item.".format(document_name=document_name))
 			self.company = purchase_document.company
 			self.purchase_date = purchase_document.posting_date
 			
