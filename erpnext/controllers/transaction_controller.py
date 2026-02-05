@@ -335,6 +335,7 @@ class TransactionController(StockController):
 
 			for d in self.items:
 				d.alt_uom_or_uom = d.get("alt_uom") or d.get("uom")
+				d.alt_uom_or_stock_uom = d.get("alt_uom") or d.get("stock_uom") or d.get("uom")
 
 	def set_pricing_rules_before_print(self):
 		self.print_pricing_rules = set()
