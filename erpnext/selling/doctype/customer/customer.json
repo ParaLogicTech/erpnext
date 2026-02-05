@@ -41,9 +41,9 @@
   "mobile_no_2",
   "column_break_51",
   "phone_no",
-  "email_id",
-  "column_break_50",
   "website",
+  "column_break_50",
+  "email_id",
   "customer_primary_contact",
   "sec_primary_address_and_contact",
   "primary_address",
@@ -320,6 +320,7 @@
    "options": "Contact"
   },
   {
+   "bold": 1,
    "fieldname": "mobile_no",
    "fieldtype": "Data",
    "in_preview": 1,
@@ -328,6 +329,7 @@
    "options": "Phone"
   },
   {
+   "bold": 1,
    "fieldname": "email_id",
    "fieldtype": "Data",
    "in_preview": 1,
@@ -737,7 +739,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2026-02-01 15:12:52.714420",
+ "modified": "2026-02-01 16:11:29.712354",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",

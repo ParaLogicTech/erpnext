@@ -7,8 +7,6 @@ cur_frm.cscript.tax_table = "Purchase Taxes and Charges";
 
 {% include 'erpnext/accounts/doctype/purchase_taxes_and_charges_template/purchase_taxes_and_charges_template.js' %}
 
-cur_frm.email_field = "contact_email";
-
 erpnext.buying.BuyingController = class BuyingController extends erpnext.TransactionController {
 	setup() {
 		super.setup();

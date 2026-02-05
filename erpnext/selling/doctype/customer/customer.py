@@ -35,7 +35,8 @@ primary_contact_fields = [
 	{'customer_field': 'mobile_no', 'contact_field': 'mobile_no'},
 	{'customer_field': 'mobile_no_2', 'contact_field': 'mobile_no_2'},
 	{'customer_field': 'phone_no', 'contact_field': 'phone'},
-	{'customer_field': 'email_id', 'contact_field': 'email_id'}
+	{'customer_field': 'email_id', 'contact_field': 'email_id'},
+	{'customer_field': 'email_id_2', 'contact_field': 'email_id_2'},
 ]
 
 
@@ -215,7 +216,7 @@ class Customer(TransactionBase):
 
 		if data_changed:
 			for field in primary_contact_fields:
-				if not field.get('custom_setter'):
+				if not field.get('custom_setter') and self.meta.has_field(field['customer_field']):
 					value = self.get(field['customer_field'])
 					if not value and field.get('default_from'):
 						value = self.get(field.get('default_from'))
@@ -270,7 +271,7 @@ class Customer(TransactionBase):
 
 		if data_changed:
 			for field in primary_address_fields:
-				if not field.get('custom_setter'):
+				if not field.get('custom_setter') and self.meta.has_field(field['customer_field']):
 					value = self.get(field['customer_field'])
 					if not value and field.get('default_from'):
 						value = self.get(field.get('default_from'))
@@ -570,6 +571,8 @@ def make_contact(args, is_primary_contact=1):
 
 	if args.get('email_id'):
 		contact.add_email(args.get('email_id'), is_primary=True)
+	if args.get('email_id_2'):
+		contact.add_email(args.get('email_id_2'))
 	if args.get('mobile_no'):
 		contact.add_phone(args.get('mobile_no'), is_primary_mobile_no=True)
 	if args.get('mobile_no_2'):

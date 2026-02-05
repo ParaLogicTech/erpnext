@@ -8,6 +8,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		frappe.flags.hide_serial_batch_dialog = true
 		super.setup();
 
+		this.frm.email_field = "contact_email";
+		this.frm.email_cc_field = "contact_email_cc";
+
 		erpnext.setup_applies_to_fields(this.frm);
 
 		frappe.ui.form.on(this.frm.doctype + " Item", "rate", function(frm, cdt, cdn) {
