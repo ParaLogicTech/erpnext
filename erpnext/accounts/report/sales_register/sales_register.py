@@ -1,11 +1,13 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
-
 import frappe
+import erpnext
+from frappe import _
 from frappe.utils import flt
-from frappe import msgprint, _
-from frappe.model.meta import get_field_precision
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, get_dimension_with_children
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_accounting_dimensions,
+	get_dimension_with_children,
+)
 
 
 def execute(filters=None):
@@ -13,37 +15,37 @@ def execute(filters=None):
 
 
 def _execute(filters, additional_table_columns=None, additional_query_columns=None):
-	if not filters: filters = frappe._dict({})
+	filters = frappe._dict(filters or {})
+
+	company_currency = erpnext.get_company_currency(filters.get("company"))
 
 	invoice_list = get_invoices(filters, additional_query_columns)
-	columns, income_accounts, tax_accounts = get_columns(invoice_list, additional_table_columns)
+
+	(
+		income_accounts,
+		asset_accounts,
+		tax_accounts,
+		gl_map,
+		cost_center_map,
+		mode_of_payment_map,
+		warehouse_map,
+		sales_order_map,
+		delivery_note_map,
+	) = get_invoice_accounts_data(invoice_list)
 
 	if not invoice_list:
-		msgprint(_("No record found"))
-		return columns, invoice_list
-
-	invoice_income_map = get_invoice_income_map(invoice_list, income_accounts)
-	invoice_tax_map = get_invoice_tax_map(invoice_list, income_accounts)
-	#Cost Center & Warehouse Map
-	invoice_cc_wh_map = get_invoice_cc_wh_map(invoice_list)
-	invoice_so_dn_map = get_invoice_so_dn_map(invoice_list)
-	company_currency = frappe.get_cached_value('Company',  filters.get("company"),  "default_currency")
-	mode_of_payments = get_mode_of_payments([inv.name for inv in invoice_list])
+		return [], invoice_list
 
 	data = []
-	for inv in invoice_list:
-		# invoice details
-		sales_order = list(set(invoice_so_dn_map.get(inv.name, {}).get("sales_order", [])))
-		delivery_note = list(set(invoice_so_dn_map.get(inv.name, {}).get("delivery_note", [])))
-		cost_center = list(set(invoice_cc_wh_map.get(inv.name, {}).get("cost_center", [])))
-		warehouse = list(set(invoice_cc_wh_map.get(inv.name, {}).get("warehouse", [])))
+	account_has_amount = set()
 
-		row = {
+	for inv in invoice_list:
+		row = frappe._dict({
 			'invoice': inv.name,
 			'posting_date': inv.posting_date,
 			'customer': inv.bill_to,
-			'customer_name': inv.bill_to_name
-		}
+			'customer_name': inv.bill_to_name,
+		})
 
 		if additional_query_columns:
 			for col in additional_query_columns:
@@ -56,56 +58,141 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 			'territory': inv.get("territory"),
 			'tax_id': inv.get("tax_id"),
 			'receivable_account': inv.debit_to,
-			'mode_of_payment':  ", ".join(mode_of_payments.get(inv.name, [])),
 			'project': inv.project,
 			'owner': inv.owner,
 			'remarks': inv.remarks,
-			'sales_order': ", ".join(sales_order),
-			'delivery_note': ", ".join(delivery_note),
-			'cost_center': ", ".join(cost_center),
-			'warehouse': ", ".join(warehouse),
-			'currency': company_currency
+			'mode_of_payment': ", ".join(mode_of_payment_map.get(inv.name, [])),
+			'sales_order': ", ".join(sales_order_map.get(inv.name, [])),
+			'delivery_note': ", ".join(delivery_note_map.get(inv.name, [])),
+			'cost_center': ", ".join(cost_center_map.get(inv.name, [])),
+			'warehouse': ", ".join(warehouse_map.get(inv.name, [])),
+			'currency': company_currency,
 		})
 
 		# map income values
-		base_net_total = 0
-		for income_acc in income_accounts:
-			income_amount = flt(invoice_income_map.get(inv.name, {}).get(income_acc))
-			base_net_total += income_amount
-			row.update({
-				frappe.scrub(income_acc): income_amount
-			})
-
-		# net total
-		row.update({'net_total': base_net_total or inv.base_net_total})
-
-		# tax account
+		net_total = 0
 		total_tax = 0
-		for tax_acc in tax_accounts:
-			if tax_acc not in income_accounts:
-				tax_amount_precision = get_field_precision(frappe.get_meta("Sales Taxes and Charges").get_field("tax_amount"), currency=company_currency) or 2
-				tax_amount = flt(invoice_tax_map.get(inv.name, {}).get(tax_acc), tax_amount_precision)
-				total_tax += tax_amount
-				row.update({
-					frappe.scrub(tax_acc): tax_amount
-				})
+		for acc in income_accounts + asset_accounts + tax_accounts:
+			credit_amount = flt(gl_map.get(inv.name, {}).get(acc))
+			if credit_amount:
+				account_has_amount.add(acc)
 
-		# total tax, grand total, outstanding amount & rounded total
+			if acc in income_accounts or acc in asset_accounts:
+				net_total += credit_amount
+			elif acc in tax_accounts:
+				total_tax += credit_amount
 
+			row[frappe.scrub(acc)] = credit_amount
+
+		# total tax, grand total, outstanding amount and rounded total
 		row.update({
+			'net_total': inv.base_net_total or net_total,
 			'tax_total': total_tax,
 			'grand_total': inv.base_grand_total,
 			'rounded_total': inv.base_rounded_total,
-			'outstanding_amount': inv.outstanding_amount
+			'outstanding_amount': inv.outstanding_amount,
 		})
 
 		data.append(row)
 
+	income_accounts = [acc for acc in income_accounts if acc in account_has_amount]
+	asset_accounts = [acc for acc in asset_accounts if acc in account_has_amount]
+	tax_accounts = [acc for acc in tax_accounts if acc in account_has_amount]
+
+	columns = get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_columns)
+
 	return columns, data
 
 
-def get_columns(invoice_list, additional_table_columns):
-	"""return columns based on filters"""
+def get_invoice_accounts_data(invoice_list):
+	income_accounts = set()
+	asset_accounts = set()
+	tax_accounts = []
+	gl_map = {}
+	cost_center_map = {}
+	mode_of_payment_map = {}
+	warehouse_map = {}
+	sales_order_map = {}
+	delivery_note_map = {}
+
+	if invoice_list:
+		invoice_names = [inv.name for inv in invoice_list]
+
+		gl_data = frappe.db.sql("""
+			select gle.voucher_no, gle.account, sum(gle.credit - gle.debit) as amount, gle.cost_center, acc.account_type
+			from `tabGL Entry` gle
+			inner join `tabAccount` acc on acc.name = gle.account
+			where gle.voucher_type = 'Sales Invoice' and gle.voucher_no in %s
+			group by voucher_no, account
+		""", [invoice_names], as_dict=1)
+
+		line_item_data = frappe.db.sql("""
+			select income_account, discount_account, deferred_revenue_account,
+				warehouse, is_stock_item, parent,
+				sales_order, delivery_note
+			from `tabSales Invoice Item`
+			where parent in %s
+		""", [invoice_names], as_dict=1)
+
+		tax_accounts = frappe.db.sql_list("""
+			select distinct account_head
+			from `tabSales Taxes and Charges`
+			where parenttype = 'Sales Invoice' and parent in %s and base_tax_amount_after_discount_amount != 0
+		""", [invoice_names])
+
+		mop_data = frappe.db.sql("""
+			select distinct parent, mode_of_payment
+			from `tabSales Invoice Payment`
+			where parent in %s and amount != 0
+		""", [invoice_names], as_dict=1)
+
+		for d in line_item_data:
+			if d.income_account:
+				income_accounts.add(d.income_account)
+			if d.discount_account:
+				income_accounts.add(d.discount_account)
+			if d.deferred_revenue_account:
+				income_accounts.add(d.deferred_revenue_account)
+
+			if d.sales_order:
+				sales_order_map.setdefault(d.parent, set()).add(d.sales_order)
+			if d.delivery_note:
+				delivery_note_map.setdefault(d.parent, set()).add(d.delivery_note)
+			if d.warehouse and d.is_stock_item:
+				warehouse_map.setdefault(d.parent, set()).add(d.warehouse)
+
+		for d in gl_data:
+			gl_map.setdefault(d.voucher_no, {}).setdefault(d.account, 0)
+			gl_map[d.voucher_no][d.account] += flt(d.amount)
+
+			if d.account_type in ("Fixed Asset", "Accumulated Depreciation"):
+				asset_accounts.add(d.account)
+
+			if d.cost_center:
+				cost_center_map.setdefault(d.voucher_no, set()).add(d.cost_center)
+
+		for d in mop_data:
+			if d.mode_of_payment:
+				mode_of_payment_map.setdefault(d.parent, set()).add(d.mode_of_payment)
+
+	income_accounts = sorted(list(income_accounts))
+	asset_accounts = sorted(list(asset_accounts))
+	tax_accounts = sorted(tax_accounts)
+
+	return (
+		income_accounts,
+		asset_accounts,
+		tax_accounts,
+		gl_map,
+		cost_center_map,
+		mode_of_payment_map,
+		warehouse_map,
+		sales_order_map,
+		delivery_note_map,
+	)
+
+
+def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_columns):
 	columns = [
 		{
 			'label': _("Invoice"),
@@ -125,59 +212,33 @@ def get_columns(invoice_list, additional_table_columns):
 			'fieldname': 'customer',
 			'fieldtype': 'Link',
 			'options': 'Customer',
-			'width': 120
+			'width': 100
 		},
 		{
 			'label': _("Customer Name"),
 			'fieldname': 'customer_name',
 			'fieldtype': 'Data',
-			'width': 120
+			'width': 150
 		},
 	]
 
 	if additional_table_columns:
 		columns += additional_table_columns
 
-	columns +=[
+	columns += [
 		{
-			'label': _("Customer Group"),
-			'fieldname': 'customer_group',
+			'label': _("Cost Center"),
+			'fieldname': 'cost_center',
 			'fieldtype': 'Link',
-			'options': 'Customer Group',
-			'width': 120
-		},
-		{
-			'label': _("Territory"),
-			'fieldname': 'territory',
-			'fieldtype': 'Link',
-			'options': 'Territory',
-			'width': 80
-		},
-		{
-			'label': _("Tax Id"),
-			'fieldname': 'tax_id',
-			'fieldtype': 'Data',
-			'width': 120
-		},
-		{
-			'label': _("Receivable Account"),
-			'fieldname': 'receivable_account',
-			'fieldtype': 'Link',
-			'options': 'Account',
-			'width': 80
-		},
-		{
-			'label': _("Mode Of Payment"),
-			'fieldname': 'mode_of_payment',
-			'fieldtype': 'Data',
-			'width': 120
+			'options': 'Cost Center',
+			'width': 100
 		},
 		{
 			'label': _("Project"),
 			'fieldname': 'project',
 			'fieldtype': 'Link',
 			'options': 'Project',
-			'width': 80
+			'width': 100
 		},
 		{
 			'label': _("Owner"),
@@ -191,75 +252,10 @@ def get_columns(invoice_list, additional_table_columns):
 			'fieldtype': 'Data',
 			'width': 150
 		},
-		{
-			'label': _("Sales Order"),
-			'fieldname': 'sales_order',
-			'fieldtype': 'Link',
-			'options': 'Sales Order',
-			'width': 100
-		},
-		{
-			'label': _("Delivery Note"),
-			'fieldname': 'delivery_note',
-			'fieldtype': 'Link',
-			'options': 'Delivery Note',
-			'width': 100
-		},
-		{
-			'label': _("Cost Center"),
-			'fieldname': 'cost_center',
-			'fieldtype': 'Link',
-			'options': 'Cost Center',
-			'width': 100
-		},
-		{
-			'label': _("Warehouse"),
-			'fieldname': 'warehouse',
-			'fieldtype': 'Link',
-			'options': 'Warehouse',
-			'width': 100
-		},
-		{
-			"fieldname": "currency",
-			"label": _("Currency"),
-			"fieldtype": "Data",
-			"width": 80
-		}
 	]
 
-	income_accounts = []
-	tax_accounts = []
-	income_columns = []
-	tax_columns = []
-
-	if invoice_list:
-		invoice_names = [inv.name for inv in invoice_list]
-
-		income_and_discount_accounts = frappe.db.sql("""
-			select distinct income_account, discount_account, deferred_revenue_account
-			from `tabSales Invoice Item`
-			where parent in %s
-		""", [invoice_names], as_dict=1)
-
-		income_accounts = set()
-		for d in income_and_discount_accounts:
-			if d.income_account:
-				income_accounts.add(d.income_account)
-			if d.discount_account:
-				income_accounts.add(d.discount_account)
-			if d.deferred_revenue_account:
-				income_accounts.add(d.deferred_revenue_account)
-
-		income_accounts = sorted(list(income_accounts))
-
-		tax_accounts = frappe.db.sql_list("""select distinct account_head
-			from `tabSales Taxes and Charges` where parenttype = 'Sales Invoice'
-			and docstatus = 1 and base_tax_amount_after_discount_amount != 0
-			and parent in (%s) order by account_head""" %
-			', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]))
-
 	for account in income_accounts:
-		income_columns.append({
+		columns.append({
 			"label": account,
 			"fieldname": frappe.scrub(account),
 			"fieldtype": "Currency",
@@ -267,9 +263,9 @@ def get_columns(invoice_list, additional_table_columns):
 			"width": 120
 		})
 
-	for account in tax_accounts:
+	for account in asset_accounts:
 		if account not in income_accounts:
-			tax_columns.append({
+			columns.append({
 				"label": account,
 				"fieldname": frappe.scrub(account),
 				"fieldtype": "Currency",
@@ -277,15 +273,25 @@ def get_columns(invoice_list, additional_table_columns):
 				"width": 120
 			})
 
-	net_total_column = [{
+	columns += [{
 		"label": _("Net Total"),
 		"fieldname": "net_total",
 		"fieldtype": "Currency",
 		"options": 'currency',
-		"width": 120
+		"width": 120,
 	}]
 
-	total_columns = [
+	for account in tax_accounts:
+		if account not in income_accounts and account not in asset_accounts:
+			columns.append({
+				"label": account,
+				"fieldname": frappe.scrub(account),
+				"fieldtype": "Currency",
+				"options": 'currency',
+				"width": 120
+			})
+
+	columns += [
 		{
 			"label": _("Tax Total"),
 			"fieldname": "tax_total",
@@ -313,12 +319,85 @@ def get_columns(invoice_list, additional_table_columns):
 			"fieldtype": "Currency",
 			"options": 'currency',
 			"width": 120
-		}
+		},
+		{
+			'label': _("Sales Order"),
+			'fieldname': 'sales_order',
+			'fieldtype': 'Link',
+			'options': 'Sales Order',
+			'width': 100
+		},
+		{
+			'label': _("Delivery Note"),
+			'fieldname': 'delivery_note',
+			'fieldtype': 'Link',
+			'options': 'Delivery Note',
+			'width': 100
+		},
+		{
+			'label': _("Warehouse"),
+			'fieldname': 'warehouse',
+			'fieldtype': 'Link',
+			'options': 'Warehouse',
+			'width': 100
+		},
+		{
+			'label': _("Mode of Payment"),
+			'fieldname': 'mode_of_payment',
+			'fieldtype': 'Data',
+			'width': 120
+		},
+		{
+			'label': _("Receivable Account"),
+			'fieldname': 'receivable_account',
+			'fieldtype': 'Link',
+			'options': 'Account',
+			'width': 130
+		},
+		{
+			'label': _("Tax Id"),
+			'fieldname': 'tax_id',
+			'fieldtype': 'Data',
+			'width': 120
+		},
+		{
+			'label': _("Customer Group"),
+			'fieldname': 'customer_group',
+			'fieldtype': 'Link',
+			'options': 'Customer Group',
+			'width': 120
+		},
+		{
+			'label': _("Territory"),
+			'fieldname': 'territory',
+			'fieldtype': 'Link',
+			'options': 'Territory',
+			'width': 80
+		},
 	]
 
-	columns = columns + income_columns + net_total_column + tax_columns + total_columns
+	return columns
 
-	return columns, income_accounts, tax_accounts
+
+def get_invoices(filters, additional_query_columns):
+	if additional_query_columns:
+		additional_query_columns = ', ' + ', '.join(additional_query_columns)
+	else:
+		additional_query_columns = ""
+
+	conditions = get_conditions(filters)
+	return frappe.db.sql(f"""
+		select
+			inv.name, inv.posting_date, inv.debit_to, inv.project,
+			inv.customer, inv.customer_name, inv.bill_to, inv.bill_to_name,
+			inv.owner, inv.remarks, inv.territory, inv.tax_id, c.customer_group,
+			inv.base_net_total, inv.base_grand_total, inv.base_rounded_total, inv.outstanding_amount
+			{additional_query_columns}
+		from `tabSales Invoice` inv
+		left join `tabCustomer` c on c.name = inv.bill_to
+		where inv.docstatus = 1 {conditions}
+		order by inv.posting_date desc, inv.creation desc
+	""", filters, as_dict=1)
 
 
 def get_conditions(filters):
@@ -397,116 +476,3 @@ def get_conditions(filters):
 					conditions += common_condition + "and ifnull(`tabSales Invoice Item`.{0}, '') in (%({0})s))".format(dimension.fieldname)
 
 	return conditions
-
-
-def get_invoices(filters, additional_query_columns):
-	if additional_query_columns:
-		additional_query_columns = ', ' + ', '.join(additional_query_columns)
-
-	conditions = get_conditions(filters)
-	return frappe.db.sql(f"""
-		select
-			inv.name, inv.posting_date, inv.debit_to, inv.project,
-			inv.customer, inv.customer_name, inv.bill_to, inv.bill_to_name,
-			inv.owner, inv.remarks, inv.territory, inv.tax_id, c.customer_group,
-			inv.base_net_total, inv.base_grand_total, inv.base_rounded_total, inv.outstanding_amount
-			{additional_query_columns}
-		from `tabSales Invoice` inv
-		left join `tabCustomer` c on c.name = inv.bill_to
-		where inv.docstatus = 1 {conditions}
-		order by inv.posting_date desc, inv.creation desc
-	""", filters, as_dict=1)
-
-
-def get_invoice_income_map(invoice_list, income_accounts):
-	invoice_names = [inv.name for inv in invoice_list]
-
-	invoice_income_map = {}
-
-	gl_data = frappe.db.sql("""
-		select voucher_no, account, sum(credit - debit) as amount
-		from `tabGL Entry`
-		where voucher_type = 'Sales Invoice' and voucher_no in %s and account in %s
-		group by voucher_no, account
-	""", [invoice_names, income_accounts], as_dict=1)
-
-	for d in gl_data:
-		invoice_income_map.setdefault(d.voucher_no, {}).setdefault(d.account, 0)
-		invoice_income_map[d.voucher_no][d.account] += flt(d.amount)
-
-	return invoice_income_map
-
-
-def get_invoice_tax_map(invoice_list, income_accounts):
-	tax_details = frappe.db.sql("""select parent, account_head,
-		sum(base_tax_amount_after_discount_amount) as tax_amount
-		from `tabSales Taxes and Charges` where parent in (%s) group by parent, account_head""" %
-		', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]), as_dict=1)
-
-	invoice_tax_map = {}
-	for d in tax_details:
-		if d.account_head not in income_accounts:
-			invoice_tax_map.setdefault(d.parent, {}).setdefault(d.account_head, 0)
-			invoice_tax_map[d.parent][d.account_head] += flt(d.tax_amount)
-
-	return invoice_tax_map
-
-
-def get_invoice_so_dn_map(invoice_list):
-	si_items = frappe.db.sql("""
-		select parent, sales_order, delivery_note, sales_order_item
-		from `tabSales Invoice Item` where parent in (%s)
-		and ((sales_order != '' and sales_order is not null) or (delivery_note != '' and delivery_note is not null))
-	""" % ', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]), as_dict=1)
-
-	invoice_so_dn_map = {}
-	for d in si_items:
-		if d.sales_order:
-			invoice_so_dn_map.setdefault(d.parent, frappe._dict()).setdefault(
-				"sales_order", []).append(d.sales_order)
-
-		delivery_note_list = None
-		if d.delivery_note:
-			delivery_note_list = [d.delivery_note]
-		elif d.sales_order:
-			delivery_note_list = frappe.db.sql_list("""select distinct parent from `tabDelivery Note Item`
-				where docstatus=1 and sales_order_item=%s""", d.sales_order_item)
-
-		if delivery_note_list:
-			invoice_so_dn_map.setdefault(d.parent, frappe._dict()).setdefault("delivery_note", delivery_note_list)
-
-	return invoice_so_dn_map
-
-
-def get_invoice_cc_wh_map(invoice_list):
-	si_items = frappe.db.sql("""
-		select parent, cost_center, warehouse
-		from `tabSales Invoice Item`
-		where parent in (%s)
-			and ((cost_center != '' and cost_center is not null) or (warehouse != '' and warehouse is not null))
-	""" % ', '.join(['%s']*len(invoice_list)), tuple([inv.name for inv in invoice_list]), as_dict=1)
-
-	invoice_cc_wh_map = {}
-	for d in si_items:
-		if d.cost_center:
-			invoice_cc_wh_map.setdefault(d.parent, frappe._dict()).setdefault(
-				"cost_center", []).append(d.cost_center)
-
-		if d.warehouse:
-			invoice_cc_wh_map.setdefault(d.parent, frappe._dict()).setdefault(
-				"warehouse", []).append(d.warehouse)
-
-	return invoice_cc_wh_map
-
-
-def get_mode_of_payments(invoice_list):
-	mode_of_payments = {}
-	if invoice_list:
-		inv_mop = frappe.db.sql("""select parent, mode_of_payment
-			from `tabSales Invoice Payment` where parent in (%s) group by parent, mode_of_payment""" %
-			', '.join(['%s']*len(invoice_list)), tuple(invoice_list), as_dict=1)
-
-		for d in inv_mop:
-			mode_of_payments.setdefault(d.parent, []).append(d.mode_of_payment)
-
-	return mode_of_payments
