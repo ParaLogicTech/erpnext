@@ -170,7 +170,7 @@ class Asset(AccountsController):
 			document_type = 'Purchase Receipt' if self.purchase_receipt else 'Purchase Invoice'
 			purchase_document = frappe.get_doc(document_type, document_name)
 			for each_item in purchase_document.items:
-				if each_item.name == self.item_detail:
+				if ((each_item.name == self.item_detail) and (each_item.item_code == self.item_code)):
 					self.asset_category = each_item.asset_category
 					break
 			else:
