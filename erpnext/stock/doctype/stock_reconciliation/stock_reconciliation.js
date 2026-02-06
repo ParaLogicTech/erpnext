@@ -135,7 +135,6 @@ frappe.ui.form.on("Stock Reconciliation", {
 				doc: frm.doc,
 				freeze: true,
 				callback: function (r) {
-					frm.dirty();
 					frm.refresh_fields();
 				}
 			});

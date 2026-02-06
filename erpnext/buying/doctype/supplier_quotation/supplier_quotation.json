@@ -1100,7 +1100,7 @@
    "allow_on_submit": 1,
    "fieldname": "contact_phone",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "read_only": 1
   },
   {
@@ -1185,11 +1185,12 @@
    "options": "Branch"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-shopping-cart",
  "idx": 29,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-17 20:13:23.871137",
+ "modified": "2026-02-01 04:40:52.385209",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Supplier Quotation",
@@ -1268,6 +1269,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "status, transaction_date, supplier,grand_total",
  "show_name_in_global_search": 1,
  "sort_field": "transaction_date",

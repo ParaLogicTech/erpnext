@@ -510,11 +510,11 @@ def make_head_cashier_voucher(pos_closing_entry):
 
 
 @frappe.whitelist()
-def make_till_transfer_voucher(pos_closing_entry):
+def make_deposit_voucher(pos_closing_entry):
 	pce = frappe.get_doc("POS Closing Entry", pos_closing_entry)
 
 	je = make_journal_entry(pce, is_deposit=True)
-	append_debit_accounts(pce, je, is_deposit=True)
+	append_debit_accounts(pce, je)
 	append_credit_accounts(pce, je, override_account=pce.head_cashier_account)
 	if not pce.head_cashier_account:
 		append_difference_accounts(pce, je)
@@ -542,7 +542,7 @@ def make_journal_entry(pce, is_deposit=False):
 	return je
 
 
-def append_debit_accounts(pce, je, override_account=None, is_deposit=False):
+def append_debit_accounts(pce, je, override_account=None):
 	# Debit / Deposit Collections
 
 	mode_accounts = {}
@@ -563,21 +563,16 @@ def append_debit_accounts(pce, je, override_account=None, is_deposit=False):
 			"user_remark": _("{0} collected against {1} {2}").format(d.mode_of_payment, d.document_type, d.document_name),
 		})
 
-		if is_deposit:
+		row.update({
+			"deposit_against_type": d.document_type,
+			"deposit_against": d.document_name,
+			"deposit_against_detail_no": d.document_detail_no,
+		})
+		if not d.document_detail_no and d.document_type in ("Sales Invoice", "Journal Entry"):
 			row.update({
-				"deposit_against_type": d.document_type,
-				"deposit_against": d.document_name,
-				"deposit_against_detail_no": d.document_detail_no,
-			})
-			if not d.document_detail_no and d.document_type in ("Sales Invoice", "Journal Entry"):
-				row.update({
-					"deposit_against_type": None,
-					"deposit_against": None,
-					"deposit_against_detail_no": None,
-				})
-		else:
-			row.update({
-				"deposit_date": getdate(je.posting_date)
+				"deposit_against_type": None,
+				"deposit_against": None,
+				"deposit_against_detail_no": None,
 			})
 
 

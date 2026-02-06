@@ -7,7 +7,7 @@ from frappe import _, unscrub
 import frappe.defaults
 from frappe.utils import flt, cint, cstr, today, clean_whitespace, getdate, now_datetime, get_time, combine_datetime
 from erpnext.utilities.transaction_base import TransactionBase
-from erpnext.accounts.party import validate_party_accounts, get_dashboard_info, get_address_display
+from erpnext.accounts.party import validate_party_accounts, get_dashboard_info, render_address
 from frappe.contacts.address_and_contact import load_address_and_contact, delete_contact_and_address
 from frappe.contacts.doctype.contact.contact import get_default_contact
 from frappe.contacts.doctype.address.address import get_default_address
@@ -35,7 +35,8 @@ primary_contact_fields = [
 	{'customer_field': 'mobile_no', 'contact_field': 'mobile_no'},
 	{'customer_field': 'mobile_no_2', 'contact_field': 'mobile_no_2'},
 	{'customer_field': 'phone_no', 'contact_field': 'phone'},
-	{'customer_field': 'email_id', 'contact_field': 'email_id'}
+	{'customer_field': 'email_id', 'contact_field': 'email_id'},
+	{'customer_field': 'email_id_2', 'contact_field': 'email_id_2'},
 ]
 
 
@@ -197,6 +198,8 @@ class Customer(TransactionBase):
 				self.push_primary_contact(contact)
 				self.pull_primary_contact(contact)
 
+			contact.add_link("Customer", self.name, update=True)
+
 	def pull_primary_contact(self, contact):
 		to_set = {'customer_primary_contact': contact.name}
 		for d in primary_contact_fields:
@@ -213,7 +216,7 @@ class Customer(TransactionBase):
 
 		if data_changed:
 			for field in primary_contact_fields:
-				if not field.get('custom_setter'):
+				if not field.get('custom_setter') and self.meta.has_field(field['customer_field']):
 					value = self.get(field['customer_field'])
 					if not value and field.get('default_from'):
 						value = self.get(field.get('default_from'))
@@ -250,8 +253,10 @@ class Customer(TransactionBase):
 				self.push_primary_address(address)
 				self.pull_primary_address(address)
 
+			address.add_link("Customer", self.name, update=True)
+
 	def pull_primary_address(self, address):
-		to_set = {'customer_primary_address': address.name, 'primary_address': get_address_display(address.as_dict())}
+		to_set = {'customer_primary_address': address.name, 'primary_address': render_address(address.as_dict())}
 		for d in primary_address_fields:
 			if self.meta.has_field(d['customer_field']):
 				to_set[d['customer_field']] = address.get(d['address_field']) or None
@@ -266,7 +271,7 @@ class Customer(TransactionBase):
 
 		if data_changed:
 			for field in primary_address_fields:
-				if not field.get('custom_setter'):
+				if not field.get('custom_setter') and self.meta.has_field(field['customer_field']):
 					value = self.get(field['customer_field'])
 					if not value and field.get('default_from'):
 						value = self.get(field.get('default_from'))
@@ -566,6 +571,8 @@ def make_contact(args, is_primary_contact=1):
 
 	if args.get('email_id'):
 		contact.add_email(args.get('email_id'), is_primary=True)
+	if args.get('email_id_2'):
+		contact.add_email(args.get('email_id_2'))
 	if args.get('mobile_no'):
 		contact.add_phone(args.get('mobile_no'), is_primary_mobile_no=True)
 	if args.get('mobile_no_2'):
@@ -630,7 +637,8 @@ def get_customer_primary_contact(doctype, txt, searchfield, start, page_len, fil
 @frappe.whitelist()
 def get_primary_address_details(address_name):
 	doc = frappe.get_doc("Address", address_name)
-	out = {'primary_address': get_address_display(doc.as_dict())}
+	doc.check_permission()
+	out = {'primary_address': render_address(doc.as_dict())}
 	for field in primary_address_fields:
 		out[field['customer_field']] = doc.get(field['address_field'])
 
@@ -640,6 +648,7 @@ def get_primary_address_details(address_name):
 @frappe.whitelist()
 def get_primary_contact_details(contact_name):
 	doc = frappe.get_doc("Contact", contact_name)
+	doc.check_permission()
 	out = {}
 	for field in primary_contact_fields:
 		out[field['customer_field']] = doc.get(field['contact_field'])

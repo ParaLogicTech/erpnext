@@ -4,8 +4,9 @@
 import frappe, erpnext
 import frappe.defaults
 from frappe import _
-from frappe.contacts.doctype.address.address import get_default_address, get_address_display
-from frappe.utils import cstr, cint, flt, comma_or, getdate, nowdate
+from frappe.utils import cstr, cint, flt, comma_or, nowdate
+from crm.crm.utils import get_primary_address
+from erpnext.accounts.party import render_address
 from erpnext.stock.utils import get_incoming_rate, get_latest_stock_qty
 from erpnext.stock.stock_ledger import get_previous_sle, get_valuation_rate
 from erpnext.stock.get_item_details import get_bin_details, get_default_cost_center, get_conversion_factor,\
@@ -533,12 +534,12 @@ class StockEntry(TransactionController):
 			self.target_warehouse_address = None
 
 		if self.from_warehouse and not self.source_warehouse_address:
-			self.source_warehouse_address = get_default_address("Warehouse", self.from_warehouse)
+			self.source_warehouse_address = get_primary_address("Warehouse", self.from_warehouse)
 		if self.to_warehouse and not self.target_warehouse_address:
-			self.target_warehouse_address = get_default_address("Warehouse", self.to_warehouse)
+			self.target_warehouse_address = get_primary_address("Warehouse", self.to_warehouse)
 
-		self.source_address_display = get_address_display(self.source_warehouse_address)
-		self.target_address_display = get_address_display(self.target_warehouse_address)
+		self.source_address_display = render_address(self.source_warehouse_address)
+		self.target_address_display = render_address(self.target_warehouse_address)
 
 	def validate_customer_provided_entry(self):
 		if self.purpose not in ('Material Receipt', 'Material Issue'):
@@ -584,7 +585,7 @@ class StockEntry(TransactionController):
 		for d in self.items:
 			if d.s_warehouse:
 				args = self.get_args_for_incoming_rate(d)
-				d.basic_rate = get_incoming_rate(args)
+				d.basic_rate = get_incoming_rate(args, raise_error_if_no_rate=False)
 			elif d.allow_zero_valuation_rate and not d.s_warehouse:
 				d.basic_rate = 0.0
 			elif d.t_warehouse and not d.basic_rate and not self.is_finished_good_item(d):
@@ -613,14 +614,14 @@ class StockEntry(TransactionController):
 		self.calculate_rate_and_amount()
 
 	def calculate_rate_and_amount(self, force=False,
-			update_finished_item_rate=True, raise_error_if_no_rate=True):
+			update_finished_item_rate=True, raise_error_if_no_rate=False):
 		self.set_basic_rate(force, update_finished_item_rate, raise_error_if_no_rate)
 		self.distribute_additional_costs()
 		self.update_valuation_rate()
 		self.set_total_incoming_outgoing_value()
 		self.set_total_amount()
 
-	def set_basic_rate(self, force=False, update_finished_item_rate=True, raise_error_if_no_rate=True):
+	def set_basic_rate(self, force=False, update_finished_item_rate=True, raise_error_if_no_rate=False):
 		"""get stock and incoming rate on posting date"""
 		for d in self.get('items'):
 			if self.customer_provided and not d.s_warehouse:

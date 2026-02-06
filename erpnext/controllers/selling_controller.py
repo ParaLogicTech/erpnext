@@ -567,7 +567,7 @@ class SellingController(TransactionController):
 				return_rate = 0
 				return_dependency = []
 
-				if cint(self.is_return) and self.docstatus==1:
+				if (cint(self.is_return) or flt(d.qty) < 0) and self.docstatus == 1:
 					delivery_note = self.return_against if self.doctype == "Delivery Note" else d.get('delivery_note')
 					if d.get('delivery_note_item') and delivery_note:
 						return_dependency = [{
@@ -972,37 +972,6 @@ class SellingController(TransactionController):
 				target_row.margin_rate_or_amount = 0
 				target_row.discount_percentage = 0
 				target_row.discount_amount = 0
-
-	def sort_items(self):
-		price_list_settings = frappe.get_cached_doc("Price List Settings", None)
-
-		sorting_field = None
-		if price_list_settings.sort_items_in_sales_transactions == "Order by Item Group":
-			sorting_field = "item_group"
-		elif price_list_settings.sort_items_in_sales_transactions == "Order by Brand":
-			sorting_field = "brand"
-
-		if not sorting_field:
-			return
-
-		order_list = price_list_settings.get(f"{sorting_field}_order", [])
-		order_map = {d.get(sorting_field): cint(d.idx) for d in order_list}
-
-		if not order_map:
-			return
-
-		def sorter(d):
-			if sorting_field == "item_group":
-				key = self.get_item_group_print_heading(d)
-			else:
-				key = d.get(sorting_field)
-
-			sorting_idx = order_map[key] if key in order_map else 99999
-			return sorting_idx
-
-		self.items = sorted(self.items, key=sorter)
-		for i, d in enumerate(self.items):
-			d.idx = i + 1
 
 	def validate_zero_outstanding(self):
 		super().validate_zero_outstanding()

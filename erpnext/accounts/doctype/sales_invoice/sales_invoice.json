@@ -1947,7 +1947,7 @@
    "allow_on_submit": 1,
    "fieldname": "contact_phone",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "read_only": 1
   },
   {
@@ -2383,7 +2383,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-10 01:29:07.641669",
+ "modified": "2026-02-01 04:40:27.080528",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

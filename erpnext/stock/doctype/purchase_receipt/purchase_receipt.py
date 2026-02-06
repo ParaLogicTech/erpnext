@@ -50,6 +50,8 @@ class PurchaseReceipt(BuyingController):
 		if getdate(self.posting_date) > getdate(nowdate()):
 			frappe.throw(_("Posting Date cannot be future date"))
 
+		self.sort_items()
+
 		self.set_billing_status()
 		self.set_status()
 

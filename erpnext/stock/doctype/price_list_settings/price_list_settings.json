@@ -11,7 +11,8 @@
   "section_break_p7oi",
   "price_list_note",
   "column_break_2w0a",
-  "sort_items_in_sales_transactions"
+  "sort_items_in_sales_transactions",
+  "sort_items_in_purchase_transactions"
  ],
  "fields": [
   {
@@ -49,12 +50,19 @@
    "fieldtype": "Select",
    "label": "Sort Items in Sales Transactions",
    "options": "Keep User Order\nOrder by Item Group\nOrder by Brand"
+  },
+  {
+   "default": "Keep User Order",
+   "fieldname": "sort_items_in_purchase_transactions",
+   "fieldtype": "Select",
+   "label": "Sort Items in Purchase Transactions",
+   "options": "Keep User Order\nOrder by Item Group\nOrder by Brand"
   }
  ],
  "grid_page_length": 500,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-01 17:30:25.562145",
+ "modified": "2026-01-31 14:26:21.146143",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Price List Settings",

@@ -1258,7 +1258,7 @@
    "allow_on_submit": 1,
    "fieldname": "contact_phone",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "read_only": 1
   },
   {
@@ -1852,7 +1852,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-10 01:26:29.019339",
+ "modified": "2026-02-01 04:40:30.500355",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",

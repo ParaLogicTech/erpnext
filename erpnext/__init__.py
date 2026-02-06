@@ -50,28 +50,27 @@ def get_company_address_doc(args=None):
 
 @frappe.whitelist()
 def get_company_address(args):
-	from frappe.contacts.doctype.address.address import get_default_address
+	from crm.crm.utils import get_primary_address
 
 	if isinstance(args, str):
 		args = json.loads(args)
 
 	shipping_address = cint(args.get("is_shipping_address"))
-	sort_key = "is_shipping_address" if shipping_address else "is_primary_address"
 
 	address_name = args.get("company_address")
 
 	if not address_name and shipping_address and args.get("warehouse"):
-		address_name = get_default_address("Warehouse", args.get("warehouse"), sort_key=sort_key)
+		address_name = get_primary_address("Warehouse", args.get("warehouse"), shipping_address=shipping_address)
 
 	if not address_name:
 		branch = args.get("branch") or get_default_branch()
 		if branch:
-			address_name = get_default_address("Branch", branch, sort_key=sort_key)
+			address_name = get_primary_address("Branch", branch, shipping_address=shipping_address)
 
 	if not address_name:
 		company = args.get("company") or get_default_company()
 		if company:
-			address_name = get_default_address("Company", company, sort_key=sort_key)
+			address_name = get_primary_address("Company", company, shipping_address=shipping_address)
 
 	return address_name
 

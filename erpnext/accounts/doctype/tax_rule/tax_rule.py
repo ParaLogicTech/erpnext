@@ -6,7 +6,6 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, getdate
-from frappe.contacts.doctype.address.address import get_default_address
 from frappe.utils.nestedset import get_root_of
 from erpnext.setup.doctype.customer_group.customer_group import get_parent_customer_groups
 import functools
@@ -116,6 +115,8 @@ class TaxRule(Document):
 
 @frappe.whitelist()
 def get_party_details(party, party_type, args=None):
+	from crm.crm.utils import get_primary_address
+
 	out = {}
 	billing_address, shipping_address = None, None
 	if args:
@@ -124,8 +125,8 @@ def get_party_details(party, party_type, args=None):
 		if args.get('shipping_address'):
 			shipping_address = frappe.get_doc('Address', args.get('shipping_address'))
 	else:
-		billing_address_name = get_default_address(party_type, party)
-		shipping_address_name = get_default_address(party_type, party, 'is_shipping_address')
+		billing_address_name = get_primary_address(party_type, party)
+		shipping_address_name = get_primary_address(party_type, party, shipping_address=True)
 		if billing_address_name:
 			billing_address = frappe.get_doc('Address', billing_address_name)
 		if shipping_address_name:

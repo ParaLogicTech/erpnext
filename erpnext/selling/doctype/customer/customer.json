@@ -33,17 +33,17 @@
   "salutation",
   "column_break_53",
   "contact_first_name",
-  "contact_middle_name",
   "column_break_kmwz",
+  "contact_middle_name",
   "contact_last_name",
   "primary_contact_section",
   "mobile_no",
   "mobile_no_2",
   "column_break_51",
   "phone_no",
-  "email_id",
-  "column_break_50",
   "website",
+  "column_break_50",
+  "email_id",
   "customer_primary_contact",
   "sec_primary_address_and_contact",
   "primary_address",
@@ -52,8 +52,8 @@
   "col_break41",
   "city",
   "state",
-  "pincode",
   "column_break_43",
+  "pincode",
   "country",
   "customer_primary_address",
   "address_contacts",
@@ -316,9 +316,11 @@
    "fieldname": "customer_primary_contact",
    "fieldtype": "Link",
    "label": "Customer Primary Contact",
+   "no_copy": 1,
    "options": "Contact"
   },
   {
+   "bold": 1,
    "fieldname": "mobile_no",
    "fieldtype": "Data",
    "in_preview": 1,
@@ -327,6 +329,7 @@
    "options": "Phone"
   },
   {
+   "bold": 1,
    "fieldname": "email_id",
    "fieldtype": "Data",
    "in_preview": 1,
@@ -337,6 +340,7 @@
    "fieldname": "customer_primary_address",
    "fieldtype": "Link",
    "label": "Customer Primary Address",
+   "no_copy": 1,
    "options": "Address"
   },
   {
@@ -579,7 +583,7 @@
    "fieldname": "phone_no",
    "fieldtype": "Data",
    "in_preview": 1,
-   "label": "Phone No"
+   "label": "Landline No"
   },
   {
    "fieldname": "column_break_54",
@@ -612,8 +616,8 @@
   {
    "fieldname": "contact_middle_name",
    "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Middle Name"
+   "label": "Middle Name",
+   "read_only": 1
   },
   {
    "fieldname": "contact_last_name",
@@ -735,7 +739,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2025-10-02 16:13:51.049296",
+ "modified": "2026-02-01 16:11:29.712354",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",

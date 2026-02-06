@@ -11,7 +11,7 @@ from datetime import datetime
 from frappe.model.mapper import get_mapped_doc
 from erpnext.support.doctype.service_level_agreement.service_level_agreement import get_active_service_level_agreement_for
 from frappe.email.inbox import link_communication_to_document
-from frappe.contacts.doctype.contact.contact import get_contact_details
+from erpnext.accounts.party import _get_contact_details
 
 
 sender_field = "raised_by"
@@ -52,7 +52,7 @@ class Issue(Document):
 
 	def set_contact_details(self):
 		if self.contact_person:
-			contact_details = get_contact_details(self.contact_person)
+			contact_details = _get_contact_details(self.contact_person, lead=self.lead)
 			for k, v in contact_details.items():
 				if self.meta.has_field(k):
 					self.set(k, v)

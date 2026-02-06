@@ -1,6 +1,5 @@
 {
  "actions": [],
- "allow_rename": 1,
  "creation": "2025-08-03 10:24:30.274056",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -226,7 +225,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-20 05:28:22.498019",
+ "modified": "2026-01-27 23:06:50.850940",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",

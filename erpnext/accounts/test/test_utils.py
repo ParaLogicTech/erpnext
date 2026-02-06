@@ -1,5 +1,5 @@
 import unittest
-from erpnext.accounts.party import get_party_shipping_address
+from crm.crm.utils import get_shipping_address
 from frappe.test_runner import make_test_objects
 
 
@@ -10,11 +10,11 @@ class TestUtils(unittest.TestCase):
 		make_test_objects('Address', ADDRESS_RECORDS)
 
 	def test_get_party_shipping_address(self):
-		address = get_party_shipping_address('Customer', '_Test Customer 1')
+		address = get_shipping_address('Customer', '_Test Customer 1')
 		self.assertEqual(address, '_Test Billing Address 2 Title-Billing')
 
 	def test_get_party_shipping_address2(self):
-		address = get_party_shipping_address('Customer', '_Test Customer 2')
+		address = get_shipping_address('Customer', '_Test Customer 2')
 		self.assertEqual(address, '_Test Shipping Address 2 Title-Shipping')
 
 

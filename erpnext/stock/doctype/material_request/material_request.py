@@ -9,7 +9,8 @@ import frappe
 from frappe.utils import cstr, flt, getdate, new_line_sep, nowdate, ceil
 from frappe import msgprint, _
 from frappe.model.mapper import get_mapped_doc
-from frappe.contacts.doctype.address.address import get_default_address, get_address_display
+from crm.crm.utils import get_primary_address
+from erpnext.accounts.party import render_address
 from erpnext.stock.stock_balance import update_bin_qty, get_indented_qty
 from erpnext.controllers.buying_controller import BuyingController
 from erpnext.manufacturing.doctype.work_order.work_order import get_item_details
@@ -84,6 +85,7 @@ class MaterialRequest(BuyingController):
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.run_method("set_missing_values")
+		self.run_method("sort_items")
 		self.run_method("calculate_totals")
 
 	def set_missing_values(self, for_validate=False):
@@ -91,11 +93,11 @@ class MaterialRequest(BuyingController):
 		self.set_warehouse_address()
 
 	def set_warehouse_address(self):
-		self.warehouse_address = (self.warehouse_address or get_default_address("Warehouse", self.set_warehouse)) if self.set_warehouse else None
-		self.address_display = get_address_display(self.warehouse_address)
+		self.warehouse_address = (self.warehouse_address or get_primary_address("Warehouse", self.set_warehouse)) if self.set_warehouse else None
+		self.address_display = render_address(self.warehouse_address)
 
-		self.source_warehouse_address = (self.source_warehouse_address or get_default_address("Warehouse", self.from_warehouse)) if self.from_warehouse else None
-		self.source_address_display = get_address_display(self.source_warehouse_address)
+		self.source_warehouse_address = (self.source_warehouse_address or get_primary_address("Warehouse", self.from_warehouse)) if self.from_warehouse else None
+		self.source_address_display = render_address(self.source_warehouse_address)
 
 	def validate_items(self):
 		from erpnext.controllers.buying_controller import validate_item_type

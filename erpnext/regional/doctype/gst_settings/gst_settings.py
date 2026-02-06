@@ -6,7 +6,7 @@ import frappe, os
 from frappe import _
 from frappe.utils import get_url, nowdate, date_diff
 from frappe.model.document import Document
-from frappe.contacts.doctype.contact.contact import get_default_contact
+from crm.crm.utils import get_primary_contact
 
 class EmailMissing(frappe.ValidationError): pass
 
@@ -64,7 +64,7 @@ def send_gstin_reminder(party_type, party):
 
 def _send_gstin_reminder(party_type, party, default_email_id=None, sent_to=None):
 	'''Send GST Reminder email'''
-	email_id = frappe.db.get_value('Contact', get_default_contact(party_type, party), 'email_id')
+	email_id = frappe.db.get_value('Contact', get_primary_contact(party_type, party), 'email_id')
 	if not email_id:
 		# get email from address
 		email_id = default_email_id

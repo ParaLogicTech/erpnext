@@ -1464,7 +1464,7 @@
    "allow_on_submit": 1,
    "fieldname": "contact_phone",
    "fieldtype": "Data",
-   "label": "Phone No",
+   "label": "Landline No",
    "read_only": 1
   },
   {
@@ -1619,7 +1619,7 @@
  "idx": 261,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-22 22:07:24.624875",
+ "modified": "2026-02-01 04:41:01.234857",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt",

@@ -221,7 +221,7 @@ def update_bin(args, allow_negative_stock=False, via_landed_cost_voucher=False):
 
 
 @frappe.whitelist()
-def get_incoming_rate(args, raise_error_if_no_rate=True):
+def get_incoming_rate(args, raise_error_if_no_rate=False):
 	"""Get Incoming Rate based on valuation method"""
 	from erpnext.stock.stock_ledger import get_previous_sle, get_valuation_rate
 	if isinstance(args, string_types):

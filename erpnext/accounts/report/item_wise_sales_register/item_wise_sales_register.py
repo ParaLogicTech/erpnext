@@ -1,12 +1,10 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
 from frappe.utils import flt, cstr
-from frappe.model.meta import get_field_precision
 from frappe.utils.xlsxutils import handle_html
-from erpnext.accounts.report.sales_register.sales_register import get_mode_of_payments
 
 def execute(filters=None):
 	return _execute(filters)
@@ -616,5 +614,14 @@ def add_sub_total_row(item, total_row_map, group_by_value, tax_columns):
 		total_row[frappe.scrub(tax + ' Amount')] += flt(item[frappe.scrub(tax + ' Amount')])
 
 
+def get_mode_of_payments(invoice_list):
+	mode_of_payments = {}
+	if invoice_list:
+		inv_mop = frappe.db.sql("""select parent, mode_of_payment
+			from `tabSales Invoice Payment` where parent in (%s) group by parent, mode_of_payment""" %
+			', '.join(['%s']*len(invoice_list)), tuple(invoice_list), as_dict=1)
 
+		for d in inv_mop:
+			mode_of_payments.setdefault(d.parent, []).append(d.mode_of_payment)
 
+	return mode_of_payments

@@ -45,6 +45,7 @@ class ReceivablePayableReport(object):
 		if not self.filters.get("company"):
 			self.filters.company = erpnext.get_default_company()
 		self.company_currency = frappe.get_cached_value('Company', self.filters.company, "default_currency")
+		self.account_currency = self.company_currency
 
 		if self.filters.get('cost_center'):
 			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
@@ -1042,7 +1043,8 @@ class ReceivablePayableReport(object):
 				"label": _("Currency"),
 				"fieldtype": "Link",
 				"options": "Currency",
-				"width": 50
+				"width": 50,
+				"currency": self.account_currency,
 			},
 			{
 				"fieldname": "pdc/lc_ref",

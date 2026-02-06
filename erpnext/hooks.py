@@ -274,6 +274,9 @@ get_customer_feedback_contact_details = [
 	"erpnext.overrides.customer_feedback.customer_feedback_hooks.get_customer_feedback_contact_details_hook"
 ]
 
+get_primary_contact = "erpnext.accounts.party.get_primary_contact_hook"
+get_primary_address = "erpnext.accounts.party.get_primary_address_hook"
+
 jinja = {
 	'methods': [
 		'erpnext.stock.utils.format_item_name',

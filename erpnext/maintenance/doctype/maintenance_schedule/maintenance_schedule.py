@@ -6,8 +6,8 @@ from frappe import _
 from erpnext.utilities.transaction_base import TransactionBase
 from dateutil.relativedelta import relativedelta
 from frappe.utils import add_days, getdate, get_time, now_datetime, combine_datetime, add_to_date, cstr, cint
-from frappe.contacts.doctype.contact.contact import get_default_contact
-from erpnext.accounts.party import get_contact_details
+from erpnext.accounts.party import _get_contact_details
+from crm.crm.utils import get_primary_contact
 from frappe.core.doctype.notification_count.notification_count import (
 	get_notification_last_scheduled,
 	set_notification_last_scheduled,
@@ -26,12 +26,12 @@ class MaintenanceSchedule(TransactionBase):
 	def set_contact_details(self):
 		force = False
 		if not self.contact_person and self.customer:
-			contact = get_default_contact('Customer', self.customer)
+			contact = get_primary_contact('Customer', self.customer)
 			self.contact_person = contact
 			force = True
 
 		if self.contact_person:
-			contact_details = get_contact_details(self.contact_person)
+			contact_details = _get_contact_details(self.contact_person)
 			for k, v in contact_details.items():
 				if self.meta.has_field(k) and (force or not self.get(k)):
 					self.set(k, v)
