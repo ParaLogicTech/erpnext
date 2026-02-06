@@ -11,6 +11,7 @@ $.extend(erpnext.task_actions, {
 		let dialog = new frappe.ui.Dialog({
 			title: __('Create Task'),
 			fields: fields,
+			size: "large",
 			primary_action: () => {
 				let values = dialog.get_values();
 				return frappe.call({
