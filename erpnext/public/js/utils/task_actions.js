@@ -300,9 +300,7 @@ $.extend(erpnext.task_actions, {
 			},
 		];
 
-		let additional_fields = erpnext.task_actions.get_additional_create_task_fields?.(project_data, task_data);
-		let vehicle_health_check_fields = erpnext.task_actions.get_vehicle_health_check_fields?.(task_data) || [];
-		additional_fields = additional_fields || [];
+		let additional_fields = erpnext.task_actions.get_additional_create_task_fields?.(project_data, task_data) || [];
 		fields = fields.concat(additional_fields);
 
 		fields = fields.concat([
@@ -321,7 +319,9 @@ $.extend(erpnext.task_actions, {
 			},
 		])
 
-		fields = fields.concat(vehicle_health_check_fields);
+		let additional_fields_bottom = erpnext.task_actions.get_additional_create_task_fields_bottom?.(task_data) || [];
+		fields = fields.concat(additional_fields_bottom);
+
 		fields = fields.concat([
 			{
 				fieldtype: "Section Break",
