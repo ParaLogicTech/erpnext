@@ -16,13 +16,14 @@ class StockAccountInvalidTransaction(frappe.ValidationError): pass
 class StockValueAndAccountBalanceOutOfSync(frappe.ValidationError): pass
 
 
-def make_gl_entries(gl_map, cancel=False, adv_adj=False, merge_entries=True, update_outstanding='Yes', from_repost=False):
+def make_gl_entries(gl_map, cancel=False, adv_adj=False, merge_entries=True, update_outstanding='Yes', from_repost=False, 
+					ignore_mandatory_dimension=False):
 	if gl_map:
 		if not cancel:
 			validate_accounting_period(gl_map)
 			gl_map = process_gl_map(gl_map, merge_entries)
 			if gl_map and len(gl_map) > 1:
-				save_entries(gl_map, adv_adj, update_outstanding, from_repost)
+				save_entries(gl_map, adv_adj, update_outstanding, from_repost, ignore_mandatory_dimension)
 			elif gl_map:
 				frappe.throw(_("Incorrect number of General Ledger Entries found. You might have selected a wrong Account in the transaction."))
 		else:
@@ -146,7 +147,7 @@ def get_account_head_key_fields(dimensions=None):
 	return account_head_key_fields
 
 
-def save_entries(gl_map, adv_adj, update_outstanding, from_repost=False):
+def save_entries(gl_map, adv_adj, update_outstanding, from_repost=False, ignore_mandatory_dimension=False):
 	if not from_repost:
 		validate_cwip_accounts(gl_map)
 
@@ -154,7 +155,7 @@ def save_entries(gl_map, adv_adj, update_outstanding, from_repost=False):
 
 	reference_documents_for_update = set()
 	for entry in gl_map:
-		make_entry(entry, adv_adj, from_repost)
+		make_entry(entry, adv_adj, from_repost, ignore_mandatory_dimension)
 
 		# check against budget
 		if not from_repost:
@@ -167,11 +168,12 @@ def save_entries(gl_map, adv_adj, update_outstanding, from_repost=False):
 		update_voucher_on_gl_posting(voucher_type, voucher_no, account, party_type, party, on_cancel=False)
 
 
-def make_entry(args, adv_adj, from_repost=False):
+def make_entry(args, adv_adj, from_repost=False, ignore_mandatory_dimension=False):
 	gle = frappe.new_doc("GL Entry")
 	gle.update(args)
 	gle.flags.ignore_permissions = 1
 	gle.flags.from_repost = from_repost
+	gle.flags.ignore_mandatory_dimension = ignore_mandatory_dimension
 	gle.flags.adv_adj = adv_adj
 	gle.validate()
 	gle.db_insert()

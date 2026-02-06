@@ -205,7 +205,7 @@ def make_gl_entries(doc, credit_account, debit_account, against,
 
 	if gl_entries:
 		try:
-			make_gl_entries(gl_entries, cancel=(doc.docstatus == 2), merge_entries=True)
+			make_gl_entries(gl_entries, cancel=(doc.docstatus == 2), merge_entries=True, ignore_mandatory_dimension=True)
 			frappe.db.commit()
 		except:
 			frappe.db.rollback()

@@ -39,7 +39,8 @@ class GLEntry(Document):
 
 		if not self.flags.from_repost and not self.flags.adv_adj:
 			self.validate_cost_center_for_pl_and_bs()
-			self.validate_dimensions_for_pl_and_bs()
+			if not self.flags.ignore_mandatory_dimension:
+				self.validate_dimensions_for_pl_and_bs()
 
 		check_freezing_date(self.posting_date, self.flags.adv_adj)
 		validate_frozen_account(self.account, self.flags.adv_adj)
