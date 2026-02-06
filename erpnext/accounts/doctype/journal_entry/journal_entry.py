@@ -680,8 +680,7 @@ class JournalEntry(AccountsController):
 
 		gl_map = self.get_gl_entries()
 		if gl_map:
-			if self.voucher_type == "Depreciation Entry":
-				make_gl_entries(gl_map, cancel=cancel, adv_adj=adv_adj, merge_entries=False, ignore_mandatory_dimension=True)
+			make_gl_entries(gl_map, cancel=cancel, adv_adj=adv_adj, merge_entries=False, ignore_mandatory_dimension=(self.voucher_type == "Depreciation Entry"))
 
 	def get_gl_entries(self):
 		gl_map = []
