@@ -154,7 +154,7 @@ def save_entries(gl_map, adv_adj, update_outstanding, from_repost=False, ignore_
 
 	reference_documents_for_update = set()
 	for entry in gl_map:
-		make_entry(entry, adv_adj, from_repost, ignore_mandatory_dimension)
+		make_entry(entry, adv_adj, from_repost, ignore_mandatory_dimension=ignore_mandatory_dimension)
 
 		# check against budget
 		if not from_repost:
