@@ -137,16 +137,16 @@
 				{%= __("Date") %}
 			</th>
 
-			<th style="width: 3%">
+			<th class="text-right" style="width: 3%">
 				{%= __("Age (Days)") %}
 			</th>
 
-			<th style="width: 13%">
+			<th style="width: 15%">
 				{%= __("Reference") %}
 			</th>
 
 			{% if(!filters.show_future_payments) { %}
-				<th style="width: 34%">
+				<th style="width: 32%">
 					{%= (filters.customer || filters.supplier || group.party) ? __("Remarks"): __("Party") %}
 				</th>
 			{% } %}
@@ -224,16 +224,19 @@
 						{% if(!(filters.customer || filters.supplier || group.party)) { %}
 							{%= data[i]["party"] %}
 							{% if(data[i]["party_name"] && data[i]["party_name"] != data[i]["party"]) { %}
-								<br>{%= data[i]["party_name"] %}
+								<div>{%= data[i]["party_name"] %}</div>
 							{% } %}
 						{% } %}
 					{% } %}
 
 					{% if data[i]["remarks"] %}
+						{% if (!filters.hide_remarks_in_print) { %}
 						<div>
 							{% if (!filters.customer && !filters.supplier && !group.party) { %}{%= __("Remarks") %}:{% } %}
 							{%= data[i]["remarks"] %}
 						</div>
+						{% } %}
+
 						{% if(report.report_name === "Accounts Receivable" && filters.show_sales_person_in_print && data[i]["sales_person"] && !group.sales_person && !filters.sales_person) { %}
 							<div>{%= __("Sales Person: ")%}{%= data[i]["sales_person"] %}</div>
 						{% } %}
