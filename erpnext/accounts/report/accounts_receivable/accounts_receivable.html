@@ -229,20 +229,36 @@
 						{% } %}
 					{% } %}
 
-					{% if data[i]["remarks"] %}
-						{% if (!filters.hide_remarks_in_print) { %}
+					{% if (data[i]["remarks"] && !filters.hide_remarks_in_print) { %}
 						<div>
 							{% if (!filters.customer && !filters.supplier && !group.party) { %}{%= __("Remarks") %}:{% } %}
 							{%= data[i]["remarks"] %}
 						</div>
-						{% } %}
+					{% } %}
 
-						{% if(report.report_name === "Accounts Receivable" && filters.show_sales_person_in_print && data[i]["sales_person"] && !group.sales_person && !filters.sales_person) { %}
-							<div>{%= __("Sales Person: ")%}{%= data[i]["sales_person"] %}</div>
-						{% } %}
-						{% if(report.report_name === "Accounts Receivable" && data[i]["delivery_note"] && filters.show_delivery_note_in_print) { %}
-							<div>{%= __("Delivery Note")%}: {%= data[i]["delivery_note"] %}</div>
-						{% } %}
+					{% if (data[i]["bill_no"]) { %}
+						<div>
+							{%= __("Bill No") %}:
+							{%= data[i]["bill_no"] %}
+							{% if (data[i]["bill_date"]) { %}
+								{%= __("dated") %}
+								{%= frappe.datetime.str_to_user(data[i]["bill_date"]) %}
+							{% } %}
+						</div>
+					{% } %}
+
+					{% if (filters.show_sales_person_in_print && data[i]["sales_person"] && !group.sales_person && !filters.sales_person) { %}
+						<div>
+							{%= __("Sales Person") %}:
+							{%= data[i]["sales_person"] %}
+						</div>
+					{% } %}
+
+					{% if (filters.show_delivery_note_in_print && data[i]["delivery_note"]) { %}
+						<div>
+							{%= __("Delivery Note") %}:
+							{%= data[i]["delivery_note"] %}
+						</div>
 					{% } %}
 				</td>
 				{% } %}
