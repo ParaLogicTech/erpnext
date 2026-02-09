@@ -1,9 +1,11 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
+
 import frappe
 import erpnext
 from frappe import _
 from frappe.utils import flt
+from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
 	get_dimension_with_children,
@@ -40,12 +42,7 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 	account_has_amount = set()
 
 	for inv in invoice_list:
-		row = frappe._dict({
-			'invoice': inv.name,
-			'posting_date': inv.posting_date,
-			'customer': inv.bill_to,
-			'customer_name': inv.bill_to_name,
-		})
+		row = frappe._dict()
 
 		if additional_query_columns:
 			for col in additional_query_columns:
@@ -53,8 +50,17 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 					col: inv.get(col)
 				})
 
+		if inv.get("branch"):
+			filters["has_branch"] = True
+
 		row.update({
+			'invoice': inv.name,
+			'posting_date': inv.posting_date,
+			'customer': inv.bill_to,
+			'customer_name': inv.bill_to_name,
 			'customer_group': inv.get("customer_group"),
+			'company': inv.get("company"),
+			'branch': inv.get("branch"),
 			'territory': inv.get("territory"),
 			'tax_id': inv.get("tax_id"),
 			'receivable_account': inv.debit_to,
@@ -64,30 +70,23 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 			'mode_of_payment': ", ".join(mode_of_payment_map.get(inv.name, [])),
 			'sales_order': ", ".join(sales_order_map.get(inv.name, [])),
 			'delivery_note': ", ".join(delivery_note_map.get(inv.name, [])),
-			'cost_center': ", ".join(cost_center_map.get(inv.name, [])),
+			'cost_center': ", ".join(cost_center_map.get(inv.name, [])) or inv.cost_center,
 			'warehouse': ", ".join(warehouse_map.get(inv.name, [])),
 			'currency': company_currency,
 		})
 
 		# map income values
-		net_total = 0
-		total_tax = 0
 		for acc in income_accounts + asset_accounts + tax_accounts:
 			credit_amount = flt(gl_map.get(inv.name, {}).get(acc))
 			if credit_amount:
 				account_has_amount.add(acc)
 
-			if acc in income_accounts or acc in asset_accounts:
-				net_total += credit_amount
-			elif acc in tax_accounts:
-				total_tax += credit_amount
-
 			row[frappe.scrub(acc)] = credit_amount
 
 		# total tax, grand total, outstanding amount and rounded total
 		row.update({
-			'net_total': inv.base_net_total or net_total,
-			'tax_total': total_tax,
+			'net_total': inv.base_net_total,
+			'tax_total': inv.base_total_taxes_and_charges,
 			'grand_total': inv.base_grand_total,
 			'rounded_total': inv.base_rounded_total,
 			'outstanding_amount': inv.outstanding_amount,
@@ -99,7 +98,7 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 	asset_accounts = [acc for acc in asset_accounts if acc in account_has_amount]
 	tax_accounts = [acc for acc in tax_accounts if acc in account_has_amount]
 
-	columns = get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_columns)
+	columns = get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_columns, filters)
 
 	return columns, data
 
@@ -192,7 +191,7 @@ def get_invoice_accounts_data(invoice_list):
 	)
 
 
-def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_columns):
+def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_columns, filters):
 	columns = [
 		{
 			'label': _("Invoice"),
@@ -226,6 +225,13 @@ def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_
 		columns += additional_table_columns
 
 	columns += [
+		{
+			'label': _("Branch"),
+			'fieldname': 'branch',
+			'fieldtype': 'Link',
+			'options': 'Branch',
+			'width': 100
+		},
 		{
 			'label': _("Cost Center"),
 			'fieldname': 'cost_center',
@@ -376,6 +382,9 @@ def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_
 		},
 	]
 
+	if not filters.get("has_branch"):
+		columns = [c for c in columns if c.get("fieldname") != "branch"]
+
 	return columns
 
 
@@ -388,10 +397,13 @@ def get_invoices(filters, additional_query_columns):
 	conditions = get_conditions(filters)
 	return frappe.db.sql(f"""
 		select
-			inv.name, inv.posting_date, inv.debit_to, inv.project,
+			inv.name, inv.posting_date,
+			inv.company, inv.cost_center, inv.branch, inv.project,
 			inv.customer, inv.customer_name, inv.bill_to, inv.bill_to_name,
-			inv.owner, inv.remarks, inv.territory, inv.tax_id, c.customer_group,
-			inv.base_net_total, inv.base_grand_total, inv.base_rounded_total, inv.outstanding_amount
+			c.customer_group, inv.territory, inv.tax_id,
+			inv.debit_to, inv.owner, inv.remarks,
+			inv.base_net_total, inv.base_total_taxes_and_charges,
+			inv.base_grand_total, inv.base_rounded_total, inv.outstanding_amount
 			{additional_query_columns}
 		from `tabSales Invoice` inv
 		left join `tabCustomer` c on c.name = inv.bill_to
@@ -416,63 +428,24 @@ def get_conditions(filters):
 		)""".format(lft, rgt)
 
 	if filters.get("from_date"):
-		conditions += " and posting_date >= %(from_date)s"
+		conditions += " and inv.posting_date >= %(from_date)s"
 	if filters.get("to_date"):
-		conditions += " and posting_date <= %(to_date)s"
+		conditions += " and inv.posting_date <= %(to_date)s"
 
 	if filters.get("owner"):
-		conditions += " and owner = %(owner)s"
-
-	if filters.get("mode_of_payment"):
-		conditions += """ and exists(
-			select name
-			from `tabSales Invoice Payment`
-			where parent = `tabSales Invoice`.name and `tabSales Invoice Payment`.mode_of_payment = %(mode_of_payment)s
-		)"""
+		conditions += " and inv.owner = %(owner)s"
 
 	if filters.get("cost_center"):
-		conditions += """ and exists(
-			select name
-			from `tabSales Invoice Item`
-			where parent = `tabSales Invoice`.name and `tabSales Invoice Item`.cost_center = %(cost_center)s
-		)"""
-
-	if filters.get("warehouse"):
-		conditions += """ and exists(
-			select name
-			from `tabSales Invoice Item`
-			where parent = `tabSales Invoice`.name and `tabSales Invoice Item`.warehouse = %(warehouse)s
-		)"""
-
-	if filters.get("brand"):
-		conditions += """ and exists(
-			select name
-			from `tabSales Invoice Item`
-			where parent = `tabSales Invoice`.name and `tabSales Invoice Item`.brand = %(brand)s
-		)"""
-
-	if filters.get("item_group"):
-		conditions += """ and exists(
-			select name
-			from `tabSales Invoice Item`
-			where parent = `tabSales Invoice`.name and `tabSales Invoice Item`.item_group = %(item_group)s
-		)"""
+		filters.cost_center = get_cost_centers_with_children(filters.get("cost_center"))
+		conditions += " and inv.cost_center in %(cost_center)s"
 
 	accounting_dimensions = get_accounting_dimensions(as_list=False)
-
-	if accounting_dimensions:
-		common_condition = """
-			and exists(select name from `tabSales Invoice Item`
-				where parent=`tabSales Invoice`.name
-			"""
-		for dimension in accounting_dimensions:
-			if filters.get(dimension.fieldname) and dimension.fieldname not in ("customer_group", "item_group"):
-				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
-					filters[dimension.fieldname] = get_dimension_with_children(dimension.document_type,
-						filters.get(dimension.fieldname))
-
-					conditions += common_condition + "and ifnull(`tabSales Invoice Item`.{0}, '') in %({0})s)".format(dimension.fieldname)
-				else:
-					conditions += common_condition + "and ifnull(`tabSales Invoice Item`.{0}, '') in (%({0})s))".format(dimension.fieldname)
+	for dimension in accounting_dimensions:
+		if filters.get(dimension.fieldname):
+			if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
+				filters[dimension.fieldname] = get_dimension_with_children(dimension.document_type, filters.get(dimension.fieldname))
+				conditions += " and inv.{0} in %({0})s".format(dimension.fieldname)
+			else:
+				conditions += " and inv.{0} = %({0})s".format(dimension.fieldname)
 
 	return conditions

@@ -4,48 +4,43 @@
 frappe.query_reports["Sales Register"] = {
 	"filters": [
 		{
-			"fieldname":"company",
+			"fieldname": "company",
 			"label": __("Company"),
 			"fieldtype": "Link",
 			"options": "Company",
-			"default": frappe.defaults.get_user_default("Company")
+			"default": frappe.defaults.get_user_default("Company"),
 		},
 		{
-			"fieldname":"from_date",
+			"fieldname": "from_date",
 			"label": __("From Date"),
 			"fieldtype": "Date",
 			"default": frappe.datetime.add_months(frappe.datetime.get_today(), -1),
-			"width": "80"
+			"reqd": 1,
 		},
 		{
-			"fieldname":"to_date",
+			"fieldname": "to_date",
 			"label": __("To Date"),
 			"fieldtype": "Date",
-			"default": frappe.datetime.get_today()
+			"default": frappe.datetime.get_today(),
+			"reqd": 1,
 		},
 		{
-			"fieldname":"customer",
+			"fieldname": "customer",
 			"label": __("Customer"),
 			"fieldtype": "Link",
-			"options": "Customer"
+			"options": "Customer",
 		},
 		{
-			"fieldname":"customer_group",
+			"fieldname": "customer_group",
 			"label": __("Customer Group"),
 			"fieldtype": "Link",
-			"options": "Customer Group"
+			"options": "Customer Group",
 		},
 		{
-			"fieldname":"mode_of_payment",
-			"label": __("Mode of Payment"),
-			"fieldtype": "Link",
-			"options": "Mode of Payment"
-		},
-		{
-			"fieldname":"owner",
+			"fieldname": "owner",
 			"label": __("Owner"),
 			"fieldtype": "Link",
-			"options": "User"
+			"options": "User",
 		},
 		{
 			"fieldname": "cost_center",
@@ -57,24 +52,12 @@ frappe.query_reports["Sales Register"] = {
 			},
 		},
 		{
-			"fieldname":"warehouse",
-			"label": __("Warehouse"),
+			"fieldname": "branch",
+			"label": __("Branch"),
 			"fieldtype": "Link",
-			"options": "Warehouse"
+			"options": "Branch",
 		},
-		{
-			"fieldname":"brand",
-			"label": __("Brand"),
-			"fieldtype": "Link",
-			"options": "Brand"
-		},
-		{
-			"fieldname":"item_group",
-			"label": __("Item Group"),
-			"fieldtype": "Link",
-			"options": "Item Group"
-		}
 	]
 }
 
-erpnext.utils.add_dimensions('Sales Register', 7);
+erpnext.utils.add_dimensions('Sales Register', 8);
