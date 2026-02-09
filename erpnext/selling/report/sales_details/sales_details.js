@@ -2,6 +2,21 @@
 // For license information, please see license.txt
 /* eslint-disable */
 
+const sales_details_group_by_options = [
+	"",
+	"Group by Customer",
+	"Group by Customer Group",
+	"Group by Transaction",
+	"Group by Branch",
+	"Group by Item",
+	"Group by Item Group",
+	"Group by Brand",
+	"Group by Applies To Item",
+	"Group by Applies To Variant Of",
+	"Group by Territory",
+	"Group by Sales Person",
+]
+
 frappe.query_reports["Sales Details"] = {
 	filters: [
 		{
@@ -140,6 +155,12 @@ frappe.query_reports["Sales Details"] = {
 			},
 		},
 		{
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch",
+		},
+		{
 			fieldname: "project",
 			label: __("Project"),
 			fieldtype: "Link",
@@ -149,30 +170,21 @@ frappe.query_reports["Sales Details"] = {
 			fieldname: "group_by_1",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
-			options: ["", "Group by Customer", "Group by Customer Group", "Group by Transaction",
-				"Group by Item", "Group by Item Group", "Group by Brand",
-				"Group by Applies To Item", "Group by Applies To Variant Of",
-				"Group by Territory", "Group by Sales Person"],
+			options: sales_details_group_by_options,
 			default: ""
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
-			options: ["", "Group by Customer", "Group by Customer Group", "Group by Transaction",
-				"Group by Item", "Group by Item Group", "Group by Brand",
-				"Group by Applies To Item", "Group by Applies To Variant Of",
-				"Group by Territory", "Group by Sales Person"],
+			options: sales_details_group_by_options,
 			default: ""
 		},
 		{
 			fieldname: "group_by_3",
 			label: __("Group By Level 3"),
 			fieldtype: "Select",
-			options: ["", "Group by Customer", "Group by Customer Group", "Group by Transaction",
-				"Group by Item", "Group by Item Group", "Group by Brand",
-				"Group by Applies To Item", "Group by Applies To Variant Of",
-				"Group by Territory", "Group by Sales Person"],
+			options: sales_details_group_by_options,
 			default: ""
 		},
 		{

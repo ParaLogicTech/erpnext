@@ -8,7 +8,14 @@ frappe.query_reports["Purchase Analytics"] = {
 			fieldname: "tree_type",
 			label: __("Tree Type"),
 			fieldtype: "Select",
-			options: ["Supplier Group","Supplier","Item Group","Item","Brand"],
+			options: [
+				"Supplier",
+				"Supplier Group",
+				"Item",
+				"Item Group",
+				"Brand",
+				"Branch",
+			],
 			default: "Item",
 			reqd: 1
 		},
@@ -136,6 +143,12 @@ frappe.query_reports["Purchase Analytics"] = {
 			get_query: () => {
 				return { filters: { company: frappe.query_report.get_filter_value("company") } };
 			},
+		},
+		{
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch",
 		},
 		{
 			fieldname: "project",

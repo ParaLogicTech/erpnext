@@ -2,6 +2,16 @@
 // For license information, please see license.txt
 /* eslint-disable */
 
+const purchase_details_group_by_options = ["",
+	"Group by Supplier",
+	"Group by Supplier Group",
+	"Group by Transaction",
+	"Group by Branch",
+	"Group by Item",
+	"Group by Item Group",
+	"Group by Brand",
+]
+
 frappe.query_reports["Purchase Details"] = {
 	filters: [
 		{
@@ -117,6 +127,12 @@ frappe.query_reports["Purchase Details"] = {
 			},
 		},
 		{
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch",
+		},
+		{
 			fieldname: "project",
 			label: __("Project"),
 			fieldtype: "Link",
@@ -126,24 +142,21 @@ frappe.query_reports["Purchase Details"] = {
 			fieldname: "group_by_1",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
-			options: ["", "Group by Supplier", "Group by Supplier Group", "Group by Transaction",
-				"Group by Item", "Group by Item Group", "Group by Brand"],
+			options: purchase_details_group_by_options,
 			default: ""
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
-			options: ["", "Group by Supplier", "Group by Supplier Group", "Group by Transaction",
-				"Group by Item", "Group by Item Group", "Group by Brand"],
+			options: purchase_details_group_by_options,
 			default: ""
 		},
 		{
 			fieldname: "group_by_3",
 			label: __("Group By Level 3"),
 			fieldtype: "Select",
-			options: ["", "Group by Supplier", "Group by Supplier Group", "Group by Transaction",
-				"Group by Item", "Group by Item Group", "Group by Brand"],
+			options: purchase_details_group_by_options,
 			default: ""
 		},
 		{
