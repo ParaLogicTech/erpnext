@@ -250,7 +250,9 @@ def set_party_account_and_cost_center(
 
 		account_fieldname = "debit_to" if party_type in ("Customer", "Lead") else "credit_to"
 		party_details[account_fieldname] = account
-		party_details["cost_center"] = cost_center
+
+		if cost_center:
+			party_details["cost_center"] = cost_center
 
 	return account, cost_center
 
