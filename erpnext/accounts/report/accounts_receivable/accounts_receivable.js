@@ -211,6 +211,12 @@ frappe.query_reports["Accounts Receivable"] = {
 			on_change: function() { return false; }
 		},
 		{
+			"fieldname":"hide_remarks_in_print",
+			"label": __("Hide Remarks in Print"),
+			"fieldtype": "Check",
+			on_change: function() { return false; }
+		},
+		{
 			"fieldname":"tax_id",
 			"label": __("Tax Id"),
 			"fieldtype": "Data",

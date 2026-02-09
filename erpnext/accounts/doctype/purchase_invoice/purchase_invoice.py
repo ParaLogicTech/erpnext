@@ -86,7 +86,6 @@ class PurchaseInvoice(BuyingController):
 		self.validate_expense_account()
 		self.set_against_expense_account()
 		self.validate_write_off_account()
-		self.create_remarks()
 		self.validate_purchase_receipt_if_update_stock()
 		self.validate_purchase_receipt_in_same_fy()
 		self.set_revalue_purchase_receipt()
@@ -572,12 +571,6 @@ class PurchaseInvoice(BuyingController):
 			> 1/(10**(self.precision("base_grand_total") + 1))):
 
 			frappe.throw(_("""Paid amount + Write Off Amount can not be greater than Grand Total"""))
-
-	def create_remarks(self):
-		if not self.remarks:
-			if self.bill_no and self.bill_date:
-				self.remarks = _("Against Supplier Invoice {0} dated {1}").format(self.bill_no,
-					formatdate(self.bill_date))
 
 	def set_missing_values(self, for_validate=False):
 		if not self.credit_to:

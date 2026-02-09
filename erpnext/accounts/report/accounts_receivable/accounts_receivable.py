@@ -390,6 +390,8 @@ class ReceivablePayableReport(object):
 
 		if self.filters.party_type == "Supplier":
 			invoices = {gle.voucher_no for gle in gles_to_add if gle.voucher_type == "Purchase Invoice"}
+			lcvs = {gle.voucher_no for gle in gles_to_add if gle.voucher_type == "Landed Cost Voucher"}
+
 			if invoices:
 				data = frappe.db.sql("""
 					select name, due_date, bill_no, bill_date, contact_person
@@ -398,6 +400,15 @@ class ReceivablePayableReport(object):
 				""", [invoices], as_dict=1)
 				for d in data:
 					self.voucher_details[("Purchase Invoice", d.name)] = d
+
+			if lcvs:
+				data = frappe.db.sql("""
+					select name, due_date, bill_no, bill_date
+					from `tabLanded Cost Voucher`
+					where docstatus = 1 and name in %s
+				""", [lcvs], as_dict=1)
+				for d in data:
+					self.voucher_details[("Landed Cost Voucher", d.name)] = d
 
 		journal_entries = {gle.voucher_no for gle in gles_to_add if gle.voucher_type == "Journal Entry"}
 		if journal_entries:

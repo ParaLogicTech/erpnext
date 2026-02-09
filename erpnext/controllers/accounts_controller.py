@@ -1024,7 +1024,6 @@ def get_supplier_block_status(party_name):
 	}
 	return info
 
-
 @erpnext.allow_regional
 def validate_regional(doc):
 	pass

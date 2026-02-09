@@ -105,6 +105,10 @@ class Analytics(object):
 			self.get_entries("im.brand")
 			self.get_rows()
 
+		elif self.filters.tree_type == 'Branch':
+			self.get_entries("s.branch")
+			self.get_rows()
+
 		elif self.filters.tree_type == 'Account Manager':
 			self.get_entries("cus.account_manager")
 			self.get_rows()
@@ -199,6 +203,9 @@ class Analytics(object):
 
 		if self.filters.get("company"):
 			conditions.append("s.company = %(company)s")
+
+		if self.filters.get("branch"):
+			conditions.append("s.branch = %(branch)s")
 
 		if self.filters.get("customer"):
 			conditions.append("s.customer = %(customer)s")

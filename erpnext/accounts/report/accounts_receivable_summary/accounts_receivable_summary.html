@@ -1,1 +1,135 @@
-{% include "accounts/report/accounts_receivable/accounts_receivable.html" %}
+<style>
+@media screen {
+	.print-format {
+		padding: 10mm;
+	}
+}
+
+.print-format {
+	font-size: 8.0pt !important;
+}
+</style>
+
+<h2 class="text-center" style="margin-top:0">
+	{%= __(report.report_name) %}
+</h2>
+
+{%
+	var ageing_columns = report.columns.filter(d => d.ageing_column);
+	var currency_column = columns.filter(c => c.fieldname == 'currency');
+	var currency = data[0]?.currency || currency_column?.currency;
+%}
+
+{% if (filters.customer_name || filters.supplier_name || filters.customer || filters.supplier) { %}
+	<h4 class="text-center">
+	{% if (filters.customer_name || filters.supplier_name) { %}
+		{%= filters.customer_name || filters.supplier_name %}
+	{% } else { %}
+		{%= filters.customer || filters.supplier %}
+	{% } %}
+	</h4>
+{% } %}
+
+{% if (filters.sales_person) { %}
+	<h6 class="text-center">
+		{%= __("Sales Person: ")%}{%= filters.sales_person %}
+	</h6>
+{% } %}
+
+{% if ((filters.cost_center && filters.cost_center.length)) { %}
+	<h6 class="text-center">
+		{%= __("Cost Center: ")%}{%= filters.cost_center %}
+	</h6>
+{% } %}
+
+{% if ((filters.project && filters.project.length)) { %}
+	<h6 class="text-center">
+		{%= __("Project: ")%}{%= filters.project %}
+	</h6>
+{% } %}
+
+{% if (filters.territory) { %}
+	<h6 class="text-center">
+		{%= __("Territory: ")%}{%= filters.territory %}
+	</h6>
+{% } %}
+
+{% if (filters.branch) { %}
+	<h6 class="text-center">
+		{%= __("Branch: ")%}{%= filters.branch %}
+	</h6>
+{% } %}
+
+<h5 class="text-center">
+	{%= __(filters.ageing_based_on) %}
+	{%= __("Upto") %}
+	{%= moment(frappe.datetime.str_to_obj(filters.report_date)).format("D MMMM, YYYY") %}
+</h5>
+
+<div class="clearfix">
+	<div class="pull-left">
+	{% if(filters.payment_terms) { %}
+		<strong>{%= __("Payment Terms") %}:</strong> {%= filters.payment_terms %}
+	{% } %}
+	</div>
+
+	<div class="pull-right">
+	{% if(filters.credit_limit) { %}
+		<strong>{%= __("Credit Limit") %}:</strong> {%= format_currency(filters.credit_limit) %}
+	{% } %}
+	</div>
+</div>
+
+<table class="table table-bordered">
+	<thead>
+		<tr>
+			<th style="width: 35%">
+				{%= (filters.customer || filters.supplier) ? __("Remarks"): __("Party") %}
+			</th>
+
+			{% var ageing_column_width = 55 / ageing_columns.length %}
+			{% for (var r = 0; r < ageing_columns.length; ++r) { %}
+				<th style="width: {%= flt(ageing_column_width, 6) %}%">
+					{%= ageing_columns[r].label %}
+				</th>
+			{% } %}
+
+			<th style="width: 10%">
+				{%= __("Outstanding Amount") %}
+			</th>
+		</tr>
+	</thead>
+
+	<tbody>
+	{% for(var i=0, l=data.length; i<l; i++) { %}
+		<tr>
+			{% if(data[i]["party"] && !data[i]['is_total_row']) { %}
+				<td>
+					{% if(!(filters.customer || filters.supplier)) { %}
+						{%= data[i]["party"] %}
+						{% if(data[i]["party_name"] && data[i]["party_name"] != data[i]["party"]) { %}
+							<br>{%= data[i]["party_name"] %}
+						{% } %}
+					{% } %}
+				</td>
+			{% } else { %}
+				<td class="text-right">
+					<b>{%= __("Total") %}</b>
+				</td>
+			{% } %}
+
+			{% for (var r = 0; r < ageing_columns.length; ++r) { %}
+				<td class="text-right text-nowrap">
+					{%= format_currency(data[i][ageing_columns[r].fieldname], data[i]["currency"]) %}
+				</td>
+			{% } %}
+
+			<td class="text-right text-nowrap">
+				{%= format_currency(data[i]["outstanding_amount"], data[i]["currency"]) %}
+			</td>
+		</tr>
+	{% } %}
+	</tbody>
+</table>
+
+<p class="text-right text-muted">{{ __("Printed On ") }}{%= frappe.datetime.str_to_user(frappe.datetime.get_datetime_as_string()) %}</p>

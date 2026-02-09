@@ -9,7 +9,15 @@ frappe.query_reports["Sales Analytics"] = {
 			label: __("Tree Type"),
 			fieldtype: "Select",
 			options: [
-                "Customer Group", "Customer" ,"Item Group", "Item", "Brand", "Territory", "Sales Person", "Account Manager"
+				"Customer",
+                "Customer Group",
+				"Item",
+				"Item Group",
+				"Brand",
+				"Territory",
+				"Sales Person",
+				"Account Manager",
+				"Branch",
             ],
 			default: "Customer",
 			reqd: 1
@@ -161,6 +169,12 @@ frappe.query_reports["Sales Analytics"] = {
 			get_query: () => {
 				return { filters: { company: frappe.query_report.get_filter_value("company") } };
 			},
+		},
+		{
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch",
 		},
 		{
 			"fieldname":"project",

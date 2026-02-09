@@ -11,6 +11,7 @@ $.extend(erpnext.task_actions, {
 		let dialog = new frappe.ui.Dialog({
 			title: __('Create Task'),
 			fields: fields,
+			size: "large",
 			primary_action: () => {
 				let values = dialog.get_values();
 				return frappe.call({
@@ -299,14 +300,10 @@ $.extend(erpnext.task_actions, {
 			},
 		];
 
-		let additional_fields = erpnext.task_actions.get_additional_create_task_fields?.(project_data, task_data);
-		additional_fields = additional_fields || [];
+		let additional_fields = erpnext.task_actions.get_additional_create_task_fields?.(project_data, task_data) || [];
 		fields = fields.concat(additional_fields);
 
 		fields = fields.concat([
-			{
-				fieldtype: "Section Break",
-			},
 			{
 				"label": __("Expected Start Date"),
 				"fieldname": "exp_start_date",
@@ -320,6 +317,12 @@ $.extend(erpnext.task_actions, {
 				"fieldtype": "Int",
 				"default": 1,
 			},
+		])
+
+		let additional_fields_bottom = erpnext.task_actions.get_additional_create_task_fields_bottom?.(task_data) || [];
+		fields = fields.concat(additional_fields_bottom);
+
+		fields = fields.concat([
 			{
 				fieldtype: "Section Break",
 			},
@@ -330,7 +333,7 @@ $.extend(erpnext.task_actions, {
 				"default": task_data.task_description || task_data.description,
 				"max_height": "100px",
 			},
-		])
+		]);
 
 		if (task_data.name) {
 			fields = fields.concat([

@@ -11,6 +11,7 @@
   "naming_series",
   "asset_name",
   "item_code",
+  "item_detail",
   "item_name",
   "asset_category",
   "asset_category_group",
@@ -495,6 +496,14 @@
    "fieldtype": "Float",
    "label": "Useful Life (Years)",
    "read_only": 1
+  },
+  {
+   "fieldname": "item_detail",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Item Detail",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -502,7 +511,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-19 16:01:18.744690",
+ "modified": "2026-02-04 18:41:06.673215",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Asset",
