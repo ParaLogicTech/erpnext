@@ -106,19 +106,20 @@ class TransactionController(StockController):
 
 		self.set_onload("enable_dynamic_bundling", self.dynamic_bundling_enabled())
 
-		for item in self.get("items") or []:
-			if (
-				item.meta.has_field("item_code")
-				and item.meta.has_field("warehouse")
-				and (item.meta.has_field('actual_qty') or item.meta.has_field('projected_qty'))
-			):
-				item.update(get_bin_details(item.item_code, item.warehouse))
+		if self.docstatus == 0:
+			for item in self.get("items") or []:
+				if (
+					item.meta.has_field("item_code")
+					and item.meta.has_field("warehouse")
+					and (item.meta.has_field('actual_qty') or item.meta.has_field('projected_qty'))
+				):
+					item.update(get_bin_details(item.item_code, item.warehouse))
 
-			if item.meta.has_field('actual_batch_qty'):
-				if item.get('batch_no'):
-					item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
-				else:
-					item.actual_batch_qty = 0
+				if item.meta.has_field('actual_batch_qty'):
+					if item.get('batch_no'):
+						item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
+					else:
+						item.actual_batch_qty = 0
 
 	def before_print(self, print_settings=None):
 		super().before_print(print_settings)
