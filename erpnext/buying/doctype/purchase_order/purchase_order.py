@@ -66,17 +66,6 @@ class PurchaseOrder(BuyingController):
 		self.set_raw_materials_packed_qty()
 		self.set_status()
 		self.set_title()
-	
-	def update_material_request_po_created(self):
-		material_requests = set()
-		for d in self.items:
-			if d.material_request:
-				material_requests.add(d.material_request)
-		# Update Material Requests
-		for mr_name in material_requests:
-			mr_doc = frappe.get_doc("Material Request", mr_name)
-			mr_doc.set_po_created(update=True)
-			mr_doc.notify_update()
 
 	def before_submit(self):
 		super().before_submit()
@@ -198,6 +187,18 @@ class PurchaseOrder(BuyingController):
 			doc.notify_update()
 
 		self.update_project_purchase_status(purchase_values=False)
+
+	def update_material_request_po_created(self):
+		material_requests = set()
+		for d in self.items:
+			if d.material_request:
+				material_requests.add(d.material_request)
+
+		# Update Material Requests
+		for mr_name in material_requests:
+			mr_doc = frappe.get_doc("Material Request", mr_name)
+			mr_doc.set_po_created(update=True)
+			mr_doc.notify_update()
 
 	def update_status(self, status):
 		self.check_modified_date()

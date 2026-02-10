@@ -5,9 +5,8 @@
 # For license information, please see license.txt
 
 import frappe
-
-from frappe.utils import cstr, flt, getdate, new_line_sep, nowdate, ceil
-from frappe import msgprint, _
+from frappe.utils import cstr, cint, flt, getdate, new_line_sep, nowdate, ceil
+from frappe import _
 from frappe.model.mapper import get_mapped_doc
 from crm.crm.utils import get_primary_address
 from erpnext.accounts.party import render_address
@@ -56,7 +55,7 @@ class MaterialRequest(BuyingController):
 		self.calculate_totals()
 
 		self.set_completion_status()
-		self.set_po_created(update=False)
+		self.set_po_created()
 		self.set_status()
 		self.set_title()
 		# self.validate_qty_against_so()
@@ -88,14 +87,6 @@ class MaterialRequest(BuyingController):
 		self.run_method("set_missing_values")
 		self.run_method("sort_items")
 		self.run_method("calculate_totals")
-
-	def set_po_created(self, update=False, update_modified=True):
-		if not frappe.db.exists("Purchase Order Item", {"material_request":self.name, "docstatus":["<",2]}):
-			status = 0
-		else:
-			status = 1
-		if update:
-			self.db_set('po_created', status, update_modified=update_modified)
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate)
@@ -232,6 +223,19 @@ class MaterialRequest(BuyingController):
 	def validate_ordered_qty(self, from_doctype=None, row_names=None):
 		self.validate_completed_qty('ordered_qty', 'stock_qty', self.items,
 			allowance_type=None, from_doctype=from_doctype, row_names=row_names)
+
+	def set_po_created(self, update=False, update_modified=True):
+		prev_po_created = cint(self.po_created)
+
+		po_exists = frappe.db.exists("Purchase Order Item", {
+			"material_request": self.name,
+			"docstatus": ["<", 2]
+		})
+
+		self.po_created = 1 if po_exists else 0
+
+		if update and self.po_created != prev_po_created:
+			self.db_set("po_created", self.po_created, update_modified=update_modified)
 
 	def check_modified_date(self):
 		mod_db = frappe.db.sql("""select modified from `tabMaterial Request` where name = %s""",
@@ -703,7 +707,7 @@ def raise_work_orders(material_request):
 
 	if work_orders:
 		message = [frappe.utils.get_link_to_form("Work Order", p, target="_blank") for p in work_orders]
-		msgprint(_("The following Work Orders were created:") + '\n' + new_line_sep(message))
+		frappe.msgprint(_("The following Work Orders were created:") + '\n' + new_line_sep(message))
 
 	if errors:
 		frappe.throw(_("Work Order cannot be created for following reason:") + '\n' + new_line_sep(errors))
