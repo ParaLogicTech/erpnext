@@ -64,6 +64,7 @@
   "per_received",
   "column_break_21",
   "status",
+  "po_created",
   "reference",
   "job_card"
  ],
@@ -503,13 +504,22 @@
    "fieldtype": "Small Text",
    "label": "Source Address",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "po_created",
+   "fieldtype": "Check",
+   "label": "Purchase Order Created",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-ticket",
  "idx": 70,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 22:26:28.893858",
+ "modified": "2026-02-10 16:07:51.758973",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Material Request",
@@ -591,6 +601,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "status,transaction_date",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

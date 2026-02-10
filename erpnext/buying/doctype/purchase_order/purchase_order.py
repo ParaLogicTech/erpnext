@@ -66,6 +66,17 @@ class PurchaseOrder(BuyingController):
 		self.set_raw_materials_packed_qty()
 		self.set_status()
 		self.set_title()
+	
+	def update_material_request_po_created(self):
+		material_requests = set()
+		for d in self.items:
+			if d.material_request:
+				material_requests.add(d.material_request)
+		# Update Material Requests
+		for mr_name in material_requests:
+			mr_doc = frappe.get_doc("Material Request", mr_name)
+			mr_doc.set_po_created(update=True)
+			mr_doc.notify_update()
 
 	def before_submit(self):
 		super().before_submit()
@@ -104,6 +115,7 @@ class PurchaseOrder(BuyingController):
 		self.check_on_hold_or_closed_status()
 
 		self.update_previous_doc_status()
+		self.update_material_request_po_created()
 
 		# Must be called after updating ordered qty in Material Request
 		self.update_requested_qty()
@@ -115,7 +127,10 @@ class PurchaseOrder(BuyingController):
 		unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
 
 	def on_update(self):
-		pass
+		self.update_material_request_po_created()
+	
+	def after_delete(self):
+		self.update_material_request_po_created()
 
 	def on_gl_against_voucher(self, account, party_type, party, on_cancel):
 		if not party_type or not party:
