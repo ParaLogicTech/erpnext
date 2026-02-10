@@ -509,7 +509,6 @@
    "default": "0",
    "fieldname": "po_created",
    "fieldtype": "Check",
-   "in_list_view": 1,
    "label": "Purchase Order Created",
    "no_copy": 1,
    "read_only": 1
@@ -520,7 +519,7 @@
  "idx": 70,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-10 14:20:16.262265",
+ "modified": "2026-02-10 16:07:51.758973",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Material Request",
