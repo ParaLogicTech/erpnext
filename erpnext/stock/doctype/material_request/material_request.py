@@ -58,6 +58,7 @@ class MaterialRequest(BuyingController):
 		self.set_completion_status()
 		self.set_status()
 		self.set_title()
+		self.set_po_create_check(update=True)
 		# self.validate_qty_against_so()
 		# NOTE: Since Item BOM and FG quantities are combined, using current data, it cannot be validated
 		# Though the creation of Material Request from a Production Plan can be rethought to fix this
@@ -87,6 +88,15 @@ class MaterialRequest(BuyingController):
 		self.run_method("set_missing_values")
 		self.run_method("sort_items")
 		self.run_method("calculate_totals")
+
+	def set_po_create_check(self, status=None, update=False, update_modified=True):
+		if not status:
+			if not frappe.db.exists("Purchase Order Item", {"material_request":self.name, "docstatus":["!=",2]}):
+				status = False
+			else:
+				status = True
+		if update:
+			self.db_set('po_created', status, update_modified=update_modified)
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate)

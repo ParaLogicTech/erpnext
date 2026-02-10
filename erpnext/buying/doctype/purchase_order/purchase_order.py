@@ -66,6 +66,17 @@ class PurchaseOrder(BuyingController):
 		self.set_raw_materials_packed_qty()
 		self.set_status()
 		self.set_title()
+		self.set_mr_po_create_check()
+	
+	def set_mr_po_create_check(self):
+		material_requests = set()
+		for d in self.items:
+			if d.material_request:
+				material_requests.add(d.material_request)
+		# Update Material Requests
+		for mr_name in material_requests:
+			mr_doc = frappe.get_doc("Material Request", mr_name)
+			mr_doc.set_po_create_check(update=True)
 
 	def before_submit(self):
 		super().before_submit()
