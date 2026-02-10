@@ -511,6 +511,7 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "PO Created",
+   "no_copy": 1,
    "read_only": 1
   }
  ],
@@ -519,7 +520,7 @@
  "idx": 70,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-10 12:20:48.228533",
+ "modified": "2026-02-10 13:10:36.374175",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Material Request",
