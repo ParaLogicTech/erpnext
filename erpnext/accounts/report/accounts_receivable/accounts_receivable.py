@@ -128,8 +128,11 @@ class ReceivablePayableReport(object):
 		self.get_delivery_notes_map(gles_to_add)
 
 		data = []
+		running_balance = 0
 		for gle in gles_to_add:
 			row = self.prepare_row(gle)
+			running_balance += row.get("outstanding_amount")
+			row["running_balance"] = frappe.format(running_balance)
 			data.append(row)
 
 		return data
@@ -989,6 +992,12 @@ class ReceivablePayableReport(object):
 				"fieldname": "outstanding_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
+				"width": 120
+			},
+			{
+				"label": _("Running Balance"),
+				"fieldname": "running_balance",
+				"fieldtype": "Data",
 				"width": 120
 			}
 		]
