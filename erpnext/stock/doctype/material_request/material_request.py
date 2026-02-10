@@ -56,7 +56,7 @@ class MaterialRequest(BuyingController):
 		self.calculate_totals()
 
 		self.set_completion_status()
-		self.set_po_created(update=True)
+		self.set_po_created(update=False)
 		self.set_status()
 		self.set_title()
 		# self.validate_qty_against_so()
