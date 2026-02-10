@@ -44,6 +44,9 @@ class TransactionController(StockController):
 			"is_stock_item", "is_fixed_asset", "has_batch_no", "has_serial_no", "is_vehicle",
 			"claim_customer", "force_default_warehouse", "is_prepaid_deferred_revenue",
 			"sales_commission_category", "commission_rate", "retail_rate",
+
+			"actual_qty", "actual_batch_qty", "projected_qty", "reserved_qty",
+			"in_transit_qty", "avg_monthly_sales", "last_billed_rate",
 		]
 
 		self.merge_items_sum_fields = [
@@ -103,23 +106,7 @@ class TransactionController(StockController):
 
 	def onload(self):
 		super().onload()
-
 		self.set_onload("enable_dynamic_bundling", self.dynamic_bundling_enabled())
-
-		if self.docstatus == 0:
-			for item in self.get("items") or []:
-				if (
-					item.meta.has_field("item_code")
-					and item.meta.has_field("warehouse")
-					and (item.meta.has_field('actual_qty') or item.meta.has_field('projected_qty'))
-				):
-					item.update(get_bin_details(item.item_code, item.warehouse))
-
-				if item.meta.has_field('actual_batch_qty'):
-					if item.get('batch_no'):
-						item.actual_batch_qty = get_batch_qty(item.batch_no, item.warehouse, item.item_code)
-					else:
-						item.actual_batch_qty = 0
 
 	def before_print(self, print_settings=None):
 		super().before_print(print_settings)

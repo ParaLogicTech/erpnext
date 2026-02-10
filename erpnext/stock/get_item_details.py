@@ -69,20 +69,14 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 	if args.customer and cint(args.is_pos) and args.pos_profile:
 		out.update(get_pos_profile_item_details(args, args.pos_profile))
 
-	if out.get("warehouse"):
-		out.update(get_bin_details(args.item_code, out.warehouse))
-
 	# update args with out, if key or value not exists
 	for key, value in out.items():
 		if args.get(key) is None:
 			args[key] = value
 
-	data = get_pricing_rule_for_item(args, out.price_list_rate,
+	pricing_rule_data = get_pricing_rule_for_item(args, out.price_list_rate,
 		doc, for_validate=for_validate)
-
-	out.update(data)
-
-	update_stock(args, out)
+	out.update(pricing_rule_data)
 
 	if args.transaction_date and item.lead_time_days:
 		out.schedule_date = out.lead_time_date = add_days(args.transaction_date,
@@ -95,8 +89,21 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		out.rate = args.rate or out.price_list_rate
 		out.amount = flt(args.qty * out.rate)
 
+	set_serial_batch_details(args, out)
+
 	child_doctype = args.doctype + ' Item'
 	child_meta = frappe.get_meta(child_doctype)
+
+	if (
+		child_meta.has_field("actual_qty")
+		or child_meta.has_field("projected_qty")
+		or child_meta.has_field("reserved_qty")
+	):
+		out.update(get_bin_details(args.item_code, out.warehouse))
+
+	if child_meta.has_field("actual_batch_qty"):
+		out["actual_batch_qty"] = get_batch_qty(out.batch_no, out.warehouse, out.item_code) if out.has_batch_no else 0
+
 	if child_meta.get_field("last_billed_rate"):
 		last_billed_rate = get_last_billed_rate(
 			item_code=args.get("item_code"),
@@ -116,26 +123,6 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 	frappe.utils.call_hook_method("get_item_details", args, out, doc=doc, for_validate=for_validate)
 
 	return out
-
-
-def update_stock(args, out):
-	if (args.get("doctype") == "Delivery Note" or
-		(args.get("doctype") == "Sales Invoice" and args.get('update_stock'))) \
-		and out.warehouse and out.stock_qty > 0:
-
-		if out.has_batch_no and not args.get("batch_no"):
-			actual_batch_qty = get_batch_qty(out.batch_no, out.warehouse, out.item_code)
-			if actual_batch_qty:
-				out.update(actual_batch_qty)
-
-		if out.has_serial_no and args.get('batch_no'):
-			reserved_so = get_so_reservation_for_item(args)
-			out.batch_no = args.get('batch_no')
-			out.serial_no = get_serial_no(out, args.serial_no, sales_order=reserved_so)
-
-		elif out.has_serial_no:
-			reserved_so = get_so_reservation_for_item(args)
-			out.serial_no = get_serial_no(out, args.serial_no, sales_order=reserved_so)
 
 
 def process_args(args):
@@ -1306,10 +1293,46 @@ def is_item_uom_convertible(item_code, uom):
 	return not conversion.get("not_convertible")
 
 
+def set_serial_batch_details(args, out):
+	if (
+		(
+			args.get("doctype") == "Delivery Note" or
+			(args.get("doctype") == "Sales Invoice" and args.get('update_stock'))
+		)
+		and out.warehouse and out.stock_qty > 0
+	):
+		if out.has_serial_no and args.get('batch_no'):
+			reserved_so = get_so_reservation_for_item(args)
+			out.batch_no = args.get('batch_no')
+			out.serial_no = get_serial_no(out, args.serial_no, sales_order=reserved_so)
+
+		elif out.has_serial_no:
+			reserved_so = get_so_reservation_for_item(args)
+			out.serial_no = get_serial_no(out, args.serial_no, sales_order=reserved_so)
+
+
 @frappe.whitelist()
-def get_projected_qty(item_code, warehouse):
-	return {"projected_qty": frappe.db.get_value("Bin",
-		{"item_code": item_code, "warehouse": warehouse}, "projected_qty")}
+def get_bin_details_and_serial_nos(item_code, warehouse, stock_qty=None, batch_no=None, serial_no=None):
+	bin_details_and_serial_nos = frappe._dict({"actual_batch_qty": 0})
+	bin_details_and_serial_nos.update(get_bin_details(item_code, warehouse))
+
+	has_batch_no = cint(frappe.get_cached_value("Item", item_code, "has_batch_no"))
+	if batch_no and has_batch_no:
+		bin_details_and_serial_nos["actual_batch_qty"] = get_batch_qty(batch_no, warehouse, item_code)
+
+	stock_qty = flt(stock_qty)
+	if stock_qty > 0:
+		args = frappe._dict({
+			"item_code": item_code,
+			"warehouse": warehouse,
+			"batch_no": batch_no if has_batch_no else None,
+			"serial_no": serial_no,
+			"stock_qty": stock_qty,
+		})
+		serial_no = get_serial_no(args)
+		bin_details_and_serial_nos["serial_no"] = serial_no
+
+	return bin_details_and_serial_nos
 
 
 @frappe.whitelist()
@@ -1331,44 +1354,28 @@ def get_bin_details(item_code, warehouse):
 
 
 @frappe.whitelist()
-def get_serial_no_details(item_code, warehouse, stock_qty, serial_no):
-	args = frappe._dict({"item_code":item_code, "warehouse":warehouse, "stock_qty":stock_qty, "serial_no":serial_no})
-	serial_no = get_serial_no(args)
-	return {'serial_no': serial_no}
+def get_batch_qty_and_serial_no(batch_no, warehouse, item_code, stock_qty):
+	batch_qty_and_serial_no = frappe._dict({
+		"actual_batch_qty": get_batch_qty(batch_no, warehouse, item_code)
+	})
 
+	has_serial_no = cint(frappe.get_cached_value("Item", item_code, "has_serial_no"))
 
-@frappe.whitelist()
-def get_bin_details_and_serial_nos(item_code, warehouse, has_batch_no=None, stock_qty=None, serial_no=None):
-	bin_details_and_serial_nos = {}
-	bin_details_and_serial_nos.update(get_bin_details(item_code, warehouse))
-	if flt(stock_qty) > 0:
-		if has_batch_no:
-			args = frappe._dict({"item_code":item_code, "warehouse":warehouse, "stock_qty":stock_qty})
-			serial_no = get_serial_no(args)
-			bin_details_and_serial_nos.update({'serial_no': serial_no})
-			return bin_details_and_serial_nos
+	if flt(batch_qty_and_serial_no.get('actual_batch_qty')) >= flt(stock_qty) and has_serial_no:
+		args = frappe._dict({
+			"item_code": item_code,
+			"warehouse": warehouse,
+			"stock_qty": stock_qty,
+			"batch_no": batch_no,
+		})
+		batch_qty_and_serial_no['serial_no'] = get_serial_no(args)
 
-		bin_details_and_serial_nos.update(get_serial_no_details(item_code, warehouse, stock_qty, serial_no))
-	return bin_details_and_serial_nos
-
-
-@frappe.whitelist()
-def get_batch_qty_and_serial_no(batch_no, stock_qty, warehouse, item_code, has_serial_no):
-	batch_qty_and_serial_no = {}
-	batch_qty_and_serial_no.update(get_batch_qty(batch_no, warehouse, item_code))
-
-	if (flt(batch_qty_and_serial_no.get('actual_batch_qty')) >= flt(stock_qty)) and has_serial_no:
-		args = frappe._dict({"item_code":item_code, "warehouse":warehouse, "stock_qty":stock_qty, "batch_no":batch_no})
-		serial_no = get_serial_no(args)
-		batch_qty_and_serial_no.update({'serial_no': serial_no})
 	return batch_qty_and_serial_no
 
 
-@frappe.whitelist()
 def get_batch_qty(batch_no, warehouse, item_code):
-	from erpnext.stock.doctype.batch import batch
-	if batch_no:
-		return {'actual_batch_qty': batch.get_batch_qty(batch_no, warehouse)}
+	from erpnext.stock.doctype.batch.batch import get_batch_qty
+	return get_batch_qty(batch_no, warehouse) if batch_no and warehouse else 0
 
 
 @frappe.whitelist()

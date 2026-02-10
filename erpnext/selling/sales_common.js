@@ -389,8 +389,7 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 	}
 
 	warehouse(doc, cdt, cdn) {
-		var me = this;
-		var item = frappe.get_doc(cdt, cdn);
+		let item = frappe.get_doc(cdt, cdn);
 
 		let serial_no_count = item.serial_no
 			? item.serial_no.split(`\n`).filter(d => d).length : 0;
@@ -403,26 +402,23 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			item.serial_no = null;
 		}
 
-		var has_batch_no;
-		frappe.db.get_value('Item', {'item_code': item.item_code}, 'has_batch_no', (r) => {
-			has_batch_no = r && r.has_batch_no;
-			if(item.item_code && item.warehouse) {
-				return this.frm.call({
-					method: "erpnext.stock.get_item_details.get_bin_details_and_serial_nos",
-					child: item,
-					args: {
-						item_code: item.item_code,
-						warehouse: item.warehouse,
-						has_batch_no: has_batch_no || 0,
-						stock_qty: item.stock_qty,
-						serial_no: item.serial_no || "",
-					},
-					callback:function(r){
+		this.get_bin_details_and_serial_nos(item);
+	}
 
-					}
-				});
-			}
-		})
+	get_bin_details_and_serial_nos(item) {
+		if (item.item_code && item.warehouse) {
+			return this.frm.call({
+				method: "erpnext.stock.get_item_details.get_bin_details_and_serial_nos",
+				child: item,
+				args: {
+					item_code: item.item_code,
+					warehouse: item.warehouse,
+					batch_no: item.batch_no,
+					stock_qty: item.stock_qty,
+					serial_no: item.serial_no || "",
+				}
+			});
+		}
 	}
 
 	toggle_editable_price_list_rate() {
@@ -492,27 +488,25 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 	}
 
 	batch_no(doc, cdt, cdn) {
-		var me = this;
-		var item = frappe.get_doc(cdt, cdn);
+		let item = frappe.get_doc(cdt, cdn);
 		item.serial_no = null;
-		var has_serial_no;
-		frappe.db.get_value('Item', {'item_code': item.item_code}, 'has_serial_no', (r) => {
-			has_serial_no = r && r.has_serial_no;
-			if(item.warehouse && item.item_code && item.batch_no) {
-				return this.frm.call({
-					method: "erpnext.stock.get_item_details.get_batch_qty_and_serial_no",
-					child: item,
-					args: {
-						"batch_no": item.batch_no,
-						"stock_qty": item.stock_qty || item.qty, //if stock_qty field is not available fetch qty (in case of Packed Items table)
-						"warehouse": item.warehouse,
-						"item_code": item.item_code,
-						"has_serial_no": has_serial_no
-					},
-					"fieldname": "actual_batch_qty"
-				});
-			}
-		})
+		refresh_field("serial_no", item.name, "items");
+		this.get_batch_qty_and_serial_no(item);
+	}
+
+	get_batch_qty_and_serial_no(item) {
+		if (item.warehouse && item.item_code && item.batch_no) {
+			return this.frm.call({
+				method: "erpnext.stock.get_item_details.get_batch_qty_and_serial_no",
+				child: item,
+				args: {
+					"batch_no": item.batch_no,
+					"stock_qty": item.stock_qty || item.qty, //if stock_qty field is not available fetch qty (in case of Packed Items table)
+					"warehouse": item.warehouse,
+					"item_code": item.item_code,
+				},
+			});
+		}
 	}
 
 	set_dynamic_labels() {
