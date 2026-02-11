@@ -998,6 +998,7 @@ class ReceivablePayableReport(object):
 				"label": _("Cumulative Outstanding"),
 				"fieldname": "cumulative_outstanding",
 				"fieldtype": "Currency",
+				"options": "currency",
 				"width": 120
 			}
 		]
