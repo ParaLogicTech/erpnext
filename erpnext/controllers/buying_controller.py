@@ -1147,8 +1147,8 @@ class BuyingController(TransactionController):
 		})
 
 		for dimension_field in accounting_dimensions:
-			if self.get(dimension_field):
-				asset.set(dimension_field, self.get(dimension_field))
+			if row.get(dimension_field) or self.get(dimension_field):
+				asset.set(dimension_field, row.get(dimension_field) or self.get(dimension_field))
 
 		asset.flags.ignore_validate = True
 		asset.flags.ignore_mandatory = True
