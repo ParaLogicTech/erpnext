@@ -172,12 +172,16 @@ class Asset(AccountsController):
 			for each_item in purchase_document.items:
 				if ((each_item.name == self.item_detail) and (each_item.item_code == self.item_code)):
 					self.asset_category = each_item.asset_category
+					self.cost_center = each_item.get("cost_center")
+					self.set_accounting_dimensions(each_item, purchase_document)
 					break
 			else:
 				for each_item in purchase_document.items:
 					if each_item.item_code == self.item_code:
 						self.item_detail = each_item.name
 						self.asset_category = each_item.asset_category
+						self.cost_center = each_item.get("cost_center")
+						self.set_accounting_dimensions(each_item, purchase_document)
 						break
 				else:
 					frappe.throw("The selected {document_name} doesn't contains selected Asset Item.".format(document_name=document_name))
@@ -187,9 +191,16 @@ class Asset(AccountsController):
 			self.purchase_receipt_amount = each_item.base_net_rate + each_item.item_tax_amount
 			self.location = each_item.asset_location
 			self.branch = purchase_document.branch
-			self.cost_center = purchase_document.cost_center
+			if not self.cost_center:
+				self.cost_center = purchase_document.cost_center
 			self.purchase_vendor = purchase_document.supplier
 			self.purchase_vendor_name = purchase_document.supplier_name
+	
+	def set_accounting_dimensions(self, item_row, purchase_document):
+		accounting_dimensions = get_accounting_dimensions()
+		for dimension_field in accounting_dimensions:
+			if item_row.get(dimension_field) or purchase_document.get(dimension_field):
+				self.set(dimension_field, item_row.get(dimension_field) or purchase_document.get(dimension_field))
 
 	def cancel_auto_gen_movement(self):
 		movements = frappe.db.sql(
