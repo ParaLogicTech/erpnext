@@ -1143,7 +1143,7 @@ class BuyingController(TransactionController):
 			'gross_purchase_amount': purchase_amount,
 			'purchase_receipt': self.name if self.doctype == 'Purchase Receipt' else None,
 			'purchase_invoice': self.name if self.doctype == 'Purchase Invoice' else None,
-			'cost_center': self.cost_center
+			'cost_center': row.get("cost_center") or self.get("cost_center")
 		})
 
 		for dimension_field in accounting_dimensions:
