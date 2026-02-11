@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, getdate, today, cstr, combine_datetime
 from erpnext.stock.utils import update_included_uom_in_dict_report, has_valuation_read_permission
+from erpnext.stock.get_item_details import get_item_group_customs_tariff_number
 from frappe.desk.reportview import build_match_conditions
 from collections import OrderedDict
 
@@ -53,6 +54,7 @@ class StockBalanceReport:
 
 		self.show_amounts = has_valuation_read_permission() and self.filters.show_amounts
 		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_tariff_number = False
 
 		if self.filters.from_date > self.filters.to_date:
 			frappe.throw(_("From Date cannot be after To Date"))
@@ -151,7 +153,8 @@ class StockBalanceReport:
 		item_data = frappe.db.sql("""
 			select
 				item.name, item.item_name, item.description, item.item_group, item.brand,
-				item.stock_uom, item.alt_uom, item.alt_uom_size, item.disabled {cf_field}
+				item.stock_uom, item.alt_uom, item.alt_uom_size, item.disabled,
+				item.customs_tariff_number {cf_field}
 			from `tabItem` item
 			{cf_join}
 			where item.name in %s
@@ -324,6 +327,10 @@ class StockBalanceReport:
 				item_reorder_level = flt(reorder_details.get("warehouse_reorder_level"))
 				item_reorder_qty = flt(reorder_details.get("warehouse_reorder_qty"))
 
+				tariff_number = item_details.get("customs_tariff_number")
+				if not tariff_number and item_details.get("item_group"):
+					tariff_number = get_item_group_customs_tariff_number(item_details.get("item_group"))
+
 				row = {
 					"item_code": stock_balance.item_code,
 					"warehouse": stock_balance.warehouse,
@@ -336,6 +343,7 @@ class StockBalanceReport:
 					"item_group": item_details["item_group"],
 					"brand": item_details["brand"],
 					"description": item_details["description"],
+					"customs_tariff_number": tariff_number,
 
 					"package_type": package_type,
 
@@ -383,6 +391,9 @@ class StockBalanceReport:
 					if fifo_queue:
 						ageing_details = get_ageing_details(fifo_queue, self.filters.to_date)
 						row.update(ageing_details)
+
+				if row.get("customs_tariff_number"):
+					self.show_tariff_number = True
 
 				self.rows.append(row)
 
@@ -507,6 +518,8 @@ class StockBalanceReport:
 				"width": 100},
 			{"label": _("Brand"), "fieldname": "brand", "fieldtype": "Link", "options": "Brand",
 				"width": 90},
+			{"label": _("HS Code"), "fieldname": "customs_tariff_number", "fieldtype": "Link", "options": "Customs Tariff Number",
+				"width": 80},
 			{"label": _("Company"), "fieldname": "company", "fieldtype": "Link", "options": "Company",
 				"width": 100},
 			{'label': _('Average Age'), 'fieldname': 'average_age', 'fieldtype': 'Float',
@@ -529,6 +542,9 @@ class StockBalanceReport:
 
 		if not self.show_amounts:
 			self.columns = [c for c in self.columns if not c.get("is_value")]
+
+		if not self.show_tariff_number:
+			self.columns = [c for c in self.columns if c.get("fieldname") != "customs_tariff_number"]
 
 		if not self.include_purchase_order_details():
 			self.columns = [c for c in self.columns if not c.get("projected_column")]
