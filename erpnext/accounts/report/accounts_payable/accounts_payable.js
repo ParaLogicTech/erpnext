@@ -157,6 +157,19 @@ frappe.query_reports["Accounts Payable"] = {
 		});
 		erpnext.utils.add_payment_reconciliation_button("Supplier", report.page, () => report.get_values());
 	},
+	get_datatable_options(options) {
+		return Object.assign(options, {
+			hooks: {
+				columnTotal: function (values, column, type) {
+					if (in_list(['cumulative_outstanding'], column.column.fieldname)) {
+						return '';
+					} else {
+						return frappe.utils.report_column_total(values, column, type);
+					}
+				}
+			},
+		});
+	},
 	initial_depth: 1
 }
 
