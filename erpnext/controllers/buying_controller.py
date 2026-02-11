@@ -10,7 +10,6 @@ from erpnext.buying.utils import validate_for_items
 from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
 from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
 from erpnext.controllers.transaction_controller import TransactionController
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 import json
 
 
@@ -1125,8 +1124,6 @@ class BuyingController(TransactionController):
 
 		purchase_amount = flt(row.base_rate + row.item_tax_amount)
 
-		accounting_dimensions = get_accounting_dimensions()
-
 		asset = frappe.get_doc({
 			'doctype': 'Asset',
 			'item_code': row.item_code,
@@ -1145,10 +1142,7 @@ class BuyingController(TransactionController):
 			'purchase_invoice': self.name if self.doctype == 'Purchase Invoice' else None,
 			'cost_center': row.get("cost_center") or self.get("cost_center")
 		})
-
-		for dimension_field in accounting_dimensions:
-			if row.get(dimension_field) or self.get(dimension_field):
-				asset.set(dimension_field, row.get(dimension_field) or self.get(dimension_field))
+		asset.set_accounting_dimensions(row, self)
 
 		asset.flags.ignore_validate = True
 		asset.flags.ignore_mandatory = True
