@@ -128,11 +128,11 @@ class ReceivablePayableReport(object):
 		self.get_delivery_notes_map(gles_to_add)
 
 		data = []
-		running_balance = 0
+		cumulative_outstanding = 0
 		for gle in gles_to_add:
 			row = self.prepare_row(gle)
-			running_balance += row.get("outstanding_amount")
-			row["running_balance"] = frappe.format(running_balance)
+			cumulative_outstanding += row.get("outstanding_amount")
+			row["cumulative_outstanding"] = frappe.format(cumulative_outstanding)
 			data.append(row)
 
 		return data
@@ -995,8 +995,8 @@ class ReceivablePayableReport(object):
 				"width": 120
 			},
 			{
-				"label": _("Running Balance"),
-				"fieldname": "running_balance",
+				"label": _("Cumulative Outstanding"),
+				"fieldname": "cumulative_outstanding",
 				"fieldtype": "Data",
 				"width": 120
 			}
