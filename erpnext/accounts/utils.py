@@ -1090,7 +1090,8 @@ def parse_naming_series_variable(doc, variable):
 		date = doc.get("posting_date") or doc.get("transaction_date") or getdate()
 		return get_fiscal_year(date=date, company=doc.get("company"))[0]
 	elif variable == "CO":
-		return frappe.get_cached_value('Company', doc.get('company'), 'abbr')
+		company = doc.get("company") or erpnext.get_default_company()
+		return frappe.get_cached_value('Company', company, 'abbr')
 	elif variable == "BR":
 		return frappe.get_cached_value('Branch', doc.get('branch'), 'abbreviation')
 
