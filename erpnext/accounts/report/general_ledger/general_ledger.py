@@ -341,6 +341,8 @@ def get_conditions(filters, accounting_dimensions):
 
 	if (
 		filters.get("account_list")
+		or filters.get("party_type")
+		or filters.get("account_type") in ("Receivable", "Payable")
 		or filters.get("party_list")
 		or filters.get("group_by") in [_("Group by Account"), _("Group by Party"), _("Group by Sales Person")]
 	):
