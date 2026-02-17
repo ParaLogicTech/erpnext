@@ -80,32 +80,36 @@ class ReceivablePayableReport(object):
 		self.get_projects_map()
 		self.get_employee_advance_map()
 
-		employee_advances_added = set()
+		vouchers_visited = set()
 		gles_to_add = []
 		for gle in self.gl_entries_till_date:
 			if (
-				self.is_receivable_or_payable(gle)
+				self.get_gl_entries_for(gle.party, gle.voucher_type, gle.voucher_no)
 				and self.is_in_cost_center(gle)
 				and self.is_in_project(gle)
 				and self.is_in_branch(gle)
 				and self.is_in_sales_person(gle)
 				and self.is_in_item_filtered_invoice(gle)
 			):
-				gle.outstanding_amount, gle.return_amount, gle.payment_amount = self.get_outstanding_amount(
-					gle, self.filters.report_date,
-				)
+				key = (gle.party, gle.voucher_type, gle.voucher_no)
+				if key in vouchers_visited:
+					continue
+
+				self.calculate_gle_outstanding(gle)
 
 				if abs(gle.outstanding_amount) >= 0.1 / 10 ** self.currency_precision:
 					gles_to_add.append(gle)
 
+				vouchers_visited.add(key)
+
 			elif self.filters.party_type == "Employee" and gle.against_voucher_type == "Employee Advance":
 				ea_details = self.employee_advance_map.get(gle.against_voucher, frappe._dict())
 				if (
-					gle.against_voucher not in employee_advances_added
+					("Employee Advance", gle.against_voucher) not in vouchers_visited
 					and self.is_in_cost_center(ea_details)
 					and self.is_in_project(ea_details)
 				):
-					employee_advances_added.add(gle.against_voucher)
+					vouchers_visited.add(("Employee Advance", gle.against_voucher))
 					gle.outstanding_amount, gle.return_amount, gle.payment_amount = self.get_employee_advance_outstanding(
 						gle, self.filters.report_date
 					)
@@ -141,9 +145,9 @@ class ReceivablePayableReport(object):
 		conditions, values = self.prepare_conditions()
 
 		if self.use_account_currency():
-			select_fields = "sum(gle.debit_in_account_currency) as debit, sum(gle.credit_in_account_currency) as credit"
+			select_fields = "gle.debit_in_account_currency as debit, gle.credit_in_account_currency as credit"
 		else:
-			select_fields = "sum(gle.debit) as debit, sum(gle.credit) as credit"
+			select_fields = "gle.debit, gle.credit"
 
 		if "branch" in get_accounting_dimensions():
 			select_fields += ", gle.branch"
@@ -161,7 +165,6 @@ class ReceivablePayableReport(object):
 			where gle.party_type = %s
 				and (gle.party is not null and gle.party != '')
 				{conditions}
-			group by gle.voucher_type, gle.voucher_no, gle.against_voucher_type, gle.against_voucher, gle.party
 			order by gle.posting_date, gle.party
 		""", values, as_dict=True)
 
@@ -182,7 +185,13 @@ class ReceivablePayableReport(object):
 				self.vouchers_till_date.add((gle.voucher_type, gle.voucher_no))
 				self.voucher_nos_till_date.add(gle.voucher_no)
 
-			if gle.against_voucher_type and gle.against_voucher:
+			key = (gle.party, gle.voucher_type, gle.voucher_no)
+			self.gl_entries_map.setdefault(key, []).append(gle)
+
+			if (
+				gle.against_voucher_type and gle.against_voucher
+				and (gle.voucher_type, gle.voucher_no) != (gle.against_voucher_type, gle.against_voucher)
+			):
 				key = (gle.party, gle.against_voucher_type, gle.against_voucher)
 				self.gl_entries_map.setdefault(key, []).append(gle)
 
@@ -555,30 +564,51 @@ class ReceivablePayableReport(object):
 
 		return self.item_filtered_invoices
 
-	def get_outstanding_amount(self, gle, report_date):
-		payment_amount, credit_note_amount = 0.0, 0.0
+	def calculate_gle_outstanding(self, gle):
+		gle.invoiced_amount = 0
+		gle.paid_amount = 0
+		gle.return_amount = 0
 
-		for e in self.get_gl_entries_for(gle.party, gle.voucher_type, gle.voucher_no):
-			if getdate(e.posting_date) <= report_date and e.name != gle.name:
-				amount = flt(e.get(self.reverse_dr_or_cr), self.currency_precision) - flt(e.get(self.dr_or_cr), self.currency_precision)
-				if e.voucher_no not in self.return_entries:
-					payment_amount += amount
+		all_gles = self.get_gl_entries_for(gle.party, gle.voucher_type, gle.voucher_no)
+		for e in all_gles:
+			if getdate(e.posting_date) > self.filters.report_date:
+				continue
+
+			same_as_posting_voucher = e.voucher_type == gle.voucher_type and e.voucher_no == gle.voucher_no
+			same_as_against_voucher = e.against_voucher_type == gle.voucher_type and e.against_voucher == gle.voucher_no
+
+			amount = flt(e.get(self.dr_or_cr)) - flt(e.get(self.reverse_dr_or_cr))
+
+			if same_as_posting_voucher and self.is_receivable_or_payable(e):
+				# invoicing line
+				if amount >= 0:
+					gle.invoiced_amount += amount
+
+				# standalone return line
+				elif e.voucher_no in self.return_entries:
+					gle.return_amount -= amount
+
+				# unallocated payment line
 				else:
-					credit_note_amount += amount
+					gle.paid_amount -= amount
 
-		# for stand alone credit/debit note
-		if gle.voucher_no in self.return_entries and flt(gle.get(self.reverse_dr_or_cr)) - flt(gle.get(self.dr_or_cr) > 0):
-			amount = flt(gle.get(self.reverse_dr_or_cr), self.currency_precision) - flt(gle.get(self.dr_or_cr), self.currency_precision)
-			credit_note_amount += amount
-			payment_amount -= amount
+			elif same_as_against_voucher:
+				# return against line
+				if e.voucher_no in self.return_entries:
+					gle.return_amount -= amount
 
-		outstanding_amount = (flt((flt(gle.get(self.dr_or_cr), self.currency_precision)
-			- flt(gle.get(self.reverse_dr_or_cr), self.currency_precision)
-			- payment_amount - credit_note_amount), self.currency_precision))
+				# payment against line
+				else:
+					gle.paid_amount -= amount
 
-		credit_note_amount = flt(credit_note_amount, self.currency_precision)
+		gle.outstanding_amount = flt(
+			gle.invoiced_amount - gle.paid_amount - gle.return_amount,
+			self.currency_precision
+		)
 
-		return outstanding_amount, credit_note_amount, payment_amount
+		gle.invoiced_amount = flt(gle.invoiced_amount, self.currency_precision)
+		gle.paid_amount = flt(gle.paid_amount, self.currency_precision)
+		gle.return_amount = flt(gle.return_amount, self.currency_precision)
 
 	def get_employee_advance_outstanding(self, gle, report_date):
 		claimed_amount, payment_amount, return_amount = 0.0, 0.0, 0.0
@@ -647,11 +677,8 @@ class ReceivablePayableReport(object):
 			row["supplier_group"] = self.get_supplier_group(gle.party)
 
 		# Amounts
-		invoiced_amount = gle.get(self.dr_or_cr) if gle.get(self.dr_or_cr) > 0 else 0
-		paid_amt = invoiced_amount - gle.outstanding_amount - gle.return_amount
-
-		row["invoiced_amount"] = invoiced_amount
-		row["paid_amount"] = paid_amt
+		row["invoiced_amount"] = gle.invoiced_amount
+		row["paid_amount"] = gle.paid_amount
 		row["return_amount"] = gle.return_amount
 		row["outstanding_amount"] = gle.outstanding_amount
 
