@@ -1339,7 +1339,6 @@ class Project(StatusUpdaterERP):
 			item_codes_visited.add(d.underinsurance_item_code)
 
 	def validate_insurance_excess_billed_amount(self, for_proforma_invoice=False):
-		print(self.name)
 		total_excess = flt(self.insurance_excess_amount) + flt(self.additional_insurance_excess_amount)
 		if not total_excess:
 			return
@@ -1349,14 +1348,6 @@ class Project(StatusUpdaterERP):
 		)
 
 		precision = self.precision("insurance_excess_amount")
-
-		print(self.insurance_excess_amount)
-		print(self.additional_insurance_excess_amount)
-
-		print(total_excess)
-		print("total_excess")
-		print(positive_excess)
-		print(negative_excess)
 
 		if (
 			positive_excess - total_excess > 1 / 10 ** precision
