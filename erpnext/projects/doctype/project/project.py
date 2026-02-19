@@ -218,7 +218,8 @@ class Project(StatusUpdaterERP):
 
 		for d in sales_orders + delivery_notes:
 			if d.status != "Closed":
-				has_billables = True
+				if d.billing_status != "Not Applicable":
+					has_billables = True
 				if d.billing_status == "To Bill":
 					has_unbilled = True
 
