@@ -217,7 +217,7 @@ class Project(StatusUpdaterERP):
 		has_sales_invoice = False
 
 		for d in sales_orders + delivery_notes:
-			if d.status != "Closed":
+			if d.status not in ["Closed", "Completed"]:
 				has_billables = True
 				if d.billing_status == "To Bill":
 					has_unbilled = True
@@ -265,11 +265,12 @@ class Project(StatusUpdaterERP):
 		has_undelivered = False
 		has_delivery = False
 
-		if delivery_notes:
-			has_delivery = True
+		for d in delivery_notes:
+			if d.status not in ["Completed"]:
+				has_delivery = True
 
 		for d in sales_orders:
-			if not d.skip_delivery_note:
+			if ((not d.skip_delivery_note) and (d.status!="Completed")):
 				if d.delivery_status in ("To Deliver", "Delivered"):
 					has_deliverables = True
 				if d.delivery_status == "To Deliver":
@@ -1338,6 +1339,7 @@ class Project(StatusUpdaterERP):
 			item_codes_visited.add(d.underinsurance_item_code)
 
 	def validate_insurance_excess_billed_amount(self, for_proforma_invoice=False):
+		print(self.name)
 		total_excess = flt(self.insurance_excess_amount) + flt(self.additional_insurance_excess_amount)
 		if not total_excess:
 			return
@@ -1347,6 +1349,14 @@ class Project(StatusUpdaterERP):
 		)
 
 		precision = self.precision("insurance_excess_amount")
+
+		print(self.insurance_excess_amount)
+		print(self.additional_insurance_excess_amount)
+
+		print(total_excess)
+		print("total_excess")
+		print(positive_excess)
+		print(negative_excess)
 
 		if (
 			positive_excess - total_excess > 1 / 10 ** precision
