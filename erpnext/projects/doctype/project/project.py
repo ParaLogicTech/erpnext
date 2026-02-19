@@ -264,10 +264,9 @@ class Project(StatusUpdaterERP):
 		has_deliverables = False
 		has_undelivered = False
 		has_delivery = False
-
-		for d in delivery_notes:
-			if d.status not in ["Completed"]:
-				has_delivery = True
+		
+		if delivery_notes:
+			has_delivery = True
 
 		for d in sales_orders:
 			if ((not d.skip_delivery_note) and (d.status!="Completed")):
