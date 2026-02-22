@@ -351,7 +351,7 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 			else:
 				qty_to_pop = abs(sle.actual_qty)
 				while qty_to_pop:
-					batch = fifo_queue[0] if fifo_queue else (fifo_dict["previous_batch"] or [0, None, 0])
+					batch = fifo_queue[0] if fifo_queue else (fifo_dict["previous_batch"] or [0, sle.posting_date, sle.valuation_rate])
 					if 0 < flt(batch[0]) <= qty_to_pop:
 						# if batch qty > 0
 						# not enough or exactly same qty in current batch, clear batch
