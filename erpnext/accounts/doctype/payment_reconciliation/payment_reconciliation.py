@@ -12,6 +12,7 @@ from erpnext.accounts.utils import (
 	reconcile_against_document,
 	get_advance_against_voucher_types
 )
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_dimension_fields
 
 
 class PaymentReconciliation(Document):
@@ -248,22 +249,20 @@ class PaymentReconciliation(Document):
 
 def reconcile_dr_cr_note(dr_cr_notes, company):
 	for d in dr_cr_notes:
+		voucher_doc = frappe.get_doc(d.voucher_type, d.voucher_no)
 
 		reconcile_dr_or_cr = ('debit_in_account_currency'
 			if d.dr_or_cr == 'credit_in_account_currency' else 'credit_in_account_currency')
 
 		company_currency = erpnext.get_company_currency(company)
 
-		branch, cost_center = frappe.db.get_value(d.voucher_type, d.voucher_no, ["branch", "cost_center"])
-
 		jv = frappe.get_doc({
 			"doctype": "Journal Entry",
 			"voucher_type": "Payment Reconciliation",
 			"posting_date": today(),
 			"company": company,
+			"branch": voucher_doc.get("branch"), 
 			"multi_currency": 1 if d.currency != company_currency else 0,
-			"branch": branch,
-			"cost_center": cost_center,
 			"accounts": [
 				{
 					'account': d.account,
@@ -284,5 +283,9 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 				}
 			]
 		})
+
+		accounting_dimensions = get_all_dimension_fields()
+		for dimension_field in accounting_dimensions:
+			jv.set(dimension_field, voucher_doc.get(dimension_field))
 
 		jv.submit()
