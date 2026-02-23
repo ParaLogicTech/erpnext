@@ -248,8 +248,8 @@ class PaymentReconciliation(Document):
 
 
 def reconcile_dr_cr_note(dr_cr_notes, company):
-	non_standard_accounting_dimensions = ["branch"]
 	for d in dr_cr_notes:
+		voucher_doc = frappe.get_doc(d.voucher_type, d.voucher_no)
 
 		reconcile_dr_or_cr = ('debit_in_account_currency'
 			if d.dr_or_cr == 'credit_in_account_currency' else 'credit_in_account_currency')
@@ -261,6 +261,7 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 			"voucher_type": "Payment Reconciliation",
 			"posting_date": today(),
 			"company": company,
+			"branch": voucher_doc.get("branch"), 
 			"multi_currency": 1 if d.currency != company_currency else 0,
 			"accounts": [
 				{
@@ -283,14 +284,8 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 			]
 		})
 
-		voucher_doc = frappe.get_doc(d.voucher_type, d.voucher_no)
 		accounting_dimensions = get_all_dimension_fields()
 		for dimension_field in accounting_dimensions:
-			if ((dimension_field not in non_standard_accounting_dimensions) and (voucher_doc.get(dimension_field))):
-				jv.set(dimension_field, voucher_doc.get(dimension_field))
-		
-		for non_standard_dimension_field in non_standard_accounting_dimensions:
-			if voucher_doc.get(non_standard_dimension_field):
-				jv.set(non_standard_dimension_field, voucher_doc.get(non_standard_dimension_field))
+			jv.set(dimension_field, voucher_doc.get(dimension_field))
 
 		jv.submit()
