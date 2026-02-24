@@ -7,6 +7,8 @@ from frappe import _
 from frappe.utils import cstr, now_datetime, cint, flt, get_time, get_link_to_form, date_diff, add_days, getdate
 from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import get_terms_and_conditions
 from erpnext.controllers.status_updater import StatusUpdaterERP
+from erpnext.stock.get_item_details import get_conversion_factor
+from frappe.model.document import Document
 
 
 class UOMMustBeIntegerError(frappe.ValidationError): pass
@@ -77,6 +79,10 @@ class TransactionBase(StatusUpdaterERP):
 
 	def validate_uom_is_integer(self, uom_field, qty_fields):
 		validate_uom_is_integer(self, uom_field, qty_fields)
+
+	def validate_uom_convertability(self, item_table_fieldname, item_code_fieldname, uom_fieldname):
+		for each_item in self.get(item_table_fieldname):
+			validate_uom_convertability(each_item, each_item.get(item_code_fieldname), each_item.get(uom_fieldname))
 
 	def validate_with_previous_doc(self, ref, table_doctype=None):
 		self.exclude_fields = ["conversion_factor", "uom"] if self.get('is_return') else []
@@ -235,3 +241,11 @@ def validate_uom_is_integer(doc, uom_field, qty_fields, child_dt=None):
 						frappe.throw(_("Row {1}: Quantity ({0}) cannot be a fraction. To allow this, disable '{2}' in UOM {3}.") \
 							.format(qty, d.idx, frappe.bold(_("Must be Whole Number")), frappe.bold(d.get(uom_field))),
 								UOMMustBeIntegerError)
+
+def validate_uom_convertability(item_row:Document, item_code: str, uom: str) -> None:
+	do_not_restrict_uom_selection = frappe.db.get_value("Item", item_code, "do_not_restrict_uom_selection")
+	if do_not_restrict_uom_selection:
+		return
+	not_convertible = get_conversion_factor(item_code, uom).get("not_convertible")
+	if not_convertible:
+		frappe.throw(f"the uom <b>{uom}</b> Not convertible at row {item_row.idx}")

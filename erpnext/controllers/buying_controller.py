@@ -54,6 +54,11 @@ class BuyingController(TransactionController):
 		self.validate_stock_or_nonstock_items()
 		self.validate_warehouse()
 		self.validate_asset_return()
+		self.validate_uom_convertability(
+			item_table_fieldname="items",
+			item_code_fieldname="item_code",
+			uom_fieldname="uom"
+		)
 
 		if self.doctype == "Purchase Invoice":
 			self.validate_purchase_receipt_if_update_stock()

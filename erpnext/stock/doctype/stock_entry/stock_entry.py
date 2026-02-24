@@ -86,6 +86,11 @@ class StockEntry(TransactionController):
 		self.set_stock_qty()
 		self.validate_uom_is_integer("uom", "qty")
 		self.validate_uom_is_integer("stock_uom", "stock_qty")
+		self.validate_uom_convertability(
+			item_table_fieldname="items",
+			item_code_fieldname="item_code",
+			uom_fieldname="uom"
+		)
 		self.set_missing_warehouses()
 		self.validate_warehouse()
 		self.set_warehouse_address()

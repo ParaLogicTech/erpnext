@@ -58,6 +58,16 @@ class SellingController(TransactionController):
 		self.validate_selling_price()
 		self.set_qty_as_per_stock_uom()
 		self.set_alt_uom_qty()
+		self.validate_uom_convertability(
+			item_table_fieldname="items",
+			item_code_fieldname="item_code",
+			uom_fieldname="uom"
+		)
+		self.validate_uom_convertability(
+			item_table_fieldname="packed_items",
+			item_code_fieldname="item_code",
+			uom_fieldname="uom"
+		)
 		self.set_po_nos()
 		self.set_gross_profit()
 		self.validate_for_duplicate_items()
