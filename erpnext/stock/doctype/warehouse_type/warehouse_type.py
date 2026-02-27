@@ -2,8 +2,14 @@
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-# import frappe
+import frappe
 from frappe.model.document import Document
 
+
 class WarehouseType(Document):
-	pass
+	def on_update(self):
+		frappe.db.sql("""
+			update `tabWarehouse`
+			set stock_type = %s
+			where warehouse_type = %s
+		""", (self.stock_type, self.name))

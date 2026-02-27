@@ -18,7 +18,6 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 	refresh() {
 		erpnext.hide_company();
 		this.setup_buttons();
-		this.set_default_rejected_warehouse();
 	}
 
 	setup_queries() {
@@ -39,6 +38,17 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		me.setup_warehouse_query();
 		erpnext.queries.setup_warehouse_qty_query(me.frm, "source_warehouse", "items");
 		erpnext.queries.setup_warehouse_qty_query(me.frm, "source_warehouse", "packaging_items");
+
+		me.frm.set_query("default_rejected_warehouse", () => {
+			return erpnext.queries.warehouse(me.frm.doc, (filters) => {
+				filters.push(["Warehouse", "stock_type", "=", "Rejected"]);
+			});
+		});
+		me.frm.set_query("rejected_warehouse", "items", () => {
+			return erpnext.queries.warehouse(me.frm.doc, (filters) => {
+				filters.push(["Warehouse", "stock_type", "=", "Rejected"]);
+			});
+		});
 
 		const batch_query = (doc, cdt, cdn) => {
 			let item = frappe.get_doc(cdt, cdn);
@@ -113,13 +123,6 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		}
 
 		erpnext.utils.setup_remove_zero_qty_rows(this.frm, ['qty', 'rejected_qty']);
-	}
-
-	set_default_rejected_warehouse() {
-		if (!this.frm.doc.rejected_warehouse && this.frm.is_new()) {
-			this.frm.doc.rejected_warehouse = frappe.defaults.get_global_default("default_rejected_warehouse");
-			this.frm.refresh_field("rejected_warehouse");
-		}
 	}
 
 	rejected_qty() {

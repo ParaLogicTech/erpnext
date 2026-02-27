@@ -61,7 +61,7 @@
   "sec_warehouse",
   "set_warehouse",
   "column_break_53",
-  "rejected_warehouse",
+  "default_rejected_warehouse",
   "col_break_warehouse",
   "supplier_warehouse",
   "is_subcontracted",
@@ -470,17 +470,6 @@
    "fieldname": "set_warehouse",
    "fieldtype": "Link",
    "label": "Accepted Warehouse",
-   "options": "Warehouse",
-   "print_hide": 1
-  },
-  {
-   "fieldname": "rejected_warehouse",
-   "fieldtype": "Link",
-   "ignore_user_permissions": 1,
-   "label": "Rejected Warehouse",
-   "no_copy": 1,
-   "oldfieldname": "rejected_warehouse",
-   "oldfieldtype": "Link",
    "options": "Warehouse",
    "print_hide": 1
   },
@@ -1612,6 +1601,17 @@
    "fieldtype": "Link",
    "label": "Cost Center",
    "options": "Cost Center"
+  },
+  {
+   "fieldname": "default_rejected_warehouse",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Rejected Warehouse",
+   "no_copy": 1,
+   "oldfieldname": "rejected_warehouse",
+   "oldfieldtype": "Link",
+   "options": "Warehouse",
+   "print_hide": 1
   }
  ],
  "grid_page_length": 500,
@@ -1619,7 +1619,7 @@
  "idx": 261,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-01 04:41:01.234857",
+ "modified": "2026-02-27 14:17:47.833014",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt",

@@ -6,9 +6,17 @@ from frappe import _
 from frappe.utils import flt, cint, cstr, combine_datetime
 from frappe.model.mapper import map_child_doc, get_mapped_doc
 from erpnext.controllers.transaction_controller import TransactionController
-from erpnext.stock.get_item_details import get_conversion_factor, get_hide_item_code, get_weight_per_unit,\
-	get_default_expense_account, get_default_cost_center, get_item_default_values, get_force_default_warehouse,\
-	get_global_default_warehouse
+from erpnext.stock.get_item_details import (
+	get_conversion_factor,
+	get_hide_item_code,
+	get_weight_per_unit,
+	get_default_expense_account,
+	get_default_cost_center,
+	get_item_default_values,
+	get_default_rejected_warehouse,
+	get_force_default_warehouse,
+	get_global_default_warehouse,
+)
 from erpnext.stock.utils import get_incoming_rate
 from erpnext.accounts.party import validate_party_frozen_disabled
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
@@ -943,11 +951,11 @@ class PackingSlip(TransactionController):
 
 			# IN SLE for rejected qty
 			if d.rejected_qty:
-				if not self.rejected_warehouse:
-					frappe.throw(_("Row #{0}: Rejected Warehouse is required for rejected packing").format(d.idx))
+				if not d.rejected_warehouse:
+					frappe.throw(_("Row #{0}: Rejected Warehouse is required for packing rejection").format(d.idx))
 
 				rejected_sle_in = self.get_sl_entries(d, {
-					"warehouse": self.rejected_warehouse,
+					"warehouse": d.rejected_warehouse,
 					"actual_qty": flt(d.stock_rejected_qty),
 					"is_transfer": 1,
 				})
@@ -1391,6 +1399,7 @@ def get_item_details(args):
 
 	# Warehouse
 	out.source_warehouse = get_default_source_warehouse(item, args)
+	out.rejected_warehouse = get_default_rejected_warehouse(item, args)
 	out.force_default_warehouse = get_force_default_warehouse(item, args)
 
 	# Subcontracting

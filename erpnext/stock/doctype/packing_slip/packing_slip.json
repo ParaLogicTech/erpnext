@@ -35,7 +35,7 @@
   "column_break_15",
   "default_source_warehouse",
   "column_break_ssarm",
-  "rejected_warehouse",
+  "default_rejected_warehouse",
   "column_break_9",
   "packed_by",
   "packed_by_name",
@@ -436,12 +436,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "rejected_warehouse",
-   "fieldtype": "Link",
-   "label": "Rejected Warehouse",
-   "options": "Warehouse"
-  },
-  {
    "fieldname": "column_break_ssarm",
    "fieldtype": "Column Break"
   },
@@ -466,13 +460,20 @@
    "label": "Target Warehouse",
    "options": "Warehouse",
    "reqd": 1
+  },
+  {
+   "fieldname": "default_rejected_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Rejected Warehouse",
+   "options": "Warehouse"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-suitcase",
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-08-16 17:47:25.477758",
+ "modified": "2026-02-27 13:45:26.484564",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packing Slip",
@@ -537,6 +538,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "package_type, posting_date, customer, packed_by_name",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

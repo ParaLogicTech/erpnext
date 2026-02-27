@@ -709,6 +709,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					vehicle: item.vehicle,
 					batch_no: item.batch_no,
 					set_warehouse: this.frm.doc.set_warehouse,
+					default_rejected_warehouse: this.frm.doc.default_rejected_warehouse,
 					default_depreciation_percentage: this.frm.doc.default_depreciation_percentage,
 					default_underinsurance_percentage: this.frm.doc.default_underinsurance_percentage,
 					warehouse: item.warehouse,

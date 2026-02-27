@@ -223,6 +223,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		item.update_template_tables()
 
 	warehouse = get_default_warehouse(item, args, overwrite_warehouse)
+	rejected_warehouse = get_default_rejected_warehouse(item, args)
 	force_default_warehouse = get_force_default_warehouse(item, args)
 
 	if args.get('doctype') == "Material Request" and not args.get('material_request_type'):
@@ -259,6 +260,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"description": cstr(item.description).strip(),
 		"image": cstr(item.image).strip(),
 		"warehouse": warehouse,
+		"rejected_warehouse": rejected_warehouse,
 		"force_default_warehouse": force_default_warehouse,
 		"is_fixed_asset": item.is_fixed_asset,
 		"is_stock_item": item.is_stock_item,
@@ -405,8 +407,28 @@ def get_default_warehouse(item, args, overwrite_warehouse=True):
 	return warehouse
 
 
-def get_global_default_warehouse(company):
-	default_warehouse = frappe.get_cached_value("Stock Settings", None, "default_warehouse")
+def get_default_rejected_warehouse(item, args):
+	rejected_warehouse = args.get("rejected_warehouse")
+	if not rejected_warehouse:
+		parent_rejected_warehouse = args.get("default_rejected_warehouse")
+
+		default_values = get_item_default_values(item, args)
+		default_rejected_warehouse = default_values.get("default_rejected_warehouse")
+
+		force_default_warehouse = get_force_default_warehouse(item, args)
+		if force_default_warehouse:
+			rejected_warehouse = default_rejected_warehouse
+		else:
+			rejected_warehouse = parent_rejected_warehouse or default_rejected_warehouse
+
+		if not rejected_warehouse:
+			rejected_warehouse = get_global_default_warehouse(args.get("company"), warehouse_field="default_rejected_warehouse")
+
+	return rejected_warehouse
+
+
+def get_global_default_warehouse(company, warehouse_field="default_warehouse"):
+	default_warehouse = frappe.get_cached_value("Stock Settings", None, warehouse_field)
 	if not default_warehouse:
 		return None
 
