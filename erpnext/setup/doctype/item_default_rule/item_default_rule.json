@@ -49,6 +49,20 @@
   "deferred_revenue_account",
   "column_break_cvya",
   "deferred_expense_account",
+  "production_defaults_section",
+  "default_wip_warehouse",
+  "default_rm_warehouse",
+  "default_rejected_warehouse",
+  "column_break_j2tx",
+  "use_multi_level_bom",
+  "skip_transfer",
+  "from_wip_warehouse",
+  "allow_material_consumption",
+  "column_break_l1dj",
+  "packing_slip_required",
+  "produce_fg_in_wip_warehouse",
+  "allow_process_loss",
+  "auto_select_batches_in_stock_entry",
   "other_defaults_section",
   "show_item_code",
   "default_price_list",
@@ -366,11 +380,95 @@
    "ignore_user_permissions": 1,
    "label": "Deferred Expense Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "production_defaults_section",
+   "fieldtype": "Section Break",
+   "label": "Production Defaults"
+  },
+  {
+   "fieldname": "default_rm_warehouse",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Default Raw Material Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "column_break_j2tx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_wip_warehouse",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Default Work in Progress Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "use_multi_level_bom",
+   "fieldtype": "Select",
+   "label": "Use Multi-Level BOM",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "skip_transfer",
+   "fieldtype": "Select",
+   "label": "Skip Material Transfer to WIP Warehouse",
+   "options": "\nNo\nYes"
+  },
+  {
+   "depends_on": "eval:doc.skip_transfer == \"Yes\"",
+   "fieldname": "from_wip_warehouse",
+   "fieldtype": "Select",
+   "label": "Backflush Raw Materials From Work-in-Progress Warehouse",
+   "options": "\nNo\nYes"
+  },
+  {
+   "depends_on": "eval:doc.packing_slip_required == \"Yes\"",
+   "fieldname": "produce_fg_in_wip_warehouse",
+   "fieldtype": "Select",
+   "label": "Produce in WIP and Pack into FG Warehouse",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "column_break_l1dj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "packing_slip_required",
+   "fieldtype": "Select",
+   "label": "Packing Slip Required for Production",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "auto_select_batches_in_stock_entry",
+   "fieldtype": "Select",
+   "label": "Auto Select Batches in Production Entry",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "allow_process_loss",
+   "fieldtype": "Select",
+   "label": "Allow Production Process Loss",
+   "options": "\nNo\nYes"
+  },
+  {
+   "fieldname": "default_rejected_warehouse",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Default Rejected Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "allow_material_consumption",
+   "fieldtype": "Select",
+   "label": "Allow Material Consumption Entries",
+   "options": "\nNo\nYes"
   }
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2025-09-21 23:23:36.802467",
+ "modified": "2026-02-25 15:01:35.597093",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Item Default Rule",

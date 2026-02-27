@@ -80,14 +80,13 @@
   "transfer_material_against",
   "column_break_18",
   "use_multi_level_bom",
-  "update_consumed_material_cost_in_project",
   "skip_transfer",
   "from_wip_warehouse",
-  "produce_fg_in_wip_warehouse",
-  "packing_slip_required",
   "allow_material_consumption",
-  "auto_select_batches_in_stock_entry",
+  "packing_slip_required",
+  "produce_fg_in_wip_warehouse",
   "allow_process_loss",
+  "auto_select_batches_in_stock_entry",
   "status_tab",
   "production_section",
   "production_status",
@@ -517,12 +516,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "1",
-   "fieldname": "update_consumed_material_cost_in_project",
-   "fieldtype": "Check",
-   "label": "Update Consumed Material Cost In Project"
-  },
-  {
    "fieldname": "total_cost",
    "fieldtype": "Currency",
    "label": "Total Cost",
@@ -875,9 +868,10 @@
   },
   {
    "default": "0",
+   "depends_on": "packing_slip_required",
    "fieldname": "produce_fg_in_wip_warehouse",
    "fieldtype": "Check",
-   "label": "Produce Finished Goods in Work in Progress Warehouse"
+   "label": "Produce in WIP and Pack into FG Warehouse"
   },
   {
    "default": "0",
@@ -918,13 +912,14 @@
    "label": "Auto Select Batches in Stock Entry"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-cogs",
  "idx": 1,
  "image_field": "image",
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-10-26 17:27:08.792983",
+ "modified": "2026-02-25 15:01:28.012793",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Work Order",
@@ -969,6 +964,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "transaction_date",
  "sort_order": "DESC",
  "states": [],

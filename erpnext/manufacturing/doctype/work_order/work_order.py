@@ -3,14 +3,18 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, cint, nowdate, get_link_to_form, round_up
+from frappe.utils import flt, getdate, cint, get_link_to_form, round_up
 from erpnext.manufacturing.doctype.bom.bom import validate_bom_no, get_bom_items_as_dict
 from erpnext.stock.doctype.item.item import validate_end_of_life
 from erpnext.stock.stock_balance import get_planned_qty, update_bin_qty
 from erpnext.stock.utils import get_bin, validate_warehouse_company, get_latest_stock_qty
+from erpnext.setup.doctype.item_default_rule.item_default_rule import (
+	get_item_default_values,
+	get_default_values_for_filters,
+)
 from erpnext.utilities.transaction_base import validate_uom_is_integer
 from erpnext.controllers.status_updater import StatusUpdaterERP
-from erpnext.stock.get_item_details import get_default_bom
+from erpnext.stock.get_item_details import get_default_bom, get_default_cost_center
 from frappe.model.mapper import get_mapped_doc
 import json
 import math
@@ -27,8 +31,25 @@ form_grid_templates = {
 	"operations": "templates/form_grid/work_order_grid.html"
 }
 
+settings_checkbox_fields = [
+	"use_multi_level_bom",
+	"skip_transfer",
+	"from_wip_warehouse",
+	"allow_material_consumption",
+	"packing_slip_required",
+	"produce_fg_in_wip_warehouse",
+	"allow_process_loss",
+	"auto_select_batches_in_stock_entry",
+]
+
 
 class WorkOrder(StatusUpdaterERP):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.force_production_item_fields = [
+			"item_name", "description", "stock_uom",
+		]
+
 	def get_feed(self):
 		return "{0} {1} of {2}".format(
 			frappe.format(self.get_formatted('qty')), self.get('stock_uom'), self.get('item_name') or self.get('production_item')
@@ -41,12 +62,13 @@ class WorkOrder(StatusUpdaterERP):
 		self.set_available_qty()
 
 	def validate(self):
+		self.set_missing_values()
 		self.validate_qty()
+		self.validate_settings()
 		self.validate_operation_time()
 		self.validate_production_item()
 		self.validate_bom()
 		self.validate_sales_order()
-		self.set_default_warehouse()
 
 		self.set_required_items(reset_only_qty=bool(len(self.get("required_items"))))
 		self.validate_warehouses()
@@ -84,6 +106,38 @@ class WorkOrder(StatusUpdaterERP):
 		self.update_planned_qty()
 
 		self.delete_job_card()
+
+	def set_missing_values(self):
+		self.set_item_details()
+
+	def set_item_details(self, with_settings=False):
+		item_details = get_item_details(self.as_dict(), with_settings=with_settings)
+
+		for field, value in item_details.items():
+			if not self.meta.has_field(field):
+				continue
+
+			if field in settings_checkbox_fields:
+				if with_settings:
+					self.set(field, value)
+			elif not self.get(field) or field in self.force_production_item_fields:
+				self.set(field, value)
+
+	def set_default_settings(self):
+		default_settings = get_default_settings(self.as_dict())
+		for field, value in default_settings.items():
+			if self.meta.has_field(field):
+				self.set(field, value)
+
+	def validate_settings(self):
+		if self.packing_slip_required and self.parent_work_order:
+			self.packing_slip_required = 0
+
+		if self.produce_fg_in_wip_warehouse and not self.packing_slip_required:
+			self.produce_fg_in_wip_warehouse = 0
+
+		if self.from_wip_warehouse and not self.skip_transfer:
+			self.from_wip_warehouse = 0
 
 	def validate_qty(self):
 		self.qty = flt(self.qty, self.precision("qty"))
@@ -199,13 +253,6 @@ class WorkOrder(StatusUpdaterERP):
 				frappe.bold(self.production_item), frappe.format(so_qty)
 			), OverProductionError)
 
-	def set_default_warehouse(self):
-		warehouse_map = get_default_warehouse()
-
-		for field, warehouse in warehouse_map.items():
-			if not self.get(field) and warehouse:
-				self.set(field, warehouse)
-
 	def validate_warehouses(self):
 		if self.docstatus == 1:
 			if (
@@ -249,8 +296,6 @@ class WorkOrder(StatusUpdaterERP):
 		self.set_work_order_operations()
 		self.calculate_total_cost()
 
-		return check_if_scrap_warehouse_mandatory(self.bom_no)
-
 	def set_required_items(self, reset_only_qty=False):
 		'''set required_items for production to keep track of reserved qty'''
 		if not reset_only_qty:
@@ -291,7 +336,7 @@ class WorkOrder(StatusUpdaterERP):
 					'stock_uom': item.stock_uom,
 					'conversion_factor': flt(item.conversion_factor) or 1,
 					'has_batch_no': cint(item.has_batch_no),
-					'source_warehouse': self.source_warehouse or item.source_warehouse or item.default_warehouse,
+					'source_warehouse': item.source_warehouse or item.default_warehouse or self.source_warehouse,
 					'skip_transfer_for_manufacture': item.skip_transfer_for_manufacture
 				})
 
@@ -1125,6 +1170,11 @@ class WorkOrder(StatusUpdaterERP):
 			work_order_precison = frappe.get_precision("Work Order", "qty")
 			pending_qty = round_up(pending_qty, work_order_precison)
 
+			default_warehouses = get_default_warehouses(
+				{"item_code": d.item_code, "company": self.company},
+				ignore_global_default=True,
+			)
+
 			if pending_qty:
 				wo_item = {
 					"name": d.name,
@@ -1133,8 +1183,8 @@ class WorkOrder(StatusUpdaterERP):
 					"description": d.description,
 					"bom_no": bom_no,
 					"warehouse": default_rm_warehouse if for_raw_material_request else d.source_warehouse,
-					"wip_warehouse": self.get("wip_warehouse"),
-					"source_warehouse": self.get("source_warehouse"),
+					"wip_warehouse": default_warehouses.get("wip_warehouse") or self.get("wip_warehouse"),
+					"source_warehouse": default_warehouses.get("source_warehouse") or self.get("source_warehouse"),
 					"stock_uom": d.get("stock_uom") or d.get("uom"),
 
 					"company": self.get("company"),
@@ -1183,33 +1233,124 @@ def get_bom_operations(doctype, txt, searchfield, start, page_len, filters):
 
 
 @frappe.whitelist()
-def get_item_details(item, project=None):
-	res = frappe.db.sql("""
-		select item_name, stock_uom, description
-		from `tabItem`
-		where disabled=0
-			and (end_of_life is null or end_of_life='0000-00-00' or end_of_life > %s)
-			and name=%s
-	""", (nowdate(), item), as_dict=1)
+def get_item_details(args, with_settings=False):
+	args = process_args(args)
+	with_settings = cint(with_settings)
 
-	if not res:
-		return {}
+	out = frappe._dict()
+	if not args.item_code:
+		return out
 
-	res = res[0]
+	item = frappe.get_cached_doc("Item", args.item_code)
 
-	res["bom_no"] = get_default_bom(item, project=project)
-	if not res["bom_no"]:
-		frappe.throw(_("Active BOM for Item {0} not found").format(frappe.bold(item)))
+	out.update({
+		"item_name": item.item_name,
+		"stock_uom": item.stock_uom,
+		"description": item.description,
+	})
 
-	bom_data = frappe.db.get_value('BOM', res['bom_no'],
-		['project', 'transfer_material_against', 'item_name'], as_dict=1)
+	default_bom = get_default_bom(args.item_code, project=args.project)
+	if default_bom:
+		out.bom_no = default_bom
+	else:
+		frappe.msgprint(_("Active BOM for Item {0} not found").format(frappe.bold(args.item_code)))
 
-	res['project'] = project or bom_data.pop("project")
-	res.update(bom_data)
+	if out.bom_no:
+		bom_details = frappe.db.get_value("BOM", out.bom_no, [
+			"project", "transfer_material_against",
+		], as_dict=1)
 
-	res.update(check_if_scrap_warehouse_mandatory(res["bom_no"]))
+		out.update(bom_details)
 
-	return res
+	if args.project:
+		out.project = args.project
+
+	out.update(get_default_warehouses(args))
+
+	out.cost_center = get_default_cost_center(item, args, selling_or_buying="buying")
+
+	if with_settings:
+		out.update(get_default_settings(args))
+
+	return out
+
+
+@frappe.whitelist()
+def get_default_warehouses(args=None, ignore_global_default=False):
+	args = process_args(args)
+	ignore_global_default = cint(ignore_global_default)
+
+	out = frappe._dict({
+		"source_warehouse": None,
+		"wip_warehouse": None,
+		"fg_warehouse": None,
+	})
+
+	if args.item_code:
+		default_values = get_item_default_values(args.item_code, args)
+	else:
+		default_values = get_default_values_for_filters(args)
+
+	out.source_warehouse = default_values.get("default_rm_warehouse")
+	out.wip_warehouse = default_values.get("default_wip_warehouse")
+	out.fg_warehouse = default_values.get("default_warehouse")
+
+	if not ignore_global_default:
+		global_default = get_global_default_warehouses(args.company)
+		for field, value in global_default.items():
+			if not out.get(field):
+				out[field] = value
+
+	return out
+
+
+def get_global_default_warehouses(company):
+	settings = frappe.get_cached_doc("Manufacturing Settings", None)
+
+	out = frappe._dict({
+		"source_warehouse": settings.default_rm_warehouse,
+		"wip_warehouse": settings.default_wip_warehouse,
+		"fg_warehouse": settings.default_fg_warehouse,
+	})
+
+	for key, warehouse in out.items():
+		if not warehouse or company != frappe.get_cached_value("Warehouse", settings.default_rm_warehouse, "company"):
+			out[key] = None
+
+	return out
+
+
+def get_default_settings(args):
+	args = process_args(args)
+	out = frappe._dict()
+	if not args.item_code:
+		return out
+
+	default_values = get_item_default_values(args.item_code, args)
+	meta = frappe.get_meta("Work Order")
+
+	frappe.utils.call_hook_method("update_work_order_default_settings", args, out)
+
+	for field in settings_checkbox_fields:
+		if default_values.get(field) == "Yes":
+			out[field] = 1
+		elif default_values.get(field) == "No":
+			out[field] = 0
+		elif out.get(field) is None:
+			out[field] = cint(meta.get_field(field).default)
+
+	return out
+
+
+def process_args(args):
+	if isinstance(args, str):
+		args = json.loads(args)
+
+	args = frappe._dict(args)
+	if args.production_item:
+		args.item_code = args.production_item
+
+	return args
 
 
 @frappe.whitelist()
@@ -1365,16 +1506,14 @@ def create_work_order(
 		"expected_delivery_date": delivery_date,
 	})
 
-	if parent_work_order:
-		work_order.packing_slip_required = 0
-
 	if work_order.meta.has_field("cost_center") and row.get("cost_center"):
 		work_order.cost_center = row.get("cost_center")
 
+	work_order.set_default_settings()
+	frappe.utils.call_hook_method("update_work_order_on_create", work_order, row)
+
 	if use_multi_level_bom is not None:
 		work_order.use_multi_level_bom = cint(use_multi_level_bom)
-
-	frappe.utils.call_hook_method("update_work_order_on_create", work_order, row)
 
 	work_order.set_work_order_operations()
 	work_order.save()
@@ -1383,25 +1522,6 @@ def create_work_order(
 		work_order.submit()
 
 	return work_order
-
-
-@frappe.whitelist()
-def check_if_scrap_warehouse_mandatory(bom_no):
-	res = {"set_scrap_wh_mandatory": False}
-	if bom_no:
-		bom = frappe.get_doc("BOM", bom_no)
-
-		if len(bom.scrap_items) > 0:
-			res["set_scrap_wh_mandatory"] = True
-
-	return res
-
-
-@frappe.whitelist()
-def set_work_order_ops(name):
-	po = frappe.get_doc('Work Order', name)
-	po.set_work_order_operations()
-	po.save()
 
 
 @frappe.whitelist()
@@ -1550,14 +1670,6 @@ def make_stock_entry(
 			frappe.db.rollback()
 
 	return stock_entry.as_dict()
-
-
-@frappe.whitelist()
-def get_default_warehouse():
-	wip_warehouse = frappe.get_cached_value("Manufacturing Settings", None, "default_wip_warehouse")
-	fg_warehouse = frappe.get_cached_value("Manufacturing Settings", None, "default_fg_warehouse")
-	rm_warehouse = frappe.get_cached_value("Manufacturing Settings", None, "default_rm_warehouse")
-	return {"wip_warehouse": wip_warehouse, "fg_warehouse": fg_warehouse, "source_warehouse": rm_warehouse}
 
 
 @frappe.whitelist()

@@ -34,10 +34,6 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 			let producible_without_previous_loss = flt(this.frm.doc.qty) - flt(row.previous_loss_qty);
 			return flt(completed_qty, precision("qty")) < flt(producible_without_previous_loss, precision("qty")) ? "orange" : "green";
 		});
-
-		if (this.frm.is_new()) {
-			this.set_default_warehouse();
-		}
 	}
 
 	onload() {
@@ -377,23 +373,18 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 			return frappe.call({
 				method: "erpnext.manufacturing.doctype.work_order.work_order.get_item_details",
 				args: {
-					item: this.frm.doc.production_item,
-					project: this.frm.doc.project
+					args: {
+						item_code: this.frm.doc.production_item,
+						company: this.frm.doc.company,
+						project: this.frm.doc.project,
+					},
+					with_settings: 1,
 				},
 				freeze: true,
 				callback: (r) => {
 					if (r.message) {
 						this.frm.in_production_item_onchange = true;
-
-						$.each(["item_name", "description", "stock_uom", "project", "bom_no",
-							"transfer_material_against"], (i, field) => {
-							this.frm.set_value(field, r.message[field]);
-						});
-
-						if (r.message["set_scrap_wh_mandatory"]) {
-							this.frm.toggle_reqd("scrap_warehouse", true);
-						}
-
+						this.frm.set_value(r.message);
 						this.frm.in_production_item_onchange = false;
 					}
 				}
@@ -407,11 +398,6 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 				method: "get_items_and_operations_from_bom",
 				doc: this.frm.doc,
 				freeze: true,
-				callback: (r) => {
-					if (r.message["set_scrap_wh_mandatory"]) {
-						this.frm.toggle_reqd("scrap_warehouse", true);
-					}
-				}
 			});
 		}
 	}
@@ -507,23 +493,6 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 		let variable_cost = flt(doc.actual_operating_cost) || flt(doc.planned_operating_cost);
 		this.frm.set_value("total_operating_cost", variable_cost + doc.additional_operating_cost);
 		this.frm.set_value("total_cost", doc.total_operating_cost + flt(doc.raw_material_cost));
-	}
-
-	set_default_warehouse() {
-		if (!this.frm.doc.source_warehouse || !this.frm.doc.wip_warehouse || !this.frm.doc.fg_warehouse) {
-			return frappe.call({
-				method: "erpnext.manufacturing.doctype.work_order.work_order.get_default_warehouse",
-				callback: (r) => {
-					if (r.message) {
-						for (let [field, value] of Object.entries(r.message)) {
-							if (!this.frm.doc[field]) {
-								this.frm.set_value(field, r.message[field]);
-							}
-						}
-					}
-				}
-			});
-		}
 	}
 
 	make_packing_slip() {

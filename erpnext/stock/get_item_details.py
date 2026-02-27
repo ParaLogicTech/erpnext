@@ -410,8 +410,10 @@ def get_global_default_warehouse(company):
 	if not default_warehouse:
 		return None
 
-	if frappe.db.get_value("Warehouse", default_warehouse, "company", cache=1) == company:
-		return default_warehouse
+	if company != frappe.get_cached_value("Warehouse", default_warehouse, "company"):
+		return None
+
+	return default_warehouse
 
 
 def update_barcode_value(out):
@@ -630,15 +632,17 @@ def get_default_deferred_expense_account(item, args):
 
 
 def get_default_cost_center(item, args, selling_or_buying=None):
-	if isinstance(item, str):
+	if item and isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
+	if not item:
+		item = frappe._dict()
 
 	cost_center = None
 
 	determine_selling_or_buying(args)
 	selling_or_buying = selling_or_buying or args.get("selling_or_buying")
 
-	if not cost_center and item.is_fixed_asset and args.get('asset'):
+	if not cost_center and item.get("is_fixed_asset") and args.get('asset'):
 		asset_cost_center = frappe.db.get_value("Asset", args.get("asset"), "cost_center", cache=True)
 		if asset_cost_center:
 			cost_center = asset_cost_center
