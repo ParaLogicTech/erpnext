@@ -31,7 +31,7 @@ def create_fiscal_year_and_company(args):
 
 def create_email_digest():
 	from frappe.utils.user import get_system_managers
-	system_managers = get_system_managers(only_name=True)
+	system_managers = get_system_managers()
 	if not system_managers:
 		return
 
