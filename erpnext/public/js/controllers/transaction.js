@@ -713,9 +713,10 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					default_depreciation_percentage: this.frm.doc.default_depreciation_percentage,
 					default_underinsurance_percentage: this.frm.doc.default_underinsurance_percentage,
 					warehouse: item.warehouse,
-					customer: this.frm.doc.customer || this.frm.doc.party_name,
+					customer: this.frm.doc.customer,
 					bill_to: this.frm.doc.bill_to,
 					quotation_to: this.frm.doc.quotation_to,
+					party_name: this.frm.doc.party_name,
 					supplier: this.frm.doc.supplier,
 					currency: this.frm.doc.currency,
 					update_stock: cint(this.frm.doc.update_stock),
@@ -1719,9 +1720,10 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		var me = this;
 		return {
 			"items": this._get_item_list(item, include_missing_item_codes),
-			"customer": me.frm.doc.customer || me.frm.doc.party_name,
+			"customer": me.frm.doc.customer,
 			"bill_to": me.frm.doc.bill_to,
 			"quotation_to": me.frm.doc.quotation_to,
+			"party_name": me.frm.doc.party_name,
 			"customer_group": me.frm.doc.customer_group,
 			"territory": me.frm.doc.territory,
 			"supplier": me.frm.doc.supplier,

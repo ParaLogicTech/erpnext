@@ -131,6 +131,9 @@ def process_args(args):
 
 	args = frappe._dict(args)
 
+	if not args.get("customer") and args.get("quotation_to") == "Customer" and args.get("party_name"):
+		args.customer = args.party_name
+
 	if not args.get("price_list"):
 		args.price_list = args.get("selling_price_list") or args.get("buying_price_list")
 
@@ -1181,9 +1184,6 @@ def get_party_item_code(args, item_doc, out):
 
 	if args.selling_or_buying == "selling" and args.customer:
 		out.customer_item_code = None
-
-		if args.quotation_to and args.quotation_to != 'Customer':
-			return
 
 		customer_item_code = item_doc.get("customer_items", {"customer_name": args.customer})
 

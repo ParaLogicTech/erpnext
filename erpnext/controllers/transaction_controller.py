@@ -164,7 +164,7 @@ class TransactionController(StockController):
 			parent_dict['transaction_type_name'] = parent_dict.pop('transaction_type')
 
 		# party_name field used for customer in quotation
-		if self.doctype == "Quotation" and self.quotation_to == "Customer" and parent_dict.get("party_name"):
+		if self.get("quotation_to") == "Customer" and parent_dict.get("party_name"):
 			parent_dict.update({"customer": parent_dict.get("party_name")})
 
 		return parent_dict
