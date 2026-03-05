@@ -323,32 +323,35 @@ def update_args_for_pricing_rule(args):
 	if not args.get("customer") and args.get("quotation_to") == "Customer" and args.get("party_name"):
 		args.customer = args.party_name
 
+	if not args.variant_of:
+		args.variant_of = frappe.get_cached_value("Item", args.item_code, "variant_of")
 	if not args.item_group:
 		args.item_group = frappe.get_cached_value("Item", args.item_code, "item_group")
 	if not args.brand:
 		args.brand = frappe.get_cached_value("Item", args.item_code, "brand")
 
 	if args.selling_or_buying == "selling":
-		if args.customer and not (args.customer_group and args.territory):
-
-			if args.quotation_to and args.quotation_to != 'Customer':
-				customer = frappe._dict()
-			else:
-				customer = frappe.get_cached_value("Customer", args.customer, ["customer_group", "territory"])
-
-			if customer:
-				args.customer_group, args.territory = customer
+		if args.customer:
+			if not args.customer_group:
+				args.customer_group = frappe.get_cached_value("Customer", args.customer, "customer_group")
+			if not args.territory:
+				args.territory = frappe.get_cached_value("Customer", args.customer, "territory")
 
 		args.supplier = args.supplier_group = None
 
-	elif args.supplier and not args.supplier_group:
-		args.supplier_group = frappe.get_cached_value("Supplier", args.supplier, "supplier_group")
+	elif args.supplier:
+		if not args.supplier_group:
+			args.supplier_group = frappe.get_cached_value("Supplier", args.supplier, "supplier_group")
+
 		args.customer = args.customer_group = args.territory = None
 
 	if args.applies_to_item:
 		args.applies_to_item_group = frappe.get_cached_value("Item", args.applies_to_item, "item_group")
 		args.applies_to_item_brand = frappe.get_cached_value("Item", args.applies_to_item, "brand")
 		args.applies_to_variant_of = frappe.get_cached_value("Item", args.applies_to_item, "variant_of")
+
+	if not args.price_list:
+		args.price_list = None
 
 
 def get_pricing_rule_details(args, pricing_rule):
