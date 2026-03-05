@@ -254,18 +254,22 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 
 	update_args_for_pricing_rule(args)
 
-	pricing_rules = (get_applied_pricing_rules(args.get('pricing_rules'))
-		if for_validate and args.get("pricing_rules") else get_pricing_rules(args, doc))
+	pricing_rules = (
+		get_applied_pricing_rules(args.get('pricing_rules'))
+		if for_validate and args.get("pricing_rules")
+		else get_pricing_rules(args, doc)
+	)
 
 	if pricing_rules:
 		rules = []
 
 		for pricing_rule in reversed(pricing_rules):
-			if not pricing_rule: continue
+			if not pricing_rule:
+				continue
 
 			if isinstance(pricing_rule, str):
 				pricing_rule = frappe.get_cached_doc("Pricing Rule", pricing_rule)
-				pricing_rule.apply_rule_on_other_items = get_pricing_rule_items(pricing_rule)
+				pricing_rule.apply_rule_on_other_items = get_pricing_rule_items(pricing_rule, other_items=pricing_rule.apply_rule_on_other)
 
 			if pricing_rule.coupon_code_based:
 				if not args.coupon_code:
@@ -275,7 +279,8 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 				if coupon_pricing_rule != pricing_rule.name:
 					continue
 
-			if pricing_rule.get('suggestion'): continue
+			if pricing_rule.get('suggestion'):
+				continue
 
 			item_details.validate_applied_rule = pricing_rule.get("validate_applied_rule", 0)
 			item_details.do_not_force_pricing_rule = pricing_rule.get("do_not_force_pricing_rule", 0)
@@ -303,8 +308,6 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 		item_details.has_pricing_rule = 1
 
 		item_details.pricing_rules = frappe.as_json([d.pricing_rule for d in reversed(rules)], indent=0)
-
-		if not doc: return item_details
 
 	elif args.get("pricing_rules"):
 		item_details = remove_pricing_rule_for_item(args.get("pricing_rules"),
@@ -475,14 +478,15 @@ def set_discount_amount(rate, item_details):
 
 
 def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None, force=False):
-	from erpnext.accounts.doctype.pricing_rule.utils import (get_applied_pricing_rules,
-		get_pricing_rule_items)
+	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules, get_pricing_rule_items
 
 	applied_pricing_rules = get_applied_pricing_rules(pricing_rules)
 	keep_pricing_rules = []
 
 	for d in applied_pricing_rules:
-		if not d or not frappe.db.exists("Pricing Rule", d): continue
+		if not d or not frappe.db.exists("Pricing Rule", d):
+			continue
+
 		pricing_rule = frappe.get_cached_doc('Pricing Rule', d)
 
 		if pricing_rule.prevent_ignore_pricing_rule and not force:
@@ -509,7 +513,7 @@ def remove_pricing_rule_for_item(pricing_rules, item_details, item_code=None, fo
 				else pricing_rule.get('free_item'))
 
 		if pricing_rule.get("mixed_conditions") or pricing_rule.get("apply_rule_on_other"):
-			items = get_pricing_rule_items(pricing_rule)
+			items = get_pricing_rule_items(pricing_rule, other_items=pricing_rule.get("apply_rule_on_other"))
 			item_details.apply_on = (frappe.scrub(pricing_rule.apply_rule_on_other)
 				if pricing_rule.apply_rule_on_other else frappe.scrub(pricing_rule.get('apply_on')))
 			item_details.applied_on_items = json.dumps(items)

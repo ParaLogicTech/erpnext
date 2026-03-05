@@ -1879,19 +1879,23 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		const me = this;
 		const fields = ["discount_percentage", "pricing_rules", "discount_amount", "rate"];
 
-		for(var k in args) {
-			let data = args[k];
+		for (let row_data of Object.values(args)) {
+			if (row_data && row_data.apply_rule_on_other_items) {
+				let apply_rule_on_other_items = JSON.parse(row_data.apply_rule_on_other_items);
 
-			if (data && data.apply_rule_on_other_items) {
-				me.frm.doc.items.forEach(d => {
-					if (in_list(JSON.parse(data.apply_rule_on_other_items), d[data.apply_rule_on])) {
-						for(var k in data) {
-							if (in_list(fields, k) && data[k] && (data.price_or_product_discount === 'Price' || k === 'pricing_rules')) {
-								frappe.model.set_value(d.doctype, d.name, k, data[k]);
+				for (let d of me.frm.doc.items || []) {
+					if (apply_rule_on_other_items.includes(d[row_data.apply_rule_on])) {
+						for (let [k, v] of Object.entries(row_data)) {
+							if (
+								fields.includes(k)
+								&& v
+								&& (row_data.price_or_product_discount === 'Price' || k === 'pricing_rules')
+							) {
+								frappe.model.set_value(d.doctype, d.name, k, v);
 							}
 						}
 					}
-				});
+				}
 			}
 		}
 	}
