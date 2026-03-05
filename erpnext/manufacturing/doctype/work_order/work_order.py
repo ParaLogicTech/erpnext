@@ -91,7 +91,7 @@ class WorkOrder(StatusUpdaterERP):
 
 	def on_submit(self):
 		self.update_sales_order_status()
-		self.update_material_request_ordered_qty()
+		self.update_material_request()
 		self.update_production_plan_ordered_qty()
 		self.update_reserved_qty_for_production()
 		self.update_planned_qty()
@@ -100,7 +100,7 @@ class WorkOrder(StatusUpdaterERP):
 		self.validate_cancel()
 		self.update_status_on_cancel()
 		self.update_sales_order_status()
-		self.update_material_request_ordered_qty()
+		self.update_material_request()
 		self.update_production_plan_ordered_qty()
 		self.update_reserved_qty_for_production()
 		self.update_planned_qty()
@@ -624,6 +624,7 @@ class WorkOrder(StatusUpdaterERP):
 		self.set_status(status=status, update=True)
 
 		self.update_sales_order_status()
+		self.update_material_request(for_completed_qty=True)
 		self.update_production_plan_produced_qty()
 
 		self.update_planned_qty()
@@ -1041,14 +1042,18 @@ class WorkOrder(StatusUpdaterERP):
 
 		production_plan.run_method("update_produced_qty", completed_qty, self.production_plan_item)
 
-	def update_material_request_ordered_qty(self):
+	def update_material_request(self, for_completed_qty=True):
 		if self.material_request:
 			doc = frappe.get_doc("Material Request", self.material_request)
+
 			doc.set_completion_status(update=True)
-			doc.validate_ordered_qty(from_doctype=self.doctype, row_names=[self.material_request_item])
+			if not for_completed_qty:
+				doc.validate_ordered_qty(from_doctype=self.doctype, row_names=[self.material_request_item])
+
 			doc.set_status(update=True)
 
-			doc.update_requested_qty([self.material_request_item])
+			if not for_completed_qty:
+				doc.update_requested_qty([self.material_request_item])
 
 			doc.notify_update()
 
@@ -1497,6 +1502,8 @@ def create_work_order(
 		"company": company or row.get("company"),
 		"sales_order": sales_order,
 		"sales_order_item": row.get("sales_order_item"),
+		"material_request": row.get("material_request"),
+		"material_request_item": row.get("material_request_item"),
 		"parent_work_order": parent_work_order,
 		"work_order_item": row.get("work_order_item"),
 		"customer": customer,
