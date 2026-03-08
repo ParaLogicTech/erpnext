@@ -396,6 +396,7 @@
    "fieldname": "references",
    "fieldtype": "Table",
    "label": "Payment References",
+   "no_copy": 1,
    "options": "Payment Entry Reference"
   },
   {
@@ -983,7 +984,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-10 11:40:28.075492",
+ "modified": "2026-03-07 15:49:02.543448",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",
