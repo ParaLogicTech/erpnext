@@ -4,6 +4,13 @@
 erpnext.taxes_and_totals_hooks = [];
 
 erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
+	setup() {
+		super.setup();
+		this.debounced_calculate_taxes_and_totals = frappe.utils.debounce(() => {
+			this.calculate_taxes_and_totals();
+		}, 100);
+	}
+
 	apply_pricing_rule_on_item(item) {
 		let effective_item_rate = item.price_list_rate;
 		if (item.parenttype === "Sales Order" && item.blanket_order_rate) {
@@ -75,10 +82,6 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 		this.frm.refresh_fields();
 	}
-
-	debounced_calculate_taxes_and_totals = frappe.utils.debounce(() => {
-		this.calculate_taxes_and_totals();
-	}, 100);
 
 	additional_calculate_taxes_and_totals() {
 
@@ -295,7 +298,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			$.each(tax_fields, function(i, fieldname) { tax[fieldname] = 0.0; });
 
 			if (!this.discount_amount_applied && cur_frm) {
-				cur_frm.cscript.validate_taxes_and_charges(tax.doctype, tax.name);
+				me.validate_taxes_and_charges(tax.doctype, tax.name);
 				me.validate_inclusive_tax(tax);
 			}
 

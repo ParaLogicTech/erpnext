@@ -1405,7 +1405,7 @@ def get_batch_qty(batch_no, warehouse, item_code):
 
 
 @frappe.whitelist()
-def apply_price_list(args, as_doc=False):
+def apply_price_list(args, as_doc=False, doc=None):
 	"""Apply pricelist on a document-like dict object and return as
 	{'parent': dict, 'children': list}
 
@@ -1448,7 +1448,7 @@ def apply_price_list(args, as_doc=False):
 			args_copy.update(item)
 			args_copy = process_args(args_copy)
 
-			item_details = apply_price_list_on_item(args_copy)
+			item_details = apply_price_list_on_item(args_copy, doc=doc)
 			children.append(item_details)
 
 	if as_doc:
@@ -1469,12 +1469,12 @@ def apply_price_list(args, as_doc=False):
 		}
 
 
-def apply_price_list_on_item(args):
+def apply_price_list_on_item(args, doc=None):
 	item_details = frappe._dict()
 	item_doc = frappe.get_cached_doc("Item", args.item_code)
 	get_price_list_data(args, item_doc, item_details)
 
-	item_details.update(get_pricing_rule_for_item(args, item_details.price_list_rate))
+	item_details.update(get_pricing_rule_for_item(args, item_details.price_list_rate, doc=doc))
 
 	return item_details
 
