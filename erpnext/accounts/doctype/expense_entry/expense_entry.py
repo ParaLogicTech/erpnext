@@ -30,10 +30,10 @@ class ExpenseEntry(Document):
 		self.set_missing_bill_dates()
 
 	def on_submit(self):
-		self.make_journal_entries()
+		self.create_accounting_entries()
 
 	def on_cancel(self):
-		self.cancel_journal_entries()
+		self.cancel_accounting_entries()
 
 	def check_duplicate_bill_no(self):
 		unique_bill_no_party = []
@@ -122,28 +122,32 @@ class ExpenseEntry(Document):
 			self.set(target_f, flt(sum([d.get(source_f) for d in self.accounts]), self.precision(target_f)))
 			self.set("base_" + target_f, flt(sum([d.get("base_" + source_f) for d in self.accounts]), self.precision("base_" + target_f)))
 
-	def make_journal_entries(self):
+	def create_accounting_entries(self):
 		for d in self.accounts:
 			bill_jv = None
 			if d.supplier:
-				bill_jv = self.make_bill_journal_entry(d)
-			if self.paid_from_account:
-				self.make_payment_journal_entry(d, bill_jv)
+				bill_jv = self.create_bill_journal_entry(d)
 
-	def make_bill_journal_entry(self, d):
+			if self.paid_from_account:
+				if bill_jv:
+					self.create_payment_entry(d, bill_jv)
+				else:
+					self.create_payment_journal_entry(d, bill_jv)
+
+	def create_bill_journal_entry(self, d):
 		company_currency = get_company_currency(self.company)
 		multi_currency = 1 if self.payable_account_currency != company_currency else 0
 
 		doc = self.get_journal_entry(d, multi_currency, self.journal_entry_series)
-		self.append_expense_entry(doc, d)
-		self.append_tax_entry(doc, d)
+		self.append_expense_debit_entry(doc, d)
+		self.append_tax_debit_entry(doc, d)
 		self.append_supplier_credit_entry(doc, d)
 
 		doc.insert()
 		doc.submit()
 		return doc
 
-	def make_payment_journal_entry(self, d, bill_jv):
+	def create_payment_journal_entry(self, d, bill_jv=None):
 		company_currency = get_company_currency(self.company)
 		paid_from_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
 		multi_currency = 1 if paid_from_account_currency != company_currency else 0
@@ -160,8 +164,8 @@ class ExpenseEntry(Document):
 		if bill_jv:
 			self.append_supplier_debit_entry(doc, d, bill_jv)
 		else:
-			self.append_expense_entry(doc, d)
-			self.append_tax_entry(doc, d)
+			self.append_expense_debit_entry(doc, d)
+			self.append_tax_debit_entry(doc, d)
 
 		self.append_payment_entry(doc, d)
 
@@ -176,10 +180,12 @@ class ExpenseEntry(Document):
 			"company": self.company,
 			"branch": self.branch,
 			"posting_date": self.transaction_date if self.use_transaction_date else d.bill_date or self.transaction_date,
+
 			"bill_no": d.bill_no or self.name,
 			"bill_date": d.bill_date or self.transaction_date,
-			"cheque_no": d.bill_no or self.name,
+			"cheque_no": d.cheque_no or d.bill_no or self.name,
 			"cheque_date": d.bill_date or self.transaction_date,
+
 			"multi_currency": multi_currency,
 			"user_remark": d.remarks
 		})
@@ -191,9 +197,9 @@ class ExpenseEntry(Document):
 
 		return doc
 
-	def append_expense_entry(self, doc, d):
+	def append_expense_debit_entry(self, doc, d):
 		expense_account_currency = frappe.get_cached_value("Account", d.expense_account, "account_currency")
-		row = doc.append("accounts", {
+		return doc.append("accounts", {
 			"account": d.expense_account,
 			"account_currency": expense_account_currency,
 			"debit_in_account_currency": d.expense_amount if self.payable_account_currency == expense_account_currency
@@ -202,14 +208,15 @@ class ExpenseEntry(Document):
 			"exchange_rate": d.base_expense_amount/d.expense_amount if self.payable_account_currency == expense_account_currency else 1.0,
 		})
 
-	def append_tax_entry(self, doc, d):
+	def append_tax_debit_entry(self, doc, d):
 		if not d.tax_amount:
-			return
+			return []
 
 		tax_map = json.loads(d.tax_rate or '{}')
 		tax_map = {acc: rate for (acc, rate) in tax_map.items() if rate}
 		remaining_tax_amount = d.tax_amount
 
+		rows = []
 		for i, (tax_account, tax_rate) in enumerate(tax_map.items()):
 			if i == len(tax_map) - 1:
 				tax_amount = flt(remaining_tax_amount, d.precision('tax_amount'))
@@ -226,9 +233,12 @@ class ExpenseEntry(Document):
 					"debit": d.base_tax_amount,
 					"exchange_rate": d.exchange_rate if self.payable_account_currency == tax_account_currency else 1.0,
 				})
+				rows.append(row)
+
+		return rows
 
 	def append_supplier_credit_entry(self, doc, d):
-		row = doc.append("accounts", {
+		return doc.append("accounts", {
 			"account": self.payable_account,
 			"account_currency": self.payable_account_currency,
 			"party_type": "Supplier",
@@ -239,7 +249,7 @@ class ExpenseEntry(Document):
 		})
 
 	def append_supplier_debit_entry(self, doc, d, bill_jv):
-		row = doc.append("accounts", {
+		return doc.append("accounts", {
 			"account": self.payable_account,
 			"account_currency": self.payable_account_currency,
 			"party_type": "Supplier",
@@ -253,7 +263,7 @@ class ExpenseEntry(Document):
 
 	def append_payment_entry(self, doc, d):
 		paid_from_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
-		row = doc.append("accounts", {
+		return doc.append("accounts", {
 			"account": self.paid_from_account,
 			"account_currency": paid_from_account_currency,
 			"credit_in_account_currency": d.total_amount if self.payable_account_currency == paid_from_account_currency
@@ -261,6 +271,51 @@ class ExpenseEntry(Document):
 			"credit": d.base_total_amount,
 			"exchange_rate": d.exchange_rate if self.payable_account_currency == paid_from_account_currency else 1.0,
 		})
+
+	def create_payment_entry(self, d, bill_jv):
+		paid_from_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
+		company_currency = get_company_currency(self.company)
+
+		doc = frappe.new_doc("Payment Entry")
+		doc.update({
+			"expense_entry_name": self.name,
+			"company": self.company,
+			"branch": self.branch,
+			"posting_date": self.transaction_date if self.use_transaction_date else d.bill_date or self.transaction_date,
+
+			"reference_no": d.cheque_no or d.bill_no or self.name,
+			"reference_date": d.bill_date or self.transaction_date,
+			"user_remark": d.remarks,
+
+			"payment_type": "Pay",
+			"party_type": "Supplier",
+			"party": d.supplier,
+			"mode_of_payment": self.mode_of_payment,
+
+			"paid_from": self.paid_from_account,
+			"paid_amount": d.total_amount if paid_from_account_currency == self.payable_account_currency else d.base_total_amount,
+			"base_paid_amount": d.base_total_amount,
+			"source_exchange_rate": d.exchange_rate if paid_from_account_currency == self.payable_account_currency else 1.0,
+
+			"paid_to": self.payable_account,
+			"received_amount": d.total_amount,
+			"base_received_amount": d.base_total_amount,
+			"target_exchange_rate": d.exchange_rate,
+		})
+
+		if bill_jv:
+			doc.append("references", {
+				"reference_doctype": "Journal Entry",
+				"reference_name": bill_jv.name,
+				"allocated_amount": d.base_total_amount if self.payable_account_currency == company_currency else d.total_amount,
+			})
+
+		self.set_accounting_dimensions(d, doc)
+
+		doc.insert()
+		doc.submit()
+
+		return doc
 
 	def set_accounting_dimensions(self, source, target):
 		if not hasattr(self, 'acccounting_dimensions'):
@@ -270,9 +325,17 @@ class ExpenseEntry(Document):
 		for dimension in self.accounting_dimensions:
 			target.set(dimension, source.get(dimension) or self.get(dimension))
 
+	def cancel_accounting_entries(self):
+		self.cancel_payment_entries()
+		self.cancel_journal_entries()
+
 	def cancel_journal_entries(self):
-		je_names = [d.name for d in frappe.get_all("Journal Entry", fields=['name', 'docstatus'],
-			filters={"expense_entry_name": self.name, "docstatus": 1})]
+		je_names = frappe.get_all(
+			"Journal Entry",
+			fields=['name', 'docstatus'],
+			filters={"expense_entry_name": self.name, "docstatus": 1},
+			pluck="name"
+		)
 
 		cancel_later = []
 		for name in je_names:
@@ -286,6 +349,18 @@ class ExpenseEntry(Document):
 				cancel_later.append(doc)
 
 		for doc in cancel_later:
+			doc.cancel()
+
+	def cancel_payment_entries(self):
+		pe_names = frappe.get_all(
+			"Payment Entry",
+			fields=['name', 'docstatus'],
+			filters={"expense_entry_name": self.name, "docstatus": 1},
+			pluck="name"
+		)
+
+		for name in pe_names:
+			doc = frappe.get_doc("Payment Entry", name)
 			doc.cancel()
 
 

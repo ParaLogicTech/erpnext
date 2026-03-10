@@ -18,6 +18,7 @@
   "user_remark",
   "payment_order",
   "payment_request",
+  "expense_entry_name",
   "pos_profile",
   "cashier",
   "is_pos",
@@ -396,7 +397,6 @@
    "fieldname": "references",
    "fieldtype": "Table",
    "label": "Payment References",
-   "no_copy": 1,
    "options": "Payment Entry Reference"
   },
   {
@@ -980,11 +980,21 @@
    "label": "Deferred POS Closing",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "expense_entry_name",
+   "fieldtype": "Link",
+   "label": "Expense Entry Reference",
+   "no_copy": 1,
+   "options": "Expense Entry",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-07 15:49:02.543448",
+ "modified": "2026-03-09 12:07:11.888451",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",

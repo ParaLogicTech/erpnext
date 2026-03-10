@@ -524,7 +524,8 @@
    "no_copy": 1,
    "options": "Expense Entry",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "reference_section",
@@ -557,7 +558,7 @@
  "idx": 176,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-19 04:36:44.699368",
+ "modified": "2026-03-09 12:06:33.349352",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Journal Entry",
