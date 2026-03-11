@@ -94,6 +94,17 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 				}
 			}
 		});
+
+		if (this.frm.fields_dict["cost_center"]) {
+			this.frm.set_query("cost_center", function(doc) {
+				return {
+					filters: {
+						"company": doc.company,
+						"is_group": 0
+					}
+				};
+			});
+		}
 	}
 
 	setup_buttons() {

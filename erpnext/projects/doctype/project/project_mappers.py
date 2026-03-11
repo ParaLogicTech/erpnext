@@ -11,6 +11,7 @@ from erpnext.projects.doctype.project.project import (
 )
 from erpnext.accounts.party import get_party_account
 from erpnext.accounts.doctype.journal_entry.journal_entry import get_default_bank_cash_account
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 import json
 
 
@@ -775,6 +776,12 @@ def make_payment_entry(
 
 	pe = frappe.new_doc("Payment Entry")
 	pe.posting_date = getdate()
+
+	dimensions = get_accounting_dimensions()
+	for f in dimensions:
+		if project.get(f):
+			pe.set(f, project.get(f))
+
 	pe.company = project.company
 	pe.branch = project.branch
 	pe.cost_center = project.cost_center
@@ -783,6 +790,11 @@ def make_payment_entry(
 	pe.payment_type = "Pay" if is_refund else "Receive"
 	pe.party_type = "Customer"
 	pe.party = customer or project.bill_to or project.customer
+
+	if project.customer and pe.party == project.customer:
+		pe.contact_person = project.contact_person
+	elif project.bill_to and pe.party == project.bill_to:
+		pe.contact_person = project.billing_contact_person
 
 	pe.mode_of_payment = mode_of_payment
 	pe.is_pos = cint(is_pos)
@@ -810,11 +822,6 @@ def make_payment_entry(
 
 	pe.paid_amount = flt(bank_amount)
 	pe.received_amount = flt(bank_amount)
-
-	if project.customer and pe.party == project.customer:
-		pe.contact_person = project.contact_person
-	elif project.bill_to and pe.party == project.bill_to:
-		pe.contact_person = project.billing_contact_person
 
 	frappe.utils.call_hook_method("get_payment_entry", project, pe)
 
