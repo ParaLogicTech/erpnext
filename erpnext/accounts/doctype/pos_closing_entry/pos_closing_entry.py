@@ -8,6 +8,7 @@ from frappe import _
 from frappe.utils import flt, getdate, get_datetime, get_time, cint, cstr
 from frappe.model.document import Document
 from erpnext.accounts.doctype.pos_opening_entry.pos_opening_entry import get_pos_opening_entry
+from erpnext.accounts.doctype.bank_reconciliation.bank_reconciliation import get_document_dimensions
 
 
 class POSClosingEntry(Document):
@@ -563,6 +564,9 @@ def append_debit_accounts(pce, je, override_account=None):
 			"user_remark": _("{0} collected against {1} {2}").format(d.mode_of_payment, d.document_type, d.document_name),
 		})
 
+		dimensions = get_document_dimensions(d.document_type, d.document_name)
+		row.update(dimensions)
+
 		row.update({
 			"deposit_against_type": d.document_type,
 			"deposit_against": d.document_name,
@@ -582,18 +586,28 @@ def append_credit_accounts(pce, je, override_account=None):
 	collected_account_totals = {}
 	for d in pce.payment_details:
 		if d.paid_amount:
-			collected_account_totals.setdefault(d.account, 0)
-			collected_account_totals[d.account] += d.paid_amount
+			dimensions = get_document_dimensions(d.document_type, d.document_name)
+			dimension_items = list(dimensions.items())
 
-	for account, amount in collected_account_totals.items():
-		je.append("accounts", {
-			"account": override_account or account,
+			account = override_account or d.account
+			key = tuple([account] + dimension_items)
+			if key not in collected_account_totals:
+				collected_account_totals[key] = frappe._dict({
+					"paid_amount": 0, "account": account, "dimensions": dimensions,
+				})
+
+			collected_account_totals[key].paid_amount += d.paid_amount
+
+	for group in collected_account_totals.values():
+		row = je.append("accounts", {
+			"account": group.account,
 			"reference_type": "POS Closing Entry",
 			"reference_name": pce.name,
-			"credit_in_account_currency": abs(amount) if amount > 0 else 0,
-			"debit_in_account_currency": abs(amount) if amount < 0 else 0,
+			"credit_in_account_currency": abs(group.paid_amount) if group.paid_amount > 0 else 0,
+			"debit_in_account_currency": abs(group.paid_amount) if group.paid_amount < 0 else 0,
 			"user_remark": _("Till Balance Transfer")
 		})
+		row.update(group.dimensions)
 
 
 def append_difference_accounts(pce, je):

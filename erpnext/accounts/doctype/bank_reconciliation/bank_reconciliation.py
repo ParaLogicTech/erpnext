@@ -291,9 +291,9 @@ class BankReconciliation(Document):
 				"clearance_date": clearance_date,
 				"clear_against_type": d.voucher_type,
 				"clear_against": d.voucher_no,
-				"clear_against_detail_type":d.voucher_detail_dt,
-				"clear_against_detail_name":d.voucher_detail_dn,
-				"is_reversal":is_reversal
+				"clear_against_detail_type": d.voucher_detail_dt,
+				"clear_against_detail_name": d.voucher_detail_dn,
+				"is_reversal": is_reversal
 			})
 
 			suspense_row = je.append("accounts", {
@@ -305,9 +305,9 @@ class BankReconciliation(Document):
 				"clearance_date": clearance_date,
 				"clear_against_type": d.voucher_type,
 				"clear_against": d.voucher_no,
-				"clear_against_detail_type":d.voucher_detail_dt,
-				"clear_against_detail_name":d.voucher_detail_dn,
-				"is_reversal":is_reversal
+				"clear_against_detail_type": d.voucher_detail_dt,
+				"clear_against_detail_name": d.voucher_detail_dn,
+				"is_reversal": is_reversal
 			})
 
 			additional_values = self.get_row_additional_values(d)
@@ -316,23 +316,13 @@ class BankReconciliation(Document):
 
 		return je
 
-	def get_row_additional_values(self, row):
-		dimensions = self.get_parent_document_dimensions(row.voucher_type, row.voucher_no)
+	@staticmethod
+	def get_row_additional_values(row):
+		dimensions = get_document_dimensions(row.voucher_type, row.voucher_no, with_remarks=True)
 		if row.voucher_detail_dn:
-			dimensions.update(get_document_dimensions(row.voucher_detail_dt, row.voucher_detail_dn))
+			dimensions.update(get_document_dimensions(row.voucher_detail_dt, row.voucher_detail_dn, with_remarks=True))
 
 		return dimensions
-
-	def get_parent_document_dimensions(self, voucher_type, voucher_no):
-		if not self.get("_parent_document_dimensions"):
-			self._parent_document_dimensions = {}
-
-		key = (voucher_type, voucher_no)
-		if key not in self._parent_document_dimensions:
-			dimensions = get_document_dimensions(voucher_type, voucher_no)
-			self._parent_document_dimensions[key] = dimensions
-
-		return self._parent_document_dimensions[key]
 
 
 @frappe.whitelist()
@@ -343,14 +333,21 @@ def get_opening_balance(account, from_date):
 	return get_balance_on(account, from_date)
 
 
-def get_document_dimensions(doctype, name):
-	dimension_fields = get_all_valid_dimension_fields(doctype)
-	if frappe.get_meta(doctype).has_field("user_remark"):
-		dimension_fields.append("user_remark")
+def get_document_dimensions(doctype, name, with_remarks=False, cache=True):
+	def generator():
+		dimension_fields = get_all_valid_dimension_fields(doctype)
+		if with_remarks and frappe.get_meta(doctype).has_field("user_remark"):
+			dimension_fields.append("user_remark")
 
-	dimensions = {}
-	if dimension_fields:
-		dimensions = frappe.db.get_value(doctype, name, dimension_fields, as_dict=True) or {}
+		dimensions = {}
+		if dimension_fields:
+			dimensions = frappe.db.get_value(doctype, name, dimension_fields, as_dict=True) or {}
 
-	dimensions = {f: v for f, v in dimensions.items() if v}
-	return dimensions
+		dimensions = frappe._dict({f: v for f, v in dimensions.items() if v})
+		return dimensions
+
+	if cache:
+		key = (doctype, name, bool(with_remarks))
+		return frappe.local_cache("get_document_dimensions", key, generator)
+	else:
+		return generator()

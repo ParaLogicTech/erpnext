@@ -523,28 +523,18 @@ class BankDepositTool(Document):
 
 		return je
 
-	def get_entry_additional_values(self, entry):
+	@staticmethod
+	def get_entry_additional_values(entry):
 		dimensions = {}
 		voucher_type = entry.get('voucher_type')
 		voucher_no = entry.get('voucher_no')
 		voucher_detail_dn = entry.get('voucher_detail_dn')
 
 		if voucher_type and voucher_no:
-			dimensions = self.get_parent_document_dimensions(voucher_type, voucher_no)
+			dimensions = get_document_dimensions(voucher_type, voucher_no, with_remarks=True)
 
 			if voucher_detail_dn and entry.get('voucher_detail_dt'):
-				child_dimensions = get_document_dimensions(entry.get('voucher_detail_dt'), voucher_detail_dn)
+				child_dimensions = get_document_dimensions(entry.get('voucher_detail_dt'), voucher_detail_dn, with_remarks=True)
 				dimensions.update(child_dimensions)
 
 		return dimensions
-
-	def get_parent_document_dimensions(self, voucher_type, voucher_no):
-		if not self.get("_parent_document_dimensions"):
-			self._parent_document_dimensions = {}
-
-		key = (voucher_type, voucher_no)
-		if key not in self._parent_document_dimensions:
-			dimensions = get_document_dimensions(voucher_type, voucher_no)
-			self._parent_document_dimensions[key] = dimensions
-
-		return self._parent_document_dimensions[key]
