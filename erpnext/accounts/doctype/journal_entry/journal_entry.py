@@ -100,13 +100,21 @@ class JournalEntry(AccountsController):
 	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
 		outstanding_amount = get_balance_on_voucher("Journal Entry", self.name, party_type, party, account)
 
+		total_amount = 0
+		dr_or_cr = "debit_in_account_currency" if erpnext.get_party_account_type(party_type) == 'Receivable' else "credit_in_account_currency"
+		reverse_dr_or_cr = "credit_in_account_currency" if dr_or_cr == "debit_in_account_currency" else "debit_in_account_currency"
+
+		for d in self.accounts:
+			if d.party_type == party_type and d.party == party and d.account == account and not d.original_reference_name:
+				total_amount += flt(d.get(dr_or_cr)) - flt(d.get(reverse_dr_or_cr))
+
 		if self.multi_currency:
 			exchange_rate = get_average_party_exchange_rate_on_journal_entry(self.name, party_type, party, account)
 		else:
 			exchange_rate = 1
 
 		return {
-			"total_amount": flt(self.get("total_amount")),
+			"total_amount": flt(total_amount, self.precision("total_amount")),
 			"outstanding_amount": outstanding_amount,
 			"exchange_rate": exchange_rate,
 			"bill_no": self.bill_no,

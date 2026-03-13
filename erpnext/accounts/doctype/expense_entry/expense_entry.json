@@ -8,17 +8,18 @@
  "field_order": [
   "entry_type_and_date",
   "title",
+  "posting_method",
   "paid_from_account",
   "payable_account",
   "payable_account_currency",
   "column_break1",
+  "bill_no",
   "mode_of_payment",
   "column_break_ujk7",
   "company",
   "branch",
   "transaction_date",
   "naming_series",
-  "use_transaction_date",
   "amended_from",
   "accounting_dimensions_section",
   "cost_center",
@@ -73,8 +74,6 @@
    "fieldname": "payable_account",
    "fieldtype": "Link",
    "in_global_search": 1,
-   "in_list_view": 1,
-   "in_standard_filter": 1,
    "label": "Payable Account",
    "options": "Account"
   },
@@ -91,6 +90,8 @@
   {
    "fieldname": "paid_from_account",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Paid From Account",
    "options": "Account"
   },
@@ -274,12 +275,6 @@
    "options": "Branch"
   },
   {
-   "default": "0",
-   "fieldname": "use_transaction_date",
-   "fieldtype": "Check",
-   "label": "Set Posting Date as Transaction Date"
-  },
-  {
    "fieldname": "mode_of_payment",
    "fieldtype": "Link",
    "label": "Mode of Payment",
@@ -288,12 +283,25 @@
   {
    "fieldname": "column_break_ujk7",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bill_no",
+   "fieldtype": "Data",
+   "label": "Bill No"
+  },
+  {
+   "default": "Multiple Entries on Bill Date",
+   "fieldname": "posting_method",
+   "fieldtype": "Select",
+   "label": "Posting Method",
+   "options": "Multiple Entries on Bill Date\nMultiple Entries on Transaction Date\nSingle Entry on Transaction Date",
+   "reqd": 1
   }
  ],
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-09 12:08:42.451619",
+ "modified": "2026-03-13 04:02:59.134981",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Expense Entry",
