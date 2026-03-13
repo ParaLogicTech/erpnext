@@ -6,6 +6,7 @@ from erpnext.accounts.utils import get_balance_on
 from frappe import _
 from frappe.utils import flt, getdate
 from frappe.model.document import Document
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_dimension_fields
 from erpnext.accounts.doctype.bank_reconciliation.bank_reconciliation import get_document_dimensions
 import json
 
@@ -61,6 +62,17 @@ class BankDepositTool(Document):
 				undeposited_account = frappe.get_cached_doc("Account", self.undeposited_account)
 				if undeposited_account.account_currency != adjustment_account.account_currency:
 					frappe.throw(_("Row #{0}: Adjustment Account and Deposit To Account must have same currency").format(d.idx))
+
+				if adjustment_account.account_type in ("Receivable", "Payable"):
+					if not d.supplier:
+						frappe.throw(_("Row #{0}: Supplier is mandatory for {1} Adjustment Account").format(
+							d.idx, adjustment_account.account_type
+						))
+				else:
+					if d.supplier:
+						frappe.throw(_("Row #{0}: Supplier can only be selected for Payable or Receivable Adjustment Account").format(
+							d.idx
+						))
 
 	@frappe.whitelist()
 	def get_undeposited_entries(self):
@@ -446,6 +458,8 @@ class BankDepositTool(Document):
 			))
 
 	def make_journal_entry(self, selected_entries):
+		parent_dimensions = self.get_entry_additional_values()
+
 		je = frappe.new_doc("Journal Entry")
 		je.voucher_type = "Deposit Entry"
 		je.company = self.company
@@ -454,21 +468,35 @@ class BankDepositTool(Document):
 		je.cheque_no = self.deposit_no
 		je.cheque_date = self.deposit_date
 		je.user_remark = self.remarks or _("Deposit Entry")
+		je.update(parent_dimensions)
+
+		# conolidated bank amount
+		if self.consolidate_bank_amount:
+			total_amount = flt(self.actual_deposit_amount, self.precision("actual_deposit_amount"))
+			je.append("accounts", {
+				"account": self.deposit_to_account,
+				"debit_in_account_currency": abs(total_amount) if total_amount > 0 else 0,
+				"credit_in_account_currency": abs(total_amount) if total_amount < 0 else 0,
+				"cheque_no": self.deposit_no,
+				"cheque_date": self.deposit_date,
+			})
 
 		# selected payment entries
 		for d in selected_entries:
 			amount = flt(d.get('amount'))
 
-			debit_row = je.append("accounts", {
-				"account": self.deposit_to_account,
-				"debit_in_account_currency": abs(amount) if amount > 0 else 0,
-				"credit_in_account_currency": abs(amount) if amount < 0 else 0,
-				"cheque_no": d.get('reference_no'),
-				"cheque_date": d.get('reference_date'),
-				"deposit_against_type": d.voucher_type,
-				"deposit_against": d.voucher_no,
-				"deposit_against_detail_no": d.voucher_detail_dn,
-			})
+			debit_row = None
+			if not self.consolidate_bank_amount:
+				debit_row = je.append("accounts", {
+					"account": self.deposit_to_account,
+					"debit_in_account_currency": abs(amount) if amount > 0 else 0,
+					"credit_in_account_currency": abs(amount) if amount < 0 else 0,
+					"cheque_no": d.get('reference_no'),
+					"cheque_date": d.get('reference_date'),
+					"deposit_against_type": d.voucher_type,
+					"deposit_against": d.voucher_no,
+					"deposit_against_detail_no": d.voucher_detail_dn,
+				})
 
 			credit_row = je.append("accounts", {
 				"account": self.undeposited_account,
@@ -482,59 +510,75 @@ class BankDepositTool(Document):
 				"deposit_against_detail_no": d.voucher_detail_dn,
 			})
 
-			# Add dimensions from original voucher
+			# Add dimensions from the original voucher
 			additional_values = self.get_entry_additional_values(d)
-			debit_row.update(additional_values)
 			credit_row.update(additional_values)
+			if debit_row:
+				debit_row.update(additional_values)
 
 			if d.pos_closing_entry:
 				against = {
 					"reference_type": "POS Closing Entry",
 					"reference_name": d.pos_closing_entry
 				}
-				debit_row.update(against)
 				credit_row.update(against)
+				if debit_row:
+					debit_row.update(against)
 
 			credit_row.user_remark = je.user_remark or credit_row.user_remark
 
 		# adjustment entries
 		for d in self.adjustment_entries:
 			amount = flt(d.get('adjustment_amount'))
+			row_dimensions = self.get_accounting_dimensions(d)
 
 			# expense row
 			je.append("accounts", {
 				"account": d.get('account'),
+				"party_type": "Supplier" if d.get('supplier') else None,
+				"party": d.get('supplier'),
 				"cost_center": d.get('cost_center'),
 				"debit_in_account_currency": abs(amount) if amount > 0 else 0,
 				"credit_in_account_currency": abs(amount) if amount < 0 else 0,
-				"user_remark": _("Deposit Adjustment"),
-				"deposit_date": self.deposit_date,
+				**row_dimensions,
 			})
 
-			# bank row
-			je.append("accounts", {
-				"account": self.deposit_to_account,
-				"cost_center": d.get('cost_center'),
-				"debit_in_account_currency": abs(amount) if amount < 0 else 0,
-				"credit_in_account_currency": abs(amount) if amount > 0 else 0,
-				"user_remark": _("Deposit Adjustment"),
-				"deposit_date": self.deposit_date,
-			})
+			# reverse bank row
+			if not self.consolidate_bank_amount:
+				je.append("accounts", {
+					"account": self.deposit_to_account,
+					"cost_center": d.get('cost_center'),
+					"debit_in_account_currency": abs(amount) if amount < 0 else 0,
+					"credit_in_account_currency": abs(amount) if amount > 0 else 0,
+					**row_dimensions,
+				})
 
 		return je
 
-	@staticmethod
-	def get_entry_additional_values(entry):
-		dimensions = {}
+	def get_entry_additional_values(self, entry=None):
+		entry = entry or frappe._dict()
+
+		dimensions = self.get_accounting_dimensions(self)
+
 		voucher_type = entry.get('voucher_type')
 		voucher_no = entry.get('voucher_no')
 		voucher_detail_dn = entry.get('voucher_detail_dn')
 
 		if voucher_type and voucher_no:
-			dimensions = get_document_dimensions(voucher_type, voucher_no, with_remarks=True)
+			dimensions.update(get_document_dimensions(voucher_type, voucher_no, with_remarks=True))
 
 			if voucher_detail_dn and entry.get('voucher_detail_dt'):
 				child_dimensions = get_document_dimensions(entry.get('voucher_detail_dt'), voucher_detail_dn, with_remarks=True)
 				dimensions.update(child_dimensions)
+
+		return dimensions
+
+	@staticmethod
+	def get_accounting_dimensions(source):
+		dimensions = frappe._dict()
+		dimension_fields = get_all_dimension_fields()
+		for f in dimension_fields:
+			if source.get(f):
+				dimensions[f] = source.get(f)
 
 		return dimensions

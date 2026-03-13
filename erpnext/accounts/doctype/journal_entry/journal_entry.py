@@ -324,11 +324,6 @@ class JournalEntry(AccountsController):
 				reverse_dr_or_cr = "credit" if dr_or_cr == "debit" else "debit"
 				diff = flt(d.get(dr_or_cr)) - flt(d.get(reverse_dr_or_cr))
 
-				if not (d.reference_type and d.reference_name) and diff < 0 and not cint(self.is_advance):
-					frappe.throw(_("Row {0}: No voucher is referenced in Receivable / Payable account {1}. "
-						"Please set 'Against Document' or check mark 'Is Advance' if you do not want to reference this entry against another voucher")
-						.format(d.idx, d.account))
-
 	def check_credit_limit(self):
 		customers = list(set([d.party for d in self.get("accounts")
 			if d.party_type=="Customer" and d.party and flt(d.debit) > 0]))

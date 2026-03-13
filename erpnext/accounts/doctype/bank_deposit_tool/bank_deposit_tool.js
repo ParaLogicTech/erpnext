@@ -57,6 +57,24 @@ frappe.ui.form.on("Bank Deposit Tool", {
 				}
 			};
 		});
+
+		frm.set_query("cost_center", () => {
+			return {
+				filters: {
+					company: frm.doc.company,
+					is_group: 0
+				}
+			};
+		});
+
+		frm.set_query("cost_center", "adjustment_entries", () => {
+			return {
+				filters: {
+					company: frm.doc.company,
+					is_group: 0
+				}
+			};
+		});
 	},
 
 	setup_row_checkbox_selection: function(frm) {
@@ -155,6 +173,10 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		let accounts = [];
 		let cost_centers = [];
 
+		if (frm.doc.cost_center) {
+			cost_centers.push(frm.doc.cost_center);
+		}
+
 		if (frm.doc.undeposited_account) {
 			accounts.push(frm.doc.undeposited_account);
 		}
@@ -180,7 +202,10 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			},
 			callback: (r) => {
 				if (r.message) {
-					frm.default_cost_center = r.message.default_cost_center;
+					frm.set_value(
+						"cost_center",
+						r.message.cost_centers[frm.doc.cost_center] || r.message.default_cost_center
+					);
 
 					if (frm.doc.undeposited_account && r.message.accounts[frm.doc.undeposited_account]) {
 						frm.set_value("undeposited_account", r.message.accounts[frm.doc.undeposited_account]);
@@ -193,13 +218,9 @@ frappe.ui.form.on("Bank Deposit Tool", {
 						if (d.account && r.message.accounts[d.account]) {
 							frappe.model.set_value(d.doctype, d.name, "account", r.message.accounts[d.account]);
 						}
-
-						frappe.model.set_value(
-							d.doctype,
-							d.name,
-							"cost_center",
-							r.message.cost_centers[d.cost_center] || r.message.default_cost_center
-						);
+						if (d.cost_center && r.message.cost_centers[d.cost_center]) {
+							frappe.model.set_value(d.doctype, d.name, "cost_center", r.message.cost_centers[d.cost_center]);
+						}
 					}
 				}
 			}
@@ -208,17 +229,29 @@ frappe.ui.form.on("Bank Deposit Tool", {
 });
 
 frappe.ui.form.on("Bank Deposit Adjustment", {
-	adjustment_amount: function(frm, cdt, cdn) {
+	supplier: function(frm, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		if (row.supplier && frm.doc.company) {
+			return frappe.call({
+				method: "erpnext.accounts.party.get_party_account",
+				args: {
+					company: frm.doc.company,
+					party_type: "Supplier",
+					party: row.supplier,
+				},
+				callback: function(r) {
+					if (r.message) {
+						frappe.model.set_value(row.doctype, row.name, "account", r.message);
+					}
+				}
+			});
+		}
+	},
+
+	adjustment_amount: function(frm) {
 		frm.events.calculate_totals(frm);
 	},
 	adjustment_entries_remove: function(frm) {
 		frm.events.calculate_totals(frm);
-	},
-	adjustment_entries_add: function (frm, cdt, cdn) {
-		let row = frappe.get_doc(cdt, cdn);
-		if (frm.default_cost_center && !row.cost_center) {
-			row.cost_center = frm.default_cost_center;
-			refresh_field("cost_center", row.name, "adjustment_entries");
-		}
 	},
 });

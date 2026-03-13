@@ -424,3 +424,4 @@ erpnext.patches.v15_0.reset_deposit_date_from_head_cashier_jv
 erpnext.patches.v15_0.merge_middle_names_into_last_names
 erpnext.patches.v15_0.set_po_create_check_material_request
 erpnext.patches.v15_0.set_rejected_warehouse_in_packing_slip_item
+erpnext.patches.v15_0.create_bank_deposit_dimension_fields

@@ -334,6 +334,8 @@ accounting_dimension_doctypes = [
 	"Service Warranty",
 	"Expense Claim", "Expense Claim Detail", "Expense Taxes and Charges",
 
+	"Bank Deposit Tool", "Bank Deposit Adjustment",
+
 	"Loyalty Program", "Shipping Rule",
 	"Asset", "Asset Value Adjustment",
 	"Fees", "Fee Schedule", "Fee Structure",
