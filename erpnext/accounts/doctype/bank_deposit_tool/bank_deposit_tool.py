@@ -140,6 +140,10 @@ class BankDepositTool(Document):
 			conditions += " and paid_amount <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
 
+		if self.mode_of_payment:
+			conditions += " and mode_of_payment = %(mode_of_payment)s"
+			params["mode_of_payment"] = self.mode_of_payment
+
 		limit = "limit %(limit)s" if self.limit else ""
 
 		payment_entries = frappe.db.sql(f"""
@@ -198,6 +202,10 @@ class BankDepositTool(Document):
 		if self.max_amount:
 			conditions += " and sip.amount <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
+
+		if self.mode_of_payment:
+			conditions += " and sip.mode_of_payment = %(mode_of_payment)s"
+			params["mode_of_payment"] = self.mode_of_payment
 
 		limit = "limit %(limit)s" if self.limit else ""
 
@@ -260,14 +268,16 @@ class BankDepositTool(Document):
 			params["to_date"] = self.to_date
 
 		if self.min_amount:
-			conditions += " and jea.debit_in_account_currency >= %(min_amount)s"
+			conditions += " and (jea.debit_in_account_currency - jea.credit_in_account_currency) >= %(min_amount)s"
 			params["min_amount"] = self.min_amount
 
 		if self.max_amount:
-			conditions += " and jea.debit_in_account_currency <= %(max_amount)s"
+			conditions += " and (jea.debit_in_account_currency - jea.credit_in_account_currency) <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
 
-		limit = "limit %(limit)s" if self.limit else ""
+		limit = ""
+		if not self.mode_of_payment:
+			limit = "limit %(limit)s" if self.limit else ""
 
 		journal_entries = frappe.db.sql(f"""
 			select 
@@ -328,6 +338,10 @@ class BankDepositTool(Document):
 		for d in invoice_payments_data:
 			for jv in jv_against_invoice_payments_map.get(d.name, []):
 				jv.deposit_against_mode_of_payment = d.mode_of_payment
+
+		if self.mode_of_payment:
+			journal_entries = [d for d in journal_entries if self.mode_of_payment in (d.mode_of_payment, d.deposit_against_mode_of_payment)]
+			journal_entries = journal_entries[:self.limit]
 
 		return journal_entries
 
@@ -406,7 +420,7 @@ class BankDepositTool(Document):
 
 		frappe.msgprint(_("Deposit Entry {0} submitted successfully").format(
 			frappe.bold(je.name)
-		))
+		), alert=True)
 
 		self.get_undeposited_entries()
 		self.adjustment_entries = []

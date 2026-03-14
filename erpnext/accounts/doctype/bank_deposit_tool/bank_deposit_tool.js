@@ -104,6 +104,26 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		frm.events.get_undeposited_entries(frm);
 	},
 
+	from_date: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	to_date: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	min_amount: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	max_amount: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	mode_of_payment: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
 	actual_deposit_amount: function(frm) {
 		frm.events.calculate_totals(frm);
 	},
