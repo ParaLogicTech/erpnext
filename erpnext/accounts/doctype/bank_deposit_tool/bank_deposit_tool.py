@@ -161,7 +161,7 @@ class BankDepositTool(Document):
 				payment_type = 'Receive'
 				and paid_to = %(account)s
 				and docstatus = 1
-				and (deposit_date is null or deposit_date = '')
+				and deposit_date is null
 				and posting_date <= %(deposit_date)s
 				{conditions}
 			order by posting_date, creation
@@ -223,7 +223,7 @@ class BankDepositTool(Document):
 			where
 				si.docstatus = 1
 				and sip.account = %(account)s
-				and (sip.deposit_date is null or sip.deposit_date = '')
+				and sip.deposit_date is null
 				and si.posting_date <= %(deposit_date)s
 				and sip.amount != 0
 				{conditions}
@@ -298,7 +298,7 @@ class BankDepositTool(Document):
 				je.docstatus = 1
 				and jea.account = %(account)s
 				and (jea.debit_in_account_currency - jea.credit_in_account_currency) > 0
-				and (jea.deposit_date is null or jea.deposit_date = '')
+				and jea.deposit_date is null
 				and je.posting_date <= %(deposit_date)s
 				and je.is_opening != 'Yes'
 				{conditions}
@@ -399,7 +399,29 @@ class BankDepositTool(Document):
 		return out
 
 	@frappe.whitelist()
-	def submit_deposit(self, selected_row_names):
+	def submit_deposit_entry(self, selected_row_names):
+		je = self.make_deposit_journal_entry(selected_row_names)
+		je.insert()
+		je.submit()
+
+		frappe.msgprint(_("Deposit Entry {0} submitted successfully").format(
+			frappe.bold(je.name)
+		))
+
+		self.get_undeposited_entries()
+		self.adjustment_entries = []
+
+		return je.name
+
+	@frappe.whitelist()
+	def make_deposit_entry(self, selected_row_names):
+		je = self.make_deposit_journal_entry(selected_row_names)
+		je.set_amounts_in_company_currency()
+		je.set_total_debit_credit()
+		je.set_party_name()
+		return je
+
+	def make_deposit_journal_entry(self, selected_row_names):
 		self.validate()
 		self._validate_mandatory()
 
@@ -428,19 +450,7 @@ class BankDepositTool(Document):
 		if flt(deposit_amount, self.precision("actual_deposit_amount")) != flt(self.actual_deposit_amount, self.precision("actual_deposit_amount")):
 			frappe.throw(_("Difference Amount must be zero, please check Actual Deposit Amount or select adjustment accounts"))
 
-		je = self.make_journal_entry(selected_entries)
-		je.flags.ignore_mandatory = True
-		je.insert()
-		je.submit()
-
-		frappe.msgprint(_("Deposit Entry {0} created successfully").format(
-			frappe.utils.get_link_to_form("Journal Entry", je.name)
-		))
-
-		self.get_undeposited_entries()
-		self.adjustment_entries = []
-
-		return je.name
+		return self.make_journal_entry(selected_entries)
 
 	def validate_undeposited_row(self, row):
 		if not row.voucher_type or not row.voucher_no:

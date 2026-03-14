@@ -13,9 +13,16 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		}
 
 		frm.disable_save();
+
 		frm.page.set_primary_action(__("Submit Deposit Entry"), () => {
-			frappe.confirm(__("Are you sure you want to submit Deposit Entry?"), () => {
-				frm.events.submit_deposit(frm);
+			frappe.confirm(__("Are you sure you want to submit a Deposit Entry?"), () => {
+				frm.events.submit_deposit_entry(frm);
+			});
+		});
+
+		frm.page.set_secondary_action(__("Draft Deposit Entry"), () => {
+			frappe.confirm(__("Are you sure you want to draft a Deposit Entry?"), () => {
+				frm.events.make_deposit_entry(frm);
 			});
 		});
 
@@ -151,17 +158,40 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		});
 	},
 
-	submit_deposit: function(frm) {
+	submit_deposit_entry: function(frm) {
 		let selected_row_names = frm.fields_dict.undeposited_entries.grid.get_selected();
-		// call the controller to reconcile entries
 		return frm.call({
 			doc: frm.doc,
-			method: "submit_deposit",
+			method: "submit_deposit_entry",
 			args: {
 				selected_row_names: selected_row_names
 			},
 			freeze: true,
 			freeze_message: __('Submitting Deposit Entry...'),
+			callback: (r) => {
+				if (r.message) {
+					frappe.set_route("Form", "Journal Entry", r.message);
+				}
+			}
+		});
+	},
+
+	make_deposit_entry: function(frm) {
+		let selected_row_names = frm.fields_dict.undeposited_entries.grid.get_selected();
+		return frm.call({
+			doc: frm.doc,
+			method: "make_deposit_entry",
+			args: {
+				selected_row_names: selected_row_names
+			},
+			freeze: true,
+			freeze_message: __('Making Deposit Entry...'),
+			callback: (r) => {
+				if (r.message) {
+					frappe.model.sync(r.message);
+					frappe.set_route("Form", r.message.doctype, r.message.name);
+				}
+			}
 		});
 	},
 
