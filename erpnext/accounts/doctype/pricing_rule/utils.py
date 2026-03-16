@@ -64,7 +64,7 @@ def _get_pricing_rules(apply_on, args, values):
 
 		if apply_on_field == "item_code" and args.variant_of:
 			item_conditions.append(f"{child_table}.item_code = %(variant_of)s")
-			other_item_conditions.append(f"{child_table}.other_item_code = %(variant_of)s")
+			other_item_conditions.append(f"`tabPricing Rule`.other_item_code = %(variant_of)s")
 			values['variant_of'] = args.variant_of
 
 	elif apply_on_field == "item_group":
