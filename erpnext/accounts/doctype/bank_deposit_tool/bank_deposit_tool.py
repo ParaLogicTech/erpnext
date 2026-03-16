@@ -6,8 +6,10 @@ from erpnext.accounts.utils import get_balance_on
 from frappe import _
 from frappe.utils import flt, getdate
 from frappe.model.document import Document
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_dimension_fields
-from erpnext.accounts.doctype.bank_reconciliation.bank_reconciliation import get_document_dimensions
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_all_dimension_fields,
+	get_document_dimensions,
+)
 import json
 
 

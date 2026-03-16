@@ -6,7 +6,7 @@ from frappe import _
 from frappe.utils import flt, getdate, add_days
 from frappe.model.document import Document
 from erpnext.accounts.utils import get_balance_on
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_valid_dimension_fields
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_document_dimensions
 
 
 class BankReconciliation(Document):
@@ -333,21 +333,3 @@ def get_opening_balance(account, from_date):
 	return get_balance_on(account, from_date)
 
 
-def get_document_dimensions(doctype, name, with_remarks=False, cache=True):
-	def generator():
-		dimension_fields = get_all_valid_dimension_fields(doctype)
-		if with_remarks and frappe.get_meta(doctype).has_field("user_remark"):
-			dimension_fields.append("user_remark")
-
-		dimensions = {}
-		if dimension_fields:
-			dimensions = frappe.db.get_value(doctype, name, dimension_fields, as_dict=True) or {}
-
-		dimensions = frappe._dict({f: v for f, v in dimensions.items() if v})
-		return dimensions
-
-	if cache:
-		key = (doctype, name, bool(with_remarks))
-		return frappe.local_cache("get_document_dimensions", key, generator)
-	else:
-		return generator()

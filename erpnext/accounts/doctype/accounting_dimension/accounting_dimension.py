@@ -251,3 +251,23 @@ def get_dimension_filters():
 		default_dimensions_map[dimension.company][dimension.fieldname] = dimension.default_dimension
 
 	return dimension_filters, default_dimensions_map
+
+
+def get_document_dimensions(doctype, name, with_remarks=False, cache=True):
+	def generator():
+		dimension_fields = get_all_valid_dimension_fields(doctype)
+		if with_remarks and frappe.get_meta(doctype).has_field("user_remark"):
+			dimension_fields.append("user_remark")
+
+		dimensions = {}
+		if dimension_fields:
+			dimensions = frappe.db.get_value(doctype, name, dimension_fields, as_dict=True) or {}
+
+		dimensions = frappe._dict({f: v for f, v in dimensions.items() if v})
+		return dimensions
+
+	if cache:
+		key = (doctype, name, bool(with_remarks))
+		return frappe.local_cache("get_document_dimensions", key, generator)
+	else:
+		return generator()

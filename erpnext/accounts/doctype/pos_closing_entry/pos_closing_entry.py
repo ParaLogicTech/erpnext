@@ -8,7 +8,7 @@ from frappe import _
 from frappe.utils import flt, getdate, get_datetime, get_time, cint, cstr
 from frappe.model.document import Document
 from erpnext.accounts.doctype.pos_opening_entry.pos_opening_entry import get_pos_opening_entry
-from erpnext.accounts.doctype.bank_reconciliation.bank_reconciliation import get_document_dimensions
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_document_dimensions
 
 
 class POSClosingEntry(Document):
