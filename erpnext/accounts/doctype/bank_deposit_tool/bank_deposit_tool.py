@@ -223,8 +223,8 @@ class BankDepositTool(Document):
 				sip.mode_of_payment,
 				si.posting_date,
 				'Customer' as party_type,
-				si.customer as party,
-				si.customer_name as party_name,
+				si.bill_to as party,
+				si.bill_to_name as party_name,
 				si.pos_profile,
 				si.cashier
 			from `tabSales Invoice Payment` sip
