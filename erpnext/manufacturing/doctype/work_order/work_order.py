@@ -1363,16 +1363,16 @@ def make_work_order(bom_no, item, qty=0, project=None):
 	if not frappe.has_permission("Work Order", "write"):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-	item_details = get_item_details(item, project)
-
 	wo_doc = frappe.new_doc("Work Order")
 	wo_doc.production_item = item
-	wo_doc.update(item_details)
 	wo_doc.bom_no = bom_no
+	wo_doc.project = project
 
 	if flt(qty) > 0:
 		wo_doc.qty = flt(qty)
 		wo_doc.get_items_and_operations_from_bom()
+
+	wo_doc.run_method("set_missing_values")
 
 	return wo_doc
 

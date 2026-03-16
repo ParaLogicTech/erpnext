@@ -124,7 +124,7 @@ frappe.ui.form.on("BOM", {
 	make_work_order: function(frm) {
 		const fields = [{
 			fieldtype: 'Float',
-			label: __('Qty To Manufacture'),
+			label: __('Qty To Produce'),
 			fieldname: 'qty',
 			reqd: 1,
 			default: 1
@@ -137,7 +137,7 @@ frappe.ui.form.on("BOM", {
 					bom_no: frm.doc.name,
 					item: frm.doc.item,
 					qty: data.qty || 0.0,
-					project: frm.doc.project
+					project: frm.doc.project,
 				},
 				freeze: true,
 				callback: function(r) {
