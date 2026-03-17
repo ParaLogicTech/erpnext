@@ -182,6 +182,12 @@ frappe.query_reports["General Ledger"] = {
 			}
 		},
 		{
+			fieldname: "voucher_type",
+			label: __("Voucher Type"),
+			options: "DocType",
+			fieldtype: "Link"
+		},
+		{
 			fieldname: "voucher_filter_method",
 			label: __("Voucher No Filter Method"),
 			fieldtype: "Select",

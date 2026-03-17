@@ -313,9 +313,18 @@ def get_conditions(filters, accounting_dimensions):
 	if filters.get("cost_center"):
 		filters.cost_center = get_cost_centers_with_children(filters.cost_center)
 		conditions.append("gle.cost_center in %(cost_center)s")
+	
+	voucher_filter_method = filters.get("voucher_filter_method")
+
+	if filters.get("voucher_type"):
+		if voucher_filter_method == "Posted Against Voucher":
+			conditions.append("gle.against_voucher_type = %(voucher_type)s")
+		elif voucher_filter_method == "Posted By and Against Voucher":
+			conditions.append("gle.voucher_type = %(voucher_type)s or gle.against_voucher_type = %(voucher_type)s")
+		else:
+			conditions.append("gle.voucher_type = %(voucher_type)s")
 
 	if filters.get("voucher_no"):
-		voucher_filter_method = filters.get("voucher_filter_method")
 		if voucher_filter_method == "Posted Against Voucher":
 			conditions.append("gle.against_voucher = %(voucher_no)s")
 		elif voucher_filter_method == "Posted By and Against Voucher":
