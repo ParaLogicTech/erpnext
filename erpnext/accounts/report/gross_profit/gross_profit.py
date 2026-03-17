@@ -54,6 +54,7 @@ class GrossProfitGenerator(object):
 				si.update_stock, si_item.delivery_note_item, si_item.delivery_note,
 				si_item.qty, si_item.stock_qty, si_item.conversion_factor, si_item.alt_uom_size,
 				si_item.base_net_amount,
+				IF(si_item.branch IS NULL OR si_item.branch = '', si.branch, si_item.branch) AS branch,
 				si.depreciation_type, si_item.ignore_depreciation, si_item.depreciation_percentage,
 				GROUP_CONCAT(DISTINCT sp.sales_person SEPARATOR ', ') as sales_person,
 				sum(ifnull(sp.allocated_percentage, 100)) as allocated_percentage,
@@ -124,13 +125,14 @@ class GrossProfitGenerator(object):
 
 			if not group_label:
 				continue
-
 			if group_label == "Invoice":
 				group_field = "parent"
 			elif group_label == "Item":
 				group_field = "item_code"
 			elif group_label == "Customer Group":
 				group_field = "customer_group"
+			elif group_label == "Branch":
+				group_field = "branch"
 			else:
 				group_field = scrub(group_label)
 
@@ -236,6 +238,10 @@ class GrossProfitGenerator(object):
 
 		if self.filters.get("customer"):
 			conditions.append("si.customer = %(customer)s")
+		
+		if self.filters.get("branch"):
+			self.filters["branch"] = [self.filters.get("branch")]
+			conditions.append("IF(si_item.branch IS NULL or si_item.branch = '', si.branch, si_item.branch) in %(branch)s")
 
 		if self.filters.get("customer_group"):
 			lft, rgt = frappe.db.get_value("Customer Group", self.filters.customer_group, ["lft", "rgt"])
@@ -293,6 +299,12 @@ class GrossProfitGenerator(object):
 			if isinstance(self.filters.project, str):
 				self.filters.project = [self.filters.project]
 			conditions.append("IF(si.project IS NULL or si.project = '', si_item.project, si.project) in %(project)s")
+		
+		if self.filters.get("project_based"):
+			conditions.append("""
+				IFNULL(NULLIF(si.project, ''), si_item.project) IS NOT NULL
+				AND IFNULL(NULLIF(si.project, ''), si_item.project) != ''
+			""")
 
 		if self.filters.get("sales_person"):
 			lft, rgt = frappe.db.get_value("Sales Person", self.filters.sales_person, ["lft", "rgt"])
@@ -527,6 +539,13 @@ class GrossProfitGenerator(object):
 				"fieldname": "batch_no",
 				"options": "Batch",
 				"width": 140
+			},
+			{
+				"label": _("Branch"),
+				"fieldtype": "Link",
+				"fieldname": "branch",
+				"options": "Branch",
+				"width": 100
 			},
 			{
 				"label": _("Project"),

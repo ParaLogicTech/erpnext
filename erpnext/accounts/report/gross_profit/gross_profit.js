@@ -2,7 +2,7 @@
 // License: GNU General Public License v3. See license.txt
 
 const group_by_options_gp = [
-	"", "Group by Invoice", "Group by Customer", "Group by Customer Group",
+	"", "Group by Invoice", "Group by Customer", "Group by Customer Group", "Group by Branch",
 	"Group by Item", "Group by Item Group", "Group by Brand", "Group by Warehouse",
 	"Group by Territory", "Group by Sales Person", "Group by Item Source",
 	"Group by Applies To Item", "Group by Applies To Variant Of",
@@ -55,6 +55,12 @@ frappe.query_reports["Gross Profit"] = {
 			"label": __("Customer Group"),
 			"fieldtype": "Link",
 			"options": "Customer Group"
+		},
+		{
+			"fieldname":"branch",
+			"label": __("Branch"),
+			"fieldtype": "Link",
+			"options": "Branch"
 		},
 		{
 			"fieldname":"territory",
@@ -137,6 +143,11 @@ frappe.query_reports["Gross Profit"] = {
 			get_query: () => {
 				return { filters: { company: frappe.query_report.get_filter_value("company") } };
 			},
+		},
+		{
+			fieldname: "project_based",
+			label: __("RO Based"),
+			fieldtype: "Check",
 		},
 		{
 			fieldname: "include_non_stock_items",

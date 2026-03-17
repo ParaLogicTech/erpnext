@@ -354,6 +354,9 @@ def get_conditions(filters, accounting_dimensions):
 
 	if filters.get("project"):
 		conditions.append("gle.project = %(project)s")
+	
+	if filters.get("project_based"):
+		conditions.append("gle.project is not NULL and gle.project!=''")
 
 	if filters.get("group_by") == _("Group by Sales Person"):
 		conditions.append("steam.sales_person != '' and steam.sales_person is not null")

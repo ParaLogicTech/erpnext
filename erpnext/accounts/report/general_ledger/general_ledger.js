@@ -252,6 +252,11 @@ frappe.query_reports["General Ledger"] = {
 			on_change: function() { }
 		},
 		{
+			fieldname: "project_based",
+			label: __("RO Based"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "tax_id",
 			label: __("Tax Id"),
 			fieldtype: "Data",
