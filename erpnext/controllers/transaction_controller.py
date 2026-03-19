@@ -164,7 +164,7 @@ class TransactionController(StockController):
 			parent_dict['transaction_type_name'] = parent_dict.pop('transaction_type')
 
 		# party_name field used for customer in quotation
-		if self.doctype == "Quotation" and self.quotation_to == "Customer" and parent_dict.get("party_name"):
+		if self.get("quotation_to") == "Customer" and parent_dict.get("party_name"):
 			parent_dict.update({"customer": parent_dict.get("party_name")})
 
 		return parent_dict
@@ -257,7 +257,7 @@ class TransactionController(StockController):
 					if item.get('discount_amount'):
 						item.rate = item.price_list_rate - item.discount_amount
 
-			elif pricing_rule_args.get('free_item_data'):
+			if pricing_rule_args.get('free_item_data'):
 				apply_pricing_rule_for_free_items(self, pricing_rule_args.get('free_item_data'))
 
 			if item.meta.has_field("margin_type") and pricing_rule_args.get("margin_type"):

@@ -1,7 +1,7 @@
 import frappe
 from frappe import scrub
 from erpnext import get_default_company
-from erpnext.setup.doctype.item_default_rule.item_default_rule import filter_fields
+from erpnext.setup.doctype.item_default_rule.item_default_rule import get_filter_fields
 
 
 def execute():
@@ -51,7 +51,7 @@ def execute():
 	for rule_name, rule_detail in rules.items():
 		remove = True
 		for k, v in rule_detail.items():
-			if k in filter_fields or k == 'item_default_rule_name':
+			if k in get_filter_fields() or k == 'item_default_rule_name':
 				continue
 			if k == "income_account" and v == default_income_account:
 				continue
@@ -83,7 +83,7 @@ def update_rule_value(rules, dt, name, d):
 		if k in ["company"]:
 			continue
 
-		if rule_meta.has_field(k) and k not in filter_fields and v:
+		if rule_meta.has_field(k) and k not in get_filter_fields() and v:
 			rule_template = get_rule_template(rule_name, dt, name)
 			rule_dict = rules.setdefault(rule_name, rule_template)
 			rule_dict[k] = v

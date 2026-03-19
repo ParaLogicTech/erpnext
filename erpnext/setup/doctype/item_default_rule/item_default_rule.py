@@ -6,10 +6,31 @@ from frappe import _
 from frappe.utils import cint, cstr
 from frappe.model.document import Document
 
-transaction_filter_fields = ['company', 'transaction_type']
-item_filter_fields = ['item_code', 'item_source', 'brand', 'item_group']
 
-filter_fields = transaction_filter_fields + item_filter_fields
+def get_transaction_filter_fields():
+	fields = ["company", "transaction_type"]
+	fields += frappe.get_hooks("item_default_rule_transaction_filter_fields")
+
+	hooks = frappe.get_hooks("update_item_default_rule_transaction_filter_fields")
+	for method in hooks:
+		frappe.get_attr(method)(fields)
+
+	return fields
+
+
+def get_item_filter_fields():
+	fields = ["item_code", "item_source", "brand", "item_group"]
+	fields += frappe.get_hooks("item_default_rule_item_filter_fields")
+
+	hooks = frappe.get_hooks("update_item_default_rule_item_filter_fields")
+	for method in hooks:
+		frappe.get_attr(method)(fields)
+
+	return fields
+
+
+def get_filter_fields():
+	return get_transaction_filter_fields() + get_item_filter_fields()
 
 
 class ItemDefaultRule(Document):
@@ -29,7 +50,7 @@ class ItemDefaultRule(Document):
 		if not self.is_new():
 			filters['name'] = ['!=', self.name]
 
-		for f in filter_fields:
+		for f in get_filter_fields():
 			if self.get(f):
 				filters[f] = self.get(f)
 			else:
@@ -104,7 +125,7 @@ class ItemDefaultRule(Document):
 
 	def get_required_filters(self):
 		required_filters = frappe._dict()
-		for f in filter_fields:
+		for f in get_filter_fields():
 			if self.get(f):
 				required_filters[f] = self.get(f)
 
@@ -160,7 +181,7 @@ def get_default_values_dict(applicable_rules, filter_sort=None):
 
 	# sort: more matches first, precendent filters first
 	if not filter_sort:
-		filter_sort = filter_fields.copy()
+		filter_sort = get_filter_fields()
 
 	applicable_rules = sorted(applicable_rules, key=lambda d: sorting_function(d))
 
@@ -171,7 +192,7 @@ def get_default_values_dict(applicable_rules, filter_sort=None):
 			if fieldname == "item_default_rule_name":
 				continue
 
-			if value and fieldname not in filter_fields and rule_meta.has_field(fieldname):
+			if value and fieldname not in get_filter_fields() and rule_meta.has_field(fieldname):
 				if fieldname == "taxes":
 					values.setdefault(fieldname, [])
 					values[fieldname] += value
@@ -198,12 +219,18 @@ def get_filters_dict(item, transaction=None):
 		transaction = transaction.as_dict()
 
 	filters = frappe._dict()
-	for f in item_filter_fields:
-		if item.get(f):
-			filters[f] = item.get(f)
-	for f in transaction_filter_fields:
-		if transaction.get(f):
-			filters[f] = transaction.get(f)
+
+	if not item:
+		for f in get_filter_fields():
+			if transaction.get(f):
+				filters[f] = transaction.get(f)
+	else:
+		for f in get_item_filter_fields():
+			if item.get(f):
+				filters[f] = item.get(f)
+		for f in get_transaction_filter_fields():
+			if transaction.get(f):
+				filters[f] = transaction.get(f)
 
 	if item:
 		filters["item_code"] = item.get("name")

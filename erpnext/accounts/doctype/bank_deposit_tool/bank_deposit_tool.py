@@ -6,7 +6,10 @@ from erpnext.accounts.utils import get_balance_on
 from frappe import _
 from frappe.utils import flt, getdate
 from frappe.model.document import Document
-from erpnext.accounts.doctype.bank_reconciliation.bank_reconciliation import get_document_dimensions
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_all_dimension_fields,
+	get_document_dimensions,
+)
 import json
 
 
@@ -61,6 +64,17 @@ class BankDepositTool(Document):
 				undeposited_account = frappe.get_cached_doc("Account", self.undeposited_account)
 				if undeposited_account.account_currency != adjustment_account.account_currency:
 					frappe.throw(_("Row #{0}: Adjustment Account and Deposit To Account must have same currency").format(d.idx))
+
+				if adjustment_account.account_type in ("Receivable", "Payable"):
+					if not d.supplier:
+						frappe.throw(_("Row #{0}: Supplier is mandatory for {1} Adjustment Account").format(
+							d.idx, adjustment_account.account_type
+						))
+				else:
+					if d.supplier:
+						frappe.throw(_("Row #{0}: Supplier can only be selected for Payable or Receivable Adjustment Account").format(
+							d.idx
+						))
 
 	@frappe.whitelist()
 	def get_undeposited_entries(self):
@@ -128,6 +142,10 @@ class BankDepositTool(Document):
 			conditions += " and paid_amount <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
 
+		if self.mode_of_payment:
+			conditions += " and mode_of_payment = %(mode_of_payment)s"
+			params["mode_of_payment"] = self.mode_of_payment
+
 		limit = "limit %(limit)s" if self.limit else ""
 
 		payment_entries = frappe.db.sql(f"""
@@ -149,7 +167,7 @@ class BankDepositTool(Document):
 				payment_type = 'Receive'
 				and paid_to = %(account)s
 				and docstatus = 1
-				and (deposit_date is null or deposit_date = '')
+				and deposit_date is null
 				and posting_date <= %(deposit_date)s
 				{conditions}
 			order by posting_date, creation
@@ -187,6 +205,10 @@ class BankDepositTool(Document):
 			conditions += " and sip.amount <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
 
+		if self.mode_of_payment:
+			conditions += " and sip.mode_of_payment = %(mode_of_payment)s"
+			params["mode_of_payment"] = self.mode_of_payment
+
 		limit = "limit %(limit)s" if self.limit else ""
 
 		pos_sales_invoices = frappe.db.sql(f"""
@@ -201,8 +223,8 @@ class BankDepositTool(Document):
 				sip.mode_of_payment,
 				si.posting_date,
 				'Customer' as party_type,
-				si.customer as party,
-				si.customer_name as party_name,
+				si.bill_to as party,
+				si.bill_to_name as party_name,
 				si.pos_profile,
 				si.cashier
 			from `tabSales Invoice Payment` sip
@@ -211,7 +233,7 @@ class BankDepositTool(Document):
 			where
 				si.docstatus = 1
 				and sip.account = %(account)s
-				and (sip.deposit_date is null or sip.deposit_date = '')
+				and sip.deposit_date is null
 				and si.posting_date <= %(deposit_date)s
 				and sip.amount != 0
 				{conditions}
@@ -248,14 +270,16 @@ class BankDepositTool(Document):
 			params["to_date"] = self.to_date
 
 		if self.min_amount:
-			conditions += " and jea.debit_in_account_currency >= %(min_amount)s"
+			conditions += " and (jea.debit_in_account_currency - jea.credit_in_account_currency) >= %(min_amount)s"
 			params["min_amount"] = self.min_amount
 
 		if self.max_amount:
-			conditions += " and jea.debit_in_account_currency <= %(max_amount)s"
+			conditions += " and (jea.debit_in_account_currency - jea.credit_in_account_currency) <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
 
-		limit = "limit %(limit)s" if self.limit else ""
+		limit = ""
+		if not self.mode_of_payment:
+			limit = "limit %(limit)s" if self.limit else ""
 
 		journal_entries = frappe.db.sql(f"""
 			select 
@@ -286,7 +310,7 @@ class BankDepositTool(Document):
 				je.docstatus = 1
 				and jea.account = %(account)s
 				and (jea.debit_in_account_currency - jea.credit_in_account_currency) > 0
-				and (jea.deposit_date is null or jea.deposit_date = '')
+				and jea.deposit_date is null
 				and je.posting_date <= %(deposit_date)s
 				and je.is_opening != 'Yes'
 				{conditions}
@@ -316,6 +340,10 @@ class BankDepositTool(Document):
 		for d in invoice_payments_data:
 			for jv in jv_against_invoice_payments_map.get(d.name, []):
 				jv.deposit_against_mode_of_payment = d.mode_of_payment
+
+		if self.mode_of_payment:
+			journal_entries = [d for d in journal_entries if self.mode_of_payment in (d.mode_of_payment, d.deposit_against_mode_of_payment)]
+			journal_entries = journal_entries[:self.limit]
 
 		return journal_entries
 
@@ -387,7 +415,29 @@ class BankDepositTool(Document):
 		return out
 
 	@frappe.whitelist()
-	def submit_deposit(self, selected_row_names):
+	def submit_deposit_entry(self, selected_row_names):
+		je = self.make_deposit_journal_entry(selected_row_names)
+		je.insert()
+		je.submit()
+
+		frappe.msgprint(_("Deposit Entry {0} submitted successfully").format(
+			frappe.bold(je.name)
+		), alert=True)
+
+		self.get_undeposited_entries()
+		self.adjustment_entries = []
+
+		return je.name
+
+	@frappe.whitelist()
+	def make_deposit_entry(self, selected_row_names):
+		je = self.make_deposit_journal_entry(selected_row_names)
+		je.set_amounts_in_company_currency()
+		je.set_total_debit_credit()
+		je.set_party_name()
+		return je
+
+	def make_deposit_journal_entry(self, selected_row_names):
 		self.validate()
 		self._validate_mandatory()
 
@@ -416,19 +466,7 @@ class BankDepositTool(Document):
 		if flt(deposit_amount, self.precision("actual_deposit_amount")) != flt(self.actual_deposit_amount, self.precision("actual_deposit_amount")):
 			frappe.throw(_("Difference Amount must be zero, please check Actual Deposit Amount or select adjustment accounts"))
 
-		je = self.make_journal_entry(selected_entries)
-		je.flags.ignore_mandatory = True
-		je.insert()
-		je.submit()
-
-		frappe.msgprint(_("Deposit Entry {0} created successfully").format(
-			frappe.utils.get_link_to_form("Journal Entry", je.name)
-		))
-
-		self.get_undeposited_entries()
-		self.adjustment_entries = []
-
-		return je.name
+		return self.make_journal_entry(selected_entries)
 
 	def validate_undeposited_row(self, row):
 		if not row.voucher_type or not row.voucher_no:
@@ -446,6 +484,8 @@ class BankDepositTool(Document):
 			))
 
 	def make_journal_entry(self, selected_entries):
+		parent_dimensions = self.get_entry_additional_values()
+
 		je = frappe.new_doc("Journal Entry")
 		je.voucher_type = "Deposit Entry"
 		je.company = self.company
@@ -454,21 +494,35 @@ class BankDepositTool(Document):
 		je.cheque_no = self.deposit_no
 		je.cheque_date = self.deposit_date
 		je.user_remark = self.remarks or _("Deposit Entry")
+		je.update(parent_dimensions)
+
+		# conolidated bank amount
+		if self.consolidate_bank_amount:
+			total_amount = flt(self.actual_deposit_amount, self.precision("actual_deposit_amount"))
+			je.append("accounts", {
+				"account": self.deposit_to_account,
+				"debit_in_account_currency": abs(total_amount) if total_amount > 0 else 0,
+				"credit_in_account_currency": abs(total_amount) if total_amount < 0 else 0,
+				"cheque_no": self.deposit_no,
+				"cheque_date": self.deposit_date,
+			})
 
 		# selected payment entries
 		for d in selected_entries:
 			amount = flt(d.get('amount'))
 
-			debit_row = je.append("accounts", {
-				"account": self.deposit_to_account,
-				"debit_in_account_currency": abs(amount) if amount > 0 else 0,
-				"credit_in_account_currency": abs(amount) if amount < 0 else 0,
-				"cheque_no": d.get('reference_no'),
-				"cheque_date": d.get('reference_date'),
-				"deposit_against_type": d.voucher_type,
-				"deposit_against": d.voucher_no,
-				"deposit_against_detail_no": d.voucher_detail_dn,
-			})
+			debit_row = None
+			if not self.consolidate_bank_amount:
+				debit_row = je.append("accounts", {
+					"account": self.deposit_to_account,
+					"debit_in_account_currency": abs(amount) if amount > 0 else 0,
+					"credit_in_account_currency": abs(amount) if amount < 0 else 0,
+					"cheque_no": d.get('reference_no'),
+					"cheque_date": d.get('reference_date'),
+					"deposit_against_type": d.voucher_type,
+					"deposit_against": d.voucher_no,
+					"deposit_against_detail_no": d.voucher_detail_dn,
+				})
 
 			credit_row = je.append("accounts", {
 				"account": self.undeposited_account,
@@ -482,69 +536,75 @@ class BankDepositTool(Document):
 				"deposit_against_detail_no": d.voucher_detail_dn,
 			})
 
-			# Add dimensions from original voucher
+			# Add dimensions from the original voucher
 			additional_values = self.get_entry_additional_values(d)
-			debit_row.update(additional_values)
 			credit_row.update(additional_values)
+			if debit_row:
+				debit_row.update(additional_values)
 
 			if d.pos_closing_entry:
 				against = {
 					"reference_type": "POS Closing Entry",
 					"reference_name": d.pos_closing_entry
 				}
-				debit_row.update(against)
 				credit_row.update(against)
+				if debit_row:
+					debit_row.update(against)
 
 			credit_row.user_remark = je.user_remark or credit_row.user_remark
 
 		# adjustment entries
 		for d in self.adjustment_entries:
 			amount = flt(d.get('adjustment_amount'))
+			row_dimensions = self.get_accounting_dimensions(d)
 
 			# expense row
 			je.append("accounts", {
 				"account": d.get('account'),
+				"party_type": "Supplier" if d.get('supplier') else None,
+				"party": d.get('supplier'),
 				"cost_center": d.get('cost_center'),
 				"debit_in_account_currency": abs(amount) if amount > 0 else 0,
 				"credit_in_account_currency": abs(amount) if amount < 0 else 0,
-				"user_remark": _("Deposit Adjustment"),
-				"deposit_date": self.deposit_date,
+				**row_dimensions,
 			})
 
-			# bank row
-			je.append("accounts", {
-				"account": self.deposit_to_account,
-				"cost_center": d.get('cost_center'),
-				"debit_in_account_currency": abs(amount) if amount < 0 else 0,
-				"credit_in_account_currency": abs(amount) if amount > 0 else 0,
-				"user_remark": _("Deposit Adjustment"),
-				"deposit_date": self.deposit_date,
-			})
+			# reverse bank row
+			if not self.consolidate_bank_amount:
+				je.append("accounts", {
+					"account": self.deposit_to_account,
+					"cost_center": d.get('cost_center'),
+					"debit_in_account_currency": abs(amount) if amount < 0 else 0,
+					"credit_in_account_currency": abs(amount) if amount > 0 else 0,
+					**row_dimensions,
+				})
 
 		return je
 
-	def get_entry_additional_values(self, entry):
-		dimensions = {}
+	def get_entry_additional_values(self, entry=None):
+		entry = entry or frappe._dict()
+
+		dimensions = self.get_accounting_dimensions(self)
+
 		voucher_type = entry.get('voucher_type')
 		voucher_no = entry.get('voucher_no')
 		voucher_detail_dn = entry.get('voucher_detail_dn')
 
 		if voucher_type and voucher_no:
-			dimensions = self.get_parent_document_dimensions(voucher_type, voucher_no)
+			dimensions.update(get_document_dimensions(voucher_type, voucher_no, with_remarks=True))
 
 			if voucher_detail_dn and entry.get('voucher_detail_dt'):
-				child_dimensions = get_document_dimensions(entry.get('voucher_detail_dt'), voucher_detail_dn)
+				child_dimensions = get_document_dimensions(entry.get('voucher_detail_dt'), voucher_detail_dn, with_remarks=True)
 				dimensions.update(child_dimensions)
 
 		return dimensions
 
-	def get_parent_document_dimensions(self, voucher_type, voucher_no):
-		if not self.get("_parent_document_dimensions"):
-			self._parent_document_dimensions = {}
+	@staticmethod
+	def get_accounting_dimensions(source):
+		dimensions = frappe._dict()
+		dimension_fields = get_all_dimension_fields()
+		for f in dimension_fields:
+			if source.get(f):
+				dimensions[f] = source.get(f)
 
-		key = (voucher_type, voucher_no)
-		if key not in self._parent_document_dimensions:
-			dimensions = get_document_dimensions(voucher_type, voucher_no)
-			self._parent_document_dimensions[key] = dimensions
-
-		return self._parent_document_dimensions[key]
+		return dimensions

@@ -40,7 +40,6 @@
   "total_credit",
   "difference",
   "get_balance",
-  "is_advance",
   "multi_currency",
   "total_amount_currency",
   "total_amount",
@@ -482,12 +481,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
-   "fieldname": "is_advance",
-   "fieldtype": "Check",
-   "label": "Is Advance"
-  },
-  {
    "fieldname": "column_break_8",
    "fieldtype": "Column Break"
   },
@@ -524,7 +517,8 @@
    "no_copy": 1,
    "options": "Expense Entry",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "reference_section",
@@ -557,7 +551,7 @@
  "idx": 176,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-19 04:36:44.699368",
+ "modified": "2026-03-13 15:19:21.487461",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Journal Entry",

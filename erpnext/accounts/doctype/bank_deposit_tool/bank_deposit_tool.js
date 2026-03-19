@@ -13,9 +13,16 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		}
 
 		frm.disable_save();
+
 		frm.page.set_primary_action(__("Submit Deposit Entry"), () => {
-			frappe.confirm(__("Are you sure you want to submit Deposit Entry?"), () => {
-				frm.events.submit_deposit(frm);
+			frappe.confirm(__("Are you sure you want to submit a Deposit Entry?"), () => {
+				frm.events.submit_deposit_entry(frm);
+			});
+		});
+
+		frm.page.set_secondary_action(__("Draft Deposit Entry"), () => {
+			frappe.confirm(__("Are you sure you want to draft a Deposit Entry?"), () => {
+				frm.events.make_deposit_entry(frm);
 			});
 		});
 
@@ -57,6 +64,24 @@ frappe.ui.form.on("Bank Deposit Tool", {
 				}
 			};
 		});
+
+		frm.set_query("cost_center", () => {
+			return {
+				filters: {
+					company: frm.doc.company,
+					is_group: 0
+				}
+			};
+		});
+
+		frm.set_query("cost_center", "adjustment_entries", () => {
+			return {
+				filters: {
+					company: frm.doc.company,
+					is_group: 0
+				}
+			};
+		});
 	},
 
 	setup_row_checkbox_selection: function(frm) {
@@ -76,6 +101,26 @@ frappe.ui.form.on("Bank Deposit Tool", {
 	},
 
 	deposit_date: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	from_date: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	to_date: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	min_amount: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	max_amount: function (frm) {
+		frm.events.get_undeposited_entries(frm);
+	},
+
+	mode_of_payment: function (frm) {
 		frm.events.get_undeposited_entries(frm);
 	},
 
@@ -133,17 +178,40 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		});
 	},
 
-	submit_deposit: function(frm) {
+	submit_deposit_entry: function(frm) {
 		let selected_row_names = frm.fields_dict.undeposited_entries.grid.get_selected();
-		// call the controller to reconcile entries
 		return frm.call({
 			doc: frm.doc,
-			method: "submit_deposit",
+			method: "submit_deposit_entry",
 			args: {
 				selected_row_names: selected_row_names
 			},
 			freeze: true,
 			freeze_message: __('Submitting Deposit Entry...'),
+			callback: (r) => {
+				if (r.message) {
+					frappe.set_route("Form", "Journal Entry", r.message);
+				}
+			}
+		});
+	},
+
+	make_deposit_entry: function(frm) {
+		let selected_row_names = frm.fields_dict.undeposited_entries.grid.get_selected();
+		return frm.call({
+			doc: frm.doc,
+			method: "make_deposit_entry",
+			args: {
+				selected_row_names: selected_row_names
+			},
+			freeze: true,
+			freeze_message: __('Making Deposit Entry...'),
+			callback: (r) => {
+				if (r.message) {
+					frappe.model.sync(r.message);
+					frappe.set_route("Form", r.message.doctype, r.message.name);
+				}
+			}
 		});
 	},
 
@@ -154,6 +222,10 @@ frappe.ui.form.on("Bank Deposit Tool", {
 
 		let accounts = [];
 		let cost_centers = [];
+
+		if (frm.doc.cost_center) {
+			cost_centers.push(frm.doc.cost_center);
+		}
 
 		if (frm.doc.undeposited_account) {
 			accounts.push(frm.doc.undeposited_account);
@@ -180,7 +252,10 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			},
 			callback: (r) => {
 				if (r.message) {
-					frm.default_cost_center = r.message.default_cost_center;
+					frm.set_value(
+						"cost_center",
+						r.message.cost_centers[frm.doc.cost_center] || r.message.default_cost_center
+					);
 
 					if (frm.doc.undeposited_account && r.message.accounts[frm.doc.undeposited_account]) {
 						frm.set_value("undeposited_account", r.message.accounts[frm.doc.undeposited_account]);
@@ -193,13 +268,9 @@ frappe.ui.form.on("Bank Deposit Tool", {
 						if (d.account && r.message.accounts[d.account]) {
 							frappe.model.set_value(d.doctype, d.name, "account", r.message.accounts[d.account]);
 						}
-
-						frappe.model.set_value(
-							d.doctype,
-							d.name,
-							"cost_center",
-							r.message.cost_centers[d.cost_center] || r.message.default_cost_center
-						);
+						if (d.cost_center && r.message.cost_centers[d.cost_center]) {
+							frappe.model.set_value(d.doctype, d.name, "cost_center", r.message.cost_centers[d.cost_center]);
+						}
 					}
 				}
 			}
@@ -208,17 +279,29 @@ frappe.ui.form.on("Bank Deposit Tool", {
 });
 
 frappe.ui.form.on("Bank Deposit Adjustment", {
-	adjustment_amount: function(frm, cdt, cdn) {
+	supplier: function(frm, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		if (row.supplier && frm.doc.company) {
+			return frappe.call({
+				method: "erpnext.accounts.party.get_party_account",
+				args: {
+					company: frm.doc.company,
+					party_type: "Supplier",
+					party: row.supplier,
+				},
+				callback: function(r) {
+					if (r.message) {
+						frappe.model.set_value(row.doctype, row.name, "account", r.message);
+					}
+				}
+			});
+		}
+	},
+
+	adjustment_amount: function(frm) {
 		frm.events.calculate_totals(frm);
 	},
 	adjustment_entries_remove: function(frm) {
 		frm.events.calculate_totals(frm);
-	},
-	adjustment_entries_add: function (frm, cdt, cdn) {
-		let row = frappe.get_doc(cdt, cdn);
-		if (frm.default_cost_center && !row.cost_center) {
-			row.cost_center = frm.default_cost_center;
-			refresh_field("cost_center", row.name, "adjustment_entries");
-		}
 	},
 });

@@ -12,10 +12,9 @@ from crm.crm.utils import get_primary_address
 from erpnext.accounts.party import render_address
 from erpnext.stock.stock_balance import update_bin_qty, get_indented_qty
 from erpnext.controllers.buying_controller import BuyingController
-from erpnext.manufacturing.doctype.work_order.work_order import get_item_details
+from erpnext.manufacturing.doctype.work_order.work_order import create_work_order
 from erpnext.buying.utils import check_on_hold_or_closed_status, validate_for_items
-from erpnext.stock.get_item_details import get_default_supplier
-
+from erpnext.stock.get_item_details import get_default_supplier, get_default_bom
 
 form_grid_templates = {
 	"items": "templates/form_grid/material_request_grid.html"
@@ -141,10 +140,17 @@ class MaterialRequest(BuyingController):
 		self.per_ordered = flt(self.calculate_status_percentage('ordered_qty', 'stock_qty', self.items))
 		self.per_received = flt(self.calculate_status_percentage('received_qty', 'stock_qty', self.items))
 
+		production_within_allowance = (
+			self.material_request_type == "Manufacture"
+			and self.per_ordered >= 100
+			and self.per_received > 0
+			and not data.has_work_order_to_produce
+		)
+
 		self.order_status = self.get_completion_status('per_ordered', 'Order',
 			not_applicable=self.status == "Stopped")
 		self.receipt_status = self.get_completion_status('per_received', 'Receive',
-			not_applicable=self.status == "Stopped" or self.material_request_type == "Manufacture")
+			not_applicable=self.status == "Stopped", within_allowance=production_within_allowance)
 
 		if update:
 			self.db_set({
@@ -158,6 +164,7 @@ class MaterialRequest(BuyingController):
 		data = frappe._dict()
 		data.ordered_qty_map = {}
 		data.received_qty_map = {}
+		data.has_work_order_to_produce = False
 
 		if self.docstatus == 1:
 			row_names = [d.name for d in self.items]
@@ -211,12 +218,26 @@ class MaterialRequest(BuyingController):
 						data.received_qty_map[d.material_request_item] += d.received_qty
 
 				elif self.material_request_type == "Manufacture":
-					data.ordered_qty_map = dict(frappe.db.sql("""
-						select p.material_request_item, sum(p.qty)
+					wo_data = frappe.db.sql("""
+						select
+							p.material_request_item,
+							p.qty as ordered_qty,
+							p.completed_qty as received_qty,
+							p.production_status,
+							p.subcontracting_status
 						from `tabWork Order` p
 						where p.docstatus = 1 and p.material_request_item in %s
-						group by p.material_request_item
-					""", [row_names]))
+					""", [row_names], as_dict=1)
+
+					for d in wo_data:
+						data.ordered_qty_map.setdefault(d.material_request_item, 0)
+						data.ordered_qty_map[d.material_request_item] += d.ordered_qty
+
+						data.received_qty_map.setdefault(d.material_request_item, 0)
+						data.received_qty_map[d.material_request_item] += d.received_qty
+
+						if d.production_status == "To Produce" or d.subcontracting_status == "To Receive":
+							data.has_work_order_to_produce = True
 
 		return data
 
@@ -673,44 +694,52 @@ def make_stock_entry(source_name, target_doc=None):
 
 @frappe.whitelist()
 def raise_work_orders(material_request):
-	mr= frappe.get_doc("Material Request", material_request)
-	errors =[]
+	mreq = frappe.get_doc("Material Request", material_request)
+	errors = []
 	work_orders = []
-	default_wip_warehouse = frappe.db.get_single_value("Manufacturing Settings", "default_wip_warehouse")
 
-	for d in mr.items:
-		if (d.stock_qty - d.ordered_qty) > 0:
-			if frappe.db.exists("BOM", {"item": d.item_code, "is_default": 1}):
-				wo_order = frappe.new_doc("Work Order")
-				wo_order.update({
-					"production_item": d.item_code,
-					"qty": d.stock_qty - d.ordered_qty,
-					"fg_warehouse": d.warehouse,
-					"wip_warehouse": default_wip_warehouse,
-					"description": d.description,
-					"stock_uom": d.stock_uom,
-					"expected_delivery_date": d.schedule_date,
-					"sales_order": d.sales_order,
-					"bom_no": get_item_details(d.item_code).bom_no,
-					"material_request": mr.name,
-					"material_request_item": d.name,
-					"planned_start_date": mr.transaction_date,
-					"company": mr.company
-				})
+	for d in mreq.items:
+		balance_qty = flt(flt(d.stock_qty) - flt(d.ordered_qty), d.precision("stock_qty"))
+		if balance_qty <= 0:
+			continue
 
-				wo_order.set_work_order_operations()
-				wo_order.save()
+		default_bom = get_default_bom(d.item_code, project=mreq.project)
+		if not default_bom:
+			errors.append(_("Row {0}: Bill of Materials not found for the Item {1}").format(
+				d.idx, frappe.bold(d.item_code)
+			))
+			continue
 
-				work_orders.append(wo_order.name)
-			else:
-				errors.append(_("Row {0}: Bill of Materials not found for the Item {1}").format(d.idx, d.item_code))
+		wo_args = frappe._dict({
+			"item_code": d.item_code,
+			"item_name": d.item_name,
+			"bom_no": default_bom,
+			"warehouse": d.warehouse,
+			"production_qty": balance_qty,
 
-	if work_orders:
-		message = [frappe.utils.get_link_to_form("Work Order", p, target="_blank") for p in work_orders]
-		frappe.msgprint(_("The following Work Orders were created:") + '\n' + new_line_sep(message))
+			"company": mreq.get("company"),
+			"project": mreq.get("project"),
+			"cost_center": mreq.get("cost_center"),
+			"customer": mreq.customer,
+			"customer_name": mreq.customer_name,
+			"schedule_date": d.schedule_date,
+
+			"material_request": mreq.name,
+			"material_request_item": d.name,
+			"order_line_no": d.idx,
+			"sales_order": d.sales_order,
+			"sales_order_item": d.sales_order_item,
+		})
+
+		work_order = create_work_order(wo_args, company=mreq.company)
+		work_orders.append(work_order.name)
 
 	if errors:
-		frappe.throw(_("Work Order cannot be created for following reason:") + '\n' + new_line_sep(errors))
+		frappe.throw(_("The following Work Order could not be created:") + '\n' + new_line_sep(errors))
+
+	if work_orders:
+		message = [frappe.utils.get_link_to_form("Work Order", wo, target="_blank") for wo in work_orders]
+		frappe.msgprint(_("The following Work Orders were created:") + '\n' + new_line_sep(message))
 
 	return work_orders
 

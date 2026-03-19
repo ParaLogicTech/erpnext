@@ -433,7 +433,7 @@ class Item(Document):
 			update_item_last_purchase_rate(new_name)
 			self.recalculate_bin_qty(new_name)
 
-		product_bundle = frappe.db.get_value("Product Bundle", {"new_item_code": new_name})
+		product_bundle = frappe.db.get_value("Product Bundle", {"new_item_code": new_name, "name": ["!=", new_name]})
 		if product_bundle:
 			frappe.rename_doc("Product Bundle", product_bundle, new_name, force=True)
 

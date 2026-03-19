@@ -131,6 +131,9 @@ def process_args(args):
 
 	args = frappe._dict(args)
 
+	if not args.get("customer") and args.get("quotation_to") == "Customer" and args.get("party_name"):
+		args.customer = args.party_name
+
 	if not args.get("price_list"):
 		args.price_list = args.get("selling_price_list") or args.get("buying_price_list")
 
@@ -223,6 +226,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		item.update_template_tables()
 
 	warehouse = get_default_warehouse(item, args, overwrite_warehouse)
+	rejected_warehouse = get_default_rejected_warehouse(item, args)
 	force_default_warehouse = get_force_default_warehouse(item, args)
 
 	if args.get('doctype') == "Material Request" and not args.get('material_request_type'):
@@ -259,6 +263,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"description": cstr(item.description).strip(),
 		"image": cstr(item.image).strip(),
 		"warehouse": warehouse,
+		"rejected_warehouse": rejected_warehouse,
 		"force_default_warehouse": force_default_warehouse,
 		"is_fixed_asset": item.is_fixed_asset,
 		"is_stock_item": item.is_stock_item,
@@ -405,13 +410,35 @@ def get_default_warehouse(item, args, overwrite_warehouse=True):
 	return warehouse
 
 
-def get_global_default_warehouse(company):
-	default_warehouse = frappe.get_cached_value("Stock Settings", None, "default_warehouse")
+def get_default_rejected_warehouse(item, args):
+	rejected_warehouse = args.get("rejected_warehouse")
+	if not rejected_warehouse:
+		parent_rejected_warehouse = args.get("default_rejected_warehouse")
+
+		default_values = get_item_default_values(item, args)
+		default_rejected_warehouse = default_values.get("default_rejected_warehouse")
+
+		force_default_warehouse = get_force_default_warehouse(item, args)
+		if force_default_warehouse:
+			rejected_warehouse = default_rejected_warehouse
+		else:
+			rejected_warehouse = parent_rejected_warehouse or default_rejected_warehouse
+
+		if not rejected_warehouse:
+			rejected_warehouse = get_global_default_warehouse(args.get("company"), warehouse_field="default_rejected_warehouse")
+
+	return rejected_warehouse
+
+
+def get_global_default_warehouse(company, warehouse_field="default_warehouse"):
+	default_warehouse = frappe.get_cached_value("Stock Settings", None, warehouse_field)
 	if not default_warehouse:
 		return None
 
-	if frappe.db.get_value("Warehouse", default_warehouse, "company", cache=1) == company:
-		return default_warehouse
+	if company != frappe.get_cached_value("Warehouse", default_warehouse, "company"):
+		return None
+
+	return default_warehouse
 
 
 def update_barcode_value(out):
@@ -630,15 +657,17 @@ def get_default_deferred_expense_account(item, args):
 
 
 def get_default_cost_center(item, args, selling_or_buying=None):
-	if isinstance(item, str):
+	if item and isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
+	if not item:
+		item = frappe._dict()
 
 	cost_center = None
 
 	determine_selling_or_buying(args)
 	selling_or_buying = selling_or_buying or args.get("selling_or_buying")
 
-	if not cost_center and item.is_fixed_asset and args.get('asset'):
+	if not cost_center and item.get("is_fixed_asset") and args.get('asset'):
 		asset_cost_center = frappe.db.get_value("Asset", args.get("asset"), "cost_center", cache=True)
 		if asset_cost_center:
 			cost_center = asset_cost_center
@@ -1156,9 +1185,6 @@ def get_party_item_code(args, item_doc, out):
 	if args.selling_or_buying == "selling" and args.customer:
 		out.customer_item_code = None
 
-		if args.quotation_to and args.quotation_to != 'Customer':
-			return
-
 		customer_item_code = item_doc.get("customer_items", {"customer_name": args.customer})
 
 		if customer_item_code:
@@ -1379,7 +1405,7 @@ def get_batch_qty(batch_no, warehouse, item_code):
 
 
 @frappe.whitelist()
-def apply_price_list(args, as_doc=False):
+def apply_price_list(args, as_doc=False, doc=None):
 	"""Apply pricelist on a document-like dict object and return as
 	{'parent': dict, 'children': list}
 
@@ -1422,7 +1448,7 @@ def apply_price_list(args, as_doc=False):
 			args_copy.update(item)
 			args_copy = process_args(args_copy)
 
-			item_details = apply_price_list_on_item(args_copy)
+			item_details = apply_price_list_on_item(args_copy, doc=doc)
 			children.append(item_details)
 
 	if as_doc:
@@ -1443,12 +1469,12 @@ def apply_price_list(args, as_doc=False):
 		}
 
 
-def apply_price_list_on_item(args):
+def apply_price_list_on_item(args, doc=None):
 	item_details = frappe._dict()
 	item_doc = frappe.get_cached_doc("Item", args.item_code)
 	get_price_list_data(args, item_doc, item_details)
 
-	item_details.update(get_pricing_rule_for_item(args, item_details.price_list_rate))
+	item_details.update(get_pricing_rule_for_item(args, item_details.price_list_rate, doc=doc))
 
 	return item_details
 

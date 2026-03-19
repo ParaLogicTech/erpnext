@@ -20,6 +20,7 @@ from erpnext.controllers.accounts_controller import AccountsController, get_supp
 from erpnext.controllers.transaction_controller import validate_taxes_and_charges
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile, is_cashier
 from erpnext.accounts.utils import get_allow_cost_center_in_entry_of_bs_account
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 from frappe.model.naming import make_autoname
 
 
@@ -1713,17 +1714,25 @@ def get_payment_entry(
 			paid_amount = received_amount * exchange_rate
 
 	pe = frappe.new_doc("Payment Entry")
-	pe.payment_type = payment_type
+	pe.posting_date = getdate()
+
+	dimensions = get_accounting_dimensions()
+	for f in dimensions:
+		if doc.get(f):
+			pe.set(f, doc.get(f))
+
 	pe.company = doc.company
 	pe.branch = doc.get("branch")
 	pe.cost_center = doc.get("cost_center")
 	pe.project = doc.get("project")
-	pe.posting_date = nowdate()
-	pe.mode_of_payment = mode_of_payment
+
+	pe.payment_type = payment_type
 	pe.party_type = party_type
 	pe.party = party
 	pe.contact_person = doc.get("contact_person")
 	pe.contact_email = doc.get("contact_email")
+
+	pe.mode_of_payment = mode_of_payment
 	pe.ensure_supplier_is_not_blocked(is_payment=True)
 
 	pe.is_pos = is_pos

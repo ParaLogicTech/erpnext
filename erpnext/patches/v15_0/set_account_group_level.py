@@ -6,6 +6,8 @@ def execute():
 		return
 	if not frappe.db.has_column("Account Group", "is_root_level"):
 		return
+	if not frappe.db.has_column("Account Group", "is_fixed_asset_root"):
+		return
 
 	asset_groups = frappe.get_all("Account Group", fields=["name", "is_root_level", "is_fixed_asset_root"])
 

@@ -94,6 +94,17 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 				}
 			}
 		});
+
+		if (this.frm.fields_dict["cost_center"]) {
+			this.frm.set_query("cost_center", function(doc) {
+				return {
+					filters: {
+						"company": doc.company,
+						"is_group": 0
+					}
+				};
+			});
+		}
 	}
 
 	setup_buttons() {
@@ -483,7 +494,7 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 
 	raise_work_orders() {
 		return frappe.call({
-			method:"erpnext.stock.doctype.material_request.material_request.raise_work_orders",
+			method: "erpnext.stock.doctype.material_request.material_request.raise_work_orders",
 			args: {
 				"material_request": this.frm.doc.name
 			},

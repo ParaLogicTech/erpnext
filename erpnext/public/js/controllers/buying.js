@@ -165,6 +165,17 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 				filters:{ 'item_code': row.item_code }
 			}
 		});
+
+		this.frm.set_query("default_rejected_warehouse", () => {
+			return erpnext.queries.warehouse(this.frm.doc, (filters) => {
+				filters.push(["Warehouse", "stock_type", "=", "Rejected"]);
+			});
+		});
+		this.frm.set_query("rejected_warehouse", "items", () => {
+			return erpnext.queries.warehouse(this.frm.doc, (filters) => {
+				filters.push(["Warehouse", "stock_type", "=", "Rejected"]);
+			});
+		});
 	}
 
 	refresh(doc) {
@@ -321,10 +332,8 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 		}
 	}
 
-	rejected_warehouse(doc, cdt) {
-		if (["Purchase Invoice", "Purchase Receipt"].includes(cdt)) {
-			erpnext.utils.autofill_warehouse(doc.items, "rejected_warehouse", doc.rejected_warehouse, true);
-		}
+	default_rejected_warehouse() {
+		erpnext.utils.autofill_warehouse(this.frm.doc.items, "rejected_warehouse", this.frm.doc.default_rejected_warehouse);
 	}
 
 	set_reserve_warehouse() {

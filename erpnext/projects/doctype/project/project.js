@@ -89,10 +89,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			() => erpnext.queries.service_template(me.frm.doc.applies_to_item));
 
 		me.frm.set_query('service_advisor', () => {
+			let filters = {is_group: 0};
+			if (this.frm.doc.branch) {
+				filters["branch"] = ["in", [this.frm.doc.branch, ""]];
+			}
+
 			return {
-				filters: {
-					is_group: 0,
-				}
+				filters: filters,
 			}
 		});
 

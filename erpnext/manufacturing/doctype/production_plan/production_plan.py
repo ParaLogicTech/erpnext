@@ -334,7 +334,6 @@ class ProductionPlan(Document):
 				'use_multi_level_bom': item.get("use_multi_level_bom"),
 				'company': self.company,
 				'fg_warehouse': item.get("fg_warehouse"),
-				'update_consumed_material_cost_in_project': 0
 			})
 
 			work_order = self.create_work_order(data)
@@ -344,8 +343,8 @@ class ProductionPlan(Document):
 		return work_orders
 
 	def create_work_order(self, item):
-		from erpnext.manufacturing.doctype.work_order.work_order import OverProductionError, get_default_warehouse
-		warehouse = get_default_warehouse()
+		from erpnext.manufacturing.doctype.work_order.work_order import OverProductionError, get_default_warehouses
+		warehouse = get_default_warehouses({"item_code": item.get("item_code"), "company": self.company})
 		wo = frappe.new_doc("Work Order")
 		wo.update(item)
 
