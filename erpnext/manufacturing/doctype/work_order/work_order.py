@@ -1254,11 +1254,11 @@ def get_item_details(args, with_settings=False):
 		"description": item.description,
 	})
 
-	default_bom = get_default_bom(args.item_code, project=args.project)
-	if default_bom:
-		out.bom_no = default_bom
-	else:
-		frappe.msgprint(_("Active BOM for Item {0} not found").format(frappe.bold(args.item_code)))
+	out.bom_no = args.bom_no
+	if not out.bom_no:
+		out.bom_no = get_default_bom(args.item_code, project=args.project)
+		if not out.bom_no:
+			frappe.msgprint(_("Active BOM for Item {0} not found").format(frappe.bold(args.item_code)))
 
 	if out.bom_no:
 		bom_details = frappe.db.get_value("BOM", out.bom_no, [
