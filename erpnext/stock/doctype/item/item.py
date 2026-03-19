@@ -25,6 +25,7 @@ from erpnext.controllers.item_variant import (
 from erpnext.setup.doctype.uom_conversion_factor.uom_conversion_factor import UOMConversionGraph
 from frappe.utils.html_utils import clean_html
 from frappe.model.document import Document
+from erpnext.utilities.transaction_base import validate_uom_is_convertible
 import json
 
 
@@ -117,7 +118,7 @@ class Item(Document):
 		self.validate_fixed_asset()
 		self.validate_retain_sample()
 		self.validate_uom_conversion_factor()
-		self.validate_uom_convertible()
+		self.validate_default_uom_is_convertible()
 		self.validate_weight()
 		self.validate_customer_provided_part()
 		self.validate_auto_reorder_enabled_in_stock_settings()
@@ -573,58 +574,18 @@ class Item(Document):
 					frappe.msgprint("Setting conversion factor for UOM {0} from UOM Conversion Factor Master as {1}"
 						.format(d.uom, value), alert=True)
 					d.conversion_factor = value
-	
-	def validate_uom_convertible(self):
-		throw_error = False
-		error_msg = None
-		if self.sales_uom:
-			sales_uom_not_convertible = self.get_conversion_factor(self.sales_uom).get("not_convertible")
-			if sales_uom_not_convertible:
-				throw_error = True
-				error_msg = "the Default Sales Unit of Measure not Convertible"
-		if self.purchase_uom:
-			purchase_uom_not_convertible = self.get_conversion_factor(self.purchase_uom).get("not_convertible")
-			if purchase_uom_not_convertible:
-				throw_error = True
-				error_msg = "Default Purchase Unit of Measure not Convertible"
-		if self.manufacture_uom:
-			manufacture_uom_not_convertible = self.get_conversion_factor(self.manufacture_uom).get("not_convertible")
-			if manufacture_uom_not_convertible:
-				throw_error = True
-				error_msg = "Default Raw Material UOM not Convertible"
-		if throw_error:
-			frappe.throw(error_msg)
 
+	def validate_default_uom_is_convertible(self):
+		from erpnext.stock.get_item_details import is_item_uom_convertible
 
-	def get_conversion_factor(self, uom):
-		# first look for direct conversion factor in item
-		item_conversion_factors = dict([(c.uom, c.conversion_factor) for c in self.uoms])
-		conversion_factor = flt(item_conversion_factors.get(uom))
-
-		# then look for conversion factor in template item if variant
-		if not conversion_factor and self.variant_of:
-			template_item = frappe.get_cached_doc("Item", self.variant_of)
-			template_item_conversion_factors = dict([(c.uom, c.conversion_factor) for c in template_item.uoms])
-			if uom in template_item_conversion_factors:
-				conversion_factor = flt(item_conversion_factors.get(uom))
-
-		# then look for global conversion factor for stock uom first then the rest of the item's convertible uoms
-		if not conversion_factor:
-			stock_uom = self.stock_uom
-			item_uoms = [stock_uom] + [cuom for cuom, cf in item_conversion_factors.items() if cuom != stock_uom and flt(cf)]
-
-			for item_uom in item_uoms:
-				conversion_factor = flt(get_uom_conv_factor(uom, item_uom))
-				if conversion_factor:
-					if item_uom != stock_uom:
-						# apply item_uom -> stock_uom conversion factor and then exit loop
-						conversion_factor *= flt(item_conversion_factors.get(item_uom))
-					break
-
-		return frappe._dict({
-			"conversion_factor": conversion_factor or 1.0,
-			"not_convertible": 1 if not conversion_factor else 0
-		})
+		uom_fields = ["sales_uom", "purchase_uom", "manufacture_uom"]
+		for field in uom_fields:
+			uom_value = self.get(field)
+			if uom_value and not is_item_uom_convertible(self, uom_value):
+				label = self.meta.get_label(field)
+				frappe.throw(_("{0} {1} cannot be converted to Default UOM {2}. Please enter a UOM Conversion").format(
+					label, frappe.bold(uom_value), frappe.bold(self.stock_uom)
+				))
 
 	def validate_weight(self):
 		weight_fields = ["net_weight_per_unit", "tare_weight_per_unit", "gross_weight_per_unit"]
@@ -804,6 +765,13 @@ class Item(Document):
 						.format(d.idx, frappe.bold(d.applicable_item_code)))
 
 				visited.add(cstr(d.applicable_item_code))
+
+		validate_uom_is_convertible(
+			self,
+			items_table_field="applicable_items",
+			item_code_field="applicable_item_code",
+			uom_field="applicable_uom",
+		)
 
 
 def get_timeline_data(doctype, name):

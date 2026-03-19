@@ -263,6 +263,6 @@ def validate_uom_is_convertible(doc, items_table_field="items", item_code_field=
 			continue
 
 		if not is_item_uom_convertible(item_code, uom):
-			frappe.throw(_("Row #{0}: {1} cannot be converted to UOM {2}. Please select a valid UOM or add a conversion factor in the Item").format(
+			frappe.throw(_("Row #{0}: {1} cannot be converted to UOM {2}. Please select a valid UOM or add a UOM Conversion Factor in the Item").format(
 				row.idx, frappe.get_desk_link("Item", item_code), frappe.bold(uom)
 			))
