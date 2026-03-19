@@ -9,7 +9,8 @@ from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import get_
 from erpnext.controllers.status_updater import StatusUpdaterERP
 
 
-class UOMMustBeIntegerError(frappe.ValidationError): pass
+class UOMMustBeIntegerError(frappe.ValidationError):
+	pass
 
 
 class TransactionBase(StatusUpdaterERP):
@@ -77,6 +78,14 @@ class TransactionBase(StatusUpdaterERP):
 
 	def validate_uom_is_integer(self, uom_field, qty_fields):
 		validate_uom_is_integer(self, uom_field, qty_fields)
+
+	def validate_uom_is_convertible(self, items_table_field="items", item_code_field="item_code", uom_field="uom"):
+		validate_uom_is_convertible(
+			self,
+			items_table_field=items_table_field,
+			item_code_field=item_code_field,
+			uom_field=uom_field,
+		)
 
 	def validate_with_previous_doc(self, ref, table_doctype=None):
 		self.exclude_fields = ["conversion_factor", "uom"] if self.get('is_return') else []
@@ -220,7 +229,7 @@ def validate_uom_is_integer(doc, uom_field, qty_fields, child_dt=None):
 	if isinstance(qty_fields, str):
 		qty_fields = [qty_fields]
 
-	distinct_uoms = list(set([d.get(uom_field) for d in doc.get_all_children() if d.get(uom_field)]))
+	distinct_uoms = list(set([d.get(uom_field) for d in doc.get_all_children(parenttype=child_dt) if d.get(uom_field)]))
 	integer_uoms = list(filter(lambda uom: frappe.get_cached_value("UOM", uom, "must_be_whole_number") or None, distinct_uoms))
 
 	if not integer_uoms:
@@ -232,6 +241,28 @@ def validate_uom_is_integer(doc, uom_field, qty_fields, child_dt=None):
 				qty = d.get(f)
 				if qty:
 					if abs(cint(qty) - flt(qty)) > 0.0000001:
-						frappe.throw(_("Row {1}: Quantity ({0}) cannot be a fraction. To allow this, disable '{2}' in UOM {3}.") \
-							.format(qty, d.idx, frappe.bold(_("Must be Whole Number")), frappe.bold(d.get(uom_field))),
-								UOMMustBeIntegerError)
+						frappe.throw(_("Row {1}: Quantity ({0}) cannot be a fraction. To allow this, disable '{2}' in UOM {3}.").format(
+							frappe.format(qty),
+							d.idx,
+							frappe.bold(_("Must be Whole Number")),
+							frappe.bold(d.get(uom_field)),
+						), UOMMustBeIntegerError)
+
+
+def validate_uom_is_convertible(doc, items_table_field="items", item_code_field="item_code", uom_field="uom"):
+	from erpnext.stock.get_item_details import is_item_uom_convertible
+
+	for row in doc.get(items_table_field):
+		item_code = row.get(item_code_field)
+		uom = row.get(uom_field)
+		if not item_code or not uom:
+			continue
+
+		do_not_restrict_uom_selection = frappe.get_cached_value("Item", item_code, "do_not_restrict_uom_selection")
+		if do_not_restrict_uom_selection:
+			continue
+
+		if not is_item_uom_convertible(item_code, uom):
+			frappe.throw(_("Row #{0}: {1} cannot be converted to UOM {2}. Please select a valid UOM or add a UOM Conversion Factor in the Item").format(
+				row.idx, frappe.get_desk_link("Item", item_code), frappe.bold(uom)
+			))

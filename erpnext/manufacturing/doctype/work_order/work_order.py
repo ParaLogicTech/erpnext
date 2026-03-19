@@ -12,7 +12,6 @@ from erpnext.setup.doctype.item_default_rule.item_default_rule import (
 	get_item_default_values,
 	get_default_values_for_filters,
 )
-from erpnext.utilities.transaction_base import validate_uom_is_integer
 from erpnext.controllers.status_updater import StatusUpdaterERP
 from erpnext.stock.get_item_details import get_default_bom, get_default_cost_center
 from frappe.model.mapper import get_mapped_doc
@@ -143,8 +142,6 @@ class WorkOrder(StatusUpdaterERP):
 		self.qty = flt(self.qty, self.precision("qty"))
 		if self.qty <= 0:
 			frappe.throw(_("Quantity to Produce must be greater than 0."))
-
-		validate_uom_is_integer(self, "stock_uom", ["qty"])
 
 	def validate_operation_time(self):
 		for d in self.operations:

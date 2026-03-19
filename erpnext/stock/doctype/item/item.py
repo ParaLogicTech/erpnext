@@ -25,6 +25,7 @@ from erpnext.controllers.item_variant import (
 from erpnext.setup.doctype.uom_conversion_factor.uom_conversion_factor import UOMConversionGraph
 from frappe.utils.html_utils import clean_html
 from frappe.model.document import Document
+from erpnext.utilities.transaction_base import validate_uom_is_convertible
 import json
 
 
@@ -117,6 +118,7 @@ class Item(Document):
 		self.validate_fixed_asset()
 		self.validate_retain_sample()
 		self.validate_uom_conversion_factor()
+		self.validate_default_uom_is_convertible()
 		self.validate_weight()
 		self.validate_customer_provided_part()
 		self.validate_auto_reorder_enabled_in_stock_settings()
@@ -573,6 +575,18 @@ class Item(Document):
 						.format(d.uom, value), alert=True)
 					d.conversion_factor = value
 
+	def validate_default_uom_is_convertible(self):
+		from erpnext.stock.get_item_details import is_item_uom_convertible
+
+		uom_fields = ["sales_uom", "purchase_uom", "manufacture_uom"]
+		for field in uom_fields:
+			uom_value = self.get(field)
+			if uom_value and not is_item_uom_convertible(self, uom_value):
+				label = self.meta.get_label(field)
+				frappe.throw(_("{0} {1} cannot be converted to Default UOM {2}. Please enter a UOM Conversion").format(
+					label, frappe.bold(uom_value), frappe.bold(self.stock_uom)
+				))
+
 	def validate_weight(self):
 		weight_fields = ["net_weight_per_unit", "tare_weight_per_unit", "gross_weight_per_unit"]
 		self.round_floats_in(self, weight_fields)
@@ -751,6 +765,13 @@ class Item(Document):
 						.format(d.idx, frappe.bold(d.applicable_item_code)))
 
 				visited.add(cstr(d.applicable_item_code))
+
+		validate_uom_is_convertible(
+			self,
+			items_table_field="applicable_items",
+			item_code_field="applicable_item_code",
+			uom_field="applicable_uom",
+		)
 
 
 def get_timeline_data(doctype, name):

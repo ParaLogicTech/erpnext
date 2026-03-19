@@ -37,15 +37,12 @@ class PurchaseOrder(BuyingController):
 		]
 
 	def validate(self):
-		super(PurchaseOrder, self).validate()
+		super().validate()
 
 		self.validate_supplier()
 		self.validate_schedule_date()
 		validate_for_items(self)
 		self.check_on_hold_or_closed_status()
-
-		self.validate_uom_is_integer("uom", "qty")
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
 
 		self.validate_minimum_order_qty()
 

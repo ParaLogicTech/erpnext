@@ -28,7 +28,6 @@ class Quotation(SellingController):
 
 	def validate(self):
 		super(Quotation, self).validate()
-		self.validate_uom_is_integer("stock_uom", "qty")
 		self.validate_quotation_valid_till()
 		self.validate_delivery_date()
 		self.validate_previous_orders()

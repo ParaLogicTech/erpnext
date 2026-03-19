@@ -22,7 +22,6 @@ class ProformaInvoice(SellingController):
 
 	def validate(self):
 		super().validate()
-		self.validate_uom_is_integer("stock_uom", "qty")
 		self.validate_project_customer()
 		self.check_sales_order_on_hold_or_close()
 		self.validate_debit_to_acc()

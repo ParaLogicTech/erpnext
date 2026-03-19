@@ -52,8 +52,6 @@ class SalesOrder(SellingController):
 		self.validate_delivery_date()
 		self.validate_po()
 		self.validate_project_customer()
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
-		self.validate_uom_is_integer("uom", "qty")
 		self.validate_for_items()
 		self.validate_warehouse()
 		self.validate_drop_ship()

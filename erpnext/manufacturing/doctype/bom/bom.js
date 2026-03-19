@@ -44,8 +44,13 @@ frappe.ui.form.on("BOM", {
 		frm.set_query("item_code", "items", function() {
 			return {
 				query: "erpnext.controllers.queries.item_query",
-				filters: [["Item", "name", "!=", cur_frm.doc.item]]
+				filters: [["Item", "name", "!=", frm.doc.item]]
 			};
+		});
+
+		frm.set_query("uom", "items", function(doc, cdt, cdn) {
+			let item = frappe.get_doc(cdt, cdn);
+			return erpnext.queries.item_uom(item.item_code);
 		});
 
 		frm.set_query("bom_no", "items", function(doc, cdt, cdn) {

@@ -3,12 +3,17 @@
 
 import frappe
 import erpnext
-from frappe.utils import cint, cstr, flt, sbool
 from frappe import _
+from frappe.utils import cint, cstr, flt, sbool
 from erpnext.setup.utils import get_exchange_rate
 from frappe.model.document import Document
-from erpnext.stock.get_item_details import (get_conversion_factor, get_price_list_data, get_default_warehouse,
-	get_default_cost_center)
+from erpnext.stock.get_item_details import (
+	get_conversion_factor,
+	get_price_list_data,
+	get_default_warehouse,
+	get_default_cost_center
+)
+from erpnext.utilities.transaction_base import validate_uom_is_integer, validate_uom_is_convertible
 from erpnext.stock.doctype.item_alternative.item_alternative import has_alternative_item
 from frappe.core.doctype.version.version import get_diff
 from frappe.model.utils import get_fetch_values
@@ -53,7 +58,8 @@ class BOM(Document):
 		self.validate_currency()
 		self.set_conversion_rate()
 		self.set_plc_conversion_rate()
-		self.validate_uom_is_interger()
+		validate_uom_is_convertible(self)
+		validate_uom_is_integer(self, "uom", "qty", "BOM Item")
 		self.set_bom_material_details()
 		self.validate_materials()
 		self.validate_operations()
@@ -395,11 +401,6 @@ class BOM(Document):
 			m.stock_qty = flt(m.conversion_factor)*flt(m.qty)
 
 			m.db_update()
-
-	def validate_uom_is_interger(self):
-		from erpnext.utilities.transaction_base import validate_uom_is_integer
-		validate_uom_is_integer(self, "uom", "qty", "BOM Item")
-		validate_uom_is_integer(self, "stock_uom", "stock_qty", "BOM Item")
 
 	def set_conversion_rate(self):
 		if self.currency == self.company_currency():

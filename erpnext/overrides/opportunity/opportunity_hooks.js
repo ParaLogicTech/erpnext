@@ -39,15 +39,10 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 			};
 		});
 
-		if (this.frm.fields_dict.delivery_period) {
-			this.frm.set_query("delivery_period", () => {
-				if (this.frm.doc.transaction_date) {
-					return {
-						filters: {to_date: [">=", this.frm.doc.transaction_date]}
-					}
-				}
-			});
-		}
+		this.frm.set_query("uom", "items", function(doc, cdt, cdn) {
+			let item = frappe.get_doc(cdt, cdn);
+			return erpnext.queries.item_uom(item.item_code);
+		});
 	}
 
 	setup_buttons() {

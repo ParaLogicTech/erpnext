@@ -40,8 +40,6 @@ class DeliveryNote(SellingController):
 		self.validate_project_customer()
 		self.validate_warehouse()
 		self.validate_campaign()
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
-		self.validate_uom_is_integer("uom", "qty")
 		self.set_unbilled_stock_account()
 
 		from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party

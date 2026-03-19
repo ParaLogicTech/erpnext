@@ -84,6 +84,7 @@ class StockEntry(TransactionController):
 		self.validate_customer_provided_entry()
 		self.validate_qty()
 		self.set_stock_qty()
+		self.validate_uom_is_convertible()
 		self.validate_uom_is_integer("uom", "qty")
 		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.set_missing_warehouses()

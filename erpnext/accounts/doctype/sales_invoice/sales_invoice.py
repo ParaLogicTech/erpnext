@@ -51,13 +51,11 @@ class SalesInvoice(SellingController):
 
 	def validate(self):
 		self.validate_posting_time()
-		super(SalesInvoice, self).validate()
+		super().validate()
 
 		self.validate_order_required()
 		self.validate_stin()
 		self.validate_project_customer()
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
-		self.validate_uom_is_integer("uom", "qty")
 		self.check_sales_order_on_hold_or_close()
 		self.validate_debit_to_acc()
 		self.validate_return_against()

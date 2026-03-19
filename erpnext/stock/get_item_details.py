@@ -12,6 +12,7 @@ from erpnext.stock.doctype.item.item import get_uom_conv_factor, convert_item_uo
 from erpnext.setup.doctype.item_default_rule.item_default_rule import get_item_default_values
 from erpnext.stock.doctype.item_manufacturer.item_manufacturer import get_item_manufacturer_part_no
 from erpnext.selling.doctype.sales_commission_category.sales_commission_category import get_commission_rate
+from frappe.model.document import Document
 import json
 
 
@@ -1283,8 +1284,13 @@ def get_weight_per_unit(item_code, weight_uom=None, weight_field="net_weight_per
 
 @frappe.whitelist()
 def get_conversion_factor(item_code, uom):
+	if isinstance(item_code, Document):
+		item = item_code
+		item_code = item.name
+	else:
+		item = frappe.get_cached_doc("Item", item_code)
+
 	# first look for direct conversion factor in item
-	item = frappe.get_cached_doc("Item", item_code)
 	item_conversion_factors = dict([(c.uom, c.conversion_factor) for c in item.uoms])
 	conversion_factor = flt(item_conversion_factors.get(uom))
 

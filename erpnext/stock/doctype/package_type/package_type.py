@@ -5,13 +5,14 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 from frappe.model.document import Document
-from erpnext.utilities.transaction_base import validate_uom_is_integer
+from erpnext.utilities.transaction_base import validate_uom_is_integer, validate_uom_is_convertible
 from erpnext.setup.doctype.uom_conversion_factor.uom_conversion_factor import get_uom_conv_factor
 
 
 class PackageType(Document):
 	def validate(self):
 		self.validate_items()
+		validate_uom_is_convertible(self, items_table_field="packaging_items")
 		validate_uom_is_integer(self, "stock_uom", "stock_qty")
 		validate_uom_is_integer(self, "uom", "qty")
 		self.calculate_totals()

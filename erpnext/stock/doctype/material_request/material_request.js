@@ -86,13 +86,8 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		});
 
 		this.frm.set_query("uom", "items", function(doc, cdt, cdn) {
-			let row = locals[cdt][cdn];
-			return {
-				query : "erpnext.controllers.queries.item_uom_query",
-				filters: {
-					item_code: row.item_code
-				}
-			}
+			let item = frappe.get_doc(cdt, cdn);
+			return erpnext.queries.item_uom(item.item_code);
 		});
 
 		if (this.frm.fields_dict["cost_center"]) {

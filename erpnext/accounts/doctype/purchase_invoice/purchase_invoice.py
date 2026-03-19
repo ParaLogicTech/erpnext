@@ -48,7 +48,7 @@ class PurchaseInvoice(BuyingController):
 			self.is_opening = 'No'
 
 		self.validate_posting_time()
-		super(PurchaseInvoice, self).validate()
+		super().validate()
 
 		# apply tax withholding only if checked and applicable
 		self.set_tax_withholding()
@@ -80,8 +80,6 @@ class PurchaseInvoice(BuyingController):
 		self.check_on_hold_or_closed_status()
 		self.validate_with_previous_doc()
 		self.validate_return_against()
-		self.validate_uom_is_integer("uom", "qty")
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.set_expense_account()
 		self.validate_expense_account()
 		self.set_against_expense_account()
