@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 from crm.crm.doctype.opportunity.opportunity import Opportunity
 from frappe.model.mapper import get_mapped_doc
-from erpnext.utilities.transaction_base import validate_uom_is_integer
+from erpnext.utilities.transaction_base import validate_uom_is_integer, validate_uom_is_convertible
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from erpnext.setup.utils import get_exchange_rate
 from erpnext.accounts.party import get_party_account_currency
@@ -24,6 +24,7 @@ class OpportunityERP(Opportunity):
 
 	def validate(self):
 		super().validate()
+		validate_uom_is_convertible(self)
 		validate_uom_is_integer(self, "uom", "qty")
 		self.validate_maintenance_schedule()
 

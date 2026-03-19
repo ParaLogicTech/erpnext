@@ -28,7 +28,6 @@ class SupplierQuotation(BuyingController):
 
 		validate_for_items(self)
 		self.validate_with_previous_doc()
-		self.validate_uom_is_integer("uom", "qty")
 
 	def on_submit(self):
 		self.db_set("status", "Submitted")

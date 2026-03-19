@@ -43,12 +43,11 @@ class MaterialRequest(BuyingController):
 		self.from_warehouse_name = frappe.get_cached_value("Warehouse", self.from_warehouse, "warehouse_name")
 
 	def validate(self):
-		super(MaterialRequest, self).validate()
+		super().validate()
 
 		self.validate_schedule_date()
 		self.validate_warehouse()
 		self.check_for_on_hold_or_closed_status('Sales Order', 'sales_order')
-		self.validate_uom_is_integer("uom", "qty")
 
 		validate_for_items(self)
 		self.calculate_totals()

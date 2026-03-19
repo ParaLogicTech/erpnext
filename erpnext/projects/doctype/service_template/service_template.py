@@ -4,8 +4,9 @@
 
 import frappe
 from frappe import _
-from frappe.model.document import Document
 from frappe.utils import cint, clean_whitespace, cstr
+from frappe.model.document import Document
+from erpnext.utilities.transaction_base import validate_uom_is_convertible
 import json
 
 
@@ -34,6 +35,20 @@ class ServiceTemplate(Document):
 				is_stock_item = frappe.get_cached_value("Item", d.applicable_item_code, "is_stock_item")
 				if not is_stock_item:
 					frappe.throw(_("Row #{0}: Item {1} is not a Stock Item").format(d.idx, d.applicable_item_code))
+
+		validate_uom_is_convertible(
+			self,
+			items_table_field="sales_items",
+			item_code_field="applicable_item_code",
+			uom_field="applicable_uom",
+		)
+
+		validate_uom_is_convertible(
+			self,
+			items_table_field="consumable_items",
+			item_code_field="applicable_item_code",
+			uom_field="applicable_uom",
+		)
 
 	def validate_tasks(self):
 		for d in self.tasks:

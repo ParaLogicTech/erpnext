@@ -53,21 +53,14 @@ class SellingController(TransactionController):
 		super(SellingController, self).validate()
 		self.validate_bill_to()
 		self.validate_items()
+		self.set_qty_as_per_stock_uom()
+		self.set_alt_uom_qty()
+		self.validate_uom_is_convertible()
+		self.validate_uom_is_integer("uom", "qty")
+		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_max_discount()
 		self.validate_discount_rule()
 		self.validate_selling_price()
-		self.set_qty_as_per_stock_uom()
-		self.set_alt_uom_qty()
-		self.validate_uom_convertability(
-			item_table_fieldname="items",
-			item_code_fieldname="item_code",
-			uom_fieldname="uom"
-		)
-		self.validate_uom_convertability(
-			item_table_fieldname="packed_items",
-			item_code_fieldname="item_code",
-			uom_fieldname="uom"
-		)
 		self.set_po_nos()
 		self.set_gross_profit()
 		self.validate_for_duplicate_items()

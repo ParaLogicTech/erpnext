@@ -33,7 +33,7 @@ class BuyingController(TransactionController):
 				self.get_formatted("grand_total"))
 
 	def onload(self):
-		super(BuyingController, self).onload()
+		super().onload()
 
 		if self.doctype in ("Purchase Order", "Purchase Receipt", "Purchase Invoice"):
 			self.set_onload("is_internal_supplier",
@@ -44,21 +44,19 @@ class BuyingController(TransactionController):
 				self.calculate_taxes_and_totals()
 
 	def validate(self):
-		super(BuyingController, self).validate()
+		super().validate()
 		if getattr(self, "supplier", None) and not self.supplier_name:
 			self.supplier_name = frappe.db.get_value("Supplier", self.supplier, "supplier_name")
 
 		self.validate_items()
 		self.set_qty_as_per_stock_uom()
 		self.set_alt_uom_qty()
+		self.validate_uom_is_convertible()
+		self.validate_uom_is_integer("uom", ["qty", "received_qty"])
+		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_stock_or_nonstock_items()
 		self.validate_warehouse()
 		self.validate_asset_return()
-		self.validate_uom_convertability(
-			item_table_fieldname="items",
-			item_code_fieldname="item_code",
-			uom_fieldname="uom"
-		)
 
 		if self.doctype == "Purchase Invoice":
 			self.validate_purchase_receipt_if_update_stock()
@@ -220,7 +218,7 @@ class BuyingController(TransactionController):
 				title=_("Not Allowed"))
 
 	def validate_transaction_type(self):
-		super(BuyingController, self).validate_transaction_type()
+		super().validate_transaction_type()
 
 		if self.get('transaction_type'):
 			if not frappe.get_cached_value("Transaction Type", self.transaction_type, 'buying'):
