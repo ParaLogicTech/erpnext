@@ -21,8 +21,12 @@ class GrossProfitGenerator(object):
 		self.has_split_billing = False
 		self.has_project = False
 		self.has_batch_no = False
+		self.has_branch = False
 
 		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+
+		self.doc_meta = frappe.get_meta("Sales Invoice")
+		self.item_meta = frappe.get_meta("Sales Invoice Item")
 
 		self.data = []
 
@@ -42,10 +46,15 @@ class GrossProfitGenerator(object):
 	def load_invoice_items(self):
 		conditions = self.get_conditions()
 
-		self.data = frappe.db.sql("""
+		item_branch_field = ""
+		if self.item_meta.has_field("branch"):
+			item_branch_field = "si_item.branch as item_branch, "
+
+		self.data = frappe.db.sql(f"""
 			select
 				si.name as parent, si_item.parenttype, si_item.name, si_item.idx, si.docstatus,
 				si.posting_date, si.posting_time, si.transaction_type,
+				si.company, si.branch as parent_branch, {item_branch_field}
 				si.customer, si.customer_name, c.customer_group, c.territory,
 				si.bill_to, dn_item.claim_customer, dn_item.discount_percentage as claim_discount_percentage,
 				si.project as parent_project, si_item.project as item_project,
@@ -69,7 +78,7 @@ class GrossProfitGenerator(object):
 			where si.docstatus = 1 and si.is_opening != 'Yes' {conditions}
 			group by si.name, si_item.name
 			order by si.posting_date desc, si.posting_time desc, si.name desc, si_item.idx asc
-		""".format(conditions=conditions), self.filters, as_dict=1)
+		""", self.filters, as_dict=1)
 
 	def prepare_data(self):
 		for d in self.data:
@@ -84,6 +93,7 @@ class GrossProfitGenerator(object):
 
 			d["project"] = d.item_project or d.parent_project
 			d["cost_center"] = d.parent_cost_center or d.item_cost_center
+			d["branch"] = d.parent_branch or d.item_branch
 			d["applies_to_variant_of"] = d.applies_to_variant_of or d.applies_to_item
 
 			d.split_percentage = 100
@@ -100,10 +110,10 @@ class GrossProfitGenerator(object):
 
 			if d.split_percentage != 100:
 				self.has_split_billing = True
-
+			if d.branch:
+				self.has_branch = True
 			if d.project:
 				self.has_project = True
-
 			if d.batch_no:
 				self.has_batch_no = True
 
@@ -291,7 +301,13 @@ class GrossProfitGenerator(object):
 
 		if self.filters.get("cost_center"):
 			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
-			conditions.append("IF(si.cost_center IS NULL or si.cost_center = '', si_item.cost_center, si.cost_center) in %(cost_center)s")
+			conditions.append("(si_item.cost_center in %(cost_center)s or ((si_item.cost_center IS NULL or si_item.cost_center = '') and si.cost_center in %(cost_center)s))")
+
+		if self.filters.get("branch"):
+			if self.item_meta.has_field("branch"):
+				conditions.append("(si_item.branch = %(branch)s or ((si_item.branch IS NULL or si_item.branch = '') and si.branch = %(branch)s))")
+			else:
+				conditions.append("si.branch = %(branch)s")
 
 		if self.filters.get("project"):
 			if isinstance(self.filters.project, str):
@@ -480,17 +496,24 @@ class GrossProfitGenerator(object):
 				"width": 80
 			},
 			{
+				"label": _("Sales Person"),
+				"fieldtype": "Data",
+				"fieldname": "sales_person",
+				"width": 150
+			},
+			{
+				"label": _("Branch"),
+				"fieldtype": "Link",
+				"fieldname": "branch",
+				"options": "Branch",
+				"width": 100
+			},
+			{
 				"label": _("Project"),
 				"fieldtype": "Link",
 				"fieldname": "project",
 				"options": "Project",
 				"width": 100
-			},
-			{
-				"label": _("Sales Person"),
-				"fieldtype": "Data",
-				"fieldname": "sales_person",
-				"width": 150
 			},
 			{
 				"label": _("Warehouse"),
@@ -505,6 +528,13 @@ class GrossProfitGenerator(object):
 				"fieldname": "batch_no",
 				"options": "Batch",
 				"width": 140
+			},
+			{
+				"label": _("Cost Center"),
+				"fieldtype": "Link",
+				"fieldname": "cost_center",
+				"options": "Cost Center",
+				"width": 100
 			},
 		]
 		if self.filters.sales_person:
@@ -521,6 +551,8 @@ class GrossProfitGenerator(object):
 			columns = [c for c in columns if c.get('fieldname') != 'customer_name']
 		if not self.has_split_billing:
 			columns = [c for c in columns if c.get('fieldname') != 'split_percentage']
+		if not self.has_branch:
+			columns = [c for c in columns if c.get('fieldname') != 'branch']
 		if not self.has_project:
 			columns = [c for c in columns if c.get('fieldname') != 'project']
 		if not self.has_batch_no:

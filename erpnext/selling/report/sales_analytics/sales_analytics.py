@@ -25,6 +25,9 @@ class Analytics(object):
 		self.filters.party_type = "Customer" if self.filters.doctype in ['Sales Order', 'Delivery Note', 'Sales Invoice']\
 			else "Supplier"
 
+		self.doc_meta = frappe.get_meta(self.filters.doctype)
+		self.item_meta = frappe.get_meta(self.filters.doctype + " Item")
+
 	def run(self):
 		self.get_columns()
 		self.get_data()
@@ -106,7 +109,18 @@ class Analytics(object):
 			self.get_rows()
 
 		elif self.filters.tree_type == 'Branch':
-			self.get_entries("s.branch")
+			entity_field = None
+			if self.item_meta.has_field("branch") and self.doc_meta.has_field("branch"):
+				entity_field = "IF(i.branch IS NULL or i.branch = '', s.branch, i.branch)"
+			elif self.item_meta.has_field("branch"):
+				entity_field = "i.branch"
+			elif self.doc_meta.has_field("branch"):
+				entity_field = "s.branch"
+
+			if not entity_field:
+				frappe.throw(_("Branch is not a valid field for {0}").format(self.filters.doctype))
+
+			self.get_entries(entity_field)
 			self.get_rows()
 
 		elif self.filters.tree_type == 'Account Manager':
@@ -204,9 +218,6 @@ class Analytics(object):
 		if self.filters.get("company"):
 			conditions.append("s.company = %(company)s")
 
-		if self.filters.get("branch"):
-			conditions.append("s.branch = %(branch)s")
-
 		if self.filters.get("customer"):
 			conditions.append("s.customer = %(customer)s")
 
@@ -274,22 +285,30 @@ class Analytics(object):
 		if self.filters.get("cost_center"):
 			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
 
-			if frappe.get_meta(self.filters.doctype + " Item").has_field("cost_center") and frappe.get_meta(self.filters.doctype).has_field("cost_center"):
-				conditions.append("IF(s.cost_center IS NULL or s.cost_center = '', i.cost_center, s.cost_center) in %(cost_center)s")
-			elif frappe.get_meta(self.filters.doctype + " Item").has_field("cost_center"):
+			if self.item_meta.has_field("cost_center") and self.doc_meta.has_field("cost_center"):
+				conditions.append("(i.cost_center in %(cost_center)s or ((i.cost_center IS NULL or i.cost_center = '') and s.cost_center in %(cost_center)s))")
+			elif self.item_meta.has_field("cost_center"):
 				conditions.append("i.cost_center in %(cost_center)s")
-			elif frappe.get_meta(self.filters.doctype).has_field("cost_center"):
+			elif self.doc_meta.has_field("cost_center"):
 				conditions.append("s.cost_center in %(cost_center)s")
+
+		if self.filters.get("branch"):
+			if self.item_meta.has_field("branch") and self.doc_meta.has_field("branch"):
+				conditions.append("(i.branch = %(branch)s or ((i.branch IS NULL or i.branch = '') and s.branch = %(branch)s))")
+			elif self.item_meta.has_field("branch"):
+				conditions.append("i.branch = %(branch)s")
+			elif self.doc_meta.has_field("branch"):
+				conditions.append("s.branch = %(branch)s")
 
 		if self.filters.get("project"):
 			if isinstance(self.filters.project, str):
 				self.filters.project = [self.filters.project]
 
-			if frappe.get_meta(self.filters.doctype + " Item").has_field("project") and frappe.get_meta(self.filters.doctype).has_field("project"):
-				conditions.append("IF(i.project IS NULL or i.project = '', s.project, i.project) in %(project)s")
-			elif frappe.get_meta(self.filters.doctype + " Item").has_field("project"):
+			if self.item_meta.has_field("project") and self.doc_meta.has_field("project"):
+				conditions.append("(i.project in %(project)s or ((i.project IS NULL or i.project = '') and s.project in %(project)s))")
+			elif self.item_meta.has_field("project"):
 				conditions.append("i.project in %(project)s")
-			elif frappe.get_meta(self.filters.doctype).has_field("project"):
+			elif self.doc_meta.has_field("project"):
 				conditions.append("s.project in %(project)s")
 
 		if self.filters.get("warehouse"):

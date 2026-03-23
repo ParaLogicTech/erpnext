@@ -2,11 +2,22 @@
 // License: GNU General Public License v3. See license.txt
 
 const group_by_options_gp = [
-	"", "Group by Invoice", "Group by Customer", "Group by Customer Group",
-	"Group by Item", "Group by Item Group", "Group by Brand", "Group by Warehouse",
-	"Group by Territory", "Group by Sales Person", "Group by Item Source",
-	"Group by Applies To Item", "Group by Applies To Variant Of",
-	"Group by Transaction Type", "Group by Project", "Group by Cost Center"
+	"",
+	{label: __("Group by ") + __("Invoice"), value: "Group by Invoice"},
+	{label: __("Group by ") + __("Customer"), value: "Group by Customer"},
+	{label: __("Group by ") + __("Customer Group"), value: "Group by Customer Group"},
+	{label: __("Group by ") + __("Item"), value: "Group by Item"},
+	{label: __("Group by ") + __("Item Group"), value: "Group by Item Group"},
+	{label: __("Group by ") + __("Brand"), value: "Group by Brand"},
+	{label: __("Group by ") + __("Warehouse"), value: "Group by Warehouse"},
+	{label: __("Group by ") + __("Territory"), value: "Group by Territory"},
+	{label: __("Group by ") + __("Sales Person"), value: "Group by Sales Person"},
+	{label: __("Group by ") + __("Applies To Item"), value: "Group by Applies To Item"},
+	{label: __("Group by ") + __("Applies To Variant Of"), value: "Group by Applies To Variant Of"},
+	{label: __("Group by ") + __("Transaction Type"), value: "Group by Transaction Type"},
+	{label: __("Group by ") + __("Project"), value: "Group by Project"},
+	{label: __("Group by ") + __("Cost Center"), value: "Group by Cost Center"},
+	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
 ]
 
 frappe.query_reports["Gross Profit"] = {
@@ -124,24 +135,25 @@ frappe.query_reports["Gross Profit"] = {
 			"options": "Transaction Type"
 		},
 		{
-			"fieldname":"project",
-			"label": __("Project"),
-			"fieldtype": "Link",
-			"options": "Project"
-		},
-		{
-			"fieldname": "cost_center",
-			"label": __("Cost Center"),
-			"fieldtype": "Link",
-			"options": "Cost Center",
+			fieldname: "cost_center",
+			label: __("Cost Center"),
+			fieldtype: "Link",
+			options: "Cost Center",
 			get_query: () => {
 				return { filters: { company: frappe.query_report.get_filter_value("company") } };
 			},
 		},
 		{
-			fieldname: "include_non_stock_items",
-			label: __("Include Non Stock Items"),
-			fieldtype: "Check",
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch",
+		},
+		{
+			fieldname: "project",
+			label: __("Project"),
+			fieldtype: "Link",
+			options: "Project"
 		},
 		{
 			fieldname: "group_by_1",
@@ -169,6 +181,11 @@ frappe.query_reports["Gross Profit"] = {
 			label: __("Group Totals Only"),
 			fieldtype: "Check",
 			default: 0
+		},
+		{
+			fieldname: "include_non_stock_items",
+			label: __("Include Non Stock Items"),
+			fieldtype: "Check",
 		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {

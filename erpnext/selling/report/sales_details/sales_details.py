@@ -154,7 +154,6 @@ class SalesPurchaseDetailsReport(object):
 	def get_select_fields_and_joins(self):
 		select_fields = [
 			"s.name as parent", "i.name",
-			"s.branch",
 			f"{self.date_field} as date",
 			f"s.{self.party_field} as party",
 			f"s.{self.party_name_field} as party_name",
@@ -204,6 +203,12 @@ class SalesPurchaseDetailsReport(object):
 		if self.doc_meta.has_field("cost_center"):
 			select_fields.append("s.cost_center as parent_cost_center")
 
+		# Branch
+		if self.item_meta.has_field("branch"):
+			select_fields.append("i.branch as item_branch")
+		if self.doc_meta.has_field("branch"):
+			select_fields.append("s.branch as parent_branch")
+
 		# Purchase Bill No
 		if self.doc_meta.has_field('bill_no'):
 			select_fields.append("s.bill_no")
@@ -228,9 +233,6 @@ class SalesPurchaseDetailsReport(object):
 
 		if self.filters.get("company"):
 			conditions.append("s.company = %(company)s")
-
-		if self.filters.get("branch"):
-			conditions.append("s.branch = %(branch)s")
 
 		if self.filters.get("customer"):
 			if self.filters.doctype == "Sales Invoice":
@@ -303,18 +305,26 @@ class SalesPurchaseDetailsReport(object):
 			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
 
 			if self.item_meta.has_field("cost_center") and self.doc_meta.has_field("cost_center"):
-				conditions.append("IF(s.cost_center IS NULL or s.cost_center = '', i.cost_center, s.cost_center) in %(cost_center)s")
+				conditions.append("(i.cost_center in %(cost_center)s or ((i.cost_center IS NULL or i.cost_center = '') and s.cost_center in %(cost_center)s))")
 			elif self.item_meta.has_field("cost_center"):
 				conditions.append("i.cost_center in %(cost_center)s")
 			elif self.doc_meta.has_field("cost_center"):
 				conditions.append("s.cost_center in %(cost_center)s")
+
+		if self.filters.get("branch"):
+			if self.item_meta.has_field("branch") and self.doc_meta.has_field("branch"):
+				conditions.append("(i.branch = %(branch)s or ((i.branch IS NULL or i.branch = '') and s.branch = %(branch)s))")
+			elif self.item_meta.has_field("branch"):
+				conditions.append("i.branch = %(branch)s")
+			elif self.doc_meta.has_field("branch"):
+				conditions.append("s.branch = %(branch)s")
 
 		if self.filters.get("project"):
 			if isinstance(self.filters.project, str):
 				self.filters.project = [self.filters.project]
 
 			if self.item_meta.has_field("project") and self.doc_meta.has_field("project"):
-				conditions.append("IF(i.project IS NULL or i.project = '', s.project, i.project) in %(project)s")
+				conditions.append("(i.project in %(project)s or ((i.project IS NULL or i.project = '') and s.project in %(project)s))")
 			elif self.item_meta.has_field("project"):
 				conditions.append("i.project in %(project)s")
 			elif self.doc_meta.has_field("project"):
@@ -357,7 +367,8 @@ class SalesPurchaseDetailsReport(object):
 				"group_doctype": "Item Group",
 				"group": d.item_group,
 				"brand": d.brand,
-				"cost_center": d.parent_cost_center or d.item_cost_center,
+				"cost_center": d.item_cost_center or d.parent_cost_center,
+				"branch": d.item_branch or d.parent_branch,
 				"project": d.item_project or d.parent_project,
 				self.party_name_field: d.party_name,
 				"party_name": d.party_name,
@@ -897,10 +908,8 @@ class SalesPurchaseDetailsReport(object):
 		if not self.doc_meta.has_field("bill_date"):
 			columns = [c for c in columns if c.get('fieldname') != 'bill_date']
 
-		if not self.item_meta.has_field("cost_center"):
+		if not self.item_meta.has_field("cost_center") and not self.doc_meta.has_field("cost_center"):
 			columns = [c for c in columns if c.get('fieldname') != 'cost_center']
-		if not self.item_meta.has_field("project") and not self.doc_meta.has_field("project"):
-			columns = [c for c in columns if c.get('fieldname') != 'project']
 
 		if not self.filters.has_project:
 			columns = [c for c in columns if c.get('fieldname') != 'project']

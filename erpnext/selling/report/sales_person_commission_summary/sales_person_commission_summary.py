@@ -230,7 +230,7 @@ class SalesPersonCommissionSummary(object):
 			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
 
 			if frappe.get_meta("Sales Invoice Item").has_field("cost_center") and frappe.get_meta("Sales Invoice").has_field("cost_center"):
-				conditions.append("IF(inv.cost_center IS NULL or inv.cost_center = '', i.cost_center, inv.cost_center) in %(cost_center)s")
+				conditions.append("(i.cost_center in %(cost_center)s or ((i.cost_center IS NULL or i.cost_center = '') and inv.cost_center in %(cost_center)s))")
 			elif frappe.get_meta("Sales Invoice Item").has_field("cost_center"):
 				conditions.append("i.cost_center in %(cost_center)s")
 			elif frappe.get_meta("Sales Invoice").has_field("cost_center"):
