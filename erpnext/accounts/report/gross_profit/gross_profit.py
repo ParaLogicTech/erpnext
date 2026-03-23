@@ -19,6 +19,8 @@ class GrossProfitGenerator(object):
 		self.filters.to_date = getdate(self.filters.to_date or nowdate())
 
 		self.has_split_billing = False
+		self.has_project = False
+		self.has_batch_no = False
 
 		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
 
@@ -51,24 +53,20 @@ class GrossProfitGenerator(object):
 				si_item.item_code, si_item.item_name, si_item.batch_no, si_item.uom,
 				si_item.warehouse, i.item_group, i.brand, i.item_source,
 				si.applies_to_item, si.applies_to_variant_of,
-				si.update_stock, si_item.delivery_note_item, si_item.delivery_note,
+				si.update_stock, si.is_return, si.reopen_order,
+				si_item.delivery_note_item, si_item.delivery_note,
 				si_item.qty, si_item.stock_qty, si_item.conversion_factor, si_item.alt_uom_size,
 				si_item.base_net_amount,
 				si.depreciation_type, si_item.ignore_depreciation, si_item.depreciation_percentage,
 				GROUP_CONCAT(DISTINCT sp.sales_person SEPARATOR ', ') as sales_person,
-				sum(ifnull(sp.allocated_percentage, 100)) as allocated_percentage,
-				si_item.returned_qty, si_item.base_returned_amount
+				sum(ifnull(sp.allocated_percentage, 100)) as allocated_percentage
 			from `tabSales Invoice` si
 			inner join `tabSales Invoice Item` si_item on si_item.parent = si.name
 			left join `tabDelivery Note Item` dn_item on dn_item.name = si_item.delivery_note_item
 			left join `tabCustomer` c on c.name = si.customer
 			left join `tabItem` i on i.name = si_item.item_code
 			left join `tabSales Team` sp on sp.parent = si.name and sp.parenttype = 'Sales Invoice'
-			where
-				si.docstatus = 1
-				and (si.return_against = '' or si.return_against is null)
-				and si.is_opening != 'Yes'
-				{conditions}
+			where si.docstatus = 1 and si.is_opening != 'Yes' {conditions}
 			group by si.name, si_item.name
 			order by si.posting_date desc, si.posting_time desc, si.name desc, si_item.idx asc
 		""".format(conditions=conditions), self.filters, as_dict=1)
@@ -103,6 +101,12 @@ class GrossProfitGenerator(object):
 			if d.split_percentage != 100:
 				self.has_split_billing = True
 
+			if d.project:
+				self.has_project = True
+
+			if d.batch_no:
+				self.has_batch_no = True
+
 	def get_cogs(self):
 		update_item_valuation_rates(self.data)
 
@@ -110,7 +114,7 @@ class GrossProfitGenerator(object):
 			item.cogs_per_unit = flt(item.valuation_rate) * flt(item.conversion_factor)
 			item.cogs_per_unit = item.cogs_per_unit * item.split_percentage / 100
 
-			item.cogs_qty = flt(item.qty) - flt(item.get('returned_qty'))
+			item.cogs_qty = flt(item.qty)
 			item.cogs = item.cogs_per_unit * item.cogs_qty
 
 			self.postprocess_row(item)
@@ -149,8 +153,8 @@ class GrossProfitGenerator(object):
 
 	def calculate_group_totals(self, data, group_field, group_value, grouped_by):
 		total_fields = [
-			'qty', 'stock_qty', 'cogs_qty', 'cogs',
-			'base_net_amount', 'returned_qty', 'base_returned_amount'
+			'qty', 'stock_qty', 'cogs_qty',
+			'cogs', 'base_net_amount',
 		]
 
 		totals = frappe._dict()
@@ -213,7 +217,7 @@ class GrossProfitGenerator(object):
 		return totals
 
 	def postprocess_row(self, item):
-		item.revenue = item.base_net_amount - flt(item.get('base_returned_amount'))
+		item.revenue = item.base_net_amount
 		item.revenue_per_unit = item.revenue / item.cogs_qty if item.cogs_qty else 0
 		item.gross_profit = item.revenue - item.cogs
 		item.gross_profit_per_unit = item.gross_profit / item.cogs_qty if item.cogs_qty else 0
@@ -292,7 +296,7 @@ class GrossProfitGenerator(object):
 		if self.filters.get("project"):
 			if isinstance(self.filters.project, str):
 				self.filters.project = [self.filters.project]
-			conditions.append("IF(si.project IS NULL or si.project = '', si_item.project, si.project) in %(project)s")
+			conditions.append("si_item.project in %(project)s")
 
 		if self.filters.get("sales_person"):
 			lft, rgt = frappe.db.get_value("Sales Person", self.filters.sales_person, ["lft", "rgt"])
@@ -403,7 +407,7 @@ class GrossProfitGenerator(object):
 
 		columns += [
 			{
-				"label": _("Net Qty"),
+				"label": _("Qty"),
 				"fieldtype": "Float",
 				"fieldname": "cogs_qty",
 				"width": 80
@@ -476,37 +480,11 @@ class GrossProfitGenerator(object):
 				"width": 80
 			},
 			{
-				"label": _("Valuation Rate"),
-				"fieldtype": "Currency",
-				"fieldname": "valuation_rate",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Invoice Qty"),
-				"fieldtype": "Float",
-				"fieldname": "qty",
+				"label": _("Project"),
+				"fieldtype": "Link",
+				"fieldname": "project",
+				"options": "Project",
 				"width": 100
-			},
-			{
-				"label": _("Returned Qty"),
-				"fieldtype": "Float",
-				"fieldname": "returned_qty",
-				"width": 100
-			},
-			{
-				"label": _("Net Amount"),
-				"fieldtype": "Currency",
-				"fieldname": "base_net_amount",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Credit Amount"),
-				"fieldtype": "Currency",
-				"fieldname": "base_returned_amount",
-				"options": "Company:company:default_currency",
-				"width": 110
 			},
 			{
 				"label": _("Sales Person"),
@@ -528,13 +506,6 @@ class GrossProfitGenerator(object):
 				"options": "Batch",
 				"width": 140
 			},
-			{
-				"label": _("Project"),
-				"fieldtype": "Link",
-				"fieldname": "project",
-				"options": "Project",
-				"width": 100
-			},
 		]
 		if self.filters.sales_person:
 			columns.append({
@@ -550,6 +521,10 @@ class GrossProfitGenerator(object):
 			columns = [c for c in columns if c.get('fieldname') != 'customer_name']
 		if not self.has_split_billing:
 			columns = [c for c in columns if c.get('fieldname') != 'split_percentage']
+		if not self.has_project:
+			columns = [c for c in columns if c.get('fieldname') != 'project']
+		if not self.has_batch_no:
+			columns = [c for c in columns if c.get('fieldname') != 'batch_no']
 
 		return columns
 
@@ -615,16 +590,28 @@ def get_item_incoming_rate_data(args, get_last_purchase_rate=False):
 		docstatus = d.get('doc_status') or d.get('docstatus')
 
 		if d.get('item_code') in stock_item_codes and parent_doctype in ('Sales Invoice', 'Delivery Note'):
-			if d.get('delivery_note_item') and parent_doctype == "Sales Invoice":
-				voucher_detail_no = ('Delivery Note', d.get('delivery_note_item'))
-				source_map[i] = ('sle_outgoing_rate', voucher_detail_no)
-			elif docstatus == 1:
-				if row_name and (parent_doctype == "Delivery Note" or d.get('update_stock')):
+			if parent_doctype == "Sales Invoice":
+				if d.get("update_stock"):
+					if docstatus == 0:
+						source_map[i] = (None, None)
+					else:
+						voucher_detail_no = (parent_doctype, row_name)
+						source_map[i] = ('sle_outgoing_rate', voucher_detail_no)
+				elif d.get("delivery_note_item"):
+					if not d.get("is_return") or d.get("reopen_order"):
+						voucher_detail_no = ('Delivery Note', d.get('delivery_note_item'))
+						source_map[i] = ('sle_outgoing_rate', voucher_detail_no)
+
+			elif parent_doctype == "Delivery Note":
+				if docstatus == 0:
+					source_map[i] = (None, None)
+				else:
 					voucher_detail_no = (parent_doctype, row_name)
 					source_map[i] = ('sle_outgoing_rate', voucher_detail_no)
+
 			else:
-				# get_incoming_rate
 				source_map[i] = (None, None)
+
 		elif get_last_purchase_rate:
 			transaction_date = getdate(d.get('transaction_date') or d.get('posting_date') or d.get('date'))
 			source_map[i] = ('item_last_purchase_rate', (d.get('item_code'), transaction_date))

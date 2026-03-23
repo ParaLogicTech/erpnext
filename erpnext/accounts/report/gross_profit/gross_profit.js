@@ -172,13 +172,18 @@ frappe.query_reports["Gross Profit"] = {
 		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {
-		var style = {};
+		let style = {};
 
-		if (['gross_profit', 'gross_profit_per_unit', 'profit_margin', 'profit_markup'].includes(column.fieldname)) {
+		if ([
+			'gross_profit', 'gross_profit_per_unit',
+			'revenue', 'revenue_per_unit',
+			'profit_margin', 'profit_markup',
+			'cogs_qty', 'qty', 'stock_qty',
+		].includes(column.fieldname)) {
 			if (flt(value, 2) === 0) {
-				style['color'] = 'orange';
+				style['color'] = 'var(--orange-500)';
 			} else if (flt(value) < 0) {
-				style['color'] = 'red';
+				style['color'] = 'var(--red-600)';
 			}
 		}
 
