@@ -4,17 +4,17 @@
 
 const sales_details_group_by_options = [
 	"",
-	"Group by Customer",
-	"Group by Customer Group",
-	"Group by Transaction",
-	"Group by Branch",
-	"Group by Item",
-	"Group by Item Group",
-	"Group by Brand",
-	"Group by Applies To Item",
-	"Group by Applies To Variant Of",
-	"Group by Territory",
-	"Group by Sales Person",
+	{label: __("Group by ") + __("Customer"), value: "Group by Customer"},
+	{label: __("Group by ") + __("Customer Group"), value: "Group by Customer Group"},
+	{label: __("Group by ") + __("Transaction"), value: "Group by Transaction"},
+	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
+	{label: __("Group by ") + __("Item"), value: "Group by Item"},
+	{label: __("Group by ") + __("Item Group"), value: "Group by Item Group"},
+	{label: __("Group by ") + __("Brand"), value: "Group by Brand"},
+	{label: __("Group by ") + __("Applies To Item"), value: "Group by Applies To Item"},
+	{label: __("Group by ") + __("Applies To Variant Of"), value: "Group by Applies To Variant Of"},
+	{label: __("Group by ") + __("Territory"), value: "Group by Territory"},
+	{label: __("Group by ") + __("Sales Person"), value: "Group by Sales Person"},
 ]
 
 frappe.query_reports["Sales Details"] = {

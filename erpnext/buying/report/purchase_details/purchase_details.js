@@ -2,14 +2,15 @@
 // For license information, please see license.txt
 /* eslint-disable */
 
-const purchase_details_group_by_options = ["",
-	"Group by Supplier",
-	"Group by Supplier Group",
-	"Group by Transaction",
-	"Group by Branch",
-	"Group by Item",
-	"Group by Item Group",
-	"Group by Brand",
+const purchase_details_group_by_options = [
+	"",
+	{label: __("Group by ") + __("Supplier"), value: "Group by Supplier"},
+	{label: __("Group by ") + __("Supplier Group"), value: "Group by Supplier Group"},
+	{label: __("Group by ") + __("Transaction"), value: "Group by Transaction"},
+	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
+	{label: __("Group by ") + __("Item"), value: "Group by Item"},
+	{label: __("Group by ") + __("Item Group"), value: "Group by Item Group"},
+	{label: __("Group by ") + __("Brand"), value: "Group by Brand"},
 ]
 
 frappe.query_reports["Purchase Details"] = {

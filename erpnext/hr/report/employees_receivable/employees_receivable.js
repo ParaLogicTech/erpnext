@@ -1,6 +1,16 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
+const er_group_by_options = [
+	"",
+	{label: __("Group by ") + __("Employee"), value: "Group by Employee"},
+	{label: __("Group by ") + __("Department"), value: "Group by Department"},
+	{label: __("Group by ") + __("Designation"), value: "Group by Designation"},
+	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
+	{label: __("Group by ") + __("Cost Center"), value: "Group by Cost Center"},
+	{label: __("Group by ") + __("Project"), value: "Group by Project"},
+]
+
 frappe.query_reports["Employees Receivable"] = {
 	"filters": [
 		{
@@ -77,14 +87,14 @@ frappe.query_reports["Employees Receivable"] = {
 			"fieldname":"group_by",
 			"label": __("Group By Level 1"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Employee\nGroup by Department\nGroup by Designation\nGroup by Branch\nGroup by Cost Center\nGroup by Project",
+			"options": er_group_by_options,
 			"default": ""
 		},
 		{
 			"fieldname":"group_by_2",
 			"label": __("Group By Level 2"),
 			"fieldtype": "Select",
-			"options": "\nGroup by Employee\nGroup by Department\nGroup by Designation\nGroup by Branch\nGroup by Cost Center\nGroup by Project",
+			"options": er_group_by_options,
 			"default": ""
 		},
 	],
