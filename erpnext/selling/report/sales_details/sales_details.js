@@ -218,6 +218,11 @@ frappe.query_reports["Sales Details"] = {
 			label: __("Show Detailed Taxes"),
 			fieldtype: "Check"
 		},
+		{
+			fieldname: "has_project",
+			label: __("Project") + " " + __("Entries Only"),
+			fieldtype: "Check",
+		},
 	],
 
 	formatter: function(value, row, column, data, default_formatter) {

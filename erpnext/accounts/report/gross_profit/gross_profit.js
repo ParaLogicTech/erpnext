@@ -187,6 +187,11 @@ frappe.query_reports["Gross Profit"] = {
 			label: __("Include Non Stock Items"),
 			fieldtype: "Check",
 		},
+		{
+			fieldname: "has_project",
+			label: __("Project") + " " + __("Entries Only"),
+			fieldtype: "Check",
+		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {
 		let style = {};

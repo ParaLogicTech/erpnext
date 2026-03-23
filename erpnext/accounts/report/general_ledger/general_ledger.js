@@ -246,6 +246,11 @@ frappe.query_reports["General Ledger"] = {
 			fieldtype: "Check"
 		},
 		{
+			fieldname: "has_project",
+			label: __("Project") + " " + __("Entries Only"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "against_in_print",
 			label: __("Against Column In Print"),
 			fieldtype: "Check",

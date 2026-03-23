@@ -329,6 +329,13 @@ class SalesPurchaseDetailsReport(object):
 				conditions.append("i.project in %(project)s")
 			elif self.doc_meta.has_field("project"):
 				conditions.append("s.project in %(project)s")
+		elif self.filters.get("has_project"):
+			if self.item_meta.has_field("project") and self.doc_meta.has_field("project"):
+				conditions.append("((i.project is not null and i.project != '') or (s.project is not null and s.project != ''))")
+			elif self.item_meta.has_field("project"):
+				conditions.append("(i.project is not null and i.project != '')")
+			elif self.doc_meta.has_field("project"):
+				conditions.append("(s.project is not null and s.project != '')")
 
 		if self.filters.get("warehouse"):
 			lft, rgt = frappe.db.get_value("Warehouse", self.filters.warehouse, ["lft", "rgt"])

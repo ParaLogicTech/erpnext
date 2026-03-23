@@ -313,6 +313,8 @@ class GrossProfitGenerator(object):
 			if isinstance(self.filters.project, str):
 				self.filters.project = [self.filters.project]
 			conditions.append("si_item.project in %(project)s")
+		elif self.filters.get("has_project"):
+			conditions.append("(si_item.project is not null and si_item.project != '')")
 
 		if self.filters.get("sales_person"):
 			lft, rgt = frappe.db.get_value("Sales Person", self.filters.sales_person, ["lft", "rgt"])

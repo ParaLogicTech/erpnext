@@ -186,6 +186,11 @@ frappe.query_reports["Sales Analytics"] = {
 				});
 			}
 		},
+		{
+			fieldname: "has_project",
+			label: __("Project") + " " + __("Entries Only"),
+			fieldtype: "Check",
+		},
 	],
 	after_datatable_render: function(datatable_obj) {
 		datatable_obj.rowmanager.checkRow(0, 1);
