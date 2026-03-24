@@ -516,6 +516,14 @@ class DeliveryNote(SellingController):
 			self.validate_rate_with_reference_doc([["Sales Order", "sales_order", "sales_order_item"],
 				["Sales Invoice", "sales_invoice", "sales_invoice_item"]])
 
+	def validate_return_against(self, against_doc):
+		return_against_label = self.meta.get_label("return_against")
+
+		if self.customer != against_doc.customer:
+			frappe.throw(_("Customer must be same as {1} {2} ({3}").format(
+				return_against_label, against_doc.name, frappe.bold(against_doc.customer)
+			))
+
 	def validate_warehouse(self):
 		super(DeliveryNote, self).validate_warehouse()
 

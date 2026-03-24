@@ -58,7 +58,6 @@ class SalesInvoice(SellingController):
 		self.validate_project_customer()
 		self.check_sales_order_on_hold_or_close()
 		self.validate_debit_to_acc()
-		self.validate_return_against()
 
 		self.check_advance_payment_against_order()
 
@@ -905,17 +904,20 @@ class SalesInvoice(SellingController):
 				["Delivery Note", "delivery_note", "delivery_note_item"]
 			])
 
-	def validate_return_against(self):
-		if cint(self.is_return) and self.return_against:
-			against_doc = frappe.get_doc("Sales Invoice", self.return_against)
-			if not against_doc:
-				frappe.throw(_("Return Against Sales Invoice {0} does not exist").format(self.return_against))
-			if against_doc.company != self.company:
-				frappe.throw(_("Return Against Sales Invoice {0} must be against the same Company").format(self.return_against))
-			if against_doc.customer != self.customer and cstr(against_doc.get('bill_to')) != cstr(self.get('bill_to')):
-				frappe.throw(_("Return Against Sales Invoice {0} must be against the same Billing Customer").format(self.return_against))
-			if against_doc.debit_to != self.debit_to:
-				frappe.throw(_("Return Against Sales Invoice {0} must have the same Debit To account").format(self.return_against))
+	def validate_return_against(self, against_doc):
+		return_against_label = self.meta.get_label("return_against")
+
+		return_party_type, return_party, return_party_name = self.get_billing_party()
+		against_party_type, against_party, return_party_name = against_doc.get_billing_party()
+		if (return_party_type, return_party) != (against_party_type, against_party):
+			frappe.throw(_("Billing {0} must be same as {1} {2} ({3}").format(
+				against_party_type, return_against_label, against_doc.name, frappe.bold(against_party)
+			))
+
+		if self.debit_to != against_doc.debit_to:
+			frappe.throw(_("Debit To Account must be same as {0} {1} ({2}").format(
+				return_against_label, against_doc.name, frappe.bold(against_doc.debit_to)
+			))
 
 	def validate_goodwill_invoicing(self):
 		if self.is_goodwill_invoice:

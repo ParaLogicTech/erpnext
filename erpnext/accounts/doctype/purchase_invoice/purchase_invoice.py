@@ -79,7 +79,6 @@ class PurchaseInvoice(BuyingController):
 		self.validate_zero_amount()
 		self.check_on_hold_or_closed_status()
 		self.validate_with_previous_doc()
-		self.validate_return_against()
 		self.set_expense_account()
 		self.validate_expense_account()
 		self.set_against_expense_account()
@@ -346,6 +345,21 @@ class PurchaseInvoice(BuyingController):
 				["Purchase Receipt", "purchase_receipt", "purchase_receipt_item"]
 			])
 
+	def validate_return_against(self, against_doc):
+		return_against_label = self.meta.get_label("return_against")
+
+		return_party_type, return_party, return_party_name = self.get_billing_party()
+		against_party_type, against_party, return_party_name = against_doc.get_billing_party()
+		if (return_party_type, return_party) != (against_party_type, against_party):
+			frappe.throw(_("Billing {0} must be same as {1} {2} ({3}").format(
+				against_party_type, return_against_label, against_doc.name, frappe.bold(against_party)
+			))
+
+		if self.credit_to != against_doc.credit_to:
+			frappe.throw(_("Credit To Account must be same as {0} {1} ({2}").format(
+				return_against_label, against_doc.name, frappe.bold(against_doc.credit_to)
+			))
+
 	def set_revalue_purchase_receipt(self):
 		self.revalue_purchase_receipt = 0
 		if self.is_return and self.update_stock:
@@ -410,18 +424,6 @@ class PurchaseInvoice(BuyingController):
 			if not self.update_stock and self.is_return:
 				self.revalue_purchase_receipt = 1
 				return
-
-	def validate_return_against(self):
-		if cint(self.is_return) and self.return_against:
-			against_doc = frappe.get_doc("Purchase Invoice", self.return_against)
-			if not against_doc:
-				frappe.throw(_("Return Against Purchase Invoice {0} does not exist").format(self.return_against))
-			if against_doc.company != self.company:
-				frappe.throw(_("Return Against Purchase Invoice {0} must be against the same Company").format(self.return_against))
-			if against_doc.supplier != self.supplier or against_doc.letter_of_credit != self.letter_of_credit:
-				frappe.throw(_("Return Against Purchase Invoice {0} must be against the same Supplier and Letter of Credit").format(self.return_against))
-			if against_doc.credit_to != self.credit_to:
-				frappe.throw(_("Return Against Purchase Invoice {0} must have the same Credit To account").format(self.return_against))
 
 	def update_receipts_valuation(self):
 		receipt_documents = set([('Purchase Receipt', item.purchase_receipt) for item in self.items if item.purchase_receipt])

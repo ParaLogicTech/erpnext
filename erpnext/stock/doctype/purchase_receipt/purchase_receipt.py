@@ -304,6 +304,14 @@ class PurchaseReceipt(BuyingController):
 		if cint(frappe.db.get_single_value('Buying Settings', 'maintain_same_rate')) and not self.is_return:
 			self.validate_rate_with_reference_doc([["Purchase Order", "purchase_order", "purchase_order_item"]])
 
+	def validate_return_against(self, against_doc):
+		return_against_label = self.meta.get_label("return_against")
+
+		if self.supplier != against_doc.supplier:
+			frappe.throw(_("Supplier must be same as {1} {2} ({3}").format(
+				return_against_label, against_doc.name, frappe.bold(against_doc.supplier)
+			))
+
 	def check_next_docstatus(self):
 		submit_rv = frappe.db.sql("""select t1.name
 			from `tabPurchase Invoice` t1,`tabPurchase Invoice Item` t2

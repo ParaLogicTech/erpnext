@@ -3,11 +3,12 @@
 
 import frappe, erpnext
 from frappe import _
+from frappe.utils import flt, cint, cstr, combine_datetime, format_datetime
 from frappe.model.meta import get_field_precision
-from frappe.utils import flt, cint, get_datetime, format_datetime
 
 
-class StockOverReturnError(frappe.ValidationError): pass
+class StockOverReturnError(frappe.ValidationError):
+	pass
 
 
 def validate_return(doc):
@@ -20,31 +21,64 @@ def validate_return(doc):
 
 
 def validate_return_against(doc):
+	return_against_label = doc.meta.get_label("return_against")
 	if not frappe.db.exists(doc.doctype, doc.return_against):
-			frappe.throw(_("Invalid {0}: {1}")
-				.format(doc.meta.get_label("return_against"), doc.return_against))
-	else:
-		ref_doc = frappe.get_doc(doc.doctype, doc.return_against)
+		frappe.throw(_("Invalid {0}: {1}").format(
+			return_against_label, doc.return_against
+		))
 
-		party_type = "customer" if doc.doctype in ("Sales Invoice", "Delivery Note") else "supplier"
+	against_doc = frappe.get_doc(doc.doctype, doc.return_against)
 
-		if ref_doc.company == doc.company and ref_doc.get(party_type) == doc.get(party_type) and ref_doc.docstatus == 1:
-			# validate posting date time
-			return_posting_datetime = "%s %s" % (doc.posting_date, doc.get("posting_time") or "00:00:00")
-			ref_posting_datetime = "%s %s" % (ref_doc.posting_date, ref_doc.get("posting_time") or "00:00:00")
+	# validate posting date time
+	return_posting_datetime = combine_datetime(doc.posting_date, doc.get("posting_time") or "00:00:00")
+	ref_posting_datetime = combine_datetime(against_doc.posting_date, against_doc.get("posting_time") or "00:00:00")
+	if return_posting_datetime < ref_posting_datetime:
+		frappe.throw(_("Posting Date/Time cannot be before {0} {1} {0}").format(
+			return_against_label, against_doc.name, format_datetime(ref_posting_datetime)
+		))
 
-			if get_datetime(return_posting_datetime) < get_datetime(ref_posting_datetime):
-				frappe.throw(_("Posting timestamp must be after {0}").format(format_datetime(ref_posting_datetime)))
+	# validate company
+	if doc.company != against_doc.company:
+		frappe.throw(_("Company must be same as {0} {1} ({2}").format(
+			return_against_label, against_doc.name, frappe.bold(against_doc.company)
+		))
 
-			# validate same exchange rate
-			if doc.conversion_rate != ref_doc.conversion_rate:
-				frappe.throw(_("Exchange Rate must be same as {0} {1} ({2})")
-					.format(doc.doctype, doc.return_against, ref_doc.conversion_rate))
+	# validate project
+	if (
+		doc.meta.has_field("project")
+		and against_doc.meta.has_field("project")
+		and against_doc.get("project")
+		and doc.project != against_doc.project
+	):
+		if doc.project != against_doc.project:
+			frappe.throw(_("{0} must be same as {1} {2} ({3})").format(
+				_("Project"), return_against_label, against_doc.name, frappe.bold(against_doc.project)
+			))
 
-		# validate same transaction type
-		if doc.meta.get_field("transaction_type") and doc.transaction_type != ref_doc.transaction_type:
-			frappe.throw(_("Transaction Type must be the same as {0} {1} ({2})")
-				.format(doc.doctype, doc.return_against, ref_doc.transaction_type))
+	# validate transaction type
+	if (
+		doc.meta.has_field("transaction_type")
+		and against_doc.meta.has_field("transaction_type")
+		and against_doc.get("transaction_type")
+		and cstr(doc.transaction_type) != cstr(against_doc.transaction_type)
+	):
+		frappe.throw(_("Transaction Type must be the same as {0} {1} ({2})").format(
+			return_against_label, against_doc.name, frappe.bold(against_doc.transaction_type)
+		))
+
+	# validate same currency and exchange rate
+	if flt(doc.currency) != flt(against_doc.currency):
+		frappe.throw(_("Currency must be same as {0} {1} ({2})").format(
+			return_against_label, against_doc.name, frappe.bold(against_doc.currency)
+		))
+
+	if flt(doc.conversion_rate) != flt(against_doc.conversion_rate):
+		frappe.throw(_("Exchange Rate must be same as {0} {1} ({2})").format(
+			return_against_label, against_doc.name, frappe.bold(against_doc.conversion_rate)
+		))
+
+	# doctype specific validations
+	doc.run_method("validate_return_against", against_doc)
 
 
 def validate_returned_items(doc):
