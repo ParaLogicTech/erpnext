@@ -240,6 +240,8 @@ class ItemsToBeBilled:
 		return conditions
 
 	def prepare_data(self):
+		today_date = getdate()
+
 		for d in self.data:
 			# Set UOM based on qty field
 			if self.filters.qty_field == "Contents Qty":
@@ -261,7 +263,7 @@ class ItemsToBeBilled:
 			else:
 				d["remaining_amt"] = min(0, d["remaining_amt"])
 
-			d["delay_days"] = max((getdate() - getdate(d["transaction_date"])).days, 0)
+			d["delay_days"] = max((today_date - getdate(d["transaction_date"])).days, 0)
 
 			d["disable_item_formatter"] = cint(self.show_item_name)
 			d["disable_party_name_formatter"] = cint(self.show_party_name)
@@ -387,7 +389,7 @@ class ItemsToBeBilled:
 				"label": _("Delay Days"),
 				"fieldname": "delay_days",
 				"fieldtype": "Int",
-				"width": 85
+				"width": 80
 			},
 			{
 				"label": _("Item Group"),

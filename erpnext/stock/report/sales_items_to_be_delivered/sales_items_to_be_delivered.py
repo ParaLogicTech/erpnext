@@ -61,7 +61,7 @@ class OrderItemFulfilmentTracker:
 				i.{fieldnames.qty} as qty, i.{fieldnames.completed_qty} as completed_qty,
 				i.rate, i.amount, i.uom, i.stock_uom, i.alt_uom,
 				i.conversion_factor, i.alt_uom_size,
-				i.brand, i.item_group
+				im.brand, im.item_group
 				{sales_person_field} {territory_field}
 			FROM `tab{self.filters.doctype}` o
 			INNER JOIN `tab{self.filters.doctype} Item` i ON i.parent = o.name
@@ -74,7 +74,7 @@ class OrderItemFulfilmentTracker:
 				AND (im.is_stock_item = 1 OR im.is_fixed_asset = 1)
 				{conditions}
 			GROUP BY o.name, i.name
-			ORDER BY o.transaction_date, o.creation
+			ORDER BY o.transaction_date, o.creation, i.idx
 		""", self.filters, as_dict=1)
 
 	def get_fieldnames(self):
@@ -187,6 +187,8 @@ class OrderItemFulfilmentTracker:
 	def prepare_data(self):
 		stock_qty_map = self.get_stock_qty_map()
 
+		today_date = getdate()
+
 		for d in self.data:
 			# Set UOM based on qty field
 			if self.filters.qty_field == "Contents Qty":
@@ -201,7 +203,8 @@ class OrderItemFulfilmentTracker:
 			d["remaining_qty"] = d["qty"] - d["completed_qty"]
 			d["actual_qty"] = flt(stock_qty_map.get((d.item_code, d.warehouse)))
 
-			d["delay_days"] = max((getdate() - getdate(d["schedule_date"])).days, 0)
+			schedule_date = getdate(d.get("schedule_date") or d.get("transaction_date") or today_date)
+			d["delay_days"] = max((today_date - schedule_date).days, 0)
 
 			d["disable_item_formatter"] = cint(self.show_item_name)
 			d["disable_party_name_formatter"] = cint(self.show_party_name)
@@ -332,7 +335,7 @@ class OrderItemFulfilmentTracker:
 				"label": _("Delay Days"),
 				"fieldname": "delay_days",
 				"fieldtype": "Int",
-				"width": 85
+				"width": 80
 			},
 			{
 				"label": _("Project"),
