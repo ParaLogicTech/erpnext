@@ -166,7 +166,7 @@ class OrderItemFulfilmentTracker:
 				self.filters.project = [self.filters.project]
 
 			if frappe.get_meta(self.filters.doctype + " Item").has_field("project") and frappe.get_meta(self.filters.doctype).has_field("project"):
-				conditions.append("IF(i.project IS NULL or i.project = '', o.project, i.project) in %(project)s")
+				conditions.append("(i.project in %(project)s or ((i.project IS NULL or i.project = '') and o.project in %(project)s))")
 			elif frappe.get_meta(self.filters.doctype + " Item").has_field("project"):
 				conditions.append("i.project in %(project)s")
 			elif frappe.get_meta(self.filters.doctype).has_field("project"):
