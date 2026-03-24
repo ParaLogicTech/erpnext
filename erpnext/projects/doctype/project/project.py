@@ -602,10 +602,10 @@ class Project(StatusUpdaterERP):
 
 	def set_material_consumed_cost(self, update=False, update_modified=False):
 		amount = frappe.db.sql("""
-			select sum(if(se.purpose = 'Material Issue', sed.amount, -sed.amount))
-			from `tabStock Entry Detail` sed
-			inner join `tabStock Entry` se on sed.parent = se.name
-			where se.docstatus = 1 and se.project = %s and se.purpose in ('Material Issue', 'Material Receipt')
+			select -sum(stock_value_difference)
+			from `tabStock Ledger Entry` sle
+			inner join `tabStock Entry` ste on ste.name = sle.voucher_no and sle.voucher_type = 'Stock Entry'
+			where sle.project = %s and ste.purpose in ('Material Issue', 'Material Receipt')
 		""", self.name, as_list=1)
 
 		amount = flt(amount[0][0]) if amount else 0
