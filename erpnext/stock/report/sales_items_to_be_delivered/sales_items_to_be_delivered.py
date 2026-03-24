@@ -13,21 +13,23 @@ def execute(filters=None):
 class OrderItemFulfilmentTracker:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or dict())
+		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_party_name = False
+		self.has_branch = False
+		self.has_project = False
 
 	def run(self, doctype):
 		self.filters.doctype = doctype
 		self.filters.party_type = "Customer" if doctype == "Sales Order" else "Supplier"
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
 
-		self.show_party_name = False
 		if self.filters.party_type == "Customer":
 			self.show_party_name = frappe.defaults.get_global_default('cust_master_name') == "Naming Series"
 		if self.filters.party_type == "Supplier":
 			self.show_party_name = frappe.defaults.get_global_default('supp_master_name') == "Naming Series"
 
-		columns = self.get_columns()
 		self.get_data()
 		self.prepare_data()
+		columns = self.get_columns()
 
 		return columns, self.data
 
@@ -47,39 +49,33 @@ class OrderItemFulfilmentTracker:
 			sales_person_field = ", GROUP_CONCAT(DISTINCT sp.sales_person SEPARATOR ', ') as sales_person"
 			sales_person_join = "left join `tabSales Team` sp on sp.parent = o.name and sp.parenttype = %(doctype)s"
 
-		self.data = frappe.db.sql("""
+		territory_field = ""
+		if self.filters.party_type == "Customer":
+			territory_field = ", o.territory"
+
+		self.data = frappe.db.sql(f"""
 			SELECT
-				o.name, o.company, o.status, o.transaction_date, i.{schedule_date_field} as schedule_date,
-				o.{party_field} as party, o.{party_name_field} as party_name, o.project, o.currency,
-				i.item_code, i.item_name, i.warehouse,
-				i.{qty_field} as qty, i.{completed_qty_field} as completed_qty,
+				o.name, o.company, o.status, o.transaction_date, i.{fieldnames.schedule_date} as schedule_date,
+				o.{fieldnames.party} as party, o.{fieldnames.party_name} as party_name, o.project, o.currency,
+				i.item_code, i.item_name, i.warehouse, o.branch,
+				i.{fieldnames.qty} as qty, i.{fieldnames.completed_qty} as completed_qty,
 				i.rate, i.amount, i.uom, i.stock_uom, i.alt_uom,
 				i.conversion_factor, i.alt_uom_size,
-				i.brand, i.item_group {sales_person_field}
-			FROM `tab{doctype}` o
-			INNER JOIN `tab{doctype} Item` i ON i.parent = o.name
+				i.brand, i.item_group
+				{sales_person_field} {territory_field}
+			FROM `tab{self.filters.doctype}` o
+			INNER JOIN `tab{self.filters.doctype} Item` i ON i.parent = o.name
 			INNER JOIN `tabItem` im on im.name = i.item_code
 			{party_join}
 			{sales_person_join}
 			WHERE o.docstatus = 1
 				AND o.status != 'Closed'
-				AND i.{completed_qty_field} < i.qty
+				AND i.{fieldnames.completed_qty} < i.qty
 				AND (im.is_stock_item = 1 OR im.is_fixed_asset = 1)
 				{conditions}
 			GROUP BY o.name, i.name
 			ORDER BY o.transaction_date, o.creation
-		""".format(
-			party_field=fieldnames.party,
-			party_name_field=fieldnames.party_name,
-			schedule_date_field=fieldnames.schedule_date,
-			qty_field=fieldnames.qty,
-			completed_qty_field=fieldnames.completed_qty,
-			doctype=self.filters.doctype,
-			sales_person_field=sales_person_field,
-			party_join=party_join,
-			sales_person_join=sales_person_join,
-			conditions=conditions,
-		), self.filters, as_dict=1)
+		""", self.filters, as_dict=1)
 
 	def get_fieldnames(self):
 		fields = frappe._dict({})
@@ -112,6 +108,9 @@ class OrderItemFulfilmentTracker:
 
 		if self.filters.company:
 			conditions.append("o.company = %(company)s")
+
+		if self.filters.branch:
+			conditions.append("o.branch = %(branch)s")
 
 		if self.filters.name:
 			conditions.append("o.name = %(name)s")
@@ -207,6 +206,11 @@ class OrderItemFulfilmentTracker:
 			d["disable_item_formatter"] = cint(self.show_item_name)
 			d["disable_party_name_formatter"] = cint(self.show_party_name)
 
+			if d.get("project"):
+				self.has_project = True
+			if d.get("branch"):
+				self.has_branch = True
+
 	def get_stock_qty_map(self):
 		stock_qty_data = []
 
@@ -268,11 +272,18 @@ class OrderItemFulfilmentTracker:
 				"width": 150
 			},
 			{
+				"label": _("Branch"),
+				"fieldname": "branch",
+				"fieldtype": "Link",
+				"options": "Branch",
+				"width": 100
+			},
+			{
 				"label": _("Warehouse"),
 				"fieldname": "warehouse",
 				"fieldtype": "Link",
 				"options": "Warehouse",
-				"width": 90
+				"width": 100
 			},
 			{
 				"label": _("UOM"),
@@ -341,7 +352,7 @@ class OrderItemFulfilmentTracker:
 				"fieldname": "rate",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 100
 			},
 			{
 				"label": _("Amount"),
@@ -364,15 +375,26 @@ class OrderItemFulfilmentTracker:
 				"options": "Brand",
 				"width": 60
 			},
+			{
+				"label": _("Territory"),
+				"fieldtype": "Link",
+				"fieldname": "territory",
+				"options": "Territory",
+				"width": 100,
+			},
 		]
 
 		if not self.show_item_name:
 			columns = [c for c in columns if c['fieldname'] != 'item_name']
-		
 		if not self.show_party_name:
 			columns = [c for c in columns if c['fieldname'] != 'party_name']
 
 		if self.filters.party_type != "Customer":
-			columns = [c for c in columns if c['fieldname'] != 'sales_person']
+			columns = [c for c in columns if c['fieldname'] not in ('sales_person', 'territory')]
+
+		if not self.has_project:
+			columns = [c for c in columns if c['fieldname'] != 'project']
+		if not self.has_branch:
+			columns = [c for c in columns if c['fieldname'] != 'branch']
 
 		return columns

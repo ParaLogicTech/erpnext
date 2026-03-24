@@ -27,6 +27,23 @@ frappe.query_reports["Sales Items To Be Delivered"] = {
 			options: "Sales Order"
 		},
 		{
+			fieldname: "warehouse",
+			label: __("Warehouse"),
+			fieldtype: "Link",
+			options: "Warehouse",
+			get_query: function() {
+				return {
+					filters: {'company': frappe.query_report.get_filter_value("company")}
+				}
+			},
+		},
+		{
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch"
+		},
+		{
 			fieldname: "transaction_type",
 			label: __("Transaction Type"),
 			fieldtype: "Link",
@@ -48,6 +65,12 @@ frappe.query_reports["Sales Items To Be Delivered"] = {
 			label: __("Customer Group"),
 			fieldtype: "Link",
 			options: "Customer Group"
+		},
+		{
+			fieldname: "territory",
+			label: __("Territory"),
+			fieldtype: "Link",
+			options: "Territory"
 		},
 		{
 			fieldname: "item_code",
@@ -74,27 +97,10 @@ frappe.query_reports["Sales Items To Be Delivered"] = {
 			options: "Brand"
 		},
 		{
-			fieldname: "warehouse",
-			label: __("Warehouse"),
-			fieldtype: "Link",
-			options: "Warehouse",
-			get_query: function() {
-				return {
-					filters: {'company': frappe.query_report.get_filter_value("company")}
-				}
-			},
-		},
-		{
 			fieldname: "project",
 			label: __("Project"),
 			fieldtype: "Link",
 			options: "Project",
-		},
-		{
-			fieldname: "territory",
-			label: __("Territory"),
-			fieldtype: "Link",
-			options: "Territory"
 		},
 		{
 			fieldname: "sales_person",

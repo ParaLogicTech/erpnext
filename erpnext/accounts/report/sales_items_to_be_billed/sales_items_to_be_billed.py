@@ -13,18 +13,20 @@ def execute(filters=None):
 class ItemsToBeBilled:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or dict())
-		if self.filters.from_date and self.filters.to_date and self.filters.from_date > self.filters.to_date:
-			frappe.throw(_("Date Range is incorrect"))
+		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_party_name = False
+		self.has_branch = False
+		self.has_project = False
 
 	def run(self, party_type):
 		self.filters.party_type = party_type
 
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		if self.filters.from_date and self.filters.to_date and self.filters.from_date > self.filters.to_date:
+			frappe.throw(_("Date Range is incorrect"))
 
-		self.show_party_name = False
-		if party_type == "Customer":
+		if self.filters.party_type == "Customer":
 			self.show_party_name = frappe.defaults.get_global_default('cust_master_name') == "Naming Series"
-		if party_type == "Supplier":
+		if self.filters.party_type == "Supplier":
 			self.show_party_name = frappe.defaults.get_global_default('supp_master_name') == "Naming Series"
 
 		self.order_doctype = "Sales Order" if self.filters.party_type == "Customer" else "Purchase Order"
@@ -238,8 +240,6 @@ class ItemsToBeBilled:
 		return conditions
 
 	def prepare_data(self):
-		self.has_project = False
-
 		for d in self.data:
 			# Set UOM based on qty field
 			if self.filters.qty_field == "Contents Qty":
@@ -250,9 +250,6 @@ class ItemsToBeBilled:
 				d.uom = d.stock_uom
 				d.billed_qty = d.billed_qty * d.conversion_factor
 				d.returned_qty = d.returned_qty * d.conversion_factor
-
-			if d.get("project"):
-				self.has_project = True
 
 			d['rate'] = d['amount'] / d['qty'] if d['qty'] else d['rate']
 			d["remaining_qty"] = d["qty"] - d["billed_qty"] - d['returned_qty']
@@ -268,6 +265,11 @@ class ItemsToBeBilled:
 
 			d["disable_item_formatter"] = cint(self.show_item_name)
 			d["disable_party_name_formatter"] = cint(self.show_party_name)
+
+			if d.get("project"):
+				self.has_project = True
+			if d.get("branch"):
+				self.has_branch = True
 
 	def get_columns(self):
 		columns = [
@@ -402,6 +404,13 @@ class ItemsToBeBilled:
 				"width": 60
 			},
 			{
+				"label": _("Branch"),
+				"fieldname": "branch",
+				"fieldtype": "Link",
+				"options": "Branch",
+				"width": 100
+			},
+			{
 				"label": _("Warehouse"),
 				"fieldname": "warehouse",
 				"fieldtype": "Link",
@@ -412,14 +421,15 @@ class ItemsToBeBilled:
 
 		if not self.show_item_name:
 			columns = [c for c in columns if c['fieldname'] != 'item_name']
-		
 		if not self.show_party_name:
 			columns = [c for c in columns if c['fieldname'] != 'party_name']
 
 		if self.filters.party_type != "Customer":
-			columns = [c for c in columns if c['fieldname'] != 'sales_person']
+			columns = [c for c in columns if c['fieldname'] not in ('sales_person', 'territory')]
 
 		if not self.has_project:
 			columns = [c for c in columns if c['fieldname'] != 'project']
+		if not self.has_branch:
+			columns = [c for c in columns if c['fieldname'] != 'branch']
 
 		return columns

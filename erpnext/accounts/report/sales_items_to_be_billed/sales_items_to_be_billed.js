@@ -91,6 +91,12 @@ frappe.query_reports["Sales Items To Be Billed"] = {
 			},
 		},
 		{
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch"
+		},
+		{
 			fieldname: "project",
 			label: __("Project"),
 			fieldtype: "Link",

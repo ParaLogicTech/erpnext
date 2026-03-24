@@ -91,17 +91,17 @@ frappe.query_reports["Purchase Items To Be Billed"] = {
 			},
 		},
 		{
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch"
+		},
+		{
 			fieldname: "project",
 			label: __("Project"),
 			fieldtype: "Link",
 			options: "Project",
 		},
-		{
-			fieldname: "territory",
-			label: __("Territory"),
-			fieldtype: "Link",
-			options: "Territory"
-		}
 	],
 	formatter: function(value, row, column, data, default_formatter) {
 		var style = {};

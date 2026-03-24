@@ -27,6 +27,23 @@ frappe.query_reports["Purchase Items To Be Received"] = {
 			options: "Purchase Order"
 		},
 		{
+			fieldname: "warehouse",
+			label: __("Warehouse"),
+			fieldtype: "Link",
+			options: "Warehouse",
+			get_query: function() {
+				return {
+					filters: {'company': frappe.query_report.get_filter_value("company")}
+				}
+			},
+		},
+		{
+			fieldname: "branch",
+			label: __("Branch"),
+			fieldtype: "Link",
+			options: "Branch"
+		},
+		{
 			fieldname: "transaction_type",
 			label: __("Transaction Type"),
 			fieldtype: "Link",
@@ -72,17 +89,6 @@ frappe.query_reports["Purchase Items To Be Received"] = {
 			label: __("Brand"),
 			fieldtype: "Link",
 			options: "Brand"
-		},
-		{
-			fieldname: "warehouse",
-			label: __("Warehouse"),
-			fieldtype: "Link",
-			options: "Warehouse",
-			get_query: function() {
-				return {
-					filters: {'company': frappe.query_report.get_filter_value("company")}
-				}
-			},
 		},
 		{
 			fieldname: "project",
