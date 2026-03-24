@@ -982,7 +982,8 @@
    "in_standard_filter": 1,
    "label": "Project",
    "options": "Project",
-   "print_hide": 1
+   "print_hide": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_36",
@@ -1621,7 +1622,7 @@
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-12 20:52:19.795560",
+ "modified": "2026-03-24 13:33:52.271304",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",
