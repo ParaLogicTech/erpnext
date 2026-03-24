@@ -211,7 +211,7 @@ class StockEntry(TransactionController):
 			elif self.purpose in ("Material Transfer", "Receive at Warehouse", "Material Receipt"):
 				doc.set_procurement_status(update=True)
 
-			if self.purpose in ("Material Issue", "Manufacture"):
+			if self.purpose in ("Material Issue", "Material Receipt"):
 				doc.set_material_consumed_cost(update=True)
 				doc.set_gross_margin(update=True)
 
