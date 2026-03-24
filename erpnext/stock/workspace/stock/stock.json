@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"kFTnwwYdJ9\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Module</b></span>\",\"col\":12}},{\"id\":\"ylo1emjYZr\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}},{\"id\":\"x6q-EJ-ZEk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entry\",\"col\":3}},{\"id\":\"c1Y7ZwwygW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"Bgffr0xvRA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Balance\",\"col\":3}},{\"id\":\"O66TsGMXHH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"My2Jx5kIiE\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Request\",\"col\":3}},{\"id\":\"BbfYg4JlXS\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Ledger\",\"col\":3}},{\"id\":\"PPLTvvWkQc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Projected Qty\",\"col\":3}},{\"id\":\"Xd67bPQB7G\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"YltketDgMM\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Documents</b></span>\",\"col\":12}},{\"id\":\"2zCFZ-zlSF\",\"type\":\"card\",\"data\":{\"card_name\":\"Stock Transactions\",\"col\":3}},{\"id\":\"_X8VJZ23NA\",\"type\":\"card\",\"data\":{\"card_name\":\"Items\",\"col\":3}},{\"id\":\"fmxsBD39u1\",\"type\":\"card\",\"data\":{\"card_name\":\"Stock Reports\",\"col\":3}},{\"id\":\"hZSFAO6-eX\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"TZyMKxPoPY\",\"type\":\"card\",\"data\":{\"card_name\":\"Pricing\",\"col\":3}},{\"id\":\"W3vpYcGbVD\",\"type\":\"card\",\"data\":{\"card_name\":\"Serial No and Batch\",\"col\":3}},{\"id\":\"Ua0S2MSBUL\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":3}},{\"id\":\"x6iHoqtrrQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Key Reports\",\"col\":3}},{\"id\":\"ftEO8b9yto\",\"type\":\"card\",\"data\":{\"card_name\":\"Other Reports\",\"col\":3}},{\"id\":\"TNwubQ-Hyo\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}}]",
+ "content": "[{\"id\":\"kFTnwwYdJ9\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Module</b></span>\",\"col\":12}},{\"id\":\"ylo1emjYZr\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Delivery Note\",\"col\":3}},{\"id\":\"x6q-EJ-ZEk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entry\",\"col\":3}},{\"id\":\"c1Y7ZwwygW\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"Bgffr0xvRA\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Balance\",\"col\":3}},{\"id\":\"O66TsGMXHH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"My2Jx5kIiE\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Material Request\",\"col\":3}},{\"id\":\"BbfYg4JlXS\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Ledger\",\"col\":3}},{\"id\":\"PPLTvvWkQc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Projected Qty\",\"col\":3}},{\"id\":\"Xd67bPQB7G\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"YltketDgMM\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Documents</b></span>\",\"col\":12}},{\"id\":\"2zCFZ-zlSF\",\"type\":\"card\",\"data\":{\"card_name\":\"Stock Transactions\",\"col\":3}},{\"id\":\"_X8VJZ23NA\",\"type\":\"card\",\"data\":{\"card_name\":\"Items\",\"col\":3}},{\"id\":\"fmxsBD39u1\",\"type\":\"card\",\"data\":{\"card_name\":\"Stock Reports\",\"col\":3}},{\"id\":\"hZSFAO6-eX\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":3}},{\"id\":\"TZyMKxPoPY\",\"type\":\"card\",\"data\":{\"card_name\":\"Pricing\",\"col\":3}},{\"id\":\"W3vpYcGbVD\",\"type\":\"card\",\"data\":{\"card_name\":\"Serial No and Batch\",\"col\":3}},{\"id\":\"Ua0S2MSBUL\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":3}},{\"id\":\"x6iHoqtrrQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Tracking Reports\",\"col\":3}},{\"id\":\"ftEO8b9yto\",\"type\":\"card\",\"data\":{\"card_name\":\"Other Reports\",\"col\":3}},{\"id\":\"TNwubQ-Hyo\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}}]",
  "creation": "2022-11-16 04:31:57.035484",
  "custom_blocks": [],
  "docstatus": 0,
@@ -159,156 +159,6 @@
    "link_count": 0,
    "link_to": "Pricing Rule",
    "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Serial No and Batch",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "dependencies": "Item",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Serial No",
-   "link_count": 0,
-   "link_to": "Serial No",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "dependencies": "Item",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Batch",
-   "link_count": 0,
-   "link_to": "Batch",
-   "link_type": "DocType",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "dependencies": "Item",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Installation Note",
-   "link_count": 0,
-   "link_to": "Installation Note",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Serial No Service Contract Expiry",
-   "link_count": 0,
-   "link_to": "Serial No Service Contract Expiry",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Serial No Status",
-   "link_count": 0,
-   "link_to": "Serial No Status",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Serial No Warranty Expiry",
-   "link_count": 0,
-   "link_to": "Serial No Warranty Expiry",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Key Reports",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Stock Analytics",
-   "link_count": 0,
-   "link_to": "Stock Analytics",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Sales Items To Be Delivered",
-   "link_count": 0,
-   "link_to": "Sales Items To Be Delivered",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Sales Items To Be Billed",
-   "link_count": 0,
-   "link_to": "Sales Items To Be Billed",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Purchase Items To Be Received",
-   "link_count": 0,
-   "link_to": "Purchase Items To Be Received",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Purchase Items To Be Billed",
-   "link_count": 0,
-   "link_to": "Purchase Items To Be Billed",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Requested Items To Be Transferred",
-   "link_count": 0,
-   "link_to": "Requested Items To Be Transferred",
-   "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   },
@@ -638,7 +488,8 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Stock Reports",
-   "link_count": 5,
+   "link_count": 6,
+   "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
   },
@@ -696,9 +547,125 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Stock Analytics",
+   "link_count": 0,
+   "link_to": "Stock Analytics",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Serial No and Batch",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "Item",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Serial No",
+   "link_count": 0,
+   "link_to": "Serial No",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Item",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Batch",
+   "link_count": 0,
+   "link_to": "Batch",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Item",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Installation Note",
+   "link_count": 0,
+   "link_to": "Installation Note",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Tracking Reports",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Sales Items To Be Delivered",
+   "link_count": 0,
+   "link_to": "Sales Items To Be Delivered",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Sales Items To Be Billed",
+   "link_count": 0,
+   "link_to": "Sales Items To Be Billed",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Purchase Items To Be Received",
+   "link_count": 0,
+   "link_to": "Purchase Items To Be Received",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Purchase Items To Be Billed",
+   "link_count": 0,
+   "link_to": "Purchase Items To Be Billed",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Requested Items To Be Transferred",
+   "link_count": 0,
+   "link_to": "Requested Items To Be Transferred",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2024-05-18 18:26:19.328903",
+ "modified": "2026-03-24 15:48:54.536752",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock",
@@ -770,6 +737,7 @@
    "doc_view": "List",
    "label": "Stock Balance",
    "link_to": "Stock Balance",
+   "report_ref_doctype": "Stock Ledger Entry",
    "stats_filter": "",
    "type": "Report"
   },
@@ -778,6 +746,7 @@
    "doc_view": "List",
    "label": "Stock Ledger",
    "link_to": "Stock Ledger",
+   "report_ref_doctype": "Stock Ledger Entry",
    "stats_filter": "",
    "type": "Report"
   },
@@ -795,6 +764,7 @@
    "doc_view": "List",
    "label": "Stock Projected Qty",
    "link_to": "Stock Projected Qty",
+   "report_ref_doctype": "Item",
    "stats_filter": "",
    "type": "Report"
   }
