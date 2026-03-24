@@ -67,6 +67,11 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			label: __("Hide Budget"),
 			fieldtype: "Check",
 		},
+		{
+			fieldname: "has_project",
+			label: __("Project") + " " + __("Entries Only"),
+			fieldtype: "Check",
+		},
 	],
 
 	formatter: function(value, row, column, data, default_formatter) {

@@ -464,6 +464,8 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 				filters.project = frappe.parse_json(filters.get("project"))
 
 			additional_conditions.append("project in %(project)s")
+		elif filters.get("has_project"):
+			additional_conditions.append("(project is not null and project != '')")
 
 		if filters.get("cost_center"):
 			filters.cost_center = get_cost_centers_with_children(filters.cost_center)

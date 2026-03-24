@@ -26,7 +26,12 @@ frappe.query_reports["Profit and Loss Statement"]["filters"].push(
 		"label": __("Include Default Book Entries"),
 		"fieldtype": "Check",
 		"default": 1
-	}
+	},
+	{
+		fieldname: "has_project",
+		label: __("Project") + " " + __("Entries Only"),
+		fieldtype: "Check",
+	},
 );
 
 erpnext.utils.add_additional_gl_filters('Profit and Loss Statement');

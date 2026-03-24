@@ -748,6 +748,9 @@ class SummarizedFinancialReport:
 			args["cost_center"] = get_cost_centers_with_children(self.filters.cost_center)
 			dimension_conditions.append("cost_center in %(cost_center)s")
 
+		if self.filters.get("has_project"):
+			dimension_conditions.append("(project is not null and project != '')")
+
 		accounting_dimensions = get_accounting_dimensions(as_list=False)
 
 		for dimension in accounting_dimensions:

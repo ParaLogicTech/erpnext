@@ -183,6 +183,11 @@ erpnext.financial_statements = {
 			params["tree_view"] = tree_view;
 		}
 
+		let has_project = frappe.query_report.get_filter_value('has_project');
+		if (has_project) {
+			params["has_project"] = has_project;
+		}
+
 		for (let dimension of erpnext.dimension_filters) {
 			let dimension_field = dimension['fieldname'];
 			let dimension_value = frappe.query_report.get_filter_value(dimension_field);
