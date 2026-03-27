@@ -24,13 +24,14 @@
   "copied_from",
   "priority",
   "more_info",
-  "appointment",
+  "sales_person",
   "more_info_cb_1",
-  "appointment_dt",
+  "opportunity",
   "more_info_cb_2",
   "sales_order",
+  "appointment",
   "more_info_cb_3",
-  "department",
+  "appointment_dt",
   "sec_applies_to",
   "applies_to_variant_of",
   "applies_to_variant_of_name",
@@ -325,12 +326,6 @@
    "oldfieldname": "priority",
    "oldfieldtype": "Select",
    "options": "Medium\nLow\nHigh"
-  },
-  {
-   "fieldname": "department",
-   "fieldtype": "Link",
-   "label": "Department",
-   "options": "Department"
   },
   {
    "allow_in_quick_entry": 1,
@@ -1771,6 +1766,20 @@
    "label": "Additional Insurance Excess Amount",
    "options": "Company:company:default_currency",
    "read_only": 1
+  },
+  {
+   "fieldname": "sales_person",
+   "fieldtype": "Link",
+   "label": "Sales Person",
+   "options": "Sales Person"
+  },
+  {
+   "fieldname": "opportunity",
+   "fieldtype": "Link",
+   "label": "Opportunity",
+   "no_copy": 1,
+   "options": "Opportunity",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -1778,7 +1787,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2026-02-01 04:47:13.363075",
+ "modified": "2026-03-25 23:05:12.515329",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

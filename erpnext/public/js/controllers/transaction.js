@@ -759,10 +759,11 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	get_project_details() {
 		if (this.frm.doc.project) {
 			return frappe.call({
-				method: 'erpnext.projects.doctype.project.project.get_project_details',
+				method: "erpnext.projects.doctype.project.project.get_project_details",
 				args: {
 					project: this.frm.doc.project,
 					doctype: this.frm.doc.doctype,
+					include_sales_team: 1,
 				},
 				callback: (r) => {
 					if (r.message) {

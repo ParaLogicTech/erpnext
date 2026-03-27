@@ -49,8 +49,14 @@ erpnext.AppointmentERP = class AppointmentERP extends crm.Appointment {
 				}, __('Create'));
 			}
 
-			this.frm.add_custom_button(__('Project'), () => this.make_project(), __('Create'));
-			this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+			if (frappe.model.can_create("Project")) {
+				this.frm.add_custom_button(__('Project'), () => this.make_project(),
+					__('Create'));
+			}
+
+			if (this.frm.page.get_inner_group_button(__("Create")).length) {
+				this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+			}
 		}
 	}
 

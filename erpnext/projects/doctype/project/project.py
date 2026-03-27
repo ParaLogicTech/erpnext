@@ -1270,6 +1270,9 @@ class Project(StatusUpdaterERP):
 
 			self.appointment_dt = appointment_doc.scheduled_dt
 
+			if appointment_doc.opportunity:
+				self.opportunity = appointment_doc.opportunity
+
 			if not self.customer:
 				customer = appointment_doc.get_customer()
 				if customer:
@@ -2514,12 +2517,13 @@ def get_bill_to_details(args):
 
 
 @frappe.whitelist()
-def get_project_details(project, doctype, purpose=None):
+def get_project_details(project, doctype, purpose=None, include_sales_team=False):
 	from erpnext.controllers.transaction_controller import is_doctype_selling_or_buying
 
 	if isinstance(project, str):
 		project = frappe.get_doc("Project", project)
 
+	include_sales_team = cint(include_sales_team)
 	is_sales_doctype = is_doctype_selling_or_buying(doctype) == "selling"
 
 	out = frappe._dict()
@@ -2591,6 +2595,12 @@ def get_project_details(project, doctype, purpose=None):
 		default_transaction_type = frappe.get_cached_value("Projects Settings", None, "default_sales_transaction_type")
 		if default_transaction_type:
 			out.transaction_type = default_transaction_type
+
+	# Sales Team
+	if include_sales_team:
+		out.sales_team = []
+		if project.sales_person:
+			out.sales_team.append({"sales_person": project.sales_person, "allocated_percentage": 100})
 
 	frappe.utils.call_hook_method("get_project_details", project, out, doctype)
 

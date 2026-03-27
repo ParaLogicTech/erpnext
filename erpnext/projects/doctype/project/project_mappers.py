@@ -990,9 +990,9 @@ def set_advances(target_doc, project):
 
 
 def set_sales_person_in_target_doc(target_doc, project):
-	if project.service_advisor and target_doc.meta.has_field("sales_team"):
+	if project.sales_person and target_doc.meta.has_field("sales_team"):
 		target_doc.sales_team = []
 		target_doc.append("sales_team", {
-			"sales_person": project.service_advisor,
+			"sales_person": project.sales_person,
 			"allocated_percentage": 100
 		})

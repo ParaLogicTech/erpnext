@@ -25,7 +25,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		this.set_cant_change_read_only();
 		this.set_items_and_totals_html();
 		this.set_task_and_timelogs_html();
-		this.set_service_advisor_from_user();
+		this.set_advisor_sales_person_from_user();
 		this.setup_dashboard();
 	}
 
@@ -89,7 +89,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			() => erpnext.queries.service_template(me.frm.doc.applies_to_item));
 
 		me.frm.set_query('service_advisor', () => {
-			let filters = {is_group: 0};
+			let filters = {is_service_advisor: 1};
 			if (this.frm.doc.branch) {
 				filters["branch"] = ["in", [this.frm.doc.branch, ""]];
 			}
@@ -648,14 +648,20 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		}
 	}
 
-	set_service_advisor_from_user() {
-		if (!this.frm.get_field('service_advisor') || this.frm.doc.service_advisor || !this.frm.doc.__islocal) {
+	set_advisor_sales_person_from_user() {
+		if (!this.frm.doc.__islocal) {
+			return;
+		}
+		if (this.frm.doc.service_advisor && this.frm.doc.sales_person) {
 			return;
 		}
 
-		crm.utils.get_sales_person_from_user(sales_person => {
-			if (sales_person) {
-				this.frm.set_value('service_advisor', sales_person);
+		return crm.utils.get_advisor_sales_person_from_user(details => {
+			if (!this.frm.doc.service_advisor && details.sales_person && details.is_service_advisor) {
+				this.frm.set_value("service_advisor", details.sales_person);
+			}
+			if (!this.frm.doc.sales_person && details.sales_person) {
+				this.frm.set_value("sales_person", details.sales_person);
 			}
 		});
 	}
