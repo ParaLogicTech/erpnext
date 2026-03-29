@@ -215,10 +215,6 @@ class SalesPurchaseDetailsReport(object):
 		if self.doc_meta.has_field('bill_date'):
 			select_fields.append("s.bill_date")
 
-		# Invoice Related
-		if self.filters.doctype == "Sales Invoice":
-			select_fields.append("s.stin")
-
 		# Packing Slip
 		if self.filters.show_packing_slip:
 			select_fields.append("i.packing_slip")
@@ -498,7 +494,7 @@ class SalesPurchaseDetailsReport(object):
 				fields_to_copy = [
 					'date', 'party', 'party_name',
 					'sales_person', 'account_manager', 'territory',
-					'stin', 'bill_no', 'bill_date', 'branch',
+					'bill_no', 'bill_date', 'branch',
 				]
 				for f in fields_to_copy:
 					if f in data[0]:
@@ -635,12 +631,6 @@ class SalesPurchaseDetailsReport(object):
 				"fieldtype": "Link",
 				"options": self.filters.doctype,
 				"width": 100
-			},
-			{
-				"label": _("Tax Inv #"),
-				"fieldname": "stin",
-				"fieldtype": "Int",
-				"width": 60
 			},
 			{
 				"label": _("Bill No"),
@@ -927,9 +917,6 @@ class SalesPurchaseDetailsReport(object):
 		if not self.filters.sales_person:
 			columns = [c for c in columns if c.get('fieldname') != 'allocated_percentage']
 
-		if self.filters.doctype != "Sales Invoice":
-			columns = [c for c in columns if c.get('fieldname') != 'stin']
-
 		if not self.filters.show_packing_slip:
 			columns = [c for c in columns if c.get('fieldname') != 'packing_slip']
 
@@ -948,7 +935,7 @@ class SalesPurchaseDetailsReport(object):
 
 			if "parent" not in self.group_by:
 				columns = [c for c in columns if c.get('fieldname') not in (
-					'parent', 'date', 'sales_person', 'territory', 'stin',
+					'parent', 'date', 'sales_person', 'territory',
 				)]
 
 			if "project" not in self.group_by:

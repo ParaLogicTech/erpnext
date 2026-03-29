@@ -112,7 +112,9 @@ class ProjectSalesSummaryReport(object):
 			conditions.append("p.applies_to_item = %(applies_to_item)s")
 
 		if self.filters.service_advisor:
-			conditions.append("p.service_advisor = %(service_advisor)s")
+			lft, rgt = frappe.db.get_value("Sales Person", self.filters.service_advisor, ["lft", "rgt"])
+			conditions.append("""p.service_advisor in (select name from `tabSales Person`
+				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
 		if self.filters.get("item_group"):
 			lft, rgt = frappe.db.get_value("Item Group", self.filters.item_group, ["lft", "rgt"])
