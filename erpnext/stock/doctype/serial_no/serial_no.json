@@ -337,6 +337,8 @@
   {
    "bold": 1,
    "depends_on": "eval:doc.customer && doc.customer_name != doc.customer",
+   "fetch_from": "customer.customer_name",
+   "fetch_if_empty": 1,
    "fieldname": "customer_name",
    "fieldtype": "Data",
    "label": "Customer Name",
@@ -519,7 +521,7 @@
  "icon": "fa fa-barcode",
  "idx": 1,
  "links": [],
- "modified": "2025-09-22 22:44:24.350957",
+ "modified": "2026-03-31 00:27:22.928580",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Serial No",

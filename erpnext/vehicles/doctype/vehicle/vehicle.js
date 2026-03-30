@@ -85,10 +85,13 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 	}
 
 	set_cant_change_read_only() {
-		const cant_change_fields = (this.frm.doc.__onload && this.frm.doc.__onload.cant_change_fields) || {};
+		const cant_change_fields = this.frm.doc.__onload?.cant_change_fields || {};
 		$.each(cant_change_fields, (fieldname, cant_change) => {
 			this.frm.set_df_property(fieldname, 'read_only', cant_change ? 1 : 0);
 		});
+
+		const cant_change_customer = !!this.frm.doc.__onload?.cant_change_customer;
+		this.frm.set_df_property("customer", 'read_only', cant_change_customer ? 1 : 0);
 	}
 
 	item_code() {

@@ -26,6 +26,7 @@ class Vehicle(Document):
 
 	_sync_fields = [
 		'item_code',
+		'customer', 'customer_name',
 		'is_reserved', 'reserved_customer', 'reserved_customer_name',
 		'vehicle_owner', 'vehicle_owner_name',
 		'sales_order', 'delivery_date',
@@ -49,6 +50,7 @@ class Vehicle(Document):
 		self.copy_image_from_item()
 		self.set_onload('stock_exists', self.stock_ledger_created())
 		self.set_onload('cant_change_fields', self.get_cant_change_fields())
+		self.set_onload('cant_change_customer', self.cant_change_customer())
 
 		if not self.is_new():
 			self.set_onload('maintenance_schedule_data', get_maintenance_schedule_from_serial_no(serial_no=self.name))
@@ -206,6 +208,10 @@ class Vehicle(Document):
 				limit 1
 			""", self.name))
 		return self._stock_ledger_created
+
+	def cant_change_customer(self):
+		serial_no_doc = self.get_serial_no_doc()
+		return serial_no_doc.cant_change_customer() if serial_no_doc else True
 
 
 def split_vehicle_items_by_qty(doc):

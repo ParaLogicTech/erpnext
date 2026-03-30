@@ -2,25 +2,53 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
-from frappe.model.naming import make_autoname
+from frappe import _
 from frappe.utils import cint, cstr, flt, add_days, nowdate, getdate
+from frappe.model.naming import make_autoname
 from erpnext.stock.get_item_details import get_reserved_qty_for_so
-from frappe import _, ValidationError
 from erpnext.controllers.stock_controller import StockController
 from erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule import get_maintenance_schedule_from_serial_no
+from erpnext.vehicles.doctype.vehicle_log.vehicle_log import get_last_customer_log
 
 
-class SerialNoCannotCreateDirectError(ValidationError): pass
-class SerialNoCannotCannotChangeError(ValidationError): pass
-class SerialNoNotRequiredError(ValidationError): pass
-class SerialNoRequiredError(ValidationError): pass
-class SerialNoQtyError(ValidationError): pass
-class SerialNoItemError(ValidationError): pass
-class SerialNoWarehouseError(ValidationError): pass
-class SerialNoBatchError(ValidationError): pass
-class SerialNoNotExistsError(ValidationError): pass
-class SerialNoDuplicateError(ValidationError): pass
+class SerialNoCannotCreateDirectError(frappe.ValidationError):
+	pass
+
+
+class SerialNoCannotCannotChangeError(frappe.ValidationError):
+	pass
+
+
+class SerialNoNotRequiredError(frappe.ValidationError):
+	pass
+
+
+class SerialNoRequiredError(frappe.ValidationError):
+	pass
+
+
+class SerialNoQtyError(frappe.ValidationError):
+	pass
+
+
+class SerialNoItemError(frappe.ValidationError):
+	pass
+
+
+class SerialNoWarehouseError(frappe.ValidationError):
+	pass
+
+
+class SerialNoBatchError(frappe.ValidationError):
+	pass
+
+
+class SerialNoNotExistsError(frappe.ValidationError):
+	pass
+
+
+class SerialNoDuplicateError(frappe.ValidationError):
+	pass
 
 
 class SerialNo(StockController):
@@ -33,14 +61,9 @@ class SerialNo(StockController):
 		self.set_onload('maintenance_schedule_data', get_maintenance_schedule_from_serial_no(serial_no=self.name))
 
 	def validate(self):
-		if self.get("__islocal") and self.warehouse and not self.via_stock_ledger:
-			frappe.throw(_("New Serial No cannot have Warehouse. Warehouse must be set by Stock Entry or Purchase Receipt"),
-				SerialNoCannotCreateDirectError)
-
 		self.validate_item()
 		self.validate_warehouse()
-		self.update_customer_from_sales_order()
-
+		self.set_party_details_from_logs()
 		self.set_warranty_status()
 		self.set_status()
 
@@ -75,6 +98,32 @@ class SerialNo(StockController):
 					where name = %s
 				""".format(dt, fieldname), ('\n'.join(list(serial_nos)), row_name))
 
+	def validate_item(self):
+		item = frappe.get_cached_doc("Item", self.item_code)
+		if not item.has_serial_no:
+			frappe.throw(_("{0} is not setup for Serial Nos. Check Item master").format(
+				frappe.get_desk_link("Item", self.item_code)
+			))
+
+		self.item_name = item.item_name
+		self.item_group = item.item_group
+		self.brand = item.brand
+		self.description = item.description
+		self.is_vehicle = item.is_vehicle
+		self.warranty_period = item.warranty_period
+
+	def validate_warehouse(self):
+		if self.is_new() and self.warehouse and not self.via_stock_ledger:
+			frappe.throw(_("New Serial No cannot have Warehouse. Warehouse must be set by Stock Entry or Purchase Receipt"),
+				SerialNoCannotCreateDirectError)
+
+		if not self.is_new():
+			item_code, warehouse = frappe.db.get_value("Serial No", self.name, ["item_code", "warehouse"])
+			if not self.via_stock_ledger and item_code != self.item_code and not self.flags.allow_change_item_code:
+				frappe.throw(_("Item Code cannot be changed for Serial No."), SerialNoCannotCannotChangeError)
+			if not self.via_stock_ledger and warehouse != self.warehouse:
+				frappe.throw(_("Warehouse cannot be changed for Serial No."), SerialNoCannotCannotChangeError)
+
 	def set_status(self):
 		if self.delivery_document_type:
 			self.status = "Delivered"
@@ -99,40 +148,18 @@ class SerialNo(StockController):
 				frappe.db.set_value("Vehicle", self.vehicle, "warranty_status", self.warranty_status,
 					update_modified=update_modified)
 
-	def validate_warehouse(self):
-		if not self.get("__islocal"):
-			item_code, warehouse = frappe.db.get_value("Serial No",
-				self.name, ["item_code", "warehouse"])
-			if not self.via_stock_ledger and item_code != self.item_code and not self.flags.allow_change_item_code:
-				frappe.throw(_("Item Code cannot be changed for Serial No."),
-					SerialNoCannotCannotChangeError)
-			if not self.via_stock_ledger and warehouse != self.warehouse:
-				frappe.throw(_("Warehouse cannot be changed for Serial No."),
-					SerialNoCannotCannotChangeError)
+	def set_party_details_from_logs(self):
+		if self.via_stock_ledger:
+			return
 
-	def validate_item(self):
-		"""
-			Validate whether serial no is required for this item
-		"""
-		item = frappe.get_cached_doc("Item", self.item_code)
+		last_sle = self.get_last_sle()
+		self.set_party_details(last_sle.get("purchase_sle"), last_sle.get("delivery_sle"))
 
-		if not item.has_serial_no:
-			frappe.throw(_("Item {0} is not setup for Serial Nos. Check Item master").format(self.item_code))
-
-		self.item_group = item.item_group
-		self.description = item.description
-		self.item_name = item.item_name
-		self.brand = item.brand
-		self.is_vehicle = item.is_vehicle
-		self.warranty_period = item.warranty_period
-
-	def update_customer_from_sales_order(self):
-		if self.sales_order and not (self.delivery_document_type and self.delivery_document_no):
-			so = frappe.db.get_value("Sales Order", self.sales_order, ["customer", "docstatus"], as_dict=1)
-			if so.docstatus == 2:
-				frappe.throw(_("Cannot set Sales Order as {0} because it is cancelled").format(self.sales_order))
-
-			self.customer = so.customer
+		if self.sales_order and not self.customer:
+			so = frappe.db.get_value("Sales Order", self.sales_order, ["customer", "customer_name"], as_dict=1)
+			if so:
+				self.customer = so.customer
+				self.customer_name = so.customer_name
 
 	def set_purchase_details(self, purchase_sle):
 		if purchase_sle:
@@ -167,6 +194,10 @@ class SerialNo(StockController):
 					self.set(fieldname, None)
 
 	def set_party_details(self, purchase_sle, delivery_sle):
+		self.set_supplier_details(purchase_sle)
+		self.set_customer_details(delivery_sle)
+
+	def set_supplier_details(self, purchase_sle):
 		if purchase_sle:
 			if purchase_sle.party_type == "Supplier":
 				self.supplier = purchase_sle.party
@@ -175,16 +206,12 @@ class SerialNo(StockController):
 			self.supplier = None
 			self.supplier_name = None
 
-		if delivery_sle:
-			if delivery_sle.party_type == "Customer":
-				self.customer = delivery_sle.party
-				self.customer_name = frappe.get_cached_value("Customer", self.customer, "customer_name")
-		else:
-			self.customer = None
-			self.customer_name = None
+	def set_customer_details(self, delivery_sle):
+		if delivery_sle and delivery_sle.party_type == "Customer":
+			self.customer = delivery_sle.party
+			self.customer_name = frappe.get_cached_value("Customer", self.customer, "customer_name")
 
 		if self.vehicle:
-			from erpnext.vehicles.doctype.vehicle_log.vehicle_log import get_last_customer_log
 			last_customer_log = get_last_customer_log(self.vehicle, self.purchase_date)
 
 			if last_customer_log:
@@ -279,6 +306,21 @@ class SerialNo(StockController):
 
 			if is_new_vehicle:
 				frappe.msgprint(_("Created Vehicle {0}").format(frappe.get_desk_link("Vehicle", self.vehicle)))
+
+	def cant_change_customer(self):
+		if self.is_new():
+			return False
+
+		last_sle = self.get_last_sle()
+		if last_sle.get("delivery_sle") and last_sle.get("delivery_sle").party_type == "Customer":
+			return True
+
+		if self.vehicle:
+			last_customer_log = get_last_customer_log(self.vehicle, self.purchase_date)
+			if last_customer_log:
+				return True
+
+		return False
 
 
 def process_serial_no(sle):

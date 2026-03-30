@@ -77,8 +77,6 @@ class VehicleLog(Document):
 	def update_vehicle_party_details(self):
 		if self.customer:
 			sr_no = frappe.get_doc("Serial No", self.vehicle)
-			last_sle = sr_no.get_last_sle()
-			sr_no.set_party_details(last_sle.get("purchase_sle"), last_sle.get("delivery_sle"))
 			sr_no.save(ignore_permissions=True)
 
 

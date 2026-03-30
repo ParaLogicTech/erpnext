@@ -19,12 +19,6 @@
   "item_code",
   "item_name",
   "item_group",
-  "customer_details_section",
-  "customer",
-  "customer_name",
-  "column_break_10",
-  "vehicle_owner",
-  "vehicle_owner_name",
   "vehicle_details",
   "chassis_no",
   "engine_no",
@@ -37,6 +31,12 @@
   "interior",
   "column_break_8qjzs",
   "last_odometer",
+  "customer_details_section",
+  "customer",
+  "customer_name",
+  "column_break_10",
+  "vehicle_owner",
+  "vehicle_owner_name",
   "insurance_details",
   "insurance_company",
   "insurance_company_name",
@@ -195,25 +195,26 @@
    "search_index": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "customer_details_section",
    "fieldtype": "Section Break",
    "label": "Customer Details"
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "customer",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Customer (User)",
-   "no_copy": 1,
    "oldfieldname": "customer",
    "oldfieldtype": "Link",
    "options": "Customer",
    "print_hide": 1,
-   "read_only": 1,
    "search_index": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "bold": 1,
    "depends_on": "eval:doc.customer && doc.customer_name != doc.customer",
    "fetch_from": "customer.customer_name",
@@ -222,7 +223,6 @@
    "fieldtype": "Data",
    "in_preview": 1,
    "label": "Customer Name (User)",
-   "no_copy": 1,
    "oldfieldname": "customer_name",
    "oldfieldtype": "Data",
    "read_only": 1
@@ -288,7 +288,6 @@
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "License Plate",
-   "no_copy": 1,
    "search_index": 1
   },
   {
@@ -714,7 +713,6 @@
    "fieldtype": "Link",
    "hidden": 1,
    "label": "Plate Region",
-   "no_copy": 1,
    "options": "Vehicle Plate Region"
   },
   {
@@ -738,7 +736,7 @@
  "grid_page_length": 500,
  "image_field": "image",
  "links": [],
- "modified": "2026-03-24 13:27:41.106820",
+ "modified": "2026-03-30 16:28:52.092299",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",
