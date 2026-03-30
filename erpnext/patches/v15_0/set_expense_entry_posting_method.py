@@ -13,11 +13,13 @@ def execute():
 		update `tabExpense Entry`
 		set posting_method = 'Multiple Entries on Bill Date'
 	""")
-	frappe.db.sql("""
-		update `tabExpense Entry`
-		set posting_method = 'Multiple Entries on Transaction Date'
-		where use_transaction_date = 1
-	""")
+
+	if frappe.db.has_column("Expense Entry", "use_transaction_date"):
+		frappe.db.sql("""
+			update `tabExpense Entry`
+			set posting_method = 'Multiple Entries on Transaction Date'
+			where use_transaction_date = 1
+		""")
 
 	if default_use_transaction_date:
 		make_property_setter(
