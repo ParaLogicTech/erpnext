@@ -21,7 +21,7 @@ frappe.treeview_settings["Sales Person"] = {
 		{
 			fieldtype: 'Check',
 			fieldname: 'is_group',
-			label: __('Group Node'),
+			label: __('Is Group / Team'),
 			description: __("Further nodes can be only created under 'Group' type nodes")
 		},
 	],
