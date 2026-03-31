@@ -866,6 +866,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"bill_to": args.bill_to,
 				"bill_to_filter": args.bill_to_filter,
 			},
+			freeze: 1,
 			callback: function (r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
@@ -883,6 +884,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"bill_to": args.bill_to,
 				"bill_to_filter": args.bill_to_filter,
 			},
+			freeze: 1,
 			callback: function (r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
@@ -900,6 +902,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			args: {
 				"project_name": me.frm.doc.name,
 			},
+			freeze: 1,
 			callback: function (r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
@@ -1057,6 +1060,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"bill_to": args.bill_to,
 				"items_type": args.items_type,
 			},
+			freeze: 1,
 			callback: (r) => {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
@@ -1077,6 +1081,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"bill_to": args.bill_to,
 				"items_type": args.items_type,
 			},
+			freeze: 1,
 			callback: function (r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
@@ -1093,6 +1098,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			args: {
 				"project_name": this.frm.doc.name,
 			},
+			freeze: 1,
 			callback: (r) => {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
@@ -1110,6 +1116,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"project_name": this.frm.doc.name,
 				"purpose": purpose,
 			},
+			freeze: 1,
 			callback: (r) => {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
@@ -1140,6 +1147,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			args: {
 				"project_name": this.frm.doc.name,
 			},
+			freeze: 1,
 			callback: (r) => {
 				if (r.message) {
 					this.frm.reload_doc();
@@ -1157,6 +1165,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"customer": customer,
 				"is_refund": cint(is_refund),
 			},
+			freeze: 1,
 			callback: function (r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);

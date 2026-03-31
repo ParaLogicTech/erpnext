@@ -12,7 +12,7 @@ from erpnext.stock.stock_balance import update_bin_qty, get_reserved_qty
 from frappe.desk.notifications import clear_doctype_notifications
 from erpnext.controllers.selling_controller import SellingController
 from erpnext.controllers.transaction_controller import get_default_taxes_and_charges
-from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty, set_reserved_vehicles_from_so
+from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
@@ -1145,7 +1145,6 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 		if not skip_item_mapping:
 			update_mapped_items_based_on_purchase_and_production(source, target)
 			split_vehicle_items_by_qty(target)
-			set_reserved_vehicles_from_so(source, target)
 
 		if warehouse:
 			target.set_warehouse = warehouse
@@ -1531,7 +1530,6 @@ def make_sales_invoice(
 	def postprocess(source, target):
 		if not skip_item_mapping:
 			split_vehicle_items_by_qty(target)
-			set_reserved_vehicles_from_so(source, target)
 
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions
@@ -1612,7 +1610,6 @@ def make_proforma_invoice(
 	def postprocess(source, target):
 		if not skip_item_mapping:
 			split_vehicle_items_by_qty(target)
-			set_reserved_vehicles_from_so(source, target)
 
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions

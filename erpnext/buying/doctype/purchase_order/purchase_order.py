@@ -722,9 +722,8 @@ def close_or_unclose_purchase_orders(names, status):
 
 
 def set_missing_values(source, target):
-	from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty, set_reserved_vehicles_from_po
+	from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty
 	split_vehicle_items_by_qty(target)
-	set_reserved_vehicles_from_po(source, target)
 
 	target.ignore_pricing_rule = 1
 	target.run_method("postprocess_after_mapping")
