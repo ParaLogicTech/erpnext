@@ -433,7 +433,8 @@ def _get_tree_parent_groups(tree_doctype, value):
 		return parent_groups
 
 	key = (tree_doctype, cstr(value))
-	return frappe.local_cache("pricing_rule_get_tree_parent_groups", key, generator)
+	out = frappe.local_cache("pricing_rule_get_tree_parent_groups", key, generator)
+	return out.copy()
 
 
 def filter_highest_priority_pricing_rule(args, pricing_rules):
