@@ -6,7 +6,6 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.utils import flt, nowdate, getdate, cint, add_days, date_diff
 from frappe import _
 from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
-
 from erpnext.controllers.selling_controller import SellingController
 
 form_grid_templates = {

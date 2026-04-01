@@ -163,6 +163,8 @@
   "previous_grand_total",
   "column_break_qacd",
   "including_previous_grand_total",
+  "sales_team_section",
+  "sales_team",
   "address_and_contact_tab",
   "sec_address",
   "customer_address",
@@ -1615,6 +1617,22 @@
    "fieldtype": "Data",
    "label": "Campaign Voucher Code",
    "mandatory_depends_on": "campaign_voucher_code_required"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "sales_team",
+   "fieldname": "sales_team_section",
+   "fieldtype": "Section Break",
+   "label": "Sales Team",
+   "print_hide": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "sales_team",
+   "fieldtype": "Table",
+   "label": "Sales Team",
+   "options": "Sales Team",
+   "print_hide": 1
   }
  ],
  "grid_page_length": 500,
@@ -1622,7 +1640,7 @@
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-24 13:33:52.271304",
+ "modified": "2026-04-02 00:41:47.718195",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",
