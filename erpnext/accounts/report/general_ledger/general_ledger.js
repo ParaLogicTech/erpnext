@@ -139,10 +139,11 @@ frappe.query_reports["General Ledger"] = {
 			fieldtype: "Select",
 			options: [
 				"",
-				__("Group by Voucher"),
-				__("Group by Account"),
-				__("Group by Party"),
-				__("Group by Sales Person"),
+				"Group by Voucher",
+				"Group by Account",
+				"Group by Party",
+				"Group by Account Manager",
+				"Group by Sales Person",
 			],
 			default: ""
 		},
@@ -169,6 +170,12 @@ frappe.query_reports["General Ledger"] = {
 		{
 			fieldname: "sales_person",
 			label: __("Sales Person"),
+			fieldtype: "Link",
+			options: "Sales Person",
+		},
+		{
+			fieldname: "account_manager",
+			label: __("Account Manager"),
 			fieldtype: "Link",
 			options: "Sales Person",
 		},

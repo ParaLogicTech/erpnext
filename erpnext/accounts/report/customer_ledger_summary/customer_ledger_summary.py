@@ -30,8 +30,8 @@ class PartyLedgerSummaryReport(object):
 		self.get_return_invoices()
 		self.get_party_adjustment_amounts()
 
-		columns = self.get_columns()
 		data = self.get_data()
+		columns = self.get_columns()
 		return columns, data
 
 	def get_columns(self):
@@ -51,12 +51,12 @@ class PartyLedgerSummaryReport(object):
 				"width": 200
 			})
 
-		if self.filters.party_type == "Customer" and self.filters.has_sales_persons:
+		if self.filters.party_type == "Customer" and self.filters.has_account_manager:
 			columns.append({
-				"label": _("Sales Person"),
+				"label": _("Account Manager"),
 				"fieldtype": "Link",
 				"options": "Sales Person",
-				"fieldname": "sales_person",
+				"fieldname": "account_manager",
 				"width": 150
 			})
 
@@ -181,7 +181,8 @@ class PartyLedgerSummaryReport(object):
 				"paid_amount": 0,
 				"return_amount": 0,
 				"closing_balance": 0,
-				"currency": self.filters.account_currency
+				"currency": self.filters.account_currency,
+				"account_manager": gle.account_manager,
 			}))
 
 			amount = gle.get(self.invoice_dr_or_cr) - gle.get(self.reverse_dr_or_cr)
@@ -197,21 +198,8 @@ class PartyLedgerSummaryReport(object):
 				else:
 					self.party_data[gle.party].paid_amount -= amount
 
-		if self.filters.party_type == "Customer":
-			customers = list(self.party_data.keys())
-			if customers:
-				sales_person_map = dict(frappe.db.sql("""
-					select steam.parent, GROUP_CONCAT(distinct steam.sales_person SEPARATOR ', ')
-					from `tabSales Team` steam
-					where steam.parenttype = 'Customer' and steam.parent in %s
-					group by steam.parent
-				""", [customers]))
-
-				if sales_person_map:
-					self.filters.has_sales_persons = True
-
-				for d in self.party_data.values():
-					d.sales_person = sales_person_map.get(d.party)
+			if gle.account_manager:
+				self.filters.has_account_manager = True
 
 		out = []
 		for party, row in self.party_data.items():
@@ -231,31 +219,32 @@ class PartyLedgerSummaryReport(object):
 
 	def get_gl_entries(self):
 		conditions = self.prepare_conditions()
-		join = join_field = ""
+		join_table = ""
+		join_fields = ""
 		if self.filters.party_type == "Customer":
-			join_field = ", p.customer_name as party_name"
-			join = "left join `tabCustomer` p on gle.party = p.name"
+			join_fields = ", p.customer_name as party_name, p.account_manager"
+			join_table = "left join `tabCustomer` p on gle.party = p.name"
 		elif self.filters.party_type == "Supplier":
-			join_field = ", p.supplier_name as party_name"
-			join = "left join `tabSupplier` p on gle.party = p.name"
+			join_fields = ", p.supplier_name as party_name"
+			join_table = "left join `tabSupplier` p on gle.party = p.name"
 		elif self.filters.party_type == "Employee":
-			join_field = ", p.employee_name as party_name"
-			join = "left join `tabEmployee` p on gle.party = p.name"
+			join_fields = ", p.employee_name as party_name"
+			join_table = "left join `tabEmployee` p on gle.party = p.name"
 
-		self.gl_entries = frappe.db.sql("""
+		self.gl_entries = frappe.db.sql(f"""
 			select
 				gle.posting_date, gle.account, gle.party_type, gle.party, gle.cost_center,
 				gle.voucher_type, gle.voucher_no, gle.against_voucher_type, gle.against_voucher,
 				gle.debit, gle.credit, gle.debit_in_account_currency, gle.credit_in_account_currency,
-				gle.is_opening {join_field}
+				gle.is_opening {join_fields}
 			from `tabGL Entry` gle
-			{join}
+			{join_table}
 			where gle.docstatus < 2
 				and gle.party_type = %(party_type)s
 				and (gle.party != '' and gle.party is not null)
 				and gle.posting_date <= %(to_date)s {conditions}
 			order by gle.posting_date
-		""".format(join=join, join_field=join_field, conditions=conditions), self.filters, as_dict=True)
+		""", self.filters, as_dict=True)
 
 	def filter_gl_entries(self):
 		def get_voucher_key(d):
@@ -336,11 +325,11 @@ class PartyLedgerSummaryReport(object):
 			if self.filters.get("sales_partner"):
 				conditions.append("gle.party in (select name from tabCustomer where default_sales_partner=%(sales_partner)s)")
 
-			if self.filters.get("sales_person"):
-				lft, rgt = frappe.db.get_value("Sales Person", self.filters.get("sales_person"), ["lft", "rgt"])
-				conditions.append("""exists(select name from `tabSales Team` steam where
-					steam.sales_person in (select name from `tabSales Person` where lft >= {0} and rgt <= {1})
-					and steam.parent = gle.party and steam.parenttype = gle.party_type)""".format(lft, rgt))
+			if self.filters.get("account_manager"):
+				lft, rgt = frappe.db.get_value("Sales Person", self.filters.get("account_manager"), ["lft", "rgt"])
+				conditions.append("""p.account_manager in (
+					select name from `tabSales Person` where lft >= {0} and rgt <= {1})
+				""".format(lft, rgt))
 
 		if self.filters.party_type == "Supplier":
 			if self.filters.get("supplier_group"):

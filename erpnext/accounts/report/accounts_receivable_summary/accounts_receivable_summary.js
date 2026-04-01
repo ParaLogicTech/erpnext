@@ -77,14 +77,14 @@ frappe.query_reports["Accounts Receivable Summary"] = {
 			"options": "Territory"
 		},
 		{
-			"fieldname":"sales_partner",
-			"label": __("Sales Partner"),
-			"fieldtype": "Link",
-			"options": "Sales Partner"
-		},
-		{
 			"fieldname":"sales_person",
 			"label": __("Sales Person"),
+			"fieldtype": "Link",
+			"options": "Sales Person"
+		},
+		{
+			"fieldname": "account_manager",
+			"label": __("Account Manager"),
 			"fieldtype": "Link",
 			"options": "Sales Person"
 		},

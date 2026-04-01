@@ -18,6 +18,7 @@ class ReceivablePayableReport(object):
 		self.has_cost_center = False
 		self.has_branch = False
 		self.has_project = False
+		self.has_account_manager = False
 
 		self.advance_against_voucher_types = get_advance_against_voucher_types()
 
@@ -132,12 +133,14 @@ class ReceivablePayableReport(object):
 		self.get_delivery_notes_map(gles_to_add)
 
 		data = []
-		cumulative_outstanding = 0.0
 		for gle in gles_to_add:
 			row = self.prepare_row(gle)
-			cumulative_outstanding += row.get("outstanding_amount")
-			row["cumulative_outstanding"] = cumulative_outstanding
 			data.append(row)
+
+		cumulative_outstanding = 0.0
+		for row in data:
+			cumulative_outstanding += flt(row.get("outstanding_amount"))
+			row["cumulative_outstanding"] = cumulative_outstanding
 
 		return data
 
@@ -236,16 +239,23 @@ class ReceivablePayableReport(object):
 				conditions.append("gle.party in (select name from tabCustomer where payment_terms=%s)")
 				values.append(self.filters.get("payment_terms_template"))
 
-			if self.filters.get("sales_partner"):
-				conditions.append("gle.party in (select name from tabCustomer where default_sales_partner=%s)")
-				values.append(self.filters.get("sales_partner"))
+			if self.filters.get("account_manager"):
+				lft, rgt = frappe.db.get_value("Sales Person",
+					self.filters.get("account_manager"), ["lft", "rgt"])
+
+				conditions.append("""gle.party in (select name from tabCustomer
+					where exists(select name from `tabSales Person` where lft >= {0} and rgt <= {1}
+						and name=tabCustomer.account_manager))""".format(lft, rgt))
 
 		elif self.filters.party_type == "Supplier":
 			account_type = "Payable"
 			if self.filters.get("supplier_group"):
+				lft, rgt = frappe.db.get_value("Supplier Group",
+					self.filters.get("supplier_group"), ["lft", "rgt"])
+
 				conditions.append("""gle.party in (select name from tabSupplier
-					where supplier_group=%s)""")
-				values.append(self.filters.get("supplier_group"))
+					where exists(select name from `tabSupplier Group` where lft >= {0} and rgt <= {1}
+						and name=tabSupplier.supplier_group))""".format(lft, rgt))
 
 		elif self.filters.party_type == "Employee":
 			account_type = ['in', ['Payable', 'Receivable']]
@@ -471,15 +481,16 @@ class ReceivablePayableReport(object):
 			if self.filters.party_type == "Customer":
 				party_data = frappe.db.sql("""
 					select
-						p.name, p.customer_name,
-						p.territory, p.customer_group,
+						p.name,
+						p.customer_name,
+						p.customer_group,
+						p.territory,
 						p.customer_primary_contact as contact_person,
-						p.payment_terms, p.tax_id,
-						GROUP_CONCAT(steam.sales_person SEPARATOR ', ') as sales_person
+						p.payment_terms,
+						p.tax_id,
+						p.account_manager
 					from `tabCustomer` p
-					left join `tabSales Team` steam on steam.parent = p.name and steam.parenttype = 'Customer'
 					where p.name in %s
-					group by p.name
 				""", [parties], as_dict=True)
 
 			elif self.filters.party_type == "Supplier":
@@ -650,13 +661,6 @@ class ReceivablePayableReport(object):
 		row["project"] = gle.project or self.projects_map.get((gle.voucher_type, gle.voucher_no))
 		row["branch"] = gle.branch
 
-		if row.cost_center:
-			self.has_cost_center = True
-		if row.branch:
-			self.has_branch = True
-		if row.project:
-			self.has_project = True
-
 		# Voucher Details
 		row["po_no"] = voucher_details.get("po_no")
 		if gle.voucher_type == "Sales Invoice":
@@ -664,6 +668,7 @@ class ReceivablePayableReport(object):
 
 		# Party Details
 		if self.filters.get("party_type") == "Customer":
+			row["account_manager"] = self.get_account_manager(gle.party)
 			row["customer_group"] = self.get_customer_group(gle.party)
 			row["territory"] = self.get_territory(gle.party, gle.voucher_type, gle.voucher_no)
 			row["contact"] = self.get_contact_person(gle.party, gle.voucher_type, gle.voucher_no)
@@ -728,6 +733,15 @@ class ReceivablePayableReport(object):
 		row["pdc/lc_amount"] = pdc_amount
 		row["remaining_balance"] = remaining_balance
 
+		if row.cost_center:
+			self.has_cost_center = True
+		if row.branch:
+			self.has_branch = True
+		if row.project:
+			self.has_project = True
+		if row.account_manager:
+			self.has_account_manager = True
+
 		return row
 
 	def get_grouped_data(self, columns, data):
@@ -749,7 +763,7 @@ class ReceivablePayableReport(object):
 			return self.group_aggregate_age(data, columns)
 
 		total_fields = [c['fieldname'] for c in columns
-			if c['fieldtype'] in ['Float', 'Currency', 'Int'] and c['fieldname'] != 'age']
+			if c['fieldtype'] in ['Float', 'Currency', 'Int'] and c['fieldname'] not in ('age', 'cumulative_outstanding')]
 
 		def postprocess_group(group_object, grouped_by):
 			if not group_object.group_field:
@@ -762,6 +776,11 @@ class ReceivablePayableReport(object):
 
 			if group_object.group_field == 'party':
 				group_object.totals['currency'] = group_object.rows[0].get("currency")
+				group_object.totals['account_manager'] = self.get_account_manager(group_object.group_value)
+				group_object.totals["customer_group"] = self.get_customer_group(group_object.group_value)
+				group_object.totals["territory"] = self.get_territory(group_object.group_value)
+				group_object.totals["contact"] = self.get_contact_person(group_object.group_value)
+
 				group_object.tax_id = self.party_map.get(group_object.group_value, {}).get("tax_id")
 				group_object.payment_terms = self.party_map.get(group_object.group_value, {}).get("payment_terms")
 				group_object.credit_limit = self.party_map.get(group_object.group_value, {}).get("credit_limit")
@@ -769,6 +788,11 @@ class ReceivablePayableReport(object):
 			group_object.rows = self.group_aggregate_age(group_object.rows, columns, grouped_by)
 			if group_object.rows is None:
 				group_object.totals = None
+			else:
+				cumulative_outstanding = 0.0
+				for row in group_object.rows:
+					cumulative_outstanding += flt(row.get("outstanding_amount"))
+					row["cumulative_outstanding"] = cumulative_outstanding
 
 		return group_report_data(data, group_by, total_fields=total_fields, postprocess_group=postprocess_group,
 			group_by_labels=group_by_labels)
@@ -895,6 +919,9 @@ class ReceivablePayableReport(object):
 
 	def get_customer_group(self, party):
 		return self.party_map.get(party, {}).get("customer_group")
+
+	def get_account_manager(self, party):
+		return self.party_map.get(party, {}).get("account_manager")
 
 	def get_supplier_group(self, party):
 		return self.party_map.get(party, {}).get("supplier_group")
@@ -1137,6 +1164,20 @@ class ReceivablePayableReport(object):
 					"fieldname": "sales_person",
 					"width": 150,
 				},
+			]
+
+			if self.has_account_manager:
+				columns += [
+					{
+						"label": _("Account Manager"),
+						"fieldtype": "Link",
+						"fieldname": "account_manager",
+						"options": "Sales Person",
+						"width": 120,
+					},
+				]
+
+			columns += [
 				{
 					"fieldname": "territory",
 					"label": _("Territory"),
@@ -1152,7 +1193,7 @@ class ReceivablePayableReport(object):
 					"width": 100
 				},
 				{
-					"label": _("Customer Contact"),
+					"label": _("Contact Person"),
 					"fieldtype": "Link",
 					"fieldname": "contact",
 					"options": "Contact",

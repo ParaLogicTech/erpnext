@@ -170,7 +170,7 @@ def _get_party_details(
 		company=company,
 	)
 
-	set_sales_team(party_details, party_doc)
+	set_sales_team(party_details, party_doc, project=project)
 
 	if doctype == "Sales Order":
 		set_credit_balance(party_details, billing_party_doc, doctype, company)
@@ -492,17 +492,22 @@ def set_price_list(party_details, party_doc, price_list=None, pos_profile=None):
 	return price_list
 
 
-def set_sales_team(party_details, party_doc):
-	if party_doc.doctype == "Customer" and party_doc.get("sales_team"):
-		party_details["sales_team"] = []
-		for d in party_doc.get("sales_team"):
-			sales_person_details = frappe._dict({
-				"sales_person": d.sales_person,
-				"allocated_percentage": d.allocated_percentage or None
-			})
-			sales_person_details.update(get_sales_person_commission_details(d.sales_person))
+def set_sales_team(party_details, party_doc, project=None):
+	sales_person = None
+	if not sales_person and project:
+		sales_person = frappe.db.get_value("Project", project, "sales_person", cache=True)
+	if not sales_person and party_doc.get("account_manager"):
+		sales_person = party_doc.get("account_manager")
 
-			party_details["sales_team"].append(sales_person_details)
+	if sales_person:
+		sales_person_details = frappe._dict({
+			"sales_person": sales_person,
+			"allocated_percentage": 100,
+		})
+		sales_person_details.update(get_sales_person_commission_details(sales_person_details.sales_person))
+
+		party_details["sales_team"] = [sales_person_details]
+		party_details["sales_person"] = sales_person
 
 
 def set_credit_balance(party_details, party_doc, doctype, company):

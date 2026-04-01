@@ -183,20 +183,24 @@ def get_result(filters, account_details, accounting_dimensions):
 	group_by = []
 
 	if (
-		not (filters.get('group_by') == _("Group by Sales Person") and filters.get("sales_person"))
-		and not (filters.get('group_by') == _("Group by Party") and len(filters.get("party_list")) == 1)
-		and not (filters.get('group_by') == _("Group by Account") and len(filters.get("account_list")) == 1)
+		not (filters.get('group_by') == "Group by Sales Person" and filters.get("sales_person"))
+		and not (filters.get('group_by') == "Group by Account Manager" and filters.get("account_manager"))
+		and not (filters.get('group_by') == "Group by Party" and len(filters.get("party_list")) == 1)
+		and not (filters.get('group_by') == "Group by Account" and len(filters.get("account_list")) == 1)
 	):
 		group_by.append(None)
 
-	if filters.get('group_by') == _('Group by Party'):
+	if filters.get('group_by') == "Group by Party":
 		group_by.append(('party_type', 'party'))
-	elif filters.get('group_by') == _('Group by Account'):
+	elif filters.get('group_by') == "Group by Account":
 		group_by.append('account')
-	elif filters.get('group_by') == _('Group by Voucher'):
+	elif filters.get('group_by') == "Group by Voucher":
 		group_by.append(('voucher_type', 'voucher_no'))
-	elif filters.get('group_by') == _('Group by Sales Person'):
+	elif filters.get('group_by') == "Group by Sales Person":
 		group_by.append('sales_person')
+		group_by.append(('party_type', 'party'))
+	elif filters.get('group_by') == "Group by Account Manager":
+		group_by.append('account_manager')
 		group_by.append(('party_type', 'party'))
 
 	result = group_report_data(gl_entries, group_by,
@@ -211,19 +215,27 @@ def get_result(filters, account_details, accounting_dimensions):
 def get_gl_entries(filters, accounting_dimensions):
 	currency_map = get_currency(filters)
 	filters.ledger_currency = currency_map.get("presentation_currency") or currency_map.get("company_currency")
-	dimensions_fields = ", " + ", ".join([d.fieldname for d in accounting_dimensions]) if accounting_dimensions else ""
+	dimensions_fields = ", " + ", ".join([f"gle.{d.fieldname}" for d in accounting_dimensions]) if accounting_dimensions else ""
 
 	sales_person_join = ""
 	sales_person_field = ""
-	if filters.get("sales_person") or filters.get("group_by") == _("Group by Sales Person"):
-		sales_person_join = "inner join `tabSales Team` steam on steam.parenttype = party_type and steam.parent = party"
+	if filters.get("sales_person") or filters.get("group_by") == "Group by Sales Person":
+		sales_person_join = "inner join `tabSales Team` steam on steam.parenttype = gle.voucher_type and steam.parent = gle.voucher_no and gle.party_type = 'Customer'"
 		sales_person_field = ", steam.sales_person"
+
+	customer_join = ""
+	account_manager_field = ""
+	if filters.get("account_manager") or filters.get("group_by") == "Group by Account Manager":
+		customer_join = "inner join `tabCustomer` cus on cus.name = gle.party and gle.party_type = 'Customer'"
+		account_manager_field = ", cus.account_manager"
 
 	order_by = "gle.posting_date, gle.account, gle.creation"
 	if filters.get("voucher_no"):
 		order_by = "gle.posting_date, gle.creation"
 
-	gl_entries = frappe.db.sql("""
+	conditions = get_conditions(filters, accounting_dimensions)
+
+	gl_entries = frappe.db.sql(f"""
 		select
 			gle.posting_date, gle.account, gle.party_type, gle.party,
 			gle.voucher_type, gle.voucher_no, gle.cost_center, gle.project,
@@ -232,18 +244,13 @@ def get_gl_entries(filters, accounting_dimensions):
 			gle.against_voucher_type, gle.against_voucher,
 			gle.reference_no, gle.reference_date,
 			gle.account_currency, %(ledger_currency)s as currency
-			{sales_person_field} {dimensions_fields}
+			{sales_person_field} {account_manager_field} {dimensions_fields}
 		from `tabGL Entry` gle
+		{customer_join}
 		{sales_person_join}
 		where {conditions}
 		order by {order_by}
-	""".format(
-		conditions=get_conditions(filters, accounting_dimensions),
-		dimensions_fields=dimensions_fields,
-		sales_person_field=sales_person_field,
-		sales_person_join=sales_person_join,
-		order_by=order_by,
-	), filters, as_dict=1)
+	""", filters, as_dict=1)
 
 	if filters.get('presentation_currency'):
 		return convert_to_presentation_currency(gl_entries, currency_map)
@@ -330,7 +337,7 @@ def get_conditions(filters, accounting_dimensions):
 		filters['_reference_no'] = '%%{0}%%'.format(filters.get("reference_no"))
 		conditions.append("gle.reference_no like %(_reference_no)s")
 
-	if filters.get("group_by") == _("Group by Party") and not filters.get("party_type"):
+	if filters.get("group_by") == "Group by Party" and not filters.get("party_type"):
 		conditions.append("gle.party_type in ('Customer', 'Supplier')")
 
 	if filters.get("party_type") and not filters.get("party_list"):
@@ -344,7 +351,7 @@ def get_conditions(filters, accounting_dimensions):
 		or filters.get("party_type")
 		or filters.get("account_type") in ("Receivable", "Payable")
 		or filters.get("party_list")
-		or filters.get("group_by") in [_("Group by Account"), _("Group by Party"), _("Group by Sales Person")]
+		or filters.get("group_by") in ["Group by Account", "Group by Party", "Group by Account Manager"]
 	):
 		conditions.append("(gle.posting_date <= %(to_date)s or gle.is_opening = 'Yes')")
 	else:
@@ -357,13 +364,20 @@ def get_conditions(filters, accounting_dimensions):
 	elif filters.get("has_project"):
 		conditions.append("(gle.project is not null and gle.project != '')")
 
-	if filters.get("group_by") == _("Group by Sales Person"):
-		conditions.append("steam.sales_person != '' and steam.sales_person is not null")
-
 	if filters.get("sales_person"):
 		lft, rgt = frappe.db.get_value("Sales Person", filters.get("sales_person"), ["lft", "rgt"])
 		conditions.append("steam.sales_person in (select name from `tabSales Person` where lft >= {0} and rgt <= {1})"
 			.format(lft, rgt))
+	elif filters.get("group_by") == "Group by Sales Person":
+		conditions.append("steam.sales_person != '' and steam.sales_person is not null")
+
+	if filters.get("account_manager"):
+		lft, rgt = frappe.db.get_value("Sales Person", filters.get("account_manager"), ["lft", "rgt"])
+		conditions.append("""cus.account_manager in (
+			select name from `tabSales Person` where lft >= {0} and rgt <= {1}
+		)""".format(lft, rgt))
+	elif filters.get("group_by") == "Group by Account Manager":
+		conditions.append("""cus.account_manager is not null and cus.account_manager != ''""")
 
 	if filters.get("finance_book"):
 		if filters.get("include_default_book_entries"):
@@ -381,7 +395,7 @@ def get_conditions(filters, accounting_dimensions):
 	if accounting_dimensions:
 		for dimension in accounting_dimensions:
 			if filters.get(dimension.fieldname):
-				conditions.append("{0} in (%({0})s)".format(dimension.fieldname))
+				conditions.append("gle.{0} in (%({0})s)".format(dimension.fieldname))
 
 	hooks = frappe.get_hooks('set_gl_conditions')
 	for method in hooks:
@@ -423,9 +437,9 @@ def postprocess_group(filters, group_object, grouped_by):
 	if group_object.rows:
 		# Set Party Details in Total Row if grouped by Party
 		if 'party' in grouped_by:
-			if group_object.rows[0].party_type == "Customer" and not group_object.sales_person:
+			if group_object.rows[0].party_type == "Customer" and not group_object.account_manager:
 				customer = frappe.get_cached_doc("Customer", grouped_by['party'])
-				group_object.sales_person = ", ".join(set([d.sales_person for d in customer.sales_team]))
+				group_object.account_manager = customer.account_manager
 
 			for k in ['opening', 'closing']:
 				group_object.totals[k].party_type = group_object.rows[0].party_type
@@ -438,13 +452,16 @@ def postprocess_group(filters, group_object, grouped_by):
 		if 'sales_person' in grouped_by:
 			for k in ['opening', 'closing']:
 				group_object.totals[k].sales_person = group_object.sales_person
+		if 'account_manager' in grouped_by:
+			for k in ['opening', 'closing']:
+				group_object.totals[k].account_manager = group_object.account_manager
 
 		# Filter out rows outside date range
 		group_object.rows = list(filter(lambda d: not d.get("to_remove"), group_object.rows))
 		no_transactions_within_date = True if len(group_object.rows) == 0 else False
 
 		# Add Opening Row
-		if 'voucher_no' not in grouped_by:
+		if 'voucher_no' not in grouped_by and 'sales_person' not in grouped_by:
 			group_object.rows.insert(0, group_object.totals.opening)
 
 		# Add Total Row
@@ -452,7 +469,7 @@ def postprocess_group(filters, group_object, grouped_by):
 			group_object.rows.append(group_object.totals.total)
 
 		# Add Closing Row
-		if 'voucher_no' not in grouped_by:
+		if 'voucher_no' not in grouped_by and 'sales_person' not in grouped_by:
 			group_object.rows.append(group_object.totals.closing)
 
 		balance, balance_in_account_currency = 0, 0
@@ -560,10 +577,18 @@ def get_columns(filters, accounting_dimensions):
 		},
 	]
 
-	if filters.get('group_by') == _("Group by Sales Person"):
+	if filters.get('group_by') == "Group by Sales Person":
 		columns.append({
 			"label": _("Sales Person"),
 			"fieldname": "sales_person",
+			"width": 120,
+			"fieldtype": "Link",
+			"options": "Sales Person",
+		})
+	if filters.get('group_by') == "Group by Account Manager":
+		columns.append({
+			"label": _("Account Manager"),
+			"fieldname": "account_manager",
 			"width": 120,
 			"fieldtype": "Link",
 			"options": "Sales Person",

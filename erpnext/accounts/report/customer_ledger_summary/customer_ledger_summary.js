@@ -96,14 +96,8 @@ frappe.query_reports["Customer Ledger Summary"] = {
 			"options": "Territory"
 		},
 		{
-			"fieldname":"sales_partner",
-			"label": __("Sales Partner"),
-			"fieldtype": "Link",
-			"options": "Sales Partner"
-		},
-		{
-			"fieldname":"sales_person",
-			"label": __("Sales Person"),
+			"fieldname": "account_manager",
+			"label": __("Account Manager"),
 			"fieldtype": "Link",
 			"options": "Sales Person"
 		},

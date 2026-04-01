@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import frappe, erpnext
-from frappe.utils import cint, cstr, formatdate, flt, getdate, nowdate, get_link_to_form
+from frappe.utils import cint, cstr, flt, getdate, nowdate, get_link_to_form
 from frappe import _
 import frappe.defaults
 
@@ -1388,16 +1388,6 @@ def make_sales_order(customer, source_name, target_doc=None):
 		default_price_list = frappe.get_value("Customer", customer, "default_price_list")
 		if default_price_list:
 			target.selling_price_list = default_price_list
-
-		sales_team = frappe.get_all("Sales Team", fields=['sales_person', 'allocated_percentage'], filters=[
-			["parenttype", "=", "Customer"],
-			["parent", "=", customer]
-		])
-		if sales_team:
-			target.sales_team = []
-			for sales_person in sales_team:
-				d = target.append("sales_team")
-				d.update(sales_person)
 
 		for item in target.items:
 			item.delivery_date = target.delivery_date

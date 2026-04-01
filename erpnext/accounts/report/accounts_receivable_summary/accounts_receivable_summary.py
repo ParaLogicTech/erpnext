@@ -104,6 +104,20 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 					"fieldname": "sales_person",
 					"width": 120,
 				},
+			]
+
+			if self.has_account_manager:
+				columns += [
+					{
+						"label": _("Account Manager"),
+						"fieldtype": "Link",
+						"fieldname": "account_manager",
+						"options": "Sales Person",
+						"width": 120,
+					},
+				]
+
+			columns += [
 				{
 					"label": _("Territory"),
 					"fieldname": "territory",
@@ -162,12 +176,16 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 			if self.filters.party_type == "Customer":
 				row["territory"] = self.get_territory(party)
 				row["customer_group"] = self.get_customer_group(party)
+				row["account_manager"] = self.get_account_manager(party)
 				row["sales_person"] = ", ".join(party_dict.sales_person)
 			if self.filters.party_type == "Supplier":
 				row["supplier_group"] = self.get_supplier_group(party)
 
 			row["currency"] = party_dict.currency
 			data.append(row)
+
+			if row.account_manager:
+				self.has_account_manager = True
 
 		return data
 

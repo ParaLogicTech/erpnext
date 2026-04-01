@@ -37,7 +37,6 @@ class TestCustomer(unittest.TestCase):
 			'contact_department': None,
 			'contact_email': 'test_contact_customer@example.com',
 			'contact_mobile': None,
-			'sales_team': [],
 			'contact_display': '_Test Contact for _Test Customer',
 			'contact_person': '_Test Contact for _Test Customer-_Test Customer',
 			'territory': u'_Test Territory',

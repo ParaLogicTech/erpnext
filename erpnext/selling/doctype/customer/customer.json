@@ -72,7 +72,6 @@
   "so_not_required",
   "dn_not_required",
   "sales_team_section",
-  "sales_team",
   "account_manager",
   "sales_team_section_break",
   "default_sales_partner",
@@ -454,14 +453,6 @@
    "label": "Sales Team"
   },
   {
-   "fieldname": "sales_team",
-   "fieldtype": "Table",
-   "label": "Sales Persons",
-   "oldfieldname": "sales_team",
-   "oldfieldtype": "Table",
-   "options": "Sales Team"
-  },
-  {
    "fieldname": "customer_pos_id",
    "fieldtype": "Data",
    "label": "Customer POS id",
@@ -739,7 +730,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2026-02-01 16:11:29.712354",
+ "modified": "2026-04-01 15:45:59.681846",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",

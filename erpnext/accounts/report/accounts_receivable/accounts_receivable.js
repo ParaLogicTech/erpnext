@@ -7,6 +7,7 @@ const ar_group_by_options = [
 	{label: __("Group by ") + __("Customer Group"), value: "Group by Customer Group"},
 	{label: __("Group by ") + __("Territory"), value: "Group by Territory"},
 	{label: __("Group by ") + __("Sales Person"), value: "Group by Sales Person"},
+	{label: __("Group by ") + __("Account Manager"), value: "Group by Account Manager"},
 	{label: __("Group by ") + __("Cost Center"), value: "Group by Cost Center"},
 	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
 	{label: __("Group by ") + __("Project"), value: "Group by Project"},
@@ -112,14 +113,14 @@ frappe.query_reports["Accounts Receivable"] = {
 			"options": "Territory"
 		},
 		{
-			"fieldname":"sales_partner",
-			"label": __("Sales Partner"),
-			"fieldtype": "Link",
-			"options": "Sales Partner"
-		},
-		{
 			"fieldname":"sales_person",
 			"label": __("Sales Person"),
+			"fieldtype": "Link",
+			"options": "Sales Person"
+		},
+		{
+			"fieldname": "account_manager",
+			"label": __("Account Manager"),
 			"fieldtype": "Link",
 			"options": "Sales Person"
 		},

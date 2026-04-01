@@ -75,10 +75,6 @@ frappe.ui.form.on("Customer", {
 		} else {
 			frappe.contacts.clear_address_and_contact(frm);
 		}
-
-		let grid = cur_frm.get_field("sales_team").grid;
-		grid.set_column_disp("allocated_amount", false);
-		grid.set_column_disp("incentives", false);
 	},
 
 	validate: function(frm) {

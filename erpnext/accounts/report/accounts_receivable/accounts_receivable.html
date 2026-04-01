@@ -37,6 +37,12 @@
 	</h6>
 {% } %}
 
+{% if (filters.account_manager || group.account_manager) { %}
+	<h6 class="text-center">
+		{%= __("Account Manager: ")%}{%= filters.account_manager || group.account_manager %}
+	</h6>
+{% } %}
+
 {% if ((filters.cost_center && filters.cost_center.length) || group.cost_center) { %}
 	<h6 class="text-center">
 		{%= __("Cost Center: ")%}{%= filters.cost_center || group.cost_center %}
