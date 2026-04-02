@@ -1779,7 +1779,8 @@
    "label": "Opportunity",
    "no_copy": 1,
    "options": "Opportunity",
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 500,
@@ -1787,7 +1788,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2026-03-25 23:05:12.515329",
+ "modified": "2026-04-02 00:56:40.692489",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

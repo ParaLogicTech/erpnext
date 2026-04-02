@@ -256,4 +256,16 @@ def override_opportunity_dashboard(data):
 		"items": ["Quotation", "Supplier Quotation"]
 	})
 
+	project_items = ["Project"]
+
+	appointment_section = [d for d in data["transactions"] if d["label"] == _("Appointment")]
+	if appointment_section:
+		appointment_section = appointment_section[0]
+		appointment_section["items"] += project_items
+	else:
+		data["transactions"].append({
+			"label": _("Appointment"),
+			"items": project_items,
+		})
+
 	return data

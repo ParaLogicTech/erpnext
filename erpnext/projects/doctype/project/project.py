@@ -7,6 +7,7 @@ from frappe import _
 from frappe.utils import flt, cint, cstr, ceil, getdate, clean_whitespace, now_datetime, comma_or, strip_html
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 from frappe.model.naming import set_name_by_naming_series
+from frappe.model.utils import get_fetch_values
 from frappe.contacts.doctype.contact.contact import get_all_contact_nos
 from erpnext.accounts.party import _get_contact_details, render_address
 from crm.crm.utils import get_primary_contact, get_primary_address
@@ -1183,6 +1184,7 @@ class Project(StatusUpdaterERP):
 		self.set_applies_to_details(for_validate=for_validate)
 		self.set_service_template_details()
 		self.set_material_and_service_item_groups()
+		self.set_sales_person_details()
 
 	def set_project_type_defaults(self):
 		defaults = get_project_type_defaults(self.project_type)
@@ -1287,6 +1289,27 @@ class Project(StatusUpdaterERP):
 		self.sublet_item_group = settings.sublet_item_group
 		self.consumables_item_group = settings.consumables_item_group
 		self.paint_item_group = settings.paint_item_group
+
+	def set_sales_person_details(self):
+		self.update(get_fetch_values(self.doctype, "sales_person", self.sales_person))
+
+	def reassign_sales_person_in_sales_transactions(self):
+		if not self.sales_person:
+			return
+
+		sales_team_doctypes = ["Quotation", "Sales Order", "Delivery Note", "Proforma Invoice", "Sales Invoice"]
+		for doctype in sales_team_doctypes:
+			names = frappe.get_all(doctype, filters={"project": self.name, "docstatus": ('<', 2)}, pluck="name")
+			for name in names:
+				doc = frappe.get_doc(doctype, name, for_update=True)
+				doc.load_doc_before_save()
+
+				doc.reset_sales_team(self.sales_person)
+
+				doc.set_user_and_timestamp()
+				doc.update_child_table("sales_team")
+				doc.save_version()
+				doc.notify_update()
 
 	def set_project_in_sales_order_and_quotation(self):
 		if self.sales_order:
@@ -2533,17 +2556,17 @@ def get_project_details(project, doctype, purpose=None, include_sales_team=False
 		'company', 'branch',
 		'customer', 'bill_to',
 		'applies_to_item', 'applies_to_serial_no',
-		'service_advisor',
+		'service_advisor', 'sales_person',
 		'insurance_company', 'insurance_loss_no', 'insurance_policy_no',
 		'insurance_surveyor', 'insurance_surveyor_company',
 		'has_stin', 'default_depreciation_percentage', 'default_underinsurance_percentage',
 		'campaign', 'campaign_voucher_code', 'cost_center', 'project_date',
 	]
 	sales_only_fields = [
-		'customer', 'bill_to', 'has_stin',
+		'customer', 'bill_to', 'has_stin', 'sales_person',
 		'default_depreciation_percentage', 'default_underinsurance_percentage',
 	]
-	ignore_empty_fields = ['customer', 'bill_to']
+	ignore_empty_fields = ['customer', 'bill_to', 'sales_person']
 
 	# Copy fields
 	force_fields = []

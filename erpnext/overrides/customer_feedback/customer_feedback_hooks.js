@@ -20,6 +20,7 @@ frappe.ui.form.on('Customer Feedback', {
 				},
 				callback: function(r) {
 					if (r.message) {
+						delete r.message["sales_person"];
 						frm.set_value(r.message);
 					}
 				}

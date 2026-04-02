@@ -148,6 +148,9 @@ def add_sales_person_from_source(source, target):
 			'allocated_percentage': 100,
 		})
 
+	if target.meta.has_field('sales_person') and source.get('sales_person') and not target.get('sales_person'):
+		target.sales_person = source.sales_person
+
 
 def override_lead_dashboard(data):
 	data.setdefault("non_standard_fieldnames", {}).update({

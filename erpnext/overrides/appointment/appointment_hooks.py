@@ -33,7 +33,7 @@ class AppointmentERP(Appointment):
 
 	def validate_next_document_on_cancel(self):
 		super().validate_next_document_on_cancel()
-		project = self.get_linked_project()
+		project = self.get_linked_projects()
 		if project:
 			frappe.throw(_("Cannot cancel appointment because it is closed by {0}").format(
 				frappe.get_desk_link("Project", project)
@@ -55,11 +55,31 @@ class AppointmentERP(Appointment):
 		else:
 			return None
 
-	def is_appointment_converted(self):
-		return super().is_appointment_converted() or self.get_linked_project()
+	def link_with_opportunity(self, opportunity):
+		super().link_with_opportunity(opportunity)
 
-	def get_linked_project(self):
-		return frappe.db.get_value("Project", {'appointment': self.name})
+		projects = self.get_linked_projects()
+		for name in projects:
+			project_doc = frappe.get_doc("Project", name, for_update=True)
+			project_doc.load_doc_before_save()
+
+			project_doc.opportunity = opportunity
+			if self.sales_person:
+				project_doc.sales_person = self.sales_person
+				project_doc.set_sales_person_details()
+
+			project_doc.set_user_and_timestamp()
+			project_doc.db_update()
+			project_doc.save_version()
+			project_doc.notify_update()
+
+			project_doc.reassign_sales_person_in_sales_transactions()
+
+	def is_appointment_converted(self):
+		return super().is_appointment_converted() or self.get_linked_projects()
+
+	def get_linked_projects(self):
+		return frappe.db.get_all("Project", {'appointment': self.name}, pluck="name")
 
 
 @frappe.whitelist()

@@ -1057,6 +1057,20 @@ class SellingController(TransactionController):
 		from erpnext.accounts.doctype.pricing_rule.utils import update_coupon_code_count
 		update_coupon_code_count(self.coupon_code, transaction_type)
 
+	def reset_sales_team(self, sales_person):
+		if not self.meta.has_field("sales_team"):
+			return
+
+		row = self.sales_team[0] if self.sales_team else frappe.new_doc("Sales Team")
+		row.update({
+			"sales_person": sales_person,
+			"allocated_percentage": 100,
+		})
+
+		self.sales_team = []
+		self.append("sales_team", row)
+		self.calculate_sales_team_contribution(self.get('base_net_total'))
+
 	def make_tax_gl_entries(self, gl_entries):
 		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
