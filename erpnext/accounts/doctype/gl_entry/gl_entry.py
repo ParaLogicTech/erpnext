@@ -8,10 +8,15 @@ from frappe.model.document import Document
 from frappe.model.meta import get_field_precision
 from erpnext.accounts.party import validate_party_gle_currency, validate_party_frozen_disabled
 from erpnext.accounts.utils import get_account_currency, get_fiscal_year
-from erpnext.exceptions import InvalidAccountCurrency
+from erpnext.accounts.doctype.accounting_period.accounting_period import get_closed_accounting_period
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_checks_for_pl_and_bs_accounts
+from erpnext.exceptions import InvalidAccountCurrency
 
 exclude_from_linked_with = True
+
+
+class ClosedAccountingPeriod(frappe.ValidationError):
+	pass
 
 
 class GLEntry(Document):
@@ -42,6 +47,7 @@ class GLEntry(Document):
 			if not self.flags.ignore_mandatory_dimension:
 				self.validate_dimensions_for_pl_and_bs()
 
+		validate_closed_accounting_period(self.company, self.posting_date, self.voucher_type, self.flags.adv_adj)
 		check_freezing_date(self.posting_date, self.flags.adv_adj)
 		validate_frozen_account(self.account, self.flags.adv_adj)
 
@@ -230,12 +236,12 @@ def check_freezing_date(posting_date, adv_adj=False):
 
 	acc_frozen_upto = frappe.db.get_single_value('Accounts Settings', 'acc_frozen_upto', cache=1)
 	if acc_frozen_upto:
-		frozen_accounts_modifier = frappe.db.get_single_value( 'Accounts Settings', 'frozen_accounts_modifier', cache=1)
+		frozen_accounts_modifier = frappe.db.get_single_value('Accounts Settings', 'frozen_accounts_modifier', cache=1)
 		if getdate(posting_date) <= getdate(acc_frozen_upto) and not frozen_accounts_modifier in frappe.get_roles():
 			frappe.throw(_("You are not authorized to add or update entries before {0}").format(formatdate(acc_frozen_upto)))
 
 
-def validate_frozen_account(account, adv_adj=None):
+def validate_frozen_account(account, adv_adj=False):
 	if adv_adj:
 		return
 
@@ -248,6 +254,17 @@ def validate_frozen_account(account, adv_adj=None):
 		frappe.throw(_("Account {0} is frozen").format(account))
 	elif frozen_accounts_modifier not in frappe.get_roles():
 		frappe.throw(_("Not authorized to edit frozen Account {0}").format(account))
+
+
+def validate_closed_accounting_period(company, posting_date, voucher_type, adv_adj=False):
+	if adv_adj:
+		return
+
+	closed_accounting_period = get_closed_accounting_period(company, posting_date, voucher_type, cache=True)
+	if closed_accounting_period:
+		frappe.throw(_("You cannot create or cancel any accounting entries within in the closed Accounting Period {0}").format(
+			frappe.bold(closed_accounting_period)
+		), ClosedAccountingPeriod)
 
 
 def update_against_account(voucher_type, voucher_no):

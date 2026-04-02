@@ -5,7 +5,7 @@
 import frappe
 import unittest
 from frappe.utils import nowdate, add_months
-from erpnext.accounts.general_ledger import ClosedAccountingPeriod
+from erpnext.accounts.doctype.gl_entry.gl_entry import ClosedAccountingPeriod
 from erpnext.accounts.doctype.accounting_period.accounting_period import OverlapError
 from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
 

@@ -11,7 +11,6 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import g
 from collections import OrderedDict
 
 
-class ClosedAccountingPeriod(frappe.ValidationError): pass
 class StockAccountInvalidTransaction(frappe.ValidationError): pass
 class StockValueAndAccountBalanceOutOfSync(frappe.ValidationError): pass
 
@@ -19,7 +18,6 @@ class StockValueAndAccountBalanceOutOfSync(frappe.ValidationError): pass
 def make_gl_entries(gl_map, cancel=False, adv_adj=False, merge_entries=True, update_outstanding='Yes', from_repost=False, ignore_mandatory_dimension=False):
 	if gl_map:
 		if not cancel:
-			validate_accounting_period(gl_map)
 			gl_map = process_gl_map(gl_map, merge_entries)
 			if gl_map and len(gl_map) > 1:
 				save_entries(
@@ -37,28 +35,6 @@ def make_gl_entries(gl_map, cancel=False, adv_adj=False, merge_entries=True, upd
 				adv_adj=adv_adj,
 				update_outstanding=update_outstanding,
 			)
-
-
-def validate_accounting_period(gl_map):
-	accounting_periods = frappe.db.sql(""" SELECT
-			ap.name as name
-		FROM
-			`tabAccounting Period` ap, `tabClosed Document` cd
-		WHERE
-			ap.name = cd.parent
-			AND ap.company = %(company)s
-			AND cd.closed = 1
-			AND cd.document_type = %(voucher_type)s
-			AND %(date)s between ap.start_date and ap.end_date
-			""", {
-				'date': gl_map[0].posting_date,
-				'company': gl_map[0].company,
-				'voucher_type': gl_map[0].voucher_type
-			}, as_dict=1)
-
-	if accounting_periods:
-		frappe.throw(_("You cannot create or cancel any accounting entries within in the closed Accounting Period {0}")
-			.format(frappe.bold(accounting_periods[0].name)), ClosedAccountingPeriod)
 
 
 def process_gl_map(gl_map, merge_entries=True):
@@ -334,22 +310,39 @@ def get_round_off_account_and_cost_center(company):
 
 
 def delete_gl_entries(gl_entries=None, voucher_type=None, voucher_no=None, adv_adj=False, update_outstanding="Yes"):
-	from erpnext.accounts.doctype.gl_entry.gl_entry import validate_balance_type, \
-		check_freezing_date, validate_frozen_account
+	from erpnext.accounts.doctype.gl_entry.gl_entry import (
+		validate_balance_type,
+		check_freezing_date,
+		validate_frozen_account,
+		validate_closed_accounting_period,
+	)
 
 	if not gl_entries:
 		gl_entries = frappe.db.sql("""
-			select account, posting_date, party_type, party, cost_center, fiscal_year,voucher_type,
-				voucher_no, against_voucher_type, against_voucher, cost_center, company
+			select
+				account, party_type, party,
+				company, fiscal_year, posting_date,
+				voucher_type, voucher_no,
+				against_voucher_type, against_voucher,
+				cost_center, project,
+				reference_no, reference_date
 			from `tabGL Entry`
 			where voucher_type=%s and voucher_no=%s
 		""", (voucher_type, voucher_no), as_dict=True)
 
 	if gl_entries:
-		validate_accounting_period(gl_entries)
+		validate_closed_accounting_period(
+			gl_entries[0]["company"],
+			gl_entries[0]["posting_date"],
+			voucher_type or gl_entries[0]["voucher_type"],
+			adv_adj
+		)
 		check_freezing_date(gl_entries[0]["posting_date"], adv_adj)
 
-	delete_voucher_gl_entries(voucher_type or gl_entries[0]["voucher_type"], voucher_no or gl_entries[0]["voucher_no"])
+	delete_voucher_gl_entries(
+		voucher_type or gl_entries[0]["voucher_type"],
+		voucher_no or gl_entries[0]["voucher_no"]
+	)
 
 	reference_documents_for_update = set()
 	for entry in gl_entries:
@@ -362,7 +355,14 @@ def delete_gl_entries(gl_entries=None, voucher_type=None, voucher_no=None, adv_a
 			add_to_reference_documents_for_update(reference_documents_for_update, entry)
 
 	for voucher_type, voucher_no, account, party_type, party in reference_documents_for_update:
-		update_voucher_on_gl_posting(voucher_type, voucher_no, account, party_type, party, on_cancel=True)
+		update_voucher_on_gl_posting(
+			voucher_type,
+			voucher_no,
+			account,
+			party_type,
+			party,
+			on_cancel=True,
+		)
 
 
 def delete_voucher_gl_entries(voucher_type, voucher_no):
