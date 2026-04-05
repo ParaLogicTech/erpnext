@@ -569,7 +569,8 @@ class TransactionController(StockController):
 
 		# reset item index
 		item_idx = 1
-		for item_group_group in out.values():
+		for item_group_i, item_group_group in enumerate(out.values()):
+			item_group_group.index = item_group_i + 1
 			for item in item_group_group['items']:
 				item.ig_idx = item_idx
 				item_idx += 1
