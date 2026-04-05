@@ -1039,7 +1039,7 @@ def change_uom(item_code, stock_uom=None, alt_uom=None, alt_uom_size=None):
 		'Packing Slip Item', 'Packing Slip Packaging Material', 'Package Type Packaging Material'
 	]
 	three_uom_dts = [
-		'Quotation Item', 'Sales Order Item', 'Delivery Note Item', 'Sales Invoice Item',
+		'Quotation Item', 'Sales Order Item', 'Delivery Note Item', 'Proforma Invoice Item', 'Sales Invoice Item',
 		'Supplier Quotation Item', 'Purchase Order Item', 'Purchase Receipt Item', 'Purchase Invoice Item',
 		'Stock Entry Detail', 'Material Request Item'
 	]
