@@ -1368,6 +1368,20 @@ def get_bin_details_and_serial_nos(item_code, warehouse, stock_qty=None, batch_n
 
 
 @frappe.whitelist()
+def get_multilple_bin_details(item_codes, warehouse):
+	if isinstance(item_codes, str):
+		item_codes = json.loads(item_codes)
+
+	item_codes = list(set(item_codes))
+
+	out = frappe._dict()
+	for item_code in item_codes:
+		out[item_code] = get_bin_details(item_code, warehouse)
+
+	return out
+
+
+@frappe.whitelist()
 def get_bin_details(item_code, warehouse):
 	empty = frappe._dict({"projected_qty": 0, "actual_qty": 0, "reserved_qty": 0})
 

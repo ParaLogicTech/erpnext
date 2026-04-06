@@ -947,6 +947,25 @@ $.extend(erpnext.utils, {
 			},
 		});
 	},
+
+	get_multilple_bin_details(item_codes, warehouse, callback) {
+		if (!item_codes || !item_codes.length) {
+			return;
+		}
+
+		return frappe.call({
+			method: "erpnext.stock.get_item_details.get_multilple_bin_details",
+			args: {
+				item_codes: item_codes,
+				warehouse: warehouse || "",
+			},
+			callback: (r) => {
+				if (r.message) {
+					callback?.(r);
+				}
+			}
+		});
+	}
 });
 
 erpnext.utils.select_alternate_items = function(opts) {
