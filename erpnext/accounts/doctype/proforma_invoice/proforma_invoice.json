@@ -1414,7 +1414,8 @@
    "hidden": 1,
    "label": "Customer Group",
    "options": "Customer Group",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -1832,7 +1833,7 @@
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-01 04:40:23.160984",
+ "modified": "2026-04-06 13:17:53.522448",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",

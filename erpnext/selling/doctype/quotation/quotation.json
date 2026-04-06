@@ -400,7 +400,8 @@
    "hidden": 1,
    "label": "Customer Group",
    "options": "Customer Group",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -1640,7 +1641,7 @@
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-02 00:41:47.718195",
+ "modified": "2026-04-06 13:14:53.288098",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",

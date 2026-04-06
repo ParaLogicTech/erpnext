@@ -472,7 +472,8 @@
    "hidden": 1,
    "label": "Customer Group",
    "options": "Customer Group",
-   "print_hide": 1
+   "print_hide": 1,
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -1852,7 +1853,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-01 04:40:30.500355",
+ "modified": "2026-04-06 13:17:48.155064",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",
