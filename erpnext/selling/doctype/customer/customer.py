@@ -70,13 +70,12 @@ class Customer(TransactionBase):
 		return self.customer_name
 
 	def validate(self):
-		self.flags.is_new_doc = self.is_new()
-
 		self.customer_name = clean_whitespace(self.customer_name)
+		self.check_customer_group_change()
+		self.validate_customer_group()
 		validate_party_accounts(self)
 		self.validate_credit_limit_on_change()
 		self.set_loyalty_program()
-		self.check_customer_group_change()
 		self.validate_default_bank_account()
 
 		self.validate_tax_id()
@@ -105,11 +104,15 @@ class Customer(TransactionBase):
 		self.validate_duplicate_mobile_no()
 
 	def check_customer_group_change(self):
-		frappe.flags.customer_group_changed = False
+		self.flags.customer_group_changed = False
+		if not self.is_new() and self.customer_group != self.db_get("customer_group"):
+			self.flags.customer_group_changed = True
 
-		if not self.get('__islocal'):
-			if self.customer_group != frappe.db.get_value('Customer', self.name, 'customer_group'):
-				frappe.flags.customer_group_changed = True
+	def validate_customer_group(self):
+		if self.is_new() or self.flags.customer_group_changed:
+			disable_selection = frappe.get_cached_value("Customer Group", self.customer_group, "disable_selection")
+			if cint(disable_selection):
+				frappe.throw(_("You are not allowed to select Customer Group {0}").format(frappe.bold(self.customer_group)))
 
 	def validate_default_bank_account(self):
 		if self.default_bank_account:

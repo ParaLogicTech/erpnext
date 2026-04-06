@@ -13,7 +13,7 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 		let me = this;
 
 		if (me.dialog.fields_dict["customer_group"]) {
-			me.dialog.fields_dict["customer_group"].df.get_query = {'name': ['!=', __("All Customer Groups")]};
+			me.dialog.fields_dict["customer_group"].df.get_query = {'disable_selection': 0};
 
 			me.dialog.fields_dict["customer_group"].df.onchange = () => {
 				erpnext.utils.set_customer_overrides(me.dialog);

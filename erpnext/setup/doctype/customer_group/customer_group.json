@@ -12,6 +12,7 @@
   "customer_group_name",
   "parent_customer_group",
   "is_group",
+  "disable_selection",
   "cb0",
   "default_price_list",
   "payment_terms",
@@ -171,6 +172,13 @@
    "fieldtype": "Select",
    "label": "Is Goodwill Customer",
    "options": "\nNo\nYes"
+  },
+  {
+   "default": "0",
+   "depends_on": "is_group",
+   "fieldname": "disable_selection",
+   "fieldtype": "Check",
+   "label": "Disable Selection"
   }
  ],
  "grid_page_length": 500,
@@ -178,7 +186,7 @@
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-08 14:26:10.032091",
+ "modified": "2026-04-06 13:13:09.678501",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Customer Group",

@@ -13,6 +13,9 @@ class CustomerGroup(NestedSet):
 		if not self.parent_customer_group:
 			self.parent_customer_group = get_root_of("Customer Group")
 
+		if not self.is_group:
+			self.disable_selection = 0
+
 	def on_update(self):
 		super(CustomerGroup, self).on_update()
 		self.validate_one_root()
