@@ -475,7 +475,7 @@ def check_credit_limit(customer, company, ignore_outstanding_sales_order=False, 
 		
 
 
-def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=False, cost_center=None):
+def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=False, cost_center=None, no_sum=False):
 	# Outstanding based on GL Entries
 
 	cond = ""
@@ -529,8 +529,10 @@ def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=F
 		if flt(dn_item.amount) > flt(si_amount) and dn_item.base_net_total:
 			outstanding_based_on_dn += ((flt(dn_item.amount) - flt(si_amount)) \
 				/ dn_item.base_net_total) * dn_item.base_grand_total
-
-	return outstanding_based_on_gle + outstanding_based_on_so + outstanding_based_on_dn
+	if not no_sum:
+		return outstanding_based_on_gle + outstanding_based_on_so + outstanding_based_on_dn
+	else:
+		return outstanding_based_on_gle, outstanding_based_on_so, outstanding_based_on_dn
 
 
 def get_credit_limit(customer, company):

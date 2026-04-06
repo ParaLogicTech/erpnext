@@ -19,20 +19,26 @@ def execute(filters=None):
 	for d in customer_list:
 		row = []
 
-		outstanding_amt = get_customer_outstanding(d.name, filters.get("company"),
-			ignore_outstanding_sales_order=d.bypass_credit_limit_check_at_sales_order)
+		outstanding_based_on_gle,  outstanding_based_on_so,  outstanding_based_on_dn = get_customer_outstanding(d.name, filters.get("company"),
+			ignore_outstanding_sales_order=d.bypass_credit_limit_check, no_sum=True)
+		
+		total_outstanding_amount = outstanding_based_on_gle+outstanding_based_on_so+outstanding_based_on_dn
 
 		credit_limit = get_credit_limit(d.name, filters.get("company"))
 
-		bal = flt(credit_limit) - flt(outstanding_amt)
+		bal = flt(credit_limit) - flt(total_outstanding_amount)
 
 		if customer_naming_type == "Naming Series":
-			row = [d.name, d.customer_name, credit_limit, outstanding_amt, bal,
+			row = [
+				d.name, d.customer_name, credit_limit, 
+				outstanding_based_on_gle, outstanding_based_on_so, 
+				outstanding_based_on_dn,  total_outstanding_amount, bal,
 				d.bypass_credit_limit_check, d.is_frozen,
           d.disabled]
 		else:
-			row = [d.name, credit_limit, outstanding_amt, bal,
-          d.bypass_credit_limit_check_at_sales_order, d.is_frozen, d.disabled]
+			row = [d.name, credit_limit, outstanding_based_on_gle, outstanding_based_on_so, 
+				outstanding_based_on_dn,  total_outstanding_amount, bal,
+          d.bypass_credit_limit_check, d.is_frozen, d.disabled]
 
 		if credit_limit:
 			data.append(row)
@@ -43,7 +49,10 @@ def get_columns(customer_naming_type):
 	columns = [
 		_("Customer") + ":Link/Customer:120",
 		_("Credit Limit") + ":Currency:120",
-		_("Outstanding Amt") + ":Currency:100",
+		_("General Ledger Outstanding Amt") + ":Currency:100",
+		_("Sales Order Outstanding Amt") + ":Currency:100",
+		_("Delivery Note Outstanding Amt") + ":Currency:100",
+		_("Total Outstanding Amt") + ":Currency:100",
 		_("Credit Balance") + ":Currency:120",
 		_("Bypass credit check at Sales Order ") + ":Check:80",
 		_("Is Frozen") + ":Check:80",
