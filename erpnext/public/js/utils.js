@@ -731,24 +731,30 @@ $.extend(erpnext.utils, {
 		dialog.show();
 	},
 
-	setup_projected_qty_formatter(doctype, fieldname) {
+	setup_projected_qty_formatter(doctype, fieldname, item_code_field=null, qty_field=null) {
 		let df = frappe.meta.get_docfield(doctype, fieldname);
 		if (df) {
-			erpnext.utils.set_projected_qty_link_formatter(df);
+			erpnext.utils.set_projected_qty_link_formatter(df, item_code_field, qty_field);
 		}
 	},
 
-	set_projected_qty_link_formatter(df) {
+	set_projected_qty_link_formatter(df, item_code_field=null, qty_field=null) {
+		item_code_field = item_code_field || "item_code";
+		qty_field = qty_field || "stock_qty";
+
 		df.formatter = (value, df, options, doc) => {
 			options = options || {};
 			options.css = {};
 
-			if (doc?.item_code) {
-				options.link_href = `/app/query-report/Stock Projected Qty?item_code=${encodeURIComponent(doc.item_code)}`;
+			let item_code = doc?.[item_code_field];
+			let qty = flt(doc?.[qty_field]);
+
+			if (item_code) {
+				options.link_href = `/app/query-report/Stock Projected Qty?item_code=${encodeURIComponent(item_code)}`;
 				options.link_target = "_blank";
 
-				let is_stock_item = doc.is_stock_item || doc.doctype == "Material Request Item";
-				if (is_stock_item && flt(doc.stock_qty) && flt(doc.stock_qty) > flt(doc[df.fieldname])) {
+				let is_stock_item = frappe.meta.has_field(df.parent, "is_stock_item") ? cint(doc.is_stock_item) : true;
+				if (is_stock_item && qty && qty > flt(doc[df.fieldname])) {
 					options.css['color'] = "var(--red-500)";
 				}
 			}
