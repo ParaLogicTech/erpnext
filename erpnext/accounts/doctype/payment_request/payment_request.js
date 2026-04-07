@@ -163,7 +163,7 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 	mode_of_payment() {
 		erpnext.utils.get_payment_mode_account(this.frm, this.frm.doc.mode_of_payment, (account) => {
 			this.frm.set_value("payment_account", account);
-		})
+		}, this.frm.doc.payment_request_type == "Inward" ? "incoming" : "outgoing")
 	}
 
 	make_payment_entry() {

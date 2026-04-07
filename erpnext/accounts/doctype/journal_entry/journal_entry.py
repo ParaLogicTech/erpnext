@@ -2,13 +2,14 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe, erpnext, json
-from frappe.utils import cstr, flt, fmt_money, formatdate, cint, get_link_to_form
-from frappe import msgprint, _, scrub
+from frappe import _, scrub
+from frappe.utils import cstr, flt, fmt_money, cint, get_link_to_form
 from erpnext.controllers.accounts_controller import AccountsController
 from erpnext.accounts.utils import get_balance_on, get_balance_on_voucher, get_account_currency
 from erpnext.accounts.party import get_party_account, get_party_name
 from erpnext.hr.doctype.expense_claim.expense_claim import update_reimbursed_amount
 from erpnext.accounts.doctype.invoice_discounting.invoice_discounting import get_party_account_based_on_invoice_discounting
+from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
 
 
 class JournalEntry(AccountsController):
@@ -726,7 +727,7 @@ class JournalEntry(AccountsController):
 	@frappe.whitelist()
 	def get_balance(self):
 		if not self.get('accounts'):
-			msgprint(_("'Entries' cannot be empty"), raise_exception=True)
+			frappe.msgprint(_("'Entries' cannot be empty"), raise_exception=True)
 		else:
 			self.total_debit, self.total_credit = 0, 0
 			diff = flt(self.difference, self.precision("difference"))
@@ -853,40 +854,24 @@ def get_default_bank_cash_account(
 	mode_of_payment=None,
 	pos_profile=None,
 	account=None,
+	direction="incoming",
 ):
-	from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
 	if mode_of_payment:
-		account = get_bank_cash_account(mode_of_payment, company, pos_profile=pos_profile).get("account")
+		account = get_mode_of_payment_account(mode_of_payment, company, pos_profile=pos_profile, direction=direction)
 
 	if not account:
-		'''
-			Set the default account first. If the user hasn't set any default account then, he doesn't
-			want us to set any random account. In this case set the account only if there is single
-			account (of that type), otherwise return empty dict.
-		'''
 		if account_type == "Bank":
 			account = frappe.get_cached_value('Company',  company,  "default_bank_account")
-			if not account:
-				account_list = frappe.get_all("Account", filters = {"company": company,
-					"account_type": "Bank", "is_group": 0})
-				if len(account_list) == 1:
-					account = account_list[0].name
-
 		elif account_type == "Cash":
 			account = frappe.get_cached_value('Company',  company,  "default_cash_account")
-			if not account:
-				account_list = frappe.get_all("Account", filters = {"company": company,
-					"account_type": "Cash", "is_group": 0})
-				if len(account_list) == 1:
-					account = account_list[0].name
 
 	if account:
-		account_details = frappe.db.get_value("Account", account,
-			["account_currency", "account_type"], as_dict=1)
+		account_details = frappe.get_cached_value("Account", account, [
+			"account_currency", "account_type"
+		], as_dict=1)
 
 		return frappe._dict({
 			"account": account,
-			"balance": get_balance_on(account),
 			"account_currency": account_details.account_currency,
 			"account_type": account_details.account_type
 		})

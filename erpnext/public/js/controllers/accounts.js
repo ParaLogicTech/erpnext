@@ -87,7 +87,7 @@ frappe.ui.form.on('Sales Invoice Payment', {
 		var d = locals[cdt][cdn];
 		erpnext.utils.get_payment_mode_account(frm, d.mode_of_payment, function(account){
 			frappe.model.set_value(cdt, cdn, 'account', account)
-		})
+		}, "incoming")
 	}
 });
 
@@ -101,7 +101,7 @@ frappe.ui.form.on('Purchase Invoice', {
 	mode_of_payment: function(frm) {
 		erpnext.utils.get_payment_mode_account(frm, frm.doc.mode_of_payment, function(account){
 			frm.set_value('cash_bank_account', account);
-		})
+		}, "outgoing")
 	},
 
 	payment_terms_template: function() {

@@ -13,6 +13,7 @@ from erpnext.accounts.doctype.payment_entry.payment_entry import get_company_def
 from erpnext.accounts.utils import get_advance_against_voucher_types
 from frappe.regional.regional import validate_mobile_no
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
+from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
 from payments.utils import get_payment_gateway_controller
 
 
@@ -34,7 +35,7 @@ class PaymentRequest(AccountsController):
 		self.set_cashier(force=True)
 
 	def validate(self):
-		self.set_missing_values()
+		self.set_missing_values(for_validate=True)
 		self.clear_payment_url()
 		self.validate_pos()
 		self.validate_reference_document()
@@ -216,7 +217,7 @@ class PaymentRequest(AccountsController):
 		self.set_reference_document_details()
 		self.set_payment_gateway_details()
 		self.set_pos_fields()
-		self.set_payment_account()
+		self.set_payment_account(for_validate=for_validate)
 		self.party_name = get_party_name(self.party_type, self.party)
 
 	def set_pos_fields(self):
@@ -276,9 +277,7 @@ class PaymentRequest(AccountsController):
 			if self.meta.has_field(k) and (not self.get(k) or k in self.force_fields):
 				self.set(k, v)
 
-	def set_payment_account(self):
-		from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
-
+	def set_payment_account(self, for_validate=False):
 		if self.payment_gateway_account:
 			gateway_account_doc = frappe.get_cached_doc("Payment Gateway Account", self.payment_gateway_account)
 			if gateway_account_doc.mode_of_payment:
@@ -287,7 +286,15 @@ class PaymentRequest(AccountsController):
 				self.payment_account = gateway_account_doc.payment_account
 
 		if (not self.payment_account or self.is_pos) and self.mode_of_payment:
-			account = get_bank_cash_account(self.mode_of_payment, self.company, pos_profile=self.pos_profile).get("account")
+			account = get_mode_of_payment_account(
+				self.mode_of_payment,
+				self.company,
+				pos_profile=self.pos_profile,
+				direction="incoming" if self.payment_request_type == "Inward" else "outgoing",
+			)
+			if not account and for_validate and self.pos_profile:
+				frappe.throw(_("Please configure account for Mode of Payment {0}").format(self.mode_of_payment))
+
 			self.payment_account = account
 
 	def clear_payment_url(self):

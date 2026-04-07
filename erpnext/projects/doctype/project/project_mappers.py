@@ -807,6 +807,7 @@ def make_payment_entry(
 		mode_of_payment=mode_of_payment,
 		pos_profile=pe.pos_profile,
 		account=bank_account,
+		direction="incoming" if pe.payment_type == "Receive" else "outgoing",
 	)
 	if not bank:
 		bank = get_default_bank_cash_account(
@@ -815,6 +816,7 @@ def make_payment_entry(
 			mode_of_payment=mode_of_payment,
 			pos_profile=pe.pos_profile,
 			account=bank_account,
+			direction="incoming" if pe.payment_type == "Receive" else "outgoing",
 		)
 
 	pe.paid_from = party_account if pe.payment_type == "Receive" else bank.account

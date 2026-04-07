@@ -563,6 +563,7 @@ class SalesInvoice(SellingController):
 
 	def validate_pos_payments(self):
 		if not self.is_pos:
+			self.payments = []
 			return
 
 		for d in self.payments:
@@ -634,6 +635,11 @@ class SalesInvoice(SellingController):
 
 		for i, d in enumerate(self.payments):
 			d.idx = i + 1
+
+		# Validate missing accounts
+		for d in self.payments:
+			if not d.account:
+				frappe.throw(_("Please configure account for Mode of Payment {0}").format(d.mode_of_payment))
 
 		# Set missing reference date
 		for d in self.payments:
@@ -1830,35 +1836,6 @@ def get_intercompany_ref_doctype(doctype):
 		frappe.throw(_("Inter Company Transaction for {0} not allowed").format(doctype))
 
 	return ref_doc
-
-
-@frappe.whitelist()
-def get_bank_cash_account(mode_of_payment, company, pos_profile=None, override_till_account=True):
-	account = None
-
-	if pos_profile:
-		pos_profile = frappe.get_cached_doc("POS Profile", pos_profile)
-		if pos_profile.till_account and cint(override_till_account):
-			account = pos_profile.till_account
-		elif mode_of_payment:
-			pos_mode_row = [d for d in pos_profile.payments if d.mode_of_payment == mode_of_payment]
-			pos_mode_row = pos_mode_row[0] if pos_mode_row else None
-			if pos_mode_row:
-				account = pos_mode_row.account
-
-	if not account and mode_of_payment:
-		mop_doc = frappe.get_cached_doc("Mode of Payment", mode_of_payment)
-		account_row = [d for d in mop_doc.accounts if d.company == company]
-		if account_row:
-			account = account_row[0].default_account
-
-	if not account and mode_of_payment:
-		frappe.throw(_("Please set default Cash or Bank account in Mode of Payment {0}")
-			.format(mode_of_payment))
-
-	return {
-		"account": account
-	}
 
 
 @frappe.whitelist()

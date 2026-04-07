@@ -841,25 +841,31 @@ $.extend(erpnext.utils, {
 		};
 	},
 
-	get_payment_mode_account(frm, mode_of_payment, callback) {
-		if(!frm.doc.company) {
+	get_payment_mode_account(frm, mode_of_payment, callback, direction) {
+		if (!frm.doc.company) {
 			frappe.throw({message:__("Please select a Company first."), title: __("Mandatory")});
 		}
 
-		if(!mode_of_payment) {
+		if (!mode_of_payment) {
 			return;
 		}
 
+		let pos_profile = frm.doc.pos_profile;
+		if (frappe.meta.has_field(frm.doctype, "is_pos") && !frm.doc.is_pos) {
+			pos_profile = null;
+		}
+
 		return frappe.call({
-			method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.get_bank_cash_account",
+			method: "erpnext.accounts.doctype.mode_of_payment.mode_of_payment.get_mode_of_payment_account",
 			args: {
 				"mode_of_payment": mode_of_payment,
 				"company": frm.doc.company,
-				"pos_profile": frm.doc.pos_profile,
+				"pos_profile": pos_profile,
+				"direction": direction || "incoming",
 			},
-			callback: function(r, rt) {
-				if(r.message) {
-					callback(r.message.account);
+			callback: function(r) {
+				if (!r.exc) {
+					callback(r.message);
 				}
 			}
 		});

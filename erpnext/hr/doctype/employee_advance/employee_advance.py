@@ -185,8 +185,12 @@ def make_bank_entry(dt, dn, is_advance_return=False):
 	is_advance_return = cint(is_advance_return)
 
 	doc = frappe.get_doc(dt, dn)
-	payment_account = get_default_bank_cash_account(doc.company, account_type="Cash",
-		mode_of_payment=doc.mode_of_payment)
+	payment_account = get_default_bank_cash_account(
+		doc.company,
+		account_type="Cash",
+		mode_of_payment=doc.mode_of_payment,
+		direction="incoming" if is_advance_return else "outgoing",
+	)
 
 	je = frappe.new_doc("Journal Entry")
 	je.posting_date = nowdate()
@@ -261,7 +265,7 @@ def make_multiple_bank_entries(names):
 	if not total_amount:
 		frappe.throw(_("No Payable Employee Advance selected"))
 
-	payment_account = get_default_bank_cash_account(je.company, account_type="Cash")
+	payment_account = get_default_bank_cash_account(je.company, account_type="Cash", direction="outgoing")
 	je.append("accounts", {
 		"account": payment_account.account,
 		"credit_in_account_currency": total_amount,

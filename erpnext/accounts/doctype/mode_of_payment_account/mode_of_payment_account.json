@@ -1,11 +1,13 @@
 {
+ "actions": [],
  "creation": "2015-01-05 14:17:53.101432",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "company",
-  "default_account"
+  "default_account",
+  "default_outgoing_account"
  ],
  "fields": [
   {
@@ -20,17 +22,28 @@
    "fieldname": "default_account",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Default Account",
+   "label": "Default Incoming Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "default_outgoing_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Default Outgoing Account",
    "options": "Account"
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
- "modified": "2020-03-03 15:42:15.495210",
+ "links": [],
+ "modified": "2026-04-06 16:37:26.650208",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Mode of Payment Account",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

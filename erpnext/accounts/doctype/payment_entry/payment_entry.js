@@ -458,7 +458,7 @@ frappe.ui.form.on('Payment Entry', {
 		erpnext.utils.get_payment_mode_account(frm, frm.doc.mode_of_payment, function(account){
 			var payment_account_field = frm.doc.payment_type == "Receive" ? "paid_to" : "paid_from";
 			frm.set_value(payment_account_field, account);
-		})
+		}, frm.doc.payment_type == "Receive" ? "incoming": "outgoing");
 	},
 
 	is_pos: function (frm) {

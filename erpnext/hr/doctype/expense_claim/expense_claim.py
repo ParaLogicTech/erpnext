@@ -384,9 +384,9 @@ def make_bank_entry(dt, dn):
 	from erpnext.accounts.doctype.journal_entry.journal_entry import get_default_bank_cash_account
 
 	expense_claim = frappe.get_doc(dt, dn)
-	default_bank_cash_account = get_default_bank_cash_account(expense_claim.company, "Bank")
+	default_bank_cash_account = get_default_bank_cash_account(expense_claim.company, "Bank", direction="outgoing")
 	if not default_bank_cash_account:
-		default_bank_cash_account = get_default_bank_cash_account(expense_claim.company, "Cash")
+		default_bank_cash_account = get_default_bank_cash_account(expense_claim.company, "Cash", direction="outgoing")
 
 	payable_amount = flt(expense_claim.outstanding_amount)
 	je = frappe.new_doc("Journal Entry")

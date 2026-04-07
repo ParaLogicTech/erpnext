@@ -1017,8 +1017,8 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "paid_amount",
-   "depends_on": "eval:doc.is_paid===1",
+   "collapsible_depends_on": "is_paid",
+   "depends_on": "is_paid",
    "fieldname": "payments_section",
    "fieldtype": "Section Break",
    "label": "Payments"
@@ -1893,7 +1893,7 @@
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-27 14:18:00.136628",
+ "modified": "2026-04-07 13:39:45.637527",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",

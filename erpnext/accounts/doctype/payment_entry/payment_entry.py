@@ -21,6 +21,7 @@ from erpnext.controllers.transaction_controller import validate_taxes_and_charge
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile, is_cashier
 from erpnext.accounts.utils import get_allow_cost_center_in_entry_of_bs_account
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
+from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
 from frappe.model.naming import make_autoname
 
 
@@ -62,7 +63,7 @@ class PaymentEntry(AccountsController):
 
 	def validate(self):
 		self.setup_party_account_field()
-		self.set_missing_values()
+		self.set_missing_values(for_validate=True)
 		self.validate_payment_type()
 		self.validate_pos()
 		self.validate_party_details()
@@ -255,8 +256,6 @@ class PaymentEntry(AccountsController):
 			self.pos_profile = None
 			return
 
-		from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
-
 		pos_profile = self.get("pos_profile")
 		if not pos_profile:
 			pos_profile = get_pos_profile(company=self.company, branch=self.get("branch"), user=self.cashier)
@@ -284,7 +283,15 @@ class PaymentEntry(AccountsController):
 				self.set_taxes_and_charges()
 
 			if self.mode_of_payment:
-				account = get_bank_cash_account(self.mode_of_payment, self.company, pos_profile=self.pos_profile).get("account")
+				account = get_mode_of_payment_account(
+					self.mode_of_payment,
+					self.company,
+					pos_profile=self.pos_profile,
+					direction="incoming" if self.payment_type == "Receive" else "outgoing",
+				)
+				if for_validate and not account:
+					frappe.throw(_("Please configure account for Mode of Payment {0}").format(self.mode_of_payment))
+
 				if self.payment_type == "Receive":
 					self.paid_to = account
 				else:
@@ -1682,6 +1689,7 @@ def get_payment_entry(
 		mode_of_payment=mode_of_payment,
 		pos_profile=pos_profile if is_pos else None,
 		account=bank_account,
+		direction="incoming" if payment_type == "Receive" else "outgoing",
 	)
 
 	if not bank:
@@ -1691,6 +1699,7 @@ def get_payment_entry(
 			mode_of_payment=mode_of_payment,
 			pos_profile=pos_profile if is_pos else None,
 			account=bank_account,
+			direction="incoming" if payment_type == "Receive" else "outgoing",
 		)
 
 	paid_amount = received_amount = 0

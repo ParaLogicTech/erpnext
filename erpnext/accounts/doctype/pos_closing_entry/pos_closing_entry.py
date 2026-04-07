@@ -9,6 +9,7 @@ from frappe.utils import flt, getdate, get_datetime, get_time, cint, cstr
 from frappe.model.document import Document
 from erpnext.accounts.doctype.pos_opening_entry.pos_opening_entry import get_pos_opening_entry
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_document_dimensions
+from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
 
 
 class POSClosingEntry(Document):
@@ -301,13 +302,17 @@ class POSClosingEntry(Document):
 			d.idx = i+1
 
 	def set_accounts(self):
-		from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
-
 		self.head_cashier_account = frappe.get_cached_value("POS Profile", self.pos_profile, "head_cashier_account")
 		self.till_difference_account = frappe.get_cached_value("POS Profile", self.pos_profile, "till_difference_account")
 
 		for d in self.payment_reconciliation:
-			d.account = get_bank_cash_account(d.mode_of_payment, self.company, self.pos_profile, override_till_account=False).get("account")
+			d.account = get_mode_of_payment_account(
+				d.mode_of_payment,
+				self.company,
+				self.pos_profile,
+				override_till_account=False,
+				direction="incoming",
+			)
 			if not d.account:
 				frappe.throw(_("Please configure account for Mode of Payment {0}").format(d.mode_of_payment))
 

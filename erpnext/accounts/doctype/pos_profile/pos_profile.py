@@ -112,12 +112,17 @@ def pos_profile_query(doctype, txt, searchfield, start, page_len, filters):
 	return pos_profile
 
 
-def set_account_for_mode_of_payment(self, force=False):
-	from erpnext.accounts.doctype.sales_invoice.sales_invoice import get_bank_cash_account
-	pos_profile = self.get("pos_profile") if self.doctype != "POS Profile" else None
-	for data in self.payments:
+def set_account_for_mode_of_payment(doc, force=False):
+	from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
+	pos_profile = doc.get("pos_profile") if doc.doctype != "POS Profile" else None
+	for data in doc.payments:
 		if not data.account or force:
-			data.account = get_bank_cash_account(data.mode_of_payment, self.company, pos_profile=pos_profile).get("account")
+			data.account = get_mode_of_payment_account(
+				data.mode_of_payment,
+				doc.company,
+				pos_profile=pos_profile,
+				direction="incoming",
+			)
 
 
 @frappe.whitelist()
