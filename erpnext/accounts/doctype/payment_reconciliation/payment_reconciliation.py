@@ -288,4 +288,5 @@ def reconcile_dr_cr_note(dr_cr_notes, company):
 		for dimension_field in accounting_dimensions:
 			jv.set(dimension_field, voucher_doc.get(dimension_field))
 
+		jv.flags.ignore_mandatory_dimension = True
 		jv.submit()

@@ -106,6 +106,7 @@ def make_depreciation_entry(asset_name, date=None):
 			je.append("accounts", debit_entry)
 
 			je.flags.ignore_permissions = True
+			je.flags.ignore_mandatory_dimension = True
 			je.save()
 			if not je.meta.get_workflow():
 				je.submit()
@@ -180,6 +181,7 @@ def scrap_asset(asset_name):
 		je.append("accounts", entry)
 
 	je.flags.ignore_permissions = True
+	je.flags.ignore_mandatory_dimension = True
 	je.submit()
 
 	frappe.db.set_value("Asset", asset_name, "disposal_date", today())

@@ -689,7 +689,7 @@ class JournalEntry(AccountsController):
 				cancel=cancel,
 				adv_adj=adv_adj,
 				merge_entries=False,
-				ignore_mandatory_dimension=self.voucher_type == "Depreciation Entry",
+				ignore_mandatory_dimension=self.flags.ignore_mandatory_dimension,
 			)
 
 	def get_gl_entries(self):
