@@ -131,6 +131,16 @@ class Project(StatusUpdaterERP):
 		self.update_appointment()
 
 	def on_status_change(self):
+		if self.status == "Cancelled":
+			if self.tasks_status not in ('No Tasks', 'Completed'):
+				frappe.throw(_("Cannot cancel because there are pending tasks against {0}. Please cancel or complete tasks first").format(self.name))
+			if self.billing_status != 'Not Applicable':
+				frappe.throw(_("Cannot cancel because there are billable orders against {0}. Please cancel or close orders first").format(self.name))
+			if self.delivery_status not in ('Not Applicable', 'Fully Delivered'):
+				frappe.throw(_("Cannot cancel because there are pending materials to be issued against {0}. Please cancel or close orders first").format(self.name))
+			if self.procurement_status not in ('Not Applicable', 'Fully Received'):
+				frappe.throw(_("Cannot cancel because there are open procurement orders against {0}. Please cancel or close orders first").format(self.name))
+
 		if self.status in ("Completed", "Closed", "Cancelled") or self.ready_to_close:
 			self.check_incomplete_tasks()
 
