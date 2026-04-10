@@ -561,10 +561,10 @@ def make_timesheet(source_name, target_doc=None, ignore_permissions=False):
 		})
 
 	doclist = get_mapped_doc("Task", source_name, {
-			"Task": {
-				"doctype": "Timesheet"
-			}
-		}, target_doc, postprocess=set_missing_values, ignore_permissions=ignore_permissions)
+		"Task": {
+			"doctype": "Timesheet"
+		}
+	}, target_doc, postprocess=set_missing_values, ignore_permissions=ignore_permissions)
 
 	return doclist
 
@@ -822,7 +822,7 @@ def edit_task(
 	exp_end_date=None,
 	additional_values=None,
 ):
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
 	task_doc.check_permission("write")
 
 	if not subject:
@@ -899,14 +899,9 @@ def set_additional_task_values(task_doc, additional_values):
 
 @frappe.whitelist()
 def start_task(task):
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
+	check_task_assigned(task_doc, throw=True)
 	task_doc.check_clocking_permission()
-
-	if not task_doc.assigned_to:
-		frappe.throw(_("{0} is not set for {0}").format(
-			task.meta.get_label("assigned_to"),
-			get_link(task_doc)
-		))
 
 	if task_doc.status != "Open":
 		frappe.throw(_("Cannot start {0} because its status is {1}").format(
@@ -917,7 +912,7 @@ def start_task(task):
 	check_assigned_to_availability(task_doc.assigned_to, throw=True)
 	check_employee_attendance(task_doc.assigned_to, throw=True)
 
-	add_timesheet_log(task_doc.name, task_doc.assigned_to, project=task_doc.project)
+	add_timesheet_log(task_doc)
 
 	task_doc.status = "Working"
 	task_doc.save(ignore_permissions=True)
@@ -929,7 +924,7 @@ def start_task(task):
 
 @frappe.whitelist()
 def pause_task(task):
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
 	task_doc.check_clocking_permission()
 
 	if task_doc.status != "Working":
@@ -953,7 +948,8 @@ def _pause_task(task_doc, ignore_permissions=False):
 
 @frappe.whitelist()
 def resume_task(task):
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
+	check_task_assigned(task_doc, throw=True)
 	task_doc.check_clocking_permission()
 
 	if task_doc.status != "On Hold":
@@ -965,7 +961,7 @@ def resume_task(task):
 	check_assigned_to_availability(task_doc.assigned_to, throw=True)
 	check_employee_attendance(task_doc.assigned_to, throw=True)
 
-	add_timesheet_log(task_doc.name, task_doc.assigned_to, project=task_doc.project)
+	add_timesheet_log(task_doc)
 
 	task_doc.status = "Working"
 	task_doc.save(ignore_permissions=True)
@@ -977,7 +973,7 @@ def resume_task(task):
 
 @frappe.whitelist()
 def complete_task(task):
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
 	task_doc.check_clocking_permission()
 
 	if task_doc.status not in ("Working", "On Hold"):
@@ -998,7 +994,7 @@ def complete_task(task):
 
 @frappe.whitelist()
 def cancel_task(task):
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
 	task_doc.check_permission("write")
 
 	if task_doc.status != "Open":
@@ -1018,7 +1014,7 @@ def cancel_task(task):
 
 @frappe.whitelist()
 def reopen_task(task):
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
 	task_doc.check_clocking_permission()
 
 	if task_doc.status not in ["Completed", "Cancelled"]:
@@ -1045,7 +1041,7 @@ def reopen_task(task):
 def split_task(task, expected_time=None):
 	frappe.has_permission("Task", "create", throw=True)
 
-	ref_task = frappe.get_doc("Task", task)
+	ref_task = frappe.get_doc("Task", task, for_update=True)
 	ref_task.check_permission("write")
 
 	# Update expected time
@@ -1087,7 +1083,7 @@ def split_task(task, expected_time=None):
 
 @frappe.whitelist()
 def update_task_remarks(task, remarks=None):
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
 	task_doc.check_clocking_permission()
 
 	task_doc.remarks = remarks
@@ -1103,7 +1099,7 @@ def update_task_checklist(task, task_checklist=None):
 	if isinstance(task_checklist, str):
 		task_checklist = json.loads(task_checklist)
 
-	task_doc = frappe.get_doc("Task", task)
+	task_doc = frappe.get_doc("Task", task, for_update=True)
 	task_doc.check_clocking_permission()
 
 	task_doc.set_missing_checklist()
@@ -1115,29 +1111,38 @@ def update_task_checklist(task, task_checklist=None):
 	), alert=True, indicator="green")
 
 
-def add_timesheet_log(task, assigned_to, project=None):
+def add_timesheet_log(task_doc):
+	check_task_assigned(task_doc, throw=True)
+
 	filters = {
-		"employee": assigned_to,
+		"company": task_doc.company,
+		"employee": task_doc.assigned_to,
 		"docstatus": 0,
 	}
 
-	if project:
-		filters["project"] = project
+	if task_doc.branch:
+		filters["branch"] = task_doc.branch
+
+	if task_doc.project:
+		filters["project"] = task_doc.project
 	else:
-		filters["task"] = project
+		filters["task"] = task_doc.name
 		filters["project"] = ["is", "not set"]
 
 	existing_timesheet = frappe.get_all("Timesheet", filters=filters, pluck="name")
 
 	if existing_timesheet:
-		ts_doc = frappe.get_doc("Timesheet", existing_timesheet[0])
+		ts_doc = frappe.get_doc("Timesheet", existing_timesheet[0], for_update=True)
 	else:
 		ts_doc = frappe.new_doc("Timesheet")
-		ts_doc.employee = assigned_to
+		ts_doc.company = task_doc.company
+		ts_doc.employee = task_doc.assigned_to
+		if task_doc.branch:
+			ts_doc.branch = task_doc.branch
 
 	ts_doc.append("time_logs", {
-		"task": task,
-		"project": project,
+		"task": task_doc.name,
+		"project": task_doc.project,
 		"from_time": get_datetime(),
 		"to_time": None,
 	})
@@ -1147,20 +1152,12 @@ def add_timesheet_log(task, assigned_to, project=None):
 
 
 def stop_timesheet_log(task, assigned_to, completed):
-	running_timesheets = frappe.db.sql_list("""
-		SELECT distinct ts.name
-		FROM `tabTimesheet Detail` tsd
-		INNER JOIN tabTimesheet ts ON ts.name = tsd.parent
-		WHERE ifnull(tsd.to_time, '') = ''
-			AND ts.employee = %(assigned_to)s
-			AND tsd.task = %(task)s
-	""", {
-		"task": task,
-		"assigned_to": assigned_to,
-	})
+	if not task or not assigned_to:
+		return
 
+	running_timesheets = get_running_timesheets(employee=assigned_to, task=task)
 	for name in running_timesheets:
-		ts_doc = frappe.get_doc("Timesheet", name)
+		ts_doc = frappe.get_doc("Timesheet", name, for_update=True)
 
 		running_task_logs = [tl for tl in ts_doc.time_logs if tl.task == task and not tl.to_time]
 		for tl in running_task_logs:
@@ -1169,6 +1166,50 @@ def stop_timesheet_log(task, assigned_to, completed):
 
 		ts_doc.flags.do_not_update_task = True
 		ts_doc.save(ignore_permissions=True)
+
+
+def get_running_timesheets(employee=None, project=None, task=None):
+	parent_join = ""
+	if employee:
+		parent_join = "INNER JOIN tabTimesheet ts ON ts.name = tsd.parent"
+
+	conditions = [
+		"tsd.docstatus < 2",
+		"tsd.to_time is null",
+	]
+
+	if employee:
+		conditions.append("ts.employee = %(employee)s")
+	if project:
+		conditions.append("tsd.project = %(project)s")
+	if task:
+		conditions.append("tsd.task = %(task)s")
+
+	conditions_str = " AND ".join(conditions)
+
+	return frappe.db.sql_list(f"""
+		SELECT DISTINCT tsd.parent
+		FROM `tabTimesheet Detail` tsd
+		{parent_join}
+		WHERE {conditions_str}
+	""", {
+		"employee": employee,
+		"project": project,
+		"task": task,
+	})
+
+
+def check_task_assigned(task_doc, throw=False):
+	if task_doc.assigned_to:
+		return True
+
+	if throw:
+		frappe.throw(_("{0} is not set for {0}").format(
+			task_doc.meta.get_label("assigned_to"),
+			get_link(task_doc)
+		))
+
+	return False
 
 
 def check_assigned_to_availability(employee, throw=False):

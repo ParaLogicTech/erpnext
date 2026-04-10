@@ -172,7 +172,6 @@
   {
    "fieldname": "exp_start_date",
    "fieldtype": "Date",
-   "in_preview": 1,
    "label": "Expected Start Date",
    "oldfieldname": "exp_start_date",
    "oldfieldtype": "Date"
@@ -324,6 +323,7 @@
   },
   {
    "fetch_from": "project.company",
+   "fetch_if_empty": 1,
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -438,6 +438,7 @@
   },
   {
    "fetch_from": "project.branch",
+   "fetch_if_empty": 1,
    "fieldname": "branch",
    "fieldtype": "Link",
    "label": "Branch",
@@ -448,6 +449,7 @@
    "fieldname": "task_type",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Task Type",
    "options": "Task Type"
@@ -516,6 +518,7 @@
   },
   {
    "fetch_from": "project.cost_center",
+   "fetch_if_empty": 1,
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "label": "Cost Center",
@@ -562,7 +565,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-12-28 22:56:31.003327",
+ "modified": "2026-04-10 17:02:16.824341",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",
@@ -592,7 +595,7 @@
  ],
  "quick_entry": 1,
  "row_format": "Dynamic",
- "search_fields": "subject",
+ "search_fields": "subject, task_type, project, status",
  "show_name_in_global_search": 1,
  "show_preview_popup": 1,
  "sort_field": "modified",
