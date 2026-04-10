@@ -1168,6 +1168,42 @@ def stop_timesheet_log(task, assigned_to, completed):
 		ts_doc.save(ignore_permissions=True)
 
 
+def split_running_timelogs(employee=None, project=None, task=None):
+	running_timesheets = get_running_timesheets(employee, project, task)
+
+	for name in running_timesheets:
+		ts_doc = frappe.get_doc("Timesheet", name, for_update=True)
+		if employee and ts_doc.employee != employee:
+			continue
+
+		running_timelogs = []
+		for tl in ts_doc.time_logs:
+			if tl.to_time:
+				continue
+			if project and tl.project != project:
+				continue
+			if task and tl.task != task:
+				continue
+
+			running_timelogs.append(tl)
+
+		for tl_1 in running_timelogs:
+			tl_1.to_time = now_datetime()
+			tl_1.completed = 0
+
+			tl_2 = frappe.copy_doc(tl_1, ignore_no_copy=False)
+			tl_2.idx = None
+			tl_2.from_time = tl_1.to_time
+			tl_2.to_time = None
+			tl_2.hours = 0
+			tl_2.completed = 0
+
+			ts_doc.append("time_logs", tl_2)
+
+		ts_doc.flags.do_not_update_task = True
+		ts_doc.save(ignore_permissions=True)
+
+
 def get_running_timesheets(employee=None, project=None, task=None):
 	parent_join = ""
 	if employee:
