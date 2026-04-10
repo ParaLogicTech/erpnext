@@ -51,7 +51,7 @@ class SalesOrder(SellingController):
 		super(SalesOrder, self).validate()
 		self.validate_delivery_date()
 		self.validate_po()
-		self.validate_project_customer()
+		self.validate_project()
 		self.validate_for_items()
 		self.validate_warehouse()
 		self.validate_drop_ship()

@@ -29,6 +29,7 @@ class Quotation(SellingController):
 		super(Quotation, self).validate()
 		self.validate_quotation_valid_till()
 		self.validate_delivery_date()
+		self.validate_project()
 		self.validate_previous_orders()
 		self.validate_campaign()
 		self.validate_warehouse()

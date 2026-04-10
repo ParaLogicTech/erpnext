@@ -37,7 +37,7 @@ class DeliveryNote(SellingController):
 		super(DeliveryNote, self).validate()
 		self.validate_order_required()
 		self.check_sales_order_on_hold_or_close()
-		self.validate_project_customer()
+		self.validate_project()
 		self.validate_warehouse()
 		self.validate_campaign()
 		self.set_unbilled_stock_account()

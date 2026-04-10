@@ -55,7 +55,7 @@ class SalesInvoice(SellingController):
 
 		self.validate_order_required()
 		self.validate_stin()
-		self.validate_project_customer()
+		self.validate_project()
 		self.check_sales_order_on_hold_or_close()
 		self.validate_debit_to_acc()
 

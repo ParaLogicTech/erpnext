@@ -1049,7 +1049,7 @@ class Project(StatusUpdaterERP):
 		for prev in previous_rows:
 			cant_change = prev.has_sales_order
 			if cant_change and prev.name not in current_row_names:
-				frappe.throw(_("Cannot remove Service Template <b>{0}</b>: {1} because it has a Sales Order against it").format(
+				frappe.throw(_("Cannot remove Service Template {0}: {1} because it has a Sales Order against it").format(
 					frappe.bold(prev.service_template), prev.service_template_name
 				))
 

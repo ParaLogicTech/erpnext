@@ -827,29 +827,24 @@ class SellingController(TransactionController):
 			if not frappe.get_cached_value("Transaction Type", self.transaction_type, 'selling'):
 				frappe.throw(_("Transaction Type {0} is not allowed for sales transactions").format(frappe.bold(self.transaction_type)))
 
-	def validate_project_customer(self):
+	def validate_project(self):
 		if not self.get("project"):
 			return
 
-		project_details = frappe.db.get_value("Project", self.project, ["customer", "bill_to"], as_dict=1)
+		project_details = frappe.db.get_value("Project", self.project, ["customer", "status"], as_dict=1)
+
+		if not project_details:
+			frappe.throw(_("{0} does not exist").format(self.project))
+
+		if project_details.status == "Cancelled":
+			frappe.throw(_("{0} is cancelled").format(
+				frappe.get_desk_link("Project", self.project)
+			))
+
 		if project_details.customer and self.customer != project_details.customer:
 			frappe.throw(_("Customer {0} does not belong to {1}").format(
 				frappe.bold(self.customer), frappe.get_desk_link("Project", self.project)
 			))
-
-		# ALLOWING non-project bill to for split billing
-		# if self.meta.has_field("bill_to"):
-		# 	trn_bill_to = self.bill_to or self.customer
-		# 	allowed_bill_to = []
-		# 	if project_details.bill_to:
-		# 		allowed_bill_to.append(project_details.bill_to)
-		# 	if project_details.customer:
-		# 		allowed_bill_to.append(project_details.customer)
-		#
-		# 	if allowed_bill_to and trn_bill_to not in allowed_bill_to:
-		# 		frappe.throw(_("Bill To {0} does not belong to {1}").format(
-		# 			frappe.bold(trn_bill_to), frappe.get_desk_link("Project", self.project)
-		# 		))
 
 	def update_project_billing_and_sales(self, material_cost_of_sales=False, validate_insurance_excess=False):
 		projects = []
