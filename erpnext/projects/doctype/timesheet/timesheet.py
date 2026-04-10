@@ -52,10 +52,12 @@ class Timesheet(Document):
 
 	def set_hours_and_to_time(self, row):
 		if row.from_time:
-			if row.hours:
-				row.to_time = get_datetime(add_to_date(row.from_time, hours=row.hours, as_datetime=True))
 			if row.to_time:
+				row.to_time = get_datetime(row.to_time)
 				row.hours = time_diff_in_hours(row.to_time, row.from_time)
+			elif row.hours:
+				row.hours = flt(row.hours)
+				row.to_time = get_datetime(add_to_date(row.from_time, hours=row.hours, as_datetime=True))
 
 	def set_activity_cost(self, force=False):
 		for d in self.time_logs:
@@ -157,41 +159,70 @@ class Timesheet(Document):
 			for task in tasks:
 				doc = frappe.get_doc("Task", task)
 				doc.set_time_and_costing(update=True)
+				doc.notify_update()
 
 		for project in projects:
 			doc = frappe.get_doc("Project", project)
 			doc.set_timesheet_values(update=True)
 			doc.set_gross_margin(update=True)
+			doc.notify_update()
 
 	def validate_overlap_for_timelog(self, row):
 		if not row.from_time and not row.to_time:
 			return
 
 		if row.from_time and row.to_time:
-			overlap_condition = "(%(from_time)s < tsd.to_time OR tsd.to_time is null) AND %(to_time)s > tsd.from_time"
+			overlap_condition = "(tsd.to_time is null OR %(from_time)s < tsd.to_time) AND %(to_time)s > tsd.from_time"
 		elif row.from_time:
-			overlap_condition = "%(from_time)s >= tsd.from_time AND (%(from_time)s < tsd.to_time or tsd.to_time is null)"
+			overlap_condition = "%(from_time)s > tsd.from_time AND (tsd.to_time is null OR %(from_time)s < tsd.to_time)"
 		else:
 			return
 
-		existing = frappe.db.sql(f"""
-			SELECT tsd.parent, tsd.idx
-			FROM `tabTimesheet Detail` tsd
-			LEFT JOIN `tabTimesheet` ts On ts.name = tsd.parent
-			WHERE ts.docstatus < 2
-				AND tsd.name != %(row_name)s
-				AND ts.employee = %(employee)s
-				AND {overlap_condition}
-		""", {
-			"employee": self.employee,
-			"row_name": row.name,
-			"from_time": get_datetime(row.from_time),
-			"to_time": get_datetime(row.to_time),
-		}, as_dict=1)
+		overlap = None
+		for tsd in self.time_logs:
+			if tsd == row:
+				continue
 
-		if existing:
-			frappe.throw(_("Row {0}: From Time and To Time of {1} is overlapping with Row {2} of {3}")
-				.format(row.idx, self.name, existing[0].idx, existing[0].parent), OverlapError)
+			if row.from_time and row.to_time:
+				if (
+					(not tsd.to_time or get_datetime(row.from_time) < get_datetime(tsd.to_time))
+					and get_datetime(row.to_time) > get_datetime(tsd.from_time)
+				):
+					overlap = tsd
+					break
+			elif row.from_time:
+				if (
+					get_datetime(row.from_time) > get_datetime(tsd.from_time)
+					and (not tsd.to_time or get_datetime(row.from_time) < get_datetime(tsd.to_time))
+				):
+					overlap = tsd
+					break
+
+		if not overlap:
+			overlap = frappe.db.sql(f"""
+				SELECT tsd.parent, tsd.idx, tsd.from_time, tsd.to_time
+				FROM `tabTimesheet Detail` tsd
+				LEFT JOIN `tabTimesheet` ts On ts.name = tsd.parent
+				WHERE ts.docstatus < 2
+					AND ts.name != %(name)s
+					AND ts.employee = %(employee)s
+					AND {overlap_condition}
+			""", {
+				"employee": self.employee,
+				"name": self.name,
+				"from_time": get_datetime(row.from_time),
+				"to_time": get_datetime(row.to_time),
+			}, as_dict=1)
+			overlap = overlap[0] if overlap else None
+
+		if overlap:
+			frappe.throw(_("Row {0}: {1} Timesheet Logs for Employee {2} is overlapping with Row {3} of {4}").format(
+				row.idx,
+				self.name,
+				frappe.bold(self.employee_name or self.employee),
+				overlap.idx,
+				overlap.parent,
+			), OverlapError)
 
 
 @frappe.whitelist()

@@ -68,11 +68,13 @@
    "set_only_once": 1
   },
   {
+   "fetch_from": "employee.company",
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company",
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "reqd": 1
   },
   {
    "fieldname": "sales_invoice",
@@ -271,7 +273,6 @@
    "fetch_from": "employee.designation",
    "fieldname": "designation",
    "fieldtype": "Link",
-   "in_standard_filter": 1,
    "label": "Designation",
    "options": "Designation",
    "read_only": 1
@@ -286,6 +287,7 @@
   },
   {
    "fetch_from": "employee.branch",
+   "fetch_if_empty": 1,
    "fieldname": "branch",
    "fieldtype": "Link",
    "label": "Branch",
@@ -310,12 +312,13 @@
    "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-clock-o",
  "idx": 1,
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-02 18:46:05.384269",
+ "modified": "2026-04-10 00:58:23.761782",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Timesheet",
@@ -382,6 +385,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": [],
