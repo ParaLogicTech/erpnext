@@ -151,7 +151,10 @@ def get_employee_details(employee):
 
 
 def override_sales_person_dashboard(data):
-	data['non_standard_fieldnames']['Customer'] = 'account_manager'
+	if "non_standard_fieldnames" not in data:
+		data['non_standard_fieldnames'] = {}
+
+	data["non_standard_fieldnames"]["Customer"] = "account_manager"
 
 	data["transactions"].insert(0, {
 		"label": _("Sales"),
