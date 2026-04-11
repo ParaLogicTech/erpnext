@@ -151,6 +151,8 @@ def get_employee_details(employee):
 
 
 def override_sales_person_dashboard(data):
+	data['non_standard_fieldnames']['Customer'] = 'account_manager'
+
 	data["transactions"].insert(0, {
 		"label": _("Sales"),
 		"items": ["Sales Order", "Delivery Note", "Sales Invoice"]
