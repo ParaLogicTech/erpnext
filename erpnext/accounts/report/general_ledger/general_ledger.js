@@ -264,6 +264,11 @@ frappe.query_reports["General Ledger"] = {
 			on_change: function() { }
 		},
 		{
+			fieldname: "show_items",
+			label: __("Show Items in Print"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "tax_id",
 			label: __("Tax Id"),
 			fieldtype: "Data",

@@ -6,7 +6,7 @@ from frappe import _
 from frappe.utils import getdate, cstr, flt
 from erpnext import get_default_company
 from erpnext.accounts.report.utils import get_currency, convert_to_presentation_currency
-from erpnext.accounts.utils import get_account_currency
+from erpnext.accounts.utils import get_account_currency, get_additional_sales_invoice_no_fields
 from erpnext.accounts.party import set_party_name_in_list
 from erpnext.accounts.doctype.account.account import get_accounts_with_children
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
@@ -76,6 +76,8 @@ def validate_filters(filters, account_details):
 		# filters.party = frappe.parse_json(filters.get("party"))
 		if isinstance(filters.party, str):
 			filters.party = [filters.party]
+
+	filters.additional_sales_invoice_no_fields = get_additional_sales_invoice_no_fields()
 
 
 def validate_party(filters):
@@ -162,15 +164,17 @@ def set_account_currency(filters):
 def get_result(filters, account_details, accounting_dimensions):
 	gl_entries = get_gl_entries(filters, accounting_dimensions)
 
-	supplier_invoice_details = get_supplier_invoice_details()
+	voucher_nos = set((d.voucher_type, d.voucher_no) for d in gl_entries)
+	supplier_invoice_no_map = get_supplier_invoice_nos(voucher_nos)
+	invoice_details = get_invoice_details(filters, voucher_nos)
 
 	if not filters.get('merge_similar_entries'):
-		if supplier_invoice_details:
+		if supplier_invoice_no_map:
 			for gle in gl_entries:
-				gle['against_bill_no'] = supplier_invoice_details.get((gle.get('against_voucher_type'), gle.get('against_voucher')), '')
+				gle['against_bill_no'] = supplier_invoice_no_map.get((gle.get('against_voucher_type'), gle.get('against_voucher')), '')
 
 	if filters.get('merge_similar_entries'):
-		gl_entries = merge_similar_entries(filters, gl_entries, supplier_invoice_details)
+		gl_entries = merge_similar_entries(filters, gl_entries, supplier_invoice_no_map)
 
 	set_party_name_in_list(gl_entries)
 	for gle in gl_entries:
@@ -179,6 +183,16 @@ def get_result(filters, account_details, accounting_dimensions):
 			filters['show_party'] = True
 		if gle.get('party') and gle.get('party_name') and gle.get('party') != gle.get('party_name'):
 			filters['show_party_name'] = True
+
+		if gle.voucher_type == "Sales Invoice":
+			for f in filters.additional_sales_invoice_no_fields:
+				gle[f] = invoice_details.get((gle.voucher_type, gle.voucher_no), {}).get(f)
+				if not gle.get("reference_no") and gle[f]:
+					gle["reference_no"] = gle[f]
+
+		invoice_items = invoice_details.get((gle.voucher_type, gle.voucher_no), {}).get("invoice_items")
+		if invoice_items:
+			gle["invoice_items"] = invoice_items
 
 	group_by = []
 
@@ -532,12 +546,74 @@ def get_totals_dict():
 	)
 
 
-def get_supplier_invoice_details():
+def get_supplier_invoice_nos(voucher_nos):
 	inv_details = {}
-	for voucher_type in ['Purchase Invoice', 'Journal Entry']:
-		for d in frappe.db.sql("""select name, bill_no from `tab{0}`
-				where docstatus = 1 and bill_no is not null and bill_no != ''""".format(voucher_type), as_dict=1):
-			inv_details[(voucher_type, d.name)] = d.bill_no
+	for doctype in ["Purchase Invoice", "Landed Cost Voucher", "Journal Entry"]:
+		names = [voucher_no for voucher_type, voucher_no in voucher_nos if voucher_type == doctype]
+		if not names:
+			continue
+
+		data = frappe.db.sql(f"""
+			select name, bill_no
+			from `tab{doctype}`
+			where name in %s and bill_no is not null and bill_no != ''
+		""", [names], as_dict=1)
+
+		for d in data:
+			inv_details[(doctype, d.name)] = d.bill_no
+
+	return inv_details
+
+
+def get_invoice_details(filters, voucher_nos):
+	inv_details = {}
+
+	additional_sinv_fields_str = ", ".join(filters.additional_sales_invoice_no_fields)
+	additional_sinv_fields_str = f", {additional_sinv_fields_str}" if additional_sinv_fields_str else ""
+
+	sales_invoices = [voucher_no for voucher_type, voucher_no in voucher_nos if voucher_type == "Sales Invoice"]
+
+	if additional_sinv_fields_str and sales_invoices:
+		sinv_data = frappe.db.sql(f"""
+			select name {additional_sinv_fields_str}
+			from `tabSales Invoice`
+			where name in %s
+		""", [sales_invoices], as_dict=1)
+
+		for d in sinv_data:
+			obj = inv_details.setdefault(("Sales Invoice", d.name), frappe._dict({"name": d.name}))
+			obj.update(d)
+
+	if filters.get("show_items"):
+		purchase_invoices = [voucher_no for voucher_type, voucher_no in voucher_nos if voucher_type == "Purchase Invoice"]
+
+		sources = {
+			"Sales Invoice": sales_invoices,
+			"Purchase Invoice": purchase_invoices,
+		}
+
+		for doctype, names in sources.items():
+			if not names:
+				continue
+
+			items_data = frappe.db.sql(f"""
+				select 
+					i.parent,
+					i.item_code,
+					i.item_name,
+					sum(i.qty) as qty,
+					i.uom,
+					sum(i.net_amount) / sum(i.qty) as net_rate,
+					sum(i.net_amount) as net_amount
+				from `tab{doctype} Item` i
+				where parent in %s
+				group by i.parent, i.item_code, i.item_name, i.uom
+				order by idx
+			""", [names], as_dict=1)
+
+			for d in items_data:
+				obj = inv_details.setdefault((doctype, d.parent), frappe._dict({"name": d.name}))
+				obj.setdefault("invoice_items", []).append(d)
 
 	return inv_details
 

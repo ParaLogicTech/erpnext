@@ -1118,3 +1118,9 @@ def format_cost_center(cost_center, default=None):
 		return frappe.get_cached_value("Cost Center", cost_center, "cost_center_name") or cost_center
 	else:
 		return cstr(default)
+
+
+def get_additional_sales_invoice_no_fields():
+	fields = frappe.get_hooks("additional_sales_invoice_no_fields") or []
+	fields = [f for f in fields if frappe.get_meta("Sales Invoice").has_field(f)]
+	return fields

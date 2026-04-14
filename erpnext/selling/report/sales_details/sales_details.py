@@ -7,6 +7,7 @@ from frappe.utils import getdate, nowdate, flt, cint, cstr
 from frappe.desk.query_report import group_report_data
 from erpnext import get_default_currency
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+from erpnext.accounts.utils import get_additional_sales_invoice_no_fields
 
 
 def execute(filters=None):
@@ -24,6 +25,11 @@ class SalesPurchaseDetailsReport(object):
 
 		self.doc_meta = frappe.get_meta(self.filters.doctype)
 		self.item_meta = frappe.get_meta(self.filters.doctype + " Item")
+
+		self.additional_sales_invoice_no_fields = []
+		self.has_additional_sales_invoice_no = set()
+		if self.filters.doctype == "Sales Invoice":
+			self.additional_sales_invoice_no_fields = get_additional_sales_invoice_no_fields()
 
 	def run(self):
 		self.validate_filters()
@@ -219,6 +225,10 @@ class SalesPurchaseDetailsReport(object):
 		if self.filters.show_packing_slip:
 			select_fields.append("i.packing_slip")
 
+		# Additional Sales Invoice No fields
+		if self.filters.doctype == "Sales Invoice":
+			select_fields += [f"s.{f}" for f in self.additional_sales_invoice_no_fields]
+
 		return select_fields, joins
 
 	def get_order_by(self):
@@ -400,6 +410,10 @@ class SalesPurchaseDetailsReport(object):
 				self.filters.has_branch = True
 			if d.get("project"):
 				self.filters.has_project = True
+
+			for field in self.additional_sales_invoice_no_fields:
+				if d.get(field):
+					self.has_additional_sales_invoice_no.add(field)
 
 	def postprocess_data(self):
 		for d in self.entries:
@@ -632,6 +646,19 @@ class SalesPurchaseDetailsReport(object):
 				"options": self.filters.doctype,
 				"width": 100
 			},
+		]
+
+		for field in self.additional_sales_invoice_no_fields:
+			if field in self.has_additional_sales_invoice_no:
+				label = frappe.get_meta("Sales Invoice").get_label(field)
+				columns.append({
+					"label": _(label),
+					"fieldname": field,
+					"fieldtype": "Data",
+					"width": 100
+				})
+
+		columns += [
 			{
 				"label": _("Bill No"),
 				"fieldname": "bill_no",

@@ -140,12 +140,31 @@ for(var i=0, l=data.length; i<l; i++) {
 							{% } %}
 						</b></div>
 					{% endif %}
+
 					<div>{%= (data[i].remarks || "").split("\n").join("<br />") %}</div>
+
 					{% if(data[i].against_voucher || data[i].against_bill_no) { %}
 						<div>
 							{%= __("Against") %}:
 							<a href="app/{%= encodeURIComponent(frappe.router.slug(data[i].against_voucher_type)) %}/{%= encodeURIComponent(data[i].against_voucher) %}" target="_blank">{%= data[i].against_bill_no || data[i].against_voucher %}</a>
 						</div>
+					{% } %}
+
+					{% if(data[i].invoice_items && data[i].invoice_items.length) { %}
+					<div>
+						{% for (let item of data[i].invoice_items) { %}
+						<div>
+							{%= item.item_name %}
+							-
+							{%= frappe.format(item.qty, {'fieldtype': 'Float'}, { inline: 1 }) %}
+							{%= item.uom %}
+							@
+							{%= format_currency(item.net_rate, data[i].currency) %}
+							=
+							{%= format_currency(item.net_amount, data[i].currency) %}
+						</div>
+						{% } %}
+					</div>
 					{% } %}
 				</td>
 

@@ -214,10 +214,13 @@
 
 				<td>
 					{% if(!filters.show_future_payments) { %}
-						{%= data[i]["voucher_type"] %}
-						<br>
+						<div>{%= data[i]["voucher_type"] %}</div>
 					{% } %}
-					{%= data[i]["voucher_no"] %}
+					<div>{%= data[i]["voucher_no"] %}</div>
+
+					{% if (data[i]["reference_no"]) { %}
+					<div>{%= data[i]["reference_no"] %}</div>
+					{% } %}
 				</td>
 
 				{% if(!filters.show_future_payments) { %}

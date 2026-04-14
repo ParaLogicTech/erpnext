@@ -7,7 +7,11 @@ from frappe import _, scrub
 from frappe.utils import getdate, flt, cint, formatdate, cstr
 from frappe.desk.query_report import group_report_data
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
-from erpnext.accounts.utils import get_currency_precision, get_advance_against_voucher_types
+from erpnext.accounts.utils import (
+	get_currency_precision,
+	get_advance_against_voucher_types,
+	get_additional_sales_invoice_no_fields
+)
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 
@@ -21,6 +25,9 @@ class ReceivablePayableReport(object):
 		self.has_account_manager = False
 
 		self.advance_against_voucher_types = get_advance_against_voucher_types()
+
+		self.additional_sales_invoice_no_fields = []
+		self.has_additional_sales_invoice_no = set()
 
 	def run(self, args):
 		self.validate_filters(args)
@@ -67,6 +74,9 @@ class ReceivablePayableReport(object):
 			self.dr_or_cr = "debit"
 
 		self.reverse_dr_or_cr = "credit" if self.dr_or_cr == "debit" else "debit"
+
+		if self.get_invoice_doctype() == "Sales Invoice":
+			self.additional_sales_invoice_no_fields = get_additional_sales_invoice_no_fields()
 
 	def validate_ageing_filter(self):
 		self.ageing_range = [cint(r.strip()) for r in self.filters.get('ageing_range', "").split(",") if r]
@@ -402,8 +412,11 @@ class ReceivablePayableReport(object):
 		if self.filters.party_type == "Customer":
 			invoices = {gle.voucher_no for gle in gles_to_add if gle.voucher_type == "Sales Invoice"}
 			if invoices:
-				data = frappe.db.sql("""
-					select name, due_date, po_no, contact_person, territory
+				additional_fields = ", ".join([f for f in self.additional_sales_invoice_no_fields])
+				additional_fields = f", {additional_fields}" if additional_fields else ""
+
+				data = frappe.db.sql(f"""
+					select name, due_date, po_no, contact_person, territory {additional_fields}
 					from `tabSales Invoice`
 					where docstatus = 1 and name in %s
 				""", [invoices], as_dict=1)
@@ -733,6 +746,15 @@ class ReceivablePayableReport(object):
 		row["pdc/lc_amount"] = pdc_amount
 		row["remaining_balance"] = remaining_balance
 
+		# Additional Invoice # Fields
+		for f in self.additional_sales_invoice_no_fields:
+			row[f] = voucher_details.get(f)
+			if row.get(f):
+				self.has_additional_sales_invoice_no.add(f)
+
+				if not row.get("reference_no"):
+					row["reference_no"] = row.get(f)
+
 		if row.cost_center:
 			self.has_cost_center = True
 		if row.branch:
@@ -983,6 +1005,16 @@ class ReceivablePayableReport(object):
 				"options": "voucher_type",
 			},
 		]
+
+		for field in self.additional_sales_invoice_no_fields:
+			if field in self.has_additional_sales_invoice_no:
+				label = frappe.get_meta("Sales Invoice").get_label(field)
+				columns.append({
+					"label": _(label),
+					"fieldname": field,
+					"fieldtype": "Data",
+					"width": 100
+				})
 
 		if self.filters.get("party_type") != "Employee":
 			columns.append({
