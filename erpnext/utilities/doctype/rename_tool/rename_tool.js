@@ -11,6 +11,8 @@ frappe.ui.form.on("Rename Tool", {
 			},
 		};
 
+		frm.trigger("render_overview");
+
 		frm.page.set_primary_action(__("Rename"), function () {
 			frappe.call({
 				method: "erpnext.utilities.doctype.rename_tool.rename_tool.upload",
@@ -29,6 +31,8 @@ frappe.ui.form.on("Rename Tool", {
 					});
 					frm.set_value("select_doctype", "");
 					frm.set_value("file_to_rename", "");
+
+					frm.trigger("render_overview");
 				},
 				error: function (r) {
 					frappe.msgprint({
@@ -38,8 +42,38 @@ frappe.ui.form.on("Rename Tool", {
 						alert: true,
 						indicator: "red",
 					});
+
+					frm.trigger("render_overview");
 				},
 			});
 		});
-	}
+	},
+	render_overview: function (frm) {
+		frappe.db
+			.get_list("RQ Job", { filters: { status: ["in", ["started", "queued", "finished", "failed"]] } })
+			.then((jobs) => {
+				let counts = {
+					started: 0,
+					queued: 0,
+					finished: 0,
+					failed: 0,
+				};
+
+				for (const job of jobs) {
+					if (job.job_name !== "frappe.model.rename_doc.bulk_rename") {
+						continue;
+					}
+
+					counts[job.status]++;
+				}
+
+				frm.get_field("rename_log").$wrapper.html(`
+					<p><strong>${__("Bulk Rename Jobs")}</a></strong></p>
+					<p><a href="/app/rq-job?queue=long&status=queued">${__("Queued")}: ${counts.queued}</a></p>
+					<p><a href="/app/rq-job?queue=long&status=started">${__("Started")}: ${counts.started}</a></p>
+					<p><a href="/app/rq-job?queue=long&status=finished">${__("Finished")}: ${counts.finished}</a></p>
+					<p><a href="/app/rq-job?queue=long&status=failed">${__("Failed")}: ${counts.failed}</a></p>
+				`);
+			});
+	},
 });
