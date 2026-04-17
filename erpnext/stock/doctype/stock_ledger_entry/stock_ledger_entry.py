@@ -194,11 +194,11 @@ class StockLedgerEntry(Document):
 
 
 def on_doctype_update():
-	if not frappe.db.has_index('tabStock Ledger Entry', 'posting_sort_index'):
-		frappe.db.commit()
-		frappe.db.add_index("Stock Ledger Entry",
-			fields=["posting_date", "posting_time", "creation"],
-			index_name="posting_sort_index")
+	frappe.db.add_index(
+		"Stock Ledger Entry",
+		fields=["posting_date", "posting_time", "creation"],
+		index_name="posting_sort_index",
+	)
 
 	frappe.db.add_index("Stock Ledger Entry", ["voucher_no", "voucher_type"])
 	frappe.db.add_index("Stock Ledger Entry", ["item_code", "warehouse"])
