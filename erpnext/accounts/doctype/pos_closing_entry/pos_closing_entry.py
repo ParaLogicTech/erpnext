@@ -210,12 +210,17 @@ class POSClosingEntry(Document):
 		""", args, as_dict=1)
 
 		if not self.is_backdated:
-			payment_entries += frappe.db.sql(f"""
+			deferred_entries = frappe.db.sql(f"""
 				select {fields}, defer_pos_closing
 				from `tabPayment Entry` pe
 				where pe.defer_pos_closing = 1
 					and {conditions}
 			""", args, as_dict=1)
+
+			exclude = [d.document_name for d in payment_entries]
+			deferred_entries = [d for d in deferred_entries if d.document_name not in exclude]
+
+			payment_entries += deferred_entries
 
 		return payment_entries
 
