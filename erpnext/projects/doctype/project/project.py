@@ -1576,6 +1576,13 @@ class Project(StatusUpdaterERP):
 
 		return tasks, timelogs
 
+	def split_running_project_timelogs(self):
+		if self.is_new():
+			return
+
+		from erpnext.projects.doctype.task.task import split_running_timelogs
+		split_running_timelogs(project=self.name)
+
 	def set_project_date(self):
 		self.project_date = getdate(
 			self.expected_start_date
