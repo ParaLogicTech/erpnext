@@ -578,7 +578,7 @@ class Item(Document):
 	def validate_default_uom_is_convertible(self):
 		from erpnext.stock.get_item_details import is_item_uom_convertible
 
-		uom_fields = ["sales_uom", "purchase_uom", "manufacture_uom"]
+		uom_fields = ["sales_uom", "purchase_uom"]
 		for field in uom_fields:
 			uom_value = self.get(field)
 			if uom_value and not is_item_uom_convertible(self, uom_value):
