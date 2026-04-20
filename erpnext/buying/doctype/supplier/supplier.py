@@ -34,6 +34,7 @@ class Supplier(TransactionBase):
 	def autoname(self):
 		supp_master_name = frappe.defaults.get_global_default('supp_master_name')
 		if supp_master_name == 'Supplier Name':
+			self.supplier_name = clean_whitespace(self.supplier_name)
 			self.name = self.supplier_name
 		else:
 			set_name_by_naming_series(self)
