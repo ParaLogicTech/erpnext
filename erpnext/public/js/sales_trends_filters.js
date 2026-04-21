@@ -1,7 +1,7 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
-erpnext.get_sales_trends_filters = {
+erpnext.sales_trends_filters = {
 	filters: [
 		{
 			"fieldname":"period",
