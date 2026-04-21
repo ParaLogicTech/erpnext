@@ -656,6 +656,11 @@ class SalesInvoice(SellingController):
 		if validation == "Mandatory for Company":
 			if frappe.get_cached_value("Customer", self.bill_to or self.customer, "customer_type") == "Individual":
 				return
+		if validation == "Mandatory for Company and Annual Turnover":
+			if frappe.get_cached_value("Customer", self.bill_to or self.customer, "customer_type") == "Individual" or \
+			(frappe.get_cached_value("Customer", self.bill_to or self.customer, "customer_type") == "Company" and \
+			frappe.get_cached_value("Customer", self.bill_to or self.customer, "vat_registration_decider") == "Annual Turnover <= 375,000 AED"):
+				return
 
 		if validation:
 			frappe.throw(_("Customer {0} or Identification Number is mandatory for Sales Tax Invoice").format(_("Tax ID")))

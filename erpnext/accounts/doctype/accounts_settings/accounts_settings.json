@@ -299,7 +299,7 @@
    "fieldname": "validate_sales_invoice_tax_id",
    "fieldtype": "Select",
    "label": "Validate Customer Tax ID for Sales Tax Invoice",
-   "options": "\nMandatory\nMandatory for Company"
+   "options": "\nMandatory\nMandatory for Company\nMandatory for Company and Annual Turnover"
   },
   {
    "default": "0",
@@ -325,7 +325,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-28 14:27:21.809120",
+ "modified": "2026-04-21 18:35:17.448972",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounts Settings",
