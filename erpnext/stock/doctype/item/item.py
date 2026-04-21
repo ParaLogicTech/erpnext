@@ -744,7 +744,11 @@ class Item(Document):
 		if not fieldname:
 			fieldname = "production_item" if doctype == "Work Order" else "item_code"
 
-		self._linked_doctype_exists[doctype] = frappe.db.get_value(doctype, filters={fieldname: self.name, "docstatus": 1})
+		filters = {fieldname: self.name}
+		if frappe.get_meta(doctype).is_submittable:
+			filters["docstatus"] = 1
+
+		self._linked_doctype_exists[doctype] = frappe.db.get_value(doctype, filters=filters)
 		return self._linked_doctype_exists[doctype]
 
 	def validate_auto_reorder_enabled_in_stock_settings(self):
