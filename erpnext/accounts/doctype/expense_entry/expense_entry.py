@@ -36,20 +36,14 @@ class ExpenseEntry(Document):
 		self.cancel_accounting_entries()
 
 	def check_duplicate_bill_no(self):
-		unique_bill_no_party = []
-
 		for row in self.accounts:
 			bill_no = row.bill_no or self.bill_no
 			if bill_no and row.supplier:
-				key = (bill_no, row.supplier)
-				if key in unique_bill_no_party:
-					frappe.throw(_("Row {0}: Bill No {1} for Supplier {2} is a duplicate").format(
-						row.idx, row.bill_no, row.supplier
-					))
-				else:
-					unique_bill_no_party.append(key)
-
-				exp_entrty_with_duplicate = has_duplicate_bill_no(bill_no, row.supplier)
+				exp_entrty_with_duplicate = has_duplicate_bill_no(
+					bill_no,
+					row.supplier,
+					exclude=None if self.is_new() else self.name,
+				)
 				if exp_entrty_with_duplicate:
 					frappe.throw(_("Row {0}: Bill No {1} for Supplier {2} already exists in {3}").format(
 						row.idx, bill_no, row.supplier, ", ".join(exp_entrty_with_duplicate)
@@ -472,12 +466,24 @@ class ExpenseEntry(Document):
 
 
 @frappe.whitelist()
-def has_duplicate_bill_no(bill_no, supplier):
-	data = frappe.db.sql_list("""
+def has_duplicate_bill_no(bill_no, supplier, exclude=None):
+	exclude_condition = ""
+	if exclude:
+		exclude_condition = "and name != %(exclude)s".format(exclude)
+
+	data = frappe.db.sql_list(f"""
 		select distinct expd.parent
 		from `tabExpense Entry Detail` as expd
-		where expd.bill_no=%s and expd.supplier=%s and expd.docstatus=1
-	""", (bill_no, supplier))
+		where
+			expd.bill_no = %(bill_no)s
+			and expd.supplier = %(supplier)s
+			and expd.docstatus = 1
+			{exclude_condition}
+	""", {
+		"bill_no": bill_no,
+		"supplier": supplier,
+		"exclude": exclude,
+	})
 
 	return data
 

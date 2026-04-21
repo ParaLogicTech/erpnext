@@ -353,7 +353,8 @@ $.extend(erpnext.accounts.expense_entry, {
 				method: "erpnext.accounts.doctype.expense_entry.expense_entry.has_duplicate_bill_no",
 				args: {
 					bill_no: row.bill_no,
-					supplier: row.supplier
+					supplier: row.supplier,
+					exclude: frm.is_new() ? null : frm.doc.name,
 				},
 				callback: function (r) {
 					if (r.message && r.message.length) {
