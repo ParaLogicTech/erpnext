@@ -16,6 +16,8 @@ import "./controllers/applies_to_common.js"
 import "./utils/manufacturing.js"
 import "./utils/task_actions.js"
 import "./financial_statements.js"
+import "./purchase_trends_filters.js"
+import "./sales_trends_filters.js"
 
 // Item Selector
 import "./templates/item_selector.html"
