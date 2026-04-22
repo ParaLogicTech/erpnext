@@ -292,7 +292,7 @@ class ExpenseEntry(Document):
 
 	def append_expense_debit_entry(self, jv_doc, row):
 		expense_account_currency = frappe.get_cached_value("Account", row.expense_account, "account_currency")
-		return jv_doc.append("accounts", {
+		return self.normalize_debit_credit(jv_doc.append("accounts", {
 			"account": row.expense_account,
 			"account_currency": expense_account_currency,
 			"debit_in_account_currency": row.expense_amount if self.payable_account_currency == expense_account_currency
@@ -301,7 +301,7 @@ class ExpenseEntry(Document):
 			"exchange_rate": row.base_expense_amount / row.expense_amount if self.payable_account_currency == expense_account_currency else 1.0,
 
 			"cheque_no": row.bill_no or self.bill_no or row.cheque_no or self.name,
-		})
+		}))
 
 	def append_tax_debit_entry(self, jv_doc, row):
 		if not row.tax_amount:
@@ -320,7 +320,7 @@ class ExpenseEntry(Document):
 
 			tax_account_currency = frappe.get_cached_value("Account", tax_account, "account_currency")
 			if tax_amount:
-				jv_row = jv_doc.append("accounts", {
+				jv_row = self.normalize_debit_credit(jv_doc.append("accounts", {
 					"account": tax_account,
 					"account_currency": tax_account_currency,
 					"debit_in_account_currency": tax_amount if self.payable_account_currency == tax_account_currency
@@ -329,13 +329,13 @@ class ExpenseEntry(Document):
 					"exchange_rate": row.exchange_rate if self.payable_account_currency == tax_account_currency else 1.0,
 
 					"cheque_no": row.bill_no or self.bill_no or row.cheque_no or self.name,
-				})
+				}))
 				jv_rows.append(jv_row)
 
 		return jv_rows
 
 	def append_supplier_credit_entry(self, jv_doc, row):
-		return jv_doc.append("accounts", {
+		return self.normalize_debit_credit(jv_doc.append("accounts", {
 			"account": self.payable_account,
 			"account_currency": self.payable_account_currency,
 			"party_type": "Supplier",
@@ -345,10 +345,10 @@ class ExpenseEntry(Document):
 			"exchange_rate": row.exchange_rate,
 
 			"cheque_no": row.bill_no or self.bill_no or row.cheque_no or self.name,
-		})
+		}))
 
 	def append_supplier_debit_entry(self, jv_doc, row, bill_jv):
-		return jv_doc.append("accounts", {
+		return self.normalize_debit_credit(jv_doc.append("accounts", {
 			"account": self.payable_account,
 			"account_currency": self.payable_account_currency,
 			"party_type": "Supplier",
@@ -358,18 +358,33 @@ class ExpenseEntry(Document):
 			"exchange_rate": row.exchange_rate,
 			"reference_type": "Journal Entry",
 			"reference_name": bill_jv.name
-		})
+		}))
 
 	def append_payment_credit_entry(self, jv_doc, row):
 		paid_from_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
-		return jv_doc.append("accounts", {
+		return self.normalize_debit_credit(jv_doc.append("accounts", {
 			"account": self.paid_from_account,
 			"account_currency": paid_from_account_currency,
 			"credit_in_account_currency": row.total_amount if self.payable_account_currency == paid_from_account_currency
 				else row.base_total_amount,
 			"credit": row.base_total_amount,
 			"exchange_rate": row.exchange_rate if self.payable_account_currency == paid_from_account_currency else 1.0,
-		})
+		}))
+
+	@staticmethod
+	def normalize_debit_credit(jv_row):
+		if flt(jv_row.debit_in_account_currency) - flt(jv_row.credit_in_account_currency) < 0:
+			jv_row.credit_in_account_currency = flt(jv_row.credit_in_account_currency) - flt(jv_row.debit_in_account_currency)
+			jv_row.credit = flt(jv_row.credit) - flt(jv_row.debit)
+			jv_row.debit_in_account_currency = 0
+			jv_row.debit = 0
+		else:
+			jv_row.debit_in_account_currency = flt(jv_row.debit_in_account_currency) - flt(jv_row.credit_in_account_currency)
+			jv_row.debit = flt(jv_row.debit) - flt(jv_row.credit)
+			jv_row.credit_in_account_currency = 0
+			jv_row.credit = 0
+
+		return jv_row
 
 	def create_payment_entry(self, bill_jv, details=None):
 		paid_from_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
