@@ -196,34 +196,65 @@ frappe.ui.form.on('Expense Entry', {
 				}
 			});
 		}
-	}
+	},
+
+	supplier: function(frm) {
+		if (frm.doc.supplier) {
+			frm.events.get_supplier_details(frm.doc.supplier, (details) => {
+				frm.set_value("supplier_name", details.supplier_name);
+				for (let d of frm.doc.accounts || []) {
+					d.supplier = frm.doc.supplier;
+					d.supplier_name = frm.doc.supplier_name;
+					d.party = frm.doc.supplier;
+					d.party_name = frm.doc.supplier_name;
+				}
+
+				if (details.expense_account) {
+					for (let row of frm.doc.accounts || []) {
+						if (!row.expense_account) {
+							row.expense_account = details.expense_account;
+						}
+					}
+				}
+
+				frm.refresh_field("accounts");
+			});
+		}
+	},
+
+	get_supplier_details: function (supplier, callback) {
+		if (!supplier) {
+			return;
+		}
+
+		return frappe.call({
+			method: "erpnext.accounts.doctype.expense_entry.expense_entry.get_supplier_details",
+			args: {
+				supplier: supplier
+			},
+			callback: (r) => callback?.(r.message)
+		});
+	},
 });
 
 frappe.ui.form.on('Expense Entry Detail', {
+	supplier: function (frm, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+
+		if (row.supplier) {
+			frm.events.get_supplier_details(row.supplier, (details) => {
+				frappe.model.set_value(cdt, cdn, "supplier_name", details.supplier_name);
+				details.party = row.supplier;
+				details.party_name = row.supplier_name;
+				if (details.expense_account && !row.expense_account) {
+					frappe.model.set_value(cdt, cdn, "expense_account", expense_account);
+				}
+			})
+		}
+	},
+
 	bill_date: function (frm, cdt, cdn) {
 		erpnext.accounts.expense_entry.set_exchange_rate(frm, cdt, cdn);
-	},
-
-	bill_no: function(frm, cdt, cdn) {
-		erpnext.accounts.expense_entry.check_duplicate_bill_no(frm, cdt, cdn);
-	},
-
-	supplier: function (frm, cdt, cdn) {
-		var row = frappe.get_doc(cdt, cdn);
-
-		if (row.supplier && !row.expense_account) {
-			frappe.call({
-				method: "erpnext.accounts.doctype.expense_entry.expense_entry.get_default_expense_account",
-				args: {
-					supplier: row.supplier
-				},
-				callback: function (r) {
-					frappe.model.set_value(cdt, cdn, 'expense_account', r.message);
-				}
-			});
-		}
-
-		erpnext.accounts.expense_entry.check_duplicate_bill_no(frm, cdt, cdn);
 	},
 
 	total_amount: function (frm, cdt, cdn) {
@@ -310,7 +341,7 @@ $.extend(erpnext.accounts.expense_entry, {
 			frappe.call({
 				method: "erpnext.setup.utils.get_exchange_rate",
 				args: {
-					transaction_date: row.bill_date,
+					transaction_date: row.bill_date || frm.doc.transaction_date,
 					from_currency: frm.doc.payable_account_currency,
 					to_currency: company_currency
 				},
@@ -344,25 +375,4 @@ $.extend(erpnext.accounts.expense_entry, {
 			frappe.model.set_value(cdt, cdn, 'tax_rate', '{}');
 		}
 	},
-
-	check_duplicate_bill_no: function (frm, cdt, cdn) {
-		var row = frappe.get_doc(cdt, cdn);
-
-		if (row.bill_no && row.supplier) {
-			frappe.call({
-				method: "erpnext.accounts.doctype.expense_entry.expense_entry.has_duplicate_bill_no",
-				args: {
-					bill_no: row.bill_no,
-					supplier: row.supplier,
-					exclude: frm.is_new() ? null : frm.doc.name,
-				},
-				callback: function (r) {
-					if (r.message && r.message.length) {
-						frappe.msgprint(__("Row {0}: Bill No {1} for Supplier {2} already exists in {3}",
-							[row.idx, row.bill_no, row.supplier, r.message.join(", ")]));
-					}
-				}
-			});
-		}
-	}
 });

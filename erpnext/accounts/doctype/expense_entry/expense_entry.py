@@ -19,15 +19,16 @@ class ExpenseEntry(Document):
 		self.company_address_doc = erpnext.get_company_address_doc(self)
 
 	def validate(self):
+		self.set_missing_values()
 		self.check_duplicate_bill_no()
 		self.validate_accounts()
 		self.validate_total_amount()
-		self.set_missing_values()
+		self.validate_exchange_rate()
 		self.calculate_taxes()
 		self.calculate_totals()
 
 	def before_submit(self):
-		self.set_missing_bill_dates()
+		self.set_missing_bill_no_date()
 
 	def on_submit(self):
 		self.create_accounting_entries()
@@ -71,6 +72,12 @@ class ExpenseEntry(Document):
 		self.payable_account_currency = frappe.get_cached_value("Account", self.payable_account, "account_currency") \
 			if self.payable_account else company_currency
 
+		if self.supplier:
+			for row in self.accounts:
+				row.supplier = self.supplier
+
+	def validate_exchange_rate(self):
+		company_currency = get_company_currency(self.company)
 		for row in self.accounts:
 			if self.payable_account_currency == company_currency:
 				row.exchange_rate = 1.0
@@ -81,8 +88,10 @@ class ExpenseEntry(Document):
 						self.payable_account_currency, company_currency, row.bill_date or self.transaction_date
 					))
 
-	def set_missing_bill_dates(self):
+	def set_missing_bill_no_date(self):
 		for row in self.accounts:
+			if not row.bill_no and self.bill_no:
+				row.bill_no = self.bill_no
 			if not row.bill_date:
 				row.bill_date = self.transaction_date
 
@@ -489,8 +498,14 @@ def has_duplicate_bill_no(bill_no, supplier, exclude=None):
 
 
 @frappe.whitelist()
-def get_default_expense_account(supplier):
-	return frappe.get_cached_value("Supplier", supplier, "expense_account")
+def get_supplier_details(supplier):
+	out = frappe._dict()
+
+	supplier_doc = frappe.get_cached_doc("Supplier", supplier) if supplier else frappe._dict()
+	out.supplier_name = supplier_doc.supplier_name
+	out.expense_account = supplier_doc.expense_account
+
+	return out
 
 
 @frappe.whitelist()
