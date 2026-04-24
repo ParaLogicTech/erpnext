@@ -36,7 +36,11 @@
   "includes_service_warranty",
   "column_break_7eky",
   "warranty_terms",
-  "warranty_provision_amount"
+  "warranty_provision_amount",
+  "claim_billing_section",
+  "claim_customer",
+  "column_break_twbq",
+  "claim_customer_name"
  ],
  "fields": [
   {
@@ -226,11 +230,36 @@
    "fieldname": "description",
    "fieldtype": "Text Editor",
    "label": "Description"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "claim_customer",
+   "fieldname": "claim_billing_section",
+   "fieldtype": "Section Break",
+   "label": "Claim Billing"
+  },
+  {
+   "fieldname": "claim_customer",
+   "fieldtype": "Link",
+   "label": "Claim Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "column_break_twbq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.claim_customer && doc.claim_customer_name != doc.claim_customer",
+   "fetch_from": "claim_customer.customer_name",
+   "fieldname": "claim_customer_name",
+   "fieldtype": "Data",
+   "label": "Claim Customer Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2026-01-24 19:14:52.938406",
+ "modified": "2026-04-24 12:31:53.469679",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Service Template",

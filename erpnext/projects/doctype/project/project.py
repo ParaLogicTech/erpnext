@@ -1274,7 +1274,9 @@ class Project(StatusUpdaterERP):
 				self.set_service_template_claim_customer_for_row(row)
 
 	def set_service_template_claim_customer_for_row(self, row):
-		row.claim_customer = None
+		if row.service_template:
+			template_claim_customer = frappe.get_cached_value("Service Template", row.service_template, "claim_customer")
+			row.claim_customer = template_claim_customer or None
 
 	def set_appointment_details(self):
 		if self.appointment:
@@ -1655,26 +1657,32 @@ class Project(StatusUpdaterERP):
 	def add_template_items_to_order_for_row(self, target_doc, row, bill_to, items_type=None):
 		from erpnext.projects.doctype.service_template.service_template import add_service_template_items
 
+		if not row.service_template or row.get("sales_order"):
+			return target_doc
+
 		project_customers = (self.to_bill, self.customer, self.insurance_company)
 		project_customers = set(d for d in project_customers if d)
 		claim_customers = set([d.claim_customer for d in self.service_templates
 			if d.claim_customer and d.claim_customer not in project_customers])
 
-		if (
-			row.service_template
-			and not row.get('sales_order')
-			and (bill_to not in claim_customers or (row.claim_customer and bill_to == row.claim_customer))
-		):
-			target_doc = add_service_template_items(
-				target_doc,
-				row.service_template,
-				applies_to_item=self.applies_to_item,
-				applies_to_customer=bill_to,
-				check_duplicate=False,
-				service_template_detail=row,
-				items_type=items_type,
-				postprocess=False,
-			)
+		# filter out claim template only applicable to claim customer
+		if row.claim_customer and bill_to != row.claim_customer:
+			return target_doc
+
+		# do not add non claim templates to claim customer
+		if not row.claim_customer and bill_to in claim_customers:
+			return target_doc
+
+		target_doc = add_service_template_items(
+			target_doc,
+			row.service_template,
+			applies_to_item=self.applies_to_item,
+			applies_to_customer=bill_to,
+			check_duplicate=False,
+			service_template_detail=row,
+			items_type=items_type,
+			postprocess=False,
+		)
 
 		return target_doc
 
