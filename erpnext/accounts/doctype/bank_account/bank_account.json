@@ -52,7 +52,8 @@
    "fieldname": "account",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Company Account",
+   "label": "Bank GL Account",
+   "mandatory_depends_on": "is_company_account",
    "options": "Account"
   },
   {
@@ -98,6 +99,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Company",
+   "mandatory_depends_on": "is_company_account",
    "options": "Company"
   },
   {
@@ -214,8 +216,9 @@
    "options": "Account"
   }
  ],
+ "grid_page_length": 500,
  "links": [],
- "modified": "2024-12-31 00:54:31.260144",
+ "modified": "2026-04-25 04:21:49.120605",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Account",
@@ -259,6 +262,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "bank,account",
  "sort_field": "modified",
  "sort_order": "DESC",

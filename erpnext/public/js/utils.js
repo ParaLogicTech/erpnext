@@ -841,6 +841,30 @@ $.extend(erpnext.utils, {
 		};
 	},
 
+	banking_amount_formatter(value, df, options, doc, color_if_set=null, color_if_zero=null) {
+		options = options || {};
+		options.css = {};
+
+		let amount = flt(value, 2);
+
+		if (!amount && color_if_zero) {
+			options.css['color'] = color_if_zero;
+		}
+
+		if (color_if_set) {
+			if (amount) {
+				options.css['color'] = color_if_set;
+			}
+		} else {
+			if (amount > 0) {
+				options.css['color'] = "var(--green-800)";
+			} else if (amount < 0) {
+				options.css['color'] = "var(--red-700)";
+			}
+		}
+		return frappe.format(value, df, options, doc, true);
+	},
+
 	get_payment_mode_account(frm, mode_of_payment, callback, direction) {
 		if (!frm.doc.company) {
 			frappe.throw({message:__("Please select a Company first."), title: __("Mandatory")});

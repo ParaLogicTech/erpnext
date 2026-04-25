@@ -17,15 +17,31 @@ class BankAccount(Document):
 		self.name = self.account_name + " - " + self.bank
 
 	def on_trash(self):
-		delete_contact_and_address('BankAccount', self.name)
+		delete_contact_and_address("Bank Account", self.name)
 
 	def validate(self):
-		self.validate_company()
+		self.validate_company_account()
 		self.validate_iban()
 
-	def validate_company(self):
-		if self.is_company_account and not self.company:
-			frappe.throw(_("Company is manadatory for company account"))
+	def validate_company_account(self):
+		if self.is_company_account:
+			if not self.company:
+				frappe.throw(_("Company is mandatory for Company Bank Account"))
+			if not self.account:
+				frappe.throw(_("Bank GL Account is mandatory for Company Bank Account"))
+		else:
+			self.company = None
+			self.account = None
+			self.suspense_account = None
+
+		if self.account and frappe.get_cached_value("Account", self.account, "company") != self.company:
+			frappe.throw(_("Bank GL Account {0} does not belong to Company {1}").format(
+				self.account, self.company
+			))
+		if self.suspense_account and frappe.get_cached_value("Account", self.suspense_account, "company") != self.company:
+			frappe.throw(_("Suspense Account {0} does not belong to Company {1}").format(
+				self.suspense_account, self.company
+			))
 
 	def validate_iban(self):
 		'''
