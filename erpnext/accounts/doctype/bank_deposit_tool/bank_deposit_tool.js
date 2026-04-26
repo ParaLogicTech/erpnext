@@ -9,6 +9,49 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		frm.set_df_property("undeposited_entries", "cannot_add_rows", true);
 		frm.set_df_property("undeposited_entries", "cannot_delete_rows", true);
 		frm.set_df_property("undeposited_entries", "disable_sorting", true);
+
+		$(frm.wrapper).on("grid-row-render", function (e, grid_row) {
+			frm.events.toggle_highlight(grid_row);
+		});
+
+		frm.events.process_route_options(frm);
+	},
+
+	process_route_options(frm) {
+		if (!frappe.route_options) {
+			return;
+		}
+
+		if (frappe.route_options.undeposited_account) {
+			frm.doc.undeposited_account = frappe.route_options.undeposited_account;
+		}
+		if (frappe.route_options.bank_account) {
+			frm.doc.bank_account = frappe.route_options.bank_account;
+		}
+		if (frappe.route_options.deposit_date) {
+			frm.doc.deposit_date = frappe.route_options.deposit_date;
+		}
+
+		if (frm.doc.undeposited_account && frm.doc.deposit_date) {
+			frm.events.get_undeposited_entries(frm);
+		}
+	},
+
+	set_query_params(frm) {
+		let full_url = window.location.href.replace(window.location.search, "");
+
+		let query_params = Object.entries({
+			undeposited_account: frm.doc.undeposited_account,
+			bank_account: frm.doc.bank_account,
+			deposit_date: frm.doc.deposit_date,
+		}).map(([field, value]) => `${field}=${encodeURIComponent(cstr(value))}`)
+		.filter(Boolean)
+		.join("&");
+
+		if (query_params) {
+			full_url += "?" + query_params;
+		}
+		window.history.replaceState(null, null, full_url);
 	},
 
 	refresh(frm) {
@@ -40,10 +83,6 @@ frappe.ui.form.on("Bank Deposit Tool", {
 
 	onload_post_render: function (frm) {
 		frm.events.setup_row_checkbox_selection(frm);
-
-		$(frm.wrapper).on("grid-row-render", function (e, grid_row) {
-			frm.events.toggle_highlight(grid_row);
-		});
 	},
 
 	setup_queries(frm) {
@@ -146,7 +185,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 
 	bank_account(frm) {
 		frm.events.get_bank_account_details(frm);
-
+		frm.events.set_query_params(frm);
 	},
 
 	undeposited_account(frm) {
@@ -253,6 +292,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 			callback: () => {
 				frm.events.set_selected_vouchers(frm, selected_vouchers);
 				frm.events.calculate_totals(frm);
+				frm.events.set_query_params(frm);
 			}
 		});
 	},

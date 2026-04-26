@@ -30,15 +30,11 @@ class BankDepositTool(Document):
 			frappe.throw(_("Deposit Date cannot be in the future"))
 
 		undeposited_account = frappe.get_cached_doc("Account", self.undeposited_account)
+		self.company = undeposited_account.company
 		self.currency = undeposited_account.account_currency
 
 		if undeposited_account.account_type not in ("Bank", "Cash"):
 			frappe.throw(_("Undeposited Funds Account must be of type Bank or Cash"))
-
-		if undeposited_account.company != self.company:
-			frappe.throw(_("Undeposited Funds Account {0} does not belong to Company {1}").format(
-				self.undeposited_account, self.company
-			))
 
 		self.undeposited_account_balance = get_balance_on(self.undeposited_account, self.deposit_date)
 
@@ -105,10 +101,10 @@ class BankDepositTool(Document):
 		undeposited_journal_entries = self.get_undeposited_journal_entries()
 
 		entries = undeposited_payment_entries + undeposited_pos_invoices + undeposited_journal_entries
+		entries = sorted(entries, key=lambda d: getdate(d.get("posting_date")))
+
 		if self.get("limit"):
 			entries = entries[:self.limit]
-
-		entries = sorted(entries, key=lambda d: getdate(d.get("posting_date")))
 
 		self.selected_deposit_amount = 0
 		self.difference_amount = 0
