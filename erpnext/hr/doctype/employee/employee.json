@@ -33,6 +33,7 @@
   "column_break_41",
   "grade",
   "reports_to",
+  "reports_to_name",
   "column_break_31",
   "branch",
   "employment_type",
@@ -401,7 +402,7 @@
    "fieldname": "reports_to",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "label": "Reports to",
+   "label": "Reports To",
    "oldfieldname": "reports_to",
    "oldfieldtype": "Link",
    "options": "Employee"
@@ -893,6 +894,14 @@
    "fieldtype": "Link",
    "label": "Shift Request Approver",
    "options": "User"
+  },
+  {
+   "depends_on": "eval:doc.reports_to && doc.reports_to_name != doc.reports_to",
+   "fetch_from": "reports_to.employee_name",
+   "fieldname": "reports_to_name",
+   "fieldtype": "Data",
+   "label": "Reports To Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -900,7 +909,7 @@
  "idx": 24,
  "image_field": "image",
  "links": [],
- "modified": "2026-02-01 15:19:13.239038",
+ "modified": "2026-04-27 11:56:14.883619",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
