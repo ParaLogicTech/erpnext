@@ -432,6 +432,7 @@ erpnext.patches.v15_0.create_bank_deposit_dimension_fields
 erpnext.patches.v15_0.set_project_sales_person
 erpnext.patches.v15_0.set_customer_account_manager
 erpnext.patches.v15_0.disable_all_customer_groups_selection
+erpnext.patches.v15_0.set_employee_reports_to_name
 execute:frappe.delete_doc_if_exists("Print Format", "GST Tax Invoice")
 execute:frappe.delete_doc_if_exists("Print Format", "GST POS Invoice")
 execute:frappe.delete_doc_if_exists("Print Format", "POS Invoice")
