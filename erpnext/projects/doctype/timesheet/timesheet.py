@@ -379,14 +379,20 @@ def get_events(start, end, filters=None):
 	match_cond = get_match_cond('Timesheet')
 
 	return frappe.db.sql("""
-		SELECT tsd.name, tsd.docstatus AS status, tsd.parent,
-			tsd.activity_type, tsd.project, tsd.hours,
-			tsd.from_time AS start_date, tsd.to_time AS end_date,
-			CONCAT(tsd.parent, ' (', ROUND(tsd.hours, 2), ' hrs)') AS title
-		FROM `tabTimesheet Detail` tsd
-		INNER JOIN `tabTimesheet` ts ON ts.name = tsd.parent
-		WHERE ts.docstatus < 2
-			AND (tsd.from_time <= %(end)s AND tsd.to_time >= %(start)s)
+		SELECT
+			`tabTimesheet Detail`.name,
+			`tabTimesheet Detail`.docstatus AS status,
+			`tabTimesheet Detail`.parent,
+			`tabTimesheet Detail`.activity_type,
+			`tabTimesheet Detail`.project,
+			`tabTimesheet Detail`.hours,
+			`tabTimesheet Detail`.from_time AS start_date,
+			`tabTimesheet Detail`.to_time AS end_date,
+			CONCAT(`tabTimesheet Detail`.parent, ' (', ROUND(`tabTimesheet Detail`.hours, 2), ' hrs)') AS title
+		FROM `tabTimesheet Detail`
+		INNER JOIN `tabTimesheet` ON `tabTimesheet`.name = `tabTimesheet Detail`.parent
+		WHERE `tabTimesheet`.docstatus < 2
+			AND (`tabTimesheet Detail`.from_time <= %(end)s AND `tabTimesheet Detail`.to_time >= %(start)s)
 			{conditions} {match_cond}
 		""".format(conditions=conditions, match_cond=match_cond),
 		{"start": start, "end": end}, as_dict=True, update={"allDay": 0})
