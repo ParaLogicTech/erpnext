@@ -203,6 +203,7 @@ class ExpenseEntry(Document):
 
 			jv_rows = self.append_bill_journal_entry_rows(bill_jv, row)
 			for jv_row in jv_rows:
+				jv_row.user_remark = row.remarks
 				self.set_accounting_dimensions(jv_row, row_source=row)
 
 		bill_jv.insert()
@@ -216,6 +217,7 @@ class ExpenseEntry(Document):
 		for row in self.accounts:
 			jv_rows = self.append_payment_journal_entry_rows(payment_jv, row, bill_jv=bill_jv)
 			for jv_row in jv_rows:
+				jv_row.user_remark = row.remarks
 				self.set_accounting_dimensions(jv_row, row_source=row)
 
 		payment_jv.insert()
