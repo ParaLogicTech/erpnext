@@ -614,7 +614,7 @@ class ReceivablePayableReport(object):
 
 				# unallocated payment line
 				else:
-					gle.invoiced_amount += amount
+					gle.paid_amount -= amount
 
 			elif same_as_against_voucher:
 				# return against line
