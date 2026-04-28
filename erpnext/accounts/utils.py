@@ -726,7 +726,7 @@ def remove_ref_doc_link_from_pe(ref_type, ref_no):
 
 			pe_doc.set_total_allocated_amount()
 			pe_doc.set_unallocated_amount()
-			pe_doc.clear_unallocated_reference_document_rows()
+			pe_doc.clear_unallocated_reference_document_rows(update=True)
 
 			pe_doc.set_user_and_timestamp()
 			pe_doc.db_update()

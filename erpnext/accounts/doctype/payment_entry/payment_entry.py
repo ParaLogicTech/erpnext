@@ -634,6 +634,7 @@ class PaymentEntry(AccountsController):
 
 		total_allocated_amount, base_total_allocated_amount = 0, 0
 		for d in self.get("references"):
+			d.allocated_amount = flt(d.allocated_amount, self.precision("paid_amount"))
 			if flt(d.allocated_amount):
 				total_allocated_amount += flt(d.allocated_amount)
 				base_total_allocated_amount += flt(flt(d.allocated_amount) * flt(d.exchange_rate),
@@ -759,10 +760,20 @@ class PaymentEntry(AccountsController):
 
 	# Paid amount is auto allocated in the reference document by default.
 	# Clear the reference document which doesn't have allocated amount on validate so that form can be loaded fast
-	def clear_unallocated_reference_document_rows(self):
-		self.set("references", self.get("references", {"allocated_amount": ["not in", [0, None, ""]]}))
-		frappe.db.sql("""delete from `tabPayment Entry Reference`
-			where parent = %s and allocated_amount = 0""", self.name)
+	def clear_unallocated_reference_document_rows(self, update=False):
+		to_remove = [d for d in self.references if not flt(d.allocated_amount)]
+		if not to_remove:
+			return
+
+		for d in to_remove:
+			self.remove(d)
+
+		if update:
+			self.update_child_table("references")
+			frappe.db.sql("""
+				delete from `tabPayment Entry Reference`
+				where parent = %s and allocated_amount = 0
+			""", self.name)
 
 	def validate_payment_against_negative_invoice(self):
 		if (
@@ -1555,7 +1566,7 @@ def get_party_details(company, party_type, party, date, cost_center=None):
 	account_currency = get_account_currency(party_account)
 	account_balance = get_balance_on(party_account, date, cost_center=cost_center)
 	party_name = get_party_name(party_type, party)
-	party_balance = get_balance_on(party_type=party_type, party=party, cost_center=cost_center)
+	party_balance = get_balance_on(party_type=party_type, party=party, date=date, cost_center=cost_center, company=company)
 	if party_type in ["Customer", "Supplier"]:
 		bank_account = get_party_bank_account(party_type, party)
 
@@ -1841,9 +1852,9 @@ def get_paid_amount(dt, dn, party_type, party, account, due_date):
 @frappe.whitelist()
 def get_party_and_account_balance(company, date, paid_from=None, paid_to=None, ptype=None, pty=None, cost_center=None):
 	return frappe._dict({
-		"party_balance": get_balance_on(party_type=ptype, party=pty, cost_center=cost_center),
-		"paid_from_account_balance": get_balance_on(paid_from, date, cost_center=cost_center),
-		"paid_to_account_balance": get_balance_on(paid_to, date=date, cost_center=cost_center)
+		"party_balance": get_balance_on(party_type=ptype, party=pty, date=date, cost_center=cost_center, company=company),
+		"paid_from_account_balance": get_balance_on(paid_from, date=date, cost_center=cost_center),
+		"paid_to_account_balance": get_balance_on(paid_to, date=date, cost_center=cost_center),
 	})
 
 
