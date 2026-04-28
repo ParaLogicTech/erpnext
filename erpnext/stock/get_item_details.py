@@ -761,7 +761,7 @@ def get_claim_customer_from_project(project):
 	if not project_details:
 		return None
 
-	if project_details.is_warranty_claim and project_details.bill_to and project_details.bill_to != project_details.customer:
+	if project_details.is_warranty_claim and project_details.bill_to:
 		return project_details.bill_to
 
 
