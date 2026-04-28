@@ -1284,6 +1284,9 @@ class Project(StatusUpdaterERP):
 
 			self.appointment_dt = appointment_doc.scheduled_dt
 
+			if appointment_doc.campaign:
+				self.campaign = appointment_doc.campaign
+
 			if appointment_doc.opportunity:
 				self.opportunity = appointment_doc.opportunity
 
