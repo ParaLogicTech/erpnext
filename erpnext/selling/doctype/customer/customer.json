@@ -325,7 +325,8 @@
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Mobile No (Primary)",
-   "options": "Phone"
+   "options": "Phone",
+   "search_index": 1
   },
   {
    "bold": 1,
@@ -333,7 +334,8 @@
    "fieldtype": "Data",
    "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "Email Address"
+   "label": "Email Address",
+   "search_index": 1
   },
   {
    "fieldname": "customer_primary_address",
@@ -730,7 +732,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2026-04-01 15:45:59.681846",
+ "modified": "2026-04-28 00:29:58.042752",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",
