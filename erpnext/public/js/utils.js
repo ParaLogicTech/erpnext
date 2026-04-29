@@ -1436,8 +1436,10 @@ erpnext.utils.map_current_doc = function(opts) {
 				"method": opts.method,
 				"source_names": opts.source_name,
 				"target_doc": cur_frm.doc,
-				'args': opts.args
+				'args': opts.args,
+				'method_supports_list': opts.method_supports_list ? 1 : 0,
 			},
+			freeze: 1,
 			callback: function(r) {
 				if(!r.exc) {
 					var doc = frappe.model.sync(r.message);

@@ -1132,24 +1132,27 @@ def make_project(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_mapping=False, allow_duplicate=False):
+def make_delivery_note(
+	source_name,
+	target_doc=None,
+	warehouse=None,
+	skip_item_mapping=False,
+	allow_duplicate=False,
+	skip_postprocess=False,
+):
 	if not warehouse and frappe.flags.args:
 		warehouse = frappe.flags.args.warehouse
 
 	def update_bundled_item(source, target, source_parent, target_parent):
 		target.qty = max(0, source.qty - source.delivered_qty)
 
-	def set_missing_values(source, target):
-		target.ignore_pricing_rule = 1
-
-		if not skip_item_mapping:
-			update_mapped_items_based_on_purchase_and_production(source, target)
-			split_vehicle_items_by_qty(target)
-
-		if warehouse:
-			target.set_warehouse = warehouse
-
-		target.run_method("postprocess_after_mapping")
+	def postprocess(source, target):
+		postprocess_delivery_note(
+			source,
+			target,
+			set_warehouse=warehouse,
+			skip_item_mapping=skip_item_mapping,
+		)
 
 	mapper = {
 		"Sales Order": {
@@ -1172,7 +1175,6 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 			"doctype": "Sales Team",
 			"add_if_empty": True
 		},
-		"postprocess": set_missing_values,
 	}
 
 	if not skip_item_mapping:
@@ -1184,6 +1186,9 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 			},
 			"postprocess": update_bundled_item,
 		}
+
+	if not skip_postprocess:
+		mapper["postprocess"] = postprocess
 
 	frappe.utils.call_hook_method("update_delivery_note_from_sales_order_mapper", mapper, "Delivery Note")
 
@@ -1207,11 +1212,15 @@ def make_delivery_note_from_packing_slips(source_name, target_doc=None, packing_
 		packing_slip_filters["sales_order_item"] = frappe.flags.selected_children["items"]
 
 	packing_slips = _get_packing_slips_to_be_delivered(filters=packing_slip_filters)
-	for d in packing_slips:
-		target_doc = map_dn_from_packing_slip(d.name, target_doc)
+	if packing_slips:
+		packing_slip_names = [d.name for d in packing_slips]
+		target_doc = map_dn_from_packing_slip(packing_slip_names, target_doc, skip_postprocess=True)
 
 	if packing_filter != "Packed Items Only":
 		target_doc = make_delivery_note(source_name, target_doc, warehouse=warehouse, allow_duplicate=True)
+	else:
+		source_doc = frappe.get_doc("Sales Order", source_name)
+		postprocess_delivery_note(source_doc, target_doc,  set_warehouse=warehouse)
 
 	return target_doc
 
@@ -1252,6 +1261,19 @@ def get_item_mapper_for_delivery(allow_duplicate=False):
 		"postprocess": update_item,
 		"condition": item_condition,
 	}
+
+
+def postprocess_delivery_note(source, target, set_warehouse=None, skip_item_mapping=False):
+	target.ignore_pricing_rule = 1
+
+	if not skip_item_mapping:
+		update_mapped_items_based_on_purchase_and_production(source, target)
+		split_vehicle_items_by_qty(target)
+
+	if set_warehouse:
+		target.set_warehouse = set_warehouse
+
+	target.run_method("postprocess_after_mapping")
 
 
 def update_mapped_items_based_on_purchase_and_production(source, target):

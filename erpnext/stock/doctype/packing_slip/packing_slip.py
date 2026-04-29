@@ -1464,38 +1464,44 @@ def get_item_weights_per_unit(item_codes, weight_uom=None):
 
 @frappe.whitelist()
 def make_target_packing_slip(source_name, target_doc=None):
-	source_packing_slip = frappe.get_doc("Packing Slip", source_name)
-	target_doc = map_target_document("Packing Slip", target_doc, source_packing_slip)
+	if isinstance(source_name, str):
+		packing_slip_names = [source_name]
+	else:
+		packing_slip_names = source_name
 
-	packing_slip_item_mapper = {
-		"doctype": "Packing Slip Item",
-		"field_map": {
-			"parent": "source_packing_slip",
-			"name": "packing_slip_item",
-			"sales_order": "sales_order",
-			"sales_order_item": "sales_order_item",
-			"purchase_order_item": "purchase_order_item",
-			"subcontracted_item": "subcontracted_item",
-			"work_order": "work_order",
-			"batch_no": "batch_no",
-			"serial_no": "serial_no",
-		},
-		"field_no_map": [
-			"source_warehouse",
-			"expense_account",
-			"cost_center",
-			"rejected_qty",
-			"stock_rejected_qty",
-		]
-	}
+	for ps_name in packing_slip_names:
+		source_packing_slip = frappe.get_doc("Packing Slip", ps_name)
+		target_doc = map_target_document("Packing Slip", target_doc, source_packing_slip)
 
-	# Map Packing Slip Items
-	for ps_item in source_packing_slip.get("items"):
-		if not mapper_item_condition(ps_item, target_doc):
-			continue
+		packing_slip_item_mapper = {
+			"doctype": "Packing Slip Item",
+			"field_map": {
+				"parent": "source_packing_slip",
+				"name": "packing_slip_item",
+				"sales_order": "sales_order",
+				"sales_order_item": "sales_order_item",
+				"purchase_order_item": "purchase_order_item",
+				"subcontracted_item": "subcontracted_item",
+				"work_order": "work_order",
+				"batch_no": "batch_no",
+				"serial_no": "serial_no",
+			},
+			"field_no_map": [
+				"source_warehouse",
+				"expense_account",
+				"cost_center",
+				"rejected_qty",
+				"stock_rejected_qty",
+			]
+		}
 
-		target_row = map_child_doc(ps_item, target_doc, packing_slip_item_mapper, source_packing_slip)
-		target_row.source_warehouse = source_packing_slip.warehouse
+		# Map Packing Slip Items
+		for ps_item in source_packing_slip.get("items"):
+			if not mapper_item_condition(ps_item, target_doc):
+				continue
+
+			target_row = map_child_doc(ps_item, target_doc, packing_slip_item_mapper, source_packing_slip)
+			target_row.source_warehouse = source_packing_slip.warehouse
 
 	target_doc.run_method("postprocess_after_mapping")
 	return target_doc
@@ -1571,98 +1577,158 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def make_delivery_note(source_name, target_doc=None):
-	from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note as make_delivery_note_from_sales_order,\
-		get_item_mapper_for_delivery
+def make_delivery_note(source_name, target_doc=None, skip_postprocess=False):
+	from erpnext.selling.doctype.sales_order.sales_order import (
+		make_delivery_note as make_delivery_note_from_sales_order,
+		get_item_mapper_for_delivery,
+	)
 
-	packing_slip = frappe.get_doc("Packing Slip", source_name)
-	target_doc = map_target_document("Delivery Note", target_doc, packing_slip)
+	if isinstance(source_name, str):
+		packing_slip_names = [source_name]
+	else:
+		packing_slip_names = source_name
 
-	# Map Sales Orders
-	sales_orders = list(set([d.sales_order for d in packing_slip.get("items") if d.get("sales_order")]))
+	# Load Packing Slips and Sales Orders first
+	packing_slip_docs = {}
 	sales_order_docs = {}
-	for so in sales_orders:
-		sales_order_docs[so] = frappe.get_doc("Sales Order", so)
-		target_doc = make_delivery_note_from_sales_order(so, target_doc, skip_item_mapping=True)
+	for ps_name in packing_slip_names:
+		packing_slip_doc = packing_slip_docs[ps_name] = frappe.get_doc("Packing Slip", ps_name)
+		target_doc = map_target_document("Delivery Note", target_doc, packing_slip_doc)
+		for d in packing_slip_doc.get("items"):
+			if d.get("sales_order") and not sales_order_docs.get(d.sales_order):
+				sales_order_docs[d.sales_order] = frappe.get_doc("Sales Order", d.sales_order)
 
-	so_item_mapper = get_item_mapper_for_delivery(allow_duplicate=True)
-	packing_slip_item_mapper = get_packing_slip_item_mapper("Delivery Note Item")
-
-	frappe.utils.call_hook_method("update_delivery_note_from_packing_slip_mapper", so_item_mapper,
-		"Sales Order Item")
-	frappe.utils.call_hook_method("update_delivery_note_from_packing_slip_mapper", packing_slip_item_mapper,
-		"Packing Slip Item")
+	# Map Sales Order fields without items
+	for sales_order_doc in sales_order_docs.values():
+		target_doc = make_delivery_note_from_sales_order(
+			sales_order_doc,
+			target_doc,
+			skip_item_mapping=True,
+			skip_postprocess=True,
+		)
 
 	# Map Packing Slip Items
-	for ps_item in packing_slip.get("items"):
-		if not mapper_item_condition(ps_item, target_doc):
-			continue
+	for ps_name in packing_slip_names:
+		packing_slip_doc = packing_slip_docs[ps_name]
 
-		dn_item = None
-		if ps_item.get("sales_order_item"):
-			so_parent = sales_order_docs[ps_item.sales_order]
-			so_item = frappe.get_doc("Sales Order Item", ps_item.sales_order_item)
-			dn_item = map_child_doc(so_item, target_doc, so_item_mapper, so_parent, target_d=dn_item)
+		so_item_mapper = get_item_mapper_for_delivery(allow_duplicate=True)
+		packing_slip_item_mapper = get_packing_slip_item_mapper("Delivery Note Item")
 
-		dn_item = map_child_doc(ps_item, target_doc, packing_slip_item_mapper, packing_slip, target_d=dn_item)
-		update_mapped_delivery_item(dn_item, packing_slip)
+		frappe.utils.call_hook_method("update_delivery_note_from_packing_slip_mapper", so_item_mapper,
+			"Sales Order Item")
+		frappe.utils.call_hook_method("update_delivery_note_from_packing_slip_mapper", packing_slip_item_mapper,
+			"Packing Slip Item")
 
-	postprocess_mapped_delivery_document(target_doc)
+		for ps_item in packing_slip_doc.get("items"):
+			if not mapper_item_condition(ps_item, target_doc):
+				continue
+
+			dn_item = None
+			if ps_item.get("sales_order_item"):
+				so_parent = sales_order_docs[ps_item.sales_order]
+				so_item = so_parent.getone("items", {"name": ps_item.sales_order_item})
+				if so_item:
+					dn_item = map_child_doc(so_item, target_doc, so_item_mapper, so_parent, target_d=dn_item)
+
+			dn_item = map_child_doc(ps_item, target_doc, packing_slip_item_mapper, packing_slip_doc, target_d=dn_item)
+			update_mapped_delivery_item(dn_item, packing_slip_doc)
+
+	# Postprocess
+	for i, d in enumerate(target_doc.get("items")):
+		d.idx = i + 1
+
+	if not cint(skip_postprocess):
+		target_doc.run_method("postprocess_after_mapping")
+
 	return target_doc
 
 
 @frappe.whitelist()
-def make_sales_invoice(source_name, target_doc=None):
-	from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice as make_sales_invoice_from_sales_order, \
-		get_item_mapper_for_invoice
+def make_sales_invoice(source_name, target_doc=None, skip_postprocess=False):
+	from erpnext.selling.doctype.sales_order.sales_order import (
+		make_sales_invoice as make_sales_invoice_from_sales_order,
+		get_item_mapper_for_invoice,
+	)
 
-	packing_slip = frappe.get_doc("Packing Slip", source_name)
-	target_doc = map_target_document("Sales Invoice", target_doc, packing_slip)
+	if isinstance(source_name, str):
+		packing_slip_names = [source_name]
+	else:
+		packing_slip_names = source_name
 
-	# Map Sales Orders
-	sales_orders = list(set([d.sales_order for d in packing_slip.get("items") if d.get("sales_order")]))
+	# Load Packing Slips and Sales Orders first
+	packing_slip_docs = {}
 	sales_order_docs = {}
 	sales_order_mappers = {}
-	for sales_order in sales_orders:
-		sales_order_docs[sales_order] = frappe.get_doc("Sales Order", sales_order)
-		sales_order_mappers[sales_order] = get_item_mapper_for_invoice(sales_order, allow_duplicate=True)
-		frappe.utils.call_hook_method("update_sales_invoice_from_packing_slip_mapper",
-			sales_order_mappers[sales_order], "Sales Order Item")
+	for ps_name in packing_slip_names:
+		packing_slip_doc = packing_slip_docs[ps_name] = frappe.get_doc("Packing Slip", ps_name)
+		target_doc = map_target_document("Sales Invoice", target_doc, packing_slip_doc)
+		for d in packing_slip_doc.get("items"):
+			if d.get("sales_order") and not sales_order_docs.get(d.sales_order):
+				sales_order_docs[d.sales_order] = frappe.get_doc("Sales Order", d.sales_order)
+				sales_order_mappers[d.sales_order] = get_item_mapper_for_invoice(d.sales_order, allow_duplicate=True)
+				frappe.utils.call_hook_method(
+					"update_sales_invoice_from_packing_slip_mapper",
+					sales_order_mappers[d.sales_order],
+					"Sales Order Item"
+				)
 
-		target_doc = make_sales_invoice_from_sales_order(sales_order, target_doc, skip_item_mapping=True)
+		# Map Sales Order fields without items
+		for sales_order_doc in sales_order_docs.values():
+			target_doc = make_sales_invoice_from_sales_order(
+				sales_order_doc,
+				target_doc,
+				skip_item_mapping=True,
+				skip_postprocess=True
+			)
 
 	packing_slip_item_mapper = get_packing_slip_item_mapper("Sales Invoice Item")
-	frappe.utils.call_hook_method("update_sales_invoice_from_packing_slip_mapper",
-		packing_slip_item_mapper, "Packing Slip Item")
+	frappe.utils.call_hook_method(
+		"update_sales_invoice_from_packing_slip_mapper",
+		packing_slip_item_mapper,
+		"Packing Slip Item",
+	)
 
 	# Map Packing Slip Items
-	for ps_item in packing_slip.get("items"):
-		if not mapper_item_condition(ps_item, target_doc):
-			continue
+	for ps_name in packing_slip_names:
+		packing_slip_doc = packing_slip_docs[ps_name]
+		for ps_item in packing_slip_doc.get("items"):
+			if not mapper_item_condition(ps_item, target_doc):
+				continue
 
-		sinv_item = None
-		if ps_item.get("sales_order_item"):
-			so_parent = sales_order_docs[ps_item.sales_order]
-			so_item = frappe.get_doc("Sales Order Item", ps_item.sales_order_item)
-			so_item_mapper = sales_order_mappers[ps_item.sales_order]
-			sinv_item = map_child_doc(so_item, target_doc, so_item_mapper, so_parent, target_d=sinv_item)
+			sinv_item = None
+			if ps_item.get("sales_order_item"):
+				so_parent = sales_order_docs[ps_item.sales_order]
+				so_item = so_parent.getone("items", {"name": ps_item.sales_order_item})
+				if so_item:
+					so_item_mapper = sales_order_mappers[ps_item.sales_order]
+					sinv_item = map_child_doc(so_item, target_doc, so_item_mapper, so_parent, target_d=sinv_item)
 
-		sinv_item = map_child_doc(ps_item, target_doc, packing_slip_item_mapper, packing_slip, target_d=sinv_item)
-		update_mapped_delivery_item(sinv_item, packing_slip)
+			sinv_item = map_child_doc(ps_item, target_doc, packing_slip_item_mapper, packing_slip_doc, target_d=sinv_item)
+			update_mapped_delivery_item(sinv_item, packing_slip_doc)
 
-	postprocess_mapped_delivery_document(target_doc)
+	# Post Process
 	target_doc.update_stock = 1
-	target_doc.run_method("reset_taxes_and_charges")
+	for i, d in enumerate(target_doc.get("items")):
+		d.idx = i + 1
+
+	if not cint(skip_postprocess):
+		target_doc.run_method("postprocess_after_mapping")
+		target_doc.run_method("reset_taxes_and_charges")
 
 	return target_doc
 
 
 @frappe.whitelist()
 def make_stock_entry(source_name, target_doc=None):
-	packing_slip = frappe.get_doc("Packing Slip", source_name)
-	target_doc = map_target_document("Stock Entry", target_doc, packing_slip)
+	if isinstance(source_name, str):
+		packing_slip_names = [source_name]
+	else:
+		packing_slip_names = source_name
 
-	map_stock_entry_items(packing_slip, target_doc)
+	for ps_name in packing_slip_names:
+		packing_slip_doc = frappe.get_doc("Packing Slip", ps_name)
+		target_doc = map_target_document("Stock Entry", target_doc, packing_slip_doc)
+		map_stock_entry_items(packing_slip_doc, target_doc)
 
 	target_doc.run_method("postprocess_after_mapping")
 	return target_doc
@@ -1743,10 +1809,3 @@ def update_mapped_delivery_item(target, packing_slip, warehouse_field="warehouse
 		target.weight_uom = packing_slip.weight_uom
 	if target.meta.has_field(warehouse_field):
 		target.set(warehouse_field, packing_slip.warehouse)
-
-
-def postprocess_mapped_delivery_document(target):
-	for i, d in enumerate(target.get("items")):
-		d.idx = i + 1
-
-	target.run_method("postprocess_after_mapping")
