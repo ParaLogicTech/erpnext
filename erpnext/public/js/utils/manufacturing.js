@@ -966,8 +966,9 @@ $.extend(erpnext.manufacturing, {
 			total_qty: total_qty,
 			progress_bars: [
 				{
-					title: __("<b>Packed:</b> {0} {1} ({2}%)", [
+					title: __("<b>Packed:</b> {0} / {1} {2} ({3}%)", [
 						frappe.format(packed_qty, {'fieldtype': 'Float'}, { inline: 1 }),
+						frappe.format(total_qty, {'fieldtype': 'Float'}, { inline: 1 }),
 						doc.stock_uom,
 						format_number(packed_qty / total_qty * 100, null, 1),
 					]),
