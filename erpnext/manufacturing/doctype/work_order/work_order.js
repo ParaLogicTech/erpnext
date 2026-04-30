@@ -17,6 +17,9 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 			"Purchase Receipt": "Subcontract Receipt",
 		};
 
+		this.frm.set_df_property("operations", "cannot_add_rows", true);
+		this.frm.set_df_property("operations", "cannot_delete_rows", true);
+
 		this.setup_queries();
 	}
 

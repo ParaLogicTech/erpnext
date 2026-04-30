@@ -106,8 +106,8 @@ class WorkOrder(StatusUpdaterERP):
 
 		self.delete_job_card()
 
-	def set_missing_values(self):
-		self.set_item_details()
+	def set_missing_values(self, with_settings=False):
+		self.set_item_details(with_settings=with_settings)
 
 	def set_item_details(self, with_settings=False):
 		item_details = get_item_details(self.as_dict(), with_settings=with_settings)
@@ -1369,7 +1369,7 @@ def make_work_order(bom_no, item, qty=0, project=None):
 		wo_doc.qty = flt(qty)
 		wo_doc.get_items_and_operations_from_bom()
 
-	wo_doc.run_method("set_missing_values")
+	wo_doc.set_missing_values(with_settings=True)
 
 	return wo_doc
 

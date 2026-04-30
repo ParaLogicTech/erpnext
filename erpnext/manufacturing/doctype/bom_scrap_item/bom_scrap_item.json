@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2016-09-26 02:19:21.642081",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -8,10 +9,10 @@
   "item_name",
   "quantity_and_rate",
   "stock_qty",
+  "stock_uom",
+  "column_break_6",
   "rate",
   "amount",
-  "column_break_6",
-  "stock_uom",
   "base_rate",
   "base_amount"
  ],
@@ -20,15 +21,14 @@
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Item Code",
+   "label": "Scrap Item",
    "options": "Item",
    "reqd": 1
   },
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Item Name"
+   "label": "Scrap Item Name"
   },
   {
    "fieldname": "quantity_and_rate",
@@ -36,11 +36,11 @@
    "label": "Quantity and Rate"
   },
   {
+   "columns": 1,
    "fieldname": "stock_qty",
    "fieldtype": "Float",
    "in_list_view": 1,
    "label": "Qty",
-   "precision": "6",
    "reqd": 1
   },
   {
@@ -62,8 +62,10 @@
    "fieldtype": "Column Break"
   },
   {
+   "columns": 1,
    "fieldname": "stock_uom",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Stock UOM",
    "options": "UOM",
    "read_only": 1
@@ -87,15 +89,19 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
- "modified": "2020-10-09 23:48:12.911345",
+ "links": [],
+ "modified": "2026-04-30 14:17:04.340908",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM Scrap Item",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
