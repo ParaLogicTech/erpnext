@@ -512,7 +512,6 @@ class Project(StatusUpdaterERP):
 		self.set_purchase_values(update=update, update_modified=update_modified)
 		self.set_material_consumed_cost(update=update, update_modified=update_modified)
 		self.set_material_cost_of_sales(update=update, update_modified=update_modified)
-		self.set_total_cost(update=update, update_modified=update_modified)
 		self.set_gross_margin(update=update, update_modified=update_modified)
 
 	def set_sales_amount(self, update=False, update_modified=False):
@@ -644,25 +643,18 @@ class Project(StatusUpdaterERP):
 			self.db_set({
 				'material_cost_of_sales': self.material_cost_of_sales,
 			}, None, update_modified=update_modified)
-	
-	def set_total_cost(self, update=False, update_modified=False):
-		total_expense = flt(
+
+	def set_gross_margin(self, update=False, update_modified=False):
+		total_revenue = flt(self.total_sales_amount, 9)
+
+		self.total_cost = flt(
 			flt(self.timesheet_costing_amount)
 			+ flt(self.total_expense_claim)
 			+ flt(self.total_purchase_cost)
 			+ flt(self.total_consumed_material_cost)
-			+ flt(self.material_cost_of_sales), 9)
-		self.total_cost = total_expense
-		if update:
-			self.db_set({
-				'total_cost': self.total_cost
-			}, None, update_modified=update_modified)
+			+ flt(self.material_cost_of_sales), 9)	
 
-	def set_gross_margin(self, update=False, update_modified=False):
-		total_revenue = flt(self.total_sales_amount, 9)
-		total_expense = flt(self.total_cost, 9)
-
-		self.gross_margin = flt(total_revenue - total_expense, 9)
+		self.gross_margin = flt(total_revenue - self.total_cost, 9)
 		self.per_gross_margin = flt(self.gross_margin / total_revenue, 6) * 100 if total_revenue else 0
 
 		if update:
