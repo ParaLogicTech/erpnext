@@ -286,8 +286,14 @@ class SellingController(TransactionController):
 				if self.bill_to != self.db_get("bill_to"):
 					return True
 			else:
-				if self.customer != self.db_get("customer"):
-					return True
+				if not self.meta.has_field("customer") and self.meta.has_field("quotation_to"):
+					if self.party_name != self.db_get("party_name"):
+						return True
+				else:
+					if self.customer != self.db_get("customer"):
+						return True
+
+			return False
 
 		for d in self.get("items"):
 			percent_precision = d.precision("discount_percentage")
