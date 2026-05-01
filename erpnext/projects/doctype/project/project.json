@@ -159,6 +159,7 @@
   "package_sales_amount",
   "sublet_sales_amount",
   "costing_section",
+  "total_cost",
   "material_cost_of_sales",
   "total_consumed_material_cost",
   "column_break_61",
@@ -1781,6 +1782,13 @@
    "options": "Opportunity",
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "total_cost",
+   "fieldtype": "Currency",
+   "label": "Total Cost",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -1788,7 +1796,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2026-04-02 00:56:40.692489",
+ "modified": "2026-05-01 11:59:52.475443",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",
