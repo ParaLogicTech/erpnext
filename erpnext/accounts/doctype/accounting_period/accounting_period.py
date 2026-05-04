@@ -57,7 +57,14 @@ class AccountingPeriod(Document):
 			"Payroll Entry",
 			"Bank Reconciliation",
 			"Asset",
-			"Stock Entry"
+			"Stock Entry",
+			"Stock Reconciliation",
+			"Delivery Note",
+			"Payment Entry",
+			"Purchase Receipt",
+			"Period Closing Voucher",
+			"Service Maintenance Contract",
+			"Service Warranty"
 		]
 
 		docs_for_closing = []
