@@ -63,9 +63,10 @@ class AccountingPeriod(Document):
 			"Payment Entry",
 			"Purchase Receipt",
 			"Period Closing Voucher",
-			"Service Maintenance Contract",
 			"Service Warranty"
 		]
+
+		frappe.utils.call_hook_method("get_doctypes_for_closing", doctypes)
 
 		docs_for_closing = []
 		closed_doctypes = [{"document_type": doctype, "closed": 1} for doctype in doctypes]
