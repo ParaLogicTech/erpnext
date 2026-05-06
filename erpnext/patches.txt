@@ -445,3 +445,4 @@ execute:frappe.delete_doc_if_exists("Report", "Purchase Receipt Trends")
 execute:frappe.delete_doc_if_exists("Report", "Purchase Order Trends")
 execute:frappe.delete_doc_if_exists("Report", "Purchase Invoice Trends")
 erpnext.patches.v15_0.set_employee_reports_to_name
+erpnext.patches.v15_0.set_project_total_cost
