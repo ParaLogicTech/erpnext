@@ -491,30 +491,44 @@ def update_reference_in_journal_entry(d, jv_doc, do_not_save=False):
 	"""
 		Updates against document, if partial amount splits into rows
 	"""
+
+	dr_or_cr = d["dr_or_cr"]
+	reverse_dr_or_cr = "credit_in_account_currency" if dr_or_cr == "debit_in_account_currency" else "debit_in_account_currency"
+	base_dr_or_cr = "debit" if dr_or_cr == "debit_in_account_currency" else "credit"
+	base_reverse_dr_or_cr = "credit" if dr_or_cr == "debit_in_account_currency" else "debit"
+
 	rows_to_reconcile = []
 	if d.get("voucher_detail_no"):
 		rows_to_reconcile.append(jv_doc.get("accounts", {"name": d["voucher_detail_no"]})[0])
 	else:
 		for row in jv_doc.accounts:
-			if row.party_type == d['party_type'] and row.party == d['party'] and row.account == d['account']\
-					and not row.reference_type and not row.reference_name:
+			if (
+				row.party_type == d['party_type']
+				and row.party == d['party']
+				and row.account == d['account']
+				and not row.reference_type
+				and not row.reference_name
+			):
 				rows_to_reconcile.append(row)
 
 	amt_allocated = 0.0
 	for jv_detail in rows_to_reconcile:
 		jvd = frappe.copy_doc(jv_detail)
 
+		diff = flt(jv_detail.get(dr_or_cr)) - flt(jv_detail.get(reverse_dr_or_cr))
+
 		amt_allocatable = flt(
-			min(jv_detail.get(d["dr_or_cr"]), d["allocated_amount"] - amt_allocated),
+			min(diff, d["allocated_amount"] - amt_allocated),
 			jv_detail.precision("debit")
 		)
-		original_dr_or_cr = jv_detail.get(d["dr_or_cr"])
+		original_dr_or_cr = diff
 		original_reference_type = jv_detail.reference_type
 		original_reference_name = jv_detail.reference_name
 
-		jv_detail.set(d["dr_or_cr"], amt_allocatable)
-		jv_detail.set('debit' if d['dr_or_cr']=='debit_in_account_currency' else 'credit',
-			amt_allocatable*flt(jv_detail.exchange_rate))
+		jv_detail.set(dr_or_cr, amt_allocatable)
+		jv_detail.set(base_dr_or_cr, amt_allocatable * flt(jv_detail.exchange_rate))
+		jv_detail.set(reverse_dr_or_cr, 0)
+		jv_detail.set(base_reverse_dr_or_cr, 0)
 
 		jv_detail.set("reference_type", d["against_voucher_type"])
 		jv_detail.set("reference_name", d["against_voucher"])
@@ -554,12 +568,10 @@ def update_reference_in_journal_entry(d, jv_doc, do_not_save=False):
 			for dimension_fieldname in get_accounting_dimensions():
 				ch.set(dimension_fieldname, jvd.get(dimension_fieldname))
 
-			ch.set(d['dr_or_cr'], amount_in_account_currency)
-			ch.set('debit' if d['dr_or_cr']=='debit_in_account_currency' else 'credit', amount_in_company_currency)
-
-			ch.set('credit_in_account_currency' if d['dr_or_cr']== 'debit_in_account_currency'
-				else 'debit_in_account_currency', 0)
-			ch.set('credit' if d['dr_or_cr']== 'debit_in_account_currency' else 'debit', 0)
+			ch.set(dr_or_cr, amount_in_account_currency)
+			ch.set(base_dr_or_cr, amount_in_company_currency)
+			ch.set(reverse_dr_or_cr, 0)
+			ch.set(base_reverse_dr_or_cr, 0)
 
 			ch.reference_type = original_reference_type
 			ch.reference_name = original_reference_name
