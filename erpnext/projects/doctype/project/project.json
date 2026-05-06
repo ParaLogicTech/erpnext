@@ -109,12 +109,9 @@
   "insurance_surveyor_mobile_no",
   "insurance_split_billing_section",
   "default_depreciation_percentage",
+  "insurance_excess_amount",
   "column_break_n9eg",
   "default_underinsurance_percentage",
-  "column_break_peg2",
-  "insurance_excess_amount",
-  "column_break_cqrw",
-  "insurance_excess_percentage",
   "additional_insurance_excess_amount",
   "non_standard_depreciation_section",
   "non_standard_depreciation",
@@ -160,16 +157,16 @@
   "sublet_sales_amount",
   "costing_section",
   "total_cost",
+  "estimated_costing",
+  "column_break_102",
   "material_cost_of_sales",
   "total_consumed_material_cost",
   "column_break_61",
   "total_purchase_cost",
   "total_expense_claim",
   "column_break_100",
-  "timesheet_billable_amount",
   "timesheet_costing_amount",
-  "column_break_102",
-  "estimated_costing",
+  "timesheet_billable_amount",
   "margin",
   "gross_margin",
   "column_break_37",
@@ -395,7 +392,6 @@
   {
    "fieldname": "estimated_costing",
    "fieldtype": "Currency",
-   "in_list_view": 1,
    "label": "Estimated Cost",
    "no_copy": 1,
    "oldfieldname": "project_value",
@@ -1448,17 +1444,6 @@
    "label": "Insurance Split Billing"
   },
   {
-   "fieldname": "column_break_peg2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "depends_on": "insurance_company",
-   "fieldname": "insurance_excess_percentage",
-   "fieldtype": "Percent",
-   "label": "Additional Insurance Excess (%)",
-   "non_negative": 1
-  },
-  {
    "depends_on": "insurance_company",
    "fieldname": "insurance_excess_amount",
    "fieldtype": "Currency",
@@ -1468,10 +1453,6 @@
   },
   {
    "fieldname": "column_break_n9eg",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_cqrw",
    "fieldtype": "Column Break"
   },
   {
@@ -1761,12 +1742,12 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval:doc.insurance_company && doc.additional_insurance_excess_amount",
+   "depends_on": "eval:doc.insurance_company",
    "fieldname": "additional_insurance_excess_amount",
    "fieldtype": "Currency",
    "label": "Additional Insurance Excess Amount",
-   "options": "Company:company:default_currency",
-   "read_only": 1
+   "non_negative": 1,
+   "options": "Company:company:default_currency"
   },
   {
    "fieldname": "sales_person",
@@ -1788,6 +1769,8 @@
    "fieldtype": "Currency",
    "label": "Total Cost",
    "no_copy": 1,
+   "options": "Company:company:default_currency",
+   "permlevel": 1,
    "read_only": 1
   }
  ],
@@ -1796,7 +1779,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2026-05-01 11:59:52.475443",
+ "modified": "2026-05-06 11:56:09.728667",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",

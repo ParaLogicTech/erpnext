@@ -1,21 +1,63 @@
 import frappe
+import click
+
+
+fields_to_update = [
+	"total_billable_amount",
+	"customer_billable_amount",
+	"total_billed_amount",
+
+	"total_sales_amount",
+
+	"material_sales_amount",
+	"part_sales_amount",
+	"lubricant_sales_amount",
+	"consumable_sales_amount",
+	"paint_sales_amount",
+
+	"service_sales_amount",
+	"labour_sales_amount",
+	"hourly_labour_sales_amount",
+	"package_sales_amount",
+	"sublet_sales_amount",
+
+	"total_cost",
+	"material_cost_of_sales",
+	"total_consumed_material_cost",
+	"total_purchase_cost",
+	"total_expense_claim",
+	"timesheet_costing_amount",
+
+	"pending_quotation_amount",
+	"total_discount_amount",
+
+	"sold_time",
+	"actual_time",
+
+	"final_invoice_date",
+	"first_sales_order_date",
+	"last_purchase_order_date",
+	"last_purchase_receipt_date",
+	"last_material_request_date",
+	"procurement_status",
+	"to_receive_materials",
+
+	"gross_margin",
+	"per_gross_margin",
+]
 
 
 def execute():
-	projects = frappe.db.sql_list("""
-		select p.name
-		from `tabProject` p
-		where exists(select ste.name from `tabStock Entry` ste where ste.project = p.name and ste.docstatus = 1)
-			or exists(select prec.name from `tabPurchase Receipt Item` prec where prec.project = p.name and prec.docstatus = 1)
-			or exists(select pinv.name from `tabPurchase Invoice Item` pinv where pinv.project = p.name and pinv.docstatus = 1)
-			or exists(select dn.name from `tabDelivery Note` dn where dn.project = p.name and dn.docstatus = 1)
-	""")
+	projects = frappe.get_all("Project", pluck="name")
 
-	for i, name in enumerate(projects):
-		print(f"{i+1}/{len(projects)}: {name}")
-		doc = frappe.get_doc("Project", name)
-		doc.set_purchase_values(update=True, update_modified=False)
-		doc.set_material_consumed_cost(update=True, update_modified=False)
-		doc.set_material_cost_of_sales(update=True, update_modified=False)
-		doc.set_gross_margin(update=True, update_modified=False)
-		doc.clear_cache()
+	with click.progressbar(projects) as names:
+		for name in names:
+			doc = frappe.get_doc("Project", name)
+			doc.set_billing_and_delivery_status(update=False)
+			doc.set_procurement_status(update=False)
+			doc.set_costing(update=False)
+
+			update_values = {f: doc.get(f) for f in fields_to_update}
+			doc.db_set(update_values, update_modified=False)
+
+			doc.clear_cache()

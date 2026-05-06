@@ -244,9 +244,6 @@ def set_depreciation_and_excess(target_doc, project):
 			if flt(project.additional_insurance_excess_amount):
 				row = target_doc.append("items", frappe.new_doc(target_doc.doctype + " Item"))
 				row.item_code = insurance_excess_item
-				row.item_name = insurance_excess_item_name + " ({0})".format(
-					project.get_formatted("insurance_excess_percentage", precision=1)
-				)
 				row.ignore_depreciation = 1
 				row.qty = 1
 				row.price_list_rate = 0
@@ -262,7 +259,7 @@ def determine_depreciation_type(target_doc, project):
 		or project.non_standard_depreciation
 		or project.non_standard_underinsurance
 	)
-	has_excess_amount = project.insurance_excess_amount or project.insurance_excess_percentage
+	has_excess_amount = project.insurance_excess_amount or project.additional_insurance_excess_amount
 
 	depreciation_type = None
 	if project.insurance_company and (has_depreciation_rate or has_excess_amount):
@@ -453,7 +450,7 @@ def get_billable_customers(project_name):
 		or project.non_standard_underinsurance
 	)
 
-	has_excess_amount = project.insurance_excess_amount or project.insurance_excess_percentage
+	has_excess_amount = project.insurance_excess_amount or project.additional_insurance_excess_amount
 
 	visited_customers = set()
 	billable_customers = []

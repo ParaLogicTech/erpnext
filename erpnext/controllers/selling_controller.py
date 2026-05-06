@@ -538,7 +538,7 @@ class SellingController(TransactionController):
 		so_warehouse = so_item and so_item[0]["warehouse"] or ""
 		return so_qty, so_warehouse
 
-	def check_sales_order_on_hold_or_close(self):
+	def check_order_on_hold_or_closed(self):
 		for d in self.get("items"):
 			if d.get('sales_order') and not d.get('delivery_note'):
 				status = frappe.db.get_value("Sales Order", d.get('sales_order'), "status", cache=1)
@@ -546,6 +546,11 @@ class SellingController(TransactionController):
 					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Sales Order", d.get('sales_order')), status))
 				if status == "On Hold":
 					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Sales Order", d.get('sales_order')), status))
+
+			if d.get('proforma_invoice'):
+				status = frappe.db.get_value("Proforma Invoice", d.get('proforma_invoice'), "status", cache=1)
+				if status == "Closed" and not cint(self.get('is_return')):
+					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Proforma Invoice", d.get('proforma_invoice')), status))
 
 	def update_reserved_qty(self):
 		so_map = {}
@@ -1020,7 +1025,11 @@ class SellingController(TransactionController):
 			depreciation_type_qty.setdefault(item_row_name, {}).setdefault(depreciation_type, 0)
 			depreciation_type_qty[item_row_name][depreciation_type] += d.qty
 
-			if depreciation_type != 'Depreciation Amount Only' and (not claim_customer or bill_to == claim_customer):
+			if (
+				depreciation_type != 'Depreciation Amount Only'
+				and (not claim_customer or bill_to == claim_customer)
+				and not d.for_depreciation_qty
+			):
 				billed_qty_map.setdefault(item_row_name, 0)
 				billed_qty_map[item_row_name] += d.qty
 

@@ -9,6 +9,7 @@ frappe.listview_settings['Proforma Invoice'] = {
 		var status_color = {
 			"To Bill": "orange",
 			"Billed": "green",
+			"Closed": "blue",
 		};
 		return [__(doc.status), status_color[doc.status], "status,=,"+doc.status];
 	},

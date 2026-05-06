@@ -703,12 +703,13 @@ class PurchaseOrder(BuyingController):
 
 @frappe.whitelist()
 def close_or_unclose_purchase_orders(names, status):
-	if not frappe.has_permission("Purchase Order", "write"):
+	if not frappe.has_permission("Purchase Order", "submit"):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 	names = json.loads(names)
 	for name in names:
 		po = frappe.get_doc("Purchase Order", name)
+		po.check_permission("submit")
 		if po.docstatus == 1:
 			if status == "Closed":
 				if po.status not in ("Cancelled", "Closed") and (po.receipt_status == 'To Receive' or po.billing_status == 'To Bill'):
@@ -1011,6 +1012,7 @@ def get_pending_raw_materials_to_transfer(purchase_order):
 @frappe.whitelist()
 def update_status(status, name):
 	po = frappe.get_doc("Purchase Order", name)
+	po.check_permission("submit")
 	po.update_status(status)
 	po.update_delivered_qty_in_sales_order()
 

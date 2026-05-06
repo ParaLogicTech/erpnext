@@ -624,10 +624,22 @@ class SalesOrder(SellingController):
 						p.depreciation_type, i.ignore_depreciation
 					from `tabProforma Invoice Item` i
 					inner join `tabProforma Invoice` p on p.name = i.parent
-					where p.docstatus = 1 and i.sales_order_item in %s
+					where p.docstatus = 1 and i.sales_order_item in %s and p.status != 'Closed'
 				""", [row_names], as_dict=1)
 
-				proforma_qty_map = self.get_billed_qty_map(billed_by_pfinv, "sales_order_item")
+				billed_by_sinv = []
+				if any(d.depreciation_type and not d.ignore_depreciation for d in billed_by_pfinv):
+					billed_by_sinv = frappe.db.sql("""
+						select i.sales_order_item, i.qty, i.amount, p.is_return, p.reopen_order,
+							p.customer, p.bill_to,
+							p.depreciation_type, i.ignore_depreciation, 1 as for_depreciation_qty
+						from `tabSales Invoice Item` i
+						inner join `tabSales Invoice` p on p.name = i.parent
+						where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
+							and i.sales_order_item in %s
+					""", [row_names], as_dict=1)
+
+				proforma_qty_map = self.get_billed_qty_map(billed_by_pfinv + billed_by_sinv, "sales_order_item")
 
 		return proforma_qty_map
 
@@ -953,10 +965,8 @@ class SalesOrder(SellingController):
 
 @frappe.whitelist()
 def update_status(status, name):
-	if not frappe.has_permission("Sales Order", "write"):
-		frappe.throw(_("Not permitted"), frappe.PermissionError)
-
 	so = frappe.get_doc("Sales Order", name)
+	so.check_permission("submit")
 	so.run_method("update_status", status)
 
 	frappe.msgprint(_("{0} is {1}").format(frappe.get_desk_link("Sales Order", name), status))
@@ -964,12 +974,13 @@ def update_status(status, name):
 
 @frappe.whitelist()
 def close_or_unclose_sales_orders(names, status):
-	if not frappe.has_permission("Sales Order", "write"):
+	if not frappe.has_permission("Sales Order", "submit"):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 	names = json.loads(names)
 	for name in names:
 		so = frappe.get_doc("Sales Order", name)
+		so.check_permission("submit")
 		if so.docstatus == 1:
 			if status == "Closed":
 				if so.status not in ("Cancelled", "Closed") and (so.delivery_status == "To Deliver" or so.billing_status == "To Bill"):

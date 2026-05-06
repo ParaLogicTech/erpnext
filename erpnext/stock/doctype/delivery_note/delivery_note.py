@@ -36,7 +36,7 @@ class DeliveryNote(SellingController):
 		self.validate_posting_time()
 		super(DeliveryNote, self).validate()
 		self.validate_order_required()
-		self.check_sales_order_on_hold_or_close()
+		self.check_order_on_hold_or_closed()
 		self.validate_project()
 		self.validate_warehouse()
 		self.validate_campaign()
@@ -220,6 +220,7 @@ class DeliveryNote(SellingController):
 
 			if not frappe.get_cached_value("Stock Settings", None, "allow_delivery_returns_after_billing"):
 				doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
+				doc.validate_proforma_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
 
 			if self.reopen_order:
 				return_against_packing_slips = set([d.packing_slip for d in doc.items
@@ -392,10 +393,22 @@ class DeliveryNote(SellingController):
 						p.depreciation_type, i.ignore_depreciation
 					from `tabProforma Invoice Item` i
 					inner join `tabProforma Invoice` p on p.name = i.parent
-					where p.docstatus = 1 and i.delivery_note_item in %s
+					where p.docstatus = 1 and i.delivery_note_item in %s and p.status != 'Closed'
 				""", [row_names], as_dict=1)
 
-				proforma_qty_map = self.get_billed_qty_map(billed_by_pfinv, "delivery_note_item")
+				billed_by_sinv = []
+				if any(d.depreciation_type and not d.ignore_depreciation for d in billed_by_pfinv):
+					billed_by_sinv = frappe.db.sql("""
+						select i.delivery_note_item, i.qty, i.amount, p.is_return, p.reopen_order,
+							p.customer, p.bill_to,
+							p.depreciation_type, i.ignore_depreciation, 1 as for_depreciation_qty
+						from `tabSales Invoice Item` i
+						inner join `tabSales Invoice` p on p.name = i.parent
+						where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
+							and i.delivery_note_item in %s
+					""", [row_names], as_dict=1)
+
+				proforma_qty_map = self.get_billed_qty_map(billed_by_pfinv + billed_by_sinv, "delivery_note_item")
 
 		return proforma_qty_map
 
