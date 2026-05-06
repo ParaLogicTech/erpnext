@@ -513,15 +513,15 @@ class PaymentEntry(AccountsController):
 			frappe.throw(_("Row #{0}: Journal Entry {1} does not have account {2} or is already matched against a voucher")
 				.format(d.idx, d.reference_name, self.party_account))
 
-		dr_or_cr = "debit" if self.payment_type == "Receive" else "credit"
+		# dr_or_cr = "debit" if self.payment_type == "Receive" else "credit"
 
-		valid = False
-		for jvd in je_accounts:
-			if flt(jvd[dr_or_cr]) > 0:
-				valid = True
-		if not valid:
-			frappe.throw(_("Against Journal Entry {0} does not have any unmatched {1} entry")
-				.format(d.reference_name, dr_or_cr))
+		# valid = False
+		# for jvd in je_accounts:
+		# 	if flt(jvd[dr_or_cr]) > 0:
+		# 		valid = True
+		# if not valid:
+		# 	frappe.throw(_("Against Journal Entry {0} does not have any unmatched {1} entry")
+		# 		.format(d.reference_name, dr_or_cr))
 
 	def update_payment_schedule(self, cancel=0):
 		invoice_payment_amount_map = {}
