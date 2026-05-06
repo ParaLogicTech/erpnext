@@ -56,7 +56,7 @@ class GrossProfitGenerator(object):
 				si.posting_date, si.posting_time, si.transaction_type,
 				si.company, si.branch as parent_branch, {item_branch_field}
 				si.customer, si.customer_name, c.customer_group, c.territory,
-				si.bill_to, dn_item.claim_customer, dn_item.discount_percentage as claim_discount_percentage,
+				si.bill_to, si.bill_to_name , dn_item.claim_customer, dn_item.discount_percentage as claim_discount_percentage,
 				si.project as parent_project, si_item.project as item_project,
 				si.cost_center as parent_cost_center, si_item.cost_center as item_cost_center,
 				si_item.item_code, si_item.item_name, si_item.batch_no, si_item.uom,
@@ -72,7 +72,7 @@ class GrossProfitGenerator(object):
 			from `tabSales Invoice` si
 			inner join `tabSales Invoice Item` si_item on si_item.parent = si.name
 			left join `tabDelivery Note Item` dn_item on dn_item.name = si_item.delivery_note_item
-			left join `tabCustomer` c on c.name = si.customer
+			left join `tabCustomer` c on c.name = si.bill_to
 			left join `tabItem` i on i.name = si_item.item_code
 			left join `tabSales Team` sp on sp.parent = si.name and sp.parenttype = 'Sales Invoice'
 			where si.docstatus = 1 and si.is_opening != 'Yes' {conditions}
@@ -95,6 +95,8 @@ class GrossProfitGenerator(object):
 			d["cost_center"] = d.parent_cost_center or d.item_cost_center
 			d["branch"] = d.parent_branch or d.item_branch
 			d["applies_to_variant_of"] = d.applies_to_variant_of or d.applies_to_item
+			d["customer"] = d.bill_to
+			d["customer_name"] = d.bill_to_name
 
 			d.split_percentage = 100
 
@@ -249,7 +251,7 @@ class GrossProfitGenerator(object):
 			conditions.append("si.name = %(sales_invoice)s")
 
 		if self.filters.get("customer"):
-			conditions.append("si.customer = %(customer)s")
+			conditions.append("si.bill_to = %(customer)s")
 
 		if self.filters.get("customer_group"):
 			lft, rgt = frappe.db.get_value("Customer Group", self.filters.customer_group, ["lft", "rgt"])
