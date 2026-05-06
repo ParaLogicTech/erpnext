@@ -55,8 +55,8 @@ class GrossProfitGenerator(object):
 				si.name as parent, si_item.parenttype, si_item.name, si_item.idx, si.docstatus,
 				si.posting_date, si.posting_time, si.transaction_type,
 				si.company, si.branch as parent_branch, {item_branch_field}
-				si.customer, si.customer_name, c.customer_group, c.territory,
-				si.bill_to, si.bill_to_name , dn_item.claim_customer, dn_item.discount_percentage as claim_discount_percentage,
+				si.bill_to as customer, si.bill_to_name as customer_name, c.customer_group, si.territory,
+				si.bill_to, dn_item.claim_customer, dn_item.discount_percentage as claim_discount_percentage,
 				si.project as parent_project, si_item.project as item_project,
 				si.cost_center as parent_cost_center, si_item.cost_center as item_cost_center,
 				si_item.item_code, si_item.item_name, si_item.batch_no, si_item.uom,
@@ -95,8 +95,6 @@ class GrossProfitGenerator(object):
 			d["cost_center"] = d.parent_cost_center or d.item_cost_center
 			d["branch"] = d.parent_branch or d.item_branch
 			d["applies_to_variant_of"] = d.applies_to_variant_of or d.applies_to_item
-			d["customer"] = d.bill_to
-			d["customer_name"] = d.bill_to_name
 
 			d.split_percentage = 100
 
