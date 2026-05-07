@@ -57,8 +57,20 @@ class AccountingPeriod(Document):
 			"Payroll Entry",
 			"Bank Reconciliation",
 			"Asset",
-			"Stock Entry"
+			"Stock Entry",
+			"Stock Reconciliation",
+			"Delivery Note",
+			"Payment Entry",
+			"Purchase Receipt",
+			"Period Closing Voucher",
+			"Service Warranty"
 		]
+
+		extendend_list = frappe.get_hooks("get_accounting_period_default_doctypes") or []
+
+		for doctype in extendend_list:
+			if doctype not in doctypes:
+				doctypes.append(doctype)
 
 		docs_for_closing = []
 		closed_doctypes = [{"document_type": doctype, "closed": 1} for doctype in doctypes]
