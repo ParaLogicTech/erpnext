@@ -65,8 +65,8 @@ class AccountingPeriod(Document):
 			"Period Closing Voucher",
 			"Service Warranty"
 		]
-
-		extendend_list = frappe.utils.call_hook_method("get_accounting_period_default_doctypes") or []
+		
+		extendend_list = frappe.get_hooks("get_accounting_period_default_doctypes") or []
 
 		doctypes = list(set(doctypes+extendend_list))
 
