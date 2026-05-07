@@ -65,10 +65,12 @@ class AccountingPeriod(Document):
 			"Period Closing Voucher",
 			"Service Warranty"
 		]
-		
+
 		extendend_list = frappe.get_hooks("get_accounting_period_default_doctypes") or []
 
-		doctypes = list(set(doctypes+extendend_list))
+		for doctype in extendend_list:
+			if doctype not in doctypes:
+				doctypes.append(doctype)
 
 		docs_for_closing = []
 		closed_doctypes = [{"document_type": doctype, "closed": 1} for doctype in doctypes]
