@@ -29,6 +29,7 @@
   "tax_id",
   "tax_strn",
   "tax_status",
+  "tax_id_non_mandatory",
   "primary_contact_person_section",
   "salutation",
   "column_break_53",
@@ -325,7 +326,8 @@
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Mobile No (Primary)",
-   "options": "Phone"
+   "options": "Phone",
+   "search_index": 1
   },
   {
    "bold": 1,
@@ -333,7 +335,8 @@
    "fieldtype": "Data",
    "in_preview": 1,
    "in_standard_filter": 1,
-   "label": "Email Address"
+   "label": "Email Address",
+   "search_index": 1
   },
   {
    "fieldname": "customer_primary_address",
@@ -724,13 +727,22 @@
    "fieldtype": "Table",
    "label": "Goodwill Accounts",
    "options": "Party Account"
+  },
+  {
+   "default": "0",
+   "fieldname": "tax_id_non_mandatory",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Tax ID Non Mandatory",
+   "no_copy": 1,
+   "print_hide": 1
   }
  ],
  "icon": "fa fa-user",
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2026-04-01 15:45:59.681846",
+ "modified": "2026-05-08 14:53:41.715259",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",
