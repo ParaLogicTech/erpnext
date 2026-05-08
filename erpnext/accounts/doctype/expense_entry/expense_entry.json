@@ -13,6 +13,8 @@
   "payable_account",
   "payable_account_currency",
   "column_break1",
+  "supplier",
+  "supplier_name",
   "bill_no",
   "mode_of_payment",
   "column_break_ujk7",
@@ -275,6 +277,7 @@
    "options": "Branch"
   },
   {
+   "depends_on": "paid_from_account",
    "fieldname": "mode_of_payment",
    "fieldtype": "Link",
    "label": "Mode of Payment",
@@ -296,12 +299,26 @@
    "label": "Posting Method",
    "options": "Multiple Entries on Bill Date\nMultiple Entries on Transaction Date\nSingle Entry on Transaction Date",
    "reqd": 1
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "depends_on": "eval:doc.supplier && doc.supplier_name != doc.supplier",
+   "fetch_from": "supplier.supplier_name",
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-13 04:02:59.134981",
+ "modified": "2026-04-21 14:53:42.547212",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Expense Entry",

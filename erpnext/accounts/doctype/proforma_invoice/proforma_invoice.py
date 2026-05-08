@@ -17,13 +17,14 @@ class ProformaInvoice(SellingController):
 			["Draft", None],
 			["To Bill", "eval:self.docstatus == 1"],
 			["Billed", "eval:self.docstatus == 1 and self.billing_status != 'To Bill'"],
+			["Closed", "eval:self.status == 'Closed'"],
 			["Cancelled", "eval:self.docstatus == 2"],
 		]
 
 	def validate(self):
 		super().validate()
 		self.validate_project()
-		self.check_sales_order_on_hold_or_close()
+		self.check_order_on_hold_or_closed()
 		self.validate_debit_to_acc()
 		self.validate_campaign()
 		self.validate_with_previous_doc()
@@ -234,7 +235,7 @@ class ProformaInvoice(SellingController):
 
 		self.advance_paid += self.get_advance_tax_allocated()
 
-		if self.per_billed or self.docstatus == 2:
+		if self.per_billed or self.docstatus == 2 or self.status == "Closed":
 			self.outstanding_amount = 0
 		else:
 			self.outstanding_amount = payable_amount - self.advance_paid
@@ -244,6 +245,14 @@ class ProformaInvoice(SellingController):
 				"outstanding_amount": self.outstanding_amount,
 				"advance_paid": self.advance_paid,
 			}, update_modified=update_modified)
+
+	def update_status(self, status):
+		self.set_status(status=status)
+		self.set_billing_status(update=True)
+		self.set_outstanding_amount(update=True)
+		self.set_status(update=True, status=status)
+		self.update_previous_doc_status()
+		self.notify_update()
 
 
 @frappe.whitelist()
@@ -357,3 +366,11 @@ def get_item_mapper_for_invoice(allow_duplicate=False):
 		"postprocess": update_item,
 		"condition": item_condition,
 	}
+
+
+@frappe.whitelist()
+def update_status(status, name):
+	so = frappe.get_doc("Proforma Invoice", name)
+	so.check_permission("submit")
+	so.run_method("update_status", status)
+	frappe.msgprint(_("{0} is {1}").format(frappe.get_desk_link("Proforma Invoice", name), status))

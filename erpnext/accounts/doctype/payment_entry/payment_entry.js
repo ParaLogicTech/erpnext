@@ -953,14 +953,24 @@ frappe.ui.form.on('Payment Entry', {
 			var allocated_positive_outstanding =  paid_amount + allocated_negative_outstanding;
 		} else if (in_list(["Customer", "Supplier", "Letter of Credit"], frm.doc.party_type)) {
 			if(paid_amount > total_negative_outstanding) {
-				if(!total_negative_outstanding) {
-					frappe.msgprint(__("Paid Amount cannot be greater than total negative outstanding amount {0}", [total_negative_outstanding]));
-					return false;
+				if(total_negative_outstanding) {
+					frappe.msgprint({
+						message: __(
+							"Paid Amount cannot be greater than total negative outstanding amount {0}",
+							[total_negative_outstanding]
+						),
+						alert: true,
+						indicator: "yellow",
+					});
 				} else {
-					frappe.msgprint(__("Cannot {0} {1} {2} without any negative outstanding invoice",
-						[frm.doc.payment_type,
-							(frm.doc.party_type=="Customer" ? "to" : "from"), frm.doc.party_type]));
-					return false
+					frappe.msgprint({
+						message: __(
+							"Cannot {0} {1} {2} without any negative outstanding invoice",
+							[frm.doc.payment_type, (frm.doc.party_type=="Customer" ? "to" : "from"), frm.doc.party_type]
+						),
+						alert: true,
+						indicator: "yellow",
+					});
 				}
 			} else {
 				allocated_positive_outstanding = total_negative_outstanding - paid_amount;
@@ -982,9 +992,11 @@ frappe.ui.form.on('Payment Entry', {
 
 					allocated_positive_outstanding -= flt(row.allocated_amount);
 				} else if (row.outstanding_amount < 0 && allocated_negative_outstanding) {
-					if(Math.abs(row.outstanding_amount) >= allocated_negative_outstanding)
-						row.allocated_amount = -1*allocated_negative_outstanding;
-					else row.allocated_amount = row.outstanding_amount;
+					if (Math.abs(row.outstanding_amount) >= allocated_negative_outstanding) {
+						row.allocated_amount = -1 * allocated_negative_outstanding;
+					} else {
+						row.allocated_amount = row.outstanding_amount;
+					}
 
 					allocated_negative_outstanding -= Math.abs(flt(row.allocated_amount));
 				}
@@ -999,6 +1011,7 @@ frappe.ui.form.on('Payment Entry', {
 		var total_allocated_amount = 0.0;
 		var base_total_allocated_amount = 0.0;
 		$.each(frm.doc.references || [], function(i, row) {
+			row.allocated_amount = flt(row.allocated_amount, precision("paid_amount"));
 			if (row.allocated_amount) {
 				total_allocated_amount += flt(row.allocated_amount);
 				base_total_allocated_amount += flt(flt(row.allocated_amount)*flt(row.exchange_rate),

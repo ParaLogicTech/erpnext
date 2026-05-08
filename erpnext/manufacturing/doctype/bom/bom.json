@@ -267,6 +267,7 @@
   },
   {
    "collapsible": 1,
+   "collapsible_depends_on": "scrap_items",
    "fieldname": "scrap_section",
    "fieldtype": "Section Break",
    "label": "Scrap"
@@ -514,7 +515,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-23 22:46:44.744836",
+ "modified": "2026-04-30 14:16:36.770178",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM",
@@ -549,6 +550,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "item, item_name",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

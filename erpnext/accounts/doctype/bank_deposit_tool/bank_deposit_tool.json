@@ -5,6 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "undeposited_account",
+  "bank_account",
   "deposit_to_account",
   "currency",
   "consolidate_bank_amount",
@@ -17,24 +18,25 @@
   "deposit_no",
   "undeposited_entry_filters_section",
   "from_date",
-  "to_date",
   "column_break_awme",
-  "min_amount",
-  "max_amount",
+  "to_date",
   "column_break_xccv",
   "mode_of_payment",
+  "column_break_7win",
   "limit",
-  "undeposited_entries_section",
-  "reload_undeposited_entries",
-  "undeposited_entries",
   "totals_section",
   "undeposited_account_balance",
   "column_break_ik8d",
   "selected_deposit_amount",
   "column_break_dnzs",
   "actual_deposit_amount",
+  "column_break_1mdv",
+  "total_adjustment",
   "column_break_c6sc",
   "difference_amount",
+  "undeposited_entries_section",
+  "reload_undeposited_entries",
+  "undeposited_entries",
   "deposit_adjustments_section",
   "adjustment_entries",
   "accounting_dimensions_section",
@@ -58,10 +60,9 @@
   {
    "fieldname": "deposit_to_account",
    "fieldtype": "Link",
-   "in_list_view": 1,
    "label": "Deposit To Account",
    "options": "Account",
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "deposit_date",
@@ -112,7 +113,7 @@
   {
    "fieldname": "deposit_adjustments_section",
    "fieldtype": "Section Break",
-   "label": "Deposit Adjustments"
+   "label": "Deposit Adjustments and Expenses"
   },
   {
    "fieldname": "adjustment_entries",
@@ -167,26 +168,13 @@
    "label": "Undeposited Entry Filters"
   },
   {
-   "fieldname": "min_amount",
-   "fieldtype": "Currency",
-   "label": "Minimum Amount",
-   "options": "currency"
-  },
-  {
-   "fieldname": "max_amount",
-   "fieldtype": "Currency",
-   "label": "Maximum Amount",
-   "options": "currency"
-  },
-  {
    "fieldname": "undeposited_entries_section",
    "fieldtype": "Section Break",
    "label": "Undeposited Entries"
   },
   {
    "fieldname": "totals_section",
-   "fieldtype": "Section Break",
-   "label": "Totals"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "column_break_ik8d",
@@ -199,7 +187,6 @@
   {
    "fieldname": "actual_deposit_amount",
    "fieldtype": "Currency",
-   "force_currency_symbol": 1,
    "label": "Actual Deposit Amount",
    "non_negative": 1,
    "options": "currency"
@@ -259,13 +246,36 @@
    "fieldtype": "Link",
    "label": "Mode of Payment",
    "options": "Mode of Payment"
+  },
+  {
+   "fieldname": "column_break_7win",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_1mdv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_adjustment",
+   "fieldtype": "Currency",
+   "label": "Total Adjustment",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bank_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Bank Account",
+   "options": "Bank Account",
+   "reqd": 1
   }
  ],
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-14 17:05:57.212022",
+ "modified": "2026-04-25 04:12:30.369047",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",

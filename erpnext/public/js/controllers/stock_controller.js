@@ -327,14 +327,19 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 
 	get_items_from_packing_slip(target_doctype, packing_slip_id) {
 		let method;
+		let method_supports_list = false;
 		if (target_doctype == "Delivery Note") {
 			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_delivery_note";
+			method_supports_list = true;
 		} else if (target_doctype == "Sales Invoice") {
 			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_sales_invoice";
+			method_supports_list = true;
 		} else if (target_doctype == "Packing Slip") {
 			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_target_packing_slip";
+			method_supports_list = true;
 		} else if (target_doctype == "Stock Entry") {
 			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_stock_entry";
+			method_supports_list = true;
 		} else {
 			return;
 		}
@@ -364,6 +369,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 
 			erpnext.utils.map_current_doc({
 				method: method,
+				method_supports_list: method_supports_list,
 				source_doctype: "Packing Slip",
 				target: this.frm,
 				setters: [
@@ -389,9 +395,10 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 						label: __('Sales Order'),
 						fieldtype: 'Link',
 						options: 'Sales Order',
-						get_query: () => {
+						get_query: (doc) => {
 							return {
 								filters: {
+									customer: doc?.customer || undefined,
 									docstatus: 1
 								}
 							}

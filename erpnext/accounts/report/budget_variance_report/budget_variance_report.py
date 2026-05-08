@@ -1,14 +1,10 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import datetime
-from six import iteritems
-
 import frappe
 from frappe import _
-from frappe.utils import flt, formatdate
-
-from erpnext.controllers.trends import get_period_date_ranges, get_period_month_ranges
+from frappe.utils import flt, formatdate, getdate
+import datetime
 
 
 def execute(filters=None):
@@ -28,7 +24,7 @@ def execute(filters=None):
 	for dimension in dimensions:
 		dimension_items = cam_map.get(dimension)
 		if dimension_items:
-			for account, monthwise_data in iteritems(dimension_items):
+			for account, monthwise_data in dimension_items.items():
 				row = [dimension, account]
 				totals = [0, 0, 0]
 				for year in get_fiscal_years(filters):
@@ -304,3 +300,45 @@ def get_fiscal_years(filters):
 		})
 
 	return fiscal_year
+
+
+@frappe.whitelist(allow_guest=True)
+def get_period_date_ranges(period, fiscal_year=None, year_start_date=None):
+	from dateutil.relativedelta import relativedelta
+
+	if not year_start_date:
+		year_start_date, year_end_date = frappe.db.get_value("Fiscal Year",
+			fiscal_year, ["year_start_date", "year_end_date"])
+
+	increment = {
+		"Monthly": 1,
+		"Quarterly": 3,
+		"Half-Yearly": 6,
+		"Yearly": 12
+	}.get(period)
+
+	period_date_ranges = []
+	for i in range(1, 13, increment):
+		period_end_date = getdate(year_start_date) + relativedelta(months=increment, days=-1)
+		if period_end_date > getdate(year_end_date):
+			period_end_date = year_end_date
+		period_date_ranges.append([year_start_date, period_end_date])
+		year_start_date = period_end_date + relativedelta(days=1)
+		if period_end_date == year_end_date:
+			break
+
+	return period_date_ranges
+
+
+def get_period_month_ranges(period, fiscal_year):
+	from dateutil.relativedelta import relativedelta
+	period_month_ranges = []
+
+	for start_date, end_date in get_period_date_ranges(period, fiscal_year):
+		months_in_this_period = []
+		while start_date <= end_date:
+			months_in_this_period.append(start_date.strftime("%B"))
+			start_date += relativedelta(months=1)
+		period_month_ranges.append(months_in_this_period)
+
+	return period_month_ranges

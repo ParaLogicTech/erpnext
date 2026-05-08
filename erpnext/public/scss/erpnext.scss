@@ -495,3 +495,11 @@ body[data-route="pos"] {
 .bundle-icon {
 	margin-right: 2px;
 }
+
+.banking-sticky-section {
+	position: sticky;
+	z-index: 1;
+	top: calc(var(--navbar-height) + var(--page-head-height));
+	box-shadow: var(--shadow-sm);
+	background-color: var(--fg-color);
+}

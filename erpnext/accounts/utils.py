@@ -99,90 +99,88 @@ def get_balance_on(
 	company=None,
 	in_account_currency=True,
 	cost_center=None,
-	ignore_account_permission=False
+	ignore_account_permission=False,
 ):
-	cond = []
-	if date:
-		cond.append("posting_date <= %s" % frappe.db.escape(cstr(date)))
-	else:
-		# get balance of all entries that exist
-		date = nowdate()
+	in_account_currency = cint(in_account_currency)
 
-	if account:
-		acc = frappe.get_cached_doc("Account", account)
+	account_doc = frappe.get_cached_doc("Account", account) if account else None
+	report_type = account_doc.report_type if account_doc else None
 
 	try:
 		year_start_date = get_fiscal_year(date, company=company, verbose=0)[1]
 	except FiscalYearError:
-		if getdate(date) > getdate(nowdate()):
+		if getdate(date) > getdate():
 			# if fiscal year not found and the date is greater than today
 			# get fiscal year for today's date and its corresponding year start date
-			year_start_date = get_fiscal_year(nowdate(), verbose=1)[1]
+			year_start_date = get_fiscal_year(getdate(), verbose=1)[1]
 		else:
 			# this indicates that it is a date older than any existing fiscal year.
 			# hence, assuming balance as 0.0
 			return 0.0
 
-	if account:
-		report_type = acc.report_type
-	else:
-		report_type = ""
+	conditions = []
 
-	if cost_center and report_type == 'Profit and Loss':
-		cc = frappe.get_cached_doc("Cost Center", cost_center)
-		if cc.is_group:
-			cond.append(""" exists (
-				select 1 from `tabCost Center` cc where cc.name = gle.cost_center
-				and cc.lft >= %s and cc.rgt <= %s
-			)""" % (cc.lft, cc.rgt))
+	if date:
+		conditions.append("posting_date <= {0}".format(frappe.db.escape(cstr(date))))
 
-		else:
-			cond.append("""gle.cost_center = %s """ % (frappe.db.escape(cost_center, percent=False), ))
-
+	if company:
+		conditions.append("gle.company = {0}".format(frappe.db.escape(company)))
 
 	if account:
+		if not frappe.flags.ignore_account_permission and not ignore_account_permission:
+			account_doc.check_permission("read")
 
-		if not (frappe.flags.ignore_account_permission
-			or ignore_account_permission):
-			acc.check_permission("read")
+		# for pnl accounts, get balance within a fiscal year
+		if report_type == "Profit and Loss":
+			conditions.append("posting_date >= '{0}' and voucher_type != 'Period Closing Voucher'".format(
+				year_start_date
+			))
 
-		if report_type == 'Profit and Loss':
-			# for pl accounts, get balance within a fiscal year
-			cond.append("posting_date >= '%s' and voucher_type != 'Period Closing Voucher'" \
-				% year_start_date)
 		# different filter for group and ledger - improved performance
-		if acc.is_group:
-			cond.append("""exists (
-				select name from `tabAccount` ac where ac.name = gle.account
-				and ac.lft >= %s and ac.rgt <= %s
-			)""" % (acc.lft, acc.rgt))
+		if account_doc.is_group:
+			conditions.append("""exists (
+				select name
+				from `tabAccount` ac
+				where ac.name = gle.account and ac.lft >= {0} and ac.rgt <= {1}
+			)""".format(account_doc.lft, account_doc.rgt))
 
 			# If group and currency same as company,
 			# always return balance based on debit and credit in company currency
-			if acc.account_currency == frappe.get_cached_value('Company',  acc.company,  "default_currency"):
+			if account_doc.account_currency == frappe.get_cached_value('Company',  account_doc.company,  "default_currency"):
 				in_account_currency = False
 		else:
-			cond.append("""gle.account = %s """ % (frappe.db.escape(account, percent=False), ))
+			conditions.append("gle.account = {0}".format(frappe.db.escape(account)))
 
 	if party_type and party:
-		cond.append("""gle.party_type = %s and gle.party = %s """ %
-			(frappe.db.escape(party_type), frappe.db.escape(party, percent=False)))
+		conditions.append("gle.party_type = {0} and gle.party = {1}".format(
+			frappe.db.escape(party_type), frappe.db.escape(party)
+		))
 
-	if company:
-		cond.append("""gle.company = %s """ % (frappe.db.escape(company, percent=False)))
+	if cost_center and report_type == "Profit and Loss":
+		cost_center_doc = frappe.get_cached_doc("Cost Center", cost_center)
+		if cost_center_doc.is_group:
+			conditions.append("""exists (
+				select 1 from `tabCost Center` cc
+				where cc.name = gle.cost_center and cc.lft >= {0} and cc.rgt <= {1}
+			)""".format(cost_center_doc.lft, cost_center_doc.rgt))
+		else:
+			conditions.append("gle.cost_center = {0}".format(frappe.db.escape(cost_center)))
 
 	if account or (party_type and party):
 		if in_account_currency:
 			select_field = "sum(debit_in_account_currency) - sum(credit_in_account_currency)"
 		else:
 			select_field = "sum(debit) - sum(credit)"
-		bal = frappe.db.sql("""
-			SELECT {0}
-			FROM `tabGL Entry` gle
-			WHERE {1}""".format(select_field, " and ".join(cond)))[0][0]
 
-		# if bal is None, return 0
-		return flt(bal)
+		conditions_str = " and ".join(conditions)
+
+		balance = frappe.db.sql(f"""
+			SELECT {select_field}
+			FROM `tabGL Entry` gle
+			WHERE {conditions_str}
+		""")
+		balance = flt(balance[0][0]) if balance else 0.0
+		return balance
 
 
 def get_balance_on_voucher(
@@ -493,30 +491,44 @@ def update_reference_in_journal_entry(d, jv_doc, do_not_save=False):
 	"""
 		Updates against document, if partial amount splits into rows
 	"""
+
+	dr_or_cr = d["dr_or_cr"]
+	reverse_dr_or_cr = "credit_in_account_currency" if dr_or_cr == "debit_in_account_currency" else "debit_in_account_currency"
+	base_dr_or_cr = "debit" if dr_or_cr == "debit_in_account_currency" else "credit"
+	base_reverse_dr_or_cr = "credit" if dr_or_cr == "debit_in_account_currency" else "debit"
+
 	rows_to_reconcile = []
 	if d.get("voucher_detail_no"):
 		rows_to_reconcile.append(jv_doc.get("accounts", {"name": d["voucher_detail_no"]})[0])
 	else:
 		for row in jv_doc.accounts:
-			if row.party_type == d['party_type'] and row.party == d['party'] and row.account == d['account']\
-					and not row.reference_type and not row.reference_name:
+			if (
+				row.party_type == d['party_type']
+				and row.party == d['party']
+				and row.account == d['account']
+				and not row.reference_type
+				and not row.reference_name
+			):
 				rows_to_reconcile.append(row)
 
 	amt_allocated = 0.0
 	for jv_detail in rows_to_reconcile:
 		jvd = frappe.copy_doc(jv_detail)
 
+		diff = flt(jv_detail.get(dr_or_cr)) - flt(jv_detail.get(reverse_dr_or_cr))
+
 		amt_allocatable = flt(
-			min(jv_detail.get(d["dr_or_cr"]), d["allocated_amount"] - amt_allocated),
+			min(diff, d["allocated_amount"] - amt_allocated),
 			jv_detail.precision("debit")
 		)
-		original_dr_or_cr = jv_detail.get(d["dr_or_cr"])
+		original_dr_or_cr = diff
 		original_reference_type = jv_detail.reference_type
 		original_reference_name = jv_detail.reference_name
 
-		jv_detail.set(d["dr_or_cr"], amt_allocatable)
-		jv_detail.set('debit' if d['dr_or_cr']=='debit_in_account_currency' else 'credit',
-			amt_allocatable*flt(jv_detail.exchange_rate))
+		jv_detail.set(dr_or_cr, amt_allocatable)
+		jv_detail.set(base_dr_or_cr, amt_allocatable * flt(jv_detail.exchange_rate))
+		jv_detail.set(reverse_dr_or_cr, 0)
+		jv_detail.set(base_reverse_dr_or_cr, 0)
 
 		jv_detail.set("reference_type", d["against_voucher_type"])
 		jv_detail.set("reference_name", d["against_voucher"])
@@ -556,12 +568,10 @@ def update_reference_in_journal_entry(d, jv_doc, do_not_save=False):
 			for dimension_fieldname in get_accounting_dimensions():
 				ch.set(dimension_fieldname, jvd.get(dimension_fieldname))
 
-			ch.set(d['dr_or_cr'], amount_in_account_currency)
-			ch.set('debit' if d['dr_or_cr']=='debit_in_account_currency' else 'credit', amount_in_company_currency)
-
-			ch.set('credit_in_account_currency' if d['dr_or_cr']== 'debit_in_account_currency'
-				else 'debit_in_account_currency', 0)
-			ch.set('credit' if d['dr_or_cr']== 'debit_in_account_currency' else 'debit', 0)
+			ch.set(dr_or_cr, amount_in_account_currency)
+			ch.set(base_dr_or_cr, amount_in_company_currency)
+			ch.set(reverse_dr_or_cr, 0)
+			ch.set(base_reverse_dr_or_cr, 0)
 
 			ch.reference_type = original_reference_type
 			ch.reference_name = original_reference_name
@@ -728,7 +738,7 @@ def remove_ref_doc_link_from_pe(ref_type, ref_no):
 
 			pe_doc.set_total_allocated_amount()
 			pe_doc.set_unallocated_amount()
-			pe_doc.clear_unallocated_reference_document_rows()
+			pe_doc.clear_unallocated_reference_document_rows(update=True)
 
 			pe_doc.set_user_and_timestamp()
 			pe_doc.db_update()

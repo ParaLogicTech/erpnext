@@ -41,6 +41,7 @@ class PaymentRequest(AccountsController):
 		self.validate_reference_document()
 		self.validate_payment_gateway()
 		self.validate_payment_account()
+		self.validate_party()
 		self.validate_amount()
 		self.validate_contact()
 		self.validate_expiry_date()

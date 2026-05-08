@@ -420,6 +420,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			});
 		}
 
+		if (me.frm.doc.total_discount_amount && me.frm.fields_dict.total_discount_amount && me.frm.fields_dict.total_discount_amount.disp_status != "None") {
+			billing_items.push({
+				contents: __('Discount Amount: {0}', [format_currency(me.frm.doc.total_discount_amount, company_currency)]),
+				indicator: "purple"
+			});
+		}
+
 		// Notification Status for Ready for Collection
 		let ready_to_close_notification_count = frappe.get_notification_count(me.frm, 'Ready to Close');
 		let ready_to_close_notification_color = ready_to_close_notification_count ? "green" : "light-gray";

@@ -624,10 +624,22 @@ class SalesOrder(SellingController):
 						p.depreciation_type, i.ignore_depreciation
 					from `tabProforma Invoice Item` i
 					inner join `tabProforma Invoice` p on p.name = i.parent
-					where p.docstatus = 1 and i.sales_order_item in %s
+					where p.docstatus = 1 and i.sales_order_item in %s and p.status != 'Closed'
 				""", [row_names], as_dict=1)
 
-				proforma_qty_map = self.get_billed_qty_map(billed_by_pfinv, "sales_order_item")
+				billed_by_sinv = []
+				if any(d.depreciation_type and not d.ignore_depreciation for d in billed_by_pfinv):
+					billed_by_sinv = frappe.db.sql("""
+						select i.sales_order_item, i.qty, i.amount, p.is_return, p.reopen_order,
+							p.customer, p.bill_to,
+							p.depreciation_type, i.ignore_depreciation, 1 as for_depreciation_qty
+						from `tabSales Invoice Item` i
+						inner join `tabSales Invoice` p on p.name = i.parent
+						where p.docstatus = 1 and (p.is_return = 0 or p.reopen_order = 1)
+							and i.sales_order_item in %s
+					""", [row_names], as_dict=1)
+
+				proforma_qty_map = self.get_billed_qty_map(billed_by_pfinv + billed_by_sinv, "sales_order_item")
 
 		return proforma_qty_map
 
@@ -953,10 +965,8 @@ class SalesOrder(SellingController):
 
 @frappe.whitelist()
 def update_status(status, name):
-	if not frappe.has_permission("Sales Order", "write"):
-		frappe.throw(_("Not permitted"), frappe.PermissionError)
-
 	so = frappe.get_doc("Sales Order", name)
+	so.check_permission("submit")
 	so.run_method("update_status", status)
 
 	frappe.msgprint(_("{0} is {1}").format(frappe.get_desk_link("Sales Order", name), status))
@@ -964,12 +974,13 @@ def update_status(status, name):
 
 @frappe.whitelist()
 def close_or_unclose_sales_orders(names, status):
-	if not frappe.has_permission("Sales Order", "write"):
+	if not frappe.has_permission("Sales Order", "submit"):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 	names = json.loads(names)
 	for name in names:
 		so = frappe.get_doc("Sales Order", name)
+		so.check_permission("submit")
 		if so.docstatus == 1:
 			if status == "Closed":
 				if so.status not in ("Cancelled", "Closed") and (so.delivery_status == "To Deliver" or so.billing_status == "To Bill"):
@@ -1132,24 +1143,27 @@ def make_project(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_mapping=False, allow_duplicate=False):
+def make_delivery_note(
+	source_name,
+	target_doc=None,
+	warehouse=None,
+	skip_item_mapping=False,
+	allow_duplicate=False,
+	skip_postprocess=False,
+):
 	if not warehouse and frappe.flags.args:
 		warehouse = frappe.flags.args.warehouse
 
 	def update_bundled_item(source, target, source_parent, target_parent):
 		target.qty = max(0, source.qty - source.delivered_qty)
 
-	def set_missing_values(source, target):
-		target.ignore_pricing_rule = 1
-
-		if not skip_item_mapping:
-			update_mapped_items_based_on_purchase_and_production(source, target)
-			split_vehicle_items_by_qty(target)
-
-		if warehouse:
-			target.set_warehouse = warehouse
-
-		target.run_method("postprocess_after_mapping")
+	def postprocess(source, target):
+		postprocess_delivery_note(
+			source,
+			target,
+			set_warehouse=warehouse,
+			skip_item_mapping=skip_item_mapping,
+		)
 
 	mapper = {
 		"Sales Order": {
@@ -1172,7 +1186,6 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 			"doctype": "Sales Team",
 			"add_if_empty": True
 		},
-		"postprocess": set_missing_values,
 	}
 
 	if not skip_item_mapping:
@@ -1184,6 +1197,9 @@ def make_delivery_note(source_name, target_doc=None, warehouse=None, skip_item_m
 			},
 			"postprocess": update_bundled_item,
 		}
+
+	if not skip_postprocess:
+		mapper["postprocess"] = postprocess
 
 	frappe.utils.call_hook_method("update_delivery_note_from_sales_order_mapper", mapper, "Delivery Note")
 
@@ -1207,11 +1223,15 @@ def make_delivery_note_from_packing_slips(source_name, target_doc=None, packing_
 		packing_slip_filters["sales_order_item"] = frappe.flags.selected_children["items"]
 
 	packing_slips = _get_packing_slips_to_be_delivered(filters=packing_slip_filters)
-	for d in packing_slips:
-		target_doc = map_dn_from_packing_slip(d.name, target_doc)
+	if packing_slips:
+		packing_slip_names = [d.name for d in packing_slips]
+		target_doc = map_dn_from_packing_slip(packing_slip_names, target_doc, skip_postprocess=True)
 
 	if packing_filter != "Packed Items Only":
 		target_doc = make_delivery_note(source_name, target_doc, warehouse=warehouse, allow_duplicate=True)
+	else:
+		source_doc = frappe.get_doc("Sales Order", source_name)
+		postprocess_delivery_note(source_doc, target_doc,  set_warehouse=warehouse)
 
 	return target_doc
 
@@ -1252,6 +1272,19 @@ def get_item_mapper_for_delivery(allow_duplicate=False):
 		"postprocess": update_item,
 		"condition": item_condition,
 	}
+
+
+def postprocess_delivery_note(source, target, set_warehouse=None, skip_item_mapping=False):
+	target.ignore_pricing_rule = 1
+
+	if not skip_item_mapping:
+		update_mapped_items_based_on_purchase_and_production(source, target)
+		split_vehicle_items_by_qty(target)
+
+	if set_warehouse:
+		target.set_warehouse = set_warehouse
+
+	target.run_method("postprocess_after_mapping")
 
 
 def update_mapped_items_based_on_purchase_and_production(source, target):
@@ -1447,7 +1480,7 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 			packable_qty = flt(wo_doc.completed_qty) - flt(wo_doc.rejected_qty) - flt(wo_doc.reconciled_qty)
 			packable_qty_order_uom = packable_qty / source.conversion_factor
 
-			unpacked_qty = round_down(packable_qty_order_uom - flt(source.packed_qty), source.precision("qty"))
+			unpacked_qty = round_down(packable_qty_order_uom - flt(wo_doc.packed_qty), source.precision("qty"))
 		else:
 			undelivered_qty = flt(source.qty) - flt(source.delivered_qty)
 

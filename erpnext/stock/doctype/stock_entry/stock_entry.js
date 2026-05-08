@@ -219,7 +219,7 @@ frappe.ui.form.on('Stock Entry', {
 		if (cint(frm.doc.customer_provided)) {
 			frappe.model.set_value(cdt, cdn, 'basic_rate', 0.0);
 			frm.events.calculate_basic_amount(frm, item);
-		} else {
+		} else if (item.s_warehouse) {
 			const args = {
 				'item_code': item.item_code,
 				'posting_date': frm.doc.posting_date,

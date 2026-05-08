@@ -2,10 +2,10 @@
 # For license information, please see license.txt
 
 import frappe
-from erpnext.accounts.utils import get_balance_on
 from frappe import _
 from frappe.utils import flt, getdate
 from frappe.model.document import Document
+from erpnext.accounts.utils import get_balance_on
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_all_dimension_fields,
 	get_document_dimensions,
@@ -16,7 +16,7 @@ import json
 class BankDepositTool(Document):
 	def validate(self):
 		self.validate_undeposited_account()
-		self.validate_deposit_to_account()
+		self.validate_bank_account()
 		self.validate_adjustment_accounts()
 
 	def validate_undeposited_account(self):
@@ -30,6 +30,7 @@ class BankDepositTool(Document):
 			frappe.throw(_("Deposit Date cannot be in the future"))
 
 		undeposited_account = frappe.get_cached_doc("Account", self.undeposited_account)
+		self.company = undeposited_account.company
 		self.currency = undeposited_account.account_currency
 
 		if undeposited_account.account_type not in ("Bank", "Cash"):
@@ -37,9 +38,24 @@ class BankDepositTool(Document):
 
 		self.undeposited_account_balance = get_balance_on(self.undeposited_account, self.deposit_date)
 
-	def validate_deposit_to_account(self):
+	def validate_bank_account(self):
+		if not self.bank_account:
+			frappe.throw(_("Please select Bank Account"))
+
+		bank_account = frappe.get_doc("Bank Account", self.bank_account)
+		if not bank_account.is_company_account:
+			frappe.throw(_("Bank Account {0} is not a company account").format(self.bank_account))
+
+		if bank_account.company != self.company:
+			frappe.throw(_("Bank Account {0} does not belong to Company {1}").format(
+				self.bank_account, self.company
+			))
+
+		self.deposit_to_account = bank_account.suspense_account or bank_account.account
 		if not self.deposit_to_account:
-			frappe.throw(_("Please select Deposit To Account"))
+			frappe.throw(_("{0} does not have a GL Account configured").format(
+				frappe.get_desk_link("Bank Account", self.bank_account)
+			))
 
 		if self.undeposited_account == self.deposit_to_account:
 			frappe.throw(_("Undeposited Funds Account and Deposit To Account cannot be the same"))
@@ -85,13 +101,12 @@ class BankDepositTool(Document):
 		undeposited_journal_entries = self.get_undeposited_journal_entries()
 
 		entries = undeposited_payment_entries + undeposited_pos_invoices + undeposited_journal_entries
+		entries = sorted(entries, key=lambda d: getdate(d.get("posting_date")))
+
 		if self.get("limit"):
 			entries = entries[:self.limit]
 
-		entries = sorted(entries, key=lambda d: getdate(d.get("posting_date")))
-
 		self.selected_deposit_amount = 0
-		self.actual_deposit_amount = 0
 		self.difference_amount = 0
 		self.undeposited_entries = []
 
@@ -126,23 +141,23 @@ class BankDepositTool(Document):
 		conditions = ""
 		params = {"account": self.undeposited_account, "deposit_date": self.deposit_date, "limit": self.limit}
 
-		if self.from_date:
+		if self.get("from_date"):
 			conditions += " and posting_date >= %(from_date)s"
 			params["from_date"] = self.from_date
 
-		if self.to_date:
+		if self.get("to_date"):
 			conditions += " and posting_date <= %(to_date)s"
 			params["to_date"] = self.to_date
 
-		if self.min_amount:
+		if self.get("min_amount"):
 			conditions += " and paid_amount >= %(min_amount)s"
 			params["min_amount"] = self.min_amount
 
-		if self.max_amount:
+		if self.get("max_amount"):
 			conditions += " and paid_amount <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
 
-		if self.mode_of_payment:
+		if self.get("mode_of_payment"):
 			conditions += " and mode_of_payment = %(mode_of_payment)s"
 			params["mode_of_payment"] = self.mode_of_payment
 
@@ -189,23 +204,23 @@ class BankDepositTool(Document):
 		conditions = ""
 		params = {"account": self.undeposited_account, "deposit_date": self.deposit_date, "limit": self.limit}
 
-		if self.from_date:
+		if self.get("from_date"):
 			conditions += " and si.posting_date >= %(from_date)s"
 			params["from_date"] = self.from_date
 
-		if self.to_date:
+		if self.get("to_date"):
 			conditions += " and si.posting_date <= %(to_date)s"
 			params["to_date"] = self.to_date
 
-		if self.min_amount:
+		if self.get("min_amount"):
 			conditions += " and sip.amount >= %(min_amount)s"
 			params["min_amount"] = self.min_amount
 
-		if self.max_amount:
+		if self.get("max_amount"):
 			conditions += " and sip.amount <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
 
-		if self.mode_of_payment:
+		if self.get("mode_of_payment"):
 			conditions += " and sip.mode_of_payment = %(mode_of_payment)s"
 			params["mode_of_payment"] = self.mode_of_payment
 
@@ -261,24 +276,24 @@ class BankDepositTool(Document):
 		conditions = ""
 		params = {"account": self.undeposited_account, "deposit_date": self.deposit_date, "limit": self.limit}
 
-		if self.from_date:
+		if self.get("from_date"):
 			conditions += " and je.posting_date >= %(from_date)s"
 			params["from_date"] = self.from_date
 
-		if self.to_date:
+		if self.get("to_date"):
 			conditions += " and je.posting_date <= %(to_date)s"
 			params["to_date"] = self.to_date
 
-		if self.min_amount:
+		if self.get("min_amount"):
 			conditions += " and (jea.debit_in_account_currency - jea.credit_in_account_currency) >= %(min_amount)s"
 			params["min_amount"] = self.min_amount
 
-		if self.max_amount:
+		if self.get("max_amount"):
 			conditions += " and (jea.debit_in_account_currency - jea.credit_in_account_currency) <= %(max_amount)s"
 			params["max_amount"] = self.max_amount
 
 		limit = ""
-		if not self.mode_of_payment:
+		if not self.get("mode_of_payment"):
 			limit = "limit %(limit)s" if self.limit else ""
 
 		journal_entries = frappe.db.sql(f"""

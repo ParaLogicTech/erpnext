@@ -371,7 +371,11 @@ class PartyLedgerSummaryReport(object):
 
 		conditions = self.prepare_conditions()
 
-		gl_entries = frappe.db.sql("""
+		customer_join = ""
+		if self.filters.party_type == "Customer" and self.filters.account_manager:
+			customer_join = "left join `tabCustomer` p on gle.party = p.name"
+
+		gl_entries = frappe.db.sql(f"""
 			select
 				posting_date, account, party, voucher_type, voucher_no,
 				debit, credit, debit_in_account_currency, credit_in_account_currency
@@ -380,16 +384,21 @@ class PartyLedgerSummaryReport(object):
 			where
 				voucher_type not in ('Sales Invoice', 'Purchase Invoice')
 				and (voucher_type, voucher_no) in (
-					select voucher_type, voucher_no from `tabGL Entry` gle, `tabAccount` acc
-					where acc.name = gle.account and (acc.root_type in ('Income', 'Expense') or acc.account_type = 'Tax')
-					and gle.posting_date between %(from_date)s and %(to_date)s
+					select gle.voucher_type, gle.voucher_no
+					from `tabGL Entry` gle, `tabAccount` acc
+					where acc.name = gle.account
+						and (acc.root_type in ('Income', 'Expense') or acc.account_type = 'Tax')
+						and gle.posting_date between %(from_date)s and %(to_date)s
 				) and (voucher_type, voucher_no) in (
-					select voucher_type, voucher_no from `tabGL Entry` gle
+					select gle.voucher_type, gle.voucher_no
+					from `tabGL Entry` gle
+					{customer_join}
 					where gle.party_type = %(party_type)s
-						and (party != '' and party is not null)
-						and gle.posting_date between %(from_date)s and %(to_date)s {conditions}
+						and (gle.party != '' and gle.party is not null)
+						and gle.posting_date between %(from_date)s and %(to_date)s
+						{conditions}
 				)
-		""".format(conditions=conditions), self.filters, as_dict=True)
+		""", self.filters, as_dict=True)
 
 		adjustment_voucher_entries = {}
 		for gle in gl_entries:

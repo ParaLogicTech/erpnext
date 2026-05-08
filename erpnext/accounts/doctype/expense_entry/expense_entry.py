@@ -19,15 +19,16 @@ class ExpenseEntry(Document):
 		self.company_address_doc = erpnext.get_company_address_doc(self)
 
 	def validate(self):
+		self.set_missing_values()
 		self.check_duplicate_bill_no()
 		self.validate_accounts()
 		self.validate_total_amount()
-		self.set_missing_values()
+		self.validate_exchange_rate()
 		self.calculate_taxes()
 		self.calculate_totals()
 
 	def before_submit(self):
-		self.set_missing_bill_dates()
+		self.set_missing_bill_no_date()
 
 	def on_submit(self):
 		self.create_accounting_entries()
@@ -36,20 +37,14 @@ class ExpenseEntry(Document):
 		self.cancel_accounting_entries()
 
 	def check_duplicate_bill_no(self):
-		unique_bill_no_party = []
-
 		for row in self.accounts:
 			bill_no = row.bill_no or self.bill_no
 			if bill_no and row.supplier:
-				key = (bill_no, row.supplier)
-				if key in unique_bill_no_party:
-					frappe.throw(_("Row {0}: Bill No {1} for Supplier {2} is a duplicate").format(
-						row.idx, row.bill_no, row.supplier
-					))
-				else:
-					unique_bill_no_party.append(key)
-
-				exp_entrty_with_duplicate = has_duplicate_bill_no(bill_no, row.supplier)
+				exp_entrty_with_duplicate = has_duplicate_bill_no(
+					bill_no,
+					row.supplier,
+					exclude=None if self.is_new() else self.name,
+				)
 				if exp_entrty_with_duplicate:
 					frappe.throw(_("Row {0}: Bill No {1} for Supplier {2} already exists in {3}").format(
 						row.idx, bill_no, row.supplier, ", ".join(exp_entrty_with_duplicate)
@@ -77,6 +72,12 @@ class ExpenseEntry(Document):
 		self.payable_account_currency = frappe.get_cached_value("Account", self.payable_account, "account_currency") \
 			if self.payable_account else company_currency
 
+		if self.supplier:
+			for row in self.accounts:
+				row.supplier = self.supplier
+
+	def validate_exchange_rate(self):
+		company_currency = get_company_currency(self.company)
 		for row in self.accounts:
 			if self.payable_account_currency == company_currency:
 				row.exchange_rate = 1.0
@@ -87,8 +88,10 @@ class ExpenseEntry(Document):
 						self.payable_account_currency, company_currency, row.bill_date or self.transaction_date
 					))
 
-	def set_missing_bill_dates(self):
+	def set_missing_bill_no_date(self):
 		for row in self.accounts:
+			if not row.bill_no and self.bill_no:
+				row.bill_no = self.bill_no
 			if not row.bill_date:
 				row.bill_date = self.transaction_date
 
@@ -200,6 +203,7 @@ class ExpenseEntry(Document):
 
 			jv_rows = self.append_bill_journal_entry_rows(bill_jv, row)
 			for jv_row in jv_rows:
+				jv_row.user_remark = row.remarks
 				self.set_accounting_dimensions(jv_row, row_source=row)
 
 		bill_jv.insert()
@@ -213,6 +217,7 @@ class ExpenseEntry(Document):
 		for row in self.accounts:
 			jv_rows = self.append_payment_journal_entry_rows(payment_jv, row, bill_jv=bill_jv)
 			for jv_row in jv_rows:
+				jv_row.user_remark = row.remarks
 				self.set_accounting_dimensions(jv_row, row_source=row)
 
 		payment_jv.insert()
@@ -289,7 +294,7 @@ class ExpenseEntry(Document):
 
 	def append_expense_debit_entry(self, jv_doc, row):
 		expense_account_currency = frappe.get_cached_value("Account", row.expense_account, "account_currency")
-		return jv_doc.append("accounts", {
+		return self.normalize_debit_credit(jv_doc.append("accounts", {
 			"account": row.expense_account,
 			"account_currency": expense_account_currency,
 			"debit_in_account_currency": row.expense_amount if self.payable_account_currency == expense_account_currency
@@ -298,7 +303,7 @@ class ExpenseEntry(Document):
 			"exchange_rate": row.base_expense_amount / row.expense_amount if self.payable_account_currency == expense_account_currency else 1.0,
 
 			"cheque_no": row.bill_no or self.bill_no or row.cheque_no or self.name,
-		})
+		}))
 
 	def append_tax_debit_entry(self, jv_doc, row):
 		if not row.tax_amount:
@@ -317,7 +322,7 @@ class ExpenseEntry(Document):
 
 			tax_account_currency = frappe.get_cached_value("Account", tax_account, "account_currency")
 			if tax_amount:
-				jv_row = jv_doc.append("accounts", {
+				jv_row = self.normalize_debit_credit(jv_doc.append("accounts", {
 					"account": tax_account,
 					"account_currency": tax_account_currency,
 					"debit_in_account_currency": tax_amount if self.payable_account_currency == tax_account_currency
@@ -326,13 +331,13 @@ class ExpenseEntry(Document):
 					"exchange_rate": row.exchange_rate if self.payable_account_currency == tax_account_currency else 1.0,
 
 					"cheque_no": row.bill_no or self.bill_no or row.cheque_no or self.name,
-				})
+				}))
 				jv_rows.append(jv_row)
 
 		return jv_rows
 
 	def append_supplier_credit_entry(self, jv_doc, row):
-		return jv_doc.append("accounts", {
+		return self.normalize_debit_credit(jv_doc.append("accounts", {
 			"account": self.payable_account,
 			"account_currency": self.payable_account_currency,
 			"party_type": "Supplier",
@@ -342,10 +347,10 @@ class ExpenseEntry(Document):
 			"exchange_rate": row.exchange_rate,
 
 			"cheque_no": row.bill_no or self.bill_no or row.cheque_no or self.name,
-		})
+		}))
 
 	def append_supplier_debit_entry(self, jv_doc, row, bill_jv):
-		return jv_doc.append("accounts", {
+		return self.normalize_debit_credit(jv_doc.append("accounts", {
 			"account": self.payable_account,
 			"account_currency": self.payable_account_currency,
 			"party_type": "Supplier",
@@ -355,18 +360,33 @@ class ExpenseEntry(Document):
 			"exchange_rate": row.exchange_rate,
 			"reference_type": "Journal Entry",
 			"reference_name": bill_jv.name
-		})
+		}))
 
 	def append_payment_credit_entry(self, jv_doc, row):
 		paid_from_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
-		return jv_doc.append("accounts", {
+		return self.normalize_debit_credit(jv_doc.append("accounts", {
 			"account": self.paid_from_account,
 			"account_currency": paid_from_account_currency,
 			"credit_in_account_currency": row.total_amount if self.payable_account_currency == paid_from_account_currency
 				else row.base_total_amount,
 			"credit": row.base_total_amount,
 			"exchange_rate": row.exchange_rate if self.payable_account_currency == paid_from_account_currency else 1.0,
-		})
+		}))
+
+	@staticmethod
+	def normalize_debit_credit(jv_row):
+		if flt(jv_row.debit_in_account_currency) - flt(jv_row.credit_in_account_currency) < 0:
+			jv_row.credit_in_account_currency = flt(jv_row.credit_in_account_currency) - flt(jv_row.debit_in_account_currency)
+			jv_row.credit = flt(jv_row.credit) - flt(jv_row.debit)
+			jv_row.debit_in_account_currency = 0
+			jv_row.debit = 0
+		else:
+			jv_row.debit_in_account_currency = flt(jv_row.debit_in_account_currency) - flt(jv_row.credit_in_account_currency)
+			jv_row.debit = flt(jv_row.debit) - flt(jv_row.credit)
+			jv_row.credit_in_account_currency = 0
+			jv_row.credit = 0
+
+		return jv_row
 
 	def create_payment_entry(self, bill_jv, details=None):
 		paid_from_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
@@ -472,19 +492,37 @@ class ExpenseEntry(Document):
 
 
 @frappe.whitelist()
-def has_duplicate_bill_no(bill_no, supplier):
-	data = frappe.db.sql_list("""
+def has_duplicate_bill_no(bill_no, supplier, exclude=None):
+	exclude_condition = ""
+	if exclude:
+		exclude_condition = "and name != %(exclude)s".format(exclude)
+
+	data = frappe.db.sql_list(f"""
 		select distinct expd.parent
 		from `tabExpense Entry Detail` as expd
-		where expd.bill_no=%s and expd.supplier=%s and expd.docstatus=1
-	""", (bill_no, supplier))
+		where
+			expd.bill_no = %(bill_no)s
+			and expd.supplier = %(supplier)s
+			and expd.docstatus = 1
+			{exclude_condition}
+	""", {
+		"bill_no": bill_no,
+		"supplier": supplier,
+		"exclude": exclude,
+	})
 
 	return data
 
 
 @frappe.whitelist()
-def get_default_expense_account(supplier):
-	return frappe.get_cached_value("Supplier", supplier, "expense_account")
+def get_supplier_details(supplier):
+	out = frappe._dict()
+
+	supplier_doc = frappe.get_cached_doc("Supplier", supplier) if supplier else frappe._dict()
+	out.supplier_name = supplier_doc.supplier_name
+	out.expense_account = supplier_doc.expense_account
+
+	return out
 
 
 @frappe.whitelist()

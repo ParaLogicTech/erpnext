@@ -56,7 +56,7 @@ class SalesInvoice(SellingController):
 		self.validate_order_required()
 		self.validate_stin()
 		self.validate_project()
-		self.check_sales_order_on_hold_or_close()
+		self.check_order_on_hold_or_closed()
 		self.validate_debit_to_acc()
 
 		self.check_advance_payment_against_order()
@@ -351,6 +351,8 @@ class SalesInvoice(SellingController):
 		for name in set(updated_delivery_notes):
 			doc = frappe.get_doc("Delivery Note", name)
 			doc.set_billing_status(update=True)
+			if self.depreciation_type:
+				doc.set_proforma_status(update=True)
 
 			if doc.name in delivery_notes:
 				doc.validate_billed_qty(from_doctype=self.doctype, row_names=delivery_note_row_names)
@@ -371,6 +373,8 @@ class SalesInvoice(SellingController):
 			doc = frappe.get_doc("Sales Order", name)
 			doc.set_delivery_status(update=True)
 			doc.set_billing_status(update=True)
+			if self.depreciation_type:
+				doc.set_proforma_status(update=True)
 
 			doc.validate_billed_qty(from_doctype=self.doctype, row_names=sales_order_row_names_without_dn)
 			if self.update_stock:
@@ -656,13 +660,8 @@ class SalesInvoice(SellingController):
 		if validation == "Mandatory for Company":
 			if frappe.get_cached_value("Customer", self.bill_to or self.customer, "customer_type") == "Individual":
 				return
-		if validation == "Mandatory for Company and Annual Turnover":
-			if frappe.get_cached_value("Customer", self.bill_to or self.customer, "customer_type") == "Individual" or \
-			(frappe.get_cached_value("Customer", self.bill_to or self.customer, "customer_type") == "Company" and \
-			frappe.get_cached_value("Customer", self.bill_to or self.customer, "vat_registration_decider") == "Annual Turnover <= 375,000 AED"):
-				return
 
-		if validation:
+		if validation and (not frappe.get_cached_value("Customer", self.bill_to or self.customer, "tax_id_non_mandatory")):
 			frappe.throw(_("Customer {0} or Identification Number is mandatory for Sales Tax Invoice").format(_("Tax ID")))
 
 	def check_credit_limit(self):

@@ -396,17 +396,13 @@ erpnext.patches.v15_0.set_mop_type_in_pos_entries
 erpnext.patches.v15_0.set_expense_entry_supplier_name
 erpnext.patches.v15_0.set_payment_entry_reference_jv_bill_no
 erpnext.patches.v15_0.set_appointment_converted
-erpnext.patches.v15_0.set_project_final_invoice_date
 erpnext.patches.v15_0.fix_project_costing
 erpnext.patches.v15_0.set_task_cost_center
-erpnext.patches.v15_0.set_project_sold_time
 erpnext.patches.v15_0.set_pos_cashier_field
 erpnext.patches.v15_0.set_sales_order_bill_to
 erpnext.patches.v15_0.set_project_in_customer_feedback
 erpnext.patches.v15_0.copy_contact_in_customer_feedback_from_project
 erpnext.patches.v15_0.update_appointment_service_template
-erpnext.patches.v15_0.update_project_sales_and_procurement_status
-erpnext.patches.v15_0.update_project_additional_insurance_excess
 erpnext.patches.v15_0.create_missing_dimension_fields
 erpnext.patches.v15_0.set_attendance_available_hours
 erpnext.patches.v15_0.set_payment_entry_reference_posting_date #1
@@ -437,3 +433,14 @@ execute:frappe.delete_doc_if_exists("Print Format", "GST POS Invoice")
 execute:frappe.delete_doc_if_exists("Print Format", "POS Invoice")
 execute:frappe.delete_doc_if_exists("Print Format", "Sales Invoice Return")
 execute:frappe.delete_doc_if_exists("Print Format", "Point of Sale")
+execute:frappe.delete_doc_if_exists("Report", "Delivery Note Trends")
+execute:frappe.delete_doc_if_exists("Report", "Sales Order Trends")
+execute:frappe.delete_doc_if_exists("Report", "Sales Invoice Trends")
+execute:frappe.delete_doc_if_exists("Report", "Quotation Trends")
+execute:frappe.delete_doc_if_exists("Report", "Purchase Receipt Trends")
+execute:frappe.delete_doc_if_exists("Report", "Purchase Order Trends")
+execute:frappe.delete_doc_if_exists("Report", "Purchase Invoice Trends")
+erpnext.patches.v15_0.set_employee_reports_to_name
+erpnext.patches.v15_0.set_project_total_cost
+erpnext.patches.v15_0.set_missing_proforma_invoice_in_credit_note
+erpnext.patches.v15_0.fix_project_sales_item_data_from_invoice

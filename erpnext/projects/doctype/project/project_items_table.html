@@ -15,6 +15,12 @@
 {% if show_proforma_invoice %}
 	{% set colspan = colspan + 1 %}
 {% endif %}
+{% if show_sales_invoice %}
+	{% set colspan = colspan + 1 %}
+{% endif %}
+{% if show_invoice %}
+	{% set colspan = colspan + 1 %}
+{% endif %}
 {% if show_material_request %}
 	{% set colspan = colspan + 1 %}
 {% endif %}
@@ -39,8 +45,10 @@
 			{% if show_sales_order %}<th>{{ _("Sales Order") }}</th>{% endif %}
 			{% if show_delivery_note %}<th>{{ _("Delivery Note") }}</th>{% endif %}
 			{% if show_proforma_invoice %}<th>{{ _("Proforma Invoice") }}</th>{% endif %}
-			{% if show_stock_entry %}<th>{{ _("Stock Entry") }}</th>{% endif %}
+			{% if show_sales_invoice %}<th>{{ _("Sales Invoice") }}</th>{% endif %}
+			{% if show_invoice %}<th>{{ _("Invoice") }}</th>{% endif %}
 			{% if show_material_request %}<th>{{ _("Material Request") }}</th>{% endif %}
+			{% if show_stock_entry %}<th>{{ _("Stock Entry") }}</th>{% endif %}
 		</tr>
 	</thead>
 
@@ -51,7 +59,7 @@
 				{{ d.idx }}
 			</td>
 
-			<td class="text-center">
+			<td class="text-center text-nowrap">
 				{{ frappe.format(d.posting_date or d.transaction_date, df=frappe.get_meta("Sales Invoice").get_field("posting_date")) }}
 			</td>
 
@@ -85,32 +93,50 @@
 			{% endif %}
 
 			{% if show_sales_order %}
-			<td>
+			<td class="text-nowrap">
 				{{ frappe.utils.get_link_to_form('Sales Order', d.sales_order, target='_blank') if d.sales_order else '' }}
 			</td>
 			{% endif %}
 
 			{% if show_delivery_note %}
-			<td>
+			<td class="text-nowrap">
 				{{ frappe.utils.get_link_to_form('Delivery Note', d.delivery_note, target='_blank') if d.delivery_note else '' }}
 			</td>
 			{% endif %}
 
 			{% if show_proforma_invoice %}
-			<td>
-				{{ frappe.utils.get_link_to_form('Proforma Invoice', d.proforma_invoice, target='_blank') if d.proforma_invoice else '' }}
+			<td class="text-nowrap">
+				{% for inv in d.proforma_invoice %}
+					<div>{{ frappe.utils.get_link_to_form('Proforma Invoice', inv, target='_blank') }}</div>
+				{% endfor %}
 			</td>
 			{% endif %}
 
-			{% if show_stock_entry %}
-			<td>
-				{{ frappe.utils.get_link_to_form('Stock Entry', d.stock_entry, target='_blank') if d.stock_entry else '' }}
+			{% if show_sales_invoice %}
+			<td class="text-nowrap">
+				{% for inv in d.sales_invoice %}
+					<div>{{ frappe.utils.get_link_to_form('Sales Invoice', inv, target='_blank') }}</div>
+				{% endfor %}
+			</td>
+			{% endif %}
+
+			{% if show_invoice %}
+			<td class="text-nowrap">
+				{% for inv_dt, inv in d.invoice %}
+					<div>{{ frappe.utils.get_link_to_form(inv_dt, inv, target='_blank') }}</div>
+				{% endfor %}
 			</td>
 			{% endif %}
 
 			{% if show_material_request %}
-			<td>
+			<td class="text-nowrap">
 				{{ frappe.utils.get_link_to_form('Material Request', d.material_request, target='_blank') if d.material_request else '' }}
+			</td>
+			{% endif %}
+
+			{% if show_stock_entry %}
+			<td class="text-nowrap">
+				{{ frappe.utils.get_link_to_form('Stock Entry', d.stock_entry, target='_blank') if d.stock_entry else '' }}
 			</td>
 			{% endif %}
 		</tr>
@@ -144,8 +170,10 @@
 			{% if show_sales_order %}<td></td>{% endif %}
 			{% if show_delivery_note %}<td></td>{% endif %}
 			{% if show_proforma_invoice %}<td></td>{% endif %}
-			{% if show_stock_entry %}<td></td>{% endif %}
+			{% if show_sales_invoice %}<td></td>{% endif %}
+			{% if show_invoice %}<td></td>{% endif %}
 			{% if show_material_request %}<td></td>{% endif %}
+			{% if show_stock_entry %}<td></td>{% endif %}
 		</tr>
 	</tfoot>
 	{% endif %}

@@ -841,6 +841,30 @@ $.extend(erpnext.utils, {
 		};
 	},
 
+	banking_amount_formatter(value, df, options, doc, color_if_set=null, color_if_zero=null) {
+		options = options || {};
+		options.css = {};
+
+		let amount = flt(value, 2);
+
+		if (!amount && color_if_zero) {
+			options.css['color'] = color_if_zero;
+		}
+
+		if (color_if_set) {
+			if (amount) {
+				options.css['color'] = color_if_set;
+			}
+		} else {
+			if (amount > 0) {
+				options.css['color'] = "var(--green-800)";
+			} else if (amount < 0) {
+				options.css['color'] = "var(--red-700)";
+			}
+		}
+		return frappe.format(value, df, options, doc, true);
+	},
+
 	get_payment_mode_account(frm, mode_of_payment, callback, direction) {
 		if (!frm.doc.company) {
 			frappe.throw({message:__("Please select a Company first."), title: __("Mandatory")});
@@ -1412,8 +1436,10 @@ erpnext.utils.map_current_doc = function(opts) {
 				"method": opts.method,
 				"source_names": opts.source_name,
 				"target_doc": cur_frm.doc,
-				'args': opts.args
+				'args': opts.args,
+				'method_supports_list': opts.method_supports_list ? 1 : 0,
 			},
+			freeze: 1,
 			callback: function(r) {
 				if(!r.exc) {
 					var doc = frappe.model.sync(r.message);

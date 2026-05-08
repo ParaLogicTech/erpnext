@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "naming_series:",
  "creation": "2018-05-24 07:18:08.256060",
  "doctype": "DocType",
@@ -28,6 +29,7 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Series",
+   "no_copy": 1,
    "options": "MFG-BLR-",
    "set_only_once": 1
   },
@@ -130,11 +132,14 @@
    "label": "Terms and Conditions Details"
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
- "modified": "2021-11-03 13:09:25.384425",
+ "links": [],
+ "modified": "2026-04-21 16:27:14.518565",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Blanket Order",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -153,8 +158,10 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "search_fields": "blanket_order_type, to_date",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

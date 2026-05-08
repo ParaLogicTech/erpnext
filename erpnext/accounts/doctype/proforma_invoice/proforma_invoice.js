@@ -37,7 +37,19 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			}
 		}
 
+		// reopen / unclose
+		if (this.frm.doc.status == "Closed" && this.frm.has_perm("submit")) {
+			this.frm.add_custom_button(__("Re-Open"), () => this.update_status("Re-Opened"),
+				__("Status"));
+		}
+
 		if (this.frm.doc.docstatus == 1 && this.frm.doc.status != "Closed") {
+			// close
+			if (this.frm.doc.billing_status == "To Bill" && this.frm.has_perm("submit")) {
+				this.frm.add_custom_button(__("Close"), () => this.update_status("Closed"),
+					__("Status"));
+			}
+
 			if (flt(this.frm.doc.per_billed) < 100 && frappe.model.can_create("Sales Invoice")) {
 				this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(),
 					__('Create'));
@@ -56,7 +68,7 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			}
 		}
 
-		if (!this.frm.doc.__islocal && this.frm.doc.docstatus == 1) {
+		if (this.frm.page.get_inner_group_button(__("Create")).length) {
 			this.frm.page.set_inner_btn_group_as_primary(__('Create'));
 		}
 	}
@@ -173,6 +185,23 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			method: "erpnext.accounts.doctype.proforma_invoice.proforma_invoice.make_sales_invoice",
 			frm: this.frm
 		})
+	}
+
+	update_status(status) {
+		frappe.ui.form.is_saving = true;
+		return frappe.call({
+			method: "erpnext.accounts.doctype.proforma_invoice.proforma_invoice.update_status",
+			args: {
+				status: status,
+				name: this.frm.doc.name
+			},
+			callback: (r) => {
+				this.frm.reload_doc();
+			},
+			always: function() {
+				frappe.ui.form.is_saving = false;
+			}
+		});
 	}
 
 	allocated_amount() {

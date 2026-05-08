@@ -160,6 +160,8 @@ class BOM(Document):
 
 		args['bom_no'] = args.get('bom_no') or item.default_bom or ''
 
+		default_qty = 0 if args.get("scrap_items") else 1
+
 		if args.get('skip_transfer_for_manufacture') is not None:
 			args['skip_transfer_for_manufacture'] = cint(args.get('skip_transfer_for_manufacture'))
 		else:
@@ -168,7 +170,7 @@ class BOM(Document):
 		if not args.get('uom') and item.get('manufacture_uom'):
 			args['uom'] = item.get('manufacture_uom')
 			args['conversion_factor'] = get_conversion_factor(item.name, args['uom']).get("conversion_factor") or 1
-			args['qty'] = flt(args.get('qty')) or 1
+			args['qty'] = flt(args.get('qty')) or default_qty
 			args['stock_qty'] = args['qty'] * args['conversion_factor']
 
 		rate = self.get_rm_rate(args)
@@ -181,8 +183,8 @@ class BOM(Document):
 			'conversion_factor': args.get('conversion_factor') or 1,
 			'bom_no': args.get('bom_no') if not args.get('do_not_explode') else None,
 			'rate': rate,
-			'qty': flt(args.get("qty")) or flt(args.get("stock_qty")) or 1,
-			'stock_qty': flt(args.get("stock_qty")) or flt(args.get("qty")) or 1,
+			'qty': flt(args.get("qty")) or flt(args.get("stock_qty")) or default_qty,
+			'stock_qty': flt(args.get("stock_qty")) or flt(args.get("qty")) or default_qty,
 			'base_rate': flt(rate) * (flt(self.conversion_rate) or 1),
 			'skip_transfer_for_manufacture': args.get('skip_transfer_for_manufacture'),
 			'has_alternative_item': has_alternative_item(item.name)
@@ -204,7 +206,7 @@ class BOM(Document):
 		if arg.get('scrap_items'):
 			rate = self.get_valuation_rate(arg)
 		elif arg:
-			#Customer Provided parts will have zero rate
+			# Customer Provided parts will have zero rate
 			if not frappe.get_cached_value('Item', arg["item_code"], 'is_customer_provided_item'):
 				if arg.get('bom_no') and self.set_rate_of_sub_assembly_item_based_on_bom:
 					rate = flt(self.get_bom_unitcost(arg['bom_no'])) * (arg.get("conversion_factor") or 1)
@@ -758,7 +760,7 @@ def get_bom_items_as_dict(
 		query = query.format(
 			table="BOM Scrap Item",
 			where_conditions="",
-			select_columns=", bom_item.idx, item.description",
+			select_columns=", bom_item.idx, item.description, bom_item.rate",
 			is_stock_item=is_stock_item,
 			qty_field="stock_qty"
 		)

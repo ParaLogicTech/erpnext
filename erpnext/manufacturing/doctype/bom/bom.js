@@ -312,7 +312,7 @@ cur_frm.cscript.rate = function(doc, cdt, cdn) {
 		scrap_items = true;
 	}
 
-	if (d.bom_no) {
+	if (d.bom_no && cdt != "BOM Scrap Item") {
 		frappe.msgprint(__("You can not change rate if BOM mentioned against any item"));
 		get_bom_material_detail(doc, cdt, cdn, scrap_items);
 	} else {

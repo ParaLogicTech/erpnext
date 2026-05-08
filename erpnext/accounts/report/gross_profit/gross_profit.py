@@ -55,7 +55,7 @@ class GrossProfitGenerator(object):
 				si.name as parent, si_item.parenttype, si_item.name, si_item.idx, si.docstatus,
 				si.posting_date, si.posting_time, si.transaction_type,
 				si.company, si.branch as parent_branch, {item_branch_field}
-				si.customer, si.customer_name, c.customer_group, c.territory,
+				si.bill_to as customer, si.bill_to_name as customer_name, c.customer_group, si.territory,
 				si.bill_to, dn_item.claim_customer, dn_item.discount_percentage as claim_discount_percentage,
 				si.project as parent_project, si_item.project as item_project,
 				si.cost_center as parent_cost_center, si_item.cost_center as item_cost_center,
@@ -72,7 +72,7 @@ class GrossProfitGenerator(object):
 			from `tabSales Invoice` si
 			inner join `tabSales Invoice Item` si_item on si_item.parent = si.name
 			left join `tabDelivery Note Item` dn_item on dn_item.name = si_item.delivery_note_item
-			left join `tabCustomer` c on c.name = si.customer
+			left join `tabCustomer` c on c.name = si.bill_to
 			left join `tabItem` i on i.name = si_item.item_code
 			left join `tabSales Team` sp on sp.parent = si.name and sp.parenttype = 'Sales Invoice'
 			where si.docstatus = 1 and si.is_opening != 'Yes' {conditions}
@@ -249,7 +249,7 @@ class GrossProfitGenerator(object):
 			conditions.append("si.name = %(sales_invoice)s")
 
 		if self.filters.get("customer"):
-			conditions.append("si.customer = %(customer)s")
+			conditions.append("si.bill_to = %(customer)s")
 
 		if self.filters.get("customer_group"):
 			lft, rgt = frappe.db.get_value("Customer Group", self.filters.customer_group, ["lft", "rgt"])

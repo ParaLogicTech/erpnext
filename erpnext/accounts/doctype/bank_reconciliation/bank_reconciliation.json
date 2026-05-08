@@ -7,28 +7,30 @@
  "engine": "InnoDB",
  "field_order": [
   "bank_account",
-  "account_currency",
-  "from_date",
-  "to_date",
-  "allow_corrections",
-  "get_payment_entries",
-  "column_break_5",
-  "company",
-  "branch",
   "account",
   "suspense_account",
-  "section_break_xqnl",
+  "account_currency",
+  "column_break_5",
+  "from_date",
+  "to_date",
+  "last_clearance_date",
+  "allow_corrections",
+  "column_break_jzfr",
+  "company",
+  "branch",
+  "sec_summary",
   "opening_balance",
-  "column_break_efl8",
   "closing_balance",
-  "section_break_10",
-  "payment_entries",
-  "section_break_eug8",
-  "total_amount",
+  "column_break_kl3q",
+  "cleared_incoming",
+  "cleared_outgoing",
   "column_break_tdmy",
   "cleared_amount",
-  "column_break_kl3q",
-  "difference"
+  "uncleared_amount",
+  "column_break_efl8",
+  "difference",
+  "section_break_10",
+  "payment_entries"
  ],
  "fields": [
   {
@@ -36,7 +38,8 @@
    "fieldname": "account",
    "fieldtype": "Link",
    "label": "Bank GL Account",
-   "options": "Account"
+   "options": "Account",
+   "read_only": 1
   },
   {
    "fetch_from": "account.account_currency",
@@ -51,14 +54,14 @@
    "fieldname": "from_date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "From Date",
+   "label": "Statement Opening Date",
    "reqd": 1
   },
   {
    "fieldname": "to_date",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "To Date",
+   "label": "Statement Closing Date",
    "reqd": 1
   },
   {
@@ -74,11 +77,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "get_payment_entries",
-   "fieldtype": "Button",
-   "label": "Get Payment Entries"
-  },
-  {
    "fieldname": "section_break_10",
    "fieldtype": "Section Break"
   },
@@ -90,28 +88,17 @@
    "options": "Bank Reconciliation Detail"
   },
   {
-   "default": "0",
-   "fieldname": "total_amount",
-   "fieldtype": "Currency",
-   "label": "Total Amount",
-   "options": "account_currency",
-   "read_only": 1
-  },
-  {
    "fetch_from": "bank_account.suspense_account",
    "fieldname": "suspense_account",
    "fieldtype": "Link",
    "label": "Suspense Account",
-   "options": "Account"
-  },
-  {
-   "fieldname": "section_break_xqnl",
-   "fieldtype": "Section Break"
+   "options": "Account",
+   "read_only": 1
   },
   {
    "fieldname": "opening_balance",
    "fieldtype": "Currency",
-   "label": "Opening Balance",
+   "label": "Statement Opening Balance",
    "options": "account_currency",
    "read_only": 1
   },
@@ -122,7 +109,7 @@
   {
    "fieldname": "closing_balance",
    "fieldtype": "Currency",
-   "label": "Closing Balance",
+   "label": "Statement Closing Balance",
    "options": "account_currency"
   },
   {
@@ -135,10 +122,6 @@
    "label": "Difference",
    "options": "account_currency",
    "read_only": 1
-  },
-  {
-   "fieldname": "section_break_eug8",
-   "fieldtype": "Section Break"
   },
   {
    "default": "0",
@@ -170,16 +153,54 @@
   {
    "fieldname": "branch",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Branch",
    "options": "Branch"
+  },
+  {
+   "fieldname": "column_break_jzfr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cleared_incoming",
+   "fieldtype": "Currency",
+   "label": "Cleared Incoming",
+   "options": "account_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cleared_outgoing",
+   "fieldtype": "Currency",
+   "label": "Cleared Outgoing",
+   "options": "account_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sec_summary",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "last_clearance_date",
+   "fieldtype": "Date",
+   "label": "Last Clearance Date",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "uncleared_amount",
+   "fieldtype": "Currency",
+   "label": "Uncleared Amount",
+   "options": "account_currency",
+   "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "hide_toolbar": 1,
  "icon": "fa fa-check",
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-03-19 14:16:20.263116",
+ "modified": "2026-04-26 15:58:41.301238",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Reconciliation",
@@ -195,6 +216,7 @@
  ],
  "quick_entry": 1,
  "read_only": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": []
