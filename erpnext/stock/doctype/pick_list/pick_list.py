@@ -260,7 +260,6 @@ def create_delivery_note(source_name, target_doc=None):
 	for sales_order in sales_orders:
 		delivery_note = create_delivery_note_from_sales_order(sales_order,
 			delivery_note, skip_item_mapping=True)
-	print(delivery_note)
 
 	# map rows without sales orders as well
 	if not delivery_note:
