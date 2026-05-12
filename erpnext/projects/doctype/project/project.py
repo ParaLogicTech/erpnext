@@ -1326,18 +1326,48 @@ class Project(StatusUpdaterERP):
 				doc.notify_update()
 
 	def set_project_in_sales_order_and_quotation(self):
-		if self.sales_order:
-			frappe.db.set_value("Sales Order", self.sales_order, "project", self.name, notify=1)
+		if not self.get("sales_order"):
+			return
 
-			quotations = frappe.db.sql_list("""
-				select distinct qtn.name
-				from `tabQuotation` qtn
-				inner join `tabSales Order Item` item on item.quotation = qtn.name
-				where item.parent = %s and qtn.docstatus < 2 and ifnull(qtn.project, '') = ''
-			""", self.sales_order)
+		so_doc = frappe.get_doc("Sales Order", self.sales_order)
 
-			for quotation in quotations:
-				frappe.db.set_value("Quotation", quotation, "project", self.name, notify=1)
+		if so_doc.docstatus != 1:
+			frappe.throw(_("{0} is not submitted").format(
+				frappe.get_desk_link("Sales Order", self.sales_order)
+			))
+
+		if so_doc.billing_status != "To Bill":
+			frappe.throw(_("{0} is not billable").format(
+				frappe.get_desk_link("Sales Order", self.sales_order)
+			))
+
+		if self.company != so_doc.company:
+			frappe.throw(_("Company {0} does not match with {1} Company {2}").format(
+				frappe.bold(self.company),
+				frappe.get_desk_link("Sales Order", self.sales_order),
+				frappe.bold(so_doc.company),
+			))
+
+		if self.customer != so_doc.customer:
+			frappe.throw(_("Customer {0} does not match with {1} Customer {2}").format(
+				frappe.bold(self.customer),
+				frappe.get_desk_link("Sales Order", self.sales_order),
+				frappe.bold(so_doc.customer),
+			))
+
+		so_doc.db_set("project", self.name, notify=True)
+
+		quotations = frappe.db.sql_list("""
+			select distinct qtn.name
+			from `tabQuotation` qtn
+			inner join `tabSales Order Item` item on item.quotation = qtn.name
+			where item.parent = %s and qtn.docstatus < 2 and ifnull(qtn.project, '') = ''
+		""", self.sales_order)
+		for quotation in quotations:
+			frappe.db.set_value("Quotation", quotation, "project", self.name, notify=1)
+
+		so_doc.update_project_billing_and_sales()
+		self.reload()
 
 	def validate_depreciation(self):
 		if not self.insurance_company:

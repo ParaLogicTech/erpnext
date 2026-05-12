@@ -12,6 +12,7 @@ frappe.ui.form.on("Sales Order", {
 			'Material Request': __('Material Request'),
 			'Purchase Order': __('Purchase Order'),
 			'Project': __('Project'),
+			'Appointment': __('Appointment'),
 			'Payment Entry': __("Payment"),
 			'Purchase Invoice': __('Purchase Invoice'),
 			'Work Order': __("Work Order"),
@@ -230,14 +231,15 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 						me.frm.add_custom_button(__('Purchase Order'), () => me.make_purchase_order(), __('Create'));
 					}
 
-					// project
-					// if (me.frm.doc.delivery_status == "To Deliver"
-					// 	&& ["Sales", "Shopping Cart"].indexOf(me.frm.doc.order_type) !== -1
-					// 	&& allow_delivery
-					// 	&& frappe.model.can_create("Project")
-					// ) {
-					// 	me.frm.add_custom_button(__('Project'), () => me.make_project(), __('Create'));
-					// }
+					if (
+						me.frm.doc.delivery_status != "Delivered"
+						&& me.frm.doc.billing_status == "To Bill"
+						&& frappe.model.can_create("Project")
+						&& !me.frm.doc.project
+					) {
+						me.frm.add_custom_button(__("Appointment"), () => me.make_appointment(), __("Create"));
+						me.frm.add_custom_button(__("Project"), () => me.make_project(), __("Create"));
+					}
 
 					if(!me.frm.doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
 						me.frm.add_custom_button(__('Subscription'), function() {
@@ -679,6 +681,13 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 	make_project() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_project",
+			frm: this.frm
+		})
+	}
+
+	make_appointment() {
+		frappe.model.open_mapped_doc({
+			method: "erpnext.selling.doctype.sales_order.sales_order.make_appointment",
 			frm: this.frm
 		})
 	}

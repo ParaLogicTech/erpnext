@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "service_template",
-  "service_template_name"
+  "service_template_name",
+  "sales_order"
  ],
  "fields": [
   {
@@ -30,17 +31,28 @@
    "in_list_view": 1,
    "label": "Template Name",
    "reqd": 1
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "no_copy": 1,
+   "options": "Sales Order",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-12 11:34:14.210804",
+ "modified": "2026-05-12 14:25:23.461420",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Appointment Service Template",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

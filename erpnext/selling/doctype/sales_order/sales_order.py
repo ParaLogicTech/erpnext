@@ -1113,19 +1113,6 @@ def make_purchase_invoice(supplier, source_name, target_doc=None):
 
 @frappe.whitelist()
 def make_project(source_name, target_doc=None):
-	def postprocess(source, target):
-		service_templates = []
-		for d in source.items:
-			if d.service_template and d.service_template not in service_templates:
-				service_templates.append(d.service_template)
-
-		for service_template in service_templates:
-			pt_row = target.append("service_templates")
-			pt_row.service_template = service_template
-			pt_row.sales_order = source.name
-
-		target.run_method("set_missing_values")
-
 	doc = get_mapped_doc("Sales Order", source_name, {
 		"Sales Order": {
 			"doctype": "Project",
@@ -1135,11 +1122,66 @@ def make_project(source_name, target_doc=None):
 			"field_map": {
 				"name": "sales_order",
 				"delivery_date": "expected_delivery_date",
+				"applies_to_serial_no": "applies_to_serial_no",
+				"campaign": "campaign",
+				"opportunity": "opportunity",
+			},
+		},
+	}, target_doc, postprocess_project_appointment)
+
+	return doc
+
+
+@frappe.whitelist()
+def make_appointment(source_name, target_doc=None):
+	existing_appointment = frappe.db.get_value("Appointment", {
+		"sales_order": source_name,
+		"docstatus": ["<", 2]
+	}, "name")
+
+	if existing_appointment:
+		frappe.throw(_("{0} already exists against Sales Order").format(
+			frappe.get_desk_link("Appointment", existing_appointment)
+		))
+
+	def postprocess(source, target):
+		target.appointment_for = "Customer"
+		postprocess_project_appointment(source, target)
+
+	doc = get_mapped_doc("Sales Order", source_name, {
+		"Sales Order": {
+			"doctype": "Appointment",
+			"validation": {
+				"docstatus": ["=", 1]
+			},
+			"field_map": {
+				"customer": "party_name",
+				"name": "sales_order",
+				"applies_to_serial_no": "applies_to_serial_no",
+				"campaign": "campaign",
+				"opportunity": "opportunity",
 			},
 		},
 	}, target_doc, postprocess)
 
 	return doc
+
+
+def postprocess_project_appointment(source, target):
+	if not target.get("sales_person") and target.meta.has_field("sales_person") and source.get("sales_team"):
+		target.sales_person = source.sales_team[0].sales_person
+
+	service_templates = []
+	for d in source.items:
+		if d.service_template and d.service_template not in service_templates:
+			service_templates.append(d.service_template)
+
+	for service_template in service_templates:
+		pt_row = target.append("service_templates")
+		pt_row.service_template = service_template
+		pt_row.sales_order = source.name
+
+	target.run_method("set_missing_values")
 
 
 @frappe.whitelist()

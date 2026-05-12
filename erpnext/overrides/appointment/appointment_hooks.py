@@ -1,6 +1,7 @@
 import frappe
 import erpnext
 from frappe import _
+from frappe.utils import strip_html
 from crm.crm.doctype.appointment.appointment import Appointment
 from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
@@ -19,6 +20,10 @@ class AppointmentERP(Appointment):
 	def before_print(self, print_settings=None):
 		self.company_address_doc = erpnext.get_company_address_doc(self)
 
+	def validate(self):
+		super().validate()
+		self.validate_sales_order()
+
 	@classmethod
 	def get_allowed_party_types(cls):
 		return super().get_allowed_party_types() + ["Customer"]
@@ -26,6 +31,42 @@ class AppointmentERP(Appointment):
 	def set_missing_values(self):
 		super().set_missing_values()
 		self.set_applies_to_details()
+		self.set_service_template_details()
+
+	def validate_sales_order(self):
+		if not self.get("sales_order"):
+			return
+
+		so_details = frappe.db.get_value("Sales Order", self.sales_order, [
+			"customer", "company", "docstatus", "billing_status",
+		], as_dict=1)
+
+		if not so_details:
+			frappe.throw(_("Sales Order {0} does not exist").format(self.sales_order))
+
+		if so_details.docstatus != 1:
+			frappe.throw(_("{0} is not submitted").format(
+				frappe.get_desk_link("Sales Order", self.sales_order)
+			))
+
+		if so_details.billing_status != "To Bill":
+			frappe.throw(_("{0} is not billable").format(
+				frappe.get_desk_link("Sales Order", self.sales_order)
+			))
+
+		if self.company != so_details.company:
+			frappe.throw(_("Company {0} does not match with {1} Company {2}").format(
+				frappe.bold(self.company),
+				frappe.get_desk_link("Sales Order", self.sales_order),
+				frappe.bold(so_details.company),
+			))
+
+		if self.party_name != so_details.customer or self.appointment_for != "Customer":
+			frappe.throw(_("Customer {0} does not match with {1} Customer {2}").format(
+				frappe.bold(self.party_name),
+				frappe.get_desk_link("Sales Order", self.sales_order),
+				frappe.bold(so_details.customer),
+			))
 
 	def set_missing_values_after_submit(self):
 		super().set_missing_values_after_submit()
@@ -46,6 +87,15 @@ class AppointmentERP(Appointment):
 		for k, v in applies_to_details.items():
 			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
 				self.set(k, v)
+
+	def set_service_template_details(self):
+		for row in self.service_templates:
+			if row.service_template and not row.service_template_name:
+				row.service_template_name = frappe.get_cached_value(
+					"Service Template",
+					row.service_template,
+					"service_template_name",
+				)
 
 	def get_customer(self, throw=False):
 		if self.appointment_for == "Customer":
@@ -111,6 +161,7 @@ def get_project(source_name, target_doc=None):
 				"applies_to_serial_no": "applies_to_serial_no",
 				"opportunity": "opportunity",
 				"campaign": "campaign",
+				"sales_order": "sales_order",
 			}
 		},
 		"Appointment Service Template": {
@@ -118,6 +169,7 @@ def get_project(source_name, target_doc=None):
 			"field_map": {
 				"service_template": "service_template",
 				"service_template_name": "service_template_name",
+				"sales_order": "sales_order",
 			},
 		},
 		"postprocess": set_missing_values,
@@ -128,6 +180,14 @@ def get_project(source_name, target_doc=None):
 	doclist = get_mapped_doc("Appointment", source_name, mapper, target_doc)
 
 	return doclist
+
+
+def update_reschedule_mapper(mapper, target_doctype):
+	if not mapper.get("Appointment"):
+		return
+
+	field_map = mapper["Appointment"]["field_map"]
+	field_map["sales_order"] = "sales_order"
 
 
 def override_appointment_dashboard(data):

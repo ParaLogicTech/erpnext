@@ -110,6 +110,7 @@ fixtures = [
 
 				"Appointment-company",
 				"Appointment-branch",
+				"Appointment-sales_order",
 				"Appointment-applies_to_variant_of",
 				"Appointment-applies_to_variant_of_name",
 				"Appointment-applies_to_serial_no",
@@ -276,6 +277,10 @@ get_customer_feedback_contact_details = [
 
 get_primary_contact = "erpnext.accounts.party.get_primary_contact_hook"
 get_primary_address = "erpnext.accounts.party.get_primary_address_hook"
+
+update_reschedule_appointment_mapper = [
+	"erpnext.overrides.appointment.appointment_hooks.update_reschedule_mapper",
+]
 
 jinja = {
 	'methods': [
