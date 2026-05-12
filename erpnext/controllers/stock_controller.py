@@ -173,7 +173,10 @@ class StockController(AccountsController):
 	def auto_create_batches(self, warehouse_field, item_condition=None, set_manufacturing_date=False):
 		'''Create batches if required. Called before submit'''
 		for d in self.items:
-			if d.get(warehouse_field) and not d.batch_no:
+			if not d.get(warehouse_field):
+				continue
+
+			if not d.batch_no:
 				has_batch_no, create_new_batch = frappe.get_cached_value('Item', d.item_code, ['has_batch_no', 'create_new_batch'])
 				if has_batch_no and create_new_batch:
 					if item_condition and not item_condition(d):
@@ -186,6 +189,7 @@ class StockController(AccountsController):
 						"supplier": getattr(self, 'supplier', None),
 						"reference_doctype": self.doctype,
 						"reference_name": self.name,
+						"expiry_date": d.get('batch_expiry_date'),
 						"auto_created": 1,
 					})
 					if set_manufacturing_date and self.get("posting_date"):
@@ -196,6 +200,9 @@ class StockController(AccountsController):
 
 					d.batch_no = batch_doc.name
 					d.db_set("batch_no", d.batch_no)
+			elif d.get('batch_expiry_date'):
+				if d.batch_expiry_date != frappe.db.get_value('Batch', d.batch_no, 'expiry_date'):
+					frappe.db.set_value("Batch", d.batch_no, 'expiry_date', d.batch_expiry_date, notify=1)
 
 	def unlink_auto_created_batches(self):
 		auto_created_batches = frappe.get_all("Batch", filters={

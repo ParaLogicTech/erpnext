@@ -596,6 +596,7 @@ def make_purchase_invoice(source_name, target_doc=None):
 				"asset_location": "asset_location",
 				"asset_category": "asset_category",
 				"batch_no": "batch_no",
+				"batch_expiry_date": "batch_expiry_date",
 				"serial_no": "serial_no",
 				"vehicle": "vehicle",
 			},
