@@ -444,3 +444,4 @@ erpnext.patches.v15_0.set_employee_reports_to_name
 erpnext.patches.v15_0.set_project_total_cost
 erpnext.patches.v15_0.set_missing_proforma_invoice_in_credit_note
 erpnext.patches.v15_0.fix_project_sales_item_data_from_invoice
+erpnext.patches.v15_0.create_payment_request_dimension_fields

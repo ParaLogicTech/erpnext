@@ -114,8 +114,9 @@ class GLEntry(Document):
 					and self.company == dimension.company
 					and not dimension.disabled
 				):
-					frappe.throw(_("Accounting Dimension <b>{0}</b> is required for Account <b>{1}</b>.")
-						.format(dimension.label, self.account))
+					frappe.throw(_("Accounting Dimension {0} is required for Account {1}.").format(
+						frappe.bold(dimension.label), frappe.bold(self.account)
+					))
 
 				if (
 					report_type == "Profit and Loss"
@@ -124,8 +125,9 @@ class GLEntry(Document):
 					and not dimension.disabled
 				):
 					if not self.get(dimension.fieldname):
-						frappe.throw(_("Accounting Dimension <b>{0}</b> is required for 'Profit and Loss' account {1}.")
-							.format(dimension.label, self.account))
+						frappe.throw(_("Accounting Dimension {0} is required for 'Profit and Loss' Account {1}.").format(
+							frappe.bold(dimension.label), frappe.bold(self.account)
+						))
 
 				if (
 					report_type == "Balance Sheet"
@@ -134,8 +136,9 @@ class GLEntry(Document):
 					and not dimension.disabled
 				):
 					if not self.get(dimension.fieldname):
-						frappe.throw(_("Accounting Dimension <b>{0}</b> is required for 'Balance Sheet' account {1}.")
-							.format(dimension.label, self.account))
+						frappe.throw(_("Accounting Dimension {0} is required for 'Balance Sheet' Account {1}.").format(
+							frappe.bold(dimension.label), frappe.bold(self.account)
+						))
 
 	def check_pl_account(self):
 		report_type = frappe.db.get_value("Account", self.account, "report_type", cache=1)

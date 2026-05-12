@@ -14,6 +14,10 @@ from erpnext.accounts.utils import get_advance_against_voucher_types
 from frappe.regional.regional import validate_mobile_no
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
 from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_all_dimension_fields,
+	get_checks_for_pl_and_bs_accounts,
+)
 from payments.utils import get_payment_gateway_controller
 
 
@@ -48,6 +52,7 @@ class PaymentRequest(AccountsController):
 		self.set_status()
 
 	def before_submit(self):
+		self.validate_mandatory_dimensions()
 		self.request_payment_gateway_url()
 
 	def on_submit(self):
@@ -366,6 +371,23 @@ class PaymentRequest(AccountsController):
 			if getdate(self.expiry_date) < getdate(self.transaction_date):
 				frappe.throw(_("Expiry Date cannot be before Request Date"))
 
+	def validate_mandatory_dimensions(self):
+		accounting_dimensions = get_checks_for_pl_and_bs_accounts()
+
+		if not self.cost_center and frappe.db.get_single_value("Accounts Settings", "cost_center_mandatory_in_entry_of_bs_account"):
+			frappe.throw(_("Cost Center is mandatory"))
+
+		for dimension in accounting_dimensions:
+			if (
+				self.company == dimension.company
+				and dimension.mandatory_for_bs
+				and not dimension.disabled
+			):
+				if not self.get(dimension.fieldname):
+					frappe.throw(_("Accounting Dimension {0} is mandatory").format(
+						frappe.bold(dimension.label)
+					))
+
 	def get_reference_document(self, reload=False):
 		if not self.get("reference_doc") or reload:
 			if self.reference_doctype and self.reference_name:
@@ -523,6 +545,11 @@ class PaymentRequest(AccountsController):
 			),
 		})
 
+		dimension_fields = get_all_dimension_fields()
+		for f in dimension_fields:
+			if self.get(f):
+				payment_entry.set(f, self.get(f))
+
 		if payment_entry.difference_amount:
 			company_details = get_company_defaults(self.company)
 
@@ -679,6 +706,11 @@ class PaymentRequest(AccountsController):
 
 		out.company = reference_doc.get("company")
 		out.branch = reference_doc.get("branch")
+
+		dimension_fields = get_all_dimension_fields()
+		for f in dimension_fields:
+			if reference_doc.get(f):
+				out[f] = reference_doc.get(f)
 
 		out.party_type, out.party, out.party_name = PaymentRequest.get_reference_document_party(reference_doc)
 

@@ -54,6 +54,9 @@
   "column_break_4rxf",
   "section_break_70ae",
   "message",
+  "accounting_dimensions_section",
+  "cost_center",
+  "dimension_col_break",
   "section_break_7",
   "payment_gateway",
   "expiry_date_allowed",
@@ -468,12 +471,28 @@
    "label": "Payment Entry Creation Error",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "accounting_dimensions_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting Dimensions"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center"
+  },
+  {
+   "fieldname": "dimension_col_break",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-30 23:45:32.848436",
+ "modified": "2026-05-11 11:43:05.614294",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Request",

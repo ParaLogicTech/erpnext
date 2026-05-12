@@ -51,6 +51,15 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 				filters: filters,
 			};
 		});
+
+		this.frm.set_query("cost_center", function(doc) {
+			return {
+				filters: {
+					"company": doc.company,
+					"is_group": 0
+				}
+			};
+		});
 	}
 
 	setup_buttons() {
