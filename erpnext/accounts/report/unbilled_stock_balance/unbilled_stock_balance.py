@@ -13,6 +13,7 @@ class UnbilledStockBalance:
 
 	def run(self):
 		self.validate_filters()
+		self.set_default_unbilled_stock_account()
 		self.get_data()
 		self.prepare_data()
 		columns = self.get_columns()
@@ -25,8 +26,15 @@ class UnbilledStockBalance:
 
 		if self.filters.from_date > self.filters.to_date:
 			frappe.throw(_("From Date must be before To Date"))
+	
+	def set_default_unbilled_stock_account(self):
+		self.all_unbilled_stock_accounts = set()
+		default_stock_delivered_but_not_billed = frappe.db.get_value("Company", self.filters.company, "stock_delivered_but_not_billed")
+		if default_stock_delivered_but_not_billed:
+			self.all_unbilled_stock_accounts.add(default_stock_delivered_but_not_billed)
 
 	def get_data(self):
+
 		dn_conditions = self.get_conditions("dn")
 		dn_conditions_str = "and {0}".format(" and ".join(dn_conditions)) if dn_conditions else ""
 
@@ -71,11 +79,38 @@ class UnbilledStockBalance:
 			group by si.name, i.delivery_note, i.unbilled_stock_account
 		""", self.filters, as_dict=1)
 
+		self.journal_entry_data = []
+		je_conditions = self.get_conditions("tje")
+		je_conditions_str = "and {0}".format(" and ".join(je_conditions)) if je_conditions else ""
+		
+		if self.all_unbilled_stock_accounts:
+			self.journal_entry_data = frappe.db.sql(
+				f"""
+				select
+					tje.name as journal_entry,
+					tje.company,
+					sum(tjea.debit_in_account_currency) as debit,
+					sum(tjea.credit_in_account_currency) as credit,
+					tjea.account as unbilled_stock_account,
+					tjea.reference_type,
+					tjea.reference_name
+				from `tabJournal Entry` tje
+				inner join `tabJournal Entry Account` tjea on tje.name = tjea.parent
+				where
+					tje.docstatus = 1
+					and tjea.account in %(accounts)s
+					{je_conditions_str}
+				group by tje.name, tjea.account
+				order by tje.posting_date, tje.name
+			""", {
+					**self.filters,
+					"accounts": self.all_unbilled_stock_accounts
+				}, as_dict=1)
+
 		self.all_delivery_notes = set()
 		self.delivery_notes = set()
 		self.delivery_returns = {}
 		self.delivery_note_unbilled_accounts = {}
-		self.all_unbilled_stock_accounts = set()
 
 		for d in self.delivery_note_data:
 			self.all_delivery_notes.add(d.delivery_note)
@@ -166,6 +201,16 @@ class UnbilledStockBalance:
 				row_obj = row_map[key] = self.get_row_template(sid)
 
 			row_obj.billed_value += flt(sid.billed_stock_value)
+		
+		# Journal Entry
+		for je in self.journal_entry_data:
+			key = (je.journal_entry, je.unbilled_stock_account)
+			if key in row_map:
+				row_obj = row_map[key]
+			else:
+				row_obj = row_map[key] = self.get_row_template(je)
+			row_obj.delivered_value += je.debit
+			row_obj.billed_value += je.credit
 
 		# post process
 		for d in row_map.values():
@@ -179,6 +224,7 @@ class UnbilledStockBalance:
 			"posting_date": data.posting_date,
 			"delivery_note": data.delivery_note,
 			"sales_invoice": data.sales_invoice,
+			"journal_entry": data.journal_entry,
 			"unbilled_stock_account": data.unbilled_stock_account,
 			"company": data.company,
 			"delivered_value": 0,
@@ -207,6 +253,13 @@ class UnbilledStockBalance:
 				"fieldname": "sales_invoice",
 				"fieldtype": "Link",
 				"options": "Sales Invoice",
+				"width": 150,
+			},
+			{
+				"label": _("Journal Entry"),
+				"fieldname": "journal_entry",
+				"fieldtype": "Link",
+				"options": "Journal Entry",
 				"width": 150,
 			},
 			{
