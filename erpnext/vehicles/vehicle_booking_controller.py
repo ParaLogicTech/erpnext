@@ -423,8 +423,10 @@ def get_party_name_and_category(args, party, financer):
 def get_party_tax_ids(args, party, financer):
 	out = frappe._dict()
 
-	out.tax_id = financer.get('tax_id') if financer else party.get('tax_id')
-	out.tax_strn = financer.get('tax_strn') if financer else party.get('tax_strn')
+	is_leased = financer and args.finance_type == "Leased"
+
+	out.tax_id = financer.get('tax_id') if is_leased else party.get('tax_id')
+	out.tax_strn = financer.get('tax_strn') if is_leased else party.get('tax_strn')
 
 	out.tax_cnic = party.get('tax_cnic')
 	out.passport_no = party.get('passport_no')
