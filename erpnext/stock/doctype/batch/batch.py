@@ -8,6 +8,7 @@ from frappe.model.naming import make_autoname, revert_series_if_last
 from frappe.utils import flt, cint, get_link_to_form, cstr, round_down, getdate
 from frappe.utils.data import add_days
 import json
+import datetime
 
 
 class UnableToSelectBatchError(frappe.ValidationError):
@@ -457,7 +458,7 @@ def get_batches(item_code, warehouse, posting_date=None, posting_time=None, qty_
 		{1}
 	""".format(date_cond, having), args, as_dict=True)
 
-	batches = sorted(batches, key=lambda d: (d.expiry_date, d.received_date))
+	batches = sorted(batches, key=lambda d: (d.expiry_date or datetime.date.max, d.received_date))
 
 	if sales_order_item:
 		batches_purchased_against_so = frappe.db.sql_list("""
