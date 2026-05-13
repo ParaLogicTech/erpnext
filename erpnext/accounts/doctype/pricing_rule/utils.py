@@ -157,9 +157,12 @@ def evaluate_pricing_rule_condition(rule, args, doc=None):
 		"rule": rule,
 	})
 
-	if frappe.safe_eval(rule.condition, eval_globals, context):
-		return True
-	else:
+	try:
+		if frappe.safe_eval(rule.condition, eval_globals, context):
+			return True
+		else:
+			return False
+	except Exception:
 		return False
 
 
