@@ -4,9 +4,8 @@ from crm.crm.doctype.opportunity.opportunity import Opportunity
 from frappe.model.mapper import get_mapped_doc
 from erpnext.utilities.transaction_base import validate_uom_is_integer, validate_uom_is_convertible
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
-from erpnext.setup.utils import get_exchange_rate
-from erpnext.accounts.party import get_party_account_currency
 from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
+from erpnext.projects.doctype.service_template.service_template import add_service_template_items
 
 
 class OpportunityERP(Opportunity):
@@ -159,24 +158,23 @@ def make_quotation(source_name, target_doc=None):
 	from erpnext.overrides.lead.lead_hooks import add_sales_person_from_source
 
 	def set_missing_values(source, target):
-		company_currency = frappe.get_cached_value('Company',  target.company,  "default_currency")
-
-		if target.quotation_to == 'Customer' and target.party_name:
-			party_account_currency = get_party_account_currency("Customer", target.party_name, target.company)
-		else:
-			party_account_currency = company_currency
-
-		target.currency = party_account_currency or company_currency
-
-		if company_currency == target.currency:
-			exchange_rate = 1
-		else:
-			exchange_rate = get_exchange_rate(target.currency, company_currency,
-				target.transaction_date, args="for_selling")
-
-		target.conversion_rate = exchange_rate
-
 		add_sales_person_from_source(source, target)
+
+		bill_to = target.bill_to
+		if not bill_to and target.quotation_to == "Customer":
+			bill_to = target.party_name
+
+		for row in source.get("service_templates"):
+			if row.service_template:
+				target = add_service_template_items(
+					target,
+					row.service_template,
+					applies_to_item=target.applies_to_item,
+					applies_to_customer=bill_to,
+					check_duplicate=False,
+					postprocess=False,
+				)
+
 		target.run_method("postprocess_after_mapping")
 
 	doclist = get_mapped_doc("Opportunity", source_name, {
@@ -248,6 +246,16 @@ def make_supplier_quotation(source_name, target_doc=None):
 	}, target_doc)
 
 	return doclist
+
+
+def update_appointment_mapper(mapper, target_doctype):
+	mapper["Opportunity Service Template"] = {
+		"doctype": "Appointment Service Template",
+		"field_map": {
+			"service_template": "service_template",
+			"service_template_name": "service_template_name",
+		},
+	}
 
 
 def override_opportunity_dashboard(data):

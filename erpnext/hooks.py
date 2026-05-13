@@ -97,6 +97,9 @@ fixtures = [
 				"Opportunity-applies_to_item_brand",
 				"Opportunity-applies_to_item_name",
 
+				"Opportunity-sec_service_template",
+				"Opportunity-service_templates",
+
 				"Opportunity Item-item_code",
 				"Opportunity Item-uom",
 				"Opportunity Item-item_group",
@@ -280,6 +283,10 @@ get_primary_address = "erpnext.accounts.party.get_primary_address_hook"
 
 update_reschedule_appointment_mapper = [
 	"erpnext.overrides.appointment.appointment_hooks.update_reschedule_mapper",
+]
+
+update_appointment_from_opportunity_mapper = [
+	"erpnext.overrides.opportunity.opportunity_hooks.update_appointment_mapper",
 ]
 
 jinja = {
