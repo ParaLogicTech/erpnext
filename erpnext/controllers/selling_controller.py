@@ -966,21 +966,28 @@ class SellingController(TransactionController):
 		if not source_row.get('claim_customer'):
 			return
 
-		bill_to = self.get('bill_to') or self.get('customer')
 		if source_row.discount_amount:
-			if bill_to == source_row.claim_customer:
-				target_row.price_list_rate = source_row.discount_amount
-				target_row.rate = source_row.discount_amount
-				target_row.margin_rate_or_amount = 0
-				target_row.discount_percentage = 0
-				target_row.discount_amount = 0
+			self.adjust_rate_for_claim_discount_item(source_row, target_row)
 		else:
-			if bill_to and bill_to != source_row.claim_customer:
-				target_row.price_list_rate = 0
-				target_row.rate = 0
-				target_row.margin_rate_or_amount = 0
-				target_row.discount_percentage = 0
-				target_row.discount_amount = 0
+			self.adjust_rate_for_claim_free_item(source_row, target_row)
+
+	def adjust_rate_for_claim_discount_item(self, source_row, target_row):
+		bill_to = self.get('bill_to') or self.get('customer')
+		if bill_to == source_row.claim_customer:
+			target_row.price_list_rate = source_row.discount_amount
+			target_row.rate = source_row.discount_amount
+			target_row.margin_rate_or_amount = 0
+			target_row.discount_percentage = 0
+			target_row.discount_amount = 0
+
+	def adjust_rate_for_claim_free_item(self, source_row, target_row):
+		bill_to = self.get('bill_to') or self.get('customer')
+		if bill_to and bill_to != source_row.claim_customer:
+			target_row.price_list_rate = 0
+			target_row.rate = 0
+			target_row.margin_rate_or_amount = 0
+			target_row.discount_percentage = 0
+			target_row.discount_amount = 0
 
 	def validate_zero_outstanding(self):
 		super().validate_zero_outstanding()
