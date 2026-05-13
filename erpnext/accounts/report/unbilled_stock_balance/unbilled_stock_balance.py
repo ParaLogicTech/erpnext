@@ -100,7 +100,7 @@ class UnbilledStockBalance:
 					tje.docstatus = 1
 					and tjea.account in %(accounts)s
 					{je_conditions_str}
-				group by tje.name
+				group by tje.name, tjea.account
 				order by tje.posting_date, tje.name
 			""", {
 					**self.filters,
