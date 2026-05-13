@@ -112,8 +112,6 @@ class UnbilledStockBalance:
 		self.delivery_returns = {}
 		self.delivery_note_unbilled_accounts = {}
 
-		self.all_unbilled_stock_accounts.add("20103050 - Parts WIP - PASLLC")
-
 		for d in self.delivery_note_data:
 			self.all_delivery_notes.add(d.delivery_note)
 			if d.is_return:
