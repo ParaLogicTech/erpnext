@@ -1333,35 +1333,11 @@ class SalesInvoice(SellingController):
 			gl_entries += self.get_stock_ledger_gl_entries()
 
 	def make_unbilled_stock_gl_entries(self, gl_entries):
-		delivery_note_items = list(set([d.delivery_note_item for d in self.get("items") if d.delivery_note_item and d.get("unbilled_stock_account")]))
-		if not delivery_note_items:
-			return
-
-		stock_ledger_entries = frappe.db.sql("""
-			select voucher_detail_no, stock_value_difference, actual_qty
-			from `tabStock Ledger Entry`
-			where voucher_type = 'Delivery Note' and voucher_detail_no in %s
-		""", [delivery_note_items], as_dict=True)
-
-		sle_map = {}
-		for sle in stock_ledger_entries:
-			sle_map.setdefault(sle.get("voucher_detail_no"), 0)
-			sle_map[sle.get("voucher_detail_no")] += -1 * sle.stock_value_difference
+		self.set_unbilled_stock_value(update=True)
 
 		for item in self.get("items"):
-			if not item.get("unbilled_stock_account"):
+			if not item.unbilled_stock_value:
 				continue
-
-			stock_value_difference = sle_map.get(item.delivery_note_item)
-			if not stock_value_difference:
-				continue
-
-			delivered_qty = flt(frappe.db.get_value("Delivery Note Item", item.delivery_note_item, "qty"))
-			if not delivered_qty:
-				continue
-
-			outgoing_rate = stock_value_difference / delivered_qty
-			expense_amount = outgoing_rate * flt(item.qty)
 
 			self.check_expense_account(item)
 
@@ -1369,7 +1345,7 @@ class SalesInvoice(SellingController):
 				self.get_gl_dict({
 					"account": item.expense_account,
 					"against": item.unbilled_stock_account,
-					"debit": expense_amount,
+					"debit": item.unbilled_stock_value,
 					"cost_center": item.cost_center or self.cost_center,
 					"project": item.get('project') or self.project
 				}, item=item)
@@ -1379,11 +1355,54 @@ class SalesInvoice(SellingController):
 				self.get_gl_dict({
 					"account": item.unbilled_stock_account,
 					"against": item.expense_account,
-					"credit": expense_amount,
+					"credit": item.unbilled_stock_value,
 					"cost_center": item.cost_center or self.cost_center,
 					"project": item.get('project') or self.project
 				}, item=item)
 			)
+
+	def set_unbilled_stock_value(self, update=False, update_modified=False):
+		delivery_note_items = list(set([d.delivery_note_item for d in self.get("items") if d.delivery_note_item and d.get("unbilled_stock_account")]))
+
+		stock_ledger_entries = []
+		delivered_qtys = {}
+		if delivery_note_items:
+			stock_ledger_entries = frappe.db.sql("""
+				select voucher_detail_no, stock_value_difference, actual_qty
+				from `tabStock Ledger Entry`
+				where voucher_type = 'Delivery Note' and voucher_detail_no in %s
+			""", [delivery_note_items], as_dict=True)
+
+			delivered_qtys = dict(frappe.db.sql("""
+				select name, qty
+				from `tabDelivery Note Item`
+				where name in %s
+			""", [delivery_note_items]))
+
+		sle_map = {}
+		for sle in stock_ledger_entries:
+			sle_map.setdefault(sle.get("voucher_detail_no"), 0)
+			sle_map[sle.get("voucher_detail_no")] += -1 * sle.stock_value_difference
+
+		for item in self.get("items"):
+			item.unbilled_stock_value = 0
+			if not item.get("unbilled_stock_account"):
+				continue
+
+			stock_value_difference = sle_map.get(item.delivery_note_item)
+			if not stock_value_difference:
+				continue
+
+			delivered_qty = flt(delivered_qtys.get(item.delivery_note_item))
+			if not delivered_qty:
+				continue
+
+			outgoing_rate = stock_value_difference / delivered_qty
+			item.unbilled_stock_value = flt(outgoing_rate * flt(item.qty), 9)
+
+		if update:
+			for item in self.get("items"):
+				item.db_set("unbilled_stock_value", item.unbilled_stock_value, update_modified=update_modified)
 
 	def make_prepaid_deferred_revenue_gl_entry(self, gl_entries):
 		if self.prepaid_deferred_revenue:

@@ -173,6 +173,7 @@
   "income_account",
   "expense_account",
   "unbilled_stock_account",
+  "unbilled_stock_value",
   "discount_account",
   "item_tax_template",
   "dimension_col_break",
@@ -1666,12 +1667,21 @@
    "fieldtype": "Check",
    "label": "Is Prepaid Deferred Revenue",
    "read_only": 1
+  },
+  {
+   "fieldname": "unbilled_stock_value",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Unbilled Stock Value",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-12-16 10:29:45.052593",
+ "modified": "2026-05-13 10:26:58.849841",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice Item",
