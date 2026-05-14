@@ -1147,7 +1147,11 @@ def vehicle_brand_query(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.db.sql("""
 		select {fields}
 		from `tabBrand`
-		where exists(select tabItem.name from tabItem where tabItem.brand = tabBrand.name and tabItem.is_vehicle = 1)
+		where exists(
+				select tabItem.name
+				from tabItem
+				where tabItem.brand = tabBrand.name and tabItem.is_vehicle = 1 and tabItem.disabled = 0
+			)
 			and ({scond}) {fcond} {mcond}
 		order by
 			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),

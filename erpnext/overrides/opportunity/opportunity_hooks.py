@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import cint
 from crm.crm.doctype.opportunity.opportunity import Opportunity
 from frappe.model.mapper import get_mapped_doc
 from erpnext.utilities.transaction_base import validate_uom_is_integer, validate_uom_is_convertible
@@ -154,8 +155,45 @@ def get_item_details(item_code):
 
 
 @frappe.whitelist()
-def make_quotation(source_name, target_doc=None):
+def create_quotation(
+	opportunity,
+	data=None,
+	map_items=True,
+	map_service_templates=True,
+	service_templates=None,
+):
+	data = frappe.parse_json(data) if data else frappe._dict()
+
+	target_doc = frappe.new_doc("Quotation")
+	for key, value in data.items():
+		if target_doc.meta.has_field(key):
+			target_doc.set(key, value)
+
+	target_doc = make_quotation(
+		opportunity,
+		target_doc=target_doc,
+		map_items=map_items,
+		map_service_templates=map_service_templates,
+		service_templates=service_templates,
+	)
+
+	target_doc.insert()
+	return target_doc
+
+
+@frappe.whitelist()
+def make_quotation(
+	source_name,
+	target_doc=None,
+	map_items=True,
+	map_service_templates=True,
+	service_templates=None,
+):
 	from erpnext.overrides.lead.lead_hooks import add_sales_person_from_source
+
+	map_items = cint(map_items)
+	map_service_templates = cint(map_service_templates)
+	service_templates = frappe.parse_json(service_templates) if service_templates else []
 
 	def set_missing_values(source, target):
 		add_sales_person_from_source(source, target)
@@ -164,11 +202,23 @@ def make_quotation(source_name, target_doc=None):
 		if not bill_to and target.quotation_to == "Customer":
 			bill_to = target.party_name
 
-		for row in source.get("service_templates"):
-			if row.service_template:
+		if map_service_templates:
+			for st_row in source.get("service_templates"):
+				if st_row.service_template:
+					target = add_service_template_items(
+						target,
+						st_row.service_template,
+						applies_to_item=target.applies_to_item,
+						applies_to_customer=bill_to,
+						check_duplicate=False,
+						postprocess=False,
+					)
+
+		if service_templates:
+			for service_template in service_templates:
 				target = add_service_template_items(
 					target,
-					row.service_template,
+					service_template,
 					applies_to_item=target.applies_to_item,
 					applies_to_customer=bill_to,
 					check_duplicate=False,
@@ -177,7 +227,7 @@ def make_quotation(source_name, target_doc=None):
 
 		target.run_method("postprocess_after_mapping")
 
-	doclist = get_mapped_doc("Opportunity", source_name, {
+	mapper = {
 		"Opportunity": {
 			"doctype": "Quotation",
 			"field_map": {
@@ -187,14 +237,18 @@ def make_quotation(source_name, target_doc=None):
 				"applies_to_serial_no": "applies_to_serial_no",
 			}
 		},
-		"Opportunity Item": {
+	}
+
+	if map_items:
+		mapper["Opportunity Item"] = {
 			"doctype": "Quotation Item",
 			"field_map": {
 				"uom": "stock_uom",
 			},
 			"add_if_empty": True
 		}
-	}, target_doc, set_missing_values)
+
+	doclist = get_mapped_doc("Opportunity", source_name, mapper, target_doc, set_missing_values)
 
 	return doclist
 
