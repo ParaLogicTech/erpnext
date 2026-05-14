@@ -809,12 +809,12 @@ class SalesInvoice(SellingController):
 		if pos:
 			force_fields = [
 				"tax_category", "company_address", "selling_price_list",
-				"write_off_cost_center", "write_off_account", "branch",
+				"write_off_cost_center", "branch"
 			]
 			missing_fields = [
 				"customer", 'territory', 'currency', 'letter_head', 'tc_name',
 				'company', 'select_print_heading', 'taxes_and_charges',
-				'apply_discount_on', 'cost_center',
+				'apply_discount_on', 'cost_center', 'write_off_account'
 			]
 
 			for fieldname in force_fields:
