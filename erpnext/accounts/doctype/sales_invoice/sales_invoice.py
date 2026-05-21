@@ -661,7 +661,7 @@ class SalesInvoice(SellingController):
 			if frappe.get_cached_value("Customer", self.bill_to or self.customer, "customer_type") == "Individual":
 				return
 
-		if validation:
+		if validation and (not frappe.get_cached_value("Customer", self.bill_to or self.customer, "tax_id_non_mandatory")):
 			frappe.throw(_("Customer {0} or Identification Number is mandatory for Sales Tax Invoice").format(_("Tax ID")))
 
 	def check_credit_limit(self):
