@@ -281,8 +281,68 @@ frappe.ui.form.on('Payment Entry', {
 	},
 
 	company: function(frm) {
+		frm.events.get_other_company_accounts_and_cost_centers(frm);
 		frm.events.hide_unhide_fields(frm);
 		frm.events.set_dynamic_labels(frm);
+	},
+
+	get_other_company_accounts_and_cost_centers: function (frm) {
+		if (!frm.doc.company) {
+			return;
+		}
+
+		let accounts = [];
+		let cost_centers = [];
+
+		if (frm.doc.paid_from) {
+			accounts.push(frm.doc.paid_from);
+		}
+		if (frm.doc.paid_to) {
+			accounts.push(frm.doc.paid_to);
+		}
+
+		if (frm.doc.cost_center) {
+			cost_centers.push(frm.doc.cost_center);
+		}
+
+		for (let d of frm.doc.deductions || []) {
+			if (d.account) {
+				accounts.push(d.account);
+			}
+			if (d.cost_center) {
+				cost_centers.push(d.cost_center);
+			}
+		}
+
+		return frappe.call({
+			method: "erpnext.accounts.doctype.journal_entry.journal_entry.get_other_company_accounts_and_cost_centers",
+			args: {
+				target_company: frm.doc.company,
+				accounts: accounts,
+				cost_centers: cost_centers,
+			},
+			callback: function(r){
+				if (r.message) {
+					frm.set_value("cost_center", r.message.cost_centers[frm.doc.cost_center] || r.message.default_cost_center);
+
+					if (frm.doc.paid_from && r.message.accounts[frm.doc.paid_from]) {
+						frm.set_value("paid_from", r.message.accounts[frm.doc.paid_from])
+					}
+					if (frm.doc.paid_to && r.message.accounts[frm.doc.paid_to]) {
+						frm.set_value("paid_to", r.message.accounts[frm.doc.paid_to])
+					}
+
+					for (let d of frm.doc.deductions || []) {
+						if (d.account && r.message.accounts[d.account]) {
+							frappe.model.set_value(d.doctype, d.name, "account", r.message.accounts[d.account]);
+						}
+						if (d.cost_center && r.message.cost_centers[d.cost_center]) {
+							frappe.model.set_value(d.doctype, d.name, "cost_center", r.message.cost_centers[d.cost_center]);
+						}
+					}
+				}
+			}
+		});
 	},
 
 	contact_person: function(frm) {
