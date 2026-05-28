@@ -930,7 +930,7 @@ frappe.ui.form.on('Payment Entry', {
 		var total_deductions = frappe.utils.sum($.map(frm.doc.deductions || [],
 			function(d) { return flt(d.amount) }));
 
-		paid_amount -= total_deductions;
+		paid_amount += total_deductions;
 
 		$.each(frm.doc.references || [], function(i, row) {
 			if(flt(row.outstanding_amount) > 0)
