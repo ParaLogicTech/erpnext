@@ -120,9 +120,9 @@ frappe.ui.form.on('Expense Entry', {
 					}
 					if (frm.doc.payable_account && r.message.accounts[frm.doc.payable_account]) {
 						frm.set_value("payable_account", r.message.accounts[frm.doc.payable_account])
-					} else {
-						frm.events.get_payable_account_currency(frm);
 					}
+
+					frm.events.get_payable_account_currency(frm);
 
 					for (let d of frm.doc.accounts || []) {
 						if (d.expense_account && r.message.accounts[d.expense_account]) {
@@ -141,13 +141,18 @@ frappe.ui.form.on('Expense Entry', {
 		frm.events.get_payable_account_currency(frm);
 	},
 
+	paid_from_account: function (frm) {
+		frm.events.get_payable_account_currency(frm);
+	},
+
 	get_payable_account_currency: function (frm) {
-		if (frm.doc.payable_account) {
+		let account = frm.doc.payable_account || frm.doc.paid_from_account;
+		if (account) {
 			return frappe.call({
 				method: "frappe.client.get",
 				args: {
 					doctype: "Account",
-					name: frm.doc.payable_account,
+					name: account,
 					fieldname: "account_currency"
 				},
 				callback: (r) => {

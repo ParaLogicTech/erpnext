@@ -69,8 +69,12 @@ class ExpenseEntry(Document):
 
 	def set_missing_values(self):
 		company_currency = get_company_currency(self.company)
-		self.payable_account_currency = frappe.get_cached_value("Account", self.payable_account, "account_currency") \
-			if self.payable_account else company_currency
+		if self.payable_account:
+			self.payable_account_currency = frappe.get_cached_value("Account", self.payable_account, "account_currency")
+		elif self.paid_from_account:
+			self.payable_account_currency = frappe.get_cached_value("Account", self.paid_from_account, "account_currency")
+		else:
+			self.payable_account_currency = company_currency
 
 		if self.supplier:
 			for row in self.accounts:
