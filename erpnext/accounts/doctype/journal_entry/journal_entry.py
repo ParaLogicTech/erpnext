@@ -126,12 +126,12 @@ class JournalEntry(AccountsController):
 	def clear_clerance_date_details(self):
 		if self.get("amended_from"):
 			for d in self.accounts:
-				d.db_set({
+				d.update({
 					"clearance_date": None,
 					"clear_against_type": None,
 					"clear_against": None,
 					"clear_against_detail_type": None,
-					"clear_against_detail_type": None,
+					"clear_against_detail_name": None,
 				})
 
 	def update_clearance_date(self):
@@ -140,15 +140,16 @@ class JournalEntry(AccountsController):
 				clear_against_doctype = d.clear_against_detail_type if d.clear_against_detail_type else d.clear_against_type
 				clear_against_docname = d.clear_against_detail_name if d.clear_against_detail_name else d.clear_against
 				if frappe.db.get_value(clear_against_doctype,  clear_against_docname, 'clearance_date'):
-					frappe.db.set_value(clear_against_doctype, clear_against_docname, 'clearance_date', None,
-					notify=True)
-					frappe.get_doc(dict(
-						doctype='Version',
-						ref_doctype=d.clear_against_type,
-						docname=d.clear_against,
-						data=frappe.as_json(dict(comment_type="Label", comment=_("Removed Clearance Date by Canceling Clearance Document {0}".format(
-							self.name))))
-					)).insert(ignore_permissions=True)
+					frappe.db.set_value(clear_against_doctype, clear_against_docname, 'clearance_date', None, notify=True)
+
+					frappe.get_doc({
+						"doctype": "Comment",
+						"comment_type": "Label",
+						"comment_email": frappe.session.user,
+						"reference_doctype": d.clear_against_type,
+						"reference_name": d.clear_against,
+						"content": _("Removed Clearance Date by cancelling Bank Clearance Entry"),
+					}).insert(ignore_permissions=True)
 
 	def validate_inter_company_accounts(self):
 		if self.inter_company_reference:
@@ -263,14 +264,16 @@ class JournalEntry(AccountsController):
 					_("with Deposit No {0}").format(self.cheque_no) if self.cheque_no else "",
 				)
 			else:
-				comment = _("Cancelled Deposit Entry").format(frappe.utils.formatdate(deposit_date))
+				comment = _("Cancelled Deposit Entry")
 
-			frappe.get_doc(dict(
-				doctype='Version',
-				ref_doctype=deposit_against_type,
-				docname=deposit_against,
-				data=frappe.as_json(dict(comment_type="Label", comment=comment))
-			)).insert(ignore_permissions=True)
+			frappe.get_doc({
+				"doctype": "Comment",
+				"comment_type": "Label",
+				"comment_email": frappe.session.user,
+				"reference_doctype": deposit_against_type,
+				"reference_name": deposit_against,
+				"content": comment,
+			}).insert(ignore_permissions=True)
 
 	@staticmethod
 	def get_deposit_against_child_doctype(deposit_against_type):

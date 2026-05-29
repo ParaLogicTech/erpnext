@@ -320,13 +320,16 @@ class BankReconciliation(Document):
 			frappe.db.set_value(row.voucher_type, row.voucher_no, 'clearance_date', row.clearance_date,
 				notify=True)
 
-		frappe.get_doc(dict(
-			doctype='Version',
-			ref_doctype=row.voucher_type,
-			docname=row.voucher_no,
-			data=frappe.as_json(dict(comment_type="Label", comment=_("Set Clearance Date to {0}".format(
-				frappe.utils.formatdate(row.clearance_date) if row.clearance_date else "None"))))
-		)).insert(ignore_permissions=True)
+		frappe.get_doc({
+			"doctype": "Comment",
+			"comment_type": "Label",
+			"comment_email": frappe.session.user,
+			"reference_doctype": row.voucher_type,
+			"reference_name": row.voucher_no,
+			"content": _("Set Clearance Date to {0}".format(
+				frappe.utils.formatdate(row.clearance_date) if row.clearance_date else "None"
+			)),
+		}).insert(ignore_permissions=True)
 
 		return True
 
