@@ -499,6 +499,7 @@ class BankDepositTool(Document):
 			))
 
 	def make_journal_entry(self, selected_entries):
+		batch_deposit = True
 		parent_dimensions = self.get_entry_additional_values()
 
 		je = frappe.new_doc("Journal Entry")
@@ -512,7 +513,7 @@ class BankDepositTool(Document):
 		je.update(parent_dimensions)
 
 		# conolidated bank amount
-		if self.consolidate_bank_amount:
+		if batch_deposit:
 			total_amount = flt(self.actual_deposit_amount, self.precision("actual_deposit_amount"))
 			je.append("accounts", {
 				"account": self.deposit_to_account,
@@ -527,7 +528,7 @@ class BankDepositTool(Document):
 			amount = flt(d.get('amount'))
 
 			debit_row = None
-			if not self.consolidate_bank_amount:
+			if not batch_deposit:
 				debit_row = je.append("accounts", {
 					"account": self.deposit_to_account,
 					"debit_in_account_currency": abs(amount) if amount > 0 else 0,
@@ -585,7 +586,7 @@ class BankDepositTool(Document):
 			})
 
 			# reverse bank row
-			if not self.consolidate_bank_amount:
+			if not batch_deposit:
 				je.append("accounts", {
 					"account": self.deposit_to_account,
 					"cost_center": d.get('cost_center'),

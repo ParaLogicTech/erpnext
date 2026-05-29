@@ -8,7 +8,6 @@
   "bank_account",
   "deposit_to_account",
   "currency",
-  "consolidate_bank_amount",
   "column_break_ozda",
   "remarks",
   "column_break_rxqx",
@@ -236,12 +235,6 @@
    "options": "Project"
   },
   {
-   "default": "0",
-   "fieldname": "consolidate_bank_amount",
-   "fieldtype": "Check",
-   "label": "Consolidate Bank Amount"
-  },
-  {
    "fieldname": "mode_of_payment",
    "fieldtype": "Link",
    "label": "Mode of Payment",
@@ -275,7 +268,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-04-25 04:12:30.369047",
+ "modified": "2026-05-29 05:21:07.117596",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",
