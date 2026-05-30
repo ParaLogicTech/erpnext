@@ -7,7 +7,7 @@ from frappe import _, scrub, ValidationError
 from frappe.utils import flt, cint, comma_or, nowdate, getdate, cstr
 from erpnext.accounts.utils import get_outstanding_invoices, get_account_currency, get_balance_on
 from erpnext.accounts.party import get_party_account, get_party_name, _get_contact_details
-from crm.crm.utils import get_primary_contact
+from crm.crm.utils import get_primary_contact, get_primary_address, render_address
 from erpnext.accounts.doctype.journal_entry.journal_entry import (
 	get_default_bank_cash_account,
 	get_average_party_exchange_rate_on_journal_entry,
@@ -350,11 +350,17 @@ class PaymentEntry(AccountsController):
 			if not self.contact_person:
 				self.contact_person = get_primary_contact(self.party_type, self.party)
 
+			if not self.party_address:
+				self.party_address = get_primary_address(self.party_type, self.party)
+
 		if self.contact_person:
 			contact_details = _get_contact_details(self.contact_person, project=self.project)
 			for k, v in contact_details.items():
 				if self.meta.has_field(k):
 					self.set(k, v)
+
+		if self.party_address:
+			self.address_display = render_address(self.party_address)
 
 	def set_missing_account_details(self):
 		if self.paid_from:
@@ -1562,13 +1568,16 @@ def get_party_details(company, party_type, party, date, cost_center=None):
 	if not frappe.db.exists(party_type, party):
 		frappe.throw(_("Invalid {0}: {1}").format(party_type, party))
 
+	party_name = get_party_name(party_type, party)
 	party_account = get_party_account(party_type, party, company)
-
 	account_currency = get_account_currency(party_account)
 	account_balance = get_balance_on(party_account, date, cost_center=cost_center)
-	party_name = get_party_name(party_type, party)
 	party_balance = get_balance_on(party_type=party_type, party=party, date=date, cost_center=cost_center, company=company)
-	if party_type in ["Customer", "Supplier"]:
+
+	contact_person = get_primary_contact(party_type, party)
+	party_address = get_primary_address(party_type, party)
+
+	if party_type in ("Customer", "Supplier"):
 		bank_account = get_party_bank_account(party_type, party)
 
 	return {
@@ -1577,7 +1586,9 @@ def get_party_details(company, party_type, party, date, cost_center=None):
 		"party_account_currency": account_currency,
 		"party_balance": party_balance,
 		"account_balance": account_balance,
-		"bank_account": bank_account
+		"bank_account": bank_account,
+		"contact_person": contact_person,
+		"party_address": party_address,
 	}
 
 
@@ -1751,7 +1762,7 @@ def get_payment_entry(
 	pe.party_type = party_type
 	pe.party = party
 	pe.contact_person = doc.get("contact_person")
-	pe.contact_email = doc.get("contact_email")
+	pe.party_address = doc.get("customer_address") or doc.get("supplier_address")
 
 	pe.mode_of_payment = mode_of_payment
 	pe.ensure_supplier_is_not_blocked(is_payment=True)

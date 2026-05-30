@@ -139,6 +139,18 @@ frappe.ui.form.on('Payment Entry', {
 			}
 		});
 
+		frm.set_query("party_address", function() {
+			if (frm.doc.party) {
+				return {
+					query: 'frappe.contacts.doctype.address.address.address_query',
+					filters: {
+						link_doctype: frm.doc.party_type,
+						link_name: frm.doc.party
+					}
+				};
+			}
+		});
+
 		frm.set_query("paid_to", function() {
 			frm.events.validate_company(frm);
 
@@ -349,6 +361,10 @@ frappe.ui.form.on('Payment Entry', {
 		erpnext.utils.get_contact_details(frm);
 	},
 
+	party_address: function(frm) {
+		erpnext.utils.get_address_display(frm, "party_address", "address_display");
+	},
+
 	hide_unhide_fields: function(frm) {
 		var company_currency = frm.doc.company? frappe.get_doc(":Company", frm.doc.company).default_currency: "";
 
@@ -498,23 +514,26 @@ frappe.ui.form.on('Payment Entry', {
 
 	payment_type: function(frm) {
 		frm.events.set_dynamic_labels(frm);
-		if(frm.doc.payment_type == "Internal Transfer") {
-			frm.set_value("references", []);
-			$.each([
+		if (frm.doc.payment_type == "Internal Transfer") {
+			let clear_fields = [
 				"party",
+				"contact_person",
+				"party_address",
 				"party_balance",
 				"paid_from",
 				"paid_to",
 				"total_allocated_amount"
-			], (i, field) => {
+			];
+			frm.set_value("references", []);
+			for (let field of clear_fields) {
 				frm.set_value(field, null);
-			});
+			}
 		} else {
-			if(frm.doc.party) {
+			if (frm.doc.party) {
 				frm.events.party(frm);
 			}
 
-			if(frm.doc.mode_of_payment) {
+			if (frm.doc.mode_of_payment) {
 				frm.events.mode_of_payment(frm);
 			}
 		}
@@ -557,74 +576,85 @@ frappe.ui.form.on('Payment Entry', {
 
 	party_type: function(frm) {
 		let party_types = Object.keys(frappe.boot.party_account_types);
-		if(frm.doc.party_type && !party_types.includes(frm.doc.party_type)){
+		if (frm.doc.party_type && !party_types.includes(frm.doc.party_type)){
 			frm.set_value("party_type", "");
 			frappe.throw(__("Party can only be one of "+ party_types.join(", ")));
 		}
 
-		if(frm.doc.party) {
-			$.each(["party", "party_balance", "paid_from", "paid_to",
-				"paid_from_account_currency", "paid_from_account_balance",
-				"paid_to_account_currency", "paid_to_account_balance",
-				"references", "total_allocated_amount"],
-				function(i, field) {
-					frm.set_value(field, null);
-				})
+		if (frm.doc.party) {
+			let clear_fields = [
+				"party",
+				"contact_person",
+				"party_address",
+				"party_balance",
+				"paid_from",
+				"paid_to",
+				"paid_from_account_currency",
+				"paid_from_account_balance",
+				"paid_to_account_currency",
+				"paid_to_account_balance",
+				"references",
+				"total_allocated_amount"
+			];
+			for (let field of clear_fields) {
+				frm.set_value(field, null);
+			}
 		}
 	},
 
 	party: function(frm) {
-		if (frm.doc.contact_email || frm.doc.contact_person) {
-			frm.set_value("contact_email", "");
-			frm.set_value("contact_person", "");
+		if (!frm.doc.payment_type || !frm.doc.party_type || !frm.doc.party || !frm.doc.company) {
+			return;
 		}
-		if(frm.doc.payment_type && frm.doc.party_type && frm.doc.party && frm.doc.company) {
-			if(!frm.doc.posting_date) {
-				frappe.msgprint(__("Please select Posting Date before selecting Party"))
-				frm.set_value("party", "");
-				return ;
-			}
-			frm.set_party_account_based_on_party = true;
 
-			return frappe.call({
-				method: "erpnext.accounts.doctype.payment_entry.payment_entry.get_party_details",
-				args: {
-					company: frm.doc.company,
-					party_type: frm.doc.party_type,
-					party: frm.doc.party,
-					date: frm.doc.posting_date,
-					cost_center: frm.doc.cost_center
-				},
-				callback: function(r, rt) {
-					if(r.message) {
-						frappe.run_serially([
-							() => {
-								if(frm.doc.payment_type == "Receive") {
-									frm.set_value("paid_from", r.message.party_account);
-									frm.set_value("paid_from_account_currency", r.message.party_account_currency);
-									frm.set_value("paid_from_account_balance", r.message.account_balance);
-								} else if (frm.doc.payment_type == "Pay"){
-									frm.set_value("paid_to", r.message.party_account);
-									frm.set_value("paid_to_account_currency", r.message.party_account_currency);
-									frm.set_value("paid_to_account_balance", r.message.account_balance);
-								}
-							},
-							() => frm.set_value("party_balance", r.message.party_balance),
-							() => frm.set_value("party_name", r.message.party_name),
-							() => frm.clear_table("references"),
-							() => frm.events.hide_unhide_fields(frm),
-							() => frm.events.set_dynamic_labels(frm),
-							() => {
-								frm.set_party_account_based_on_party = false;
-								if (r.message.bank_account) {
-									frm.set_value("bank_account", r.message.bank_account);
-								}
-							}
-						]);
-					}
-				}
-			});
+		if (!frm.doc.posting_date) {
+			frappe.msgprint(__("Please select Posting Date before selecting Party"))
+			frm.set_value("party", "");
+			return;
 		}
+		frm.set_party_account_based_on_party = true;
+
+		return frappe.call({
+			method: "erpnext.accounts.doctype.payment_entry.payment_entry.get_party_details",
+			args: {
+				company: frm.doc.company,
+				party_type: frm.doc.party_type,
+				party: frm.doc.party,
+				date: frm.doc.posting_date,
+				cost_center: frm.doc.cost_center,
+				project: frm.doc.project,
+			},
+			callback: (r) => {
+				if (r.message) {
+					return frappe.run_serially([
+						() => {
+							if (frm.doc.payment_type == "Receive") {
+								frm.set_value("paid_from", r.message.party_account);
+								frm.set_value("paid_from_account_currency", r.message.party_account_currency);
+								frm.set_value("paid_from_account_balance", r.message.account_balance);
+							} else if (frm.doc.payment_type == "Pay") {
+								frm.set_value("paid_to", r.message.party_account);
+								frm.set_value("paid_to_account_currency", r.message.party_account_currency);
+								frm.set_value("paid_to_account_balance", r.message.account_balance);
+							}
+						},
+						() => frm.set_value("party_balance", r.message.party_balance),
+						() => frm.set_value("party_name", r.message.party_name),
+						() => frm.set_value("contact_person", r.message.contact_person),
+						() => frm.set_value("party_address", r.message.party_address),
+						() => frm.clear_table("references"),
+						() => frm.events.hide_unhide_fields(frm),
+						() => frm.events.set_dynamic_labels(frm),
+						() => {
+							frm.set_party_account_based_on_party = false;
+							if (r.message.bank_account) {
+								frm.set_value("bank_account", r.message.bank_account);
+							}
+						}
+					]);
+				}
+			}
+		});
 	},
 
 	paid_from: function(frm) {
