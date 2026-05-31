@@ -1483,7 +1483,7 @@ class Project(StatusUpdaterERP):
 	def set_items_and_totals_html_onload(self, sales_data, consumables_data):
 		currency = erpnext.get_company_currency(self.company)
 
-		service_items_html = frappe.render_template("erpnext/projects/doctype/project/project_items_table.html", {
+		service_items_html = frappe.render_template("templates/projects/project_items_table.html", {
 			"title": _("Service Sales"),
 			"doc": self,
 			"data": sales_data.service_items,
@@ -1493,7 +1493,7 @@ class Project(StatusUpdaterERP):
 			"show_amount": True,
 		})
 
-		material_items_html = frappe.render_template("erpnext/projects/doctype/project/project_items_table.html", {
+		material_items_html = frappe.render_template("templates/projects/project_items_table.html", {
 			"title": _("Material Sales"),
 			"doc": self,
 			"data": sales_data.material_items,
@@ -1504,7 +1504,7 @@ class Project(StatusUpdaterERP):
 			"show_amount": True,
 		})
 
-		consumable_items_html = frappe.render_template("erpnext/projects/doctype/project/project_items_table.html", {
+		consumable_items_html = frappe.render_template("templates/projects/project_items_table.html", {
 			"title": _("Consumables"),
 			"doc": self,
 			"data": consumables_data,
@@ -1513,7 +1513,7 @@ class Project(StatusUpdaterERP):
 			"show_stock_entry": True,
 		})
 
-		sales_summary_html = frappe.render_template("erpnext/projects/doctype/project/project_sales_summary.html",
+		sales_summary_html = frappe.render_template("templates/projects/project_sales_summary.html",
 			{"doc": self, "currency": currency})
 
 		self.set_onload('service_items_html', service_items_html)
@@ -1574,12 +1574,12 @@ class Project(StatusUpdaterERP):
 	def set_task_and_timelogs_html_onload(self, timelogs, tasks):
 		from erpnext.projects.doctype.task.task import get_timelog_totals
 
-		tasks_html = frappe.render_template("erpnext/projects/doctype/project/project_tasks_table.html", {
+		tasks_html = frappe.render_template("templates/projects/project_tasks_table.html", {
 			"doc": self,
 			"data": tasks,
 		})
 
-		timelogs_html = frappe.render_template("erpnext/projects/doctype/project/project_timelogs_table.html", {
+		timelogs_html = frappe.render_template("templates/projects/project_timelogs_table.html", {
 			"doc": self,
 			"data": timelogs,
 			"totals": get_timelog_totals(timelogs),
@@ -1594,10 +1594,8 @@ class Project(StatusUpdaterERP):
 		)
 
 		timelogs = frappe.db.sql("""
-			select tsd.parent as timesheet, tsd.name as timelog_row,
-				ts.employee, ts.employee_name, 
-				tsd.from_time, tsd.to_time,
-				tsd.activity_type, tsd.hours,
+			select ts.name as timesheet, ts.employee, ts.employee_name,
+				tsd.name as timelog_row, tsd.*,
 				task.name as task, task.subject, task.task_type
 			from `tabTimesheet Detail` tsd
 			inner join `tabTimesheet` ts on ts.name = tsd.parent
@@ -1609,10 +1607,7 @@ class Project(StatusUpdaterERP):
 		set_hrs_for_running_timelogs(timelogs)
 
 		tasks = frappe.db.sql("""
-			select task.name as task, task.subject, task.task_type, task.status,
-				task.act_start_date, task.act_end_date,
-				task.actual_time, task.expected_time,
-				task.assigned_to, task.assigned_to_name, task.remarks
+			select task.name as task, task.*
 			from `tabTask` task
 			where task.project = %s
 			order by task.act_start_date is null, task.act_start_date, task.creation

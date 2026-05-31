@@ -465,7 +465,7 @@ class Task(NestedSet):
 			frappe.throw(_("Insufficient Permission for Task Clocking"), exc=frappe.PermissionError)
 
 	def set_timelogs_html_onload(self, timelogs):
-		timelogs_html = frappe.render_template("erpnext/projects/doctype/task/task_timelogs_table.html", {
+		timelogs_html = frappe.render_template("templates/projects/task_timelogs_table.html", {
 			"doc": self,
 			"data": timelogs,
 			"totals": get_timelog_totals(timelogs),
@@ -477,29 +477,27 @@ class Task(NestedSet):
 		if self.is_new():
 			return []
 
-		def generator():
-			self._timelogs = frappe.db.sql("""
-				SELECT
-					ts.name as timesheet, tsd.name as time_log_row,
-					ts.employee, ts.employee_name, 
-					tsd.from_time, tsd.to_time,
-					tsd.activity_type, tsd.hours
-				FROM `tabTimesheet Detail` tsd
-				INNER JOIN tabTimesheet ts ON ts.name = tsd.parent
-				WHERE tsd.task = %s and ts.docstatus < 2
-				ORDER BY from_time
-			""", self.name, as_dict=1)
-
-			return self._timelogs
-
 		if cache and self.get("_timelogs") is not None:
 			timelogs = self.get("_timelogs") or []
 		else:
-			timelogs = generator() or []
+			timelogs = self._get_timelogs() or []
 
 		set_hrs_for_running_timelogs(timelogs)
 
 		return timelogs
+
+	def _get_timelogs(self):
+		self._timelogs = frappe.db.sql("""
+			SELECT
+				ts.name as timesheet, ts.employee, ts.employee_name,
+				tsd.name as time_log_row, tsd.*
+			FROM `tabTimesheet Detail` tsd
+			INNER JOIN tabTimesheet ts ON ts.name = tsd.parent
+			WHERE tsd.task = %s and ts.docstatus < 2
+			ORDER BY tsd.from_time
+		""", self.name, as_dict=1)
+
+		return self._timelogs
 
 	def set_missing_checklist(self):
 		set_missing_checklist(self, 'task_checklist', 'Task Type', self.task_type)
