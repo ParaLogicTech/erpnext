@@ -114,6 +114,8 @@ erpnext.buying.PurchaseOrderController = class PurchaseOrderController extends e
 			me.add_update_price_list_button();
 		}
 
+		this.add_transaction_details_report_button("Purchase Details");
+
 		if(doc.docstatus == 1) {
 			if(!in_list(["Closed", "Delivered"], doc.status)) {
 				if (

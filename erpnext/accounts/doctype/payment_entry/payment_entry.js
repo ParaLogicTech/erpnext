@@ -256,7 +256,7 @@ frappe.ui.form.on('Payment Entry', {
 		erpnext.hide_company();
 		frm.events.hide_unhide_fields(frm);
 		frm.events.set_dynamic_labels(frm);
-		frm.events.show_general_ledger(frm);
+		frm.events.add_general_ledger_report_button(frm);
 		frm.events.set_up_reference_row_selection(frm);
 	},
 
@@ -497,7 +497,7 @@ frappe.ui.form.on('Payment Entry', {
 		frm.refresh_fields();
 	},
 
-	show_general_ledger: function(frm) {
+	add_general_ledger_report_button: function(frm) {
 		if(frm.doc.docstatus==1) {
 			frm.add_custom_button(__('Ledger'), function() {
 				frappe.route_options = {

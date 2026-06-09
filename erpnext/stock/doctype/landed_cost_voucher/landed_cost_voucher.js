@@ -101,7 +101,7 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 	setup_buttons() {
 		let me = this;
 
-		me.show_general_ledger();
+		me.add_general_ledger_report_button();
 
 		if (me.frm.doc.docstatus < 2 && !me.frm.doc.__islocal) {
 			me.frm.add_custom_button(__('Costing Report'), () => {

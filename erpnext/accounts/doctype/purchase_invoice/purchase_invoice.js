@@ -25,12 +25,13 @@ erpnext.accounts.PurchaseInvoice = class PurchaseInvoice extends erpnext.buying.
 		super.refresh();
 
 		hide_fields(this.frm.doc);
-		// Show / Hide button
-		this.show_general_ledger();
 
-		if(doc.update_stock==1 && doc.docstatus==1) {
-			this.show_stock_ledger();
+		this.add_general_ledger_report_button();
+		if (doc.update_stock) {
+			this.add_stock_ledger_report_button();
 		}
+		this.add_transaction_details_report_button("Purchase Details");
+		this.add_transaction_details_report_button("Landed Cost Details");
 
 		if (me.frm.doc.docstatus == 0) {
 			me.add_get_latest_price_button();

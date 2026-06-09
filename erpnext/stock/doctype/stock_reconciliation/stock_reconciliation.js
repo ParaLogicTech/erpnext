@@ -291,9 +291,9 @@ erpnext.stock.StockReconciliation = class StockReconciliation extends erpnext.st
 		}
 
 		if (this.frm.doc.docstatus == 1) {
-			this.show_stock_ledger();
+			this.add_stock_ledger_report_button();
 			if (erpnext.is_perpetual_inventory_enabled(this.frm.doc.company)) {
-				this.show_general_ledger();
+				this.add_general_ledger_report_button();
 			}
 		}
 	}

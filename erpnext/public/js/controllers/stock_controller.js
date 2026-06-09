@@ -68,15 +68,14 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		});
 	}
 
-	show_stock_ledger() {
-		var me = this;
+	add_stock_ledger_report_button() {
 		if (this.frm.doc.docstatus === 1) {
-			this.frm.add_custom_button(__("Stock Ledger"), function() {
+			this.frm.add_custom_button(__("Stock Ledger"), () => {
 				frappe.route_options = {
-					voucher_no: me.frm.doc.name,
-					from_date: me.frm.doc.posting_date,
-					to_date: me.frm.doc.posting_date,
-					company: me.frm.doc.company,
+					voucher_no: this.frm.doc.name,
+					from_date: this.frm.doc.posting_date,
+					to_date: this.frm.doc.posting_date,
+					company: this.frm.doc.company,
 					group_by: ""
 				};
 				frappe.set_route("query-report", "Stock Ledger");
@@ -84,18 +83,33 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		}
 	}
 
-	show_general_ledger() {
-		var me = this;
+	add_general_ledger_report_button() {
 		if (this.frm.doc.docstatus === 1) {
-			this.frm.add_custom_button(__('Accounting Ledger'), function() {
+			this.frm.add_custom_button(__('Accounting Ledger'), () => {
 				frappe.route_options = {
-					voucher_no: me.frm.doc.name,
-					from_date: me.frm.doc.posting_date,
-					to_date: me.frm.doc.posting_date,
-					company: me.frm.doc.company,
+					voucher_no: this.frm.doc.name,
+					from_date: this.frm.doc.posting_date,
+					to_date: this.frm.doc.posting_date,
+					company: this.frm.doc.company,
 					merge_similar_entries: 0
 				};
 				frappe.set_route("query-report", "General Ledger");
+			}, __("View"));
+		}
+	}
+
+	add_transaction_details_report_button(report_name) {
+		if (this.frm.doc.docstatus === 1) {
+			this.frm.add_custom_button(__(report_name), () => {
+				let transaction_date = this.frm.doc.posting_date || this.frm.doc.transaction_date;
+				frappe.route_options = {
+					doctype: this.frm.doc.doctype,
+					name: this.frm.doc.name,
+					from_date: transaction_date,
+					to_date: transaction_date,
+					company: this.frm.doc.company,
+				};
+				frappe.set_route("query-report", report_name);
 			}, __("View"));
 		}
 	}

@@ -141,6 +141,7 @@
   "base_total_discount_after_taxes",
   "section_break_44",
   "apply_discount_on",
+  "column_break_pwwf",
   "additional_discount_percentage",
   "column_break_46",
   "discount_amount",
@@ -1886,6 +1887,10 @@
    "no_copy": 1,
    "options": "Warehouse",
    "print_hide": 1
+  },
+  {
+   "fieldname": "column_break_pwwf",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 500,
@@ -1893,7 +1898,7 @@
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-07 13:39:45.637527",
+ "modified": "2026-06-08 07:53:29.043336",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",

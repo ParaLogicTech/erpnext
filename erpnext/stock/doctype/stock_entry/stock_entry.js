@@ -653,7 +653,7 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 		erpnext.toggle_naming_series();
 		this.toggle_related_fields(this.frm.doc);
 		this.toggle_enable_bom();
-		this.show_stock_ledger();
+		this.add_stock_ledger_report_button();
 		this.setup_buttons();
 
 		if (this.frm.doc.company) {
@@ -663,7 +663,7 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 		this.frm.trigger("setup_quality_inspection");
 
 		if (this.frm.doc.docstatus===1 && erpnext.is_perpetual_inventory_enabled(this.frm.doc.company)) {
-			this.show_general_ledger();
+			this.add_general_ledger_report_button();
 		}
 		erpnext.hide_company();
 		erpnext.utils.add_item(this.frm);

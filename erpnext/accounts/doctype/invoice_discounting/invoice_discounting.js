@@ -49,7 +49,7 @@ frappe.ui.form.on('Invoice Discounting', {
 	},
 
 	refresh: (frm) => {
-		frm.events.show_general_ledger(frm);
+		frm.events.add_general_ledger_report_button(frm);
 
 		if (frm.doc.docstatus === 0) {
 			frm.add_custom_button(__('Get Invoices'), function() {
@@ -187,7 +187,7 @@ frappe.ui.form.on('Invoice Discounting', {
 
 	},
 
-	show_general_ledger: (frm) => {
+	add_general_ledger_report_button: (frm) => {
 		if(frm.doc.docstatus===1) {
 			cur_frm.add_custom_button(__('Accounting Ledger'), function() {
 				frappe.route_options = {

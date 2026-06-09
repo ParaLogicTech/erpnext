@@ -54,10 +54,17 @@ frappe.query_reports["Purchase Details"] = {
 			reqd: 1
 		},
 		{
-			fieldname: "transaction_type",
-			label: __("Transaction Type"),
-			fieldtype: "Link",
-			options: "Transaction Type"
+			fieldname: "name",
+			label: __("Document No"),
+			fieldtype: "Dynamic Link",
+			options: "doctype",
+			get_query: () => {
+				return {
+					filters: {
+						docstatus: 1,
+					}
+				}
+			}
 		},
 		{
 			fieldname: "supplier",
@@ -94,6 +101,12 @@ frappe.query_reports["Purchase Details"] = {
 			label: __("Brand"),
 			fieldtype: "Link",
 			options: "Brand"
+		},
+		{
+			fieldname: "transaction_type",
+			label: __("Transaction Type"),
+			fieldtype: "Link",
+			options: "Transaction Type"
 		},
 		{
 			fieldname: "warehouse",

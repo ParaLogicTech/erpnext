@@ -45,12 +45,13 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		let doc = me.frm.doc;
 
 		// "View" Buttons
-		this.show_general_ledger();
+		this.add_general_ledger_report_button();
 		if (doc.update_stock) {
-			this.show_stock_ledger();
+			this.add_stock_ledger_report_button();
 		}
 
-		this.add_view_gross_profit_button();
+		this.add_transaction_details_report_button("Sales Details");
+		this.add_gross_profit_report_button();
 
 		// Update Buttons
 		this.add_update_customer_name_button();
@@ -206,7 +207,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		})
 	}
 
-	add_view_gross_profit_button() {
+	add_gross_profit_report_button() {
 		if (this.frm.doc.docstatus === 1) {
 			this.frm.add_custom_button(__("Gross Profit"), () => {
 				frappe.route_options = {

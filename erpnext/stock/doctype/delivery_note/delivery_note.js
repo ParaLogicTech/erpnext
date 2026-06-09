@@ -135,10 +135,12 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 		}
 
 		if (doc.docstatus==1) {
-			this.show_stock_ledger();
+			this.add_stock_ledger_report_button();
 			if (erpnext.is_perpetual_inventory_enabled(doc.company)) {
-				this.show_general_ledger();
+				this.add_general_ledger_report_button();
 			}
+			this.add_transaction_details_report_button("Sales Details");
+
 			if (this.frm.has_perm("submit") && doc.status !== "Closed") {
 				me.frm.add_custom_button(__("Close"), function() { me.close_delivery_note() },
 					__("Status"));

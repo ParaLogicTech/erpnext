@@ -94,8 +94,8 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 	}
 
 	setup_buttons() {
-		this.show_stock_ledger();
-		this.show_general_ledger();
+		this.add_stock_ledger_report_button();
+		this.add_general_ledger_report_button();
 
 		if (this.frm.doc.docstatus == 0) {
 			this.frm.add_custom_button(__('Sales Order'), () => {
@@ -378,7 +378,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		}
 	}
 
-	show_stock_ledger() {
+	add_stock_ledger_report_button() {
 		let me = this;
 		if (this.frm.doc.docstatus === 1) {
 			this.frm.add_custom_button(__("Stock Ledger"), function() {

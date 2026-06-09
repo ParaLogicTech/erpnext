@@ -133,6 +133,8 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 			me.add_update_price_list_button();
 		}
 
+		me.add_transaction_details_report_button("Sales Details");
+
 		if (me.frm.doc.docstatus==1) {
 			if(me.frm.has_perm("submit")) {
 				if(me.frm.doc.status === 'On Hold') {

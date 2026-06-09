@@ -90,9 +90,9 @@ erpnext.stock.PurchaseReceiptController = class PurchaseReceiptController extend
 		let me = this;
 		super.refresh();
 		if(this.frm.doc.docstatus===1) {
-			this.show_stock_ledger();
-			//removed for temporary
-			this.show_general_ledger();
+			this.add_stock_ledger_report_button();
+			this.add_general_ledger_report_button();
+			this.add_transaction_details_report_button("Purchase Details");
 
 			if (frappe.model.can_read("Asset")) {
 				this.frm.add_custom_button(__('Asset'), function () {
