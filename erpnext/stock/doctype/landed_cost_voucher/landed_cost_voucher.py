@@ -8,7 +8,7 @@ from frappe.utils import flt, fmt_money
 from erpnext.controllers.accounts_controller import AccountsController, validate_conversion_rate
 from erpnext.accounts.general_ledger import make_gl_entries, delete_voucher_gl_entries
 from erpnext.accounts.doctype.account.account import get_account_currency
-from erpnext.accounts.party import get_party_account
+from erpnext.accounts.party import get_party_account, get_party_name
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
 import json
 
@@ -40,6 +40,7 @@ class LandedCostVoucher(AccountsController):
 		self.validate_conversion_rate()
 		self.calculate_taxes_and_totals()
 		self.validate_manual_distribution_totals()
+		self.set_title()
 		self.set_status()
 
 	def before_submit(self):
@@ -71,6 +72,9 @@ class LandedCostVoucher(AccountsController):
 		self.set_status(update=True)
 		self.notify_update()
 
+	def set_title(self):
+		self.title = self.party_name or self.bill_no
+
 	def get_party_account(self):
 		return self.credit_to
 
@@ -90,6 +94,10 @@ class LandedCostVoucher(AccountsController):
 			"due_date": self.due_date,
 			"bill_no": self.bill_no,
 		}
+
+	def set_missing_values(self, for_validate=False):
+		super().set_missing_values(for_validate=for_validate)
+		self.party_name = get_party_name(self.party_type, self.party)
 
 	@frappe.whitelist()
 	def get_purchase_receipts_from_letter_of_credit(self):
@@ -159,6 +167,7 @@ class LandedCostVoucher(AccountsController):
 					from `tab{doctype} Item` pr_item
 					inner join tabItem i on i.name = pr_item.item_code and i.is_stock_item = 1
 					where pr_item.parent = %(receipt_document)s {conditions}
+					order by pr_item.idx
 				""".format(doctype=pr.receipt_document_type, conditions=conditions), filter_values, as_dict=True)
 
 				for d in pr_items:
@@ -579,6 +588,7 @@ def get_landed_cost_voucher(dt, dn):
 def get_party_details(party_type, party, company):
 	out = frappe._dict()
 
+	out.party_name = get_party_name(party_type, party)
 	out.currency = erpnext.get_company_currency(company)
 	out.credit_to = get_party_account(party_type, party, company)
 	if party_type == 'Supplier':
