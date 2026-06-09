@@ -9,7 +9,7 @@
    "label": "Top Buying Items"
   }
  ],
- "content": "[{\"id\":\"Hff8qtLdkG\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Buying Module</b></span>\",\"col\":12}},{\"id\":\"Cqlqqspmnr\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"HZImz2nGdy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"-br-WnOp7z\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"aAE2650Bih\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Details Report\",\"col\":3}},{\"id\":\"demxinhAjJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier Quotation\",\"col\":3}},{\"id\":\"V4AdpADn22\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"-Aq5udRuTm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"8c6Xbx4lc9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Analytics Report\",\"col\":3}},{\"id\":\"xoFKEkSC-z\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"2gG2sIzzw9\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Top Suppliers\",\"col\":6}},{\"id\":\"rsQsvQbftz\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Top Buying Items\",\"col\":6}},{\"id\":\"1cI6IYLcUN\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"zjVCuFwgxu\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Buying Documents</b></span>\",\"col\":12}},{\"id\":\"tE7XFwynTs\",\"type\":\"card\",\"data\":{\"card_name\":\"Purchasing Transactions\",\"col\":3}},{\"id\":\"EpMYtx1Dy6\",\"type\":\"card\",\"data\":{\"card_name\":\"Suppliers\",\"col\":3}},{\"id\":\"AE9PvC240I\",\"type\":\"card\",\"data\":{\"card_name\":\"Items\",\"col\":3}},{\"id\":\"EPLA3Mwwon\",\"type\":\"card\",\"data\":{\"card_name\":\"Price List\",\"col\":3}},{\"id\":\"P_V-fdNl0R\",\"type\":\"card\",\"data\":{\"card_name\":\"Special Prices\",\"col\":3}},{\"id\":\"DJBaZmeRRX\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"TBUGOFtXPd\",\"type\":\"card\",\"data\":{\"card_name\":\"Key Reports\",\"col\":3}},{\"id\":\"CS-glypMXY\",\"type\":\"card\",\"data\":{\"card_name\":\"Supplier Scorecard\",\"col\":3}},{\"id\":\"piXL0_sF8R\",\"type\":\"card\",\"data\":{\"card_name\":\"Other Reports\",\"col\":3}}]",
+ "content": "[{\"id\":\"Hff8qtLdkG\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Buying Module</b></span>\",\"col\":12}},{\"id\":\"Cqlqqspmnr\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Order\",\"col\":3}},{\"id\":\"HZImz2nGdy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Receipt\",\"col\":3}},{\"id\":\"-br-WnOp7z\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier\",\"col\":3}},{\"id\":\"aAE2650Bih\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Details Report\",\"col\":3}},{\"id\":\"demxinhAjJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Supplier Quotation\",\"col\":3}},{\"id\":\"V4AdpADn22\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Invoice\",\"col\":3}},{\"id\":\"-Aq5udRuTm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Item\",\"col\":3}},{\"id\":\"8c6Xbx4lc9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Analytics Report\",\"col\":3}},{\"id\":\"xoFKEkSC-z\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"2gG2sIzzw9\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Top Suppliers\",\"col\":6}},{\"id\":\"rsQsvQbftz\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Top Buying Items\",\"col\":6}},{\"id\":\"1cI6IYLcUN\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"zjVCuFwgxu\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Buying Documents</b></span>\",\"col\":12}},{\"id\":\"tE7XFwynTs\",\"type\":\"card\",\"data\":{\"card_name\":\"Purchasing Transactions\",\"col\":3}},{\"id\":\"EpMYtx1Dy6\",\"type\":\"card\",\"data\":{\"card_name\":\"Suppliers\",\"col\":3}},{\"id\":\"AE9PvC240I\",\"type\":\"card\",\"data\":{\"card_name\":\"Items\",\"col\":3}},{\"id\":\"EPLA3Mwwon\",\"type\":\"card\",\"data\":{\"card_name\":\"Price List\",\"col\":3}},{\"id\":\"P_V-fdNl0R\",\"type\":\"card\",\"data\":{\"card_name\":\"Special Prices\",\"col\":3}},{\"id\":\"DJBaZmeRRX\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}},{\"id\":\"lpTBwIpuCN\",\"type\":\"card\",\"data\":{\"card_name\":\"Landed Costs\",\"col\":3}},{\"id\":\"TBUGOFtXPd\",\"type\":\"card\",\"data\":{\"card_name\":\"Key Reports\",\"col\":3}},{\"id\":\"CS-glypMXY\",\"type\":\"card\",\"data\":{\"card_name\":\"Supplier Scorecard\",\"col\":3}},{\"id\":\"piXL0_sF8R\",\"type\":\"card\",\"data\":{\"card_name\":\"Other Reports\",\"col\":3}}]",
  "creation": "2022-11-16 04:31:56.825385",
  "custom_blocks": [],
  "docstatus": 0,
@@ -541,9 +541,38 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Landed Costs",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Landed Cost Voucher",
+   "link_count": 0,
+   "link_to": "Landed Cost Voucher",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Landed Cost Details",
+   "link_count": 0,
+   "link_to": "Landed Cost Details",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2024-05-18 18:23:39.827314",
+ "modified": "2026-06-09 12:05:25.569288",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Buying",
@@ -612,6 +641,7 @@
    "doc_view": "List",
    "label": "Purchase Details Report",
    "link_to": "Purchase Details",
+   "report_ref_doctype": "Purchase Order",
    "stats_filter": "",
    "type": "Report"
   },
@@ -629,6 +659,7 @@
    "doc_view": "List",
    "label": "Purchase Analytics Report",
    "link_to": "Purchase Analytics",
+   "report_ref_doctype": "Purchase Order",
    "stats_filter": "",
    "type": "Report"
   }

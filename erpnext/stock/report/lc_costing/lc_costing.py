@@ -25,7 +25,7 @@ class LCCostingReport(object):
 		self.data = frappe.db.sql("""
 			select lc.name, lc.posting_date, lc.currency, lc.company,
 				lc_item.item_code, lc_item.item_name,
-				lc_item.qty, lc_item.uom, lc_item.weight,
+				lc_item.qty, lc_item.uom, lc_item.net_weight,
 				lc_item.rate, lc_item.amount, lc_item.applicable_charges,
 				(lc_item.amount + lc_item.applicable_charges) as landed_cost,
 				(lc_item.amount + lc_item.applicable_charges) / lc_item.qty as landed_rate
@@ -92,7 +92,7 @@ class LCCostingReport(object):
 		columns += [
 			{"label": _("Qty"), "fieldtype": "Float", "fieldname": "qty", "width": 80},
 			{"label": _("UOM"), "fieldtype": "Link", "options": "UOM", "fieldname": "uom", "width": 50},
-			{"label": _("Weight"), "fieldtype": "Float", "fieldname": "weight", "width": 80},
+			{"label": _("Net Weight"), "fieldtype": "Float", "fieldname": "net_weight", "width": 80},
 			{"label": _("Rate"), "fieldtype": "Currency", "fieldname": "rate", "width": 120,
 				"options": "Company:company:default_currency"},
 			{"label": _("Amount"), "fieldtype": "Currency", "fieldname": "amount", "width": 120,

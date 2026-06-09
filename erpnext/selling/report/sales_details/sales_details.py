@@ -115,6 +115,7 @@ class SalesPurchaseDetailsReport(object):
 
 		self.qty_fields = ["qty"]
 		self.amount_fields = []
+		self.additional_amount_fields = []
 		self.rate_fields = []
 
 		if not self.filters.qty_only:
@@ -175,7 +176,7 @@ class SalesPurchaseDetailsReport(object):
 		if not self.filters.qty_only:
 			select_fields += [f"i.{f}" for f in self.amount_fields]
 			select_fields += [f"i.{r[0]}" for r in self.rate_fields]
-			select_fields += ["i.item_tax_detail", "i.item_tax_rate"]
+			select_fields += ["i.item_tax_detail", "i.item_tax_rate", "s.conversion_rate"]
 
 		# Party
 		if self.filters.party_type == "Customer":
@@ -225,6 +226,10 @@ class SalesPurchaseDetailsReport(object):
 		if self.filters.show_packing_slip:
 			select_fields.append("i.packing_slip")
 
+		# Letter of Credit
+		if self.doc_meta.has_field("letter_of_credit"):
+			select_fields.append("s.letter_of_credit")
+
 		# Additional Sales Invoice No fields
 		if self.filters.doctype == "Sales Invoice":
 			select_fields += [f"s.{f}" for f in self.additional_sales_invoice_no_fields]
@@ -232,10 +237,13 @@ class SalesPurchaseDetailsReport(object):
 		return select_fields, joins
 
 	def get_order_by(self):
-		return f"{self.date_field}, s.{self.party_field}, s.name, i.item_code"
+		return f"{self.date_field}, s.{self.party_field}, s.name, i.idx"
 
 	def get_conditions(self):
 		conditions = []
+
+		if self.filters.get("name"):
+			conditions.append("s.name = %(name)s")
 
 		if self.filters.get("company"):
 			conditions.append("s.company = %(company)s")
@@ -263,6 +271,9 @@ class SalesPurchaseDetailsReport(object):
 			lft, rgt = frappe.db.get_value("Supplier Group", self.filters.supplier_group, ["lft", "rgt"])
 			conditions.append("""sup.supplier_group in (select name from `tabSupplier Group`
 				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
+
+		if self.filters.get("letter_of_credit"):
+			conditions.append("s.letter_of_credit = %(letter_of_credit)s")
 
 		if self.filters.get("item_code"):
 			is_template = frappe.db.get_value("Item", self.filters.get('item_code'), 'has_variants')
@@ -354,14 +365,16 @@ class SalesPurchaseDetailsReport(object):
 		return conditions
 
 	def get_itemised_taxes(self):
+		self.itemised_tax = {}
+		self.tax_account_heads = []
+		self.tax_amount_fields = []
+		self.tax_rate_fields = []
+
 		if self.entries and not self.filters.qty_only:
 			tax_doctype = "Sales Taxes and Charges" if self.filters.party_type == "Customer" else "Purchase Taxes and Charges"
-			self.itemised_tax, self.tax_columns = get_itemised_taxes(self.entries, tax_doctype)
-			self.tax_amount_fields = ["tax_" + scrub(tax) for tax in self.tax_columns]
-			self.tax_rate_fields = ["tax_" + scrub(tax) + "_rate" for tax in self.tax_columns]
-		else:
-			self.itemised_tax, self.tax_columns = {}, []
-			self.tax_amount_fields, self.tax_rate_fields = [], []
+			self.itemised_tax, self.tax_account_heads = get_itemised_taxes(self.entries, tax_doctype)
+			self.tax_amount_fields = ["tax_" + scrub(tax) for tax in self.tax_account_heads]
+			self.tax_rate_fields = ["tax_" + scrub(tax) + "_rate" for tax in self.tax_account_heads]
 
 	def prepare_data(self):
 		for d in self.entries:
@@ -398,10 +411,10 @@ class SalesPurchaseDetailsReport(object):
 				self.filters.has_account_manager = True
 
 			# Add tax fields
-			for f, tax in zip(self.tax_amount_fields, self.tax_columns):
+			for f, tax in zip(self.tax_amount_fields, self.tax_account_heads):
 				tax_amount = self.itemised_tax.get(d.name, {}).get(tax, {}).get("tax_amount", 0.0)
 				d[f] = flt(tax_amount)
-			for f, tax in zip(self.tax_rate_fields, self.tax_columns):
+			for f, tax in zip(self.tax_rate_fields, self.tax_account_heads):
 				tax_rate = self.itemised_tax.get(d.name, {}).get(tax, {}).get("tax_rate", 0.0)
 				d[f] = flt(tax_rate)
 
@@ -410,6 +423,8 @@ class SalesPurchaseDetailsReport(object):
 				self.filters.has_branch = True
 			if d.get("project"):
 				self.filters.has_project = True
+			if d.get("letter_of_credit"):
+				self.filters.has_letter_of_credit = True
 
 			for field in self.additional_sales_invoice_no_fields:
 				if d.get(field):
@@ -462,7 +477,7 @@ class SalesPurchaseDetailsReport(object):
 		)
 
 	def calculate_group_totals(self, data, group_field, group_value, grouped_by):
-		total_fields = self.qty_fields + self.amount_fields + self.tax_amount_fields
+		total_fields = self.qty_fields + self.amount_fields + self.tax_amount_fields + self.additional_amount_fields
 		if self.filters.sales_person:
 			total_fields.append('actual_net_amount')
 
@@ -506,7 +521,7 @@ class SalesPurchaseDetailsReport(object):
 
 			if 'parent' in grouped_by:
 				fields_to_copy = [
-					'date', 'party', 'party_name',
+					'date', 'party', 'party_name', 'letter_of_credit',
 					'sales_person', 'account_manager', 'territory',
 					'bill_no', 'bill_date', 'branch',
 				]
@@ -589,7 +604,7 @@ class SalesPurchaseDetailsReport(object):
 				row[target] = flt(row.get(target)) or 0
 
 		# Calculate total taxes and grand total
-		if not self.filters.qty_only:
+		if not self.filters.qty_only and not self.filters.hide_grand_total:
 			row["total_tax_amount"] = 0.0
 			for f in self.tax_amount_fields:
 				row["total_tax_amount"] += row[f]
@@ -611,7 +626,7 @@ class SalesPurchaseDetailsReport(object):
 
 			if not self.filters.qty_only:
 				row['actual_net_amount'] = row["base_net_amount"]
-				fields += ['total_tax_amount', 'grand_total'] + self.amount_fields + self.tax_amount_fields
+				fields += ['total_tax_amount', 'grand_total'] + self.amount_fields + self.tax_amount_fields + self.additional_amount_fields
 
 			for f in fields:
 				row[f] *= row.allocated_percentage / 100
@@ -685,6 +700,13 @@ class SalesPurchaseDetailsReport(object):
 				"width": 150
 			},
 			{
+				"label": _("Letter of Credit"),
+				"fieldname": "letter_of_credit",
+				"fieldtype": "Link",
+				"options": "Letter of Credit",
+				"width": 100
+			},
+			{
 				"label": _("Item Code"),
 				"fieldname": "item_code",
 				"fieldtype": "Link",
@@ -718,105 +740,13 @@ class SalesPurchaseDetailsReport(object):
 			},
 		]
 
-		value_columns = [
-			{
-				"label": _("Rate Before Discount"),
-				"fieldname": "base_price_list_rate",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Amount Before Discount"),
-				"fieldname": "base_amount_before_discount",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Total Discount"),
-				"fieldname": "base_total_discount",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Discount (%)"),
-				"fieldname": "discount_percentage",
-				"fieldtype": "Percent",
-				"width": 60
-			},
-			{
-				"label": _("Rate"),
-				"fieldname": "base_rate",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Amount"),
-				"fieldname": "base_amount",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Rate Before Discount (Tax Exclusive)"),
-				"fieldname": "base_tax_exclusive_price_list_rate",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Amount Before Discount (Tax Exclusive)"),
-				"fieldname": "base_tax_exclusive_amount_before_discount",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Total Discount (Tax Exclusive)"),
-				"fieldname": "base_tax_exclusive_total_discount",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Rate (Tax Exclusive)"),
-				"fieldname": "base_tax_exclusive_rate",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Amount (Tax Exclusive)"),
-				"fieldname": "base_tax_exclusive_amount",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Net Rate"),
-				"fieldname": "base_net_rate",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-			{
-				"label": _("Net Amount"),
-				"fieldname": "base_net_amount",
-				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
-				"width": 110
-			},
-		]
-
+		value_columns = self.get_value_columns()
 		included_amount_fields = self.amount_fields + [d[0] for d in self.rate_fields]
 		for c in value_columns:
 			if c['fieldname'] in included_amount_fields:
 				columns.append(c)
 
-		if not self.filters.qty_only:
+		if not self.filters.qty_only and not self.filters.hide_grand_total:
 			columns += [
 				{
 					"label": _("Taxes and Charges"),
@@ -835,24 +765,8 @@ class SalesPurchaseDetailsReport(object):
 			]
 
 		if self.filters.include_taxes:
-			for tax_description in self.tax_columns:
-				amount_field = "tax_" + scrub(tax_description)
-				rate_field = amount_field + "_rate"
-				columns += [
-					{
-						"label": _(tax_description) + " (%)",
-						"fieldname": rate_field,
-						"fieldtype": "Percent",
-						"width": 60
-					},
-					{
-						"label": _(tax_description),
-						"fieldname": amount_field,
-						"fieldtype": "Currency",
-						"options": "Company:company:default_currency",
-						"width": 110
-					},
-				]
+			tax_columns = self.get_tax_columns()
+			columns += tax_columns
 
 		columns += [
 			{
@@ -953,6 +867,9 @@ class SalesPurchaseDetailsReport(object):
 		if not self.filters.has_account_manager:
 			columns = [c for c in columns if c.get('fieldname') != 'account_manager']
 
+		if not self.filters.has_letter_of_credit:
+			columns = [c for c in columns if c.get('fieldname') != 'letter_of_credit']
+
 		if self.filters.totals_only:
 			if "item_code" not in self.group_by:
 				columns = [c for c in columns if c.get('fieldname') not in ('item_code', 'item_name')]
@@ -974,8 +891,131 @@ class SalesPurchaseDetailsReport(object):
 
 		return columns
 
+	def get_value_columns(self):
+		return [
+			{
+				"label": _("Rate Before Discount"),
+				"fieldname": "base_price_list_rate",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Amount Before Discount"),
+				"fieldname": "base_amount_before_discount",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Total Discount"),
+				"fieldname": "base_total_discount",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Discount (%)"),
+				"fieldname": "discount_percentage",
+				"fieldtype": "Percent",
+				"width": 60
+			},
+			{
+				"label": _("Rate"),
+				"fieldname": "base_rate",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Amount"),
+				"fieldname": "base_amount",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Rate Before Discount (Tax Exclusive)"),
+				"fieldname": "base_tax_exclusive_price_list_rate",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Amount Before Discount (Tax Exclusive)"),
+				"fieldname": "base_tax_exclusive_amount_before_discount",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Total Discount (Tax Exclusive)"),
+				"fieldname": "base_tax_exclusive_total_discount",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Rate (Tax Exclusive)"),
+				"fieldname": "base_tax_exclusive_rate",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Amount (Tax Exclusive)"),
+				"fieldname": "base_tax_exclusive_amount",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Net Rate"),
+				"fieldname": "base_net_rate",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+			{
+				"label": _("Net Amount"),
+				"fieldname": "base_net_amount",
+				"fieldtype": "Currency",
+				"options": "Company:company:default_currency",
+				"width": 110
+			},
+		]
 
-def get_itemised_taxes(entries, tax_doctype, get_description_as_tax_head=True):
+	def get_tax_columns(self):
+		tax_columns = []
+		for tax_description in self.tax_account_heads:
+			amount_field = "tax_" + scrub(tax_description)
+			rate_field = amount_field + "_rate"
+			tax_columns += [
+				{
+					"label": _(tax_description) + " (%)",
+					"fieldname": rate_field,
+					"fieldtype": "Percent",
+					"width": 60
+				},
+				{
+					"label": _(tax_description),
+					"fieldname": amount_field,
+					"fieldtype": "Currency",
+					"options": "Company:company:default_currency",
+					"width": 110
+				},
+			]
+
+		return tax_columns
+
+
+def get_itemised_taxes(
+	entries,
+	tax_doctype,
+	description_as_tax_head=True,
+	group_by_include_in_valuation=False,
+	in_company_currency=True,
+):
 	import json
 
 	parent_names = []
@@ -987,14 +1027,19 @@ def get_itemised_taxes(entries, tax_doctype, get_description_as_tax_head=True):
 	if not parent_names:
 		return {}, []
 
+	category_field = ""
+	if tax_doctype == "Purchase Taxes and Charges":
+		category_field = ", category"
+
 	tax_row_data = frappe.db.sql(f"""
-		select name, account_head, description, charge_type, rate
+		select name, account_head, description, charge_type, rate {category_field}
 		from `tab{tax_doctype}`
 		where parent in %s
 	""", [parent_names], as_dict=1)
 
 	tax_row_map = {}
 	for tax in tax_row_data:
+		tax.include_in_valuation = 1 if tax.category in ("Valuation and Total", "Valuation") else 0
 		tax_row_map[tax.name] = tax
 
 	itemised_taxes = {}
@@ -1003,6 +1048,7 @@ def get_itemised_taxes(entries, tax_doctype, get_description_as_tax_head=True):
 	for item in entries:
 		item_tax_detail = json.loads(item.item_tax_detail) if item.item_tax_detail else {}
 		item_tax_rate = json.loads(item.item_tax_rate) if item.item_tax_rate else {}
+		exchange_rate = flt(item.conversion_rate) or 1.0 if in_company_currency else 1.0
 
 		for tax_row_name, tax_amount in item_tax_detail.items():
 			if not tax_amount:
@@ -1012,11 +1058,14 @@ def get_itemised_taxes(entries, tax_doctype, get_description_as_tax_head=True):
 			if not tax_row:
 				continue
 
-			tax_head = tax_row.description if get_description_as_tax_head else tax_row.account_head
+			tax_head = tax_row.description if description_as_tax_head else tax_row.account_head
+			if group_by_include_in_valuation:
+				tax_head = (tax_head, tax_row.include_in_valuation)
+
 			tax_heads.add(tax_head)
 
 			item_tax_dict = itemised_taxes.setdefault(item.name, {}).setdefault(tax_head, {"tax_amount": 0, "tax_rate": 0})
-			item_tax_dict["tax_amount"] += tax_amount
+			item_tax_dict["tax_amount"] += tax_amount * exchange_rate
 
 			tax_rate = flt(item_tax_rate.get(tax_row.account_head) or tax_row.rate) if tax_row.charge_type != "Actual" else 0
 			item_tax_dict["tax_rate"] = tax_rate

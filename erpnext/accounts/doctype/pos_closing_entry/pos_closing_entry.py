@@ -453,15 +453,16 @@ def get_tax_details(invoices, payment_entries):
 	sales_invoice_items = []
 	if invoice_names:
 		sales_invoice_items = frappe.db.sql("""
-			select i.name, i.parent, i.item_tax_detail, i.item_tax_rate
+			select i.name, i.parent, i.item_tax_detail, i.item_tax_rate, s.conversion_rate
 			from `tabSales Invoice Item` i
+			inner join `tabSales Invoice` s on s.name = i.parent
 			where i.parent in %s
 		""", [invoice_names], as_dict=1)
 
-	itemised_tax, tax_columns = get_itemised_taxes(
+	itemised_tax, tax_accounts = get_itemised_taxes(
 		sales_invoice_items,
 		"Sales Taxes and Charges",
-		get_description_as_tax_head=False
+		description_as_tax_head=False,
 	)
 
 	payment_taxes = []
@@ -484,7 +485,7 @@ def get_tax_details(invoices, payment_entries):
 
 	tax_breakup = {}
 	for d in sales_invoice_items:
-		for account_head in tax_columns:
+		for account_head in tax_accounts:
 			tax_amount = itemised_tax.get(d.name, {}).get(account_head, {}).get("tax_amount", 0.0)
 			tax_rate = itemised_tax.get(d.name, {}).get(account_head, {}).get("tax_rate", 0.0)
 
