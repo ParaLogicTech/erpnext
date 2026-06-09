@@ -546,7 +546,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Landed Costs",
-   "link_count": 2,
+   "link_count": 3,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -570,9 +570,19 @@
    "link_type": "Report",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Letter of Credit",
+   "link_count": 0,
+   "link_to": "Letter of Credit",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-06-09 12:05:25.569288",
+ "modified": "2026-06-09 19:18:04.746415",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Buying",
