@@ -871,50 +871,55 @@ class TransactionController(StockController):
 	def set_taxes_and_charges(self):
 		if not self.meta.get_field("taxes"):
 			return
+		if not self.get("company"):
+			return
+		if self.get("taxes"):
+			return
+		if not self.is_new():
+			return
 
-		tax_master_doctype = self.meta.get_field("taxes_and_charges").options
+		if self.get("bill_to"):
+			party_type = "Customer"
+			party = self.get("bill_to")
+		else:
+			party_type, party, party_name = self.get_party()
 
-		if (self.is_new() or self.is_pos_profile_changed()) and not self.get("taxes"):
-			if self.company and self.get("customer"):
-				# get default tax template from bill to party master otherwise apply tax rule
-				from erpnext.accounts.party import set_taxes
+		billing_address = None
+		shipping_address = None
+		if party_type in ("Customer", "Lead"):
+			billing_address = self.get("customer_address")
+			shipping_address = self.get("shipping_address_name")
+		elif party_type == "Supplier":
+			billing_address = self.get("supplier_address")
+			shipping_address = self.get("company_address")
 
-				bill_to_party = self.get("bill_to") if self.get("bill_to") else self.customer
-				self.taxes_and_charges = set_taxes(
-					bill_to_party,
-					"Customer",
-					posting_date=self.get("transaction_date") or self.get("posting_date"),
-					company=self.company,
-					customer_group=self.get("customer_group"),
-					supplier_group=self.get("supplier_group"),
-					tax_category=self.get("tax_category"),
-					transaction_type=self.get("transaction_type"),
-					cost_center=self.get("cost_center"),
-					tax_id=self.get("tax_id"),
-					tax_cnic=self.get("tax_cnic"),
-					tax_strn=self.get("tax_strn"),
-					has_stin=self.get("has_stin"),
-					billing_address=self.get("customer_address"),
-					shipping_address=self.get("shipping_address_name")
-				)
+		from erpnext.accounts.party import set_taxes
 
-			if self.company and not self.get("taxes_and_charges"):
-				# get the default tax master
-				self.taxes_and_charges = frappe.db.get_value(tax_master_doctype, {"is_default": 1, 'company': self.company})
+		self.taxes_and_charges = set_taxes(
+			company=self.company,
+			party=party,
+			party_type=party_type,
+			posting_date=self.get("transaction_date") or self.get("posting_date"),
+			customer_group=self.get("customer_group"),
+			supplier_group=self.get("supplier_group"),
+			tax_category=self.get("tax_category"),
+			transaction_type=self.get("transaction_type"),
+			cost_center=self.get("cost_center"),
+			tax_id=self.get("tax_id"),
+			tax_cnic=self.get("tax_cnic"),
+			tax_strn=self.get("tax_strn"),
+			has_stin=self.get("has_stin") if self.meta.has_field("has_stin") else None,
+			billing_address=billing_address,
+			shipping_address=shipping_address,
+			doctype=self.doctype,
+		)
 
-			self.append_taxes_from_master(tax_master_doctype)
+		self.append_taxes_from_master()
 
-	def append_taxes_from_master(self, tax_master_doctype=None):
+	def append_taxes_from_master(self):
 		if self.get("taxes_and_charges"):
-			if not tax_master_doctype:
-				tax_master_doctype = self.meta.get_field("taxes_and_charges").options
-
+			tax_master_doctype = self.meta.get_field("taxes_and_charges").options
 			self.extend("taxes", get_taxes_and_charges(tax_master_doctype, self.get("taxes_and_charges")))
-
-	def is_pos_profile_changed(self):
-		if (self.doctype == 'Sales Invoice' and self.is_pos and
-				self.pos_profile != frappe.db.get_value('Sales Invoice', self.name, 'pos_profile')):
-			return True
 
 	def validate_enabled_taxes_and_charges(self):
 		if not self.meta.has_field("taxes_and_charges"):

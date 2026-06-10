@@ -157,7 +157,7 @@ erpnext.utils.set_taxes_from_address = function(frm, triggered_from_field, billi
 		return;
 	}
 
-	frappe.call({
+	return frappe.call({
 		method: "erpnext.accounts.party.get_address_tax_category",
 		args: {
 			"tax_category": frm.doc.tax_category,
@@ -180,30 +180,22 @@ erpnext.utils.set_taxes = function(frm, triggered_from_field) {
 	if (!frappe.meta.get_docfield(frm.doc.doctype, "taxes")) {
 		return;
 	}
-
 	if (!erpnext.utils.validate_mandatory(frm, "Company", frm.doc.company, triggered_from_field)) {
-		return;
-	}
-
-	if (!frm.doc.customer && !frm.doc.supplier && !frm.doc.lead && !frm.doc.party_name) {
-		return;
-	}
-	if (!frm.doc.posting_date && !frm.doc.transaction_date) {
 		return;
 	}
 
 	let party_type;
 	let party;
-	if (frm.doc.lead) {
-		party_type = 'Lead';
-		party = frm.doc.lead;
-	} else if (frm.doc.customer || frm.doc.bill_to) {
+	if (frm.doc.bill_to || frm.doc.customer) {
 		party_type = 'Customer';
 		party = frm.doc.bill_to || frm.doc.customer;
+	} else if (frm.doc.lead) {
+		party_type = 'Lead';
+		party = frm.doc.lead;
 	} else if (frm.doc.supplier) {
 		party_type = 'Supplier';
 		party = frm.doc.supplier;
-	} else if (frm.doc.quotation_to){
+	} else if (frm.doc.quotation_to) {
 		party_type = frm.doc.quotation_to;
 		party = frm.doc.party_name;
 	}
@@ -223,6 +215,7 @@ erpnext.utils.set_taxes = function(frm, triggered_from_field) {
 		"tax_id": frm.doc.tax_id,
 		"tax_cnic": frm.doc.tax_cnic,
 		"tax_strn": frm.doc.tax_strn,
+		"doctype": frm.doc.doctype,
 	};
 
 	if (frappe.meta.has_field(frm.doc.doctype, 'has_stin')) {
@@ -234,7 +227,7 @@ erpnext.utils.set_taxes = function(frm, triggered_from_field) {
 		args: args,
 		callback: function (r) {
 			if (r.message) {
-				return frm.set_value("taxes_and_charges", r.message)
+				return frm.set_value("taxes_and_charges", r.message);
 			}
 		}
 	});

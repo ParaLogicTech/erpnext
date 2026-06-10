@@ -1274,42 +1274,35 @@ class PaymentEntry(AccountsController):
 			self.set("taxes", [])
 			return
 
-		tax_master_doctype = self.meta.get_field(tax_template_field).options
+		if not self.get("taxes") and self.company:
+			from erpnext.accounts.party import set_taxes
 
-		if not self.get("taxes"):
-			if self.company and self.party_type and self.party:
-				from erpnext.accounts.party import set_taxes
+			customer_group = None
+			supplier_group = None
+			if self.party_type == "Customer" and self.party:
+				customer_group = frappe.get_cached_value("Customer", self.party, "customer_group")
+			elif self.party_type == "Supplier" and self.party:
+				supplier_group = frappe.get_cached_value("Supplier", self.party, "supplier_group")
 
-				customer_group = None
-				supplier_group = None
-				if self.party_type == "Customer":
-					customer_group = frappe.get_cached_value("Customer", self.party, "customer_group")
-				elif self.party_type == "Supplier":
-					supplier_group = frappe.get_cached_value("Supplier", self.party, "supplier_group")
+			self.set(tax_template_field, set_taxes(
+				company=self.company,
+				party=self.party,
+				party_type=self.party_type,
+				posting_date=self.get("transaction_date") or self.get("posting_date"),
+				customer_group=customer_group,
+				supplier_group=supplier_group,
+				cost_center=self.get("cost_center"),
+				tax_id=self.get("tax_id"),
+				tax_cnic=self.get("tax_cnic"),
+				tax_strn=self.get("tax_strn"),
+				has_stin=1,
+				billing_address=self.get("party_address"),
+				doctype=self.doctype,
+			))
 
-				self.set(tax_template_field, set_taxes(
-					self.party,
-					self.party_type,
-					posting_date=self.get("transaction_date") or self.get("posting_date"),
-					company=self.company,
-					customer_group=customer_group,
-					supplier_group=supplier_group,
-					cost_center=self.get("cost_center"),
-					tax_id=self.get("tax_id"),
-					tax_cnic=self.get("tax_cnic"),
-					tax_strn=self.get("tax_strn"),
-					has_stin=1,
-					billing_address=self.get("party_address"),
-				))
+			self.append_taxes_from_master()
 
-			if self.company and not self.get(tax_template_field):
-				# get the default tax master
-				self.tax_template_field = frappe.db.get_value(tax_master_doctype,
-					{"is_default": 1, 'company': self.company})
-
-			self.append_taxes_from_master(tax_master_doctype)
-
-	def append_taxes_from_master(self, tax_master_doctype=None):
+	def append_taxes_from_master(self):
 		from erpnext.controllers.transaction_controller import get_taxes_and_charges
 
 		tax_template_field = self.get_taxes_and_charges_template_field()
@@ -1318,9 +1311,7 @@ class PaymentEntry(AccountsController):
 			return
 
 		if self.get(tax_template_field):
-			if not tax_master_doctype:
-				tax_master_doctype = self.meta.get_field(tax_template_field).options
-
+			tax_master_doctype = self.meta.get_field(tax_template_field).options
 			taxes = get_taxes_and_charges(tax_master_doctype, self.get(tax_template_field), for_payment_entry=True)
 			self.extend("taxes", taxes)
 

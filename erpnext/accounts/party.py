@@ -139,10 +139,10 @@ def _get_party_details(
 	party_details.tax_status = billing_party_doc.get('tax_status')
 
 	party_details["taxes_and_charges"] = set_taxes(
-		billing_party_doc.name,
-		party_type,
-		posting_date,
-		company,
+		company=company,
+		party=billing_party_doc.name,
+		party_type=party_type,
+		posting_date=posting_date,
 		customer_group=billing_party_doc.get('customer_group'),
 		supplier_group=billing_party_doc.get('supplier_group'),
 		tax_category=billing_party_doc.get('tax_category'),
@@ -154,6 +154,7 @@ def _get_party_details(
 		cost_center=cost_center,
 		billing_address=party_address,
 		shipping_address=shipping_address,
+		doctype=doctype,
 	)
 
 	if not payment_terms_template:
@@ -780,58 +781,103 @@ def get_address_tax_category(tax_category=None, billing_address=None, shipping_a
 
 
 @frappe.whitelist()
-def set_taxes(party, party_type, posting_date, company, customer_group=None, supplier_group=None, tax_category=None,
-		transaction_type=None, cost_center=None, tax_id=None, tax_cnic=None, tax_strn=None, has_stin=None,
-		billing_address=None, shipping_address=None):
+def set_taxes(
+	company,
+	party=None,
+	party_type=None,
+	posting_date=None,
+	customer_group=None,
+	supplier_group=None,
+	tax_category=None,
+	transaction_type=None,
+	cost_center=None,
+	tax_id=None,
+	tax_cnic=None,
+	tax_strn=None,
+	has_stin=None,
+	billing_address=None,
+	shipping_address=None,
+	doctype=None,
+):
 	from erpnext.accounts.doctype.tax_rule.tax_rule import get_tax_template, get_party_details
 
+	if not company:
+		return None
+
 	posting_date = getdate(posting_date)
-
-	args = {
-		scrub(party_type): party,
-		"company": company
-	}
-
-	if tax_category:
-		args['tax_category'] = tax_category
-
-	if customer_group:
-		args['customer_group'] = customer_group
-
-	if supplier_group:
-		args['supplier_group'] = supplier_group
-
-	if transaction_type:
-		args['transaction_type'] = transaction_type
-
-	if cost_center:
-		args['cost_center'] = cost_center
-
-	args['tax_id'] = "Set" if tax_id else "Not Set"
-	args['tax_cnic'] = "Set" if tax_cnic else "Not Set"
-	args['tax_strn'] = "Set" if tax_strn else "Not Set"
-
 	if has_stin is not None:
-		args['has_stin'] = "Yes" if cint(has_stin) else "No"
+		has_stin = cint(has_stin)
 
-	if billing_address or shipping_address:
-		args.update(get_party_details(party, party_type, {
-			"billing_address": billing_address,
-			"shipping_address": shipping_address
-		}))
-	else:
-		args.update(get_party_details(party, party_type))
+	template_doctype = None
+	if doctype and doctype != "Payment Entry":
+		meta = frappe.get_meta(doctype)
+		df = meta.get_field("taxes_and_charges")
+		if df and df.fieldtype == "Link":
+			template_doctype = df.options
 
-	if party_type in ("Customer", "Lead"):
-		args.update({"tax_type": "Sales"})
+	if not template_doctype:
+		if party_type in ("Customer", "Lead"):
+			template_doctype = "Sales Taxes and Charges Template"
+		elif party_type == "Supplier":
+			template_doctype = "Purchase Taxes and Charges Template"
 
-		if party_type == 'Lead':
+	tax_type = None
+	if template_doctype == "Sales Taxes and Charges Template":
+		tax_type = "Sales"
+	elif template_doctype == "Purchase Taxes and Charges Template":
+		tax_type = "Purchase"
+
+	tax_template = None
+
+	if tax_type:
+		args = {
+			"company": company,
+			"tax_type": tax_type,
+		}
+
+		if party_type and party:
+			args[scrub(party_type)] = party
+
+		if party_type == "Lead":
 			args['customer'] = None
 			del args['lead']
-	else:
-		args.update({"tax_type": "Purchase"})
 
-	return get_tax_template(posting_date, args)
+		if tax_category:
+			args['tax_category'] = tax_category
+
+		if customer_group:
+			args['customer_group'] = customer_group
+
+		if supplier_group:
+			args['supplier_group'] = supplier_group
+
+		if transaction_type:
+			args['transaction_type'] = transaction_type
+
+		if cost_center:
+			args['cost_center'] = cost_center
+
+		args['tax_id'] = "Set" if tax_id else "Not Set"
+		args['tax_cnic'] = "Set" if tax_cnic else "Not Set"
+		args['tax_strn'] = "Set" if tax_strn else "Not Set"
+
+		if has_stin is not None:
+			args['has_stin'] = "Yes" if cint(has_stin) else "No"
+
+		if billing_address or shipping_address:
+			args.update(get_party_details(party, party_type, {
+				"billing_address": billing_address,
+				"shipping_address": shipping_address
+			}))
+		elif party_type and party:
+			args.update(get_party_details(party, party_type))
+
+		tax_template = get_tax_template(posting_date, args)
+
+	if not tax_template and template_doctype and (has_stin is None or has_stin):
+		tax_template = frappe.db.get_value(template_doctype, {"is_default": 1, 'company': company})
+
+	return tax_template
 
 
 @frappe.whitelist()

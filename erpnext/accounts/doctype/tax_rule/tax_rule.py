@@ -117,14 +117,16 @@ class TaxRule(Document):
 def get_party_details(party, party_type, args=None):
 	from crm.crm.utils import get_primary_address
 
-	out = {}
+	out = frappe._dict()
 	billing_address, shipping_address = None, None
+
 	if args:
 		if args.get('billing_address'):
 			billing_address = frappe.get_doc('Address', args.get('billing_address'))
 		if args.get('shipping_address'):
 			shipping_address = frappe.get_doc('Address', args.get('shipping_address'))
-	else:
+
+	elif party_type and party:
 		billing_address_name = get_primary_address(party_type, party)
 		shipping_address_name = get_primary_address(party_type, party, shipping_address=True)
 		if billing_address_name:
