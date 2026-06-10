@@ -342,6 +342,26 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			});
 		}
 
+		if (this.frm.fields_dict.order_picker) {
+			this.frm.set_query("order_picker", function () {
+				return {
+					filters: {
+						status: "Enabled"
+					}
+				};
+			});
+		}
+
+		if (this.frm.fields_dict.transporter) {
+			this.frm.set_query("transporter", function () {
+				return {
+					filters: {
+						status: "Enabled"
+					}
+				};
+			});
+		}
+
 		if (this.frm.doc.__onload && this.frm.doc.__onload.enable_dynamic_bundling) {
 			erpnext.bundling.setup_bundling(this.frm.doc.doctype);
 		}
