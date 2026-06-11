@@ -408,7 +408,6 @@ erpnext.patches.v15_0.set_attendance_available_hours
 erpnext.patches.v15_0.set_payment_entry_reference_posting_date #1
 erpnext.patches.v15_0.set_lcv_receipt_missing_details
 erpnext.patches.v15_0.set_proforma_invoice_outstanding_amount
-erpnext.patches.v15_0.set_sales_invoice_bill_to_group
 erpnext.patches.v15_0.set_delivery_note_item_service_template
 erpnext.patches.v15_0.set_item_is_product_bundle
 erpnext.patches.v15_0.add_missing_pos_profile_user_parent

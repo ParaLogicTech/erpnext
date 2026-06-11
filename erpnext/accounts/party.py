@@ -132,7 +132,7 @@ def _get_party_details(
 	)
 
 	party_details.bill_to_name = billing_party_doc.get('customer_name')
-	party_details.bill_to_group = billing_party_doc.get('customer_group')
+	party_details.customer_group = billing_party_doc.get('customer_group')
 	party_details.tax_id = billing_party_doc.get('tax_id')
 	party_details.tax_cnic = billing_party_doc.get('tax_cnic')
 	party_details.tax_strn = billing_party_doc.get('tax_strn')
