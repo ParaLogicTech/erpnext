@@ -80,13 +80,12 @@ class Timesheet(Document):
 	
 	@staticmethod
 	def validate_employee_cost(employee_id, stop_assigning=False):
-		if employee_id:
-			activity_cost = get_activity_cost(employee_id)
-			costing_rate = flt(activity_cost.get("costing_rate"))
-			if not costing_rate and stop_assigning:
-				frappe.throw(
-					f"Employee <b>{employee_id}</b> cannot be assigned because no employee cost has been configured."
-				)
+		activity_cost = get_activity_cost(employee_id)
+		costing_rate = flt(activity_cost.get("costing_rate"))
+		if not costing_rate and stop_assigning:
+			frappe.throw(
+				f"Employee <b>{employee_id}</b> cannot be assigned because no employee cost has been configured."
+			)
 
 	def validate_time_logs(self):
 		if not self.employee or frappe.db.get_single_value("Projects Settings", 'ignore_employee_time_overlap'):
