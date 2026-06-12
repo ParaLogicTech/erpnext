@@ -578,13 +578,13 @@ class PurchaseInvoice(BuyingController):
 			self.credit_to = get_party_account(billing_party_type, billing_party, self.company,
 				transaction_type=self.get('transaction_type'))
 			self.party_account_currency = frappe.get_cached_value("Account", self.credit_to, "account_currency")
-		if not self.due_date:
-			self.due_date = get_due_date(
-				self.posting_date, bill_date=self.bill_date, delivery_date=self.get("schedule_date"),
-				party_type="Supplier", party=self.supplier,
-				payment_terms_template=self.payment_terms_template,
-				company=self.company
-			)
+			
+		self.due_date = get_due_date(
+			self.posting_date, bill_date=self.bill_date, delivery_date=self.get("schedule_date"),
+			party_type="Supplier", party=self.supplier,
+			payment_terms_template=self.payment_terms_template,
+			company=self.company
+		)
 
 		super(PurchaseInvoice, self).set_missing_values(for_validate)
 		self.set_expense_account()
