@@ -1008,7 +1008,7 @@ class SalesInvoice(SellingController):
 
 		if cint(self.update_stock):
 			return
-		if self.return_against:
+		if self.is_return:
 			return
 		if cint(frappe.get_cached_value("Accounts Settings", None, "allow_invoicing_without_updating_stock")):
 			return
