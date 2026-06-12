@@ -446,4 +446,4 @@ erpnext.patches.v15_0.fix_project_sales_item_data_from_invoice
 erpnext.patches.v15_0.create_payment_request_dimension_fields
 erpnext.patches.v15_0.set_invoice_unbilled_stock_value
 erpnext.patches.v15_0.set_lcv_party_name
-erpnext.patches.v15_0.set_sales_invoice_customer_group
+erpnext.patches.v15_0.reset_transaction_customer_group
