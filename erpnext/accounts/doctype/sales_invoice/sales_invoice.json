@@ -14,7 +14,6 @@
   "customer_group",
   "bill_to",
   "bill_to_name",
-  "bill_to_group",
   "has_stin",
   "po_no",
   "po_date",
@@ -2340,15 +2339,6 @@
    "print_hide": 1
   },
   {
-   "fieldname": "bill_to_group",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Bill To Group",
-   "options": "Customer Group",
-   "print_hide": 1,
-   "read_only": 1
-  },
-  {
    "depends_on": "prepaid_deferred_revenue",
    "fieldname": "prepaid_deferred_revenue",
    "fieldtype": "Currency",
@@ -2383,7 +2373,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-01 04:40:27.080528",
+ "modified": "2026-06-11 13:55:05.985228",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

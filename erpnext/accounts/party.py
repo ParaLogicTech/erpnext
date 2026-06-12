@@ -82,7 +82,7 @@ def _get_party_details(
 	if not ignore_permissions:
 		party_doc.check_permission()
 
-	set_basic_values(party_details, party_doc)
+	set_basic_values(party_details, party_doc, billing_party_doc)
 
 	set_currency(party_details, party_doc, company, currency=currency)
 
@@ -130,13 +130,6 @@ def _get_party_details(
 		party_address,
 		shipping_address if party_type != "Supplier" else party_address,
 	)
-
-	party_details.bill_to_name = billing_party_doc.get('customer_name')
-	party_details.bill_to_group = billing_party_doc.get('customer_group')
-	party_details.tax_id = billing_party_doc.get('tax_id')
-	party_details.tax_cnic = billing_party_doc.get('tax_cnic')
-	party_details.tax_strn = billing_party_doc.get('tax_strn')
-	party_details.tax_status = billing_party_doc.get('tax_status')
 
 	party_details["taxes_and_charges"] = set_taxes(
 		company=company,
@@ -187,30 +180,31 @@ def _get_party_details(
 	return party_details
 
 
-def set_basic_values(party_details, party_doc):
-	to_copy = []
+def set_basic_values(party_details, party_doc, billing_party_doc):
 	if party_doc.doctype == "Customer":
-		to_copy = [
-			"customer_name",
-			"customer_group",
-			"territory",
-			"language",
-			"default_sales_partner",
-			"default_commission_rate",
-			"account_manager",
-		]
-	elif party_doc.doctype == "Supplier":
-		to_copy = [
-			"supplier_name",
-			"supplier_group",
-			"language",
-		]
-	elif party_doc.doctype == "Lead":
-		party_details["customer_name"] = party_doc.get("company_name") or party_doc.get("lead_name")
-		to_copy = ["territory"]
+		party_details.customer_name = party_doc.get("customer_name")
+		party_details.territory = party_doc.get("territory")
+		party_details.default_sales_partner = party_doc.get("default_sales_partner")
+		party_details.default_commission_rate = party_doc.get("default_commission_rate")
 
-	for f in to_copy:
-		party_details[f] = party_doc.get(f)
+	elif party_doc.doctype == "Supplier":
+		party_details.supplier_name = party_doc.get("supplier_name")
+		party_details.supplier_group = party_doc.get("supplier_group")
+
+	elif party_doc.doctype == "Lead":
+		party_details.customer_name = party_doc.get("company_name") or party_doc.get("lead_name")
+		party_details.territory = party_doc.get("territory")
+
+	if billing_party_doc.doctype == "Customer":
+		party_details.bill_to_name = billing_party_doc.get('customer_name')
+		party_details.customer_group = billing_party_doc.get('customer_group')
+
+	party_details.tax_id = billing_party_doc.get('tax_id')
+	party_details.tax_cnic = billing_party_doc.get('tax_cnic')
+	party_details.tax_strn = billing_party_doc.get('tax_strn')
+	party_details.tax_status = billing_party_doc.get('tax_status')
+	party_details.language = party_doc.get("language")
+	party_details.account_manager = party_doc.get("account_manager")
 
 
 def set_currency(party_details, party_doc, company, currency):
