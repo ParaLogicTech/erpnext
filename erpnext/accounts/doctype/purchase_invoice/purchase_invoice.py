@@ -10,7 +10,7 @@ import frappe.defaults
 from erpnext.assets.doctype.asset_category.asset_category import get_asset_category_account
 from erpnext.controllers.buying_controller import BuyingController
 from erpnext.controllers.transaction_controller import get_default_taxes_and_charges
-from erpnext.accounts.party import get_party_account, get_due_date
+from erpnext.accounts.party import get_due_date
 from erpnext.accounts.utils import get_account_currency, get_fiscal_year
 from erpnext.stock import get_warehouse_account_map
 from erpnext.accounts.general_ledger import make_gl_entries, merge_similar_entries, delete_gl_entries,\
@@ -573,11 +573,8 @@ class PurchaseInvoice(BuyingController):
 			frappe.throw(_("""Paid amount + Write Off Amount can not be greater than Grand Total"""))
 
 	def set_missing_values(self, for_validate=False):
-		if not self.credit_to:
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
-			self.credit_to = get_party_account(billing_party_type, billing_party, self.company,
-				transaction_type=self.get('transaction_type'))
-			self.party_account_currency = frappe.get_cached_value("Account", self.credit_to, "account_currency")
+		self.set_party_account()
+
 		if not self.due_date:
 			self.due_date = get_due_date(
 				self.posting_date, bill_date=self.bill_date, delivery_date=self.get("schedule_date"),

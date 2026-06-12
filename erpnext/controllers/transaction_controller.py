@@ -145,6 +145,7 @@ class TransactionController(StockController):
 		self.set_project_reference_no()
 
 	def postprocess_after_mapping(self, reset_taxes=False):
+		self.run_method("set_party_account", force=True)
 		self.run_method("set_missing_values")
 		self.run_method("sort_items")
 
