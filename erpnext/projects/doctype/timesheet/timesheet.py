@@ -20,6 +20,7 @@ class Timesheet(Document):
 		self.calculate_percentage_billed()
 		self.set_dates()
 		self.set_status()
+		self.validate_employee_cost(self.employee)
 
 	def on_submit(self):
 		self.validate_mandatory_fields()
@@ -76,6 +77,16 @@ class Timesheet(Document):
 		for d in self.time_logs:
 			if d.from_time and d.to_time and get_datetime(d.from_time) > get_datetime(d.to_time):
 				frappe.throw(_("Row {0}: Incorrect time range").format(d.idx))
+	
+	@staticmethod
+	def validate_employee_cost(employee_id, stop_assigning=False):
+		if employee_id:
+			activity_cost = get_activity_cost(employee_id)
+			costing_rate = flt(activity_cost.get("costing_rate"))
+			if not costing_rate and stop_assigning:
+				frappe.throw(
+					f"Employee <b>{employee_id}</b> cannot be assigned because no employee cost has been configured."
+				)
 
 	def validate_time_logs(self):
 		if not self.employee or frappe.db.get_single_value("Projects Settings", 'ignore_employee_time_overlap'):
