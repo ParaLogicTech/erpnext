@@ -287,7 +287,7 @@ def make_salary_slip(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def get_activity_cost(employee=None, activity_type=None):
+def get_activity_cost(employee=None, activity_type=None, get_cost_if_employee_not_set=True):
 	activity_cost = None
 
 	if employee and activity_type:
@@ -302,8 +302,11 @@ def get_activity_cost(employee=None, activity_type=None):
 
 	elif activity_type:
 		activity_cost = _get_activity_cost(activity_type=activity_type)
-
-	return activity_cost or _get_activity_cost() or frappe._dict()
+	
+	if not activity_cost and get_cost_if_employee_not_set:
+		return _get_activity_cost() or frappe._dict()
+	else:
+		return activity_cost or frappe._dict()
 
 
 def _get_activity_cost(employee=None, activity_type=None, cache=True):
@@ -324,6 +327,12 @@ def _get_activity_cost(employee=None, activity_type=None, cache=True):
 			"Activity Cost",
 			filters=filters,
 			fields=["costing_rate", "billing_rate"],
+			limit=1
+		)
+		data2 = frappe.get_all(
+			"Activity Cost",
+			filters=filters,
+			fields=["costing_rate", "billing_rate", "name"],
 			limit=1
 		)
 		return data[0] if data else None
