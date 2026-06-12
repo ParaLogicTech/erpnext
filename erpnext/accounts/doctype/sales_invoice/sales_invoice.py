@@ -6,7 +6,7 @@ import erpnext
 import frappe.defaults
 from frappe.utils import cint, flt, getdate, add_days, cstr
 from frappe import _
-from erpnext.accounts.party import get_party_account, get_due_date, get_goodwill_account_details
+from erpnext.accounts.party import get_due_date, get_goodwill_account_details
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
 from frappe.model.mapper import get_mapped_doc
 from erpnext.accounts.doctype.sales_invoice.pos import update_multi_mode_option
@@ -672,12 +672,6 @@ class SalesInvoice(SellingController):
 			fieldname=["bypass_credit_limit_check"])
 		
 		check_credit_limit(self.bill_to, self.company, bypass_credit_limit_check_at_sales_order)
-	
-	def set_party_account(self):
-		if not self.debit_to:
-			self.debit_to = get_party_account("Customer", self.bill_to, self.company,
-				transaction_type=self.get('transaction_type'))
-			self.party_account_currency = frappe.get_cached_value("Account", self.debit_to, "account_currency")
 
 	@frappe.whitelist()
 	def set_missing_values(self, for_validate=False):
@@ -689,9 +683,9 @@ class SalesInvoice(SellingController):
 		else:
 			for d in self.get('items'):
 				d.project = self.project
-		
+
 		self.set_party_account()
-		
+
 		if not self.due_date and self.customer:
 			self.due_date = get_due_date(
 				self.posting_date, delivery_date=self.get("delivery_date"),
@@ -729,6 +723,7 @@ class SalesInvoice(SellingController):
 				self.write_off_cost_center = account_details.cost_center
 
 	def postprocess_after_mapping(self, reset_taxes=False):
+		self.set_party_account(force=True)
 		self.set_missing_values()
 		self.sort_items()
 		self.set_po_nos()

@@ -14,6 +14,7 @@ from erpnext.accounts.general_ledger import get_round_off_account_and_cost_cente
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
 from frappe.model.utils import get_fetch_values
+from erpnext.accounts.party import get_party_account
 
 
 class SellingController(TransactionController):
@@ -97,6 +98,22 @@ class SellingController(TransactionController):
 			return self.debit_to
 		else:
 			return super().get_party_account()
+
+	def set_party_account(self, force=False):
+		if not self.meta.has_field("debit_to"):
+			return
+
+		if not self.get("debit_to") or force:
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			self.debit_to = get_party_account(
+				billing_party_type,
+				billing_party,
+				self.company,
+				transaction_type=self.get('transaction_type'),
+			)
+
+		if self.get("debit_to"):
+			self.party_account_currency = frappe.get_cached_value("Account", self.debit_to, "account_currency")
 
 	def set_missing_values(self, for_validate=False):
 		super(SellingController, self).set_missing_values(for_validate)

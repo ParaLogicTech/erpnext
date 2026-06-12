@@ -10,6 +10,7 @@ from erpnext.buying.utils import validate_for_items
 from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
 from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
 from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.accounts.party import get_party_account
 import json
 
 
@@ -130,6 +131,22 @@ class BuyingController(TransactionController):
 			return self.credit_to
 		else:
 			return super().get_party_account()
+
+	def set_party_account(self, force=False):
+		if not self.meta.has_field("credit_to"):
+			return
+
+		if not self.get("credit_to") or force:
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			self.credit_to = get_party_account(
+				billing_party_type,
+				billing_party,
+				self.company,
+				transaction_type=self.get('transaction_type'),
+			)
+
+		if self.get("credit_to"):
+			self.party_account_currency = frappe.get_cached_value("Account", self.credit_to, "account_currency")
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate)
