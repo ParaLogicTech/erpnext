@@ -340,12 +340,6 @@ def _get_activity_cost(employee=None, activity_type=None, cache=True):
 			fields=["costing_rate", "billing_rate"],
 			limit=1
 		)
-		data2 = frappe.get_all(
-			"Activity Cost",
-			filters=filters,
-			fields=["costing_rate", "billing_rate", "name"],
-			limit=1
-		)
 		return data[0] if data else None
 
 	if cache:
