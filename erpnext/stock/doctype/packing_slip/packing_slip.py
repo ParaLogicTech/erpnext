@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, cstr, combine_datetime
+from frappe.utils import flt, cint, cstr, combine_datetime, round_up
 from frappe.model.mapper import map_child_doc, get_mapped_doc
 from erpnext.controllers.transaction_controller import TransactionController
 from erpnext.stock.get_item_details import (
@@ -32,8 +32,17 @@ class PackingSlip(TransactionController):
 			"stock_uom", "has_batch_no", "has_serial_no", "force_default_warehouse", "item_group", "conversion_factor"
 		]
 
+		self.original_value_fields = [
+			("original_customer", "customer"),
+			("original_customer_name", "customer_name"),
+		]
+
 	def get_feed(self):
 		return _("Packed {0}").format(self.get("package_type"))
+
+	def before_validate_links(self):
+		if self.docstatus == 0:
+			self.set_original_values(unset=True)
 
 	def onload(self):
 		super().onload()
@@ -74,6 +83,7 @@ class PackingSlip(TransactionController):
 		self.set_status(validate=False)
 
 	def before_submit(self):
+		self.set_original_values()
 		self.validate_purchase_order_raw_material_qty()
 
 	def on_submit(self):
@@ -101,6 +111,26 @@ class PackingSlip(TransactionController):
 		self.packed_items = ", ".join(packed_item_names)
 		if len(self.packed_items) > 140:
 			self.packed_items = self.packed_items[:137] + "..."
+
+	def set_original_values(self, unset=False):
+		for f in self.original_value_fields:
+			if len(f) == 3:
+				child_table_field, original_field, source_field = f
+				for d in self.get(child_table_field):
+					if unset:
+						d.set(original_field, None)
+					else:
+						d.set(original_field, d.get(source_field))
+
+			elif len(f) == 2:
+				original_field, source_field = f
+				if unset:
+					self.set(original_field, None)
+				else:
+					self.set(original_field, self.get(source_field))
+
+		if unset:
+			self.is_reassigned = 0
 
 	def set_missing_values(self, for_validate=False):
 		self.set_package_type_details()
@@ -1047,12 +1077,23 @@ class PackingSlip(TransactionController):
 		else:
 			self.status = "Cancelled"
 
+		if self.status == "In Stock":
+			has_sales_order = any(d.sales_order for d in self.items)
+			has_source_packing_slip = any(d.source_packing_slip for d in self.items)
+			if (has_sales_order and not self.is_reassigned) or has_source_packing_slip:
+				self.can_reassign = 0
+			else:
+				self.can_reassign = 1
+		else:
+			self.can_reassign = 0
+
 		self.add_status_comment(previous_status)
 
 		if update:
 			self.db_set({
 				"status": self.status,
 				"warehouse": self.warehouse,
+				"can_reassign": self.can_reassign,
 			}, update_modified=update_modified)
 
 	def process_packing_slip_ledger(self, validate=False):
@@ -1314,6 +1355,186 @@ class PackingSlip(TransactionController):
 			unpacked_return_qty_map[d.packing_slip_item] += d.qty
 
 		return unpacked_return_qty_map
+
+	def reassign_sales_order(self, sales_order=None, ignore_permissions=True):
+		# Validate Packing Slip can be reassigned
+		if self.docstatus != 1:
+			frappe.throw(_("{0} is not submitted").format(
+				frappe.get_desk_link("Packing Slip", self.name)
+			))
+
+		if self.status != "In Stock":
+			frappe.throw(_("{0} cannot be reassigned because it's status is {1} and not 'In Stock'").format(
+				frappe.get_desk_link("Packing Slip", self.name),
+				self.status,
+			))
+
+		# no change
+		has_sales_orders = set(d.sales_order for d in self.items if d.sales_order)
+		if sales_order and sales_order in has_sales_orders:
+			frappe.throw(_("{0} is already assigned to {1}").format(
+				frappe.get_desk_link("Packing Slip", self.name),
+				frappe.get_desk_link("Sales Order", sales_order),
+			))
+
+		if not sales_order and not has_sales_orders:
+			frappe.throw(_("{0} is not assigned to any Sales Order").format(
+				frappe.get_desk_link("Packing Slip", self.name)
+			))
+
+		if has_sales_orders and not self.is_reassigned:
+			frappe.throw(_("Cannot reassign {0} because it was packed for another Sales Order").format(
+				frappe.get_desk_link("Packing Slip", self.name)
+			))
+
+		has_source_packing_slip = any(d.source_packing_slip for d in self.items)
+		if has_source_packing_slip:
+			frappe.throw(_("Cannot reassign nested {0}").format(
+				frappe.get_desk_link("Packing Slip", self.name)
+			))
+
+		if not self.can_reassign:
+			frappe.throw(_("Reassignment of {0} is not allowed").format(
+				frappe.get_desk_link("Packing Slip", self.name)
+			))
+
+		# Check if Sales Order can be assigned
+		grouped_items = self.group_items_by(("item_code", "uom"))
+		target_so_doc = None
+		if sales_order:
+			target_so_doc = frappe.get_doc("Sales Order", sales_order)
+
+			if not ignore_permissions:
+				target_so_doc.check_permission("read")
+
+			if target_so_doc.docstatus != 1:
+				frappe.throw(_("{0} is not submitted").format(
+					frappe.get_desk_link("Sales Order", target_so_doc.name)
+				))
+
+			if target_so_doc.status in ("Closed", "On Hold"):
+				frappe.throw(_("{0} is {1}").format(
+					frappe.get_desk_link("Sales Order", target_so_doc.name),
+					frappe.bold(target_so_doc.status),
+				))
+
+			if target_so_doc.delivery_status != "To Deliver":
+				frappe.throw(_("{0} is not deliverable").format(
+					frappe.get_desk_link("Sales Order", target_so_doc.name)
+				))
+
+			# Check if Items match
+			for (ps_item_code, ps_uom), ps_group in grouped_items.items():
+				valid_so_item = None
+				low_qty_so_item = None
+				for so_item in target_so_doc.items:
+					if ps_item_code != so_item.item_code:
+						continue
+					if ps_uom != so_item.uom:
+						continue
+
+					undelivered_qty = flt(so_item.qty) - flt(so_item.delivered_qty)
+					unpacked_qty = flt(so_item.qty) - flt(so_item.packed_qty)
+					unproducible_qty = flt(so_item.qty) - flt(so_item.work_order_qty)
+
+					so_item.packing_assignable_qty = round_up(
+						min(undelivered_qty, unpacked_qty, unproducible_qty),
+						so_item.precision("qty")
+					)
+					if so_item.packing_assignable_qty <= 0:
+						continue
+
+					if flt(ps_group.total_qty) <= so_item.packing_assignable_qty:
+						valid_so_item = so_item
+						break
+					else:
+						low_qty_so_item = so_item
+
+				matched_so_item = valid_so_item
+				if not matched_so_item:
+					qty_suggestion_message = ""
+					if low_qty_so_item:
+						qty_suggestion_message = _("Found Row #{0}, however, maximum Qty that can be assigned is {1} {2}").format(
+							low_qty_so_item.idx,
+							frappe.bold(frappe.format(
+								low_qty_so_item.packing_assignable_qty,
+								df=low_qty_so_item.meta.get_field("qty")
+							)),
+							low_qty_so_item.uom,
+						)
+
+					frappe.throw(_("{0} does not have any pending Item {1} that can be assigned with {2}. {3}").format(
+						frappe.get_desk_link("Sales Order", target_so_doc.name),
+						frappe.bold(ps_item_code),
+						frappe.get_desk_link("Packing Slip", self.name),
+						qty_suggestion_message,
+					))
+
+				ps_group.matched_so_item = matched_so_item
+
+		self.update_reassign_sales_order(grouped_items, target_so_doc)
+
+		# Version log
+		if target_so_doc:
+			self.add_comment("Label", _("Reassigned to {0}").format(
+				frappe.get_desk_link("Sales Order", target_so_doc.name)
+			))
+		else:
+			self.add_comment("Label", _("Unassigned Sales Order"))
+
+		# Message
+		if target_so_doc:
+			frappe.msgprint(_("{0} reassigned to {1}").format(
+				frappe.get_desk_link("Packing Slip", self.name),
+				frappe.get_desk_link("Sales Order", target_so_doc.name) if target_so_doc else ""
+			), alert=True, indicator="green")
+		else:
+			frappe.msgprint(_("{0} unassigned Sales Order").format(
+				frappe.get_desk_link("Packing Slip", self.name)
+			), alert=True, indicator="green")
+
+	def update_reassign_sales_order(self, grouped_items, target_so_doc=None):
+		# Reassign
+		sales_orders_to_update = set([d.sales_order for d in self.items if d.sales_order])
+		if target_so_doc:
+			sales_orders_to_update.add(target_so_doc.name)
+
+		# Set Updated Customer
+		if target_so_doc:
+			self.customer = target_so_doc.customer
+			self.customer_name = target_so_doc.customer_name
+		else:
+			self.customer = self.original_customer
+			self.customer_name = self.original_customer_name
+
+		self.is_reassigned = 1
+
+		self.db_set({
+			"customer": self.customer,
+			"customer_name": self.customer_name,
+			"is_reassigned": self.is_reassigned,
+		})
+
+		# Set SO Reference
+		for ps_group in grouped_items.values():
+			for ps_item in ps_group['items']:
+				ps_item.sales_order = target_so_doc.name if target_so_doc else None
+				ps_item.sales_order_item = ps_group.matched_so_item.name if target_so_doc else None
+				ps_item.db_set({
+					"sales_order": ps_item.sales_order,
+					"sales_order_item": ps_item.sales_order_item,
+				})
+
+		# Update SO Status
+		for so_name in sales_orders_to_update:
+			if target_so_doc and so_name == target_so_doc.name:
+				so = target_so_doc
+			else:
+				so = frappe.get_doc("Sales Order", so_name)
+
+			so.set_production_packing_status(update=True)
+			so.validate_packed_qty(from_doctype=self.doctype)
+			so.notify_update()
 
 
 @frappe.whitelist()
@@ -1809,3 +2030,92 @@ def update_mapped_delivery_item(target, packing_slip, warehouse_field="warehouse
 		target.weight_uom = packing_slip.weight_uom
 	if target.meta.has_field(warehouse_field):
 		target.set(warehouse_field, packing_slip.warehouse)
+
+
+@frappe.whitelist()
+def reassign_sales_order(packing_slip, sales_order=None):
+	ps_doc = frappe.get_doc("Packing Slip", packing_slip)
+	ps_doc.check_permission("write")
+	ps_doc.reassign_sales_order(sales_order, ignore_permissions=False)
+	return ps_doc
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_sales_orders_for_reassignment(doctype, txt, searchfield, start, page_len, filters, as_dict):
+	return _get_sales_orders_for_reassignment(doctype, txt, searchfield, start, page_len, filters, as_dict)
+
+
+def _get_sales_orders_for_reassignment(
+	doctype="Sales Order",
+	txt="",
+	searchfield="name",
+	start=0,
+	page_len=0,
+	filters=None,
+	as_dict=True,
+	ignore_permissions=False,
+):
+	from frappe.desk.reportview import get_filters_cond, get_match_cond
+	from erpnext.controllers.queries import get_fields
+
+	if not filters:
+		filters = {}
+	if not filters.get("packing_slip"):
+		frappe.throw(_("Packing Slip not provided"))
+
+	fields = get_fields(doctype, ["name", "customer", "customer_name", "transaction_date"])
+	select_fields = ", ".join(["`tabSales Order`.{0}".format(f) for f in fields])
+	limit = "limit {0}, {1}".format(start, page_len) if page_len else ""
+
+	packing_slip = filters.pop("packing_slip")
+	ps_doc = frappe.get_doc("Packing Slip", packing_slip)
+	if not ps_doc.can_reassign:
+		return []
+
+	filters["company"] = ps_doc.get("company")
+
+	unique_item_uoms = set()
+	for d in ps_doc.get("items"):
+		unique_item_uoms.add((d.item_code, d.uom))
+
+	if not unique_item_uoms:
+		return []
+
+	item_conditions = []
+	for item_code, uom in unique_item_uoms:
+		item_conditions.append("""exists(
+			select `tabSales Order Item`.name
+			from `tabSales Order Item`
+			where `tabSales Order Item`.parent = `tabSales Order`.name
+				and `tabSales Order Item`.item_code = {item_code}
+				and `tabSales Order Item`.uom = {uom}
+				and `tabSales Order Item`.skip_delivery_note = 0
+		)""".format(
+			item_code=frappe.db.escape(item_code),
+			uom=frappe.db.escape(uom),
+		))
+
+	item_conditions_str = " and ".join(item_conditions)
+
+	return frappe.db.sql("""
+		select {fields}
+		from `tabSales Order`
+		where
+			`tabSales Order`.docstatus = 1
+			and `tabSales Order`.`{key}` like {txt}
+			and `tabSales Order`.delivery_status = 'To Deliver'
+			and `tabSales Order`.status not in ('Closed', 'On Hold')
+			and {item_conditions_str}
+			{fcond}
+			{mcond}
+		order by `tabSales Order`.transaction_date, `tabSales Order`.creation
+	""".format(
+		fields=select_fields,
+		key=searchfield,
+		fcond=get_filters_cond(doctype, filters, [], ignore_permissions=ignore_permissions),
+		mcond="" if ignore_permissions else get_match_cond(doctype),
+		item_conditions_str=item_conditions_str,
+		limit=limit,
+		txt="%(txt)s",
+	), {"txt": ("%%%s%%" % txt)}, as_dict=as_dict)

@@ -534,8 +534,8 @@ class SalesOrder(SellingController):
 				work_order_data = frappe.db.sql("""
 					select sales_order_item, qty, completed_qty, packing_status, packing_slip_required
 					from `tabWork Order`
-					where docstatus = 1 and sales_order_item in %s
-				""", [producible_row_names], as_dict=1)
+					where docstatus = 1 and sales_order = %s and sales_order_item in %s
+				""", [self.name, producible_row_names], as_dict=1)
 
 				for d in work_order_data:
 					out.work_order_qty_map.setdefault(d.sales_order_item, 0)
@@ -552,8 +552,11 @@ class SalesOrder(SellingController):
 					select i.sales_order_item, i.qty - i.unpacked_return_qty as qty
 					from `tabPacking Slip Item` i
 					inner join `tabPacking Slip` p on p.name = i.parent
-					where p.docstatus = 1 and i.sales_order_item in %s and ifnull(i.source_packing_slip, '') = ''
-				""", [producible_row_names], as_dict=1)
+					where p.docstatus = 1
+						and i.sales_order = %s
+						and i.sales_order_item in %s
+						and ifnull(i.source_packing_slip, '') = ''
+				""", [self.name, producible_row_names], as_dict=1)
 
 				for d in packed_by_packing_slip:
 					out.packed_qty_map.setdefault(d.sales_order_item, 0)
@@ -1398,9 +1401,11 @@ def update_mapped_items_based_on_purchase_and_production(source, target):
 					select i.batch_no, i.serial_no, i.qty
 					from `tabPacking Slip Item` i
 					inner join `tabPacking Slip` ps on ps.name = i.parent
-					where i.docstatus = 1 and ifnull(i.source_packing_slip, '') = ''
+					where i.docstatus = 1
+						and ifnull(i.source_packing_slip, '') = ''
+						and i.sales_order = %s
 						and i.sales_order_item = %s
-				""", target_item.sales_order_item, as_dict=1)
+				""", (target_item.sales_order, target_item.sales_order_item), as_dict=1)
 
 			incoming_items = (
 				[d for d in purchase_receipt_items if d.qty > 0]
