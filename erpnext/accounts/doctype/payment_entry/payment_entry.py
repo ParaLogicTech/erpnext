@@ -1382,41 +1382,45 @@ def get_outstanding_reference_documents(args):
 		or (party_account_type == "Payable" and args.get("payment_type") == "Receive")
 	)
 
-	# Get outstanding invoices
-	condition = ""
-	if args.get("voucher_type") and args.get("voucher_no"):
-		condition = " and voucher_type={0} and voucher_no={1}"\
-			.format(frappe.db.escape(args["voucher_type"]), frappe.db.escape(args["voucher_no"]))
+	# Pre query conditions
+	conditions = ""
 
-	# Add cost center condition
-	if args.get("cost_center") and get_allow_cost_center_in_entry_of_bs_account():
-		condition += f" and cost_center = {frappe.db.escape(args.get('cost_center'))}"
+	if args.get("company"):
+		conditions += " and company = {0}".format(frappe.db.escape(args.get("company")))
+
+	if args.get("voucher_type") and args.get("voucher_no"):
+		conditions = " and voucher_type = {0} and voucher_no = {1}".format(
+			frappe.db.escape(args["voucher_type"]), frappe.db.escape(args["voucher_no"])
+		)
+
+	if args.get("cost_center"):
+		conditions += f" and cost_center = {frappe.db.escape(args.get('cost_center'))}"
 
 	date_fields_dict = {
 		'posting_date': ['from_posting_date', 'to_posting_date'],
 		'due_date': ['from_due_date', 'to_due_date'],
 	}
-
 	for fieldname, (from_date_field, to_date_field) in date_fields_dict.items():
 		if args.get(from_date_field):
-			condition += " and {0} >= {1}".format(fieldname,
-				frappe.db.escape(args.get(from_date_field)))
+			conditions += " and {0} >= {1}".format(
+				fieldname, frappe.db.escape(args.get(from_date_field))
+			)
 		if args.get(to_date_field):
-			condition += " and {0} <= {1}".format(fieldname,
-				frappe.db.escape(args.get(to_date_field)))
+			conditions += " and {0} <= {1}".format(
+				fieldname, frappe.db.escape(args.get(to_date_field))
+			)
 
-	if args.get("company"):
-		condition += " and company = {0}".format(frappe.db.escape(args.get("company")))
-
+	# Get outstanding invoices
 	outstanding_invoices = get_outstanding_invoices(
 		args.get("party_type"),
 		args.get("party"),
 		args.get("party_account"),
-		condition=condition,
+		condition=conditions,
 		include_negative_outstanding=True,
 		include_negative_payments=is_refund_payment,
 	)
 
+	# Post filter
 	if is_refund_payment:
 		outstanding_invoices = [i for i in outstanding_invoices if i["outstanding_amount"] < 0]
 
@@ -1426,6 +1430,7 @@ def get_outstanding_reference_documents(args):
 	if args.get("outstanding_amt_less_than"):
 		outstanding_invoices = [i for i in outstanding_invoices if i["outstanding_amount"] < args.get("outstanding_amt_less_than")]
 
+	# Post process
 	for d in outstanding_invoices:
 		d["exchange_rate"] = 1
 
@@ -1433,8 +1438,12 @@ def get_outstanding_reference_documents(args):
 			if d.voucher_type in ("Sales Invoice", "Purchase Invoice", "Landed Cost Voucher"):
 				d["exchange_rate"] = frappe.db.get_value(d.voucher_type, d.voucher_no, "conversion_rate")
 			elif d.voucher_type == "Journal Entry":
-				d["exchange_rate"] = get_average_party_exchange_rate_on_journal_entry(d.voucher_no,
-					args.get("party_type"), args.get("party"), args.get("party_account"))
+				d["exchange_rate"] = get_average_party_exchange_rate_on_journal_entry(
+					d.voucher_no,
+					args.get("party_type"),
+					args.get("party"),
+					args.get("party_account"),
+				)
 
 		if d.voucher_type == "Payment Entry":
 			pe_details = frappe.db.get_value("Payment Entry", d.voucher_no, [
@@ -1449,7 +1458,7 @@ def get_outstanding_reference_documents(args):
 		if d.voucher_type in ("Purchase Invoice", "Journal Entry", "Landed Cost Voucher"):
 			d["bill_no"] = frappe.db.get_value(d.voucher_type, d.voucher_no, "bill_no")
 
-	# Get all SO / PO which are not fully billed or aginst which full advance not paid
+	# Unpaid, unbilled Orders (SO/PO)
 	include_orders = args.get('include_orders')
 	if include_orders and not is_refund_payment:
 		include_orders = True
@@ -1458,18 +1467,31 @@ def get_outstanding_reference_documents(args):
 
 	orders_to_be_billed = []
 	if include_orders:
-		orders_to_be_billed = get_orders_to_be_billed(args.get("posting_date"), args.get("party_type"),
-			args.get("party"), party_account_currency, company_currency, filters=args)
+		orders_to_be_billed = get_orders_to_be_billed(
+			args.get("posting_date"),
+			args.get("party_type"),
+			args.get("party"),
+			party_account_currency,
+			company_currency,
+			filters=args,
+		)
 
+	# Employee Advances
 	outstanding_employee_advances = []
 	if args.get("party_type") == "Employee":
-		outstanding_employee_advances = get_outstanding_employee_advances(args.get("party"), args.get("party_account"),
-			is_return=args.get("payment_type") == "Receive", filters=args)
+		outstanding_employee_advances = get_outstanding_employee_advances(
+			args.get("party"),
+			args.get("party_account"),
+			is_return=args.get("payment_type") == "Receive",
+			filters=args,
+		)
 
+	# Output
 	data = outstanding_invoices + orders_to_be_billed + outstanding_employee_advances
 	if not data:
-		frappe.msgprint(_("No outstanding invoices found for the {0} {1} which qualify the filters you have specified.")
-			.format(args.get("party_type").lower(), frappe.bold(args.get("party"))))
+		frappe.msgprint(_("No outstanding invoices found for the {0} {1} which qualify the filters you have specified.").format(
+			args.get("party_type").lower(), frappe.bold(args.get("party"))
+		))
 
 	return data
 
