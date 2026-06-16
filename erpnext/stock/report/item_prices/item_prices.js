@@ -124,6 +124,11 @@ frappe.query_reports["Item Prices"] = {
 			fieldtype: "Check"
 		},
 		{
+			fieldname: "show_bom_rate",
+			label: __("Show BOM Rate"),
+			fieldtype: "Check"
+		},
+		{
 			fieldname: "show_valid_from",
 			label: __("Show Valid From Date"),
 			fieldtype: "Check"
