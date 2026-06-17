@@ -1204,7 +1204,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			if (this.frm.doc.is_return && this.frm.doc.return_against && !this.frm.doc.is_pos) {
 				party_amount = this.get_total_amount_to_pay();
 			} else {
-				party_amount = this.frm.doc.outstanding_amount;
+				party_amount = flt(this.frm.doc.outstanding_amount) + flt(this.frm.doc.total_advance);
 			}
 
 			this.frm.doc.customer_outstanding_amount = flt(flt(party_amount) + flt(this.frm.doc.previous_outstanding_amount),
