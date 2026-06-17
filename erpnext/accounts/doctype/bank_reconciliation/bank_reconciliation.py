@@ -10,7 +10,7 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import g
 
 
 class BankReconciliation(Document):
-	def validate(self):
+	def validate_reconciliation(self):
 		if not self.bank_account:
 			frappe.throw(_("Please select Bank Account"))
 		if not self.from_date or not self.to_date:
@@ -32,7 +32,7 @@ class BankReconciliation(Document):
 
 	@frappe.whitelist()
 	def set_payment_entries(self):
-		self.validate()
+		self.validate_reconciliation()
 		self.opening_balance = get_opening_balance(self.bank_account, self.from_date)
 		self.last_clearance_date = get_last_clearance_date(self.bank_account)
 
@@ -230,7 +230,7 @@ class BankReconciliation(Document):
 
 	@frappe.whitelist()
 	def update_clearance(self):
-		self.validate()
+		self.validate_reconciliation()
 
 		if not self.payment_entries:
 			frappe.throw(_("No Payment Entries to update"))

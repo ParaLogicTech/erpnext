@@ -14,10 +14,11 @@ import json
 
 
 class BankDepositTool(Document):
-	def validate(self):
+	def validate_deposit(self):
 		self.validate_undeposited_account()
 		self.validate_bank_account()
 		self.validate_adjustment_accounts()
+		self._validate_mandatory()
 
 	def validate_undeposited_account(self):
 		if not self.undeposited_account:
@@ -453,8 +454,7 @@ class BankDepositTool(Document):
 		return je
 
 	def make_deposit_journal_entry(self, selected_row_names):
-		self.validate()
-		self._validate_mandatory()
+		self.validate_deposit()
 
 		if isinstance(selected_row_names, str):
 			selected_row_names = json.loads(selected_row_names)
