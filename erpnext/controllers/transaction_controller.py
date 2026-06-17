@@ -118,7 +118,6 @@ class TransactionController(StockController):
 		self.set_common_uom_before_print()
 		self.set_pricing_rules_before_print()
 		self.group_items_before_print()
-		self.set_discount_negative_before_print()
 
 	def validate(self):
 		self.validate_qty_is_not_zero()
@@ -365,13 +364,6 @@ class TransactionController(StockController):
 
 		self.warehouses = list(set([frappe.get_cached_value("Warehouse", item.warehouse, 'warehouse_name')
 			for item in self.items if item.get('warehouse')]))
-
-	def set_discount_negative_before_print(self):
-		if self.get("discount_amount"):
-			self.discount_amount = -self.discount_amount
-
-		if self.get("total_discount_after_taxes"):
-			self.total_discount_after_taxes = -self.total_discount_after_taxes
 
 	def merge_bundled_items(self):
 		bundles = {}
