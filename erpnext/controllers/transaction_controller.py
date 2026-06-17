@@ -533,7 +533,7 @@ class TransactionController(StockController):
 		grouped = self.group_items_by(key="item_tax_template")
 		for item_tax_template, group_data in grouped.items():
 			# group item groups in item tax template group
-			group_data.item_groups = self.group_items_by_item_group(group_data['items'])
+			group_data.item_groups = self.group_items_by_item_group(group_data['items'], idx_field=None)
 
 		# reset item index
 		item_idx = 1
@@ -545,7 +545,7 @@ class TransactionController(StockController):
 
 		return grouped
 
-	def group_items_by_item_group(self, items):
+	def group_items_by_item_group(self, items, idx_field="ig_idx"):
 		grouped = self.group_items_by(key=lambda row: self.get_item_group_print_heading(row), items=items)
 
 		# Sort by Item Group Order
@@ -561,12 +561,13 @@ class TransactionController(StockController):
 			out[item_group] = grouped[item_group]
 
 		# reset item index
-		item_idx = 1
-		for item_group_i, item_group_group in enumerate(out.values()):
-			item_group_group.index = item_group_i + 1
-			for item in item_group_group['items']:
-				item.ig_idx = item_idx
-				item_idx += 1
+		if idx_field:
+			item_idx = 1
+			for item_group_i, item_group_group in enumerate(out.values()):
+				item_group_group.index = item_group_i + 1
+				for item in item_group_group['items']:
+					item.set(idx_field, item_idx)
+					item_idx += 1
 
 		return out
 
