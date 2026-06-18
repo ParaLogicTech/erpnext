@@ -788,13 +788,17 @@ class ReceivablePayableReport(object):
 			if c['fieldtype'] in ['Float', 'Currency', 'Int'] and c['fieldname'] not in ('age', 'cumulative_outstanding')]
 
 		def postprocess_group(group_object, grouped_by):
+			# Copy grouped by into total row
+			for f, g in grouped_by.items():
+				group_object.totals[f] = g
+
 			if not group_object.group_field:
 				group_object.totals['party'] = "'Total'"
 			elif group_object.group_field == 'party':
 				group_object.totals['party'] = group_object.group_value
 				group_object.totals['party_name'] = group_object.rows[0].get('party_name')
 			else:
-				group_object.totals['party'] = "'{0}: {1}'".format(_(group_object.group_label), group_object.group_value)
+				group_object.totals['party'] = "'{0}: {1}'".format(_(group_object.group_label), group_object.group_value or "None")
 
 			if group_object.group_field == 'party':
 				group_object.totals['currency'] = group_object.rows[0].get("currency")
@@ -960,6 +964,7 @@ class ReceivablePayableReport(object):
 		return self.filters.get(scrub(self.filters.get("party_type")))
 
 	def get_columns(self):
+		has_grouping = self.filters.get("group_by") or self.filters.get("group_by_2")
 		party_column_width = 80 if self.show_party_name else 200
 
 		columns = [
@@ -975,11 +980,11 @@ class ReceivablePayableReport(object):
 				"fieldname": "party",
 				"filter_fieldname": scrub(self.filters.get("party_type")),
 				"options": self.filters.get("party_type"),
-				"width": party_column_width if not self.filters.get("group_by") else 300
+				"width": party_column_width if not has_grouping else 300
 			}
 		]
 
-		if self.filters.get("group_by"):
+		if has_grouping:
 			columns = list(reversed(columns))
 
 		if self.show_party_name:
