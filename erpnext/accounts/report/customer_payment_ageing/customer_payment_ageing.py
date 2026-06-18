@@ -8,6 +8,7 @@ from frappe import _, scrub
 from frappe.utils import getdate, flt, cint
 from erpnext.accounts.utils import get_currency_precision
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+from frappe.desk.query_report import group_report_data
 
 
 def execute(filters=None):
@@ -36,10 +37,11 @@ class PaymentAgeingReport:
 		rows = self.prepare_rows()
 		columns = self.get_columns()
 
-		# grouped_data = self.get_grouped_data(columns, data) # Todo grouping
+		# todo consider adjustment and expenses
+		grouped_data = self.get_grouped_data(columns, rows)
 		chart = None  # self.get_chart_data(data) # Todo chart?
 
-		return columns, rows, None, chart
+		return columns, grouped_data, None, chart
 
 	def validate_filters(self):
 		self.filters.from_date = getdate(self.filters.from_date)
@@ -93,8 +95,6 @@ class PaymentAgeingReport:
 			"gle.voucher_type",
 			"gle.voucher_no",
 			"gle.party",
-			"gle.debit",
-			"gle.credit",
 			"gle.remarks as payment_remarks",
 			"gle.against_voucher_type",
 			"gle.against_voucher",
@@ -102,8 +102,20 @@ class PaymentAgeingReport:
 			"gle.account",
 			"gle.cost_center",
 			"gle.project",
+			"gle.account_currency",
 			"100 as allocated_percentage",
 		]
+
+		if self.use_account_currency():
+			select_fields += [
+				"gle.debit_in_account_currency as debit",
+				"gle.credit_in_account_currency as credit",
+			]
+		else:
+			select_fields += [
+				"gle.debit",
+				"gle.credit",
+			]
 
 		if frappe.get_meta("GL Entry").has_field("branch"):
 			select_fields.append("gle.branch")
@@ -118,6 +130,7 @@ class PaymentAgeingReport:
 				"cus.customer_name as party_name",
 				"cus.customer_group",
 				"cus.territory",
+				"cus.territory as customer_territory",
 				"cus.account_manager",
 			]
 			customer_join = "left join `tabCustomer` cus on gle.party = cus.name"
@@ -306,6 +319,10 @@ class PaymentAgeingReport:
 			for i, age_range_value in enumerate(ageing_data):
 				row["range{0}".format(i + 1)] = age_range_value
 
+			# Currency
+			row["currency"] = gle.account_currency if self.use_account_currency() else self.company_currency
+			self.account_currency = row["currency"]
+
 			# Has
 			if row.get("cost_center"):
 				self.has_cost_center = True
@@ -331,24 +348,70 @@ class PaymentAgeingReport:
 
 		return rows
 
+	def use_account_currency(self):
+		return self.filters.get("party") or self.filters.get("account")
+
+	def get_grouped_data(self, columns, data):
+		level1 = self.filters.get("group_by", "").replace("Group by ", "")
+		level2 = self.filters.get("group_by_2", "").replace("Group by ", "")
+		level1_fieldname = "party" if level1 in ['Customer', 'Supplier'] else scrub(level1)
+		level2_fieldname = "party" if level2 in ['Customer', 'Supplier'] else scrub(level2)
+
+		group_by = [None]
+		group_by_labels = {}
+		if level1:
+			group_by.append(level1_fieldname)
+			group_by_labels[level1_fieldname] = level1
+		if level2:
+			group_by.append(level2_fieldname)
+			group_by_labels[level2_fieldname] = level2
+
+		if len(group_by) <= 1:
+			return data
+
+		total_fields = [c['fieldname'] for c in columns
+			if c['fieldtype'] in ['Float', 'Currency', 'Int'] and c['fieldname'] != 'age']
+
+		def postprocess_group(group_object, grouped_by):
+			# Copy grouped by into total row
+			for f, g in grouped_by.items():
+				group_object.totals[f] = g
+
+			if not group_object.group_field:
+				group_object.totals['voucher_no'] = "'Total'"
+			else:
+				group_object.totals['voucher_no'] = "'{0}: {1}'".format(_(group_object.group_label), group_object.group_value or "None")
+
+			if group_object.group_field == 'party':
+				group_object.totals['party'] = group_object.group_value
+				group_object.totals['party_name'] = group_object.rows[0].get('party_name')
+				group_object.totals['currency'] = group_object.rows[0].get("currency")
+				group_object.totals['account_manager'] = group_object.rows[0].get("account_manager")
+				group_object.totals["customer_group"] = group_object.rows[0].get("customer_group")
+				group_object.totals["territory"] = group_object.rows[0].get("customer_territory")
+
+		return group_report_data(
+			data,
+			group_by,
+			total_fields=total_fields,
+			postprocess_group=postprocess_group,
+			group_by_labels=group_by_labels,
+		)
+
 	def get_columns(self):
+		has_grouping = self.filters.get("group_by") or self.filters.get("group_by_2")
+
 		columns = [
-			{
-				"label": _("Payment Date"),
-				"fieldname": "payment_date",
-				"fieldtype": "Date",
-				"width": 80,
-			},
 			{
 				"label": _("Payment Document"),
 				"fieldname": "voucher_no",
 				"fieldtype": "Dynamic Link",
 				"options": "voucher_type",
-				"width": 130,
+				"width": 130 if not has_grouping else 300,
 			},
 			{
-				"label": _("Invoice Date"),
-				"fieldname": "invoice_date",
+				"label": _("Payment Date"),
+				"fieldname": "payment_date",
 				"fieldtype": "Date",
 				"width": 80,
 			},
@@ -358,6 +421,12 @@ class PaymentAgeingReport:
 				"fieldtype": "Dynamic Link",
 				"options": "against_voucher_type",
 				"width": 130,
+			},
+			{
+				"label": _("Invoice Date"),
+				"fieldname": "invoice_date",
+				"fieldtype": "Date",
+				"width": 80,
 			},
 			{
 				"label": _("Bill No"),
@@ -393,14 +462,14 @@ class PaymentAgeingReport:
 			{
 				"label": _("Payment Amount"),
 				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
+				"options": "currency",
 				"fieldname": "payment_amount",
 				"width": 110,
 			},
 			{
 				"label": _("Contribution Amount"),
 				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
+				"options": "currency",
 				"fieldname": "allocated_payment_amount",
 				"width": 110,
 			},
@@ -531,7 +600,7 @@ class PaymentAgeingReport:
 				"label": "{0}-{1}".format(lower_limit, upper_limit),
 				"fieldname": "range{}".format(i+1),
 				"fieldtype": "Currency",
-				"options": "Company:company:default_currency",
+				"options": "currency",
 				"ageing_column": 1,
 				"width": 100
 			})
@@ -541,7 +610,7 @@ class PaymentAgeingReport:
 			"label": "{0}-Above".format(lower_limit),
 			"fieldname": "range{}".format(self.ageing_column_count),
 			"fieldtype": "Currency",
-			"options": "Company:company:default_currency",
+			"options": "currency",
 			"ageing_column": 1,
 			"width": 100
 		})

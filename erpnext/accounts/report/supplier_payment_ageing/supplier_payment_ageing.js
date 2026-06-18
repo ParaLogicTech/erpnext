@@ -1,6 +1,15 @@
 // Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
+const spa_group_by_options = [
+	"",
+	{label: __("Group by ") + __("Supplier"), value: "Group by Supplier"},
+	{label: __("Group by ") + __("Supplier Group"), value: "Group by Supplier Group"},
+	{label: __("Group by ") + __("Cost Center"), value: "Group by Cost Center"},
+	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
+	{label: __("Group by ") + __("Project"), value: "Group by Project"},
+]
+
 frappe.query_reports["Supplier Payment Ageing"] = {
 	"filters": [
 		{
@@ -87,6 +96,20 @@ frappe.query_reports["Supplier Payment Ageing"] = {
 			options: "Project",
 		},
 		{
+			fieldname: "group_by",
+			label: __("Group By Level 1"),
+			fieldtype: "Select",
+			options: spa_group_by_options,
+			default: ""
+		},
+		{
+			fieldname: "group_by_2",
+			label: __("Group By Level 2"),
+			fieldtype: "Select",
+			options: spa_group_by_options,
+			default: ""
+		},
+		{
 			fieldname: "exclude_unallocated",
 			label: __("Exclude Unallocated Payment"),
 			fieldtype: "Check",
@@ -103,5 +126,7 @@ frappe.query_reports["Supplier Payment Ageing"] = {
 			fieldtype: "Data",
 			hidden: 1,
 		},
-	]
+	],
+
+	initial_depth: 1,
 };

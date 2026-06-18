@@ -1,6 +1,18 @@
 // Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
+const cpa_group_by_options = [
+	"",
+	{label: __("Group by ") + __("Customer"), value: "Group by Customer"},
+	{label: __("Group by ") + __("Customer Group"), value: "Group by Customer Group"},
+	{label: __("Group by ") + __("Territory"), value: "Group by Territory"},
+	{label: __("Group by ") + __("Sales Person"), value: "Group by Sales Person"},
+	{label: __("Group by ") + __("Account Manager"), value: "Group by Account Manager"},
+	{label: __("Group by ") + __("Cost Center"), value: "Group by Cost Center"},
+	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
+	{label: __("Group by ") + __("Project"), value: "Group by Project"},
+]
+
 frappe.query_reports["Customer Payment Ageing"] = {
 	"filters": [
 		{
@@ -105,6 +117,20 @@ frappe.query_reports["Customer Payment Ageing"] = {
 			options: "Project",
 		},
 		{
+			fieldname: "group_by",
+			label: __("Group By Level 1"),
+			fieldtype: "Select",
+			options: cpa_group_by_options,
+			default: ""
+		},
+		{
+			fieldname: "group_by_2",
+			label: __("Group By Level 2"),
+			fieldtype: "Select",
+			options: cpa_group_by_options,
+			default: ""
+		},
+		{
 			fieldname: "exclude_unallocated",
 			label: __("Exclude Unallocated Payment"),
 			fieldtype: "Check",
@@ -121,5 +147,7 @@ frappe.query_reports["Customer Payment Ageing"] = {
 			fieldtype: "Data",
 			hidden: 1,
 		},
-	]
+	],
+
+	initial_depth: 1,
 };
