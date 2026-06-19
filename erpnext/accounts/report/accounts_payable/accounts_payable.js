@@ -150,6 +150,42 @@ frappe.query_reports["Accounts Payable"] = {
 			"hidden": 1
 		}
 	],
+
+	formatter: function (value, row, column, data, default_formatter) {
+		let style = {};
+
+		if (["outstanding_amount", "remaining_balance"].includes(column.fieldname)) {
+			style['font-weight'] = 'bold';
+		}
+
+		if (flt(value) && column.fieldname == "invoiced_amount") {
+			style['color'] = 'var(--blue-700)';
+		}
+
+		if (flt(value) && column.fieldname == "paid_amount") {
+			style['color'] = 'var(--green-800)';
+		}
+
+		if (flt(value) && column.fieldname == "return_amount") {
+			style['color'] = 'var(--orange-500)';
+		}
+
+		let report_date = frappe.query_report.get_filter_value("report_date") || frappe.datetime.get_today();
+		report_date = frappe.datetime.str_to_obj(report_date);
+		if (
+			column.fieldname == "due_date"
+			&& report_date
+			&& data?.due_date
+		) {
+			let due_date = frappe.datetime.str_to_obj(data.due_date);
+			if (report_date > due_date) {
+				style['color'] = 'var(--red-600)';
+			}
+		}
+
+		return default_formatter(value, row, column, data, {css: style});
+	},
+
 	onload: function(report) {
 		report.page.add_inner_button(__("Accounts Payable Summary"), function() {
 			var filters = report.get_values();
@@ -157,6 +193,7 @@ frappe.query_reports["Accounts Payable"] = {
 		});
 		erpnext.utils.add_payment_reconciliation_button("Supplier", report.page, () => report.get_values());
 	},
+
 	get_datatable_options(options) {
 		return Object.assign(options, {
 			hooks: {
@@ -170,8 +207,8 @@ frappe.query_reports["Accounts Payable"] = {
 			},
 		});
 	},
-	initial_depth: 1
+
+	initial_depth: 1,
 }
 
 //erpnext.utils.add_dimensions('Accounts Payable', 9);
-

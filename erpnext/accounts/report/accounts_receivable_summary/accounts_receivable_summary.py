@@ -123,14 +123,14 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 					"fieldname": "territory",
 					"fieldtype": "Link",
 					"options": "Territory",
-					"width": 90
+					"width": 100,
 				},
 				{
 					"label": _("Customer Group"),
 					"fieldname": "customer_group",
 					"fieldtype": "Link",
 					"options": "Customer Group",
-					"width": 90
+					"width": 110,
 				},
 			]
 
@@ -140,7 +140,7 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 				"fieldname": "supplier_group",
 				"fieldtype": "Link",
 				"options": "Supplier Group",
-				"width": 80
+				"width": 100,
 			}]
 
 		columns.append({
