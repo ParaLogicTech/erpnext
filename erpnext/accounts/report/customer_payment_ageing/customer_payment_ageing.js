@@ -117,6 +117,22 @@ frappe.query_reports["Customer Payment Ageing"] = {
 			options: "Project",
 		},
 		{
+			fieldname: "account",
+			label: __("Receivable Account"),
+			fieldtype: "Link",
+			options: "Account",
+			get_query: function() {
+				let company = frappe.query_report.get_filter_value('company');
+				return {
+					filters: {
+						"company": company,
+						"account_type": "Receivable",
+						"is_group": 0
+					}
+				}
+			}
+		},
+		{
 			fieldname: "group_by",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
@@ -167,6 +183,10 @@ frappe.query_reports["Customer Payment Ageing"] = {
 
 		if (flt(value) && column.fieldname == "payment_amount") {
 			style['color'] = 'var(--green-800)';
+		}
+
+		if (flt(value) && column.fieldname == "cleared_amount") {
+			style['color'] = 'var(--blue-700)';
 		}
 
 		if (
