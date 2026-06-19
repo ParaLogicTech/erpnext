@@ -45,7 +45,7 @@ class PaymentAgeingReport:
 		columns = self.get_columns()
 
 		grouped_data = self.get_grouped_data(columns, rows)
-		chart = None  # self.get_chart_data(data) # Todo chart?
+		chart = self.get_chart_data(rows)
 
 		return columns, grouped_data, None, chart
 
@@ -473,6 +473,22 @@ class PaymentAgeingReport:
 			postprocess_group=postprocess_group,
 			group_by_labels=group_by_labels,
 		)
+
+	def get_chart_data(self, data):
+		rows = []
+		for d in data:
+			rows.append({'values': [d["range{}".format(i+1)] for i in range(self.ageing_column_count)]})
+
+		return {
+			"data": {
+				"labels": [col.get('label') for col in self.ageing_columns],
+				"datasets": rows
+			},
+			"colors": ['light-blue', 'blue', 'purple', 'orange', 'red'],
+			"type": 'percentage',
+			"fieldtype": "Currency",
+			"options": getattr(self, "account_currency", None)
+		}
 
 	def get_columns(self):
 		has_grouping = self.filters.get("group_by") or self.filters.get("group_by_2")
