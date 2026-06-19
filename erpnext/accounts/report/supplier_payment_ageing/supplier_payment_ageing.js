@@ -25,12 +25,14 @@ frappe.query_reports["Supplier Payment Ageing"] = {
 			label: __("From Date"),
 			fieldtype: "Date",
 			default: frappe.defaults.get_user_default("year_start_date"),
+			reqd: 1,
 		},
 		{
 			fieldname: "to_date",
 			label: __("To Date"),
 			fieldtype: "Date",
-			default: frappe.datetime.get_today()
+			default: frappe.datetime.get_today(),
+			reqd: 1,
 		},
 		{
 			fieldname: "ageing_based_on",
