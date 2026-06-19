@@ -115,6 +115,11 @@ frappe.query_reports["Supplier Payment Ageing"] = {
 			fieldtype: "Check",
 		},
 		{
+			fieldname: "show_deduction_details",
+			label: __("Show Deduction Details"),
+			fieldtype: "Check",
+		},
+		{
 			fieldname: "tax_id",
 			label: __("Tax Id"),
 			fieldtype: "Data",
@@ -127,6 +132,40 @@ frappe.query_reports["Supplier Payment Ageing"] = {
 			hidden: 1,
 		},
 	],
+
+	formatter: function (value, row, column, data, default_formatter) {
+		let style = {};
+
+		if (["opening_balance", "closing_balance"].includes(column.fieldname)) {
+			style['font-weight'] = 'bold';
+		}
+
+		if (flt(value) && (column.fieldname == "total_deductions" || column.is_adjustment)) {
+			style['color'] = 'var(--purple-600)';
+		}
+
+		if (flt(value) && column.fieldname == "payment_amount") {
+			style['color'] = 'var(--blue-700)';
+		}
+
+		if (
+			column.fieldname == "due_date"
+			&& data?.payment_date
+			&& data?.due_date
+		) {
+			let payment_date = frappe.datetime.str_to_obj(data.payment_date);
+			let due_date = frappe.datetime.str_to_obj(data.due_date);
+			if (payment_date > due_date) {
+				style['color'] = 'var(--red-600)';
+			} else if (payment_date < due_date) {
+				style['color'] = 'var(--green-800)';
+			} else {
+				style['color'] = 'var(--blue-700)';
+			}
+		}
+
+		return default_formatter(value, row, column, data, {css: style});
+	},
 
 	initial_depth: 1,
 };

@@ -3,11 +3,12 @@
 
 import frappe
 import erpnext
-from erpnext.accounts.report.accounts_receivable.accounts_receivable import get_ageing_data
 from frappe import _, scrub
-from frappe.utils import getdate, flt, cint
+from frappe.utils import getdate, flt, cint, cstr
 from erpnext.accounts.utils import get_currency_precision
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+from erpnext.accounts.report.accounts_receivable.accounts_receivable import get_ageing_data
+from erpnext.accounts.report.customer_ledger_summary.customer_ledger_summary import get_adjustment_details
 from frappe.desk.query_report import group_report_data
 
 
@@ -21,6 +22,8 @@ class PaymentAgeingReport:
 		self.filters.party_type = party_type
 		self.filters.party = self.filters.get(scrub(self.filters.get("party_type")))
 
+		self.adjustment_details = frappe._dict()
+
 		self.currency_precision = get_currency_precision() or 2
 		self.has_cost_center = False
 		self.has_branch = False
@@ -33,11 +36,11 @@ class PaymentAgeingReport:
 
 		self.get_payments_gl_data()
 		self.get_invoice_voucher_data()
+		self.get_adjustment_data()
 
 		rows = self.prepare_rows()
 		columns = self.get_columns()
 
-		# todo consider adjustment and expenses
 		grouped_data = self.get_grouped_data(columns, rows)
 		chart = None  # self.get_chart_data(data) # Todo chart?
 
@@ -108,13 +111,13 @@ class PaymentAgeingReport:
 
 		if self.use_account_currency():
 			select_fields += [
-				"gle.debit_in_account_currency as debit",
-				"gle.credit_in_account_currency as credit",
+				"sum(gle.debit_in_account_currency) as debit",
+				"sum(gle.credit_in_account_currency) as credit",
 			]
 		else:
 			select_fields += [
-				"gle.debit",
-				"gle.credit",
+				"sum(gle.debit) as debit",
+				"sum(gle.credit) as credit",
 			]
 
 		if frappe.get_meta("GL Entry").has_field("branch"):
@@ -154,6 +157,7 @@ class PaymentAgeingReport:
 				gle.party_type = %(party_type)s
 				and gle.voucher_type in ('Journal Entry', 'Payment Entry')
 				{conditions_str}
+			group by gle.voucher_type, gle.voucher_no, gle.party, ifnull(gle.against_voucher_type, ''), ifnull(gle.against_voucher, '')
 			order by gle.posting_date, gle.creation
 		""", self.filters, as_dict=1)
 
@@ -281,6 +285,37 @@ class PaymentAgeingReport:
 			for d in vouchers_data:
 				self.invoice_voucher_map[voucher_type][d.against_voucher] = d
 
+	def get_adjustment_data(self):
+		if self.filters.account_currency != self.filters.company_currency:
+			return
+
+		self.voucher_nos = set()
+		for d in self.payment_gles:
+			self.voucher_nos.add((d.voucher_type, d.voucher_no))
+
+		gl_entries = []
+		if self.voucher_nos:
+			gl_entries = frappe.db.sql("""
+				select
+					posting_date, account, party, voucher_type, voucher_no, against_voucher_type, against_voucher,
+					debit, credit, debit_in_account_currency, credit_in_account_currency
+				from
+					`tabGL Entry`
+				where voucher_type not in ('Sales Invoice', 'Purchase Invoice')
+					and (voucher_type, voucher_no) in %(voucher_nos)s
+					and (voucher_type, voucher_no) in (
+						select voucher_type, voucher_no from `tabGL Entry` gle, `tabAccount` acc
+						where acc.name = gle.account and (acc.root_type in ('Income', 'Expense') or acc.account_type = 'Tax')
+					)
+			""", {"voucher_nos": self.voucher_nos}, as_dict=True)
+
+		adjustment_voucher_entries = {}
+		for gle in gl_entries:
+			adjustment_voucher_entries.setdefault((gle.voucher_type, gle.voucher_no), [])
+			adjustment_voucher_entries[(gle.voucher_type, gle.voucher_no)].append(gle)
+
+		self.adjustment_details = get_adjustment_details(adjustment_voucher_entries, self.reverse_dr_or_cr, self.dr_or_cr)
+
 	def prepare_rows(self):
 		rows = []
 		for gle in self.payment_gles:
@@ -293,7 +328,6 @@ class PaymentAgeingReport:
 			if gle.against_voucher and gle.against_voucher_type:
 				voucher_details = self.invoice_voucher_map.get(gle.against_voucher_type, {}).get(gle.against_voucher)
 
-			# fallback fields from payment
 			if voucher_details:
 				for k, v in voucher_details.items():
 					if v or isinstance(v, (int, float)):
@@ -301,6 +335,27 @@ class PaymentAgeingReport:
 
 			# Remarks
 			row.invoice_remarks = row.invoice_user_remark or row.invoice_remarks
+
+			# Currency
+			row["currency"] = gle.account_currency if self.use_account_currency() else self.company_currency
+			self.account_currency = row["currency"]
+
+			# Payment Deductions
+			voucher_tuple = (gle.voucher_type, gle.voucher_no)
+			against_voucher_tuple = (cstr(gle.against_voucher_type), cstr(gle.against_voucher))
+			adjustments_obj = (
+				self.adjustment_details.detailed
+				.get(voucher_tuple, {})
+				.get(gle.party, {})
+				.get(against_voucher_tuple, {})
+			)
+
+			total_adjustment = sum([amount for amount in adjustments_obj.values()])
+			row.payment_amount -= total_adjustment
+			row.total_deductions = total_adjustment
+
+			for account in self.adjustment_details.accounts:
+				row["adj_" + scrub(account)] = adjustments_obj.get(account, 0)
 
 			# Ageing data
 			if self.filters.ageing_based_on == "Due Date":
@@ -318,10 +373,6 @@ class PaymentAgeingReport:
 			)
 			for i, age_range_value in enumerate(ageing_data):
 				row["range{0}".format(i + 1)] = age_range_value
-
-			# Currency
-			row["currency"] = gle.account_currency if self.use_account_currency() else self.company_currency
-			self.account_currency = row["currency"]
 
 			# Has
 			if row.get("cost_center"):
@@ -466,6 +517,26 @@ class PaymentAgeingReport:
 				"fieldname": "payment_amount",
 				"width": 110,
 			},
+			{
+				"label": _("Total Deduction"),
+				"fieldname": "total_deductions",
+				"fieldtype": "Currency",
+				"width": 110,
+			},
+		]
+
+		if self.filters.show_deduction_details:
+			for account in self.adjustment_details.accounts:
+				columns.append({
+					"label": account,
+					"fieldname": "adj_" + scrub(account),
+					"fieldtype": "Currency",
+					"options": "currency",
+					"width": 110,
+					"is_adjustment": 1
+				})
+
+		columns += [
 			{
 				"label": _("Contribution Amount"),
 				"fieldtype": "Currency",
