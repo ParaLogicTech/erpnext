@@ -521,6 +521,7 @@ class PaymentAgeingReport:
 				"label": _("Total Deduction"),
 				"fieldname": "total_deductions",
 				"fieldtype": "Currency",
+				"options": "currency",
 				"width": 110,
 			},
 		]

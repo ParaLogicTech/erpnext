@@ -105,6 +105,7 @@ class PartyLedgerSummaryReport(object):
 				"label": _("Total Deductions"),
 				"fieldname": "total_deductions",
 				"fieldtype": "Currency",
+				"options": "currency",
 				"width": 120
 			},
 			{
