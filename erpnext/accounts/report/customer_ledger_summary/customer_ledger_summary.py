@@ -453,8 +453,12 @@ def get_adjustment_details(adjustment_voucher_entries, invoice_dr_or_cr, reverse
 				adj_accounts.setdefault(gle.account, 0)
 				adj_accounts[gle.account] += adj_amount
 				total_adj_amount += adj_amount
-			elif frappe.get_cached_value("Account", gle.account, "account_type") not in ("Bank", "Cash"):
+			elif account_type not in ("Bank", "Cash", "Equity"):
 				has_irrelevant_entry = True
+
+		# skip if voucher has too many different variables for ex: payroll accrual entry
+		if len(parties) > 1 and len(adj_accounts) > 1 and has_irrelevant_entry:
+			continue
 
 		# distribute adjustments
 		total_party_amount = sum(party_against_vouchers.values())
