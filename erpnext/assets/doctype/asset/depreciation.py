@@ -24,7 +24,6 @@ def post_depreciation_entries(date=None):
 			frappe.db.rollback()
 			frappe.log_error(
 				title=_("Depreciation Entry failed"),
-				message=frappe.get_traceback(),
 				reference_doctype="Asset",
 				reference_name=asset,
 			)

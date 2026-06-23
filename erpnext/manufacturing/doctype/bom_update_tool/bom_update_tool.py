@@ -40,7 +40,7 @@ class BOMUpdateTool(Document):
 					bom_obj.save_version()
 
 			except Exception:
-				frappe.log_error(message=frappe.get_traceback(), reference_doctype="BOM", reference_name=bom)
+				frappe.log_error(title="BOM Replacement Failed", reference_doctype="BOM", reference_name=bom)
 
 	def validate_bom(self):
 		if cstr(self.current_bom) == cstr(self.new_bom):
