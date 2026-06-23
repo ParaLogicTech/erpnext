@@ -152,8 +152,10 @@ def add_service_template_items(
 	service_template_detail=None,
 	postprocess=True,
 ):
-	from erpnext.stock.doctype.item_applicable_item.item_applicable_item import add_applicable_items,\
-		append_applicable_items
+	from erpnext.stock.doctype.item_applicable_item.item_applicable_item import (
+		add_applicable_items,
+		append_applicable_items,
+	)
 
 	if isinstance(target_doc, str):
 		target_doc = frappe.get_doc(json.loads(target_doc))
@@ -178,13 +180,20 @@ def add_service_template_items(
 
 	# get applicable items from service template
 	service_template_items = get_service_template_items(
-		service_template, items_table,
-		applies_to_item=applies_to_item, applies_to_customer=applies_to_customer,
-		item_group=item_group, items_type=items_type
+		service_template,
+		items_table,
+		applies_to_item=applies_to_item,
+		applies_to_customer=applies_to_customer,
+		item_group=item_group,
+		items_type=items_type,
 	)
 
-	append_applicable_items(target_doc, service_template_items, check_duplicate=check_duplicate,
-		service_template_detail=service_template_detail)
+	append_applicable_items(
+		target_doc,
+		service_template_items,
+		check_duplicate=check_duplicate,
+		service_template_detail=service_template_detail,
+	)
 
 	# get applicable items from item master
 	if applies_to_item and not consumable_items:
@@ -195,9 +204,15 @@ def add_service_template_items(
 		]
 
 		if applicable_items_groups:
-			target_doc = add_applicable_items(target_doc, applies_to_item, item_groups=applicable_items_groups,
-				items_type=items_type, check_duplicate=check_duplicate, service_template_detail=service_template_detail,
-				postprocess=False)
+			target_doc = add_applicable_items(
+				target_doc,
+				applies_to_item,
+				item_groups=applicable_items_groups,
+				items_type=items_type,
+				check_duplicate=check_duplicate,
+				service_template_detail=service_template_detail,
+				postprocess=False,
+			)
 
 	# postprocess
 	if postprocess:
