@@ -152,10 +152,17 @@ update_and_get_user_progress = "erpnext.utilities.user_progress_utils.update_def
 leaderboards = "erpnext.startup.leaderboard.get_leaderboards"
 
 treeviews = [
-    'Account', 'Cost Center', 'Warehouse', 
-    'Item Group', 'Customer Group', 'Assessment Group', 
-    'Department', 'Quality Procedure', 'Location',
-    'Service Template Category', 'Supplier Group'
+	'Account',
+	'Cost Center',
+	'Warehouse',
+	'Item Group',
+	'Customer Group',
+	'Assessment Group',
+	'Department',
+	'Quality Procedure',
+	'Location',
+	'Service Template Category',
+	'Supplier Group',
 ]
 
 email_append_to = ["Job Applicant", "Issue"]
