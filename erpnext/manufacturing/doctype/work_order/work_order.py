@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate, cint, get_link_to_form, round_up
 from erpnext.manufacturing.doctype.bom.bom import validate_bom_no, get_bom_items_as_dict
-from erpnext.stock.doctype.item.item import validate_end_of_life
+from erpnext.stock.doctype.item.item import validate_end_of_life, validate_is_not_template_item
 from erpnext.stock.stock_balance import get_planned_qty, update_bin_qty
 from erpnext.stock.utils import get_bin, validate_warehouse_company, get_latest_stock_qty
 from erpnext.setup.doctype.item_default_rule.item_default_rule import (
@@ -150,10 +150,8 @@ class WorkOrder(StatusUpdaterERP):
 
 	def validate_production_item(self):
 		if self.production_item:
-			item = frappe.get_cached_value("Item", self.production_item, ['has_variants', 'end_of_life', 'disabled'], as_dict=1)
-			validate_end_of_life(self.production_item, end_of_life=item.end_of_life, disabled=item.disabled)
-			if item.has_variants:
-				frappe.throw(_("Work Order cannot be raised against an Item Template"), ItemHasVariantError)
+			validate_end_of_life(self.production_item)
+			validate_is_not_template_item(self.production_item)
 
 	def validate_bom(self):
 		if self.get("bom_no"):

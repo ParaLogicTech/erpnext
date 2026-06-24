@@ -818,16 +818,16 @@ class SellingController(TransactionController):
 		from erpnext.controllers.buying_controller import validate_item_type
 		validate_item_type(self, "is_sales_item", "sales")
 
-		from erpnext.stock.doctype.item.item import validate_end_of_life
 		for d in self.get('items'):
-			if d.item_code:
-				item = frappe.get_cached_value("Item", d.item_code, ['has_variants', 'end_of_life', 'disabled'], as_dict=1)
-				if not d.get('sales_order') and not d.get('delivery_note'):
-					validate_end_of_life(d.item_code, end_of_life=item.end_of_life, disabled=item.disabled)
+			self.validate_item_row(d)
 
-				if cint(item.has_variants):
-					frappe.throw(_("Row #{0}: {1} is a template Item, please select one of its variants")
-						.format(d.idx, frappe.bold(d.item_code)))
+	def validate_item_row(self, row):
+		from erpnext.stock.doctype.item.item import validate_end_of_life, validate_is_not_template_item
+		if row.get("item_code"):
+			if not row.get('sales_order') and not row.get('delivery_note'):
+				validate_end_of_life(row.item_code)
+
+			validate_is_not_template_item(row.item_code)
 
 	def validate_target_warehouse(self):
 		if frappe.get_meta(self.doctype + " Item").has_field("target_warehouse"):
