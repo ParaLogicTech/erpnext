@@ -1336,8 +1336,7 @@ def update_child_items(parent_doctype, parent_name, data):
 					else:
 						doc_row.price_list_rate = 0
 				else:
-					doc_row.discount_percentage = flt((1 - flt(doc_row.rate) / flt(doc_row.price_list_rate)) * 100.0,
-						doc_row.precision("discount_percentage"))
+					doc_row.discount_percentage = (1 - flt(doc_row.rate) / flt(doc_row.price_list_rate)) * 100.0
 					doc_row.discount_amount = flt(doc_row.price_list_rate) - flt(doc_row.rate)
 
 					if doc_row.meta.has_field("margin_type"):
