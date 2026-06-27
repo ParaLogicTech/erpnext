@@ -10,6 +10,35 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import g
 
 
 class BankReconciliation(Document):
+	def load_from_db(self):
+		doc_dict = frappe.new_doc(self.doctype, as_dict=True)
+		doc_dict["name"] = self.doctype
+		super(Document, self).__init__(doc_dict)
+
+	def save(self):
+		return
+
+	@staticmethod
+	def get_list(args):
+		pass
+
+	@staticmethod
+	def get_count(args):
+		pass
+
+	@staticmethod
+	def get_stats(args):
+		pass
+
+	def db_insert(self, *args, **kwargs):
+		pass
+
+	def db_update(self, *args, **kwargs):
+		pass
+
+	def delete(self, *args, **kwargs):
+		pass
+
 	def validate_reconciliation(self):
 		if not self.bank_account:
 			frappe.throw(_("Please select Bank Account"))

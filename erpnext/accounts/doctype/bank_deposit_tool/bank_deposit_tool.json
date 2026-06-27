@@ -266,9 +266,10 @@
  ],
  "hide_toolbar": 1,
  "index_web_pages_for_search": 1,
+ "is_virtual": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-05-29 05:21:07.117596",
+ "modified": "2026-06-24 16:13:22.661140",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",
@@ -285,6 +286,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

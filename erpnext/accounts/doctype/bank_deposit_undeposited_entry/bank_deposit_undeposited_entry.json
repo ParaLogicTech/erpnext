@@ -206,15 +206,17 @@
   }
  ],
  "index_web_pages_for_search": 1,
+ "is_virtual": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-01-28 00:10:02.634660",
+ "modified": "2026-06-24 16:13:13.665404",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Undeposited Entry",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
