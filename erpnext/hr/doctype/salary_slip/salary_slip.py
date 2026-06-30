@@ -1245,12 +1245,12 @@ class SalarySlip(TransactionBase):
 			self.set(f, 0)
 
 
-def unlink_ref_doc_from_salary_slip(ref_no):
+def unlink_voucher_from_salary_slips(journal_entry):
 	linked_salary_slips = frappe.db.sql_list("""
 		select name
 		from `tabSalary Slip`
 		where journal_entry = %s and docstatus < 2
-	""", ref_no)
+	""", journal_entry)
 
 	if linked_salary_slips:
 		for salary_slip in linked_salary_slips:

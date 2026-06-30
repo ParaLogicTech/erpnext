@@ -378,6 +378,7 @@ class BankReconciliation(Document):
 		reversal_jvs = []
 		for clearance_date, rows in to_reverse_map.items():
 			je = self.make_clearance_journal_entry(clearance_date, rows, is_reversal=True)
+			je.is_system_generated = 1
 			je.flags.ignore_mandatory = True
 			je.save()
 			je.submit()
@@ -386,6 +387,7 @@ class BankReconciliation(Document):
 		clearance_jvs = []
 		for clearance_date, rows in to_clear_map.items():
 			je = self.make_clearance_journal_entry(clearance_date, rows, is_reversal=False)
+			je.is_system_generated = 1
 			je.flags.ignore_mandatory = True
 			je.save()
 			je.submit()

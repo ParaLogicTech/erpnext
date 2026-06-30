@@ -9,6 +9,7 @@ frappe.ui.form.on("Sales Order", {
 			'Delivery Note': __('Delivery Note'),
 			'Pick List': __('Pick List'),
 			'Sales Invoice': __('Sales Invoice'),
+			'Proforma Invoice': __('Proforma Invoice'),
 			'Material Request': __('Material Request'),
 			'Purchase Order': __('Purchase Order'),
 			'Project': __('Project'),

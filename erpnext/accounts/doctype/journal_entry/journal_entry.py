@@ -4,10 +4,9 @@
 import frappe, erpnext, json
 from frappe import _, scrub
 from frappe.utils import cstr, flt, fmt_money, cint, get_link_to_form
-from erpnext.controllers.accounts_controller import AccountsController
+from erpnext.controllers.accounts_controller import AccountsController, has_advance_entry_reference_to_unlink
 from erpnext.accounts.utils import get_balance_on, get_balance_on_voucher, get_account_currency
 from erpnext.accounts.party import get_party_account, get_party_name
-from erpnext.hr.doctype.expense_claim.expense_claim import update_reimbursed_amount
 from erpnext.accounts.doctype.invoice_discounting.invoice_discounting import get_party_account_based_on_invoice_discounting
 from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
 
@@ -79,15 +78,17 @@ class JournalEntry(AccountsController):
 		self.update_deposit_dates()
 
 	def on_cancel(self):
-		from erpnext.accounts.utils import unlink_ref_doc_from_payment_entries
-		from erpnext.hr.doctype.salary_slip.salary_slip import unlink_ref_doc_from_salary_slip
-		unlink_ref_doc_from_payment_entries(self, validate_permission=True)
-		unlink_ref_doc_from_salary_slip(self.name)
+		from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import (
+			unlink_voucher_from_payments
+		)
+		from erpnext.hr.doctype.salary_slip.salary_slip import unlink_voucher_from_salary_slips
+		unlink_voucher_from_payments(self.doctype, self.name, validate_permission=True)
+		unlink_voucher_from_salary_slips(self.name)
 
 		self.make_gl_entries(1)
 		self.update_expense_claim()
 		self.update_loan()
-		self.unlink_advance_entry_reference()
+		self.unlink_advance_entry_references()
 		self.unlink_asset_reference()
 		self.unlink_inter_company_jv()
 		self.unlink_asset_adjustment_entry()
@@ -285,11 +286,51 @@ class JournalEntry(AccountsController):
 
 		return deposit_against_detail_dt
 
-	def unlink_advance_entry_reference(self):
+	def unlink_advance_entry_references(self):
 		for d in self.get("accounts"):
-			if d.reference_type in ("Sales Invoice", "Purchase Invoice", "Landed Cost Voucher", "Expense Claim"):
-				doc = frappe.get_doc(d.reference_type, d.reference_name)
-				doc.delink_advance_entries(self.name)
+			if not d.reference_type or not d.reference_name:
+				continue
+
+			self.unlink_advance_entry_reference_for(
+				invoice_type=d.reference_type,
+				invoice_no=d.reference_name,
+				reference_type=self.doctype,
+				reference_name=self.name,
+			)
+
+		# payment reconcilaiton entry should have one row with invoice, one with payment
+		# try to fine the remove the payment from the invoice's advance table
+		if self.voucher_type == "Payment Reconciliation" and self.is_system_generated:
+			references = set()
+			for d in self.get("accounts"):
+				if d.reference_type and d.reference_name:
+					references.add((d.reference_type, d.reference_name))
+
+			references = list(references)
+			if len(references) == 2:
+				self.unlink_advance_entry_reference_for(
+					invoice_type=references[0][0],
+					invoice_no=references[0][1],
+					reference_type=references[1][0],
+					reference_name=references[1][1],
+				)
+				self.unlink_advance_entry_reference_for(
+					invoice_type=references[1][0],
+					invoice_no=references[1][1],
+					reference_type=references[0][0],
+					reference_name=references[0][1],
+				)
+
+	def unlink_advance_entry_reference_for(self, invoice_type, invoice_no, reference_type, reference_name):
+		if has_advance_entry_reference_to_unlink(
+			invoice_type=invoice_type,
+			invoice_no=invoice_no,
+			reference_type=reference_type,
+			reference_name=reference_name,
+			validate_permissions=True,
+		):
+			doc = frappe.get_doc(invoice_type, invoice_no)
+			doc.unlink_advance_entries(reference_type, reference_name)
 
 	def unlink_asset_reference(self):
 		for d in self.get("accounts"):
@@ -575,8 +616,9 @@ class JournalEntry(AccountsController):
 	def validate_total_debit_and_credit(self):
 		self.set_total_debit_credit()
 		if self.difference:
-			frappe.throw(_("Total Debit must be equal to Total Credit. The difference is {0}")
-				.format(self.difference))
+			frappe.throw(_("Total Debit must be equal to Total Credit. The difference is {0}").format(
+				self.get_formatted("difference")
+			))
 
 	def set_total_debit_credit(self):
 		self.total_debit, self.total_credit, self.difference = 0, 0, 0
@@ -798,8 +840,9 @@ class JournalEntry(AccountsController):
 				and outstanding_amount > 0 %s""" % ('%s', cond), self.company, as_dict=True)
 
 	def update_expense_claim(self):
+		from erpnext.hr.doctype.expense_claim.expense_claim import update_reimbursed_amount
 		for d in self.accounts:
-			if d.reference_type=="Expense Claim" and d.reference_name:
+			if d.reference_type == "Expense Claim" and d.reference_name:
 				doc = frappe.get_doc("Expense Claim", d.reference_name)
 				update_reimbursed_amount(doc)
 
@@ -1290,13 +1333,26 @@ def get_exchange_rate(posting_date, account=None, account_currency=None, company
 
 
 def get_average_party_exchange_rate_on_journal_entry(jv_name, party_type, party, account):
-	res = frappe.db.sql("""select avg(jv_detail.exchange_rate)
+	res = frappe.db.sql("""
+		select ifnull(
+			sum(jv_detail.debit - jv_detail.credit) / sum(jv_detail.debit_in_account_currency - jv_detail.credit_in_account_currency),
+			avg(jv_detail.exchange_rate)
+		)
 		from `tabJournal Entry` jv, `tabJournal Entry Account` jv_detail
-		where jv.name = %s and jv_detail.parent = jv.name
-		and jv_detail.account = %s and jv_detail.party_type = %s and jv_detail.party = %s
-		and (jv_detail.reference_type is null or jv_detail.reference_type = '')
-		""", [jv_name, account, party_type, party])
-	return res[0][0] if res else 1.0
+		where
+			jv_detail.parent = jv.name
+			and jv.name = %(jv_name)s
+			and jv_detail.account = %(account)s
+			and jv_detail.party_type = %(party_type)s
+			and jv_detail.party = %(party)s
+			and (jv_detail.reference_type is null or jv_detail.reference_type = '')
+		""", {
+		"jv_name": jv_name,
+		"account": account,
+		"party_type": party_type,
+		"party": party,
+	})
+	return flt(res[0][0]) if res else 1.0
 
 
 @frappe.whitelist()

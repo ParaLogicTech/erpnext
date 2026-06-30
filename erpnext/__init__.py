@@ -83,23 +83,26 @@ def get_default_currency():
 
 
 def get_default_cost_center(company):
-	'''Returns the default cost center of the company'''
+	"""Returns the default cost center of the company"""
 	if not company:
 		return None
 
 	if not frappe.flags.company_cost_center:
 		frappe.flags.company_cost_center = {}
-	if not company in frappe.flags.company_cost_center:
-		frappe.flags.company_cost_center[company] = frappe.get_cached_value('Company',  company,  'cost_center')
+	if company not in frappe.flags.company_cost_center:
+		frappe.flags.company_cost_center[company] = frappe.get_cached_value("Company",  company,  "cost_center")
 	return frappe.flags.company_cost_center[company]
 
 
 def get_company_currency(company):
-	'''Returns the default company currency'''
+	"""Returns the default company currency"""
+	if not company:
+		return None
+
 	if not frappe.flags.company_currency:
 		frappe.flags.company_currency = {}
-	if not company in frappe.flags.company_currency:
-		frappe.flags.company_currency[company] = frappe.db.get_value('Company',  company,  'default_currency', cache=True)
+	if company not in frappe.flags.company_currency:
+		frappe.flags.company_currency[company] = frappe.get_cached_value("Company",  company,  "default_currency")
 	return frappe.flags.company_currency[company]
 
 

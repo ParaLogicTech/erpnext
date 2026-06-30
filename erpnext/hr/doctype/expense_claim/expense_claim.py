@@ -15,6 +15,8 @@ class ExpenseApproverIdentityError(frappe.ValidationError): pass
 
 
 class ExpenseClaim(AccountsController):
+	allow_advances_unlink = True
+
 	def __init__(self, *args, **kwargs):
 		super(ExpenseClaim, self).__init__(*args, **kwargs)
 		self.status_map = [
@@ -64,7 +66,7 @@ class ExpenseClaim(AccountsController):
 		self.update_task_and_project()
 
 		self.make_gl_entries()
-		self.update_against_document_in_jv()
+		self.reconcile_advance_payments()
 		self.set_outstanding_amount(update=True)
 		self.set_status(update=True)
 

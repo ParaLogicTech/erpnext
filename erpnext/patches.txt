@@ -449,3 +449,5 @@ erpnext.patches.v15_0.set_lcv_party_name
 erpnext.patches.v15_0.reset_transaction_customer_group
 erpnext.patches.v15_0.set_packing_slip_can_reassign
 execute:frappe.delete_doc_if_exists("Report", "Payment Period Based On Invoice Date")
+erpnext.patches.v15_0.create_payment_reconciliation_dimension_fields
+erpnext.patches.v15_0.set_advance_table_exchange_rate

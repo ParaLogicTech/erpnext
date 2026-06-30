@@ -2,7 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe, erpnext
-from frappe.utils import flt, cint
+from frappe.utils import flt, cint, fmt_money
 from frappe import _
 from erpnext.accounts.utils import get_stock_and_account_balance
 from frappe.model.meta import get_field_precision
@@ -235,8 +235,8 @@ def validate_cwip_accounts(gl_map):
 
 
 def round_off_debit_credit(gl_map):
-	precision = get_field_precision(frappe.get_meta("GL Entry").get_field("debit"),
-		currency=frappe.get_cached_value('Company',  gl_map[0].company,  "default_currency"))
+	company_currency = frappe.get_cached_value('Company',  gl_map[0].company,  "default_currency")
+	precision = get_field_precision(frappe.get_meta("GL Entry").get_field("debit"), currency=company_currency)
 
 	debit_credit_diff = 0.0
 	for entry in gl_map:
@@ -253,7 +253,11 @@ def round_off_debit_credit(gl_map):
 
 	if abs(debit_credit_diff) >= allowance:
 		frappe.throw(_("Debit and Credit not equal for {0} #{1}. Difference is {2}.")
-			.format(gl_map[0].voucher_type, gl_map[0].voucher_no, debit_credit_diff))
+			.format(
+			gl_map[0].voucher_type,
+			gl_map[0].voucher_no,
+			fmt_money(debit_credit_diff, currency=company_currency),
+		))
 
 	elif abs(debit_credit_diff) >= (1.0 / (10**precision)):
 		make_round_off_gle(gl_map, debit_credit_diff, precision)
@@ -374,7 +378,10 @@ def delete_voucher_gl_entries(voucher_type, voucher_no):
 
 
 def add_to_reference_documents_for_update(reference_documents_for_update, entry):
-	if entry.get("against_voucher_type") and entry.get("against_voucher"):
+	if (
+		entry.get("against_voucher_type") and entry.get("against_voucher")
+		and (entry.get("against_voucher_type"), entry.get("against_voucher")) != (entry.get("voucher_type"), entry.get("voucher_no"))
+	):
 		reference_documents_for_update.add((
 			entry.get("against_voucher_type"),
 			entry.get("against_voucher"),
@@ -392,7 +399,10 @@ def add_to_reference_documents_for_update(reference_documents_for_update, entry)
 	# 		entry.get("party"),
 	# 	))
 
-	if entry.get("original_against_voucher_type") and entry.get("original_against_voucher"):
+	if (
+		entry.get("original_against_voucher_type") and entry.get("original_against_voucher")
+		and (entry.get("original_against_voucher_type"), entry.get("original_against_voucher")) != (entry.get("voucher_type"), entry.get("voucher_no"))
+	):
 		reference_documents_for_update.add((
 			entry.get("original_against_voucher_type"),
 			entry.get("original_against_voucher"),

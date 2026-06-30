@@ -331,13 +331,13 @@ class PaymentRequest(AccountsController):
 
 			if flt(payment_request_total, self.precision("grand_total")) > flt(reference_payable_amount, self.precision("grand_total")):
 				frappe.throw(_("Total Payment Request Amount cannot be greater than the Total Payable Amount {0} of {1}").format(
-					frappe.format(reference_payable_amount, df=self.meta.get_field("grand_total")),
+					frappe.format(reference_payable_amount, df=self.meta.get_field("grand_total"), doc=self),
 					frappe.get_desk_link(self.reference_doctype, self.reference_name),
 				))
 
 			if flt(payment_request_total, self.precision("grand_total")) > flt(outstanding_amount, self.precision("grand_total")):
 				frappe.throw(_("Total Payment Request Amount cannot be greater than the Outstanding Amount {0} of {1}").format(
-					frappe.format(outstanding_amount, df=self.meta.get_field("grand_total")),
+					frappe.format(outstanding_amount, df=self.meta.get_field("grand_total"), doc=self),
 					frappe.get_desk_link(self.reference_doctype, self.reference_name),
 				))
 
@@ -551,13 +551,7 @@ class PaymentRequest(AccountsController):
 				payment_entry.set(f, self.get(f))
 
 		if payment_entry.difference_amount:
-			company_details = get_company_defaults(self.company)
-
-			payment_entry.append("deductions", {
-				"account": company_details.exchange_gain_loss_account,
-				"cost_center": company_details.cost_center,
-				"amount": payment_entry.difference_amount
-			})
+			payment_entry.set_exchange_gain_loss()
 
 		if submit:
 			payment_entry.flags.ignore_permissions = True

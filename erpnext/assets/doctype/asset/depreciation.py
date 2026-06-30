@@ -71,6 +71,7 @@ def make_depreciation_entry(asset_name, date=None):
 		):
 			je = frappe.new_doc("Journal Entry")
 			je.voucher_type = "Depreciation Entry"
+			je.is_system_generated = 1
 
 			if depreciation_series:
 				je.naming_series = depreciation_series

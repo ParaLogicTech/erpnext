@@ -462,6 +462,7 @@ class BankDepositTool(Document):
 	@frappe.whitelist()
 	def submit_deposit_entry(self, selected_row_names):
 		je = self.make_deposit_journal_entry(selected_row_names)
+		je.is_system_generated = 1
 		je.insert()
 		je.submit()
 

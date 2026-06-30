@@ -423,7 +423,7 @@ class SellingController(TransactionController):
 			frappe.throw(_("Row #{0}: Net Selling Rate for Item {1} cannot be less than {2}").format(
 				row.idx,
 				frappe.bold(row.item_code),
-				frappe.bold(frappe.format(min_rate, df=row.meta.get_field("rate"))),
+				frappe.bold(frappe.format(min_rate, df=row.meta.get_field("rate"), doc=row)),
 			))
 
 		if self.get("is_return"):

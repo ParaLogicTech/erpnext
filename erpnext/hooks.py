@@ -360,6 +360,7 @@ accounting_dimension_doctypes = [
 	"Expense Claim", "Expense Claim Detail", "Expense Taxes and Charges",
 
 	"Bank Deposit Tool", "Bank Deposit Adjustment",
+	"Payment Reconciliation",
 
 	"Loyalty Program", "Shipping Rule",
 	"Asset", "Asset Value Adjustment",

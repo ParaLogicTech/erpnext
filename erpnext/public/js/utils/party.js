@@ -48,7 +48,7 @@ erpnext.utils.get_party_details = function(frm, args, callback) {
 				]);
 			}
 		},
-		always: () => {
+		fail: () => {
 			frm.updating_party_details = false;
 		},
 	});
