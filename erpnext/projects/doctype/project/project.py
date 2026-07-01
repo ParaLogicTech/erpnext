@@ -1167,7 +1167,7 @@ class Project(StatusUpdaterERP):
 			
 			force_map_service_advisor = frappe.get_cached_value("Projects Settings", None, "force_map_service_advisor")
 			if force_map_service_advisor and appointment_details.service_advisor and appointment_details.service_advisor!=self.service_advisor:
-				frappe.throw(_("Please select same service advisor ({0}) as in {1}")
+				frappe.throw(_("Please select same service advisor {0} as in {1}")
 					.format(frappe.bold(appointment_details.service_advisor), frappe.get_desk_link("Appointment", self.appointment)))
 			
 
