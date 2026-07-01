@@ -1152,7 +1152,7 @@ class Project(StatusUpdaterERP):
 	def validate_appointment(self):
 		if self.get('appointment'):
 			appointment_details = frappe.db.get_value("Appointment", self.appointment,
-				['name', 'status', 'docstatus'], as_dict=1)
+				['name', 'status', 'docstatus', 'service_advisor'], as_dict=1)
 
 			if not appointment_details:
 				frappe.throw(_("Appointment {0} does not exist").format(self.appointment))
@@ -1164,6 +1164,12 @@ class Project(StatusUpdaterERP):
 			if appointment_details.status == "Rescheduled":
 				frappe.throw(_("{0} is {1}. Please select newer appointment instead")
 					.format(frappe.get_desk_link("Appointment", self.appointment), frappe.bold(appointment_details.status)))
+			
+			force_map_service_advisor = frappe.get_cached_value("Projects Settings", None, "force_map_service_advisor")
+			if force_map_service_advisor and appointment_details.service_advisor and appointment_details.service_advisor!=self.service_advisor:
+				frappe.throw(_("Please select same service advisor ({0}) as in {1}")
+					.format(frappe.bold(appointment_details.service_advisor), frappe.get_desk_link("Appointment", self.appointment)))
+			
 
 	def update_appointment(self):
 		appointments = []
@@ -1293,10 +1299,6 @@ class Project(StatusUpdaterERP):
 				customer = appointment_doc.get_customer()
 				if customer:
 					self.customer = customer
-			
-			force_map_service_advisor = frappe.get_cached_value("Projects Settings", None, "force_map_service_advisor")
-			if force_map_service_advisor and appointment_doc.service_advisor:
-				self.service_advisor = appointment_doc.service_advisor
 		else:
 			self.appointment_dt = None
 

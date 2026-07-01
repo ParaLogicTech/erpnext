@@ -274,12 +274,12 @@
    "default": "0",
    "fieldname": "force_map_service_advisor",
    "fieldtype": "Check",
-   "label": "Service Advisor Same As Appointment"
+   "label": "Validate Service Advisor Must Be Same As Appointment"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-07-01 18:44:30.543030",
+ "modified": "2026-07-01 18:49:31.092049",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
