@@ -42,6 +42,7 @@
   "ignore_employee_time_overlap",
   "expected_time_mandatory",
   "require_attendance_for_task_start",
+  "force_map_service_advisor",
   "column_break_xs7b",
   "margin_validation_override_role",
   "restrict_expected_time_override_role"
@@ -268,11 +269,17 @@
    "fieldname": "expected_time_mandatory",
    "fieldtype": "Check",
    "label": "Expected Time Mandatory in Tasks"
+  },
+  {
+   "default": "0",
+   "fieldname": "force_map_service_advisor",
+   "fieldtype": "Check",
+   "label": "Service Advisor Same As Appointment"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-12-28 12:28:46.351599",
+ "modified": "2026-07-01 18:35:19.169655",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",

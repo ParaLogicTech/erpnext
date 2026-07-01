@@ -1293,6 +1293,10 @@ class Project(StatusUpdaterERP):
 				customer = appointment_doc.get_customer()
 				if customer:
 					self.customer = customer
+			
+			force_map_service_advisor = frappe.get_cached_value("Projects Settings", None, "force_map_service_advisor")
+			if force_map_service_advisor and appointment_doc.service_advisor:
+				self.service_advisor = appointment_doc.service_advisor
 		else:
 			self.appointment_dt = None
 
@@ -1421,7 +1425,7 @@ class Project(StatusUpdaterERP):
 			or negative_excess - total_excess > 1 / 10 ** precision
 		):
 			frappe.throw(_("Total Insurance Excess billed amount cannot be greater than {0}").format(
-				frappe.format(total_excess, df=self.meta.get_field("insurance_excess_amount"), doc=self)
+				frappe.format(total_excess, df=self.meta.get_field("insurance_excess_amount"))
 			))
 
 	def get_insurance_excess_billed(self, include_proforma_invoices=False):
