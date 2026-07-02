@@ -78,6 +78,10 @@
   "tare_weight_per_unit",
   "column_break_65",
   "gross_weight_per_unit",
+  "foreign_trade_details",
+  "customs_tariff_number",
+  "column_break_eoor",
+  "country_of_origin",
   "description_section",
   "description",
   "show_item_code",
@@ -86,6 +90,7 @@
   "end_of_life",
   "column_break1",
   "over_delivery_receipt_allowance",
+  "column_break_t6pi",
   "safety_stock",
   "reorder_section",
   "reorder_levels",
@@ -125,12 +130,9 @@
   "delivered_by_supplier",
   "supplier_details",
   "supplier_items",
-  "foreign_trade_details",
-  "country_of_origin",
   "accounting_tab",
   "over_billing_allowance",
   "column_break_59",
-  "customs_tariff_number",
   "deferred_revenue",
   "no_of_months",
   "enable_deferred_revenue",
@@ -609,7 +611,7 @@
    "options": "Item Supplier"
   },
   {
-   "depends_on": "is_purchase_item",
+   "collapsible": 1,
    "fieldname": "foreign_trade_details",
    "fieldtype": "Section Break",
    "label": "Foreign Trade Details"
@@ -627,7 +629,7 @@
   {
    "fieldname": "customs_tariff_number",
    "fieldtype": "Link",
-   "label": "Customs Tariff Number",
+   "label": "Customs Tariff Number (HS Code)",
    "options": "Customs Tariff Number"
   },
   {
@@ -1103,6 +1105,14 @@
    "label": "Is Product Bundle",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_t6pi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_eoor",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 500,
@@ -1110,7 +1120,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2026-04-21 15:06:04.019075",
+ "modified": "2026-07-02 11:07:20.775656",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",
@@ -1213,6 +1223,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "item_name,item_group,brand,item_source,customer_code",
  "show_name_in_global_search": 1,
  "show_preview_popup": 1,
