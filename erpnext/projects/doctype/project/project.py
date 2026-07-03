@@ -1162,14 +1162,21 @@ class Project(StatusUpdaterERP):
 			if appointment_details.docstatus == 2:
 				frappe.throw(_("{0} is cancelled").format(frappe.get_desk_link("Appointment", self.appointment)))
 			if appointment_details.status == "Rescheduled":
-				frappe.throw(_("{0} is {1}. Please select newer appointment instead")
-					.format(frappe.get_desk_link("Appointment", self.appointment), frappe.bold(appointment_details.status)))
-			
-			force_map_service_advisor = frappe.get_cached_value("Projects Settings", None, "force_map_service_advisor")
-			if force_map_service_advisor and appointment_details.service_advisor and appointment_details.service_advisor!=self.service_advisor:
-				frappe.throw(_("Please select same service advisor {0} as in {1}")
-					.format(frappe.bold(appointment_details.service_advisor), frappe.get_desk_link("Appointment", self.appointment)))
-			
+				frappe.throw(_("{0} is {1}. Please select newer appointment instead").format(
+					frappe.get_desk_link("Appointment", self.appointment),
+					frappe.bold(appointment_details.status)
+				))
+
+			validate_appointment_service_advisor = cint(frappe.get_cached_value("Projects Settings", None, "validate_appointment_service_advisor"))
+			if (
+				validate_appointment_service_advisor
+				and appointment_details.service_advisor
+				and self.service_advisor != appointment_details.service_advisor
+			):
+				frappe.throw(_("Service Advisor must be {0}, same as in {1}").format(
+					frappe.bold(appointment_details.service_advisor),
+					frappe.get_desk_link("Appointment", self.appointment),
+				))
 
 	def update_appointment(self):
 		appointments = []

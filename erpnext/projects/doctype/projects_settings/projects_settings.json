@@ -31,7 +31,7 @@
   "auto_schedule_next_service_templates",
   "validations_and_permissions_section",
   "appointment_required",
-  "force_map_service_advisor",
+  "validate_appointment_service_advisor",
   "validate_ready_to_close",
   "validate_sales_order_mandatory",
   "validate_service_template_sales_order",
@@ -286,14 +286,14 @@
   },
   {
    "default": "0",
-   "fieldname": "force_map_service_advisor",
+   "fieldname": "validate_appointment_service_advisor",
    "fieldtype": "Check",
    "label": "Validate Service Advisor Must Be Same As Appointment"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-07-01 18:49:31.092050",
+ "modified": "2026-07-03 13:53:43.359590",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
