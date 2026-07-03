@@ -112,6 +112,17 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 				if (this.frm.doc.purchase_order) {
 					this.frm.add_custom_button(__('Stock Entry'), () => this.make_stock_entry(), __('Create'));
 				} else {
+					if (this.frm.doc.can_reassign) {
+						this.frm.add_custom_button(__('Reassign Sales Order'), () => this.select_sales_order_for_reassignment(),
+							__('Reassign'));
+
+						let has_sales_orders = new Set((this.frm.doc.items || []).filter(d => d.sales_order).map(d => d.sales_order));
+						if (has_sales_orders.size) {
+							this.frm.add_custom_button(__('Unassign Sales Order'), () => this.confirm_unassign_sales_order(),
+								__('Reassign'));
+						}
+					}
+
 					this.frm.add_custom_button(__('Delivery Note'), () => this.make_delivery_note(), __('Create'));
 					this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(), __('Create'));
 					this.frm.add_custom_button(__('Stock Entry'), () => this.make_stock_entry(), __('Create'));
@@ -392,6 +403,81 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 				frappe.set_route("query-report", "Stock Ledger");
 			}, __("View"));
 		}
+	}
+
+	select_sales_order_for_reassignment() {
+		let msd = new frappe.ui.form.MultiSelectDialog({
+			doctype: "Sales Order",
+			date_field: "transaction_date",
+			single_selection: true,
+			primary_action_label: __("Reassign"),
+			setters: [
+				{
+					fieldtype: 'Link',
+					label: __('Customer'),
+					options: 'Customer',
+					fieldname: 'customer',
+				},
+				{
+					fieldtype: 'Link',
+					label: __('Project'),
+					options: 'Project',
+					fieldname: 'project',
+					default: this.frm.doc.project || undefined,
+				},
+				{
+					fieldtype: 'Link',
+					label: __('Branch'),
+					options: 'Branch',
+					fieldname: 'branch',
+					default: this.frm.doc.branch || undefined,
+				},
+				{
+					fieldtype: 'DateRange',
+					label: __('Date Range'),
+					fieldname: 'transaction_date',
+				}
+			],
+			columns: ['customer_name', 'transaction_date', 'project'],
+			get_query: () => {
+				return {
+					query: "erpnext.stock.doctype.packing_slip.packing_slip.get_sales_orders_for_reassignment",
+					filters: {
+						packing_slip: this.frm.doc.name,
+					}
+				};
+			},
+			action: (selections, args) => {
+				if (selections.length != 1) {
+					frappe.msgprint(__("Please select one {0}", [__("Sales Order")]))
+					return;
+				}
+
+				this.reassign_sales_order(selections[0]);
+				msd.dialog.hide();
+			},
+		});
+	}
+
+	confirm_unassign_sales_order() {
+		return frappe.confirm(__("Are you sure you want to unassign Sales Orders from this Package?"), () => {
+			return this.reassign_sales_order(null);
+		});
+	}
+
+	reassign_sales_order(sales_order) {
+		return frappe.call({
+			method: "erpnext.stock.doctype.packing_slip.packing_slip.reassign_sales_order",
+			args: {
+				packing_slip: this.frm.doc.name,
+				sales_order: sales_order,
+			},
+			freeze: 1,
+			freeze_message: __("Reassigning..."),
+			callback: (r) => {
+				this.frm.reload_doc();
+			}
+		});
 	}
 };
 

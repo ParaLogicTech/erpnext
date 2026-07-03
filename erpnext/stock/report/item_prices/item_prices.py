@@ -26,12 +26,13 @@ def execute(filters=None):
 		item_group_wise_data.setdefault(d.item_group, []).append(d)
 
 	price_list_settings = frappe.get_single("Price List Settings")
+	item_group_order = price_list_settings.get_exploded_item_group_order()
 	rows = []
 
-	for item_group in price_list_settings.item_group_order or []:
-		if item_group.item_group in item_group_wise_data:
-			rows += sorted(item_group_wise_data[item_group.item_group], key=lambda d: d.item_code)
-			del item_group_wise_data[item_group.item_group]
+	for order in item_group_order or []:
+		if order.item_group in item_group_wise_data:
+			rows += sorted(item_group_wise_data[order.item_group], key=lambda d: d.item_code)
+			del item_group_wise_data[order.item_group]
 
 	for items in item_group_wise_data.values():
 		rows += sorted(items, key=lambda d: d.item_code)
@@ -86,11 +87,20 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 		d['alt_uom_size'] = convert_item_uom_for(d.alt_uom_size, d.item_code, d.uom, d.stock_uom)
 		items_map[d.item_code] = d
 
+	bom_data = []
+	if filters.show_bom_rate and not filters.only_prices:
+		bom_nos = [d.default_bom for d in items_map.values() if d.default_bom]
+		bom_data = get_bom_data(bom_nos)
+
 	for d in po_data:
 		if d.item_code in items_map:
 			items_map[d.item_code].update(d)
 
 	for d in bin_data:
+		if d.item_code in items_map:
+			items_map[d.item_code].update(d)
+
+	for d in bom_data:
 		if d.item_code in items_map:
 			items_map[d.item_code].update(d)
 
@@ -262,7 +272,7 @@ def get_items(filters, additional_conditions):
 	return frappe.db.sql("""
 		select item.name as item_code, item.item_name, item.item_group, item.brand,
 			item.stock_uom, item.sales_uom, item.purchase_uom, item.alt_uom, item.alt_uom_size,
-			item.hide_in_price_list
+			item.hide_in_price_list, item.default_bom
 		from tabItem item
 		where disabled != 1 {0}
 	""".format(item_conditions), filters, as_dict=1)
@@ -474,6 +484,20 @@ def get_bin_data(filters, additional_conditions):
 	""".format(item_conditions), filters, as_dict=1)
 
 
+def get_bom_data(bom_nos):
+	if not bom_nos:
+		return []
+
+	return frappe.db.sql("""
+		select
+			bom.name as bom_no,
+			bom.item as item_code,
+			bom.base_total_cost / bom.quantity as bom_rate
+		from `tabBOM` bom
+		where bom.name in %(bom_nos)s and bom.docstatus = 1
+	""", {"bom_nos": bom_nos}, as_dict=1)
+
+
 def get_item_conditions(filters, for_item_dt, additional_conditions=None):
 	conditions = []
 
@@ -516,7 +540,8 @@ def get_columns(filters, price_lists):
 	show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
 
 	columns = [
-		{"fieldname": "item_code", "label": _("Item Code"), "fieldtype": "Link", "options": "Item",
+		{
+			"fieldname": "item_code", "label": _("Item Code"), "fieldtype": "Link", "options": "Item",
 			"width": 100 if show_item_name else 200,
 			"price_list_note": frappe.db.get_single_value("Price List Settings", "price_list_note")
 		},
@@ -531,6 +556,13 @@ def get_columns(filters, price_lists):
 		{"fieldname": "valuation_rate", "label": _("Stock Rate"), "fieldtype": "Currency", "width": 90, "restricted": 1},
 		{"fieldname": "avg_lc_rate", "label": _("Avg Rate"), "fieldtype": "Currency", "width": 90, "restricted": 1},
 	]
+
+	if filters.show_bom_rate:
+		columns.append({
+			"fieldname": "bom_no", "label": _("BOM"), "fieldtype": "Link", "options": "BOM",
+			"width": 100, "restricted": 1,
+		})
+		columns.append({"fieldname": "bom_rate", "label": _("BOM Rate"), "fieldtype": "Currency", "width": 90, "restricted": 1})
 
 	if filters.standard_price_list:
 		if filters.show_valid_from:

@@ -32,7 +32,7 @@ class SalesPersonCommissionSummary(object):
 
 		self.invoice_data = frappe.db.sql("""
 			select inv.name, inv.posting_date,
-				inv.customer, inv.territory, sp.sales_person,
+				inv.bill_to as customer, inv.territory, sp.sales_person,
 				i.sales_commission_category as item_commission_category,
 				sp.sales_commission_category as sales_person_commission_category,
 				i.commission_rate as item_commission_rate, sp.commission_rate as sales_person_commission_rate,
@@ -113,13 +113,14 @@ class SalesPersonCommissionSummary(object):
 
 			# Payment Deductions
 			voucher_tuple = ('Sales Invoice', d.name)
-			total_adjustment = sum([amount for amount in self.adjustment_details.vouchers.get(voucher_tuple, {}).values()])
-			d.paid_amount -= total_adjustment
-			d.total_deductions = total_adjustment + d.return_amount
+			adjustments_obj = self.adjustment_details.against_vouchers.get(voucher_tuple, {})
 
-			adjustments = self.adjustment_details.vouchers.get(voucher_tuple, {})
+			total_adjustment = sum([amount for amount in adjustments_obj.values()])
+			d.paid_amount -= total_adjustment
+			d.total_deductions = total_adjustment
+
 			for account in self.adjustment_details.accounts:
-				d["adj_" + scrub(account)] = adjustments.get(account, 0)
+				d["adj_" + scrub(account)] = adjustments_obj.get(account, 0)
 
 			# Commission Category Details
 			commission_category_details = frappe.get_cached_doc("Sales Commission Category", d.sales_commission_category)\
@@ -128,7 +129,8 @@ class SalesPersonCommissionSummary(object):
 			# Deduct Payment Deductions
 			d.deduction_on_contribution_amount = 0
 			if commission_category_details.consider_deductions:
-				d.deduction_on_contribution_amount = d.total_deductions * (d.invoice_portion / 100) * (d.allocated_percentage / 100)
+				d.deduction_on_contribution_amount = d.total_deductions + d.return_amount
+				d.deduction_on_contribution_amount *= (d.invoice_portion / 100) * (d.allocated_percentage / 100)
 
 			# Commission Calculation
 			d.net_contribution_amount = d.contribution_amount - d.deduction_on_contribution_amount
@@ -163,7 +165,8 @@ class SalesPersonCommissionSummary(object):
 			gl_entries = frappe.db.sql("""
 				select
 					posting_date, account, party, voucher_type, voucher_no, against_voucher_type, against_voucher,
-					debit, credit, debit_in_account_currency, credit_in_account_currency
+					debit, credit, debit_in_account_currency, credit_in_account_currency,
+					company, account_currency
 				from
 					`tabGL Entry`
 				where
@@ -171,7 +174,7 @@ class SalesPersonCommissionSummary(object):
 					and (voucher_type, voucher_no) in (
 						select voucher_type, voucher_no from `tabGL Entry` gle
 						where gle.party_type = 'Customer' and ifnull(party, '') != ''
-						and gle.against_voucher_type = 'Sales Invoice' and gle.against_voucher in %(invoice_names)s
+							and gle.against_voucher_type = 'Sales Invoice' and gle.against_voucher in %(invoice_names)s
 					) and (voucher_type, voucher_no) in (
 						select voucher_type, voucher_no from `tabGL Entry` gle, `tabAccount` acc
 						where acc.name = gle.account and (acc.root_type in ('Income', 'Expense') or acc.account_type = 'Tax')
@@ -183,7 +186,7 @@ class SalesPersonCommissionSummary(object):
 			adjustment_voucher_entries.setdefault((gle.voucher_type, gle.voucher_no), [])
 			adjustment_voucher_entries[(gle.voucher_type, gle.voucher_no)].append(gle)
 
-		self.adjustment_details = get_adjustment_details(adjustment_voucher_entries, "debit", "credit")
+		self.adjustment_details = get_adjustment_details(adjustment_voucher_entries, "credit")
 
 	def get_conditions(self):
 		conditions = []
@@ -204,7 +207,7 @@ class SalesPersonCommissionSummary(object):
 			conditions.append("inv.company = %(company)s")
 
 		if self.filters.get('customer'):
-			conditions.append("inv.customer = %(customer)s")
+			conditions.append("inv.bill_to = %(customer)s")
 
 		if self.filters.get('territory'):
 			conditions.append("inv.territory = %(territory)s")
@@ -359,7 +362,7 @@ class SalesPersonCommissionSummary(object):
 				"width": 110
 			},
 			{
-				"label": _("Deduction"),
+				"label": _("Penalty"),
 				"fieldname": "deduction_on_contribution_amount",
 				"fieldtype": "Currency",
 				"width": 110

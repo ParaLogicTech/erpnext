@@ -35,6 +35,8 @@ form_grid_templates = {
 
 
 class SalesInvoice(SellingController):
+	allow_advances_unlink = True
+
 	def __init__(self, *args, **kwargs):
 		super(SalesInvoice, self).__init__(*args, **kwargs)
 
@@ -147,7 +149,7 @@ class SalesInvoice(SellingController):
 		# this sequence because outstanding may get -ve
 		self.make_gl_entries()
 		if not self.is_return:
-			self.update_against_document_in_jv()
+			self.reconcile_advance_payments()
 		self.set_outstanding_amount(update=True)
 		self.set_status(update=True)
 
@@ -621,7 +623,7 @@ class SalesInvoice(SellingController):
 			invoice_total = self.rounded_total or self.grand_total
 			if flt(total_amount_in_payments, self.precision('grand_total')) < invoice_total:
 				frappe.throw(_("Total payments amount can't be greater than {0}".format(
-					frappe.format(-invoice_total, df=self.meta.get_field('grand_total'))
+					frappe.format(-invoice_total, df=self.meta.get_field('paid_amount'), doc=self)
 				)))
 
 		# Remove zero amount rows

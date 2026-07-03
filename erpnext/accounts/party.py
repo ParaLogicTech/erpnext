@@ -203,8 +203,8 @@ def set_basic_values(party_details, party_doc, billing_party_doc):
 	party_details.tax_cnic = billing_party_doc.get('tax_cnic')
 	party_details.tax_strn = billing_party_doc.get('tax_strn')
 	party_details.tax_status = billing_party_doc.get('tax_status')
+	party_details.account_manager = billing_party_doc.get("account_manager")
 	party_details.language = party_doc.get("language")
-	party_details.account_manager = party_doc.get("account_manager")
 
 
 def set_currency(party_details, party_doc, company, currency):

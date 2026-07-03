@@ -12,31 +12,21 @@ def validate_for_items(doc):
 
 	items = []
 	for d in doc.get("items"):
+		if not d.get("item_coe"):
+			continue
+
 		if not d.qty:
 			if doc.doctype == "Purchase Receipt" and d.rejected_qty:
 				continue
 			frappe.throw(_("Please enter quantity for Item {0}").format(d.item_code))
 
-		# update with latest quantities
-		bin = frappe.db.sql("""select projected_qty from `tabBin` where
-			item_code = %s and warehouse = %s""", (d.item_code, d.warehouse), as_dict=1)
-
-		f_lst = {'projected_qty': bin and flt(bin[0]['projected_qty']) or 0, 'ordered_qty': 0, 'received_qty': 0}
-		if d.doctype in ('Purchase Receipt Item', 'Purchase Invoice Item'):
-			f_lst.pop('received_qty')
-		for x in f_lst:
-			if d.meta.get_field(x):
-				d.set(x, f_lst[x])
-
-		item = frappe.get_cached_value("Item", d.item_code,
-			['is_stock_item', 'end_of_life', 'disabled'], as_dict=1)
-
 		if not d.get('purchase_order') and not d.get('purchase_receipt'):
-			validate_end_of_life(d.item_code, item.end_of_life, item.disabled)
+			validate_end_of_life(d.item_code)
 
 		# validate stock item
+		is_stock_item = frappe.get_cached_value("Item", d.item_code, 'is_stock_item')
 		if doc.doctype not in ['Quotation', 'Supplier Quotation']:
-			if item.is_stock_item and d.qty and not d.warehouse and not d.get("delivered_by_supplier"):
+			if is_stock_item and d.qty and not d.warehouse and not d.get("delivered_by_supplier"):
 				frappe.throw(_("Warehouse is mandatory for stock Item {0} in row {1}").format(d.item_code, d.idx))
 
 		items.append(cstr(d.item_code))

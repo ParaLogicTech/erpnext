@@ -106,7 +106,7 @@ def get_grouped_data(columns, data, filters, item_map):
 			for f in copy_fields:
 				group_object.totals[f] = group_object.rows[0][f]
 		else:
-			group_object.totals['item_code'] = "'{0}: {1}'".format(group_object.group_label, group_object.group_value)
+			group_object.totals['item_code'] = "'{0}: {1}'".format(group_object.group_label, group_object.group_value or "None")
 
 	return group_report_data(data, group_by, total_fields=total_fields, postprocess_group=postprocess_group)
 

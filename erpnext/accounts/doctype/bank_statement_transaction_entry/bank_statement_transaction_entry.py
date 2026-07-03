@@ -5,7 +5,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from erpnext.accounts.utils import get_outstanding_invoices
+from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import get_outstanding_invoices
 from frappe.utils import nowdate
 from datetime import datetime
 import csv, os, re, io
@@ -157,8 +157,9 @@ class BankStatementTransactionEntry(Document):
 			amount = abs(entry.amount)
 			if (payment is None):
 				order_doctype = "Sales Order" if entry.party_type=="Customer" else "Purchase Order"
-				from erpnext.controllers.accounts_controller import get_advance_payment_entries
-				payment_entries = get_advance_payment_entries(entry.party_type, entry.party, entry.account,
+				from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import \
+					get_unreconciled_payment_entries
+				payment_entries = get_unreconciled_payment_entries(entry.party_type, entry.party, entry.account,
 					order_doctype=order_doctype, against_all_orders=True)
 				payment_entries += self.get_matching_payments(entry.party, amount, entry.transaction_date)
 				payment = next((payment for payment in payment_entries if payment.amount == amount and payment not in added_payments), None)
@@ -310,14 +311,15 @@ class BankStatementTransactionEntry(Document):
 				'account' : payment.account,
 				'party_type': payment.party_type,
 				'party': frappe.get_value("Payment Entry", payment.reference_name, "party"),
-				'unadjusted_amount' : float(amount),
+				'unreconciled_amount' : float(amount),
 				'allocated_amount' : min(outstanding_amount, amount)
 			}))
 			amount -= outstanding_amount
 		if lst:
-			from erpnext.accounts.utils import reconcile_against_document
+			from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import \
+				reconcile_payments_against_invoices
 			try:
-				reconcile_against_document(lst)
+				reconcile_payments_against_invoices(lst)
 			except:
 				frappe.throw(_("Exception occurred while reconciling {0}".format(payment.reference_name)))
 

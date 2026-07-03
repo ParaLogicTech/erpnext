@@ -11,7 +11,6 @@ from frappe.utils import (
 	formatdate,
 	get_timestamp,
 	getdate,
-	now_datetime,
 	get_link_to_form,
 	clean_whitespace,
 )
@@ -22,6 +21,7 @@ from erpnext.controllers.item_variant import (
 	make_variant_item_code,
 	validate_item_variant_attributes
 )
+from erpnext.stock.utils import format_item_name
 from erpnext.setup.doctype.uom_conversion_factor.uom_conversion_factor import UOMConversionGraph
 from frappe.utils.html_utils import clean_html
 from frappe.model.document import Document
@@ -793,45 +793,39 @@ def get_timeline_data(doctype, name):
 	return out
 
 
-def validate_end_of_life(item_code, end_of_life=None, disabled=None, verbose=1):
+def validate_end_of_life(item_code):
 	if frappe.flags.ignore_item_disabled_check:
 		return
+	if not item_code:
+		return
 
-	if (not end_of_life) or (disabled is None):
-		end_of_life, disabled = frappe.get_cached_value("Item", item_code, ["end_of_life", "disabled"])
+	item = frappe.get_cached_doc("Item", item_code)
 
-	if end_of_life and end_of_life != "0000-00-00" and getdate(end_of_life) <= now_datetime().date():
-		msg = _("Item {0} has reached its end of life on {1}").format(frappe.bold(item_code), formatdate(end_of_life))
-		_msgprint(msg, verbose)
+	if item.end_of_life and item.end_of_life != "0000-00-00" and getdate(item.end_of_life) <= getdate():
+		frappe.throw(_("Item {0} has reached its end of life on {1}").format(
+			frappe.bold(format_item_name(item)), formatdate(item.end_of_life)
+		))
 
-	if disabled:
-		_msgprint(_("Item {0} is disabled").format(frappe.bold(item_code)), verbose)
-
-
-def validate_is_stock_item(item_code, is_stock_item=None, verbose=1):
-	if not is_stock_item:
-		is_stock_item = frappe.get_cached_value("Item", item_code, "is_stock_item")
-
-	if is_stock_item != 1:
-		msg = _("Item {0} is not a stock Item").format(item_code)
-
-		_msgprint(msg, verbose)
+	if item.disabled:
+		frappe.throw(_("Item {0} is disabled").format(
+			frappe.bold(format_item_name(item))
+		))
 
 
-def validate_cancelled_item(item_code, docstatus=None, verbose=1):
-	if docstatus is None:
-		docstatus = frappe.db.get_value("Item", item_code, "docstatus")
+def validate_is_stock_item(item_code):
+	item = frappe.get_cached_doc("Item", item_code)
+	if not item.is_stock_item:
+		frappe.throw(_("Item {0} is not a stock Item").format(
+			frappe.bold(format_item_name(item))
+		))
 
-	if docstatus == 2:
-		msg = _("Item {0} is cancelled").format(item_code)
-		_msgprint(msg, verbose)
 
-
-def _msgprint(msg, verbose):
-	if verbose:
-		frappe.msgprint(msg, raise_exception=True)
-	else:
-		raise frappe.ValidationError(msg)
+def validate_is_not_template_item(item_code):
+	item = frappe.get_cached_doc("Item", item_code)
+	if item.has_variants:
+		frappe.throw(_("Item {0} is a Template Item. Please select one of it's variants instead").format(
+			frappe.bold(format_item_name(item))
+		))
 
 
 def check_stock_uom_with_bin(item, stock_uom):

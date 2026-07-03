@@ -429,8 +429,6 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 						fieldname: 'no_customer',
 						label: __('Without Customer'),
 						fieldtype: 'Check',
-						options: 'Item',
-						get_query: () => erpnext.queries.item(),
 					},
 				],
 				columns: columns,

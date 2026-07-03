@@ -433,9 +433,11 @@ def install_country_fixtures(company, country=None):
 		try:
 			module_name = "erpnext.regional.{0}.setup.setup".format(frappe.scrub(country))
 			frappe.get_attr(module_name)(company_doc, False)
-		except Exception as e:
-			frappe.log_error(title=str(e), message=frappe.get_traceback())
-			frappe.throw(_("Failed to setup defaults for country {0}. Please contact support@erpnext.com").format(frappe.bold(company_doc.country)))
+		except Exception:
+			frappe.log_error(title="Failed to setup country defaults")
+			frappe.throw(_("Failed to setup defaults for country {0}").format(
+				frappe.bold(company_doc.country)
+			))
 
 
 def update_company_current_month_sales(company):

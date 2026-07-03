@@ -371,18 +371,14 @@ class StockEntry(TransactionController):
 		self.calculate_rate_and_amount(raise_error_if_no_rate=False)
 
 	def validate_item(self):
-		from erpnext.stock.doctype.item.item import validate_end_of_life
+		from erpnext.stock.doctype.item.item import validate_end_of_life, validate_is_not_template_item
 
 		stock_items = self.get_stock_items()
 		serialized_items = self.get_serialized_items()
 
 		for d in self.get("items"):
-			item = frappe.get_cached_value("Item", d.item_code, ['has_variants', 'end_of_life', 'disabled'], as_dict=1)
-			validate_end_of_life(d.item_code, end_of_life=item.end_of_life, disabled=item.disabled)
-
-			if cint(item.has_variants):
-				frappe.throw(_("Row #{0}: {1} is a template Item, please select one of its variants")
-					.format(d.idx, frappe.bold(d.item_code)))
+			validate_end_of_life(d.item_code)
+			validate_is_not_template_item(d.item_code)
 
 			if d.item_code not in stock_items:
 				frappe.throw(_("Row #{0}: {1} is not a stock Item")

@@ -1,29 +1,42 @@
 {
  "actions": [],
+ "allow_copy": 1,
  "creation": "2014-07-09 12:04:51.681583",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "company",
   "party_type",
   "party",
-  "get_unreconciled_entries",
-  "col_break1",
+  "column_break_rhdm",
+  "company",
   "receivable_payable_account",
-  "bank_cash_account",
-  "filters_section",
-  "from_date",
-  "to_date",
+  "advance_payment_account",
+  "col_break1",
+  "from_invoice_date",
+  "to_invoice_date",
+  "column_break_kphd",
+  "from_payment_date",
+  "to_payment_date",
+  "column_break_jce4",
+  "min_outstanding_amount",
+  "max_outstanding_amount",
   "column_break_11",
-  "minimum_amount",
-  "maximum_amount",
-  "column_break_14",
-  "limit",
+  "min_payment_amount",
+  "max_payment_amount",
+  "column_break_13",
+  "bank_cash_account",
+  "invoice_limit",
+  "payment_limit",
+  "accounting_dimensions_section",
+  "cost_center",
+  "dimension_col_break",
+  "project",
   "sec_break1",
+  "invoices",
+  "column_break_15",
   "payments",
-  "reconcile",
   "sec_break2",
-  "invoices"
+  "allocation"
  ],
  "fields": [
   {
@@ -42,6 +55,7 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.party_type",
    "fieldname": "party",
    "fieldtype": "Dynamic Link",
    "label": "Party",
@@ -49,6 +63,7 @@
    "reqd": 1
   },
   {
+   "depends_on": "eval:doc.company && doc.party",
    "fieldname": "receivable_payable_account",
    "fieldtype": "Link",
    "label": "Receivable / Payable Account",
@@ -63,62 +78,32 @@
    "options": "Account"
   },
   {
+   "collapsible": 1,
+   "collapsible_depends_on": "eval: doc.invoices.length == 0",
+   "depends_on": "eval:doc.receivable_payable_account",
    "fieldname": "col_break1",
-   "fieldtype": "Column Break"
+   "fieldtype": "Section Break",
+   "label": "Filters"
   },
   {
-   "fieldname": "from_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "From Invoice Date"
-  },
-  {
-   "fieldname": "to_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "To Invoice Date"
-  },
-  {
-   "fieldname": "minimum_amount",
-   "fieldtype": "Currency",
-   "label": "Minimum Invoice Amount"
-  },
-  {
-   "fieldname": "maximum_amount",
-   "fieldtype": "Currency",
-   "label": "Maximum Invoice Amount"
-  },
-  {
-   "description": "System will fetch all the entries if limit value is zero.",
-   "fieldname": "limit",
-   "fieldtype": "Int",
-   "label": "Limit"
-  },
-  {
-   "fieldname": "get_unreconciled_entries",
-   "fieldtype": "Button",
-   "label": "Get Unreconciled Entries"
-  },
-  {
+   "depends_on": "eval:(doc.payments).length || (doc.invoices).length",
+   "description": "If you need to reconcile particular transactions against each other, then check mark accordingly. If not, all the transactions will be allocated in FIFO order.",
    "fieldname": "sec_break1",
    "fieldtype": "Section Break",
-   "label": "Unreconciled Payment Details"
+   "label": "Unreconciled Entries"
   },
   {
    "fieldname": "payments",
    "fieldtype": "Table",
    "label": "Payments",
-   "options": "Payment Reconciliation Payment"
+   "options": "Payment Reconciliation Payment",
+   "read_only": 1
   },
   {
-   "fieldname": "reconcile",
-   "fieldtype": "Button",
-   "label": "Reconcile"
-  },
-  {
+   "depends_on": "allocation",
    "fieldname": "sec_break2",
    "fieldtype": "Section Break",
-   "label": "Invoice/Journal Entry Details"
+   "label": "Allocated Entries"
   },
   {
    "fieldname": "invoices",
@@ -128,25 +113,125 @@
    "read_only": 1
   },
   {
-   "fieldname": "filters_section",
-   "fieldtype": "Section Break",
-   "label": "Filters"
+   "fieldname": "column_break_15",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "allocation",
+   "fieldtype": "Table",
+   "label": "Allocation",
+   "options": "Payment Reconciliation Allocation"
+  },
+  {
+   "fieldname": "from_invoice_date",
+   "fieldtype": "Date",
+   "label": "From Invoice Date"
+  },
+  {
+   "fieldname": "to_invoice_date",
+   "fieldtype": "Date",
+   "label": "To Invoice Date"
+  },
+  {
+   "default": "100",
+   "fieldname": "invoice_limit",
+   "fieldtype": "Int",
+   "label": "Invoice Limit"
+  },
+  {
+   "fieldname": "column_break_13",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "from_payment_date",
+   "fieldtype": "Date",
+   "label": "From Payment Date"
+  },
+  {
+   "fieldname": "to_payment_date",
+   "fieldtype": "Date",
+   "label": "To Payment Date"
+  },
+  {
+   "default": "100",
+   "fieldname": "payment_limit",
+   "fieldtype": "Int",
+   "label": "Payment Limit"
   },
   {
    "fieldname": "column_break_11",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "column_break_14",
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval:doc.receivable_payable_account",
+   "fieldname": "accounting_dimensions_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting Dimension Filters"
+  },
+  {
+   "fieldname": "dimension_col_break",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rhdm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_kphd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_jce4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "min_outstanding_amount",
+   "fieldtype": "Currency",
+   "label": "Min Outstanding Amount"
+  },
+  {
+   "fieldname": "max_outstanding_amount",
+   "fieldtype": "Currency",
+   "label": "Max Outstanding Amount"
+  },
+  {
+   "fieldname": "min_payment_amount",
+   "fieldtype": "Currency",
+   "label": "Min Payment Amount"
+  },
+  {
+   "fieldname": "max_payment_amount",
+   "fieldtype": "Currency",
+   "label": "Max Payment Amount"
+  },
+  {
+   "depends_on": "eval:doc.party",
+   "fieldname": "advance_payment_account",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Advance Payment Account",
+   "options": "Account"
   }
  ],
- "grid_page_length": 500,
  "hide_toolbar": 1,
  "icon": "icon-resize-horizontal",
+ "is_virtual": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-03-13 21:30:34.373518",
+ "modified": "2026-06-30 13:16:11.230027",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Reconciliation",
@@ -170,6 +255,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

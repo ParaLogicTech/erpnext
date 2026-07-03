@@ -234,8 +234,7 @@
    "hidden": 1,
    "label": "Sales Order Item",
    "no_copy": 1,
-   "read_only": 1,
-   "search_index": 1
+   "read_only": 1
   },
   {
    "fieldname": "warehouse_section",
@@ -434,7 +433,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-02-27 13:46:22.049717",
+ "modified": "2026-06-14 17:38:06.115590",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packing Slip Item",

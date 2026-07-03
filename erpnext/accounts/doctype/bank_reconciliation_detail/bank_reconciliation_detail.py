@@ -4,5 +4,8 @@
 import frappe
 from frappe.model.document import Document
 
+
 class BankReconciliationDetail(Document):
-	pass
+	@staticmethod
+	def get_list(args):
+		pass

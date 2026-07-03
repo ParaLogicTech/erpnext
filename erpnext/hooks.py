@@ -10,10 +10,11 @@ app_email = "info@erpnext.com"
 app_license = "GNU General Public License (v3)"
 source_link = "https://github.com/frappe/erpnext"
 app_logo_url = '/assets/erpnext/images/erpnext-logo.svg'
-required_apps = ["ParaLogicTech/crm"]
-
-
-develop_version = '14.x.x-develop'
+required_apps = [
+	"payments",
+	"ParaLogicTech/crm"
+]
+develop_version = '15.x.x-develop'
 
 app_include_js = "erpnext.bundle.js"
 app_include_css = "erpnext.bundle.css"
@@ -123,6 +124,7 @@ fixtures = [
 				"Appointment-sec_service_template",
 				"Appointment-service_templates",
 
+				"Customer Feedback-branch",
 				"Customer Feedback-project",
 				"Customer Feedback-applies_to_variant_of",
 				"Customer Feedback-applies_to_variant_of_name",
@@ -152,10 +154,17 @@ update_and_get_user_progress = "erpnext.utilities.user_progress_utils.update_def
 leaderboards = "erpnext.startup.leaderboard.get_leaderboards"
 
 treeviews = [
-    'Account', 'Cost Center', 'Warehouse', 
-    'Item Group', 'Customer Group', 'Assessment Group', 
-    'Department', 'Quality Procedure', 'Location',
-    'Service Template Category', 'Supplier Group'
+	'Account',
+	'Cost Center',
+	'Warehouse',
+	'Item Group',
+	'Customer Group',
+	'Assessment Group',
+	'Department',
+	'Quality Procedure',
+	'Location',
+	'Service Template Category',
+	'Supplier Group',
 ]
 
 email_append_to = ["Job Applicant", "Issue"]
@@ -353,6 +362,7 @@ accounting_dimension_doctypes = [
 	"Expense Claim", "Expense Claim Detail", "Expense Taxes and Charges",
 
 	"Bank Deposit Tool", "Bank Deposit Adjustment",
+	"Payment Reconciliation",
 
 	"Loyalty Program", "Shipping Rule",
 	"Asset", "Asset Value Adjustment",

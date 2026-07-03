@@ -110,8 +110,33 @@ frappe.query_reports["Accounts Payable Summary"] = {
 			var filters = report.get_values();
 			frappe.set_route('query-report', 'Accounts Payable', {company: filters.company});
 		});
-	}
+	},
+
+	formatter: function (value, row, column, data, default_formatter) {
+		let style = {};
+
+		if (["outstanding_amount"].includes(column.fieldname)) {
+			style['font-weight'] = 'bold';
+		}
+
+		if (flt(value) && column.fieldname == "invoiced_amount") {
+			style['color'] = 'var(--blue-700)';
+		}
+
+		if (flt(value) && column.fieldname == "paid_amount") {
+			style['color'] = 'var(--green-800)';
+		}
+
+		if (flt(value) && column.fieldname == "return_amount") {
+			style['color'] = 'var(--orange-500)';
+		}
+
+		if (flt(value) && column.fieldname == "advance_amount") {
+			style['color'] = 'var(--purple-600)';
+		}
+
+		return default_formatter(value, row, column, data, {css: style});
+	},
 }
 
 //erpnext.utils.add_dimensions('Accounts Payable Summary', 9);
-

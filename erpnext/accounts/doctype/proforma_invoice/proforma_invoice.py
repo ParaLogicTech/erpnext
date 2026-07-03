@@ -10,6 +10,8 @@ from frappe.model.mapper import get_mapped_doc
 
 
 class ProformaInvoice(SellingController):
+	allow_advances_unlink = True
+
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
@@ -71,6 +73,10 @@ class ProformaInvoice(SellingController):
 	def get_orders_for_advance_entries(self):
 		orders = set([("Sales Order", d.get("sales_order")) for d in self.get("items") if d.get("sales_order")])
 		return list(orders)
+
+	def before_calculate_taxes_and_totals(self):
+		super().before_calculate_taxes_and_totals()
+		self.clear_unallocated_advances()
 
 	def validate_with_previous_doc(self):
 		super().validate_with_previous_doc({

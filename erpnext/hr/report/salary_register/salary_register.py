@@ -88,7 +88,7 @@ def get_grouped_data(columns, data, filters):
 		if not group_object.group_field:
 			group_object.totals['employee'] = "'Total'"
 		else:
-			group_object.totals['employee'] = "'{0}: {1}'".format(group_object.group_label, group_object.group_value)
+			group_object.totals['employee'] = "'{0}: {1}'".format(group_object.group_label, group_object.group_value or "None")
 
 	return group_report_data(data, group_by, total_fields=total_fields, postprocess_group=postprocess_group)
 

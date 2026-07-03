@@ -941,7 +941,7 @@ class calculate_taxes_and_totals(object):
 			if self.doc.is_return and self.doc.return_against and not self.doc.get('is_pos'):
 				party_amount = self.get_total_amount_to_pay()
 			else:
-				party_amount = self.doc.outstanding_amount
+				party_amount = flt(self.doc.outstanding_amount) + flt(self.doc.get("total_advance"))
 
 			self.doc.customer_outstanding_amount = flt(flt(party_amount) + flt(self.doc.get('previous_outstanding_amount')),
 				self.doc.precision('customer_outstanding_amount'))

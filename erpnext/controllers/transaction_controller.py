@@ -118,7 +118,6 @@ class TransactionController(StockController):
 		self.set_common_uom_before_print()
 		self.set_pricing_rules_before_print()
 		self.group_items_before_print()
-		self.set_discount_negative_before_print()
 
 	def validate(self):
 		self.validate_qty_is_not_zero()
@@ -366,13 +365,6 @@ class TransactionController(StockController):
 		self.warehouses = list(set([frappe.get_cached_value("Warehouse", item.warehouse, 'warehouse_name')
 			for item in self.items if item.get('warehouse')]))
 
-	def set_discount_negative_before_print(self):
-		if self.get("discount_amount"):
-			self.discount_amount = -self.discount_amount
-
-		if self.get("total_discount_after_taxes"):
-			self.total_discount_after_taxes = -self.total_discount_after_taxes
-
 	def merge_bundled_items(self):
 		bundles = {}
 		item_meta = frappe.get_meta("Stock Entry Detail" if self.doctype == "Stock Entry" else self.doctype + " Item")
@@ -541,7 +533,7 @@ class TransactionController(StockController):
 		grouped = self.group_items_by(key="item_tax_template")
 		for item_tax_template, group_data in grouped.items():
 			# group item groups in item tax template group
-			group_data.item_groups = self.group_items_by_item_group(group_data['items'])
+			group_data.item_groups = self.group_items_by_item_group(group_data['items'], idx_field=None)
 
 		# reset item index
 		item_idx = 1
@@ -553,14 +545,15 @@ class TransactionController(StockController):
 
 		return grouped
 
-	def group_items_by_item_group(self, items):
+	def group_items_by_item_group(self, items, idx_field="ig_idx"):
 		grouped = self.group_items_by(key=lambda row: self.get_item_group_print_heading(row), items=items)
 
 		# Sort by Item Group Order
 		out = OrderedDict()
 		price_list_settings = frappe.get_cached_doc("Price List Settings", None)
+		order_list = price_list_settings.get_exploded_item_group_order()
 
-		for d in price_list_settings.item_group_order:
+		for d in order_list:
 			if d.item_group in grouped:
 				out[d.item_group] = grouped[d.item_group]
 				del grouped[d.item_group]
@@ -569,12 +562,13 @@ class TransactionController(StockController):
 			out[item_group] = grouped[item_group]
 
 		# reset item index
-		item_idx = 1
-		for item_group_i, item_group_group in enumerate(out.values()):
-			item_group_group.index = item_group_i + 1
-			for item in item_group_group['items']:
-				item.ig_idx = item_idx
-				item_idx += 1
+		if idx_field:
+			item_idx = 1
+			for item_group_i, item_group_group in enumerate(out.values()):
+				item_group_group.index = item_group_i + 1
+				for item in item_group_group['items']:
+					item.set(idx_field, item_idx)
+					item_idx += 1
 
 		return out
 
@@ -1014,7 +1008,11 @@ class TransactionController(StockController):
 		if not sorting_field:
 			return
 
-		order_list = price_list_settings.get(f"{sorting_field}_order", [])
+		if sorting_field == "item_group":
+			order_list = price_list_settings.get_exploded_item_group_order()
+		else:
+			order_list = price_list_settings.get(f"{sorting_field}_order", [])
+
 		order_map = {d.get(sorting_field): cint(d.idx) for d in order_list}
 
 		if not order_map:
@@ -1343,8 +1341,7 @@ def update_child_items(parent_doctype, parent_name, data):
 					else:
 						doc_row.price_list_rate = 0
 				else:
-					doc_row.discount_percentage = flt((1 - flt(doc_row.rate) / flt(doc_row.price_list_rate)) * 100.0,
-						doc_row.precision("discount_percentage"))
+					doc_row.discount_percentage = (1 - flt(doc_row.rate) / flt(doc_row.price_list_rate)) * 100.0
 					doc_row.discount_amount = flt(doc_row.price_list_rate) - flt(doc_row.rate)
 
 					if doc_row.meta.has_field("margin_type"):

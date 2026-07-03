@@ -135,8 +135,8 @@ class Loan(AccountsController):
 		if flt(total_principal_amount, self.precision('loan_amount')) != flt(self.loan_amount, self.precision('loan_amount')):
 			frappe.throw(_("Total Repayment Schedule Principal Amount {0} does not match Loan Amount {1}")
 				.format(
-					frappe.bold(frappe.format(total_principal_amount, df=loan_amount_df)),
-					frappe.bold(frappe.format(self.loan_amount, df=loan_amount_df))
+					frappe.bold(frappe.format(total_principal_amount, df=loan_amount_df, doc=self)),
+					frappe.bold(frappe.format(self.loan_amount, df=loan_amount_df, doc=self))
 				))
 
 	def calculate_totals(self):

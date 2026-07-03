@@ -259,6 +259,7 @@ class ExpenseEntry(Document):
 			"company": self.company,
 			"branch": self.branch,
 			"posting_date": self.get_posting_date(row),
+			"is_system_generated": 1,
 
 			"bill_no": row.bill_no or self.bill_no or self.name,
 			"bill_date": row.bill_date or self.transaction_date,

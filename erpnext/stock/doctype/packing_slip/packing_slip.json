@@ -21,7 +21,11 @@
   "column_break0",
   "remarks",
   "unpack_against",
+  "original_customer",
+  "original_customer_name",
   "is_unpack",
+  "is_reassigned",
+  "can_reassign",
   "column_break1",
   "company",
   "posting_date",
@@ -467,6 +471,44 @@
    "fieldtype": "Link",
    "label": "Default Rejected Warehouse",
    "options": "Warehouse"
+  },
+  {
+   "default": "0",
+   "depends_on": "is_reassigned",
+   "fieldname": "is_reassigned",
+   "fieldtype": "Check",
+   "label": "Is Reassigned",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.original_customer != doc.customer",
+   "fieldname": "original_customer",
+   "fieldtype": "Link",
+   "label": "Original Customer",
+   "no_copy": 1,
+   "options": "Customer",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.original_customer && doc.original_customer_name != doc.original_customer && doc.original_customer != doc.customer",
+   "fieldname": "original_customer_name",
+   "fieldtype": "Data",
+   "label": "Original Customer Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "can_reassign",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Can Reassign",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "grid_page_length": 500,
@@ -474,7 +516,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-21 16:26:19.635946",
+ "modified": "2026-06-15 00:54:08.518481",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packing Slip",

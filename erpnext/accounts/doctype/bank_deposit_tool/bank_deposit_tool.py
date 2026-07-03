@@ -14,10 +14,40 @@ import json
 
 
 class BankDepositTool(Document):
-	def validate(self):
+	def load_from_db(self):
+		doc_dict = frappe.new_doc(self.doctype, as_dict=True)
+		doc_dict["name"] = self.doctype
+		super(Document, self).__init__(doc_dict)
+
+	def save(self):
+		return
+
+	@staticmethod
+	def get_list(args):
+		pass
+
+	@staticmethod
+	def get_count(args):
+		pass
+
+	@staticmethod
+	def get_stats(args):
+		pass
+
+	def db_insert(self, *args, **kwargs):
+		pass
+
+	def db_update(self, *args, **kwargs):
+		pass
+
+	def delete(self, *args, **kwargs):
+		pass
+
+	def validate_deposit(self):
 		self.validate_undeposited_account()
 		self.validate_bank_account()
 		self.validate_adjustment_accounts()
+		self._validate_mandatory()
 
 	def validate_undeposited_account(self):
 		if not self.undeposited_account:
@@ -432,6 +462,7 @@ class BankDepositTool(Document):
 	@frappe.whitelist()
 	def submit_deposit_entry(self, selected_row_names):
 		je = self.make_deposit_journal_entry(selected_row_names)
+		je.is_system_generated = 1
 		je.insert()
 		je.submit()
 
@@ -453,8 +484,7 @@ class BankDepositTool(Document):
 		return je
 
 	def make_deposit_journal_entry(self, selected_row_names):
-		self.validate()
-		self._validate_mandatory()
+		self.validate_deposit()
 
 		if isinstance(selected_row_names, str):
 			selected_row_names = json.loads(selected_row_names)
