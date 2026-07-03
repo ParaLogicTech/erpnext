@@ -12,7 +12,6 @@ class CustomerFeedbackERP(CustomerFeedback):
 	def validate(self):
 		self.set_reference_from_project()
 		super().validate()
-		self.set_branch()
 
 	def set_reference_from_project(self):
 		if self.project and not self.reference_name:
@@ -21,25 +20,23 @@ class CustomerFeedbackERP(CustomerFeedback):
 
 		if self.reference_doctype == "Project" and self.reference_name and not self.project:
 			self.project = self.reference_name
-	
-	def set_branch(self):
-		if not self.branch:
-			if self.project:
-				self.branch = frappe.get_cached_value("Project", self.project, "branch")
-			elif (
-				self.reference_doctype
-				and self.reference_name
-				and frappe.get_meta(self.reference_doctype).has_field("branch")
-			):
-				self.branch = frappe.get_cached_value(
-					self.reference_doctype,
-					self.reference_name,
-					"branch",
-				)
 
 	def set_missing_values(self):
 		super().set_missing_values()
+		self.set_branch()
 		self.set_applies_to_details()
+
+	def set_branch(self):
+		if (
+			not self.branch
+			and self.reference_doctype
+			and self.reference_name
+			and frappe.get_meta(self.reference_doctype).has_field("branch")
+		):
+			self.branch = frappe.db.get_value(self.reference_doctype, self.reference_name, "branch")
+
+		if not self.branch and self.project:
+			self.branch = frappe.db.get_value("Project", self.project, "branch")
 
 	def set_applies_to_details(self):
 		args = self.as_dict()
