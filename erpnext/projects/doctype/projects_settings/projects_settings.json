@@ -41,6 +41,8 @@
   "restrict_expected_time",
   "ignore_employee_time_overlap",
   "expected_time_mandatory",
+  "activity_cost_mandatory_for_timesheet",
+  "activity_cost_mandatory_task_assignment",
   "require_attendance_for_task_start",
   "column_break_xs7b",
   "margin_validation_override_role",
@@ -268,11 +270,23 @@
    "fieldname": "expected_time_mandatory",
    "fieldtype": "Check",
    "label": "Expected Time Mandatory in Tasks"
+  },
+  {
+   "default": "0",
+   "fieldname": "activity_cost_mandatory_for_timesheet",
+   "fieldtype": "Check",
+   "label": "Activity Cost Mandatory for Timesheet"
+  },
+  {
+   "default": "0",
+   "fieldname": "activity_cost_mandatory_task_assignment",
+   "fieldtype": "Check",
+   "label": "Activity Cost Mandatory Task Assignment"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2025-12-28 12:28:46.351599",
+ "modified": "2026-07-03 13:13:13.898449",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Projects Settings",
@@ -299,6 +313,7 @@
  ],
  "quick_entry": 1,
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
