@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate, get_datetime, add_to_date, time_diff_in_hours, cstr
+from frappe.utils import flt, getdate, get_datetime, add_to_date, time_diff_in_hours, cstr, cint
 import json
 
 
@@ -16,11 +16,11 @@ class Timesheet(Document):
 		self.set_missing_values()
 		self.validate_dates()
 		self.validate_time_logs()
+		self.validate_activity_cost()
 		self.calculate_totals()
 		self.calculate_percentage_billed()
 		self.set_dates()
 		self.set_status()
-		self.validate_employee_cost(self.employee)
 
 	def on_submit(self):
 		self.validate_mandatory_fields()
@@ -77,22 +77,36 @@ class Timesheet(Document):
 		for d in self.time_logs:
 			if d.from_time and d.to_time and get_datetime(d.from_time) > get_datetime(d.to_time):
 				frappe.throw(_("Row {0}: Incorrect time range").format(d.idx))
-	
-	@staticmethod
-	def validate_employee_cost(employee_id, stop_assigning=False):
-		activity_cost = get_activity_cost(employee_id)
-		costing_rate = flt(activity_cost.get("costing_rate"))
-		if not costing_rate and stop_assigning:
-			frappe.throw(
-				f"Employee <b>{employee_id}</b> cannot be assigned because no employee cost has been configured."
-			)
 
 	def validate_time_logs(self):
-		if not self.employee or frappe.db.get_single_value("Projects Settings", 'ignore_employee_time_overlap'):
+		if not self.employee:
+			return
+		if cint(frappe.get_cached_value("Projects Settings", None, "ignore_employee_time_overlap")):
 			return
 
 		for d in self.time_logs:
 			self.validate_overlap_for_timelog(d)
+
+	def validate_activity_cost(self):
+		if not self.employee:
+			return
+		if not frappe.get_cached_value("Projects Settings", None, "activity_cost_mandatory_for_timesheet"):
+			return
+
+		for d in self.time_logs:
+			if not d.is_new():
+				continue
+
+			activity_cost = get_activity_cost(
+				employee=self.employee,
+				activity_type=d.activity_type,
+				fallback_to_default_cost=False,
+			)
+			costing_rate = flt(activity_cost.get("costing_rate"))
+			if not costing_rate:
+				frappe.throw(_("Cannot add time log because Activity Cost is not yet assigned to {0}").format(
+					frappe.get_desk_link("Employee", self.employee),
+				))
 
 	def calculate_totals(self):
 		self.total_hours = 0
@@ -297,7 +311,7 @@ def make_salary_slip(source_name, target_doc=None):
 
 
 @frappe.whitelist()
-def get_activity_cost(employee=None, activity_type=None, get_cost_if_employee_not_set=True):
+def get_activity_cost(employee=None, activity_type=None, fallback_to_default_cost=True):
 	activity_cost = None
 
 	if employee and activity_type:
@@ -312,11 +326,11 @@ def get_activity_cost(employee=None, activity_type=None, get_cost_if_employee_no
 
 	elif activity_type:
 		activity_cost = _get_activity_cost(activity_type=activity_type)
-	
-	if not activity_cost and get_cost_if_employee_not_set:
-		return _get_activity_cost() or frappe._dict()
-	else:
-		return activity_cost or frappe._dict()
+
+	if not activity_cost and cint(fallback_to_default_cost):
+		activity_cost = _get_activity_cost()
+
+	return activity_cost or frappe._dict()
 
 
 def _get_activity_cost(employee=None, activity_type=None, cache=True):
