@@ -174,8 +174,7 @@ class StockReconciliation(StockController):
 			raise frappe.ValidationError(self.validation_messages)
 
 	def validate_item(self, item_code, row):
-		from erpnext.stock.doctype.item.item import validate_end_of_life, \
-			validate_is_stock_item, validate_cancelled_item
+		from erpnext.stock.doctype.item.item import validate_end_of_life, validate_is_stock_item
 
 		# using try except to catch all validation msgs and display together
 
@@ -183,8 +182,8 @@ class StockReconciliation(StockController):
 			item = frappe.get_cached_doc("Item", item_code)
 
 			# end of life and stock item
-			validate_end_of_life(item_code, item.end_of_life, item.disabled, verbose=0)
-			validate_is_stock_item(item_code, item.is_stock_item, verbose=0)
+			validate_end_of_life(item_code)
+			validate_is_stock_item(item_code)
 
 			# serialized item
 			if row.serial_no and not item.has_serial_no:
@@ -200,9 +199,6 @@ class StockReconciliation(StockController):
 
 			if flt(row.qty) == 0 and row.serial_no:
 				row.serial_no = ''
-
-			# docstatus should be < 2
-			validate_cancelled_item(item_code, item.docstatus, verbose=0)
 
 		except Exception as e:
 			self.validation_messages.append(_("Row # ") + ("%d: " % (row.idx)) + cstr(e))

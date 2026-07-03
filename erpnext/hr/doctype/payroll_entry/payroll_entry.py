@@ -399,6 +399,7 @@ class PayrollEntry(Document):
 			journal_entry.voucher_type = 'Journal Entry'
 			journal_entry.company = self.company
 			journal_entry.posting_date = self.posting_date
+			journal_entry.is_system_generated = 1
 
 			journal_entry.user_remark = _('Accrual Journal Entry for salaries from {0} to {1}')\
 				.format(self.get_formatted("start_date"), self.get_formatted("end_date"))

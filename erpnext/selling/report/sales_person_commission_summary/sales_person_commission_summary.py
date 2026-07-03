@@ -165,7 +165,8 @@ class SalesPersonCommissionSummary(object):
 			gl_entries = frappe.db.sql("""
 				select
 					posting_date, account, party, voucher_type, voucher_no, against_voucher_type, against_voucher,
-					debit, credit, debit_in_account_currency, credit_in_account_currency
+					debit, credit, debit_in_account_currency, credit_in_account_currency,
+					company, account_currency
 				from
 					`tabGL Entry`
 				where
@@ -185,7 +186,7 @@ class SalesPersonCommissionSummary(object):
 			adjustment_voucher_entries.setdefault((gle.voucher_type, gle.voucher_no), [])
 			adjustment_voucher_entries[(gle.voucher_type, gle.voucher_no)].append(gle)
 
-		self.adjustment_details = get_adjustment_details(adjustment_voucher_entries, "debit", "credit")
+		self.adjustment_details = get_adjustment_details(adjustment_voucher_entries, "credit")
 
 	def get_conditions(self):
 		conditions = []
@@ -361,7 +362,7 @@ class SalesPersonCommissionSummary(object):
 				"width": 110
 			},
 			{
-				"label": _("Deduction"),
+				"label": _("Penalty"),
 				"fieldname": "deduction_on_contribution_amount",
 				"fieldtype": "Currency",
 				"width": 110

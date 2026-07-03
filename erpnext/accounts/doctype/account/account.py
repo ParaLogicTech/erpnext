@@ -262,7 +262,7 @@ def get_parent_account(doctype, txt, searchfield, start, page_len, filters):
 def get_account_currency(account):
 	"""Helper function to get account currency"""
 	if not account:
-		return
+		return None
 
 	def generator():
 		account_currency, company = frappe.get_cached_value("Account", account, ["account_currency", "company"])

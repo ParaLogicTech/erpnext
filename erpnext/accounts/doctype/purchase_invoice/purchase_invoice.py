@@ -35,6 +35,8 @@ class ConfirmRevaluePurchaseReceipt(frappe.ValidationError):
 
 
 class PurchaseInvoice(BuyingController):
+	allow_advances_unlink = True
+
 	def __init__(self, *args, **kwargs):
 		super(PurchaseInvoice, self).__init__(*args, **kwargs)
 
@@ -125,7 +127,7 @@ class PurchaseInvoice(BuyingController):
 		# this sequence because outstanding may get -negative
 		self.make_gl_entries()
 		if not self.is_return:
-			self.update_against_document_in_jv()
+			self.reconcile_advance_payments()
 		self.set_outstanding_amount(update=True)
 		self.set_status(update=True)
 

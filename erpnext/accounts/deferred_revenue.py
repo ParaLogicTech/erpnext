@@ -212,9 +212,9 @@ def make_gl_entries(doc, credit_account, debit_account, against,
 				ignore_mandatory_dimension=True,
 			)
 			frappe.db.commit()
-		except:
+		except Exception:
 			frappe.db.rollback()
 			title = _("Error while processing deferred accounting for {0}").format(doc.name)
+			doc.log_error(title=title)
 			traceback = frappe.get_traceback()
-			doc.log_error(message=traceback , title=title)
 			sendmail_to_system_managers(title, traceback)

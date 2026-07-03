@@ -55,7 +55,7 @@ def create_bank_entries(columns, data, bank_account):
 			bank_transaction.submit()
 			success += 1
 		except Exception:
-			frappe.log_error(message=frappe.get_traceback())
+			frappe.log_error("Bank Transaction Upload Failed")
 			errors += 1
 
 	return {"success": success, "errors": errors}

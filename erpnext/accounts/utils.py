@@ -3,16 +3,14 @@
 # License: GNU General Public License v3. See license.txt
 
 
-import frappe, erpnext
+import frappe
+import erpnext
 import frappe.defaults
-from frappe.utils import nowdate, cstr, flt, cint, now, getdate
-from frappe import throw, _
-from frappe.utils import formatdate, get_number_format_info
-# imported to enable erpnext.accounts.utils.get_account_currency
-from erpnext.accounts.doctype.account.account import get_account_currency
-
+from frappe import _
+from frappe.utils import nowdate, cstr, flt, cint, getdate, formatdate, get_number_format_info
 from erpnext.stock.utils import get_stock_value_on
 from erpnext.stock import get_warehouse_account_map
+from erpnext.accounts.doctype.account.account import get_account_currency  # do not remove
 
 
 class FiscalYearError(frappe.ValidationError):
@@ -87,7 +85,7 @@ def validate_fiscal_year(date, fiscal_year, company, label="Date", doc=None):
 		if doc:
 			doc.fiscal_year = years[0]
 		else:
-			throw(_("{0} '{1}' not in Fiscal Year {2}").format(label, formatdate(date), fiscal_year))
+			frappe.throw(_("{0} '{1}' not in Fiscal Year {2}").format(label, formatdate(date), fiscal_year))
 
 
 @frappe.whitelist()
@@ -373,379 +371,8 @@ def add_cc(args=None):
 	return cc.name
 
 
-def reconcile_against_document(args):
-	"""
-		Cancel JV, Update aginst document, split if required and resubmit jv
-	"""
-
-	to_repost = []
-
-	for d in args:
-		update_payment_voucher_allocation_reference(d)
-		if (d.voucher_type, d.voucher_no) not in to_repost:
-			to_repost.append((d.voucher_type, d.voucher_no))
-
-	repost_reconciled_payment_voucher(to_repost)
-
-
-def update_payment_voucher_allocation_reference(d):
-	check_if_advance_entry_modified(d)
-	validate_allocated_amount(d)
-
-	# update ref in advance entry
-	doc = frappe.get_doc(d.voucher_type, d.voucher_no)
-	if d.voucher_type == "Journal Entry":
-		update_reference_in_journal_entry(d, doc)
-	else:
-		update_reference_in_payment_entry(d, doc)
-
-
-def repost_reconciled_payment_voucher(payment_vouchers):
-	for voucher_type, voucher_no in payment_vouchers:
-		# cancel advance entry and resubmit gl entries
-		doc = frappe.get_doc(voucher_type, voucher_no)
-		doc.make_gl_entries(cancel=1, adv_adj=1)
-		doc.make_gl_entries(cancel=0, adv_adj=1)
-		if voucher_type in ('Payment Entry', 'Journal Entry'):
-			doc.update_expense_claim()
-
-
-def check_if_advance_entry_modified(args):
-	"""
-		check if there is already a voucher reference
-		check if amount is same
-		check if jv is submitted
-	"""
-	ret = None
-
-	args = args.copy()
-
-	if args.voucher_type == "Journal Entry":
-		if args.voucher_detail_no:
-			args["advance_against_voucher_types"] = [""] + get_advance_against_voucher_types()
-			ret = frappe.db.sql("""
-				select je.name
-				from `tabJournal Entry` je, `tabJournal Entry Account` jea
-				where
-					je.name = jea.parent and jea.account = %(account)s and je.docstatus=1
-					and je.name = %(voucher_no)s and jea.name = %(voucher_detail_no)s
-					and jea.party_type = %(party_type)s and jea.party = %(party)s
-					and ifnull(jea.reference_type, '') in %(advance_against_voucher_types)s
-					and jea.{dr_or_cr} = %(unadjusted_amount)s
-				""".format(dr_or_cr=args.dr_or_cr), args)
-		else:
-			if erpnext.get_party_account_type(args.party_type) == 'Receivable':
-				dr_or_cr = "credit_in_account_currency - debit_in_account_currency"
-			else:
-				dr_or_cr = "debit_in_account_currency - credit_in_account_currency"
-
-			ret = frappe.db.sql("""
-				select sum({dr_or_cr}) as outstanding_amount
-				from `tabGL Entry`
-				where
-				((voucher_type='Journal Entry' and voucher_no=%(voucher_no)s and (against_voucher is null or against_voucher=''))
-					or (against_voucher_type='Journal Entry' and against_voucher=%(voucher_no)s))
-				and party_type=%(party_type)s and party=%(party)s and account=%(account)s
-				having outstanding_amount=%(unadjusted_amount)s
-			""".format(dr_or_cr=dr_or_cr), args)
-	else:
-		party_account_field = ("paid_from" if erpnext.get_party_account_type(args.party_type) == 'Receivable' else "paid_to")
-
-		if args.voucher_detail_no:
-			args["advance_against_voucher_types"] = get_advance_against_voucher_types()
-			ret = frappe.db.sql("""
-				select pe.name
-				from `tabPayment Entry` pe, `tabPayment Entry Reference` pref
-				where
-					pe.name = pref.parent and pe.docstatus = 1
-					and pe.name = %(voucher_no)s and pref.name = %(voucher_detail_no)s
-					and pe.party_type = %(party_type)s and pe.party = %(party)s and pe.{0} = %(account)s
-					and pref.reference_doctype in %(advance_against_voucher_types)s
-					and pref.allocated_amount = %(unadjusted_amount)s
-			""".format(party_account_field), args)
-		else:
-			ret = frappe.db.sql("""
-				select name from `tabPayment Entry`
-				where
-					name = %(voucher_no)s and docstatus = 1
-					and party_type = %(party_type)s and party = %(party)s and {0} = %(account)s
-					and unallocated_amount = %(unadjusted_amount)s
-			""".format(party_account_field), args)
-
-	if not ret:
-		throw(_("""Payment Entry has been modified after you pulled it. Please pull it again."""))
-
-
 def get_advance_against_voucher_types():
 	return frappe.get_hooks("advance_against_voucher_types")
-
-
-def validate_allocated_amount(args):
-	if args.get("allocated_amount") < 0:
-		throw(_("Allocated amount cannot be negative"))
-	elif args.get("allocated_amount") > args.get("unadjusted_amount"):
-		throw(_("Allocated amount cannot be greater than unadjusted amount"))
-
-
-def update_reference_in_journal_entry(d, jv_doc, do_not_save=False):
-	"""
-		Updates against document, if partial amount splits into rows
-	"""
-
-	dr_or_cr = d["dr_or_cr"]
-	reverse_dr_or_cr = "credit_in_account_currency" if dr_or_cr == "debit_in_account_currency" else "debit_in_account_currency"
-	base_dr_or_cr = "debit" if dr_or_cr == "debit_in_account_currency" else "credit"
-	base_reverse_dr_or_cr = "credit" if dr_or_cr == "debit_in_account_currency" else "debit"
-
-	rows_to_reconcile = []
-	if d.get("voucher_detail_no"):
-		rows_to_reconcile.append(jv_doc.get("accounts", {"name": d["voucher_detail_no"]})[0])
-	else:
-		for row in jv_doc.accounts:
-			if (
-				row.party_type == d['party_type']
-				and row.party == d['party']
-				and row.account == d['account']
-				and not row.reference_type
-				and not row.reference_name
-			):
-				rows_to_reconcile.append(row)
-
-	amt_allocated = 0.0
-	for jv_detail in rows_to_reconcile:
-		jvd = frappe.copy_doc(jv_detail)
-
-		diff = flt(jv_detail.get(dr_or_cr)) - flt(jv_detail.get(reverse_dr_or_cr))
-
-		amt_allocatable = flt(
-			min(diff, d["allocated_amount"] - amt_allocated),
-			jv_detail.precision("debit")
-		)
-		original_dr_or_cr = diff
-		original_reference_type = jv_detail.reference_type
-		original_reference_name = jv_detail.reference_name
-
-		jv_detail.set(dr_or_cr, amt_allocatable)
-		jv_detail.set(base_dr_or_cr, amt_allocatable * flt(jv_detail.exchange_rate))
-		jv_detail.set(reverse_dr_or_cr, 0)
-		jv_detail.set(base_reverse_dr_or_cr, 0)
-
-		jv_detail.set("reference_type", d["against_voucher_type"])
-		jv_detail.set("reference_name", d["against_voucher"])
-
-		if amt_allocatable < original_dr_or_cr:
-			amount_in_account_currency = flt(flt(original_dr_or_cr) - flt(amt_allocatable), jv_detail.precision("debit"))
-			amount_in_company_currency = amount_in_account_currency * flt(jvd.exchange_rate)
-
-			# new entry with balance amount
-			ch = jv_doc.append("accounts")
-
-			# insert it in between
-			new_idx = jv_detail.idx + 1
-			for row in jv_doc.accounts:
-				if row.idx >= new_idx:
-					row.idx += 1
-			ch.idx = new_idx
-
-			ch.account = d['account']
-			ch.account_type = jvd.account_type
-			ch.account_currency = jvd.account_currency
-			ch.exchange_rate = jvd.exchange_rate
-			ch.party_type = d["party_type"]
-			ch.party = d["party"]
-			ch.party_name = jvd.party_name
-			ch.cost_center = cstr(jvd.cost_center)
-			ch.project = jvd.project
-			ch.balance = flt(jvd.balance)
-			ch.cheque_no = jvd.cheque_no
-			ch.cheque_date = jvd.cheque_date
-			ch.user_remark = jvd.user_remark
-			ch.original_reference_type = jvd.original_reference_type
-			ch.original_reference_name = jvd.original_reference_name
-			ch.against_account = cstr(jvd.against_account)
-
-			from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
-			for dimension_fieldname in get_accounting_dimensions():
-				ch.set(dimension_fieldname, jvd.get(dimension_fieldname))
-
-			ch.set(dr_or_cr, amount_in_account_currency)
-			ch.set(base_dr_or_cr, amount_in_company_currency)
-			ch.set(reverse_dr_or_cr, 0)
-			ch.set(base_reverse_dr_or_cr, 0)
-
-			ch.reference_type = original_reference_type
-			ch.reference_name = original_reference_name
-			ch.docstatus = 1
-
-		amt_allocated += amt_allocatable
-		if abs(amt_allocated - d["allocated_amount"]) < (1.0 / (10**(jv_detail.precision(d['dr_or_cr'])))):
-			break
-
-	# will work as update after submit
-	if not do_not_save:
-		jv_doc.flags.ignore_validate_update_after_submit = True
-		jv_doc.flags.ignore_mandatory = True
-		jv_doc.save(ignore_permissions=True)
-
-
-def update_reference_in_payment_entry(d, payment_entry, do_not_save=False):
-	payment_entry.flags.ignore_validate_update_after_submit = True
-	payment_entry.flags.ignore_mandatory = True
-	payment_entry.setup_party_account_field()
-
-	reference_details = {
-		"reference_doctype": d.against_voucher_type,
-		"reference_name": d.against_voucher,
-		"total_amount": d.grand_total,
-		"outstanding_amount": d.outstanding_amount,
-		"allocated_amount": d.allocated_amount,
-		"exchange_rate": d.exchange_rate
-	}
-
-	if d.voucher_detail_no:
-		existing_row = payment_entry.get("references", {"name": d["voucher_detail_no"]})[0]
-		original_row = existing_row.as_dict().copy()
-
-		reference_details.update({
-			"original_reference_doctype": existing_row.original_reference_doctype,
-			"original_reference_name": existing_row.original_reference_name
-		})
-
-		existing_row.update(reference_details)
-		payment_entry.set_reference_row_details(existing_row)
-
-		if d.allocated_amount < original_row.allocated_amount:
-			new_row = payment_entry.append("references")
-			new_row.docstatus = 1
-			for field in list(reference_details):
-				new_row.set(field, original_row[field])
-
-			new_row.allocated_amount = original_row.allocated_amount - d.allocated_amount
-			payment_entry.set_reference_row_details(new_row)
-	else:
-		new_row = payment_entry.append("references")
-		new_row.docstatus = 1
-		new_row.update(reference_details)
-		payment_entry.set_reference_row_details(new_row)
-
-	payment_entry.set_amounts()
-
-	if d.difference_amount and d.difference_account:
-		payment_entry.set_gain_or_loss(account_details={
-			'account': d.difference_account,
-			'cost_center': payment_entry.cost_center or frappe.get_cached_value('Company',
-				payment_entry.company, "cost_center"),
-			'amount': d.difference_amount
-		})
-
-	if not do_not_save:
-		payment_entry.save(ignore_permissions=True)
-
-
-def unlink_ref_doc_from_payment_entries(ref_doc, validate_permission=False):
-	if validate_permission:
-		allow_unlink_setting = cint(frappe.db.get_single_value("Accounts Settings", "unlink_payment_on_cancellation_of_invoice"))
-		allow_unlink_role = frappe.db.get_single_value("Accounts Settings", "restrict_unlink_payments_to_role")
-		has_unlink_role_permission = not allow_unlink_role or allow_unlink_role in frappe.get_roles()
-		if not allow_unlink_setting or not has_unlink_role_permission:
-			return
-
-	remove_ref_doc_link_from_jv(ref_doc.doctype, ref_doc.name)
-	remove_ref_doc_link_from_pe(ref_doc.doctype, ref_doc.name)
-
-	frappe.db.sql("""
-		update `tabGL Entry`
-		set against_voucher_type=original_against_voucher_type, against_voucher=original_against_voucher,
-			modified=%s, modified_by=%s
-		where against_voucher_type=%s and against_voucher=%s
-			and ifnull(original_against_voucher_type, '') != '' and ifnull(original_against_voucher, '') != ''
-			and voucher_no != ifnull(against_voucher, '')
-	""", (now(), frappe.session.user, ref_doc.doctype, ref_doc.name))
-
-	frappe.db.sql("""
-		update `tabGL Entry`
-		set against_voucher_type=null, against_voucher=null,
-			modified=%s, modified_by=%s
-		where against_voucher_type=%s and against_voucher=%s
-			and voucher_no != ifnull(against_voucher, '')
-	""", (now(), frappe.session.user, ref_doc.doctype, ref_doc.name))
-
-	frappe.db.sql("""
-		update `tabGL Entry`
-		set original_against_voucher_type=null, original_against_voucher=null,
-			modified=%s, modified_by=%s
-		where original_against_voucher_type=%s and original_against_voucher=%s
-			and voucher_no != ifnull(against_voucher, '')
-	""", (now(), frappe.session.user, ref_doc.doctype, ref_doc.name))
-
-	# if ref_doc.doctype in ("Sales Invoice", "Purchase Invoice", "Landed Cost Voucher", "Expense Claim"):
-	# 	ref_doc.set("advances", [])
-	#
-	# 	frappe.db.sql("""delete from `tab{0} Advance` where parent = %s"""
-	# 		.format(ref_doc.doctype), ref_doc.name)
-
-
-def remove_ref_doc_link_from_jv(ref_type, ref_no):
-	linked_jv = frappe.db.sql_list("""select parent from `tabJournal Entry Account`
-		where reference_type=%s and reference_name=%s and docstatus < 2""", (ref_type, ref_no))
-
-	if linked_jv:
-		frappe.db.sql("""update `tabJournal Entry Account`
-			set reference_type=original_reference_type, reference_name=original_reference_name,
-				modified=%s, modified_by=%s
-			where reference_type=%s and reference_name=%s
-				and ifnull(original_reference_type, '') != '' and ifnull(original_reference_name, '') != ''
-			and docstatus < 2""", (now(), frappe.session.user, ref_type, ref_no))
-
-		frappe.db.sql("""update `tabJournal Entry Account`
-			set reference_type=null, reference_name=null,
-				modified=%s, modified_by=%s
-			where reference_type=%s and reference_name=%s
-			and docstatus < 2""", (now(), frappe.session.user, ref_type, ref_no))
-
-		frappe.db.sql("""update `tabJournal Entry Account`
-			set original_reference_type=null, original_reference_name=null,
-				modified=%s, modified_by=%s
-			where original_reference_type=%s and original_reference_name=%s
-			and docstatus < 2""", (now(), frappe.session.user, ref_type, ref_no))
-
-		msg_jv_list = [frappe.utils.get_link_to_form("Journal Entry", jv) for jv in list(set(linked_jv))]
-		frappe.msgprint(_("Journal Entries {0} are un-linked").format(", ".join(msg_jv_list)))
-
-
-def remove_ref_doc_link_from_pe(ref_type, ref_no):
-	linked_pe = frappe.db.sql_list("""select distinct parent from `tabPayment Entry Reference`
-		where reference_doctype=%s and reference_name=%s and docstatus < 2""", (ref_type, ref_no))
-
-	if linked_pe:
-		for pe in linked_pe:
-			pe_doc = frappe.get_doc("Payment Entry", pe)
-
-			prefs = pe_doc.get('references', filters={"reference_doctype": ref_type, "reference_name": ref_no})
-			for pref in prefs:
-				if pref.original_reference_doctype and pref.original_reference_name\
-						and (pref.original_reference_doctype, pref.original_reference_name) != (pref.reference_doctype, pref.reference_name):
-					pref.reference_doctype = pref.original_reference_doctype
-					pref.reference_name = pref.original_reference_name
-				else:
-					pref.allocated_amount = 0
-
-				pref.db_set({
-					'reference_doctype': pref.reference_doctype,
-					'reference_name': pref.reference_name,
-					'allocated_amount': pref.allocated_amount
-				})
-
-			pe_doc.set_total_allocated_amount()
-			pe_doc.set_unallocated_amount()
-			pe_doc.clear_unallocated_reference_document_rows(update=True)
-
-			pe_doc.set_user_and_timestamp()
-			pe_doc.db_update()
-			pe_doc.notify_update()
-
-		msg_pe_list = [frappe.utils.get_link_to_form("Payment Entry", jv) for jv in list(set(linked_pe))]
-		frappe.msgprint(_("Payment Entries {0} are un-linked").format(", ".join(msg_pe_list)))
 
 
 @frappe.whitelist()
@@ -753,7 +380,7 @@ def get_company_default(company, fieldname):
 	value = frappe.get_cached_value('Company',  company,  fieldname)
 
 	if not value:
-		throw(_("Please set default {0} in Company {1}")
+		frappe.throw(_("Please set default {0} in Company {1}")
 			.format(frappe.get_meta("Company").get_label(fieldname), company))
 
 	return value
@@ -839,119 +466,15 @@ def get_held_invoices(party_type, party):
 	"""
 	held_invoices = []
 
-	if party_type == 'Supplier':
-		held_invoices = frappe.db.sql(
-			'select name from `tabPurchase Invoice` where release_date IS NOT NULL and release_date > CURDATE()',
-			as_dict=1
-		)
-		held_invoices = set([d['name'] for d in held_invoices])
+	if party_type == "Supplier":
+		today_date = getdate()
+		held_invoices = frappe.db.sql_list("""
+			select name
+			from `tabPurchase Invoice`
+			where release_date IS NOT NULL and release_date > %s
+		""", today_date)
 
 	return held_invoices
-
-
-def get_outstanding_invoices(
-	party_type,
-	party,
-	account,
-	condition=None,
-	include_negative_outstanding=False,
-	include_negative_payments=False,
-):
-	outstanding_invoices = []
-	precision = frappe.get_precision("Sales Invoice", "outstanding_amount") or 2
-
-	if account:
-		root_type, account_type = frappe.get_cached_value("Account", account, ["root_type", "account_type"])
-		party_account_type = "Receivable" if root_type == "Asset" else "Payable"
-		party_account_type = account_type or party_account_type
-	else:
-		party_account_type = erpnext.get_party_account_type(party_type)
-
-	if party_account_type == "Receivable":
-		dr_or_cr = "debit_in_account_currency - credit_in_account_currency"
-		payment_dr_or_cr = "credit_in_account_currency - debit_in_account_currency"
-	else:
-		dr_or_cr = "credit_in_account_currency - debit_in_account_currency"
-		payment_dr_or_cr = "debit_in_account_currency - credit_in_account_currency"
-
-	if include_negative_payments:
-		pe_condition = ""
-		pe_having = "having (voucher_type != 'Payment Entry' or invoice_amount < 0)"
-	else:
-		pe_condition = "and voucher_type != 'Payment Entry'"
-		pe_having = ""
-
-	invoice_list = frappe.db.sql(f"""
-		select
-			voucher_no, voucher_type, posting_date, ifnull(sum({dr_or_cr}), 0) as invoice_amount
-		from
-			`tabGL Entry`
-		where
-			party_type = %(party_type)s
-			and party = %(party)s
-			and account = %(account)s
-			and (against_voucher = '' or against_voucher is null)
-			{pe_condition}
-			{condition or ""}
-		group by voucher_type, voucher_no
-		{pe_having}
-		order by posting_date, name
-	""", {
-		"party_type": party_type,
-		"party": party,
-		"account": account
-	}, as_dict=True)
-
-	payment_entries = frappe.db.sql("""
-		select
-			against_voucher_type, against_voucher, ifnull(sum({payment_dr_or_cr}), 0) as payment_amount
-		from
-			`tabGL Entry`
-		where
-			party_type = %(party_type)s and party = %(party)s and account = %(account)s
-			and against_voucher is not null and against_voucher != ''
-		group by against_voucher_type, against_voucher
-	""".format(payment_dr_or_cr=payment_dr_or_cr), {
-		"party_type": party_type,
-		"party": party,
-		"account": account
-	}, as_dict=True)
-
-	pe_map = frappe._dict()
-	for d in payment_entries:
-		pe_map.setdefault((d.against_voucher_type, d.against_voucher), d.payment_amount)
-
-	held_invoices = get_held_invoices(party_type, party)
-
-	for d in invoice_list:
-		if d.voucher_type == "Purchase Invoice" and d.voucher_no in held_invoices:
-			continue
-
-		payment_amount = pe_map.get((d.voucher_type, d.voucher_no), 0)
-		outstanding_amount = flt(d.invoice_amount - payment_amount, precision)
-		diff = abs(outstanding_amount) if include_negative_outstanding else outstanding_amount
-		if diff > 0.5 / (10**precision):
-			due_date = None
-			if frappe.get_meta(d.voucher_type).has_field("due_date"):
-				due_date = frappe.db.get_value(d.voucher_type, d.voucher_no, "posting_date" if party_type == "Employee" else "due_date")
-
-			if d.voucher_type != "Purchase Invoice" or d.voucher_no not in held_invoices:
-				outstanding_invoices.append(
-					frappe._dict({
-						'voucher_no': d.voucher_no,
-						'voucher_type': d.voucher_type,
-						'posting_date': d.posting_date,
-						'invoice_amount': flt(d.invoice_amount),
-						'payment_amount': payment_amount,
-						'outstanding_amount': outstanding_amount,
-						'due_date': due_date,
-						'currency': d.currency
-					})
-				)
-
-	outstanding_invoices = sorted(outstanding_invoices,
-		key=lambda k: (k['outstanding_amount'] > 0, k['due_date'] or getdate(nowdate())))
-	return outstanding_invoices
 
 
 def get_account_name(account_type=None, root_type=None, is_group=None, account_currency=None, company=None):

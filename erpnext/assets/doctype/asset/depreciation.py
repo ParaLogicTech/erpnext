@@ -24,7 +24,6 @@ def post_depreciation_entries(date=None):
 			frappe.db.rollback()
 			frappe.log_error(
 				title=_("Depreciation Entry failed"),
-				message=frappe.get_traceback(),
 				reference_doctype="Asset",
 				reference_name=asset,
 			)
@@ -72,6 +71,7 @@ def make_depreciation_entry(asset_name, date=None):
 		):
 			je = frappe.new_doc("Journal Entry")
 			je.voucher_type = "Depreciation Entry"
+			je.is_system_generated = 1
 
 			if depreciation_series:
 				je.naming_series = depreciation_series

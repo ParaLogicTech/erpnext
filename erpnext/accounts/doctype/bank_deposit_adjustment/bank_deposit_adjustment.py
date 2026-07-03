@@ -6,4 +6,6 @@ from frappe.model.document import Document
 
 
 class BankDepositAdjustment(Document):
-	pass
+	@staticmethod
+	def get_list(args):
+		pass

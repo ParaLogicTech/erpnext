@@ -4,10 +4,12 @@
 import frappe
 import unittest
 from frappe.utils import nowdate
-from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import get_advance_journal_entries,\
-	get_advance_payment_entries
-from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
-from erpnext.accounts.utils import get_balance_on_voucher, reconcile_against_document
+from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import (
+	get_unreconciled_journal_entries,
+	get_unreconciled_payment_entries,
+	reconcile_payments_against_invoices,
+)
+from erpnext.accounts.utils import get_balance_on_voucher
 
 
 class TestPaymentReconciliation(unittest.TestCase):
@@ -26,7 +28,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 		# }).insert()
 
 	def test_reconcile_advance_journal_entries(self):
-		self.assertFalse(get_advance_journal_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
+		self.assertFalse(get_unreconciled_journal_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
 			"Sales Order", against_all_orders=True))
 
 		# Test records
@@ -43,7 +45,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 		jv_against_so = make_payment_jv(self.customer, 100, so.doctype, so.name, 100)
 
 		# Test get_advance_journal_entries
-		advances = get_advance_journal_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
+		advances = get_unreconciled_journal_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
 			"Sales Order", against_all_orders=True)
 		advance_vouchers = {}
 		for d in advances:
@@ -81,10 +83,10 @@ class TestPaymentReconciliation(unittest.TestCase):
 			'party_type': "Customer",
 			'party': self.customer.name,
 			'dr_or_cr': "credit_in_account_currency",
-			'unadjusted_amount': 100,
+			'unreconciled_amount': 100,
 			'allocated_amount': 100
 		})]
-		reconcile_against_document(lst)
+		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
 			4900)
 		self.assertTrue(frappe.db.sql("""select name from `tabJournal Entry Account`
@@ -102,10 +104,10 @@ class TestPaymentReconciliation(unittest.TestCase):
 			'party_type': "Customer",
 			'party': self.customer.name,
 			'dr_or_cr': "credit_in_account_currency",
-			'unadjusted_amount': 300,
+			'unreconciled_amount': 300,
 			'allocated_amount': 230
 		})]
-		reconcile_against_document(lst)
+		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
 			4670)
 		self.assertTrue(frappe.db.sql("""select count(*) from `tabJournal Entry Account`
@@ -133,10 +135,10 @@ class TestPaymentReconciliation(unittest.TestCase):
 			'party_type': "Customer",
 			'party': self.customer.name,
 			'dr_or_cr': "credit_in_account_currency",
-			'unadjusted_amount': 200,
+			'unreconciled_amount': 200,
 			'allocated_amount': 200
 		})]
-		self.assertRaises(frappe.ValidationError, reconcile_against_document, lst)
+		self.assertRaises(frappe.ValidationError, reconcile_payments_against_invoices, lst)
 
 		# Attempt to over allocate a partially allocated jv
 		lst = [frappe._dict({
@@ -149,10 +151,10 @@ class TestPaymentReconciliation(unittest.TestCase):
 			'party_type': "Customer",
 			'party': self.customer.name,
 			'dr_or_cr': "credit_in_account_currency",
-			'unadjusted_amount': 200,
+			'unreconciled_amount': 200,
 			'allocated_amount': 200
 		})]
-		self.assertRaises(frappe.ValidationError, reconcile_against_document, lst)
+		self.assertRaises(frappe.ValidationError, reconcile_payments_against_invoices, lst)
 
 		# Sales Order advance reallocation
 		lst = [frappe._dict({
@@ -165,10 +167,10 @@ class TestPaymentReconciliation(unittest.TestCase):
 			'party_type': "Customer",
 			'party': self.customer.name,
 			'dr_or_cr': "credit_in_account_currency",
-			'unadjusted_amount': 100,
+			'unreconciled_amount': 100,
 			'allocated_amount': 100
 		})]
-		reconcile_against_document(lst)
+		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
 			4570)
 		self.assertEqual(get_balance_on_voucher(so.doctype, so.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
@@ -180,7 +182,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 		""", [jv_against_so.accounts[2].name, jv_receivable.name, 100]))
 
 		# Test get_advance_payment_entries after reconciliation
-		advances = get_advance_journal_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
+		advances = get_unreconciled_journal_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
 			"Sales Order", against_all_orders=True)
 		advance_vouchers = {}
 		for d in advances:
@@ -196,7 +198,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 		self.assertEqual(advance_vouchers[jv_against_so.name][0].amount, 100)
 
 	def test_reconcile_advance_payment_entries(self):
-		self.assertFalse(get_advance_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
+		self.assertFalse(get_unreconciled_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
 			order_doctype="Sales Order", against_all_orders=True))
 
 		# Test records
@@ -208,7 +210,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 		pe_half_allocated = make_payment_entry(self.customer, 100, _jv_receivable.doctype, _jv_receivable.name, 100)
 
 		# Test get_advance_payment_entries
-		advances = get_advance_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
+		advances = get_unreconciled_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
 			order_doctype="Sales Order", against_all_orders=True)
 		advance_vouchers = {}
 		for d in advances:
@@ -240,10 +242,10 @@ class TestPaymentReconciliation(unittest.TestCase):
 			'party_type': "Customer",
 			'party': self.customer.name,
 			'dr_or_cr': "credit_in_account_currency",
-			'unadjusted_amount': 100,
+			'unreconciled_amount': 100,
 			'allocated_amount': 100
 		})]
-		reconcile_against_document(lst)
+		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
 			4900)
 		self.assertTrue(frappe.db.sql("""select name from `tabPayment Entry Reference`
@@ -262,10 +264,10 @@ class TestPaymentReconciliation(unittest.TestCase):
 			'party_type': "Customer",
 			'party': self.customer.name,
 			'dr_or_cr': "credit_in_account_currency",
-			'unadjusted_amount': 200,
+			'unreconciled_amount': 200,
 			'allocated_amount': 200
 		})]
-		self.assertRaises(frappe.ValidationError, reconcile_against_document, lst)
+		self.assertRaises(frappe.ValidationError, reconcile_payments_against_invoices, lst)
 
 		# Sales Order advance reallocation
 		lst = [frappe._dict({
@@ -278,10 +280,10 @@ class TestPaymentReconciliation(unittest.TestCase):
 			'party_type': "Customer",
 			'party': self.customer.name,
 			'dr_or_cr': "credit_in_account_currency",
-			'unadjusted_amount': 100,
+			'unreconciled_amount': 100,
 			'allocated_amount': 100
 		})]
-		reconcile_against_document(lst)
+		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
 			4800)
 		self.assertEqual(get_balance_on_voucher(so.doctype, so.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
@@ -294,7 +296,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 		self.assertEqual(frappe.get_value("Payment Entry", pe_against_so.name, "unallocated_amount"), 100)
 
 		# Test get_advance_payment_entries after reconciliation
-		advances = get_advance_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
+		advances = get_unreconciled_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
 			order_doctype="Sales Order", against_all_orders=True)
 		advance_vouchers = {}
 		for d in advances:

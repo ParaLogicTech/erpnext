@@ -153,10 +153,7 @@ def process_future_and_temporary_transfers():
 			frappe.db.commit()
 		except Exception:
 			frappe.db.rollback()
-			doc.log_error(
-				title="Failed to apply Employee Transfer",
-				message=frappe.get_traceback(),
-			)
+			doc.log_error(title="Failed to apply Employee Transfer")
 			doc.add_comment("Comment", _("Failed to apply Employee Transfer"))
 			frappe.db.commit()
 
@@ -175,10 +172,7 @@ def process_future_and_temporary_transfers():
 			frappe.db.commit()
 		except Exception:
 			frappe.db.rollback()
-			doc.log_error(
-				title="Failed to revert Temporary Employee Transfer",
-				message=frappe.get_traceback(),
-			)
+			doc.log_error(title="Failed to revert Temporary Employee Transfer")
 			doc.add_comment("Comment", _("Failed to revert Temporary Employee Transfer"))
 			frappe.db.commit()
 

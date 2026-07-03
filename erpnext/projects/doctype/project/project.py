@@ -1421,7 +1421,7 @@ class Project(StatusUpdaterERP):
 			or negative_excess - total_excess > 1 / 10 ** precision
 		):
 			frappe.throw(_("Total Insurance Excess billed amount cannot be greater than {0}").format(
-				frappe.format(total_excess, df=self.meta.get_field("insurance_excess_amount"))
+				frappe.format(total_excess, df=self.meta.get_field("insurance_excess_amount"), doc=self)
 			))
 
 	def get_insurance_excess_billed(self, include_proforma_invoices=False):

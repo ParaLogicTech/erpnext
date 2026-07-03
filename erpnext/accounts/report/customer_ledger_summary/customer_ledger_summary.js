@@ -122,26 +122,26 @@ frappe.query_reports["Customer Ledger Summary"] = {
 	],
 
 	formatter: function (value, row, column, data, default_formatter) {
-		var style = {};
+		let style = {};
 
 		if (["opening_balance", "closing_balance"].includes(column.fieldname)) {
 			style['font-weight'] = 'bold';
 		}
 
 		if (flt(value) && (column.fieldname == "total_deductions" || column.is_adjustment)) {
-			style['color'] = 'red';
+			style['color'] = 'var(--red-600)';
 		}
 
 		if (flt(value) && column.fieldname == "invoiced_amount") {
-			style['color'] = 'blue';
+			style['color'] = 'var(--blue-700)';
 		}
 
 		if (flt(value) && column.fieldname == "paid_amount") {
-			style['color'] = 'green';
+			style['color'] = 'var(--green-800)';
 		}
 
 		if (flt(value) && column.fieldname == "return_amount") {
-			style['color'] = 'orange';
+			style['color'] = 'var(--orange-500)';
 		}
 
 		return default_formatter(value, row, column, data, {css: style});

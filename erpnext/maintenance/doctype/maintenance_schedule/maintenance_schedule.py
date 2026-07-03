@@ -332,11 +332,11 @@ def create_opportunity_from_schedule(for_date=None):
 			frappe.db.rollback()
 			frappe.log_error(
 				title="Error Creating Maintenance Opportunity",
-				message=frappe.get_traceback(),
 				reference_doctype="Maintenance Schedule",
 				reference_name=schedule.name,
 			)
 			frappe.db.commit()
+
 
 def get_maintenance_schedule_opportunity(maintenance_schedule, row):
 	maintenance_opp = frappe.db.get_value("Opportunity", filters={

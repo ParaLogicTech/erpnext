@@ -496,8 +496,7 @@ def process(data):
 			frappe.db.commit()
 		except frappe.ValidationError:
 			frappe.db.rollback()
-			frappe.db.begin()
-			subscription.log_error(message=frappe.get_traceback())
+			subscription.log_error(title="Subscription Processing Failed")
 			frappe.db.commit()
 
 

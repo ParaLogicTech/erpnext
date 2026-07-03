@@ -51,6 +51,7 @@ class AssetValueAdjustment(Document):
 		je.posting_date = self.date
 		je.company = self.company
 		je.remark = "Depreciation Entry against {0} worth {1}".format(self.asset, self.difference_amount)
+		je.is_system_generated = 1
 
 		je.append("accounts", {
 			"account": accumulated_depreciation_account,

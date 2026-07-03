@@ -1,11 +1,11 @@
-# Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors and contributors
+# Copyright (c) 2021, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-
+# import frappe
 from frappe.model.document import Document
 
 
-class PaymentReconciliationPayment(Document):
+class PaymentReconciliationAllocation(Document):
 	@staticmethod
 	def get_list(args):
 		pass

@@ -222,7 +222,7 @@ class PackingSlip(TransactionController):
 				d.gross_weight = details.total_gross_weight
 
 	def validate_items(self):
-		from erpnext.stock.doctype.item.item import validate_end_of_life
+		from erpnext.stock.doctype.item.item import validate_end_of_life, validate_is_not_template_item
 
 		item_codes = []
 		for field in self.item_table_fields:
@@ -234,12 +234,8 @@ class PackingSlip(TransactionController):
 		for field in self.item_table_fields:
 			for d in self.get(field):
 				if d.item_code:
-					item = frappe.get_cached_value("Item", d.item_code, ['has_variants', 'end_of_life', 'disabled'], as_dict=1)
-					validate_end_of_life(d.item_code, end_of_life=item.end_of_life, disabled=item.disabled)
-
-					if cint(item.has_variants):
-						frappe.throw(_("Row #{0}: {1} is a template Item, please select one of its variants")
-							.format(d.idx, frappe.bold(d.item_code)))
+					validate_end_of_life(d.item_code)
+					validate_is_not_template_item(d.item_code)
 
 					if d.item_code not in stock_items:
 						frappe.throw(_("Row #{0}: {1} is not a stock Item")

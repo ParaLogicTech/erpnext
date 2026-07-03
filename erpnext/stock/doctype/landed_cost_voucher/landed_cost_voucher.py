@@ -14,6 +14,8 @@ import json
 
 
 class LandedCostVoucher(AccountsController):
+	allow_advances_unlink = True
+
 	def __init__(self, *args, **kwargs):
 		super(LandedCostVoucher, self).__init__(*args, **kwargs)
 		self.status_map = [
@@ -52,7 +54,7 @@ class LandedCostVoucher(AccountsController):
 		self.update_landed_cost()
 
 		self.make_gl_entries()
-		self.update_against_document_in_jv()
+		self.reconcile_advance_payments()
 		self.set_outstanding_amount(update=True)
 		self.set_status(update=True)
 

@@ -887,9 +887,9 @@ frappe.ui.form.on('Payment Entry', {
 			{fieldtype: "Date", label: __("To Date"), fieldname: "to_due_date"},
 
 			{fieldtype: "Section Break", label: __("Outstanding Amount")},
-			{fieldtype: "Float", label: __("Greater Than Amount"), fieldname: "outstanding_amt_greater_than"},
+			{fieldtype: "Float", label: __("Greater Than Amount"), fieldname: "min_outstanding_amount"},
 			{fieldtype: "Column Break"},
-			{fieldtype: "Float", label: __("Less Than Amount"), fieldname: "outstanding_amt_less_than"},
+			{fieldtype: "Float", label: __("Less Than Amount"), fieldname: "max_outstanding_amount"},
 
 			{fieldtype: "Section Break", label: __("Dimensions")},
 			{fieldtype: "Link", label: __("Cost Center"), fieldname: "cost_center", options: "Cost Center", get_query: () => {
@@ -1206,51 +1206,64 @@ frappe.ui.form.on('Payment Entry', {
 	},
 
 	write_off_difference_amount: function(frm) {
-		frm.events.set_deductions_entry(frm, "write_off_account");
+		return frm.events.set_deductions_entry(frm, "write_off_account");
 	},
 
 	set_exchange_gain_loss: function(frm) {
-		frm.events.set_deductions_entry(frm, "exchange_gain_loss_account");
+		return frm.events.set_deductions_entry(frm, "exchange_gain_loss_account", true);
 	},
 
-	set_deductions_entry: function(frm, account) {
-		if(frm.doc.difference_amount) {
-			frappe.call({
-				method: "erpnext.accounts.doctype.payment_entry.payment_entry.get_company_defaults",
-				args: {
-					company: frm.doc.company
-				},
-				callback: function(r, rt) {
-					if(r.message) {
-						var write_off_row = $.map(frm.doc["deductions"] || [], function(t) {
-							return t.account==r.message[account] ? t : null; });
-
-						var row = [];
-
-						var difference_amount = flt(frm.doc.difference_amount,
-							precision("difference_amount"));
-
-						if (!write_off_row.length && difference_amount) {
-							row = frm.add_child("deductions");
-							row.account = r.message[account];
-							row.cost_center = r.message["cost_center"];
-						} else {
-							row = write_off_row[0];
-						}
-
-						if (row) {
-							row.amount = flt(row.amount) + difference_amount;
-						} else {
-							frappe.msgprint(__("No gain or loss in the exchange rate"))
-						}
-
-						refresh_field("deductions");
-
-						frm.events.set_unallocated_amount(frm);
-					}
-				}
-			})
+	set_deductions_entry: async function(frm, account_field, is_exchange_gain_loss=false) {
+		let difference_amount = flt(frm.doc.difference_amount, precision("difference_amount"));
+		if (!difference_amount || !frm.doc.company) {
+			return;
 		}
+
+		is_exchange_gain_loss = cint(is_exchange_gain_loss);
+
+		const company_defaults = await frm.events.get_company_defaults(frm);
+		if (!company_defaults) {
+			return;
+		}
+
+		let account = company_defaults[account_field];
+
+		let deduction_row;
+		if (is_exchange_gain_loss) {
+			deduction_row = (frm.doc.deductions || []).find(d => {
+				if (cint(d.is_exchange_gain_loss) == is_exchange_gain_loss || d.account == company_defaults[account_field]) {
+					return d;
+				}
+			});
+		} else {
+			deduction_row = (frm.doc.deductions || []).find(d => {
+				if (d.account == company_defaults[account_field]) {
+					return d;
+				}
+			});
+		}
+
+		if (!deduction_row && difference_amount) {
+			deduction_row = frm.add_child("deductions");
+			deduction_row.account = account || deduction_row.account;
+		}
+
+		if (is_exchange_gain_loss) {
+			deduction_row.is_exchange_gain_loss = is_exchange_gain_loss;
+		}
+
+		if (deduction_row) {
+			deduction_row.amount = flt(deduction_row.amount) + difference_amount;
+		}
+
+		refresh_field("deductions");
+		frm.events.set_unallocated_amount(frm);
+	},
+
+	get_company_defaults: function (frm) {
+		return frappe.xcall("erpnext.accounts.doctype.payment_entry.payment_entry.get_company_defaults", {
+				company: frm.doc.company,
+		});
 	},
 
 	bank_account: function(frm) {

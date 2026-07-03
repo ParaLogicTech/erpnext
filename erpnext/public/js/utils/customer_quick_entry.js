@@ -4,7 +4,10 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 	skip_redirect_on_error = true
 
 	render_dialog() {
-		this.mandatory = this.mandatory.concat(this.get_customer_fields());
+		let additional_fields = this.get_customer_fields();
+		let additional_fieldnames = additional_fields.map(f => f.fieldname);
+		this.mandatory = this.mandatory.filter(f => !additional_fieldnames.includes(f.fieldname));
+		this.mandatory = this.mandatory.concat(additional_fields);
 		super.render_dialog();
 		this.setup_events();
 	}
@@ -71,112 +74,110 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 	}
 
 	get_customer_fields() {
-		var variant_fields = [
-		{
-			fieldtype: "Section Break",
-			label: __("Primary Contact Person"),
-			depends_on: "eval:doc.customer_type == 'Company'"
-		},
-		{
-			label: __("Salutation"),
-			fieldname: "salutation",
-			fieldtype: "Link",
-			options: "Salutation",
-		},
-		{
-			fieldtype: "Column Break"
-		},
-		{
-			label: __("First Name"),
-			fieldname: "contact_first_name",
-			fieldtype: "Data",
-		},
-		{
-			fieldtype: "Column Break"
-		},
-		{
-			label: __("Last Name"),
-			fieldname: "contact_last_name",
-			fieldtype: "Data",
-		},
-		{
-			fieldtype: "Section Break",
-			label: __("Primary Contact Details"),
-		},
-		{
-			label: __("Mobile Number (Primary)"),
-			fieldname: "mobile_no",
-			fieldtype: "Data"
-		},
-		{
-			fieldtype: "Column Break"
-		},
-		{
-			label: __("Mobile Number (Secondary"),
-			fieldname: "mobile_no_2",
-			fieldtype: "Data"
-		},
-		{
-			fieldtype: "Column Break"
-		},
-		{
-			label: __("Phone Number"),
-			fieldname: "phone_no",
-			fieldtype: "Data"
-		},
-		{
-			fieldtype: "Column Break"
-		},
-		{
-			label: __("Email Id"),
-			fieldname: "email_id",
-			fieldtype: "Data"
-		},
-		{
-			fieldtype: "Section Break",
-			label: __("Primary Address Details"),
-		},
-		{
-			label: __("Address Line 1"),
-			fieldname: "address_line1",
-			fieldtype: "Data"
-		},
-		{
-			label: __("Address Line 2"),
-			fieldname: "address_line2",
-			fieldtype: "Data"
-		},
-		{
-			label: __("ZIP Code"),
-			fieldname: "pincode",
-			fieldtype: "Data"
-		},
-		{
-			fieldtype: "Column Break"
-		},
-		{
-			label: __("City"),
-			fieldname: "city",
-			fieldtype: "Data"
-		},
-		{
-			label: __("State"),
-			fieldname: "state",
-			fieldtype: "Data"
-		},
-		{
-			label: __("Country"),
-			fieldname: "country",
-			fieldtype: "Link",
-			options: "Country"
-		},
-		{
-			label: __("Customer POS Id"),
-			fieldname: "customer_pos_id",
-			fieldtype: "Data",
-			hidden: 1
-		}];
-
-		return variant_fields;
+		return [
+			{
+				fieldtype: "Section Break",
+				label: __("Primary Contact Person"),
+				depends_on: "eval:doc.customer_type == 'Company'"
+			},
+			{
+				label: __("Salutation"),
+				fieldname: "salutation",
+				fieldtype: "Link",
+				options: "Salutation",
+			},
+			{
+				fieldtype: "Column Break"
+			},
+			{
+				label: __("First Name"),
+				fieldname: "contact_first_name",
+				fieldtype: "Data",
+			},
+			{
+				fieldtype: "Column Break"
+			},
+			{
+				label: __("Last Name"),
+				fieldname: "contact_last_name",
+				fieldtype: "Data",
+			},
+			{
+				fieldtype: "Section Break",
+				label: __("Primary Contact Details"),
+			},
+			{
+				label: __("Mobile No (Primary)"),
+				fieldname: "mobile_no",
+				fieldtype: "Data"
+			},
+			{
+				fieldtype: "Column Break"
+			},
+			{
+				label: __("Mobile No (Secondary"),
+				fieldname: "mobile_no_2",
+				fieldtype: "Data"
+			},
+			{
+				fieldtype: "Column Break"
+			},
+			{
+				label: __("Landline No"),
+				fieldname: "phone_no",
+				fieldtype: "Data"
+			},
+			{
+				fieldtype: "Column Break"
+			},
+			{
+				label: __("Email Id"),
+				fieldname: "email_id",
+				fieldtype: "Data"
+			},
+			{
+				fieldtype: "Section Break",
+				label: __("Primary Address Details"),
+			},
+			{
+				label: __("Address Line 1"),
+				fieldname: "address_line1",
+				fieldtype: "Data"
+			},
+			{
+				label: __("Address Line 2"),
+				fieldname: "address_line2",
+				fieldtype: "Data"
+			},
+			{
+				label: __("ZIP Code"),
+				fieldname: "pincode",
+				fieldtype: "Data"
+			},
+			{
+				fieldtype: "Column Break"
+			},
+			{
+				label: __("City"),
+				fieldname: "city",
+				fieldtype: "Data"
+			},
+			{
+				label: __("State"),
+				fieldname: "state",
+				fieldtype: "Data"
+			},
+			{
+				label: __("Country"),
+				fieldname: "country",
+				fieldtype: "Link",
+				options: "Country"
+			},
+			{
+				label: __("Customer POS Id"),
+				fieldname: "customer_pos_id",
+				fieldtype: "Data",
+				hidden: 1
+			}];
 	}
 };

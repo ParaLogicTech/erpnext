@@ -14,6 +14,10 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 		this.setup_dashboard();
 	}
 
+	validate() {
+		frappe.regional.format_mobile_no(this.frm, "contact_mobile");
+	}
+
 	setup_queries() {
 		this.frm.set_query("party_type", () => {
 			return {
@@ -189,6 +193,10 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 				}
 			}
 		});
+	}
+
+	contact_mobile() {
+		frappe.regional.format_mobile_no(this.frm, "contact_mobile");
 	}
 }
 
