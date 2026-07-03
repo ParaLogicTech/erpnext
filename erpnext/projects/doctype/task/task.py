@@ -69,6 +69,7 @@ class Task(NestedSet):
 	def validate_before_status(self):
 		self.set_depends_on()
 		self.validate_dates()
+		self.validate_assigned_to()
 
 	def set_status(self):
 		timelogs = self.get_timelogs(cache=False)
@@ -278,6 +279,20 @@ class Task(NestedSet):
 
 			if getdate(self.exp_end_date) > getdate(self.exp_start_date):
 				self.exp_end_date = self.adjust_date_for_holidays(self.exp_end_date)
+
+	def validate_assigned_to(self):
+		if not self.assigned_to or not self.value_changed("assigned_to"):
+			return
+		if not cint(frappe.get_cached_value("Projects Settings", None, "activity_cost_mandatory_task_assignment")):
+			return
+
+		from erpnext.projects.doctype.timesheet.timesheet import get_activity_cost
+		activity_cost = get_activity_cost(employee=self.assigned_to, fallback_to_default_cost=False)
+		costing_rate = flt(activity_cost.get("costing_rate"))
+		if not costing_rate:
+			frappe.throw(_("Cannot assign to {0} because Activity Cost is not assigned for this Employee yet").format(
+				frappe.get_desk_link("Employee", self.assigned_to)
+			))
 
 	def adjust_date_for_holidays(self, date):
 		holiday_list = self.get_holiday_list()

@@ -7,7 +7,17 @@ from frappe.model.document import Document
 
 
 class PriceListSettings(Document):
-	def get_exploded_item_group_order(self):
+	def get_exploded_item_group_order(self, cache=True):
+		if cache:
+			return frappe.local_cache(
+				"get_exploded_item_group_order",
+				"",
+				self._get_exploded_item_group_order,
+			)
+		else:
+			return self._get_exploded_item_group_order()
+
+	def _get_exploded_item_group_order(self):
 		def append_group(parent_item_group, is_child=False):
 			if is_child and parent_item_group in item_group_already_defined:
 				return

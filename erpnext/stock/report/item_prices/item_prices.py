@@ -26,12 +26,13 @@ def execute(filters=None):
 		item_group_wise_data.setdefault(d.item_group, []).append(d)
 
 	price_list_settings = frappe.get_single("Price List Settings")
+	item_group_order = price_list_settings.get_exploded_item_group_order()
 	rows = []
 
-	for item_group in price_list_settings.item_group_order or []:
-		if item_group.item_group in item_group_wise_data:
-			rows += sorted(item_group_wise_data[item_group.item_group], key=lambda d: d.item_code)
-			del item_group_wise_data[item_group.item_group]
+	for order in item_group_order or []:
+		if order.item_group in item_group_wise_data:
+			rows += sorted(item_group_wise_data[order.item_group], key=lambda d: d.item_code)
+			del item_group_wise_data[order.item_group]
 
 	for items in item_group_wise_data.values():
 		rows += sorted(items, key=lambda d: d.item_code)
