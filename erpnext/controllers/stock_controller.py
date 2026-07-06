@@ -467,7 +467,12 @@ class StockController(AccountsController):
 
 		required_packing_slip_status = None
 		if is_stock_movement:
-			required_packing_slip_status = "In Stock" if not self.get("is_return") else "Delivered"
+			if self.get("is_return"):
+				required_packing_slip_status = ("Delivered",)
+			elif self.doctype == "Stock Entry":
+				required_packing_slip_status = ("In Stock", "Rejected")
+			else:
+				required_packing_slip_status = ("In Stock",)
 
 		# Validate Packing Slips
 		packing_slip_map = {}
@@ -488,7 +493,7 @@ class StockController(AccountsController):
 					d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name)
 				))
 
-			if required_packing_slip_status and packing_slip.status != required_packing_slip_status:
+			if required_packing_slip_status and packing_slip.status not in required_packing_slip_status:
 				frappe.throw(_("Row #{0}: Cannot select {1} because its status is {2}").format(
 					d.idx,
 					frappe.get_desk_link("Packing Slip", packing_slip.name),

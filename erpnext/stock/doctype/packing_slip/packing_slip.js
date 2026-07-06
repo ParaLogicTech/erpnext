@@ -107,28 +107,27 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 			}, __("Get Items From"));
 		}
 
-		if (this.frm.doc.docstatus == 1) {
-			if (this.frm.doc.status == "In Stock") {
-				if (this.frm.doc.purchase_order) {
-					this.frm.add_custom_button(__('Stock Entry'), () => this.make_stock_entry(), __('Create'));
-				} else {
-					if (this.frm.doc.can_reassign) {
-						this.frm.add_custom_button(__('Reassign Sales Order'), () => this.select_sales_order_for_reassignment(),
+		if (this.frm.doc.docstatus == 1 && ["In Stock", "Rejected"].includes(this.frm.doc.status)) {
+			if (this.frm.doc.status == "In Stock" && !this.frm.doc.purchase_order) {
+				if (this.frm.doc.can_reassign) {
+					this.frm.add_custom_button(__('Reassign Sales Order'), () => this.select_sales_order_for_reassignment(),
+						__('Reassign'));
+
+					let has_sales_orders = new Set((this.frm.doc.items || []).filter(d => d.sales_order).map(d => d.sales_order));
+					if (has_sales_orders.size) {
+						this.frm.add_custom_button(__('Unassign Sales Order'), () => this.confirm_unassign_sales_order(),
 							__('Reassign'));
-
-						let has_sales_orders = new Set((this.frm.doc.items || []).filter(d => d.sales_order).map(d => d.sales_order));
-						if (has_sales_orders.size) {
-							this.frm.add_custom_button(__('Unassign Sales Order'), () => this.confirm_unassign_sales_order(),
-								__('Reassign'));
-						}
 					}
-
-					this.frm.add_custom_button(__('Delivery Note'), () => this.make_delivery_note(), __('Create'));
-					this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(), __('Create'));
-					this.frm.add_custom_button(__('Stock Entry'), () => this.make_stock_entry(), __('Create'));
 				}
-				this.frm.add_custom_button(__('Unpack'), () => this.make_unpack_packing_slip(), __('Create'));
 
+				this.frm.add_custom_button(__('Delivery Note'), () => this.make_delivery_note(), __('Create'));
+				this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(), __('Create'));
+			}
+
+			this.frm.add_custom_button(__('Stock Entry'), () => this.make_stock_entry(), __('Create'));
+			this.frm.add_custom_button(__('Unpack'), () => this.make_unpack_packing_slip(), __('Create'));
+
+			if (this.frm.page.get_inner_group_button(__("Create")).length) {
 				this.frm.page.set_inner_btn_group_as_primary(__('Create'));
 			}
 		}

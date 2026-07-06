@@ -588,7 +588,7 @@ class PackingSlip(TransactionController):
 				frappe.get_desk_link("Packing Slip", unpack_against.name)
 			))
 
-		if unpack_against.status != "In Stock":
+		if unpack_against.status not in ("In Stock", "Rejected"):
 			frappe.throw(_("Cannot Unpack Against {0} because its status is {1}").format(
 				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.status)
 			))
@@ -1058,6 +1058,9 @@ class PackingSlip(TransactionController):
 		previous_status = self.status
 
 		self.warehouse, is_delivered, is_nested, is_unpacked = self.process_packing_slip_ledger(validate=validate)
+		is_rejected = 0
+		if self.warehouse:
+			is_rejected = cint(frappe.get_cached_value("Warehouse", self.warehouse, "stock_type") == "Rejected")
 
 		if self.docstatus == 0:
 			self.status = "Draft"
@@ -1068,6 +1071,8 @@ class PackingSlip(TransactionController):
 				self.status = "Nested"
 			elif is_delivered:
 				self.status = "Delivered"
+			elif is_rejected:
+				self.status = "Rejected"
 			else:
 				self.status = "In Stock"
 		else:
@@ -1128,7 +1133,9 @@ class PackingSlip(TransactionController):
 
 		packed_qty_map = {}
 		if self.docstatus == 1:
-			warehouse = self.target_warehouse
+			if not self.is_unpack:
+				warehouse = self.target_warehouse
+
 			for d in self.get("items"):
 				packed_qty_map[d.name] = flt(d.stock_qty)
 

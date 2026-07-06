@@ -6,6 +6,8 @@ frappe.listview_settings["Packing Slip"] = {
 			color = "green";
 		} else if (doc.status == "In Stock") {
 			color = "blue";
+		} else if (doc.status == "Rejected") {
+			color = "yellow";
 		} else if (doc.status == "Nested") {
 			color = "light-blue";
 		} else if (doc.status == "Unpacked") {

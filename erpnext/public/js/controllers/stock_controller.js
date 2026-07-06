@@ -342,6 +342,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 	get_items_from_packing_slip(target_doctype, packing_slip_id) {
 		let method;
 		let method_supports_list = false;
+		let include_rejected = false;
 		if (target_doctype == "Delivery Note") {
 			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_delivery_note";
 			method_supports_list = true;
@@ -354,6 +355,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		} else if (target_doctype == "Stock Entry") {
 			method = "erpnext.stock.doctype.packing_slip.packing_slip.make_stock_entry";
 			method_supports_list = true;
+			include_rejected = true;
 		} else {
 			return;
 		}
@@ -439,6 +441,9 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 
 					if (this.frm.doc.customer) {
 						filters["customer"] = this.frm.doc.customer;
+					}
+					if (include_rejected) {
+						filters["include_rejected"] = 1;
 					}
 
 					return {

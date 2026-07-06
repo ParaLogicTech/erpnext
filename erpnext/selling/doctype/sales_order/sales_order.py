@@ -1274,9 +1274,11 @@ def make_delivery_note_from_packing_slips(source_name, target_doc=None, packing_
 
 	if packing_filter != "Packed Items Only":
 		target_doc = make_delivery_note(source_name, target_doc, warehouse=warehouse, allow_duplicate=True)
-	else:
+	elif target_doc:
 		source_doc = frappe.get_doc("Sales Order", source_name)
 		postprocess_delivery_note(source_doc, target_doc,  set_warehouse=warehouse)
+	else:
+		target_doc = make_delivery_note(source_name, target_doc, skip_item_mapping=True)
 
 	return target_doc
 

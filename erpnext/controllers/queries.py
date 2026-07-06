@@ -686,9 +686,14 @@ def _get_packing_slips_to_be_delivered(doctype="Packing Slip", txt="", searchfie
 
 	exists_conditions = []
 
-	if filters.get("no_customer"):
-		filters.pop("no_customer", None)
+	no_customer = filters.pop("no_customer", False)
+	if no_customer:
 		filters["customer"] = ["is", "not set"]
+
+	status_condition = "`tabPacking Slip`.`status` = 'In Stock'"
+	include_rejected = filters.pop("include_rejected", False)
+	if include_rejected:
+		status_condition = "`tabPacking Slip`.`status` in ('In Stock', 'Rejected')"
 
 	if filters.get("sales_order"):
 		exists_conditions.append("`tabPacking Slip Item`.sales_order = {0}".format(
@@ -719,13 +724,14 @@ def _get_packing_slips_to_be_delivered(doctype="Packing Slip", txt="", searchfie
 			select {fields}
 			from `tabPacking Slip`
 			where `tabPacking Slip`.`{key}` like {txt}
-				and `tabPacking Slip`.`status` = 'In Stock'
+				and {status_condition}
 				{exists_conditions} {fcond} {mcond}
 			order by `tabPacking Slip`.posting_date, `tabPacking Slip`.posting_time, `tabPacking Slip`.creation
 			{limit}
 		""".format(
 		fields=select_fields,
 		key=searchfield,
+		status_condition=status_condition,
 		exists_conditions=exists_conditions,
 		fcond=get_filters_cond(doctype, filters, []),
 		mcond=get_match_cond(doctype),
