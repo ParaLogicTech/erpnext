@@ -7,7 +7,18 @@ from frappe.desk.form.assign_to import clear, close_all_assignments
 from frappe.model import numeric_fieldtypes
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import (
-	add_days, flt, cstr, cint, date_diff, get_link_to_form, get_url_to_form, getdate, today, get_datetime, now_datetime
+	add_days,
+	flt,
+	cstr,
+	cint,
+	date_diff,
+	get_link_to_form,
+	get_url_to_form,
+	getdate,
+	today,
+	get_datetime,
+	now_datetime,
+	clean_whitespace,
 )
 import frappe.share
 from frappe.utils.nestedset import NestedSet
@@ -61,10 +72,14 @@ class Task(NestedSet):
 	def validate(self):
 		self.set_previous_values()
 		self.set_missing_values()
+		self.clean_subject()
 		self.validate_before_status()
 		self.set_status()
 		self.validate_after_status()
 		self.validate_mandatory_checklist()
+
+	def clean_subject(self):
+		self.subject = clean_whitespace(self.subject)
 
 	def validate_before_status(self):
 		self.set_depends_on()
@@ -336,6 +351,8 @@ class Task(NestedSet):
 		if self.value_changed("status") and self.status == "Completed":
 			if not self.finish_date:
 				self.finish_date = today()
+			if self.act_end_date and getdate(self.act_end_date) > getdate(self.finish_date):
+				self.finish_date = getdate(self.act_end_date)
 
 	def set_depends_on(self):
 		depends_on_tasks = []
