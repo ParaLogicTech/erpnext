@@ -190,7 +190,7 @@ def get_discount_rule_values_dict(applicable_rules, filter_sort=None):
 
 		filter_precedences = sorted(filter_precedences)
 
-		return tuple([-no_of_matches] + filter_precedences)
+		return tuple([-no_of_matches] + filter_precedences + [-flt(d.max_discount)])
 
 	# sort: more matches first, precendent filters first
 	if not filter_sort:
@@ -231,6 +231,9 @@ def get_filters_dict(item, transaction, user=None):
 		transaction = transaction.as_dict()
 
 	customer = transaction.get("bill_to") or transaction.get("customer")
+	if not customer and transaction.get("quotation_to") == "Customer" and transaction.get("party_name"):
+		customer = transaction.get("party_name")
+
 	customer = frappe.get_cached_doc("Customer", customer) if customer else {}
 
 	applies_to_item = transaction.get("applies_to_item")
