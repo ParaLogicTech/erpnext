@@ -327,7 +327,7 @@ def send_maintenance_due_reminder_in_advance(for_date=None):
 	schedule_data = get_schedule_data(for_date)
 
 	for schedule in schedule_data:
-		msd_doc = frappe.get(schedule.parenttype, schedule.parent)
+		msd_doc = frappe.get_doc(schedule.parenttype, schedule.parent)
 		msd_doc.run_method("send_maintenance_due_reminder_in_advance", schedule)
 
 
