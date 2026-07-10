@@ -65,8 +65,8 @@ class MaintenanceSchedule(TransactionBase):
 
 		return adjust_date_for_holidays(scheduled_date, holiday_list)
 	
-	def send_maintenance_due_reminder_in_advance(self):
-		self.run_method("notify_maintenance_remainder_in_advance")
+	def send_maintenance_due_reminder_in_advance(self, schedule):
+		self.run_method("notify_maintenance_remainder_in_advance", schedule)
 
 	def send_maintenance_schedule_reminder_notification(self, row_name):
 		msd_doctype = "Maintenance Schedule Detail"
@@ -328,7 +328,7 @@ def send_maintenance_due_reminder_in_advance(for_date=None):
 
 	for schedule in schedule_data:
 		msd_doc = frappe.get(schedule.parenttype, schedule.parent)
-		msd_doc.run_method("send_maintenance_due_reminder_in_advance")
+		msd_doc.run_method("send_maintenance_due_reminder_in_advance", schedule)
 
 
 def create_opportunity_from_schedule(for_date=None):
