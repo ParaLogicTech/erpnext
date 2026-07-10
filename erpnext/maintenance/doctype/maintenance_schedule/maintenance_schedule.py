@@ -312,7 +312,8 @@ def get_schedule_data(for_date=None):
 	target_date = getdate(add_days(for_date, days_in_advance))
 
 	schedule_data = frappe.db.sql("""
-		select msd.parenttype, msd.name, msd.parent, msd.service_template
+		select msd.parenttype, msd.name, msd.parent, msd.service_template, 
+		msd.reference_doctype, msd.reference_name 
 		from `tabMaintenance Schedule Detail` msd
 		inner join `tabMaintenance Schedule` ms on ms.name = msd.parent
 		where ms.status = 'Active' and msd.scheduled_date = %s
