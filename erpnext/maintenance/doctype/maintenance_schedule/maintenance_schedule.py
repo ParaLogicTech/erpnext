@@ -64,6 +64,9 @@ class MaintenanceSchedule(TransactionBase):
 			holiday_list = get_default_holiday_list(self.company)
 
 		return adjust_date_for_holidays(scheduled_date, holiday_list)
+	
+	def send_maintenance_due_reminder_in_advance(self):
+		self.run_method("notify_maintenance_remainder_in_advance")
 
 	def send_maintenance_schedule_reminder_notification(self, row_name):
 		msd_doctype = "Maintenance Schedule Detail"
@@ -302,18 +305,14 @@ def get_maintenance_schedule_from_serial_no(serial_no):
 		schedule_doc = frappe.get_doc('Maintenance Schedule', schedule_name)
 		return schedule_doc.schedules
 
-
-def create_opportunity_from_schedule(for_date=None):
-	if not frappe.db.get_single_value("Projects Settings", "auto_create_opportunity_from_schedule"):
-		return
-
+def get_schedule_data(for_date=None):
 	days_in_advance = frappe.get_cached_value("Projects Settings", None, "maintenance_opportunity_reminder_days")
 
 	for_date = getdate(for_date)
 	target_date = getdate(add_days(for_date, days_in_advance))
 
 	schedule_data = frappe.db.sql("""
-		select msd.name, msd.parent, msd.service_template
+		select msd.parenttype, msd.name, msd.parent, msd.service_template
 		from `tabMaintenance Schedule Detail` msd
 		inner join `tabMaintenance Schedule` ms on ms.name = msd.parent
 		where ms.status = 'Active' and msd.scheduled_date = %s
@@ -321,6 +320,22 @@ def create_opportunity_from_schedule(for_date=None):
 				where opp.maintenance_schedule = ms.name and opp.maintenance_schedule_row = msd.name
 			)
 	""", target_date, as_dict=1)
+	return schedule_data
+
+def send_maintenance_due_reminder_in_advance(for_date=None):
+
+	schedule_data = get_schedule_data(for_date)
+
+	for schedule in schedule_data:
+		msd_doc = frappe.get(schedule.parenttype, schedule.parent)
+		msd_doc.run_method("send_maintenance_due_reminder_in_advance")
+
+
+def create_opportunity_from_schedule(for_date=None):
+	if not frappe.db.get_single_value("Projects Settings", "auto_create_opportunity_from_schedule"):
+		return
+	
+	schedule_data = get_schedule_data(for_date)
 
 	for schedule in schedule_data:
 		try:
