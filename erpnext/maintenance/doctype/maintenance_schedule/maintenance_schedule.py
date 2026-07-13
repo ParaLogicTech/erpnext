@@ -326,6 +326,9 @@ def get_schedule_data(for_date=None):
 
 def send_maintenance_due_reminder_in_advance(for_date=None):
 
+	if not automated_maintenance_reminder_enabled():
+		return
+
 	schedule_data = get_schedule_data(for_date)
 
 	for schedule in schedule_data:
