@@ -2,7 +2,7 @@ import click
 import frappe
 
 def execute():
-    click.echo("Updating Opportunity Lost Date...")
+    click.echo("Updating Quotation Lost Date...")
     frappe.db.sql("""
         UPDATE `tabQuotation`
         SET lost_date = transaction_date
