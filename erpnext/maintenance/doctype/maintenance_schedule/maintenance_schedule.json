@@ -26,7 +26,7 @@
   "contact_phone",
   "column_break_16",
   "contact_email",
-  "disable_the_advance_reminder",
+  "disable_reminder",
   "sec_schedule",
   "schedules"
  ],
@@ -178,16 +178,16 @@
   },
   {
    "default": "0",
-   "fieldname": "disable_the_advance_reminder",
+   "fieldname": "disable_reminder",
    "fieldtype": "Check",
-   "label": "Disable The Advance Reminder",
+   "label": "Disable Reminder",
    "no_copy": 1
   }
  ],
  "grid_page_length": 500,
  "idx": 1,
  "links": [],
- "modified": "2026-07-13 11:55:26.949998",
+ "modified": "2026-07-13 12:02:31.615397",
  "modified_by": "Administrator",
  "module": "Maintenance",
  "name": "Maintenance Schedule",
