@@ -91,14 +91,14 @@ class BOM(Document):
 	def onload(self):
 		if self.docstatus == 0:
 			if self.get('item'):
-				self.update(get_fetch_values(self.doctype, 'item', self.item))
+				self.update(get_fetch_values(self.doctype, 'item', self.item, skip_fetch_if_empty=True))
 
 	def before_print(self, print_settings=None):
 		self.company_address_doc = erpnext.get_company_address_doc(self)
 
 		if self.docstatus == 0:
 			if self.get('item'):
-				self.update(get_fetch_values(self.doctype, 'item', self.item))
+				self.update(get_fetch_values(self.doctype, 'item', self.item, skip_fetch_if_empty=True))
 
 	@frappe.whitelist()
 	def get_routing(self):
