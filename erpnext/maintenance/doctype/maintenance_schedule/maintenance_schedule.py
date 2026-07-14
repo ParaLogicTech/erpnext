@@ -333,8 +333,7 @@ def send_maintenance_due_reminder_in_advance(for_date=None):
 
 	for schedule in schedule_data:
 		msd_doc = frappe.get_doc(schedule.parenttype, schedule.parent)
-		if not msd_doc.disable_reminder:
-			msd_doc.run_method("send_maintenance_due_reminder_in_advance", schedule)
+		msd_doc.run_method("send_maintenance_due_reminder_in_advance", schedule)
 
 
 def create_opportunity_from_schedule(for_date=None):
