@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from frappe.utils import add_days, getdate, get_time, now_datetime, combine_datetime, add_to_date, cstr, cint
 from erpnext.accounts.party import _get_contact_details
 from crm.crm.utils import get_primary_contact
+from frappe.model.document import Document
 from frappe.core.doctype.notification_count.notification_count import (
 	get_notification_last_scheduled,
 	set_notification_last_scheduled,
@@ -64,20 +65,34 @@ class MaintenanceSchedule(TransactionBase):
 			holiday_list = get_default_holiday_list(self.company)
 
 		return adjust_date_for_holidays(scheduled_date, holiday_list)
-	
-	def send_maintenance_due_reminder_in_advance(self, schedule):
-		if not schedule.disable_reminder:
-			self.run_method("notify_maintenance_remainder_in_advance", schedule)
 
 	def send_maintenance_schedule_reminder_notification(self, row_name):
-		msd_doctype = "Maintenance Schedule Detail"
 		ms_row = [d for d in self.schedules if d.name == row_name]
 		if not ms_row:
 			return
 
 		ms_row = ms_row[0]
-		context = {'row': ms_row, "child_doctype": msd_doctype, "child_name": row_name}
+		context = frappe._dict({"row": ms_row, "child_doctype": "Maintenance Schedule Detail", "child_name": row_name})
 		self.run_method("notify_maintenance_reminder", context=context)
+
+	def trigger_maintenance_schedule_opportunity(self, row_name):
+		ms_row = [d for d in self.schedules if d.name == row_name]
+		if not ms_row:
+			return
+
+		ms_row = ms_row[0]
+
+		opportunity = None
+		if cint(frappe.db.get_single_value("Projects Settings", "auto_create_opportunity_from_schedule")):
+			opportunity = self.create_maintenance_opportunity(row_name)
+
+		context = frappe._dict({
+			"row": ms_row,
+			"child_doctype": "Maintenance Schedule Detail",
+			"child_name": row_name,
+			"opportunity": opportunity,
+		})
+		self.run_method("notify_maintenance_opportunity", context=context)
 
 	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
 		if notification_type in ("Maintenance Reminder",):
@@ -103,6 +118,12 @@ class MaintenanceSchedule(TransactionBase):
 						.format(notification_type))
 				return False
 		return True
+
+	def create_maintenance_opportunity(self, row_name):
+		opportunity_doc = make_maintenance_opportunity(self, row_name)
+		opportunity_doc.flags.ignore_mandatory = True
+		opportunity_doc.save(ignore_permissions=True)
+		return opportunity_doc
 
 
 def auto_schedule_next_service_templates():
@@ -306,78 +327,50 @@ def get_maintenance_schedule_from_serial_no(serial_no):
 		schedule_doc = frappe.get_doc('Maintenance Schedule', schedule_name)
 		return schedule_doc.schedules
 
-def get_schedule_data(for_date=None):
-	days_in_advance = frappe.get_cached_value("Projects Settings", None, "maintenance_opportunity_reminder_days")
 
-	for_date = getdate(for_date)
-	target_date = getdate(add_days(for_date, days_in_advance))
-
-	schedule_data = frappe.db.sql("""
-		select msd.parenttype, msd.name, msd.parent, msd.service_template, 
-		msd.reference_doctype, msd.reference_name 
-		from `tabMaintenance Schedule Detail` msd
-		inner join `tabMaintenance Schedule` ms on ms.name = msd.parent
-		where ms.status = 'Active' and msd.scheduled_date = %s
-			and not exists(select opp.name from `tabOpportunity` opp
-				where opp.maintenance_schedule = ms.name and opp.maintenance_schedule_row = msd.name
-			)
-	""", target_date, as_dict=1)
-	return schedule_data
-
-def send_maintenance_due_reminder_in_advance(for_date=None):
-
-	if not automated_maintenance_reminder_enabled():
+def trigger_maintenance_schedule_opportunities(for_date=None):
+	if automated_maintenance_opportunity_enabled():
 		return
 
-	schedule_data = get_schedule_data(for_date)
-
-	for schedule in schedule_data:
-		msd_doc = frappe.get_doc(schedule.parenttype, schedule.parent)
-		msd_doc.run_method("send_maintenance_due_reminder_in_advance", schedule)
-
-
-def create_opportunity_from_schedule(for_date=None):
-	if not frappe.db.get_single_value("Projects Settings", "auto_create_opportunity_from_schedule"):
-		return
-	
-	schedule_data = get_schedule_data(for_date)
-
-	for schedule in schedule_data:
+	schedules_to_process = get_maintenance_schedules_for_opportunity_creation(for_date)
+	for d in schedules_to_process:
 		try:
-			opportunity_doc = create_maintenance_opportunity(schedule.parent, schedule.name)
-			opportunity_doc.flags.ignore_mandatory = True
-			opportunity_doc.save(ignore_permissions=True)
-			frappe.db.commit()
+			doc = frappe.get_doc("Maintenance Schedule", d.ms_name)
+			doc.trigger_maintenance_schedule_opportunity(d.row_name)
 		except Exception:
 			frappe.db.rollback()
 			frappe.log_error(
-				title="Error Creating Maintenance Opportunity",
+				title="Error Triggering Maintenance Schedule Opportunity",
 				reference_doctype="Maintenance Schedule",
-				reference_name=schedule.name,
+				reference_name=d.ms_name,
 			)
 			frappe.db.commit()
 
 
 def get_maintenance_schedule_opportunity(maintenance_schedule, row):
 	maintenance_opp = frappe.db.get_value("Opportunity", filters={
-		'maintenance_schedule':maintenance_schedule,
+		'maintenance_schedule': maintenance_schedule,
 		'maintenance_schedule_row': row
 	})
 
 	if maintenance_opp:
 		return frappe.get_doc('Opportunity', maintenance_opp)
 	else:
-		return create_maintenance_opportunity(maintenance_schedule, row)
+		return make_maintenance_opportunity(maintenance_schedule, row)
 
 
 @frappe.whitelist()
-def create_maintenance_opportunity(maintenance_schedule, row):
-	schedule_doc = frappe.get_doc('Maintenance Schedule', maintenance_schedule)
-	default_opportunity_type = frappe.get_cached_value("Projects Settings", None, "default_opportunity_type_for_schedule")
-	schedule = schedule_doc.getone('schedules', {'name': row})
+def make_maintenance_opportunity(maintenance_schedule, row):
+	if isinstance(maintenance_schedule, Document):
+		schedule_doc = maintenance_schedule
+	else:
+		schedule_doc = frappe.get_doc('Maintenance Schedule', maintenance_schedule)
 
+	schedule = schedule_doc.getone('schedules', {'name': row})
 	if not schedule:
 		frappe.throw(_("Invalid Maintenance Schedule Row Provided"))
+
+	default_opportunity_type = frappe.get_cached_value("Projects Settings", None, "default_opportunity_type_for_schedule")
 
 	target_doc = frappe.new_doc('Opportunity')
 
@@ -444,7 +437,7 @@ def get_maintenance_schedules_for_reminder_notification(reminder_date=None):
 
 	remind_days_before = cint(frappe.db.get_single_value("Projects Settings", "maintenance_reminder_days_before"))
 	if remind_days_before < 1:
-		return
+		return []
 
 	schedule_date = add_days(reminder_date, remind_days_before)
 
@@ -468,13 +461,48 @@ def get_maintenance_schedules_for_reminder_notification(reminder_date=None):
 	return schedule_to_remind
 
 
+def get_maintenance_schedules_for_opportunity_creation(for_date=None):
+	for_date = getdate(for_date)
+
+	days_in_advance = cint(frappe.get_cached_value("Projects Settings", None, "maintenance_opportunity_reminder_days"))
+	if days_in_advance < 0:
+		return []
+
+	schedule_date = add_days(for_date, days_in_advance)
+
+	schedules_to_process = frappe.db.sql("""
+		select ms.name AS ms_name, msd.name AS row_name, msd.scheduled_date
+		from `tabMaintenance Schedule Detail` msd
+		inner join `tabMaintenance Schedule` ms on ms.name = msd.parent
+		where ms.status = 'Active'
+			and msd.scheduled_date = %s
+			and not exists(select opp.name from `tabOpportunity` opp
+				where opp.maintenance_schedule = ms.name and opp.maintenance_schedule_row = msd.name
+			)
+	""", schedule_date, as_dict=1)
+
+	return schedules_to_process
+
+
+def automated_maintenance_opportunity_enabled():
+	from frappe.email.doctype.notification.notification import has_notification
+	return (
+		cint(frappe.db.get_single_value("Projects Settings", "auto_create_opportunity_from_schedule"))
+		or has_notification(
+			"Maintenance Schedule",
+			notification_type="Maintenance Opportunity",
+			trigger_method="notify_maintenance_opportunity",
+		)
+	)
+
+
 def automated_maintenance_reminder_enabled():
 	from frappe.email.doctype.notification.notification import has_notification
-
-	if has_notification("Maintenance Schedule", "Maintenance Reminder"):
-		return True
-	else:
-		return False
+	return has_notification(
+		"Maintenance Schedule",
+		notification_type="Maintenance Reminder",
+		trigger_method="notify_maintenance_reminder",
+	)
 
 
 def get_maintenance_reminder_scheduled_time(reminder_date=None):

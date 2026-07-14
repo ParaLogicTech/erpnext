@@ -767,11 +767,11 @@ def send_customer_birthday_notifications():
 
 def automated_customer_birthday_enabled():
 	from frappe.email.doctype.notification.notification import has_notification
-
-	if has_notification("Customer", "Customer Birthday"):
-		return True
-	else:
-		return False
+	return has_notification(
+		"Customer",
+		notification_type="Customer Birthday",
+		trigger_method="notify_customer_birthday",
+	)
 
 
 def get_customer_birthday_scheduled_time(notification_date=None):

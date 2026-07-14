@@ -263,8 +263,7 @@ scheduler_events = {
 		"erpnext.quality_management.doctype.quality_review.quality_review.review",
 		"erpnext.support.doctype.service_level_agreement.service_level_agreement.check_agreement_status",
 		"erpnext.selling.doctype.quotation.quotation.set_expired_status",
-		"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.create_opportunity_from_schedule",
-        "erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.send_maintenance_due_reminder",
+		"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.trigger_maintenance_schedule_opportunities",
 		"erpnext.projects.doctype.service_warranty.service_warranty.set_warranty_service_expired",
 	],
 	"daily_long": [
