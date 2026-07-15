@@ -500,8 +500,7 @@ def automated_maintenance_opportunity_enabled():
 		cint(frappe.db.get_single_value("Projects Settings", "auto_create_opportunity_from_schedule"))
 		or has_notification(
 			"Maintenance Schedule",
-			notification_type="Maintenance Opportunity",
-			trigger_method="notify_maintenance_opportunity",
+			notification_type="Maintenance Opportunity"
 		)
 	)
 
@@ -510,8 +509,7 @@ def automated_maintenance_reminder_enabled():
 	from frappe.email.doctype.notification.notification import has_notification
 	return has_notification(
 		"Maintenance Schedule",
-		notification_type="Maintenance Reminder",
-		trigger_method="notify_maintenance_reminder",
+		notification_type="Maintenance Reminder"
 	)
 
 
