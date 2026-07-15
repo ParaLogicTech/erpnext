@@ -453,3 +453,4 @@ erpnext.patches.v15_0.create_payment_reconciliation_dimension_fields
 erpnext.patches.v15_0.set_advance_table_exchange_rate
 erpnext.patches.v15_0.set_branch_customer_feedback
 erpnext.patches.v15_0.set_packing_slip_rejected_status
+erpnext.patches.v15_0.set_quotation_lost_date
