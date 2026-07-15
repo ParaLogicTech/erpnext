@@ -779,8 +779,7 @@ def automated_customer_birthday_enabled():
 	from frappe.email.doctype.notification.notification import has_notification
 	return has_notification(
 		"Customer",
-		notification_type="Customer Birthday",
-		trigger_method="notify_customer_birthday",
+		notification_type="Customer Birthday"
 	)
 
 
