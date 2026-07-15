@@ -215,6 +215,7 @@ class Quotation(SellingController):
 		if is_lost:
 			self.set_status(update=True, status="Lost")
 			self.db_set('order_lost_reason', detailed_reason)
+			lost_date = getdate(lost_date)
 			self.db_set("lost_date", lost_date)
 			self.lost_reasons = []
 			for reason in lost_reasons_list or []:
