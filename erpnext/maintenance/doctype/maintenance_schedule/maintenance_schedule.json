@@ -176,9 +176,10 @@
    "oldfieldtype": "Section Break"
   }
  ],
+ "grid_page_length": 500,
  "idx": 1,
  "links": [],
- "modified": "2025-03-17 20:13:28.107654",
+ "modified": "2026-07-14 13:22:34.680070",
  "modified_by": "Administrator",
  "module": "Maintenance",
  "name": "Maintenance Schedule",
@@ -225,6 +226,8 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

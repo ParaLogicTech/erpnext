@@ -753,8 +753,18 @@ def send_customer_birthday_notifications():
 
 	customer_birthday_data = get_customers_for_birthday_notifications(date_today)
 	for d in customer_birthday_data:
-		doc = frappe.get_doc("Customer", d.name)
-		doc.send_customer_birthday_notification()
+		try:
+			doc = frappe.get_doc("Customer", d.name)
+			doc.send_customer_birthday_notification()
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			frappe.log_error(
+				title="Error sending Customer Birthday Notification",
+				reference_doctype="Customer",
+				reference_name=d.name,
+			)
+			frappe.db.commit()
 
 	set_notification_last_scheduled(
 		"Customer",
@@ -767,11 +777,11 @@ def send_customer_birthday_notifications():
 
 def automated_customer_birthday_enabled():
 	from frappe.email.doctype.notification.notification import has_notification
-
-	if has_notification("Customer", "Customer Birthday"):
-		return True
-	else:
-		return False
+	return has_notification(
+		"Customer",
+		notification_type="Customer Birthday",
+		trigger_method="notify_customer_birthday",
+	)
 
 
 def get_customer_birthday_scheduled_time(notification_date=None):

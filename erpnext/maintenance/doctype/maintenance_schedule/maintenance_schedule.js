@@ -60,7 +60,7 @@ erpnext.maintenance.MaintenanceSchedule = class MaintenanceSchedule extends frap
 
 	create_opportunity(doc, cdt, cdn) {
 		frappe.call({
-			method: "erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.create_maintenance_opportunity",
+			method: "erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.make_maintenance_opportunity",
 			args: {
 				maintenance_schedule: doc.name,
 				row: cdn

@@ -8,6 +8,7 @@ from erpnext.accounts.utils import get_stock_and_account_balance
 from frappe.model.meta import get_field_precision
 from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
+from frappe.model.document import Document
 from collections import OrderedDict
 
 
@@ -413,10 +414,6 @@ def add_to_reference_documents_for_update(reference_documents_for_update, entry)
 
 
 def update_voucher_on_gl_posting(voucher_type, voucher_no, account, party_type, party, on_cancel=False):
-	from frappe.model.base_document import get_controller
-
-	hook_methods = frappe.get_doc_hooks().get(voucher_type, {}).get("on_gl_against_voucher", [])
-	controller_method = getattr(get_controller(voucher_type), "on_gl_against_voucher", None)
-	if controller_method or hook_methods:
+	if Document.has_method(voucher_type, "on_gl_against_voucher"):
 		reference_doc = frappe.get_doc(voucher_type, voucher_no)
 		reference_doc.run_method("on_gl_against_voucher", account, party_type, party, on_cancel)
