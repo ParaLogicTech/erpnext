@@ -337,6 +337,7 @@ def trigger_maintenance_schedule_opportunities(for_date=None):
 		try:
 			doc = frappe.get_doc("Maintenance Schedule", d.ms_name)
 			doc.trigger_maintenance_schedule_opportunity(d.row_name)
+			frappe.db.commit()
 		except Exception:
 			frappe.db.rollback()
 			frappe.log_error(
@@ -420,8 +421,17 @@ def send_maintenance_schedule_reminder_notifications():
 	schedules_to_remind = get_maintenance_schedules_for_reminder_notification(reminder_date)
 
 	for d in schedules_to_remind:
-		doc = frappe.get_doc("Maintenance Schedule", d.ms_name)
-		doc.send_maintenance_schedule_reminder_notification(d.row_name)
+		try:
+			doc = frappe.get_doc("Maintenance Schedule", d.ms_name)
+			doc.send_maintenance_schedule_reminder_notification(d.row_name)
+		except Exception:
+			frappe.db.rollback()
+			frappe.log_error(
+				title="Error sending Maintenance Schedule Reminder Notification",
+				reference_doctype="Maintenance Scheduler",
+				reference_name=d.ms_name,
+			)
+			frappe.db.commit()
 
 	set_notification_last_scheduled(
 		"Maintenance Schedule",
