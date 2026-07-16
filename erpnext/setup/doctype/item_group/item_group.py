@@ -35,6 +35,39 @@ def get_item_group_subtree(item_group, cache=True):
 		return generator()
 
 
+def get_exploded_item_groups(item_groups):
+	if isinstance(item_groups, str):
+		item_groups = [item_groups]
+
+	if not item_groups:
+		return []
+
+	return frappe.db.sql_list("""
+		select ch.name
+		from `tabItem Group` ch
+		where exists(select p.name from `tabItem Group` p
+			where p.name in %s and ch.lft between p.lft and p.rgt
+		)
+		order by ch.lft
+	""", [item_groups])
+
+
+def get_item_groups_with_ancestors(item_groups):
+	if isinstance(item_groups, str):
+		item_groups = [item_groups]
+
+	if not item_groups:
+		return []
+
+	return frappe.db.sql_list("""
+		select distinct an.name
+		from `tabItem Group` ch
+		inner join `tabItem Group` as an on ch.lft between an.lft and an.rgt
+		where ch.name in %s
+		order by an.lft
+	""", [item_groups])
+
+
 def get_item_group_print_heading(item_group):
 	item_group_print_heading = item_group
 
