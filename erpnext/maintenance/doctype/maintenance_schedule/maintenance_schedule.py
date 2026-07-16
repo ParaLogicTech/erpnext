@@ -329,7 +329,7 @@ def get_maintenance_schedule_from_serial_no(serial_no):
 
 
 def trigger_maintenance_schedule_opportunities(for_date=None):
-	if automated_maintenance_opportunity_enabled():
+	if not automated_maintenance_opportunity_enabled():
 		return
 
 	schedules_to_process = get_maintenance_schedules_for_opportunity_creation(for_date)
