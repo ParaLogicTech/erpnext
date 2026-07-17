@@ -97,7 +97,7 @@ class SummarizedFinancialReport:
 		group = self.get_account_group_doc(group_name)
 		group_root_type = group.root_type
 
-		self.group_account_map = self.get_accounts_in_account_group(group, as_map=True)
+		self.group_account_map = self.get_accounts_in_account_group(group, as_map=True, exploded_map=True)
 		all_accounts = self.group_account_map.get(group.name, [])
 		self.account_totals = self.get_account_totals(all_accounts)
 		self.set_missing_account_zeroes(all_accounts)
@@ -225,8 +225,13 @@ class SummarizedFinancialReport:
 
 		return data
 
-	def get_accounts_in_account_group(self, account_group, as_map=False):
-		return get_accounts_in_account_group(account_group, as_map=as_map, tree_view=self.filters.tree_view, cache="local")
+	def get_accounts_in_account_group(self, account_group, as_map=False, exploded_map=False):
+		return get_accounts_in_account_group(
+			account_group,
+			as_map=as_map,
+			exploded_map=exploded_map,
+			cache="local",
+		)
 
 	def get_child_group_totals(self, group_account_map):
 		child_group_totals = {}

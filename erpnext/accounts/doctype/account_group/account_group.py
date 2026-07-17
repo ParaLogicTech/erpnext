@@ -162,18 +162,33 @@ class AccountGroup(Document):
 			d.variable_name = clean_whitespace(d.variable_name)
 
 
-def get_accounts_in_account_group(account_group, as_map=False, tree_view=False, cache="local"):
+def get_accounts_in_account_group(
+	account_group,
+	as_map=False,
+	exploded_map=False,
+	cache="local",
+):
 	account_group_doc = get_account_group_doc(account_group, cache=cache)
 
 	account_map = {}
-	get_accounts_in_child_account_group(account_group_doc.name, account_group_doc.name, account_map, cache=cache)
+	get_accounts_in_child_account_group(
+		account_group_doc.name,
+		account_group_doc.name,
+		account_map,
+		cache=cache,
+	)
 
 	if as_map:
 		for row in account_group_doc.rows:
 			if row.row_type == "Account Group":
 				account_map.setdefault(row.account_group, set())
-				get_accounts_in_child_account_group(row.account_group, row.account_group, account_map,
-					tree_view=tree_view, cache=cache)
+				get_accounts_in_child_account_group(
+					row.account_group,
+					row.account_group,
+					account_map,
+					exploded_map=exploded_map,
+					cache=cache,
+				)
 
 	if as_map:
 		return account_map
@@ -181,7 +196,13 @@ def get_accounts_in_account_group(account_group, as_map=False, tree_view=False, 
 		return account_map.get(account_group_doc.name) or []
 
 
-def get_accounts_in_child_account_group(current_group_name, root_group_name, account_map, tree_view=False, cache="local"):
+def get_accounts_in_child_account_group(
+	current_group_name,
+	root_group_name,
+	account_map,
+	exploded_map=False,
+	cache="local",
+):
 	current_group = get_account_group_doc(current_group_name, cache=cache)
 
 	for row in current_group.rows:
@@ -189,9 +210,21 @@ def get_accounts_in_child_account_group(current_group_name, root_group_name, acc
 			account_map.setdefault(root_group_name, set()).add(row.account)
 		elif row.row_type == "Account Group":
 			account_map.setdefault(row.account_group, set())
-			get_accounts_in_child_account_group(row.account_group, root_group_name, account_map, tree_view=tree_view)
-			if tree_view:
-				get_accounts_in_child_account_group(row.account_group, row.account_group, account_map, tree_view=tree_view)
+
+			get_accounts_in_child_account_group(
+				row.account_group,
+				root_group_name,
+				account_map,
+				exploded_map=exploded_map,
+			)
+
+			if exploded_map:
+				get_accounts_in_child_account_group(
+					row.account_group,
+					row.account_group,
+					account_map,
+					exploded_map=exploded_map,
+				)
 
 
 def get_account_group_doc(group_name, cache="local"):
