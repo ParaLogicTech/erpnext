@@ -60,6 +60,7 @@ override_doctype_dashboards = {
 	"Opportunity": "erpnext.overrides.opportunity.opportunity_hooks.override_opportunity_dashboard",
 	"Appointment": "erpnext.overrides.appointment.appointment_hooks.override_appointment_dashboard",
 	"Campaign": "erpnext.overrides.campaign.campaign_hooks.override_campaign_dashboard",
+	"User": "erpnext.overrides.user.user_hooks.override_user_dashboard",
 }
 
 fixtures = [
