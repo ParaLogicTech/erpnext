@@ -910,7 +910,7 @@
   },
   {
    "fieldname": "other_charges_calculation",
-   "fieldtype": "Long Text",
+   "fieldtype": "HTML",
    "label": "Taxes and Charges Calculation",
    "no_copy": 1,
    "oldfieldtype": "HTML",
@@ -1833,7 +1833,7 @@
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-02 14:01:17.591807",
+ "modified": "2026-07-20 13:46:31.429205",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",
@@ -1950,6 +1950,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "transaction_date, customer,bill_to, base_grand_total",
  "show_name_in_global_search": 1,
  "sort_field": "transaction_date",

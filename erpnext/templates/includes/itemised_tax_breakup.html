@@ -1,5 +1,5 @@
-<div class="tax-break-up" style="overflow-x: auto;">
-	<table class="table table-bordered table-hover">
+<div class="tax-break-up">
+	<table class="table table-bordered table-hover" style="margin: 0;font-size: 9.5pt;">
 		<thead>
 			<tr>
 				{% for key in headers %}
@@ -40,14 +40,20 @@
 		<tfoot>
 			<tr>
 				<td><b>{{ _("Total") }}</b></td>
-				<td class='text-right'>{{ frappe.utils.fmt_money(doc.base_net_total / conversion_rate, None, currency) }}</td>
+				<td class='text-right'>
+					<b>{{ frappe.utils.fmt_money(doc.base_net_total / conversion_rate, None, currency) }}</b>
+				</td>
 				{% for tax_account in tax_accounts %}
-					<td class='text-right'>{{ frappe.utils.fmt_money(flt(tax_totals.get(tax_account)) / conversion_rate, None, currency) }}</td>
+					<td class='text-right'>
+						<b>{{ frappe.utils.fmt_money(flt(tax_totals.get(tax_account)) / conversion_rate, None, currency) }}</b>
+					</td>
 				{% endfor %}
 				{% if 'Valuation Rate' in headers %}
-				<td></td>
+					<td></td>
 				{% endif %}
-				<td class='text-right'>{{ frappe.utils.fmt_money(doc.base_grand_total / conversion_rate, None, currency) }}</td>
+				<td class='text-right'>
+					<b>{{ frappe.utils.fmt_money(doc.base_grand_total / conversion_rate, None, currency) }}</b>
+				</td>
 			</tr>
 		</tfoot>
 	</table>

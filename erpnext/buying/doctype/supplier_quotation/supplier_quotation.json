@@ -507,7 +507,7 @@
   },
   {
    "fieldname": "other_charges_calculation",
-   "fieldtype": "Long Text",
+   "fieldtype": "HTML",
    "label": "Taxes and Charges Calculation",
    "no_copy": 1,
    "oldfieldtype": "HTML",
@@ -1190,7 +1190,7 @@
  "idx": 29,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-01 04:40:52.385209",
+ "modified": "2026-07-20 13:47:08.131518",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Supplier Quotation",
@@ -1270,6 +1270,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "status, transaction_date, supplier,grand_total",
  "show_name_in_global_search": 1,
  "sort_field": "transaction_date",

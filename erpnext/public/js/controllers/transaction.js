@@ -371,6 +371,11 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 		erpnext.utils.setup_scan_barcode_field(this.frm.fields_dict.scan_barcode);
 
+		let other_charges_calculation_df = this.frm.get_field("other_charges_calculation");
+		if (other_charges_calculation_df) {
+			other_charges_calculation_df.$wrapper.html(this.frm.doc.__onload?.other_charges_calculation || "");
+		}
+
 		if(this.frm.doc.__islocal) {
 			var currency = frappe.defaults.get_user_default("currency");
 

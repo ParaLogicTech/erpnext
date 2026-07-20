@@ -5,8 +5,6 @@ import frappe
 import erpnext
 from frappe import _, scrub
 from frappe.utils import cint, flt, round_based_on_smallest_currency_fraction
-from erpnext.controllers.accounts_controller import validate_conversion_rate
-from erpnext.controllers.transaction_controller import validate_taxes_and_charges, validate_inclusive_tax
 from frappe.utils import money_in_words
 import json
 
@@ -42,9 +40,6 @@ class calculate_taxes_and_totals(object):
 		if self.doc.doctype == "Quotation":
 			self.calculate_including_previous_grand_total()
 
-		if self.doc.meta.get_field("other_charges_calculation"):
-			self.set_item_wise_tax_breakup()
-
 	def _calculate(self):
 		self.validate_conversion_rate()
 		self.calculate_item_values()
@@ -65,6 +60,7 @@ class calculate_taxes_and_totals(object):
 			self.doc.currency = company_currency
 			self.doc.conversion_rate = 1.0
 		else:
+			from erpnext.controllers.accounts_controller import validate_conversion_rate
 			validate_conversion_rate(self.doc.currency, self.doc.conversion_rate,
 				self.doc.meta.get_label("conversion_rate"), self.doc.company)
 
@@ -227,6 +223,8 @@ class calculate_taxes_and_totals(object):
 			or not self.doc.currency or self.doc.currency == company_currency
 
 	def initialize_taxes(self):
+		from erpnext.controllers.transaction_controller import validate_taxes_and_charges, validate_inclusive_tax
+
 		for tax in self.doc.get("taxes"):
 			if not self.discount_amount_applied:
 				validate_taxes_and_charges(tax)
@@ -1028,9 +1026,6 @@ class calculate_taxes_and_totals(object):
 
 		item.rate_with_margin = rate_with_margin
 		item.base_rate_with_margin = base_rate_with_margin
-
-	def set_item_wise_tax_breakup(self):
-		self.doc.other_charges_calculation = get_itemised_tax_breakup_html(self.doc)
 
 	def calculate_including_previous_grand_total(self):
 		self.doc.previous_grand_total = 0

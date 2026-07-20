@@ -726,7 +726,7 @@
   },
   {
    "fieldname": "other_charges_calculation",
-   "fieldtype": "Long Text",
+   "fieldtype": "HTML",
    "label": "Taxes and Charges Calculation",
    "no_copy": 1,
    "oldfieldtype": "HTML",
@@ -1774,7 +1774,7 @@
  "idx": 146,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-06 13:17:42.580797",
+ "modified": "2026-07-20 13:46:54.402773",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Delivery Note",
@@ -1874,6 +1874,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "status,customer,customer_name, territory,base_grand_total",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

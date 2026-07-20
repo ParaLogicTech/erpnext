@@ -669,7 +669,7 @@
   },
   {
    "fieldname": "other_charges_calculation",
-   "fieldtype": "Long Text",
+   "fieldtype": "HTML",
    "label": "Taxes and Charges Calculation",
    "no_copy": 1,
    "oldfieldtype": "HTML",
@@ -1619,7 +1619,7 @@
  "idx": 261,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-02-27 14:17:47.833014",
+ "modified": "2026-07-20 13:46:59.691300",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt",
@@ -1720,6 +1720,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "status, posting_date, supplier",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

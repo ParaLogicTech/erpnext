@@ -6,13 +6,12 @@ from erpnext.stock.get_item_details import (
 	get_item_details,
 	get_applies_to_details,
 	get_force_applies_to_fields,
-	get_bin_details,
 )
-from erpnext.stock.doctype.batch.batch import get_batch_qty
 from erpnext.accounts.doctype.pricing_rule.utils import (
 	apply_pricing_rule_for_free_items, get_applied_pricing_rules,
 	apply_pricing_rule_on_transaction, update_pricing_rule_table
 )
+from erpnext.controllers.taxes_and_totals import calculate_taxes_and_totals, get_itemised_tax_breakup_html
 from erpnext.setup.utils import get_exchange_rate
 from erpnext.controllers.sales_and_purchase_return import validate_return
 from collections import OrderedDict
@@ -108,11 +107,17 @@ class TransactionController(StockController):
 		super().onload()
 		self.set_onload("enable_dynamic_bundling", self.dynamic_bundling_enabled())
 
+		if self.meta.has_field("other_charges_calculation"):
+			self.set_onload("other_charges_calculation", get_itemised_tax_breakup_html(self))
+
 	def before_print(self, print_settings=None):
 		super().before_print(print_settings)
 
 		if self.meta.has_field("set_warehouse"):
 			self.set_warehouse_name = frappe.get_cached_value("Warehouse", self.set_warehouse, "warehouse_name")
+
+		if self.meta.has_field("other_charges_calculation"):
+			self.other_charges_calculation = get_itemised_tax_breakup_html(self)
 
 		self.set_previous_document_reference_before_print()
 		self.set_common_uom_before_print()
@@ -290,7 +295,6 @@ class TransactionController(StockController):
 		pass
 
 	def calculate_taxes_and_totals(self):
-		from erpnext.controllers.taxes_and_totals import calculate_taxes_and_totals
 		calculate_taxes_and_totals(self)
 
 	def dynamic_bundling_enabled(self):
