@@ -1073,8 +1073,9 @@ def get_itemised_tax_breakup_html(doc):
 	item_totals = {}
 	tax_totals = {}
 	total_taxes_and_charges = 0
+	
 	for item, taxes in itemised_tax.items():
-		item_totals.setdefault(item, itemised_net_amount[item])
+		item_totals.setdefault(item, flt(itemised_net_amount.get(item)))
 
 		for tax, tax_data in taxes.items():
 			tax_totals.setdefault(tax, 0)
