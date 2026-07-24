@@ -62,10 +62,14 @@
   "default_buying_terms",
   "hr_settings_section",
   "default_holiday_list",
-  "default_leave_policy",
   "column_break_24",
+  "default_leave_policy",
+  "standard_working_hours_section",
   "standard_working_hours",
+  "non_std_working_hours",
+  "column_break_9tuu",
   "standard_break_hours",
+  "non_std_break_hours",
   "accounts_settings",
   "tax_settings_section",
   "tax_id",
@@ -1042,6 +1046,27 @@
    "fieldtype": "Link",
    "label": "Default Goodwill Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "non_std_working_hours",
+   "fieldtype": "Table",
+   "label": "Non Standard Working Hours",
+   "options": "Non Standard Working Hours"
+  },
+  {
+   "fieldname": "column_break_9tuu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "non_std_break_hours",
+   "fieldtype": "Table",
+   "label": "Non Standard Break Hours",
+   "options": "Non Standard Working Hours"
+  },
+  {
+   "fieldname": "standard_working_hours_section",
+   "fieldtype": "Section Break",
+   "label": "Standard Working Hours"
   }
  ],
  "icon": "fa fa-building",
@@ -1049,7 +1074,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2026-02-01 04:44:34.334027",
+ "modified": "2026-07-24 13:17:22.190205",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
@@ -1124,6 +1149,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",

@@ -123,9 +123,17 @@ class Attendance(Document):
 			self.standard_break_hours = flt(shift_doc.break_hours)
 
 		if not self.standard_working_hours:
-			self.standard_working_hours = get_standard_working_hours_for_employee(self.employee, company=self.company)
+			self.standard_working_hours = get_standard_working_hours_for_employee(
+				self.employee,
+				date=self.attendance_date,
+				company=self.company,
+			)
 		if not self.standard_break_hours:
-			self.standard_break_hours = get_standard_break_hours_for_employee(self.employee, company=self.company)
+			self.standard_break_hours = get_standard_break_hours_for_employee(
+				self.employee,
+				date=self.attendance_date,
+				company=self.company,
+			)
 
 		if flt(self.standard_break_hours) >= flt(self.standard_working_hours):
 			self.standard_break_hours = 0

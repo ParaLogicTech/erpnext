@@ -417,12 +417,16 @@ def is_holiday(employee, date=None, raise_exception=True):
 		return frappe.get_all('Holiday List', dict(name=holiday_list, holiday_date=date)) and True or False
 
 
-def get_standard_working_hours_for_employee(employee, company=None):
+def get_standard_working_hours_for_employee(employee, date=None, company=None):
 	standard_working_hours = 0
 
 	# Standard hours from hooks
 	if employee:
-		standard_working_hours = flt(frappe.utils.call_hook_method("get_standard_working_hours_for_employee", employee))
+		standard_working_hours = flt(frappe.utils.call_hook_method(
+			"get_standard_working_hours_for_employee",
+			employee,
+			date,
+		))
 
 	# Default standard hours from Company
 	if not standard_working_hours:
@@ -432,17 +436,21 @@ def get_standard_working_hours_for_employee(employee, company=None):
 			company = frappe.db.get_single_value("Global Defaults", "default_company")
 
 		if company:
-			standard_working_hours = flt(frappe.get_cached_value("Company", company, "standard_working_hours"))
+			standard_working_hours = get_company_standard_working_hours(company, date=date)
 
 	return standard_working_hours
 
 
-def get_standard_break_hours_for_employee(employee, company=None):
+def get_standard_break_hours_for_employee(employee, date=None, company=None):
 	standard_break_hours = 0
 
 	# Standard hours from hooks
 	if employee:
-		standard_break_hours = flt(frappe.utils.call_hook_method("get_standard_break_hours_for_employee", employee))
+		standard_break_hours = flt(frappe.utils.call_hook_method(
+			"get_standard_break_hours_for_employee",
+			employee,
+			date,
+		))
 
 	# Default standard hours from Company
 	if not standard_break_hours:
@@ -452,9 +460,44 @@ def get_standard_break_hours_for_employee(employee, company=None):
 			company = frappe.db.get_single_value("Global Defaults", "default_company")
 
 		if company:
-			standard_break_hours = flt(frappe.get_cached_value("Company", company, "standard_break_hours"))
+			standard_break_hours = get_company_standard_break_hours(company, date=date)
 
 	return standard_break_hours
+
+
+def get_company_standard_working_hours(company, date=None):
+	return get_company_standard_hours(
+		company,
+		date,
+		"standard_working_hours",
+		"non_std_working_hours",
+	)
+
+
+def get_company_standard_break_hours(company, date=None):
+	return get_company_standard_hours(
+		company,
+		date,
+		"standard_break_hours",
+		"non_std_break_hours",
+	)
+
+
+def get_company_standard_hours(company, date, standard_hours_field, non_standard_table_field):
+	if not company:
+		return 0
+
+	company_doc = frappe.get_cached_doc("Company", company)
+	standard_hours = flt(company_doc.get(standard_hours_field))
+
+	date = getdate(date) if date else None
+	if date:
+		day_of_week = frappe.utils.formatdate(date, "EEEE")
+		non_std_row = [d for d in company_doc.get(non_standard_table_field) or [] if d.day_of_week == day_of_week]
+		if non_std_row:
+			standard_hours = flt(non_std_row[0].non_std_hours)
+
+	return standard_hours
 
 
 @frappe.whitelist()
