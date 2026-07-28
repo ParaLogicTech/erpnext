@@ -61,8 +61,6 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 	get_party_item_code(args, item, out)
 
-	set_valuation_rate(out, args, doc=doc)
-
 	update_party_blanket_order(args, out)
 
 	get_price_list_data(args, item, out)
@@ -94,6 +92,9 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 	child_doctype = args.doctype + ' Item'
 	child_meta = frappe.get_meta(child_doctype)
+
+	if child_meta.has_field("valuation_rate") and args.get('selling_or_buying') == "selling":
+		set_valuation_rate(out, args, doc=doc)
 
 	if (
 		child_meta.has_field("actual_qty")
@@ -1572,57 +1573,87 @@ def get_default_bom(item_code, project=None):
 
 
 def set_valuation_rate(out, args, doc=None):
+	from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+
+	warehouse = out.get("warehouse") or args.get("warehouse")
+
+	if is_product_bundle(args.item_code):
+		valuation_rate = get_product_bundle_valuation_rate(
+			args.item_code,
+			warehouse,
+			parent_qty=out.stock_qty,
+			args=args,
+			doc=doc,
+		)
+	else:
+		valuation_rate = get_valuation_rate(args.item_code, warehouse)
+
+	out["valuation_rate"] = flt(valuation_rate)
+
+
+def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, doc=None):
 	from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle_from_item_code
 
-	product_bundle = get_product_bundle_from_item_code(args.item_code)
-	if not product_bundle:
-		out.update(get_valuation_rate(args.item_code, args.company, out.get("warehouse"), args.transaction_type_name))
-		return
-
 	valuation_rate = 0.0
+	if not parent_item:
+		return valuation_rate
+
+	product_bundle = get_product_bundle_from_item_code(parent_item)
+	if not product_bundle:
+		return valuation_rate
+
 	product_bundle_doc = frappe.get_cached_doc("Product Bundle", product_bundle)
+	parent_row_name = args.get("child_docname")
 
 	for bundle_item in product_bundle_doc.get("items"):
 		if bundle_item.type == "Item":
-			rate = flt(
-				get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
-			)
+			child_row = None
+			if parent_row_name and doc:
+				child_row = [
+					ch for ch in doc.get("packed_items", [])
+					if ch.parent_detail_docname == parent_row_name and ch.item_code == bundle_item.item_code
+				]
+				child_row = child_row[0] if child_row else None
+
+			child_warehouse = warehouse
+			if child_row:
+				child_warehouse = child_row.warehouse or child_warehouse
+
+			rate = flt(get_valuation_rate(bundle_item.item_code, child_warehouse))
 			valuation_rate += rate * flt(bundle_item.qty)
 
 		elif bundle_item.type == "Item Group" and doc:
-			for packed_item in (doc.get("packed_item") or []):
-				if packed_item.item_code:
-					rate = flt(
-						get_valuation_rate(bundle_item.item_code, args.company, out.get("warehouse")).get("valuation_rate")
-					)
-					valuation_rate += rate * flt(bundle_item.qty)
+			for child_row in doc.get("packed_items", []):
+				if not child_row.item_code:
+					continue
+				if child_row.parent_item != parent_item:
+					continue
+				if child_row.item_group != bundle_item.item_group:
+					continue
+				if parent_row_name != child_row.parent_detail_docname:
+					continue
 
-	out.update({
-		"valuation_rate": valuation_rate
-	})
+				child_warehouse = child_row.warehouse or warehouse
+				child_valuation_rate = flt(get_valuation_rate(child_row.item_code, child_warehouse))
+				valuation_rate += child_valuation_rate * flt(child_row.stock_qty) / (flt(parent_qty) or 1)
+
+	return valuation_rate
 
 
+def get_valuation_rate(item_code, warehouse):
+	def generator():
+		return flt(frappe.db.get_value("Bin", {
+			"item_code": item_code, "warehouse": warehouse
+		}, "valuation_rate"))
 
-def get_valuation_rate(item_code, company, warehouse=None, transaction_type_name=None):
+	if not item_code or not warehouse:
+		return 0
+
 	item = frappe.get_cached_doc("Item", item_code)
-	default_values = get_item_default_values(item, {"company": company, "transaction_type": transaction_type_name})
+	if not item.is_stock_item:
+		return 0
 
-	if item.get("is_stock_item"):
-		if not warehouse:
-			warehouse = default_values.get("default_warehouse")
-
-		return frappe.db.get_value("Bin", {"item_code": item_code, "warehouse": warehouse},
-			["valuation_rate"], as_dict=True) or {"valuation_rate": 0}
-
-	elif not item.get("is_stock_item"):
-		valuation_rate = frappe.db.sql("""select sum(base_net_amount) / sum(qty*conversion_factor)
-			from `tabPurchase Invoice Item`
-			where item_code = %s and docstatus=1""", item_code)
-
-		if valuation_rate:
-			return {"valuation_rate": valuation_rate[0][0] or 0.0}
-	else:
-		return {"valuation_rate": 0.0}
+	return frappe.local_cache("get_item_details_valuation_rate", (item_code, warehouse), generator)
 
 
 @frappe.whitelist()

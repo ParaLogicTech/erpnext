@@ -416,8 +416,8 @@ class SellingController(TransactionController):
 				d.alt_uom_qty = flt(flt(d.stock_qty) * flt(d.alt_uom_size), d.precision("alt_uom_qty"))
 
 	def validate_selling_price(self):
-		from erpnext.stock.stock_ledger import get_valuation_rate
 		from erpnext.accounts.report.gross_profit.gross_profit import get_sle_outgoing_rate
+		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
 
 		def throw_message(row, min_rate):
 			frappe.throw(_("Row #{0}: Net Selling Rate for Item {1} cannot be less than {2}").format(
@@ -437,7 +437,7 @@ class SellingController(TransactionController):
 				continue
 
 			is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
-			if not is_stock_item:
+			if not is_stock_item and not is_product_bundle(d.item_code):
 				continue
 
 			min_margin = get_min_margin_validation(d.item_code, self.get("transaction_type"), self.get("company"))
@@ -465,14 +465,7 @@ class SellingController(TransactionController):
 				valuation_rate = flt(sle_outgoing_rate.get(("Delivery Note", d.delivery_note_item)))
 			else:
 				# Otherwise use Valuation Rate
-				valuation_rate = flt(get_valuation_rate(
-					d.item_code,
-					d.get("warehouse"),
-					self.doctype,
-					self.name,
-					raise_error_if_no_rate=False,
-					ignore_zero_rate=True,
-				))
+				valuation_rate = self.get_valuation_rate_for_validation(d)
 
 			# Use Last Purchase Rate if valuation rate is 0
 			if valuation_rate <= 0:
@@ -493,6 +486,43 @@ class SellingController(TransactionController):
 			selling_rate = d.base_rate if self.get("depreciation_type") and not d.get("ignore_depreciation") else d.base_net_rate
 			if flt(selling_rate, d.precision('rate')) < flt(valuation_rate_with_margin, d.precision('rate')):
 				throw_message(d, valuation_rate_with_margin)
+
+	def get_valuation_rate_for_validation(self, row):
+		from erpnext.stock.stock_ledger import get_valuation_rate
+		from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle_from_item_code
+
+		if not row.item_code:
+			return 0
+
+		product_bundle = get_product_bundle_from_item_code(row.item_code)
+		if product_bundle:
+			parent_valuation_rate = 0
+			for child_row in self.get("packed_items", []):
+				if not child_row.item_code:
+					continue
+				if child_row.parent_detail_docname != row.name:
+					continue
+
+				child_valuation_rate = flt(get_valuation_rate(
+					child_row.item_code,
+					child_row.get("warehouse") or row.get("warehouse"),
+					self.doctype,
+					self.name,
+					raise_error_if_no_rate=False,
+					ignore_zero_rate=True,
+				))
+				parent_valuation_rate += child_valuation_rate * flt(child_row.stock_qty) / (flt(row.stock_qty) or 1)
+
+			return parent_valuation_rate
+		else:
+			return flt(get_valuation_rate(
+				row.item_code,
+				row.get("warehouse"),
+				self.doctype,
+				self.name,
+				raise_error_if_no_rate=False,
+				ignore_zero_rate=True,
+			))
 
 	def get_item_list(self):
 		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
