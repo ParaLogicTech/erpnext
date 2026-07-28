@@ -146,15 +146,21 @@ class ItemDefaultRule(Document):
 		return rule_dict
 
 
-def get_item_default_values(item, transaction=None):
+def get_item_default_values(item, transaction=None, cache=True):
 	filters = get_filters_dict(item, transaction)
-	applicable_rules = get_applicable_rules_for_filters(filters)
-	return get_default_values_dict(applicable_rules)
+	return get_default_values_for_filters(filters, cache=cache)
 
 
-def get_default_values_for_filters(filters):
-	applicable_rules = get_applicable_rules_for_filters(filters)
-	return get_default_values_dict(applicable_rules)
+def get_default_values_for_filters(filters, cache=True):
+	def generator():
+		applicable_rules = get_applicable_rules_for_filters(filters)
+		return get_default_values_dict(applicable_rules)
+
+	if cache:
+		key_json = frappe.as_json(filters, indent=None, separators=(",", ":"))
+		return frappe.local_cache("get_item_default_rule_values_for_filters", key_json, generator)
+	else:
+		return generator()
 
 
 def get_default_values_dict(applicable_rules, filter_sort=None):

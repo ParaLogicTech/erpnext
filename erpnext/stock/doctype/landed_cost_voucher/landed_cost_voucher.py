@@ -400,7 +400,7 @@ class LandedCostVoucher(AccountsController):
 			item_tax_total = sum(item.item_tax_detail.values())
 			item.applicable_charges = item_tax_total
 			accumulated_taxes += item_tax_total
-			item.item_tax_detail = json.dumps(item.item_tax_detail, separators=(',', ':'))
+			item.item_tax_detail = json.dumps(item.item_tax_detail, indent=None, separators=(',', ':'))
 
 		if accumulated_taxes != self.base_total_taxes_and_charges:
 			diff = self.base_total_taxes_and_charges - accumulated_taxes

@@ -747,9 +747,9 @@ class calculate_taxes_and_totals(object):
 
 	def _cleanup(self):
 		for tax in self.doc.get("taxes"):
-			tax.item_wise_tax_detail = json.dumps(tax.item_wise_tax_detail, separators=(',', ':'))
+			tax.item_wise_tax_detail = json.dumps(tax.item_wise_tax_detail, indent=None, separators=(',', ':'))
 		for item in self.doc.get("items"):
-			item.item_tax_detail = json.dumps(item.item_tax_detail, separators=(',', ':'))
+			item.item_tax_detail = json.dumps(item.item_tax_detail, indent=None, separators=(',', ':'))
 			if not self.discount_amount_applied:
 				item.item_tax_detail_before_discount = item.item_tax_detail
 
