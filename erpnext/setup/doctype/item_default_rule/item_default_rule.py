@@ -191,11 +191,26 @@ def get_default_values_dict(applicable_rules, filter_sort=None):
 		for fieldname, value in rule.items():
 			if fieldname == "item_default_rule_name":
 				continue
+			if fieldname in get_filter_fields():
+				continue
 
-			if value and fieldname not in get_filter_fields() and rule_meta.has_field(fieldname):
+			df = rule_meta.get_field(fieldname)
+			if not df:
+				continue
+
+			is_numeric = df.fieldtype in frappe.model.numeric_fieldtypes
+			if is_numeric:
+				value_empty = value is None
+			else:
+				value_empty = not value
+
+			if not value_empty:
 				if fieldname == "taxes":
 					values.setdefault(fieldname, [])
 					values[fieldname] += value
+				elif fieldname == "min_margin":
+					if rule.get("validate_min_margin") == "Yes" and values.get(fieldname) is None:
+						values[fieldname] = value
 				elif not values.get(fieldname):
 					values[fieldname] = value
 

@@ -5,7 +5,7 @@ import frappe
 from frappe.utils import cint, flt, cstr
 from frappe import _
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_target_warehouse_validation, get_last_purchase_rate
+from erpnext.stock.get_item_details import get_target_warehouse_validation, get_last_purchase_rate, get_min_margin_validation
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
@@ -426,18 +426,12 @@ class SellingController(TransactionController):
 				frappe.bold(frappe.format(min_rate, df=row.meta.get_field("rate"), doc=row)),
 			))
 
+		# Determine if validation is required
 		if self.get("is_return"):
 			return
-		if not frappe.get_cached_value("Selling Settings", None, "validate_selling_price"):
-			return
 
-		delivery_note_items = []
-		for d in self.get("items"):
-			if d.get("delivery_note_item"):
-				delivery_note_items.append(("Delivery Note", d.delivery_note_item))
-
-		sle_outgoing_rate = get_sle_outgoing_rate(delivery_note_items)
-
+		validate_selling_price = cint(frappe.get_cached_value("Selling Settings", None, "validate_selling_price"))
+		rows_to_validate = []
 		for d in self.get("items"):
 			if not d.item_code:
 				continue
@@ -446,9 +440,31 @@ class SellingController(TransactionController):
 			if not is_stock_item:
 				continue
 
+			min_margin = get_min_margin_validation(d.item_code, self.get("transaction_type"), self.get("company"))
+			d._min_margin = min_margin
+			if not validate_selling_price and min_margin is None:
+				continue
+
+			rows_to_validate.append(d)
+
+		if not rows_to_validate:
+			return
+
+		# Preload Outgoing Rates
+		delivery_note_items = []
+		for d in rows_to_validate:
+			if d.get("delivery_note_item"):
+				delivery_note_items.append(("Delivery Note", d.delivery_note_item))
+
+		sle_outgoing_rate = get_sle_outgoing_rate(delivery_note_items)
+
+		# Validate Each Row
+		for d in rows_to_validate:
 			if d.get("delivery_note_item") and flt(sle_outgoing_rate.get(("Delivery Note", d.delivery_note_item))):
+				# Use Delivery Note Outgoing Rate if available
 				valuation_rate = flt(sle_outgoing_rate.get(("Delivery Note", d.delivery_note_item)))
 			else:
+				# Otherwise use Valuation Rate
 				valuation_rate = flt(get_valuation_rate(
 					d.item_code,
 					d.get("warehouse"),
@@ -458,16 +474,25 @@ class SellingController(TransactionController):
 					ignore_zero_rate=True,
 				))
 
+			# Use Last Purchase Rate if valuation rate is 0
 			if valuation_rate <= 0:
 				last_purchase_rate = get_last_purchase_rate(d.item_code, d.get("warehouse"))
 				if last_purchase_rate > 0:
 					valuation_rate = last_purchase_rate
 
-			if valuation_rate > 0:
-				valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
-				rate = d.base_rate if self.get("depreciation_type") and not d.get("ignore_depreciation") else d.base_net_rate
-				if flt(rate, d.precision('rate')) < flt(valuation_rate_in_sales_uom, d.precision('rate')):
-					throw_message(d, valuation_rate_in_sales_uom)
+			# Skip validation if neither valuation rate nor last purchase rate is available
+			if valuation_rate <= 0:
+				continue
+
+			# Convert UOM and add margin
+			valuation_rate_in_sales_uom = valuation_rate * (d.conversion_factor or 1)
+			valuation_rate_with_margin = valuation_rate_in_sales_uom
+			if d._min_margin and d._min_margin < 100:
+				valuation_rate_with_margin = valuation_rate_in_sales_uom / (1 - d._min_margin / 100)
+
+			selling_rate = d.base_rate if self.get("depreciation_type") and not d.get("ignore_depreciation") else d.base_net_rate
+			if flt(selling_rate, d.precision('rate')) < flt(valuation_rate_with_margin, d.precision('rate')):
+				throw_message(d, valuation_rate_with_margin)
 
 	def get_item_list(self):
 		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle

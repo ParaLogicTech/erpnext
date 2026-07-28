@@ -31,12 +31,13 @@
   "buying_apply_taxes_on_retail",
   "stock_defaults_section",
   "default_warehouse",
-  "column_break_14",
   "force_default_warehouse",
-  "column_break_6",
+  "column_break_14",
   "allow_zero_valuation_rate",
-  "column_break_18",
   "target_warehouse_validation",
+  "column_break_6",
+  "validate_min_margin",
+  "min_margin",
   "item_tax_section",
   "taxes",
   "billing_defaults_section",
@@ -306,10 +307,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "column_break_18",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "show_item_code",
    "fieldtype": "Select",
    "label": "Show Item Code",
@@ -464,11 +461,23 @@
    "fieldtype": "Select",
    "label": "Allow Material Consumption Entries",
    "options": "\nNo\nYes"
+  },
+  {
+   "depends_on": "eval:doc.validate_min_margin == \"Yes\"",
+   "fieldname": "min_margin",
+   "fieldtype": "Percent",
+   "label": "Minimum Margin (%)"
+  },
+  {
+   "fieldname": "validate_min_margin",
+   "fieldtype": "Select",
+   "label": "Validate Minimum Margin",
+   "options": "\nNo\nYes"
   }
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2026-02-25 15:01:35.597093",
+ "modified": "2026-07-28 14:03:04.921913",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Item Default Rule",
@@ -517,6 +526,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

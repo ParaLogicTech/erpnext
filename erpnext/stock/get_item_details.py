@@ -764,6 +764,14 @@ def get_project_validation(item_code, transaction_type_name, company):
 	return default_values.get("project_validation")
 
 
+def get_min_margin_validation(item_code, transaction_type_name, company):
+	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company})
+	if default_values.get("validate_min_margin") == "Yes":
+		return flt(default_values.get("min_margin"))
+	else:
+		return None
+
+
 def get_hide_item_code(item, args):
 	default_values = get_item_default_values(item, args)
 	show_item_code = item.get("show_item_code") or default_values.get("show_item_code")
