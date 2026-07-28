@@ -248,9 +248,10 @@ var _make_repayment_entry = function(frm, payment_rows) {
 			"interest_income_account": frm.doc.interest_income_account
 		},
 		callback: function(r) {
-			if (r.message)
-				var doc = frappe.model.sync(r.message)[0];
-			frappe.set_route("Form", doc.doctype, doc.name, {'payment_rows': payment_rows});
+			if (r.message) {
+				let doclist = frappe.model.sync(r.message);
+				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+			}
 		}
 	});
 }
