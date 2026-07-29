@@ -81,7 +81,7 @@ class BankReconciliation(Document):
 		account = self.suspense_account or self.account
 
 		if self.allow_corrections:
-			clearance_condition = "and ({0}clearance_date is null or {0}clearance_date between %(from)s and %(to)s or posting_date >= %(from)s)"
+			clearance_condition = "and ({0}clearance_date is null or {0}clearance_date between %(from)s and %(to)s)"
 		else:
 			clearance_condition = "and {0}clearance_date is null"
 
