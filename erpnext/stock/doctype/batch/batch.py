@@ -428,6 +428,8 @@ def get_batches(item_code, warehouse, posting_date=None, posting_time=None, qty_
 		having = "having qty != 0"
 	elif qty_condition == "negative":
 		having = "having qty < 0"
+	elif qty_condition == "fractional":
+		having = "having qty > -1 and qty < 1 and qty != 0"
 	else:
 		having = "having qty > 0"
 
