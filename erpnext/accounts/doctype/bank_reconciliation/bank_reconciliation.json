@@ -24,6 +24,8 @@
   "column_break_kl3q",
   "cleared_incoming",
   "cleared_outgoing",
+  "cleared_incoming_hidden",
+  "cleared_outgoing_hidden",
   "column_break_tdmy",
   "cleared_amount",
   "uncleared_amount",
@@ -192,6 +194,22 @@
    "label": "Uncleared Amount",
    "options": "account_currency",
    "read_only": 1
+  },
+  {
+   "fieldname": "cleared_incoming_hidden",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Cleared Incoming Hidden",
+   "options": "account_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cleared_outgoing_hidden",
+   "fieldtype": "Currency",
+   "hidden": 1,
+   "label": "Cleared Outgoing Hidden",
+   "options": "account_currency",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -201,7 +219,7 @@
  "is_virtual": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-06-24 16:12:50.384100",
+ "modified": "2026-07-29 07:02:58.939516",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Reconciliation",

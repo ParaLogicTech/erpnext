@@ -62,10 +62,9 @@ class BankReconciliation(Document):
 	@frappe.whitelist()
 	def set_payment_entries(self):
 		self.validate_reconciliation()
-		self.opening_balance = get_opening_balance(self.bank_account, self.from_date)
-		self.last_clearance_date = get_last_clearance_date(self.bank_account)
+		self.set_summary_values()
 
-		entries = self.get_uncleared_entries()
+		entries = self.get_entries()
 		self.set('payment_entries', [])
 		for row in entries:
 			row.amount = flt(row.get('debit', 0)) - flt(row.get('credit', 0))
@@ -77,25 +76,94 @@ class BankReconciliation(Document):
 
 			self.append('payment_entries', row)
 
+	def set_summary_values(self):
+		self.opening_balance = get_opening_balance(self.bank_account, self.from_date)
+		self.last_clearance_date = get_last_clearance_date(self.bank_account)
+
+		cleared_entries = []
+		if not self.allow_corrections:
+			cleared_entries = self.get_cleared_entries()
+
+		self.cleared_incoming_hidden = 0
+		self.cleared_outgoing_hidden = 0
+		for d in cleared_entries:
+			amount = flt(d.get('debit', 0)) - flt(d.get('credit', 0))
+			if amount > 0:
+				self.cleared_incoming_hidden += amount
+			else:
+				self.cleared_outgoing_hidden += abs(amount)
+
+	def get_entries(self):
+		uncleared_entries = self.get_uncleared_entries()
+
+		cleared_entries = []
+		if self.allow_corrections:
+			cleared_entries = self.get_cleared_entries()
+
+		entries = uncleared_entries + cleared_entries
+		entries = sorted(entries, key=lambda k: (getdate(k.posting_date), getdate(k.clearance_date)))
+		return entries
+
 	def get_uncleared_entries(self):
 		account = self.suspense_account or self.account
 
-		if self.allow_corrections:
-			clearance_condition = "and ({0}clearance_date is null or {0}clearance_date between %(from)s and %(to)s)"
-		else:
-			clearance_condition = "and {0}clearance_date is null"
+		posting_date_condition = "and {0}posting_date <= %(to)s"
+		clearance_condition = "and {0}clearance_date is null"
 
-		journal_entries = self.get_uncleared_journal_entries(account, clearance_condition)
-		payment_entries = self.get_uncleared_payment_entries(account, clearance_condition)
-		pos_sales_invoices = self.get_uncleared_pos_sales_invoices(account, clearance_condition)
-		paid_purchase_invoices = self.get_uncleared_paid_purchase_invoices(account, clearance_condition)
+		journal_entries = self.get_journal_entries(
+			account,
+			clearance_condition=clearance_condition,
+			date_condition=posting_date_condition,
+			exclude_opening=True,
+			exclude_reconciliation_jv=True,
+		)
+		payment_entries = self.get_payment_entries(
+			account,
+			clearance_condition=clearance_condition,
+			date_condition=posting_date_condition,
+		)
+		pos_sales_invoices = self.get_pos_sales_invoices(
+			account,
+			clearance_condition=clearance_condition,
+			date_condition=posting_date_condition,
+		)
+		paid_purchase_invoices = self.get_paid_purchase_invoices(
+			account,
+			clearance_condition=clearance_condition,
+			date_condition=posting_date_condition,
+		)
 
 		entries = payment_entries + journal_entries + pos_sales_invoices + paid_purchase_invoices
-		entries = sorted(entries, key=lambda k: getdate(k.posting_date) or getdate())
-
 		return entries
 
-	def get_uncleared_journal_entries(self, account, clearance_condition):
+	def get_cleared_entries(self):
+		account = self.suspense_account or self.account
+		clearance_condition = "and {0}clearance_date between %(from)s and %(to)s"
+
+		journal_entries = self.get_journal_entries(
+			account,
+			clearance_condition=clearance_condition,
+			exclude_opening=True,
+			exclude_reconciliation_jv=True,
+		)
+		payment_entries = self.get_payment_entries(account, clearance_condition=clearance_condition)
+		pos_sales_invoices = self.get_pos_sales_invoices(account, clearance_condition=clearance_condition)
+		paid_purchase_invoices = self.get_paid_purchase_invoices(account, clearance_condition=clearance_condition)
+
+		entries = payment_entries + journal_entries + pos_sales_invoices + paid_purchase_invoices
+		return entries
+
+	def get_journal_entries(
+		self,
+		account,
+		clearance_condition,
+		date_condition="",
+		exclude_opening=True,
+		exclude_reconciliation_jv=True,
+	):
+		is_opening_condition = "and ifnull(je.is_opening, 'No') = 'No'" if exclude_opening else ""
+		exclude_reconciliation_jv_condition = "and je.voucher_type != 'Bank Clearance Entry'" if exclude_reconciliation_jv else ""
+
 		journal_entries = frappe.db.sql(f"""
 			select 
 				'Journal Entry' as voucher_type,
@@ -120,10 +188,10 @@ class BankReconciliation(Document):
 			inner join `tabJournal Entry` je on jea.parent = je.name
 			where
 				je.docstatus = 1
-				and je.voucher_type != 'Bank Clearance Entry'
-				and ifnull(je.is_opening, 'No') = 'No'
-				and je.posting_date <= %(to)s
 				and jea.account = %(account)s
+				{exclude_reconciliation_jv_condition}
+				{is_opening_condition}
+				{date_condition.format('je.')}
 				{clearance_condition.format('jea.')}
 			order by je.posting_date, je.creation
 		""", {
@@ -174,7 +242,7 @@ class BankReconciliation(Document):
 
 		return sales_invoice_data + payment_entry_data
 
-	def get_uncleared_payment_entries(self, account, clearance_condition):
+	def get_payment_entries(self, account, clearance_condition, date_condition=""):
 		return frappe.db.sql(f"""
 			select
 				'Payment Entry' as voucher_type,
@@ -193,15 +261,15 @@ class BankReconciliation(Document):
 			from `tabPayment Entry`
 			where
 				docstatus = 1
-				and posting_date <= %(to)s
 				and (paid_from = %(account)s or paid_to = %(account)s)
+				{date_condition.format('')}
 				{clearance_condition.format('')}
 			order by posting_date, creation
 		""", {
 			"account": account, "from": self.from_date, "to": self.to_date
 		}, as_dict=1)
 
-	def get_uncleared_pos_sales_invoices(self, account, clearance_condition):
+	def get_pos_sales_invoices(self, account, clearance_condition, date_condition=""):
 		return frappe.db.sql(f"""
 			select
 				'Sales Invoice' as voucher_type,
@@ -222,16 +290,17 @@ class BankReconciliation(Document):
 			inner join `tabSales Invoice` si on sip.parent = si.name
 			inner join `tabAccount` account on account.name = sip.account
 			where
-				si.docstatus=1
+				si.docstatus = 1
 				and sip.account = %(account)s
-				and si.posting_date <= %(to)s
+				and sip.amount != 0
+				{date_condition.format('si.')}
 				{clearance_condition.format('sip.')}
 			order by si.posting_date, si.creation
 		""", {
 			"account": account, "from": self.from_date, "to": self.to_date
 		}, as_dict=1)
 
-	def get_uncleared_paid_purchase_invoices(self, account, clearance_condition):
+	def get_paid_purchase_invoices(self, account, clearance_condition, date_condition=""):
 		return frappe.db.sql(f"""
 			select
 				'Purchase Invoice' as voucher_type,
@@ -250,7 +319,7 @@ class BankReconciliation(Document):
 			where
 				pi.docstatus = 1
 				and pi.cash_bank_account = %(account)s
-				and pi.posting_date <= %(to)s
+				{date_condition.format('pi.')}
 				{clearance_condition.format('pi.')}
 			order by pi.posting_date, pi.creation
 		""", {

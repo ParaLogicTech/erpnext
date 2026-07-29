@@ -208,10 +208,10 @@ frappe.ui.form.on("Bank Reconciliation", {
 	},
 
 	calculate_totals(frm) {
+		frm.doc.cleared_incoming = flt(frm.doc.cleared_incoming_hidden);
+		frm.doc.cleared_outgoing = flt(frm.doc.cleared_outgoing_hidden);
+		frm.doc.cleared_amount = frm.doc.cleared_incoming - frm.doc.cleared_outgoing;
 		frm.doc.uncleared_amount = 0;
-		frm.doc.cleared_amount = 0;
-		frm.doc.cleared_incoming = 0;
-		frm.doc.cleared_outgoing = 0;
 
 		for (let d of frm.doc.payment_entries || []) {
 			if (d.clearance_date) {

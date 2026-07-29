@@ -194,6 +194,7 @@ def get_entries(account, from_date, to_date, exclude_reconciliation_jv=False):
 		inner join `tabAccount` account on account.name = sip.account
 		where si.docstatus = 1
 			and sip.account = %(account)s
+			and sip.amount != 0
 			and (
 				si.posting_date between %(from_date)s and %(to_date)s
 				or sip.clearance_date between %(from_date)s and %(to_date)s
