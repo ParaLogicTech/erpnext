@@ -73,7 +73,6 @@
    "options": "Item",
    "print_width": "100px",
    "reqd": 1,
-   "search_index": 1,
    "width": "100px"
   },
   {
@@ -253,7 +252,8 @@
    "no_copy": 1,
    "options": "Sales Order",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "sales_order_item",
@@ -262,8 +262,7 @@
    "label": "Sales Order Item",
    "no_copy": 1,
    "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
+   "read_only": 1
   },
   {
    "fieldname": "production_plan",
@@ -454,7 +453,8 @@
    "no_copy": 1,
    "options": "Material Request",
    "print_hide": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "material_request_item",
@@ -486,7 +486,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-28 14:15:44.577183",
+ "modified": "2026-07-29 04:02:45.235076",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Material Request Item",
@@ -494,6 +494,7 @@
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
