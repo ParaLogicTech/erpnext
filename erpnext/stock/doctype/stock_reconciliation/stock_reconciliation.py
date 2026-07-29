@@ -411,7 +411,7 @@ def get_items(args):
 	elif qty_condition == "both":
 		bin_qty_condition = "and (bin.actual_qty != 0 {0})".format(has_batch_no_condition)
 	elif qty_condition == "fractional":
-		bin_qty_condition = "and ((bin.actual_qty > -1 and bin.actual_qty < 1 and bin.actual_qty != 0) {0})".format(has_batch_no_condition)
+		bin_qty_condition = "and ((bin.actual_qty > 0 and bin.actual_qty < 1) {0})".format(has_batch_no_condition)
 
 	items = frappe.db.sql("""
 		select i.name, bin.warehouse
