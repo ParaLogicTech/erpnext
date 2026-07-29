@@ -18,8 +18,15 @@ frappe.ui.form.on("Bank Deposit Tool", {
 	},
 
 	process_route_options(frm) {
-		if (!frappe.route_options) {
+		if (!frappe.route_options || $.isEmptyObject(frappe.route_options)) {
 			return;
+		}
+
+		let route_fields = frm.events.get_route_fields(frm);
+		for (let f of route_fields) {
+			if (frappe.route_options[f] != null) {
+				frm.doc[f] = frappe.route_options[f];
+			}
 		}
 
 		if (frappe.route_options.undeposited_account) {
@@ -40,18 +47,41 @@ frappe.ui.form.on("Bank Deposit Tool", {
 	set_query_params(frm) {
 		let full_url = window.location.href.replace(window.location.search, "");
 
-		let query_params = Object.entries({
-			undeposited_account: frm.doc.undeposited_account,
-			bank_account: frm.doc.bank_account,
-			deposit_date: frm.doc.deposit_date,
-		}).map(([field, value]) => `${field}=${encodeURIComponent(cstr(value))}`)
-		.filter(Boolean)
-		.join("&");
+		let route_fields = frm.events.get_route_fields(frm);
+		let route_obj = Object.fromEntries(route_fields.map(f => [f, frm.doc[f]]));
+
+		let query_params = Object.entries(route_obj)
+			.map(([field, value]) => `${field}=${encodeURIComponent(cstr(value))}`)
+			.filter(Boolean)
+			.join("&");
 
 		if (query_params) {
 			full_url += "?" + query_params;
 		}
 		window.history.replaceState(null, null, full_url);
+	},
+
+	get_route_fields(frm) {
+		let route_fields = [
+			'undeposited_account',
+			'bank_account',
+			'deposit_date',
+		];
+
+		let meta = frappe.get_meta(frm.doc.doctype);
+		let mandatory_fields = meta.fields.filter((df) => {
+			return (
+				df.reqd
+				&& !df.read_only
+				&& !frappe.model.table_fields.includes(df.fieldtype)
+				&& !frappe.model.no_value_type.includes(df.fieldtype)
+				&& !route_fields.includes(df.fieldname)
+				&& df.fieldname != 'deposit_no'
+			);
+		});
+
+		route_fields = route_fields.concat(mandatory_fields.map(df => df.fieldname));
+		return route_fields;
 	},
 
 	refresh(frm) {

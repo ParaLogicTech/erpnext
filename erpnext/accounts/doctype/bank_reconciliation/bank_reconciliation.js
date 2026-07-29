@@ -18,21 +18,15 @@ frappe.ui.form.on("Bank Reconciliation", {
 	},
 
 	process_route_options(frm) {
-		if (!frappe.route_options) {
+		if (!frappe.route_options || $.isEmptyObject(frappe.route_options)) {
 			return;
 		}
 
-		if (frappe.route_options.bank_account) {
-			frm.doc.bank_account = frappe.route_options.bank_account;
-		}
-		if (frappe.route_options.from_date) {
-			frm.doc.from_date = frappe.route_options.from_date;
-		}
-		if (frappe.route_options.to_date) {
-			frm.doc.to_date = frappe.route_options.to_date;
-		}
-		if (frappe.route_options.allow_corrections) {
-			frm.doc.allow_corrections = cint(frappe.route_options.allow_corrections);
+		let route_fields = frm.events.get_route_fields(frm);
+		for (let f of route_fields) {
+			if (frappe.route_options[f] != null) {
+				frm.doc[f] = frappe.route_options[f];
+			}
 		}
 
 		if (!frm.doc.from_date) {
@@ -49,20 +43,41 @@ frappe.ui.form.on("Bank Reconciliation", {
 
 	set_query_params(frm) {
 		let full_url = window.location.href.replace(window.location.search, "");
+		let route_fields = frm.events.get_route_fields(frm);
+		let route_obj = Object.fromEntries(route_fields.map(f => [f, frm.doc[f]]));
 
-		let query_params = Object.entries({
-			bank_account: frm.doc.bank_account,
-			from_date: frm.doc.from_date,
-			to_date: frm.doc.to_date,
-			allow_corrections: frm.doc.allow_corrections,
-		}).map(([field, value]) => `${field}=${encodeURIComponent(cstr(value))}`)
-		.filter(Boolean)
-		.join("&");
+		let query_params = Object.entries(route_obj)
+			.map(([field, value]) => `${field}=${encodeURIComponent(cstr(value))}`)
+			.filter(Boolean)
+			.join("&");
 
 		if (query_params) {
 			full_url += "?" + query_params;
 		}
 		window.history.replaceState(null, null, full_url);
+	},
+
+	get_route_fields(frm) {
+		let route_fields = [
+			'bank_account',
+			'from_date',
+			'to_date',
+			'allow_corrections',
+		];
+
+		let meta = frappe.get_meta(frm.doc.doctype);
+		let mandatory_fields = meta.fields.filter((df) => {
+			return (
+				df.reqd
+				&& !df.read_only
+				&& !frappe.model.table_fields.includes(df.fieldtype)
+				&& !frappe.model.no_value_type.includes(df.fieldtype)
+				&& !route_fields.includes(df.fieldname)
+			);
+		});
+
+		route_fields = route_fields.concat(mandatory_fields.map(df => df.fieldname));
+		return route_fields;
 	},
 
 	refresh(frm) {
