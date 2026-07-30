@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cstr, cint
+from frappe.utils import flt, cstr, cint, getdate, format_date
 from erpnext.controllers.stock_controller import StockController
 from erpnext.stock.get_item_details import (
 	get_item_details,
@@ -352,6 +352,7 @@ class TransactionController(StockController):
 
 	def group_items_before_print(self):
 		if self.meta.has_field("items"):
+			self.set_batch_and_serial_no_list_before_print()
 			self.original_items = [frappe.copy_doc(d) for d in self.items]
 
 			if self.dynamic_bundling_enabled():
@@ -494,13 +495,45 @@ class TransactionController(StockController):
 		for item in duplicate_list:
 			self.remove(item)
 
+	def set_batch_and_serial_no_list_before_print(self):
+		from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+
+		for item in self.items:
+			if item.meta.has_field("serial_no"):
+				item.serial_no_list = []
+				if item.get("serial_no"):
+					item.serial_no_list = get_serial_nos(item.serial_no)
+
+			if item.meta.has_field("batch_no"):
+				item.batch_no_list = []
+				if item.get("batch_no"):
+					item.batch_no_list = [item.batch_no]
+
+			if item.meta.has_field("batch_expiry_date"):
+				item.batch_expiry_date_list = []
+				item.formatted_batch_expiry_date = ""
+				if item.get("batch_expiry_date"):
+					item.batch_expiry_date_list = [item.batch_expiry_date]
+					item.formatted_batch_expiry_date = format_date(item.batch_expiry_date)
+
 	def merge_similar_item_aggregate(self, item, group_item, sum_fields):
 		for f in sum_fields:
 			group_item[f] = group_item.get(f, 0) + flt(item.get(f))
 
-		group_item.setdefault('serial_no', [])
-		if item.get('serial_no'):
-			group_item['serial_no'] += filter(lambda s: s, item.serial_no.split('\n'))
+		if item.meta.has_field("serial_no"):
+			group_item.setdefault("serial_no_list", [])
+			if item.get("serial_no_list"):
+				group_item["serial_no_list"] += item.get("serial_no_list")
+
+		if item.meta.has_field("batch_no"):
+			group_item.setdefault("batch_no_list", [])
+			if item.get("batch_no") and item.batch_no not in group_item.batch_no_list:
+				group_item["batch_no_list"].append(item.batch_no)
+
+		if item.meta.has_field("batch_expiry_date"):
+			group_item.setdefault("batch_expiry_date_list", [])
+			if item.get("batch_expiry_date") and item.batch_expiry_date not in group_item.batch_expiry_date_list:
+				group_item["batch_expiry_date_list"].append(getdate(item.batch_expiry_date))
 
 		group_item_tax_detail = group_item.setdefault('item_tax_detail', {})
 		item_tax_detail = json.loads(item.item_tax_detail or '{}')
@@ -519,7 +552,16 @@ class TransactionController(StockController):
 			else:
 				group_item[target] = 0
 
-		group_item.serial_no = '\n'.join(group_item.serial_no)
+		group_item.serial_no = "\n".join(group_item.serial_no_list) if group_item.get("serial_no_list") else ""
+		group_item.batch_no = "\n".join(group_item.batch_no_list) if group_item.get("batch_no_list") else ""
+
+		group_item.batch_expiry_date = None
+		group_item.formatted_batch_expiry_date = ""
+		if group_item.get("batch_expiry_date_list"):
+			group_item.batch_expiry_date_list = sorted(group_item.batch_expiry_date_list)
+			group_item.batch_expiry_date = group_item.batch_expiry_date_list[0] if group_item.batch_expiry_date_list else None
+			group_item.formatted_batch_expiry_date = ", ".join([format_date(exp) for exp in group_item.batch_expiry_date_list])
+
 		group_item.item_tax_detail = json.dumps(group_item.item_tax_detail)
 
 		group_item.discount_percentage = group_item.total_discount / group_item.amount_before_discount * 100\
