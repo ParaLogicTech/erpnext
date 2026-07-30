@@ -1610,7 +1610,7 @@ def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, 
 			child_row = None
 			if parent_row_name and doc:
 				child_row = [
-					ch for ch in doc.get("packed_items", [])
+					ch for ch in doc.get("packed_items") or []
 					if ch.parent_detail_docname == parent_row_name and ch.item_code == bundle_item.item_code
 				]
 				child_row = child_row[0] if child_row else None
@@ -1623,7 +1623,7 @@ def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, 
 			valuation_rate += rate * flt(bundle_item.qty)
 
 		elif bundle_item.type == "Item Group" and doc:
-			for child_row in doc.get("packed_items", []):
+			for child_row in doc.get("packed_items") or []:
 				if not child_row.item_code:
 					continue
 				if child_row.parent_item != parent_item:

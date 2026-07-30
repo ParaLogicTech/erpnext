@@ -497,7 +497,7 @@ class SellingController(TransactionController):
 		product_bundle = get_product_bundle_from_item_code(row.item_code)
 		if product_bundle:
 			parent_valuation_rate = 0
-			for child_row in self.get("packed_items", []):
+			for child_row in self.get("packed_items") or []:
 				if not child_row.item_code:
 					continue
 				if child_row.parent_detail_docname != row.name:
