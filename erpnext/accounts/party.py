@@ -177,6 +177,14 @@ def _get_party_details(
 	if party_type == "Supplier" and party_doc:
 		party_details["supplier_tds"] = party_doc.get("tax_withholding_category")
 
+	frappe.utils.call_hook_method(
+		"get_party_details",
+		party_details=party_details,
+		party_doc=party_doc,
+		billing_party_doc=billing_party_doc,
+		**kwargs,
+	)
+
 	return party_details
 
 
