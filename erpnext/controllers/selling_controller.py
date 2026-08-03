@@ -355,24 +355,7 @@ class SellingController(TransactionController):
 				continue
 
 			if d.is_new():
-				if d.get("proforma_invoice_item"):
-					previous_discount = flt(frappe.db.get_value("Proforma Invoice Item", {
-						"name": d.proforma_invoice_item, "item_code": d.item_code,
-					}, "discount_percentage"))
-				elif d.get("delivery_note_item"):
-					previous_discount = flt(frappe.db.get_value("Delivery Note Item", {
-						"name": d.delivery_note_item, "item_code": d.item_code,
-					}, "discount_percentage"))
-				elif d.get("sales_order_item"):
-					previous_discount = flt(frappe.db.get_value("Sales Order Item", {
-						"name": d.sales_order_item, "item_code": d.item_code,
-					}, "discount_percentage"))
-				elif d.get("quotation_item"):
-					previous_discount = flt(frappe.db.get_value("Quotation Item", {
-						"name": d.quotation_item, "item_code": d.item_code,
-					}, "discount_percentage"))
-				else:
-					previous_discount = 0
+				previous_discount = self.get_previous_doc_discount_percentage(d)
 			else:
 				previous_discount = flt(d.db_get("discount_percentage"))
 
@@ -388,7 +371,10 @@ class SellingController(TransactionController):
 
 			if not check_rule and has_additional_discount:
 				if _previous_additional_discount is None:
-					_previous_additional_discount = 0 if self.is_new() else flt(self.db_get("discount_amount"))
+					if self.is_new():
+						_previous_additional_discount = self.get_previous_doc_additional_discount()
+					else:
+						_previous_additional_discount = flt(self.db_get("discount_amount"))
 
 				if flt(_previous_additional_discount, rate_precision) != flt(self.discount_amount, rate_precision):
 					check_rule = True
@@ -400,6 +386,57 @@ class SellingController(TransactionController):
 					frappe.bold(self.get("bill_to_name") or self.get("bill_to") or self.customer_name or self.customer),
 					frappe.bold(frappe.format(max_discount, df={"fieldtype": "Percent"}))
 				))
+
+	def get_previous_doc_discount_percentage(self, item):
+		if not item.item_code:
+			return 0
+
+		if item.get("sales_invoice") and item.get("sales_invoice_item"):
+			return flt(frappe.db.get_value("Sales Invoice Item", {
+				"name": item.sales_invoice_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		elif item.get("proforma_invoice") and item.get("proforma_invoice_item"):
+			return flt(frappe.db.get_value("Proforma Invoice Item", {
+				"name": item.proforma_invoice_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		elif item.get("delivery_note") and item.get("delivery_note_item"):
+			return flt(frappe.db.get_value("Delivery Note Item", {
+				"name": item.delivery_note_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		elif item.get("sales_order") and item.get("sales_order_item"):
+			return flt(frappe.db.get_value("Sales Order Item", {
+				"name": item.sales_order_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		elif item.get("quotation") and item.get("quotation_item"):
+			return flt(frappe.db.get_value("Quotation Item", {
+				"name": item.quotation_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		return 0
+
+	def get_previous_doc_additional_discount(self):
+		prev_docs = set()
+		for d in self.get("items"):
+			if d.get("sales_invoice"):
+				prev_docs.add(("Sales Invoice", d.sales_invoice))
+			elif d.get("proforma_invoice"):
+				prev_docs.add(("Proforma Invoice", d.proforma_invoice))
+			elif d.get("delivery_note"):
+				prev_docs.add(("Delivery Note", d.delivery_note))
+			elif d.get("sales_order"):
+				prev_docs.add(("Sales Order", d.sales_order))
+			elif d.get("quotation"):
+				prev_docs.add(("Quotation", d.quotation))
+
+		if len(prev_docs) == 1:
+			doctype, name = list(prev_docs)[0]
+			return flt(frappe.db.get_value(doctype, name, "discount_amount", cache=1))
+
+		return 0
 
 	def set_qty_as_per_stock_uom(self):
 		for d in self.get("items"):
