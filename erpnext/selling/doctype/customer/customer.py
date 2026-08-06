@@ -122,7 +122,7 @@ class Customer(TransactionBase):
 				frappe.throw(_("{0} is not a company bank account").format(frappe.bold(self.default_bank_account)))
 
 	def validate_tax_id(self):
-		from frappe.regional.regional import validate_duplicate_tax_id, validate_tax_ids
+		from frappe.regional.regional import _validate_duplicate_tax_id, validate_tax_ids
 		validate_tax_ids(self.tax_id, self.tax_cnic, self.tax_strn)
 
 		cnic_throw = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_cnic')
@@ -139,9 +139,30 @@ class Customer(TransactionBase):
 			ntn_throw = False
 
 		exclude = None if self.is_new() else self.name
-		validate_duplicate_tax_id("Customer", "tax_id", self.tax_id, exclude=exclude, throw=ntn_throw)
-		validate_duplicate_tax_id("Customer", "tax_cnic", self.tax_cnic, exclude=exclude, throw=cnic_throw)
-		validate_duplicate_tax_id("Customer", "tax_strn", self.tax_strn, exclude=exclude, throw=False)
+		_validate_duplicate_tax_id(
+			"Customer",
+			"tax_id",
+			self.tax_id,
+			exclude=exclude,
+			throw=ntn_throw,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
+		_validate_duplicate_tax_id(
+			"Customer",
+			"tax_cnic",
+			self.tax_cnic,
+			exclude=exclude,
+			throw=cnic_throw,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
+		_validate_duplicate_tax_id(
+			"Customer",
+			"tax_strn",
+			self.tax_strn,
+			exclude=exclude,
+			throw=False,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
 
 	def restrict_duplicate_field(self, fieldname):
 		if self.is_new():
@@ -158,7 +179,7 @@ class Customer(TransactionBase):
 		validate_mobile_no(self.mobile_no_2)
 
 	def validate_duplicate_mobile_no(self):
-		from frappe.regional.regional import validate_duplicate_mobile_no
+		from frappe.regional.regional import _validate_duplicate_mobile_no
 
 		throw = False
 		duplicate_validation = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_mobile')
@@ -169,7 +190,14 @@ class Customer(TransactionBase):
 			throw = True
 
 		exclude = None if self.is_new() else self.name
-		validate_duplicate_mobile_no("Customer", "mobile_no", self.mobile_no, exclude=exclude, throw=throw)
+		_validate_duplicate_mobile_no(
+			"Customer",
+			"mobile_no",
+			self.mobile_no,
+			exclude=exclude,
+			throw=throw,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
 
 	def update_primary_contact(self):
 		push_or_pull = None
