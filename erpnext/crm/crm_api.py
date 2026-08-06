@@ -17,6 +17,20 @@ def find_customer_or_lead(
 	):
 		frappe.throw(_("Not Permitted"), frappe.PermissionError)
 
+	return get_customer_or_lead(
+		customer_id=customer_id,
+		email_id=email_id,
+		mobile_no=mobile_no,
+		national_id=national_id,
+	)
+
+
+def get_customer_or_lead(
+	customer_id=None,
+	email_id=None,
+	mobile_no=None,
+	national_id=None,
+):
 	mobile_nos = get_all_mobile_formats(mobile_no)
 	email_id = cstr(email_id).strip()
 	national_id = cstr(national_id).strip()
@@ -28,7 +42,7 @@ def find_customer_or_lead(
 		national_id=national_id,
 	)
 	if customer:
-		return {
+		return frappe._dict({
 			"party_type": "Customer",
 			"party": customer.name,
 			"party_name": customer.customer_name,
@@ -37,7 +51,7 @@ def find_customer_or_lead(
 			"mobile_no": customer.mobile_no,
 			"disabled": customer.disabled,
 			"creation": customer.creation,
-		}
+		})
 
 	lead = search_lead(
 		email_id=email_id,
@@ -46,7 +60,7 @@ def find_customer_or_lead(
 	)
 
 	if lead:
-		return {
+		return frappe._dict({
 			"party_type": "Lead",
 			"party": lead.name,
 			"party_name": lead.lead_name or lead.company_name,
@@ -55,7 +69,7 @@ def find_customer_or_lead(
 			"mobile_no": lead.mobile_no,
 			"disabled": 0,
 			"creation": lead.creation,
-		}
+		})
 
 	return None
 
