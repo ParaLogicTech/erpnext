@@ -181,10 +181,13 @@ class Customer(TransactionBase):
 	def validate_duplicate_mobile_no(self):
 		from frappe.regional.regional import _validate_duplicate_mobile_no
 
+		duplicate_filters = {}
+
 		throw = False
 		duplicate_validation = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_mobile')
 		if duplicate_validation == "For Individual Customers":
 			if self.customer_type == "Individual":
+				duplicate_filters["customer_type"] = "Individual"
 				throw = True
 		elif duplicate_validation:
 			throw = True
@@ -195,6 +198,7 @@ class Customer(TransactionBase):
 			"mobile_no",
 			self.mobile_no,
 			exclude=exclude,
+			filters=duplicate_filters,
 			throw=throw,
 			ignore_permissions=self.flags.ignore_permissions,
 		)
