@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.utils import cstr
 from frappe.regional.regional import get_all_mobile_formats
+from frappe.desk.reportview import get_match_cond
 
 
 @frappe.whitelist()
@@ -11,12 +12,6 @@ def find_customer_or_lead(
 	mobile_no=None,
 	national_id=None,
 ):
-	if (
-		not frappe.has_permission("Customer", "read")
-		and not frappe.has_permission("Lead", "read")
-	):
-		frappe.throw(_("Not Permitted"), frappe.PermissionError)
-
 	return get_customer_or_lead(
 		customer_id=customer_id,
 		email_id=email_id,
@@ -30,17 +25,28 @@ def get_customer_or_lead(
 	email_id=None,
 	mobile_no=None,
 	national_id=None,
+	ignore_permissions=False,
 ):
+	if (
+		not ignore_permissions
+		and not frappe.has_permission("Customer", "read")
+		and not frappe.has_permission("Lead", "read")
+	):
+		frappe.throw(_("Not Permitted"), frappe.PermissionError)
+
 	mobile_nos = get_all_mobile_formats(mobile_no)
 	email_id = cstr(email_id).strip()
 	national_id = cstr(national_id).strip()
 
-	customer = search_customer(
-		customer_id=customer_id,
-		email_id=email_id,
-		mobile_nos=mobile_nos,
-		national_id=national_id,
-	)
+	customer = None
+	if ignore_permissions or frappe.has_permission("Customer", "read"):
+		customer = search_customer(
+			customer_id=customer_id,
+			email_id=email_id,
+			mobile_nos=mobile_nos,
+			national_id=national_id,
+			ignore_permissions=ignore_permissions,
+		)
 	if customer:
 		return frappe._dict({
 			"party_type": "Customer",
@@ -53,12 +59,14 @@ def get_customer_or_lead(
 			"creation": customer.creation,
 		})
 
-	lead = search_lead(
-		email_id=email_id,
-		mobile_nos=mobile_nos,
-		national_id=national_id,
-	)
-
+	lead = None
+	if ignore_permissions or frappe.has_permission("Lead", "read"):
+		lead = search_lead(
+			email_id=email_id,
+			mobile_nos=mobile_nos,
+			national_id=national_id,
+			ignore_permissions=ignore_permissions,
+		)
 	if lead:
 		return frappe._dict({
 			"party_type": "Lead",
@@ -79,6 +87,7 @@ def search_customer(
 	email_id=None,
 	mobile_nos=None,
 	national_id=None,
+	ignore_permissions=False,
 ):
 	def sorter(data):
 		no_of_matches = 0
@@ -115,10 +124,14 @@ def search_customer(
 
 	or_conditions_str = " or ".join(or_conditions)
 
+	mcond = ""
+	if not ignore_permissions:
+		mcond = get_match_cond("Customer")
+
 	customers = frappe.db.sql(f"""
 		select name, customer_name, email_id, mobile_no, tax_cnic, customer_type, disabled, creation
 		from `tabCustomer`
-		where {or_conditions_str}
+		where {or_conditions_str} {mcond}
 	""", {
 		"customer_id": customer_id,
 		"email_id": email_id,
@@ -134,6 +147,7 @@ def search_lead(
 	email_id=None,
 	mobile_nos=None,
 	national_id=None,
+	ignore_permissions=False,
 ):
 	def sorter(data):
 		no_of_matches = 0
@@ -177,10 +191,14 @@ def search_lead(
 
 	or_conditions_str = " or ".join(or_conditions)
 
+	mcond = ""
+	if not ignore_permissions:
+		mcond = get_match_cond("Lead")
+
 	leads = frappe.db.sql(f"""
 		select name, lead_name, organization_lead, company_name, email_id, mobile_no, tax_cnic, status, creation
 		from `tabLead`
-		where {or_conditions_str}
+		where {or_conditions_str} {mcond}
 	""", {
 		"email_id": email_id,
 		"mobile_nos": mobile_nos,
