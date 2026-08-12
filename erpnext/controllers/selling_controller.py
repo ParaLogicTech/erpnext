@@ -58,7 +58,6 @@ class SellingController(TransactionController):
 		self.set_alt_uom_qty()
 		self.validate_uom_is_convertible()
 		self.validate_uom_is_integer("uom", "qty")
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_max_discount()
 		self.validate_discount_rule()
 		self.validate_selling_price()

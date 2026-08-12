@@ -71,7 +71,6 @@ class PackingSlip(TransactionController):
 		self.validate_warehouse()
 		self.validate_uom_is_convertible(items_table_field="items")
 		self.validate_uom_is_convertible(items_table_field="packaging_items")
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_uom_is_integer("uom", ["qty", "rejected_qty"])
 		self.calculate_totals()
 		self.validate_qty()
