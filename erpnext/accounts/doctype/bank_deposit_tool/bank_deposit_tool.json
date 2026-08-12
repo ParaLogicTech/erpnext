@@ -61,7 +61,7 @@
    "fieldtype": "Link",
    "label": "Deposit To Account",
    "options": "Account",
-   "read_only": 1
+   "read_only_depends_on": "bank_account"
   },
   {
    "fieldname": "deposit_date",
@@ -260,8 +260,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Bank Account",
-   "options": "Bank Account",
-   "reqd": 1
+   "options": "Bank Account"
   }
  ],
  "hide_toolbar": 1,
@@ -269,7 +268,7 @@
  "is_virtual": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-06-24 16:13:22.661140",
+ "modified": "2026-08-12 14:34:13.119752",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Deposit Tool",

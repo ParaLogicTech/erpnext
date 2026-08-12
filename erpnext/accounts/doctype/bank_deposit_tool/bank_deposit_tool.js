@@ -138,7 +138,7 @@ frappe.ui.form.on("Bank Deposit Tool", {
 		frm.set_query("deposit_to_account", function() {
 			return {
 				filters: {
-					account_type: "Bank",
+					account_type: ["in", ["Bank", "Cash"]],
 					company: frm.doc.company,
 					is_group: 0,
 				}

@@ -45,7 +45,7 @@ class BankDepositTool(Document):
 
 	def validate_deposit(self):
 		self.validate_undeposited_account()
-		self.validate_bank_account()
+		self.validate_deposit_to_account()
 		self.validate_adjustment_accounts()
 		self._validate_mandatory()
 
@@ -68,37 +68,42 @@ class BankDepositTool(Document):
 
 		self.undeposited_account_balance = get_balance_on(self.undeposited_account, self.deposit_date)
 
-	def validate_bank_account(self):
-		if not self.bank_account:
-			frappe.throw(_("Please select Bank Account"))
+	def validate_deposit_to_account(self):
+		if self.bank_account:
+			bank_account = frappe.get_doc("Bank Account", self.bank_account)
+			if not bank_account.is_company_account:
+				frappe.throw(_("Bank Account {0} is not a company account").format(self.bank_account))
 
-		bank_account = frappe.get_doc("Bank Account", self.bank_account)
-		if not bank_account.is_company_account:
-			frappe.throw(_("Bank Account {0} is not a company account").format(self.bank_account))
+			if bank_account.company != self.company:
+				frappe.throw(_("Bank Account {0} does not belong to Company {1}").format(
+					self.bank_account, self.company
+				))
 
-		if bank_account.company != self.company:
-			frappe.throw(_("Bank Account {0} does not belong to Company {1}").format(
-				self.bank_account, self.company
-			))
+			self.deposit_to_account = bank_account.suspense_account or bank_account.account
+			if not self.deposit_to_account:
+				frappe.throw(_("{0} does not have a GL Account configured").format(
+					frappe.get_desk_link("Bank Account", self.bank_account)
+				))
 
-		self.deposit_to_account = bank_account.suspense_account or bank_account.account
 		if not self.deposit_to_account:
-			frappe.throw(_("{0} does not have a GL Account configured").format(
-				frappe.get_desk_link("Bank Account", self.bank_account)
-			))
+			frappe.throw(_("Please select either Deposit To Account"))
 
 		if self.undeposited_account == self.deposit_to_account:
 			frappe.throw(_("Undeposited Funds Account and Deposit To Account cannot be the same"))
 
 		deposit_to_account = frappe.get_cached_doc("Account", self.deposit_to_account)
+		if deposit_to_account.company != self.company:
+			frappe.throw(_("Deposit To Account {0} does not belong to Company {1}").format(
+				self.deposit_to_account, self.company,
+			))
+
+		if deposit_to_account.account_type not in ("Bank", "Cash"):
+			frappe.throw(_("Deposit To Account must be of type Bank"))
 
 		if self.undeposited_account:
 			undeposited_account = frappe.get_cached_doc("Account", self.undeposited_account)
 			if undeposited_account.account_currency != deposit_to_account.account_currency:
 				frappe.throw(_("Undeposited Funds Account and Deposit To Account must have same currency"))
-
-		if deposit_to_account.account_type != "Bank":
-			frappe.throw(_("Deposit To account must be of type Bank"))
 
 	def validate_adjustment_accounts(self):
 		for d in self.adjustment_entries:
@@ -106,21 +111,21 @@ class BankDepositTool(Document):
 				continue
 
 			adjustment_account = frappe.get_cached_doc("Account", d.account)
+			if adjustment_account.account_type in ("Receivable", "Payable"):
+				if not d.supplier:
+					frappe.throw(_("Row #{0}: Supplier is mandatory for {1} Adjustment Account").format(
+						d.idx, adjustment_account.account_type
+					))
+			else:
+				if d.supplier:
+					frappe.throw(_("Row #{0}: Supplier can only be selected for Payable or Receivable Adjustment Account").format(
+						d.idx
+					))
+
 			if self.undeposited_account:
 				undeposited_account = frappe.get_cached_doc("Account", self.undeposited_account)
 				if undeposited_account.account_currency != adjustment_account.account_currency:
 					frappe.throw(_("Row #{0}: Adjustment Account and Deposit To Account must have same currency").format(d.idx))
-
-				if adjustment_account.account_type in ("Receivable", "Payable"):
-					if not d.supplier:
-						frappe.throw(_("Row #{0}: Supplier is mandatory for {1} Adjustment Account").format(
-							d.idx, adjustment_account.account_type
-						))
-				else:
-					if d.supplier:
-						frappe.throw(_("Row #{0}: Supplier can only be selected for Payable or Receivable Adjustment Account").format(
-							d.idx
-						))
 
 	@frappe.whitelist()
 	def get_undeposited_entries(self):
@@ -542,7 +547,7 @@ class BankDepositTool(Document):
 		je.user_remark = self.remarks or _("Deposit Entry")
 		je.update(parent_dimensions)
 
-		# conolidated bank amount
+		# consolidated bank amount
 		if batch_deposit:
 			total_amount = flt(self.actual_deposit_amount, self.precision("actual_deposit_amount"))
 			je.append("accounts", {
