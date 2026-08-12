@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cstr, cint, getdate, format_date
+from frappe.utils import flt, cstr, cint, getdate, format_date, clean_whitespace
 from erpnext.controllers.stock_controller import StockController
 from erpnext.stock.get_item_details import (
 	get_item_details,
@@ -127,6 +127,8 @@ class TransactionController(StockController):
 	def validate(self):
 		self.validate_qty_is_not_zero()
 		super().validate()
+
+		self.clean_item_names()
 
 		if self.meta.get_field("currency"):
 			self.before_calculate_taxes_and_totals()
@@ -768,6 +770,14 @@ class TransactionController(StockController):
 			self.validate_value("base_grand_total", ">=", 0)
 		else:
 			self.validate_value("base_grand_total", "<=", 0)
+
+	def clean_item_names(self):
+		if not self.meta.has_field("items"):
+			return
+
+		for d in self.get("items"):
+			if d.meta.has_field("item_name"):
+				d.item_name = clean_whitespace(d.item_name)
 
 	def set_project_reference_no(self):
 		if self.meta.has_field('project_reference_no'):
