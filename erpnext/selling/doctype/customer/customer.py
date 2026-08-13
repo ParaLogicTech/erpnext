@@ -615,7 +615,7 @@ def make_contact(args, is_primary_contact=1):
 		contact.add_phone(args.get('phone_no'), is_primary_phone=True)
 
 	contact.flags.from_linked_document = (args.get('doctype'), args.get('name'))
-	contact.insert()
+	contact.insert(ignore_permissions=True)
 
 	return contact
 
@@ -649,7 +649,7 @@ def make_address(args, is_primary_address=1):
 			address.set(field['address_field'], value)
 
 	address.flags.from_linked_document = (args.get('doctype'), args.get('name'))
-	address.insert()
+	address.insert(ignore_permissions=True)
 
 	return address
 
