@@ -289,7 +289,7 @@
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-02-26 14:45:23.743571",
+ "modified": "2026-08-13 13:06:54.643791",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Warehouse",
@@ -377,9 +377,11 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "warehouse_name"
+ "title_field": "warehouse_name",
+ "track_changes": 1
 }
