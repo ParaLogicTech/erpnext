@@ -200,6 +200,15 @@ erpnext.utils.set_taxes = function(frm, triggered_from_field) {
 		party = frm.doc.party_name;
 	}
 
+	let billing_address_field;
+	let billing_address;
+	if (party_type) {
+		billing_address_field = party_type == "Lead" ? "customer_address" : frappe.scrub(party_type) + "_address";
+	}
+	if (billing_address_field) {
+		billing_address = frm.doc[billing_address_field];
+	}
+
 	let args = {
 		"party": party,
 		"party_type": party_type,
@@ -208,7 +217,7 @@ erpnext.utils.set_taxes = function(frm, triggered_from_field) {
 		"customer_group": frm.doc.customer_group,
 		"supplier_group": frm.doc.supplier_group,
 		"tax_category": frm.doc.tax_category,
-		"billing_address": ((frm.doc.customer || frm.doc.lead) ? (frm.doc.customer_address) : (frm.doc.supplier_address)),
+		"billing_address": billing_address,
 		"shipping_address": frm.doc.shipping_address_name,
 		"transaction_type": frm.doc.transaction_type,
 		"cost_center": frm.doc.cost_center,
