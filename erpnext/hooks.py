@@ -122,6 +122,9 @@ fixtures = [
 				"Appointment-applies_to_item",
 				"Appointment-applies_to_item_name",
 
+				"Appointment-column_break_ezcc",
+				"Appointment-coupon_code",
+
 				"Appointment-sec_service_template",
 				"Appointment-service_templates",
 
