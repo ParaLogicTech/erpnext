@@ -455,3 +455,4 @@ erpnext.patches.v15_0.set_branch_customer_feedback
 erpnext.patches.v15_0.set_packing_slip_rejected_status
 erpnext.patches.v15_0.set_quotation_lost_date
 erpnext.patches.v15_0.drop_other_charges_calculation_column
+erpnext.patches.v15_0.set_missing_sales_order_bill_to
