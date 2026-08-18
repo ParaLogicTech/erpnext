@@ -323,6 +323,12 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 		}
 	}
 
+	ignore_depreciation() {
+		if (this.frm.doc.docstatus === 0) {
+			this.calculate_taxes_and_totals();
+		}
+	}
+
 	depreciation_type() {
 		this.calculate_taxes_and_totals();
 	}
