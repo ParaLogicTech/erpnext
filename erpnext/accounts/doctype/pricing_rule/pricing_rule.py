@@ -441,18 +441,28 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 			"price_list_rate": pricing_rule_rate,
 		})
 
-	elif pricing_rule.rate_or_discount in ("Valuation Rate", "Last Purchase Rate"):
+	elif pricing_rule.rate_or_discount in ("Valuation Rate", "Last Purchase Rate", "Higher of Valuation and Last Purchase Rate"):
+		from erpnext.stock.get_item_details import get_last_purchase_rate
+		from erpnext.stock.stock_ledger import get_valuation_rate
+
 		pricing_rule_rate = 0
+		last_purchase_rate = 0
+		valuation_rate = 0
 
-		if pricing_rule.rate_or_discount == "Last Purchase Rate":
-			from erpnext.stock.get_item_details import get_last_purchase_rate
-			pricing_rule_rate = get_last_purchase_rate(args.item_code, warehouse=args.warehouse,
-				fallback_global_last_purchase_rate=False)
+		if pricing_rule.rate_or_discount in ("Last Purchase Rate", "Higher of Valuation and Last Purchase Rate"):
+			last_purchase_rate = flt(get_last_purchase_rate(args.item_code, warehouse=args.warehouse,
+				fallback_global_last_purchase_rate=False))
 
-		if not pricing_rule_rate:
-			from erpnext.stock.stock_ledger import get_valuation_rate
-			pricing_rule_rate = flt(get_valuation_rate(args.item_code, args.warehouse,
+		if pricing_rule.rate_or_discount in ("Valuation Rate", "Higher of Valuation and Last Purchase Rate") or not last_purchase_rate:
+			valuation_rate = flt(get_valuation_rate(args.item_code, args.warehouse,
 				voucher_type=args.doctype, voucher_no=args.name, raise_error_if_no_rate=False))
+
+		if pricing_rule.rate_or_discount == "Higher of Valuation and Last Purchase Rate":
+			pricing_rule_rate = max(last_purchase_rate, valuation_rate)
+		elif pricing_rule.rate_or_discount == "Last Purchase Rate":
+			pricing_rule_rate = last_purchase_rate or valuation_rate
+		else:  # Valuation Rate
+			pricing_rule_rate = valuation_rate
 
 		pricing_rule_rate = convert_item_uom_for(pricing_rule_rate, args.item_code,
 			args.stock_uom, args.uom, conversion_factor=args.conversion_factor, is_rate=True)
@@ -465,7 +475,7 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 		})
 
 	if (
-		pricing_rule.rate_or_discount in ("Price List Rate", "Rate", "Valuation Rate", "Last Purchase Rate")
+		pricing_rule.rate_or_discount in ("Price List Rate", "Rate", "Valuation Rate", "Last Purchase Rate", "Higher of Valuation and Last Purchase Rate")
 		and pricing_rule.include_margin_in_price_list_rate
 		and item_details.margin_type
 		and item_details.margin_rate_or_amount
@@ -573,7 +583,7 @@ def remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=None)
 		if (
 			pricing_rule.margin_type in ('Percentage', 'Amount')
 			and pricing_rule.margin_rate_or_amount
-			and pricing_rule.rate_or_discount not in ("Valuation Rate", "Last Purchase Rate", "Price List Rate")
+			and pricing_rule.rate_or_discount not in ("Valuation Rate", "Last Purchase Rate", "Higher of Valuation and Last Purchase Rate", "Price List Rate")
 		):
 			item_details.margin_rate_or_amount = 0.0
 
