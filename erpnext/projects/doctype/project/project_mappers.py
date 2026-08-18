@@ -388,7 +388,8 @@ def bill_to_item_condition(project, bill_to_filter, source, source_parent, targe
 		if source_parent.doctype == "Delivery Note":
 			source_bill_to = project.bill_to or source_parent.customer
 			if source.sales_order:
-				source_bill_to = frappe.db.get_value("Sales Order", source.sales_order, "bill_to", cache=1)
+				sales_order_bill_to = frappe.db.get_value("Sales Order", source.sales_order, "bill_to", cache=1)
+				source_bill_to = sales_order_bill_to or source_bill_to
 		else:
 			source_bill_to = source_parent.bill_to or source_parent.customer
 
@@ -408,7 +409,8 @@ def update_ignore_depreciation(project, source, target, source_parent):
 	if source_parent.doctype == "Delivery Note":
 		source_bill_to = project.bill_to or source_parent.customer
 		if source.sales_order:
-			source_bill_to = frappe.db.get_value("Sales Order", source.sales_order, "bill_to", cache=1)
+			sales_order_bill_to = frappe.db.get_value("Sales Order", source.sales_order, "bill_to", cache=1)
+			source_bill_to = sales_order_bill_to or source_bill_to
 	else:
 		source_bill_to = source_parent.bill_to or source_parent.customer
 
