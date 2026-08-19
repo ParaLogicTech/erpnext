@@ -252,7 +252,7 @@ class TransactionController(StockController):
 					item.set("price_list_rate", pricing_rule_args.get("price_list_rate"))
 
 				if (
-					pricing_rule_args.get("pricing_rule_for") in ("Valution Rate", "Last Purchase Rate", "Price List Rate")
+					pricing_rule_args.get("pricing_rule_for") in ("Valuation Rate", "Last Purchase Rate", "Price List Rate", "Higher of Valuation / Last Purchase Rate")
 					and pricing_rule_args.get("price_list_rate")
 				):
 					item.set("price_list_rate", pricing_rule_args.get("price_list_rate"))
