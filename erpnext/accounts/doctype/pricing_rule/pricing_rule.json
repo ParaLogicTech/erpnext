@@ -412,7 +412,7 @@
    "fieldtype": "Select",
    "in_standard_filter": 1,
    "label": "Rate or Discount",
-   "options": "\nRate\nDiscount Percentage\nDiscount Amount\nPrice List Rate\nValuation Rate\nLast Purchase Rate\nHigher of Valuation and Last Purchase Rate"
+   "options": "\nRate\nDiscount Percentage\nDiscount Amount\nPrice List Rate\nValuation Rate\nLast Purchase Rate\nHigher of Valuation / Last Purchase Rate"
   },
   {
    "default": "Grand Total",
@@ -685,7 +685,7 @@
   },
   {
    "default": "0",
-   "depends_on": "eval:[\"Price List Rate\", \"Rate\", \"Valuation Rate\", \"Last Purchase Rate\", \"Higher of Valuation and Last Purchase Rate\"].includes(doc.rate_or_discount)",
+   "depends_on": "eval:[\"Price List Rate\", \"Rate\", \"Valuation Rate\", \"Last Purchase Rate\", \"Higher of Valuation / Last Purchase Rate\"].includes(doc.rate_or_discount)",
    "fieldname": "include_margin_in_price_list_rate",
    "fieldtype": "Check",
    "label": "Include Margin in Price List Rate"
