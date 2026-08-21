@@ -112,7 +112,7 @@ def search_customer(
 		)
 
 	if mobile_nos and isinstance(mobile_nos, str):
-		mobile_nos = [mobile_nos]
+		mobile_nos = get_all_mobile_formats(mobile_nos)
 
 	or_conditions = []
 	if customer_id:
