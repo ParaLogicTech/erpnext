@@ -11,12 +11,14 @@ def find_customer_or_lead(
 	email_id=None,
 	mobile_no=None,
 	national_id=None,
+	customer_type=None,
 ):
 	return get_customer_or_lead(
 		customer_id=customer_id,
 		email_id=email_id,
 		mobile_no=mobile_no,
 		national_id=national_id,
+		customer_type=customer_type,
 	)
 
 
@@ -25,6 +27,7 @@ def get_customer_or_lead(
 	email_id=None,
 	mobile_no=None,
 	national_id=None,
+	customer_type=None,
 	ignore_permissions=False,
 ):
 	if (
@@ -45,6 +48,7 @@ def get_customer_or_lead(
 			email_id=email_id,
 			mobile_nos=mobile_nos,
 			national_id=national_id,
+			customer_type=customer_type,
 			ignore_permissions=ignore_permissions,
 		)
 	if customer:
@@ -87,6 +91,7 @@ def search_customer(
 	email_id=None,
 	mobile_nos=None,
 	national_id=None,
+	customer_type=None,
 	ignore_permissions=False,
 ):
 	def sorter(data):
@@ -124,6 +129,10 @@ def search_customer(
 
 	or_conditions_str = " or ".join(or_conditions)
 
+	customer_type_condition = ""
+	if customer_type:
+		customer_type_condition = f"and customer_type = %(customer_type)s"
+
 	mcond = ""
 	if not ignore_permissions:
 		mcond = get_match_cond("Customer")
@@ -131,12 +140,13 @@ def search_customer(
 	customers = frappe.db.sql(f"""
 		select name, customer_name, email_id, mobile_no, tax_cnic, customer_type, disabled, creation
 		from `tabCustomer`
-		where {or_conditions_str} {mcond}
+		where ({or_conditions_str}) {customer_type_condition} {mcond}
 	""", {
 		"customer_id": customer_id,
 		"email_id": email_id,
 		"mobile_nos": mobile_nos,
 		"national_id": national_id,
+		"customer_type": customer_type,
 	}, as_dict=1)
 
 	customers = sorted(customers, key=sorter, reverse=True)
