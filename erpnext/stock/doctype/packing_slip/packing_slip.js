@@ -145,6 +145,64 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		frappe.model.set_value(row.doctype, row.name, "rejected_qty", calculated_rejected_qty);
 	}
 
+	gross_weight_per_unit(doc, cdt, cdn) {
+		let item = frappe.get_doc(cdt, cdn);
+		item.net_weight_per_unit = flt(item.gross_weight_per_unit) - flt(item.tare_weight_per_unit);
+		this.calculate_totals();
+	}
+
+	gross_weight(doc, cdt, cdn) {
+		let item = frappe.get_doc(cdt, cdn);
+		if (flt(item.stock_qty)) {
+			let new_gross_weight = flt(item.gross_weight) / flt(item.stock_qty);
+			frappe.model.set_value(item.doctype, item.name, "gross_weight_per_unit", new_gross_weight);
+		} else {
+			this.calculate_totals();
+		}
+	}
+
+	total_gross_weight() {
+		if (this.frm.doc.is_unpack) {
+			return;
+		}
+		let has_child_packing_slips = (this.frm.doc.packing_slips || []).length;
+		if (has_child_packing_slips) {
+			return;
+		}
+
+		let unpacked_items = (this.frm.doc.items || []).filter(d => !d.source_packing_slip && flt(d.stock_qty));
+		let items_gross_weight = frappe.utils.sum(unpacked_items.map(d => flt(d.gross_weight)));
+
+		let packaging_tare_weight = frappe.utils.sum((this.frm.doc.packaging_items || []).map(d => flt(d.tare_weight)));
+		let child_gross_weight = frappe.utils.sum((this.frm.doc.packing_slips || []).map(d => flt(d.gross_weight)));
+		let unchangeable_gross_weight = packaging_tare_weight + child_gross_weight;
+
+		let gross_weight_after = flt(this.frm.doc.total_gross_weight, precision("total_gross_weight"));
+		let gross_weight_before = flt(unchangeable_gross_weight + items_gross_weight, precision("total_gross_weight"));
+		let weight_change = flt(gross_weight_after - gross_weight_before, precision("total_gross_weight"));
+
+		let total_weight_changed = 0;
+		for (let [i, row] of unpacked_items.entries()) {
+			let row_weight_change = 0;
+
+			if (i == unpacked_items.length - 1) {
+				total_weight_changed = flt(total_weight_changed, precision("total_gross_weight"));
+				row_weight_change = flt(weight_change - total_weight_changed, precision("gross_weight", row));
+			} else {
+				row_weight_change = flt(
+					weight_change * flt(row.gross_weight) / items_gross_weight,
+					precision("gross_weight", row)
+				);
+			}
+
+			row.net_weight += row_weight_change;
+			total_weight_changed += row_weight_change;
+			row.net_weight_per_unit = flt(row.net_weight) / flt(row.stock_qty);
+		}
+
+		this.calculate_totals();
+	}
+
 	calculate_totals() {
 		this.frm.doc.total_qty = 0;
 		this.frm.doc.total_stock_qty = 0;

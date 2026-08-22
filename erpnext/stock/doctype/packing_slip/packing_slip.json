@@ -233,7 +233,7 @@
    "in_list_view": 1,
    "label": "Total Gross Weight",
    "no_copy": 1,
-   "read_only": 1
+   "read_only_depends_on": "is_unpack"
   },
   {
    "fieldname": "column_break_15",
@@ -517,7 +517,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-06 16:34:42.862030",
+ "modified": "2026-08-22 12:05:27.389441",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packing Slip",
