@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_rename": 1,
  "autoname": "field:routing_name",
  "creation": "2018-07-15 11:03:24.191613",
  "doctype": "DocType",
@@ -31,8 +32,9 @@
    "options": "BOM Operation"
   }
  ],
+ "grid_page_length": 500,
  "links": [],
- "modified": "2024-03-19 18:03:32.837404",
+ "modified": "2026-08-24 01:10:24.037669",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Routing",
@@ -62,6 +64,8 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

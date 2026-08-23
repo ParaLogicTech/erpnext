@@ -102,20 +102,34 @@ class BOM(Document):
 
 	@frappe.whitelist()
 	def get_routing(self):
-		if self.routing:
-			self.set("operations", [])
-			for d in frappe.get_all("BOM Operation", fields = ["*"],
-				filters = {'parenttype': 'Routing', 'parent': self.routing}, order_by="idx"):
-				child = self.append('operations', {
-					"operation": d.operation,
-					"workstation": d.workstation,
-					"description": d.description,
-					"time_in_mins": d.time_in_mins,
-					"batch_size": d.batch_size,
-					"operating_cost": d.operating_cost,
-					"idx": d.idx
-				})
-				child.hour_rate = flt(d.hour_rate / self.conversion_rate, 2)
+		if not self.get("routing"):
+			return
+
+		self.set("operations", [])
+		routing_doc = frappe.get_cached_doc("Routing", self.routing)
+		for r_op in routing_doc.operations:
+			if r_op.condition:
+				try:
+					condition_met = frappe.safe_eval(r_op.condition, None, {
+						"bom": self.as_dict(),
+						"item": frappe.get_cached_doc("Item", self.item) if self.item else frappe._dict(),
+					})
+					if not condition_met:
+						continue
+				except Exception as e:
+					frappe.throw(_("Error evaluating condition in Routing {0}: {1}").format(
+						frappe.bold(self.routing), str(e)
+					))
+
+			bom_op = self.append('operations', {
+				"operation": r_op.operation,
+				"workstation": r_op.workstation,
+				"description": r_op.description,
+				"time_in_mins": flt(r_op.time_in_mins),
+				"batch_size": cint(r_op.batch_size),
+				"operating_cost": flt(r_op.operating_cost),
+			})
+			bom_op.hour_rate = flt(r_op.hour_rate / (flt(self.conversion_rate) or 1), 2)
 
 	def validate_rm_item(self, item):
 		if (item.name in [it.item_code for it in self.items]) and item.name == self.item:
