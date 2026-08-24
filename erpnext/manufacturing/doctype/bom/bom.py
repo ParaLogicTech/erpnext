@@ -361,7 +361,7 @@ class BOM(Document):
 		return flt(valuation_rate)
 
 	def set_item_operation(self):
-		if len(self.operations) != 1:
+		if len(self.operations) < 1:
 			return
 
 		operation = self.operations[0].get('operation')
