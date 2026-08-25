@@ -163,10 +163,12 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 
 	total_gross_weight() {
 		if (this.frm.doc.is_unpack) {
+			this.calculate_totals();
 			return;
 		}
 		let has_child_packing_slips = (this.frm.doc.packing_slips || []).length;
 		if (has_child_packing_slips) {
+			this.calculate_totals();
 			return;
 		}
 
