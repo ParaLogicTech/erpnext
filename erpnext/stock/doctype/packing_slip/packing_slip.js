@@ -495,7 +495,12 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 					fieldtype: 'DateRange',
 					label: __('Date Range'),
 					fieldname: 'transaction_date',
-				}
+				},
+				{
+					fieldname: 'hide_invalid_qty',
+					label: __('Hide Invalid Qty Orders'),
+					fieldtype: 'Check',
+				},
 			],
 			columns: ['customer_name', 'transaction_date', 'project'],
 			get_query: () => {
@@ -528,7 +533,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		return frappe.call({
 			method: "erpnext.stock.doctype.packing_slip.packing_slip.reassign_sales_order",
 			args: {
-				packing_slip: this.frm.doc.name,
+				packing_slips: [this.frm.doc.name],
 				sales_order: sales_order,
 			},
 			freeze: 1,

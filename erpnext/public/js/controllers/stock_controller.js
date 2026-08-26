@@ -378,7 +378,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 				}
 			});
 		} else {
-			let columns = ['customer', 'total_stock_qty', 'packed_items', 'posting_date'];
+			let columns = ['customer_name', 'total_stock_qty', 'packed_items', 'posting_date'];
 			if (target_doctype == "Packing Slip") {
 				columns.push('package_type');
 			}
@@ -397,6 +397,12 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 						default: this.frm.doc.customer || undefined,
 						depends_on: "eval:!doc.no_customer",
 						get_query: () => erpnext.queries.customer(),
+					},
+					{
+						fieldname: 'package_type',
+						label: __('Package Type'),
+						fieldtype: 'Link',
+						options: 'Package Type',
 					},
 					{
 						fieldname: 'warehouse',
@@ -447,11 +453,98 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					}
 
 					return {
-						query: "erpnext.controllers.queries.get_packing_slips_to_be_delivered",
+						query: "erpnext.stock.doctype.packing_slip.packing_slip.get_packing_slips_to_be_delivered",
 						filters: filters
 					};
 				},
 			});
 		}
+	}
+
+	show_dialog_for_packing_slip_reassignment(selected_items, callback) {
+		let msd = new frappe.ui.form.MultiSelectDialog({
+			doctype: "Packing Slip",
+			date_field: "posting_date",
+			primary_action_label: __("Assign"),
+			initial_page_length: 50,
+			setters: [
+				{
+					fieldname: 'package_type',
+					label: __('Package Type'),
+					fieldtype: 'Link',
+					options: 'Package Type',
+				},
+				{
+					fieldname: 'warehouse',
+					label: __('Warehouse'),
+					fieldtype: 'Link',
+					options: 'Warehouse',
+					default: this.frm.doc.set_warehouse || undefined,
+					get_query: () => erpnext.queries.warehouse(this.frm.doc),
+				},
+				{
+					fieldname: 'customer',
+					label: __('Customer'),
+					fieldtype: 'Link',
+					options: 'Customer',
+					depends_on: "eval:!doc.no_customer",
+					get_query: () => erpnext.queries.customer(),
+				},
+				{
+					fieldname: 'no_customer',
+					label: __('Without Customer'),
+					fieldtype: 'Check',
+				},
+				{
+					fieldname: 'show_reassigned',
+					label: __('Show Reassigned Packages'),
+					fieldtype: 'Check',
+				},
+				{
+					fieldname: 'hide_invalid_qty',
+					label: __('Hide Invalid Qty Packages'),
+					fieldtype: 'Check',
+				},
+			],
+			columns: ['package_type', 'customer_name', 'packed_items', 'total_stock_qty', 'posting_date'],
+			get_query: () => {
+				return {
+					query: "erpnext.stock.doctype.packing_slip.packing_slip.get_packing_slips_for_reassignment",
+					filters: {
+						selected_items: selected_items,
+					}
+				};
+			},
+			action: (selections, args) => {
+				if (selections.length < 1) {
+					frappe.msgprint(__("Please select at least one {0}", [__("Packing Slip")]))
+					return;
+				}
+
+				return frappe.run_serially([
+					() => callback(selections),
+					() => msd.dialog.hide(),
+				]);
+			},
+		});
+	}
+
+	reassign_packing_slips(sales_order, packing_slips) {
+		if (!sales_order || !packing_slips?.length) {
+			return;
+		}
+
+		return frappe.call({
+			method: "erpnext.stock.doctype.packing_slip.packing_slip.reassign_sales_order",
+			args: {
+				packing_slips: packing_slips,
+				sales_order: sales_order,
+			},
+			freeze: 1,
+			freeze_message: __("Reassigning..."),
+			callback: () => {
+				this.frm.reload_doc();
+			}
+		});
 	}
 };

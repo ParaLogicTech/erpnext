@@ -1255,9 +1255,9 @@ def make_delivery_note(
 
 @frappe.whitelist()
 def make_delivery_note_from_packing_slips(source_name, target_doc=None, packing_filter=None, warehouse=None):
-	from erpnext.controllers.queries import _get_packing_slips_to_be_delivered
-
+	from erpnext.stock.doctype.packing_slip.packing_slip import _get_packing_slips_to_be_delivered
 	from erpnext.stock.doctype.packing_slip.packing_slip import make_delivery_note as map_dn_from_packing_slip
+
 	if not warehouse and frappe.flags.args:
 		warehouse = frappe.flags.args.warehouse
 	if not packing_filter and frappe.flags.args:
