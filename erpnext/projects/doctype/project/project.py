@@ -657,6 +657,7 @@ class Project(StatusUpdaterERP):
 
 		if update:
 			self.db_set({
+				'total_cost': self.total_cost,
 				'gross_margin': self.gross_margin,
 				'per_gross_margin': self.per_gross_margin,
 			}, None, update_modified=update_modified)
