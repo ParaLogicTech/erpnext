@@ -26,10 +26,6 @@ form_grid_templates = {
 }
 
 
-class WarehouseRequired(frappe.ValidationError):
-	pass
-
-
 class SalesOrder(SellingController):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -745,15 +741,8 @@ class SalesOrder(SellingController):
 				self.delivery_date = max_delivery_date
 
 	def validate_warehouse(self):
-		super(SalesOrder, self).validate_warehouse()
-
-		for d in self.get("items"):
-			if d.get("warehouse"):
-				continue
-
-			if d.is_stock_item and not cint(d.skip_delivery_note):
-				frappe.throw(_("Row #{0}: Delivery Warehouse required for Stock Item {0}").format(d.idx, d.item_code),
-					WarehouseRequired)
+		self.validate_warehouse_mandatory()
+		super().validate_warehouse()
 
 	def validate_drop_ship(self):
 		for d in self.get('items'):

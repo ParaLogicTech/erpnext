@@ -589,6 +589,10 @@ class PurchaseOrder(BuyingController):
 				frappe.throw(_("Item {0}: Ordered qty {1} cannot be less than minimum order qty {2} (defined in Item).")
 					.format(item_code, qty, itemwise_min_order_qty.get(item_code)))
 
+	def validate_warehouse(self):
+		self.validate_warehouse_mandatory()
+		super().validate_warehouse()
+
 	def validate_raw_materials_reserve_warehouse(self):
 		if self.is_subcontracted:
 			for supplied_item in self.get("supplied_items"):

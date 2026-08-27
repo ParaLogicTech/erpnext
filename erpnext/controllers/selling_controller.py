@@ -10,6 +10,7 @@ from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.controllers.stock_controller import WarehouseRequired
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
@@ -573,40 +574,43 @@ class SellingController(TransactionController):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
 						il.append(frappe._dict({
-							'warehouse': p.warehouse or d.warehouse,
 							'item_code': p.item_code,
+							'warehouse': p.warehouse or d.warehouse,
 							'qty': flt(p.qty),
 							'bundle_qty': flt(d.qty),
 							'uom': p.uom,
-							'batch_no': cstr(p.batch_no).strip(),
+							'stock_uom': p.get("stock_uom") or p.uom,
+							'conversion_factor': flt(d.get("conversion_factor")) or 1,
+							'batch_no': p.get("batch_no"),
 							'packing_slip': p.get("packing_slip"),
-							'serial_no': cstr(p.serial_no).strip(),
+							'serial_no': cstr(p.get("serial_no")).strip(),
 							'name': d.name,
-							'target_warehouse': p.target_warehouse,
+							'target_warehouse': p.get("target_warehouse"),
 							'company': self.company,
 							'voucher_type': self.doctype,
-							'allow_zero_valuation': d.allow_zero_valuation_rate,
-							'delivery_note': d.get('delivery_note'),
+							'allow_zero_valuation': d.get("allow_zero_valuation_rate"),
+							'delivery_note': d.get("delivery_note"),
 						}))
 			else:
 				il.append(frappe._dict({
-					'warehouse': d.warehouse,
 					'item_code': d.item_code,
-					'qty': d.stock_qty,
+					'warehouse': d.warehouse,
+					'qty': flt(d.stock_qty),
 					'uom': d.uom,
 					'stock_uom': d.stock_uom,
-					'conversion_factor': d.conversion_factor,
-					'batch_no': cstr(d.get("batch_no")).strip(),
+					'conversion_factor': flt(d.conversion_factor),
+					'batch_no': d.get("batch_no"),
 					'packing_slip': d.get("packing_slip"),
 					'serial_no': cstr(d.get("serial_no")).strip(),
 					'name': d.name,
-					'target_warehouse': d.target_warehouse,
+					'target_warehouse': d.get("target_warehouse"),
 					'company': self.company,
 					'voucher_type': self.doctype,
-					'allow_zero_valuation': d.allow_zero_valuation_rate,
+					'allow_zero_valuation': d.get('allow_zero_valuation_rate'),
 					'delivery_note': d.get('delivery_note'),
 					'delivery_note_item': d.get('delivery_note_item'),
-					'sales_invoice_item': d.get('sales_invoice_item')
+					'sales_invoice_item': d.get('sales_invoice_item'),
+					'skip_delivery_note': d.get('skip_delivery_note'),
 				}))
 		return il
 
@@ -919,6 +923,19 @@ class SellingController(TransactionController):
 				validate_end_of_life(row.item_code)
 
 			validate_is_not_template_item(row.item_code)
+
+	def validate_warehouse_mandatory(self):
+		for d in self.get_item_list():
+			if d.get("warehouse"):
+				continue
+			if not d.get("item_code"):
+				continue
+
+			is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, "is_stock_item"))
+			if is_stock_item and not cint(d.get("skip_delivery_note")):
+				frappe.throw(_("Delivery Warehouse is mandatory for Stock Item {0}").format(
+					frappe.bold(d.get("item_code"))
+				), WarehouseRequired)
 
 	def validate_target_warehouse(self):
 		if frappe.get_meta(self.doctype + " Item").has_field("target_warehouse"):

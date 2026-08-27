@@ -354,6 +354,10 @@ class PurchaseReceipt(BuyingController):
 				check_list.append(d.purchase_order)
 				check_on_hold_or_closed_status('Purchase Order', d.purchase_order, is_return=self.get('is_return'))
 
+	def validate_warehouse(self):
+		self.validate_warehouse_mandatory()
+		super().validate_warehouse()
+
 	def get_gl_entries(self):
 		from erpnext.accounts.general_ledger import process_gl_map
 
