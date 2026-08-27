@@ -479,7 +479,6 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					label: __('Warehouse'),
 					fieldtype: 'Link',
 					options: 'Warehouse',
-					default: this.frm.doc.set_warehouse || undefined,
 					get_query: () => erpnext.queries.warehouse(this.frm.doc),
 				},
 				{
