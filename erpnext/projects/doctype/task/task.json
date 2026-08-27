@@ -400,6 +400,7 @@
    "options": "Employee"
   },
   {
+   "depends_on": "eval:doc.assigned_to && doc.assigned_to_name != doc.assigned_to",
    "fetch_from": "assigned_to.employee_name",
    "fieldname": "assigned_to_name",
    "fieldtype": "Data",
@@ -409,7 +410,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "assigned_to.reports_to",
    "fieldname": "reports_to",
    "fieldtype": "Link",
    "label": "Reports To",
@@ -418,7 +418,8 @@
    "read_only": 1
   },
   {
-   "fetch_from": "assigned_to.reports_to_name",
+   "depends_on": "eval:doc.reports_to && doc.reports_to_name != doc.reports_to",
+   "fetch_from": "reports_to.employee_name",
    "fieldname": "reports_to_name",
    "fieldtype": "Data",
    "label": "Reports To Name",
@@ -585,7 +586,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-08-25 12:11:15.385954",
+ "modified": "2026-08-27 16:00:21.769610",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",
