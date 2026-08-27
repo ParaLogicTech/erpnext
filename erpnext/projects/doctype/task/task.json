@@ -24,6 +24,8 @@
   "assigned_to",
   "assigned_to_name",
   "column_break_33",
+  "reports_to",
+  "reports_to_name",
   "sb_timeline",
   "exp_start_date",
   "act_start_date",
@@ -398,11 +400,29 @@
    "options": "Employee"
   },
   {
+   "depends_on": "eval:doc.assigned_to && doc.assigned_to_name != doc.assigned_to",
    "fetch_from": "assigned_to.employee_name",
    "fieldname": "assigned_to_name",
    "fieldtype": "Data",
    "in_preview": 1,
    "label": "Assigned To Name",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "reports_to",
+   "fieldtype": "Link",
+   "label": "Reports To",
+   "no_copy": 1,
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.reports_to && doc.reports_to_name != doc.reports_to",
+   "fetch_from": "reports_to.employee_name",
+   "fieldname": "reports_to_name",
+   "fieldtype": "Data",
+   "label": "Reports To Name",
    "no_copy": 1,
    "read_only": 1
   },
@@ -566,7 +586,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-07-07 17:42:11.744753",
+ "modified": "2026-08-27 16:00:21.769610",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",
