@@ -12,10 +12,12 @@
   "employee",
   "employee_name",
   "designation",
-  "department",
+  "reports_to",
+  "reports_to_name",
   "column_break_9",
   "company",
   "branch",
+  "department",
   "column_break_8b2m",
   "attendance_date",
   "status",
@@ -335,6 +337,21 @@
   {
    "fieldname": "column_break_8b2m",
    "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "employee.reports_to",
+   "fieldname": "reports_to",
+   "fieldtype": "Link",
+   "label": "Reports To",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "reports_to.employee_name",
+   "fieldname": "reports_to_name",
+   "fieldtype": "Data",
+   "label": "Reports To Name",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -343,7 +360,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-04 17:19:49.845129",
+ "modified": "2026-08-27 16:11:21.731558",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Attendance",
@@ -396,6 +413,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "employee,employee_name,attendance_date,status",
  "sort_field": "attendance_date",
  "sort_order": "DESC",
