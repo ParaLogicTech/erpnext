@@ -233,7 +233,7 @@ class SalesInvoice(SellingController):
 		)
 
 	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
-		if self.currency == self.company_currency:
+		if self.party_account_currency == self.company_currency:
 			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
 			exchange_rate = 1
 		else:
@@ -873,7 +873,7 @@ class SalesInvoice(SellingController):
 			},
 			"Delivery Note Item": {
 				"ref_dn_field": "delivery_note_item",
-				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="],
+				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="], ["warehouse", "="],
 					["batch_no", "="], ["vehicle", "="]],
 				"is_child_table": True,
 				"allow_duplicate_prev_row_id": True
@@ -992,11 +992,10 @@ class SalesInvoice(SellingController):
 				frappe.msgprint(_("Item Code required at Row No {0}").format(d.idx), raise_exception=True)
 
 	def validate_warehouse(self):
-		super(SalesInvoice, self).validate_warehouse()
+		if self.update_stock:
+			self.validate_warehouse_mandatory()
 
-		for d in self.get_item_list():
-			if not d.warehouse and d.item_code and frappe.get_cached_value("Item", d.item_code, "is_stock_item"):
-				frappe.throw(_("Warehouse required for Stock Item {0}").format(d.item_code))
+		super().validate_warehouse()
 
 	def validate_delivery_note_if_update_stock(self):
 		if not cint(self.is_return) and cint(self.update_stock):

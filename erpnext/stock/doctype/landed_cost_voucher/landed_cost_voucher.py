@@ -81,7 +81,7 @@ class LandedCostVoucher(AccountsController):
 		return self.credit_to
 
 	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
-		if self.currency == self.company_currency:
+		if self.party_account_currency == self.company_currency:
 			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
 			exchange_rate = 1
 		else:

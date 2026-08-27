@@ -187,6 +187,11 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 							: flt(d.packed_qty, precision("qty", d)) < flt(d.qty, precision("qty", d));
 					});
 
+					if (has_undelivered && has_unpacked && frappe.model.can_read("Packing Slip")) {
+						me.frm.add_custom_button(__("Assign") + " " + __("Packing Slip"), () => me.select_packages_for_reassignment(),
+							__("Status"));
+					}
+
 					if (
 						(me.frm.doc.delivery_status == "To Deliver" || has_undelivered)
 						&& ["Sales", "Shopping Cart"].indexOf(me.frm.doc.order_type) !== -1
@@ -741,12 +746,39 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		});
 	}
 
+	select_packages_for_reassignment() {
+		let item_grid = this.frm.fields_dict["items"].grid;
+		let selected_rows = item_grid.get_selected_children();
+		if (!selected_rows.length) {
+			frappe.throw(__("Please check mark items for searching valid packages for assignment"));
+		}
+		if (selected_rows.some(d => d.skip_delivery_note)) {
+			frappe.throw(__("Selected items are not deliverable"));
+		}
+
+		let selected_items = selected_rows.map(d => {
+			return {
+				"item_code": d.item_code,
+				"uom": d.uom,
+				"qty": d.qty,
+				"packed_qty": d.packed_qty,
+				"delivered_qty": d.delivered_qty,
+				"work_order_qty": d.work_order_qty,
+			}
+		});
+
+		this.show_dialog_for_packing_slip_reassignment(selected_items, (selections) => {
+			return this.reassign_packing_slips(this.frm.doc.name, selections);
+		});
+	}
+
 	hold_sales_order() {
 		var me = this;
 		var d = new frappe.ui.Dialog({
 			title: __('Reason for Hold'),
 			fields: [
 				{
+					"label": __("Reason"),
 					"fieldname": "reason_for_hold",
 					"fieldtype": "Text",
 					"reqd": 1,
@@ -759,8 +791,9 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 					args: {
 						reference_doctype: me.frm.doctype,
 						reference_name: me.frm.docname,
-						content: __('Reason for hold: ')+data.reason_for_hold,
-						comment_email: frappe.session.user
+						content: __('Reason for hold: ') + data.reason_for_hold,
+						comment_email: frappe.session.user,
+						comment_by: frappe.session.user,
 					},
 					callback: function(r) {
 						if(!r.exc) {

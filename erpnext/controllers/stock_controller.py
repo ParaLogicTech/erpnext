@@ -18,6 +18,7 @@ import json
 class QualityInspectionRequiredError(frappe.ValidationError): pass
 class QualityInspectionRejectedError(frappe.ValidationError): pass
 class QualityInspectionNotSubmittedError(frappe.ValidationError): pass
+class WarehouseRequired(frappe.ValidationError): pass
 
 
 class StockController(AccountsController):
@@ -316,6 +317,19 @@ class StockController(AccountsController):
 			validate_warehouse_company(w, self.company)
 			if self.get("branch"):
 				validate_warehouse_branch(w, self.branch)
+
+	def validate_warehouse_mandatory(self):
+		for d in self.get("items"):
+			if d.get("warehouse"):
+				continue
+			if not d.get("item_code"):
+				continue
+
+			is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, "is_stock_item"))
+			if is_stock_item:
+				frappe.throw(_("Row #{0}: Delivery Warehouse is mandatory for Stock Item {1}").format(
+					d.idx, frappe.bold(d.item_code)
+				), WarehouseRequired)
 
 	def validate_inspection(self):
 		'''Checks if quality inspection is set for Items that require inspection.

@@ -437,7 +437,7 @@ def get_previous_order_details(sales_order):
 		select distinct i.quotation
 		from `tabSales Order Item` i
 		inner join `tabQuotation` qtn on qtn.name = i.quotation
-		where parent = %s
+		where i.parent = %s
 		order by qtn.transaction_date, qtn.creation
 	""", sales_order)
 
