@@ -496,19 +496,19 @@ class PackingSlip(TransactionController):
 						frappe.bold(frappe.format(packing_slip_item.qty))
 					))
 
-				if flt(d.net_weight) != packing_slip_item.net_weight:
+				if flt(d.net_weight, d.precision("net_weight")) != flt(packing_slip_item.net_weight, d.precision("net_weight")):
 					frappe.throw(_("Row #{0}: Net Weight does not match with Source {1}. Net Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
 						frappe.bold(frappe.format(packing_slip_item.net_weight))
 					))
-				if flt(d.tare_weight) != packing_slip_item.tare_weight:
+				if flt(d.tare_weight, d.precision("tare_weight")) != flt(packing_slip_item.tare_weight, d.precision("tare_weight")):
 					frappe.throw(_("Row #{0}: Tare Weight does not match with Source {1}. Tare Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
 						frappe.bold(frappe.format(packing_slip_item.tare_weight))
 					))
-				if flt(d.gross_weight) != packing_slip_item.gross_weight:
+				if flt(d.gross_weight, d.precision("gross_weight")) != flt(packing_slip_item.gross_weight, d.precision("gross_weight")):
 					frappe.throw(_("Row #{0}: Gross Weight does not match with Source {1}. Gross Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
@@ -646,24 +646,24 @@ class PackingSlip(TransactionController):
 					frappe.bold(frappe.format(unpacked_against_row.qty))
 				))
 
-			if flt(d.net_weight) != unpacked_against_row.net_weight:
-				frappe.throw(_("Row #{0}: Net Weight does not match with Unpack Against {1}. Net Weight must be {2}").format(
-					d.idx,
-					frappe.get_desk_link("Packing Slip", unpack_against.name),
-					frappe.bold(frappe.format(unpacked_against_row.net_weight))
-				))
-			if flt(d.tare_weight) != unpacked_against_row.tare_weight:
-				frappe.throw(_("Row #{0}: Tare Weight does not match with Unpack Against {1}. Tare Weight must be {2}").format(
-					d.idx,
-					frappe.get_desk_link("Packing Slip", unpack_against.name),
-					frappe.bold(frappe.format(unpacked_against_row.tare_weight))
-				))
-			if flt(d.gross_weight) != unpacked_against_row.gross_weight:
-				frappe.throw(_("Row #{0}: Gross Weight does not match with Unpack Against {1}. Gross Weight must be {2}").format(
-					d.idx,
-					frappe.get_desk_link("Packing Slip", unpack_against.name),
-					frappe.bold(frappe.format(unpacked_against_row.gross_weight))
-				))
+			# if flt(d.net_weight, d.precision("net_weight")) != flt(unpacked_against_row.net_weight, d.precision("net_weight")):
+			# 	frappe.throw(_("Row #{0}: Net Weight does not match with Unpack Against {1}. Net Weight must be {2}").format(
+			# 		d.idx,
+			# 		frappe.get_desk_link("Packing Slip", unpack_against.name),
+			# 		frappe.bold(frappe.format(unpacked_against_row.net_weight))
+			# 	))
+			# if flt(d.tare_weight, d.precision("tare_weight")) != flt(unpacked_against_row.tare_weight, d.precision("tare_weight")):
+			# 	frappe.throw(_("Row #{0}: Tare Weight does not match with Unpack Against {1}. Tare Weight must be {2}").format(
+			# 		d.idx,
+			# 		frappe.get_desk_link("Packing Slip", unpack_against.name),
+			# 		frappe.bold(frappe.format(unpacked_against_row.tare_weight))
+			# 	))
+			# if flt(d.gross_weight, d.precision("gross_weight")) != flt(unpacked_against_row.gross_weight, d.precision("gross_weight")):
+			# 	frappe.throw(_("Row #{0}: Gross Weight does not match with Unpack Against {1}. Gross Weight must be {2}").format(
+			# 		d.idx,
+			# 		frappe.get_desk_link("Packing Slip", unpack_against.name),
+			# 		frappe.bold(frappe.format(unpacked_against_row.gross_weight))
+			# 	))
 
 	def validate_work_orders(self):
 		for d in self.get("items"):
