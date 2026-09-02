@@ -1679,8 +1679,16 @@ def make_target_packing_slip(source_name, target_doc=None):
 	else:
 		packing_slip_names = source_name
 
+	target_warehouses = set()
+	cost_centers = set()
+
 	for ps_name in packing_slip_names:
 		source_packing_slip = frappe.get_doc("Packing Slip", ps_name)
+		if source_packing_slip.get("target_warehouse"):
+			target_warehouses.add(source_packing_slip.target_warehouse)
+		if source_packing_slip.get("cost_center"):
+			cost_centers.add(source_packing_slip.cost_center)
+
 		target_doc = map_target_document("Packing Slip", target_doc, source_packing_slip)
 
 		packing_slip_item_mapper = {
@@ -1712,6 +1720,11 @@ def make_target_packing_slip(source_name, target_doc=None):
 
 			target_row = map_child_doc(ps_item, target_doc, packing_slip_item_mapper, source_packing_slip)
 			target_row.source_warehouse = source_packing_slip.warehouse
+
+	if len(target_warehouses) == 1 and not target_doc.target_warehouse:
+		target_doc.target_warehouse = list(target_warehouses)[0]
+	if len(cost_centers) == 1 and not target_doc.get("cost_center") and target_doc.meta.has_field("cost_center"):
+		target_doc.cost_center = list(cost_centers)[0]
 
 	target_doc.run_method("postprocess_after_mapping")
 	return target_doc
