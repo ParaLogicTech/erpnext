@@ -625,6 +625,7 @@ class TransactionController(StockController):
 		packing_slip_groups = OrderedDict(sorted(packing_slip_groups.items(), key=lambda x: not x[0]))
 
 		for i, (packing_slip, parent_group) in enumerate(packing_slip_groups.items()):
+			parent_group["parent_packing_slip"] = None
 			parent_group["parent_idx_list"] = []
 			parent_group["child_idx"] = i + 1
 			self.group_child_packing_slips(packing_slip, parent_group, postprocess_group=postprocess_group)
@@ -667,6 +668,7 @@ class TransactionController(StockController):
 
 		for child_packing_slip, child_group in child_groups.items():
 			last_idx += 1
+			child_group["parent_packing_slip"] = parent_packing_slip
 			child_group["parent_idx_list"] = parent_group["parent_idx_list"] + [parent_group["child_idx"]]
 			child_group["child_idx"] = last_idx
 			self.group_child_packing_slips(child_packing_slip, child_group, postprocess_group=postprocess_group)

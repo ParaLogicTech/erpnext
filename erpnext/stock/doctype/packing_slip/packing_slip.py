@@ -1680,14 +1680,11 @@ def make_target_packing_slip(source_name, target_doc=None):
 		packing_slip_names = source_name
 
 	target_warehouses = set()
-	cost_centers = set()
 
 	for ps_name in packing_slip_names:
 		source_packing_slip = frappe.get_doc("Packing Slip", ps_name)
 		if source_packing_slip.get("target_warehouse"):
 			target_warehouses.add(source_packing_slip.target_warehouse)
-		if source_packing_slip.get("cost_center"):
-			cost_centers.add(source_packing_slip.cost_center)
 
 		target_doc = map_target_document("Packing Slip", target_doc, source_packing_slip)
 
@@ -1723,8 +1720,6 @@ def make_target_packing_slip(source_name, target_doc=None):
 
 	if len(target_warehouses) == 1 and not target_doc.target_warehouse:
 		target_doc.target_warehouse = list(target_warehouses)[0]
-	if len(cost_centers) == 1 and not target_doc.get("cost_center") and target_doc.meta.has_field("cost_center"):
-		target_doc.cost_center = list(cost_centers)[0]
 
 	target_doc.run_method("postprocess_after_mapping")
 	return target_doc
@@ -1737,6 +1732,7 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 
 	def update_item(source_doc, target_doc, source_parent, target_parent):
 		target_doc.qty = -1 * source_doc.qty
+		target_doc.source_warehouse = source_parent.warehouse
 
 	def update_material(source_doc, target_doc, source_parent, target_parent):
 		target_doc.qty = -1 * source_doc.qty
@@ -1757,6 +1753,9 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 				"package_type": "package_type",
 				"purchase_order": "purchase_order",
 			},
+			"field_no_map": [
+				"default_source_warehouse",
+			]
 		},
 		"Packing Slip Item": {
 			"doctype": "Packing Slip Item",
@@ -1771,11 +1770,11 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 				"work_order": "work_order",
 				"batch_no": "batch_no",
 				"serial_no": "serial_no",
-				"source_warehouse": "source_warehouse",
 			},
 			"field_no_map": [
 				"rejected_qty",
 				"stock_rejected_qty",
+				"source_warehouse",
 			],
 			"condition": item_condition,
 			"postprocess": update_item,
@@ -1985,6 +1984,9 @@ def map_target_document(target_doctype, target_doc, packing_slip):
 		target_doc.supplier = packing_slip.supplier
 	if packing_slip.purchase_order and target_doc.meta.has_field("purchase_order"):
 		target_doc.purchase_order = packing_slip.purchase_order
+
+	if packing_slip.get("cost_center") and not target_doc.get("cost_center") and target_doc.meta.has_field("cost_center"):
+		target_doc.cost_center = packing_slip.get("cost_center")
 
 	return target_doc
 
