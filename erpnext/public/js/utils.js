@@ -1483,18 +1483,20 @@ erpnext.utils.has_valuation_read_permission = function() {
 }
 
 erpnext.utils.query_report_local_refresh = function() {
-	if (frappe.query_report && frappe.query_report.datatable) {
-		frappe.query_report.datatable.datamanager.rowCount = 0;
-		frappe.query_report.datatable.datamanager.columns = [];
-		frappe.query_report.datatable.datamanager.rows = [];
+	const datatable = frappe.query_report?.datatable;
+	if (datatable) {
+		const datamanager = datatable.datamanager;
+		datamanager.rowCount = 0;
+		datamanager.columns = [];
+		datamanager.rows = [];
 
-		frappe.query_report.datatable.datamanager.prepareColumns();
-		frappe.query_report.datatable.datamanager.prepareRows();
-		frappe.query_report.datatable.datamanager.prepareTreeRows();
-		frappe.query_report.datatable.datamanager.prepareRowView();
-		frappe.query_report.datatable.datamanager.prepareNumericColumns();
+		datamanager.prepareColumns();
+		[datamanager.rows, datamanager.flatData] = datamanager.prepareRows(datamanager.data);
+		datamanager.prepareTreeRows();
+		datamanager.prepareRowView();
+		datamanager.prepareNumericColumns();
 
-		frappe.query_report.datatable.bodyRenderer.render();
+		datatable.bodyRenderer.render();
 	}
 }
 
