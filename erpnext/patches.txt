@@ -354,6 +354,7 @@ execute:frappe.delete_doc_if_exists("Report", "Serial No Status")
 execute:frappe.delete_doc_if_exists("Report", "Serial No Warranty Expiry")
 execute:frappe.delete_doc_if_exists("Custom Field", "Quotation-sales_team_section")
 execute:frappe.delete_doc_if_exists("Custom Field", "Quotation-sales_team")
+erpnext.patches.v15_0.remove_github_sync_id #1
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay

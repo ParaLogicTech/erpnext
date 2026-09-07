@@ -11,13 +11,10 @@
   "naming_series",
   "employee",
   "employee_name",
-  "designation",
-  "reports_to",
-  "reports_to_name",
+  "disable_party_name_formatter",
   "column_break_9",
   "company",
   "branch",
-  "department",
   "column_break_8b2m",
   "attendance_date",
   "status",
@@ -27,6 +24,12 @@
   "attendance_request",
   "remarks",
   "amended_from",
+  "more_information_section",
+  "designation",
+  "department",
+  "column_break_sbbt",
+  "reports_to",
+  "reports_to_name",
   "shift_section",
   "shift",
   "late_entry",
@@ -342,15 +345,36 @@
    "fetch_from": "employee.reports_to",
    "fieldname": "reports_to",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Reports To",
    "options": "Employee",
    "read_only": 1
   },
   {
+   "depends_on": "eval:doc.reports_to && doc.reports_to_name != doc.reports_to",
    "fetch_from": "reports_to.employee_name",
    "fieldname": "reports_to_name",
    "fieldtype": "Data",
    "label": "Reports To Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "more_information_section",
+   "fieldtype": "Section Break",
+   "label": "More Information"
+  },
+  {
+   "fieldname": "column_break_sbbt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "disable_party_name_formatter",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "is_virtual": 1,
+   "label": "Disable Party Name Formatter",
+   "options": "1",
    "read_only": 1
   }
  ],
@@ -360,7 +384,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-27 16:11:21.731558",
+ "modified": "2026-09-04 00:53:33.894214",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Attendance",
