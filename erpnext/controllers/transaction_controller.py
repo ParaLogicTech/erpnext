@@ -1,6 +1,14 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cstr, cint, getdate, format_date, clean_whitespace
+from frappe.utils import (
+	flt,
+	cstr,
+	cint,
+	getdate,
+	format_date,
+	clean_whitespace,
+	round_based_on_smallest_currency_fraction,
+)
 from erpnext.controllers.stock_controller import StockController
 from erpnext.stock.get_item_details import (
 	get_item_details,
@@ -719,6 +727,20 @@ class TransactionController(StockController):
 				group_data[total_field] = sum([flt(d.get(source_field)) for d in group_data['items']])
 				if self.meta.has_field("conversion_rate") and self.meta.has_field("base_" + total_field):
 					group_data["base_" + total_field] = group_data[total_field] * self.conversion_rate
+
+			if self.meta.has_field("rounded_total") and self.meta.has_field("grand_total"):
+				group_data.rounded_total = round_based_on_smallest_currency_fraction(
+					group_data.grand_total,
+					self.currency,
+					self.precision("rounded_total"),
+					self.get("round_to_nearest") or None,
+				)
+
+				if self.meta.has_field("previous_grand_total"):
+					group_data.including_previous_grand_total = group_data.rounded_total + flt(self.previous_grand_total)
+
+			if self.meta.has_field("discount_amount"):
+				group_data.discount_amount = group_data.grand_total_before_discount - group_data.grand_total
 
 			if self.meta.has_field("taxes"):
 				self.calculate_taxes_for_group(group_data)
