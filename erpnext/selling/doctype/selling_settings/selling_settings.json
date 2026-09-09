@@ -78,7 +78,7 @@
    "fieldname": "dn_required",
    "fieldtype": "Select",
    "label": "Delivery Note Required",
-   "options": "No\nYes\nEither Delivery Note or Sales Order"
+   "options": "No\nYes\nEither Delivery Note or Sales Order\nRequired after Sales Invoice"
   },
   {
    "default": "0",
@@ -167,7 +167,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-28 10:53:27.929563",
+ "modified": "2026-09-08 15:15:58.305839",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling Settings",
@@ -193,6 +193,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

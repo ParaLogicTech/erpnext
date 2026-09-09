@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_rename": 1,
  "autoname": "field:transaction_type_name",
  "creation": "2019-07-07 02:50:48.059908",
@@ -115,7 +116,7 @@
    "fieldname": "dn_required",
    "fieldtype": "Select",
    "label": "Delivery Note Required",
-   "options": "\nNo\nYes\nEither Delivery Note or Sales Order"
+   "options": "\nNo\nYes\nEither Delivery Note or Sales Order\nRequired after Sales Invoice"
   },
   {
    "depends_on": "buying",
@@ -170,10 +171,12 @@
    "fieldtype": "Column Break"
   }
  ],
- "modified": "2022-06-14 14:29:27.913937",
+ "links": [],
+ "modified": "2026-09-08 15:16:15.248881",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Transaction Type",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -214,7 +217,10 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "idx",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

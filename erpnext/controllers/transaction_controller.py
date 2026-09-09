@@ -1509,7 +1509,7 @@ def update_child_items(parent_doctype, parent_name, data):
 
 	# Validate before Save
 	if parent_doctype == "Sales Order":
-		parent_doc.set_skip_delivery_note_for_order()
+		parent_doc.set_skip_delivery_note_for_transaction()
 		parent_doc.set_gross_profit()
 		parent_doc.validate_delivery_date()
 		parent_doc.validate_max_discount()

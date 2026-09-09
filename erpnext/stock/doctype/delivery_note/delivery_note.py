@@ -472,15 +472,28 @@ class DeliveryNote(SellingController):
 			return
 
 		so_required = frappe.get_cached_value("Selling Settings", None, 'so_required') == 'Yes'
+		sinv_required = frappe.get_cached_value("Selling Settings", None, 'dn_required') == 'Required after Sales Invoice'
 		if self.get('transaction_type'):
 			tt_so_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'so_required')
+			tt_dn_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'dn_required')
 			if tt_so_required:
 				so_required = tt_so_required == 'Yes'
+			if tt_dn_required:
+				sinv_required = tt_dn_required == 'Required after Sales Invoice'
 
 		if so_required:
 			for d in self.get('items'):
 				if not d.sales_order:
-					frappe.throw(_("Sales Order required for Item {0}").format(d.item_code))
+					frappe.throw(_("Row #{0}: Sales Order is required for Item {1}").format(
+						d.idx, frappe.bold(d.item_code),
+					))
+
+		if sinv_required:
+			for d in self.get('items'):
+				if not d.sales_invoice:
+					frappe.throw(_("Row #{0}: Sales Invoice is required for Item {1}").format(
+						d.idx, frappe.bold(d.item_code),
+					))
 
 	def validate_with_previous_doc(self):
 		super(DeliveryNote, self).validate_with_previous_doc({

@@ -459,3 +459,4 @@ erpnext.patches.v15_0.drop_other_charges_calculation_column
 erpnext.patches.v15_0.set_missing_sales_order_bill_to
 erpnext.patches.v15_0.unset_unassigned_packing_slip_is_reassigned
 erpnext.patches.v15_0.set_task_and_attendance_reports_to
+erpnext.patches.v15_0.set_sales_invoice_delivery_status

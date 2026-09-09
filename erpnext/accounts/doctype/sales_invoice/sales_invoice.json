@@ -265,6 +265,12 @@
   "is_discounted",
   "status_tab",
   "status",
+  "column_break_pdug",
+  "delivery_status",
+  "skip_delivery_note",
+  "delivery_note_required",
+  "column_break_crzq",
+  "per_delivered",
   "subscription_section",
   "from_date",
   "cb_5",
@@ -1362,7 +1368,7 @@
    "in_standard_filter": 1,
    "label": "Status",
    "no_copy": 1,
-   "options": "Draft\nReturn\nCredit Note Issued\nSubmitted\nPaid\nUnpaid\nUnpaid and Discounted\nOverdue and Discounted\nOverdue\nCancelled",
+   "options": "Draft\nUnpaid\nOverdue\nPaid\nReturn\nCredit Note Issued\nTo Deliver\nCancelled",
    "print_hide": 1,
    "read_only": 1
   },
@@ -2366,6 +2372,50 @@
    "fieldtype": "Link",
    "label": "Coupon Code",
    "options": "Coupon Code"
+  },
+  {
+   "fieldname": "column_break_pdug",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Not Applicable",
+   "fieldname": "delivery_status",
+   "fieldtype": "Select",
+   "label": "Delivery Status",
+   "no_copy": 1,
+   "options": "Not Applicable\nTo Deliver\nDelivered",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "per_delivered",
+   "fieldtype": "Percent",
+   "label": "% Delivered",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_crzq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "skip_delivery_note",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Skip Delivery Note",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "delivery_note_required",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Delivery Note Required",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -2373,7 +2423,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-20 13:46:15.064158",
+ "modified": "2026-09-09 15:05:57.290084",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

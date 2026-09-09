@@ -69,6 +69,21 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		}
 
 		// Create Buttons
+		let deliverable_rows = me.frm.doc.items.filter(d => !d.skip_delivery_note);
+		let has_undelivered = deliverable_rows.some(d => {
+			return flt(d.delivered_qty, precision("qty", d)) < flt(d.qty, precision("qty", d));
+		});
+
+		if (
+			doc.docstatus == 1
+			&& doc.delivery_note_required
+			&& (doc.delivery_status == "To Deliver" || has_undelivered)
+			&& frappe.model.can_create("Delivery Note")
+		) {
+			this.frm.add_custom_button(__('Delivery Note'), () => this.make_delivery_note(),
+				__('Create'));
+		}
+
 		if (
 			doc.docstatus == 1
 			&& doc.outstanding_amount != 0
@@ -81,8 +96,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		}
 
 		if (doc.docstatus == 1 && !doc.is_return) {
-			let is_delivered_by_supplier = this.frm.doc.items.some((item) => item.is_delivered_by_supplier);
-
 			if (
 				(doc.outstanding_amount >= 0 || Math.abs(flt(doc.outstanding_amount)) < flt(doc.grand_total))
 				&& frappe.model.can_create("Sales Invoice")
@@ -91,27 +104,17 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 				this.frm.page.set_inner_btn_group_as_primary(__('Create'));
 			}
 
-			if (!doc.update_stock) {
-				// show Make Delivery Note button only if Sales Invoice is not created from Delivery Note
-				let from_delivery_note = this.frm.doc.items.some((item) => item.delivery_note);
-
-				if (!from_delivery_note && !is_delivered_by_supplier && frappe.model.can_create("Delivery Note")) {
-					this.frm.add_custom_button(__('Delivery'), this.frm.cscript['Make Delivery Note'],
-						__('Create'));
-				}
-			}
-
 			if (doc.outstanding_amount > 0 && frappe.model.can_create("Payment Request")) {
 				this.frm.add_custom_button(__('Payment Request'), () => {
 					this.make_payment_request();
 				}, __('Create'));
 			}
 
-			if (doc.docstatus === 1 && frappe.model.can_create("Maintenance Schedule")) {
-				this.frm.add_custom_button(__('Maintenance Schedule'), () => {
-					this.frm.cscript.make_maintenance_schedule();
-				}, __('Create'));
-			}
+			// if (doc.docstatus === 1 && frappe.model.can_create("Maintenance Schedule")) {
+			// 	this.frm.add_custom_button(__('Maintenance Schedule'), () => {
+			// 		this.frm.cscript.make_maintenance_schedule();
+			// 	}, __('Create'));
+			// }
 
 			if (!doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
 				this.frm.add_custom_button(__('Subscription'), () => {
@@ -658,6 +661,13 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		erpnext.setup_serial_no();
 	}
 
+	make_delivery_note() {
+		return frappe.model.open_mapped_doc({
+			method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.make_delivery_note",
+			frm: this.frm
+		});
+	}
+
 	make_sales_return() {
 		var me = this;
 		var has_stock_item = me.frm.doc.items.some(d => d.is_stock_item);
@@ -863,13 +873,6 @@ cur_frm.cscript.update_stock = function(doc, dt, dn) {
 	this.show_hide_select_batch_button();
 }
 
-cur_frm.cscript['Make Delivery Note'] = function() {
-	frappe.model.open_mapped_doc({
-		method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.make_delivery_note",
-		frm: cur_frm
-	})
-}
-
 cur_frm.fields_dict.write_off_account.get_query = function(doc) {
 	return{
 		filters:{
@@ -957,7 +960,7 @@ frappe.ui.form.on('Sales Invoice', {
 		});
 
 		frm.custom_make_buttons = {
-			'Delivery Note': 'Delivery',
+			'Delivery Note': 'Delivery Note',
 			'Sales Invoice': 'Return / Credit Note',
 			'Payment Request': 'Payment Request',
 			'Invoice Discounting': 'Invoice Discounting',

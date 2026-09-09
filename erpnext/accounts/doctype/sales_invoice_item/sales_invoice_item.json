@@ -137,6 +137,7 @@
   "warehouse",
   "force_default_warehouse",
   "is_stock_item",
+  "skip_delivery_note",
   "target_warehouse",
   "quality_inspection",
   "column_break_21",
@@ -1675,12 +1676,20 @@
    "options": "Company:company:default_currency",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "skip_delivery_note",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Skip Delivery Note",
+   "read_only": 1
   }
  ],
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-08-18 14:38:50.246615",
+ "modified": "2026-09-08 16:35:31.095218",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice Item",
