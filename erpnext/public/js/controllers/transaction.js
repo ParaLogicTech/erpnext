@@ -972,11 +972,13 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		this.set_company_address();
 	}
 
-	set_company_address() {
+	set_company_address(is_shipping_address) {
 		if (frappe.meta.get_docfield(this.frm.doctype, "company_address")) {
 			erpnext.utils.get_company_address({
 				company: this.frm.doc.company,
 				branch: this.frm.doc.branch,
+				warehouse: this.frm.doc.set_warehouse,
+				is_shipping_address: cint(is_shipping_address),
 			}, (r) => {
 				if (r.message) {
 					this.frm.set_value("company_address", r.message);

@@ -3,6 +3,7 @@
 
 
 import frappe
+import erpnext
 from frappe import _
 from frappe.utils import cint, flt
 from erpnext.controllers.selling_controller import SellingController
@@ -126,6 +127,11 @@ class DeliveryNote(SellingController):
 				toggle_print_hide(self.meta if key == "parent" else item_meta, f)
 
 		super(DeliveryNote, self).before_print(print_settings=print_settings)
+
+	def set_company_address_doc_before_print(self):
+		doc_dict = self.as_dict()
+		doc_dict["is_shipping_address"] = 1
+		self.company_address_doc = erpnext.get_company_address_doc(doc_dict)
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate=for_validate)
@@ -800,6 +806,7 @@ def make_sales_invoice(
 		only_items = cint(frappe.flags.args.only_items)
 
 	def postprocess(source, target):
+		target.company_address = None
 		target.ignore_pricing_rule = 1
 		target.update_stock = 0
 		target.run_method("postprocess_after_mapping", reset_taxes=True)

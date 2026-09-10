@@ -1957,6 +1957,7 @@ def make_delivery_note(source_name, target_doc=None):
 		return True
 
 	def set_missing_values(source, target):
+		target.company_address = None
 		target.ignore_pricing_rule = 1
 		target.run_method("postprocess_after_mapping")
 

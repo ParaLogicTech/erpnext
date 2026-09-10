@@ -238,6 +238,15 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 		}, null, true);
 	}
 
+	set_warehouse() {
+		super.set_warehouse();
+		this.set_company_address();
+	}
+
+	set_company_address() {
+		super.set_company_address(1);
+	}
+
 	get_items_from_sales_order() {
 		erpnext.utils.map_current_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_delivery_note",
