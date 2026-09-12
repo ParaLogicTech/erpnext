@@ -73,8 +73,12 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 		if args.get(key) is None:
 			args[key] = value
 
-	pricing_rule_data = get_pricing_rule_for_item(args, out.price_list_rate,
-		doc, for_validate=for_validate)
+	pricing_rule_data = get_pricing_rule_for_item(
+		args,
+		out.price_list_rate,
+		doc,
+		for_validate=for_validate,
+	)
 	out.update(pricing_rule_data)
 
 	if args.transaction_date and item.lead_time_days:
@@ -86,7 +90,7 @@ def get_item_details(args, doc=None, for_validate=False, overwrite_warehouse=Tru
 
 	if args.doctype == 'Material Request':
 		out.rate = args.rate or out.price_list_rate
-		out.amount = flt(args.qty * out.rate)
+		out.amount = flt(out.qty * out.rate)
 
 	set_serial_batch_details(args, out)
 
@@ -277,7 +281,7 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 		"uom": default_uom,
 		"min_order_qty": flt(item.min_order_qty) if args.doctype == "Material Request" else "",
 		"qty": flt(args.qty) or 1.0,
-		"stock_qty": flt(args.qty) or 1.0,
+		"stock_qty": flt(args.stock_qty) or 1.0,
 		"price_list_rate": 0.0,
 		"base_price_list_rate": 0.0,
 		"rate": 0.0,
@@ -324,8 +328,11 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			out.uom = args.uom
 			out.conversion_factor = flt(conversion.get("conversion_factor"))
 
+	args.qty = out.qty
 	args.conversion_factor = out.conversion_factor
+
 	out.stock_qty = flt(out.qty * out.conversion_factor, 6)
+	args.stock_qty = out.stock_qty
 
 	# Contents UOM conversion factor and qty
 	out.alt_uom = item.alt_uom

@@ -243,14 +243,25 @@ class TransactionController(StockController):
 		if not skip_pricing_rules:
 			if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
 				self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
-			if ret.get("pricing_rules") and not self.get("ignore_pricing_rule"):
+			if (ret.get("pricing_rules") or ret.get("pricing_rule_removed")) and not self.get("ignore_pricing_rule"):
 				self.apply_pricing_rule_on_item(item, ret)
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
 		pass
 
 	def apply_pricing_rule_on_item(self, item, pricing_rule_args):
-		if not pricing_rule_args.get("do_not_force_pricing_rule") and not pricing_rule_args.get("validate_applied_rule"):
+		if pricing_rule_args.get("validate_applied_rule"):
+			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
+				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+				for field in ['discount_percentage', 'discount_amount', 'rate']:
+					if item.get(field) < pricing_rule_doc.get(field):
+						title = frappe.utils.get_link_to_form("Pricing Rule", pricing_rule)
+
+						frappe.msgprint(_("Row {0}: user has not applied the rule {1} on the item {2}")
+							.format(item.idx, frappe.bold(title), frappe.bold(item.item_code)))
+			return
+
+		if not pricing_rule_args.get("do_not_force_pricing_rule") or pricing_rule_args.get("pricing_rule_removed"):
 			if pricing_rule_args.get("price_or_product_discount") == 'Price':
 				item.set("pricing_rules", pricing_rule_args.get("pricing_rules"))
 				item.set("discount_percentage", pricing_rule_args.get("discount_percentage"))
@@ -279,16 +290,6 @@ class TransactionController(StockController):
 				item.set("margin_rate_or_amount", pricing_rule_args.get("margin_rate_or_amount"))
 				if pricing_rule_args.get("margin_rate_or_amount"):
 					item.set("margin_type", pricing_rule_args.get("margin_type"))
-
-		if pricing_rule_args.get("validate_applied_rule"):
-			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
-				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
-				for field in ['discount_percentage', 'discount_amount', 'rate']:
-					if item.get(field) < pricing_rule_doc.get(field):
-						title = frappe.utils.get_link_to_form("Pricing Rule", pricing_rule)
-
-						frappe.msgprint(_("Row {0}: user has not applied the rule {1} on the item {2}")
-							.format(item.idx, frappe.bold(title), frappe.bold(item.item_code)))
 
 	def set_missing_applies_to_details(self):
 		if not self.meta.has_field('applies_to_item'):

@@ -118,6 +118,8 @@
    "default": "0",
    "fieldname": "disable",
    "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Disabled"
   },
   {
@@ -695,7 +697,7 @@
  "icon": "fa fa-gift",
  "idx": 1,
  "links": [],
- "modified": "2026-08-18 18:00:12.289852",
+ "modified": "2026-09-11 04:32:40.347609",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Pricing Rule",

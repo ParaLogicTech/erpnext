@@ -715,7 +715,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					campaign: this.frm.doc.campaign,
 					coupon_code: this.frm.doc.coupon_code,
 					qty: item.qty || 1,
-					stock_qty: item.stock_qty,
+					stock_qty: item.stock_qty || 1,
 					manufacturer: item.manufacturer,
 					stock_uom: item.stock_uom,
 					pos_profile: this.frm.doc.doctype == 'Sales Invoice' ? this.frm.doc.pos_profile : '',

@@ -222,7 +222,7 @@ def get_serial_no_for_item(args):
 	return item_details
 
 
-def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=False):
+def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate=False):
 	from erpnext.accounts.doctype.pricing_rule.utils import (
 		get_pricing_rules,
 		get_applied_pricing_rules,
@@ -277,6 +277,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 				args.get("pricing_rules"),
 				item_details,
 				item_code=args.get("item_code"),
+				price_list_rate=price_list_rate,
 				to_remove=pricing_rule.name,
 				force=True,
 			)
@@ -340,6 +341,7 @@ def get_pricing_rule_for_item(args, price_list_rate=0, doc=None, for_validate=Fa
 			args.get("pricing_rules"),
 			item_details,
 			item_code=args.get('item_code'),
+			price_list_rate=price_list_rate,
 			force=True,
 		)
 
@@ -545,12 +547,20 @@ def remove_pricing_rules(item_list):
 				item_details.get("pricing_rules"),
 				item_details,
 				item_code=item_details.item_code,
+				price_list_rate=item_details.price_list_rate,
 			))
 
 	return out
 
 
-def remove_pricing_rules_for_item(pricing_rules, item_details, item_code=None, force=False, to_remove=None):
+def remove_pricing_rules_for_item(
+	pricing_rules,
+	item_details,
+	item_code=None,
+	price_list_rate=None,
+	force=False,
+	to_remove=None,
+):
 	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
 	applied_pricing_rules = get_applied_pricing_rules(pricing_rules)
@@ -569,23 +579,27 @@ def remove_pricing_rules_for_item(pricing_rules, item_details, item_code=None, f
 			keep_pricing_rules.append(pricing_rule.name)
 			continue
 
-		remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=item_code)
+		remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=item_code, price_list_rate=price_list_rate)
 
 	item_details.pricing_rules = frappe.as_json([d for d in keep_pricing_rules], indent=0) if keep_pricing_rules else ''
 
 	return item_details
 
 
-def remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=None):
+def remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=None, price_list_rate=None):
 	from erpnext.accounts.doctype.pricing_rule.utils import get_pricing_rule_items
 
 	if pricing_rule.price_or_product_discount == 'Price':
-		if pricing_rule.rate_or_discount == 'Discount Percentage':
+		item_details.pricing_rule_for = pricing_rule.rate_or_discount
+
+		if pricing_rule.rate_or_discount in ('Discount Percentage', 'Discount Amount'):
 			item_details.discount_percentage = 0.0
 			item_details.discount_amount = 0.0
+			item_details.pricing_rule_removed = True
 
-		if pricing_rule.rate_or_discount == 'Discount Amount':
-			item_details.discount_amount = 0.0
+		if pricing_rule.rate_or_discount == 'Rate' and flt(price_list_rate):
+			item_details.price_list_rate = flt(price_list_rate)
+			item_details.pricing_rule_removed = True
 
 		if (
 			pricing_rule.margin_type in ('Percentage', 'Amount')
@@ -593,6 +607,7 @@ def remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=None)
 			and pricing_rule.rate_or_discount not in ("Valuation Rate", "Last Purchase Rate", "Higher of Valuation / Last Purchase Rate", "Price List Rate")
 		):
 			item_details.margin_rate_or_amount = 0.0
+			item_details.pricing_rule_removed = True
 
 	elif pricing_rule.get('free_item'):
 		item_details.remove_free_item = item_code if pricing_rule.get('same_item') else pricing_rule.get('free_item')
