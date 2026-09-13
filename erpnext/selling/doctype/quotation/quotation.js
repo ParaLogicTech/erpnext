@@ -236,17 +236,6 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		}
 	}
 
-	validate_company_and_party(party_field) {
-		if(!this.frm.doc.quotation_to) {
-			frappe.msgprint(__("Please select a value for {0} quotation_to {1}", [this.frm.doc.doctype, this.frm.doc.name]));
-			return false;
-		} else if (this.frm.doc.quotation_to == "Lead") {
-			return true;
-		} else {
-			return super.validate_company_and_party(party_field);
-		}
-	}
-
 	make_sales_order() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.quotation.quotation.make_sales_order",
