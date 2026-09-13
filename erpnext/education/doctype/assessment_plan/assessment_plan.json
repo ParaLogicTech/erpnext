@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "EDU-ASP-.YYYY.-.#####",
  "creation": "2015-11-12 16:34:34.658092",
@@ -34,7 +35,6 @@
   {
    "fieldname": "student_group",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Student Group",
@@ -44,7 +44,6 @@
   {
    "fieldname": "assessment_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Assessment Name"
   },
   {
@@ -74,7 +73,6 @@
    "fetch_if_empty": 1,
    "fieldname": "course",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Course",
    "options": "Course",
@@ -84,7 +82,6 @@
    "fetch_from": "student_group.program",
    "fieldname": "program",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "label": "Program",
    "options": "Program"
   },
@@ -163,7 +160,6 @@
    "fetch_from": "supervisor.instructor_name",
    "fieldname": "supervisor_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Supervisor Name",
    "read_only": 1
   },
@@ -195,8 +191,10 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
- "modified": "2020-05-09 16:44:04.313175",
+ "links": [],
+ "modified": "2026-09-12 16:29:32.840555",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Assessment Plan",
@@ -219,7 +217,10 @@
   }
  ],
  "restrict_to_domain": "Education",
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "assessment_name"
 }

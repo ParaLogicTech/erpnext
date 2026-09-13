@@ -23,6 +23,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Description"
   },
   {
@@ -92,7 +93,7 @@
  ],
  "is_tree": 1,
  "links": [],
- "modified": "2025-04-07 15:35:19.885925",
+ "modified": "2026-09-12 17:10:36.243650",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Service Template Category",
@@ -168,7 +169,10 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "description, parent_service_template_category",
+ "show_name_in_global_search": 1,
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],

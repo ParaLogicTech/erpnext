@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "field:service_level",
  "creation": "2018-11-19 12:44:30.407502",
  "doctype": "DocType",
@@ -75,7 +76,9 @@
    "read_only": 1
   }
  ],
- "modified": "2022-05-25 16:20:01.460765",
+ "grid_page_length": 500,
+ "links": [],
+ "modified": "2026-09-12 16:49:24.935406",
  "modified_by": "Administrator",
  "module": "Support",
  "name": "Service Level",
@@ -106,6 +109,10 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

@@ -27,6 +27,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Description",
    "oldfieldname": "description",
    "oldfieldtype": "Small Text",
@@ -46,10 +47,11 @@
    "label": "Requires Purchase Invoice"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-flag",
  "idx": 1,
  "links": [],
- "modified": "2024-01-29 12:58:42.231688",
+ "modified": "2026-09-12 17:22:42.176779",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Expense Claim Type",
@@ -80,6 +82,9 @@
    "role": "Employee"
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": [],

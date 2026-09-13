@@ -42,6 +42,7 @@
   {
    "fieldname": "source_packing_slip",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Source Package",
    "options": "Packing Slip",
@@ -58,16 +59,19 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2023-01-13 18:36:59.686103",
+ "modified": "2026-09-12 17:47:34.569691",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packing Slip Package",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

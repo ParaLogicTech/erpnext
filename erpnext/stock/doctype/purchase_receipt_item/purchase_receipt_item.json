@@ -191,7 +191,6 @@
    "bold": 1,
    "fieldname": "item_code",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item Code",
@@ -216,7 +215,6 @@
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Item Name",
    "oldfieldname": "item_name",
    "oldfieldtype": "Data",
@@ -578,6 +576,7 @@
   {
    "fieldname": "purchase_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Purchase Order",
    "no_copy": 1,
    "oldfieldname": "prevdoc_docname",
@@ -655,6 +654,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Project",
    "options": "Project",
@@ -1486,6 +1486,7 @@
   {
    "fieldname": "work_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Work Order",
    "no_copy": 1,
    "options": "Work Order",
@@ -1506,7 +1507,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-05-12 07:58:33.079933",
+ "modified": "2026-09-12 17:55:25.403238",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt Item",
@@ -1515,6 +1516,7 @@
  "permissions": [],
  "quick_entry": 1,
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

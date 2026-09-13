@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "naming_series:",
  "creation": "2018-06-18 16:51:49.994750",
  "doctype": "DocType",
@@ -25,7 +26,6 @@
    "fieldtype": "Select",
    "hidden": 1,
    "in_filter": 1,
-   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Series",
    "options": "POS-CLO-",
@@ -124,8 +124,10 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
- "modified": "2021-11-03 13:09:18.253988",
+ "links": [],
+ "modified": "2026-09-12 16:16:25.088906",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Cashier Closing",
@@ -145,7 +147,10 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

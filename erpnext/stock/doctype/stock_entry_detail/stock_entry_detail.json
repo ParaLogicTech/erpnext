@@ -126,7 +126,6 @@
    "bold": 1,
    "fieldname": "item_code",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item Code",
@@ -143,7 +142,6 @@
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Item Name",
    "print_hide": 1,
    "read_only": 1
@@ -472,6 +470,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project"
   },
@@ -588,6 +587,7 @@
   {
    "fieldname": "packing_slip",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Package",
    "no_copy": 1,
    "options": "Packing Slip",
@@ -638,6 +638,7 @@
   {
    "fieldname": "work_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Work Order",
    "no_copy": 1,
    "options": "Work Order",
@@ -656,7 +657,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-30 16:13:27.130503",
+ "modified": "2026-09-12 17:55:12.087696",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Entry Detail",
@@ -664,6 +665,7 @@
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": []

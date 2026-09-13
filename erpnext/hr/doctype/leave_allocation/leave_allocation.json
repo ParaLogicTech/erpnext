@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2013-02-20 19:10:38",
@@ -44,7 +45,6 @@
   {
    "fieldname": "employee",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Employee",
@@ -58,7 +58,6 @@
    "fetch_from": "employee.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Employee Name",
    "read_only": 1,
@@ -210,10 +209,12 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-ok",
  "idx": 1,
  "is_submittable": 1,
- "modified": "2022-12-29 18:40:57.188397",
+ "links": [],
+ "modified": "2026-09-12 17:22:14.715599",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Leave Allocation",
@@ -250,9 +251,12 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "employee,employee_name,leave_type,total_leaves_allocated",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "timeline_field": "employee"
 }

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "EDU-GRD-.YYYY.-.#####",
@@ -28,21 +29,18 @@
   {
    "fieldname": "guardian_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Guardian Name",
    "reqd": 1
   },
   {
    "fieldname": "email_address",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Email Address"
   },
   {
    "fieldname": "mobile_number",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Mobile Number"
   },
@@ -118,8 +116,10 @@
    "options": "Guardian Interest"
   }
  ],
+ "grid_page_length": 500,
  "image_field": "image",
- "modified": "2020-03-03 15:41:16.256738",
+ "links": [],
+ "modified": "2026-09-12 16:33:31.469990",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Guardian",
@@ -140,8 +140,10 @@
  ],
  "quick_entry": 1,
  "restrict_to_domain": "Education",
- "show_name_in_global_search": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "guardian_name"
 }

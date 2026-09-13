@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "hash",
  "creation": "2013-02-22 01:27:49",
  "doctype": "DocType",
@@ -15,6 +16,7 @@
   {
    "fieldname": "sales_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Sales Order",
    "oldfieldname": "prevdoc_docname",
@@ -59,14 +61,19 @@
    "width": "120px"
   }
  ],
+ "grid_page_length": 500,
  "idx": 1,
  "istable": 1,
- "modified": "2020-03-03 15:42:37.159409",
+ "links": [],
+ "modified": "2026-09-12 17:39:02.515502",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Production Plan Sales Order",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
- "sort_order": "ASC"
+ "sort_order": "ASC",
+ "states": []
 }

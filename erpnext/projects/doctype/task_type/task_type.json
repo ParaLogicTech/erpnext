@@ -21,6 +21,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Description"
   },
   {
@@ -44,7 +45,7 @@
   }
  ],
  "links": [],
- "modified": "2025-06-30 13:47:31.221711",
+ "modified": "2026-09-12 17:21:34.881217",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task Type",
@@ -83,6 +84,9 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],

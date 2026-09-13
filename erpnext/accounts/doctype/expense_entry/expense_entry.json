@@ -75,7 +75,6 @@
   {
    "fieldname": "payable_account",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "label": "Payable Account",
    "options": "Account"
   },
@@ -171,6 +170,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project"
   },
@@ -290,6 +290,7 @@
   {
    "fieldname": "bill_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Bill No"
   },
   {
@@ -318,7 +319,7 @@
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-21 14:53:42.547212",
+ "modified": "2026-09-12 17:32:01.422677",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Expense Entry",
@@ -342,6 +343,8 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

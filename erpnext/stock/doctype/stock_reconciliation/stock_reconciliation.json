@@ -257,6 +257,7 @@
   {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Remarks",
    "no_copy": 1
   }
@@ -266,7 +267,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-29 14:02:49.845540",
+ "modified": "2026-09-12 17:14:55.271059",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Reconciliation",

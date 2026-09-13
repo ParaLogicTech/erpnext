@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2019-03-07 12:07:09.416101",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -15,6 +16,7 @@
   {
    "fieldname": "sales_invoice",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Invoice",
    "options": "Sales Invoice",
@@ -60,15 +62,20 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
- "modified": "2020-02-20 16:16:20.724620",
+ "links": [],
+ "modified": "2026-09-12 17:39:53.422919",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Discounted Invoice",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

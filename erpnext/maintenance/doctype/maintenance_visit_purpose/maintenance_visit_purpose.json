@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "hash",
  "creation": "2013-02-22 01:28:06",
  "doctype": "DocType",
@@ -31,7 +32,6 @@
    "fetch_from": "item_code.item_name",
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Item Name",
    "oldfieldname": "item_name",
@@ -123,15 +123,20 @@
    "width": "160px"
   }
  ],
+ "grid_page_length": 500,
  "idx": 1,
  "istable": 1,
- "modified": "2020-03-03 15:36:37.999225",
+ "links": [],
+ "modified": "2026-09-12 16:17:41.125806",
  "modified_by": "Administrator",
  "module": "Maintenance",
  "name": "Maintenance Visit Purpose",
  "owner": "ashwini@webnotestech.com",
  "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

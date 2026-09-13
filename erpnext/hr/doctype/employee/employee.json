@@ -273,11 +273,13 @@
   {
    "fieldname": "emergency_phone_number",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Emergency Phone"
   },
   {
    "fieldname": "person_to_be_contacted",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Emergency Contact Name"
   },
   {
@@ -297,6 +299,7 @@
    "fieldname": "user_id",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
+   "in_global_search": 1,
    "label": "User ID",
    "options": "User"
   },
@@ -467,6 +470,7 @@
   {
    "fieldname": "bank_ac_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Bank Account No.",
    "oldfieldname": "bank_ac_no",
    "oldfieldtype": "Data"
@@ -493,6 +497,7 @@
    "allow_in_quick_entry": 1,
    "fieldname": "cell_number",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Mobile"
   },
   {
@@ -504,6 +509,7 @@
   {
    "fieldname": "prefered_email",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Prefered Email",
    "options": "Email",
    "read_only": 1
@@ -513,6 +519,7 @@
    "description": "Provide Email Address registered in company",
    "fieldname": "company_email",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Company Email",
    "oldfieldname": "company_email",
@@ -523,6 +530,7 @@
    "allow_in_quick_entry": 1,
    "fieldname": "personal_email",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Personal Email",
    "options": "Email"
@@ -581,6 +589,7 @@
   {
    "fieldname": "passport_number",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Passport Number"
   },
   {
@@ -770,6 +779,7 @@
    "bold": 1,
    "fieldname": "attendance_device_id",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Attendance Device User ID",
    "no_copy": 1,
@@ -812,12 +822,14 @@
   {
    "fieldname": "tax_cnic",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "CNIC"
   },
   {
    "fieldname": "tax_id",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Tax Id"
   },
   {
@@ -909,7 +921,7 @@
  "idx": 24,
  "image_field": "image",
  "links": [],
- "modified": "2026-04-27 11:56:14.883619",
+ "modified": "2026-09-12 16:59:20.224103",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee",
@@ -969,6 +981,7 @@
  ],
  "quick_entry": 1,
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "employee_name,designation,branch",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

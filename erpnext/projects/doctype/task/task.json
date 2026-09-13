@@ -231,6 +231,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
+   "in_global_search": 1,
    "label": "Task Description",
    "oldfieldname": "description",
    "oldfieldtype": "Text Editor",
@@ -565,6 +566,7 @@
   {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Remarks"
   },
   {
@@ -586,7 +588,7 @@
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-09-03 18:12:40.090712",
+ "modified": "2026-09-12 18:07:25.196538",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Task",

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2015-11-04 15:56:30.004034",
@@ -19,7 +20,6 @@
   {
    "fieldname": "instructor_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Instructor Name",
    "reqd": 1
   },
@@ -70,7 +70,8 @@
   }
  ],
  "image_field": "image",
- "modified": "2020-03-03 16:15:05.922401",
+ "links": [],
+ "modified": "2026-09-12 16:33:32.394086",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Instructor",
@@ -97,8 +98,10 @@
   }
  ],
  "restrict_to_domain": "Education",
- "show_name_in_global_search": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "instructor_name"
 }

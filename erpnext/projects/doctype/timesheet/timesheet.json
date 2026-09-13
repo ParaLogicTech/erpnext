@@ -79,6 +79,7 @@
   {
    "fieldname": "sales_invoice",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Sales Invoice",
    "no_copy": 1,
    "options": "Sales Invoice",
@@ -123,7 +124,6 @@
    "fetch_from": "employee.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Employee Name",
    "print_hide": 1,
    "read_only": 1
@@ -318,7 +318,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-10 00:58:23.761782",
+ "modified": "2026-09-12 22:31:36.357894",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Timesheet",
@@ -386,6 +386,8 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": [],

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "ACC-SUB-.YYYY.-.#####",
  "creation": "2017-07-18 17:50:43.967266",
  "doctype": "DocType",
@@ -197,7 +198,9 @@
    "fieldtype": "Column Break"
   }
  ],
- "modified": "2020-08-27 23:30:02.504042",
+ "grid_page_length": 500,
+ "links": [],
+ "modified": "2026-09-12 22:30:52.827106",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Subscription",
@@ -240,7 +243,11 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

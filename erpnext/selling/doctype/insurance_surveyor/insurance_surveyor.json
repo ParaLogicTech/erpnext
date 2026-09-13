@@ -39,7 +39,7 @@
   }
  ],
  "links": [],
- "modified": "2025-03-17 20:13:30.852727",
+ "modified": "2026-09-12 16:49:12.042748",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Insurance Surveyor",
@@ -107,7 +107,10 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "insurance_surveyor_company, insurance_surveyor_mobile_no",
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

@@ -20,7 +20,7 @@
   }
  ],
  "links": [],
- "modified": "2024-11-29 23:07:17.746782",
+ "modified": "2026-09-12 16:49:16.578654",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Claim Billing Type",
@@ -115,6 +115,9 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],

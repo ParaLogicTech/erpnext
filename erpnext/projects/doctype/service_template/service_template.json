@@ -160,6 +160,7 @@
   {
    "fieldname": "service_template_name",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Service Template Name",
@@ -229,6 +230,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
+   "in_global_search": 1,
    "label": "Description"
   },
   {
@@ -259,7 +261,7 @@
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2026-04-24 12:31:53.469679",
+ "modified": "2026-09-12 17:11:03.877726",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Service Template",
@@ -343,7 +345,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "service_template_name, service_template_category, applies_to_item_name",
+ "show_name_in_global_search": 1,
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],

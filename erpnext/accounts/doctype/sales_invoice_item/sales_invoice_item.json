@@ -223,7 +223,6 @@
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Item Name",
    "oldfieldname": "item_name",
    "oldfieldtype": "Data",
@@ -742,6 +741,7 @@
   {
    "fieldname": "sales_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Sales Order",
    "no_copy": 1,
    "oldfieldname": "sales_order",
@@ -754,6 +754,7 @@
   {
    "fieldname": "delivery_note",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Delivery Note",
    "no_copy": 1,
    "oldfieldname": "delivery_note",
@@ -1396,6 +1397,7 @@
   {
    "fieldname": "quotation",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Quotation",
    "no_copy": 1,
    "oldfieldname": "sales_order",
@@ -1420,6 +1422,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project",
    "search_index": 1
@@ -1462,6 +1465,7 @@
   {
    "fieldname": "packing_slip",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Package",
    "no_copy": 1,
    "options": "Packing Slip",
@@ -1641,6 +1645,7 @@
   {
    "fieldname": "proforma_invoice",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Proforma Invoice",
    "no_copy": 1,
    "oldfieldname": "delivery_note",
@@ -1689,7 +1694,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-08 16:35:31.095218",
+ "modified": "2026-09-12 17:52:28.874623",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice Item",
@@ -1697,6 +1702,7 @@
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
