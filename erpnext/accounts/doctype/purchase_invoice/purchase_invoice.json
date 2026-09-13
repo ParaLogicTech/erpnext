@@ -327,7 +327,8 @@
    "label": "Company",
    "options": "Company",
    "print_hide": 1,
-   "remember_last_selected_value": 1
+   "remember_last_selected_value": 1,
+   "reqd": 1
   },
   {
    "fieldname": "cost_center",
@@ -1902,7 +1903,7 @@
  "idx": 204,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 22:35:36.406069",
+ "modified": "2026-09-13 15:59:17.439105",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Purchase Invoice",
