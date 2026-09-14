@@ -5,7 +5,12 @@ import frappe
 from frappe.utils import cint, flt, cstr
 from frappe import _
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_target_warehouse_validation, get_last_purchase_rate, get_min_margin_validation
+from erpnext.stock.get_item_details import (
+	get_target_warehouse_validation,
+	get_last_purchase_rate,
+	get_min_margin_validation,
+	get_skip_delivery_note,
+)
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
@@ -560,6 +565,42 @@ class SellingController(TransactionController):
 				raise_error_if_no_rate=False,
 				ignore_zero_rate=True,
 			))
+
+	def set_skip_delivery_note(self):
+		for d in self.get("items"):
+			self.set_skip_delivery_note_for_row(d)
+
+		self.set_skip_delivery_note_for_transaction()
+
+	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
+		if row.item_code:
+			item = frappe.get_cached_doc("Item", row.item_code)
+			row.skip_delivery_note = get_skip_delivery_note(
+				item,
+				delivered_by_supplier=cint(row.get("delivered_by_supplier")),
+				doc=self,
+			)
+			if not row.skip_delivery_note:
+				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
+				if hooked_skip_delivery_note is not None:
+					row.skip_delivery_note = 1 if hooked_skip_delivery_note else 0
+				else:
+					row.skip_delivery_note = 0
+		else:
+			row.skip_delivery_note = 1
+
+		if update:
+			row.db_set("skip_delivery_note", row.skip_delivery_note, update_modified=update_modified)
+
+	def get_skip_delivery_note(self, row):
+		return None
+
+	def set_skip_delivery_note_for_transaction(self, update=False, update_modified=True):
+		all_skip_delivery_note = all(d.skip_delivery_note for d in self.get("items"))
+		self.skip_delivery_note = cint(all_skip_delivery_note)
+
+		if update:
+			self.db_set("skip_delivery_note", self.skip_delivery_note, update_modified=update_modified)
 
 	def get_item_list(self):
 		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle

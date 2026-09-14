@@ -260,7 +260,6 @@
    "fetch_from": "supplier.supplier_name",
    "fieldname": "supplier_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Supplier Name",
    "read_only": 1
   },
@@ -308,6 +307,7 @@
    "allow_on_submit": 1,
    "fieldname": "order_confirmation_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Order Confirmation No",
    "no_copy": 1
   },
@@ -407,7 +407,6 @@
    "allow_on_submit": 1,
    "fieldname": "contact_display",
    "fieldtype": "Small Text",
-   "in_global_search": 1,
    "label": "Contact Name",
    "read_only": 1
   },
@@ -1133,6 +1132,7 @@
    "allow_on_submit": 1,
    "fieldname": "proforma_bill_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Proforma Invoice No",
    "no_copy": 1
   },
@@ -1401,6 +1401,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project",
    "print_hide": 1
@@ -1472,6 +1473,7 @@
   {
    "fieldname": "inter_company_reference",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Inter Company Order Reference",
    "no_copy": 1,
    "options": "Sales Order",
@@ -1676,7 +1678,7 @@
  "idx": 105,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-20 13:47:03.839163",
+ "modified": "2026-09-12 17:54:01.927838",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Purchase Order",

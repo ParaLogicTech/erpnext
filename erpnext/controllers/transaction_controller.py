@@ -1,6 +1,14 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cstr, cint, getdate, format_date, clean_whitespace
+from frappe.utils import (
+	flt,
+	cstr,
+	cint,
+	getdate,
+	format_date,
+	clean_whitespace,
+	round_based_on_smallest_currency_fraction,
+)
 from erpnext.controllers.stock_controller import StockController
 from erpnext.stock.get_item_details import (
 	get_item_details,
@@ -235,14 +243,25 @@ class TransactionController(StockController):
 		if not skip_pricing_rules:
 			if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
 				self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
-			if ret.get("pricing_rules") and not self.get("ignore_pricing_rule"):
+			if (ret.get("pricing_rules") or ret.get("pricing_rule_removed")) and not self.get("ignore_pricing_rule"):
 				self.apply_pricing_rule_on_item(item, ret)
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
 		pass
 
 	def apply_pricing_rule_on_item(self, item, pricing_rule_args):
-		if not pricing_rule_args.get("do_not_force_pricing_rule") and not pricing_rule_args.get("validate_applied_rule"):
+		if pricing_rule_args.get("validate_applied_rule"):
+			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
+				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+				for field in ['discount_percentage', 'discount_amount', 'rate']:
+					if item.get(field) < pricing_rule_doc.get(field):
+						title = frappe.utils.get_link_to_form("Pricing Rule", pricing_rule)
+
+						frappe.msgprint(_("Row {0}: user has not applied the rule {1} on the item {2}")
+							.format(item.idx, frappe.bold(title), frappe.bold(item.item_code)))
+			return
+
+		if not pricing_rule_args.get("do_not_force_pricing_rule") or pricing_rule_args.get("pricing_rule_removed"):
 			if pricing_rule_args.get("price_or_product_discount") == 'Price':
 				item.set("pricing_rules", pricing_rule_args.get("pricing_rules"))
 				item.set("discount_percentage", pricing_rule_args.get("discount_percentage"))
@@ -271,16 +290,6 @@ class TransactionController(StockController):
 				item.set("margin_rate_or_amount", pricing_rule_args.get("margin_rate_or_amount"))
 				if pricing_rule_args.get("margin_rate_or_amount"):
 					item.set("margin_type", pricing_rule_args.get("margin_type"))
-
-		if pricing_rule_args.get("validate_applied_rule"):
-			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
-				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
-				for field in ['discount_percentage', 'discount_amount', 'rate']:
-					if item.get(field) < pricing_rule_doc.get(field):
-						title = frappe.utils.get_link_to_form("Pricing Rule", pricing_rule)
-
-						frappe.msgprint(_("Row {0}: user has not applied the rule {1} on the item {2}")
-							.format(item.idx, frappe.bold(title), frappe.bold(item.item_code)))
 
 	def set_missing_applies_to_details(self):
 		if not self.meta.has_field('applies_to_item'):
@@ -719,6 +728,20 @@ class TransactionController(StockController):
 				group_data[total_field] = sum([flt(d.get(source_field)) for d in group_data['items']])
 				if self.meta.has_field("conversion_rate") and self.meta.has_field("base_" + total_field):
 					group_data["base_" + total_field] = group_data[total_field] * self.conversion_rate
+
+			if self.meta.has_field("rounded_total") and self.meta.has_field("grand_total"):
+				group_data.rounded_total = round_based_on_smallest_currency_fraction(
+					group_data.grand_total,
+					self.currency,
+					self.precision("rounded_total"),
+					self.get("round_to_nearest") or None,
+				)
+
+				if self.meta.has_field("previous_grand_total"):
+					group_data.including_previous_grand_total = group_data.rounded_total + flt(self.previous_grand_total)
+
+			if self.meta.has_field("discount_amount"):
+				group_data.discount_amount = group_data.grand_total_before_discount - group_data.grand_total
 
 			if self.meta.has_field("taxes"):
 				self.calculate_taxes_for_group(group_data)
@@ -1487,7 +1510,7 @@ def update_child_items(parent_doctype, parent_name, data):
 
 	# Validate before Save
 	if parent_doctype == "Sales Order":
-		parent_doc.set_skip_delivery_note_for_order()
+		parent_doc.set_skip_delivery_note_for_transaction()
 		parent_doc.set_gross_profit()
 		parent_doc.validate_delivery_date()
 		parent_doc.validate_max_discount()

@@ -86,7 +86,6 @@
    "fetch_from": "item.item_name",
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Production Item Name",
    "read_only": 1
   },
@@ -360,6 +359,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "oldfieldname": "project",
    "oldfieldtype": "Link",
@@ -515,7 +515,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-30 14:16:36.770178",
+ "modified": "2026-09-12 23:05:38.182480",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM",
@@ -551,6 +551,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "item, item_name",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:template",
@@ -35,7 +36,6 @@
   {
    "fieldname": "template",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Template Name",
    "reqd": 1,
@@ -167,7 +167,9 @@
    "read_only": 1
   }
  ],
- "modified": "2021-12-18 18:21:22.392276",
+ "grid_page_length": 500,
+ "links": [],
+ "modified": "2026-09-12 16:28:29.026791",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Clinical Procedure Template",
@@ -218,9 +220,12 @@
   }
  ],
  "restrict_to_domain": "Healthcare",
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "template",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "template",
  "track_changes": 1,
  "track_seen": 1

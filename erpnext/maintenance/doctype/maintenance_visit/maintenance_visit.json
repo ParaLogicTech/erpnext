@@ -63,7 +63,6 @@
   {
    "fieldname": "customer",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "label": "Customer",
    "oldfieldname": "customer",
    "oldfieldtype": "Link",
@@ -77,7 +76,6 @@
    "fieldname": "customer_name",
    "fieldtype": "Data",
    "hidden": 1,
-   "in_global_search": 1,
    "label": "Customer Name",
    "read_only": 1
   },
@@ -92,7 +90,6 @@
    "fieldname": "contact_display",
    "fieldtype": "Small Text",
    "hidden": 1,
-   "in_global_search": 1,
    "label": "Contact",
    "read_only": 1
   },
@@ -193,6 +190,7 @@
   {
    "fieldname": "customer_feedback",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Customer Feedback",
    "oldfieldname": "customer_feedback",
    "oldfieldtype": "Small Text"
@@ -293,7 +291,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-06 13:17:18.337831",
+ "modified": "2026-09-12 17:56:22.542031",
  "modified_by": "Administrator",
  "module": "Maintenance",
  "name": "Maintenance Visit",
@@ -325,6 +323,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "status,maintenance_type,customer,customer_name,mntc_date,company",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

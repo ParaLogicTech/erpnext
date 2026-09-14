@@ -59,7 +59,6 @@
   {
    "fieldname": "employee",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Employee",
    "options": "Employee",
@@ -71,7 +70,6 @@
    "fetch_from": "employee.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Employee Name",
    "read_only": 1
   },
@@ -156,6 +154,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Reason"
   },
   {
@@ -307,7 +306,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-09-09 12:10:08.855803",
+ "modified": "2026-09-12 17:21:56.993571",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Leave Application",
@@ -386,7 +385,10 @@
    "role": "All"
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "employee,employee_name,leave_type,from_date,to_date,total_leave_days",
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

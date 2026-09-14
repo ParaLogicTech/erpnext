@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:program_name",
@@ -63,6 +64,7 @@
    "depends_on": "is_published",
    "fieldname": "description",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Description"
   },
   {
@@ -107,8 +109,10 @@
    "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 500,
  "image_field": "hero_image",
- "modified": "2020-03-03 15:37:13.897832",
+ "links": [],
+ "modified": "2026-09-12 17:22:07.107213",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Program",
@@ -170,8 +174,10 @@
   }
  ],
  "restrict_to_domain": "Education",
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "program_name",
- "show_name_in_global_search": 1,
  "sort_field": "modified",
- "sort_order": "DESC"
+ "sort_order": "DESC",
+ "states": []
 }

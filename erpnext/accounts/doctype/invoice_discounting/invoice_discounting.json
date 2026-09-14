@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "ACC-INV-DISC-.YYYY.-.#####",
  "creation": "2019-03-07 12:01:56.296952",
@@ -167,8 +168,10 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
- "modified": "2020-03-03 15:37:17.741138",
+ "links": [],
+ "modified": "2026-09-12 16:49:29.193561",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Invoice Discounting",
@@ -191,7 +194,11 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

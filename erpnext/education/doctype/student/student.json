@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
@@ -63,7 +64,6 @@
   {
    "fieldname": "first_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "First Name",
    "reqd": 1
   },
@@ -75,7 +75,6 @@
   {
    "fieldname": "last_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Last Name"
   },
   {
@@ -100,7 +99,6 @@
   {
    "fieldname": "student_email_id",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Student Email Address",
    "reqd": 1,
    "unique": 1
@@ -108,7 +106,6 @@
   {
    "fieldname": "student_mobile_number",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Student Mobile Number"
   },
   {
@@ -253,8 +250,10 @@
    "label": "Title"
   }
  ],
+ "grid_page_length": 500,
  "image_field": "image",
- "modified": "2020-03-03 16:13:59.733525",
+ "links": [],
+ "modified": "2026-09-12 16:33:30.994658",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Student",
@@ -297,8 +296,10 @@
   }
  ],
  "restrict_to_domain": "Education",
- "show_name_in_global_search": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "title"
 }

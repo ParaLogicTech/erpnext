@@ -651,7 +651,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		this.frm.from_barcode = false;
 
 		if (item.item_code || item.barcode || item.serial_no || item.vehicle) {
-			if (!this.validate_company_and_party()) {
+			if (!this.validate_company_is_set()) {
 				this.frm.fields_dict["items"].grid.grid_rows[item.idx - 1].remove();
 			} else {
 				return this.get_item_details(item, (r) => {
@@ -715,7 +715,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					campaign: this.frm.doc.campaign,
 					coupon_code: this.frm.doc.coupon_code,
 					qty: item.qty || 1,
-					stock_qty: item.stock_qty,
+					stock_qty: item.stock_qty || 1,
 					manufacturer: item.manufacturer,
 					stock_uom: item.stock_uom,
 					pos_profile: this.frm.doc.doctype == 'Sales Invoice' ? this.frm.doc.pos_profile : '',
@@ -972,11 +972,13 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		this.set_company_address();
 	}
 
-	set_company_address() {
+	set_company_address(is_shipping_address) {
 		if (frappe.meta.get_docfield(this.frm.doctype, "company_address")) {
 			erpnext.utils.get_company_address({
 				company: this.frm.doc.company,
 				branch: this.frm.doc.branch,
+				warehouse: this.frm.doc.set_warehouse,
+				is_shipping_address: cint(is_shipping_address),
 			}, (r) => {
 				if (r.message) {
 					this.frm.set_value("company_address", r.message);
@@ -2012,20 +2014,20 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		})
 	}
 
-	validate_company_and_party() {
-		var me = this;
-		var valid = true;
+	validate_company_is_set() {
+		let valid = true;
 
-		$.each(["company", "customer"], function(i, fieldname) {
-			if(frappe.meta.has_field(me.frm.doc.doctype, fieldname) && me.frm.doc.doctype != "Purchase Order") {
-				if (!me.frm.doc[fieldname]) {
+		for (let fieldname of ["company"]) {
+			if (frappe.meta.has_field(this.frm.doc.doctype, fieldname)) {
+				if (!this.frm.doc[fieldname]) {
 					frappe.msgprint(__("Please specify") + ": " +
-						frappe.meta.get_label(me.frm.doc.doctype, fieldname, me.frm.doc.name) +
+						frappe.meta.get_label(this.frm.doc.doctype, fieldname, this.frm.doc.name) +
 						". " + __("It is needed to fetch Item Details."));
 					valid = false;
 				}
 			}
-		});
+		}
+
 		return valid;
 	}
 

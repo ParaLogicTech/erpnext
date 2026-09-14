@@ -98,6 +98,7 @@
   {
    "fieldname": "purpose",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Purpose",
    "reqd": 1
@@ -292,7 +293,7 @@
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-21 16:28:27.169102",
+ "modified": "2026-09-12 17:22:09.353498",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Employee Advance",
@@ -361,7 +362,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "employee,employee_name,advance_amount,status,balance_amount",
+ "show_name_in_global_search": 1,
  "sort_field": "posting_date",
  "sort_order": "DESC",
  "states": [],

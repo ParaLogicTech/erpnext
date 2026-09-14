@@ -193,7 +193,6 @@
    "fetch_from": "supplier.supplier_name",
    "fieldname": "supplier_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Supplier Name",
    "read_only": 1
   },
@@ -268,7 +267,6 @@
    "allow_on_submit": 1,
    "fieldname": "contact_display",
    "fieldtype": "Small Text",
-   "in_global_search": 1,
    "label": "Contact",
    "read_only": 1
   },
@@ -819,6 +817,7 @@
   {
    "fieldname": "opportunity",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Opportunity",
    "no_copy": 1,
    "options": "Opportunity",
@@ -1057,6 +1056,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project",
    "print_hide": 1
@@ -1190,7 +1190,7 @@
  "idx": 29,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-20 13:47:08.131518",
+ "modified": "2026-09-12 17:45:46.507287",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Supplier Quotation",

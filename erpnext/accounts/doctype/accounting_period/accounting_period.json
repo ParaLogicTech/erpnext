@@ -63,7 +63,7 @@
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2026-04-02 12:59:33.963611",
+ "modified": "2026-09-12 16:49:05.742416",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting Period",
@@ -107,6 +107,8 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

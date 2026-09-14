@@ -114,6 +114,7 @@
   {
    "fieldname": "reference_name",
    "fieldtype": "Dynamic Link",
+   "in_global_search": 1,
    "label": "Source Document Name",
    "options": "reference_doctype",
    "read_only": 1,
@@ -126,6 +127,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Batch Description",
    "oldfieldname": "description",
    "oldfieldtype": "Small Text",
@@ -157,7 +159,7 @@
  "idx": 1,
  "image_field": "image",
  "links": [],
- "modified": "2024-02-16 05:04:47.709827",
+ "modified": "2026-09-12 23:17:38.966989",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Batch",
@@ -226,7 +228,10 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "item, item_name",
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

@@ -116,6 +116,7 @@
    "depends_on": "eval: doc.get_items_from == \"Sales Order\"",
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project"
   },
@@ -299,7 +300,7 @@
  "icon": "fa fa-calendar",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-04-21 16:28:36.612287",
+ "modified": "2026-09-12 17:33:20.510187",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Production Plan",
@@ -321,6 +322,8 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": []

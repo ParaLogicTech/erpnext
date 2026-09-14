@@ -16,7 +16,7 @@ from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
-from erpnext.stock.get_item_details import get_skip_delivery_note, get_default_bom
+from erpnext.stock.get_item_details import get_default_bom
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle, validate_bundled_item_list, make_bundled_item_list
 
@@ -150,7 +150,7 @@ class SalesOrder(SellingController):
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate=for_validate)
-		self.set_skip_delivery_note_for_order()
+		self.set_skip_delivery_note_for_transaction()
 
 	def set_missing_item_details_for_row(self, item, for_validate=False, skip_pricing_rules=False, parent_dict=None):
 		super().set_missing_item_details_for_row(
@@ -160,38 +160,6 @@ class SalesOrder(SellingController):
 			parent_dict=parent_dict,
 		)
 		self.set_skip_delivery_note_for_row(item)
-
-	def set_skip_delivery_note(self):
-		for d in self.get("items"):
-			self.set_skip_delivery_note_for_row(d)
-
-		self.set_skip_delivery_note_for_order()
-
-	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
-		if row.item_code:
-			item = frappe.get_cached_doc("Item", row.item_code)
-			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier), doc=self)
-			if not row.skip_delivery_note:
-				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
-				if hooked_skip_delivery_note is not None:
-					row.skip_delivery_note = 1 if hooked_skip_delivery_note else 0
-				else:
-					row.skip_delivery_note = 0
-		else:
-			row.skip_delivery_note = 1
-
-		if update:
-			row.db_set("skip_delivery_note", row.skip_delivery_note, update_modified=update_modified)
-
-	def get_skip_delivery_note(self, row):
-		return None
-
-	def set_skip_delivery_note_for_order(self, update=False, update_modified=True):
-		all_skip_delivery_note = all(d.skip_delivery_note for d in self.get("items"))
-		self.skip_delivery_note = cint(all_skip_delivery_note)
-
-		if update:
-			self.db_set("skip_delivery_note", self.skip_delivery_note, update_modified=update_modified)
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()

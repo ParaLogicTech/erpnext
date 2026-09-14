@@ -31,7 +31,7 @@
   }
  ],
  "links": [],
- "modified": "2024-11-29 22:57:53.053125",
+ "modified": "2026-09-12 16:49:16.868121",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle Color",
@@ -129,7 +129,10 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "color_code",
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

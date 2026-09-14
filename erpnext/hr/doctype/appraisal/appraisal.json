@@ -167,6 +167,7 @@
    "description": "Any other remarks, noteworthy effort that should go in the records.",
    "fieldname": "remarks",
    "fieldtype": "Text",
+   "in_global_search": 1,
    "label": "Remarks",
    "no_copy": 1
   },
@@ -205,11 +206,12 @@
    "width": "150px"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-thumbs-up",
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-08-30 22:56:22.650572",
+ "modified": "2026-09-12 17:17:21.860136",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Appraisal",
@@ -253,6 +255,8 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "status, employee, employee_name",
  "sort_field": "modified",
  "sort_order": "DESC",

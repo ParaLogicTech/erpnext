@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2016-06-14 19:21:34.321662",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -13,7 +14,6 @@
   {
    "fieldname": "time_sheet",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Time Sheet",
    "options": "Timesheet"
@@ -43,15 +43,20 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
- "modified": "2020-03-03 15:37:49.968324",
+ "links": [],
+ "modified": "2026-09-12 16:16:11.900903",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice Timesheet",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

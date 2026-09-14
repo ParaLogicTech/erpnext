@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_rename": 1,
  "autoname": "field:plan_name",
  "creation": "2018-02-24 11:31:23.066506",
@@ -138,7 +139,9 @@
    "fieldtype": "Column Break"
   }
  ],
- "modified": "2020-03-03 15:37:00.857195",
+ "grid_page_length": 500,
+ "links": [],
+ "modified": "2026-09-12 16:49:29.592192",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Subscription Plan",
@@ -157,7 +160,11 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

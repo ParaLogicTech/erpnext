@@ -42,7 +42,6 @@
    "fieldname": "item_code",
    "fieldtype": "Link",
    "in_filter": 1,
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item Code",
@@ -98,7 +97,6 @@
   {
    "fieldname": "price_list",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Price List",
@@ -161,7 +159,6 @@
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
    "in_filter": 1,
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Rate",
    "oldfieldname": "ref_rate",
@@ -231,10 +228,11 @@
    "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-flag",
  "idx": 1,
  "links": [],
- "modified": "2024-08-25 03:32:22.132684",
+ "modified": "2026-09-12 16:31:46.137573",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Price",
@@ -302,6 +300,8 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "valid_from",
  "sort_order": "DESC",
  "states": [],

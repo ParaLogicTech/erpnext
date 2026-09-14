@@ -16,9 +16,8 @@ frappe.listview_settings['Sales Invoice'] = {
 			"Paid": "green",
 			"Return": "light-gray",
 			"Credit Note Issued": "grey",
-			"Unpaid and Discounted": "orange",
-			"Overdue and Discounted": "red",
 			"Overdue": "red",
+			"To Deliver": "red",
 		};
 		return [__(doc.status), status_color[doc.status], "status,=,"+doc.status];
 	},

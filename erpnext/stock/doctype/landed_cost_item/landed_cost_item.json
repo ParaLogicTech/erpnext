@@ -106,6 +106,7 @@
   {
    "fieldname": "purchase_receipt",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Purchase Receipt",
    "options": "Purchase Receipt",
    "print_hide": 1,
@@ -115,6 +116,7 @@
   {
    "fieldname": "purchase_invoice",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Purchase Invoice",
    "options": "Purchase Invoice",
    "print_hide": 1,
@@ -124,6 +126,7 @@
   {
    "fieldname": "purchase_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Purchase Order",
    "options": "Purchase Order",
    "print_hide": 1,
@@ -195,12 +198,14 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-04 16:28:41.839329",
+ "modified": "2026-09-12 17:45:27.203948",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Landed Cost Item",
  "owner": "wasim@webnotestech.com",
  "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

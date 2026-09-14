@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "Prompt",
@@ -200,6 +201,7 @@
    "depends_on": "eval:doc.applicable_for==\"Campaign\"",
    "fieldname": "campaign",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Campaign",
    "options": "Campaign"
   },
@@ -276,7 +278,9 @@
    "options": "Promotional Scheme Product Discount"
   }
  ],
- "modified": "2020-03-03 15:37:38.923877",
+ "grid_page_length": 500,
+ "links": [],
+ "modified": "2026-09-12 17:57:30.907509",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Promotional Scheme",
@@ -331,7 +335,11 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

@@ -198,6 +198,7 @@
   {
    "fieldname": "customer_group",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_list_view": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
@@ -224,6 +225,7 @@
    "allow_in_quick_entry": 1,
    "fieldname": "tax_id",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Tax ID"
@@ -303,6 +305,7 @@
   {
    "fieldname": "website",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Website"
   },
   {
@@ -323,6 +326,7 @@
    "bold": 1,
    "fieldname": "mobile_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Mobile No (Primary)",
@@ -333,6 +337,7 @@
    "bold": 1,
    "fieldname": "email_id",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Email Address",
@@ -349,6 +354,7 @@
    "fieldname": "primary_address",
    "fieldtype": "Small Text",
    "hidden": 1,
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Primary Address",
    "read_only": 1
@@ -380,6 +386,7 @@
   {
    "fieldname": "customer_details",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "in_preview": 1,
    "label": "Customer Details",
    "oldfieldname": "customer_details",
@@ -475,6 +482,7 @@
    "allow_in_quick_entry": 1,
    "fieldname": "tax_cnic",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "CNIC"
@@ -484,6 +492,7 @@
    "fieldname": "tax_strn",
    "fieldtype": "Data",
    "hidden": 1,
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "STRN"
   },
@@ -535,6 +544,7 @@
   {
    "fieldname": "passport_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Passport Number"
   },
   {
@@ -576,6 +586,7 @@
   {
    "fieldname": "phone_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_preview": 1,
    "label": "Landline No"
   },
@@ -605,17 +616,20 @@
   {
    "fieldname": "contact_first_name",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "First Name"
   },
   {
    "fieldname": "contact_middle_name",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Middle Name",
    "read_only": 1
   },
   {
    "fieldname": "contact_last_name",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Last Name"
   },
   {
@@ -629,6 +643,7 @@
   {
    "fieldname": "mobile_no_2",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Mobile No (Secondary)",
@@ -646,6 +661,7 @@
    "bold": 1,
    "fieldname": "reference",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Reference"
   },
   {
@@ -742,7 +758,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2026-05-08 14:53:41.715259",
+ "modified": "2026-09-12 16:56:25.083570",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",
@@ -863,6 +879,7 @@
  ],
  "quick_entry": 1,
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "customer_name, customer_group, reference, mobile_no, mobile_no_2, phone_no, email_id, tax_id, tax_cnic",
  "show_name_in_global_search": 1,
  "show_preview_popup": 1,

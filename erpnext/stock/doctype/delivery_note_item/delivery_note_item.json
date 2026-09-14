@@ -178,7 +178,6 @@
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item Code",
@@ -192,7 +191,6 @@
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Item Name",
    "oldfieldname": "item_name",
    "oldfieldtype": "Data",
@@ -738,6 +736,7 @@
    "depends_on": "eval:parent.is_return==1",
    "fieldname": "reason_for_return",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Reason for Return",
    "no_copy": 1
   },
@@ -1236,6 +1235,7 @@
   {
    "fieldname": "sales_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Sales Order",
    "no_copy": 1,
    "options": "Sales Order",
@@ -1246,6 +1246,7 @@
   {
    "fieldname": "sales_invoice",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Sales Invoice",
    "no_copy": 1,
    "options": "Sales Invoice",
@@ -1255,6 +1256,7 @@
   {
    "fieldname": "quotation",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Quotation",
    "no_copy": 1,
    "options": "Quotation",
@@ -1282,6 +1284,7 @@
   {
    "fieldname": "packing_slip",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Package",
    "no_copy": 1,
    "oldfieldname": "batch_no",
@@ -1442,7 +1445,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-28 14:12:25.245221",
+ "modified": "2026-09-12 22:37:47.434193",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Delivery Note Item",
@@ -1450,6 +1453,7 @@
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

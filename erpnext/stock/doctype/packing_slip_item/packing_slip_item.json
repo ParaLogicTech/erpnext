@@ -65,7 +65,6 @@
    "bold": 1,
    "fieldname": "item_code",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item Code",
@@ -225,6 +224,7 @@
   {
    "fieldname": "sales_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Sales Order",
    "no_copy": 1,
    "options": "Sales Order",
@@ -332,6 +332,7 @@
   {
    "fieldname": "source_packing_slip",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Source Package",
    "no_copy": 1,
    "options": "Packing Slip",
@@ -370,6 +371,7 @@
   {
    "fieldname": "work_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Work Order",
    "no_copy": 1,
    "options": "Work Order",
@@ -442,7 +444,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-08-22 12:30:55.137458",
+ "modified": "2026-09-12 17:48:10.388143",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packing Slip Item",

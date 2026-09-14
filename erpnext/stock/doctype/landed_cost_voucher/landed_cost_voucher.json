@@ -362,6 +362,7 @@
   {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Remarks",
    "no_copy": 1
   },
@@ -437,6 +438,7 @@
   {
    "fieldname": "bill_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Bill No"
   },
   {
@@ -456,7 +458,7 @@
  "icon": "icon-usd",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-06-09 11:37:24.538836",
+ "modified": "2026-09-12 17:31:01.096548",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Landed Cost Voucher",
@@ -517,6 +519,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "total_taxes_and_charges, outstanding_amount, party",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

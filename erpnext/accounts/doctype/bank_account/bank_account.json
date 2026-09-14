@@ -218,7 +218,7 @@
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2026-04-25 04:21:49.120605",
+ "modified": "2026-09-12 16:31:02.247217",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank Account",
@@ -263,7 +263,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "bank,account",
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

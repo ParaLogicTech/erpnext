@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "ACC-PCV-.YYYY.-.#####",
  "creation": "2013-01-10 16:34:07",
  "doctype": "DocType",
@@ -78,6 +79,7 @@
   {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Remarks",
    "no_copy": 1,
    "oldfieldname": "remarks",
@@ -85,10 +87,12 @@
    "reqd": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-file-text",
  "idx": 1,
  "is_submittable": 1,
- "modified": "2020-09-29 14:45:41.129297",
+ "links": [],
+ "modified": "2026-09-12 17:14:43.673541",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Period Closing Voucher",
@@ -123,8 +127,12 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "posting_date, fiscal_year",
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "closing_account_head"
 }

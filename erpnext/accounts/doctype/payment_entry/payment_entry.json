@@ -264,7 +264,6 @@
    "depends_on": "eval:(in_list([\"Internal Transfer\", \"Pay\"], doc.payment_type) || doc.party)",
    "fieldname": "paid_from",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Account Paid From",
    "options": "Account",
@@ -298,7 +297,6 @@
    "depends_on": "eval:(in_list([\"Internal Transfer\", \"Receive\"], doc.payment_type) || doc.party)",
    "fieldname": "paid_to",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Account Paid To",
    "options": "Account",
@@ -511,6 +509,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Project",
    "options": "Project",
@@ -642,6 +641,7 @@
   {
    "fieldname": "user_remark",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "User Remark",
    "no_copy": 1,
@@ -1028,7 +1028,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-30 02:54:03.938522",
+ "modified": "2026-09-12 23:23:23.777826",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Entry",
@@ -1092,6 +1092,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "payment_type, party_type, party",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

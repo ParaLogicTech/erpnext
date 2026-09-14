@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:attribute_name",
@@ -76,8 +77,10 @@
    "options": "Value\nAbbreviation"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-edit",
- "modified": "2020-10-14 02:11:09.901739",
+ "links": [],
+ "modified": "2026-09-12 16:49:25.539327",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Attribute",
@@ -93,7 +96,11 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

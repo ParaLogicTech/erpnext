@@ -42,17 +42,20 @@
   {
    "fieldname": "phone_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Landline No"
   },
   {
    "fieldname": "mobile_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Mobile No",
    "options": "Phone"
   },
   {
    "fieldname": "email",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Email Address"
   },
   {
@@ -72,7 +75,7 @@
  "icon": "fa fa-code-fork",
  "idx": 1,
  "links": [],
- "modified": "2026-02-01 04:39:53.757327",
+ "modified": "2026-09-12 17:59:27.029425",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Branch",
@@ -186,6 +189,8 @@
  ],
  "quick_entry": 1,
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],

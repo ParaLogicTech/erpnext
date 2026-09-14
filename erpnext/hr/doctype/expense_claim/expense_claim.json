@@ -58,7 +58,6 @@
   {
    "fieldname": "employee",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Employee",
    "oldfieldname": "employee",
@@ -72,7 +71,6 @@
    "fetch_from": "employee.employee_name",
    "fieldname": "employee_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Employee Name",
    "oldfieldname": "employee_name",
    "oldfieldtype": "Data",
@@ -338,7 +336,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-22 21:38:35.092666",
+ "modified": "2026-09-12 16:27:29.500676",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Expense Claim",
@@ -429,6 +427,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "employee,employee_name, outstanding_amount",
  "show_name_in_global_search": 1,
  "sort_field": "posting_date",

@@ -3,6 +3,7 @@
 
 
 import frappe
+import erpnext
 from frappe import _
 from frappe.utils import cint, flt
 from erpnext.controllers.selling_controller import SellingController
@@ -126,6 +127,11 @@ class DeliveryNote(SellingController):
 				toggle_print_hide(self.meta if key == "parent" else item_meta, f)
 
 		super(DeliveryNote, self).before_print(print_settings=print_settings)
+
+	def set_company_address_doc_before_print(self):
+		doc_dict = self.as_dict()
+		doc_dict["is_shipping_address"] = 1
+		self.company_address_doc = erpnext.get_company_address_doc(doc_dict)
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate=for_validate)
@@ -472,15 +478,28 @@ class DeliveryNote(SellingController):
 			return
 
 		so_required = frappe.get_cached_value("Selling Settings", None, 'so_required') == 'Yes'
+		sinv_required = frappe.get_cached_value("Selling Settings", None, 'dn_required') == 'Required after Sales Invoice'
 		if self.get('transaction_type'):
 			tt_so_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'so_required')
+			tt_dn_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'dn_required')
 			if tt_so_required:
 				so_required = tt_so_required == 'Yes'
+			if tt_dn_required:
+				sinv_required = tt_dn_required == 'Required after Sales Invoice'
 
 		if so_required:
 			for d in self.get('items'):
 				if not d.sales_order:
-					frappe.throw(_("Sales Order required for Item {0}").format(d.item_code))
+					frappe.throw(_("Row #{0}: Sales Order is required for Item {1}").format(
+						d.idx, frappe.bold(d.item_code),
+					))
+
+		if sinv_required:
+			for d in self.get('items'):
+				if not d.sales_invoice:
+					frappe.throw(_("Row #{0}: Sales Invoice is required for Item {1}").format(
+						d.idx, frappe.bold(d.item_code),
+					))
 
 	def validate_with_previous_doc(self):
 		super(DeliveryNote, self).validate_with_previous_doc({
@@ -787,6 +806,7 @@ def make_sales_invoice(
 		only_items = cint(frappe.flags.args.only_items)
 
 	def postprocess(source, target):
+		target.company_address = None
 		target.ignore_pricing_rule = 1
 		target.update_stock = 0
 		target.run_method("postprocess_after_mapping", reset_taxes=True)

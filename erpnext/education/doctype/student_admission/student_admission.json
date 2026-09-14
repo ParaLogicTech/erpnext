@@ -88,9 +88,10 @@
    "label": "Enable Admission Application"
   }
  ],
+ "grid_page_length": 500,
  "is_published_field": "published",
  "links": [],
- "modified": "2024-03-31 11:23:40.758060",
+ "modified": "2026-09-12 16:33:32.733623",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Student Admission",
@@ -111,7 +112,8 @@
  ],
  "restrict_to_domain": "Education",
  "route": "admissions",
- "show_name_in_global_search": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

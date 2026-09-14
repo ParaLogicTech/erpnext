@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:commission_category_name",
@@ -63,8 +64,10 @@
    "options": "Commission Category Late Payment"
   }
  ],
+ "grid_page_length": 500,
  "icon": "icon-user",
- "modified": "2022-06-16 22:52:40.673508",
+ "links": [],
+ "modified": "2026-09-12 23:39:24.609999",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Commission Category",
@@ -108,8 +111,11 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "commission_rate",
  "sort_field": "modified",
  "sort_order": "ASC",
+ "states": [],
  "track_changes": 1
 }

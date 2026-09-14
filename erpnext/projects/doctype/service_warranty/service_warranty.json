@@ -61,6 +61,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Project",
@@ -312,7 +313,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-25 13:39:29.064324",
+ "modified": "2026-09-12 18:06:44.739544",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Service Warranty",
@@ -391,7 +392,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "project, service_template, service_template_name",
+ "show_name_in_global_search": 1,
  "sort_field": "valid_from",
  "sort_order": "DESC",
  "states": [],

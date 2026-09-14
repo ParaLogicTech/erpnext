@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "EDU-SLOG-.YYYY.-.#####",
  "creation": "2016-07-29 03:27:22.451772",
  "doctype": "DocType",
@@ -30,7 +31,6 @@
    "fetch_from": "student.title",
    "fieldname": "student_name",
    "fieldtype": "Read Only",
-   "in_global_search": 1,
    "label": "Student Name"
   },
   {
@@ -82,11 +82,12 @@
   {
    "fieldname": "log",
    "fieldtype": "Text Editor",
-   "in_global_search": 1,
    "label": "Log"
   }
  ],
- "modified": "2020-03-03 15:41:17.574951",
+ "grid_page_length": 500,
+ "links": [],
+ "modified": "2026-09-12 16:28:40.575454",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Student Log",
@@ -106,8 +107,11 @@
   }
  ],
  "restrict_to_domain": "Education",
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "student_name",
  "track_seen": 1
 }
