@@ -219,8 +219,8 @@ class PaymentReconciliation(Document):
 
 	def get_outstanding_invoices(self):
 		filters = {
-			"from_invoice_date": self.get("from_invoice_date"),
-			"to_invoice_date": self.get("to_invoice_date"),
+			"from_posting_date": self.get("from_invoice_date"),
+			"to_posting_date": self.get("to_invoice_date"),
 			"from_due_date": self.get("from_due_date"),
 			"to_due_date": self.get("to_due_date"),
 			"min_outstanding_amount": self.get("min_outstanding_amount"),
