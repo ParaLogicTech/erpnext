@@ -1481,11 +1481,10 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 
 	def get_remaining_qty(source, target_parent):
 		if wo_doc:
-			undelivered_qty = round_down(flt(source.qty) - flt(source.delivered_qty), source.precision("qty"))
-
 			packable_qty = flt(wo_doc.completed_qty) - flt(wo_doc.rejected_qty) - flt(wo_doc.reconciled_qty)
 			packable_qty_order_uom = packable_qty / source.conversion_factor
 
+			undelivered_qty = round_down(packable_qty_order_uom - flt(source.delivered_qty), source.precision("qty"))
 			unpacked_qty = round_down(packable_qty_order_uom - flt(wo_doc.packed_qty), source.precision("qty"))
 		else:
 			undelivered_qty = flt(source.qty) - flt(source.delivered_qty)
