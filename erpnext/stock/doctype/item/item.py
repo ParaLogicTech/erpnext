@@ -660,7 +660,16 @@ class Item(Document):
 			self.get_cant_change_fields_based_on_bin()
 			+ self.get_cant_change_fields_based_on_sle()
 			+ self.get_cant_change_fields_based_on_transactions()
+			+ self.get_cant_change_fields_from_hooks()
 		)
+
+	def get_cant_change_fields_from_hooks(self):
+		fields = list(frappe.get_hooks("item_cant_change_fields"))
+
+		for method in frappe.get_hooks("update_item_cant_change_fields"):
+			frappe.get_attr(method)(self, fields)
+
+		return fields
 
 	def get_cant_change_fields_based_on_bin(self):
 		return ["is_stock_item"]
@@ -722,7 +731,7 @@ class Item(Document):
 				if self.check_if_linked_doctype_exists(doctype):
 					return True
 
-		if field in self.get_cant_change_fields_based_on_transactions():
+		if field in self.get_cant_change_fields_based_on_transactions() or field in self.get_cant_change_fields_from_hooks():
 			for doctype in linked_doctypes:
 				if self.check_if_linked_doctype_exists(doctype):
 					return True
