@@ -29,6 +29,13 @@
 		{%= filters.customer || filters.supplier || group.party %}
 	{% } %}
 	</h4>
+	<h4 class="text-center">
+		{% if (filters.customer || filters.supplier) { %}
+			{% if (data.length && data[0].party_name) { %}
+				{{ data[0].party_name }}
+			{% } %}
+		{% } %}
+	</h4>
 {% } %}
 
 {% if (filters.sales_person || group.sales_person) { %}
