@@ -19,7 +19,7 @@ class PeriodClosingVoucher(AccountsController):
 		self.make_gl_entries()
 
 	def submit(self):
-		accounting_dimensions, default_dimensions = self.get_accounting_dimensions()
+		accounting_dimensions, _ = self.get_accounting_dimensions()
 		dimension_fields = self.get_dimension_fields(accounting_dimensions)
 		pl_account = self.get_pl_balances(dimension_fields)
 
@@ -77,6 +77,10 @@ class PeriodClosingVoucher(AccountsController):
 
 		for acc in pl_accounts:
 			if flt(acc.balance_in_company_currency):
+				for dimension in accounting_dimensions:
+					if not acc.get(dimension):
+						acc[dimension] = default_dimensions.get(self.company, {}).get(dimension)
+
 				gl_entries.append(self.get_gl_dict({
 					"account": acc.account,
 					"cost_center": acc.cost_center,
@@ -106,9 +110,10 @@ class PeriodClosingVoucher(AccountsController):
 			})
 
 			for dimension in accounting_dimensions:
-				gl_entry.update({
-					dimension: default_dimensions.get(self.company, {}).get(dimension)
-				})
+				if not gl_entry.get(dimension):
+					gl_entry.update({
+						dimension: default_dimensions.get(self.company, {}).get(dimension)
+					})
 
 			gl_entries.append(gl_entry)
 
