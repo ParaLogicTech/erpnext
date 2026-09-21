@@ -19,7 +19,7 @@ class PeriodClosingVoucher(AccountsController):
 		self.make_gl_entries()
 
 	def submit(self):
-		accounting_dimensions, _ = self.get_accounting_dimensions()
+		accounting_dimensions, __ = self.get_accounting_dimensions()
 		dimension_fields = self.get_dimension_fields(accounting_dimensions)
 		pl_account = self.get_pl_balances(dimension_fields)
 
