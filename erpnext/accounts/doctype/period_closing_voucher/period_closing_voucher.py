@@ -113,7 +113,7 @@ class PeriodClosingVoucher(AccountsController):
 			gl_entries.append(gl_entry)
 
 		from erpnext.accounts.general_ledger import make_gl_entries
-		make_gl_entries(gl_entries)
+		make_gl_entries(gl_entries, ignore_mandatory_dimension=True)
 
 	def get_accounting_dimensions(self):
 		accounting_dimensions = get_accounting_dimensions()
