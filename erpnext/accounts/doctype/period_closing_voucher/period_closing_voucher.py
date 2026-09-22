@@ -115,7 +115,8 @@ class PeriodClosingVoucher(AccountsController):
 		make_gl_entries(gl_entries, ignore_mandatory_dimension=True)
 
 	def get_accounting_dimensions(self):
-		accounting_dimensions = get_accounting_dimensions()
+		accounting_dimensions = get_accounting_dimensions(as_list=False)
+		accounting_dimensions = [d.fieldname for d in accounting_dimensions if not d.disable_pcv]
 		dimension_filters, default_dimensions = get_dimension_filters()
 		return accounting_dimensions, default_dimensions
 

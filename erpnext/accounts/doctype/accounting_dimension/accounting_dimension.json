@@ -9,7 +9,8 @@
   "label",
   "fieldname",
   "dimension_defaults",
-  "disabled"
+  "disabled",
+  "disable_pcv"
  ],
  "fields": [
   {
@@ -44,10 +45,16 @@
    "fieldtype": "Table",
    "label": "Dimension Defaults",
    "options": "Accounting Dimension Detail"
+  },
+  {
+   "default": "0",
+   "fieldname": "disable_pcv",
+   "fieldtype": "Check",
+   "label": "Disable PCV"
   }
  ],
  "links": [],
- "modified": "2026-09-12 16:49:13.805654",
+ "modified": "2026-09-22 12:23:59.536674",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting Dimension",
