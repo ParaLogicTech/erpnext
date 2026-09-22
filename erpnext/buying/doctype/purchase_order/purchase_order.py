@@ -610,11 +610,23 @@ class PurchaseOrder(BuyingController):
 	@frappe.whitelist()
 	def get_last_purchase_rate(self):
 		from erpnext.controllers.buying_controller import get_price_from_last_purchase
+		from erpnext.stock.get_item_details import get_last_purchase_rate as get_item_last_purchase_rate
 		"""get last purchase rates for all items"""
 
 		for d in self.get("items"):
 			if not d.item_code:
 				continue
+
+			if d.meta.has_field("last_purchase_rate_independent_of_warehouse"):
+				d.last_purchase_rate_independent_of_warehouse = get_item_last_purchase_rate(
+					d.item_code,
+					warehouse=None,
+					uom=d.uom,
+					conversion_factor=d.get("conversion_factor"),
+					exchange_rate=self.get("conversion_rate"),
+					exclude=self.name,
+					fallback_global_last_purchase_rate=True,
+				)
 
 			last_purchase_details = get_price_from_last_purchase(
 				d.item_code,
