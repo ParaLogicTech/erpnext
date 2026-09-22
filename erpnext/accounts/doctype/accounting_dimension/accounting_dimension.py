@@ -200,7 +200,7 @@ def _get_accounting_dimensions(cache=False):
 	def generator():
 		return frappe.get_all(
 			"Accounting Dimension",
-			fields=["label", "fieldname", "disabled", "document_type"],
+			fields=["label", "fieldname", "disabled", "document_type", "disable_pcv"],
 			filters={"disabled": 0}
 		)
 
