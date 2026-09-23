@@ -343,6 +343,10 @@ class WorkOrder(StatusUpdaterERP):
 
 		self.set_available_qty()
 
+		if self.docstatus == 1:
+			if all(row.skip_transfer_for_manufacture for row in self.get("required_items")):
+				self.skip_transfer = 1
+
 	def set_required_items_status(self, update=False, update_modified=True):
 		item_ste_map = {}
 		original_item_ste_map = {}
