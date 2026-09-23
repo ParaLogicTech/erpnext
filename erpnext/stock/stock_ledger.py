@@ -25,6 +25,7 @@ def make_sl_entries(sl_entries, is_amended=None, allow_negative_stock=False, via
 			set_as_cancel(sl_entries[0].get('voucher_no'), sl_entries[0].get('voucher_type'))
 
 		bins_to_update = []
+		bins_visited = set()
 
 		for sle in sl_entries:
 			sle_id = None
@@ -39,17 +40,20 @@ def make_sl_entries(sl_entries, is_amended=None, allow_negative_stock=False, via
 				sle_id = sle_doc.get('name')
 				creation = None if cancel else sle_doc.get('creation')
 
-			args = sle.copy()
-			args.update({
-				"sle_id": sle_id,
-				"creation": creation,
-				"is_amended": is_amended,
-				"allow_negative_stock": sle_allow_negative_stock
-			})
-			bins_to_update.append(args)
+			bin_key = (sle.get("item_code"), sle.get("warehouse"))
+			if bin_key not in bins_visited:
+				bin_args = sle.copy()
+				bin_args.update({
+					"sle_id": sle_id,
+					"creation": creation,
+					"is_amended": is_amended,
+					"allow_negative_stock": sle_allow_negative_stock
+				})
+				bins_to_update.append(bin_args)
+				bins_visited.add(bin_key)
 
-		for args in bins_to_update:
-			update_bin(args, args.get('allow_negative_stock') or allow_negative_stock, via_landed_cost_voucher)
+		for bin_args in bins_to_update:
+			update_bin(bin_args, bin_args.get('allow_negative_stock') or allow_negative_stock, via_landed_cost_voucher)
 
 		if cancel:
 			delete_cancelled_entry(sl_entries[0].get('voucher_type'), sl_entries[0].get('voucher_no'))
