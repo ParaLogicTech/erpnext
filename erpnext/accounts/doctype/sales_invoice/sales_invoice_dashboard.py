@@ -1,12 +1,17 @@
-# import frappe
+import frappe
 from frappe import _
 
 
 def get_data():
-	return {
+	dn_after_delivery = frappe.get_cached_value("Selling Settings", None, 'dn_required') == 'Required after Sales Invoice'
+
+	payment_links = ['Payment Entry', 'Journal Entry', 'Payment Request', 'POS Closing Entry']
+	previous_document_links = ['Sales Order', 'Proforma Invoice']
+	reference_links = ['Packing Slip', 'Quotation']
+
+	out = {
 		'fieldname': 'sales_invoice',
 		'non_standard_fieldnames': {
-			'Delivery Note': 'sales_invoice',
 			'Journal Entry': 'reference_name',
 			'Payment Entry': 'reference_name',
 			'Payment Request': 'reference_name',
@@ -16,7 +21,6 @@ def get_data():
 		},
 		'internal_links': {
 			'Sales Order': ['items', 'sales_order'],
-			'Delivery Note': ['items', 'delivery_note'],
 			'Quotation': ['items', 'quotation'],
 			'Packing Slip': ['items', 'packing_slip'],
 			'Proforma Invoice': ['items', 'proforma_invoice'],
@@ -24,15 +28,15 @@ def get_data():
 		'transactions': [
 			{
 				'label': _('Payment'),
-				'items': ['Payment Entry', 'Journal Entry', 'Payment Request', 'POS Closing Entry']
+				'items': payment_links
 			},
 			{
 				'label': _('Previous Documents'),
-				'items': ['Delivery Note', 'Sales Order', 'Proforma Invoice']
+				'items': previous_document_links
 			},
 			{
 				'label': _('Reference'),
-				'items': ['Packing Slip', 'Quotation']
+				'items': reference_links
 			},
 			{
 				'label': _('Returns'),
@@ -40,3 +44,11 @@ def get_data():
 			},
 		]
 	}
+
+	if dn_after_delivery:
+		reference_links.insert(0, 'Delivery Note')
+	else:
+		previous_document_links.insert(0, 'Delivery Note')
+		out['internal_links']['Delivery Note'] = ['items', 'delivery_note']
+
+	return out

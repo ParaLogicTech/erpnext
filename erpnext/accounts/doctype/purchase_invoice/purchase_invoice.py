@@ -169,7 +169,7 @@ class PurchaseInvoice(BuyingController):
 		self.notify_update()
 
 	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
-		if self.currency == self.company_currency:
+		if self.party_account_currency == self.company_currency:
 			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
 			exchange_rate = 1
 		else:
@@ -334,7 +334,7 @@ class PurchaseInvoice(BuyingController):
 			},
 			"Purchase Receipt Item": {
 				"ref_dn_field": "purchase_receipt_item",
-				"compare_fields": [["project", "="], ["item_code", "="], ["uom", "="], ["batch_no", "="], ["vehicle", "="]],
+				"compare_fields": [["project", "="], ["item_code", "="], ["uom", "="], ["batch_no", "="], ["vehicle", "="], ["warehouse", "="]],
 				"is_child_table": True
 			}
 		})
@@ -616,12 +616,9 @@ class PurchaseInvoice(BuyingController):
 
 	def validate_warehouse(self):
 		if self.update_stock:
-			for d in self.get('items'):
-				if d.is_stock_item and not d.warehouse:
-					frappe.throw(_("Warehouse required at Row No {0}, please set default warehouse for the item {1} for the company {2}").
-						format(d.idx, d.item_code, self.company))
+			self.validate_warehouse_mandatory()
 
-		super(PurchaseInvoice, self).validate_warehouse()
+		super().validate_warehouse()
 
 	def validate_purchase_receipt_in_same_fy(self):
 		if not frappe.get_cached_value("Accounts Settings", None, 'purchase_invoice_receipt_same_fy'):

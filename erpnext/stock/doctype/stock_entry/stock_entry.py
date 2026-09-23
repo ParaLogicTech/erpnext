@@ -73,6 +73,8 @@ class StockEntry(TransactionController):
 		self.t_warehouses = list(set([frappe.get_cached_value("Warehouse", item.t_warehouse, 'warehouse_name')
 			for item in self.items if item.get('t_warehouse')]))
 
+		self.fg_items = [d for d in self.items if self.is_finished_good_item(d)]
+
 	def validate(self):
 		self.get_work_order()
 		self.validate_posting_time()
@@ -86,7 +88,6 @@ class StockEntry(TransactionController):
 		self.set_stock_qty()
 		self.validate_uom_is_convertible()
 		self.validate_uom_is_integer("uom", "qty")
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.set_missing_warehouses()
 		self.validate_warehouse()
 		self.set_warehouse_address()

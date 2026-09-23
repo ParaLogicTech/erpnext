@@ -9,7 +9,8 @@
   "label",
   "fieldname",
   "dimension_defaults",
-  "disabled"
+  "disabled",
+  "disable_pcv"
  ],
  "fields": [
   {
@@ -44,10 +45,16 @@
    "fieldtype": "Table",
    "label": "Dimension Defaults",
    "options": "Accounting Dimension Detail"
+  },
+  {
+   "default": "0",
+   "fieldname": "disable_pcv",
+   "fieldtype": "Check",
+   "label": "Disable PCV"
   }
  ],
  "links": [],
- "modified": "2025-02-19 22:51:54.413473",
+ "modified": "2026-09-22 12:23:59.536674",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounting Dimension",
@@ -76,6 +83,9 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": [],

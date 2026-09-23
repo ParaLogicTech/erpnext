@@ -122,6 +122,9 @@ fixtures = [
 				"Appointment-applies_to_item",
 				"Appointment-applies_to_item_name",
 
+				"Appointment-column_break_ezcc",
+				"Appointment-coupon_code",
+
 				"Appointment-sec_service_template",
 				"Appointment-service_templates",
 
@@ -352,7 +355,7 @@ accounting_dimension_doctypes = [
 	"Journal Entry", "Journal Entry Account",
 	"Expense Entry", "Expense Entry Detail",
 	"Payment Entry", "Payment Entry Deduction", "Advance Taxes and Charges",
-	"Payment Request",
+	"Payment Request", 
 
 	"Stock Entry", "Stock Entry Detail",
 	"Packing Slip", "Packing Slip Item", "Packing Slip Packaging Material",

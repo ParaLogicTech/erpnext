@@ -142,6 +142,7 @@
   {
    "fieldname": "remarks",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Remarks",
    "no_copy": 1
@@ -233,7 +234,7 @@
    "in_list_view": 1,
    "label": "Total Gross Weight",
    "no_copy": 1,
-   "read_only": 1
+   "read_only_depends_on": "is_unpack"
   },
   {
    "fieldname": "column_break_15",
@@ -258,6 +259,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project"
   },
@@ -422,6 +424,7 @@
   {
    "fieldname": "purchase_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Purchase Order",
    "no_copy": 1,
    "options": "Purchase Order",
@@ -517,7 +520,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-06 16:34:42.862030",
+ "modified": "2026-09-12 17:44:52.009766",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Packing Slip",

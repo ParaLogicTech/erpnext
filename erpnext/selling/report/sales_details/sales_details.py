@@ -554,7 +554,7 @@ class SalesPurchaseDetailsReport(object):
 				totals['account_manager'] = data[0].get('account_manager')
 
 		# Set reference field
-		if group_field == ("item_code", "item_nane", "uom", "parent") and data:
+		if group_field == ("item_code", "item_name", "uom", "parent") and data:
 			totals['reference_type'] = data[0].get('reference_type')
 			totals['reference'] = data[0].get('reference')
 		else:

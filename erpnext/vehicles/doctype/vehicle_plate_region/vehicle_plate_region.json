@@ -51,7 +51,7 @@
   }
  ],
  "links": [],
- "modified": "2025-01-03 12:22:22.469141",
+ "modified": "2026-09-12 16:49:14.975498",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle Plate Region",
@@ -143,6 +143,9 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],

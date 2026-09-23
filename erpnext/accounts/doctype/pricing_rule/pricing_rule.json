@@ -118,6 +118,8 @@
    "default": "0",
    "fieldname": "disable",
    "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Disabled"
   },
   {
@@ -295,6 +297,7 @@
    "depends_on": "eval:doc.applicable_for==\"Campaign\"",
    "fieldname": "campaign",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Campaign",
    "options": "Campaign"
   },
@@ -412,7 +415,7 @@
    "fieldtype": "Select",
    "in_standard_filter": 1,
    "label": "Rate or Discount",
-   "options": "\nRate\nDiscount Percentage\nDiscount Amount\nPrice List Rate\nValuation Rate\nLast Purchase Rate"
+   "options": "\nRate\nDiscount Percentage\nDiscount Amount\nPrice List Rate\nValuation Rate\nLast Purchase Rate\nHigher of Valuation / Last Purchase Rate"
   },
   {
    "default": "Grand Total",
@@ -541,6 +544,7 @@
    "depends_on": "eval:doc.validate_applied_rule || doc.show_in_print",
    "fieldname": "rule_description",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Rule Description"
   },
   {
@@ -685,7 +689,7 @@
   },
   {
    "default": "0",
-   "depends_on": "eval:[\"Price List Rate\", \"Rate\", \"Valuation Rate\", \"Last Purchase Rate\"].includes(doc.rate_or_discount)",
+   "depends_on": "eval:[\"Price List Rate\", \"Rate\", \"Valuation Rate\", \"Last Purchase Rate\", \"Higher of Valuation / Last Purchase Rate\"].includes(doc.rate_or_discount)",
    "fieldname": "include_margin_in_price_list_rate",
    "fieldtype": "Check",
    "label": "Include Margin in Price List Rate"
@@ -695,7 +699,7 @@
  "icon": "fa fa-gift",
  "idx": 1,
  "links": [],
- "modified": "2026-03-02 19:33:12.289851",
+ "modified": "2026-09-12 22:34:15.803036",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Pricing Rule",
@@ -775,6 +779,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

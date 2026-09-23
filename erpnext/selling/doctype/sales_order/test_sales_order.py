@@ -5,14 +5,15 @@ import json
 from frappe.utils import flt, add_days, nowdate
 import frappe.permissions
 import unittest
-from erpnext.selling.doctype.sales_order.sales_order \
-	import make_material_request, make_delivery_note, make_sales_invoice, WarehouseRequired
+from erpnext.selling.doctype.sales_order.sales_order import make_material_request, make_delivery_note, make_sales_invoice
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 from erpnext.manufacturing.doctype.work_order.work_order import create_work_orders
 from erpnext.controllers.transaction_controller import update_child_items
 from erpnext.selling.doctype.sales_order.sales_order import make_raw_material_request
 from erpnext.selling.doctype.product_bundle.test_product_bundle import make_product_bundle
 from erpnext.stock.doctype.item.test_item import make_item
+from erpnext.controllers.stock_controller import WarehouseRequired
+
 
 class TestSalesOrder(unittest.TestCase):
 	def tearDown(self):

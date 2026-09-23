@@ -163,6 +163,7 @@
   {
    "fieldname": "sales_order",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Sales Order",
    "options": "Sales Order"
   },
@@ -187,6 +188,7 @@
   {
    "fieldname": "purchase_document_no",
    "fieldtype": "Dynamic Link",
+   "in_global_search": 1,
    "label": "Receiving Document No",
    "no_copy": 1,
    "options": "purchase_document_type",
@@ -298,6 +300,7 @@
   {
    "fieldname": "delivery_document_no",
    "fieldtype": "Dynamic Link",
+   "in_global_search": 1,
    "label": "Delivery Document No",
    "no_copy": 1,
    "options": "delivery_document_type",
@@ -350,6 +353,7 @@
   {
    "fieldname": "sales_invoice",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Sales Invoice",
    "options": "Sales Invoice",
    "read_only": 1
@@ -521,7 +525,7 @@
  "icon": "fa fa-barcode",
  "idx": 1,
  "links": [],
- "modified": "2026-03-31 00:27:22.928580",
+ "modified": "2026-09-12 23:17:20.507364",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Serial No",
@@ -569,6 +573,7 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "item_code",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

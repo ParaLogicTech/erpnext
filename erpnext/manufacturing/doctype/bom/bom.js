@@ -68,7 +68,6 @@ frappe.ui.form.on("BOM", {
 			let row = frappe.get_doc(cdt, cdn);
 			return erpnext.queries.workstation(row.operation);
 		});
-
 	},
 
 	onload_post_render: function(frm) {
@@ -187,7 +186,7 @@ frappe.ui.form.on("BOM", {
 
 	routing: function(frm) {
 		if (frm.doc.routing) {
-			frappe.call({
+			return frappe.call({
 				doc: frm.doc,
 				method: "get_routing",
 				freeze: true,

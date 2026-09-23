@@ -122,7 +122,7 @@ class Customer(TransactionBase):
 				frappe.throw(_("{0} is not a company bank account").format(frappe.bold(self.default_bank_account)))
 
 	def validate_tax_id(self):
-		from frappe.regional.regional import validate_duplicate_tax_id, validate_tax_ids
+		from frappe.regional.regional import _validate_duplicate_tax_id, validate_tax_ids
 		validate_tax_ids(self.tax_id, self.tax_cnic, self.tax_strn)
 
 		cnic_throw = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_cnic')
@@ -139,9 +139,30 @@ class Customer(TransactionBase):
 			ntn_throw = False
 
 		exclude = None if self.is_new() else self.name
-		validate_duplicate_tax_id("Customer", "tax_id", self.tax_id, exclude=exclude, throw=ntn_throw)
-		validate_duplicate_tax_id("Customer", "tax_cnic", self.tax_cnic, exclude=exclude, throw=cnic_throw)
-		validate_duplicate_tax_id("Customer", "tax_strn", self.tax_strn, exclude=exclude, throw=False)
+		_validate_duplicate_tax_id(
+			"Customer",
+			"tax_id",
+			self.tax_id,
+			exclude=exclude,
+			throw=ntn_throw,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
+		_validate_duplicate_tax_id(
+			"Customer",
+			"tax_cnic",
+			self.tax_cnic,
+			exclude=exclude,
+			throw=cnic_throw,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
+		_validate_duplicate_tax_id(
+			"Customer",
+			"tax_strn",
+			self.tax_strn,
+			exclude=exclude,
+			throw=False,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
 
 	def restrict_duplicate_field(self, fieldname):
 		if self.is_new():
@@ -158,18 +179,29 @@ class Customer(TransactionBase):
 		validate_mobile_no(self.mobile_no_2)
 
 	def validate_duplicate_mobile_no(self):
-		from frappe.regional.regional import validate_duplicate_mobile_no
+		from frappe.regional.regional import _validate_duplicate_mobile_no
+
+		duplicate_filters = {}
 
 		throw = False
 		duplicate_validation = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_mobile')
 		if duplicate_validation == "For Individual Customers":
 			if self.customer_type == "Individual":
+				duplicate_filters["customer_type"] = "Individual"
 				throw = True
 		elif duplicate_validation:
 			throw = True
 
 		exclude = None if self.is_new() else self.name
-		validate_duplicate_mobile_no("Customer", "mobile_no", self.mobile_no, exclude=exclude, throw=throw)
+		_validate_duplicate_mobile_no(
+			"Customer",
+			"mobile_no",
+			self.mobile_no,
+			exclude=exclude,
+			filters=duplicate_filters,
+			throw=throw,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
 
 	def update_primary_contact(self):
 		push_or_pull = None
@@ -583,7 +615,7 @@ def make_contact(args, is_primary_contact=1):
 		contact.add_phone(args.get('phone_no'), is_primary_phone=True)
 
 	contact.flags.from_linked_document = (args.get('doctype'), args.get('name'))
-	contact.insert()
+	contact.insert(ignore_permissions=True)
 
 	return contact
 
@@ -617,7 +649,7 @@ def make_address(args, is_primary_address=1):
 			address.set(field['address_field'], value)
 
 	address.flags.from_linked_document = (args.get('doctype'), args.get('name'))
-	address.insert()
+	address.insert(ignore_permissions=True)
 
 	return address
 

@@ -329,6 +329,7 @@
   {
    "fieldname": "tax_id",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Tax ID"
   },
   {
@@ -681,6 +682,7 @@
   {
    "fieldname": "phone_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Landline No",
    "oldfieldname": "phone_no",
    "oldfieldtype": "Data"
@@ -695,6 +697,7 @@
   {
    "fieldname": "email",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Email Address",
    "oldfieldname": "email",
    "oldfieldtype": "Data",
@@ -916,6 +919,7 @@
   {
    "fieldname": "mobile_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Mobile No"
   },
   {
@@ -1074,7 +1078,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2026-07-24 13:17:22.190205",
+ "modified": "2026-09-12 18:00:26.478601",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",

@@ -20,6 +20,8 @@ from erpnext.stock.get_item_details import (
 from erpnext.stock.utils import get_incoming_rate
 from erpnext.accounts.party import validate_party_frozen_disabled
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
+from frappe.desk.reportview import get_filters_cond, get_match_cond
+from erpnext.controllers.queries import get_fields
 import json
 
 
@@ -71,7 +73,6 @@ class PackingSlip(TransactionController):
 		self.validate_warehouse()
 		self.validate_uom_is_convertible(items_table_field="items")
 		self.validate_uom_is_convertible(items_table_field="packaging_items")
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_uom_is_integer("uom", ["qty", "rejected_qty"])
 		self.calculate_totals()
 		self.validate_qty()
@@ -495,19 +496,19 @@ class PackingSlip(TransactionController):
 						frappe.bold(frappe.format(packing_slip_item.qty))
 					))
 
-				if flt(d.net_weight) != packing_slip_item.net_weight:
+				if flt(d.net_weight, d.precision("net_weight")) != flt(packing_slip_item.net_weight, d.precision("net_weight")):
 					frappe.throw(_("Row #{0}: Net Weight does not match with Source {1}. Net Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
 						frappe.bold(frappe.format(packing_slip_item.net_weight))
 					))
-				if flt(d.tare_weight) != packing_slip_item.tare_weight:
+				if flt(d.tare_weight, d.precision("tare_weight")) != flt(packing_slip_item.tare_weight, d.precision("tare_weight")):
 					frappe.throw(_("Row #{0}: Tare Weight does not match with Source {1}. Tare Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
 						frappe.bold(frappe.format(packing_slip_item.tare_weight))
 					))
-				if flt(d.gross_weight) != packing_slip_item.gross_weight:
+				if flt(d.gross_weight, d.precision("gross_weight")) != flt(packing_slip_item.gross_weight, d.precision("gross_weight")):
 					frappe.throw(_("Row #{0}: Gross Weight does not match with Source {1}. Gross Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
@@ -645,24 +646,24 @@ class PackingSlip(TransactionController):
 					frappe.bold(frappe.format(unpacked_against_row.qty))
 				))
 
-			if flt(d.net_weight) != unpacked_against_row.net_weight:
-				frappe.throw(_("Row #{0}: Net Weight does not match with Unpack Against {1}. Net Weight must be {2}").format(
-					d.idx,
-					frappe.get_desk_link("Packing Slip", unpack_against.name),
-					frappe.bold(frappe.format(unpacked_against_row.net_weight))
-				))
-			if flt(d.tare_weight) != unpacked_against_row.tare_weight:
-				frappe.throw(_("Row #{0}: Tare Weight does not match with Unpack Against {1}. Tare Weight must be {2}").format(
-					d.idx,
-					frappe.get_desk_link("Packing Slip", unpack_against.name),
-					frappe.bold(frappe.format(unpacked_against_row.tare_weight))
-				))
-			if flt(d.gross_weight) != unpacked_against_row.gross_weight:
-				frappe.throw(_("Row #{0}: Gross Weight does not match with Unpack Against {1}. Gross Weight must be {2}").format(
-					d.idx,
-					frappe.get_desk_link("Packing Slip", unpack_against.name),
-					frappe.bold(frappe.format(unpacked_against_row.gross_weight))
-				))
+			# if flt(d.net_weight, d.precision("net_weight")) != flt(unpacked_against_row.net_weight, d.precision("net_weight")):
+			# 	frappe.throw(_("Row #{0}: Net Weight does not match with Unpack Against {1}. Net Weight must be {2}").format(
+			# 		d.idx,
+			# 		frappe.get_desk_link("Packing Slip", unpack_against.name),
+			# 		frappe.bold(frappe.format(unpacked_against_row.net_weight))
+			# 	))
+			# if flt(d.tare_weight, d.precision("tare_weight")) != flt(unpacked_against_row.tare_weight, d.precision("tare_weight")):
+			# 	frappe.throw(_("Row #{0}: Tare Weight does not match with Unpack Against {1}. Tare Weight must be {2}").format(
+			# 		d.idx,
+			# 		frappe.get_desk_link("Packing Slip", unpack_against.name),
+			# 		frappe.bold(frappe.format(unpacked_against_row.tare_weight))
+			# 	))
+			# if flt(d.gross_weight, d.precision("gross_weight")) != flt(unpacked_against_row.gross_weight, d.precision("gross_weight")):
+			# 	frappe.throw(_("Row #{0}: Gross Weight does not match with Unpack Against {1}. Gross Weight must be {2}").format(
+			# 		d.idx,
+			# 		frappe.get_desk_link("Packing Slip", unpack_against.name),
+			# 		frappe.bold(frappe.format(unpacked_against_row.gross_weight))
+			# 	))
 
 	def validate_work_orders(self):
 		for d in self.get("items"):
@@ -1436,13 +1437,8 @@ class PackingSlip(TransactionController):
 					if ps_uom != so_item.uom:
 						continue
 
-					undelivered_qty = flt(so_item.qty) - flt(so_item.delivered_qty)
-					unpacked_qty = flt(so_item.qty) - flt(so_item.packed_qty)
-					unproducible_qty = flt(so_item.qty) - flt(so_item.work_order_qty)
-
-					so_item.packing_assignable_qty = round_up(
-						min(undelivered_qty, unpacked_qty, unproducible_qty),
-						so_item.precision("qty")
+					so_item.packing_assignable_qty = get_packing_assignable_qty(
+						so_item.qty, so_item.delivered_qty, so_item.packed_qty, so_item.work_order_qty
 					)
 					if so_item.packing_assignable_qty <= 0:
 						continue
@@ -1466,7 +1462,7 @@ class PackingSlip(TransactionController):
 							low_qty_so_item.uom,
 						)
 
-					frappe.throw(_("{0} does not have any pending Item {1} that can be assigned with {2}. {3}").format(
+					frappe.throw(_("{0} does not have any pending Item {1} to be packed that can be assigned with {2}. {3}").format(
 						frappe.get_desk_link("Sales Order", target_so_doc.name),
 						frappe.bold(ps_item_code),
 						frappe.get_desk_link("Packing Slip", self.name),
@@ -1476,6 +1472,7 @@ class PackingSlip(TransactionController):
 				ps_group.matched_so_item = matched_so_item
 
 		self.update_reassign_sales_order(grouped_items, target_so_doc)
+		self.notify_update()
 
 		# Version log
 		if target_so_doc:
@@ -1484,17 +1481,6 @@ class PackingSlip(TransactionController):
 			))
 		else:
 			self.add_comment("Label", _("Unassigned Sales Order"))
-
-		# Message
-		if target_so_doc:
-			frappe.msgprint(_("{0} reassigned to {1}").format(
-				frappe.get_desk_link("Packing Slip", self.name),
-				frappe.get_desk_link("Sales Order", target_so_doc.name) if target_so_doc else ""
-			), alert=True, indicator="green")
-		else:
-			frappe.msgprint(_("{0} unassigned Sales Order").format(
-				frappe.get_desk_link("Packing Slip", self.name)
-			), alert=True, indicator="green")
 
 	def update_reassign_sales_order(self, grouped_items, target_so_doc=None):
 		# Reassign
@@ -1506,11 +1492,11 @@ class PackingSlip(TransactionController):
 		if target_so_doc:
 			self.customer = target_so_doc.customer
 			self.customer_name = target_so_doc.customer_name
+			self.is_reassigned = 1
 		else:
 			self.customer = self.original_customer
 			self.customer_name = self.original_customer_name
-
-		self.is_reassigned = 1
+			self.is_reassigned = 0
 
 		self.db_set({
 			"customer": self.customer,
@@ -1693,8 +1679,13 @@ def make_target_packing_slip(source_name, target_doc=None):
 	else:
 		packing_slip_names = source_name
 
+	target_warehouses = set()
+
 	for ps_name in packing_slip_names:
 		source_packing_slip = frappe.get_doc("Packing Slip", ps_name)
+		if source_packing_slip.get("target_warehouse"):
+			target_warehouses.add(source_packing_slip.target_warehouse)
+
 		target_doc = map_target_document("Packing Slip", target_doc, source_packing_slip)
 
 		packing_slip_item_mapper = {
@@ -1727,6 +1718,9 @@ def make_target_packing_slip(source_name, target_doc=None):
 			target_row = map_child_doc(ps_item, target_doc, packing_slip_item_mapper, source_packing_slip)
 			target_row.source_warehouse = source_packing_slip.warehouse
 
+	if len(target_warehouses) == 1 and not target_doc.target_warehouse:
+		target_doc.target_warehouse = list(target_warehouses)[0]
+
 	target_doc.run_method("postprocess_after_mapping")
 	return target_doc
 
@@ -1738,6 +1732,7 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 
 	def update_item(source_doc, target_doc, source_parent, target_parent):
 		target_doc.qty = -1 * source_doc.qty
+		target_doc.source_warehouse = source_parent.warehouse
 
 	def update_material(source_doc, target_doc, source_parent, target_parent):
 		target_doc.qty = -1 * source_doc.qty
@@ -1758,6 +1753,9 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 				"package_type": "package_type",
 				"purchase_order": "purchase_order",
 			},
+			"field_no_map": [
+				"default_source_warehouse",
+			]
 		},
 		"Packing Slip Item": {
 			"doctype": "Packing Slip Item",
@@ -1772,11 +1770,11 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 				"work_order": "work_order",
 				"batch_no": "batch_no",
 				"serial_no": "serial_no",
-				"source_warehouse": "source_warehouse",
 			},
 			"field_no_map": [
 				"rejected_qty",
 				"stock_rejected_qty",
+				"source_warehouse",
 			],
 			"condition": item_condition,
 			"postprocess": update_item,
@@ -1987,6 +1985,9 @@ def map_target_document(target_doctype, target_doc, packing_slip):
 	if packing_slip.purchase_order and target_doc.meta.has_field("purchase_order"):
 		target_doc.purchase_order = packing_slip.purchase_order
 
+	if packing_slip.get("cost_center") and not target_doc.get("cost_center") and target_doc.meta.has_field("cost_center"):
+		target_doc.cost_center = packing_slip.get("cost_center")
+
 	return target_doc
 
 
@@ -2036,17 +2037,138 @@ def update_mapped_delivery_item(target, packing_slip, warehouse_field="warehouse
 
 
 @frappe.whitelist()
-def reassign_sales_order(packing_slip, sales_order=None):
-	ps_doc = frappe.get_doc("Packing Slip", packing_slip)
-	ps_doc.check_permission("write")
-	ps_doc.reassign_sales_order(sales_order, ignore_permissions=False)
-	return ps_doc
+def reassign_sales_order(packing_slips, sales_order=None):
+	if isinstance(packing_slips, str):
+		packing_slips = json.loads(packing_slips)
+
+	if not packing_slips:
+		frappe.throw(_("Please select Packing Slips to reassign"))
+
+	for name in packing_slips:
+		ps_doc = frappe.get_doc("Packing Slip", name)
+		ps_doc.check_permission("write")
+		ps_doc.reassign_sales_order(sales_order, ignore_permissions=False)
+
+	# Message
+	if len(packing_slips) == 1:
+		packing_slip_message = frappe.get_desk_link("Packing Slip", packing_slips[0])
+	else:
+		packing_slip_message = _("{0} Packing Slips").format(len(packing_slips))
+
+	if sales_order:
+		frappe.msgprint(
+			_("{0} reassigned to {1}").format(
+				packing_slip_message,
+				frappe.get_desk_link("Sales Order", sales_order)
+			), alert=True, indicator="green"
+		)
+	else:
+		frappe.msgprint(
+			_("{0} unassigned Sales Order").format(
+				packing_slip_message
+			), alert=True, indicator="green"
+		)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_packing_slips_to_be_delivered(doctype, txt, searchfield, start, page_len, filters, as_dict):
+	return _get_packing_slips_to_be_delivered(
+		doctype,
+		txt,
+		searchfield,
+		start,
+		page_len,
+		filters,
+		as_dict,
+		ignore_permissions=False,
+	)
+
+
+def _get_packing_slips_to_be_delivered(
+	doctype="Packing Slip",
+	txt="",
+	searchfield="name",
+	start=0,
+	page_len=0,
+	filters=None,
+	as_dict=True,
+	ignore_permissions=True,
+):
+	fields = get_select_fields_for_packing_slip_query()
+	select_fields = ", ".join(["`tabPacking Slip`.{0}".format(f) for f in fields])
+	limit = "limit {0}, {1}".format(start, page_len) if page_len else ""
+
+	exists_conditions = []
+
+	no_customer = filters.pop("no_customer", False)
+	if no_customer:
+		filters["customer"] = ["is", "not set"]
+
+	status_condition = "`tabPacking Slip`.`status` = 'In Stock'"
+	include_rejected = filters.pop("include_rejected", False)
+	if include_rejected:
+		status_condition = "`tabPacking Slip`.`status` in ('In Stock', 'Rejected')"
+
+	if filters.get("sales_order"):
+		exists_conditions.append("`tabPacking Slip Item`.sales_order = {0}".format(
+			frappe.db.escape(filters.pop("sales_order"))))
+
+	if "sales_order_item" in filters:
+		sales_order_items = filters.pop("sales_order_item")
+		if sales_order_items:
+			if not isinstance(sales_order_items, list):
+				sales_order_items = [sales_order_items]
+
+			exists_conditions.append("`tabPacking Slip Item`.sales_order_item in ({0})".format(
+				", ".join([frappe.db.escape(i) for i in sales_order_items]),
+			))
+
+	if filters.get("item_code"):
+		exists_conditions.append("`tabPacking Slip Item`.item_code = {0}".format(
+			frappe.db.escape(filters.pop("item_code"))))
+
+	if exists_conditions:
+		exists_conditions = """ and exists(select `tabPacking Slip Item`.name from `tabPacking Slip Item` where
+				`tabPacking Slip Item`.parent = `tabPacking Slip`.name and {0})""".format(
+			" and ".join(exists_conditions))
+	else:
+		exists_conditions = ""
+
+	return frappe.db.sql("""
+			select {fields}
+			from `tabPacking Slip`
+			where `tabPacking Slip`.`{key}` like {txt}
+				and `tabPacking Slip`.docstatus = 1
+				and {status_condition}
+				{exists_conditions} {fcond} {mcond}
+			order by `tabPacking Slip`.posting_date, `tabPacking Slip`.posting_time, `tabPacking Slip`.creation
+			{limit}
+		""".format(
+		fields=select_fields,
+		key=searchfield,
+		status_condition=status_condition,
+		exists_conditions=exists_conditions,
+		fcond=get_filters_cond(doctype, filters, [], ignore_permissions=ignore_permissions),
+		mcond="" if ignore_permissions else get_match_cond(doctype),
+		limit=limit,
+		txt="%(txt)s",
+	), {"txt": ("%%%s%%" % txt)}, as_dict=as_dict)
 
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_sales_orders_for_reassignment(doctype, txt, searchfield, start, page_len, filters, as_dict):
-	return _get_sales_orders_for_reassignment(doctype, txt, searchfield, start, page_len, filters, as_dict)
+	return _get_sales_orders_for_reassignment(
+		doctype,
+		txt,
+		searchfield,
+		start,
+		page_len,
+		filters,
+		as_dict,
+		ignore_permissions=False,
+	)
 
 
 def _get_sales_orders_for_reassignment(
@@ -2067,6 +2189,8 @@ def _get_sales_orders_for_reassignment(
 	if not filters.get("packing_slip"):
 		frappe.throw(_("Packing Slip not provided"))
 
+	hide_invalid_qty = filters.pop("hide_invalid_qty", 0)
+
 	fields = get_fields(doctype, ["name", "customer", "customer_name", "transaction_date"])
 	select_fields = ", ".join(["`tabSales Order`.{0}".format(f) for f in fields])
 	limit = "limit {0}, {1}".format(start, page_len) if page_len else ""
@@ -2078,26 +2202,39 @@ def _get_sales_orders_for_reassignment(
 
 	filters["company"] = ps_doc.get("company")
 
-	unique_item_uoms = set()
+	items_qty_map = {}
 	for d in ps_doc.get("items"):
-		unique_item_uoms.add((d.item_code, d.uom))
+		key = (cstr(d.item_code), cstr(d.uom))
+		items_qty_map.setdefault(key, 0)
+		items_qty_map[key] += flt(d.qty)
 
-	if not unique_item_uoms:
+	if not items_qty_map:
 		return []
 
+	qty_precision = frappe.get_precision("Packing Slip Item", "qty")
+
 	item_conditions = []
-	for item_code, uom in unique_item_uoms:
-		item_conditions.append("""exists(
+	for (item_code, uom), qty in items_qty_map.items():
+		item_cond = "`tabSales Order Item`.item_code = {item_code} and `tabSales Order Item`.uom = {uom}".format(
+			item_code=frappe.db.escape(item_code),
+			uom=frappe.db.escape(uom),
+		)
+
+		if hide_invalid_qty:
+			qty = flt(qty, qty_precision)
+			item_cond += f""" and LEAST(
+				`tabSales Order Item`.qty - `tabSales Order Item`.delivered_qty,
+				`tabSales Order Item`.qty - `tabSales Order Item`.packed_qty,
+				`tabSales Order Item`.qty - `tabSales Order Item`.work_order_qty
+			) >= {qty}"""
+
+		item_conditions.append(f"""exists(
 			select `tabSales Order Item`.name
 			from `tabSales Order Item`
 			where `tabSales Order Item`.parent = `tabSales Order`.name
-				and `tabSales Order Item`.item_code = {item_code}
-				and `tabSales Order Item`.uom = {uom}
+				and {item_cond}
 				and `tabSales Order Item`.skip_delivery_note = 0
-		)""".format(
-			item_code=frappe.db.escape(item_code),
-			uom=frappe.db.escape(uom),
-		))
+		)""")
 
 	item_conditions_str = " and ".join(item_conditions)
 
@@ -2122,3 +2259,123 @@ def _get_sales_orders_for_reassignment(
 		limit=limit,
 		txt="%(txt)s",
 	), {"txt": ("%%%s%%" % txt)}, as_dict=as_dict)
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_packing_slips_for_reassignment(doctype, txt, searchfield, start, page_len, filters, as_dict):
+	return _get_packing_slips_for_reassignment(doctype, txt, searchfield, start, page_len, filters, as_dict)
+
+
+def _get_packing_slips_for_reassignment(
+	doctype="Packing Slip",
+	txt="",
+	searchfield="name",
+	start=0,
+	page_len=0,
+	filters=None,
+	as_dict=True,
+	ignore_permissions=False,
+):
+	if not filters:
+		filters = {}
+
+	selected_items = filters.pop("selected_items", [])
+	if not selected_items:
+		return []
+
+	show_reassigned = filters.pop("show_reassigned", 0)
+	hide_invalid_qty = filters.pop("hide_invalid_qty", 0)
+
+	fields = get_select_fields_for_packing_slip_query()
+	select_fields = ", ".join(["`tabPacking Slip`.{0}".format(f) for f in fields])
+	limit = "limit {0}, {1}".format(start, page_len) if page_len else ""
+
+	# Is Reassigned Condition
+	is_reassigned_condition = ""
+	if not show_reassigned:
+		is_reassigned_condition = " and `tabPacking Slip`.is_reassigned = 0"
+
+	# Item Conditions
+	items_map = {}
+	for d in selected_items:
+		key = (cstr(d.get("item_code")), cstr(d.get("uom")))
+		item_qtys = items_map.setdefault(key, frappe._dict({
+			"qty": 0, "delivered_qty": 0, "packed_qty": 0, "work_order_qty": 0
+		}))
+		item_qtys.qty += flt(d.get("qty"))
+		item_qtys.delivered_qty += flt(d.get("delivered_qty"))
+		item_qtys.packed_qty += flt(d.get("packed_qty"))
+		item_qtys.work_order_qty += flt(d.get("work_order_qty"))
+
+	exists_conditions = []
+	for (item_code, uom), item_qtys in items_map.items():
+		cond = "`tabPacking Slip Item`.item_code = {0} and `tabPacking Slip Item`.uom = {1}".format(
+			frappe.db.escape(item_code),
+			frappe.db.escape(uom),
+		)
+
+		if hide_invalid_qty:
+			item_qtys.packing_assignable_qty = get_packing_assignable_qty(
+				item_qtys.qty, item_qtys.delivered_qty, item_qtys.packed_qty, item_qtys.work_order_qty
+			)
+			cond += " and `tabPacking Slip Item`.qty <= {0}".format(item_qtys.packing_assignable_qty)
+
+		exists_conditions.append(cond)
+
+	exists_conditions = [f"""exists(select `tabPacking Slip Item`.name from `tabPacking Slip Item` where
+		`tabPacking Slip Item`.parent = `tabPacking Slip`.name and {c})""" for c in exists_conditions]
+
+	exists_conditions = " and ".join(exists_conditions)
+	exists_conditions = " and " + exists_conditions if exists_conditions else ""
+
+	# Other Filters
+	no_customer = filters.pop("no_customer", False)
+	if no_customer:
+		filters["customer"] = ["is", "not set"]
+
+	return frappe.db.sql("""
+			select {fields}
+			from `tabPacking Slip`
+			where `tabPacking Slip`.`{key}` like {txt}
+				and `tabPacking Slip`.docstatus = 1
+				and `tabPacking Slip`.status = 'In Stock'
+				and `tabPacking Slip`.can_reassign = 1
+				{is_reassigned_condition}
+				{exists_conditions}
+				{fcond}
+				{mcond}
+			order by `tabPacking Slip`.posting_date, `tabPacking Slip`.posting_time, `tabPacking Slip`.creation
+			{limit}
+		""".format(
+		fields=select_fields,
+		key=searchfield,
+		is_reassigned_condition=is_reassigned_condition,
+		exists_conditions=exists_conditions,
+		fcond=get_filters_cond(doctype, filters, [], ignore_permissions=ignore_permissions),
+		mcond="" if ignore_permissions else get_match_cond(doctype),
+		limit=limit,
+		txt="%(txt)s",
+	), {"txt": ("%%%s%%" % txt)}, as_dict=as_dict)
+
+
+def get_packing_assignable_qty(ordered_qty, delivered_qty, packed_qty, work_order_qty):
+	undelivered_qty = flt(ordered_qty) - flt(delivered_qty)
+	unpacked_qty = flt(ordered_qty) - flt(packed_qty)
+	unproducible_qty = flt(ordered_qty) - flt(work_order_qty)
+
+	precision = frappe.get_precision("Sales Order Item", "qty")
+
+	return round_up(
+		min(undelivered_qty, unpacked_qty, unproducible_qty),
+		precision,
+	)
+
+
+def get_select_fields_for_packing_slip_query():
+	return get_fields("Packing Slip", [
+		"name", "package_type", "warehouse", "posting_date",
+		"customer", "customer_name",
+		"total_net_weight", "total_qty", "total_stock_qty",
+		"packed_items",
+	])

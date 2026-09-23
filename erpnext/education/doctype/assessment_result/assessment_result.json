@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "EDU-RES-.YYYY.-.#####",
  "creation": "2015-11-13 17:18:06.468332",
@@ -72,7 +73,6 @@
   {
    "fieldname": "student",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "label": "Student",
    "options": "Student",
    "reqd": 1
@@ -81,7 +81,6 @@
    "fetch_from": "student.title",
    "fieldname": "student_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Student Name",
    "read_only": 1
@@ -159,6 +158,7 @@
   {
    "fieldname": "comment",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "label": "Comment"
   },
   {
@@ -171,8 +171,10 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
- "modified": "2020-03-03 15:41:12.551474",
+ "links": [],
+ "modified": "2026-09-12 17:22:04.136127",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Assessment Result",
@@ -195,8 +197,10 @@
   }
  ],
  "restrict_to_domain": "Education",
- "show_name_in_global_search": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "student_name"
 }

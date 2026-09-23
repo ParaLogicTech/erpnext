@@ -26,6 +26,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
+   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Description",
    "oldfieldname": "description",
@@ -43,10 +44,11 @@
    "reqd": 1
   }
  ],
+ "grid_page_length": 500,
  "icon": "icon-file-text",
  "idx": 1,
  "links": [],
- "modified": "2023-08-30 23:03:19.471698",
+ "modified": "2026-09-12 17:22:55.754922",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Appraisal Template",
@@ -68,6 +70,9 @@
    "role": "Employee"
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

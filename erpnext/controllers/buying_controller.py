@@ -54,7 +54,6 @@ class BuyingController(TransactionController):
 		self.set_alt_uom_qty()
 		self.validate_uom_is_convertible()
 		self.validate_uom_is_integer("uom", ["qty", "received_qty"])
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_stock_or_nonstock_items()
 		self.validate_warehouse()
 		self.validate_asset_return()

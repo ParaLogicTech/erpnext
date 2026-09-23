@@ -26,6 +26,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Text",
+   "in_global_search": 1,
    "label": "Description"
   },
   {
@@ -43,9 +44,10 @@
    "fieldtype": "Section Break"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-wrench",
  "links": [],
- "modified": "2024-03-19 18:07:10.885871",
+ "modified": "2026-09-12 22:38:46.020327",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Operation",
@@ -72,6 +74,9 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

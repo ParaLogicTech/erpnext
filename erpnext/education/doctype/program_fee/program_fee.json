@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "creation": "2016-05-19 05:52:56.322125",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -30,7 +31,6 @@
   {
    "fieldname": "student_category",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Student Category",
    "options": "Student Category"
@@ -53,8 +53,10 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 500,
  "istable": 1,
- "modified": "2020-03-03 15:42:34.036080",
+ "links": [],
+ "modified": "2026-09-12 16:29:16.021793",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Program Fee",
@@ -62,7 +64,10 @@
  "permissions": [],
  "quick_entry": 1,
  "restrict_to_domain": "Education",
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

@@ -13,7 +13,6 @@ class PackageType(Document):
 	def validate(self):
 		self.validate_items()
 		validate_uom_is_convertible(self, items_table_field="packaging_items")
-		validate_uom_is_integer(self, "stock_uom", "stock_qty")
 		validate_uom_is_integer(self, "uom", "qty")
 		self.calculate_totals()
 		self.calculate_volume()

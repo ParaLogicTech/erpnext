@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "allow_import": 1,
  "autoname": "naming_series:",
  "creation": "2015-09-22 16:57:22.143710",
@@ -62,7 +63,6 @@
   {
    "fieldname": "student",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "label": "Student",
    "options": "Student",
    "reqd": 1
@@ -71,14 +71,12 @@
    "fetch_from": "student.title",
    "fieldname": "student_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Student Name",
    "read_only": 1
   },
   {
    "fieldname": "fee_schedule",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "label": "Fee Schedule",
    "options": "Fee Schedule",
    "print_hide": 1,
@@ -336,8 +334,10 @@
    "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
- "modified": "2020-03-03 16:14:05.305097",
+ "links": [],
+ "modified": "2026-09-12 16:33:31.814153",
  "modified_by": "Administrator",
  "module": "Education",
  "name": "Fees",
@@ -384,9 +384,11 @@
   }
  ],
  "restrict_to_domain": "Education",
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "student, student_name",
- "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "student_name"
 }

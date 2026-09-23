@@ -77,6 +77,9 @@ class PaymentRequest(AccountsController):
 		frappe.flags.from_payment_gateway = True
 
 		try:
+			if self.status == "Paid":
+				frappe.throw(_("Payment Request {0} is already fully paid").format(self.name))
+
 			payment_entry = self.create_payment_entry(
 				submit=True,
 				reference_no=args.reference_no,

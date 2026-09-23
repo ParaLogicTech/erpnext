@@ -184,7 +184,13 @@ class Task(NestedSet):
 				self.set(k, v)
 
 	def set_assigned_to_details(self):
-		self.assigned_to_name = frappe.get_cached_value("Employee", self.assigned_to, "employee_name")
+		employee = frappe.get_cached_doc("Employee", self.assigned_to) if self.assigned_to else frappe._dict()
+		self.assigned_to_name = employee.employee_name
+
+		if self.status not in ("Completed", "Cancelled"):
+			self.reports_to = employee.reports_to
+
+		self.reports_to_name = frappe.get_cached_value("Employee", self.reports_to, "employee_name")
 
 	def validate_cant_change(self):
 		if self.is_new():

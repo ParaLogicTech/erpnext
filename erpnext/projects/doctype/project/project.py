@@ -657,6 +657,7 @@ class Project(StatusUpdaterERP):
 
 		if update:
 			self.db_set({
+				'total_cost': self.total_cost,
 				'gross_margin': self.gross_margin,
 				'per_gross_margin': self.per_gross_margin,
 			}, None, update_modified=update_modified)
@@ -1778,7 +1779,8 @@ def get_material_items(project):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.tax_exclusive_amount_before_discount as amount_before_discount,
+			i.base_tax_exclusive_amount_before_discount as amount_before_discount,
+			i.apply_taxes_on_retail,
 			i.item_tax_detail,
 			p.conversion_rate,
 			p.depreciation_type,
@@ -1822,7 +1824,8 @@ def get_material_items(project):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.tax_exclusive_amount_before_discount as amount_before_discount,
+			i.base_tax_exclusive_amount_before_discount as amount_before_discount,
+			i.apply_taxes_on_retail,
 			i.item_tax_detail,
 			p.conversion_rate,
 			p.depreciation_type,
@@ -1838,9 +1841,6 @@ def get_material_items(project):
 			and p.status != 'Closed'
 		order by transaction_date, p.creation, i.idx
 	""", project.name, as_dict=1)
-
-	inv_data = filter_invoiced_items(sinv_data + pfinv_data)
-	pre_process_items_data(inv_data, project)
 
 	dn_data = frappe.db.sql(f"""
 		select
@@ -1866,7 +1866,8 @@ def get_material_items(project):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.tax_exclusive_amount_before_discount as amount_before_discount,
+			i.base_tax_exclusive_amount_before_discount as amount_before_discount,
+			i.apply_taxes_on_retail,
 			i.item_tax_detail,
 			p.conversion_rate,
 			i.claim_customer
@@ -1902,7 +1903,8 @@ def get_material_items(project):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.tax_exclusive_amount_before_discount as amount_before_discount,
+			i.base_tax_exclusive_amount_before_discount as amount_before_discount,
+			i.apply_taxes_on_retail,
 			i.item_tax_detail,
 			p.conversion_rate,
 			i.claim_customer
@@ -1922,6 +1924,9 @@ def get_material_items(project):
 			and p.project = %s
 	""", project.name, as_dict=1)
 	pre_process_items_data(so_data, project)
+
+	inv_data = filter_invoiced_items(sinv_data + pfinv_data, pfinv_data, dn_data, so_data)
+	pre_process_items_data(inv_data, project)
 
 	materials_data = get_items_data_template()
 	parts_data = get_items_data_template()
@@ -2007,7 +2012,8 @@ def get_service_items(project):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.tax_exclusive_amount_before_discount as amount_before_discount,
+			i.base_tax_exclusive_amount_before_discount as amount_before_discount,
+			i.apply_taxes_on_retail,
 			i.item_tax_detail,
 			p.conversion_rate,
 			p.depreciation_type,
@@ -2051,7 +2057,8 @@ def get_service_items(project):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.tax_exclusive_amount_before_discount as amount_before_discount,
+			i.base_tax_exclusive_amount_before_discount as amount_before_discount,
+			i.apply_taxes_on_retail,
 			i.item_tax_detail,
 			p.conversion_rate,
 			p.depreciation_type,
@@ -2067,9 +2074,6 @@ def get_service_items(project):
 			{exclude_insurance_excess}
 		order by transaction_date, p.creation, i.idx
 	""", project.name, as_dict=1)
-
-	inv_data = filter_invoiced_items(sinv_data + pfinv_data)
-	pre_process_items_data(inv_data, project)
 
 	so_data = frappe.db.sql(f"""
 		select
@@ -2092,7 +2096,8 @@ def get_service_items(project):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.tax_exclusive_amount_before_discount as amount_before_discount,
+			i.base_tax_exclusive_amount_before_discount as amount_before_discount,
+			i.apply_taxes_on_retail,
 			i.item_tax_detail,
 			p.conversion_rate,
 			i.claim_customer
@@ -2132,7 +2137,8 @@ def get_service_items(project):
 			i.base_net_rate as net_rate,
 			i.base_taxable_amount as taxable_amount,
 			i.base_tax_exclusive_total_discount as total_discount,
-			i.tax_exclusive_amount_before_discount as amount_before_discount,
+			i.base_tax_exclusive_amount_before_discount as amount_before_discount,
+			i.apply_taxes_on_retail,
 			i.item_tax_detail,
 			p.conversion_rate,
 			i.claim_customer
@@ -2146,6 +2152,9 @@ def get_service_items(project):
 			and ifnull(i.sales_order, '') = ''
 	""", project.name, as_dict=1)
 	pre_process_items_data(dn_data, project)
+
+	inv_data = filter_invoiced_items(sinv_data + pfinv_data, pfinv_data, dn_data, so_data)
+	pre_process_items_data(inv_data, project)
 
 	service_data = get_items_data_template()
 	labour_data = get_items_data_template()
@@ -2187,7 +2196,7 @@ def get_service_items(project):
 	return service_data, labour_data, hourly_labour_data, package_data, sublet_data, sold_time
 
 
-def filter_invoiced_items(inv_data):
+def filter_invoiced_items(inv_data, pfinv_data, dn_data, so_data):
 	filtered = []
 	depreciation_type_qty = {}
 
@@ -2224,8 +2233,16 @@ def filter_invoiced_items(inv_data):
 
 		bill_to = d.bill_to or d.customer
 
+		if claim_customer:
+			if d.sales_invoice_item and d.proforma_invoice_item and any(i.proforma_invoice_item == d.proforma_invoice_item for i in pfinv_data):
+				continue
+			if d.delivery_note_item and any(i.delivery_note_item == d.delivery_note_item for i in dn_data):
+				continue
+			if d.sales_order_item and any(i.sales_order_item == d.sales_order_item for i in so_data):
+				continue
+
 		if claim_customer and bill_to != claim_customer:
-			continue
+			d.qty = 0
 
 		depreciation_types = depreciation_type_qty.get(item_row_name, {})
 		if 'No Depreciation' not in depreciation_types:
@@ -2318,10 +2335,12 @@ def get_items_data_template():
 
 		'sales_taxable_total': 0,
 		'sales_tax_total': 0,
+		'sales_tax_total_for_rate': 0,
 		'customer_sales_tax_total': 0,
 
 		'service_taxable_total': 0,
 		'service_tax_total': 0,
+		'service_tax_total_for_rate': 0,
 		'customer_service_tax_total': 0,
 
 		'other_taxes_and_charges': 0,
@@ -2367,6 +2386,7 @@ def set_sales_data_customer_amounts(data, project):
 		d.depreciation_adjustment_applied = 0
 		d.is_other_customer_item = 0
 		d.is_insurance_item = 1 if d.depreciation_type and not d.ignore_depreciation else 0
+		d.original_net_amount = d.net_amount
 
 		if d.get('claim_customer') and project.customer and d.get('claim_customer') != project.customer:
 			d.claim_adjustment_applied = 1
@@ -2376,6 +2396,9 @@ def set_sales_data_customer_amounts(data, project):
 				d.customer_net_rate = d.net_rate
 				d.net_amount = d.customer_net_amount + d.total_discount
 				d.net_rate = d.net_amount / d.qty if d.qty else d.net_amount
+
+				if not d.apply_taxes_on_retail:
+					d.taxable_amount = d.taxable_amount + d.total_discount
 			else:
 				d.customer_net_amount = 0
 				d.customer_net_rate = 0
@@ -2418,7 +2441,8 @@ def set_sales_data_customer_amounts(data, project):
 
 def calculate_sales_data_additional_discount(data):
 	for d in data:
-		d.total_discount = d.amount_before_discount - d.net_amount
+		d.original_total_discount = d.total_discount
+		d.total_discount = d.amount_before_discount - d.original_net_amount
 
 
 def get_item_taxes(project, data, company):
@@ -2432,9 +2456,11 @@ def get_item_taxes(project, data, company):
 		d.setdefault('customer_taxes', {})
 
 		d.setdefault('sales_tax_amount', 0)
+		d.setdefault('sales_tax_amount_for_rate', 0)
 		d.setdefault('customer_sales_tax_amount', 0)
 
 		d.setdefault('service_tax_amount', 0)
+		d.setdefault('service_tax_amount_for_rate', 0)
 		d.setdefault('customer_service_tax_amount', 0)
 
 		d.setdefault('other_taxes_and_charges', 0)
@@ -2448,17 +2474,32 @@ def get_item_taxes(project, data, company):
 					tax_amount = flt(amount)
 					tax_amount *= conversion_rate
 
+					tax_amount_for_rate = tax_amount
 					customer_tax_amount = flt(amount)
-					if d.get('is_other_customer_item') or (d.get('claim_adjustment_applied') and not d.get('total_discount')):
+
+					if d.get('is_other_customer_item'):
 						customer_tax_amount = 0
+
+					if d.get('claim_adjustment_applied'):
+						if d.get('total_discount'):
+							if d.get('apply_taxes_on_retail'):
+								tax_amount *= 1 + d.total_discount / d.taxable_amount if d.taxable_amount else 1
+							else:
+								tax_amount *= 1 + d.total_discount / d.original_net_amount if d.original_net_amount else 1
+								tax_amount_for_rate = tax_amount
+						else:
+							customer_tax_amount = 0
+
 					if d.depreciation_adjustment_applied:
 						customer_tax_amount *= d.cumulative_depreciation_percentage / 100
 
 					customer_tax_amount *= conversion_rate
 
 					if flt(d.original_qty):
-						tax_amount = tax_amount * flt(d.qty) / flt(d.original_qty)
-						customer_tax_amount = customer_tax_amount * flt(d.qty) / flt(d.original_qty)
+						qty_proportion = flt(d.qty) / flt(d.original_qty)
+						tax_amount *= qty_proportion
+						tax_amount_for_rate *= qty_proportion
+						customer_tax_amount *= qty_proportion
 
 					d.taxes.setdefault(tax_account, 0)
 					d.taxes[tax_account] += tax_amount
@@ -2468,9 +2509,11 @@ def get_item_taxes(project, data, company):
 
 					if tax_account == sales_tax_account:
 						d.sales_tax_amount += tax_amount
+						d.sales_tax_amount_for_rate += tax_amount_for_rate
 						d.customer_sales_tax_amount += customer_tax_amount
 					elif tax_account == service_tax_account:
 						d.service_tax_amount += tax_amount
+						d.service_tax_amount_for_rate += tax_amount_for_rate
 						d.customer_service_tax_amount += customer_tax_amount
 					else:
 						d.other_taxes_and_charges += tax_amount
@@ -2497,9 +2540,11 @@ def post_process_items_data(data):
 			data.service_taxable_total += flt(d.taxable_amount)
 
 		data.sales_tax_total += flt(d.sales_tax_amount)
+		data.sales_tax_total_for_rate += flt(d.sales_tax_amount_for_rate)
 		data.customer_sales_tax_total += flt(d.customer_sales_tax_amount)
 
 		data.service_tax_total += flt(d.service_tax_amount)
+		data.service_tax_total_for_rate += flt(d.service_tax_amount_for_rate)
 		data.customer_service_tax_total += flt(d.customer_service_tax_amount)
 
 		data.other_taxes_and_charges += flt(d.other_taxes_and_charges)
@@ -2512,8 +2557,8 @@ def post_process_items_data(data):
 			data.customer_taxes.setdefault(tax_account, 0)
 			data.customer_taxes[tax_account] += tax_amount
 
-	data.sales_tax_rate = data.sales_tax_total / data.sales_taxable_total * 100 if data.sales_taxable_total else 0
-	data.service_tax_rate = data.service_tax_total / data.service_taxable_total * 100 if data.service_taxable_total else 0
+	data.sales_tax_rate = data.sales_tax_total_for_rate / data.sales_taxable_total * 100 if data.sales_taxable_total else 0
+	data.service_tax_rate = data.service_tax_total_for_rate / data.service_taxable_total * 100 if data.service_taxable_total else 0
 
 	merge_sales_items_data(data)
 
@@ -2572,9 +2617,11 @@ def get_totals_data(project, items_dataset):
 		'customer_taxes': {},
 
 		'sales_tax_total': 0,
+		'sales_tax_total_for_rate': 0,
 		'customer_sales_tax_total': 0,
 
 		'service_tax_total': 0,
+		'service_tax_total_for_rate': 0,
 		'customer_service_tax_total': 0,
 
 		'other_taxes_and_charges': 0,
@@ -2611,9 +2658,11 @@ def get_totals_data(project, items_dataset):
 		totals_data.service_taxable_total += flt(data.service_taxable_total)
 
 		totals_data.sales_tax_total += flt(data.sales_tax_total)
+		totals_data.sales_tax_total_for_rate += flt(data.sales_tax_total_for_rate)
 		totals_data.customer_sales_tax_total += flt(data.customer_sales_tax_total)
 
 		totals_data.service_tax_total += flt(data.service_tax_total)
+		totals_data.service_tax_total_for_rate += flt(data.service_tax_total_for_rate)
 		totals_data.customer_service_tax_total += flt(data.customer_service_tax_total)
 
 		totals_data.other_taxes_and_charges += flt(data.other_taxes_and_charges)
@@ -2630,9 +2679,9 @@ def get_totals_data(project, items_dataset):
 			totals_data.customer_total_taxes_and_charges += tax_amount
 
 	# Tax Rate
-	totals_data.sales_tax_rate = totals_data.sales_tax_total / totals_data.sales_taxable_total * 100\
+	totals_data.sales_tax_rate = totals_data.sales_tax_total_for_rate / totals_data.sales_taxable_total * 100\
 		if totals_data.sales_taxable_total else 0
-	totals_data.service_tax_rate = totals_data.service_tax_total / totals_data.service_taxable_total * 100\
+	totals_data.service_tax_rate = totals_data.service_tax_total_for_rate / totals_data.service_taxable_total * 100\
 		if totals_data.service_taxable_total else 0
 
 	# Insurance Excess

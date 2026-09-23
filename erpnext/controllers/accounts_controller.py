@@ -63,7 +63,7 @@ class AccountsController(TransactionBase):
 			self.set_missing_values(for_validate=True)
 
 	def before_print(self, print_settings=None):
-		self.company_address_doc = erpnext.get_company_address_doc(self)
+		self.set_company_address_doc_before_print()
 
 		if self.doctype in ['Journal Entry', 'Payment Entry']:
 			self.get_gl_entries_for_print()
@@ -87,6 +87,9 @@ class AccountsController(TransactionBase):
 				if self.meta.get_field(fieldname) and not self.get(fieldname):
 					self.set(fieldname, today())
 					break
+
+	def set_company_address_doc_before_print(self):
+		self.company_address_doc = erpnext.get_company_address_doc(self)
 
 	def validate_date_with_fiscal_year(self):
 		if self.meta.get_field("fiscal_year"):

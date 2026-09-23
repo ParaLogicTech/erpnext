@@ -179,12 +179,14 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 			d.discount_percentage = d.get("pr_discount_percentage_" + scrub(using_price_list))
 			d.discount_amount = d.get("pr_discount_amount_" + scrub(using_price_list))
 			d.pricing_rule_rate = d.get("pr_rate_" + scrub(using_price_list))
+			d.pricing_rule_conditional = bool(d.get("pr_conditional_" + scrub(using_price_list)))
 		else:
 			d.price_list_rate = d.standard_rate
 			d.rate_with_margin = None
 			d.discount_percentage = None
 			d.discount_amount = None
 			d.pricing_rule_rate = None
+			d.pricing_rule_conditional = False
 
 		d.print_price_list_rate = d.rate_with_margin or d.price_list_rate
 		if flt(d.pricing_rule_rate) and flt(d.pricing_rule_rate) > flt(d.print_price_list_rate):
@@ -334,7 +336,8 @@ def get_pricing_rule_map(filters):
 			pr.apply_on, pr_item.item_code, pr_group.item_group, pr_brand.brand,
 			pr.applicable_for, pr.customer, pr.customer_group, pr.territory,
 			pr.margin_type, pr.margin_rate_or_amount,
-			pr.rate_or_discount, pr.rate, pr.discount_percentage, pr.discount_amount
+			pr.rate_or_discount, pr.rate, pr.discount_percentage, pr.discount_amount,
+			pr.min_qty, pr.max_qty, pr.min_amt, pr.max_amt
 		from `tabPricing Rule` pr
 		left join `tabPricing Rule Item Code` pr_item on pr_item.parent = pr.name
 		left join `tabPricing Rule Item Group` pr_group on pr_group.parent = pr.name
@@ -441,6 +444,13 @@ def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
 
 	pricing_rule_rate = flt(max(0.0, flt(pricing_rule_rate)), price_precision)
 	row['pr_rate_' + scrub(price_list)] = pricing_rule_rate
+
+	row['pr_conditional_' + scrub(price_list)] = bool((
+		pricing_rule.min_qty
+		or pricing_rule.max_qty
+		or pricing_rule.min_amt
+		or pricing_rule.max_amt
+	))
 
 	if flt(discount_percentage) > 0:
 		row['pr_discount_percentage_' + scrub(price_list)] = flt(discount_percentage)

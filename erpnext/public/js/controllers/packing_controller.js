@@ -117,22 +117,6 @@ erpnext.stock.PackingController = class PackingController extends erpnext.stock.
 		this.calculate_totals();
 	}
 
-	gross_weight_per_unit(doc, cdt, cdn) {
-		let item = frappe.get_doc(cdt, cdn);
-		item.net_weight_per_unit = flt(item.gross_weight_per_unit) - flt(item.tare_weight_per_unit);
-		this.calculate_totals();
-	}
-
-	gross_weight(doc, cdt, cdn) {
-		let item = frappe.get_doc(cdt, cdn);
-		if (flt(item.stock_qty)) {
-			let new_gross_weight = flt(item.gross_weight) / flt(item.stock_qty);
-			frappe.model.set_value(item.doctype, item.name, "gross_weight_per_unit", new_gross_weight);
-		} else {
-			this.calculate_totals();
-		}
-	}
-
 	weight_uom() {
 		return this.get_item_weights_per_unit();
 	}

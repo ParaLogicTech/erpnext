@@ -354,6 +354,7 @@ execute:frappe.delete_doc_if_exists("Report", "Serial No Status")
 execute:frappe.delete_doc_if_exists("Report", "Serial No Warranty Expiry")
 execute:frappe.delete_doc_if_exists("Custom Field", "Quotation-sales_team_section")
 execute:frappe.delete_doc_if_exists("Custom Field", "Quotation-sales_team")
+erpnext.patches.v15_0.remove_github_sync_id #1
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay
@@ -455,3 +456,7 @@ erpnext.patches.v15_0.set_branch_customer_feedback
 erpnext.patches.v15_0.set_packing_slip_rejected_status
 erpnext.patches.v15_0.set_quotation_lost_date
 erpnext.patches.v15_0.drop_other_charges_calculation_column
+erpnext.patches.v15_0.set_missing_sales_order_bill_to
+erpnext.patches.v15_0.unset_unassigned_packing_slip_is_reassigned
+erpnext.patches.v15_0.set_task_and_attendance_reports_to
+erpnext.patches.v15_0.set_sales_invoice_delivery_status

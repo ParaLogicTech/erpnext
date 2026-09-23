@@ -1,4 +1,5 @@
 {
+ "actions": [],
  "autoname": "naming_series:",
  "creation": "2013-04-30 13:13:03",
  "doctype": "DocType",
@@ -95,7 +96,6 @@
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item Code",
@@ -138,7 +138,6 @@
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Item Name",
    "read_only": 1
   },
@@ -185,6 +184,7 @@
   {
    "fieldname": "remarks",
    "fieldtype": "Text",
+   "in_global_search": 1,
    "label": "Remarks",
    "no_copy": 1,
    "oldfieldname": "remarks",
@@ -233,14 +233,17 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-search",
  "idx": 1,
  "is_submittable": 1,
- "modified": "2020-10-16 23:30:39.375904",
+ "links": [],
+ "modified": "2026-09-12 22:36:58.990948",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Quality Inspection",
@@ -262,8 +265,11 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "item_code, report_date, reference_name",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
- "sort_order": "ASC"
+ "sort_order": "ASC",
+ "states": []
 }

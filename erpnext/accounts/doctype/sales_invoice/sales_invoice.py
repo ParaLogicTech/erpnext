@@ -233,7 +233,7 @@ class SalesInvoice(SellingController):
 		)
 
 	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
-		if self.currency == self.company_currency:
+		if self.party_account_currency == self.company_currency:
 			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
 			exchange_rate = 1
 		else:
@@ -390,16 +390,48 @@ class SalesInvoice(SellingController):
 			doc.notify_update()
 
 	def set_delivery_status(self, update=False, update_modified=True):
-		delivered_qty_map = self.get_delivered_qty_map()
+		data = self.get_delivery_status_data()
 
 		# update values in rows
 		for d in self.items:
-			d.delivered_qty = flt(delivered_qty_map.get(d.name))
+			d.delivered_qty = flt(data.delivered_qty_map.get(d.name))
 
 			if update:
 				d.db_set({
 					'delivered_qty': d.delivered_qty,
 				}, update_modified=update_modified)
+
+		# update percentage in parent
+		self.per_delivered, within_allowance = self.calculate_status_percentage(
+			'delivered_qty',
+			'qty',
+			data.deliverable_rows,
+			under_delivery_allowance=True,
+		)
+		if self.per_delivered is None:
+			self.per_delivered, within_allowance = self.calculate_status_percentage(
+				'delivered_qty',
+				'qty',
+				self.items,
+				under_delivery_allowance=True,
+			)
+			self.per_delivered = flt(self.per_delivered)
+
+		# update delivery_status
+		self.delivery_note_required = data.delivery_note_required
+		self.delivery_status = self.get_completion_status(
+			'per_delivered',
+			'Deliver',
+			not_applicable=self.skip_delivery_note or not self.delivery_note_required,
+			within_allowance=within_allowance,
+		)
+
+		if update:
+			self.db_set({
+				'per_delivered': self.per_delivered,
+				'delivery_status': self.delivery_status,
+				'delivery_note_required': self.delivery_note_required,
+			}, update_modified=update_modified)
 
 	def set_returned_status(self, update=False, update_modified=True):
 		data = self.get_returned_status_data()
@@ -415,19 +447,28 @@ class SalesInvoice(SellingController):
 					'base_returned_amount': d.base_returned_amount,
 				}, update_modified=update_modified)
 
-	def get_delivered_qty_map(self):
-		delivered_qty_map = {}
+	def get_delivery_status_data(self):
+		out = frappe._dict()
+		out.deliverable_rows = [d for d in self.items if not d.skip_delivery_note and not d.delivered_by_supplier]
+		out.delivered_qty_map = {}
 
-		if self.update_stock and self.docstatus == 1:
-			for d in self.items:
-				delivered_qty_map[d.name] = flt(d.qty)
+		out.delivery_note_required = 0
+		if out.deliverable_rows and not self.update_stock:
+			dn_required = frappe.get_cached_value("Selling Settings", None, 'dn_required') == 'Required after Sales Invoice'
+			if self.get('transaction_type'):
+				tt_dn_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'dn_required')
+				dn_required = tt_dn_required == 'Required after Sales Invoice'
 
-			return delivered_qty_map
+			out.delivery_note_required = cint(bool(dn_required))
 
 		already_delivered_rows = [d.delivery_note_item for d in self.items if d.delivery_note_item]
-		deliverable_rows = [d.name for d in self.items if not d.delivery_note_item]
+		deliverable_by_dn_rows = [d.name for d in self.items if not d.delivery_note_item]
 
-		if already_delivered_rows:
+		for d in self.items:
+			if self.update_stock and self.docstatus == 1:
+				out.delivered_qty_map[d.name] = flt(d.qty)
+
+		if already_delivered_rows and not self.update_stock:
 			delivery_note_qty = frappe.db.sql("""
 				select i.name, i.qty
 				from `tabDelivery Note Item` i
@@ -438,21 +479,21 @@ class SalesInvoice(SellingController):
 			for delivery_note_item, delivered_qty in delivery_note_qty:
 				for d in self.items:
 					if d.delivery_note_item == delivery_note_item:
-						delivered_qty_map[d.name] = delivered_qty
+						out.delivered_qty_map[d.name] = delivered_qty
 
-		if deliverable_rows and self.docstatus == 1:
+		if deliverable_by_dn_rows and not self.update_stock and self.docstatus == 1:
 			delivery_note_qty = frappe.db.sql("""
 				select i.sales_invoice_item, sum(i.qty)
 				from `tabDelivery Note Item` i
 				inner join `tabDelivery Note` p on p.name = i.parent
 				where p.docstatus = 1 and i.sales_invoice_item in %s
 				group by i.sales_invoice_item
-			""", [deliverable_rows])
+			""", [deliverable_by_dn_rows])
 
 			for sales_invoice_item, delivered_qty in delivery_note_qty:
-				delivered_qty_map[sales_invoice_item] = delivered_qty
+				out.delivered_qty_map[sales_invoice_item] = delivered_qty
 
-		return delivered_qty_map
+		return out
 
 	def get_returned_status_data(self):
 		out = frappe._dict()
@@ -518,21 +559,16 @@ class SalesInvoice(SellingController):
 
 			# Submitted
 			elif self.docstatus == 1:
-				# Positive Outstanding
-				if outstanding_amount > 0:
-					# Discounted
-					if self.is_discounted and discounting_status == 'Disbursed':
-						if due_date < today:
-							self.status = "Overdue and Discounted"
-						else:
-							self.status = "Unpaid and Discounted"
+				# To Deliver
+				if self.delivery_status == "To Deliver":
+					self.status = "To Deliver"
 
-					# Normal / Not Discounted
+				# Positive Outstanding
+				elif outstanding_amount > 0:
+					if due_date < today:
+						self.status = "Overdue"
 					else:
-						if due_date < today:
-							self.status = "Overdue"
-						else:
-							self.status = "Unpaid"
+						self.status = "Unpaid"
 
 				# Negative Outstanding
 				elif outstanding_amount < 0:
@@ -701,6 +737,7 @@ class SalesInvoice(SellingController):
 			self.is_goodwill_invoice = None
 
 		super(SalesInvoice, self).set_missing_values(for_validate)
+		self.set_skip_delivery_note_for_transaction()
 		self.set_goodwill_invoicing_details()
 
 		print_format = pos.get("print_format_for_online") if pos else None
@@ -714,6 +751,15 @@ class SalesInvoice(SellingController):
 				"allow_edit_discount": pos.get("allow_user_to_edit_discount"),
 				"campaign": pos.get("campaign")
 			}
+
+	def set_missing_item_details_for_row(self, item, for_validate=False, skip_pricing_rules=False, parent_dict=None):
+		super().set_missing_item_details_for_row(
+			item,
+			for_validate=for_validate,
+			skip_pricing_rules=skip_pricing_rules,
+			parent_dict=parent_dict,
+		)
+		self.set_skip_delivery_note_for_row(item)
 
 	def set_goodwill_invoicing_details(self):
 		if self.is_goodwill_invoice:
@@ -873,7 +919,7 @@ class SalesInvoice(SellingController):
 			},
 			"Delivery Note Item": {
 				"ref_dn_field": "delivery_note_item",
-				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="],
+				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="], ["warehouse", "="],
 					["batch_no", "="], ["vehicle", "="]],
 				"is_child_table": True,
 				"allow_duplicate_prev_row_id": True
@@ -992,11 +1038,10 @@ class SalesInvoice(SellingController):
 				frappe.msgprint(_("Item Code required at Row No {0}").format(d.idx), raise_exception=True)
 
 	def validate_warehouse(self):
-		super(SalesInvoice, self).validate_warehouse()
+		if self.update_stock:
+			self.validate_warehouse_mandatory()
 
-		for d in self.get_item_list():
-			if not d.warehouse and d.item_code and frappe.get_cached_value("Item", d.item_code, "is_stock_item"):
-				frappe.throw(_("Warehouse required for Stock Item {0}").format(d.item_code))
+		super().validate_warehouse()
 
 	def validate_delivery_note_if_update_stock(self):
 		if not cint(self.is_return) and cint(self.update_stock):
@@ -1012,6 +1057,15 @@ class SalesInvoice(SellingController):
 		if self.is_return:
 			return
 		if cint(frappe.get_cached_value("Accounts Settings", None, "allow_invoicing_without_updating_stock")):
+			return
+
+		sinv_first = frappe.get_cached_value("Selling Settings", None, 'dn_required') == 'Required after Sales Invoice'
+		if self.get('transaction_type'):
+			tt_dn_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'dn_required')
+			if tt_dn_required:
+				sinv_first = tt_dn_required == 'Required after Sales Invoice'
+
+		if sinv_first:
 			return
 
 		for d in self.items:
@@ -1888,12 +1942,22 @@ def make_delivery_note(source_name, target_doc=None):
 		if source.name in [d.sales_invoice_item for d in target_parent.get('items') if d.sales_invoice_item]:
 			return False
 
+		if source.skip_delivery_note:
+			return False
 		if source.delivered_by_supplier:
 			return False
 
-		return get_pending_qty(source)
+		if source.get("is_return"):
+			if get_pending_qty(source) > 0:
+				return False
+		else:
+			if get_pending_qty(source) <= 0:
+				return False
+
+		return True
 
 	def set_missing_values(source, target):
+		target.company_address = None
 		target.ignore_pricing_rule = 1
 		target.run_method("postprocess_after_mapping")
 

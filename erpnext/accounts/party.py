@@ -282,10 +282,13 @@ def set_address_details(
 		party_details.update(get_fetch_values(doctype, billing_address_field, party_details[billing_address_field]))
 
 	# Company Address
+	is_delivery_document = doctype == "Delivery Note"
 	party_details["company_address"] = erpnext.get_company_address({
 		"company_address": company_address,
 		"company": company,
 		"branch": branch,
+		"warehouse": set_warehouse,
+		"is_shipping_address": is_delivery_document,
 	})
 	party_details["company_address_display"] = render_address(party_details["company_address"])
 

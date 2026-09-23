@@ -140,7 +140,6 @@
    "bold": 1,
    "fieldname": "item_code",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Item Code",
@@ -162,7 +161,6 @@
   {
    "fieldname": "item_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Item Name",
    "oldfieldname": "item_name",
    "oldfieldtype": "Data",
@@ -583,6 +581,7 @@
   {
    "fieldname": "additional_notes",
    "fieldtype": "Text",
+   "in_global_search": 1,
    "label": "Additional Notes"
   },
   {
@@ -1141,13 +1140,14 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-11-28 14:10:52.220100",
+ "modified": "2026-09-12 22:37:25.847055",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation Item",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

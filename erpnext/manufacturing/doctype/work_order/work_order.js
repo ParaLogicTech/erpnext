@@ -235,7 +235,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 			}
 
 			// Sub Assembly Work Orders
-			if (!this.frm.doc.use_multi_level_bom && doc.status != "Completed" && frappe.model.can_create("Work Order")) {
+			if (doc.status != "Completed" && frappe.model.can_create("Work Order")) {
 				this.frm.add_custom_button(__("Sub-Assembly Work Order"), () => this.make_sub_assembly_work_orders(),
 					__("Create"));
 			}

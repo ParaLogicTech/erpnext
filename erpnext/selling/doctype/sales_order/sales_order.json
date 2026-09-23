@@ -259,7 +259,6 @@
    "bold": 1,
    "fieldname": "customer",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Customer",
    "oldfieldname": "customer",
@@ -275,7 +274,6 @@
    "fetch_from": "customer.customer_name",
    "fieldname": "customer_name",
    "fieldtype": "Data",
-   "in_global_search": 1,
    "label": "Customer Name",
    "read_only": 1
   },
@@ -351,6 +349,7 @@
    "allow_on_submit": 1,
    "fieldname": "po_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Customer's Purchase Order No",
    "oldfieldname": "po_no",
@@ -410,7 +409,6 @@
    "allow_on_submit": 1,
    "fieldname": "contact_display",
    "fieldtype": "Small Text",
-   "in_global_search": 1,
    "label": "Contact Name",
    "read_only": 1
   },
@@ -991,6 +989,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_standard_filter": 1,
    "label": "Project",
    "oldfieldname": "project",
@@ -1021,6 +1020,7 @@
   {
    "fieldname": "campaign",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Campaign",
    "oldfieldname": "campaign",
    "oldfieldtype": "Link",
@@ -1686,6 +1686,7 @@
   {
    "fieldname": "inter_company_reference",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Inter Company Order Reference",
    "no_copy": 1,
    "options": "Purchase Order",
@@ -1853,7 +1854,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-07-20 13:46:45.737394",
+ "modified": "2026-09-12 17:57:24.102306",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",

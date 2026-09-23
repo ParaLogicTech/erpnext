@@ -213,6 +213,7 @@
   {
    "fieldname": "item_group",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_list_view": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
@@ -308,6 +309,7 @@
    "allow_in_quick_entry": 1,
    "fieldname": "brand",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Brand",
@@ -320,6 +322,7 @@
   {
    "fieldname": "description",
    "fieldtype": "Text Editor",
+   "in_global_search": 1,
    "label": "Description",
    "oldfieldname": "description",
    "oldfieldtype": "Text"
@@ -803,6 +806,7 @@
    "allow_in_quick_entry": 1,
    "fieldname": "item_source",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_preview": 1,
    "label": "Item Source",
    "options": "Item Source"
@@ -1120,7 +1124,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2026-07-02 11:07:20.775656",
+ "modified": "2026-09-12 16:51:59.358677",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

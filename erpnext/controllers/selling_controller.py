@@ -5,11 +5,17 @@ import frappe
 from frappe.utils import cint, flt, cstr
 from frappe import _
 from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_target_warehouse_validation, get_last_purchase_rate, get_min_margin_validation
+from erpnext.stock.get_item_details import (
+	get_target_warehouse_validation,
+	get_last_purchase_rate,
+	get_min_margin_validation,
+	get_skip_delivery_note,
+)
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
 from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.controllers.stock_controller import WarehouseRequired
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
@@ -58,7 +64,6 @@ class SellingController(TransactionController):
 		self.set_alt_uom_qty()
 		self.validate_uom_is_convertible()
 		self.validate_uom_is_integer("uom", "qty")
-		self.validate_uom_is_integer("stock_uom", "stock_qty")
 		self.validate_max_discount()
 		self.validate_discount_rule()
 		self.validate_selling_price()
@@ -355,24 +360,7 @@ class SellingController(TransactionController):
 				continue
 
 			if d.is_new():
-				if d.get("proforma_invoice_item"):
-					previous_discount = flt(frappe.db.get_value("Proforma Invoice Item", {
-						"name": d.proforma_invoice_item, "item_code": d.item_code,
-					}, "discount_percentage"))
-				elif d.get("delivery_note_item"):
-					previous_discount = flt(frappe.db.get_value("Delivery Note Item", {
-						"name": d.delivery_note_item, "item_code": d.item_code,
-					}, "discount_percentage"))
-				elif d.get("sales_order_item"):
-					previous_discount = flt(frappe.db.get_value("Sales Order Item", {
-						"name": d.sales_order_item, "item_code": d.item_code,
-					}, "discount_percentage"))
-				elif d.get("quotation_item"):
-					previous_discount = flt(frappe.db.get_value("Quotation Item", {
-						"name": d.quotation_item, "item_code": d.item_code,
-					}, "discount_percentage"))
-				else:
-					previous_discount = 0
+				previous_discount = self.get_previous_doc_discount_percentage(d)
 			else:
 				previous_discount = flt(d.db_get("discount_percentage"))
 
@@ -388,7 +376,10 @@ class SellingController(TransactionController):
 
 			if not check_rule and has_additional_discount:
 				if _previous_additional_discount is None:
-					_previous_additional_discount = 0 if self.is_new() else flt(self.db_get("discount_amount"))
+					if self.is_new():
+						_previous_additional_discount = self.get_previous_doc_additional_discount()
+					else:
+						_previous_additional_discount = flt(self.db_get("discount_amount"))
 
 				if flt(_previous_additional_discount, rate_precision) != flt(self.discount_amount, rate_precision):
 					check_rule = True
@@ -400,6 +391,57 @@ class SellingController(TransactionController):
 					frappe.bold(self.get("bill_to_name") or self.get("bill_to") or self.customer_name or self.customer),
 					frappe.bold(frappe.format(max_discount, df={"fieldtype": "Percent"}))
 				))
+
+	def get_previous_doc_discount_percentage(self, item):
+		if not item.item_code:
+			return 0
+
+		if item.get("sales_invoice") and item.get("sales_invoice_item"):
+			return flt(frappe.db.get_value("Sales Invoice Item", {
+				"name": item.sales_invoice_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		elif item.get("proforma_invoice") and item.get("proforma_invoice_item"):
+			return flt(frappe.db.get_value("Proforma Invoice Item", {
+				"name": item.proforma_invoice_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		elif item.get("delivery_note") and item.get("delivery_note_item"):
+			return flt(frappe.db.get_value("Delivery Note Item", {
+				"name": item.delivery_note_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		elif item.get("sales_order") and item.get("sales_order_item"):
+			return flt(frappe.db.get_value("Sales Order Item", {
+				"name": item.sales_order_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		elif item.get("quotation") and item.get("quotation_item"):
+			return flt(frappe.db.get_value("Quotation Item", {
+				"name": item.quotation_item, "item_code": item.item_code,
+			}, "discount_percentage"))
+
+		return 0
+
+	def get_previous_doc_additional_discount(self):
+		prev_docs = set()
+		for d in self.get("items"):
+			if d.get("sales_invoice"):
+				prev_docs.add(("Sales Invoice", d.sales_invoice))
+			elif d.get("proforma_invoice"):
+				prev_docs.add(("Proforma Invoice", d.proforma_invoice))
+			elif d.get("delivery_note"):
+				prev_docs.add(("Delivery Note", d.delivery_note))
+			elif d.get("sales_order"):
+				prev_docs.add(("Sales Order", d.sales_order))
+			elif d.get("quotation"):
+				prev_docs.add(("Quotation", d.quotation))
+
+		if len(prev_docs) == 1:
+			doctype, name = list(prev_docs)[0]
+			return flt(frappe.db.get_value(doctype, name, "discount_amount", cache=1))
+
+		return 0
 
 	def set_qty_as_per_stock_uom(self):
 		for d in self.get("items"):
@@ -524,6 +566,42 @@ class SellingController(TransactionController):
 				ignore_zero_rate=True,
 			))
 
+	def set_skip_delivery_note(self):
+		for d in self.get("items"):
+			self.set_skip_delivery_note_for_row(d)
+
+		self.set_skip_delivery_note_for_transaction()
+
+	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
+		if row.item_code:
+			item = frappe.get_cached_doc("Item", row.item_code)
+			row.skip_delivery_note = get_skip_delivery_note(
+				item,
+				delivered_by_supplier=cint(row.get("delivered_by_supplier")),
+				doc=self,
+			)
+			if not row.skip_delivery_note:
+				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
+				if hooked_skip_delivery_note is not None:
+					row.skip_delivery_note = 1 if hooked_skip_delivery_note else 0
+				else:
+					row.skip_delivery_note = 0
+		else:
+			row.skip_delivery_note = 1
+
+		if update:
+			row.db_set("skip_delivery_note", row.skip_delivery_note, update_modified=update_modified)
+
+	def get_skip_delivery_note(self, row):
+		return None
+
+	def set_skip_delivery_note_for_transaction(self, update=False, update_modified=True):
+		all_skip_delivery_note = all(d.skip_delivery_note for d in self.get("items"))
+		self.skip_delivery_note = cint(all_skip_delivery_note)
+
+		if update:
+			self.db_set("skip_delivery_note", self.skip_delivery_note, update_modified=update_modified)
+
 	def get_item_list(self):
 		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
 
@@ -537,40 +615,43 @@ class SellingController(TransactionController):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
 						il.append(frappe._dict({
-							'warehouse': p.warehouse or d.warehouse,
 							'item_code': p.item_code,
+							'warehouse': p.warehouse or d.warehouse,
 							'qty': flt(p.qty),
 							'bundle_qty': flt(d.qty),
 							'uom': p.uom,
-							'batch_no': cstr(p.batch_no).strip(),
+							'stock_uom': p.get("stock_uom") or p.uom,
+							'conversion_factor': flt(d.get("conversion_factor")) or 1,
+							'batch_no': p.get("batch_no"),
 							'packing_slip': p.get("packing_slip"),
-							'serial_no': cstr(p.serial_no).strip(),
+							'serial_no': cstr(p.get("serial_no")).strip(),
 							'name': d.name,
-							'target_warehouse': p.target_warehouse,
+							'target_warehouse': p.get("target_warehouse"),
 							'company': self.company,
 							'voucher_type': self.doctype,
-							'allow_zero_valuation': d.allow_zero_valuation_rate,
-							'delivery_note': d.get('delivery_note'),
+							'allow_zero_valuation': d.get("allow_zero_valuation_rate"),
+							'delivery_note': d.get("delivery_note"),
 						}))
 			else:
 				il.append(frappe._dict({
-					'warehouse': d.warehouse,
 					'item_code': d.item_code,
-					'qty': d.stock_qty,
+					'warehouse': d.warehouse,
+					'qty': flt(d.stock_qty),
 					'uom': d.uom,
 					'stock_uom': d.stock_uom,
-					'conversion_factor': d.conversion_factor,
-					'batch_no': cstr(d.get("batch_no")).strip(),
+					'conversion_factor': flt(d.conversion_factor),
+					'batch_no': d.get("batch_no"),
 					'packing_slip': d.get("packing_slip"),
 					'serial_no': cstr(d.get("serial_no")).strip(),
 					'name': d.name,
-					'target_warehouse': d.target_warehouse,
+					'target_warehouse': d.get("target_warehouse"),
 					'company': self.company,
 					'voucher_type': self.doctype,
-					'allow_zero_valuation': d.allow_zero_valuation_rate,
+					'allow_zero_valuation': d.get('allow_zero_valuation_rate'),
 					'delivery_note': d.get('delivery_note'),
 					'delivery_note_item': d.get('delivery_note_item'),
-					'sales_invoice_item': d.get('sales_invoice_item')
+					'sales_invoice_item': d.get('sales_invoice_item'),
+					'skip_delivery_note': d.get('skip_delivery_note'),
 				}))
 		return il
 
@@ -883,6 +964,19 @@ class SellingController(TransactionController):
 				validate_end_of_life(row.item_code)
 
 			validate_is_not_template_item(row.item_code)
+
+	def validate_warehouse_mandatory(self):
+		for d in self.get_item_list():
+			if d.get("warehouse"):
+				continue
+			if not d.get("item_code"):
+				continue
+
+			is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, "is_stock_item"))
+			if is_stock_item and not cint(d.get("skip_delivery_note")):
+				frappe.throw(_("Delivery Warehouse is mandatory for Stock Item {0}").format(
+					frappe.bold(d.get("item_code"))
+				), WarehouseRequired)
 
 	def validate_target_warehouse(self):
 		if frappe.get_meta(self.doctype + " Item").has_field("target_warehouse"):

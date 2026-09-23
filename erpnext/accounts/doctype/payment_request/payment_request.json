@@ -390,6 +390,7 @@
   {
    "fieldname": "project",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "label": "Project",
    "options": "Project",
    "search_index": 1
@@ -492,7 +493,7 @@
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-05-11 11:43:05.614294",
+ "modified": "2026-09-12 17:33:46.312483",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Request",
@@ -531,6 +532,8 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

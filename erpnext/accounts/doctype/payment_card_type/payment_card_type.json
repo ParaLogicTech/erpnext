@@ -21,7 +21,7 @@
   }
  ],
  "links": [],
- "modified": "2024-12-27 00:14:21.606948",
+ "modified": "2026-09-12 16:49:15.884372",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Payment Card Type",
@@ -90,6 +90,9 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "show_name_in_global_search": 1,
  "sort_field": "idx",
  "sort_order": "DESC",
  "states": [],

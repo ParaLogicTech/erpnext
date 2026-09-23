@@ -1,6 +1,14 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cstr, cint, getdate, format_date
+from frappe.utils import (
+	flt,
+	cstr,
+	cint,
+	getdate,
+	format_date,
+	clean_whitespace,
+	round_based_on_smallest_currency_fraction,
+)
 from erpnext.controllers.stock_controller import StockController
 from erpnext.stock.get_item_details import (
 	get_item_details,
@@ -128,6 +136,8 @@ class TransactionController(StockController):
 		self.validate_qty_is_not_zero()
 		super().validate()
 
+		self.clean_item_names()
+
 		if self.meta.get_field("currency"):
 			self.before_calculate_taxes_and_totals()
 			self.calculate_taxes_and_totals()
@@ -233,14 +243,25 @@ class TransactionController(StockController):
 		if not skip_pricing_rules:
 			if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
 				self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
-			if ret.get("pricing_rules") and not self.get("ignore_pricing_rule"):
+			if (ret.get("pricing_rules") or ret.get("pricing_rule_removed")) and not self.get("ignore_pricing_rule"):
 				self.apply_pricing_rule_on_item(item, ret)
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
 		pass
 
 	def apply_pricing_rule_on_item(self, item, pricing_rule_args):
-		if not pricing_rule_args.get("do_not_force_pricing_rule") and not pricing_rule_args.get("validate_applied_rule"):
+		if pricing_rule_args.get("validate_applied_rule"):
+			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
+				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+				for field in ['discount_percentage', 'discount_amount', 'rate']:
+					if item.get(field) < pricing_rule_doc.get(field):
+						title = frappe.utils.get_link_to_form("Pricing Rule", pricing_rule)
+
+						frappe.msgprint(_("Row {0}: user has not applied the rule {1} on the item {2}")
+							.format(item.idx, frappe.bold(title), frappe.bold(item.item_code)))
+			return
+
+		if not pricing_rule_args.get("do_not_force_pricing_rule") or pricing_rule_args.get("pricing_rule_removed"):
 			if pricing_rule_args.get("price_or_product_discount") == 'Price':
 				item.set("pricing_rules", pricing_rule_args.get("pricing_rules"))
 				item.set("discount_percentage", pricing_rule_args.get("discount_percentage"))
@@ -250,7 +271,7 @@ class TransactionController(StockController):
 					item.set("price_list_rate", pricing_rule_args.get("price_list_rate"))
 
 				if (
-					pricing_rule_args.get("pricing_rule_for") in ("Valution Rate", "Last Purchase Rate", "Price List Rate")
+					pricing_rule_args.get("pricing_rule_for") in ("Valuation Rate", "Last Purchase Rate", "Price List Rate", "Higher of Valuation / Last Purchase Rate")
 					and pricing_rule_args.get("price_list_rate")
 				):
 					item.set("price_list_rate", pricing_rule_args.get("price_list_rate"))
@@ -269,16 +290,6 @@ class TransactionController(StockController):
 				item.set("margin_rate_or_amount", pricing_rule_args.get("margin_rate_or_amount"))
 				if pricing_rule_args.get("margin_rate_or_amount"):
 					item.set("margin_type", pricing_rule_args.get("margin_type"))
-
-		if pricing_rule_args.get("validate_applied_rule"):
-			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
-				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
-				for field in ['discount_percentage', 'discount_amount', 'rate']:
-					if item.get(field) < pricing_rule_doc.get(field):
-						title = frappe.utils.get_link_to_form("Pricing Rule", pricing_rule)
-
-						frappe.msgprint(_("Row {0}: user has not applied the rule {1} on the item {2}")
-							.format(item.idx, frappe.bold(title), frappe.bold(item.item_code)))
 
 	def set_missing_applies_to_details(self):
 		if not self.meta.has_field('applies_to_item'):
@@ -618,6 +629,65 @@ class TransactionController(StockController):
 
 		return out
 
+	def group_items_into_packing_list(self, items=None, postprocess_group=None):
+		packing_slip_groups = self.group_items_by(key="packing_slip", items=items)
+		packing_slip_groups = OrderedDict(sorted(packing_slip_groups.items(), key=lambda x: not x[0]))
+
+		for i, (packing_slip, parent_group) in enumerate(packing_slip_groups.items()):
+			parent_group["parent_packing_slip"] = None
+			parent_group["parent_idx_list"] = []
+			parent_group["child_idx"] = i + 1
+			self.group_child_packing_slips(packing_slip, parent_group, postprocess_group=postprocess_group)
+
+		return packing_slip_groups
+
+	def group_child_packing_slips(self, parent_packing_slip, parent_group, postprocess_group=None):
+		parent_group["packing_slip"] = parent_packing_slip
+
+		packing_slip_doc = frappe.get_doc("Packing Slip", parent_packing_slip) if parent_packing_slip else frappe._dict({"items": []})
+
+		child_groups = OrderedDict()
+		parent_group["leaf_items"] = []
+		for trn_item in parent_group.get("items"):
+			ps_item = [d for d in packing_slip_doc.get("items", []) if trn_item.packing_slip_item == d.name]
+			ps_item = ps_item[0] if ps_item else frappe._dict()
+
+			child_packing_slip = cstr(ps_item.get("source_packing_slip"))
+			if not child_packing_slip:
+				parent_group["leaf_items"].append(trn_item)
+				continue
+
+			trn_item_child = frappe.copy_doc(trn_item)
+			trn_item_child.packing_slip = child_packing_slip
+			trn_item_child.packing_slip_item = ps_item.get("packing_slip_item")
+
+			child_group = child_groups.setdefault(child_packing_slip, frappe._dict({"items": []}))
+			child_group['items'].append(trn_item_child)
+
+		child_groups = OrderedDict(sorted(child_groups.items(), key=lambda x: not x[0]))
+		parent_group["packing_slips"] = child_groups
+
+		last_idx = 0
+		for i, trn_item_child in enumerate(parent_group["leaf_items"]):
+			trn_item_child.parent_idx_list = parent_group["parent_idx_list"] + [parent_group["child_idx"]]
+			trn_item_child.child_idx = i + 1
+			last_idx = trn_item_child.child_idx
+
+		self.group_items_by_postprocess(child_groups)
+
+		for child_packing_slip, child_group in child_groups.items():
+			last_idx += 1
+			child_group["parent_packing_slip"] = parent_packing_slip
+			child_group["parent_idx_list"] = parent_group["parent_idx_list"] + [parent_group["child_idx"]]
+			child_group["child_idx"] = last_idx
+			self.group_child_packing_slips(child_packing_slip, child_group, postprocess_group=postprocess_group)
+
+		parent_group.total_gross_weight = flt(packing_slip_doc.total_gross_weight)
+		parent_group.weight_uom = packing_slip_doc.weight_uom or self.get_common_uom(parent_group["items"], "weight_uom")
+		parent_group.package_uom = packing_slip_doc.package_uom
+		if postprocess_group:
+			postprocess_group(parent_group)
+
 	def group_items_by(self, key, items=None):
 		grouped = OrderedDict()
 
@@ -643,6 +713,11 @@ class TransactionController(StockController):
 		item_meta = frappe.get_meta("Stock Entry Detail" if self.doctype == "Stock Entry" else self.doctype + " Item")
 
 		for key_value, group_data in grouped.items():
+			group_data.item_code = self.get_common_item(group_data["items"])
+			group_data.item_name = ""
+			if group_data.item_code and group_data["items"]:
+				group_data.item_name = group_data["items"][0].item_name
+
 			group_data.uom = self.get_common_uom(group_data["items"])
 			group_data.stock_uom = self.get_common_uom(group_data["items"], "stock_uom")
 
@@ -653,6 +728,20 @@ class TransactionController(StockController):
 				group_data[total_field] = sum([flt(d.get(source_field)) for d in group_data['items']])
 				if self.meta.has_field("conversion_rate") and self.meta.has_field("base_" + total_field):
 					group_data["base_" + total_field] = group_data[total_field] * self.conversion_rate
+
+			if self.meta.has_field("rounded_total") and self.meta.has_field("grand_total"):
+				group_data.rounded_total = round_based_on_smallest_currency_fraction(
+					group_data.grand_total,
+					self.currency,
+					self.precision("rounded_total"),
+					self.get("round_to_nearest") or None,
+				)
+
+				if self.meta.has_field("previous_grand_total"):
+					group_data.including_previous_grand_total = group_data.rounded_total + flt(self.previous_grand_total)
+
+			if self.meta.has_field("discount_amount"):
+				group_data.discount_amount = group_data.grand_total_before_discount - group_data.grand_total
 
 			if self.meta.has_field("taxes"):
 				self.calculate_taxes_for_group(group_data)
@@ -742,11 +831,18 @@ class TransactionController(StockController):
 		if not tax.rate and tax.charge_type in ('On Net Total', 'On Previous Row Total', 'On Previous Row Amount'):
 			tax.rate = tax.calculated_rate
 
-	def get_common_uom(self, items, uom_field="uom"):
+	@staticmethod
+	def get_common_item(items, item_field="item_code"):
+		unique_group_item_codes = list(set(row.get(item_field) for row in items if row.get(item_field)))
+		return unique_group_item_codes[0] if len(unique_group_item_codes) == 1 else ""
+
+	@staticmethod
+	def get_common_uom(items, uom_field="uom"):
 		unique_group_uoms = list(set(row.get(uom_field) for row in items if row.get(uom_field)))
 		return unique_group_uoms[0] if len(unique_group_uoms) == 1 else ""
 
-	def get_item_group_print_heading(self, item):
+	@staticmethod
+	def get_item_group_print_heading(item):
 		from erpnext.setup.doctype.item_group.item_group import get_item_group_print_heading
 		return get_item_group_print_heading(item.item_group)
 
@@ -768,6 +864,14 @@ class TransactionController(StockController):
 			self.validate_value("base_grand_total", ">=", 0)
 		else:
 			self.validate_value("base_grand_total", "<=", 0)
+
+	def clean_item_names(self):
+		if not self.meta.has_field("items"):
+			return
+
+		for d in self.get("items"):
+			if d.meta.has_field("item_name"):
+				d.item_name = clean_whitespace(d.item_name)
 
 	def set_project_reference_no(self):
 		if self.meta.has_field('project_reference_no'):
@@ -1406,7 +1510,7 @@ def update_child_items(parent_doctype, parent_name, data):
 
 	# Validate before Save
 	if parent_doctype == "Sales Order":
-		parent_doc.set_skip_delivery_note_for_order()
+		parent_doc.set_skip_delivery_note_for_transaction()
 		parent_doc.set_gross_profit()
 		parent_doc.validate_delivery_date()
 		parent_doc.validate_max_discount()

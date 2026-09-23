@@ -131,6 +131,7 @@
    "fieldname": "email_id",
    "fieldtype": "Data",
    "hidden": 1,
+   "in_global_search": 1,
    "label": "Email Address",
    "oldfieldname": "email_id",
    "oldfieldtype": "Data"
@@ -138,6 +139,7 @@
   {
    "fieldname": "phone_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Landline No",
    "oldfieldname": "phone_no",
    "oldfieldtype": "Int"
@@ -145,6 +147,7 @@
   {
    "fieldname": "mobile_no",
    "fieldtype": "Data",
+   "in_global_search": 1,
    "label": "Mobile No",
    "oldfieldname": "mobile_no",
    "oldfieldtype": "Int",
@@ -289,7 +292,7 @@
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-02-26 14:45:23.743571",
+ "modified": "2026-09-12 17:59:29.440595",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Warehouse",
@@ -377,9 +380,11 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "warehouse_name"
+ "title_field": "warehouse_name",
+ "track_changes": 1
 }

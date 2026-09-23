@@ -16,7 +16,7 @@ from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
-from erpnext.stock.get_item_details import get_skip_delivery_note, get_default_bom
+from erpnext.stock.get_item_details import get_default_bom
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle, validate_bundled_item_list, make_bundled_item_list
 
@@ -24,10 +24,6 @@ from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle, val
 form_grid_templates = {
 	"items": "templates/form_grid/item_grid.html"
 }
-
-
-class WarehouseRequired(frappe.ValidationError):
-	pass
 
 
 class SalesOrder(SellingController):
@@ -124,7 +120,7 @@ class SalesOrder(SellingController):
 		self.notify_update()
 
 	def get_reference_details_for_payment(self, party_type, party, account, payment_type):
-		if self.currency == self.company_currency:
+		if self.party_account_currency == self.company_currency:
 			total_amount = flt(self.get("base_rounded_total") or self.get("base_grand_total"))
 			exchange_rate = 1
 		else:
@@ -154,7 +150,7 @@ class SalesOrder(SellingController):
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate=for_validate)
-		self.set_skip_delivery_note_for_order()
+		self.set_skip_delivery_note_for_transaction()
 
 	def set_missing_item_details_for_row(self, item, for_validate=False, skip_pricing_rules=False, parent_dict=None):
 		super().set_missing_item_details_for_row(
@@ -164,38 +160,6 @@ class SalesOrder(SellingController):
 			parent_dict=parent_dict,
 		)
 		self.set_skip_delivery_note_for_row(item)
-
-	def set_skip_delivery_note(self):
-		for d in self.get("items"):
-			self.set_skip_delivery_note_for_row(d)
-
-		self.set_skip_delivery_note_for_order()
-
-	def set_skip_delivery_note_for_row(self, row, update=False, update_modified=True):
-		if row.item_code:
-			item = frappe.get_cached_doc("Item", row.item_code)
-			row.skip_delivery_note = get_skip_delivery_note(item, delivered_by_supplier=cint(row.delivered_by_supplier), doc=self)
-			if not row.skip_delivery_note:
-				hooked_skip_delivery_note = self.run_method("get_skip_delivery_note", row)
-				if hooked_skip_delivery_note is not None:
-					row.skip_delivery_note = 1 if hooked_skip_delivery_note else 0
-				else:
-					row.skip_delivery_note = 0
-		else:
-			row.skip_delivery_note = 1
-
-		if update:
-			row.db_set("skip_delivery_note", row.skip_delivery_note, update_modified=update_modified)
-
-	def get_skip_delivery_note(self, row):
-		return None
-
-	def set_skip_delivery_note_for_order(self, update=False, update_modified=True):
-		all_skip_delivery_note = all(d.skip_delivery_note for d in self.get("items"))
-		self.skip_delivery_note = cint(all_skip_delivery_note)
-
-		if update:
-			self.db_set("skip_delivery_note", self.skip_delivery_note, update_modified=update_modified)
 
 	def postprocess_after_mapping(self, reset_taxes=False):
 		self.set_missing_values()
@@ -745,15 +709,8 @@ class SalesOrder(SellingController):
 				self.delivery_date = max_delivery_date
 
 	def validate_warehouse(self):
-		super(SalesOrder, self).validate_warehouse()
-
-		for d in self.get("items"):
-			if d.get("warehouse"):
-				continue
-
-			if d.is_stock_item and not cint(d.skip_delivery_note):
-				frappe.throw(_("Row #{0}: Delivery Warehouse required for Stock Item {0}").format(d.idx, d.item_code),
-					WarehouseRequired)
+		self.validate_warehouse_mandatory()
+		super().validate_warehouse()
 
 	def validate_drop_ship(self):
 		for d in self.get('items'):
@@ -1255,9 +1212,9 @@ def make_delivery_note(
 
 @frappe.whitelist()
 def make_delivery_note_from_packing_slips(source_name, target_doc=None, packing_filter=None, warehouse=None):
-	from erpnext.controllers.queries import _get_packing_slips_to_be_delivered
-
+	from erpnext.stock.doctype.packing_slip.packing_slip import _get_packing_slips_to_be_delivered
 	from erpnext.stock.doctype.packing_slip.packing_slip import make_delivery_note as map_dn_from_packing_slip
+
 	if not warehouse and frappe.flags.args:
 		warehouse = frappe.flags.args.warehouse
 	if not packing_filter and frappe.flags.args:
@@ -1524,11 +1481,10 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 
 	def get_remaining_qty(source, target_parent):
 		if wo_doc:
-			undelivered_qty = round_down(flt(source.qty) - flt(source.delivered_qty), source.precision("qty"))
-
 			packable_qty = flt(wo_doc.completed_qty) - flt(wo_doc.rejected_qty) - flt(wo_doc.reconciled_qty)
 			packable_qty_order_uom = packable_qty / source.conversion_factor
 
+			undelivered_qty = round_down(packable_qty_order_uom - flt(source.delivered_qty), source.precision("qty"))
 			unpacked_qty = round_down(packable_qty_order_uom - flt(wo_doc.packed_qty), source.precision("qty"))
 		else:
 			undelivered_qty = flt(source.qty) - flt(source.delivered_qty)
