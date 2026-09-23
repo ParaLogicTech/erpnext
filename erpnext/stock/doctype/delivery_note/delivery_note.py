@@ -275,6 +275,7 @@ class DeliveryNote(SellingController):
 			doc.notify_update()
 
 	def update_billing_status(self, update_modified=True):
+		visited_sales_order_items = set()
 		updated_delivery_notes = [self.name]
 
 		for d in self.get("items"):
@@ -285,8 +286,10 @@ class DeliveryNote(SellingController):
 			else:
 				# If Delivery Note is against Sales Order but not a return
 				if d.sales_order_item and not self.is_return:
-					updated_delivery_notes += update_indirectly_billed_qty_for_dn_against_so(d.sales_order_item,
-						update_modified=update_modified)
+					if d.sales_order_item not in visited_sales_order_items:
+						updated_delivery_notes += update_indirectly_billed_qty_for_dn_against_so(d.sales_order_item,
+							update_modified=update_modified)
+						visited_sales_order_items.add(d.sales_order_item)
 				else:
 					update_directly_billed_qty_for_dn(self, d.name, update_modified=update_modified)
 
@@ -698,7 +701,7 @@ def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modi
 			inv.depreciation_type, item.ignore_depreciation, inv.bill_to
 		from `tabSales Invoice Item` item, `tabSales Invoice` inv
 		where inv.name = item.parent and inv.docstatus = 1
-			and item.sales_order_item=%s and (item.delivery_note_item is null or item.delivery_note_item = '')
+			and item.sales_order_item = %s and (item.delivery_note_item is null or item.delivery_note_item = '')
 	""", sales_order_item, as_dict=1)
 
 	billed_qty_against_so, billed_amt_against_so = calculate_billed_qty_and_amount(billed_against_so,
@@ -731,7 +734,7 @@ def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modi
 				select item.qty, item.amount, inv.is_return, inv.update_stock, inv.reopen_order,
 					inv.depreciation_type, item.ignore_depreciation, inv.bill_to
 				from `tabSales Invoice Item` item, `tabSales Invoice` inv
-				where inv.name=item.parent and item.delivery_note_item=%s and item.docstatus=1
+				where inv.name = item.parent and item.delivery_note_item = %s and item.docstatus = 1
 			""", dnd.name, as_dict=1)
 
 			billed_qty_against_dn, billed_amt_against_dn = calculate_billed_qty_and_amount(billed_against_dn,
@@ -755,7 +758,7 @@ def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modi
 
 		updated_dn.append(dnd.parent)
 
-	return updated_dn
+	return list(set(updated_dn))
 
 
 def calculate_billed_qty_and_amount(billed_data, for_delivery_return=False, delivery_note_item=None, sales_order_item=None):

@@ -337,6 +337,7 @@ class SalesInvoice(SellingController):
 		# Update Delivery Notes
 		delivery_notes = set()
 		delivery_note_row_names = set()
+		visited_sales_order_items = set()
 		updated_delivery_notes = []
 		for d in self.items:
 			if d.delivery_note:
@@ -344,11 +345,13 @@ class SalesInvoice(SellingController):
 			if d.delivery_note_item:
 				delivery_note_row_names.add(d.delivery_note_item)
 
-			if d.delivery_note and d.delivery_note_item:
+			if d.sales_order_item:
+				if d.sales_order_item not in visited_sales_order_items:
+					updated_delivery_notes += update_indirectly_billed_qty_for_dn_against_so(d.sales_order_item)
+					visited_sales_order_items.add(d.sales_order_item)
+			elif d.delivery_note and d.delivery_note_item:
 				update_directly_billed_qty_for_dn(d.delivery_note, d.delivery_note_item)
 				updated_delivery_notes.append(d.delivery_note)
-			if d.sales_order_item:
-				updated_delivery_notes += update_indirectly_billed_qty_for_dn_against_so(d.sales_order_item)
 
 		for name in set(updated_delivery_notes):
 			doc = frappe.get_doc("Delivery Note", name)
