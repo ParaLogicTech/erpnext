@@ -663,13 +663,19 @@ class Item(Document):
 		)
 
 	def get_cant_change_fields_based_on_bin(self):
-		return ["is_stock_item"]
+		fields = ["is_stock_item"]
+		fields += frappe.get_hooks("item_cant_change_fields_based_on_bin") or []
+		return fields
 
 	def get_cant_change_fields_based_on_sle(self):
-		return ["has_serial_no", "has_batch_no", "valuation_method", "is_vehicle"]
+		fields = ["has_serial_no", "has_batch_no", "valuation_method", "is_vehicle"]
+		fields += frappe.get_hooks("item_cant_change_fields_based_on_sle") or []
+		return fields
 
 	def get_cant_change_fields_based_on_transactions(self):
-		return ["stock_uom", "alt_uom", "alt_uom_size", "is_vehicle"]
+		fields = ["stock_uom", "alt_uom", "alt_uom_size", "is_vehicle"]
+		fields += frappe.get_hooks("item_cant_change_fields_based_on_transactions") or []
+		return fields
 
 	def get_applicable_cant_change_fields(self):
 		fieldnames = []
