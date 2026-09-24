@@ -148,6 +148,9 @@ def get_party_details(party, party_type, args=None):
 		out["shipping_zipcode"] = shipping_address.pincode
 		out["shipping_country"] = shipping_address.country
 
+	if frappe.get_meta(party_type).has_field("tax_status"):
+		out.tax_status = frappe.get_cached_value(party_type, party, "tax_status")
+
 	return out
 
 
