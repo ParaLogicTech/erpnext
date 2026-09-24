@@ -159,8 +159,6 @@ def get_tax_template(posting_date, args):
 	args = frappe._dict(args)
 	posting_date = getdate(posting_date)
 
-	print(args)
-
 	if args.get("customer") and args.get("company"):
 		customer_tax_template = frappe.get_cached_value("Customer", args.get("customer"), "taxes_and_charges_template")
 		if customer_tax_template:
@@ -201,8 +199,6 @@ def get_tax_template(posting_date, args):
 	rule = sorted(tax_rule, key=functools.cmp_to_key(
 		lambda b, a: cmp(a.no_of_keys_matched, b.no_of_keys_matched) or cmp(a.priority, b.priority)
 	))[0]
-
-	print(rule)
 
 	tax_template = rule.sales_tax_template or rule.purchase_tax_template
 	doctype = "{0} Taxes and Charges Template".format(rule.tax_type)
