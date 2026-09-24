@@ -85,7 +85,7 @@ frappe.ui.form.on('Account', {
 					"company": frm.doc.company
 				};
 				frappe.set_route("query-report", "General Ledger");
-			}, __('Manage'));
+			});
 
 			frm.add_custom_button(__('Non-Group to Group'), function () {
 				return frappe.call({

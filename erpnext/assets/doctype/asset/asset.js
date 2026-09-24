@@ -100,7 +100,7 @@ frappe.ui.form.on('Asset', {
 			}
 
 			if (frm.doc.purchase_receipt || !frm.doc.is_existing_asset) {
-				frm.add_custom_button(__("General Ledger"), function() {
+				frm.add_custom_button(__("Accounting Ledger"), function() {
 					frappe.route_options = {
 						"voucher_no": frm.doc.name,
 						"from_date": frm.doc.available_for_use_date,
@@ -108,7 +108,7 @@ frappe.ui.form.on('Asset', {
 						"company": frm.doc.company
 					};
 					frappe.set_route("query-report", "General Ledger");
-				}, __('Manage'));
+				});
 			}
 
 			if (frm.doc.maintenance_required && !frm.doc.maintenance_schedule) {
