@@ -45,10 +45,10 @@ frappe.ui.form.on('Account', {
 			if (frm.has_perm('write')) {
 				frm.add_custom_button(__('Update Account Name / Number'), function () {
 					frm.trigger("update_account_number");
-				});
+				}, __('Manage'));
 				frm.add_custom_button(__('Merge Account'), function () {
 					frm.trigger("merge_account");
-				});
+				}, __('Manage'));
 			}
 		}
 	},
@@ -63,7 +63,7 @@ frappe.ui.form.on('Account', {
 	},
 	add_toolbar_buttons: function(frm) {
 		frm.add_custom_button(__('Chart of Accounts'),
-			function () { frappe.set_route("Tree", "Account"); });
+			function () { frappe.set_route("Tree", "Account"); }, __('Manage'));
 
 		if (frm.doc.is_group == 1) {
 			frm.add_custom_button(__('Group to Non-Group'), function () {
@@ -74,7 +74,7 @@ frappe.ui.form.on('Account', {
 						frm.refresh();
 					}
 				});
-			});
+			}, __('Manage'));
 		} else if (cint(frm.doc.is_group) == 0
 			&& frappe.boot.user.can_read.indexOf("GL Entry") !== -1) {
 			cur_frm.add_custom_button(__('Ledger'), function () {
@@ -85,7 +85,7 @@ frappe.ui.form.on('Account', {
 					"company": frm.doc.company
 				};
 				frappe.set_route("query-report", "General Ledger");
-			});
+			}, __('Manage'));
 
 			frm.add_custom_button(__('Non-Group to Group'), function () {
 				return frappe.call({
@@ -95,7 +95,7 @@ frappe.ui.form.on('Account', {
 						frm.refresh();
 					}
 				});
-			});
+			}, __('Manage'));
 		}
 	},
 
