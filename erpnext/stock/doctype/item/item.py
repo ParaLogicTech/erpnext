@@ -424,6 +424,42 @@ class Item(Document):
 				frappe.throw(_("To merge, following properties must be same for both items")
 									+ ": \n" + ", ".join([self.meta.get_label(fld) for fld in self.get_cant_change_fields()]))
 
+			self.validate_workflow_permission_on_merge(old_name)
+
+	def validate_workflow_permission_on_merge(self, old_name):
+		"""Block a merge when a doctype linked to Item is under a workflow the user
+		cannot edit in every state.
+
+		A merge updates every link field with plain SQL (see `frappe.model.rename_doc`),
+		so the linked documents are never loaded and the workflow's `allow_edit` roles
+		are never consulted.
+		"""
+		from frappe.model.workflow import get_workflow
+
+		user_roles = set(frappe.get_roles())
+		blocked = []
+
+		for doctype in frappe.get_all("Workflow", filters={"is_active": 1}, pluck="document_type"):
+			meta = frappe.get_meta(doctype)
+			metas = [meta] + [frappe.get_meta(df.options) for df in meta.get_table_fields()]
+
+			if not any(m.get("fields", {"fieldtype": "Link", "options": "Item"}) for m in metas):
+				continue
+
+			workflow = get_workflow(doctype)
+			allowed_states = set(d.state for d in workflow.states if d.allow_edit in user_roles)
+
+			if any(d.state not in allowed_states for d in workflow.states):
+				blocked.append(doctype)
+
+		if not blocked:
+			return
+
+		msg = _("You cannot merge {0} because it is linked to documents under a workflow that you are not allowed to edit in every state:").format(frappe.bold(old_name))
+		msg += "<br><br>" + "<br>".join(frappe.bold(_(doctype)) for doctype in blocked)
+
+		frappe.throw(msg, title=_("Not Permitted"), exc=frappe.PermissionError)
+
 	def after_rename(self, old_name, new_name, merge):
 		if merge:
 			self.validate_duplicate_item_in_stock_reconciliation(old_name, new_name)
