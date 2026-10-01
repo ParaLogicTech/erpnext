@@ -359,6 +359,18 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 			fallback_global_last_purchase_rate=True,
 		)
 
+	# same as above, but ignoring the warehouse of the row
+	if child_meta.has_field("last_purchase_rate_independent_of_warehouse"):
+		out.last_purchase_rate_independent_of_warehouse = get_last_purchase_rate(
+			item.name,
+			warehouse=None,
+			uom=out.uom,
+			conversion_factor=out.conversion_factor,
+			exchange_rate=args.conversion_rate,
+			exclude=args.name,
+			fallback_global_last_purchase_rate=True,
+		)
+
 	# if default specified in item is for another company, fetch from company
 	for d in [
 		["Account", "income_account", "default_income_account"],
