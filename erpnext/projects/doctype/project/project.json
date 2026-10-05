@@ -39,6 +39,7 @@
   "applies_to_item",
   "col_break_applies_to",
   "applies_to_item_name",
+  "applies_to_item_brand",
   "customer_details_section",
   "customer",
   "customer_name",
@@ -68,7 +69,6 @@
   "column_break_uqcf",
   "po_no",
   "po_date",
-  "address_and_contact_section",
   "secondary_contact_info_section",
   "secondary_contact_person",
   "column_break_secondary_contact_person",
@@ -743,12 +743,6 @@
    "fieldname": "cash_billing",
    "fieldtype": "Check",
    "label": "Cash Billing"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "address_and_contact_section",
-   "fieldtype": "Section Break",
-   "label": "Customer Address"
   },
   {
    "fieldname": "customer_address",
@@ -1780,6 +1774,12 @@
    "options": "Company:company:default_currency",
    "permlevel": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "applies_to_item_brand",
+   "fieldtype": "Link",
+   "label": "Applies To Item Brand",
+   "options": "Brand"
   }
  ],
  "grid_page_length": 500,
@@ -1787,7 +1787,7 @@
  "idx": 29,
  "image_field": "image",
  "links": [],
- "modified": "2026-09-12 18:05:55.343308",
+ "modified": "2026-10-05 17:01:45.900663",
  "modified_by": "Administrator",
  "module": "Projects",
  "name": "Project",
