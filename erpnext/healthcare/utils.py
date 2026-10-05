@@ -452,6 +452,7 @@ def render_docs_as_html(docs):
 def render_doc_as_html(doctype, docname, exclude_fields = []):
 	#render document as html, three column layout will break
 	doc = frappe.get_doc(doctype, docname)
+	doc.check_permission()
 	meta = frappe.get_meta(doctype)
 	doc_html = "<div class='col-md-12 col-sm-12'>"
 	section_html = ""

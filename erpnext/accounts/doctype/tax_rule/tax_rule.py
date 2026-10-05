@@ -75,6 +75,7 @@ class TaxRule(Document):
 			"shipping_zipcode":	self.shipping_zipcode,
 			"shipping_country":	self.shipping_country,
 			"tax_category": self.tax_category,
+			"tax_status": self.tax_status,
 			"transaction_type":	self.transaction_type,
 			"cost_center": self.cost_center,
 			"tax_id": self.tax_id,
@@ -147,6 +148,9 @@ def get_party_details(party, party_type, args=None):
 		out["shipping_state"] = shipping_address.state
 		out["shipping_zipcode"] = shipping_address.pincode
 		out["shipping_country"] = shipping_address.country
+
+	if frappe.get_meta(party_type).has_field("tax_status"):
+		out.tax_status = frappe.get_cached_value(party_type, party, "tax_status")
 
 	return out
 

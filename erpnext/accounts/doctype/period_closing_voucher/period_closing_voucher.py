@@ -29,7 +29,7 @@ class PeriodClosingVoucher(AccountsController):
 				"In case there is any issue on processing in background, "
 				"the system will add a comment about the error on this Period Closing Voucher and revert to the Draft stage"
 			))
-			self.queue_action('_submit', timeout=1800)
+			self.queue_action('_submit', timeout=21600)
 		else:
 			self._submit()
 
@@ -80,7 +80,6 @@ class PeriodClosingVoucher(AccountsController):
 				gl_entries.append(self.get_gl_dict({
 					"account": acc.account,
 					"cost_center": acc.cost_center,
-					"project": acc.project,
 					"account_currency": acc.account_currency,
 					"debit_in_account_currency": abs(flt(acc.balance_in_account_currency)) \
 						if flt(acc.balance_in_account_currency) < 0 else 0,
@@ -113,15 +112,16 @@ class PeriodClosingVoucher(AccountsController):
 			gl_entries.append(gl_entry)
 
 		from erpnext.accounts.general_ledger import make_gl_entries
-		make_gl_entries(gl_entries)
+		make_gl_entries(gl_entries, ignore_mandatory_dimension=True)
 
 	def get_accounting_dimensions(self):
-		accounting_dimensions = get_accounting_dimensions()
+		accounting_dimensions = get_accounting_dimensions(as_list=False)
+		accounting_dimensions = [d.fieldname for d in accounting_dimensions if not d.disable_pcv]
 		dimension_filters, default_dimensions = get_dimension_filters()
 		return accounting_dimensions, default_dimensions
 
 	def get_dimension_fields(self, accounting_dimensions):
-		dimension_fields = ['t1.cost_center', 't1.project']
+		dimension_fields = ['t1.cost_center']
 		for dimension in accounting_dimensions:
 			dimension_fields.append('t1.{0}'.format(dimension))
 

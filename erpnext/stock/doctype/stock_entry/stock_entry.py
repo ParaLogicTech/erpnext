@@ -1196,9 +1196,12 @@ class StockEntry(TransactionController):
 	def get_raw_materials_to_backflush_based_on_transfer(self):
 		self.get_work_order()
 
+		qty_precision = frappe.get_precision("Stock Entry Detail", "qty")
+
 		transferred_qty = flt(self.pro_doc.material_transferred_for_manufacturing)
 		completed_qty = flt(self.pro_doc.produced_qty) + flt(self.pro_doc.process_loss_qty)
 		remaining_qty = max(transferred_qty - completed_qty, 0)
+		fg_total_qty = flt(self.fg_completed_qty) + flt(self.process_loss_qty)
 
 		if not self.fg_completed_qty:
 			frappe.throw(_("Production Quantity is mandatory"))
@@ -1206,9 +1209,6 @@ class StockEntry(TransactionController):
 			frappe.throw(_("Work Order does not have transferred materials"))
 		if not remaining_qty:
 			frappe.throw(_("Work Order does not have remaining materials"))
-
-		fg_total_qty = flt(self.fg_completed_qty) + flt(self.process_loss_qty)
-		completed_to_remaining_ratio = fg_total_qty / remaining_qty
 
 		transferred_materials_data = frappe.db.sql("""
 			select
@@ -1266,8 +1266,6 @@ class StockEntry(TransactionController):
 					pending_iwb.pending_qty -= d.qty
 
 		# calculate to consume qty
-		qty_precision = frappe.get_precision("Stock Entry Detail", "qty")
-
 		allowed_item_codes = None
 		if self.purpose == "Material Consumption for Manufacture" and self.job_card:
 			allowed_item_codes = self.get_job_card_item_codes()
@@ -1279,6 +1277,11 @@ class StockEntry(TransactionController):
 			total_pending_qty = flt(pending_item_dict.total_pending_qty, qty_precision)
 			if total_pending_qty <= 0:
 				continue
+
+			if self.purpose == "Material Consumption for Manufacture":
+				completed_to_remaining_ratio = fg_total_qty / total_pending_qty
+			else:
+				completed_to_remaining_ratio = fg_total_qty / remaining_qty
 
 			total_required_qty = pending_item_dict.total_pending_qty * completed_to_remaining_ratio
 			total_required_qty = flt(total_required_qty, qty_precision)
@@ -1292,8 +1295,8 @@ class StockEntry(TransactionController):
 				and self.pro_doc.allow_material_consumption
 			):
 				material_per_fg = flt(pending_item_dict.total_transferred_qty / transferred_qty)
-				expected_consumed_qty = completed_qty * material_per_fg
-				excess_consumption = flt(pending_item_dict.total_consumed_qty) - expected_consumed_qty
+				expected_consumed_qty = (completed_qty + fg_total_qty) * material_per_fg
+				excess_consumption = flt(pending_item_dict.total_consumed_qty) + total_to_consume - expected_consumed_qty
 				if flt(excess_consumption, qty_precision) > 0:
 					total_to_consume -= excess_consumption
 
