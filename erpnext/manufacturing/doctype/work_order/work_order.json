@@ -952,7 +952,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "packing_slip_required",
+   "depends_on": "eval:doc.packing_slip_required && (doc.qty_per_carton || doc.carton_type || doc.docstatus == 0)",
    "fieldname": "package_type_section",
    "fieldtype": "Section Break",
    "label": "Package Type"
@@ -982,7 +982,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-06 22:07:37.613568",
+ "modified": "2026-10-06 23:13:29.917271",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Work Order",
