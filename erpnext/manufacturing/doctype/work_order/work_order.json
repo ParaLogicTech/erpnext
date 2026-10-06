@@ -39,6 +39,15 @@
   "product_bundle_item",
   "column_break2",
   "column_break_23",
+  "package_type_section",
+  "carton_type",
+  "pallet_type",
+  "column_break_c3nx",
+  "qty_per_carton",
+  "carton_per_pallet",
+  "column_break_1k5e",
+  "carton_qty",
+  "pallet_qty",
   "warehouses",
   "fg_warehouse",
   "column_break_12",
@@ -277,6 +286,7 @@
   {
    "fieldname": "warehouses",
    "fieldtype": "Section Break",
+   "label": "Warehouse",
    "options": "fa fa-building"
   },
   {
@@ -445,7 +455,6 @@
    "width": "50%"
   },
   {
-   "description": "Manufacture against Material Request",
    "fieldname": "material_request",
    "fieldtype": "Link",
    "label": "Material Request",
@@ -911,6 +920,59 @@
    "fieldname": "auto_select_batches_in_stock_entry",
    "fieldtype": "Check",
    "label": "Auto Select Batches in Stock Entry"
+  },
+  {
+   "fieldname": "carton_type",
+   "fieldtype": "Link",
+   "label": "Carton Type",
+   "options": "Package Type"
+  },
+  {
+   "fieldname": "qty_per_carton",
+   "fieldtype": "Float",
+   "label": "Qty Per Carton",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_c3nx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pallet_type",
+   "fieldtype": "Link",
+   "label": "Pallet Type",
+   "options": "Package Type",
+   "read_only": 1
+  },
+  {
+   "depends_on": "carton_per_pallet",
+   "fieldname": "carton_per_pallet",
+   "fieldtype": "Float",
+   "label": "Carton Per Pallet",
+   "read_only": 1
+  },
+  {
+   "depends_on": "packing_slip_required",
+   "fieldname": "package_type_section",
+   "fieldtype": "Section Break",
+   "label": "Package Type"
+  },
+  {
+   "fieldname": "column_break_1k5e",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "carton_qty",
+   "fieldtype": "Int",
+   "label": "Carton Qty",
+   "read_only": 1
+  },
+  {
+   "depends_on": "pallet_qty",
+   "fieldname": "pallet_qty",
+   "fieldtype": "Float",
+   "label": "Pallet Qty",
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -920,7 +982,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 17:33:58.978531",
+ "modified": "2026-10-06 22:07:37.613568",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Work Order",

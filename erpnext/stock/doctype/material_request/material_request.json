@@ -43,6 +43,8 @@
   "total_qty",
   "column_break_18",
   "total_alt_uom_qty",
+  "column_break_fpik",
+  "total_net_weight",
   "address_tab",
   "warehouse_address",
   "address_display",
@@ -514,6 +516,18 @@
    "label": "Purchase Order Created",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fpik",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "total_net_weight",
+   "fieldname": "total_net_weight",
+   "fieldtype": "Float",
+   "label": "Total Net Weight",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -521,7 +535,7 @@
  "idx": 70,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 17:32:26.741229",
+ "modified": "2026-10-06 20:58:07.304680",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Material Request",

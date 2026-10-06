@@ -47,6 +47,7 @@ class MaterialRequest(BuyingController):
 
 		self.validate_schedule_date()
 		self.validate_warehouse()
+		self.validate_items_carton_type()
 		self.check_for_on_hold_or_closed_status('Sales Order', 'sales_order')
 
 		validate_for_items(self)
@@ -381,22 +382,69 @@ class MaterialRequest(BuyingController):
 	def calculate_totals(self):
 		self.total_qty = 0
 		self.total_alt_uom_qty = 0
+		self.total_net_weight = 0
+		if self.meta.has_field('total_stock_qty'):
+			self.total_stock_qty = 0
+		if self.meta.has_field('total_carton_qty'):
+			self.total_carton_qty = 0
+		if self.meta.has_field('total_pallet_qty'):
+			self.total_pallet_qty = 0
+		if self.meta.has_field('total_gross_weight'):
+			self.total_gross_weight = 0.0
 
 		for d in self.items:
-			self.round_floats_in(d)
+			self.round_floats_in(d, excluding=['net_weight_per_unit', 'gross_weight_per_unit'])
 
 			d.stock_qty = flt(d.qty * flt(d.conversion_factor), 6)
 			d.alt_uom_size = d.alt_uom_size if d.alt_uom else 1.0
 			d.alt_uom_qty = flt(d.stock_qty * d.alt_uom_size, d.precision('alt_uom_qty'))
+			d.net_weight = flt(flt(d.net_weight_per_unit) * flt(d.stock_qty), d.precision("net_weight"))
 
 			d.amount = flt(d.rate * d.qty, d.precision('amount'))
 
+			# Carton and Pallet
+			if d.meta.has_field("carton_qty"):
+				d.qty_per_carton = flt(d.qty_per_carton)
+				d.carton_qty = ceil(d.stock_qty / d.qty_per_carton) if d.qty_per_carton else 0
+				if d.meta.has_field("carton_tare_weight"):
+					d.carton_tare_weight = flt(d.tare_weight_per_carton) * flt(d.carton_qty)
+
+				if d.meta.has_field("pallet_qty"):
+					d.carton_per_pallet = cint(d.carton_per_pallet)
+					d.pallet_qty = d.carton_qty / d.carton_per_pallet if d.carton_per_pallet else 0
+					if d.meta.has_field("pallet_tare_weight"):
+						d.pallet_tare_weight = flt(d.tare_weight_per_pallet) * flt(d.pallet_qty)
+
+			# Gross Weight
+			if d.meta.has_field("gross_weight") and d.meta.has_field("gross_weight_per_unit"):
+				d.gross_weight = flt(d.gross_weight_per_unit) * flt(d.stock_qty)
+				if d.meta.has_field("carton_tare_weight"):
+					d.gross_weight += flt(d.carton_tare_weight)
+				if d.meta.has_field("pallet_tare_weight"):
+					d.gross_weight += flt(d.pallet_tare_weight)
+
+				d.gross_weight = flt(d.gross_weight, d.precision("gross_weight"))
+
 			self.total_qty += d.qty
 			self.total_alt_uom_qty += d.alt_uom_qty
+			self.total_net_weight += d.net_weight
+
+			if self.meta.has_field('total_stock_qty') and d.meta.has_field('stock_qty'):
+				self.total_stock_qty += d.stock_qty
+			if self.meta.has_field('total_carton_qty') and d.meta.has_field('carton_qty'):
+				self.total_carton_qty += d.carton_qty
+			if self.meta.has_field('total_pallet_qty') and d.meta.has_field('pallet_qty'):
+				self.total_pallet_qty += d.pallet_qty
+			if self.meta.has_field('total_gross_weight') and d.meta.has_field('gross_weight'):
+				self.total_gross_weight += d.gross_weight
 
 		self.round_floats_in(self, [
-			'total_qty', 'total_alt_uom_qty',
+			'total_qty', 'total_alt_uom_qty', 'total_net_weight',
 		])
+		if self.meta.has_field('total_gross_weight'):
+			self.round_floats_in(self, ["total_gross_weight"])
+		if self.meta.has_field('total_pallet_qty'):
+			self.round_floats_in(self, ["total_pallet_qty"])
 
 	@frappe.whitelist()
 	def get_bom_items(self, bom, company, qty=1, fetch_exploded=1, warehouse=None):
@@ -713,6 +761,7 @@ def raise_work_orders(material_request):
 			"item_code": d.item_code,
 			"item_name": d.item_name,
 			"bom_no": default_bom,
+			"carton_type": d.get("carton_type"),
 			"warehouse": d.warehouse,
 			"production_qty": balance_qty,
 

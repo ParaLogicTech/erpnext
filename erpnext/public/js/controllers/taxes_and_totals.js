@@ -241,13 +241,39 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 				}
 				let stock_qty = frappe.meta.has_field(item.doctype, "stock_qty") ? item.stock_qty : item.qty;
 
+				// Carton and Pallet
+				if (frappe.meta.has_field(item.doctype, "carton_qty")) {
+					item.qty_per_carton = flt(item.qty_per_carton);
+					item.carton_qty = item.qty_per_carton ? Math.ceil(stock_qty / item.qty_per_carton) : 0;
+					if (frappe.meta.has_field(item.doctype, "carton_tare_weight")) {
+						item.carton_tare_weight = flt(item.tare_weight_per_carton) * flt(item.carton_qty);
+					}
+
+					if (frappe.meta.has_field(item.doctype, "pallet_qty")) {
+						item.carton_per_pallet = cint(item.carton_per_pallet);
+						item.pallet_qty = item.carton_per_pallet ? item.carton_qty / item.carton_per_pallet : 0;
+						if (frappe.meta.has_field(item.doctype, "pallet_tare_weight")) {
+							item.pallet_tare_weight = flt(item.tare_weight_per_pallet) * flt(item.pallet_qty);
+						}
+					}
+				}
+
 				// Net Weight
 				if (frappe.meta.has_field(item.doctype, "net_weight") && frappe.meta.has_field(item.doctype, "net_weight_per_unit")) {
 					item.net_weight = flt(flt(item.net_weight_per_unit) * flt(stock_qty), precision("net_weight", item));
 				}
+
 				// Gross Weight
 				if (frappe.meta.has_field(item.doctype, "gross_weight") && frappe.meta.has_field(item.doctype, "gross_weight_per_unit")) {
-					item.gross_weight = flt(flt(item.gross_weight_per_unit) * flt(stock_qty), precision("gross_weight", item));
+					item.gross_weight = flt(item.gross_weight_per_unit) * flt(stock_qty);
+					if (frappe.meta.has_field(item.doctype, "carton_tare_weight")) {
+						item.gross_weight += item.carton_tare_weight;
+					}
+					if (frappe.meta.has_field(item.doctype, "pallet_tare_weight")) {
+						item.gross_weight += item.pallet_tare_weight;
+					}
+
+					item.gross_weight = flt(item.gross_weight, precision("gross_weight", item));
 				}
 
 				// Contents Qty
@@ -452,6 +478,13 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 			this.frm.doc.total_stock_qty = 0.0
 		}
 
+		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_carton_qty')) {
+			this.frm.doc.total_carton_qty = 0;
+		}
+		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_pallet_qty')) {
+			this.frm.doc.total_pallet_qty = 0;
+		}
+
 		if (frappe.meta.has_field(this.frm.doc.doctype, "total_net_weight")) {
 			this.frm.doc.total_net_weight = 0.0
 		}
@@ -474,6 +507,13 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 			if (frappe.meta.has_field(me.frm.doc.doctype, 'total_stock_qty') && frappe.meta.has_field(item.doctype, 'stock_qty')) {
 				me.frm.doc.total_stock_qty += item.stock_qty;
+			}
+
+			if (frappe.meta.has_field(me.frm.doc.doctype, 'total_carton_qty') && frappe.meta.has_field(item.doctype, 'carton_qty')) {
+				me.frm.doc.total_carton_qty += item.carton_qty;
+			}
+			if (frappe.meta.has_field(me.frm.doc.doctype, 'total_pallet_qty') && frappe.meta.has_field(item.doctype, 'pallet_qty')) {
+				me.frm.doc.total_pallet_qty += item.pallet_qty;
 			}
 
 			if (frappe.meta.has_field(me.frm.doc.doctype, 'total_net_weight') && frappe.meta.has_field(item.doctype, 'net_weight')) {
@@ -547,6 +587,9 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 		}
 		if (frappe.meta.has_field(me.frm.doc.doctype, 'total_gross_weight')) {
 			frappe.model.round_floats_in(this.frm.doc, ["total_gross_weight",]);
+		}
+		if (frappe.meta.has_field(me.frm.doc.doctype, 'total_pallet_qty')) {
+			frappe.model.round_floats_in(this.frm.doc, ["total_pallet_qty",]);
 		}
 	}
 

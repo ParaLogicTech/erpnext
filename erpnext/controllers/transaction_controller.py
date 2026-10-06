@@ -10,6 +10,7 @@ from frappe.utils import (
 	round_based_on_smallest_currency_fraction,
 )
 from erpnext.controllers.stock_controller import StockController
+from erpnext.stock.doctype.item.item import validate_item_carton_type
 from erpnext.stock.get_item_details import (
 	get_item_details,
 	get_applies_to_details,
@@ -51,6 +52,9 @@ class TransactionController(StockController):
 			"is_stock_item", "is_fixed_asset", "has_batch_no", "has_serial_no", "is_vehicle",
 			"claim_customer", "force_default_warehouse", "is_prepaid_deferred_revenue",
 			"sales_commission_category", "commission_rate", "retail_rate",
+
+			"pallet_type", "qty_per_carton", "carton_per_pallet",
+			"tare_weight_per_carton", "tare_weight_per_pallet",
 
 			"actual_qty", "actual_batch_qty", "projected_qty", "reserved_qty",
 			"in_transit_qty", "avg_monthly_sales", "last_billed_rate",
@@ -949,6 +953,9 @@ class TransactionController(StockController):
 					d.idx, _("Project"), frappe.bold(d.item_code)
 				))
 
+	def validate_items_carton_type(self):
+		validate_doc_items_carton_type(self)
+
 	def is_rounded_total_disabled(self):
 		if self.meta.get_field("calculate_tax_on_company_currency") and cint(self.get("calculate_tax_on_company_currency")) and self.currency != self.company_currency:
 			return True
@@ -1265,6 +1272,11 @@ def validate_inclusive_tax(tax, doc):
 			_on_previous_row_error("1 - %d" % (tax.row_id,))
 		elif tax.get("category") == "Valuation":
 			frappe.throw(_("Valuation type charges can not be marked as Inclusive"))
+
+
+def validate_doc_items_carton_type(doc):
+	for d in doc.items:
+		validate_item_carton_type(d.get('item_code'), d.get('carton_type'))
 
 
 def is_doctype_selling_or_buying(doctype):

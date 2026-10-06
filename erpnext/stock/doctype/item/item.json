@@ -78,6 +78,8 @@
   "tare_weight_per_unit",
   "column_break_65",
   "gross_weight_per_unit",
+  "package_types_section",
+  "package_types",
   "foreign_trade_details",
   "customs_tariff_number",
   "column_break_eoor",
@@ -1117,6 +1119,19 @@
   {
    "fieldname": "column_break_eoor",
    "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "package_types",
+   "fieldname": "package_types_section",
+   "fieldtype": "Section Break",
+   "label": "Package Types"
+  },
+  {
+   "fieldname": "package_types",
+   "fieldtype": "Table",
+   "label": "Package Types",
+   "options": "Item Package Type"
   }
  ],
  "grid_page_length": 500,
@@ -1124,7 +1139,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2026-09-12 16:51:59.358677",
+ "modified": "2026-10-06 01:17:17.297571",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

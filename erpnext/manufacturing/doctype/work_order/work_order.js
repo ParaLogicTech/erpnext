@@ -169,6 +169,10 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 				}
 			};
 		});
+
+		this.frm.set_query("carton_type", () => {
+			return erpnext.queries.carton_type(this.frm.doc.production_item);
+		});
 	}
 
 	setup_buttons() {
@@ -405,6 +409,10 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 		}
 	}
 
+	carton_type() {
+		return this.get_item_packaging_details();
+	}
+
 	use_multi_level_bom() {
 		if (this.frm.doc.bom_no) {
 			return this.bom_no();
@@ -419,6 +427,25 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 
 	qty() {
 		return this.bom_no();
+	}
+
+	get_item_packaging_details() {
+		return frappe.call({
+			method: "erpnext.stock.get_item_details.get_item_packaging_details",
+			args: {
+				item_code: this.frm.doc.production_item,
+				carton_type: this.frm.doc.carton_type,
+				get_default: 0,
+			},
+			callback: (r) => {
+				if (r.message) {
+					return frappe.run_serially([
+						() => this.frm.set_value(r.message),
+						() => this.calculate_cost(),
+					]);
+				}
+			}
+		});
 	}
 
 	source_warehouse(doc, cdt, cdn) {
@@ -496,6 +523,14 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 		let variable_cost = flt(doc.actual_operating_cost) || flt(doc.planned_operating_cost);
 		this.frm.set_value("total_operating_cost", variable_cost + doc.additional_operating_cost);
 		this.frm.set_value("total_cost", doc.total_operating_cost + flt(doc.raw_material_cost));
+
+		doc.carton_qty = doc.qty_per_carton ? Math.ceil(doc.qty / doc.qty_per_carton) : 0;
+		doc.pallet_qty = doc.carton_per_pallet ? doc.carton_qty / doc.carton_per_pallet : 0;
+		this.frm.refresh_field('carton_qty');
+		this.frm.refresh_field('pallet_qty');
+
+		doc.total_raw_material_qty = frappe.utils.sum((doc.required_items || []).map(d => d.total_qty));
+		this.frm.refresh_field('total_raw_material_qty');
 	}
 
 	make_packing_slip() {

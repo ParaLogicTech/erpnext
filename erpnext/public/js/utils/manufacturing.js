@@ -795,6 +795,12 @@ $.extend(erpnext.manufacturing, {
 					columns: 1,
 				},
 				{
+					fieldname: "carton_type",
+					label: __("Carton Type"),
+					fieldtype: "Link",
+					options: "Package Type",
+				},
+				{
 					fieldtype: "Data",
 					fieldname: "sales_order_item",
 					reqd: 1,
