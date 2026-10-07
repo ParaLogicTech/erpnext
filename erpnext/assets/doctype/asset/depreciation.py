@@ -167,6 +167,7 @@ def scrap_asset(asset_name):
 	je.posting_date = today()
 	je.company = asset.company
 	je.remark = "Scrap Entry for asset {0}".format(asset_name)
+	je.is_system_generated = True
 
 	accounting_dimensions = get_accounting_dimensions()
 	for dimension_field in accounting_dimensions + ["cost_center"]:

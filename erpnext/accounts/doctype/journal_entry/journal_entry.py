@@ -676,7 +676,8 @@ class JournalEntry(AccountsController):
 				frappe.throw(_("Row {0}: Exchange Rate is mandatory").format(d.idx))
 
 	def create_remarks(self):
-		self.remark = self.user_remark
+		if not self.is_system_generated:
+			self.remark = self.user_remark
 
 	def set_original_reference(self, unset=False):
 		if self.docstatus == 0:
