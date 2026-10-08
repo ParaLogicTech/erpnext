@@ -264,7 +264,6 @@
    "oldfieldtype": "Select"
   },
   {
-   "depends_on": "is_stock_item",
    "fieldname": "valuation_rate",
    "fieldtype": "Currency",
    "label": "Default Valuation Rate",
@@ -272,7 +271,7 @@
    "read_only_depends_on": "eval: doc.is_customer_provided_item"
   },
   {
-   "depends_on": "eval:doc.__islocal",
+   "depends_on": "eval:doc.__islocal && doc.is_sales_item",
    "fieldname": "standard_rate",
    "fieldtype": "Currency",
    "label": "Standard Selling Rate"
@@ -892,7 +891,6 @@
    "label": "Is Vehicle"
   },
   {
-   "depends_on": "is_stock_item",
    "fieldname": "manufacture_uom",
    "fieldtype": "Link",
    "label": "Default Raw Material UOM",
@@ -1055,7 +1053,7 @@
    "label": "Is Packaging Material"
   },
   {
-   "depends_on": "eval:!doc.is_stock_item && !doc.is_fixed_asset",
+   "depends_on": "eval:!doc.is_stock_item && !doc.is_fixed_asset && doc.is_sales_item",
    "fieldname": "standard_working_hours",
    "fieldtype": "Float",
    "label": "Standard Working Hours",
@@ -1139,7 +1137,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2026-10-06 01:17:17.297571",
+ "modified": "2026-10-08 03:36:41.139465",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

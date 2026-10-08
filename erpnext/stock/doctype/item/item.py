@@ -91,7 +91,7 @@ class Item(Document):
 
 	def after_insert(self):
 		'''set opening stock and item price'''
-		if self.standard_rate:
+		if self.standard_rate and self.is_sales_item:
 			self.add_price()
 
 	def validate(self):
@@ -144,10 +144,12 @@ class Item(Document):
 			self.valuation_rate = 0
 
 	def add_price(self, price_list=None):
-		'''Add a new price'''
 		if not price_list:
-			price_list = (frappe.db.get_single_value('Selling Settings', 'selling_price_list')
-						or frappe.db.get_value('Price List', _('Standard Selling')))
+			price_list = (
+				frappe.db.get_single_value('Selling Settings', 'selling_price_list')
+				or frappe.db.get_value('Price List', _('Standard Selling'))
+			)
+
 		if price_list:
 			item_price = frappe.get_doc({
 				"doctype": "Item Price",
