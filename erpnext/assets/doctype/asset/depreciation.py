@@ -166,7 +166,7 @@ def scrap_asset(asset_name):
 	je.naming_series = depreciation_series
 	je.posting_date = today()
 	je.company = asset.company
-	je.remark = "Scrap Entry for asset {0}".format(asset_name)
+	je.user_remark = "Scrap Entry for asset {0}".format(asset_name)
 	je.is_system_generated = True
 
 	accounting_dimensions = get_accounting_dimensions()
