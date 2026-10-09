@@ -100,6 +100,13 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 				};
 			});
 		}
+
+		if (this.frm.fields_dict["items"]?.grid?.get_field("carton_type")) {
+			this.frm.set_query("carton_type", "items", (doc, cdt, cdn) => {
+				let row = frappe.get_doc(cdt, cdn);
+				return erpnext.queries.carton_type(row.item_code);
+			});
+		}
 	}
 
 	setup_buttons() {
@@ -256,7 +263,9 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		return true;
 	}
 
-	calculate_taxes_and_totals() { }
+	calculate_taxes_and_totals() {
+		this.calculate_totals();
+	}
 
 	round_up_qty() {
 		if (this.frm.doc.docstatus === 0) {
@@ -287,23 +296,87 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 	calculate_totals() {
 		this.frm.doc.total_qty = 0;
 		this.frm.doc.total_alt_uom_qty = 0;
+		this.frm.doc.total_net_weight = 0;
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_stock_qty")) {
+			this.frm.doc.total_stock_qty = 0.0
+		}
+		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_carton_qty')) {
+			this.frm.doc.total_carton_qty = 0;
+		}
+		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_pallet_qty')) {
+			this.frm.doc.total_pallet_qty = 0;
+		}
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_gross_weight")) {
+			this.frm.doc.total_gross_weight = 0.0
+		}
 
 		for (let d of this.frm.doc.items || []) {
-			frappe.model.round_floats_in(d);
+			frappe.model.round_floats_in(d, null, ['net_weight_per_unit', 'gross_weight_per_unit']);
 
 			d.stock_qty = flt(d.qty * d.conversion_factor, 6);
 			d.alt_uom_size = d.alt_uom ? d.alt_uom_size : 1.0
 			d.alt_uom_qty = flt(d.stock_qty * d.alt_uom_size, precision("alt_uom_qty", d));
+			d.net_weight = flt(flt(d.net_weight_per_unit) * flt(d.stock_qty), precision("net_weight", d));
 
 			d.amount = flt(d.rate * d.qty, precision("amount", d));
 
+			// Carton and Pallet
+			if (frappe.meta.has_field(d.doctype, "carton_qty")) {
+				d.qty_per_carton = flt(d.qty_per_carton);
+				d.carton_qty = d.qty_per_carton ? Math.ceil(d.stock_qty / d.qty_per_carton) : 0;
+				if (frappe.meta.has_field(d.doctype, "carton_tare_weight")) {
+					d.carton_tare_weight = flt(d.tare_weight_per_carton) * flt(d.carton_qty);
+				}
+
+				if (frappe.meta.has_field(d.doctype, "pallet_qty")) {
+					d.carton_per_pallet = cint(d.carton_per_pallet);
+					d.pallet_qty = d.carton_per_pallet ? d.carton_qty / d.carton_per_pallet : 0;
+					if (frappe.meta.has_field(d.doctype, "pallet_tare_weight")) {
+						d.pallet_tare_weight = flt(d.tare_weight_per_pallet) * flt(d.pallet_qty);
+					}
+				}
+			}
+
+			// Gross Weight
+			if (frappe.meta.has_field(d.doctype, "gross_weight") && frappe.meta.has_field(d.doctype, "gross_weight_per_unit")) {
+				d.gross_weight = flt(d.gross_weight_per_unit) * flt(d.stock_qty);
+				if (frappe.meta.has_field(d.doctype, "carton_tare_weight")) {
+					d.gross_weight += d.carton_tare_weight;
+				}
+				if (frappe.meta.has_field(d.doctype, "pallet_tare_weight")) {
+					d.gross_weight += d.pallet_tare_weight;
+				}
+
+				d.gross_weight = flt(d.gross_weight, precision("gross_weight", d));
+			}
+
 			this.frm.doc.total_qty += d.qty;
 			this.frm.doc.total_alt_uom_qty += d.alt_uom_qty;
+			this.frm.doc.total_net_weight += d.net_weight;
+
+			if (frappe.meta.has_field(this.frm.doc.doctype, 'total_stock_qty') && frappe.meta.has_field(d.doctype, 'stock_qty')) {
+				this.frm.doc.total_stock_qty += d.stock_qty;
+			}
+			if (frappe.meta.has_field(this.frm.doc.doctype, 'total_carton_qty') && frappe.meta.has_field(d.doctype, 'carton_qty')) {
+				this.frm.doc.total_carton_qty += d.carton_qty;
+			}
+			if (frappe.meta.has_field(this.frm.doc.doctype, 'total_pallet_qty') && frappe.meta.has_field(d.doctype, 'pallet_qty')) {
+				this.frm.doc.total_pallet_qty += d.pallet_qty;
+			}
+			if (frappe.meta.has_field(this.frm.doc.doctype, 'total_gross_weight') && frappe.meta.has_field(d.doctype, 'gross_weight')) {
+				this.frm.doc.total_gross_weight += d.gross_weight;
+			}
 		}
 
 		frappe.model.round_floats_in(this.frm.doc, [
-			'total_qty', 'total_alt_uom_qty',
+			'total_qty', 'total_alt_uom_qty', 'total_net_weight',
 		]);
+		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_gross_weight')) {
+			frappe.model.round_floats_in(this.frm.doc, ["total_gross_weight",]);
+		}
+		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_pallet_qty')) {
+			frappe.model.round_floats_in(this.frm.doc, ["total_pallet_qty",]);
+		}
 
 		this.frm.refresh_fields();
 	}

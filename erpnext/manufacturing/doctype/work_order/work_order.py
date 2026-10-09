@@ -5,7 +5,11 @@ import frappe
 from frappe import _
 from frappe.utils import flt, getdate, cint, get_link_to_form, round_up
 from erpnext.manufacturing.doctype.bom.bom import validate_bom_no, get_bom_items_as_dict
-from erpnext.stock.doctype.item.item import validate_end_of_life, validate_is_not_template_item
+from erpnext.stock.doctype.item.item import (
+	validate_end_of_life,
+	validate_is_not_template_item,
+	validate_item_carton_type
+)
 from erpnext.stock.stock_balance import get_planned_qty, update_bin_qty
 from erpnext.stock.utils import get_bin, validate_warehouse_company, get_latest_stock_qty
 from erpnext.setup.doctype.item_default_rule.item_default_rule import (
@@ -13,7 +17,7 @@ from erpnext.setup.doctype.item_default_rule.item_default_rule import (
 	get_default_values_for_filters,
 )
 from erpnext.controllers.status_updater import StatusUpdaterERP
-from erpnext.stock.get_item_details import get_default_bom, get_default_cost_center
+from erpnext.stock.get_item_details import get_default_bom, get_default_cost_center, get_item_packaging_details
 from frappe.model.mapper import get_mapped_doc
 import json
 import math
@@ -47,6 +51,7 @@ class WorkOrder(StatusUpdaterERP):
 		super().__init__(*args, **kwargs)
 		self.force_production_item_fields = [
 			"item_name", "description", "stock_uom",
+			"pallet_type", "qty_per_carton", "carton_per_pallet",
 		]
 
 	def get_feed(self):
@@ -68,6 +73,7 @@ class WorkOrder(StatusUpdaterERP):
 		self.validate_production_item()
 		self.validate_bom()
 		self.validate_sales_order()
+		self.validate_item_carton_type()
 
 		self.set_required_items(reset_only_qty=bool(len(self.get("required_items"))))
 		self.validate_warehouses()
@@ -152,6 +158,9 @@ class WorkOrder(StatusUpdaterERP):
 		if self.production_item:
 			validate_end_of_life(self.production_item)
 			validate_is_not_template_item(self.production_item)
+
+	def validate_item_carton_type(self):
+		validate_item_carton_type(self.production_item, self.carton_type)
 
 	def validate_bom(self):
 		if self.get("bom_no"):
@@ -565,7 +574,6 @@ class WorkOrder(StatusUpdaterERP):
 	def calculate_raw_material_cost(self):
 		bom_cost, bom_qty = frappe.db.get_value("BOM", self.bom_no, ["base_raw_material_cost", "quantity"])
 		self.raw_material_cost = bom_cost * flt(self.qty) / bom_qty if bom_qty else 0
-		self.total_raw_material_qty = sum([d.total_qty for d in self.required_items])
 
 	def calculate_operating_cost(self):
 		self.planned_operating_cost = 0.0
@@ -589,6 +597,11 @@ class WorkOrder(StatusUpdaterERP):
 
 	def calculate_total_cost(self):
 		self.total_cost = self.raw_material_cost + self.total_operating_cost
+
+		self.carton_qty = math.ceil(self.qty / self.qty_per_carton) if self.qty_per_carton else 0
+		self.pallet_qty = self.carton_qty / self.carton_per_pallet if self.carton_per_pallet else 0
+
+		self.total_raw_material_qty = sum([d.total_qty for d in self.required_items])
 
 	def set_available_qty(self):
 		for d in self.get("required_items"):
@@ -1273,6 +1286,8 @@ def get_item_details(args, with_settings=False):
 
 	out.cost_center = get_default_cost_center(item, args, selling_or_buying="buying")
 
+	out.update(get_item_packaging_details(item.name, args.carton_type))
+
 	if with_settings:
 		out.update(get_default_settings(args))
 
@@ -1494,6 +1509,7 @@ def create_work_order(
 		"item_name": row.get("item_name"),
 		"description": row.get("description"),
 		"bom_no": row.get("bom_no"),
+		"carton_type": row.get("carton_type"),
 		"qty": flt(row.get("production_qty")),
 		"fg_warehouse": row.get("warehouse"),
 		"wip_warehouse": row.get("wip_warehouse") or None,
@@ -1899,6 +1915,12 @@ def make_packing_slip(work_orders, target_doc=None):
 		row.source_warehouse = wo_doc.wip_warehouse if wo_doc.produce_fg_in_wip_warehouse else wo_doc.fg_warehouse
 		row.qty = wo_doc.completed_qty - wo_doc.packed_qty - wo_doc.rejected_qty - wo_doc.reconciled_qty
 		row.uom = wo_doc.stock_uom
+
+		qty_per_carton = 0
+		if not qty_per_carton and wo_doc:
+			qty_per_carton = flt(wo_doc.get("qty_per_carton"))
+		if qty_per_carton:
+			row.qty = min(qty_per_carton, row.qty)
 
 		frappe.utils.call_hook_method("postprocess_work_order_to_packing_slip_item", wo_doc, target_doc, row)
 		frappe.utils.call_hook_method("postprocess_packing_slip_item", row, target_doc, work_order=wo_doc)

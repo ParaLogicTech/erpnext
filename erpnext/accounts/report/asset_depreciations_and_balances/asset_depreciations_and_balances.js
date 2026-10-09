@@ -81,5 +81,23 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			options: "Finance Book",
 			hidden:1
 		},
+		{
+			fieldname: "status",
+			label: __("Asset Status"),
+			fieldtype: "Select",
+			options: [
+				"",
+				"Draft",
+				"Submitted",
+				"Partially Depreciated",
+				"Fully Depreciated",
+				"Sold",
+				"Scrapped",
+				"In Maintenance",
+				"Out of Order",
+				"Issue",
+				"Receipt"
+			]
+		}
 	]
 };

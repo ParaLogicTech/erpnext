@@ -33,6 +33,7 @@ class Quotation(SellingController):
 		self.validate_previous_orders()
 		self.validate_campaign()
 		self.validate_warehouse()
+		self.validate_items_carton_type()
 		self.clear_approval_date()
 		self.set_customer_name()
 		self.sort_items()

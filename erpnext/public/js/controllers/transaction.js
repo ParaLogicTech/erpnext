@@ -270,6 +270,13 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			return erpnext.queries.item_uom(item.item_code);
 		});
 
+		if (this.frm.fields_dict["items"]?.grid?.get_field("carton_type")) {
+			this.frm.set_query("carton_type", "items", (doc, cdt, cdn) => {
+				let row = frappe.get_doc(cdt, cdn);
+				return erpnext.queries.carton_type(row.item_code);
+			});
+		}
+
 		if(this.frm.fields_dict["return_against"]) {
 			this.frm.set_query("return_against", function(doc) {
 				var filters = {
@@ -2526,6 +2533,31 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	set_warehouse() {
 		erpnext.utils.autofill_warehouse(this.frm.doc.items, "warehouse", this.frm.doc.set_warehouse);
+	}
+
+	carton_type(doc, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		this.get_item_packaging_details(row)
+	}
+
+	get_item_packaging_details(row) {
+		return frappe.call({
+			method: "erpnext.stock.get_item_details.get_item_packaging_details",
+			args: {
+				item_code: row.item_code,
+				carton_type: row.carton_type,
+				weight_uom: row.weight_uom,
+				get_default: 0,
+			},
+			callback: (r) => {
+				if (r.message) {
+					frappe.run_serially([
+						() => frappe.model.set_value(row.doctype, row.name, r.message),
+						() => this.calculate_taxes_and_totals(),
+					]);
+				}
+			}
+		});
 	}
 
 	coupon_code() {

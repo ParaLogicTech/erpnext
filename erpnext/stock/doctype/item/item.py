@@ -91,7 +91,7 @@ class Item(Document):
 
 	def after_insert(self):
 		'''set opening stock and item price'''
-		if self.standard_rate:
+		if self.standard_rate and self.is_sales_item:
 			self.add_price()
 
 	def validate(self):
@@ -120,6 +120,7 @@ class Item(Document):
 		self.validate_uom_conversion_factor()
 		self.validate_default_uom_is_convertible()
 		self.validate_weight()
+		self.validate_duplicate_carton_type()
 		self.validate_customer_provided_part()
 		self.validate_auto_reorder_enabled_in_stock_settings()
 		self.validate_applicable_items()
@@ -143,10 +144,12 @@ class Item(Document):
 			self.valuation_rate = 0
 
 	def add_price(self, price_list=None):
-		'''Add a new price'''
 		if not price_list:
-			price_list = (frappe.db.get_single_value('Selling Settings', 'selling_price_list')
-						or frappe.db.get_value('Price List', _('Standard Selling')))
+			price_list = (
+				frappe.db.get_single_value('Selling Settings', 'selling_price_list')
+				or frappe.db.get_value('Price List', _('Standard Selling'))
+			)
+
 		if price_list:
 			item_price = frappe.get_doc({
 				"doctype": "Item Price",
@@ -783,6 +786,17 @@ class Item(Document):
 			uom_field="applicable_uom",
 		)
 
+	def validate_duplicate_carton_type(self):
+		carton_type_set = set()
+		for d in self.package_types:
+			carton_type = cstr(d.carton_type)
+			if carton_type in carton_type_set:
+				frappe.throw(_("Row #{0}: Duplicate Carton Type {1}").format(
+					d.idx, frappe.bold(carton_type)
+				))
+
+			carton_type_set.add(carton_type)
+
 
 def get_timeline_data(doctype, name):
 	'''returns timeline data based on stock ledger entry'''
@@ -832,6 +846,19 @@ def validate_is_not_template_item(item_code):
 		frappe.throw(_("Item {0} is a Template Item. Please select one of it's variants instead").format(
 			frappe.bold(format_item_name(item))
 		))
+
+
+def validate_item_carton_type(item_code, carton_type):
+	if not item_code or not carton_type:
+		return
+
+	item_doc = frappe.get_cached_doc("Item", item_code)
+	allowed_carton_types = {package_row.carton_type for package_row in item_doc.package_types}
+
+	if carton_type not in allowed_carton_types:
+		frappe.throw(_("Carton Type {0} is not defined in {1}").format(
+			carton_type, frappe.get_desk_link("Item", item_code))
+		)
 
 
 def check_stock_uom_with_bin(item, stock_uom):

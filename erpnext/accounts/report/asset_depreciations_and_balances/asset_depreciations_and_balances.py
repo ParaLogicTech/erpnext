@@ -194,7 +194,7 @@ def get_asset_categories_for_grouped_by_category(filters):
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
-		SELECT a.asset_category, a.asset_category_group,
+		SELECT a.asset_category, a.asset_category_group, 
 			   ifnull(sum(case when a.purchase_date < %(from_date)s then
 							   case when ifnull(a.disposal_date, 0) = 0 or a.disposal_date >= %(from_date)s then
 									a.gross_purchase_amount
@@ -626,14 +626,14 @@ def get_assets_for_grouped_by_asset(filters):
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
-		SELECT results.name as asset,
+		SELECT results.name as asset,results.status as status,
 			   results.total_number_of_depreciations as total_number_of_depreciations,
 			   results.useful_life as useful_life,
 			   sum(results.accumulated_depreciation_as_on_from_date) as accumulated_depreciation_as_on_from_date,
 			   sum(results.depreciation_eliminated_via_reversal) as depreciation_eliminated_via_reversal,
 			   sum(results.depreciation_eliminated_during_the_period) as depreciation_eliminated_during_the_period,
 			   sum(results.depreciation_amount_during_the_period) as depreciation_amount_during_the_period
-		from (SELECT a.name as name,
+		from (SELECT a.name as name,a.status as status,
 				   a.total_number_of_depreciations,
 				   a.useful_life,
 				   ifnull(sum(case when gle.posting_date < %(from_date)s and (ifnull(a.disposal_date, 0) = 0 or a.disposal_date >= %(from_date)s) then
@@ -673,7 +673,7 @@ def get_assets_for_grouped_by_asset(filters):
 				{finance_book_filter} {condition}
 			group by a.name
 			union
-			SELECT a.name as name,
+			SELECT a.name as name, a.status,
 				   a.total_number_of_depreciations,
 				   a.useful_life,
 				   ifnull(sum(case when ifnull(a.disposal_date, 0) != 0 and a.disposal_date < %(from_date)s then
@@ -782,6 +782,10 @@ def get_conditions(filters):
 		if filters.get("document_status") == "Cancel":
 			document_status = 2
 		condition += " and a.docstatus = {document_status}".format(document_status=document_status)
+
+	if filters.get("status"):
+		condition += " and a.status = %(status)s"
+		condition_values_dict["status"] = filters.get("status")
 	
 	if filters.get("cost_center"):
 		condition += " and a.cost_center = '{cost_center}'".format(cost_center=filters.get("cost_center"))
@@ -832,6 +836,14 @@ def get_columns(filters):
 			{
 				"label": _("Asset Name"),
 				"fieldname": "asset_name",
+				"fieldtype": "Data",
+				"width": 140,
+			}
+		)
+		columns.append(
+			{
+				"label": _("Status"),
+				"fieldname": "status",
 				"fieldtype": "Data",
 				"width": 140,
 			}

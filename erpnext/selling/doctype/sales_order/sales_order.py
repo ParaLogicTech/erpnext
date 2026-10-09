@@ -50,6 +50,7 @@ class SalesOrder(SellingController):
 		self.validate_project()
 		self.validate_for_items()
 		self.validate_warehouse()
+		self.validate_items_carton_type()
 		self.validate_drop_ship()
 		self.validate_serial_no_based_delivery()
 		self.validate_campaign()
@@ -848,6 +849,7 @@ class SalesOrder(SellingController):
 					"item_name": d.item_name,
 					"description": d.description,
 					"bom_no": bom_no,
+					"carton_type": d.get("carton_type"),
 					"warehouse": default_rm_warehouse if for_raw_material_request else d.warehouse,
 					"stock_uom": d.get("stock_uom") or d.get("uom"),
 
@@ -1472,6 +1474,14 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 		# Remaining Qty
 		undelivered_qty, unpacked_qty = get_remaining_qty(source, target_parent)
 		target.qty = min(undelivered_qty, unpacked_qty)
+
+		qty_per_carton = 0
+		if not qty_per_carton and wo_doc:
+			qty_per_carton = flt(wo_doc.get("qty_per_carton"))
+		if not qty_per_carton:
+			qty_per_carton = flt(source.get("qty_per_carton"))
+		if qty_per_carton:
+			target.qty = min(qty_per_carton, target.qty)
 
 		# Postprocess Hooks
 		if wo_doc:

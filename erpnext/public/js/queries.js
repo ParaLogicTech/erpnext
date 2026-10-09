@@ -169,6 +169,20 @@ $.extend(erpnext.queries, {
 			},
 		};
 	},
+
+	carton_type: function(item_code, filters) {
+		if (!item_code) {
+			frappe.throw(__("Please select Item first"));
+		}
+
+		let args = {
+			query: "erpnext.controllers.queries.carton_type_query",
+			filters: filters || {},
+		};
+
+		args.filters.item_code = item_code;
+		return args;
+	},
 });
 
 erpnext.queries.setup_queries = function(frm, options, query_fn, do_not_override) {

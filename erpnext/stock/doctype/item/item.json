@@ -78,6 +78,8 @@
   "tare_weight_per_unit",
   "column_break_65",
   "gross_weight_per_unit",
+  "package_types_section",
+  "package_types",
   "foreign_trade_details",
   "customs_tariff_number",
   "column_break_eoor",
@@ -262,7 +264,6 @@
    "oldfieldtype": "Select"
   },
   {
-   "depends_on": "is_stock_item",
    "fieldname": "valuation_rate",
    "fieldtype": "Currency",
    "label": "Default Valuation Rate",
@@ -270,7 +271,7 @@
    "read_only_depends_on": "eval: doc.is_customer_provided_item"
   },
   {
-   "depends_on": "eval:doc.__islocal",
+   "depends_on": "eval:doc.__islocal && doc.is_sales_item",
    "fieldname": "standard_rate",
    "fieldtype": "Currency",
    "label": "Standard Selling Rate"
@@ -890,7 +891,6 @@
    "label": "Is Vehicle"
   },
   {
-   "depends_on": "is_stock_item",
    "fieldname": "manufacture_uom",
    "fieldtype": "Link",
    "label": "Default Raw Material UOM",
@@ -1053,7 +1053,7 @@
    "label": "Is Packaging Material"
   },
   {
-   "depends_on": "eval:!doc.is_stock_item && !doc.is_fixed_asset",
+   "depends_on": "eval:!doc.is_stock_item && !doc.is_fixed_asset && doc.is_sales_item",
    "fieldname": "standard_working_hours",
    "fieldtype": "Float",
    "label": "Standard Working Hours",
@@ -1117,6 +1117,19 @@
   {
    "fieldname": "column_break_eoor",
    "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "collapsible_depends_on": "package_types",
+   "fieldname": "package_types_section",
+   "fieldtype": "Section Break",
+   "label": "Package Types"
+  },
+  {
+   "fieldname": "package_types",
+   "fieldtype": "Table",
+   "label": "Package Types",
+   "options": "Item Package Type"
   }
  ],
  "grid_page_length": 500,
@@ -1124,7 +1137,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2026-09-12 16:51:59.358677",
+ "modified": "2026-10-08 03:36:41.139465",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

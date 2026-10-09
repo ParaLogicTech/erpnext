@@ -1203,6 +1203,48 @@ def vehicle_interior_query(doctype, txt, searchfield, start, page_len, filters):
 	})
 
 
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def carton_type_query(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
+	conditions = []
+
+	fields = get_fields("Package Type")
+	fields = [f"`tabPackage Type`.{f}" for f in fields]
+	fields.append("CONCAT(FORMAT(`tabItem Package Type`.qty_per_carton, 0), ' ', `tabItem`.stock_uom, ' Per Carton')")
+
+	searchfields = frappe.get_meta("Package Type").get_search_fields()
+	searchfields = " or ".join([f"`tabPackage Type`.{f}" + " like %(txt)s" for f in searchfields])
+
+	item_code = filters.pop("item_code", None)
+	if not item_code:
+		frappe.throw(_("Please select Item first"))
+
+	conditions.append(f"`tabItem`.name = {frappe.db.escape(item_code)}")
+
+	return frappe.db.sql("""
+			select {fields}
+			from `tabItem Package Type`
+			inner join `tabItem` on `tabItem`.name = `tabItem Package Type`.parent
+			inner join `tabPackage Type` on `tabPackage Type`.name = `tabItem Package Type`.carton_type
+			where `tabPackage Type`.disabled = 0 and ({scond}) {fcond} {mcond}
+			order by
+				if(locate(%(_txt)s, `tabPackage Type`.name), locate(%(_txt)s, `tabPackage Type`.name), 99999),
+				`tabItem Package Type`.idx
+			limit %(start)s, %(page_len)s
+		""".format(**{
+		'fields': ", ".join(fields),
+		'key': searchfield,
+		'scond': searchfields,
+		'fcond': get_filters_cond("Package Type", filters, conditions).replace('%', '%%'),
+		'mcond': get_match_cond(doctype)
+	}), {
+		'txt': "%%%s%%" % txt,
+		'_txt': txt.replace("%", ""),
+		'start': start,
+		'page_len': page_len
+	})
+
+
 def get_fields(doctype, fields=None):
 	if not fields:
 		fields = []

@@ -339,6 +339,13 @@ def get_basic_details(args, item, overwrite_warehouse=True):
 	out.alt_uom_size = item.alt_uom_size if out.alt_uom else 1.0
 	out.alt_uom_qty = out.stock_qty * out.alt_uom_size
 
+	# Package Type
+	out.update(get_item_packaging_details(
+		item.name,
+		carton_type=args.carton_type,
+		weight_uom=out.weight_uom,
+	))
+
 	# Sales Commission Category
 	out.sales_commission_category = get_sales_commission_category(item, args)
 	out.commission_rate = get_commission_rate(out.sales_commission_category)
@@ -1296,6 +1303,41 @@ def get_weight_per_unit(item_code, weight_uom=None, weight_field="net_weight_per
 			return 1 / flt(weight_conversion_factor.get("conversion_factor"))
 
 	return 0
+
+
+@frappe.whitelist()
+def get_item_packaging_details(item_code, carton_type=None, weight_uom=None, get_default=True):
+	from erpnext.stock.doctype.package_type.package_type import get_package_type_tare_weight
+
+	out = frappe._dict()
+	out.qty_per_carton = 0
+	out.carton_per_pallet = 0
+	out.pallet_type = None
+
+	item_doc = frappe.get_cached_doc("Item", item_code) if item_code else frappe._dict()
+
+	package_row = [d for d in item_doc.get("package_types") if cstr(d.carton_type) == cstr(carton_type)]
+	package_row = package_row[0] if package_row else None
+	if not package_row and item_doc.get("package_types") and cint(get_default):
+		package_row = item_doc.package_types[0]
+
+	if package_row:
+		out.carton_type = package_row.carton_type
+		out.qty_per_carton = flt(package_row.qty_per_carton)
+		out.pallet_type = package_row.pallet_type
+		out.carton_per_pallet = cint(package_row.carton_per_pallet)
+
+	if out.carton_type:
+		out.tare_weight_per_carton = get_package_type_tare_weight(out.carton_type, weight_uom=weight_uom)
+	else:
+		out.tare_weight_per_carton = 0
+
+	if out.pallet_type:
+		out.tare_weight_per_pallet = get_package_type_tare_weight(out.pallet_type, weight_uom=weight_uom)
+	else:
+		out.tare_weight_per_pallet = 0
+
+	return out
 
 
 @frappe.whitelist()

@@ -4,8 +4,7 @@
 import frappe
 import erpnext
 from frappe import _, scrub
-from frappe.utils import cint, flt, round_based_on_smallest_currency_fraction
-from frappe.utils import money_in_words
+from frappe.utils import cint, flt, ceil, money_in_words, round_based_on_smallest_currency_fraction
 import json
 
 
@@ -189,12 +188,32 @@ class calculate_taxes_and_totals(object):
 					item.stock_qty = flt(item.qty * flt(item.conversion_factor), 6)
 				stock_qty = item.stock_qty if item.meta.has_field("stock_qty") else item.qty
 
+				# Carton and Pallet
+				if item.meta.has_field("carton_qty"):
+					item.qty_per_carton = flt(item.qty_per_carton)
+					item.carton_qty = ceil(stock_qty / item.qty_per_carton) if item.qty_per_carton else 0
+					if item.meta.has_field("carton_tare_weight"):
+						item.carton_tare_weight = flt(item.tare_weight_per_carton) * flt(item.carton_qty)
+
+					if item.meta.has_field("pallet_qty"):
+						item.carton_per_pallet = cint(item.carton_per_pallet)
+						item.pallet_qty = item.carton_qty / item.carton_per_pallet if item.carton_per_pallet else 0
+						if item.meta.has_field("pallet_tare_weight"):
+							item.pallet_tare_weight = flt(item.tare_weight_per_pallet) * flt(item.pallet_qty)
+
 				# Net Weight
 				if item.meta.has_field("net_weight") and item.meta.has_field("net_weight_per_unit"):
 					item.net_weight = flt(flt(item.net_weight_per_unit) * flt(stock_qty), item.precision("net_weight"))
+
 				# Gross Weight
 				if item.meta.has_field("gross_weight") and item.meta.has_field("gross_weight_per_unit"):
-					item.gross_weight = flt(flt(item.gross_weight_per_unit) * flt(stock_qty), item.precision("gross_weight"))
+					item.gross_weight = flt(item.gross_weight_per_unit) * flt(stock_qty)
+					if item.meta.has_field("carton_tare_weight"):
+						item.gross_weight += flt(item.carton_tare_weight)
+					if item.meta.has_field("pallet_tare_weight"):
+						item.gross_weight += flt(item.pallet_tare_weight)
+
+					item.gross_weight = flt(item.gross_weight, item.precision("gross_weight"))
 
 				# Contents Qty
 				item.alt_uom_size = item.alt_uom_size if item.alt_uom else 1.0
@@ -375,6 +394,11 @@ class calculate_taxes_and_totals(object):
 		if self.doc.meta.has_field('total_stock_qty'):
 			self.doc.total_stock_qty = 0.0
 
+		if self.doc.meta.has_field('total_carton_qty'):
+			self.doc.total_carton_qty = 0
+		if self.doc.meta.has_field('total_pallet_qty'):
+			self.doc.total_pallet_qty = 0
+
 		if self.doc.meta.has_field('total_net_weight'):
 			self.doc.total_net_weight = 0.0
 		if self.doc.meta.has_field('total_gross_weight'):
@@ -394,6 +418,11 @@ class calculate_taxes_and_totals(object):
 
 			if self.doc.meta.has_field('total_stock_qty') and item.meta.has_field('stock_qty'):
 				self.doc.total_stock_qty += item.stock_qty
+
+			if self.doc.meta.has_field('total_carton_qty') and item.meta.has_field('carton_qty'):
+				self.doc.total_carton_qty += item.carton_qty
+			if self.doc.meta.has_field('total_pallet_qty') and item.meta.has_field('pallet_qty'):
+				self.doc.total_pallet_qty += item.pallet_qty
 
 			if self.doc.meta.has_field('total_net_weight') and item.meta.has_field('net_weight'):
 				self.doc.total_net_weight += item.net_weight
@@ -461,6 +490,8 @@ class calculate_taxes_and_totals(object):
 			self.doc.round_floats_in(self.doc, ["total_net_weight"])
 		if self.doc.meta.has_field('total_gross_weight'):
 			self.doc.round_floats_in(self.doc, ["total_gross_weight"])
+		if self.doc.meta.has_field('total_pallet_qty'):
+			self.doc.round_floats_in(self.doc, ["total_pallet_qty"])
 
 		if self.doc.doctype == 'Sales Invoice' and self.doc.is_pos:
 			self.doc.pos_total_qty = self.doc.total_qty

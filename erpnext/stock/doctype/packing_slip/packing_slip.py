@@ -155,8 +155,35 @@ class PackingSlip(TransactionController):
 							item.set(f, item_details.get(f))
 
 	def postprocess_after_mapping(self, reset_taxes=False):
+		self.set_default_package_type()
 		self.set_missing_values()
 		self.calculate_totals()
+
+	def set_default_package_type(self):
+		if self.package_type:
+			return
+		if self.packing_slips:
+			return
+		if len(self.items) != 1:
+			return
+
+		row = self.items[0]
+
+		if row.work_order:
+			carton_type = frappe.db.get_value("Work Order", row.work_order, "carton_type", cache=1)
+			if carton_type:
+				self.package_type = carton_type
+		elif row.sales_order_item and frappe.get_meta("Sales Order Item").has_field("carton_type"):
+			carton_type = frappe.db.get_value("Sales Order Item", row.sales_order_item, "carton_type", cache=1)
+			if carton_type:
+				self.package_type = carton_type
+		else:
+			item_doc = frappe.get_cached_doc("Item", row.item_code)
+			if item_doc.get("package_types"):
+				self.package_type = item_doc.package_types[0].carton_type
+
+		if self.package_type:
+			self.set_package_type_details(force=True)
 
 	def set_package_type_details(self, force=False):
 		if not self.get("package_type"):
