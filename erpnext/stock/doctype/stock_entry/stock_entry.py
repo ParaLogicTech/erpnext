@@ -13,7 +13,7 @@ from erpnext.stock.get_item_details import get_bin_details, get_default_cost_cen
 	get_reserved_qty_for_so, get_hide_item_code, get_default_warehouse
 from erpnext.stock.doctype.batch.batch import get_batch_qty, auto_select_and_split_batches, validate_batch_no
 from erpnext.stock.doctype.item_alternative.item_alternative import has_alternative_item, get_available_alternative_items
-from erpnext.manufacturing.doctype.bom.bom import validate_bom_no, add_additional_cost
+from erpnext.manufacturing.doctype.bom.bom import validate_bom_no, get_operating_cost_per_unit
 from erpnext.manufacturing.doctype.work_order.work_order import get_qty_with_allowance
 from frappe.model.mapper import get_mapped_doc
 from erpnext.stock.doctype.serial_no.serial_no import update_serial_nos_after_submit, get_serial_nos
@@ -1102,7 +1102,7 @@ class StockEntry(TransactionController):
 				self.add_raw_material_items(auto_select_batches=auto_select_batches)
 
 			if self.purpose in ("Manufacture", "Repack"):
-				add_additional_cost(self, self.pro_doc)
+				self.set_production_additional_costs()
 				self.add_finished_goods_items_from_bom()
 				self.add_scrap_items()
 
@@ -1472,6 +1472,56 @@ class StockEntry(TransactionController):
 				filters={"parent": self.job_card}, pluck="item_code", distinct=True)
 
 		return self._job_card_item_codes[self.job_card]
+
+	def set_production_additional_costs(self):
+		self.get_work_order()
+
+		self.additional_costs = []
+		company = self.company or self.pro_doc.company
+		expenses_included_in_valuation = frappe.get_cached_value("Company", company, "expenses_included_in_valuation")
+
+		self.add_non_stock_bom_items_cost(expenses_included_in_valuation)
+		self.add_production_operations_cost(expenses_included_in_valuation)
+
+	def add_non_stock_bom_items_cost(self, default_expense_account=None):
+		bom_no = self.pro_doc.bom_no or self.bom_no
+		bom = frappe.get_doc('BOM', bom_no)
+		table = 'exploded_items' if self.use_multi_level_bom else 'items'
+
+		items = {}
+		for d in bom.get(table):
+			items.setdefault(d.item_code, d.amount)
+
+		non_stock_items = frappe.get_all(
+			'Item',
+			fields="name", filters={'name': ('in', list(items.keys())), 'ifnull(is_stock_item, 0)': 0}, as_list=1
+		)
+
+		non_stock_items_cost = 0.0
+		for name in non_stock_items:
+			non_stock_items_cost += flt(items.get(name[0])) * flt(self.fg_completed_qty) / flt(bom.quantity)
+
+		if non_stock_items_cost:
+			self.append("additional_costs", {
+				"expense_account": default_expense_account,
+				"description": _("Non Stock Items as per BOM"),
+				"amount": non_stock_items_cost
+			})
+
+	def add_production_operations_cost(self, default_expense_account=None):
+		unit_cost_map = get_operating_cost_per_unit(
+			bom_no=self.bom_no,
+			work_order_doc=self.pro_doc,
+			default_expense_account=default_expense_account,
+			use_multi_level_bom=self.use_multi_level_bom,
+		)
+
+		for expense_account, unit_cost in unit_cost_map.items():
+			self.append("additional_costs", {
+				"expense_account": expense_account,
+				"description": _("Operating Cost as per {0}".format(_("Work Order" if self.pro_doc else "BOM"))),
+				"amount": flt(unit_cost) * flt(self.fg_completed_qty)
+			})
 
 	def add_scrap_items(self):
 		if self.purpose in ["Manufacture", "Repack"]:
@@ -1858,35 +1908,6 @@ def get_work_order_details(work_order, purpose=None):
 		"fg_warehouse": work_order.fg_warehouse,
 		"fg_completed_qty": work_order.get_balance_qty(purpose)
 	}
-
-
-def get_operating_cost_per_unit(work_order=None, bom_no=None):
-	operating_cost_per_unit = 0
-	if work_order:
-		for d in work_order.get("operations"):
-			if flt(d.completed_qty):
-				operating_cost_per_unit += flt(d.actual_operating_cost) / flt(d.completed_qty)
-			elif work_order.qty:
-				operating_cost_per_unit += flt(d.planned_operating_cost) / flt(work_order.qty)
-	elif bom_no:
-		bom = frappe.db.get_value("BOM", bom_no, ["operating_cost", "quantity"], as_dict=1)
-		if bom.quantity:
-			operating_cost_per_unit = flt(bom.operating_cost) / flt(bom.quantity)
-
-	return operating_cost_per_unit
-
-
-def get_additional_operating_costs(work_order=None, bom_no=None, use_multi_level_bom=0):
-	from erpnext.manufacturing.doctype.bom.bom import get_additional_operating_cost_per_unit
-
-	additional_costs = []
-
-	if work_order:
-		additional_costs = work_order.get("additional_costs")
-	elif bom_no:
-		additional_costs = get_additional_operating_cost_per_unit(bom_no, use_multi_level_bom)
-
-	return additional_costs
 
 
 def get_used_alternative_items(purchase_order=None, work_order=None):

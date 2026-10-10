@@ -1,16 +1,15 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
-import json
 from frappe.utils import flt, cstr, nowdate, nowtime
-
-from six import string_types, iteritems
+import json
 
 
 class InvalidWarehouseCompany(frappe.ValidationError): pass
 class InvalidWarehouseBranch(frappe.ValidationError): pass
+
 
 def get_stock_value_from_bin(warehouse=None, item_code=None):
 	values = {}
@@ -117,6 +116,7 @@ def get_stock_balance(
 			out["valuation_rate"] = last_entry.batch_valuation_rate if batch_no else last_entry.valuation_rate
 			out["stock_value"] = last_entry.batch_stock_value if batch_no else last_entry.stock_value
 		else:
+			# out["valuation_rate"] = frappe.db.get_value("Item", item_code, "valuation_rate") or 0
 			out["valuation_rate"] = 0
 			out["stock_value"] = 0
 
@@ -224,7 +224,7 @@ def update_bin(args, allow_negative_stock=False, via_landed_cost_voucher=False):
 def get_incoming_rate(args, raise_error_if_no_rate=False):
 	"""Get Incoming Rate based on valuation method"""
 	from erpnext.stock.stock_ledger import get_previous_sle, get_valuation_rate
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	in_rate = 0
@@ -423,7 +423,7 @@ def update_included_uom_in_dict_report(columns, result, include_uom, conversion_
 				columns[col_idx+1]['label'] += " ({})".format(include_uom)
 
 	for row_idx, row in enumerate(result):
-		for fieldname, conversion_type in iteritems(convertible_cols):
+		for fieldname, conversion_type in convertible_cols.items():
 			if conversion_factors[row_idx]:
 				if conversion_type == 'rate':
 					row[fieldname + "_alt"] = flt(row.get(fieldname)) * conversion_factors[row_idx]

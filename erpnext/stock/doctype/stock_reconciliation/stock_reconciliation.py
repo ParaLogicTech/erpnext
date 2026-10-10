@@ -314,10 +314,15 @@ class StockReconciliation(StockController):
 			return
 
 		if not self.expense_account:
-			msgprint(_("Please enter Expense Account"), raise_exception=1)
-		elif not frappe.db.sql("""select name from `tabStock Ledger Entry` limit 1"""):
-			if frappe.db.get_value("Account", self.expense_account, "report_type") == "Profit and Loss":
-				frappe.throw(_("Difference Account must be a Asset/Liability type account, since this Stock Reconciliation is an Opening Entry"), OpeningEntryAccountError)
+			frappe.throw(_("Please enter Expense Account"))
+
+		report_type = frappe.db.get_value("Account", self.expense_account, "report_type")
+		if self.purpose == "Opening Stock":
+			if report_type != "Balance Sheet":
+				frappe.throw(_("Difference Account must be a Balance Sheet Account, since this Stock Reconciliation is an Opening Entry"), OpeningEntryAccountError)
+		else:
+			if report_type != "Profit and Loss":
+				frappe.throw(_("Difference Account must be a Profit and Loss Account"))
 
 	def set_total_qty_and_amount(self):
 		stock_value_precision = get_field_precision(frappe.get_meta("Stock Ledger Entry").get_field("stock_value"),
@@ -583,10 +588,10 @@ def get_stock_balance_for(item_code, warehouse, posting_date, posting_time, batc
 
 @frappe.whitelist()
 def get_difference_account(purpose, company):
-	if purpose == 'Stock Reconciliation':
-		account = get_company_default(company, "stock_adjustment_account")
-	else:
+	if purpose == 'Opening Stock':
 		account = get_company_default(company, "temporary_opening_account")
+	else:
+		account = get_company_default(company, "stock_adjustment_account")
 
 	return account
 

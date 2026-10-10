@@ -69,7 +69,7 @@
   "additional_costs",
   "additional_operating_cost",
   "costing_section",
-  "raw_material_cost",
+  "total_material_cost",
   "column_break_24",
   "total_operating_cost",
   "column_break_49",
@@ -599,13 +599,6 @@
    "label": "Costing"
   },
   {
-   "fieldname": "raw_material_cost",
-   "fieldtype": "Currency",
-   "label": "Raw Material Cost",
-   "options": "Company:company:default_currency",
-   "read_only": 1
-  },
-  {
    "collapsible": 1,
    "fieldname": "settings_tab",
    "fieldtype": "Tab Break",
@@ -964,14 +957,20 @@
   {
    "fieldname": "carton_qty",
    "fieldtype": "Int",
-   "label": "Carton Qty",
-   "read_only": 1
+   "label": "Carton Qty"
   },
   {
    "depends_on": "pallet_qty",
    "fieldname": "pallet_qty",
    "fieldtype": "Float",
    "label": "Pallet Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_material_cost",
+   "fieldtype": "Currency",
+   "label": "Total Material Cost",
+   "options": "Company:company:default_currency",
    "read_only": 1
   }
  ],
@@ -982,7 +981,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-06 23:13:29.917271",
+ "modified": "2026-10-09 07:59:35.420914",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Work Order",

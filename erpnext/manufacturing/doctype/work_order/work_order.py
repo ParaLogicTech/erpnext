@@ -88,7 +88,7 @@ class WorkOrder(StatusUpdaterERP):
 		self.set_packing_status()
 		self.set_required_items_status()
 
-		self.calculate_raw_material_cost()
+		self.calculate_material_cost()
 		self.calculate_operating_cost()
 		self.calculate_total_cost()
 
@@ -296,7 +296,7 @@ class WorkOrder(StatusUpdaterERP):
 	@frappe.whitelist()
 	def get_items_and_operations_from_bom(self):
 		self.set_required_items()
-		self.calculate_raw_material_cost()
+		self.calculate_material_cost()
 		self.set_work_order_operations()
 		self.calculate_total_cost()
 
@@ -396,9 +396,10 @@ class WorkOrder(StatusUpdaterERP):
 
 	def set_work_order_operations(self):
 		"""Fetch operations from BOM and set in 'Work Order'"""
-		from erpnext.manufacturing.doctype.bom.bom import get_additional_operating_cost_per_unit
+		from erpnext.manufacturing.doctype.bom.bom import get_bom_additional_costs
 
 		self.set('operations', [])
+		self.set('additional_costs', [])
 
 		if not self.bom_no:
 			return
@@ -408,17 +409,7 @@ class WorkOrder(StatusUpdaterERP):
 		else:
 			bom_list = [self.bom_no]
 
-		operations = []
-		if bom_list:
-			bom_list_order_str = ', '.join(frappe.db.escape(bom) for bom in bom_list)
-			operations = frappe.db.sql("""
-				SELECT operation, description, workstation, base_hour_rate AS hour_rate, time_in_mins,
-					'Pending' AS status, parent AS bom, batch_size
-				FROM `tabBOM Operation`
-				WHERE parent IN %s
-				ORDER BY FIELD(parent, {bom_list_order_str}), idx
-			""".format(bom_list_order_str=bom_list_order_str), [bom_list], as_dict=1)
-
+		operations = self.get_work_order_operations(bom_list)
 		self.set('operations', operations)
 
 		if self.use_multi_level_bom and self.get('operations') and self.get('items'):
@@ -432,13 +423,32 @@ class WorkOrder(StatusUpdaterERP):
 					})
 
 		# Additional costs
-		additional_costs = get_additional_operating_cost_per_unit(self.bom_no, self.use_multi_level_bom, bom_list=bom_list)
-		if additional_costs:
-			self.set('additional_costs', [])
-			for d in additional_costs:
-				self.append('additional_costs', d)
+		additional_costs = get_bom_additional_costs(self.bom_no, self.use_multi_level_bom)
+		self.set('additional_costs', additional_costs)
 
 		self.calculate_time()
+
+	@staticmethod
+	def get_work_order_operations(bom_list):
+		operations = []
+		if bom_list:
+			bom_list_order_str = ', '.join(frappe.db.escape(bom) for bom in bom_list)
+			operations = frappe.db.sql("""
+				SELECT
+					operation,
+					description,
+					workstation,
+					base_hour_rate AS hour_rate,
+					time_in_mins,
+					'Pending' AS status,
+					parent AS bom,
+					batch_size
+				FROM `tabBOM Operation`
+				WHERE parent IN %s
+				ORDER BY FIELD(parent, {bom_list_order_str}), idx
+			""".format(bom_list_order_str=bom_list_order_str), [bom_list], as_dict=1)
+
+		return operations
 
 	def set_operation_status(self, update=False, update_modified=True):
 		if not self.operations:
@@ -571,9 +581,20 @@ class WorkOrder(StatusUpdaterERP):
 
 		self.calculate_operating_cost()
 
-	def calculate_raw_material_cost(self):
-		bom_cost, bom_qty = frappe.db.get_value("BOM", self.bom_no, ["base_raw_material_cost", "quantity"])
-		self.raw_material_cost = bom_cost * flt(self.qty) / bom_qty if bom_qty else 0
+	def calculate_material_cost(self):
+		bom_details = frappe.db.get_value("BOM", self.bom_no, [
+			"quantity", "base_total_material_cost", "base_child_operating_cost"
+		], as_dict=1)
+
+		unit_cost = 0
+		if bom_details:
+			material_cost = flt(bom_details.base_total_material_cost)
+			if not self.use_multi_level_bom:
+				material_cost += bom_details.base_child_operating_cost
+
+			unit_cost = material_cost / flt(bom_details.quantity) if bom_details.quantity else 0
+
+		self.total_material_cost = unit_cost * flt(self.qty)
 
 	def calculate_operating_cost(self):
 		self.planned_operating_cost = 0.0
@@ -588,7 +609,7 @@ class WorkOrder(StatusUpdaterERP):
 
 		self.additional_operating_cost = 0.0
 		for d in self.get('additional_costs'):
-			d.amount = flt(flt(d.rate) * flt(self.qty), d.precision('amount'))
+			d.amount = flt(flt(d.rate) * flt(self.qty))
 			self.additional_operating_cost += d.amount
 
 		variable_cost = self.actual_operating_cost if self.actual_operating_cost else self.planned_operating_cost
@@ -596,9 +617,9 @@ class WorkOrder(StatusUpdaterERP):
 		self.total_operating_cost = flt(self.additional_operating_cost) + flt(variable_cost)
 
 	def calculate_total_cost(self):
-		self.total_cost = self.raw_material_cost + self.total_operating_cost
+		self.total_cost = self.total_material_cost + self.total_operating_cost
 
-		self.carton_qty = math.ceil(self.qty / self.qty_per_carton) if self.qty_per_carton else 0
+		self.carton_qty = math.ceil(flt(self.qty) / flt(self.qty_per_carton)) if self.qty_per_carton else 0
 		self.pallet_qty = self.carton_qty / self.carton_per_pallet if self.carton_per_pallet else 0
 
 		self.total_raw_material_qty = sum([d.total_qty for d in self.required_items])
@@ -1250,9 +1271,10 @@ def get_bom_operations(doctype, txt, searchfield, start, page_len, filters):
 
 
 @frappe.whitelist()
-def get_item_details(args, with_settings=False):
+def get_item_details(args, with_settings=False, without_bom=False):
 	args = process_args(args)
 	with_settings = cint(with_settings)
+	without_bom = cint(without_bom)
 
 	out = frappe._dict()
 	if not args.item_code:
@@ -1266,18 +1288,22 @@ def get_item_details(args, with_settings=False):
 		"description": item.description,
 	})
 
-	out.bom_no = args.bom_no
-	if not out.bom_no:
-		out.bom_no = get_default_bom(args.item_code, project=args.project)
+	bom_packing_slip_required = 0
+	if not without_bom:
+		out.bom_no = args.bom_no
 		if not out.bom_no:
-			frappe.msgprint(_("Active BOM for Item {0} not found").format(frappe.bold(args.item_code)))
+			out.bom_no = get_default_bom(args.item_code, project=args.project)
+			if not out.bom_no:
+				frappe.msgprint(_("Active BOM for Item {0} not found").format(frappe.bold(args.item_code)))
 
-	if out.bom_no:
-		bom_details = frappe.db.get_value("BOM", out.bom_no, [
-			"project", "transfer_material_against",
-		], as_dict=1)
+		if out.bom_no:
+			bom_details = frappe.db.get_value("BOM", out.bom_no, [
+				"project", "transfer_material_against", "packing_slip_required",
+			], as_dict=1)
 
-		out.update(bom_details)
+			bom_packing_slip_required = bom_details.pop("packing_slip_required", 0)
+
+			out.update(bom_details)
 
 	if args.project:
 		out.project = args.project
@@ -1290,6 +1316,8 @@ def get_item_details(args, with_settings=False):
 
 	if with_settings:
 		out.update(get_default_settings(args))
+		if bom_packing_slip_required:
+			out.packing_slip_required = 1
 
 	return out
 
@@ -1387,6 +1415,7 @@ def make_work_order(bom_no, item, qty=0, project=None):
 		wo_doc.get_items_and_operations_from_bom()
 
 	wo_doc.set_missing_values(with_settings=True)
+	wo_doc.calculate_total_cost()
 
 	return wo_doc
 

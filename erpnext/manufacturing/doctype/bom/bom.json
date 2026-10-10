@@ -17,6 +17,14 @@
   "is_active",
   "is_default",
   "set_rate_of_sub_assembly_item_based_on_bom",
+  "packing_slip_required",
+  "package_type_section",
+  "carton_type",
+  "update_carton_type_items",
+  "column_break_exbq",
+  "qty_per_carton",
+  "column_break_faqp",
+  "carton_qty",
   "more_information",
   "project",
   "column_break_15",
@@ -43,6 +51,19 @@
   "base_operating_cost",
   "materials_section",
   "items",
+  "section_break_kb2i",
+  "raw_material_cost",
+  "base_raw_material_cost",
+  "unit_raw_material_cost",
+  "base_unit_raw_material_cost",
+  "column_break_fq8u",
+  "packaging_material_cost",
+  "base_packaging_material_cost",
+  "unit_packaging_material_cost",
+  "base_unit_packaging_material_cost",
+  "column_break_dr1m",
+  "child_operating_cost",
+  "base_child_operating_cost",
   "total_raw_material_qty",
   "additional_cost_section",
   "additional_costs",
@@ -51,18 +72,26 @@
   "scrap_section",
   "scrap_items",
   "costing",
-  "raw_material_cost",
-  "base_raw_material_cost",
-  "cb1",
+  "total_material_cost",
+  "base_total_material_cost",
+  "unit_material_cost",
+  "base_unit_material_cost",
+  "column_break_uvz7",
   "total_operating_cost",
   "base_total_operating_cost",
+  "unit_operating_cost",
+  "base_unit_operating_cost",
   "column_break_44",
   "scrap_material_cost",
   "base_scrap_material_cost",
+  "unit_scrap_material_cost",
+  "base_unit_scrap_material_cost",
   "section_break_25",
   "total_cost",
   "base_total_cost",
   "column_break_27",
+  "unit_cost",
+  "base_unit_cost",
   "description",
   "section_break0",
   "exploded_items",
@@ -79,7 +108,8 @@
    "oldfieldtype": "Link",
    "options": "Item",
    "reqd": 1,
-   "search_index": 1
+   "search_index": 1,
+   "set_only_once": 1
   },
   {
    "depends_on": "eval:doc.item_name != doc.item",
@@ -165,7 +195,7 @@
    "default": "1",
    "fieldname": "set_rate_of_sub_assembly_item_based_on_bom",
    "fieldtype": "Check",
-   "label": "Set Rate of Sub-Assembly Item Based on BOM"
+   "label": "Set Sub-Assembly Item Rate Based on BOM"
   },
   {
    "depends_on": "inspection_required",
@@ -190,9 +220,11 @@
   },
   {
    "default": "Work Order",
+   "depends_on": "with_operations",
    "fieldname": "transfer_material_against",
    "fieldtype": "Select",
    "label": "Transfer Material Against",
+   "mandatory_depends_on": "with_operations",
    "options": "\nWork Order\nJob Card"
   },
   {
@@ -230,6 +262,7 @@
    "options": "Price List"
   },
   {
+   "depends_on": "with_operations",
    "fieldname": "operations_section",
    "fieldtype": "Section Break",
    "oldfieldtype": "Section Break"
@@ -306,10 +339,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "cb1",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "base_operating_cost",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
@@ -330,8 +359,7 @@
   {
    "fieldname": "base_scrap_material_cost",
    "fieldtype": "Currency",
-   "label": "Scrap Material Cost(Company Currency)",
-   "no_copy": 1,
+   "label": "Scrap Material Cost (Company Currency)",
    "options": "Company:company:default_currency",
    "read_only": 1
   },
@@ -476,7 +504,7 @@
   {
    "fieldname": "additional_costs",
    "fieldtype": "Table",
-   "label": "Operating Cost Per Unit",
+   "label": "Operating Costs",
    "options": "BOM Additional Cost"
   },
   {
@@ -508,6 +536,218 @@
    "label": "Total Operating Cost (Company Currency)",
    "options": "Company:company:default_currency",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_uvz7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "packaging_material_cost",
+   "fieldtype": "Currency",
+   "label": "Packaging Material Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_packaging_material_cost",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Packaging Material Cost (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_kb2i",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_fq8u",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_dr1m",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_material_cost",
+   "fieldtype": "Currency",
+   "label": "Total Material Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_total_material_cost",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Total Material Cost (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "unit_raw_material_cost",
+   "fieldtype": "Currency",
+   "label": "Raw Material Cost Per Unit",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "base_unit_raw_material_cost",
+   "fieldtype": "Currency",
+   "label": "Raw Material Cost Per Unit (Company Currency)",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "unit_packaging_material_cost",
+   "fieldtype": "Currency",
+   "label": "Packaging Material Cost Per Unit",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "base_unit_packaging_material_cost",
+   "fieldtype": "Currency",
+   "label": "Packaging Material Cost Per Unit (Company Currency)",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "unit_material_cost",
+   "fieldtype": "Currency",
+   "label": "Material Cost Per Unit",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "base_unit_material_cost",
+   "fieldtype": "Currency",
+   "label": "Material Cost Per Unit (Company Currency)",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "unit_operating_cost",
+   "fieldtype": "Currency",
+   "label": "Operating Cost Per Unit",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "base_unit_operating_cost",
+   "fieldtype": "Currency",
+   "label": "Operating Cost Per Unit (Company Currency)",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "unit_scrap_material_cost",
+   "fieldtype": "Currency",
+   "label": "Scrap Material Cost Per Unit",
+   "options": "currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "base_unit_scrap_material_cost",
+   "fieldtype": "Currency",
+   "label": "Scrap Material Cost Per Unit (Company Currency)",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "unit_cost",
+   "fieldtype": "Currency",
+   "label": "Cost Per Unit",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:flt(doc.quantity) > 1",
+   "fieldname": "base_unit_cost",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Cost Per Unit (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "packing_slip_required",
+   "fieldtype": "Check",
+   "label": "Packing Slip Required"
+  },
+  {
+   "depends_on": "eval:doc.packing_slip_required && (doc.qty_per_carton || doc.carton_type || doc.docstatus == 0)",
+   "fieldname": "package_type_section",
+   "fieldtype": "Section Break",
+   "label": "Package Type"
+  },
+  {
+   "fieldname": "carton_type",
+   "fieldtype": "Link",
+   "label": "Carton Type",
+   "options": "Package Type"
+  },
+  {
+   "fieldname": "column_break_exbq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qty_per_carton",
+   "fieldtype": "Float",
+   "label": "Qty Per Carton",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_faqp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "carton_qty",
+   "fieldtype": "Float",
+   "label": "Carton Qty",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.docstatus == 0 && doc.carton_type",
+   "fieldname": "update_carton_type_items",
+   "fieldtype": "Button",
+   "label": "Get Items from Carton Type"
+  },
+  {
+   "fieldname": "child_operating_cost",
+   "fieldtype": "Currency",
+   "label": "Sub Assembly Operating Cost",
+   "options": "currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_child_operating_cost",
+   "fieldtype": "Currency",
+   "force_currency_symbol": 1,
+   "label": "Sub Assembly Operating Cost (Company Currency)",
+   "options": "Company:company:default_currency",
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "icon": "fa fa-sitemap",
@@ -515,7 +755,7 @@
  "image_field": "image",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 23:05:38.182480",
+ "modified": "2026-10-09 04:52:53.915683",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM",

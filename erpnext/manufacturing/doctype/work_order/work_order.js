@@ -413,6 +413,15 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 		return this.get_item_packaging_details();
 	}
 
+	carton_qty() {
+		if (this.frm.doc.carton_qty && this.frm.doc.qty_per_carton) {
+			let qty = flt(this.frm.doc.qty_per_carton) * flt(this.frm.doc.carton_qty);
+			this.frm.set_value("qty", qty);
+		} else {
+			this.calculate_cost();
+		}
+	}
+
 	use_multi_level_bom() {
 		if (this.frm.doc.bom_no) {
 			return this.bom_no();
@@ -512,7 +521,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 
 		doc.additional_operating_cost = 0;
 		for (let d of doc.additional_costs || []) {
-			let amount = flt(flt(d.rate) * flt(doc.qty), precision('amount', d));
+			let amount = flt(flt(d.rate) * flt(doc.qty));
 			frappe.model.set_value(d.doctype, d.name, "amount", amount);
 			doc.additional_operating_cost += amount;
 		}
@@ -522,7 +531,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 
 		let variable_cost = flt(doc.actual_operating_cost) || flt(doc.planned_operating_cost);
 		this.frm.set_value("total_operating_cost", variable_cost + doc.additional_operating_cost);
-		this.frm.set_value("total_cost", doc.total_operating_cost + flt(doc.raw_material_cost));
+		this.frm.set_value("total_cost", doc.total_operating_cost + flt(doc.total_material_cost));
 
 		doc.carton_qty = doc.qty_per_carton ? Math.ceil(doc.qty / doc.qty_per_carton) : 0;
 		doc.pallet_qty = doc.carton_per_pallet ? doc.carton_qty / doc.carton_per_pallet : 0;

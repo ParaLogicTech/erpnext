@@ -470,7 +470,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	refresh() {
 		erpnext.toggle_naming_series();
-		erpnext.hide_company();
+		erpnext.hide_company(this.frm);
 		this.set_dynamic_labels();
 		this.setup_sms();
 		this.setup_quality_inspection();
@@ -1407,30 +1407,39 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			"base_total_taxes_and_charges", "base_total_discount_after_taxes", "base_total_after_taxes",
 			"base_discount_amount", "base_grand_total", "base_rounded_total", "base_in_words",
 			"base_taxes_and_charges_added", "base_taxes_and_charges_deducted", "total_amount_to_pay",
-			"base_paid_amount", "base_write_off_amount", "base_change_amount", "base_operating_cost",
-			"base_raw_material_cost", "base_total_cost", "base_scrap_material_cost",
-			"base_total_operating_cost", "base_additional_operating_cost",
+			"base_paid_amount", "base_write_off_amount", "base_change_amount",
 			"base_rounding_adjustment", "base_tax_exclusive_total",
 			"base_total_before_discount", "base_tax_exclusive_total_before_discount",
 			"base_total_discount", "base_tax_exclusive_total_discount",
 			"base_total_before_depreciation", "base_tax_exclusive_total_before_depreciation",
 			"base_total_depreciation", "base_tax_exclusive_total_depreciation",
 			"base_total_underinsurance", "base_tax_exclusive_total_underinsurance",
+			"base_raw_material_cost", "base_unit_raw_material_cost",
+			"base_packaging_material_cost", "base_unit_packaging_material_cost", "base_child_operating_cost",
+			"base_scrap_material_cost", "base_unit_scrap_material_cost",
+			"base_total_material_cost", "base_unit_material_cost",
+			"base_total_operating_cost", "base_unit_operating_cost",
+			"base_operating_cost", "base_additional_operating_cost",
+			"base_total_cost", "base_unit_cost",
 		], company_currency);
 
 		this.frm.set_currency_labels([
 			"total", "net_total", "taxable_total", "retail_total", "total_taxes_and_charges",
 			"discount_amount", "grand_total", "total_discount_after_taxes", "total_after_taxes",
 			"taxes_and_charges_added", "taxes_and_charges_deducted",
-			"rounded_total", "in_words", "paid_amount", "write_off_amount", "change_amount", "operating_cost",
-			"scrap_material_cost", "rounding_adjustment", "raw_material_cost",
-			"total_operating_cost", "additional_operating_cost",
-			"total_cost", "tax_exclusive_total",
+			"rounded_total", "in_words", "paid_amount", "write_off_amount", "change_amount",
+			"rounding_adjustment", "tax_exclusive_total",
 			"total_before_discount", "tax_exclusive_total_before_discount",
 			"total_discount", "tax_exclusive_total_discount",
 			"total_before_depreciation", "tax_exclusive_total_before_depreciation",
 			"total_depreciation", "tax_exclusive_total_depreciation",
 			"total_underinsurance", "tax_exclusive_total_underinsurance",
+			"raw_material_cost", "unit_raw_material_cost",
+			"packaging_material_cost", "unit_packaging_material_cost", "child_operating_cost",
+			"scrap_material_cost", "unit_scrap_material_cost",
+			"total_material_cost", "unit_material_cost",
+			"total_operating_cost", "unit_operating_cost", "operating_cost", "additional_operating_cost",
+			"total_cost", "unit_cost",
 		], this.frm.doc.currency);
 
 		if (this.frm.doc.doctype === "Sales Invoice") {
@@ -1459,12 +1468,17 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			"base_total_discount_after_taxes", "base_total_after_taxes",
 			"base_total_taxes_and_charges", "base_taxes_and_charges_added", "base_taxes_and_charges_deducted",
 			"base_grand_total", "base_rounded_total", "base_in_words",
-			"base_paid_amount", "base_change_amount", "base_write_off_amount", "base_operating_cost", "base_raw_material_cost",
-			"base_total_operating_cost", "base_additional_operating_cost",
-			"base_total_cost", "base_scrap_material_cost", "base_rounding_adjustment",
+			"base_paid_amount", "base_change_amount", "base_write_off_amount", "base_rounding_adjustment",
 			"base_total_before_discount", "base_total_discount",
 			"base_total_before_depreciation", "base_total_depreciation", "base_total_underinsurance",
-			"calculate_tax_on_company_currency"
+			"calculate_tax_on_company_currency",
+			"base_raw_material_cost", "base_unit_raw_material_cost",
+			"base_packaging_material_cost", "base_unit_packaging_material_cost", "base_child_operating_cost",
+			"base_scrap_material_cost", "base_unit_scrap_material_cost",
+			"base_total_material_cost", "base_unit_material_cost",
+			"base_total_operating_cost", "base_unit_operating_cost",
+			"base_operating_cost", "base_additional_operating_cost",
+			"base_total_cost", "base_unit_cost",
 		], this.frm.doc.currency != company_currency, true);
 
 		this.frm.toggle_display(["plc_conversion_rate", "price_list_currency"],
@@ -1520,7 +1534,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			"base_amount_before_depreciation", "base_depreciation_amount", "base_underinsurance_amount",
 			"base_tax_exclusive_amount_before_depreciation", "base_tax_exclusive_depreciation_amount", "base_tax_exclusive_underinsurance_amount",
 			"base_returned_amount",
-			"base_retail_rate", "base_retail_amount"
+			"base_retail_rate", "base_retail_amount",
+			"base_child_operating_cost", "base_child_unit_operating_cost",
 		], company_currency, "items");
 
 		this.frm.set_currency_labels([
@@ -1533,7 +1548,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			"total_discount", "tax_exclusive_total_discount",
 			"amount_before_depreciation", "depreciation_amount", "underinsurance_amount",
 			"tax_exclusive_amount_before_depreciation", "tax_exclusive_depreciation_amount", "tax_exclusive_underinsurance_amount",
-			"retail_rate", "retail_amount"
+			"retail_rate", "retail_amount",
+			"child_operating_cost", "child_unit_operating_cost",
 		], this.frm.doc.currency, "items");
 
 		if(this.frm.fields_dict["operations"]) {
@@ -1601,7 +1617,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			"base_amount_before_discount", "base_total_discount",
 			"base_amount_before_depreciation", "base_depreciation_amount", "base_underinsurance_amount",
 			"base_item_taxes_before_discount", "base_tax_inclusive_amount_before_discount", "base_tax_inclusive_rate_before_discount",
-			"base_retail_rate", "base_retail_amount"
+			"base_retail_rate", "base_retail_amount",
+			"base_child_operating_cost", "base_child_unit_operating_cost",
 		], function(i, fname) {
 			if(frappe.meta.get_docfield(item_grid.doctype, fname))
 				item_grid.set_column_disp(fname, me.frm.doc.currency != company_currency, true);

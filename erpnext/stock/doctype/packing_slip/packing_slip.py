@@ -1573,7 +1573,8 @@ def get_package_type_details(package_type, args):
 	packaging_items = []
 	for d in package_type_doc.get("packaging_items"):
 		if d.get("item_code"):
-			item_row = {k: d.get(k) for k in packaging_items_copy_fields}
+			item_row = frappe._dict({k: d.get(k) for k in packaging_items_copy_fields})
+			item_row["package_type_row"] = d.name
 
 			item_args = args.copy()
 			item_args.update(item_row)
