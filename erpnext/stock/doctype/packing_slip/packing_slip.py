@@ -5,7 +5,10 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, cstr, combine_datetime, round_up
 from frappe.model.mapper import map_child_doc, get_mapped_doc
-from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.controllers.transaction_controller import (
+	TransactionController,
+	update_item_batch_serial_based_on_purchase_and_production,
+)
 from erpnext.stock.get_item_details import (
 	get_conversion_factor,
 	get_hide_item_code,
@@ -829,6 +832,10 @@ class PackingSlip(TransactionController):
 			"sales_order", "sales_order_item",
 			"subcontracted_item", "purchase_order_item",
 		])
+		self.run_method("calculate_totals")
+
+	def auto_select_batches_based_on_purchase_and_production(self):
+		update_item_batch_serial_based_on_purchase_and_production(self)
 		self.run_method("calculate_totals")
 
 	def set_cost_percentage(self):

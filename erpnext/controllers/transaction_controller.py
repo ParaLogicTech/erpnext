@@ -20,11 +20,13 @@ from erpnext.accounts.doctype.pricing_rule.utils import (
 	apply_pricing_rule_for_free_items, get_applied_pricing_rules,
 	apply_pricing_rule_on_transaction, update_pricing_rule_table
 )
+from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 from erpnext.controllers.taxes_and_totals import calculate_taxes_and_totals, get_itemised_tax_breakup_html
 from erpnext.setup.utils import get_exchange_rate
 from erpnext.controllers.sales_and_purchase_return import validate_return
 from collections import OrderedDict
 import json
+import math
 
 
 class TransactionController(StockController):
@@ -1604,3 +1606,181 @@ def add_multiple_items(item_codes, target_doc, items_field="items"):
 	target_doc.run_method("sort_items")
 
 	return target_doc
+
+
+def update_item_batch_serial_based_on_purchase_and_production(target):
+	updated_rows = []
+
+	for target_item in target.get("items"):
+		updated_rows.append(target_item)
+
+		if flt(target_item.get("qty")) <= 0:
+			continue
+		if target_item.get("packing_slip"):
+			continue
+
+		item = frappe.get_cached_value("Item", target_item.item_code,
+			['has_batch_no', 'has_serial_no'], as_dict=1)
+		if not item:
+			continue
+		if not item.has_batch_no and not item.has_serial_no:
+			continue
+
+		if not target_item.get("sales_order") and not target_item.get("work_order"):
+			continue
+
+		based_on_field = "sales_order_item" if target_item.get("sales_order") else "work_order"
+		wo_based_on_field = "name" if based_on_field == "work_order" else based_on_field
+
+		values = frappe._dict({
+			"item_code": target_item.get("item_code"),
+			"conversion_factor": flt(target_item.get("conversion_factor") or 1),
+			"sales_order": target_item.get("sales_order"),
+			"sales_order_item": target_item.get("sales_order_item"),
+			"work_order": target_item.get("work_order"),
+		})
+
+		purchase_receipt_items = frappe.db.sql(f"""
+			select i.batch_no, i.serial_no, i.qty
+			from `tabPurchase Receipt Item` i
+			inner join `tabPurchase Receipt` prec on prec.name = i.parent
+			inner join `tabPurchase Order Item` po_item on po_item.name = i.purchase_order_item
+			where i.docstatus = 1 and (prec.is_return = 0 or prec.reopen_order = 1)
+				and po_item.{based_on_field} = %({based_on_field})s
+			order by prec.posting_date, prec.posting_time, prec.creation, i.idx
+		""", values, as_dict=1)
+
+		purchase_invoice_items = frappe.db.sql(f"""
+			select i.batch_no, i.serial_no, i.qty
+			from `tabPurchase Invoice Item` i
+			inner join `tabPurchase Invoice` pinv on pinv.name = i.parent
+			inner join `tabPurchase Order Item` po_item on po_item.name = i.purchase_order_item
+			where pinv.docstatus = 1 and pinv.update_stock = 1 and (pinv.is_return = 0 or pinv.reopen_order = 1)
+				and po_item.{based_on_field} = %({based_on_field})s
+			order by pinv.posting_date, pinv.posting_time, pinv.creation, i.idx
+		""", values, as_dict=1)
+
+		produced_items = frappe.db.sql(f"""
+			select i.batch_no, i.serial_no, i.stock_qty / %(conversion_factor)s as qty
+			from `tabStock Entry Detail` i
+			inner join `tabStock Entry` ste on ste.name = i.parent
+			inner join `tabWork Order` wo on wo.name = ste.work_order
+			where ste.docstatus = 1
+				and ste.purpose = 'Manufacture'
+				and ifnull(i.s_warehouse, '') = ''
+				and ifnull(i.t_warehouse, '') != ''
+				and wo.{wo_based_on_field} = %({based_on_field})s
+				and i.item_code = %(item_code)s
+			order by ste.posting_date, ste.posting_time, ste.creation, i.idx
+		""", values, as_dict=1)
+
+		unpacked_delivery_condition = ""
+		if target.doctype == "Packing Slip":
+			unpacked_delivery_condition = " and ifnull(i.packing_slip, '') = ''"
+
+		delivery_note_items = []
+		sales_invoice_items = []
+		if target_item.get("sales_order_item"):
+			delivery_note_items = frappe.db.sql(f"""
+				select i.batch_no, i.serial_no, i.qty
+				from `tabDelivery Note Item` i
+				inner join `tabDelivery Note` dn on dn.name = i.parent
+				where i.docstatus = 1 and (dn.is_return = 0 or dn.reopen_order = 1)
+					and i.sales_order_item = %(sales_order_item)s
+					{unpacked_delivery_condition}
+				order by dn.posting_date, dn.posting_time, dn.creation, i.idx
+			""", values, as_dict=1)
+
+			sales_invoice_items = frappe.db.sql(f"""
+				select i.batch_no, i.serial_no, i.qty
+				from `tabSales Invoice Item` i
+				inner join `tabSales Invoice` sinv on sinv.name = i.parent
+				where sinv.docstatus = 1 and sinv.update_stock = 1 and (sinv.is_return = 0 or sinv.reopen_order = 1)
+					and i.sales_order_item = %(sales_order_item)s
+					{unpacked_delivery_condition}
+				order by sinv.posting_date, sinv.posting_time, sinv.creation, i.idx
+			""", values, as_dict=1)
+
+		packed_items = []
+		if target.doctype == "Packing Slip":
+			if target_item.get("sales_order_item"):
+				based_on_condition = "and i.sales_order = %(sales_order)s and i.sales_order_item = %(sales_order_item)s"
+			else:
+				based_on_condition = "and i.work_order = %(work_order)s"
+
+			packed_items = frappe.db.sql(f"""
+				select i.batch_no, i.serial_no, i.qty
+				from `tabPacking Slip Item` i
+				inner join `tabPacking Slip` ps on ps.name = i.parent
+				where i.docstatus = 1 and ifnull(i.source_packing_slip, '') = ''
+					{based_on_condition}
+				order by ps.posting_date, ps.posting_time, ps.creation, i.idx
+			""", values, as_dict=1)
+
+		incoming_items = (
+			[d for d in purchase_receipt_items if d.qty > 0]
+			+ [d for d in purchase_invoice_items if d.qty > 0]
+			+ [d for d in delivery_note_items if d.qty < 0]
+			+ [d for d in sales_invoice_items if d.qty < 0]
+			+ [d for d in packed_items if d.qty < 0]
+			+ produced_items
+		)
+
+		outgoing_items = (
+			[d for d in delivery_note_items if d.qty > 0]
+			+ [d for d in sales_invoice_items if d.qty > 0]
+			+ [d for d in purchase_receipt_items if d.qty < 0]
+			+ [d for d in purchase_invoice_items if d.qty < 0]
+			+ [d for d in packed_items if d.qty > 0]
+		)
+
+		batch_wise_details = {}
+
+		# Get received batch/serial details
+		for in_item in incoming_items:
+			current_batch = batch_wise_details.setdefault(cstr(in_item.batch_no), frappe._dict({
+				"batch_no": in_item.batch_no, "serial_nos": [], "remaining_qty": 0
+			}))
+			current_batch.remaining_qty += abs(flt(in_item.qty))
+			current_batch.serial_nos += get_serial_nos(in_item.serial_no)
+
+		# Remove batch/serial nos delivered
+		for out_item in outgoing_items:
+			current_batch = batch_wise_details.get(cstr(out_item.batch_no))
+			if current_batch:
+				current_batch.remaining_qty -= abs(flt(out_item.qty))
+				if flt(current_batch.remaining_qty, target_item.precision("qty")) <= 0:
+					del batch_wise_details[out_item.batch_no]
+					continue
+
+				serial_nos_to_remove = get_serial_nos(out_item.serial_no)
+				current_batch.serial_nos = list(filter(lambda d: d and d not in serial_nos_to_remove, current_batch.serial_nos))
+
+		if batch_wise_details:
+			max_qty = flt(target_item.qty)
+			remaining_qty = max_qty
+
+			batches = list(batch_wise_details.values())
+			for i, batch in enumerate(batches):
+				if remaining_qty <= 0:
+					break
+
+				if i == 0:
+					row = target_item
+				else:
+					row = frappe.copy_doc(target_item)
+					updated_rows.append(row)
+
+				row.qty = flt(min(batch.remaining_qty, remaining_qty), target_item.precision("qty"))
+				remaining_qty = flt(remaining_qty - row.qty, target_item.precision("qty"))
+
+				row.batch_no = batch.batch_no
+
+				serial_no_qty = cint(math.ceil(row.qty))
+				row.serial_no = "\n".join(batch.serial_nos[:serial_no_qty])
+
+	# Replace with updated list
+	for i, row in enumerate(updated_rows):
+		row.idx = i + 1
+
+	target.items = updated_rows

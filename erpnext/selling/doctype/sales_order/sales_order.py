@@ -12,12 +12,10 @@ from erpnext.stock.stock_balance import update_bin_qty, get_reserved_qty
 from frappe.desk.notifications import clear_doctype_notifications
 from erpnext.controllers.selling_controller import SellingController
 from erpnext.controllers.transaction_controller import get_default_taxes_and_charges
-from erpnext.vehicles.doctype.vehicle.vehicle import split_vehicle_items_by_qty
 from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
 from erpnext.stock.get_item_details import get_default_bom
-from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle, validate_bundled_item_list, make_bundled_item_list
 
 
@@ -1283,148 +1281,13 @@ def get_item_mapper_for_delivery(allow_duplicate=False):
 def postprocess_delivery_note(source, target, set_warehouse=None, skip_item_mapping=False):
 	target.ignore_pricing_rule = 1
 
-	if not skip_item_mapping:
-		update_mapped_items_based_on_purchase_and_production(source, target)
-		split_vehicle_items_by_qty(target)
-
 	if set_warehouse:
 		target.set_warehouse = set_warehouse
 
 	target.run_method("postprocess_after_mapping")
 
-
-def update_mapped_items_based_on_purchase_and_production(source, target):
-	updated_rows = []
-
-	for target_item in target.get("items"):
-		updated_rows.append(target_item)
-
-		item = frappe.get_cached_value("Item", target_item.item_code,
-			['has_batch_no', 'has_serial_no'], as_dict=1)
-		if not item:
-			continue
-
-		if target_item.sales_order and (item.has_batch_no or item.has_serial_no) and not target_item.get("packing_slip"):
-			purchase_receipt_items = frappe.db.sql("""
-				select i.batch_no, i.serial_no, i.qty
-				from `tabPurchase Receipt Item` i
-				inner join `tabPurchase Receipt` prec on prec.name = i.parent
-				inner join `tabPurchase Order Item` po_item on po_item.name = i.purchase_order_item
-				where i.docstatus = 1 and (prec.is_return = 0 or prec.reopen_order = 1)
-					and po_item.sales_order_item = %s
-			""", target_item.sales_order_item, as_dict=1)
-
-			purchase_invoice_items = frappe.db.sql("""
-				select i.batch_no, i.serial_no, i.qty
-				from `tabPurchase Invoice Item` i
-				inner join `tabPurchase Invoice` pinv on pinv.name = i.parent
-				inner join `tabPurchase Order Item` po_item on po_item.name = i.purchase_order_item
-				where pinv.docstatus = 1 and pinv.update_stock = 1 and (pinv.is_return = 0 or pinv.reopen_order = 1)
-					and po_item.sales_order_item = %s
-			""", target_item.sales_order_item, as_dict=1)
-
-			produced_items = frappe.db.sql("""
-				select i.batch_no, i.serial_no, i.stock_qty / %s as qty
-				from `tabStock Entry Detail` i
-				inner join `tabStock Entry` ste on ste.name = i.parent
-				inner join `tabWork Order` wo on wo.name = ste.work_order
-				where ste.docstatus = 1
-					and ste.purpose = 'Manufacture'
-					and ifnull(i.s_warehouse, '') = ''
-					and ifnull(i.t_warehouse, '') != ''
-					and wo.sales_order_item = %s
-					and i.item_code = %s
-			""", (target_item.conversion_factor, target_item.sales_order_item, target_item.item_code), as_dict=1)
-
-			unpacked_delivery_condition = ""
-			if target.doctype == "Packing Slip":
-				unpacked_delivery_condition = " and ifnull(i.packing_slip, '') = ''"
-
-			delivery_note_items = frappe.db.sql("""
-				select i.batch_no, i.serial_no, i.qty
-				from `tabDelivery Note Item` i
-				inner join `tabDelivery Note` dn on dn.name = i.parent
-				where i.docstatus = 1 and (dn.is_return = 0 or dn.reopen_order = 1)
-					and i.sales_order_item = %s {0}
-			""".format(unpacked_delivery_condition), target_item.sales_order_item, as_dict=1)
-
-			sales_invoice_items = frappe.db.sql("""
-				select i.batch_no, i.serial_no, i.qty
-				from `tabSales Invoice Item` i
-				inner join `tabSales Invoice` sinv on sinv.name = i.parent
-				where sinv.docstatus = 1 and sinv.update_stock = 1 and (sinv.is_return = 0 or sinv.reopen_order = 1)
-					and i.sales_order_item = %s {0}
-			""".format(unpacked_delivery_condition), target_item.sales_order_item, as_dict=1)
-
-			packed_items = []
-			if target.doctype == "Packing Slip":
-				packed_items = frappe.db.sql("""
-					select i.batch_no, i.serial_no, i.qty
-					from `tabPacking Slip Item` i
-					inner join `tabPacking Slip` ps on ps.name = i.parent
-					where i.docstatus = 1
-						and ifnull(i.source_packing_slip, '') = ''
-						and i.sales_order = %s
-						and i.sales_order_item = %s
-				""", (target_item.sales_order, target_item.sales_order_item), as_dict=1)
-
-			incoming_items = (
-				[d for d in purchase_receipt_items if d.qty > 0]
-				+ [d for d in purchase_invoice_items if d.qty > 0]
-				+ [d for d in delivery_note_items if d.qty < 0]
-				+ [d for d in sales_invoice_items if d.qty < 0]
-				+ [d for d in packed_items if d.qty < 0]
-				+ produced_items
-			)
-
-			outgoing_items = (
-				[d for d in delivery_note_items if d.qty > 0]
-				+ [d for d in sales_invoice_items if d.qty > 0]
-				+ [d for d in purchase_receipt_items if d.qty < 0]
-				+ [d for d in purchase_invoice_items if d.qty < 0]
-				+ [d for d in packed_items if d.qty > 0]
-			)
-
-			batch_wise_details = {}
-
-			# Get received batch/serial details
-			for in_item in incoming_items:
-				current_batch = batch_wise_details.setdefault(cstr(in_item.batch_no), frappe._dict({
-					"batch_no": in_item.batch_no, "serial_nos": [], "remaining_qty": 0
-				}))
-				current_batch.remaining_qty += abs(flt(in_item.qty))
-				current_batch.serial_nos += get_serial_nos(in_item.serial_no)
-
-			# Remove batch/serial nos delivered
-			for out_item in outgoing_items:
-				current_batch = batch_wise_details.get(cstr(out_item.batch_no))
-				if current_batch:
-					current_batch.remaining_qty -= abs(flt(out_item.qty))
-					if flt(current_batch.remaining_qty, target_item.precision("qty")) <= 0:
-						del batch_wise_details[out_item.batch_no]
-						continue
-
-					serial_nos_to_remove = get_serial_nos(out_item.serial_no)
-					current_batch.serial_nos = list(filter(lambda d: d and d not in serial_nos_to_remove, current_batch.serial_nos))
-
-			if batch_wise_details:
-				batches = list(batch_wise_details.values())
-				rows = [target_item]
-				for i in range(1, len(batches)):
-					new_row = frappe.copy_doc(target_item)
-					rows.append(new_row)
-					updated_rows.append(new_row)
-
-				for row, batch in zip(rows, batches):
-					row.qty = batch.remaining_qty
-					row.batch_no = batch.batch_no
-					row.serial_no = "\n".join(batch.serial_nos)
-
-	# Replace with updated list
-	for i, row in enumerate(updated_rows):
-		row.idx = i + 1
-
-	target.items = updated_rows
+	if not skip_item_mapping:
+		target.run_method("auto_select_batches_based_on_purchase_and_production")
 
 
 @frappe.whitelist()
@@ -1461,6 +1324,7 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 		if not skip_postprocess:
 			postprocess_packing_slip_from_sales_order(source, target)
 			target.run_method("postprocess_after_mapping")
+			target.run_method("auto_select_batches_based_on_purchase_and_production")
 
 	def update_item(source, target, source_parent, target_parent):
 		target.work_order = wo_doc.name if wo_doc else None
@@ -1557,7 +1421,6 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 
 
 def postprocess_packing_slip_from_sales_order(source, target):
-	update_mapped_items_based_on_purchase_and_production(source, target)
 	frappe.utils.call_hook_method("postprocess_sales_order_to_packing_slip", source, target)
 
 
@@ -1576,12 +1439,10 @@ def make_sales_invoice(
 		only_items = cint(frappe.flags.args.only_items)
 
 	def postprocess(source, target):
-		if not skip_item_mapping:
-			split_vehicle_items_by_qty(target)
-
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions
 		target.run_method("postprocess_after_mapping", reset_taxes=True)
+		target.run_method("auto_select_batches_based_on_purchase_and_production")
 
 		# set the redeem loyalty points if provided via shopping cart
 		if source.loyalty_points and source.order_type == "Shopping Cart":
@@ -1656,9 +1517,6 @@ def make_proforma_invoice(
 		only_items = cint(frappe.flags.args.only_items)
 
 	def postprocess(source, target):
-		if not skip_item_mapping:
-			split_vehicle_items_by_qty(target)
-
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions
 		target.run_method("postprocess_after_mapping", reset_taxes=True)

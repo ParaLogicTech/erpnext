@@ -1880,7 +1880,7 @@ def create_pick_list(source_name, target_doc=None, for_qty=None):
 def make_packing_slip(work_orders, target_doc=None):
 	from erpnext.selling.doctype.sales_order.sales_order import (
 		make_packing_slip as make_packing_slip_from_so,
-		postprocess_packing_slip_from_sales_order
+		postprocess_packing_slip_from_sales_order,
 	)
 
 	if isinstance(work_orders, str):
@@ -1945,9 +1945,7 @@ def make_packing_slip(work_orders, target_doc=None):
 		row.qty = wo_doc.completed_qty - wo_doc.packed_qty - wo_doc.rejected_qty - wo_doc.reconciled_qty
 		row.uom = wo_doc.stock_uom
 
-		qty_per_carton = 0
-		if not qty_per_carton and wo_doc:
-			qty_per_carton = flt(wo_doc.get("qty_per_carton"))
+		qty_per_carton = flt(wo_doc.get("qty_per_carton"))
 		if qty_per_carton:
 			row.qty = min(qty_per_carton, row.qty)
 
@@ -1959,6 +1957,7 @@ def make_packing_slip(work_orders, target_doc=None):
 		frappe.utils.call_hook_method("postprocess_work_orders_to_packing_slip", pack_from_work_orders, target_doc)
 
 	target_doc.run_method("postprocess_after_mapping")
+	target_doc.run_method("auto_select_batches_based_on_purchase_and_production")
 
 	return target_doc
 
