@@ -429,14 +429,14 @@ frappe.ui.form.on('Stock Entry Detail', {
 	},
 
 	uom: function(doc, cdt, cdn) {
-		var d = locals[cdt][cdn];
-		if(d.uom && d.item_code){
+		let d = frappe.get_doc(cdt, cdn);
+		if (d.item_code && d.uom) {
 			return frappe.call({
 				method: "erpnext.stock.doctype.stock_entry.stock_entry.get_uom_details",
 				args: {
 					item_code: d.item_code,
 					uom: d.uom,
-					qty: d.qty
+					qty: flt(d.qty),
 				},
 				callback: function(r) {
 					if(r.message) {
