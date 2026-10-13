@@ -3,7 +3,7 @@
 
 frappe.provide("erpnext.manufacturing");
 
-erpnext.manufacturing.WorkOrderController = class WorkOrderController extends frappe.ui.form.Controller {
+erpnext.manufacturing.WorkOrderController = class WorkOrderController extends erpnext.stock.StockController {
 	setup() {
 		this.frm.doc.disable_item_formatter = true;
 
@@ -228,14 +228,18 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 			// Packing Slip
 			let packing_completion = flt(doc.packed_qty) + flt(doc.rejected_qty) + flt(doc.reconciled_qty);
 
-			if (
-				frappe.model.can_create("Packing Slip")
-				&& doc.packing_slip_required
-				&& flt(packing_completion, precision("qty")) < flt(doc.completed_qty, precision("qty"))
-			) {
-				this.frm.add_custom_button(__("Packing Slip"), () => {
-					this.make_packing_slip();
-				}, __("Create"));
+			if (frappe.model.can_create("Packing Slip") && doc.packing_slip_required) {
+				if (flt(packing_completion, precision("qty")) < flt(doc.completed_qty, precision("qty"))) {
+					this.frm.add_custom_button(__("Packing Slip"), () => {
+						this.make_packing_slip();
+					}, __("Create"));
+				}
+
+				if (flt(doc.packed_qty)) {
+					this.frm.add_custom_button(__("Pallet Packing"), () => {
+						this.make_pallet_packing_slip();
+					}, __("Create"));
+				}
 			}
 
 			// Sub Assembly Work Orders
@@ -551,6 +555,31 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends fr
 			callback: (r) => {
 				let doclist = frappe.model.sync(r.message);
 				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+			}
+		});
+	}
+
+	make_pallet_packing_slip() {
+		this.show_dialog_for_pallet_packing({
+			item_code: this.frm.doc.production_item,
+			item_name: this.frm.doc.item_name,
+			carton_type: this.frm.doc.carton_type,
+			pallet_type: this.frm.doc.pallet_type,
+			carton_per_pallet: cint(this.frm.doc.carton_per_pallet),
+			callback: (values) => {
+				return frappe.call({
+					method: "erpnext.stock.doctype.packing_slip.packing_slip.make_pallet_packing_slip",
+					args: {
+						work_orders: [this.frm.doc.name],
+						carton_type: values.carton_type,
+						pallet_type: values.pallet_type,
+						carton_per_pallet: cint(values.carton_per_pallet),
+					},
+					callback: (r) => {
+						let doclist = frappe.model.sync(r.message);
+						frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+					}
+				});
 			}
 		});
 	}

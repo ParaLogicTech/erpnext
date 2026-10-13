@@ -1026,7 +1026,10 @@ class WorkOrder(StatusUpdaterERP):
 			if self.status == "Stopped":
 				self.status = "Stopped"
 			elif self.completed_qty and self.production_status != "To Produce" and self.subcontracting_status != "To Receive":
-				self.status = "Completed"
+				if self.packing_status == "To Pack":
+					self.status = "To Pack"
+				else:
+					self.status = "Completed"
 			elif self.subcontract_order_qty or self.has_stock_entry():
 				self.status = "In Process"
 			else:
