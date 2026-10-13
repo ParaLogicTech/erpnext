@@ -186,6 +186,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 							? flt(d.packed_qty, precision("qty", d)) < flt(produced_qty_order_uom, precision("qty", d))
 							: flt(d.packed_qty, precision("qty", d)) < flt(d.qty, precision("qty", d));
 					});
+					let has_packed = packable_rows.some(d => flt(d.packed_qty));
 
 					if (has_undelivered && has_unpacked && frappe.model.can_read("Packing Slip")) {
 						me.frm.add_custom_button(__("Assign") + " " + __("Packing Slip"), () => me.select_packages_for_reassignment(),
@@ -207,6 +208,10 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 
 						if ((has_unpacked || me.frm.doc.packing_status == "To Pack") && frappe.model.can_create("Packing Slip")) {
 							me.frm.add_custom_button(__('Packing Slip'), () => me.make_packing_slip(), __('Create'));
+						}
+
+						if (has_packed && has_undelivered && frappe.model.can_create("Packing Slip")) {
+							me.frm.add_custom_button(__('Pallet Packing'), () => me.make_pallet_packing_slip(), __('Create'));
 						}
 
 						if (frappe.model.can_create("Pick List")) {
@@ -677,6 +682,69 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 				warehouse: warehouse
 			}
 		})
+	}
+
+	make_pallet_packing_slip() {
+		let item_grid = this.frm.fields_dict["items"].grid;
+		let selected_rows = item_grid.get_selected_children();
+		if (!selected_rows.length) {
+			frappe.throw(__("Please check mark items for pallet packing"));
+		}
+
+		let sales_order_items = selected_rows.map(d => d.name);
+
+		let item_code;
+		let item_name;
+		let carton_type;
+		let pallet_type;
+		let carton_per_pallet;
+
+		let item_codes = [...new Set(selected_rows.map(d => cstr(d.item_code)))];
+		if (item_codes.length == 1) {
+			item_code = item_codes[0];
+		}
+		let carton_types = [...new Set(selected_rows.map(d => cstr(d.carton_type)))];
+		if (carton_types.length == 1) {
+			carton_type = carton_types[0];
+		}
+		let pallet_types = [...new Set(selected_rows.map(d => cstr(d.pallet_type)))];
+		if (pallet_types.length == 1) {
+			pallet_type = pallet_types[0];
+		}
+		let carton_per_pallets = [...new Set(selected_rows.map(d => cint(d.carton_per_pallet)))];
+		if (carton_per_pallets.length == 1) {
+			carton_per_pallet = carton_per_pallets[0];
+		}
+
+		if (item_code) {
+			let row = this.frm.doc.items.find(d => d.item_code == item_code);
+			if (row) {
+				item_name = row.item_name;
+			}
+		}
+
+		this.show_dialog_for_pallet_packing({
+			item_code: item_code,
+			item_name: item_name,
+			carton_type: carton_type,
+			pallet_type: pallet_type,
+			carton_per_pallet: cint(carton_per_pallet),
+			callback: (values) => {
+				return frappe.call({
+					method: "erpnext.stock.doctype.packing_slip.packing_slip.make_pallet_packing_slip",
+					args: {
+						sales_order_items: sales_order_items,
+						carton_type: values.carton_type,
+						pallet_type: values.pallet_type,
+						carton_per_pallet: cint(values.carton_per_pallet),
+					},
+					callback: (r) => {
+						let doclist = frappe.model.sync(r.message);
+						frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
+					}
+				});
+			}
+		});
 	}
 
 	make_sales_invoice() {
