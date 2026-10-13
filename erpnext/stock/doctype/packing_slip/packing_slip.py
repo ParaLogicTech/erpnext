@@ -1745,6 +1745,9 @@ def make_target_packing_slip(source_name, target_doc=None):
 			]
 		}
 
+		frappe.utils.call_hook_method("update_target_packing_slip_mapper", packing_slip_item_mapper,
+			"Packing Slip Item")
+
 		# Map Packing Slip Items
 		for ps_item in source_packing_slip.get("items"):
 			if not mapper_item_condition(ps_item, target_doc):
