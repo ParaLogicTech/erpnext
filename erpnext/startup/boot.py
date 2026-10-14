@@ -91,8 +91,24 @@ def update_page_info(bootinfo):
 			"title": "Customer Group Tree",
 			"route": "Tree/Customer Group"
 		},
+		"Supplier Group Tree": {
+			"title": "Supplier Group Tree",
+			"route": "Tree/Supplier Group"
+		},
+		"Territory Tree": {
+			"title": "Territory Tree",
+			"route": "Tree/Territory"
+		},
 		"Warehouse Tree": {
 			"title": "Warehouse Tree",
 			"route": "Tree/Warehouse"
+		},
+		"Department Tree": {
+			"title": "Department Tree",
+			"route": "Tree/Department"
+		},
+		"Location Tree": {
+			"title": "Department Tree",
+			"route": "Tree/Location"
 		},
 	})
