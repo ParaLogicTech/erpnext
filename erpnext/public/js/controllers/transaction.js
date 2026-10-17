@@ -472,7 +472,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		erpnext.toggle_naming_series();
 		erpnext.hide_company(this.frm);
 		this.set_dynamic_labels();
-		this.setup_sms();
 		this.setup_quality_inspection();
 
 		if (frappe.meta.get_docfield(this.frm.doc.doctype, "pricing_rules")) {
@@ -596,18 +595,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	scan_barcode() {
 		const barcode_scanner = new erpnext.utils.BarcodeScanner({frm:this.frm});
 		barcode_scanner.process_scan();
-	}
-
-	setup_sms() {
-		var me = this;
-		let blacklist_dt = ['Purchase Invoice', 'BOM'];
-		let blacklist_status = in_list(["Lost", "Stopped", "Closed"], this.frm.doc.status);
-
-		if(this.frm.doc.docstatus===1 && !blacklist_status && !blacklist_dt.includes(this.frm.doctype)) {
-			this.frm.page.add_menu_item(__('Send SMS'), function() {
-				me.send_sms();
-			});
-		}
 	}
 
 	send_sms() {
