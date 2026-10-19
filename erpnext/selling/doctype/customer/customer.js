@@ -216,6 +216,12 @@ frappe.ui.form.on("Customer", {
 		frappe.regional.format_mobile_no(frm, "mobile_no_2");
 	},
 
+	email_id: function (frm) {
+		frm.doc.email_id = strip(frm.doc.email_id);
+		frm.refresh_field("email_id");
+		frappe.regional.validate_duplicate_email(frm.doc, "email_id");
+	},
+
 	customer_group: function(frm) {
 		erpnext.utils.set_customer_overrides(frm);
 	},

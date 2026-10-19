@@ -341,6 +341,7 @@
    "in_preview": 1,
    "in_standard_filter": 1,
    "label": "Email Address",
+   "options": "Email",
    "search_index": 1
   },
   {
@@ -758,7 +759,7 @@
  "idx": 363,
  "image_field": "image",
  "links": [],
- "modified": "2026-09-12 16:56:25.083570",
+ "modified": "2026-10-19 11:22:00.563704",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Customer",

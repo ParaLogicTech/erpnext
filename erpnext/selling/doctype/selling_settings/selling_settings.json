@@ -27,6 +27,7 @@
   "so_required",
   "dn_required",
   "validate_duplicate_customer_mobile",
+  "validate_duplicate_customer_email",
   "role_allowed_to_duplicate_customer_ntn"
  ],
  "fields": [
@@ -160,6 +161,12 @@
    "fieldtype": "Table",
    "label": "Price List Rate Restriction Overrides",
    "options": "Pricing Restriction Override"
+  },
+  {
+   "fieldname": "validate_duplicate_customer_email",
+   "fieldtype": "Select",
+   "label": "Validate Duplicate Customer Email Address",
+   "options": "\nFor All Customers\nFor Individual Customers"
   }
  ],
  "grid_page_length": 500,
