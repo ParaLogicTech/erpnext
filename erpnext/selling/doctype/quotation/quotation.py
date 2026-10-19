@@ -20,17 +20,6 @@ form_grid_templates = {
 
 
 class Quotation(SellingController):
-	def __init__(self, *args, **kwargs):
-		super(Quotation, self).__init__(*args, **kwargs)
-		self.status_map = [
-			["Draft", None],
-			["Open", "eval:self.docstatus==1"],
-			["Expired", "eval:self.valid_till and getdate(self.valid_till) < getdate()"],
-			["Lost", "eval:self.status=='Lost'"],
-			["Ordered", "has_sales_order_or_invoice"],
-			["Cancelled", "eval:self.docstatus==2"],
-		]
-
 	def validate(self):
 		super(Quotation, self).validate()
 		self.validate_quotation_valid_till()
@@ -201,6 +190,44 @@ class Quotation(SellingController):
 
 		return ordered_qty_map
 
+	def set_status(self, update=False, status=None, update_modified=True):
+		previous_status = self.status
+		today = getdate()
+
+		# Draft
+		if self.docstatus == 0:
+			self.status = "Draft"
+
+		# Cancelled
+		elif self.docstatus == 2:
+			self.status = "Cancelled"
+
+		# Submitted
+		else:
+			if status:
+				self.status = status
+
+			if self.has_sales_order_or_invoice():
+				self.status = "Ordered"
+			elif self.status in ("Lost", "Approved"):
+				pass
+			elif self.valid_till and getdate(self.valid_till) < today:
+				self.status = "Expired"
+			else:
+				self.status = "Open"
+
+		# Missing Approval Date
+		if self.status in ("Ordered", "Approved") and not self.approval_date:
+			self.approval_date = today
+
+		self.add_status_comment(previous_status)
+
+		if update:
+			self.db_set({
+				"status": self.status,
+				"approval_date": self.approval_date,
+			}, update_modified=update_modified)
+
 	def update_lead_status(self, status=None):
 		if self.quotation_to == "Lead" and self.party_name:
 			doc = frappe.get_doc("Lead", self.party_name)
@@ -219,6 +246,8 @@ class Quotation(SellingController):
 
 	@frappe.whitelist()
 	def set_is_lost(self, is_lost, lost_reasons_list=None, detailed_reason=None, lost_date=None):
+		self.check_permission("write")
+
 		is_lost = cint(is_lost)
 
 		if is_lost and self.has_sales_order_or_invoice():
@@ -416,10 +445,16 @@ def set_expired_status():
 	frappe.db.sql("""
 		UPDATE `tabQuotation`
 		SET `status` = 'Expired'
-		WHERE `status` not in ('Ordered', 'Expired', 'Lost', 'Cancelled')
-			AND `valid_till` < %s
-			AND `docstatus` = 1
+		WHERE `status` = 'Open' AND `valid_till` < %s AND `docstatus` = 1
 	""", getdate())
+
+
+@frappe.whitelist()
+def set_as_approved(name):
+	doc = frappe.get_doc("Quotation", name)
+	doc.check_permission("write")
+	doc.set_status(update=True, status="Approved")
+	doc.notify_update()
 
 
 @frappe.whitelist()

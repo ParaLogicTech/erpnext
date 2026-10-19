@@ -21,6 +21,8 @@ frappe.listview_settings['Quotation'] = {
 			return [__("Open"), "orange", "status,=,Open"];
 		} else if(doc.status==="Ordered") {
 			return [__("Ordered"), "green", "status,=,Ordered"];
+		} else if(doc.status==="Approved") {
+			return [__("Approved"), "green", "status,=,Approved"];
 		} else if(doc.status==="Lost") {
 			return [__("Lost"), "grey", "status,=,Lost"];
 		} else if(doc.status==="Expired") {

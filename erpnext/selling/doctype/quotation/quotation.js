@@ -80,11 +80,17 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			customer = me.frm.doc.__onload && me.frm.doc.__onload.customer;
 		}
 
-		if(me.frm.doc.docstatus == 1 && me.frm.doc.status !== 'Lost') {
-			if (me.frm.doc.status !== "Ordered") {
+		if (me.frm.doc.docstatus == 1 && me.frm.doc.status !== 'Lost') {
+			if (me.frm.doc.status !== "Ordered" && me.frm.has_perm("write")) {
 				me.frm.add_custom_button(__('Mark As Lost'), () => {
 					crm.utils.set_as_lost_dialog(me.frm);
 				}, __("Status"));
+
+				if (me.frm.doc.status != "Approved") {
+					me.frm.add_custom_button(__('Mark As Approved'), () => {
+						me.set_as_approved();
+					}, __("Status"));
+				}
 			}
 
 			if (!customer && frappe.model.can_create("Customer")) {
@@ -114,7 +120,11 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			me.frm.page.set_inner_btn_group_as_primary(__('Create'));
 		}
 
-		if (me.frm.doc.status == "Lost") {
+		if (
+			me.frm.doc.docstatus == 1
+			&& ["Lost", "Approved"].includes(me.frm.doc.status)
+			&& me.frm.has_perm("write")
+		) {
 			me.frm.add_custom_button(__("Re-Open"), () => {
 				crm.utils.update_lost_status(me.frm, false);
 			}, __("Status"));
@@ -299,6 +309,19 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 
 	remove_previous_orders() {
 		this.calculate_taxes_and_totals();
+	}
+
+	set_as_approved() {
+		return frappe.call({
+			method: "erpnext.selling.doctype.quotation.quotation.set_as_approved",
+			args: {
+				name: this.frm.doc.name,
+			},
+			freeze: 1,
+			callback: (r) => {
+				this.frm.reload_doc();
+			},
+		});
 	}
 
 	can_notify(what) {
