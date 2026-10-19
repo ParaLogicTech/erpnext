@@ -333,8 +333,10 @@ class Quotation(SellingController):
 			return None
 
 		reminder_date = get_reminder_date_from_quotation_date(self.transaction_date)
-		quotations_for_reminder = get_quotations_for_reminder_notification(reminder_date, quotations=self.name)
+		if not reminder_date:
+			return None
 
+		quotations_for_reminder = get_quotations_for_reminder_notification(reminder_date, quotations=self.name)
 		if self.name in quotations_for_reminder:
 			return get_quotation_reminders_scheduled_time(reminder_date)
 
@@ -605,17 +607,10 @@ def automated_reminder_enabled():
 
 
 def get_quotations_for_reminder_notification(reminder_date=None, quotations=None):
-	settings = frappe.get_cached_doc("Selling Settings", None)
-
-	now_dt = now_datetime()
 	reminder_date = getdate(reminder_date)
-	reminder_dt = get_quotation_reminders_scheduled_time(reminder_date)
-
-	remind_days_after = cint(settings.quotation_reminder_days_after)
-	if remind_days_after <= 0:
+	quotation_date = get_quotation_date_from_reminder_date(reminder_date)
+	if not quotation_date:
 		return []
-
-	quotation_date = add_days(reminder_date, -remind_days_after)
 
 	if quotations and isinstance(quotations, str):
 		quotations = [quotations]
@@ -657,8 +652,20 @@ def get_reminder_date_from_quotation_date(quotation_date):
 	quotation_date = getdate(quotation_date)
 
 	remind_days_after = cint(settings.quotation_reminder_days_after)
-	if remind_days_after < 0:
-		remind_days_after = 0
+	if remind_days_after <= 0:
+		return None
 
 	reminder_date = add_days(quotation_date, remind_days_after)
 	return reminder_date
+
+
+def get_quotation_date_from_reminder_date(reminder_date):
+	settings = frappe.get_cached_doc("Selling Settings", None)
+
+	reminder_date = getdate(reminder_date)
+	remind_days_after = cint(settings.quotation_reminder_days_after)
+	if remind_days_after <= 0:
+		return None
+
+	quotation_date = add_days(reminder_date, -remind_days_after)
+	return quotation_date
