@@ -24,6 +24,7 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		this.frm.events.set_default_quotation_validity(this.frm);
 		this.frm.events.set_dynamic_field_labels(this.frm);
 		this.setup_buttons();
+		this.setup_dashboard();
 	}
 
 	setup_queries() {
@@ -156,6 +157,33 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		}
 	}
 
+	setup_dashboard() {
+		if (this.frm.doc.docstatus == 0) {
+			return;
+		}
+
+		// Notification Status
+		let delivery_count = frappe.get_notification_count(this.frm, 'Quotation Delivery');
+		let delivery_color = delivery_count ? "green"
+			: this.can_notify('Quotation Delivery') ? "yellow" : "light-gray";
+		let delivery_status = frappe.get_notification_count_str(this.frm, 'Quotation Delivery');
+
+		let reminder_count = frappe.get_notification_count(this.frm, 'Quotation Reminder');
+		let reminder_status = frappe.get_notification_count_str(this.frm, 'Quotation Reminder');
+		let reminder_color = "light-gray";
+
+		if (reminder_count) {
+			reminder_color = "green";
+		} else if (this.frm.doc.__onload && this.frm.doc.__onload.scheduled_reminder) {
+			let scheduled_reminder_str = frappe.datetime.str_to_user(this.frm.doc.__onload.scheduled_reminder);
+			reminder_color = "blue";
+			reminder_status = __("Scheduled ({0})", [scheduled_reminder_str]);
+		}
+
+		this.frm.dashboard.add_indicator(__('Quotation Delivery: {0}', [delivery_status]), delivery_color);
+		this.frm.dashboard.add_indicator(__('Quotation Reminder: {0}', [reminder_status]), reminder_color);
+	}
+
 	set_dynamic_link() {
 		if (this.frm.doc.bill_to) {
 			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'bill_to', doctype: 'Customer'};
@@ -271,6 +299,14 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 
 	remove_previous_orders() {
 		this.calculate_taxes_and_totals();
+	}
+
+	can_notify(what) {
+		if (this.frm.doc.__onload && this.frm.doc.__onload.can_notify) {
+			return this.frm.doc.__onload.can_notify[what];
+		} else {
+			return false;
+		}
 	}
 };
 

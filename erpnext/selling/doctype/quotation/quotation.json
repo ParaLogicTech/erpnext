@@ -202,6 +202,8 @@
   "language",
   "status_tab",
   "status",
+  "column_break_woaf",
+  "submission_date",
   "subscription_section",
   "auto_repeat",
   "update_auto_repeat_reference"
@@ -1644,6 +1646,17 @@
    "label": "Lost Date",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_woaf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submission_date",
+   "fieldtype": "Date",
+   "label": "Submission Date",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -1651,7 +1664,7 @@
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 18:00:46.551823",
+ "modified": "2026-10-19 12:55:25.117693",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",

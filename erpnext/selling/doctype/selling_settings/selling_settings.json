@@ -28,7 +28,11 @@
   "dn_required",
   "validate_duplicate_customer_mobile",
   "validate_duplicate_customer_email",
-  "role_allowed_to_duplicate_customer_ntn"
+  "role_allowed_to_duplicate_customer_ntn",
+  "quotation_notifications_section",
+  "quotation_reminder_days_after",
+  "column_break_7mge",
+  "quotation_reminder_time"
  ],
  "fields": [
   {
@@ -163,6 +167,26 @@
    "options": "Pricing Restriction Override"
   },
   {
+   "fieldname": "quotation_notifications_section",
+   "fieldtype": "Section Break",
+   "label": "Quotation Notifications"
+  },
+  {
+   "fieldname": "quotation_reminder_days_after",
+   "fieldtype": "Int",
+   "label": "Quotation Reminder Days After",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_7mge",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "quotation_reminder_time",
+   "fieldtype": "Time",
+   "label": "Quotation Reminder Notification Time of Day"
+  },
+  {
    "fieldname": "validate_duplicate_customer_email",
    "fieldtype": "Select",
    "label": "Validate Duplicate Customer Email Address",
@@ -174,7 +198,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-09-08 15:15:58.305839",
+ "modified": "2026-10-19 11:16:51.697190",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling Settings",
