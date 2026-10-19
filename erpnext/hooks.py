@@ -239,6 +239,7 @@ scheduler_events = {
 	"cron": {
 		"0/15 * * * *": [
 			"erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.send_maintenance_schedule_reminder_notifications",
+			"erpnext.selling.doctype.quotation.quotation.send_quotation_reminder_notifications",
 		],
 	},
 	"hourly": [
