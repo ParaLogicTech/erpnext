@@ -24,6 +24,7 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		this.frm.events.set_default_quotation_validity(this.frm);
 		this.frm.events.set_dynamic_field_labels(this.frm);
 		this.setup_buttons();
+		this.setup_dashboard();
 	}
 
 	setup_queries() {
@@ -79,11 +80,17 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			customer = me.frm.doc.__onload && me.frm.doc.__onload.customer;
 		}
 
-		if(me.frm.doc.docstatus == 1 && me.frm.doc.status !== 'Lost') {
-			if (me.frm.doc.status !== "Ordered") {
+		if (me.frm.doc.docstatus == 1 && me.frm.doc.status !== 'Lost') {
+			if (me.frm.doc.status !== "Ordered" && me.frm.has_perm("write")) {
 				me.frm.add_custom_button(__('Mark As Lost'), () => {
 					crm.utils.set_as_lost_dialog(me.frm);
 				}, __("Status"));
+
+				if (me.frm.doc.status != "Approved") {
+					me.frm.add_custom_button(__('Mark As Approved'), () => {
+						me.set_as_approved();
+					}, __("Status"));
+				}
 			}
 
 			if (!customer && frappe.model.can_create("Customer")) {
@@ -113,7 +120,11 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			me.frm.page.set_inner_btn_group_as_primary(__('Create'));
 		}
 
-		if (me.frm.doc.status == "Lost") {
+		if (
+			me.frm.doc.docstatus == 1
+			&& ["Lost", "Approved"].includes(me.frm.doc.status)
+			&& me.frm.has_perm("write")
+		) {
 			me.frm.add_custom_button(__("Re-Open"), () => {
 				crm.utils.update_lost_status(me.frm, false);
 			}, __("Status"));
@@ -154,6 +165,33 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			me.add_get_applicable_items_button();
 			me.add_get_service_template_items_button();
 		}
+	}
+
+	setup_dashboard() {
+		if (this.frm.doc.docstatus == 0) {
+			return;
+		}
+
+		// Notification Status
+		let delivery_count = frappe.get_notification_count(this.frm, 'Quotation Delivery');
+		let delivery_color = delivery_count ? "green"
+			: this.can_notify('Quotation Delivery') ? "yellow" : "light-gray";
+		let delivery_status = frappe.get_notification_count_str(this.frm, 'Quotation Delivery');
+
+		let reminder_count = frappe.get_notification_count(this.frm, 'Quotation Reminder');
+		let reminder_status = frappe.get_notification_count_str(this.frm, 'Quotation Reminder');
+		let reminder_color = "light-gray";
+
+		if (reminder_count) {
+			reminder_color = "green";
+		} else if (this.frm.doc.__onload && this.frm.doc.__onload.scheduled_reminder) {
+			let scheduled_reminder_str = frappe.datetime.str_to_user(this.frm.doc.__onload.scheduled_reminder);
+			reminder_color = "blue";
+			reminder_status = __("Scheduled ({0})", [scheduled_reminder_str]);
+		}
+
+		this.frm.dashboard.add_indicator(__('Quotation Delivery: {0}', [delivery_status]), delivery_color);
+		this.frm.dashboard.add_indicator(__('Quotation Reminder: {0}', [reminder_status]), reminder_color);
 	}
 
 	set_dynamic_link() {
@@ -271,6 +309,27 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 
 	remove_previous_orders() {
 		this.calculate_taxes_and_totals();
+	}
+
+	set_as_approved() {
+		return frappe.call({
+			method: "erpnext.selling.doctype.quotation.quotation.set_as_approved",
+			args: {
+				name: this.frm.doc.name,
+			},
+			freeze: 1,
+			callback: (r) => {
+				this.frm.reload_doc();
+			},
+		});
+	}
+
+	can_notify(what) {
+		if (this.frm.doc.__onload && this.frm.doc.__onload.can_notify) {
+			return this.frm.doc.__onload.can_notify[what];
+		} else {
+			return false;
+		}
 	}
 };
 

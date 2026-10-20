@@ -202,6 +202,8 @@
   "language",
   "status_tab",
   "status",
+  "column_break_woaf",
+  "submission_date",
   "subscription_section",
   "auto_repeat",
   "update_auto_repeat_reference"
@@ -303,7 +305,7 @@
    "fieldtype": "Date",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Date",
+   "label": "Quotation Date",
    "no_copy": 1,
    "oldfieldname": "transaction_date",
    "oldfieldtype": "Date",
@@ -931,7 +933,7 @@
    "in_standard_filter": 1,
    "label": "Status",
    "no_copy": 1,
-   "options": "Draft\nOpen\nOrdered\nLost\nExpired\nCancelled",
+   "options": "Draft\nOpen\nApproved\nOrdered\nLost\nExpired\nCancelled",
    "print_hide": 1,
    "read_only": 1
   },
@@ -1644,6 +1646,17 @@
    "label": "Lost Date",
    "no_copy": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_woaf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "submission_date",
+   "fieldtype": "Date",
+   "label": "Submission Date",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "grid_page_length": 500,
@@ -1651,7 +1664,7 @@
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 18:00:46.551823",
+ "modified": "2026-10-19 13:26:53.222357",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",

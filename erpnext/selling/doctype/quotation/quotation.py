@@ -3,10 +3,16 @@
 
 import frappe
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, nowdate, getdate, cint, add_days, date_diff
+from frappe.utils import flt, nowdate, getdate, cint, add_days, date_diff, now_datetime, combine_datetime, get_time
 from frappe import _
 from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
 from erpnext.controllers.selling_controller import SellingController
+from frappe.core.doctype.notification_count.notification_count import (
+	get_all_notification_count,
+	get_notification_last_scheduled,
+	set_notification_last_scheduled,
+)
+from frappe.email.doctype.notification.notification import has_notification
 
 form_grid_templates = {
 	"items": "templates/form_grid/item_grid.html"
@@ -14,17 +20,6 @@ form_grid_templates = {
 
 
 class Quotation(SellingController):
-	def __init__(self, *args, **kwargs):
-		super(Quotation, self).__init__(*args, **kwargs)
-		self.status_map = [
-			["Draft", None],
-			["Open", "eval:self.docstatus==1"],
-			["Expired", "eval:self.valid_till and getdate(self.valid_till) < getdate()"],
-			["Lost", "eval:self.status=='Lost'"],
-			["Ordered", "has_sales_order_or_invoice"],
-			["Cancelled", "eval:self.docstatus==2"],
-		]
-
 	def validate(self):
 		super(Quotation, self).validate()
 		self.validate_quotation_valid_till()
@@ -47,6 +42,7 @@ class Quotation(SellingController):
 
 	def before_submit(self):
 		self.validate_item_code_mandatory()
+		self.submission_date = getdate()
 
 	def on_submit(self):
 		# Check for Approving Authority
@@ -81,6 +77,10 @@ class Quotation(SellingController):
 			self.set_onload('customer', self.party_name)
 		elif self.quotation_to == "Lead":
 			self.set_onload('customer', get_customer_from_lead(self.party_name))
+
+		self.set_onload('notification_count', get_all_notification_count(self.doctype, self.name))
+		self.set_can_notify_onload()
+		self.set_scheduled_reminder_onload()
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate)
@@ -190,6 +190,44 @@ class Quotation(SellingController):
 
 		return ordered_qty_map
 
+	def set_status(self, update=False, status=None, update_modified=True):
+		previous_status = self.status
+		today = getdate()
+
+		# Draft
+		if self.docstatus == 0:
+			self.status = "Draft"
+
+		# Cancelled
+		elif self.docstatus == 2:
+			self.status = "Cancelled"
+
+		# Submitted
+		else:
+			if status:
+				self.status = status
+
+			if self.has_sales_order_or_invoice():
+				self.status = "Ordered"
+			elif self.status in ("Lost", "Approved"):
+				pass
+			elif self.valid_till and getdate(self.valid_till) < today:
+				self.status = "Expired"
+			else:
+				self.status = "Open"
+
+		# Missing Approval Date
+		if self.status in ("Ordered", "Approved") and not self.approval_date:
+			self.approval_date = today
+
+		self.add_status_comment(previous_status)
+
+		if update:
+			self.db_set({
+				"status": self.status,
+				"approval_date": self.approval_date,
+			}, update_modified=update_modified)
+
 	def update_lead_status(self, status=None):
 		if self.quotation_to == "Lead" and self.party_name:
 			doc = frappe.get_doc("Lead", self.party_name)
@@ -208,6 +246,8 @@ class Quotation(SellingController):
 
 	@frappe.whitelist()
 	def set_is_lost(self, is_lost, lost_reasons_list=None, detailed_reason=None, lost_date=None):
+		self.check_permission("write")
+
 		is_lost = cint(is_lost)
 
 		if is_lost and self.has_sales_order_or_invoice():
@@ -272,6 +312,55 @@ class Quotation(SellingController):
 		doc.set_pending_quotation_amount(update=True)
 		doc.set_status(update=True, from_doctype=self.doctype, action=action or self.get("_action"))
 		doc.notify_update()
+
+	def set_can_notify_onload(self):
+		notification_types = [
+			'Quotation Delivery',
+			'Quotation Reminder',
+		]
+
+		can_notify = frappe._dict()
+		for notification_type in notification_types:
+			can_notify[notification_type] = self.validate_notification(notification_type, throw=False)
+
+		self.set_onload('can_notify', can_notify)
+
+	def set_scheduled_reminder_onload(self):
+		self.set_onload('scheduled_reminder', self.get_reminder_schedule())
+
+	def get_reminder_schedule(self):
+		if self.docstatus != 1 or not self.transaction_date or not automated_reminder_enabled():
+			return None
+
+		reminder_date = get_reminder_date_from_quotation_date(self.transaction_date)
+		if not reminder_date:
+			return None
+
+		quotations_for_reminder = get_quotations_for_reminder_notification(reminder_date, quotations=self.name)
+		if self.name in quotations_for_reminder:
+			return get_quotation_reminders_scheduled_time(reminder_date)
+
+	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
+		if notification_type in ("Quotation Delivery", "Quotation Reminder"):
+			# Must be submitted
+			if self.docstatus != 1:
+				if throw:
+					frappe.throw(_("Cannot send notification because Quotation is not submitted"))
+				return False
+
+		# Must be Open
+		if notification_type in ("Quotation Delivery", "Quotation Reminder"):
+			if self.status != "Open":
+				if throw:
+					frappe.throw(_("Cannot send {0} notification because Quotation status is not 'Open'").format(
+						notification_type
+					))
+				return False
+
+		return True
+
+	def send_quotation_reminder_notification(self):
+		self.run_method("notify_quotation_reminder")
 
 
 @frappe.whitelist()
@@ -356,11 +445,18 @@ def get_item_mapper_for_sales_order():
 
 def set_expired_status():
 	frappe.db.sql("""
-		UPDATE
-			`tabQuotation` SET `status` = 'Expired'
-		WHERE
-			`status` not in ('Ordered', 'Expired', 'Lost', 'Cancelled') AND `valid_till` < %s AND `docstatus` = 1
-		""", (nowdate()))
+		UPDATE `tabQuotation`
+		SET `status` = 'Expired'
+		WHERE `status` = 'Open' AND `valid_till` < %s AND `docstatus` = 1
+	""", getdate())
+
+
+@frappe.whitelist()
+def set_as_approved(name):
+	doc = frappe.get_doc("Quotation", name)
+	doc.check_permission("write")
+	doc.set_status(update=True, status="Approved")
+	doc.notify_update()
 
 
 @frappe.whitelist()
@@ -455,3 +551,121 @@ def get_customer_from_quotation(quotation):
 
 		elif quotation.get('quotation_to') == 'Customer':
 			return frappe.get_cached_doc("Customer", quotation.get("party_name"))
+
+
+def send_quotation_reminder_notifications():
+	if not automated_reminder_enabled():
+		return
+
+	# Do not send until reminder scheduled time has passed
+	now_dt = now_datetime()
+	notification_date = getdate(now_dt)
+	notification_dt = get_quotation_reminders_scheduled_time(notification_date)
+	if now_dt < notification_dt:
+		return
+
+	last_scheduled = get_notification_last_scheduled(
+		"Quotation",
+		"",
+		"Quotation Reminder",
+		"",
+	)
+	if last_scheduled and getdate(last_scheduled) >= notification_date:
+		return
+
+	quotations_to_remind = get_quotations_for_reminder_notification(notification_date)
+
+	for name in quotations_to_remind:
+		try:
+			doc = frappe.get_doc("Quotation", name)
+			doc.send_quotation_reminder_notification()
+			frappe.db.commit()
+		except Exception:
+			frappe.db.rollback()
+			frappe.log_error(
+				title="Error sending Quotation Reminder Notification",
+				reference_doctype="Quotation",
+				reference_name=name,
+			)
+			frappe.db.commit()
+
+	set_notification_last_scheduled(
+		"Quotation",
+		"",
+		"Quotation Reminder",
+		"",
+		now_dt=now_dt,
+	)
+
+
+def automated_reminder_enabled():
+	return has_notification(
+		"Quotation",
+		notification_type="Quotation Reminder",
+		trigger_method="notify_quotation_reminder",
+	)
+
+
+def get_quotations_for_reminder_notification(reminder_date=None, quotations=None):
+	reminder_date = getdate(reminder_date)
+	quotation_date = get_quotation_date_from_reminder_date(reminder_date)
+	if not quotation_date:
+		return []
+
+	if quotations and isinstance(quotations, str):
+		quotations = [quotations]
+
+	quotations_condition = " and qtn.name in %(quotations)s" if quotations else ""
+
+	quotations_to_remind = frappe.db.sql_list(f"""
+		select qtn.name
+		from `tabQuotation` qtn
+		left join `tabNotification Count` n on n.reference_doctype = 'Quotation' and n.reference_name = qtn.name
+			and n.notification_type = 'Quotation Reminder'
+		where qtn.docstatus = 1
+			and qtn.status = 'Open'
+			and qtn.transaction_date = %(quotation_date)s
+			and n.last_scheduled_dt is null
+			and n.last_sent_dt is null
+			{quotations_condition}
+	""", {
+		'quotation_date': quotation_date,
+		'quotations': quotations,
+	})
+
+	return quotations_to_remind
+
+
+def get_quotation_reminders_scheduled_time(reminder_date=None):
+	settings = frappe.get_cached_doc("Selling Settings", None)
+
+	reminder_date = getdate(reminder_date)
+	reminder_time = settings.quotation_reminder_time or get_time("00:00:00")
+	reminder_dt = combine_datetime(reminder_date, reminder_time)
+
+	return reminder_dt
+
+
+def get_reminder_date_from_quotation_date(quotation_date):
+	settings = frappe.get_cached_doc("Selling Settings", None)
+
+	quotation_date = getdate(quotation_date)
+
+	remind_days_after = cint(settings.quotation_reminder_days_after)
+	if remind_days_after <= 0:
+		return None
+
+	reminder_date = add_days(quotation_date, remind_days_after)
+	return reminder_date
+
+
+def get_quotation_date_from_reminder_date(reminder_date):
+	settings = frappe.get_cached_doc("Selling Settings", None)
+
+	reminder_date = getdate(reminder_date)
+	remind_days_after = cint(settings.quotation_reminder_days_after)
+	if remind_days_after <= 0:
+		return None
+
+	quotation_date = add_days(reminder_date, -remind_days_after)
+	return quotation_date

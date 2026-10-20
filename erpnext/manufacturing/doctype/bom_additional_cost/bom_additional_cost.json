@@ -1,18 +1,25 @@
 {
+ "actions": [],
  "creation": "2021-05-27 19:14:11.394801",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "description",
+  "column_break_lpy3",
   "expense_account",
+  "section_break_kvis",
+  "qty",
+  "column_break_cy3s",
   "rate",
   "base_rate",
+  "column_break_c8uq",
   "amount",
   "base_amount"
  ],
  "fields": [
   {
+   "columns": 3,
    "fieldname": "description",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -20,6 +27,7 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "expense_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -29,6 +37,7 @@
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -45,10 +54,11 @@
    "read_only": 1
   },
   {
+   "columns": 2,
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Unit Rate",
+   "label": "Rate",
    "options": "currency",
    "reqd": 1
   },
@@ -56,21 +66,49 @@
    "fieldname": "base_rate",
    "fieldtype": "Currency",
    "force_currency_symbol": 1,
-   "label": "Unit Rate (Company Currency)",
+   "label": "Rate (Company Currency)",
    "options": "Company:company:default_currency",
-   "read_only": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lpy3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_kvis",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_cy3s",
+   "fieldtype": "Column Break"
+  },
+  {
+   "columns": 1,
+   "default": "1",
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "non_negative": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_c8uq",
+   "fieldtype": "Column Break"
   }
  ],
  "istable": 1,
- "modified": "2021-05-27 22:10:37.941846",
+ "links": [],
+ "modified": "2026-10-08 08:29:09.465984",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "BOM Additional Cost",
  "owner": "Administrator",
  "permissions": [],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

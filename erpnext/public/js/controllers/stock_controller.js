@@ -461,6 +461,91 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		}
 	}
 
+	show_dialog_for_pallet_packing(args) {
+		args = args || {};
+
+		let dialog_doc = {
+			item_code: args.item_code,
+			item_name: args.item_name,
+			carton_type: args.carton_type,
+			pallet_type: args.pallet_type,
+			carton_per_pallet: cint(args.carton_per_pallet) || undefined,
+		};
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Pallet Packing"),
+			doc: dialog_doc,
+			fields: [
+				{
+					label: __("Item Code"),
+					fieldtype: "Link",
+					fieldname: "item_code",
+					options: "Item",
+					read_only: 1,
+				},
+				{
+					label: __("Item Name"),
+					fieldtype: "Data",
+					fieldname: "item_name",
+					read_only: 1,
+				},
+				{
+					label: __("Carton Type"),
+					fieldtype: "Link",
+					fieldname: "carton_type",
+					options: "Package Type",
+					onchange: () => {
+						if (!dialog_doc.item_code) {
+							return;
+						}
+						return frappe.call({
+							method: "erpnext.stock.get_item_details.get_item_packaging_details",
+							args: {
+								item_code: dialog_doc.item_code,
+								carton_type: dialog_doc.carton_type,
+								get_default: 0,
+							},
+							callback: (r) => {
+								if (r.message) {
+									dialog_doc.pallet_type = r.message.pallet_type;
+									dialog_doc.carton_per_pallet = cint(r.message.carton_per_pallet);
+									dialog.refresh();
+								}
+							}
+						});
+					}
+				},
+				{
+					label: __("Pallet Type"),
+					fieldtype: "Link",
+					fieldname: "pallet_type",
+					options: "Package Type",
+				},
+				{
+					label: __("Carton Per Pallet"),
+					fieldtype: "Int",
+					fieldname: "carton_per_pallet",
+					reqd: 1,
+				},
+			],
+			primary_action_label: __("Make Packing Slip"),
+			primary_action: () => {
+				let values = dialog.get_values();
+				if (cint(values.carton_per_pallet) <= 0) {
+					frappe.msgprint(__("Please select Carton Per Pallet"));
+					return;
+				}
+				return frappe.run_serially([
+					() => args.callback?.(values),
+					() => dialog.hide(),
+				]);
+			}
+		});
+
+		dialog.show();
+		return dialog;
+	}
+
 	show_dialog_for_packing_slip_reassignment(selected_items, callback) {
 		let msd = new frappe.ui.form.MultiSelectDialog({
 			doctype: "Packing Slip",

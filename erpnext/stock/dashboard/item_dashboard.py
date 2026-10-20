@@ -72,8 +72,6 @@ def get_data(
 	for item in items:
 		item.update({
 			'item_name': frappe.get_cached_value("Item", item.item_code, 'item_name'),
-			'disable_quick_entry': frappe.get_cached_value("Item", item.item_code, 'has_batch_no')
-				or frappe.get_cached_value("Item", item.item_code, 'has_serial_no'),
 			'actual_qty': flt(item.actual_qty, 6),
 			'projected_qty': flt(item.projected_qty, 6),
 			'reserved_qty': flt(item.reserved_qty, 6),

@@ -103,6 +103,7 @@ class Customer(TransactionBase):
 		self.update_primary_address()
 
 		self.validate_duplicate_mobile_no()
+		self.validate_duplicate_email_id()
 
 	def check_customer_group_change(self):
 		self.flags.customer_group_changed = False
@@ -197,6 +198,31 @@ class Customer(TransactionBase):
 			"Customer",
 			"mobile_no",
 			self.mobile_no,
+			exclude=exclude,
+			filters=duplicate_filters,
+			throw=throw,
+			ignore_permissions=self.flags.ignore_permissions,
+		)
+
+	def validate_duplicate_email_id(self):
+		from frappe.regional.regional import _validate_duplicate_email
+
+		duplicate_filters = {}
+
+		throw = False
+		duplicate_validation = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_email')
+		if duplicate_validation == "For Individual Customers":
+			if self.customer_type == "Individual":
+				duplicate_filters["customer_type"] = "Individual"
+				throw = True
+		elif duplicate_validation:
+			throw = True
+
+		exclude = None if self.is_new() else self.name
+		_validate_duplicate_email(
+			"Customer",
+			"email_id",
+			self.email_id,
 			exclude=exclude,
 			filters=duplicate_filters,
 			throw=throw,

@@ -5,7 +5,10 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, cstr, combine_datetime, round_up
 from frappe.model.mapper import map_child_doc, get_mapped_doc
-from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.controllers.transaction_controller import (
+	TransactionController,
+	update_item_batch_serial_based_on_purchase_and_production,
+)
 from erpnext.stock.get_item_details import (
 	get_conversion_factor,
 	get_hide_item_code,
@@ -831,6 +834,10 @@ class PackingSlip(TransactionController):
 		])
 		self.run_method("calculate_totals")
 
+	def auto_select_batches_based_on_purchase_and_production(self):
+		update_item_batch_serial_based_on_purchase_and_production(self)
+		self.run_method("calculate_totals")
+
 	def set_cost_percentage(self):
 		total_cost = 0
 		total_stock_qty = 0
@@ -910,6 +917,7 @@ class PackingSlip(TransactionController):
 			doc = frappe.get_doc("Work Order", name)
 			doc.set_packing_status(update=True)
 			doc.validate_overpacking(from_doctype=self.doctype)
+			doc.set_status(update=True)
 			doc.notify_update()
 
 	def update_stock_ledger(self, allow_negative_stock=False):
@@ -1573,7 +1581,8 @@ def get_package_type_details(package_type, args):
 	packaging_items = []
 	for d in package_type_doc.get("packaging_items"):
 		if d.get("item_code"):
-			item_row = {k: d.get(k) for k in packaging_items_copy_fields}
+			item_row = frappe._dict({k: d.get(k) for k in packaging_items_copy_fields})
+			item_row["package_type_row"] = d.name
 
 			item_args = args.copy()
 			item_args.update(item_row)
@@ -1700,6 +1709,50 @@ def get_item_weights_per_unit(item_codes, weight_uom=None):
 
 
 @frappe.whitelist()
+def make_pallet_packing_slip(
+	sales_order_items=None,
+	work_orders=None,
+	carton_type=None,
+	pallet_type=None,
+	carton_per_pallet=None,
+	target_doc=None,
+):
+	if isinstance(sales_order_items, str):
+		sales_order_items = json.loads(sales_order_items)
+	if isinstance(work_orders, str):
+		work_orders = json.loads(work_orders)
+
+	packing_slip_filters = {
+		"secondary_package": 1,
+		"package_type": carton_type,
+	}
+	if sales_order_items:
+		packing_slip_filters["sales_order_item"] = sales_order_items
+	elif work_orders:
+		packing_slip_filters["work_order"] = work_orders
+	else:
+		frappe.throw(_("Please select Sales Order Item or Work Order to pack"))
+
+	secondary_packages = _get_packing_slips_to_be_delivered(
+		filters=packing_slip_filters,
+		page_len=cint(carton_per_pallet),
+	)
+
+	if not target_doc:
+		target_doc = frappe.new_doc("Packing Slip")
+
+	if pallet_type and not target_doc.package_type:
+		target_doc.package_type = pallet_type
+
+	# Empty packable work order list
+	if not secondary_packages:
+		return target_doc
+
+	target_doc = make_target_packing_slip(secondary_packages, target_doc)
+	return target_doc
+
+
+@frappe.whitelist()
 def make_target_packing_slip(source_name, target_doc=None):
 	if isinstance(source_name, str):
 		packing_slip_names = [source_name]
@@ -1736,6 +1789,9 @@ def make_target_packing_slip(source_name, target_doc=None):
 				"stock_rejected_qty",
 			]
 		}
+
+		frappe.utils.call_hook_method("update_target_packing_slip_mapper", packing_slip_item_mapper,
+			"Packing Slip Item")
 
 		# Map Packing Slip Items
 		for ps_item in source_packing_slip.get("items"):
@@ -2151,6 +2207,16 @@ def _get_packing_slips_to_be_delivered(
 				", ".join([frappe.db.escape(i) for i in sales_order_items]),
 			))
 
+	if "work_order" in filters:
+		work_orders = filters.pop("work_order")
+		if work_orders:
+			if not isinstance(work_orders, list):
+				work_orders = [work_orders]
+
+			exists_conditions.append("`tabPacking Slip Item`.work_order in ({0})".format(
+				", ".join([frappe.db.escape(i) for i in work_orders]),
+			))
+
 	if filters.get("item_code"):
 		exists_conditions.append("`tabPacking Slip Item`.item_code = {0}".format(
 			frappe.db.escape(filters.pop("item_code"))))
@@ -2162,25 +2228,35 @@ def _get_packing_slips_to_be_delivered(
 	else:
 		exists_conditions = ""
 
+	secondary_package_condition = ""
+	if "secondary_package" in filters:
+		secondary_package = filters.pop("secondary_package")
+		if secondary_package:
+			secondary_package_condition = """ and not exists(select `tabPacking Slip Package`.name from `tabPacking Slip Package` where
+				`tabPacking Slip Package`.parent = `tabPacking Slip`.name)"""
+
 	return frappe.db.sql("""
-			select {fields}
-			from `tabPacking Slip`
-			where `tabPacking Slip`.`{key}` like {txt}
-				and `tabPacking Slip`.docstatus = 1
-				and {status_condition}
-				{exists_conditions} {fcond} {mcond}
-			order by `tabPacking Slip`.posting_date, `tabPacking Slip`.posting_time, `tabPacking Slip`.creation
-			{limit}
-		""".format(
-		fields=select_fields,
-		key=searchfield,
-		status_condition=status_condition,
-		exists_conditions=exists_conditions,
-		fcond=get_filters_cond(doctype, filters, [], ignore_permissions=ignore_permissions),
-		mcond="" if ignore_permissions else get_match_cond(doctype),
-		limit=limit,
-		txt="%(txt)s",
-	), {"txt": ("%%%s%%" % txt)}, as_dict=as_dict)
+		select {fields}
+		from `tabPacking Slip`
+		where `tabPacking Slip`.`{key}` like {txt}
+			and `tabPacking Slip`.docstatus = 1
+			and {status_condition}
+			{exists_conditions}
+			{secondary_package_condition}
+			{fcond} {mcond}
+		order by `tabPacking Slip`.posting_date, `tabPacking Slip`.posting_time, `tabPacking Slip`.creation
+		{limit}
+	""".format(
+	fields=select_fields,
+	key=searchfield,
+	status_condition=status_condition,
+	exists_conditions=exists_conditions,
+	secondary_package_condition=secondary_package_condition,
+	fcond=get_filters_cond(doctype, filters, [], ignore_permissions=ignore_permissions),
+	mcond="" if ignore_permissions else get_match_cond(doctype),
+	limit=limit,
+	txt="%(txt)s",
+), {"txt": ("%%%s%%" % txt)}, as_dict=as_dict)
 
 
 @frappe.whitelist()

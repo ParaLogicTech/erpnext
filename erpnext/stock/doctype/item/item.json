@@ -1121,6 +1121,7 @@
   {
    "collapsible": 1,
    "collapsible_depends_on": "package_types",
+   "depends_on": "is_stock_item",
    "fieldname": "package_types_section",
    "fieldtype": "Section Break",
    "label": "Package Types"
@@ -1137,7 +1138,7 @@
  "idx": 2,
  "image_field": "image",
  "links": [],
- "modified": "2026-10-08 03:36:41.139465",
+ "modified": "2026-10-08 13:39:23.868120",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item",

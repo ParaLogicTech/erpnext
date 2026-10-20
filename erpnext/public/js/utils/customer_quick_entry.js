@@ -71,6 +71,16 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 				me.dialog.get_field('mobile_no_2').refresh();
 			};
 		}
+
+		if (me.dialog.fields_dict["email_id"]) {
+			me.dialog.fields_dict["email_id"].df.onchange = () => {
+				var value = me.dialog.get_value('email_id');
+				value = strip(value);
+				me.dialog.doc.email_id = value;
+				me.dialog.get_field('email_id').refresh();
+				frappe.regional.validate_duplicate_email(me.dialog.doc, "email_id");
+			};
+		}
 	}
 
 	get_customer_fields() {

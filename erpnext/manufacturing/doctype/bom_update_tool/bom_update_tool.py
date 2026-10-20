@@ -2,47 +2,50 @@
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe, json
-from frappe.utils import cstr, flt
+import frappe
 from frappe import _
-from six import string_types
+from frappe.utils import cstr
 from erpnext.manufacturing.doctype.bom.bom import get_boms_in_bottom_up_order
 from frappe.model.document import Document
 import click
+import json
 
 
 class BOMUpdateTool(Document):
 	def replace_bom(self):
 		self.validate_bom()
 
-		unit_cost = get_new_bom_unit_cost(self.new_bom)
-		self.update_new_bom(unit_cost)
-
+		self.update_new_bom()
 		frappe.cache.delete_key('bom_children')
+
+		new_bom_doc = frappe.get_doc("BOM", self.new_bom)
+		new_bom_doc.update_parent_cost()
+
 		bom_list = self.get_parent_boms(self.new_bom)
 
 		with click.progressbar(bom_list) as bom_list:
 			pass
-		for bom in bom_list:
+		for bom_name in bom_list:
 			try:
-				bom_obj = frappe.get_doc("BOM", bom)
-				# this is only used for versioning and we do not want
-				# to make separate db calls by using load_doc_before_save
-				# which proves to be expensive while doing bulk replace
-				bom_obj._doc_before_save = bom_obj
-				bom_obj.update_new_bom(self.current_bom, self.new_bom, unit_cost)
-				bom_obj.update_exploded_items()
-				bom_obj.calculate_cost()
-				bom_obj.update_parent_cost()
-				bom_obj.db_update()
+				parent_bom_doc = frappe.get_doc("BOM", bom_name)
+				parent_bom_doc._doc_before_save = parent_bom_doc
+				parent_bom_doc.update_exploded_items()
+				parent_bom_doc.calculate_cost()
+				parent_bom_doc.update_parent_cost()
+				parent_bom_doc.db_update()
 
-				if bom_obj.meta.get('track_changes') and not bom_obj.flags.ignore_version:
-					bom_obj.save_version()
+				if parent_bom_doc.meta.get('track_changes') and not parent_bom_doc.flags.ignore_version:
+					parent_bom_doc.save_version()
 
 			except Exception:
-				frappe.log_error(title="BOM Replacement Failed", reference_doctype="BOM", reference_name=bom)
+				frappe.log_error(title="BOM Replacement Failed", reference_doctype="BOM", reference_name=bom_name)
 
 	def validate_bom(self):
+		if not self.current_bom:
+			frappe.throw(_("Please select Current BOM"))
+		if not self.new_bom:
+			frappe.throw(_("Please select New BOM"))
+
 		if cstr(self.current_bom) == cstr(self.new_bom):
 			frappe.throw(_("Current BOM and New BOM can not be same"))
 
@@ -50,12 +53,17 @@ class BOMUpdateTool(Document):
 			!= frappe.db.get_value("BOM", self.new_bom, "item"):
 				frappe.throw(_("The selected BOMs are not for the same item"))
 
-	def update_new_bom(self, unit_cost):
+	def update_new_bom(self):
 		frappe.db.sql("""
 			update `tabBOM Item`
-			set bom_no = %s, rate = %s, amount = stock_qty * %s
-			where bom_no = %s and docstatus < 2 and parenttype='BOM'
-		""", (self.new_bom, unit_cost, unit_cost, self.current_bom))
+			set bom_no = %(new_bom)s
+			where bom_no = %(current_bom)s
+				and docstatus < 2
+				and parenttype = 'BOM'
+		""", {
+			"new_bom": self.new_bom,
+			"current_bom": self.current_bom,
+		})
 
 	def get_parent_boms(self, bom, bom_list=[]):
 		data = frappe.db.sql("""
@@ -74,19 +82,9 @@ class BOMUpdateTool(Document):
 		return list(set(bom_list))
 
 
-def get_new_bom_unit_cost(bom):
-	new_bom_unitcost = frappe.db.sql("""
-		SELECT `total_cost`/`quantity`
-		FROM `tabBOM`
-		WHERE name = %s
-	""", bom)
-
-	return flt(new_bom_unitcost[0][0]) if new_bom_unitcost else 0
-
-
 @frappe.whitelist()
 def enqueue_replace_bom(args):
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	frappe.enqueue("erpnext.manufacturing.doctype.bom_update_tool.bom_update_tool.replace_bom",
@@ -107,7 +105,6 @@ def update_latest_price_in_all_boms():
 
 
 def replace_bom(args):
-	frappe.db.auto_commit_on_many_writes = 1
 	args = frappe._dict(args)
 
 	doc = frappe.get_doc("BOM Update Tool")
@@ -115,13 +112,8 @@ def replace_bom(args):
 	doc.new_bom = args.new_bom
 	doc.replace_bom()
 
-	frappe.db.auto_commit_on_many_writes = 0
-
 
 def update_cost():
-	frappe.db.auto_commit_on_many_writes = 1
 	bom_list = get_boms_in_bottom_up_order()
 	for bom in bom_list:
 		frappe.get_doc("BOM", bom).update_cost(update_parent=False, from_child_bom=True)
-
-	frappe.db.auto_commit_on_many_writes = 0

@@ -19,6 +19,7 @@ frappe.listview_settings['Work Order'] = {
 				"Stopped": "red",
 				"Not Started": "orange",
 				"In Process": "yellow",
+				"To Pack": "blue",
 				"Completed": "green",
 				"Cancelled": "light-gray"
 			}[doc.status], "status,=," + doc.status];

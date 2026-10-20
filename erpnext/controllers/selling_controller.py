@@ -14,7 +14,10 @@ from erpnext.stock.get_item_details import (
 from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
 from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
-from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.controllers.transaction_controller import (
+	TransactionController,
+	update_item_batch_serial_based_on_purchase_and_production,
+)
 from erpnext.controllers.stock_controller import WarehouseRequired
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.utils import get_account_currency
@@ -661,9 +664,15 @@ class SellingController(TransactionController):
 			auto_select_and_split_batches(self, 'warehouse', additional_group_fields=[
 				"sales_order", "sales_order_item",
 				"delivery_note", "delivery_note_item",
+				"proforma_invoice", "proforma_invoice_item",
 				"sales_invoice", "sales_invoice_item",
 				"quotation",
 			])
+			self.run_method("calculate_taxes_and_totals")
+
+	def auto_select_batches_based_on_purchase_and_production(self):
+		if (self.doctype == "Delivery Note" or self.get('update_stock')) and not self.get('is_return'):
+			update_item_batch_serial_based_on_purchase_and_production(self)
 			self.run_method("calculate_taxes_and_totals")
 
 	def get_already_delivered_qty(self, current_docname, so, sales_order_item):
