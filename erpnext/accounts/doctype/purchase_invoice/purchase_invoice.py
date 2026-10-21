@@ -1000,7 +1000,7 @@ class PurchaseInvoice(BuyingController):
 
 				item_exp_acc_type = frappe.db.get_value('Account', item.expense_account, 'account_type')
 				if (not item.expense_account or item_exp_acc_type not in ['Asset Received But Not Billed', 'Fixed Asset']):
-					item.expense_account = arbnb_account
+					item.db_set("expense_account", arbnb_account, update_modified=False)
 
 				if not self.update_stock:
 					arbnb_currency = get_account_currency(item.expense_account)
