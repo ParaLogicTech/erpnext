@@ -329,10 +329,10 @@ class Quotation(SellingController):
 		self.set_onload('scheduled_reminder', self.get_reminder_schedule())
 
 	def get_reminder_schedule(self):
-		if self.docstatus != 1 or not self.transaction_date or not automated_reminder_enabled():
+		if self.docstatus != 1 or not self.submission_date or not automated_reminder_enabled():
 			return None
 
-		reminder_date = get_reminder_date_from_quotation_date(self.transaction_date)
+		reminder_date = get_reminder_date_from_submission_date(self.submission_date)
 		if not reminder_date:
 			return None
 
@@ -608,8 +608,8 @@ def automated_reminder_enabled():
 
 def get_quotations_for_reminder_notification(reminder_date=None, quotations=None):
 	reminder_date = getdate(reminder_date)
-	quotation_date = get_quotation_date_from_reminder_date(reminder_date)
-	if not quotation_date:
+	submission_date = get_submission_date_from_reminder_date(reminder_date)
+	if not submission_date:
 		return []
 
 	if quotations and isinstance(quotations, str):
@@ -624,12 +624,12 @@ def get_quotations_for_reminder_notification(reminder_date=None, quotations=None
 			and n.notification_type = 'Quotation Reminder'
 		where qtn.docstatus = 1
 			and qtn.status = 'Open'
-			and qtn.transaction_date = %(quotation_date)s
+			and qtn.submission_date = %(submission_date)s
 			and n.last_scheduled_dt is null
 			and n.last_sent_dt is null
 			{quotations_condition}
 	""", {
-		'quotation_date': quotation_date,
+		'submission_date': submission_date,
 		'quotations': quotations,
 	})
 
@@ -646,20 +646,20 @@ def get_quotation_reminders_scheduled_time(reminder_date=None):
 	return reminder_dt
 
 
-def get_reminder_date_from_quotation_date(quotation_date):
+def get_reminder_date_from_submission_date(submission_date):
 	settings = frappe.get_cached_doc("Selling Settings", None)
 
-	quotation_date = getdate(quotation_date)
+	submission_date = getdate(submission_date)
 
 	remind_days_after = cint(settings.quotation_reminder_days_after)
 	if remind_days_after <= 0:
 		return None
 
-	reminder_date = add_days(quotation_date, remind_days_after)
+	reminder_date = add_days(submission_date, remind_days_after)
 	return reminder_date
 
 
-def get_quotation_date_from_reminder_date(reminder_date):
+def get_submission_date_from_reminder_date(reminder_date):
 	settings = frappe.get_cached_doc("Selling Settings", None)
 
 	reminder_date = getdate(reminder_date)
@@ -667,5 +667,5 @@ def get_quotation_date_from_reminder_date(reminder_date):
 	if remind_days_after <= 0:
 		return None
 
-	quotation_date = add_days(reminder_date, -remind_days_after)
-	return quotation_date
+	submission_date = add_days(reminder_date, -remind_days_after)
+	return submission_date
