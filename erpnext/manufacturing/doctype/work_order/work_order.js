@@ -419,7 +419,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 
 	carton_qty() {
 		if (this.frm.doc.carton_qty && this.frm.doc.qty_per_carton) {
-			let qty = flt(this.frm.doc.qty_per_carton) * flt(this.frm.doc.carton_qty);
+			let qty = flt(this.frm.doc.qty_per_carton) * cint(this.frm.doc.carton_qty);
 			this.frm.set_value("qty", qty);
 		} else {
 			this.calculate_cost();

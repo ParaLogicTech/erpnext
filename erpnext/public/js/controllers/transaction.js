@@ -2544,6 +2544,16 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		this.get_item_packaging_details(row)
 	}
 
+	carton_qty(doc, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		if (row.carton_qty && row.qty_per_carton) {
+			let qty = flt(row.qty_per_carton) * cint(row.carton_qty);
+			frappe.model.set_value(row.doctype, row.name, "qty", qty);
+		} else {
+			this.calculate_taxes_and_totals();
+		}
+	}
+
 	get_item_packaging_details(row) {
 		return frappe.call({
 			method: "erpnext.stock.get_item_details.get_item_packaging_details",
