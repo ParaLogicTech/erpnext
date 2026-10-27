@@ -1291,7 +1291,14 @@ def postprocess_delivery_note(source, target, set_warehouse=None, skip_item_mapp
 
 
 @frappe.whitelist()
-def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_order=None, skip_postprocess=False):
+def make_packing_slip(
+	source_name,
+	target_doc=None,
+	warehouse=None,
+	for_work_order=None,
+	skip_postprocess=False,
+	qty_to_pack=None,
+):
 	if not warehouse and frappe.flags.args:
 		warehouse = frappe.flags.args.warehouse
 
@@ -1336,16 +1343,20 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 			target.source_warehouse = source.warehouse
 
 		# Remaining Qty
-		undelivered_qty, unpacked_qty = get_remaining_qty(source, target_parent)
-		target.qty = min(undelivered_qty, unpacked_qty)
+		if qty_to_pack is not None:
+			target.qty = flt(qty_to_pack) / source.conversion_factor
+			target.qty = round_down(target.qty, source.precision("qty"))
+		else:
+			undelivered_qty, unpacked_qty = get_remaining_qty(source, target_parent)
+			target.qty = min(undelivered_qty, unpacked_qty)
 
-		qty_per_carton = 0
-		if not qty_per_carton and wo_doc:
-			qty_per_carton = flt(wo_doc.get("qty_per_carton"))
-		if not qty_per_carton:
-			qty_per_carton = flt(source.get("qty_per_carton"))
-		if qty_per_carton:
-			target.qty = min(qty_per_carton, target.qty)
+			qty_per_carton = 0
+			if not qty_per_carton and wo_doc:
+				qty_per_carton = flt(wo_doc.get("qty_per_carton"))
+			if not qty_per_carton:
+				qty_per_carton = flt(source.get("qty_per_carton"))
+			if qty_per_carton:
+				target.qty = min(qty_per_carton, target.qty)
 
 		# Postprocess Hooks
 		if wo_doc:
