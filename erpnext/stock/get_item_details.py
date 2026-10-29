@@ -1622,7 +1622,7 @@ def get_default_bom(item_code, project=None):
 
 
 def set_valuation_rate(out, args, doc=None):
-	from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+	from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
 
 	warehouse = out.get("warehouse") or args.get("warehouse")
 
@@ -1641,7 +1641,7 @@ def set_valuation_rate(out, args, doc=None):
 
 
 def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, doc=None):
-	from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle_from_item_code
+	from erpnext.stock.doctype.bundled_item.bundled_item import get_product_bundle_from_item_code
 
 	valuation_rate = 0.0
 	if not parent_item:
@@ -1659,7 +1659,7 @@ def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, 
 			child_row = None
 			if parent_row_name and doc:
 				child_row = [
-					ch for ch in doc.get("packed_items") or []
+					ch for ch in doc.get("bundled_items") or []
 					if ch.parent_detail_docname == parent_row_name and ch.item_code == bundle_item.item_code
 				]
 				child_row = child_row[0] if child_row else None
@@ -1672,7 +1672,7 @@ def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, 
 			valuation_rate += rate * flt(bundle_item.qty)
 
 		elif bundle_item.type == "Item Group" and doc:
-			for child_row in doc.get("packed_items") or []:
+			for child_row in doc.get("bundled_items") or []:
 				if not child_row.item_code:
 					continue
 				if child_row.parent_item != parent_item:
@@ -1788,16 +1788,16 @@ def get_skip_delivery_note(item, delivered_by_supplier=False, doc=None):
 
 
 def has_stock_item_in_bundle(doc):
-	"""Checks if the packed items in the doc include any stock items."""
-	packed_items = doc.get("packed_items") or []
+	"""Checks if the bundled items in the doc include any stock items."""
+	bundled_items = doc.get("bundled_items") or []
 
-	for bundle_item in packed_items:
+	for bundle_item in bundled_items:
 		if bundle_item.type == "Item":
 			if item_is_product_bundle_with_stock_item(bundle_item.item_code):
 				return True
 		elif bundle_item.type == "Item Group":
-			for packed_item in packed_items:
-				if frappe.get_cached_value("Item", packed_item.item_code, "is_stock_item"):
+			for bundled_item in bundled_items:
+				if frappe.get_cached_value("Item", bundled_item.item_code, "is_stock_item"):
 					return True
 	return False
 

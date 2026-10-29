@@ -1309,7 +1309,7 @@ def set_invoice_as_overdue():
 @frappe.whitelist()
 def update_child_items(parent_doctype, parent_name, data):
 	from frappe.model.workflow import get_workflow_name, is_transition_condition_satisfied, WorkflowPermissionError
-	from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
+	from erpnext.stock.doctype.bundled_item.bundled_item import make_bundled_item_list, validate_bundled_item_list
 
 	def check_doc_permissions(doc, perm_type="create"):
 		try:

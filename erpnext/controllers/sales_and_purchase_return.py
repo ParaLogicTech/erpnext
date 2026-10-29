@@ -126,7 +126,7 @@ def validate_returned_items(doc):
 				valid_items = get_ref_item_dict(valid_items, d)
 
 	if doc.doctype in ("Delivery Note", "Sales Invoice"):
-		for d in frappe.db.sql("""select item_code, qty, serial_no, batch_no from `tabPacked Item`
+		for d in frappe.db.sql("""select item_code, qty, serial_no, batch_no from `tabBundled Item`
 			where parent = %s""".format(doc.doctype), doc.return_against, as_dict=1):
 				valid_items = get_ref_item_dict(valid_items, d)
 
@@ -383,8 +383,8 @@ def make_return_doc(doctype, source_name, target_doc=None):
 				doc.payment_terms_template = ''
 				doc.payment_schedule = []
 
-		if doc.get("is_return") and hasattr(doc, "packed_items"):
-			for d in doc.get("packed_items"):
+		if doc.get("is_return") and hasattr(doc, "bundled_items"):
+			for d in doc.get("bundled_items"):
 				d.qty = d.qty * -1
 
 		doc.discount_amount = -1 * source.discount_amount

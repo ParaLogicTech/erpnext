@@ -16,7 +16,7 @@ from erpnext.selling.doctype.customer.customer import check_credit_limit
 from erpnext.manufacturing.doctype.production_plan.production_plan import get_items_for_material_requests
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc
 from erpnext.stock.get_item_details import get_default_bom
-from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle, validate_bundled_item_list, make_bundled_item_list
+from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle, validate_bundled_item_list, make_bundled_item_list
 
 
 form_grid_templates = {
@@ -232,7 +232,7 @@ class SalesOrder(SellingController):
 					'total_returned_qty': d.total_returned_qty,
 				}, update_modified=update_modified)
 
-		for d in self.packed_items:
+		for d in self.bundled_items:
 			d.delivered_qty = flt(data.bundled_item_delivered_qty_map.get(d.name))
 			if update:
 				d.db_set({
@@ -369,7 +369,7 @@ class SalesOrder(SellingController):
 		delivery_by_billing_row_names = []
 
 		delivery_by_bundle_rows = []
-		bundled_item_row_names = [d.name for d in self.packed_items]
+		bundled_item_row_names = [d.name for d in self.bundled_items]
 
 		for d in self.items:
 			is_deliverable = not d.skip_delivery_note or d.delivered_by_supplier
@@ -442,14 +442,14 @@ class SalesOrder(SellingController):
 			if bundled_item_row_names:
 				bundled_item_delivered_by_dn = frappe.db.sql("""
 					select i.previous_detail_docname, i.qty, p.is_return, p.reopen_order
-					from `tabPacked Item` i
+					from `tabBundled Item` i
 					inner join `tabDelivery Note` p on p.name = i.parent and i.parenttype = 'Delivery Note'
 					where p.docstatus = 1 and i.previous_detail_docname in %s
 				""", [bundled_item_row_names], as_dict=1)
 
 				bundled_item_delivered_by_sinv = frappe.db.sql("""
 					select i.previous_detail_docname, i.qty, p.is_return, p.reopen_order
-					from `tabPacked Item` i
+					from `tabBundled Item` i
 					inner join `tabSales Invoice` p on p.name = i.parent and i.parenttype = 'Sales Invoice'
 					where p.docstatus = 1 and p.update_stock = 1 and i.previous_detail_docname in %s
 				""", [bundled_item_row_names], as_dict=1)
@@ -460,7 +460,7 @@ class SalesOrder(SellingController):
 						out.bundled_item_delivered_qty_map[d.previous_detail_docname] += d.qty
 
 			for parent_row in delivery_by_bundle_rows:
-				child_rows = [d for d in self.packed_items if d.parent_detail_docname == parent_row.name]
+				child_rows = [d for d in self.bundled_items if d.parent_detail_docname == parent_row.name]
 				if not child_rows:
 					continue
 
@@ -634,7 +634,7 @@ class SalesOrder(SellingController):
 				allowance_type='qty', from_doctype=from_doctype, row_names=row_names)
 
 	def validate_bundled_item_delivered_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty('delivered_qty', 'qty', self.packed_items,
+		self.validate_completed_qty('delivered_qty', 'qty', self.bundled_items,
 			allowance_type='qty', from_doctype=from_doctype, row_names=row_names)
 
 	def validate_packed_qty(self, from_doctype=None, row_names=None):
@@ -780,7 +780,7 @@ class SalesOrder(SellingController):
 		for d in self.get("items"):
 			if not so_item_rows or d.name in so_item_rows:
 				if is_product_bundle(d.item_code):
-					for p in self.get("packed_items"):
+					for p in self.get("bundled_items"):
 						if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 							add_to_item_warehouse_list(p.item_code, p.warehouse)
 				else:
@@ -814,7 +814,7 @@ class SalesOrder(SellingController):
 		default_rm_warehouse = frappe.get_cached_value("Manufacturing Settings", None, "default_rm_warehouse")
 		for_raw_material_request = cint(for_raw_material_request)
 
-		for d in self.get("items") + self.get("packed_items", []):
+		for d in self.get("items") + self.get("bundled_items", []):
 			if item_condition and not item_condition(d):
 				continue
 
@@ -825,7 +825,7 @@ class SalesOrder(SellingController):
 			if not bom_no:
 				continue
 
-			stock_qty = flt(d.qty) if d.doctype == "Packed Item" else flt(d.stock_qty)
+			stock_qty = flt(d.qty) if d.doctype == "Bundled Item" else flt(d.stock_qty)
 			if for_raw_material_request:
 				pending_qty = stock_qty
 			else:
@@ -986,7 +986,6 @@ def make_material_request(source_name, target_doc=None):
 		return flt(source.stock_qty) > flt(requested_item_qty_map.get(source.name))
 
 	def update_item(source, target, source_parent, target_parent):
-		# qty is for packed items, because packed items don't have stock_qty field
 		target.qty = get_pending_qty(source)
 		target.project = source_parent.project
 
@@ -1000,7 +999,7 @@ def make_material_request(source_name, target_doc=None):
 				"docstatus": ["=", 1]
 			}
 		},
-		"Packed Item": {
+		"Bundled Item": {
 			"doctype": "Material Request Item",
 			"field_map": {
 				"parent": "sales_order",
@@ -1192,8 +1191,8 @@ def make_delivery_note(
 
 	if not skip_item_mapping:
 		mapper["Sales Order Item"] = get_item_mapper_for_delivery(allow_duplicate=allow_duplicate)
-		mapper["Packed Item"] = {
-			"doctype": "Packed Item",
+		mapper["Bundled Item"] = {
+			"doctype": "Bundled Item",
 			"field_map": {
 				"name": "previous_detail_docname",
 			},
@@ -1291,7 +1290,14 @@ def postprocess_delivery_note(source, target, set_warehouse=None, skip_item_mapp
 
 
 @frappe.whitelist()
-def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_order=None, skip_postprocess=False):
+def make_packing_slip(
+	source_name,
+	target_doc=None,
+	warehouse=None,
+	for_work_order=None,
+	skip_postprocess=False,
+	qty_to_pack=None,
+):
 	if not warehouse and frappe.flags.args:
 		warehouse = frappe.flags.args.warehouse
 
@@ -1336,16 +1342,20 @@ def make_packing_slip(source_name, target_doc=None, warehouse=None, for_work_ord
 			target.source_warehouse = source.warehouse
 
 		# Remaining Qty
-		undelivered_qty, unpacked_qty = get_remaining_qty(source, target_parent)
-		target.qty = min(undelivered_qty, unpacked_qty)
+		if qty_to_pack is not None:
+			target.qty = flt(qty_to_pack) / source.conversion_factor
+			target.qty = round_down(target.qty, source.precision("qty"))
+		else:
+			undelivered_qty, unpacked_qty = get_remaining_qty(source, target_parent)
+			target.qty = min(undelivered_qty, unpacked_qty)
 
-		qty_per_carton = 0
-		if not qty_per_carton and wo_doc:
-			qty_per_carton = flt(wo_doc.get("qty_per_carton"))
-		if not qty_per_carton:
-			qty_per_carton = flt(source.get("qty_per_carton"))
-		if qty_per_carton:
-			target.qty = min(qty_per_carton, target.qty)
+			qty_per_carton = 0
+			if not qty_per_carton and wo_doc:
+				qty_per_carton = flt(wo_doc.get("qty_per_carton"))
+			if not qty_per_carton:
+				qty_per_carton = flt(source.get("qty_per_carton"))
+			if qty_per_carton:
+				target.qty = min(qty_per_carton, target.qty)
 
 		# Postprocess Hooks
 		if wo_doc:

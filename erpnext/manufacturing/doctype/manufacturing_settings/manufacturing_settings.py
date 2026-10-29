@@ -12,7 +12,14 @@ class ManufacturingSettings(Document):
 		self.update_global_defaults()
 
 	def update_global_defaults(self):
-		for key in ["overproduction_percentage_for_work_order", "process_loss_remaining_by_default", "disable_capacity_planning"]:
+		global_default_keys = [
+			"overproduction_percentage_for_work_order",
+			"process_loss_remaining_by_default",
+			"disable_capacity_planning",
+			"allow_bulk_packing_slip_creation",
+		]
+
+		for key in global_default_keys:
 			frappe.db.set_default(key, self.get(key, ""))
 
 

@@ -14,8 +14,8 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "actual_qty");
 		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "projected_qty");
 
-		erpnext.utils.setup_projected_qty_formatter("Packed Item", "actual_qty");
-		erpnext.utils.setup_projected_qty_formatter("Packed Item", "projected_qty");
+		erpnext.utils.setup_projected_qty_formatter("Bundled Item", "actual_qty");
+		erpnext.utils.setup_projected_qty_formatter("Bundled Item", "projected_qty");
 
 		erpnext.utils.setup_last_billed_rate_formatter(this.frm.doc.doctype + " Item", "last_billed_rate");
 	}
@@ -163,8 +163,8 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			});
 		}
 
-		if (this.frm.fields_dict.packed_items) {
-			this.frm.set_query("item_code", "packed_items", (doc, cdt, cdn) => {
+		if (this.frm.fields_dict.bundled_items) {
+			this.frm.set_query("item_code", "bundled_items", (doc, cdt, cdn) => {
 				let filters = {is_stock_item: 1};
 				let row = locals[cdt][cdn];
 				if (row.type == "Item Group" && row.item_group) {
@@ -174,8 +174,8 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			});
 		}
 
-		if(this.frm.fields_dict["packed_items"]?.grid?.get_field('batch_no')) {
-			this.frm.set_query("batch_no", "packed_items", function(doc, cdt, cdn) {
+		if(this.frm.fields_dict["bundled_items"]?.grid?.get_field('batch_no')) {
+			this.frm.set_query("batch_no", "bundled_items", function(doc, cdt, cdn) {
 				return me.set_query_for_batch(doc, cdt, cdn)
 			});
 		}
@@ -507,7 +507,7 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 				child: item,
 				args: {
 					"batch_no": item.batch_no,
-					"stock_qty": item.stock_qty || item.qty, //if stock_qty field is not available fetch qty (in case of Packed Items table)
+					"stock_qty": item.stock_qty || item.qty,
 					"warehouse": item.warehouse,
 					"item_code": item.item_code,
 				},

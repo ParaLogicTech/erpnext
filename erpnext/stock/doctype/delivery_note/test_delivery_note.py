@@ -264,7 +264,7 @@ class TestDeliveryNote(unittest.TestCase):
 		outgoing_rate = frappe.db.get_value("Stock Ledger Entry", {"voucher_type": "Delivery Note",
 			"voucher_no": dn.name, "item_code": "_Test Item"}, "stock_value_difference") / 25
 
-		# return 'test item' from packed items
+		# return 'test item' from bundled items
 		dn1 = create_delivery_note(is_return=1, return_against=dn.name, qty=-10, rate=500,
 			company=company, warehouse="Stores - TCP1",
 			expense_account="Cost of Goods Sold - TCP1", cost_center="Main - TCP1")

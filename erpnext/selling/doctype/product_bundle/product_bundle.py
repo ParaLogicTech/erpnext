@@ -24,7 +24,7 @@ class ProductBundle(Document):
 		self.set_item_is_product_bundle()
 
 	def set_item_is_product_bundle(self):
-		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+		from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
 		if self.new_item_code:
 			new_is_product_bundle = is_product_bundle(self.new_item_code, cache=False)
 			old_is_product_bundle = frappe.db.get_value("Item", self.new_item_code, "is_product_bundle")

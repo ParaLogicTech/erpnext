@@ -472,7 +472,7 @@ class TestSalesOrder(unittest.TestCase):
 		update_child_items('Sales Order', so.name, added_item)
 
 		so.reload()
-		self.assertEqual(so.packed_items[0].qty, 4)
+		self.assertEqual(so.bundled_items[0].qty, 4)
 
 	def test_warehouse_user(self):
 		frappe.permissions.add_user_permission("Warehouse", "_Test Warehouse 1 - _TC", "test@example.com")
@@ -523,8 +523,8 @@ class TestSalesOrder(unittest.TestCase):
 
 		so = make_sales_order(item_code = "_Test Service Product Bundle", warehouse=None)
 
-		self.assertTrue("_Test Service Product Bundle Item 1" in [d.item_code for d in so.packed_items])
-		self.assertTrue("_Test Service Product Bundle Item 2" in [d.item_code for d in so.packed_items])
+		self.assertTrue("_Test Service Product Bundle Item 1" in [d.item_code for d in so.bundled_items])
+		self.assertTrue("_Test Service Product Bundle Item 2" in [d.item_code for d in so.bundled_items])
 
 	def test_mix_type_product_bundle(self):
 		make_item("_Test Mix Product Bundle", {"is_stock_item": 0})
