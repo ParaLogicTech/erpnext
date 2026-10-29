@@ -14,7 +14,7 @@ class AccountGroup(Document):
 	def validate_group_level(self):
 		"""Validate root level account group type."""
 		if self.group_level == "Report Root":
-			report_types = ['Profit and Loss', 'Balance Sheet', 'Cash Flow', 'Ratios']
+			report_types = ['Profit and Loss', 'Balance Sheet', 'Cash Flow', 'Ratios', 'Statement of Changes in Equity']
 			if self.report_type not in report_types:
 				frappe.throw(_("Root level Account Groups must be either {0}").format(comma_or(report_types)))
 
