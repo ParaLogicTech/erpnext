@@ -21,10 +21,6 @@ frappe.query_reports["Statement of Changes in Equity"] = {
 		}
 	],
 
-	onload: function (report) {
-		frappe.breadcrumbs.add("Accounts");
-	},
-
 	formatter: function (value, row, column, data, default_formatter) {
 		return erpnext.financial_statements.summarized_statement_formatter(value, row, column, data, default_formatter);
 	}
