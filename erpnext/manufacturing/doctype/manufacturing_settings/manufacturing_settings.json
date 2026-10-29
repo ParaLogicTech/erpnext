@@ -20,6 +20,7 @@
   "auto_submit_job_card",
   "auto_submit_manufacture_entry",
   "process_loss_remaining_by_default",
+  "allow_bulk_packing_slip_creation",
   "capacity_planning",
   "disable_capacity_planning",
   "allow_overtime",
@@ -156,12 +157,18 @@
    "fieldname": "auto_submit_job_card",
    "fieldtype": "Check",
    "label": "Auto Submit Job Card"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_bulk_packing_slip_creation",
+   "fieldtype": "Check",
+   "label": "Allow Bulk Packing Slip Creation"
   }
  ],
  "icon": "icon-wrench",
  "issingle": 1,
  "links": [],
- "modified": "2024-10-26 17:27:12.045839",
+ "modified": "2026-10-24 07:14:05.359875",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Manufacturing Settings",
@@ -175,6 +182,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

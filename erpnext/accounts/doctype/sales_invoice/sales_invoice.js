@@ -657,7 +657,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		erpnext.setup_serial_no();
 	}
 
-	packed_items_on_form_rendered() {
+	bundled_items_on_form_rendered() {
 		erpnext.setup_serial_no();
 	}
 

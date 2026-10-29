@@ -581,7 +581,7 @@ erpnext.buying.get_items_from_product_bundle = function(frm) {
 		dialog.hide();
 		return frappe.call({
 			type: "GET",
-			method: "erpnext.stock.doctype.packed_item.packed_item.get_items_from_product_bundle",
+			method: "erpnext.stock.doctype.bundled_item.bundled_item.get_items_from_product_bundle",
 			args: {
 				args: {
 					item_code: args.product_bundle,

@@ -10,7 +10,7 @@ from erpnext.controllers.selling_controller import SellingController
 from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
-from erpnext.stock.doctype.packed_item.packed_item import (
+from erpnext.stock.doctype.bundled_item.bundled_item import (
 	make_bundled_item_list,
 	validate_bundled_item_list,
 	is_product_bundle,
@@ -214,7 +214,7 @@ class DeliveryNote(SellingController):
 			if d.delivery_note_item:
 				delivery_note_row_names.add(d.delivery_note_item)
 
-		for d in self.packed_items:
+		for d in self.bundled_items:
 			if d.previous_detail_docname:
 				so_bundled_item_row_names.add(d.previous_detail_docname)
 
@@ -569,7 +569,7 @@ class DeliveryNote(SellingController):
 				d.actual_qty = frappe.db.get_value("Bin", {"item_code": d.item_code,
 					"warehouse": d.warehouse}, "actual_qty")
 
-			for d in self.get('packed_items'):
+			for d in self.get('bundled_items'):
 				bin_qty = frappe.db.get_value("Bin", {"item_code": d.item_code,
 					"warehouse": d.warehouse}, ["actual_qty", "projected_qty"], as_dict=True)
 				if bin_qty:

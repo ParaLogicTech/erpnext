@@ -462,7 +462,7 @@ class SellingController(TransactionController):
 
 	def validate_selling_price(self):
 		from erpnext.accounts.report.gross_profit.gross_profit import get_sle_outgoing_rate
-		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+		from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
 
 		def throw_message(row, min_rate):
 			frappe.throw(_("Row #{0}: Net Selling Rate for Item {1} cannot be less than {2}").format(
@@ -534,7 +534,7 @@ class SellingController(TransactionController):
 
 	def get_valuation_rate_for_validation(self, row):
 		from erpnext.stock.stock_ledger import get_valuation_rate
-		from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle_from_item_code
+		from erpnext.stock.doctype.bundled_item.bundled_item import get_product_bundle_from_item_code
 
 		if not row.item_code:
 			return 0
@@ -542,7 +542,7 @@ class SellingController(TransactionController):
 		product_bundle = get_product_bundle_from_item_code(row.item_code)
 		if product_bundle:
 			parent_valuation_rate = 0
-			for child_row in self.get("packed_items") or []:
+			for child_row in self.get("bundled_items") or []:
 				if not child_row.item_code:
 					continue
 				if child_row.parent_detail_docname != row.name:
@@ -606,7 +606,7 @@ class SellingController(TransactionController):
 			self.db_set("skip_delivery_note", self.skip_delivery_note, update_modified=update_modified)
 
 	def get_item_list(self):
-		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+		from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
 
 		il = []
 		for d in self.get("items"):
@@ -614,7 +614,7 @@ class SellingController(TransactionController):
 				frappe.throw(_("Row {0}: Qty is mandatory").format(d.idx))
 
 			if is_product_bundle(d.item_code):
-				for p in self.get("packed_items"):
+				for p in self.get("bundled_items"):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
 						il.append(frappe._dict({
@@ -989,7 +989,7 @@ class SellingController(TransactionController):
 
 	def validate_target_warehouse(self):
 		if frappe.get_meta(self.doctype + " Item").has_field("target_warehouse"):
-			items = self.get("items") + (self.get("packed_items") or [])
+			items = self.get("items") + (self.get("bundled_items") or [])
 
 			for d in items:
 				if d.get("target_warehouse") and d.get("warehouse") == d.get("target_warehouse"):

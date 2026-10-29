@@ -39,7 +39,7 @@ frappe.ui.form.on("Delivery Note", {
 		});
 
 		erpnext.queries.setup_warehouse_qty_query(frm, "warehouse", "items");
-		erpnext.queries.setup_warehouse_qty_query(frm, "warehouse", "packed_items");
+		erpnext.queries.setup_warehouse_qty_query(frm, "warehouse", "bundled_items");
 
 		frm.set_query('transporter', function() {
 			return {
@@ -364,7 +364,7 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 		erpnext.setup_serial_no();
 	}
 
-	packed_items_on_form_rendered() {
+	bundled_items_on_form_rendered() {
 		erpnext.setup_serial_no();
 	}
 
@@ -393,10 +393,10 @@ erpnext.stock.DeliveryNoteController = class DeliveryNoteController extends erpn
 	}
 
 	to_warehouse() {
-		let packed_items_table = this.frm.doc["packed_items"];
+		let bundled_items_table = this.frm.doc["bundled_items"];
 		erpnext.utils.autofill_warehouse(this.frm.doc["items"], "target_warehouse", this.frm.doc.to_warehouse, 1);
-		if (packed_items_table && packed_items_table.length) {
-			erpnext.utils.autofill_warehouse(packed_items_table, "target_warehouse", this.frm.doc.to_warehouse, 1);
+		if (bundled_items_table && bundled_items_table.length) {
+			erpnext.utils.autofill_warehouse(bundled_items_table, "target_warehouse", this.frm.doc.to_warehouse, 1);
 		}
 	}
 

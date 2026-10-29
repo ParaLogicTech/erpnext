@@ -231,7 +231,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			if (frappe.model.can_create("Packing Slip") && doc.packing_slip_required) {
 				if (flt(packing_completion, precision("qty")) < flt(doc.completed_qty, precision("qty"))) {
 					this.frm.add_custom_button(__("Packing Slip"), () => {
-						this.make_packing_slip();
+						this.show_packing_slip_dialog();
 					}, __("Create"));
 				}
 
@@ -546,6 +546,52 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 		this.frm.refresh_field('total_raw_material_qty');
 	}
 
+	show_packing_slip_dialog() {
+		let doc = this.frm.doc;
+		if (!frappe.defaults.get_default("allow_bulk_packing_slip_creation")) {
+			return this.make_packing_slip();
+		}
+
+		let unpacked_qty = flt(
+			flt(doc.completed_qty) - flt(doc.packed_qty) - flt(doc.rejected_qty) - flt(doc.reconciled_qty),
+			precision("qty")
+		);
+		if (unpacked_qty <= 0) {
+			return this.make_packing_slip();
+		}
+
+		let carton_qty = doc.qty_per_carton ? Math.floor(unpacked_qty / doc.qty_per_carton) : 0;
+
+		this.show_dialog_for_bulk_carton_packing({
+			item_code: doc.production_item,
+			item_name: doc.item_name,
+			carton_type: doc.carton_type,
+			qty_per_carton: flt(doc.qty_per_carton),
+			carton_qty: cint(carton_qty),
+			carton_type_read_only: doc.carton_type ? 1 : 0,
+			callback: (values) => {
+				return frappe.call({
+					method: "erpnext.manufacturing.doctype.work_order.work_order.create_bulk_packing_slips",
+					args: {
+						work_order: doc.name,
+						carton_type: values.carton_type,
+						qty_per_carton: flt(values.qty_per_carton),
+						carton_qty: cint(values.carton_qty),
+					},
+					freeze: 1,
+					freeze_message: __("Creating Packing Slips..."),
+					callback: (r) => {
+						this.frm.reload_doc();
+					}
+				});
+			},
+			secondary_action_label: __("Manual Packing"),
+			secondary_action: () => {
+				return this.make_packing_slip();
+			}
+		});
+	}
+
 	make_packing_slip() {
 		return frappe.call({
 			method: "erpnext.manufacturing.doctype.work_order.work_order.make_packing_slip",
@@ -575,6 +621,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 						pallet_type: values.pallet_type,
 						carton_per_pallet: cint(values.carton_per_pallet),
 					},
+					freeze: 1,
 					callback: (r) => {
 						let doclist = frappe.model.sync(r.message);
 						frappe.set_route("Form", doclist[0].doctype, doclist[0].name);

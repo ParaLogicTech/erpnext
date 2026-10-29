@@ -67,7 +67,7 @@
   "items",
   "scan_barcode",
   "product_bundles_section",
-  "packed_items",
+  "bundled_items",
   "pricing_rule_details",
   "pricing_rules",
   "section_break_31",
@@ -598,15 +598,6 @@
    "label": "Pricing Rule Detail",
    "options": "Pricing Rule Detail",
    "read_only": 1
-  },
-  {
-   "fieldname": "packed_items",
-   "fieldtype": "Table",
-   "label": "Bundled Items",
-   "oldfieldname": "packing_details",
-   "oldfieldtype": "Table",
-   "options": "Packed Item",
-   "print_hide": 1
   },
   {
    "fieldname": "section_break_31",
@@ -1763,13 +1754,22 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "packed_items",
-   "depends_on": "packed_items",
+   "collapsible_depends_on": "bundled_items",
+   "depends_on": "bundled_items",
    "fieldname": "product_bundles_section",
    "fieldtype": "Section Break",
    "label": "Product Bundles",
    "oldfieldtype": "Section Break",
    "options": "fa fa-suitcase",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "bundled_items",
+   "fieldtype": "Table",
+   "label": "Bundled Items",
+   "oldfieldname": "packing_details",
+   "oldfieldtype": "Table",
+   "options": "Bundled Item",
    "print_hide": 1
   }
  ],
@@ -1778,7 +1778,7 @@
  "idx": 146,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 22:34:25.266044",
+ "modified": "2026-10-27 13:11:03.080014",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Delivery Note",

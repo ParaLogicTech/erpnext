@@ -68,7 +68,7 @@
   "items",
   "scan_barcode",
   "product_bundles_section",
-  "packed_items",
+  "bundled_items",
   "pricing_rule_details",
   "pricing_rules",
   "section_break_31",
@@ -926,13 +926,6 @@
    "options": "party_account_currency",
    "print_hide": 1,
    "read_only": 1
-  },
-  {
-   "fieldname": "packed_items",
-   "fieldtype": "Table",
-   "label": "Bundled Items",
-   "options": "Packed Item",
-   "print_hide": 1
   },
   {
    "fieldname": "payment_schedule_section",
@@ -1838,13 +1831,20 @@
   },
   {
    "collapsible": 1,
-   "collapsible_depends_on": "packed_items",
-   "depends_on": "packed_items",
+   "collapsible_depends_on": "bundled_items",
+   "depends_on": "bundled_items",
    "fieldname": "product_bundles_section",
    "fieldtype": "Section Break",
    "label": "Product Bundles",
    "oldfieldtype": "Section Break",
    "options": "fa fa-suitcase",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "bundled_items",
+   "fieldtype": "Table",
+   "label": "Bundled Items",
+   "options": "Bundled Item",
    "print_hide": 1
   }
  ],
@@ -1854,7 +1854,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 17:57:24.102306",
+ "modified": "2026-10-27 13:10:58.766938",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Sales Order",

@@ -185,22 +185,21 @@ class WorkOrder(StatusUpdaterERP):
 			select so.name, so_item.delivery_date, so.project
 			from `tabSales Order` so
 			inner join `tabSales Order Item` so_item on so_item.parent = so.name
-			left join `tabProduct Bundle Item` pk_item on so_item.item_code = pk_item.parent
 			where so.name = %s
 				and so.docstatus = 1
-				and (so_item.item_code = %s or pk_item.item_code = %s)
-		""", (self.sales_order, self.production_item, self.production_item), as_dict=1)
+				and so_item.item_code = %s
+		""", (self.sales_order, self.production_item), as_dict=1)
 
 		if not so:
 			so = frappe.db.sql("""
 				select so.name, so_item.delivery_date, so.project
-				from `tabSales Order` so, `tabSales Order Item` so_item, `tabPacked Item` packed_item
+				from `tabSales Order` so, `tabSales Order Item` so_item, `tabBundled Item` bundled_item
 				where so.name = %s
 					and so.name = so_item.parent
-					and so.name = packed_item.parent
-					and so_item.item_code = packed_item.parent_item
+					and so.name = bundled_item.parent
+					and so_item.item_code = bundled_item.parent_item
 					and so.docstatus = 1
-					and packed_item.item_code=%s
+					and bundled_item.item_code = %s
 			""", (self.sales_order, self.production_item), as_dict=1)
 
 		if len(so):
@@ -240,10 +239,10 @@ class WorkOrder(StatusUpdaterERP):
 			where parent = %s and item_code = %s
 		""", (self.sales_order, self.production_item))[0][0]
 
-		# get qty from Packing Item table
+		# get qty from Bundled Item table
 		dnpi_qty = frappe.db.sql("""
 			select sum(qty)
-			from `tabPacked Item`
+			from `tabBundled Item`
 			where parent = %s and parenttype = 'Sales Order' and item_code = %s
 		""", (self.sales_order, self.production_item))[0][0]
 
@@ -1880,7 +1879,44 @@ def create_pick_list(source_name, target_doc=None, for_qty=None):
 
 
 @frappe.whitelist()
-def make_packing_slip(work_orders, target_doc=None):
+def create_bulk_packing_slips(work_order, carton_type, qty_per_carton, carton_qty):
+	if not work_order:
+		frappe.throw(_("Work Order not provided"))
+	if not carton_type:
+		frappe.throw(_("Please select Carton Type"))
+	if not qty_per_carton:
+		frappe.throw(_("Please select Qty per Carton"))
+
+	carton_qty = cint(carton_qty)
+	qty_per_carton = flt(qty_per_carton)
+	if carton_qty <= 0:
+		frappe.throw(_("Carton Qty must be greater than zero"))
+
+	wo_doc = frappe.get_doc("Work Order", work_order)
+	qty_to_pack = qty_per_carton * carton_qty
+	unpacked_qty = wo_doc.completed_qty - wo_doc.packed_qty - wo_doc.rejected_qty - wo_doc.reconciled_qty
+	if flt(qty_to_pack, wo_doc.precision("qty")) > flt(unpacked_qty, wo_doc.precision("qty")):
+		frappe.throw(_("Qty to Pack can not be greater than Unpacked Qty of {0} {1}").format(
+			frappe.bold(frappe.format(unpacked_qty, df=wo_doc.meta.get_field("qty"))),
+			wo_doc.stock_uom,
+		))
+
+	names = []
+	for i in range(carton_qty):
+		doc = make_packing_slip([{
+			"name": work_order,
+			"qty": qty_per_carton,
+		}], package_type=carton_type)
+		doc.save()
+		doc.submit()
+		names.append(doc.name)
+
+	frappe.msgprint(_("{0} Packing Slips created successfully").format(len(names)))
+	return names
+
+
+@frappe.whitelist()
+def make_packing_slip(work_orders, package_type=None, target_doc=None):
 	from erpnext.selling.doctype.sales_order.sales_order import (
 		make_packing_slip as make_packing_slip_from_so,
 		postprocess_packing_slip_from_sales_order,
@@ -1898,8 +1934,12 @@ def make_packing_slip(work_orders, target_doc=None):
 	customers = set()
 
 	# Validate and separate sales order work orders
-	for name in work_orders:
-		wo_doc = frappe.get_doc("Work Order", name)
+	for wo_details in work_orders:
+		if isinstance(wo_details, dict):
+			wo_doc = frappe.get_doc("Work Order", wo_details.get("name"))
+			wo_doc.flags.qty_to_pack = wo_details.get("qty")
+		else:
+			wo_doc = frappe.get_doc("Work Order", wo_details)
 
 		if not wo_doc or wo_doc.docstatus != 1:
 			continue
@@ -1918,6 +1958,8 @@ def make_packing_slip(work_orders, target_doc=None):
 
 	if not target_doc:
 		target_doc = frappe.new_doc("Packing Slip")
+		if package_type:
+			target_doc.package_type = package_type
 
 	# Empty packable work order list
 	if not pack_from_sales_orders and not pack_from_work_orders:
@@ -1927,7 +1969,13 @@ def make_packing_slip(work_orders, target_doc=None):
 	for sales_order, wo_docs_against_so in pack_from_sales_orders.items():
 		so_doc = frappe.get_doc("Sales Order", sales_order)
 		for wo_doc in wo_docs_against_so:
-			target_doc = make_packing_slip_from_so(so_doc, target_doc, for_work_order=wo_doc, skip_postprocess=True)
+			target_doc = make_packing_slip_from_so(
+				so_doc,
+				target_doc,
+				for_work_order=wo_doc,
+				skip_postprocess=True,
+				qty_to_pack=wo_doc.flags.qty_to_pack,
+			)
 
 		postprocess_packing_slip_from_sales_order(so_doc, target_doc)
 
@@ -1945,12 +1993,15 @@ def make_packing_slip(work_orders, target_doc=None):
 		row.item_code = wo_doc.production_item
 		row.item_name = wo_doc.item_name
 		row.source_warehouse = wo_doc.wip_warehouse if wo_doc.produce_fg_in_wip_warehouse else wo_doc.fg_warehouse
-		row.qty = wo_doc.completed_qty - wo_doc.packed_qty - wo_doc.rejected_qty - wo_doc.reconciled_qty
 		row.uom = wo_doc.stock_uom
 
-		qty_per_carton = flt(wo_doc.get("qty_per_carton"))
-		if qty_per_carton:
-			row.qty = min(qty_per_carton, row.qty)
+		if wo_doc.flags.qty_to_pack is not None:
+			row.qty = wo_doc.flags.qty_to_pack
+		else:
+			row.qty = wo_doc.completed_qty - wo_doc.packed_qty - wo_doc.rejected_qty - wo_doc.reconciled_qty
+			qty_per_carton = flt(wo_doc.get("qty_per_carton"))
+			if qty_per_carton:
+				row.qty = min(qty_per_carton, row.qty)
 
 		frappe.utils.call_hook_method("postprocess_work_order_to_packing_slip_item", wo_doc, target_doc, row)
 		frappe.utils.call_hook_method("postprocess_packing_slip_item", row, target_doc, work_order=wo_doc)

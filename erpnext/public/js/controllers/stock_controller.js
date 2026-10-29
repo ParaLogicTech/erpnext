@@ -461,6 +461,126 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		}
 	}
 
+	show_dialog_for_bulk_carton_packing(args) {
+		args = args || {};
+
+		let dialog_doc = {
+			item_code: args.item_code,
+			item_name: args.item_name,
+			carton_type: args.carton_type,
+			qty_per_carton: flt(args.qty_per_carton) || undefined,
+			carton_qty: cint(args.carton_qty) || undefined,
+			qty_to_pack: 0,
+		};
+
+		const set_qty_to_pack = () => {
+			dialog_doc.qty_to_pack = flt(dialog_doc.qty_per_carton) * cint(dialog_doc.carton_qty);
+			dialog.refresh();
+		}
+
+		let dialog = new frappe.ui.Dialog({
+			title: __("Bulk Carton Packing"),
+			doc: dialog_doc,
+			fields: [
+				{
+					label: __("Item Code"),
+					fieldtype: "Link",
+					fieldname: "item_code",
+					options: "Item",
+					read_only: 1,
+				},
+				{
+					label: __("Item Name"),
+					fieldtype: "Data",
+					fieldname: "item_name",
+					read_only: 1,
+				},
+				{
+					label: __("Carton Type"),
+					fieldtype: "Link",
+					fieldname: "carton_type",
+					options: "Package Type",
+					reqd: 1,
+					read_only: args.carton_type_read_only ? 1 : 0,
+					get_query: () => erpnext.queries.carton_type(dialog_doc.item_code),
+					onchange: () => {
+						if (!dialog_doc.item_code) {
+							return;
+						}
+						return frappe.call({
+							method: "erpnext.stock.get_item_details.get_item_packaging_details",
+							args: {
+								item_code: dialog_doc.item_code,
+								carton_type: dialog_doc.carton_type,
+								get_default: 0,
+							},
+							callback: (r) => {
+								if (r.message) {
+									dialog_doc.qty_per_carton = flt(r.message.qty_per_carton);
+									set_qty_to_pack();
+								}
+							}
+						});
+					}
+				},
+				{
+					label: __("Qty Per Carton"),
+					fieldtype: "Float",
+					fieldname: "qty_per_carton",
+					reqd: 1,
+					read_only: args.carton_type_read_only ? 1 : 0,
+				},
+				{
+					fieldtype: "Section Break",
+				},
+				{
+					label: __("Carton Qty"),
+					fieldtype: "Int",
+					fieldname: "carton_qty",
+					reqd: 1,
+					onchange: () => set_qty_to_pack(),
+				},
+				{
+					label: __("Qty to Pack"),
+					fieldtype: "Int",
+					fieldname: "qty_to_pack",
+					read_only: 1,
+					onchange: () => set_qty_to_pack(),
+				},
+			],
+			primary_action_label: __("Create Packing Slips"),
+			primary_action: () => {
+				let values = dialog.get_values();
+				if (flt(values.qty_per_carton) <= 0) {
+					frappe.msgprint(__("Please enter Qty Per Carton"));
+					return;
+				}
+				if (cint(values.carton_qty) <= 0) {
+					frappe.msgprint(__("Please enter Carton Qty"));
+					return;
+				}
+				return frappe.run_serially([
+					() => args.callback?.(values),
+					() => dialog.hide(),
+				]);
+			},
+		});
+
+		if (args.secondary_action_label && args.secondary_action) {
+			dialog.set_secondary_action_label(args.secondary_action_label);
+			dialog.set_secondary_action(() => {
+				return frappe.run_serially([
+					() => args.secondary_action(),
+					() => dialog.hide(),
+				])
+			});
+		}
+
+		set_qty_to_pack();
+		dialog.show();
+		return dialog;
+	}
+
 	show_dialog_for_pallet_packing(args) {
 		args = args || {};
 
