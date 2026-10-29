@@ -14,8 +14,6 @@ from erpnext.accounts.doctype.account_group.account_group import (
 from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
 
 PCV = "Period Closing Voucher"
-# Account Group whose rows are the equity lines (columns)
-EQUITY_ACCOUNT_GROUP = "Equity Accounts"
 # Equity accounts not under any equity line
 OTHER_COLUMN = {"fieldname": "other_equity", "label": "Other Equity", "accounts": []}
 
@@ -37,7 +35,13 @@ class StatementOfChangesInEquity(SummarizedFinancialReport):
 		self.filters.from_date = self.filters.year_start_date
 		self.filters.to_date = self.filters.report_date
 
-		self.equity_columns = fetch_equity_columns(self.filters.company)
+		account_group = self.filters.account_group or self.get_root_account_group()
+		if not account_group:
+			frappe.throw(_("Please configure Root Level {0} Group or filter by Account Group").format(
+				self.get_report_type()
+			))
+
+		self.equity_columns = fetch_equity_columns(account_group)
 		if not self.equity_columns:
 			frappe.throw(_("No Equity accounts found for {0}").format(self.filters.company))
 
@@ -129,16 +133,11 @@ class StatementOfChangesInEquity(SummarizedFinancialReport):
 		return "Statement of Changes in Equity"
 
 
-def fetch_equity_columns(company):
-	"""Equity lines from the rows of the Equity Accounts Account Group, in order,
+def fetch_equity_columns(account_group):
+	"""Equity lines from the Account and Account Group rows of the given Account Group, in order,
 	each with all the accounts it resolves to."""
-	if not frappe.db.exists("Account Group", {"name": EQUITY_ACCOUNT_GROUP, "company": company}):
-		frappe.throw(
-			_("Please configure Account Group {0} for {1}").format(frappe.bold(EQUITY_ACCOUNT_GROUP), company)
-		)
-
 	columns = []
-	for row in get_account_group_doc(EQUITY_ACCOUNT_GROUP).rows:
+	for row in get_account_group_doc(account_group).rows:
 		if row.row_type == "Account Group" and row.account_group:
 			name = row.account_group
 			label = get_account_group_doc(name).group_name or name

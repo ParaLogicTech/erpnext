@@ -10,7 +10,7 @@
  "filters": [],
  "idx": 0,
  "is_standard": "Yes",
- "modified": "2026-10-29 10:45:35.165055",
+ "modified": "2026-10-29 12:40:37.220225",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Statement of Changes in Equity",
@@ -19,22 +19,6 @@
  "ref_doctype": "GL Entry",
  "report_name": "Statement of Changes in Equity",
  "report_type": "Script Report",
- "roles": [
-  {
-   "role": "Accounts Manager"
-  },
-  {
-   "role": "Accounts User"
-  },
-  {
-   "role": "Auditor"
-  },
-  {
-   "role": "Management"
-  },
-  {
-   "role": "System Manager"
-  }
- ],
+ "roles": [],
  "timeout": 0
 }
