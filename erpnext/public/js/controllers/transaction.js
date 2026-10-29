@@ -1235,9 +1235,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	qty(doc, cdt, cdn) {
 		let item = frappe.get_doc(cdt, cdn);
-		if (item.doctype == "Packed Item") {
+		if (item.doctype == "Bundled Item") {
 			item.stock_qty = flt(item.qty, 6);
-			refresh_field("item_code", item.name, "packed_items");
+			refresh_field("item_code", item.name, "bundled_items");
 		} else {
 			this.conversion_factor(doc, cdt, cdn, true);
 			this.apply_pricing_rule(item);

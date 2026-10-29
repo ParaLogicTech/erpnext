@@ -185,22 +185,21 @@ class WorkOrder(StatusUpdaterERP):
 			select so.name, so_item.delivery_date, so.project
 			from `tabSales Order` so
 			inner join `tabSales Order Item` so_item on so_item.parent = so.name
-			left join `tabProduct Bundle Item` pk_item on so_item.item_code = pk_item.parent
 			where so.name = %s
 				and so.docstatus = 1
-				and (so_item.item_code = %s or pk_item.item_code = %s)
-		""", (self.sales_order, self.production_item, self.production_item), as_dict=1)
+				and so_item.item_code = %s
+		""", (self.sales_order, self.production_item), as_dict=1)
 
 		if not so:
 			so = frappe.db.sql("""
 				select so.name, so_item.delivery_date, so.project
-				from `tabSales Order` so, `tabSales Order Item` so_item, `tabPacked Item` packed_item
+				from `tabSales Order` so, `tabSales Order Item` so_item, `tabBundled Item` bundled_item
 				where so.name = %s
 					and so.name = so_item.parent
-					and so.name = packed_item.parent
-					and so_item.item_code = packed_item.parent_item
+					and so.name = bundled_item.parent
+					and so_item.item_code = bundled_item.parent_item
 					and so.docstatus = 1
-					and packed_item.item_code=%s
+					and bundled_item.item_code = %s
 			""", (self.sales_order, self.production_item), as_dict=1)
 
 		if len(so):
@@ -240,10 +239,10 @@ class WorkOrder(StatusUpdaterERP):
 			where parent = %s and item_code = %s
 		""", (self.sales_order, self.production_item))[0][0]
 
-		# get qty from Packing Item table
+		# get qty from Bundled Item table
 		dnpi_qty = frappe.db.sql("""
 			select sum(qty)
-			from `tabPacked Item`
+			from `tabBundled Item`
 			where parent = %s and parenttype = 'Sales Order' and item_code = %s
 		""", (self.sales_order, self.production_item))[0][0]
 

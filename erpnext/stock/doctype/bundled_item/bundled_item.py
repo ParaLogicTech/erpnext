@@ -12,7 +12,7 @@ from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
 import json
 
 
-class PackedItem(Document):
+class BundledItem(Document):
 	pass
 
 
@@ -41,7 +41,7 @@ def make_bundled_item_list(doc):
 
 def update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=None):
 	child_row = None
-	for d in doc.get("packed_items"):
+	for d in doc.get("bundled_items"):
 		if d.parent_item != parent_row.item_code or d.item_code != bundle_row.item_code:
 			continue
 
@@ -56,7 +56,7 @@ def update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=N
 		break
 
 	if not child_row:
-		child_row = doc.append('packed_items')
+		child_row = doc.append('bundled_items')
 		set_child_row_balance_qty(doc, bundle_row, child_row)
 
 	update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_detail_docname=previous_detail_docname)
@@ -64,7 +64,7 @@ def update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=N
 
 def update_child_item_group_row(doc, bundle_row, parent_row):
 	child_row = None
-	for d in doc.get("packed_items"):
+	for d in doc.get("bundled_items"):
 		if d.parent_item != parent_row.item_code or d.item_group != bundle_row.item_group:
 			continue
 
@@ -79,7 +79,7 @@ def update_child_item_group_row(doc, bundle_row, parent_row):
 		break
 
 	if not child_row:
-		child_row = doc.append('packed_items')
+		child_row = doc.append('bundled_items')
 
 	update_packing_list_item(doc, bundle_row, parent_row, child_row)
 
@@ -87,7 +87,7 @@ def update_child_item_group_row(doc, bundle_row, parent_row):
 def set_child_row_balance_qty(doc, bundle_row, child_row):
 	if (
 		(doc.doctype == "Delivery Note" or (doc.doctype == "Sales Invoice" and doc.update_stock))
-		and bundle_row.doctype == "Packed Item"
+		and bundle_row.doctype == "Bundled Item"
 	):
 		child_row.qty = max(0, bundle_row.qty - bundle_row.delivered_qty)
 
@@ -174,7 +174,7 @@ def cleanup_packing_list(doc):
 		return parent_row.idx or 99999, bundle_row.idx or 99999
 
 	delete_list = []
-	for child_row in doc.get("packed_items"):
+	for child_row in doc.get("bundled_items"):
 		parent_row = get_parent_row_from_child_row(doc, child_row)
 		bundle_row = get_bundle_row_from_child_row(doc, child_row)
 		if not child_row.parent_item:
@@ -185,8 +185,8 @@ def cleanup_packing_list(doc):
 	for child_row in delete_list:
 		doc.remove(child_row)
 
-	doc.packed_items = sorted(doc.get("packed_items"), key=lambda d: sorter(d))
-	for i, child_row in enumerate(doc.get("packed_items")):
+	doc.bundled_items = sorted(doc.get("bundled_items"), key=lambda d: sorter(d))
+	for i, child_row in enumerate(doc.get("bundled_items")):
 		child_row.flags.is_updated = None
 		child_row.idx = i + 1
 
@@ -261,7 +261,7 @@ def validate_bundled_items_for_parent_row(doc, parent_row):
 	if not is_product_bundle(parent_row.item_code):
 		return
 
-	child_rows = [d for d in doc.get("packed_items")
+	child_rows = [d for d in doc.get("bundled_items")
 		if d.parent_detail_docname == parent_row.name and d.parent_item == parent_row.item_code]
 
 	for child_row in child_rows:
@@ -304,14 +304,14 @@ def get_sales_order_bundled_items(sales_order, sales_order_item):
 	def generator():
 		return frappe.db.sql("""
 			select *
-			from `tabPacked Item`
+			from `tabBundled Item`
 			where parenttype = 'Sales Order'
 				and parent = %(sales_order)s
 				and parent_detail_docname = %(sales_order_item)s
 		""", {
 			"sales_order": sales_order,
 			"sales_order_item": sales_order_item,
-		}, update={"doctype": "Packed Item"}, as_dict=1)
+		}, update={"doctype": "Bundled Item"}, as_dict=1)
 
 	return frappe.local_cache("get_sales_order_bundled_items", (sales_order, sales_order_item), generator)
 
@@ -334,4 +334,4 @@ def get_product_bundle_from_item_code(item_code, cache=True):
 
 
 def on_doctype_update():
-	frappe.db.add_index("Packed Item", ["item_code", "warehouse"])
+	frappe.db.add_index("Bundled Item", ["item_code", "warehouse"])

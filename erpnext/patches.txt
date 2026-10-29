@@ -356,6 +356,7 @@ execute:frappe.delete_doc_if_exists("Custom Field", "Quotation-sales_team_sectio
 execute:frappe.delete_doc_if_exists("Custom Field", "Quotation-sales_team")
 erpnext.patches.v15_0.remove_github_sync_id #1
 erpnext.patches.v15_0.set_bom_additional_cost_qty
+erpnext.patches.v15_0.rename_bundled_item_table
 
 [post_model_sync]
 erpnext.patches.v12_0.update_salary_slip_leave_with_pay

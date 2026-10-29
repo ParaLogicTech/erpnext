@@ -23,7 +23,7 @@ from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty
 	validate_loyalty_points
 from erpnext.accounts.deferred_revenue import validate_service_stop_date
 from erpnext.accounts.doctype.pos_profile.pos_profile import set_account_for_mode_of_payment, get_pos_profile
-from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
+from erpnext.stock.doctype.bundled_item.bundled_item import make_bundled_item_list, validate_bundled_item_list
 from erpnext.accounts.doctype.invoice_discounting.invoice_discounting import \
 	get_party_account_based_on_invoice_discounting
 
@@ -1116,7 +1116,7 @@ class SalesInvoice(SellingController):
 				bin = frappe.db.sql("select actual_qty from `tabBin` where item_code = %s and warehouse = %s", (d.item_code, d.warehouse), as_dict = 1)
 				d.actual_qty = bin and flt(bin[0]['actual_qty']) or 0
 
-		for d in self.get('packed_items'):
+		for d in self.get('bundled_items'):
 			bin = frappe.db.sql("select actual_qty, projected_qty from `tabBin` where item_code =	%s and warehouse = %s", (d.item_code, d.warehouse), as_dict = 1)
 			d.actual_qty = bin and flt(bin[0]['actual_qty']) or 0
 			d.projected_qty = bin and flt(bin[0]['projected_qty']) or 0
@@ -1125,7 +1125,7 @@ class SalesInvoice(SellingController):
 		if cint(self.update_stock):
 			make_bundled_item_list(self)
 		else:
-			self.set('packed_items', [])
+			self.set('bundled_items', [])
 
 	def set_delivery_date(self):
 		if not self.meta.has_field("delivery_date"):

@@ -91,7 +91,7 @@
   "items",
   "scan_barcode",
   "product_bundles_section",
-  "packed_items",
+  "bundled_items",
   "pricing_rule_details",
   "pricing_rules",
   "time_sheet_list",
@@ -722,13 +722,6 @@
    "label": "Pricing Rule Detail",
    "options": "Pricing Rule Detail",
    "read_only": 1
-  },
-  {
-   "fieldname": "packed_items",
-   "fieldtype": "Table",
-   "label": "Bundled Items",
-   "options": "Packed Item",
-   "print_hide": 1
   },
   {
    "collapsible": 1,
@@ -2342,7 +2335,8 @@
   },
   {
    "collapsible": 1,
-   "depends_on": "packed_items",
+   "collapsible_depends_on": "bundled_items",
+   "depends_on": "bundled_items",
    "fieldname": "product_bundles_section",
    "fieldtype": "Section Break",
    "label": "Product Bundles",
@@ -2421,6 +2415,13 @@
    "label": "Delivery Note Required",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "bundled_items",
+   "fieldtype": "Table",
+   "label": "Bundled Items",
+   "options": "Bundled Item",
+   "print_hide": 1
   }
  ],
  "grid_page_length": 500,
@@ -2428,7 +2429,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-13 15:58:25.601496",
+ "modified": "2026-10-27 13:10:43.180808",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",
