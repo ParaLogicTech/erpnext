@@ -1110,7 +1110,8 @@ def get_bom_diff(bom1, bom2):
 		'operations': 'operation',
 		'items': 'item_code',
 		'scrap_items': 'item_code',
-		'exploded_items': 'item_code'
+		'exploded_items': 'item_code',
+		'additional_costs': 'description',
 	}
 
 	for df in meta.fields:

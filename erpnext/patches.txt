@@ -465,3 +465,6 @@ erpnext.patches.v15_0.set_sales_invoice_delivery_status
 erpnext.patches.v15_0.set_work_order_all_skip_transfer
 erpnext.patches.v15_0.set_missing_project_applies_to_item_brand
 erpnext.patches.v15_0.set_quotation_submission_date
+execute:frappe.delete_doc_if_exists("Report", "Open Work Orders")
+execute:frappe.delete_doc_if_exists("Report", "Work Orders in Progress")
+execute:frappe.delete_doc_if_exists("Report", "Completed Work Orders")
