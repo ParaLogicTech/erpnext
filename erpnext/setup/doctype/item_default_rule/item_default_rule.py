@@ -157,12 +157,12 @@ class ItemDefaultRule(Document):
 		return rule_dict
 
 
-def get_item_default_values(item, transaction=None, cache=True, doc=None):
+def get_item_default_values(item, transaction=None, cache=True):
 	filters = get_filters_dict(item, transaction)
-	return get_default_values_for_filters(filters, cache=cache, item=item, transaction=transaction, doc=doc)
+	return get_default_values_for_filters(filters, cache=cache, item=item, transaction=transaction)
 
 
-def get_default_values_for_filters(filters, cache=True, item=None, transaction=None, doc=None):
+def get_default_values_for_filters(filters, cache=True, item=None, transaction=None):
 	def rules_generator():
 		return get_applicable_rules_for_filters(filters)
 
@@ -180,7 +180,7 @@ def get_default_values_for_filters(filters, cache=True, item=None, transaction=N
 	if any(cstr(rule.get("condition")).strip() for rule in applicable_rules):
 		applicable_rules = [
 			rule for rule in applicable_rules
-			if evaluate_item_default_rule_condition(rule, item=item, transaction=transaction, doc=doc)
+			if evaluate_item_default_rule_condition(rule, item=item, transaction=transaction)
 		]
 		return values_generator()
 
@@ -190,7 +190,7 @@ def get_default_values_for_filters(filters, cache=True, item=None, transaction=N
 		return values_generator()
 
 
-def evaluate_item_default_rule_condition(rule, item=None, transaction=None, doc=None):
+def evaluate_item_default_rule_condition(rule, item=None, transaction=None):
 	from frappe.utils.safe_exec import get_safe_globals
 
 	if not cstr(rule.get("condition")).strip():
@@ -199,10 +199,8 @@ def evaluate_item_default_rule_condition(rule, item=None, transaction=None, doc=
 	if isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
 
-	if doc is None and isinstance(transaction, Document):
-		doc = transaction
-
-	args = transaction.as_dict() if isinstance(transaction, Document) else frappe._dict(transaction or {})
+	doc = transaction if isinstance(transaction, Document) else None
+	args = transaction.as_dict() if doc else frappe._dict(transaction or {})
 
 	eval_globals = get_safe_globals()
 	context = frappe._dict({
@@ -280,12 +278,12 @@ def get_default_values_dict(applicable_rules, filter_sort=None):
 	return values
 
 
-def get_applicable_rules(item, transaction=None, doc=None):
+def get_applicable_rules(item, transaction=None):
 	filters = get_filters_dict(item, transaction)
 	applicable_rules = get_applicable_rules_for_filters(filters)
 	return [
 		rule for rule in applicable_rules
-		if evaluate_item_default_rule_condition(rule, item=item, transaction=transaction, doc=doc)
+		if evaluate_item_default_rule_condition(rule, item=item, transaction=transaction)
 	]
 
 
@@ -298,7 +296,8 @@ def get_filters_dict(item, transaction=None):
 	if isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
 	if isinstance(transaction, Document):
-		transaction = transaction.as_dict()
+		# only header fields are needed, skip converting child tables
+		transaction = frappe._dict(transaction.get_valid_dict())
 
 	filters = frappe._dict()
 

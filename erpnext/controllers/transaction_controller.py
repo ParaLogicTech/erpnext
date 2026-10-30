@@ -944,7 +944,7 @@ class TransactionController(StockController):
 				continue
 
 			selling_or_buying = is_doctype_selling_or_buying(self.doctype)
-			project_validation = get_project_validation(d.item_code, self.transaction_type, self.company, doc=self)
+			project_validation = get_project_validation(d.item_code, self)
 
 			if (
 				project_validation == "Mandatory"

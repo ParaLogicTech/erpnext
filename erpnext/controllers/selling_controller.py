@@ -485,7 +485,7 @@ class SellingController(TransactionController):
 			if not is_stock_item and not is_product_bundle(d.item_code):
 				continue
 
-			min_margin = get_min_margin_validation(d.item_code, self.get("transaction_type"), self.get("company"), doc=self)
+			min_margin = get_min_margin_validation(d.item_code, self)
 			d._min_margin = min_margin
 			if not validate_selling_price and min_margin is None:
 				continue
@@ -998,7 +998,7 @@ class SellingController(TransactionController):
 						.format(d.idx, warehouse, warehouse))
 
 				if d.get('item_code'):
-					target_warehouse_validation = get_target_warehouse_validation(d.item_code, self.transaction_type, self.company, doc=self)
+					target_warehouse_validation = get_target_warehouse_validation(d.item_code, self)
 
 					if target_warehouse_validation:
 						if target_warehouse_validation == "Mandatory" and not d.target_warehouse:
