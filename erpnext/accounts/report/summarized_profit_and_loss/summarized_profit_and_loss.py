@@ -6,6 +6,7 @@ from frappe import _
 from frappe.utils import flt, getdate, add_months, get_last_day, get_first_day, format_date
 from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
 from erpnext.accounts.doctype.budget.budget import get_accumulated_monthly_budget
+from erpnext.accounts.report.trial_balance.trial_balance import get_dimension_column_details
 from datetime import timedelta
 
 
@@ -208,9 +209,11 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 			"credit",
 			aggregate=aggregate,
 			dimension_field=self.filters.dimension_field,
+			group_by_dimensions=self.filters.dimension_fields,
 		)
 
 		account_totals = data.account_totals
+		self.account_dimension_totals = data.account_dimension_totals
 
 		if self.filters.dimension_field:
 			dimension_values = sorted(list(data.dimension_values))
@@ -409,6 +412,16 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"width": 350,
 			},
 		]
+
+		for f in self.filters.dimension_fields:
+			dimension_details = get_dimension_column_details(f)
+			columns.append({
+				"fieldname": f,
+				"label": dimension_details.label,
+				"fieldtype": "Link" if dimension_details.document_type else "Data",
+				"options": dimension_details.document_type,
+				"width": 150,
+			})
 
 		value_width = 120 if self.filters.format == "Monthly" else 150
 

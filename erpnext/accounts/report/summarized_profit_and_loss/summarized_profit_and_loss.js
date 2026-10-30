@@ -37,6 +37,14 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			depends_on: "eval:['Dimension MTD', 'Dimension YTD'].includes(doc.format)",
 		},
 		{
+			fieldname: "dimension_fields",
+			label: __("Group by Dimensions"),
+			fieldtype: "MultiSelectList",
+			options: [
+				{label: __("Cost Center"), value: "cost_center"},
+			].concat(erpnext.financial_statements.get_dimension_options()),
+		},
+		{
 			fieldname: "account_group",
 			label: __("Account Group"),
 			fieldtype: "Link",
@@ -81,4 +89,4 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 	initial_depth: 0,
 };
 
-erpnext.utils.add_dimensions('Summarized Profit and Loss', 5);
+erpnext.utils.add_dimensions('Summarized Profit and Loss', 6);
