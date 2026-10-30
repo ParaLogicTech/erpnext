@@ -769,18 +769,18 @@ def get_default_allow_zero_valuation_rate(item, args):
 	return cint(allow_zero_valuation_rate == "Yes" if allow_zero_valuation_rate else args.get('allow_zero_valuation_rate'))
 
 
-def get_target_warehouse_validation(item_code, transaction_type_name, company):
-	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company})
+def get_target_warehouse_validation(item_code, transaction_type_name, company, doc=None):
+	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company}, doc=doc)
 	return default_values.get("target_warehouse_validation")
 
 
-def get_project_validation(item_code, transaction_type_name, company):
-	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company})
+def get_project_validation(item_code, transaction_type_name, company, doc=None):
+	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company}, doc=doc)
 	return default_values.get("project_validation")
 
 
-def get_min_margin_validation(item_code, transaction_type_name, company):
-	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company})
+def get_min_margin_validation(item_code, transaction_type_name, company, doc=None):
+	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company}, doc=doc)
 	if default_values.get("validate_min_margin") == "Yes":
 		return flt(default_values.get("min_margin"))
 	else:

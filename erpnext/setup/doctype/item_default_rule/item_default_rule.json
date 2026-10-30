@@ -71,7 +71,9 @@
   "sales_commission_category",
   "default_terms",
   "column_break_22",
-  "project_validation"
+  "project_validation",
+  "condition_section",
+  "condition"
  ],
  "fields": [
   {
@@ -283,6 +285,20 @@
    "reqd": 1
   },
   {
+   "collapsible": 1,
+   "collapsible_depends_on": "condition",
+   "fieldname": "condition_section",
+   "fieldtype": "Section Break",
+   "label": "Condition"
+  },
+  {
+   "description": "Python expression. Available variables: doc (transaction), args, item, item_code, rule, user. e.g. doc.customer == \"ABC\" or user == \"someone@example.com\"",
+   "fieldname": "condition",
+   "fieldtype": "Code",
+   "label": "Condition",
+   "options": "Python"
+  },
+  {
    "fieldname": "item_tax_section",
    "fieldtype": "Section Break",
    "label": "Item Tax"
@@ -477,7 +493,7 @@
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2026-07-28 14:03:04.921913",
+ "modified": "2026-10-30 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Item Default Rule",
