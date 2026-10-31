@@ -109,7 +109,7 @@
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2026-01-08 14:26:21.343512",
+ "modified": "2026-10-31 19:42:10.222702",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Supplier Group",
@@ -170,9 +170,10 @@
   }
  ],
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "show_name_in_global_search": 1,
- "sort_field": "modified",
- "sort_order": "ASC",
+ "sort_field": "idx",
+ "sort_order": "DESC",
  "states": [],
  "track_changes": 1
 }
