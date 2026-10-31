@@ -1,15 +1,15 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, os, json
+import frappe
 from frappe import _
-from frappe.utils import get_timestamp
-
-from frappe.utils import cint, today, formatdate
-import frappe.defaults
+from frappe.utils import cint, today, formatdate, get_timestamp
 from frappe.cache_manager import clear_defaults_cache
 from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.utils.nestedset import NestedSet
+import frappe.defaults
+import os
+import json
 
 
 class Company(NestedSet):
@@ -17,46 +17,51 @@ class Company(NestedSet):
 
 	def onload(self):
 		load_address_and_contact(self, "company")
-		self.get("__onload")["transactions_exist"] = self.check_if_transactions_exist()
-
-	def check_if_transactions_exist(self):
-		exists = False
-		for doctype in ["Sales Invoice", "Delivery Note", "Sales Order", "Quotation",
-			"Purchase Invoice", "Purchase Receipt", "Purchase Order", "Supplier Quotation"]:
-				if frappe.db.sql("""select name from `tab%s` where company=%s and docstatus=1
-					limit 1""" % (doctype, "%s"), self.name):
-						exists = True
-						break
-
-		return exists
+		self.get("__onload")["transactions_exist"] = self.get_transactions_exist()
 
 	def validate(self):
-		self.update_default_account = False
-		if self.is_new():
-			self.update_default_account = True
-
+		self.update_default_account = True if self.is_new() else False
 		self.validate_abbr()
 		self.validate_default_accounts()
+		self.validate_default_warehouses()
 		self.validate_currency()
 		self.validate_coa_input()
 		self.validate_perpetual_inventory()
 		self.check_country_change()
 		self.set_chart_of_accounts()
 
+	def get_transactions_exist(self):
+		ledger_doctypes = ["GL Entry", "Stock Ledger Entry"]
+		transaction_doctypes = [
+			"Sales Order",
+			"Quotation",
+			"Purchase Order",
+			"Supplier Quotation",
+		]
+
+		for doctype in transaction_doctypes + ledger_doctypes:
+			filters = {"company": self.name}
+			if doctype not in ledger_doctypes:
+				filters["docstatus"] = 1
+
+			if frappe.db.exists(doctype, filters):
+				return True
+
+		return False
+
 	def validate_abbr(self):
 		if not self.abbr:
-			self.abbr = ''.join([c[0] for c in self.company_name.split()]).upper()
+			self.abbr = "".join([c[0] for c in self.company_name.split()]).upper()
 
 		self.abbr = self.abbr.strip()
+		if not self.abbr:
+			frappe.throw(_("Company Abbreviation is mandatory"))
 
-		# if self.get('__islocal') and len(self.abbr) > 5:
-		# 	frappe.throw(_("Abbreviation cannot have more than 5 characters"))
-
-		if not self.abbr.strip():
-			frappe.throw(_("Abbreviation is mandatory"))
-
-		if frappe.db.sql("select abbr from tabCompany where name!=%s and abbr=%s", (self.name, self.abbr)):
-			frappe.throw(_("Abbreviation already used for another company"))
+		existing_company = frappe.db.get_value("Company", {"abbr": self.abbr, "name": ["!=", self.name]})
+		if existing_company:
+			frappe.throw(_("Abbreviation {0} is already used by Company {1}").format(
+				frappe.bold(self.abbr), frappe.get_desk_link("Company", existing_company)
+			))
 
 	@frappe.whitelist()
 	def create_default_tax_template(self):
@@ -67,52 +72,85 @@ class Company(NestedSet):
 		})
 
 	def validate_default_accounts(self):
-		accounts = [
-			"default_bank_account", "default_cash_account",
-			"default_receivable_account", "default_payable_account",
-			"default_expense_account", "default_income_account",
-			"stock_received_but_not_billed", "stock_delivered_but_not_billed", "stock_adjustment_account",
-			"expenses_included_in_valuation", "default_payroll_payable_account", "default_letter_of_credit_account",
-			"temporary_opening_account",
-			"sales_tax_account", "service_tax_account", "extra_tax_account", "further_tax_account", "advance_tax_account"
-		]
+		account_fields = [df for df in self.meta.fields if df.fieldtype == "Link" and df.options == "Account"]
+		for df in account_fields:
+			self.validate_company_account(self.get(df.fieldname), df)
 
-		for field in accounts:
-			if self.get(field):
-				for_company = frappe.db.get_value("Account", self.get(field), "company")
-				if for_company != self.name:
-					frappe.throw(_("Account {0} does not belong to company: {1}").format(self.get(field), self.name))
+		for d in self.advance_tax_accounts:
+			self.validate_company_account(d.account_head, d.meta.get_field("account_head"))
+
+	def validate_company_account(self, account, df):
+		if not account:
+			return
+
+		account_details = frappe.db.get_value("Account", account, ["company", "is_group"], as_dict=1)
+		if not account_details:
+			frappe.throw(_("{0} {1} does not exist").format(_(df.label), frappe.bold(account)))
+
+		if account_details.company != self.name:
+			frappe.throw(_("{0} {1} does not belong to Company {2}").format(
+				_(df.label), frappe.bold(account), self.name,
+			))
+		if account_details.is_group:
+			frappe.throw(_("{0} {1} is a Group Account and cannot be a default account").format(
+				_(df.label), frappe.bold(account),
+			))
+
+	def validate_default_warehouses(self):
+		warehouse_fields = [df for df in self.meta.fields if df.fieldtype == "Link" and df.options == "Warehouse"]
+		for df in warehouse_fields:
+			self.validate_company_warehouse(self.get(df.fieldname), df)
+
+	def validate_company_warehouse(self, warehouse, df):
+		if not warehouse:
+			return
+
+		warehouse_details = frappe.db.get_value("Warehouse", warehouse, ["company", "is_group"], as_dict=1)
+		if not warehouse_details:
+			frappe.throw(_("{0} {1} does not exist").format(_(df.label), frappe.bold(warehouse)))
+
+		if warehouse_details.company != self.name:
+			frappe.throw(_("{0} {1} does not belong to Company {2}").format(
+				_(df.label), frappe.bold(warehouse), self.name,
+			))
+		if warehouse_details.is_group:
+			frappe.throw(_("{0} {1} is a Group Warehouse and cannot be a default warehouse").format(
+				_(df.label), frappe.bold(warehouse),
+			))
 
 	def validate_currency(self):
 		if self.is_new():
 			return
-		self.previous_default_currency = frappe.get_cached_value('Company',  self.name,  "default_currency")
-		if self.default_currency and self.previous_default_currency and \
-			self.default_currency != self.previous_default_currency and \
-			self.check_if_transactions_exist():
-				frappe.throw(_("Cannot change company's default currency, because there are existing transactions. Transactions must be cancelled to change the default currency."))
+
+		self.previous_default_currency = self.db_get("default_currency")
+		if (
+			self.default_currency
+			and self.previous_default_currency
+			and self.default_currency != self.previous_default_currency
+			and self.get_transactions_exist()
+		):
+			frappe.throw(_("Cannot change company's default currency, because there are existing transactions. Transactions must be cancelled to change the default currency."))
 
 	def on_update(self):
-		NestedSet.on_update(self)
-		if not frappe.db.sql("""select name from tabAccount
-				where company=%s and docstatus<2 limit 1""", self.name):
-			if not frappe.local.flags.ignore_chart_of_accounts:
-				frappe.flags.country_change = True
-				self.create_default_accounts()
-				self.create_default_warehouses()
+		super().on_update()
+
+		if not frappe.flags.ignore_chart_of_accounts and not frappe.db.exists("Account", {"company": self.name}):
+			frappe.flags.country_change = True
+			self.create_default_accounts()
+			self.create_default_warehouses()
 
 		if frappe.flags.country_change:
 			install_country_fixtures(self.name)
 			self.create_default_tax_template()
 
-		if not frappe.db.get_value("Department", {"company": self.name}):
+		if not frappe.db.exists("Department", {"company": self.name}):
 			from erpnext.setup.setup_wizard.operations.install_fixtures import install_post_company_fixtures
 			install_post_company_fixtures(frappe._dict({'company_name': self.name}))
 
-		if not frappe.db.get_value("Cost Center", {"is_group": 0, "company": self.name}):
+		if not frappe.db.exists("Cost Center", {"company": self.name, "is_group": 0}):
 			self.create_default_cost_center()
 
-		if not frappe.local.flags.ignore_chart_of_accounts:
+		if not frappe.flags.ignore_chart_of_accounts:
 			self.set_default_accounts()
 			if self.default_cash_account:
 				self.set_mode_of_payment_account()
@@ -130,17 +168,14 @@ class Company(NestedSet):
 		for wh_detail in [
 			{"warehouse_name": _("All Warehouses"), "is_group": 1},
 			{"warehouse_name": _("Stores"), "is_group": 0},
-			{"warehouse_name": _("Work In Progress"), "is_group": 0},
-			{"warehouse_name": _("Finished Goods"), "is_group": 0}]:
-
+		]:
 			if not frappe.db.exists("Warehouse", "{0} - {1}".format(wh_detail["warehouse_name"], self.abbr)):
 				warehouse = frappe.get_doc({
 					"doctype":"Warehouse",
 					"warehouse_name": wh_detail["warehouse_name"],
 					"is_group": wh_detail["is_group"],
 					"company": self.name,
-					"parent_warehouse": "{0} - {1}".format(_("All Warehouses"), self.abbr) \
-						if not wh_detail["is_group"] else ""
+					"parent_warehouse": "{0} - {1}".format(_("All Warehouses"), self.abbr) if not wh_detail["is_group"] else ""
 				})
 				warehouse.flags.ignore_permissions = True
 				warehouse.flags.ignore_mandatory = True
@@ -150,11 +185,6 @@ class Company(NestedSet):
 		from erpnext.accounts.doctype.account.chart_of_accounts.chart_of_accounts import create_charts
 		frappe.local.flags.ignore_root_company_validation = True
 		create_charts(self.name, self.chart_of_accounts, self.existing_company)
-
-		self.db_set("default_receivable_account", frappe.db.get_value("Account",
-			{"company": self.name, "account_type": "Receivable", "is_group": 0}))
-		self.db_set("default_payable_account", frappe.db.get_value("Account",
-			{"company": self.name, "account_type": "Payable", "is_group": 0}))
 
 	def validate_coa_input(self):
 		if self.create_chart_of_accounts_based_on == "Existing Company":
@@ -176,9 +206,7 @@ class Company(NestedSet):
 
 	def check_country_change(self):
 		frappe.flags.country_change = False
-
-		if not self.get('__islocal') and \
-			self.country != frappe.get_cached_value('Company',  self.name,  'country'):
+		if not self.is_new() and self.country != self.db_get("country"):
 			frappe.flags.country_change = True
 
 	def set_chart_of_accounts(self):
@@ -188,7 +216,10 @@ class Company(NestedSet):
 			self.existing_company = self.parent_company
 
 	def set_default_accounts(self):
-		default_accounts = {
+		if not self.get("update_default_account"):
+			return
+
+		default_accounts_map = {
 			"default_cash_account": "Cash",
 			"default_bank_account": "Bank",
 			"round_off_account": "Round Off",
@@ -200,7 +231,7 @@ class Company(NestedSet):
 		}
 
 		if self.enable_perpetual_inventory:
-			default_accounts.update({
+			default_accounts_map.update({
 				"stock_received_but_not_billed": "Stock Received But Not Billed",
 				"default_inventory_account": "Stock",
 				"stock_adjustment_account": "Stock Adjustment",
@@ -208,82 +239,111 @@ class Company(NestedSet):
 				"default_expense_account": "Cost of Goods Sold"
 			})
 
-		if self.update_default_account:
-			for default_account in default_accounts:
-				self._set_default_account(default_account, default_accounts.get(default_account))
+		for default_account in default_accounts_map:
+			self._set_default_account(default_account, default_accounts_map.get(default_account))
 
 		if not self.default_income_account:
-			income_account = frappe.db.get_value("Account",
-				{"account_name": _("Sales"), "company": self.name, "is_group": 0})
-
+			income_account = frappe.db.get_value("Account", {
+				"account_name": _("Sales"), "company": self.name, "is_group": 0
+			})
 			if not income_account:
-				income_account = frappe.db.get_value("Account",
-					{"account_name": _("Sales Account"), "company": self.name})
+				income_account = frappe.db.get_value("Account", {
+					"account_name": _("Sales Account"), "company": self.name, "is_group": 0
+				})
+			if income_account:
+				self.db_set("default_income_account", income_account)
 
-			self.db_set("default_income_account", income_account)
+		if not self.default_receivable_account:
+			default_receivable_account = frappe.db.get_value("Account", {
+				"company": self.name, "is_group": 0, "account_type": "Receivable",
+			})
+			if default_receivable_account:
+				self.db_set("default_receivable_account", default_receivable_account)
 
 		if not self.default_payable_account:
-			self.db_set("default_payable_account", self.default_payable_account)
+			default_payable_account = frappe.db.get_value("Account", {
+				"account_name": _("Creditors"), "company": self.name, "is_group": 0, "account_type": "Payable",
+			})
+			if not default_payable_account:
+				default_payable_account = frappe.db.get_value("Account", {
+					"account_name": _("Accounts Payable"), "company": self.name, "is_group": 0, "account_type": "Payable",
+				})
+			if not default_payable_account:
+				default_payable_account = frappe.db.get_value("Account", {
+					"company": self.name, "is_group": 0, "account_type": "Payable",
+				})
+
+			if default_payable_account:
+				self.db_set("default_payable_account", default_payable_account)
 
 		if not self.default_payroll_payable_account:
-			payroll_payable_account = frappe.db.get_value("Account",
-				{"account_name": _("Payroll Payable"), "company": self.name, "is_group": 0})
-
-			self.db_set("default_payroll_payable_account", payroll_payable_account)
+			payroll_payable_account = frappe.db.get_value("Account", {
+				"account_name": _("Payroll Payable"), "company": self.name, "is_group": 0,
+			})
+			if payroll_payable_account:
+				self.db_set("default_payroll_payable_account", payroll_payable_account)
 
 		if not self.default_letter_of_credit_account:
-			default_letter_of_credit_account = frappe.db.get_value("Account",
-				{"account_name": _("Letters of Credit"), "company": self.name, "is_group": 0})
-
-			self.db_set("default_letter_of_credit_account", default_letter_of_credit_account)
+			default_letter_of_credit_account = frappe.db.get_value("Account", {
+				"account_name": _("Letters of Credit"), "company": self.name, "is_group": 0
+			})
+			if default_letter_of_credit_account:
+				self.db_set("default_letter_of_credit_account", default_letter_of_credit_account)
 
 		if not self.default_employee_advance_account:
-			employe_advance_account = frappe.db.get_value("Account",
-				{"account_name": _("Employee Advances"), "company": self.name, "is_group": 0})
+			employe_advance_account = frappe.db.get_value("Account", {
+				"account_name": _("Employee Advances"), "company": self.name, "is_group": 0
+			})
 
 			self.db_set("default_employee_advance_account", employe_advance_account)
 
 		if not self.temporary_opening_account:
-			temporary_opening_account = frappe.db.get_value("Account",
-				{"account_name": _("Temporary Opening"), "company": self.name, "is_group": 0})
-
-			self.db_set("temporary_opening_account", temporary_opening_account)
+			temporary_opening_account = frappe.db.get_value("Account", {
+				"account_name": _("Temporary Opening"), "company": self.name, "is_group": 0
+			})
+			if temporary_opening_account:
+				self.db_set("temporary_opening_account", temporary_opening_account)
 
 		if not self.write_off_account:
-			write_off_acct = frappe.db.get_value("Account",
-				{"account_name": _("Write Off"), "company": self.name, "is_group": 0})
-
-			self.db_set("write_off_account", write_off_acct)
+			write_off_acct = frappe.db.get_value("Account", {
+				"account_name": _("Write Off"), "company": self.name, "is_group": 0
+			})
+			if write_off_acct:
+				self.db_set("write_off_account", write_off_acct)
 
 		if not self.exchange_gain_loss_account:
 			exchange_gain_loss_acct = frappe.db.get_value("Account",
 				{"account_name": _("Exchange Gain/Loss"), "company": self.name, "is_group": 0})
-
-			self.db_set("exchange_gain_loss_account", exchange_gain_loss_acct)
+			if exchange_gain_loss_acct:
+				self.db_set("exchange_gain_loss_account", exchange_gain_loss_acct)
 
 		if not self.disposal_account:
 			disposal_acct = frappe.db.get_value("Account",
 				{"account_name": _("Gain/Loss on Asset Disposal"), "company": self.name, "is_group": 0})
-
-			self.db_set("disposal_account", disposal_acct)
+			if disposal_acct:
+				self.db_set("disposal_account", disposal_acct)
 
 	def _set_default_account(self, fieldname, account_type):
 		if self.get(fieldname):
 			return
 
-		account = frappe.db.get_value("Account", {"account_type": account_type, "is_group": 0, "company": self.name})
-
+		account = frappe.db.get_value("Account", {
+			"account_type": account_type, "is_group": 0, "company": self.name
+		})
 		if account:
 			self.db_set(fieldname, account)
 
 	def set_mode_of_payment_account(self):
-		cash = frappe.db.get_value('Mode of Payment', {'type': 'Cash'}, 'name')
-		if cash and self.default_cash_account \
-			and not frappe.db.get_value('Mode of Payment Account', {'company': self.name, 'parent': cash}):
-			mode_of_payment = frappe.get_doc('Mode of Payment', cash)
+		cash_mop = frappe.db.get_value('Mode of Payment', {'type': 'Cash'}, 'name')
+		if (
+			cash_mop
+			and self.default_cash_account
+			and not frappe.db.get_value('Mode of Payment Account', {'company': self.name, 'parent': cash_mop})
+		):
+			mode_of_payment = frappe.get_doc('Mode of Payment', cash_mop)
 			mode_of_payment.append('accounts', {
 				'company': self.name,
-				'default_account': self.default_cash_account
+				'default_account': self.default_cash_account,
 			})
 			mode_of_payment.save(ignore_permissions=True)
 
@@ -291,15 +351,15 @@ class Company(NestedSet):
 		cc_list = [
 			{
 				'cost_center_name': self.name,
-				'company':self.name,
+				'company': self.name,
 				'is_group': 1,
-				'parent_cost_center':None
+				'parent_cost_center': None
 			},
 			{
-				'cost_center_name':_('Main'),
-				'company':self.name,
-				'is_group':0,
-				'parent_cost_center':self.name + ' - ' + self.abbr
+				'cost_center_name': _('Main'),
+				'company': self.name,
+				'is_group': 0,
+				'parent_cost_center': self.name + ' - ' + self.abbr
 			},
 		]
 		for cc in cc_list:
@@ -318,8 +378,11 @@ class Company(NestedSet):
 	def after_rename(self, olddn, newdn, merge=False):
 		self.db_set("company_name", newdn)
 
-		frappe.db.sql("""update `tabDefaultValue` set defvalue=%s
-			where defkey='Company' and defvalue=%s""", (newdn, olddn))
+		frappe.db.sql("""
+			update `tabDefaultValue`
+			set defvalue = %s
+			where defkey = 'Company' and defvalue = %s
+		""", (newdn, olddn))
 
 		clear_defaults_cache()
 
@@ -333,16 +396,21 @@ class Company(NestedSet):
 		NestedSet.validate_if_child_exists(self)
 		frappe.utils.nestedset.update_nsm(self)
 
-		rec = frappe.db.sql("SELECT name from `tabGL Entry` where company = %s", self.name)
-		if not rec:
-			frappe.db.sql("""delete from `tabBudget Account`
-				where exists(select name from tabBudget
-					where name=`tabBudget Account`.parent and company = %s)""", self.name)
+		has_gle = frappe.db.exists("GL Entry", {"company": self.name})
+		has_sle = frappe.db.exists("Stock Ledger Entry", {"company": self.name})
+
+		if not has_gle:
+			frappe.db.sql("""
+				delete from `tabBudget Account`
+				where exists(
+					select name from tabBudget where name=`tabBudget Account`.parent and company = %s
+				)
+			""", self.name)
 
 			for doctype in ["Account", "Cost Center", "Budget", "Party Account"]:
 				frappe.db.sql("delete from `tab{0}` where company = %s".format(doctype), self.name)
 
-		if not frappe.db.get_value("Stock Ledger Entry", {"company": self.name}):
+		if not has_sle:
 			frappe.db.sql("""delete from `tabWarehouse` where company=%s""", self.name)
 
 		frappe.defaults.clear_default("company", value=self.name)
@@ -352,24 +420,31 @@ class Company(NestedSet):
 		# clear default accounts, warehouses from item
 		warehouses = frappe.db.sql_list("select name from tabWarehouse where company=%s", self.name)
 		if warehouses:
-			frappe.db.sql("""delete from `tabItem Reorder` where warehouse in (%s)"""
-				% ', '.join(['%s']*len(warehouses)), tuple(warehouses))
+			frappe.db.sql("""
+				delete from `tabItem Reorder`
+				where warehouse in %s
+			""", [warehouses])
 
 		# reset default company
-		frappe.db.sql("""update `tabSingles` set value=""
-			where doctype='Global Defaults' and field='default_company'
-			and value=%s""", self.name)
+		frappe.db.sql("""
+			update `tabSingles`
+			set value = ''
+			where doctype = 'Global Defaults' and field = 'default_company' and value = %s
+		""", self.name)
 
 		# reset default company
-		frappe.db.sql("""update `tabSingles` set value=""
-			where doctype='Chart of Accounts Importer' and field='company'
-			and value=%s""", self.name)
+		frappe.db.sql("""
+			update `tabSingles`
+			set value = ''
+			where doctype = 'Chart of Accounts Importer' and field = 'company'
+			and value = %s
+		""", self.name)
 
 		# delete BOMs
 		boms = frappe.db.sql_list("select name from tabBOM where company=%s", self.name)
 		if boms:
 			frappe.db.sql("delete from tabBOM where company=%s", self.name)
-			for dt in ("BOM Operation", "BOM Item", "BOM Scrap Item", "BOM Explosion Item"):
+			for dt in ("BOM Operation", "BOM Item", "BOM Scrap Item", "BOM Explosion Item", "BOM Additional Cost"):
 				frappe.db.sql("delete from `tab%s` where parent in (%s)"""
 					% (dt, ', '.join(['%s']*len(boms))), tuple(boms))
 
@@ -383,11 +458,12 @@ class Company(NestedSet):
 
 @frappe.whitelist()
 def enqueue_replace_abbr(company, old, new):
+	frappe.only_for("System Manager")
+
 	kwargs = dict(company=company, old=old, new=new, queue="long")
 	frappe.enqueue('erpnext.setup.doctype.company.company.replace_abbr', **kwargs)
 
 
-@frappe.whitelist()
 def replace_abbr(company, old, new):
 	new = new.strip()
 	if not new:
@@ -408,8 +484,14 @@ def replace_abbr(company, old, new):
 		for d in doc:
 			_rename_record(d)
 
-	for dt in ["Warehouse", "Account", "Cost Center", "Department",
-			"Sales Taxes and Charges Template", "Purchase Taxes and Charges Template"]:
+	for dt in [
+		"Warehouse",
+		"Account",
+		"Cost Center",
+		"Department",
+		"Sales Taxes and Charges Template",
+		"Purchase Taxes and Charges Template",
+	]:
 		_rename_records(dt)
 
 
@@ -462,6 +544,7 @@ def update_company_current_month_sales(company):
 
 	frappe.db.set_value("Company", company, "total_monthly_sales", monthly_total)
 
+
 def update_company_monthly_sales(company):
 	'''Cache past year monthly sales of every company based on sales invoices'''
 	from frappe.utils.goal import get_monthly_results
@@ -472,6 +555,7 @@ def update_company_monthly_sales(company):
 
 	frappe.db.set_value("Company", company, "sales_monthly_history", json.dumps(month_to_value_dict))
 
+
 def update_transactions_annual_history(company, commit=False):
 	transactions_history = get_all_transactions_annual_history(company)
 	frappe.db.set_value("Company", company, "transactions_annual_history", json.dumps(transactions_history))
@@ -479,12 +563,14 @@ def update_transactions_annual_history(company, commit=False):
 	if commit:
 		frappe.db.commit()
 
+
 def cache_companies_monthly_sales_history():
 	companies = [d['name'] for d in frappe.get_list("Company")]
 	for company in companies:
 		update_company_monthly_sales(company)
 		update_transactions_annual_history(company)
 	frappe.db.commit()
+
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, company=None, is_root=False):
@@ -504,6 +590,7 @@ def get_children(doctype, parent=None, company=None, is_root=False):
 			parent=frappe.db.escape(parent)
 		), as_dict=1)
 
+
 @frappe.whitelist()
 def add_node():
 	from frappe.desk.treeview import make_tree_args
@@ -514,6 +601,7 @@ def add_node():
 		args.parent_company = None
 
 	frappe.get_doc(args).insert()
+
 
 def get_all_transactions_annual_history(company):
 	out = {}
@@ -565,6 +653,7 @@ def get_all_transactions_annual_history(company):
 		out.update({ timestamp: d["count"] })
 
 	return out
+
 
 def get_timeline_data(doctype, name):
 	'''returns timeline data based on linked records in dashboard'''

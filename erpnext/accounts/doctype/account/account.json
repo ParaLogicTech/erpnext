@@ -217,11 +217,12 @@
    "label": "Exclude From Item Tax Amount"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-money",
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2023-09-08 14:30:24.060208",
+ "modified": "2026-10-31 19:41:08.585966",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Account",
@@ -267,10 +268,12 @@
    "role": "Sales User (Read Only)"
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "account_number",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
- "sort_order": "ASC",
+ "sort_field": "idx",
+ "sort_order": "DESC",
  "states": [],
  "track_changes": 1
 }

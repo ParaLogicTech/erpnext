@@ -278,7 +278,7 @@ class TallyMigration(Document):
 	def _import_master_data(self):
 		def create_company_and_coa(coa_file_url):
 			coa_file = frappe.get_doc("File", {"file_url": coa_file_url})
-			frappe.local.flags.ignore_chart_of_accounts = True
+			frappe.flags.ignore_chart_of_accounts = True
 
 			try:
 				company = frappe.get_doc({
@@ -291,7 +291,7 @@ class TallyMigration(Document):
 				company = frappe.get_doc("Company", self.erpnext_company)
 				unset_existing_data(self.erpnext_company)
 
-			frappe.local.flags.ignore_chart_of_accounts = False
+			frappe.flags.ignore_chart_of_accounts = False
 			create_charts(company.name, custom_chart=json.loads(coa_file.get_content()))
 			company.create_default_warehouses()
 
