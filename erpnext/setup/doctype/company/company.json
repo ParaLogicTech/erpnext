@@ -48,7 +48,7 @@
   "registration_details",
   "delete_transactions_section",
   "delete_company_transactions",
-  "sales_settings",
+  "sales_settings_tab",
   "default_selling_terms",
   "payment_terms",
   "column_break_goals",
@@ -58,9 +58,9 @@
   "total_monthly_sales",
   "sales_monthly_history",
   "transactions_annual_history",
-  "buying_settings_section",
+  "buying_settings_tab",
   "default_buying_terms",
-  "hr_settings_section",
+  "hr_settings_tab",
   "default_holiday_list",
   "column_break_24",
   "default_leave_policy",
@@ -70,62 +70,64 @@
   "column_break_9tuu",
   "standard_break_hours",
   "non_std_break_hours",
-  "accounts_settings",
+  "accounts_settings_tab",
   "tax_settings_section",
   "tax_id",
   "tax_strn",
-  "provincial_strn",
   "column_break_67",
+  "provincial_strn",
   "tax_status",
+  "default_income_expense_section",
+  "default_income_account",
+  "default_expense_account",
+  "cost_center",
+  "column_break_qulm",
+  "write_off_account",
+  "round_off_account",
+  "round_off_cost_center",
+  "column_break_61",
+  "exchange_gain_loss_account",
+  "unrealized_exchange_gain_loss_account",
+  "default_goodwill_account",
+  "column_break_64",
+  "discount_allowed_account",
+  "discount_received_account",
+  "use_discount_allowed_account_in_sales_invoice",
+  "default_tax_accounts_section",
   "sales_tax_account",
   "sales_tax_on_purchase_account",
-  "column_break_61",
+  "column_break_duhg",
   "service_tax_account",
   "further_tax_account",
   "extra_tax_account",
-  "column_break_64",
+  "column_break_pwcd",
   "selling_apply_taxes_on_retail",
   "buying_apply_taxes_on_retail",
   "advance_tax_section",
   "advance_tax_accounts",
-  "default_accounts_section",
-  "default_income_account",
-  "default_expense_account",
-  "cost_center",
-  "column_break_43",
+  "default_ar_ap_section",
   "default_receivable_account",
   "default_payable_account",
   "column_break_krra",
+  "default_employee_advance_account",
+  "default_expense_claim_payable_account",
+  "column_break_37",
+  "default_payroll_payable_account",
+  "default_letter_of_credit_account",
+  "column_break_43",
   "default_bank_account",
   "default_cash_account",
   "section_break_xy8g",
-  "write_off_account",
-  "round_off_account",
-  "round_off_cost_center",
-  "column_break_37",
-  "exchange_gain_loss_account",
-  "unrealized_exchange_gain_loss_account",
-  "column_break0",
-  "discount_allowed_account",
-  "discount_received_account",
-  "default_goodwill_account",
-  "use_discount_allowed_account_in_sales_invoice",
-  "section_break_w2s5",
-  "default_employee_advance_account",
-  "default_expense_claim_payable_account",
-  "column_break_qulm",
-  "default_payroll_payable_account",
-  "default_letter_of_credit_account",
-  "column_break_duhg",
   "default_deferred_revenue_account",
   "default_deferred_expense_account",
-  "section_break_dkfu",
-  "temporary_opening_account",
-  "default_finance_book",
-  "column_break_li2o",
+  "column_break0",
   "service_warranty_provision_account",
   "service_warranty_expense_account",
-  "auto_accounting_for_stock_settings",
+  "section_break_dkfu",
+  "temporary_opening_account",
+  "column_break_li2o",
+  "default_finance_book",
+  "stock_settings_tab",
   "default_inventory_account",
   "stock_adjustment_account",
   "enable_perpetual_inventory",
@@ -137,7 +139,7 @@
   "material_transfer_transit_warehouse",
   "column_break_c2jq",
   "default_warehouse_for_sales_return",
-  "fixed_asset_depreciation_settings",
+  "fixed_asset_settings_tab",
   "accumulated_depreciation_account",
   "depreciation_expense_account",
   "series_for_depreciation_entry",
@@ -148,7 +150,7 @@
   "column_break_89",
   "capital_work_in_progress_account",
   "asset_received_but_not_billed",
-  "budget_detail",
+  "budgeting_tab",
   "exception_budget_approver_role",
   "lft",
   "rgt",
@@ -219,11 +221,6 @@
    "fieldname": "company_description",
    "fieldtype": "Text Editor",
    "label": "Company Description"
-  },
-  {
-   "fieldname": "sales_settings",
-   "fieldtype": "Tab Break",
-   "label": "Sales Settings"
   },
   {
    "fieldname": "sales_monthly_history",
@@ -338,7 +335,6 @@
    "label": "Date of Establishment"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_bank_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -349,7 +345,6 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_cash_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -358,7 +353,6 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_receivable_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -430,7 +424,6 @@
    "label": "Allow Account Creation Against Child Company"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_payable_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -449,16 +442,14 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_expense_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "label": "Default Cost of Goods Sold Account",
+   "label": "Default Cost of Sales Account",
    "no_copy": 1,
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_income_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -467,7 +458,6 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_deferred_revenue_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -476,7 +466,6 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_deferred_expense_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -485,7 +474,6 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_payroll_payable_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -494,7 +482,6 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_expense_claim_payable_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -503,7 +490,6 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -512,7 +498,6 @@
    "options": "Cost Center"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "credit_limit",
    "fieldtype": "Currency",
    "label": "Credit Limit",
@@ -525,12 +510,6 @@
    "fieldtype": "Link",
    "label": "Default Payment Terms Template",
    "options": "Payment Terms Template"
-  },
-  {
-   "depends_on": "eval:!doc.__islocal",
-   "fieldname": "auto_accounting_for_stock_settings",
-   "fieldtype": "Tab Break",
-   "label": "Stock Settings"
   },
   {
    "default": "1",
@@ -561,7 +540,7 @@
    "fieldname": "stock_received_but_not_billed",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "label": "Stock Received But Not Billed",
+   "label": "Stock Received But Not Billed Account",
    "no_copy": 1,
    "options": "Account"
   },
@@ -569,15 +548,9 @@
    "fieldname": "expenses_included_in_valuation",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "label": "Expenses Included In Valuation",
+   "label": "Expenses Included In Valuation Account",
    "no_copy": 1,
    "options": "Account"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "fixed_asset_depreciation_settings",
-   "fieldtype": "Tab Break",
-   "label": "Fixed Asset Settings"
   },
   {
    "fieldname": "accumulated_depreciation_account",
@@ -639,12 +612,6 @@
    "ignore_user_permissions": 1,
    "label": "Asset Received But Not Billed",
    "options": "Account"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "budget_detail",
-   "fieldtype": "Tab Break",
-   "label": "Budgeting"
   },
   {
    "fieldname": "exception_budget_approver_role",
@@ -778,7 +745,8 @@
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
    "label": "Extra Tax Account",
-   "options": "Account"
+   "options": "Account",
+   "read_only": 1
   },
   {
    "fieldname": "further_tax_account",
@@ -798,7 +766,7 @@
    "fieldname": "service_tax_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "label": "Service Tax Account",
+   "label": "Sales Tax on Services Account",
    "options": "Account"
   },
   {
@@ -812,7 +780,6 @@
    "label": "Provincial STRN"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "temporary_opening_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -820,7 +787,6 @@
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "default_letter_of_credit_account",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -840,7 +806,7 @@
   {
    "fieldname": "tax_settings_section",
    "fieldtype": "Section Break",
-   "label": "Tax Settings"
+   "label": "Tax IDs"
   },
   {
    "fieldname": "column_break_61",
@@ -857,16 +823,6 @@
   {
    "fieldname": "column_break_27",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "buying_settings_section",
-   "fieldtype": "Tab Break",
-   "label": "Buying Settings"
-  },
-  {
-   "fieldname": "hr_settings_section",
-   "fieldtype": "Tab Break",
-   "label": "HR Settings"
   },
   {
    "fieldname": "column_break_37",
@@ -927,17 +883,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "accounts_settings",
-   "fieldtype": "Tab Break",
-   "label": "Accounts Settings",
-   "oldfieldtype": "Section Break"
-  },
-  {
-   "fieldname": "default_accounts_section",
-   "fieldtype": "Section Break",
-   "label": "Default Accounts"
-  },
-  {
    "collapsible": 1,
    "fieldname": "delete_transactions_section",
    "fieldtype": "Section Break",
@@ -954,7 +899,7 @@
   {
    "fieldname": "advance_tax_section",
    "fieldtype": "Section Break",
-   "label": "Advance Tax"
+   "label": "Advance Tax Accounts"
   },
   {
    "fieldname": "advance_tax_accounts",
@@ -989,11 +934,8 @@
   },
   {
    "fieldname": "section_break_xy8g",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "section_break_w2s5",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Deferred Revenue / Expense Accounts"
   },
   {
    "fieldname": "column_break_qulm",
@@ -1005,23 +947,24 @@
   },
   {
    "fieldname": "section_break_dkfu",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "More Accounts"
   },
   {
    "fieldname": "column_break_li2o",
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "service_warranty_provision_account",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Service Warranty Provision Account",
    "options": "Account"
   },
   {
-   "depends_on": "eval:!doc.__islocal",
    "fieldname": "service_warranty_expense_account",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Service Warranty Expense Account",
    "options": "Account"
   },
@@ -1035,7 +978,7 @@
    "fieldname": "stock_delivered_but_not_billed",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
-   "label": "Stock Delivered But Not Billed",
+   "label": "Stock Delivered But Not Billed Account",
    "no_copy": 1,
    "options": "Account"
   },
@@ -1048,6 +991,7 @@
   {
    "fieldname": "default_goodwill_account",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Default Goodwill Account",
    "options": "Account"
   },
@@ -1071,6 +1015,70 @@
    "fieldname": "standard_working_hours_section",
    "fieldtype": "Section Break",
    "label": "Standard Working Hours"
+  },
+  {
+   "fieldname": "default_income_expense_section",
+   "fieldtype": "Section Break",
+   "label": "Default Income / Expense Accounts"
+  },
+  {
+   "fieldname": "default_tax_accounts_section",
+   "fieldtype": "Section Break",
+   "label": "Default Tax Accounts"
+  },
+  {
+   "fieldname": "column_break_pwcd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_ar_ap_section",
+   "fieldtype": "Section Break",
+   "label": "Default Receivable / Payable Accounts"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "sales_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Sales Settings"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "buying_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Buying Settings"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "hr_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "HR Settings"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "accounts_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Accounts Settings",
+   "oldfieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "stock_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Stock Settings"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "fixed_asset_settings_tab",
+   "fieldtype": "Tab Break",
+   "label": "Fixed Asset Settings"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "eval:!doc.__islocal",
+   "fieldname": "budgeting_tab",
+   "fieldtype": "Tab Break",
+   "label": "Budgeting"
   }
  ],
  "icon": "fa fa-building",
@@ -1078,7 +1086,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2026-09-12 18:00:26.478601",
+ "modified": "2026-10-31 20:02:44.344916",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
@@ -1155,8 +1163,8 @@
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
  "show_name_in_global_search": 1,
- "sort_field": "modified",
- "sort_order": "ASC",
+ "sort_field": "idx",
+ "sort_order": "DESC",
  "states": [],
  "track_changes": 1
 }

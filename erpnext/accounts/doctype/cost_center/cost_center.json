@@ -128,11 +128,12 @@
    "label": "Tax Description"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-money",
  "idx": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2024-01-02 23:54:01.662627",
+ "modified": "2026-10-31 19:42:29.837941",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Cost Center",
@@ -179,9 +180,11 @@
    "role": "Sales User (Read Only)"
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "parent_cost_center",
  "show_name_in_global_search": 1,
- "sort_field": "modified",
- "sort_order": "ASC",
+ "sort_field": "idx",
+ "sort_order": "DESC",
  "states": []
 }

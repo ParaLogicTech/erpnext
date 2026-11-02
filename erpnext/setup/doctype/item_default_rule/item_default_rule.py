@@ -35,8 +35,18 @@ def get_filter_fields():
 
 class ItemDefaultRule(Document):
 	def validate(self):
+		self.validate_condition()
 		self.validate_duplicate()
 		self.validate_item_tax()
+
+	def validate_condition(self):
+		if not cstr(self.condition).strip():
+			return
+
+		try:
+			compile(self.condition.strip(), "<condition>", "eval")
+		except SyntaxError as e:
+			frappe.throw(_("Invalid Condition: {0}").format(e))
 
 	def on_change(self):
 		clear_item_default_rule_cache()
@@ -56,7 +66,8 @@ class ItemDefaultRule(Document):
 			else:
 				filters[f] = ['is', 'not set']
 
-		existing = frappe.get_all("Item Default Rule", filters=filters)
+		existing = frappe.get_all("Item Default Rule", filters=filters, fields=["name", "condition"])
+		existing = [d for d in existing if cstr(d.condition).strip() == cstr(self.condition).strip()]
 		if existing:
 			frappe.throw(_("{0} already exists with the same filters")
 				.format(frappe.get_desk_link("Item Default Rule", existing[0].name)))
@@ -148,24 +159,73 @@ class ItemDefaultRule(Document):
 
 def get_item_default_values(item, transaction=None, cache=True):
 	filters = get_filters_dict(item, transaction)
-	return get_default_values_for_filters(filters, cache=cache)
+	return get_default_values_for_filters(filters, item=item, transaction=transaction, cache=cache)
 
 
-def get_default_values_for_filters(filters, cache=True):
-	def generator():
-		applicable_rules = get_applicable_rules_for_filters(filters)
+def get_default_values_for_filters(filters, item=None, transaction=None, cache=True):
+	def rules_generator():
+		return get_applicable_rules_for_filters(filters)
+
+	def values_generator():
 		return get_default_values_dict(applicable_rules)
 
+	cache_key = get_filters_cache_key(filters) if cache else None
+
 	if cache:
-		key_json = frappe.as_json(filters, indent=None, separators=(",", ":"))
-		return frappe.local_cache("get_item_default_rule_values_for_filters", key_json, generator)
+		applicable_rules = frappe.local_cache("get_item_default_rules_for_filters", cache_key, rules_generator)
 	else:
-		return generator()
+		applicable_rules = rules_generator()
+
+	# conditions depend on the transaction, so values cannot be cached by filters alone
+	if any(cstr(rule.get("condition")).strip() for rule in applicable_rules):
+		applicable_rules = [
+			rule for rule in applicable_rules
+			if evaluate_item_default_rule_condition(rule, item=item, transaction=transaction)
+		]
+		return values_generator()
+	elif cache:
+		return frappe.local_cache("get_item_default_rule_values_for_filters", cache_key, values_generator)
+	else:
+		return values_generator()
+
+
+def get_filters_cache_key(filters):
+	return frappe.as_json(filters, indent=None, separators=(",", ":"))
+
+
+def evaluate_item_default_rule_condition(rule, item=None, transaction=None):
+	from frappe.utils.safe_exec import get_safe_globals
+
+	if not cstr(rule.get("condition")).strip():
+		return True
+
+	if isinstance(item, str):
+		item = frappe.get_cached_doc("Item", item)
+
+	doc = transaction if isinstance(transaction, Document) else None
+	args = transaction.as_dict() if doc else frappe._dict(transaction or {})
+
+	eval_globals = get_safe_globals()
+	context = frappe._dict({
+		"item_code": item.get("name") if item else args.get("item_code"),
+		"item": frappe._dict(item or {}),
+		"args": args,
+		"doc": frappe._dict(doc or {}),
+		"rule": rule,
+		"user": frappe.session.user,
+	})
+
+	try:
+		return bool(frappe.safe_eval(rule.get("condition"), eval_globals, context))
+	except Exception:
+		return False
 
 
 def get_default_values_dict(applicable_rules, filter_sort=None):
 	def sorting_function(d):
 		no_of_matches = len(d.required_filters)
+		if cstr(d.get("condition")).strip():
+			no_of_matches += 1
 
 		filter_precedences = []
 		for k in d.required_filters:
@@ -195,7 +255,7 @@ def get_default_values_dict(applicable_rules, filter_sort=None):
 	values = frappe._dict()
 	for rule in applicable_rules:
 		for fieldname, value in rule.items():
-			if fieldname == "item_default_rule_name":
+			if fieldname in ("item_default_rule_name", "condition"):
 				continue
 			if fieldname in get_filter_fields():
 				continue
@@ -225,7 +285,11 @@ def get_default_values_dict(applicable_rules, filter_sort=None):
 
 def get_applicable_rules(item, transaction=None):
 	filters = get_filters_dict(item, transaction)
-	return get_applicable_rules_for_filters(filters)
+	applicable_rules = get_applicable_rules_for_filters(filters)
+	return [
+		rule for rule in applicable_rules
+		if evaluate_item_default_rule_condition(rule, item=item, transaction=transaction)
+	]
 
 
 def get_filters_dict(item, transaction=None):
