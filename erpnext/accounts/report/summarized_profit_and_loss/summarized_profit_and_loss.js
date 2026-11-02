@@ -29,7 +29,7 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 		},
 		{
 			fieldname: "dimension_field",
-			label: __("Group by Dimension"),
+			label: __("Dimension Column"),
 			fieldtype: "Select",
 			options: [
 				{label: __("Cost Center"), value: "cost_center"},
@@ -38,7 +38,7 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 		},
 		{
 			fieldname: "dimension_fields",
-			label: __("Group by Dimensions"),
+			label: __("Dimension Rows"),
 			fieldtype: "MultiSelectList",
 			options: [
 				{label: __("Cost Center"), value: "cost_center"},
