@@ -251,6 +251,18 @@ $.extend(erpnext.utils, {
 		});
 	},
 
+	add_additional_selling_filters: function(report_name) {
+		let filters = frappe.query_reports[report_name].filters;
+
+		(frappe.boot.additional_selling_filters || []).forEach((additional_filter) => {
+			let found = filters.some(el => el.fieldname === additional_filter['fieldname']);
+
+			if (!found) {
+				filters.push(additional_filter);
+			}
+		});
+	},
+
 	add_additional_sle_filters: function(report_name) {
 		let filters = frappe.query_reports[report_name].filters;
 
