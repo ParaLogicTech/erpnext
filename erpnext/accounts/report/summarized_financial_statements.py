@@ -9,6 +9,11 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_dimension_with_children, get_all_dimension_fields,
 )
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+from erpnext.accounts.report.trial_balance.trial_balance import (
+	get_dimension_key as get_dimension_combination_key,
+	get_dimension_dict_from_key,
+	dimension_sorter,
+)
 
 
 class SummarizedFinancialReport:
@@ -16,6 +21,7 @@ class SummarizedFinancialReport:
 		self._get_account_group_balance = {}
 		self._get_asset_additions_and_disposals = {}
 		self._asset_disposal_jvs = None
+		self.account_dimension_totals = {}
 
 		self.filters = frappe._dict(filters or {})
 
@@ -47,6 +53,13 @@ class SummarizedFinancialReport:
 
 		if self.filters.dimension_field and self.filters.dimension_field not in get_all_dimension_fields():
 			frappe.throw(_("Invalid Dimension Field {0}").format(self.filters.dimension_field))
+
+		self.filters.dimension_fields = frappe.parse_json(self.filters.dimension_fields) or []
+		if isinstance(self.filters.dimension_fields, str):
+			self.filters.dimension_fields = [self.filters.dimension_fields]
+		for f in self.filters.dimension_fields:
+			if f not in get_all_dimension_fields():
+				frappe.throw(_("Invalid Dimension Field {0}").format(f))
 
 	def get_data(self):
 		self.current_account_group = self.filters.get('account_group')
@@ -130,11 +143,19 @@ class SummarizedFinancialReport:
 					continue
 
 				totals = self.account_totals.get(row.account) or {}
-				data.append(self.get_row(
+				account_row = self.get_row(
 					row,
 					totals=totals,
 					group_root_type=group_root_type,
-				))
+				)
+				data.append(account_row)
+				data += self.get_dimension_rows(
+					row,
+					self.account_dimension_totals.get(row.account),
+					group_root_type=group_root_type,
+					indent=1,
+					root_value_multiplier=self.get_multiplier(account_row),
+				)
 
 				for f in self.value_fieldnames:
 					running_grand_totals[f] += flt(totals.get(f))
@@ -151,6 +172,13 @@ class SummarizedFinancialReport:
 					group_root_type=group_root_type,
 				)
 				data.append(parent_row)
+				data += self.get_dimension_rows(
+					row,
+					self.get_account_group_dimension_totals(row.account_group),
+					group_root_type=group_root_type,
+					indent=1,
+					root_value_multiplier=self.get_multiplier(parent_row),
+				)
 
 				if self.filters.tree_view:
 					data += self.get_child_rows(row, root_value_multiplier=self.get_multiplier(parent_row))
@@ -521,6 +549,13 @@ class SummarizedFinancialReport:
 					indent=indent,
 					root_value_multiplier=root_value_multiplier,
 				))
+				rows += self.get_dimension_rows(
+					row,
+					self.account_dimension_totals.get(row.account),
+					group_root_type=group_root_type,
+					indent=indent + 1,
+					root_value_multiplier=root_value_multiplier,
+				)
 			elif row.row_type == "Account Group":
 				totals = self.child_group_totals.get(row.account_group) or {}
 				rows.append(self.get_row(
@@ -530,8 +565,63 @@ class SummarizedFinancialReport:
 					indent=indent,
 					root_value_multiplier=root_value_multiplier,
 				))
+				rows += self.get_dimension_rows(
+					row,
+					self.get_account_group_dimension_totals(row.account_group),
+					group_root_type=group_root_type,
+					indent=indent + 1,
+					root_value_multiplier=root_value_multiplier,
+				)
 
 				rows += self.get_child_rows(row, root_value_multiplier=root_value_multiplier, indent=indent + 1)
+
+		return rows
+
+	def get_account_group_dimension_totals(self, account_group):
+		if not self.filters.dimension_fields or not account_group:
+			return {}
+
+		group_dimension_totals = {}
+		for account in self.group_account_map.get(account_group, []):
+			for dimension_key, totals in (self.account_dimension_totals.get(account) or {}).items():
+				group_totals = group_dimension_totals.setdefault(dimension_key, frappe._dict())
+				for f, value in totals.items():
+					group_totals[f] = flt(group_totals.get(f)) + flt(value)
+
+		return group_dimension_totals
+
+	def get_dimension_rows(self, d, dimension_totals, group_root_type=None, indent=1, root_value_multiplier=None):
+		dimension_fields = self.filters.dimension_fields
+		if not dimension_fields or not dimension_totals:
+			return []
+
+		rows = []
+		dimension_dicts = [get_dimension_dict_from_key(k, dimension_fields) for k in dimension_totals]
+		for dimension_dict in sorted(dimension_dicts, key=lambda k: dimension_sorter(k, dimension_fields)):
+			totals = dimension_totals[get_dimension_combination_key(dimension_dict, dimension_fields)]
+			if not any(flt(v) for v in totals.values()):
+				continue
+
+			row = self.get_row(
+				d,
+				totals=totals,
+				group_root_type=group_root_type,
+				indent=indent,
+				root_value_multiplier=root_value_multiplier,
+			)
+
+			# budget is not maintained per dimension combination
+			for f, field_info in self.value_fields.items():
+				if field_info.is_budget_value:
+					row[f] = row[f"{f}_display"] = None
+
+			row.update(dimension_dict)
+			row["is_bold"] = 0
+			row["is_dimension_row"] = 1
+			row["account_display"] = " | ".join(
+				self.get_dimension_label(f, v) for f, v in dimension_dict.items()
+			)
+			rows.append(row)
 
 		return rows
 
@@ -602,8 +692,19 @@ class SummarizedFinancialReport:
 			if not self.account_totals.get(account):
 				self.account_totals[account] = frappe._dict({f: 0 for f in self.value_fieldnames})
 
-	def _get_account_totals_data(self, all_accounts, gl_fields, dr_or_cr, aggregate=True, dimension_field=None):
+	def _get_account_totals_data(self, all_accounts, gl_fields, dr_or_cr, aggregate=True, dimension_field=None,
+			group_by_dimensions=None):
 		def accumulate(gle, group, fieldname):
+			_accumulate(gle, group, fieldname)
+
+			if group_by_dimensions:
+				account_dimension_group = account_dimension_totals.setdefault(gle.account, {})
+				dimension_group = account_dimension_group.setdefault(
+					get_dimension_combination_key(gle, group_by_dimensions), template.copy()
+				)
+				_accumulate(gle, dimension_group, fieldname)
+
+		def _accumulate(gle, group, fieldname):
 			if dr_or_cr == "credit":
 				diff = gle.credit - gle.debit
 			else:
@@ -622,6 +723,7 @@ class SummarizedFinancialReport:
 		template = frappe._dict({f: 0 for f in self.value_fieldnames})
 
 		account_totals = {}
+		account_dimension_totals = {}
 		dimension_values = set()
 
 		if aggregate:
@@ -632,6 +734,7 @@ class SummarizedFinancialReport:
 					to_date=field_info.to_date,
 					aggregate=aggregate,
 					dimension_field=dimension_field,
+					group_by_dimensions=group_by_dimensions,
 				)
 
 				for d in gl_data:
@@ -647,6 +750,7 @@ class SummarizedFinancialReport:
 				to_date=to_date,
 				aggregate=aggregate,
 				dimension_field=dimension_field,
+				group_by_dimensions=group_by_dimensions,
 			)
 
 			for d in gl_data:
@@ -661,6 +765,7 @@ class SummarizedFinancialReport:
 
 		return frappe._dict({
 			"account_totals": account_totals,
+			"account_dimension_totals": account_dimension_totals,
 			"dimension_values": dimension_values,
 		})
 
@@ -673,9 +778,12 @@ class SummarizedFinancialReport:
 		grouped=True,
 		dimension_field=None,
 		dimension_value=None,
+		group_by_dimensions=None,
 	):
 		if not accounts:
 			return []
+
+		extra_dimension_fields = [f for f in (group_by_dimensions or []) if f != dimension_field]
 
 		dimension_conditions, dimension_args = self.get_dimension_conditions()
 
@@ -715,6 +823,10 @@ class SummarizedFinancialReport:
 				if dimension_field:
 					fields.append(dimension_field)
 					group_by += ", " + dimension_field
+
+				for f in extra_dimension_fields:
+					fields.append(f)
+					group_by += ", " + f
 		else:
 			fields += [
 				"account",
@@ -727,6 +839,8 @@ class SummarizedFinancialReport:
 
 			if dimension_field:
 				fields.append(self.filters.dimension_field)
+
+			fields += extra_dimension_fields
 
 			order_by = "ORDER BY posting_date"
 
