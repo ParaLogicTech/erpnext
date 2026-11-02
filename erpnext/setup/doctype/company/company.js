@@ -5,7 +5,6 @@ frappe.provide("erpnext.company");
 
 frappe.ui.form.on("Company", {
 	setup: function(frm) {
-		erpnext.company.setup_queries(frm);
 		frm.set_query("hra_component", function(){
 			return {
 				filters: {"type": "Earning"}
@@ -56,6 +55,8 @@ frappe.ui.form.on("Company", {
 	},
 
 	refresh: function(frm) {
+		erpnext.company.setup_queries(frm);
+
 		if(!frm.doc.__islocal) {
 			frm.doc.abbr && frm.set_df_property("abbr", "read_only", 1);
 			frm.set_df_property("parent_company", "read_only", 1);
@@ -257,7 +258,7 @@ erpnext.company.setup_queries = function(frm) {
 	});
 
 	$.each([
-		["default_material_transfer_transit_warehouse", {}],
+		["material_transfer_transit_warehouse", {}],
 		["default_warehouse_for_sales_return", {}],
 	], (i, v) => {
 		erpnext.company.set_custom_query(frm, v);
@@ -265,14 +266,10 @@ erpnext.company.setup_queries = function(frm) {
 
 	if (frm.doc.enable_perpetual_inventory) {
 		$.each([
-			["stock_adjustment_account",
-				{"root_type": "Expense", "account_type": "Stock Adjustment"}],
-			["expenses_included_in_valuation",
-				{"root_type": "Expense", "account_type": "Expenses Included in Valuation"}],
-			["stock_received_but_not_billed",
-				{"root_type": "Liability", "account_type": "Stock Received But Not Billed"}],
-			["stock_delivered_but_not_billed",
-				{"root_type": "Asset"}],
+			["stock_adjustment_account", {"report_type": "Profit and Loss", "account_type": "Stock Adjustment"}],
+			["expenses_included_in_valuation", {"report_type": "Profit and Loss", "account_type": "Expenses Included in Valuation"}],
+			["stock_received_but_not_billed", {"report_type": "Balance Sheet", "account_type": "Stock Received But Not Billed"}],
+			["stock_delivered_but_not_billed", {"report_type": "Balance Sheet"}],
 		], function(i, v) {
 			erpnext.company.set_custom_query(frm, v);
 		});
@@ -292,16 +289,15 @@ erpnext.company.setup_queries = function(frm) {
 }
 
 erpnext.company.set_custom_query = function(frm, v) {
-	var filters = {
-		"company": frm.doc.name,
-		"is_group": 0
-	};
-
-	for (var key in v[1]) {
-		filters[key] = v[1][key];
-	}
-
 	frm.set_query(v[0], function() {
+		var filters = {
+			"company": frm.doc.name,
+			"is_group": 0
+		};
+
+		for (var key in v[1]) {
+			filters[key] = v[1][key];
+		}
 		return {
 			filters: filters
 		}
@@ -313,4 +309,3 @@ var disbale_coa_fields = function(frm, bool=true) {
 	frm.set_df_property("chart_of_accounts", "read_only", bool);
 	frm.set_df_property("existing_company", "read_only", bool);
 }
-
