@@ -159,20 +159,20 @@ class ItemDefaultRule(Document):
 
 def get_item_default_values(item, transaction=None, cache=True):
 	filters = get_filters_dict(item, transaction)
-	return get_default_values_for_filters(filters, cache=cache, item=item, transaction=transaction)
+	return get_default_values_for_filters(filters, item=item, transaction=transaction, cache=cache)
 
 
-def get_default_values_for_filters(filters, cache=True, item=None, transaction=None):
+def get_default_values_for_filters(filters, item=None, transaction=None, cache=True):
 	def rules_generator():
 		return get_applicable_rules_for_filters(filters)
 
 	def values_generator():
 		return get_default_values_dict(applicable_rules)
 
-	key_json = frappe.as_json(filters, indent=None, separators=(",", ":")) if cache else None
+	cache_key = get_filters_cache_key(filters) if cache else None
 
 	if cache:
-		applicable_rules = frappe.local_cache("get_item_default_rules_for_filters", key_json, rules_generator)
+		applicable_rules = frappe.local_cache("get_item_default_rules_for_filters", cache_key, rules_generator)
 	else:
 		applicable_rules = rules_generator()
 
@@ -183,11 +183,14 @@ def get_default_values_for_filters(filters, cache=True, item=None, transaction=N
 			if evaluate_item_default_rule_condition(rule, item=item, transaction=transaction)
 		]
 		return values_generator()
-
-	if cache:
-		return frappe.local_cache("get_item_default_rule_values_for_filters", key_json, values_generator)
+	elif cache:
+		return frappe.local_cache("get_item_default_rule_values_for_filters", cache_key, values_generator)
 	else:
 		return values_generator()
+
+
+def get_filters_cache_key(filters):
+	return frappe.as_json(filters, indent=None, separators=(",", ":"))
 
 
 def evaluate_item_default_rule_condition(rule, item=None, transaction=None):
@@ -205,9 +208,9 @@ def evaluate_item_default_rule_condition(rule, item=None, transaction=None):
 	eval_globals = get_safe_globals()
 	context = frappe._dict({
 		"item_code": item.get("name") if item else args.get("item_code"),
-		"item": item or frappe._dict(),
+		"item": frappe._dict(item or {}),
 		"args": args,
-		"doc": doc or frappe._dict(),
+		"doc": frappe._dict(doc or {}),
 		"rule": rule,
 		"user": frappe.session.user,
 	})
@@ -221,6 +224,8 @@ def evaluate_item_default_rule_condition(rule, item=None, transaction=None):
 def get_default_values_dict(applicable_rules, filter_sort=None):
 	def sorting_function(d):
 		no_of_matches = len(d.required_filters)
+		if cstr(d.get("condition")).strip():
+			no_of_matches += 1
 
 		filter_precedences = []
 		for k in d.required_filters:
@@ -296,8 +301,7 @@ def get_filters_dict(item, transaction=None):
 	if isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
 	if isinstance(transaction, Document):
-		# only header fields are needed, skip converting child tables
-		transaction = frappe._dict(transaction.get_valid_dict())
+		transaction = transaction.as_dict()
 
 	filters = frappe._dict()
 
