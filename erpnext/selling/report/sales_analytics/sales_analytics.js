@@ -233,13 +233,11 @@ frappe.query_reports["Sales Analytics"] = {
 
 erpnext.utils.add_additional_selling_filters('Sales Analytics');
 
-if (!frappe.query_reports["Sales Analytics"].filters.some(f => f.fieldname === "has_project")) {
-	frappe.query_reports["Sales Analytics"].filters.push({
-		fieldname: "has_project",
-		label: __("Project") + " " + __("Entries Only"),
-		fieldtype: "Check",
-	});
-}
+frappe.query_reports["Sales Analytics"].filters.push({
+	fieldname: "has_project",
+	label: __("Project") + " " + __("Entries Only"),
+	fieldtype: "Check",
+});
 
 
 
