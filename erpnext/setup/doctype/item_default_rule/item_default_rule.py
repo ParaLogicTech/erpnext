@@ -208,9 +208,9 @@ def evaluate_item_default_rule_condition(rule, item=None, transaction=None):
 	eval_globals = get_safe_globals()
 	context = frappe._dict({
 		"item_code": item.get("name") if item else args.get("item_code"),
-		"item": frappe._dict(item or {}),
+		"item": item.as_dict() if isinstance(item, Document) else frappe._dict(item or {}),
 		"args": args,
-		"doc": frappe._dict(doc or {}),
+		"doc": doc.as_dict() if doc else frappe._dict(),
 		"rule": rule,
 		"user": frappe.session.user,
 	})
