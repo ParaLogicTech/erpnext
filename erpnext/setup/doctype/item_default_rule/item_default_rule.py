@@ -201,16 +201,18 @@ def evaluate_item_default_rule_condition(rule, item=None, transaction=None):
 
 	if isinstance(item, str):
 		item = frappe.get_cached_doc("Item", item)
+	elif isinstance(item, Document):
+		item = frappe.copy_doc(item)
 
-	doc = transaction if isinstance(transaction, Document) else None
+	doc = frappe.copy_doc(transaction) if isinstance(transaction, Document) else None
 	args = transaction.as_dict() if doc else frappe._dict(transaction or {})
 
 	eval_globals = get_safe_globals()
 	context = frappe._dict({
 		"item_code": item.get("name") if item else args.get("item_code"),
-		"item": frappe._dict(item or {}),
-		"args": args,
-		"doc": frappe._dict(doc or {}),
+		"item": item or frappe._dict(),
+		"args": args or frappe._dict(),
+		"doc": doc or frappe._dict(),
 		"rule": rule,
 		"user": frappe.session.user,
 	})
