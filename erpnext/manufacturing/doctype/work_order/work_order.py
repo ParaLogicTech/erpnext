@@ -1635,13 +1635,18 @@ def make_stock_entry(
 	if not args:
 		args = {}
 
-	work_order = frappe.get_doc("Work Order", work_order_id)
+	settings = frappe.get_cached_doc("Manufacturing Settings", None)
+	for_submit = (
+		auto_submit
+		or (purpose == "Material Transfer for Manufacture" and settings.auto_submit_material_transfer_entry)
+		or purpose == "Manufacture" and settings.auto_submit_manufacture_entry
+	)
+
+	work_order = frappe.get_doc("Work Order", work_order_id, for_update=for_submit)
 	if not work_order.skip_transfer and not frappe.db.get_value("Warehouse", work_order.wip_warehouse, "is_group", cache=1):
 		wip_warehouse = work_order.wip_warehouse
 	else:
 		wip_warehouse = None
-
-	settings = frappe.get_cached_doc("Manufacturing Settings", None)
 
 	stock_entry = frappe.new_doc("Stock Entry")
 
@@ -1704,23 +1709,16 @@ def make_stock_entry(
 		), indicator="green")
 		return ste_copy
 
-	try:
-		if purpose == "Material Transfer for Manufacture":
-			if auto_submit or settings.auto_submit_material_transfer_entry:
-				stock_entry = submit_stock_entry(stock_entry)
-		elif purpose == "Manufacture":
-			if auto_submit or settings.auto_submit_manufacture_entry:
-				stock_entry = submit_stock_entry(stock_entry)
-		else:
-			if auto_submit:
-				stock_entry = submit_stock_entry(stock_entry)
-	except StockOverProductionError:
-		raise
-	except frappe.ValidationError:
-		if auto_submit:
+	if for_submit:
+		try:
+			stock_entry = submit_stock_entry(stock_entry)
+		except StockOverProductionError:
 			raise
-		else:
-			frappe.db.rollback()
+		except frappe.ValidationError:
+			if auto_submit:
+				raise
+			else:
+				frappe.db.rollback()
 
 	return stock_entry.as_dict()
 
@@ -1732,7 +1730,7 @@ def stop_unstop(work_order, status):
 	if not frappe.has_permission("Work Order", "write"):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
-	pro_order = frappe.get_doc("Work Order", work_order)
+	pro_order = frappe.get_doc("Work Order", work_order, for_update=True)
 	pro_order.run_method("update_status", status)
 	pro_order.notify_update()
 
@@ -1776,7 +1774,9 @@ def make_job_card(
 	process_loss_qty=0,
 	auto_submit=False
 ):
-	pro_doc = frappe.get_doc("Work Order", work_order)
+	for_submit = auto_submit or frappe.db.get_single_value('Manufacturing Settings', 'auto_submit_job_card')
+
+	pro_doc = frappe.get_doc("Work Order", work_order, for_update=for_submit)
 	qty = flt(qty)
 	process_loss_qty = flt(process_loss_qty)
 
@@ -1789,7 +1789,7 @@ def make_job_card(
 	job_card_doc = _make_job_card(pro_doc, operation_row, qty, process_loss_qty=process_loss_qty)
 	job_card_doc.workstation = workstation
 
-	if auto_submit or frappe.db.get_single_value('Manufacturing Settings', 'auto_submit_job_card'):
+	if for_submit:
 		job_card_doc.submit()
 
 		frappe.msgprint(_("{0} submitted successfully for Operation {1} ({2} {3})").format(
@@ -1892,7 +1892,7 @@ def create_bulk_packing_slips(work_order, carton_type, qty_per_carton, carton_qt
 	if carton_qty <= 0:
 		frappe.throw(_("Carton Qty must be greater than zero"))
 
-	wo_doc = frappe.get_doc("Work Order", work_order)
+	wo_doc = frappe.get_doc("Work Order", work_order, for_update=True)
 	qty_to_pack = qty_per_carton * carton_qty
 	unpacked_qty = wo_doc.completed_qty - wo_doc.packed_qty - wo_doc.rejected_qty - wo_doc.reconciled_qty
 	if flt(qty_to_pack, wo_doc.precision("qty")) > flt(unpacked_qty, wo_doc.precision("qty")):
