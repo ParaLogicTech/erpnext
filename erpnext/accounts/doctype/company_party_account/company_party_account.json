@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-10-31 13:02:14.357870",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "account_currency",
+  "party_account"
+ ],
+ "fields": [
+  {
+   "columns": 3,
+   "fieldname": "account_currency",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "columns": 7,
+   "fieldname": "party_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Party Account",
+   "options": "Account",
+   "reqd": 1
+  }
+ ],
+ "grid_page_length": 500,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-10-31 20:19:25.280018",
+ "modified_by": "Administrator",
+ "module": "Accounts",
+ "name": "Company Party Account",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -594,9 +594,6 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		if (flt(this.frm.doc.conversion_rate) > 0.0) {
 			this.calculate_taxes_and_totals();
 		}
-
-		// Make read only if Accounts Settings doesn't allow stale rates
-		this.frm.set_df_property("conversion_rate", "read_only", erpnext.stale_rate_allowed() ? 0 : 1);
 	}
 
 	company() {

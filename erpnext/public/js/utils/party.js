@@ -59,9 +59,9 @@ erpnext.utils.get_party_account_details = function (frm) {
 		return;
 	}
 
-	var party_type;
-	var party;
-	var account_field;
+	let party_type;
+	let party;
+	let account_field;
 	if (frm.doc.letter_of_credit) {
 		party_type = "Letter of Credit";
 		party = frm.doc.letter_of_credit;
@@ -70,7 +70,7 @@ erpnext.utils.get_party_account_details = function (frm) {
 		party_type = "Supplier";
 		party = frm.doc.supplier;
 		account_field = "credit_to";
-	} else if (frm.doc.customer) {
+	} else if (frm.doc.bill_to || frm.doc.customer) {
 		party_type = "Customer";
 		party = frm.doc.bill_to || frm.doc.customer;
 		account_field = "debit_to";
@@ -78,22 +78,28 @@ erpnext.utils.get_party_account_details = function (frm) {
 		return;
 	}
 
-	frappe.call({
+	return frappe.call({
 		method: "erpnext.accounts.party.get_party_account_details",
 		args: {
 			company: frm.doc.company,
 			party_type: party_type,
 			party: party,
-			transaction_type: frm.doc.transaction_type
+			transaction_type: frm.doc.transaction_type,
+			currency: frm.doc.currency,
 		},
-		callback: function(r) {
-			if(!r.exc && r.message) {
-				frm.set_value(account_field, r.message.account);
-				if (r.message.cost_center) {
+		callback: (r) => {
+			if (r.message) {
+				if (frm.fields_dict[account_field]) {
+					frm.set_value(account_field, r.message.account);
+				}
+				if (frm.fields_dict.party_account_currency) {
+					frm.set_value("party_account_currency", r.message.party_account_currency);
+				}
+				if (frm.fields_dict.cost_center && r.message.cost_center) {
 					frm.set_value("cost_center", r.message.cost_center);
 				}
 			}
-		}
+		},
 	});
 };
 

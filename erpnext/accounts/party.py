@@ -84,7 +84,8 @@ def _get_party_details(
 
 	set_basic_values(party_details, party_doc, billing_party_doc)
 
-	set_currency(party_details, party_doc, company, currency=currency)
+	currency = currency or get_party_default_currency(party_type, party, company)
+	party_details["currency"] = currency
 
 	account, cost_center = set_party_account_and_cost_center(
 		party_details,
@@ -93,6 +94,7 @@ def _get_party_details(
 		billing_party,
 		company,
 		transaction_type=transaction_type,
+		currency=currency,
 		account=account,
 		cost_center=cost_center,
 	)
@@ -215,24 +217,16 @@ def set_basic_values(party_details, party_doc, billing_party_doc):
 	party_details.language = party_doc.get("language")
 
 
-def set_currency(party_details, party_doc, company, currency):
-	if not currency:
-		currency = party_doc.default_currency if party_doc.get("default_currency") else get_company_currency(company)
-
-	party_details["currency"] = currency
-
-	return currency
-
-
 def set_party_account_and_cost_center(
 	party_details,
 	party_type,
 	billing_party_type,
 	billing_party,
 	company,
-	transaction_type,
-	account,
-	cost_center,
+	transaction_type=None,
+	currency=None,
+	account=None,
+	cost_center=None,
 ):
 	if billing_party:
 		if not account:
@@ -241,6 +235,7 @@ def set_party_account_and_cost_center(
 				billing_party,
 				company,
 				transaction_type=transaction_type,
+				currency=currency,
 			)
 
 		if not cost_center:
@@ -253,6 +248,11 @@ def set_party_account_and_cost_center(
 
 		account_fieldname = "debit_to" if party_type in ("Customer", "Lead") else "credit_to"
 		party_details[account_fieldname] = account
+
+		if account:
+			party_details["party_account_currency"] = frappe.get_cached_value("Account", account, "account_currency")
+		else:
+			party_details["party_account_currency"] = erpnext.get_company_currency(company)
 
 		if cost_center:
 			party_details["cost_center"] = cost_center
@@ -580,18 +580,24 @@ def get_goodwill_account_details(customer, company):
 
 
 @frappe.whitelist()
-def get_party_account_details(party_type, party, company, transaction_type=None):
-	account = get_party_account(party_type, party, company, transaction_type)
-	cost_center = get_party_cost_center(party_type, party, company, transaction_type)
+def get_party_account_details(party_type, party, company, transaction_type=None, currency=None):
+	account = get_party_account(party_type, party, company, transaction_type=transaction_type, currency=currency)
+	cost_center = get_party_cost_center(party_type, party, company, transaction_type=transaction_type)
+
+	if account:
+		party_account_currency = frappe.get_cached_value("Account", account, "account_currency")
+	else:
+		party_account_currency = erpnext.get_company_currency(company)
 
 	return frappe._dict({
 		'account': account,
-		'cost_center': cost_center
+		'cost_center': cost_center,
+		'party_account_currency': party_account_currency,
 	})
 
 
 @frappe.whitelist()
-def get_party_account(party_type, party, company, transaction_type=None):
+def get_party_account(party_type, party, company, transaction_type=None, currency=None):
 	"""Returns the account for the given `party`.
 		Will first search in party (Customer / Supplier) record, if not found,
 		will search in group (Customer Group / Supplier Group),
@@ -599,39 +605,25 @@ def get_party_account(party_type, party, company, transaction_type=None):
 	if not company:
 		frappe.throw(_("Please select a Company"))
 
+	if not currency:
+		currency = get_party_default_currency(party_type, party, company)
+
 	account = None
 
-	if transaction_type:
-		transaction_type_doc = frappe.get_cached_doc("Transaction Type", transaction_type)
-		account_rows = transaction_type_doc.get('accounts', filters={'company': company})
-		party_account_type = erpnext.get_party_account_type(party_type)
-		for account_row in account_rows:
-			if account_row.account and frappe.get_cached_value("Account", account_row.account, 'account_type') == party_account_type:
-				account = account_row.account
+	if not account and transaction_type:
+		account = get_party_account_from_transaction_type(transaction_type, party_type, company)
 
 	if not account and party:
-		party_doc = frappe.get_cached_doc(party_type, party)
-		account_row = party_doc.get('accounts', filters={'company': company})
-		if account_row:
-			account = account_row[0].account
+		account = get_party_account_from_party(party_type, party, company)
 
-	if not account and party and party_type in ['Customer', 'Supplier']:
-		party_group_doctype = "Customer Group" if party_type=="Customer" else "Supplier Group"
-		group = frappe.get_cached_value(party_type, party, scrub(party_group_doctype))
-		account = frappe.db.get_value("Party Account",
-			{"parenttype": party_group_doctype, "parent": group, "company": company}, "account")
+	if not account and party_type == "Letter of Credit":
+		account = frappe.get_cached_value("Company", company, "default_letter_of_credit_account")
 
-	if not account and party_type in ['Customer', 'Supplier', 'Letter of Credit']:
-		if party_type == "Customer":
-			default_account_name = "default_receivable_account"
-		elif party_type == "Supplier":
-			default_account_name = "default_payable_account"
-		else:
-			default_account_name = "default_letter_of_credit_account"
+	if not account:
+		account = get_party_account_from_company_default(party_type, company, currency=currency)
 
-		account = frappe.get_cached_value('Company',  company,  default_account_name)
-
-	if party:
+	# From GLE History
+	if party_type and party:
 		existing_gle_currency = get_party_gle_currency(party_type, party, company)
 		if existing_gle_currency:
 			if account:
@@ -640,6 +632,77 @@ def get_party_account(party_type, party, company, transaction_type=None):
 				account = get_party_gle_account(party_type, party, company)
 
 	return account
+
+
+def get_party_account_from_transaction_type(transaction_type, party_type, company):
+	if not transaction_type or not party_type or not company:
+		return None
+
+	transaction_type_doc = frappe.get_cached_doc("Transaction Type", transaction_type)
+	account_rows = transaction_type_doc.get("accounts", filters={"company": company})
+	party_account_type = erpnext.get_party_account_type(party_type)
+	if not party_account_type:
+		return None
+
+	for account_row in account_rows:
+		if not account_row.account:
+			continue
+
+		account_type = frappe.get_cached_value("Account", account_row.account, "account_type")
+		if account_type == party_account_type:
+			return account_row.account
+
+	return None
+
+
+def get_party_account_from_party(party_type, party, company):
+	if not party_type or not party or not company:
+		return None
+
+	party_doc = frappe.get_cached_doc(party_type, party)
+	account_row = party_doc.getone("accounts", filters={"company": company})
+	if account_row and account_row.account:
+		return account_row.account
+
+	# From Customer/Supplier Group
+	if party_type in ("Customer", "Supplier"):
+		party_group_doctype = "Customer Group" if party_type == "Customer" else "Supplier Group"
+		party_group_name = frappe.get_cached_value(party_type, party, scrub(party_group_doctype))
+		if party_group_name:
+			party_group_doc = frappe.get_cached_doc(party_group_doctype, party_group_name)
+			account_row = party_group_doc.getone("accounts", filters={"company": company})
+			if account_row:
+				return account_row.account
+
+	return None
+
+
+def get_party_account_from_company_default(party_type, company, currency=None):
+	if not party_type or not company:
+		return None
+
+	party_account_type = erpnext.get_party_account_type(party_type)
+
+	default_account_field = None
+	fc_accounts_table_field = None
+	if party_account_type == "Receivable":
+		default_account_field = "default_receivable_account"
+		fc_accounts_table_field = "receivable_accounts"
+	elif party_account_type == "Payable":
+		default_account_field = "default_payable_account"
+		fc_accounts_table_field = "payable_accounts"
+
+	company_doc = frappe.get_cached_doc("Company", company)
+
+	if currency and fc_accounts_table_field:
+		account_row = company_doc.getone(fc_accounts_table_field, filters={"account_currency": currency})
+		if account_row and account_row.party_account:
+			return account_row.party_account
+
+	if default_account_field:
+		return company_doc.get(default_account_field)
+
+	return None
 
 
 def get_party_cost_center(party_type, party, company, transaction_type=None):
@@ -681,74 +744,124 @@ def get_party_bank_account(party_type, party):
 	})
 
 
-def get_party_account_currency(party_type, party, company):
-	def generator():
-		party_account = get_party_account(party_type, party, company)
-		return frappe.db.get_value("Account", party_account, "account_currency", cache=True)
+def get_party_default_currency(party_type, party, company):
+	currency = None
 
-	return frappe.local_cache("party_account_currency", (party_type, party, company), generator)
+	if party_type and party:
+		currency = frappe.get_cached_value(party_type, party, "default_currency")
+
+	if not currency and company:
+		currency = get_company_currency(company)
+
+	if not currency:
+		currency = erpnext.get_default_currency()
+
+	return currency
+
+
+def get_party_account_currency(party_type, party, company, transaction_type=None, currency=None):
+	def generator():
+		party_account = get_party_account(party_type, party, company, transaction_type=transaction_type, currency=currency)
+		if party_account:
+			return frappe.get_cached_value("Account", party_account, "account_currency")
+		else:
+			return erpnext.get_company_currency(company)
+
+	cache_key = (party_type, party, company, cstr(transaction_type), cstr(currency))
+	return frappe.local_cache("party_account_currency", cache_key, generator)
 
 
 def get_party_gle_currency(party_type, party, company):
 	def generator():
-		existing_gle_currency = frappe.db.sql("""select account_currency from `tabGL Entry`
-			where docstatus=1 and company=%(company)s and party_type=%(party_type)s and party=%(party)s
-			limit 1""", { "company": company, "party_type": party_type, "party": party })
+		existing_gle_currency = frappe.db.sql("""
+			select account_currency
+			from `tabGL Entry`
+			where company = %(company)s and party_type = %(party_type)s and party = %(party)s
+			limit 1
+		""", {
+			"company": company,
+			"party_type": party_type,
+			"party": party,
+		})
 
 		return existing_gle_currency[0][0] if existing_gle_currency else None
 
-	return frappe.local_cache("party_gle_currency", (party_type, party, company), generator,
-		regenerate_if_none=True)
+	if not party_type or not party or not company:
+		return None
+
+	return frappe.local_cache(
+		"party_gle_currency",
+		(party_type, party, company),
+		generator,
+		regenerate_if_none=True,
+	)
 
 
 def get_party_gle_account(party_type, party, company):
 	def generator():
-		existing_gle_account = frappe.db.sql("""select account from `tabGL Entry`
-			where docstatus=1 and company=%(company)s and party_type=%(party_type)s and party=%(party)s
-			limit 1""", { "company": company, "party_type": party_type, "party": party })
+		existing_gle_account = frappe.db.sql("""
+			select account
+			from `tabGL Entry`
+			where company = %(company)s and party_type = %(party_type)s and party = %(party)s
+			limit 1
+		""", {
+			"company": company,
+			"party_type": party_type,
+			"party": party,
+		})
 
 		return existing_gle_account[0][0] if existing_gle_account else None
 
-	return frappe.local_cache("party_gle_account", (party_type, party, company), generator,
-		regenerate_if_none=True)
+	if not party_type or not party or not company:
+		return None
+
+	return frappe.local_cache(
+		"party_gle_account",
+		(party_type, party, company),
+		generator,
+		regenerate_if_none=True,
+	)
 
 
-def validate_party_gle_currency(party_type, party, company, party_account_currency=None):
-	"""Validate party account currency with existing GL Entry's currency"""
-	if not party_account_currency:
-		party_account_currency = get_party_account_currency(party_type, party, company)
+def validate_party_accounts(doc, is_party_doc, account_type=None, allow_multiple=False):
+	companies_visited = set()
 
-	existing_gle_currency = get_party_gle_currency(party_type, party, company)
+	for d in doc.get("accounts"):
+		if not d.get("company"):
+			continue
 
-	if existing_gle_currency and party_account_currency != existing_gle_currency:
-		frappe.throw(_("Accounting Entry for {0}: {1} can only be made in currency: {2}")
-			.format(party_type, party, existing_gle_currency), InvalidAccountCurrency)
+		if not allow_multiple:
+			if d.company in companies_visited:
+				frappe.throw(_("There can only be 1 Account per Company in {0} {1}").format(
+					doc.doctype, doc.name
+				), DuplicatePartyAccountError)
+			else:
+				companies_visited.add(d.company)
 
+		account_company = frappe.get_cached_value("Account", d.account, "company")
+		if account_company != d.company:
+			frappe.throw(_("Row #{0}: Account {1} does not belong to Company {2}").format(
+				d.idx, d.account, d.company,
+			))
 
-def validate_party_accounts(doc):
-	companies = []
+		if account_type and account_type != frappe.get_cached_value("Account", d.account, "account_type"):
+			frappe.throw(_("Row #{0}: Account {1} is not a {2} type account").format(
+				d.idx, d.account, account_type,
+			))
 
-	for account in doc.get("accounts"):
-		if account.company in companies:
-			frappe.throw(_("There can only be 1 Account per Company in {0} {1}")
-				.format(doc.doctype, doc.name), DuplicatePartyAccountError)
-		else:
-			companies.append(account.company)
+		if is_party_doc:
+			company_default_currency = frappe.get_cached_value('Company', d.company, "default_currency")
+			party_account_currency = frappe.get_cached_value("Account", d.account, "account_currency")
+			existing_gle_currency = get_party_gle_currency(doc.doctype, doc.name, d.company)
 
-		party_account_currency = frappe.db.get_value("Account", account.account, "account_currency", cache=True)
-		existing_gle_currency = get_party_gle_currency(doc.doctype, doc.name, account.company)
-		if frappe.db.get_default("Company"):
-			company_default_currency = frappe.get_cached_value('Company',
-				frappe.db.get_default("Company"),  "default_currency")
-		else:
-			company_default_currency = frappe.db.get_value('Company', account.company, "default_currency")
+			if existing_gle_currency and party_account_currency != existing_gle_currency:
+				frappe.throw(_("Accounting entries have already been made in currency {0} for company {1}. Please select a receivable or payable account with currency {0}.").format(
+					existing_gle_currency, d.company
+				))
 
-		if existing_gle_currency and party_account_currency != existing_gle_currency:
-			frappe.throw(_("Accounting entries have already been made in currency {0} for company {1}. Please select a receivable or payable account with currency {0}.").format(existing_gle_currency, account.company))
-
-		if doc.get("default_currency") and party_account_currency and company_default_currency:
-			if doc.default_currency != party_account_currency and doc.default_currency != company_default_currency:
-				frappe.throw(_("Billing currency must be equal to either default company's currency or party account currency"))
+			if doc.get("default_currency") and party_account_currency and company_default_currency:
+				if doc.default_currency != party_account_currency and doc.default_currency != company_default_currency:
+					frappe.throw(_("Billing currency must be equal to either default company's currency or party account currency"))
 
 
 @frappe.whitelist()
@@ -1073,21 +1186,19 @@ def get_dashboard_info(party_type, party, loyalty_program=None):
 		company_default_currency = frappe.get_cached_value("Company", d.company, 'default_currency')
 		party_account_currency = get_party_account_currency(party_type, party, d.company)
 
-		if party_account_currency==company_default_currency:
+		if party_account_currency == company_default_currency:
 			billing_this_year = flt(company_wise_billing_this_year.get(d.company,{}).get("base_grand_total"))
 		else:
 			billing_this_year = flt(company_wise_billing_this_year.get(d.company,{}).get("grand_total"))
 
 		total_unpaid = flt(company_wise_total_unpaid.get(d.company))
 
-		if loyalty_point_details:
-			loyalty_points = loyalty_point_details.get(d.company)
-
 		info = {}
 		info["currency"] = party_account_currency
 		info["company"] = d.company
 
 		if party_type == "Customer" and loyalty_point_details:
+			loyalty_points = loyalty_point_details.get(d.company)
 			info["loyalty_points"] = loyalty_points
 
 		has_permission = False

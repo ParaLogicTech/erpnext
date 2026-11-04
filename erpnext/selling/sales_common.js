@@ -760,4 +760,27 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			}
 		})
 	}
+
+	debit_to() {
+		if (this.frm.updating_party_details) {
+			return;
+		}
+
+		if (this.frm.doc.debit_to) {
+			this.frm.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "Account",
+					fieldname: "account_currency",
+					filters: { name: this.frm.doc.debit_to },
+				},
+				callback: (r) => {
+					if (r.message) {
+						this.frm.set_value("party_account_currency", r.message.account_currency);
+						this.set_dynamic_labels();
+					}
+				}
+			});
+		}
+	}
 };

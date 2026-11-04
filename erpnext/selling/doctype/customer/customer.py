@@ -74,7 +74,7 @@ class Customer(TransactionBase):
 		self.customer_name = clean_whitespace(self.customer_name)
 		self.check_customer_group_change()
 		self.validate_customer_group()
-		validate_party_accounts(self)
+		validate_party_accounts(self, is_party_doc=True, account_type="Receivable")
 		self.validate_credit_limit_on_change()
 		self.set_loyalty_program()
 		self.validate_default_bank_account()

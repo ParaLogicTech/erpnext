@@ -575,8 +575,6 @@ class PurchaseInvoice(BuyingController):
 			frappe.throw(_("""Paid amount + Write Off Amount can not be greater than Grand Total"""))
 
 	def set_missing_values(self, for_validate=False):
-		self.set_party_account()
-
 		if not self.due_date:
 			self.due_date = get_due_date(
 				self.posting_date, bill_date=self.bill_date, delivery_date=self.get("schedule_date"),

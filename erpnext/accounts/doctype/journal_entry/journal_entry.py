@@ -926,29 +926,35 @@ def get_default_bank_cash_account(
 
 
 @frappe.whitelist()
-def get_payment_entry_against_order(dt, dn, amount=None, debit_in_account_currency=None, journal_entry=False, bank_account=None):
+def get_payment_entry_against_order(
+	dt,
+	dn,
+	amount=None,
+	debit_in_account_currency=None,
+	journal_entry=False,
+	bank_account=None,
+):
 	ref_doc = frappe.get_doc(dt, dn)
 
 	if flt(ref_doc.per_billed, 2) > 0:
 		frappe.throw(_("Can only make payment against unbilled {0}").format(dt))
 
-	if dt == "Sales Order":
-		party_type = "Customer"
+	party_type, party, party_name = ref_doc.get_billing_party()
+	party_account = ref_doc.get_party_account_for_payment()
+	party_account_currency = get_account_currency(party_account)
+	party_account_type = erpnext.get_party_account_type(party_type)
+	payment_type = "Receive" if party_account_type == "Receivable" else "Pay"
+	reference_details = ref_doc.get_reference_details_for_payment(party_type, party, party_account, payment_type)
+
+	if party_account_type == "Receivable":
 		amount_field_party = "credit_in_account_currency"
 		amount_field_bank = "debit_in_account_currency"
 	else:
-		party_type = "Supplier"
 		amount_field_party = "debit_in_account_currency"
 		amount_field_bank = "credit_in_account_currency"
 
-	party_account = get_party_account(party_type, ref_doc.get(scrub(party_type)), ref_doc.company)
-	party_account_currency = get_account_currency(party_account)
-
 	if not amount:
-		if party_account_currency == ref_doc.company_currency:
-			amount = flt(ref_doc.base_grand_total) - flt(ref_doc.advance_paid)
-		else:
-			amount = flt(ref_doc.grand_total) - flt(ref_doc.advance_paid)
+		amount = flt(reference_details.get("outstanding_amount"))
 
 	return get_payment_journal_entry(ref_doc, {
 		"party_type": party_type,
@@ -965,19 +971,33 @@ def get_payment_entry_against_order(dt, dn, amount=None, debit_in_account_curren
 
 
 @frappe.whitelist()
-def get_payment_entry_against_invoice(dt, dn, amount=None,  debit_in_account_currency=None, journal_entry=False, bank_account=None):
+def get_payment_entry_against_invoice(
+	dt,
+	dn,
+	amount=None,
+	debit_in_account_currency=None,
+	journal_entry=False,
+	bank_account=None,
+):
 	ref_doc = frappe.get_doc(dt, dn)
-	if dt == "Sales Invoice":
-		party_type = "Customer"
-		party_account = get_party_account_based_on_invoice_discounting(dn) or ref_doc.debit_to
-	else:
-		party_type = "Supplier" if not ref_doc.get("letter_of_credit") else "Letter of Credit"
-		party_account = ref_doc.credit_to
 
-	if (
-		(dt == "Sales Invoice" and ref_doc.outstanding_amount > 0)
-		or (dt == "Purchase Invoice" and ref_doc.outstanding_amount < 0)
-	):
+	party_type, party, party_name = ref_doc.get_billing_party()
+	party_account = ref_doc.get_party_account_for_payment()
+	party_account_currency = get_account_currency(party_account)
+	party_account_type = erpnext.get_party_account_type(party_type)
+
+	payment_type = "Receive" if party_account_type == "Receivable" else "Pay"
+	if dt in ("Sales Invoice", "Fees") and ref_doc.outstanding_amount < 0:
+		payment_type = "Pay"
+	if dt == "Purchase Invoice" and ref_doc.outstanding_amount < 0:
+		payment_type = "Receive"
+
+	reference_details = ref_doc.get_reference_details_for_payment(party_type, party, party_account, payment_type)
+	outstanding_amount = flt(reference_details.get("outstanding_amount"))
+	if not amount:
+		amount = abs(outstanding_amount)
+
+	if payment_type == "Receive":
 		amount_field_party = "credit_in_account_currency"
 		amount_field_bank = "debit_in_account_currency"
 	else:
@@ -987,10 +1007,10 @@ def get_payment_entry_against_invoice(dt, dn, amount=None,  debit_in_account_cur
 	return get_payment_journal_entry(ref_doc, {
 		"party_type": party_type,
 		"party_account": party_account,
-		"party_account_currency": ref_doc.party_account_currency,
+		"party_account_currency": party_account_currency,
 		"amount_field_party": amount_field_party,
 		"amount_field_bank": amount_field_bank,
-		"amount": amount if amount else abs(ref_doc.outstanding_amount),
+		"amount": amount,
 		"debit_in_account_currency": debit_in_account_currency,
 		"remarks": 'Payment received against {0} {1}. {2}'.format(dt, dn, ref_doc.remarks),
 		"bank_account": bank_account,
@@ -1233,7 +1253,7 @@ def get_party_account_and_balance(company, party_type, party, date, cost_center=
 	if not account:
 		account = get_party_account(party_type, party, company)
 
-	account_currency = frappe.db.get_value("Account", account, "account_currency")
+	account_currency = get_account_currency(account)
 
 	account_balance = get_balance_on(account=account, cost_center=cost_center, date=date)
 	party_balance = get_balance_on(party_type=party_type, party=party, company=company, cost_center=cost_center, date=date)
@@ -1401,7 +1421,7 @@ def make_inter_company_journal_entry(name, voucher_type, company):
 					if supplier:
 						target.party_type = "Supplier"
 						target.party = supplier
-						target.account = get_party_account(target.party_type, target.party, target_company.name)
+						target.account = get_party_account(target.party_type, target.party, target_company.name, currency=source.account_currency)
 
 			elif source.party_type == "Supplier":
 				source_supplier = frappe.get_cached_doc("Supplier", source.party)
@@ -1411,7 +1431,7 @@ def make_inter_company_journal_entry(name, voucher_type, company):
 					if customer:
 						target.party_type = "Customer"
 						target.party = customer
-						target.account = get_party_account(target.party_type, target.party, target_company.name)
+						target.account = get_party_account(target.party_type, target.party, target_company.name, currency=source.account_currency)
 
 	doclist = get_mapped_doc("Journal Entry", name, {
 		"Journal Entry": {

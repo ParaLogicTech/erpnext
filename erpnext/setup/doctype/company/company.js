@@ -275,13 +275,29 @@ erpnext.company.setup_queries = function(frm) {
 		});
 	}
 
-	if (frm.fields_dict.advance_tax_accounts) {
-		frm.set_query("account_head", "advance_tax_accounts", function() {
+	frm.set_query("account_head", "advance_tax_accounts", () => {
+		return {
+			filters: {
+				"company": frm.doc.name,
+				"is_group": 0,
+				"account_type": "Tax",
+			}
+		}
+	});
+
+	let fc_party_account_fields = [
+		["receivable_accounts", "Receivable"],
+		["payable_accounts", "Payable"],
+	]
+	for (let [table_field, account_type] of fc_party_account_fields) {
+		frm.set_query("party_account", table_field, (doc, cdt, cdn) => {
+			let row = frappe.get_doc(cdt, cdn);
 			return {
 				filters: {
 					"company": frm.doc.name,
 					"is_group": 0,
-					"account_type": "Tax"
+					"account_type": account_type,
+					"account_currency": row.account_currency,
 				}
 			}
 		});

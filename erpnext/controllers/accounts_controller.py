@@ -43,17 +43,11 @@ class AccountsController(TransactionBase):
 
 	@property
 	def company_currency(self):
-		if not hasattr(self, "__company_currency"):
-			self.__company_currency = erpnext.get_company_currency(self.company)
-
-		return self.__company_currency
+		return erpnext.get_company_currency(self.get("company"))
 
 	@property
 	def company_abbr(self):
-		if not hasattr(self, "_abbr"):
-			self._abbr = frappe.db.get_value('Company',  self.company,  "abbr")
-
-		return self._abbr
+		return frappe.get_cached_value('Company',  self.get("company"),  "abbr")
 
 	def onload(self):
 		self.set_onload("make_payment_via_journal_entry",
@@ -137,6 +131,21 @@ class AccountsController(TransactionBase):
 	def get_billing_party(self):
 		return self.get_party()
 
+	def set_party_account(self, force=False):
+		if self.meta.has_field("party_account_currency"):
+			party_account = self.get_party_account()
+			if party_account:
+				self.party_account_currency = frappe.get_cached_value("Account", party_account, "account_currency")
+			else:
+				party_type, party, party_name = self.get_billing_party()
+				self.party_account_currency = get_party_account_currency(
+					party_type,
+					party,
+					self.get("company"),
+					transaction_type=self.get("transaction_type"),
+					currency=self.get("currency"),
+				)
+
 	def get_party_account(self):
 		return None
 
@@ -144,7 +153,13 @@ class AccountsController(TransactionBase):
 		party_account = self.get_party_account()
 		if not party_account and fallback_default_account:
 			party_type, party, party_name = self.get_billing_party()
-			party_account = get_party_account(party_type, party, self.company, transaction_type=self.get("transaction_type"))
+			party_account = get_party_account(
+				party_type,
+				party,
+				self.company,
+				transaction_type=self.get("transaction_type"),
+				currency=self.get("currency"),
+			)
 
 		return party_account
 
@@ -176,17 +191,30 @@ class AccountsController(TransactionBase):
 			return
 
 		party_type, party, party_name = self.get_billing_party()
-		if party_type and party:
-			party_account_currency = get_party_account_currency(party_type, party, self.company)
+		party_account = self.get_party_account()
 
-			if (
-				party_account_currency
-				and party_account_currency != self.company_currency
-				and self.currency != party_account_currency
-			):
-				frappe.throw(_("Accounting Entry for {0}: {1} can only be made in currency: {2}").format(
-					party_type, party, party_account_currency
-				), InvalidCurrency)
+		party_account_currency = None
+		if party_account:
+			party_account_currency = get_account_currency(party_account)
+
+		if not party_account_currency:
+			if party_type and party:
+				party_account_currency = get_party_account_currency(
+					party_type,
+					party,
+					self.company,
+					transaction_type=self.get("transaction_type"),
+					currency=self.currency,
+				)
+
+		if (
+			party_account_currency
+			and party_account_currency != self.company_currency
+			and self.currency != party_account_currency
+		):
+			frappe.throw(_("Accounting Entry for {0}: {1} can only be made in currency: {2}").format(
+				party_type, party, party_account_currency
+			), InvalidCurrency)
 
 	def validate_payment_schedule(self):
 		if not self.meta.has_field("payment_schedule"):

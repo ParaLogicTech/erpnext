@@ -394,6 +394,29 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 		});
 	}
 
+	credit_to() {
+		if (this.frm.updating_party_details) {
+			return;
+		}
+
+		if (this.frm.doc.credit_to) {
+			this.frm.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "Account",
+					fieldname: "account_currency",
+					filters: { name: this.frm.doc.credit_to },
+				},
+				callback: (r) => {
+					if (r.message) {
+						this.frm.set_value("party_account_currency", r.message.account_currency);
+						this.set_dynamic_labels();
+					}
+				}
+			});
+		}
+	}
+
 	link_to_mrs() {
 		var my_items = [];
 		for (var i in cur_frm.doc.items) {
