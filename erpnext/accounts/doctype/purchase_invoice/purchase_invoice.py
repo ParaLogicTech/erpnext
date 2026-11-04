@@ -9,7 +9,6 @@ import frappe.defaults
 
 from erpnext.assets.doctype.asset_category.asset_category import get_asset_category_account
 from erpnext.controllers.buying_controller import BuyingController
-from erpnext.controllers.transaction_controller import get_default_taxes_and_charges
 from erpnext.accounts.party import get_due_date
 from erpnext.accounts.utils import get_account_currency, get_fiscal_year
 from erpnext.stock import get_warehouse_account_map
@@ -1370,40 +1369,17 @@ def make_stock_entry(source_name, target_doc=None):
 
 @frappe.whitelist()
 def make_sales_order(customer, source_name, target_doc=None):
-	from erpnext.controllers.transaction_controller import get_taxes_and_charges
 	from frappe.model.utils import get_fetch_values
 
 	def set_missing_values(source, target):
 		target.customer = customer
-
 		target.update(get_fetch_values("Sales Order", 'customer', target.customer))
-		target.tax_id, target.tax_cnic, target.tax_strn = frappe.get_value("Customer", customer, ['tax_id', 'tax_cnic', 'tax_strn'])
-
-		default_price_list = frappe.get_value("Customer", customer, "default_price_list")
-		if default_price_list:
-			target.selling_price_list = default_price_list
-
-		for item in target.items:
-			item.delivery_date = target.delivery_date
-
-		target.run_method("set_missing_values")
-
-		if target.taxes_and_charges:
-			target.set("taxes", get_taxes_and_charges("Sales Taxes and Charges Template", target.taxes_and_charges))
-		else:
-			default_tax = get_default_taxes_and_charges("Sales Taxes and Charges Template", company=target.company)
-			target.update(default_tax)
-
-		target.run_method("calculate_taxes_and_totals")
-
-		# workaround for get_item_details not setting the base_rate hence not calculating the correct gross profit
-		for item in target.items:
-			item.gross_profit = 0.0
+		target.run_method("postprocess_after_mapping")
 
 	def update_item(source, target, source_parent, target_parent):
-		target.discount_percentage = 0
-		target.price_list_rate = 0
-		target.rate = 0
+		target.price_list_rate = None
+		target.discount_percentage = None
+		target.rate = None
 
 	doc = get_mapped_doc("Purchase Invoice", source_name, {
 		"Purchase Invoice": {
@@ -1425,7 +1401,9 @@ def make_sales_order(customer, source_name, target_doc=None):
 				"payment_schedule",
 				"apply_discount_on",
 				"additional_discount_percentage",
-				"discount_amount"
+				"discount_amount",
+				"tc_name",
+				"terms",
 			],
 		},
 		"Purchase Invoice Item": {

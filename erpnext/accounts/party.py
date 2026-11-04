@@ -8,7 +8,7 @@ from frappe.core.doctype.user_permission.user_permission import get_permitted_do
 from frappe.model.utils import get_fetch_values
 from frappe.utils import getdate, add_years, get_timestamp, nowdate, flt, cstr, cint
 from crm.crm.utils import get_primary_contact, get_primary_address, get_shipping_address
-from erpnext.exceptions import PartyFrozen, PartyDisabled, InvalidAccountCurrency
+from erpnext.exceptions import PartyFrozen, PartyDisabled
 from erpnext.accounts.utils import get_fiscal_year
 from erpnext import get_company_currency
 from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
@@ -445,16 +445,21 @@ def render_address(address=None, lead=None, check_permissions=False):
 	return render_address(address, lead=lead, check_permissions=check_permissions)
 
 
-def get_default_price_list(party_doc):
-	if party_doc.get("default_price_list"):
-		return party_doc.default_price_list
+def get_default_price_list(party_type, party):
+	if party_type and party:
+		party_doc = frappe.get_cached_doc(party_type, party)
+		if party_doc.get("default_price_list"):
+			return party_doc.default_price_list
 
-	if party_doc.doctype == "Customer":
-		price_list = frappe.get_cached_value("Customer Group", party_doc.customer_group, "default_price_list")
-		if price_list:
-			return price_list
+		if party_doc.doctype == "Customer":
+			price_list = frappe.get_cached_value("Customer Group", party_doc.customer_group, "default_price_list")
+			if price_list:
+				return price_list
 
-	return None
+	if party_type == "Supplier":
+		return frappe.get_cached_value("Buying Settings", None, "buying_price_list")
+	else:
+		return frappe.get_cached_value("Selling Settings", None, "selling_price_list")
 
 
 def get_retail_price_list(party_doc):
@@ -484,10 +489,7 @@ def set_price_list(party_details, party_doc, price_list=None, pos_profile=None):
 
 	# default price list
 	if not price_list:
-		price_list = get_default_price_list(party_doc)
-
-	if not price_list:
-		price_list = frappe.db.get_default(price_list_field)
+		price_list = get_default_price_list(party_doc.doctype, party_doc.name)
 
 	party_details[price_list_field] = price_list
 	party_details["retail_price_list"] = get_retail_price_list(party_doc)
