@@ -596,7 +596,17 @@ def get_goodwill_account_details(customer, company):
 
 
 @frappe.whitelist()
-def get_party_account_details(party_type, party, company, transaction_type=None, currency=None):
+def get_party_account_details(
+	party_type,
+	party,
+	company,
+	transaction_type=None,
+	currency=None,
+	get_price_list=False,
+):
+	if not currency:
+		currency = get_party_default_currency(party_type, party, company)
+
 	account = get_party_account(party_type, party, company, transaction_type=transaction_type, currency=currency)
 	cost_center = get_party_cost_center(party_type, party, company, transaction_type=transaction_type)
 
@@ -605,11 +615,16 @@ def get_party_account_details(party_type, party, company, transaction_type=None,
 	else:
 		party_account_currency = erpnext.get_company_currency(company)
 
-	return frappe._dict({
-		'account': account,
-		'cost_center': cost_center,
-		'party_account_currency': party_account_currency,
+	out = frappe._dict({
+		"account": account,
+		"cost_center": cost_center,
+		"party_account_currency": party_account_currency,
 	})
+
+	if cint(get_price_list):
+		out["price_list"] = get_default_price_list(party_type, party, currency=currency)
+
+	return out
 
 
 @frappe.whitelist()

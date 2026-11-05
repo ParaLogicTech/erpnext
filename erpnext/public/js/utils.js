@@ -191,6 +191,25 @@ $.extend(erpnext.utils, {
 		}
 	},
 
+	get_exchange_rate: function(transaction_date, from_currency, to_currency, args, callback) {
+		if (!transaction_date || !from_currency || !to_currency) {
+			return;
+		}
+
+		return frappe.call({
+			method: "erpnext.setup.utils.get_exchange_rate",
+			args: {
+				transaction_date: transaction_date,
+				from_currency: from_currency,
+				to_currency: to_currency,
+				args: args
+			},
+			callback: (r) => {
+				return callback(flt(r.message));
+			}
+		});
+	},
+
 	make_bank_account: function(doctype, docname) {
 		frappe.call({
 			method: "erpnext.accounts.doctype.bank_account.bank_account.make_bank_account",

@@ -911,7 +911,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 		if (this.frm.fields_dict.currency) {
 			tasks = tasks.concat([
-				() => this.frm.script_manager.trigger("currency"),
+				() => this.set_exchange_rate(),
 				() => erpnext.utils.set_taxes(this.frm, "company"),
 				() => this.get_multiple_item_tax_maps(false),
 				() => this.update_item_defaults(false),
@@ -984,9 +984,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			this.frm.transaction_date = this.frm.doc.transaction_date;
 
 			return frappe.run_serially([
-				() => this.frm.trigger("currency"),
+				() => this.set_exchange_rate(),
 				() => erpnext.utils.set_taxes(this.frm, "posting_date"),
-				() => this.get_multiple_item_tax_maps(),
+				() => this.get_multiple_item_tax_maps(false),
 			]);
 		}
 	}
@@ -997,9 +997,9 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 			return frappe.run_serially([
 				() => this.get_due_date(),
-				() => this.frm.trigger("currency"),
+				() => this.set_exchange_rate(),
 				() => erpnext.utils.set_taxes(this.frm, "posting_date"),
-				() => this.get_multiple_item_tax_maps(),
+				() => this.get_multiple_item_tax_maps(false),
 			]);
 		}
 	}
@@ -1093,24 +1093,11 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	}
 
 	currency() {
-		let transaction_date = this.frm.doc.transaction_date || this.frm.doc.posting_date;
 		this.set_dynamic_labels();
-		let company_currency = this.get_company_currency();
-
-		// Added `ignore_pricing_rule` to determine if document is loading after mapping from another doc
-		if (
-			this.frm.doc.currency
-			&& this.frm.doc.currency !== company_currency
-			&& !this.frm.doc.ignore_pricing_rule
-		) {
-			this.get_exchange_rate(transaction_date, this.frm.doc.currency, company_currency, (exchange_rate) => {
-				if (exchange_rate != this.frm.doc.conversion_rate) {
-					this.frm.set_value("conversion_rate", exchange_rate);
-				}
-			});
-		} else {
-			this.conversion_rate();
-		}
+		frappe.run_serially([
+			() => this.set_exchange_rate(),
+			() => erpnext.utils.get_party_account_details(this.frm, true),
+		]);
 	}
 
 	conversion_rate() {
@@ -1143,6 +1130,30 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		});
 	}
 
+	set_exchange_rate() {
+		let transaction_date = this.frm.doc.transaction_date || this.frm.doc.posting_date;
+		let company_currency = this.get_company_currency();
+
+		// Added `ignore_pricing_rule` to determine if document is loading after mapping from another doc
+		if (
+			this.frm.doc.currency
+			&& this.frm.doc.currency !== company_currency
+			&& !this.frm.doc.ignore_pricing_rule
+		) {
+			return this.get_exchange_rate(
+				transaction_date,
+				this.frm.doc.currency,
+				company_currency,
+				(exchange_rate) => {
+					if (exchange_rate != this.frm.doc.conversion_rate) {
+						this.frm.set_value("conversion_rate", exchange_rate);
+					}
+				});
+		} else {
+			return this.conversion_rate();
+		}
+	}
+
 	get_exchange_rate(transaction_date, from_currency, to_currency, callback) {
 		let args;
 		if (["Quotation", "Sales Order", "Delivery Note", "Proforma Invoice", "Sales Invoice"].includes(this.frm.doctype)) {
@@ -1152,32 +1163,25 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			args = "for_buying";
 		}
 
-		if (!transaction_date || !from_currency || !to_currency) return;
-		return frappe.call({
-			method: "erpnext.setup.utils.get_exchange_rate",
-			args: {
-				transaction_date: transaction_date,
-				from_currency: from_currency,
-				to_currency: to_currency,
-				args: args
-			},
-			callback: function(r) {
-				callback(flt(r.message));
-			}
-		});
+		return erpnext.utils.get_exchange_rate(transaction_date, from_currency, to_currency, args, callback);
 	}
 
 	price_list_currency() {
-		var me=this;
 		this.set_dynamic_labels();
+		let company_currency = this.get_company_currency();
 
-		var company_currency = this.get_company_currency();
-		// Added `ignore_pricing_rule` to determine if document is loading after mapping from another doc
-		if(this.frm.doc.price_list_currency !== company_currency  && !this.frm.doc.ignore_pricing_rule) {
-			this.get_exchange_rate(this.frm.doc.posting_date, this.frm.doc.price_list_currency, company_currency,
-				function(exchange_rate) {
-					me.frm.set_value("plc_conversion_rate", exchange_rate);
-				});
+		if (
+			this.frm.doc.price_list_currency !== company_currency
+			&& !this.frm.doc.ignore_pricing_rule
+		) {
+			this.get_exchange_rate(
+				this.frm.doc.posting_date,
+				this.frm.doc.price_list_currency,
+				company_currency,
+				(exchange_rate) => {
+					this.frm.set_value("plc_conversion_rate", exchange_rate);
+				},
+			);
 		} else {
 			this.plc_conversion_rate();
 		}
