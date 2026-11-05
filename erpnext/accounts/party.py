@@ -124,7 +124,8 @@ def _get_party_details(
 		party_details,
 		party_doc,
 		price_list,
-		pos_profile,
+		pos_profile=pos_profile,
+		currency=currency,
 	)
 
 	party_details["tax_category"] = get_address_tax_category(
@@ -445,7 +446,7 @@ def render_address(address=None, lead=None, check_permissions=False):
 	return render_address(address, lead=lead, check_permissions=check_permissions)
 
 
-def get_default_price_list(party_type, party):
+def get_default_price_list(party_type, party, currency=None):
 	if party_type and party:
 		party_doc = frappe.get_cached_doc(party_type, party)
 		if party_doc.get("default_price_list"):
@@ -456,10 +457,23 @@ def get_default_price_list(party_type, party):
 			if price_list:
 				return price_list
 
+	return get_default_price_list_from_settings(party_type, currency=currency)
+
+
+def get_default_price_list_from_settings(party_type, currency=None):
 	if party_type == "Supplier":
-		return frappe.get_cached_value("Buying Settings", None, "buying_price_list")
+		settings = frappe.get_cached_doc("Buying Settings", None)
+		default_field = "buying_price_list"
 	else:
-		return frappe.get_cached_value("Selling Settings", None, "selling_price_list")
+		settings = frappe.get_cached_doc("Selling Settings", None)
+		default_field = "selling_price_list"
+
+	if currency:
+		for d in settings.get("price_lists"):
+			if d.currency == currency:
+				return d.default_price_list
+
+	return settings.get(default_field)
 
 
 def get_retail_price_list(party_doc):
@@ -474,7 +488,7 @@ def get_retail_price_list(party_doc):
 	return None
 
 
-def set_price_list(party_details, party_doc, price_list=None, pos_profile=None):
+def set_price_list(party_details, party_doc, price_list=None, pos_profile=None, currency=None):
 	price_list_field = "buying_price_list" if party_doc.doctype == "Supplier" else "selling_price_list"
 
 	# pos price list
@@ -489,7 +503,7 @@ def set_price_list(party_details, party_doc, price_list=None, pos_profile=None):
 
 	# default price list
 	if not price_list:
-		price_list = get_default_price_list(party_doc.doctype, party_doc.name)
+		price_list = get_default_price_list(party_doc.doctype, party_doc.name, currency=currency)
 
 	party_details[price_list_field] = price_list
 	party_details["retail_price_list"] = get_retail_price_list(party_doc)
