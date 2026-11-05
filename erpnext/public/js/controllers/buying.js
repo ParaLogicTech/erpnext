@@ -214,6 +214,7 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 
 	buying_price_list() {
 		this.apply_price_list();
+		this.set_dynamic_labels();
 	}
 
 	price_list_rate(doc, cdt, cdn) {

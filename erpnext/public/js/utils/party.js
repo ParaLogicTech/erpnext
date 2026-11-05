@@ -43,7 +43,6 @@ erpnext.utils.get_party_details = function(frm, args, callback) {
 						frm.updating_party_details = false;
 						if (callback) callback(r);
 						frm.refresh_fields();
-						erpnext.utils.add_item(frm);
 					}
 				]);
 			}
@@ -102,20 +101,6 @@ erpnext.utils.get_party_account_details = function (frm) {
 		},
 	});
 };
-
-erpnext.utils.add_item = function(frm) {
-	if (frm.is_new()) {
-		var prev_route = frappe.get_prev_route();
-		if (prev_route[0] === "Form" && prev_route[1]==='Item' && !(frm.doc.items && frm.doc.items.length)) {
-			// add row
-			var item = frm.add_child('items');
-			frm.refresh_field('items');
-
-			// set item
-			frappe.model.set_value(item.doctype, item.name, 'item_code', prev_route.slice(2).join('/'));
-		}
-	}
-}
 
 erpnext.utils.get_address_display = function(frm, address_field, display_field) {
 	if (frm.updating_party_details) return;
@@ -401,8 +386,12 @@ erpnext.utils.get_party_name = function (party_type, party, callback) {
 };
 
 erpnext.utils.get_party_name_field = function(party_type) {
-	var dict = {'Customer': 'customer_name', 'Supplier': 'supplier_name', 'Employee': 'employee_name',
-		'Member': 'member_name'};
+	let dict = {
+		'Customer': 'customer_name',
+		'Supplier': 'supplier_name',
+		'Employee': 'employee_name',
+		'Member': 'member_name'
+	};
 	return dict[party_type] || "name";
 };
 

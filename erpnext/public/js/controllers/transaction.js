@@ -912,8 +912,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		if (this.frm.fields_dict.currency) {
 			tasks = tasks.concat([
 				() => this.frm.script_manager.trigger("currency"),
-				() => this.get_multiple_item_tax_maps(false),
 				() => erpnext.utils.set_taxes(this.frm, "company"),
+				() => this.get_multiple_item_tax_maps(false),
 				() => this.update_item_defaults(false),
 				() => this.apply_pricing_rule(),
 			]);
