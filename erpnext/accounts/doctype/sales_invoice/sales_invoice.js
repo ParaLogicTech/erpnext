@@ -578,26 +578,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		});
 	}
 
-	debit_to() {
-		var me = this;
-		if(this.frm.doc.debit_to) {
-			me.frm.call({
-				method: "frappe.client.get_value",
-				args: {
-					doctype: "Account",
-					fieldname: "account_currency",
-					filters: { name: me.frm.doc.debit_to },
-				},
-				callback: function(r, rt) {
-					if(r.message) {
-						me.frm.set_value("party_account_currency", r.message.account_currency);
-						me.set_dynamic_labels();
-					}
-				}
-			});
-		}
-	}
-
 	allocated_amount() {
 		this.calculate_total_advance();
 		this.calculate_outstanding_amount();

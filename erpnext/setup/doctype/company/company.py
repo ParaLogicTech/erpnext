@@ -72,14 +72,43 @@ class Company(NestedSet):
 		})
 
 	def validate_default_accounts(self):
+		fieldname_filters_map = {
+			"default_receivable_account": {"account_type": "Receivable"},
+			"default_payable_account": {"account_type": "Payable"},
+			"default_employee_advance_account": {"account_type": ["in", ["Payable", "Receivable"]]},
+			"default_employee_loan_account": {"account_type": ["in", ["Payable", "Receivable"]]},
+			"default_expense_claim_payable_account": {"account_type": ["in", ["Payable", "Receivable"]]},
+			"default_letter_of_credit_account": {"account_type": ["in", ["Payable", "Receivable"]]},
+		}
+
 		account_fields = [df for df in self.meta.fields if df.fieldtype == "Link" and df.options == "Account"]
 		for df in account_fields:
-			self.validate_company_account(self.get(df.fieldname), df)
+			filters = fieldname_filters_map.get(df.fieldname)
+			self.validate_company_account(self.get(df.fieldname), df, filters=filters)
 
 		for d in self.advance_tax_accounts:
 			self.validate_company_account(d.account_head, d.meta.get_field("account_head"))
 
-	def validate_company_account(self, account, df):
+		fc_party_account_fields = [
+			("receivable_accounts", "Receivable"),
+			("payable_accounts", "Payable"),
+		]
+
+		for table_field, account_type in fc_party_account_fields:
+			currencies_visited = set()
+			for d in self.get(table_field):
+				if d.account_currency in currencies_visited:
+					frappe.throw(_("Row #{0}: Currency {1} is used more than once in {2}").format(
+						d.idx, frappe.bold(d.account_currency), self.meta.get_label(table_field),
+					))
+				currencies_visited.add(d.account_currency)
+
+			for d in self.get(table_field):
+				self.validate_company_account(d.party_account, d.meta.get_field("party_account"), filters={
+					"account_type": account_type, "account_currency": d.account_currency,
+				})
+
+	def validate_company_account(self, account, df, filters=None):
 		if not account:
 			return
 
@@ -95,6 +124,23 @@ class Company(NestedSet):
 			frappe.throw(_("{0} {1} is a Group Account and cannot be a default account").format(
 				_(df.label), frappe.bold(account),
 			))
+
+		if filters:
+			account_doc = frappe.get_doc("Account", account)
+			for k, v in filters.items():
+				value = v
+				condition = "="
+				if isinstance(v, (list, tuple)):
+					condition = v[0]
+					value = v[1]
+
+				try:
+					account_doc.validate_value(k, condition, value)
+				except frappe.ValidationError as e:
+					frappe.clear_last_message()
+					frappe.throw(_("{0} {1}: {2}").format(
+						_(df.label), frappe.bold(account), e
+					))
 
 	def validate_default_warehouses(self):
 		warehouse_fields = [df for df in self.meta.fields if df.fieldtype == "Link" and df.options == "Warehouse"]

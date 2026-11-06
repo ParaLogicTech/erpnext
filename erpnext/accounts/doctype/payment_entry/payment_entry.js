@@ -764,17 +764,15 @@ frappe.ui.form.on('Payment Entry', {
 	},
 
 	set_current_exchange_rate: function(frm, exchange_rate_field, from_currency, to_currency) {
-		frappe.call({
-			method: "erpnext.setup.utils.get_exchange_rate",
-			args: {
-				transaction_date: frm.doc.posting_date,
-				from_currency: from_currency,
-				to_currency: to_currency
-			},
-			callback: function(r, rt) {
-				frm.set_value(exchange_rate_field, r.message);
+		return erpnext.utils.get_exchange_rate(
+			frm.doc.posting_date,
+			from_currency,
+			to_currency,
+			null,
+			(exchange_rate) => {
+				frm.set_value(exchange_rate_field, flt(exchange_rate));
 			}
-		})
+		);
 	},
 
 	posting_date: function(frm) {
@@ -793,9 +791,6 @@ frappe.ui.form.on('Payment Entry', {
 			frm.events.apply_taxes(frm);
 			frm.events.set_unallocated_amount(frm);
 		}
-
-		// Make read only if Accounts Settings doesn't allow stale rates
-		frm.set_df_property("source_exchange_rate", "read_only", erpnext.stale_rate_allowed() ? 0 : 1);
 	},
 
 	target_exchange_rate: function(frm) {
@@ -815,9 +810,6 @@ frappe.ui.form.on('Payment Entry', {
 			frm.events.set_unallocated_amount(frm);
 		}
 		frm.set_paid_amount_based_on_received_amount = false;
-
-		// Make read only if Accounts Settings doesn't allow stale rates
-		frm.set_df_property("target_exchange_rate", "read_only", erpnext.stale_rate_allowed() ? 0 : 1);
 	},
 
 	paid_amount: function(frm) {

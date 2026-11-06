@@ -44,7 +44,6 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 	}
 
 	onload() {
-		erpnext.utils.add_item(this.frm);
 		set_schedule_date(this.frm);
 	}
 

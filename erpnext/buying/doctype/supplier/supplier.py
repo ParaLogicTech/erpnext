@@ -54,7 +54,7 @@ class Supplier(TransactionBase):
 		from frappe.regional.regional import validate_tax_ids
 		validate_tax_ids(self.tax_id, self.tax_cnic, self.tax_strn)
 
-		validate_party_accounts(self)
+		validate_party_accounts(self, is_party_doc=True, account_type="Payable")
 
 	def on_trash(self):
 		delete_contact_and_address('Supplier', self.name)

@@ -7,19 +7,29 @@ import frappe
 import frappe.defaults
 from frappe.utils.nestedset import get_root_of
 from frappe.model.document import Document
+from erpnext.setup.doctype.default_price_list.default_price_list import validate_default_price_list_table
 
 
 class SellingSettings(Document):
 	def validate(self):
 		for key in [
-			"cust_master_name", "customer_group", "territory",
-			"maintain_same_sales_rate", "selling_price_list"
+			"cust_master_name",
+			"customer_group",
+			"territory",
+			"maintain_same_sales_rate",
+			"selling_price_list",
 		]:
 			frappe.db.set_default(key, self.get(key, ""))
 
 		from erpnext.setup.doctype.naming_series.naming_series import set_by_naming_series
-		set_by_naming_series("Customer", "customer_name",
-			self.get("cust_master_name")=="Naming Series", hide_name_field=False)
+		set_by_naming_series(
+			"Customer",
+			"customer_name",
+			self.get("cust_master_name") == "Naming Series",
+			hide_name_field=False,
+		)
+
+		validate_default_price_list_table(self)
 
 	def set_default_customer_group_and_territory(self):
 		if not self.customer_group:

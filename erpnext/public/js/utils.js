@@ -95,22 +95,6 @@ $.extend(erpnext, {
 			}
 		});
 	},
-
-	route_to_adjustment_jv: (args) => {
-		frappe.model.with_doctype('Journal Entry', () => {
-			// route to adjustment Journal Entry to handle Account Balance and Stock Value mismatch
-			let journal_entry = frappe.model.get_new_doc('Journal Entry');
-
-			args.accounts.forEach((je_account) => {
-				let child_row = frappe.model.add_child(journal_entry, "accounts");
-				child_row.account = je_account.account;
-				child_row.debit_in_account_currency = je_account.debit_in_account_currency;
-				child_row.credit_in_account_currency = je_account.credit_in_account_currency;
-				child_row.party_type = "" ;
-			});
-			frappe.set_route('Form','Journal Entry', journal_entry.name);
-		});
-	},
 });
 
 
@@ -205,6 +189,25 @@ $.extend(erpnext.utils, {
 				}
 			});
 		}
+	},
+
+	get_exchange_rate: function(transaction_date, from_currency, to_currency, args, callback) {
+		if (!transaction_date || !from_currency || !to_currency) {
+			return;
+		}
+
+		return frappe.call({
+			method: "erpnext.setup.utils.get_exchange_rate",
+			args: {
+				transaction_date: transaction_date,
+				from_currency: from_currency,
+				to_currency: to_currency,
+				args: args
+			},
+			callback: (r) => {
+				return callback(flt(r.message));
+			}
+		});
 	},
 
 	make_bank_account: function(doctype, docname) {
@@ -457,16 +460,6 @@ $.extend(erpnext.utils, {
 					]);
 				}
 			}
-		});
-	},
-
-	create_new_doc: function (doctype, update_fields) {
-		frappe.model.with_doctype(doctype, function() {
-			var new_doc = frappe.model.get_new_doc(doctype);
-			for (let [key, value] of Object.entries(update_fields)) {
-				new_doc[key] = value;
-			}
-			frappe.ui.form.make_quick_entry(doctype, null, null, new_doc);
 		});
 	},
 

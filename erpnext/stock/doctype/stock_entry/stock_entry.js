@@ -501,9 +501,7 @@ frappe.ui.form.on('Stock Entry Detail', {
 	expense_account: function(frm, cdt, cdn) {
 		erpnext.utils.copy_value_in_all_rows(frm.doc, cdt, cdn, "items", "expense_account");
 	},
-	cost_center: function(frm, cdt, cdn) {
-		erpnext.utils.copy_value_in_all_rows(frm.doc, cdt, cdn, "items", "cost_center");
-	},
+
 	sample_quantity: function(frm, cdt, cdn) {
 		validate_sample_quantity(frm, cdt, cdn);
 	},
@@ -666,7 +664,6 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 			this.add_general_ledger_report_button();
 		}
 		erpnext.hide_company();
-		erpnext.utils.add_item(this.frm);
 
 		if (this.frm.doc.docstatus === 0) {
 			this.create_select_batch_button();

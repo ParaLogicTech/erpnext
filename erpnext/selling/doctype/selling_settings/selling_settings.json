@@ -8,12 +8,15 @@
  "field_order": [
   "defaults_section",
   "cust_master_name",
-  "customer_group",
-  "territory",
   "column_break_5",
+  "customer_group",
+  "column_break_0gbz",
+  "territory",
+  "price_lists_section",
   "selling_price_list",
   "retail_price_list",
-  "default_valid_till",
+  "column_break_4myg",
+  "price_lists",
   "pricing_restrictions_section",
   "validate_duplicate_customer_cnic",
   "validate_duplicate_customer_ntn",
@@ -30,6 +33,8 @@
   "validate_duplicate_customer_email",
   "role_allowed_to_duplicate_customer_ntn",
   "quotation_notifications_section",
+  "default_valid_till",
+  "column_break_2uwv",
   "quotation_reminder_days_after",
   "column_break_7mge",
   "quotation_reminder_time"
@@ -169,7 +174,7 @@
   {
    "fieldname": "quotation_notifications_section",
    "fieldtype": "Section Break",
-   "label": "Quotation Notifications"
+   "label": "Quotations"
   },
   {
    "fieldname": "quotation_reminder_days_after",
@@ -191,6 +196,29 @@
    "fieldtype": "Select",
    "label": "Validate Duplicate Customer Email Address",
    "options": "\nFor All Customers\nFor Individual Customers"
+  },
+  {
+   "fieldname": "price_lists_section",
+   "fieldtype": "Section Break",
+   "label": "Price Lists"
+  },
+  {
+   "fieldname": "column_break_2uwv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_4myg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "price_lists",
+   "fieldtype": "Table",
+   "label": "Multi Currency Default Price Lists",
+   "options": "Default Price List"
+  },
+  {
+   "fieldname": "column_break_0gbz",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 500,
@@ -198,7 +226,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-19 11:16:51.697190",
+ "modified": "2026-11-04 14:22:19.423143",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling Settings",

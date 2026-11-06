@@ -214,6 +214,7 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 
 	buying_price_list() {
 		this.apply_price_list();
+		this.set_dynamic_labels();
 	}
 
 	price_list_rate(doc, cdt, cdn) {
@@ -392,6 +393,29 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 			}
 		});
+	}
+
+	credit_to() {
+		if (this.frm.updating_party_details) {
+			return;
+		}
+
+		if (this.frm.doc.credit_to) {
+			this.frm.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "Account",
+					fieldname: "account_currency",
+					filters: { name: this.frm.doc.credit_to },
+				},
+				callback: (r) => {
+					if (r.message) {
+						this.frm.set_value("party_account_currency", r.message.account_currency);
+						this.set_dynamic_labels();
+					}
+				}
+			});
+		}
 	}
 
 	link_to_mrs() {

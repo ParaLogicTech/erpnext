@@ -74,7 +74,7 @@ class Customer(TransactionBase):
 		self.customer_name = clean_whitespace(self.customer_name)
 		self.check_customer_group_change()
 		self.validate_customer_group()
-		validate_party_accounts(self)
+		validate_party_accounts(self, is_party_doc=True, account_type="Receivable")
 		self.validate_credit_limit_on_change()
 		self.set_loyalty_program()
 		self.validate_default_bank_account()
@@ -453,12 +453,6 @@ class Customer(TransactionBase):
 @frappe.whitelist()
 def make_quotation(source_name, target_doc=None):
 	def set_missing_values(source, target):
-		price_list, currency = frappe.db.get_value("Customer", source_name, ['default_price_list', 'default_currency'])
-		if price_list:
-			target.selling_price_list = price_list
-		if currency:
-			target.currency = currency
-
 		target.run_method("postprocess_after_mapping")
 
 	return get_mapped_doc("Customer", source_name, {
@@ -469,7 +463,10 @@ def make_quotation(source_name, target_doc=None):
 				"name": "party_name",
 				"customer_primary_contact": "contact_person",
 				"customer_primary_address": "customer_address",
-			}
+			},
+			"field_no_map": [
+				"insurance_company",
+			]
 		}
 	}, target_doc, set_missing_values)
 

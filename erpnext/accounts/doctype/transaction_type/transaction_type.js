@@ -4,9 +4,17 @@
 frappe.ui.form.on('Transaction Type', {
 	setup: function(frm) {
 		frm.set_query('account', 'accounts', function(doc, cdt, cdn) {
-			var d  = locals[cdt][cdn];
-			var filters = {
-				'account_type': ['in', ['Receivable', 'Payable']],
+			let d = locals[cdt][cdn];
+
+			let account_type = ['in', ['Receivable', 'Payable']];
+			if (doc.selling && !doc.buying) {
+				account_type = "Receivable";
+			} else if (doc.buying && !doc.selling) {
+				account_type = "Payable";
+			}
+
+			let filters = {
+				'account_type': account_type,
 				'company': d.company,
 				"is_group": 0
 			};

@@ -725,8 +725,6 @@ class SalesInvoice(SellingController):
 			for d in self.get('items'):
 				d.project = self.project
 
-		self.set_party_account()
-
 		if not self.due_date and self.customer:
 			self.due_date = get_due_date(
 				self.posting_date, delivery_date=self.get("delivery_date"),

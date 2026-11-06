@@ -33,7 +33,7 @@ erpnext.utils.get_party_details = function(frm, args, callback) {
 	return frappe.call({
 		method: "erpnext.accounts.party.get_party_details",
 		args: args,
-		callback: function(r) {
+		callback: (r) => {
 			if (r.message) {
 				frm.supplier_tds = r.message.supplier_tds;
 				frm.updating_party_details = true;
@@ -43,7 +43,6 @@ erpnext.utils.get_party_details = function(frm, args, callback) {
 						frm.updating_party_details = false;
 						if (callback) callback(r);
 						frm.refresh_fields();
-						erpnext.utils.add_item(frm);
 					}
 				]);
 			}
@@ -54,65 +53,75 @@ erpnext.utils.get_party_details = function(frm, args, callback) {
 	});
 }
 
-erpnext.utils.get_party_account_details = function (frm) {
-	if (!frm.doc.company) {
+erpnext.utils.get_party_account_details = function (frm, get_price_list) {
+	if (!frm.doc.company || frm.updating_party_details) {
 		return;
 	}
 
-	var party_type;
-	var party;
-	var account_field;
-	if (frm.doc.letter_of_credit) {
+	let has_price_list_field = frm.fields_dict.selling_price_list || frm.fields_dict.buying_price_list;
+	get_price_list = has_price_list_field && get_price_list;
+
+	let party_type;
+	let party;
+	if (frm.doc.party_type && frm.doc.party) {
+		party_type = frm.doc.party_type;
+		party = frm.doc.party;
+	} else if (frm.doc.letter_of_credit) {
 		party_type = "Letter of Credit";
 		party = frm.doc.letter_of_credit;
-		account_field = "credit_to";
 	} else if (frm.doc.supplier) {
 		party_type = "Supplier";
 		party = frm.doc.supplier;
-		account_field = "credit_to";
-	} else if (frm.doc.customer) {
+	} else if (frm.doc.bill_to || frm.doc.customer) {
 		party_type = "Customer";
 		party = frm.doc.bill_to || frm.doc.customer;
-		account_field = "debit_to";
 	} else {
 		return;
 	}
 
-	frappe.call({
+	let account_field;
+	if (party_type == "Customer") {
+		account_field = "debit_to";
+	} else {
+		account_field = "credit_to";
+	}
+
+	return frappe.call({
 		method: "erpnext.accounts.party.get_party_account_details",
 		args: {
 			company: frm.doc.company,
 			party_type: party_type,
 			party: party,
-			transaction_type: frm.doc.transaction_type
+			transaction_type: frm.doc.transaction_type,
+			currency: frm.doc.currency,
+			get_price_list: get_price_list ? 1 : 0,
 		},
-		callback: function(r) {
-			if(!r.exc && r.message) {
-				frm.set_value(account_field, r.message.account);
-				if (r.message.cost_center) {
+		callback: (r) => {
+			if (r.message) {
+				if (frm.fields_dict[account_field]) {
+					frm.set_value(account_field, r.message.account);
+				}
+				if (frm.fields_dict.party_account_currency) {
+					frm.set_value("party_account_currency", r.message.party_account_currency);
+				}
+				if (frm.fields_dict.cost_center && r.message.cost_center) {
 					frm.set_value("cost_center", r.message.cost_center);
 				}
+				if (frm.fields_dict.selling_price_list && get_price_list && r.message.price_list) {
+					frm.set_value("selling_price_list", r.message.price_list);
+				}
+				if (frm.fields_dict.buying_price_list && get_price_list && r.message.price_list) {
+					frm.set_value("buying_price_list", r.message.price_list);
+				}
 			}
-		}
+		},
 	});
 };
 
-erpnext.utils.add_item = function(frm) {
-	if (frm.is_new()) {
-		var prev_route = frappe.get_prev_route();
-		if (prev_route[0] === "Form" && prev_route[1]==='Item' && !(frm.doc.items && frm.doc.items.length)) {
-			// add row
-			var item = frm.add_child('items');
-			frm.refresh_field('items');
-
-			// set item
-			frappe.model.set_value(item.doctype, item.name, 'item_code', prev_route.slice(2).join('/'));
-		}
-	}
-}
-
 erpnext.utils.get_address_display = function(frm, address_field, display_field) {
-	if (frm.updating_party_details) return;
+	if (frm.updating_party_details) {
+		return;
+	}
 
 	var lead = erpnext.utils.get_lead_from_doc(frm);
 
@@ -141,7 +150,9 @@ erpnext.utils.get_address_display = function(frm, address_field, display_field) 
 };
 
 erpnext.utils.set_taxes_from_address = function(frm, triggered_from_field, billing_address_field, shipping_address_field) {
-	if (frm.updating_party_details) return;
+	if (frm.updating_party_details) {
+		return;
+	}
 
 	if (frappe.meta.get_docfield(frm.doc.doctype, "taxes")) {
 		if (!erpnext.utils.validate_mandatory(frm, "Lead / Customer / Supplier",
@@ -243,7 +254,9 @@ erpnext.utils.set_taxes = function(frm, triggered_from_field) {
 };
 
 erpnext.utils.get_contact_details = function(frm, prefix) {
-	if (frm.updating_party_details) return;
+	if (frm.updating_party_details) {
+		return;
+	}
 
 	let lead = erpnext.utils.get_lead_from_doc(frm);
 
@@ -395,8 +408,12 @@ erpnext.utils.get_party_name = function (party_type, party, callback) {
 };
 
 erpnext.utils.get_party_name_field = function(party_type) {
-	var dict = {'Customer': 'customer_name', 'Supplier': 'supplier_name', 'Employee': 'employee_name',
-		'Member': 'member_name'};
+	let dict = {
+		'Customer': 'customer_name',
+		'Supplier': 'supplier_name',
+		'Employee': 'employee_name',
+		'Member': 'member_name'
+	};
 	return dict[party_type] || "name";
 };
 

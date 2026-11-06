@@ -1132,7 +1132,7 @@ class TransactionController(StockController):
 				args = "for_buying"
 
 			if self.meta.get_field(fieldname) and self.get(fieldname):
-				self.price_list_currency = frappe.db.get_value("Price List", self.get(fieldname), "currency", cache=1)
+				self.price_list_currency = frappe.get_cached_value("Price List", self.get(fieldname), "currency")
 
 				if self.price_list_currency == self.company_currency:
 					self.plc_conversion_rate = 1.0

@@ -132,20 +132,17 @@ class BuyingController(TransactionController):
 			return super().get_party_account()
 
 	def set_party_account(self, force=False):
-		if not self.meta.has_field("credit_to"):
-			return
-
-		if not self.get("credit_to") or force:
+		if self.meta.has_field("credit_to") and (not self.get("credit_to") or force):
 			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 			self.credit_to = get_party_account(
 				billing_party_type,
 				billing_party,
 				self.company,
-				transaction_type=self.get('transaction_type'),
+				transaction_type=self.get("transaction_type"),
+				currency=self.get("currency"),
 			)
 
-		if self.get("credit_to"):
-			self.party_account_currency = frappe.get_cached_value("Account", self.credit_to, "account_currency")
+		super().set_party_account(force=force)
 
 	def set_missing_values(self, for_validate=False):
 		super().set_missing_values(for_validate)
@@ -187,6 +184,7 @@ class BuyingController(TransactionController):
 
 			self.update_if_missing(party_details, force_fields=self.force_party_fields)
 
+		self.set_party_account()
 		self.set_price_list_currency("Buying")
 		self.set_missing_item_details(for_validate)
 

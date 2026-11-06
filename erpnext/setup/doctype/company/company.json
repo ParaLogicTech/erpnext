@@ -117,6 +117,10 @@
   "column_break_43",
   "default_bank_account",
   "default_cash_account",
+  "fc_ar_ap_section",
+  "receivable_accounts",
+  "column_break_lj9c",
+  "payable_accounts",
   "section_break_xy8g",
   "default_deferred_revenue_account",
   "default_deferred_expense_account",
@@ -1079,6 +1083,27 @@
    "fieldname": "budgeting_tab",
    "fieldtype": "Tab Break",
    "label": "Budgeting"
+  },
+  {
+   "fieldname": "fc_ar_ap_section",
+   "fieldtype": "Section Break",
+   "label": "Multi Currency Receivable / Payable Accounts"
+  },
+  {
+   "fieldname": "receivable_accounts",
+   "fieldtype": "Table",
+   "label": "Receivable Accounts",
+   "options": "Company Party Account"
+  },
+  {
+   "fieldname": "column_break_lj9c",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payable_accounts",
+   "fieldtype": "Table",
+   "label": "Payable Accounts",
+   "options": "Company Party Account"
   }
  ],
  "icon": "fa fa-building",
@@ -1086,7 +1111,7 @@
  "image_field": "company_logo",
  "is_tree": 1,
  "links": [],
- "modified": "2026-10-31 20:02:44.344916",
+ "modified": "2026-10-31 20:19:41.146858",
  "modified_by": "Administrator",
  "module": "Setup",
  "name": "Company",
