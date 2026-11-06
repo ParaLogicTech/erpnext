@@ -49,7 +49,6 @@ def before_tests():
 	frappe.db.sql("delete from `tabSalary Slip`")
 	frappe.db.sql("delete from `tabItem Price`")
 
-	frappe.db.set_single_value("Stock Settings", "auto_insert_price_list_rate_if_missing", 0)
 	enable_all_roles_and_domains()
 
 	frappe.db.commit()

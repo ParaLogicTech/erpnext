@@ -51,8 +51,7 @@ class ItemPrice(Document):
 	def check_duplicates(self):
 		conditions = "where item_code=%(item_code)s and price_list=%(price_list)s and name != %(name)s"
 
-		for field in ['uom', 'valid_from',
-			'valid_upto', 'packing_unit', 'customer', 'supplier']:
+		for field in ['uom', 'valid_from', 'valid_upto', 'customer', 'supplier']:
 			if self.get(field):
 				conditions += " and {0} = %({1})s".format(field, field)
 

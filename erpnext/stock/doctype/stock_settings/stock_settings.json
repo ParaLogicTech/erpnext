@@ -27,7 +27,6 @@
   "restrict_negative_stock_to_role",
   "allow_negative_stock",
   "options_section",
-  "auto_insert_price_list_rate_if_missing",
   "automatically_set_serial_nos_based_on_fifo",
   "set_qty_in_transactions_based_on_serial_no_input",
   "column_break_23",
@@ -127,12 +126,6 @@
    "fieldname": "section_break_7",
    "fieldtype": "Section Break",
    "label": "Permissions"
-  },
-  {
-   "default": "0",
-   "fieldname": "auto_insert_price_list_rate_if_missing",
-   "fieldtype": "Check",
-   "label": "Auto insert Price List rate If missing"
   },
   {
    "default": "0",
@@ -309,11 +302,12 @@
    "label": "Use Transit Warehouse for Material Transfer Request"
   }
  ],
+ "grid_page_length": 500,
  "icon": "icon-cog",
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-01-09 22:24:37.223568",
+ "modified": "2026-11-06 02:31:01.952176",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Settings",
@@ -339,6 +333,8 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": [],

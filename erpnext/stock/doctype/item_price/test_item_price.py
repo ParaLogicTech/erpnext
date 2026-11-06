@@ -21,7 +21,7 @@ class TestItemPrice(unittest.TestCase):
 		# Based on https://github.com/frappe/erpnext/issues/8456
 		test_fields_existance = [
 			'supplier', 'customer', 'uom', 'lead_time_days',
-			'packing_unit', 'valid_from', 'valid_upto', 'note'
+			'valid_from', 'valid_upto', 'note'
 		]
 		doc_fields = frappe.copy_doc(test_records[1]).__dict__.keys()
 
