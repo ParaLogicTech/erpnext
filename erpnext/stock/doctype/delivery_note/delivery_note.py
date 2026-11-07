@@ -62,9 +62,11 @@ class DeliveryNote(SellingController):
 		self.update_current_stock()
 
 	def before_submit(self):
+		super().before_submit()
 		self.remove_partial_packing_slip_for_return()
 
 	def on_submit(self):
+		super().on_submit()
 		self.validate_packed_qty()
 
 		# Check for Approving Authority

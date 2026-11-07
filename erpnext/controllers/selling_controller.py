@@ -75,6 +75,12 @@ class SellingController(TransactionController):
 		self.validate_for_duplicate_items()
 		self.validate_target_warehouse()
 
+	def before_submit(self):
+		pass
+
+	def on_submit(self):
+		pass
+
 	def before_update_after_submit(self):
 		self.calculate_sales_team_contribution(self.get('base_net_total'))
 

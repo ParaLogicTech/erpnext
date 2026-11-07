@@ -73,10 +73,13 @@ class SalesOrder(SellingController):
 		self.set_title()
 
 	def before_submit(self):
+		super().before_submit()
 		self.validate_item_code_mandatory()
 		self.validate_previous_docstatus()
 
 	def on_submit(self):
+		super().on_submit()
+
 		self.check_credit_limit()
 		self.update_reserved_qty()
 

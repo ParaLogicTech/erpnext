@@ -125,11 +125,13 @@ class SalesInvoice(SellingController):
 		self.set_paid_amount()
 
 	def before_submit(self):
+		super().before_submit()
 		self.validate_pos_payments_on_submit()
 		if self.update_stock:
 			self.remove_partial_packing_slip_for_return()
 
 	def on_submit(self):
+		super().on_submit()
 		self.validate_tax_id_mandatory()
 
 		if not self.auto_repeat:
