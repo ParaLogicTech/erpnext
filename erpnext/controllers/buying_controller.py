@@ -84,8 +84,12 @@ class BuyingController(TransactionController):
 			return
 
 		if self.doctype == "Purchase Order":
-			if frappe.get_cached_value("Buying Settings", None, "update_buying_prices_on_submission_of_purchase_order"):
-				self.update_item_prices()
+			if frappe.get_cached_value("Buying Settings", None, "update_prices_on_submission_of_purchase_order"):
+				self.auto_update_item_prices()
+
+		if self.doctype == "Purchase Invoice":
+			if frappe.get_cached_value("Buying Settings", None, "update_prices_on_submission_of_purchase_invoice"):
+				self.auto_update_item_prices()
 
 		if self.doctype in ['Purchase Receipt', 'Purchase Invoice']:
 			field = 'purchase_invoice' if self.doctype == 'Purchase Invoice' else 'purchase_receipt'

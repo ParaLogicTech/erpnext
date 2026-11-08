@@ -974,36 +974,92 @@ class TransactionController(StockController):
 		else:
 			return frappe.db.get_single_value("Global Defaults", "disable_rounded_total")
 
-	def update_item_prices(self):
-		from erpnext.stock.get_item_details import get_price_list_data, process_args
-		from erpnext.stock.report.item_prices.item_prices import _set_item_pl_rate
+	def auto_update_item_prices(self):
+		selling_or_buying = is_doctype_selling_or_buying(self.doctype)
 
-		parent_dict = frappe._dict({})
-		for fieldname in self.meta.get_valid_columns():
-			parent_dict[fieldname] = self.get(fieldname)
+		if selling_or_buying == "selling":
+			settings = frappe.get_cached_doc("Selling Settings", None)
+			price_list_field = "selling_price_list"
+		elif selling_or_buying == "buying":
+			settings = frappe.get_cached_doc("Buying Settings", None)
+			price_list_field = "buying_price_list"
+		else:
+			return
 
+		price_list = self.get(price_list_field)
+		if not price_list:
+			return
+
+		price_list_currency = frappe.get_cached_value("Price List", price_list, "currency")
+		if self.get("currency") != price_list_currency or not price_list_currency or not self.get("currency"):
+			return
+
+		rate_field = "rate" if settings.update_prices_based_on == "Actual Rate" else "price_list_rate"
+
+		party_specific_prices = settings.update_prices_party_specific
+		party_type, party = None, None
+		if party_specific_prices:
+			party_type, party, party_name = self.get_party()
+
+		item_codes_visited = set()
 		for item in self.get("items"):
-			if item.get("item_code"):
-				args = parent_dict.copy()
-				args.update(item.as_dict())
-				args = process_args(args)
+			if not item.get("item_code"):
+				continue
+			if item.get("is_free_item") or item.get("pricing_rules"):
+				continue
 
-				args["doctype"] = self.doctype
-				args["name"] = self.name
+			if item.item_code in item_codes_visited:
+				continue
 
-				if not args.get("transaction_date"):
-					args["transaction_date"] = args.get("posting_date")
+			item_codes_visited.add(item.item_code)
 
-				item_price_data = frappe._dict()
-				get_price_list_data(args, frappe.get_cached_doc("Item", item.item_code), item_price_data)
+			new_rate = flt(item.get(rate_field))
+			if not new_rate or not flt(item.get("rate")):
+				continue
 
-				rate_field_setting = frappe.get_cached_value("Buying Settings", None,
-					"update_buying_prices_based_on")
-				rate_field = "rate" if rate_field_setting == "Actual Rate" else "price_list_rate"
+			# do not update if there are multiple rows with different prices
+			other_item_code_rows = [d for d in self.get("items") if d.item_code == item.item_code and d != item]
+			if other_item_code_rows:
+				mismatch = False
+				for d in other_item_code_rows:
+					other_rate = flt(d.get(rate_field))
+					if abs(flt(other_rate - new_rate)) < 0.01:
+						mismatch = True
+						break
 
-				new_rate = flt(item.get(rate_field))
-				if new_rate and abs(flt(item_price_data.price_list_rate) - new_rate) > 0.005:
-					_set_item_pl_rate(args["transaction_date"], item.item_code, self.buying_price_list, new_rate, item.uom, item.conversion_factor)
+				if mismatch:
+					continue
+
+			self.update_item_price_for_row(item, price_list, new_rate, party_type=party_type, party=party)
+
+	def update_item_price_for_row(self, row, price_list, new_rate, party_type=None, party=None):
+		from erpnext.stock.report.item_prices.item_prices import _set_item_pl_rate
+		from erpnext.stock.get_item_details import get_price_list_data, process_args
+
+		if not row.get("item_code") or not price_list or not new_rate:
+			return
+
+		# Check if no change in price
+		parent_dict = self.get_item_details_parent_args()
+		args = self.get_item_details_child_args(row, parent_dict)
+		args = process_args(args)
+		item_price_data = frappe._dict()
+		get_price_list_data(args, frappe.get_cached_doc("Item", row.item_code), item_price_data)
+
+		if abs(flt(item_price_data.price_list_rate) - new_rate) <= 0.01:
+			return
+
+		_set_item_pl_rate(
+			self.get("posting_date") or self.get("transaction_date"),
+			row.item_code,
+			price_list,
+			new_rate,
+			row.uom,
+			row.conversion_factor,
+			party_type=party_type,
+			party=party,
+			ignore_permissions=True,
+		)
 
 	def is_inclusive_tax(self):
 		is_inclusive = cint(frappe.get_cached_value("Accounts Settings", None, "show_inclusive_tax_in_print"))
