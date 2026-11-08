@@ -1163,7 +1163,13 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			args = "for_buying";
 		}
 
-		return erpnext.utils.get_exchange_rate(transaction_date, from_currency, to_currency, args, callback);
+		return erpnext.utils.get_exchange_rate({
+			transaction_date: transaction_date,
+			from_currency: from_currency,
+			to_currency: to_currency,
+			args: args,
+			callback: callback,
+		});
 	}
 
 	price_list_currency() {
