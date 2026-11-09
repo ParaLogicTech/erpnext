@@ -19,6 +19,7 @@
   "set_posting_time",
   "amended_from",
   "get_items_from_section",
+  "group_warehouse",
   "default_warehouse",
   "get_batches",
   "get_items",
@@ -177,6 +178,12 @@
    "label": "Get Items From"
   },
   {
+   "default": "0",
+   "fieldname": "group_warehouse",
+   "fieldtype": "Check",
+   "label": "Group Warehouse"
+  },
+  {
    "fieldname": "default_warehouse",
    "fieldtype": "Link",
    "label": "Warehouse",
@@ -267,7 +274,7 @@
  "idx": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 17:14:55.271059",
+ "modified": "2026-11-09 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Stock Reconciliation",

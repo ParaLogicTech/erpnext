@@ -32,6 +32,15 @@ frappe.ui.form.on("Stock Reconciliation", {
 			}
 		});
 
+		frm.set_query("default_warehouse", function(doc) {
+			return {
+				filters: {
+					"company": doc.company,
+					"is_group": cint(doc.group_warehouse)
+				}
+			}
+		});
+
 		let batch_no_field = frm.get_docfield("items", "batch_no");
 		if (batch_no_field) {
 			batch_no_field.get_route_options_for_new_doc = function(row) {
@@ -57,6 +66,10 @@ frappe.ui.form.on("Stock Reconciliation", {
 		if(frm.doc.company) {
 			frm.trigger("toggle_display_account_head");
 		}
+	},
+
+	group_warehouse: function(frm) {
+		frm.set_value("default_warehouse", null);
 	},
 
 	reset_rate: function (frm) {
@@ -115,7 +128,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 						valuation_rate: d.valuation_rate,
 						reset_rate: frm.doc.reset_rate,
 						loose_uom: frm.doc.loose_uom,
-						default_warehouse: frm.doc.default_warehouse,
+						default_warehouse: cint(frm.doc.group_warehouse) ? null : frm.doc.default_warehouse,
 					}
 				},
 				callback: function(r) {
