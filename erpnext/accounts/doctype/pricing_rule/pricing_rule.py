@@ -433,7 +433,6 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 				"stock_uom": args.stock_uom,
 				"conversion_factor": args.conversion_factor,
 				"transaction_date": args.get('transaction_date') or args.get('posting_date'),
-				"ignore_party": True,
 			})))
 
 		if pricing_rule.currency != args.currency:

@@ -630,13 +630,13 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 	}
 
 	get_exchange_rate(transaction_date, from_currency, to_currency, callback) {
-		return erpnext.utils.get_exchange_rate(
-			transaction_date,
-			from_currency,
-			to_currency,
-			"for_buying",
-			callback,
-		);
+		return erpnext.utils.get_exchange_rate({
+			transaction_date: transaction_date,
+			from_currency: from_currency,
+			to_currency: to_currency,
+			args: "for_buying",
+			callback: callback,
+		});
 	}
 };
 

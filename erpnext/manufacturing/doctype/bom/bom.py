@@ -305,7 +305,6 @@ class BOM(Document):
 							"conversion_rate": 1,  # Passed conversion rate as 1 purposefully, as conversion rate is applied at the end of the function
 							"conversion_factor": conversion_factor,
 							"plc_conversion_rate": 1,
-							"ignore_party": True
 						})
 						item_doc = frappe.get_cached_doc("Item", arg.get("item_code"))
 						out = frappe._dict()

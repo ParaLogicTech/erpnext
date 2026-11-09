@@ -41,10 +41,13 @@ class Quotation(SellingController):
 		self.set_title()
 
 	def before_submit(self):
+		super().before_submit()
 		self.validate_item_code_mandatory()
 		self.submission_date = getdate()
 
 	def on_submit(self):
+		super().on_submit()
+
 		# Check for Approving Authority
 		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype,
 			self.company, self.base_grand_total, self)

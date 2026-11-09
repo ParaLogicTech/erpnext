@@ -45,6 +45,8 @@
   "column_break_12",
   "show_payment_schedule_in_print",
   "currency_exchange_section",
+  "default_currency_exchange_provider",
+  "column_break_ynqn",
   "allow_stale",
   "stale_days",
   "report_settings_sb",
@@ -318,6 +320,15 @@
    "fieldname": "apply_taxes_on_advance_payment",
    "fieldtype": "Check",
    "label": "Apply Taxes on Advance Payment"
+  },
+  {
+   "fieldname": "default_currency_exchange_provider",
+   "fieldtype": "Select",
+   "label": "Default Currency Exchange Rate Provider"
+  },
+  {
+   "fieldname": "column_break_ynqn",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 500,
@@ -325,7 +336,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-28 14:27:21.809120",
+ "modified": "2026-11-08 02:08:18.749067",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Accounts Settings",
@@ -352,6 +363,7 @@
  ],
  "quick_entry": 1,
  "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "ASC",
  "states": [],

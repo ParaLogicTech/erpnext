@@ -389,9 +389,9 @@ class Item(Document):
 
 	def update_item_price(self):
 		frappe.db.sql("""
-			update `tabItem Price` set item_name=%s, item_description=%s, item_group=%s, brand=%s
+			update `tabItem Price` set item_name=%s, item_group=%s, brand=%s
 			where item_code=%s
-		""", (self.item_name, self.description, self.item_group, self.brand, self.name))
+		""", (self.item_name, self.item_group, self.brand, self.name))
 
 	def update_serial_no(self):
 		if self.has_serial_no:

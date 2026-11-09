@@ -308,6 +308,10 @@ update_appointment_from_opportunity_mapper = [
 	"erpnext.overrides.opportunity.opportunity_hooks.update_appointment_mapper",
 ]
 
+exchange_rate_providers = {
+	"Frankfurter": "erpnext.erpnext_integrations.frankfurter_integration.get_exchange_rate_from_frankfurter",
+}
+
 jinja = {
 	'methods': [
 		'erpnext.stock.utils.format_item_name',

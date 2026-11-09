@@ -13,7 +13,6 @@
   "item_name",
   "item_group",
   "brand",
-  "item_description",
   "price_list_details",
   "price_list",
   "column_break_swqcl",
@@ -33,9 +32,7 @@
   "section_break_24",
   "note",
   "column_break_7l9ba",
-  "reference",
-  "lead_time_days",
-  "packing_unit"
+  "reference"
  ],
  "fields": [
   {
@@ -57,13 +54,6 @@
    "options": "UOM"
   },
   {
-   "default": "0",
-   "description": "Quantity  that must be bought or sold per UOM",
-   "fieldname": "packing_unit",
-   "fieldtype": "Int",
-   "label": "Packing Unit"
-  },
-  {
    "fieldname": "column_break_17",
    "fieldtype": "Column Break"
   },
@@ -80,12 +70,6 @@
    "in_standard_filter": 1,
    "label": "Brand",
    "options": "Brand",
-   "read_only": 1
-  },
-  {
-   "fieldname": "item_description",
-   "fieldtype": "Text",
-   "label": "Item Description",
    "read_only": 1
   },
   {
@@ -178,12 +162,6 @@
    "label": "Valid From"
   },
   {
-   "default": "0",
-   "fieldname": "lead_time_days",
-   "fieldtype": "Int",
-   "label": "Lead Time in days"
-  },
-  {
    "fieldname": "column_break_18",
    "fieldtype": "Column Break"
   },
@@ -232,7 +210,7 @@
  "icon": "fa fa-flag",
  "idx": 1,
  "links": [],
- "modified": "2026-09-12 16:31:46.137573",
+ "modified": "2026-11-07 14:54:04.184804",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Item Price",

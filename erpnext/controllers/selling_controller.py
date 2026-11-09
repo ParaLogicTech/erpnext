@@ -75,6 +75,18 @@ class SellingController(TransactionController):
 		self.validate_for_duplicate_items()
 		self.validate_target_warehouse()
 
+	def before_submit(self):
+		pass
+
+	def on_submit(self):
+		if self.doctype == "Sales Order":
+			if frappe.get_cached_value("Selling Settings", None, "update_prices_on_submission_of_sales_order"):
+				self.auto_update_item_prices()
+
+		if self.doctype == "Sales Invoice":
+			if frappe.get_cached_value("Selling Settings", None, "update_prices_on_submission_of_sales_invoice"):
+				self.auto_update_item_prices()
+
 	def before_update_after_submit(self):
 		self.calculate_sales_team_contribution(self.get('base_net_total'))
 

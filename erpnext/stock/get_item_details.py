@@ -941,52 +941,20 @@ def get_price_list_data(args, item_doc, out):
 		if not price_list_rate and item_doc.variant_of:
 			price_list_rate = get_price_list_rate(item_doc.variant_of, args.get("price_list"), args)
 
-		# insert in database
-		if not price_list_rate:
-			if args.price_list and args.rate:
-				insert_item_price(args)
-
-		out.price_list_rate = flt(price_list_rate) * flt(args.plc_conversion_rate) \
-			/ flt(args.conversion_rate)
+		out.price_list_rate = flt(price_list_rate) * flt(args.plc_conversion_rate) / flt(args.conversion_rate)
 
 		if "retail_price_list" in args:
 			retail_rate = 0
-			if args.get("retail_price_list") and args.get("currency"):
-				if frappe.db.get_value("Price List", args.get("retail_price_list"), "currency", cache=True) == args.get("currency"):
-					retail_rate = get_price_list_rate(item_doc.name, args.get("retail_price_list"), args) or 0
-					if not retail_rate and item_doc.variant_of:
-						retail_rate = get_price_list_rate(item_doc.variant_of, args.get("retail_price_list"), args)
+			if (
+				args.get("retail_price_list")
+				and args.get("currency")
+				and frappe.get_cached_value("Price List", args.get("retail_price_list"), "currency") == args.get("currency")
+			):
+				retail_rate = get_price_list_rate(item_doc.name, args.get("retail_price_list"), args) or 0
+				if not retail_rate and item_doc.variant_of:
+					retail_rate = get_price_list_rate(item_doc.variant_of, args.get("retail_price_list"), args)
 
 			out.retail_rate = flt(retail_rate)
-
-
-def insert_item_price(args):
-	"""Insert Item Price if Price List and Price List Rate are specified and currency is the same"""
-	if frappe.get_cached_value("Price List", args.price_list, "currency") == args.currency \
-		and cint(frappe.get_cached_value("Stock Settings", None, "auto_insert_price_list_rate_if_missing")):
-		if frappe.has_permission("Item Price", "write"):
-			price_list_rate = (args.rate / args.get('conversion_factor')
-				if args.get("conversion_factor") else args.rate)
-
-			item_price = frappe.db.get_value('Item Price',
-				{'item_code': args.item_code, 'price_list': args.price_list, 'currency': args.currency},
-				['name', 'price_list_rate'], as_dict=1)
-			if item_price and item_price.name:
-				if item_price.price_list_rate != price_list_rate:
-					frappe.db.set_value('Item Price', item_price.name, "price_list_rate", price_list_rate)
-					frappe.msgprint(_("Item Price updated for {0} in Price List {1}").format(args.item_code,
-						args.price_list), alert=True)
-			else:
-				item_price = frappe.get_doc({
-					"doctype": "Item Price",
-					"price_list": args.price_list,
-					"item_code": args.item_code,
-					"currency": args.currency,
-					"price_list_rate": price_list_rate
-				})
-				item_price.insert()
-				frappe.msgprint(_("Item Price added for {0} in Price List {1}").format(args.item_code,
-					args.price_list), alert=True)
 
 
 def get_price_list_rate(item_code, price_list, args):
@@ -1020,12 +988,7 @@ def get_price_list_rate_for(item_code, price_list, args):
 	item_price_data = None
 	item_price = get_item_price(item_price_args, item_code)
 	if item_price:
-		desired_qty = args.get("qty")
-		if desired_qty is None:
-			desired_qty = 1
-
-		if desired_qty and check_packing_list(item_price, desired_qty, item_code):
-			item_price_data = item_price
+		item_price_data = item_price
 	else:
 		for field in ["customer", "supplier"]:
 			del item_price_args[field]
@@ -1098,8 +1061,7 @@ def get_item_price(args, item_code, ignore_party=False):
 			price_list_rate,
 			uom,
 			ifnull(valid_from, '2000-01-01') as valid_from,
-			ifnull(valid_upto, '2500-12-31') as valid_upto,
-			packing_unit
+			ifnull(valid_upto, '2500-12-31') as valid_upto
 		from `tabItem Price`
 		{conditions}
 		{order_by}
@@ -1149,25 +1111,6 @@ def get_last_purchase_rate(
 		last_purchase_rate = flt(frappe.get_cached_value("Item", item_code, "last_purchase_rate"))
 
 	return last_purchase_rate * conversion_factor / exchange_rate
-
-
-def check_packing_list(item_price, desired_qty, item_code):
-	"""
-		Check if the desired qty is within the increment of the packing list.
-		:param item_price: Name of Item Price
-		:param desired_qty: Desired Qt
-		:param item_code: str, Item Doctype field item_code
-		:param qty: Desired Qt
-	"""
-
-	flag = True
-	if item_price and item_price.packing_unit:
-		packing_increment = desired_qty % item_price.packing_unit
-
-		if packing_increment != 0:
-			flag = False
-
-	return flag
 
 
 def validate_conversion_rate(args, meta):

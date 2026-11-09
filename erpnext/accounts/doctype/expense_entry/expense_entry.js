@@ -343,15 +343,14 @@ $.extend(erpnext.accounts.expense_entry, {
 		if (frm.doc.payable_account_currency === company_currency) {
 			frappe.model.set_value(cdt, cdn, 'exchange_rate', 1);
 		} else if (row.bill_date) {
-			return erpnext.utils.get_exchange_rate(
-				row.bill_date || frm.doc.transaction_date,
-				frm.doc.payable_account_currency,
-				company_currency,
-				null,
-				(exchange_rate) => {
+			return erpnext.utils.get_exchange_rate({
+				transaction_date: row.bill_date || frm.doc.transaction_date,
+				from_currency: frm.doc.payable_account_currency,
+				to_currency: company_currency,
+				callback: (exchange_rate) => {
 					frappe.model.set_value(cdt, cdn, "exchange_rate", flt(exchange_rate));
 				}
-			);
+			});
 		}
 	},
 

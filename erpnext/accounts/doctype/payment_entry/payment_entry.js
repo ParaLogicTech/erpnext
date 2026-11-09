@@ -764,15 +764,14 @@ frappe.ui.form.on('Payment Entry', {
 	},
 
 	set_current_exchange_rate: function(frm, exchange_rate_field, from_currency, to_currency) {
-		return erpnext.utils.get_exchange_rate(
-			frm.doc.posting_date,
-			from_currency,
-			to_currency,
-			null,
-			(exchange_rate) => {
+		return erpnext.utils.get_exchange_rate({
+			transaction_date: frm.doc.posting_date,
+			from_currency: from_currency,
+			to_currency: to_currency,
+			callback: (exchange_rate) => {
 				frm.set_value(exchange_rate_field, flt(exchange_rate));
 			}
-		);
+		});
 	},
 
 	posting_date: function(frm) {

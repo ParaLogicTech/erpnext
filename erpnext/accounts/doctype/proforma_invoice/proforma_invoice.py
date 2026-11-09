@@ -37,9 +37,11 @@ class ProformaInvoice(SellingController):
 		self.set_title()
 
 	def before_submit(self):
+		super().before_submit()
 		self.validate_previous_docstatus()
 
 	def on_submit(self):
+		super().on_submit()
 		self.update_previous_doc_status()
 
 	def on_cancel(self):
