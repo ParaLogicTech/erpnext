@@ -258,7 +258,7 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 	}
 
 	selling_price_list() {
-		this.apply_price_list();
+		this.apply_price_list(null, true);
 		this.set_dynamic_labels();
 	}
 

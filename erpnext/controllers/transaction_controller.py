@@ -145,6 +145,7 @@ class TransactionController(StockController):
 		self.clean_item_names()
 
 		if self.meta.get_field("currency"):
+			self.validate_conversion_rate()
 			self.before_calculate_taxes_and_totals()
 			self.calculate_taxes_and_totals()
 			self.validate_grand_total()
@@ -1172,37 +1173,61 @@ class TransactionController(StockController):
 
 		return {}
 
+	def validate_conversion_rate(self):
+		from erpnext.controllers.accounts_controller import validate_conversion_rate
+
+		if not self.meta.get_field("currency") or not self.meta.get_field("conversion_rate"):
+			return
+
+		if self.currency == self.company_currency:
+			self.conversion_rate = 1
+
+		validate_conversion_rate(
+			self.currency,
+			self.conversion_rate,
+			self.meta.get_label("conversion_rate"),
+			self.company,
+		)
+
 	def set_price_list_currency(self, selling_or_buying):
-		if self.meta.get_field("posting_date"):
-			transaction_date = self.posting_date
+		if not self.meta.get_field("currency"):
+			return
+
+		transaction_date = self.get("posting_date") or self.get("transaction_date")
+		if selling_or_buying.lower() == "selling":
+			fieldname = "selling_price_list"
+			args = "for_selling"
 		else:
-			transaction_date = self.transaction_date
+			fieldname = "buying_price_list"
+			args = "for_buying"
 
-		if self.meta.get_field("currency"):
-			# price list part
-			if selling_or_buying.lower() == "selling":
-				fieldname = "selling_price_list"
-				args = "for_selling"
-			else:
-				fieldname = "buying_price_list"
-				args = "for_buying"
-
-			if self.meta.get_field(fieldname) and self.get(fieldname):
-				self.price_list_currency = frappe.get_cached_value("Price List", self.get(fieldname), "currency")
-
-				if self.price_list_currency == self.company_currency:
-					self.plc_conversion_rate = 1.0
-				elif not self.plc_conversion_rate:
-					self.plc_conversion_rate = get_exchange_rate(self.price_list_currency, self.company_currency, transaction_date, args)
-
-			# currency
-			if not self.currency:
-				self.currency = self.price_list_currency
-				self.conversion_rate = self.plc_conversion_rate
-			elif self.currency == self.company_currency:
+		# missing exchange rate
+		if self.currency:
+			if self.currency == self.company_currency:
 				self.conversion_rate = 1.0
 			elif not self.conversion_rate:
-				self.conversion_rate = get_exchange_rate(self.currency, self.company_currency, transaction_date, args)
+				self.conversion_rate = get_exchange_rate(
+					self.currency,
+					self.company_currency,
+					transaction_date,
+					args=args,
+				)
+
+		# price list part
+		if self.meta.get_field(fieldname) and self.get(fieldname):
+			self.price_list_currency = frappe.get_cached_value("Price List", self.get(fieldname), "currency")
+
+			if self.price_list_currency == self.company_currency:
+				self.plc_conversion_rate = 1.0
+			elif self.price_list_currency == self.currency:
+				self.plc_conversion_rate = self.conversion_rate
+			elif not self.plc_conversion_rate:
+				self.plc_conversion_rate = get_exchange_rate(
+					self.price_list_currency,
+					self.company_currency,
+					transaction_date,
+					args=args,
+				)
 
 	def sort_items(self):
 		price_list_settings = frappe.get_cached_doc("Price List Settings", None)

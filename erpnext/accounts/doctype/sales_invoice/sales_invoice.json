@@ -645,8 +645,7 @@
    "label": "Price List Currency",
    "options": "Currency",
    "print_hide": 1,
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "description": "Rate at which Price list currency is converted to customer's base currency",
@@ -2428,7 +2427,7 @@
  "idx": 181,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-02 17:49:59.788643",
+ "modified": "2026-11-09 15:57:53.472415",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice",

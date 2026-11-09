@@ -213,7 +213,7 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 	}
 
 	buying_price_list() {
-		this.apply_price_list();
+		this.apply_price_list(null, true);
 		this.set_dynamic_labels();
 	}
 

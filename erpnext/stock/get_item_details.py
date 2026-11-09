@@ -6,7 +6,6 @@ from frappe import _
 from frappe.utils import flt, cint, add_days, cstr, add_months, getdate, add_years
 from erpnext.accounts.doctype.pricing_rule.pricing_rule import get_pricing_rule_for_item
 from erpnext.setup.utils import get_exchange_rate
-from frappe.model.meta import get_field_precision
 from erpnext import get_company_currency
 from erpnext.stock.doctype.item.item import get_uom_conv_factor, convert_item_uom_for
 from erpnext.setup.doctype.item_default_rule.item_default_rule import get_item_default_values
@@ -930,18 +929,18 @@ def get_price_list_data(args, item_doc, out):
 
 	meta = frappe.get_meta(args.parenttype or args.doctype)
 
-	if meta.get_field("currency") or args.get('currency'):
+	if meta.get_field("currency") or args.get("currency"):
 		pl_details = get_price_list_currency_and_exchange_rate(args)
 		args.update(pl_details)
 		if meta.get_field("currency"):
-			validate_conversion_rate(args, meta)
+			validate_conversion_rate(args)
 
 		# price from variant or template
 		price_list_rate = get_price_list_rate(item_doc.name, args.get("price_list"), args) or 0
 		if not price_list_rate and item_doc.variant_of:
 			price_list_rate = get_price_list_rate(item_doc.variant_of, args.get("price_list"), args)
 
-		out.price_list_rate = flt(price_list_rate) * flt(args.plc_conversion_rate) / flt(args.conversion_rate)
+		out.price_list_rate = flt(price_list_rate) * flt(args.plc_conversion_rate) / flt(args.conversion_rate or 1)
 
 		if "retail_price_list" in args:
 			retail_rate = 0
@@ -1113,37 +1112,20 @@ def get_last_purchase_rate(
 	return last_purchase_rate * conversion_factor / exchange_rate
 
 
-def validate_conversion_rate(args, meta):
-	from erpnext.controllers.accounts_controller import validate_conversion_rate
-
-	if (not args.conversion_rate
-		and args.currency==frappe.get_cached_value('Company',  args.company,  "default_currency")):
+def validate_conversion_rate(args):
+	company_currency = get_company_currency(args.company)
+	if args.currency == company_currency:
 		args.conversion_rate = 1.0
 
-	# validate currency conversion rate
-	validate_conversion_rate(args.currency, args.conversion_rate,
-		meta.get_label("conversion_rate"), args.company)
-
-	args.conversion_rate = flt(args.conversion_rate,
-		get_field_precision(meta.get_field("conversion_rate"),
-			frappe._dict({"fields": args})))
+	args.conversion_rate = flt(args.conversion_rate, 9)
 
 	if args.price_list:
-		if (not args.plc_conversion_rate
-			and args.price_list_currency==frappe.db.get_value("Price List", args.price_list, "currency", cache=True)):
+		if args.price_list_currency == company_currency:
+			args.plc_conversion_rate = 1.0
+		elif args.price_list_currency == args.currency:
 			args.plc_conversion_rate = args.conversion_rate
 
-		# validate price list currency conversion rate
-		if not args.get("price_list_currency"):
-			frappe.throw(_("Price List Currency not selected"))
-		else:
-			validate_conversion_rate(args.price_list_currency, args.plc_conversion_rate,
-				meta.get_label("plc_conversion_rate"), args.company)
-
-			if meta.get_field("plc_conversion_rate"):
-				args.plc_conversion_rate = flt(args.plc_conversion_rate,
-					get_field_precision(meta.get_field("plc_conversion_rate"),
-					frappe._dict({"fields": args})))
+		args.plc_conversion_rate = flt(args.plc_conversion_rate, 9)
 
 
 def get_party_item_code(args, item_doc, out):
@@ -1511,22 +1493,32 @@ def get_price_list_currency_and_exchange_rate(args):
 	elif args.selling_or_buying == "buying":
 		args.update({"exchange_rate": "for_buying"})
 
-	price_list_details = frappe.get_cached_value("Price List", args.price_list,
-		["currency", "price_not_uom_dependent", "enabled"], as_dict=1)
+	price_list_details = frappe.get_cached_value("Price List", args.price_list, [
+		"currency", "price_not_uom_dependent", "enabled"
+	], as_dict=1)
 	if not price_list_details or not price_list_details.get("enabled"):
 		frappe.throw(_("Price List {0} is disabled or does not exist").format(args.price_list))
 
 	price_list_currency = price_list_details.get("currency")
 	price_list_uom_dependant = not price_list_details.get("price_not_uom_dependent")
 
-	plc_conversion_rate = args.plc_conversion_rate
 	company_currency = get_company_currency(args.company)
+	plc_conversion_rate = flt(args.plc_conversion_rate)
+	if price_list_currency == company_currency:
+		plc_conversion_rate = 1
+	elif price_list_currency == args.currency:
+		plc_conversion_rate = flt(args.conversion_rate) or plc_conversion_rate
 
-	if (not plc_conversion_rate) or (price_list_currency and args.price_list_currency \
-		and price_list_currency != args.price_list_currency):
-			# cksgb 19/09/2016: added args.transaction_date as posting_date argument for get_exchange_rate
-			plc_conversion_rate = get_exchange_rate(price_list_currency, company_currency,
-				args.transaction_date, args.exchange_rate) or plc_conversion_rate
+	if (
+		not plc_conversion_rate
+		or (price_list_currency and args.price_list_currency and price_list_currency != args.price_list_currency)
+	):
+		plc_conversion_rate = get_exchange_rate(
+			price_list_currency,
+			company_currency,
+			args.transaction_date,
+			args.exchange_rate,
+		) or plc_conversion_rate
 
 	return frappe._dict({
 		"price_list_currency": price_list_currency,

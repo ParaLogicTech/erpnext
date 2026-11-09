@@ -196,6 +196,11 @@ $.extend(erpnext.utils, {
 			return;
 		}
 
+		if (args.from_currency == args.to_currency) {
+			args.callback?.(1.0);
+			return;
+		}
+
 		return frappe.call({
 			method: "erpnext.setup.utils.get_exchange_rate",
 			args: {

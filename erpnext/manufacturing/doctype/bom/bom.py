@@ -492,8 +492,16 @@ class BOM(Document):
 		if self.rm_cost_as_per in ["Valuation Rate", "Last Purchase Rate"]:
 			self.plc_conversion_rate = 1
 		elif not self.plc_conversion_rate and self.price_list_currency:
-			self.plc_conversion_rate = get_exchange_rate(self.price_list_currency,
-				self.company_currency(), args="for_buying")
+			if self.price_list_currency == self.company_currency():
+				self.plc_conversion_rate = 1
+			elif self.price_list_currency == self.currency:
+				self.plc_conversion_rate = self.conversion_rate
+			else:
+				self.plc_conversion_rate = get_exchange_rate(
+					self.price_list_currency,
+					self.company_currency(),
+					args="for_buying",
+				)
 
 	def validate_materials(self):
 		""" Validate raw material entries """
