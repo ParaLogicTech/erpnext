@@ -381,26 +381,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		if (other_charges_calculation_df) {
 			other_charges_calculation_df.$wrapper.html(this.frm.doc.__onload?.other_charges_calculation || "");
 		}
-
-		// if (this.frm.doc.__islocal) {
-		// 	let currency = frappe.defaults.get_user_default("currency");
-		//
-		// 	let set_value = (fieldname, value) => {
-		// 		if(this.frm.fields_dict[fieldname] && !this.frm.doc[fieldname]) {
-		// 			return this.frm.set_value(fieldname, value);
-		// 		}
-		// 	};
-		//
-		// 	return frappe.run_serially([
-		// 		() => set_value("currency", currency),
-		// 		() => set_value("price_list_currency", currency),
-		// 		() => {
-		// 			if (this.frm.doc.company && !this.frm.doc.amended_from && !this.frm.doc.__onload?.load_after_mapping) {
-		// 				return this.set_company_defaults();
-		// 			}
-		// 		}
-		// 	]);
-		// }
 	}
 
 	is_return() {
@@ -909,13 +889,15 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		if (this.frm.fields_dict.currency) {
 			tasks = tasks.concat([
 				() => this.set_exchange_rate(true),
+				() => this.set_plc_exchange_rate(true),
 				() => erpnext.utils.set_taxes(this.frm, "company"),
 				() => this.get_multiple_item_tax_maps(false),
-				() => this.update_item_defaults(false),
+				() => this.update_item_defaults(true),
 				() => this.apply_pricing_rule(),
 			]);
 		}
 
+		this.set_dynamic_labels();
 		this.set_company_address();
 
 		return frappe.run_serially(tasks);
@@ -1168,15 +1150,20 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	price_list_currency() {
 		this.set_dynamic_labels();
+		this.set_plc_exchange_rate();
+	}
+
+	set_plc_exchange_rate(force=false) {
+		let transaction_date = this.frm.doc.transaction_date || this.frm.doc.posting_date;
 		let company_currency = this.get_company_currency();
 
 		if (
 			this.frm.doc.price_list_currency !== company_currency
 			&& this.frm.doc.price_list_currency !== this.frm.doc.currency
-			&& !this.frm.doc.ignore_pricing_rule
+			&& (!this.frm.doc.ignore_pricing_rule || force)
 		) {
 			this.get_exchange_rate(
-				this.frm.doc.posting_date,
+				transaction_date,
 				this.frm.doc.price_list_currency,
 				company_currency,
 				(exchange_rate) => {
@@ -1929,7 +1916,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 						() => this.frm.set_value("price_list_currency", r.message.parent.price_list_currency),
 						() => this.frm.set_value("plc_conversion_rate", r.message.parent.plc_conversion_rate),
 						() => {
-							if (args.items.length) {
+							if (args.items?.length) {
 								this._set_values_for_item_list(r.message.children);
 								this.calculate_taxes_and_totals();
 							}
