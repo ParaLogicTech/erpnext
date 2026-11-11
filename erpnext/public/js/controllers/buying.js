@@ -200,11 +200,21 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 				letter_of_credit: this.frm.doc.letter_of_credit,
 				bill_date: this.frm.doc.bill_date,
 				shipping_address: this.frm.doc.shipping_address,
+				price_list: this.has_previous_document() ? this.frm.doc.selling_price_list : null,
 			},
 			() => {
 				this.apply_pricing_rule();
 			}
 		);
+	}
+
+	has_previous_document() {
+		if (this.frm.doc.return_against) {
+			return true;
+		}
+		return (this.frm.doc.items || []).filter(d => {
+			return d.supplier_quotation || d.purchase_order || d.purchase_receipt || d.purchase_invoice;
+		}).length > 0;
 	}
 
 	supplier_address() {
@@ -213,7 +223,7 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 	}
 
 	buying_price_list() {
-		this.apply_price_list();
+		this.apply_price_list(null, true);
 		this.set_dynamic_labels();
 	}
 

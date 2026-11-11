@@ -232,11 +232,22 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 				bill_to: this.frm.doc.bill_to,
 				delivery_date: this.frm.doc.delivery_date,
 				company_address: this.frm.doc.company_address,
+
+				price_list: this.has_previous_document() ? this.frm.doc.selling_price_list : null,
 			},
 			() => {
 				this.apply_pricing_rule();
 			}
 		);
+	}
+
+	has_previous_document() {
+		if (this.frm.doc.return_against) {
+			return true;
+		}
+		return (this.frm.doc.items || []).filter(d => {
+			return d.quotation || d.sales_order || d.delivery_note || d.proforma_invoice || d.sales_invoice;
+		}).length > 0;
 	}
 
 	customer_address() {
@@ -258,7 +269,7 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 	}
 
 	selling_price_list() {
-		this.apply_price_list();
+		this.apply_price_list(null, true);
 		this.set_dynamic_labels();
 	}
 

@@ -629,8 +629,7 @@
    "label": "Price List Currency",
    "options": "Currency",
    "print_hide": 1,
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "description": "Rate at which Price list currency is converted to customer's base currency",
@@ -1836,7 +1835,7 @@
  "icon": "fa fa-file-text",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-13 15:58:30.900504",
+ "modified": "2026-11-09 15:57:33.168446",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Proforma Invoice",

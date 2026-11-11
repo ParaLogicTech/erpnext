@@ -381,26 +381,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		if (other_charges_calculation_df) {
 			other_charges_calculation_df.$wrapper.html(this.frm.doc.__onload?.other_charges_calculation || "");
 		}
-
-		// if (this.frm.doc.__islocal) {
-		// 	let currency = frappe.defaults.get_user_default("currency");
-		//
-		// 	let set_value = (fieldname, value) => {
-		// 		if(this.frm.fields_dict[fieldname] && !this.frm.doc[fieldname]) {
-		// 			return this.frm.set_value(fieldname, value);
-		// 		}
-		// 	};
-		//
-		// 	return frappe.run_serially([
-		// 		() => set_value("currency", currency),
-		// 		() => set_value("price_list_currency", currency),
-		// 		() => {
-		// 			if (this.frm.doc.company && !this.frm.doc.amended_from && !this.frm.doc.__onload?.load_after_mapping) {
-		// 				return this.set_company_defaults();
-		// 			}
-		// 		}
-		// 	]);
-		// }
 	}
 
 	is_return() {
@@ -886,9 +866,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				if (this.frm.doc.currency == company_currency) {
 					this.frm.set_value("conversion_rate", 1.0);
 				}
-				if (this.frm.doc.price_list_currency == company_currency) {
-					this.frm.set_value('plc_conversion_rate', 1.0);
-				}
 			});
 		}
 
@@ -911,14 +888,16 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 		if (this.frm.fields_dict.currency) {
 			tasks = tasks.concat([
-				() => this.set_exchange_rate(),
+				() => this.set_exchange_rate(true),
+				() => this.set_plc_exchange_rate(true),
 				() => erpnext.utils.set_taxes(this.frm, "company"),
 				() => this.get_multiple_item_tax_maps(false),
-				() => this.update_item_defaults(false),
+				() => this.update_item_defaults(true),
 				() => this.apply_pricing_rule(),
 			]);
 		}
 
+		this.set_dynamic_labels();
 		this.set_company_address();
 
 		return frappe.run_serially(tasks);
@@ -1095,7 +1074,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	currency() {
 		this.set_dynamic_labels();
 		frappe.run_serially([
-			() => this.set_exchange_rate(),
+			() => this.set_exchange_rate(true),
 			() => erpnext.utils.get_party_account_details(this.frm, true),
 		]);
 	}
@@ -1104,11 +1083,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		if (this.frm.doc.currency === this.get_company_currency()) {
 			this.frm.set_value("conversion_rate", 1.0);
 		}
-		if (
-			this.frm.doc.currency === this.frm.doc.price_list_currency
-			&& this.frm.doc.plc_conversion_rate
-			&& this.frm.doc.plc_conversion_rate !== this.frm.doc.conversion_rate
-		) {
+
+		if (this.frm.doc.currency === this.frm.doc.price_list_currency) {
 			this.frm.set_value("plc_conversion_rate", this.frm.doc.conversion_rate);
 		}
 
@@ -1130,7 +1106,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		});
 	}
 
-	set_exchange_rate() {
+	set_exchange_rate(force=false) {
 		let transaction_date = this.frm.doc.transaction_date || this.frm.doc.posting_date;
 		let company_currency = this.get_company_currency();
 
@@ -1138,7 +1114,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		if (
 			this.frm.doc.currency
 			&& this.frm.doc.currency !== company_currency
-			&& !this.frm.doc.ignore_pricing_rule
+			&& (!this.frm.doc.ignore_pricing_rule || force)
 		) {
 			return this.get_exchange_rate(
 				transaction_date,
@@ -1174,14 +1150,20 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	price_list_currency() {
 		this.set_dynamic_labels();
+		this.set_plc_exchange_rate();
+	}
+
+	set_plc_exchange_rate(force=false) {
+		let transaction_date = this.frm.doc.transaction_date || this.frm.doc.posting_date;
 		let company_currency = this.get_company_currency();
 
 		if (
 			this.frm.doc.price_list_currency !== company_currency
-			&& !this.frm.doc.ignore_pricing_rule
+			&& this.frm.doc.price_list_currency !== this.frm.doc.currency
+			&& (!this.frm.doc.ignore_pricing_rule || force)
 		) {
 			this.get_exchange_rate(
-				this.frm.doc.posting_date,
+				transaction_date,
 				this.frm.doc.price_list_currency,
 				company_currency,
 				(exchange_rate) => {
@@ -1196,13 +1178,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	plc_conversion_rate() {
 		if (this.frm.doc.price_list_currency === this.get_company_currency()) {
 			this.frm.set_value("plc_conversion_rate", 1.0);
-		} else if (
-			this.frm.doc.price_list_currency === this.frm.doc.currency
-			&& this.frm.doc.plc_conversion_rate
-			&& cint(this.frm.doc.plc_conversion_rate) != 1
-			&& cint(this.frm.doc.plc_conversion_rate) != cint(this.frm.doc.conversion_rate)
-		) {
-			this.frm.set_value("conversion_rate", this.frm.doc.plc_conversion_rate);
+		} else if (this.frm.doc.price_list_currency == this.frm.doc.currency) {
+			this.frm.set_value("plc_conversion_rate", this.frm.doc.conversion_rate);
 		}
 	}
 
@@ -1255,7 +1232,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		}
 
 		if (!dont_fetch_price_list_rate && frappe.meta.has_field(doc.doctype, "price_list_currency")) {
-			this.apply_price_list(item, true);
+			this.apply_price_list(item);
 		}
 	}
 
@@ -1349,11 +1326,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	}
 
 	set_dynamic_labels() {
-		// What TODO? should we make price list system non-mandatory?
-		this.frm.toggle_reqd("plc_conversion_rate",
-			!!(this.frm.doc.price_list_name && this.frm.doc.price_list_currency));
-
-		var company_currency = this.get_company_currency();
+		let company_currency = this.get_company_currency();
 		this.change_form_labels(company_currency);
 		this.change_grid_labels(company_currency);
 		this.frm.refresh_fields();
@@ -1414,13 +1387,27 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			"outstanding_amount", "total_advance", "advance_paid", "prepaid_deferred_revenue",
 		], this.frm.doc.party_account_currency);
 
-		this.frm.set_df_property("conversion_rate", "description", "1 " + this.frm.doc.currency
-			+ " = [?] " + company_currency);
-
-		if(this.frm.doc.price_list_currency && this.frm.doc.price_list_currency!=company_currency) {
-			this.frm.set_df_property("plc_conversion_rate", "description", "1 "
-				+ this.frm.doc.price_list_currency + " = [?] " + company_currency);
+		if (this.frm.doc.currency) {
+			this.frm.set_df_property(
+				"conversion_rate",
+				"description",
+				"1 " + this.frm.doc.currency + " = [?] " + company_currency
+			);
 		}
+
+		if (this.frm.doc.price_list_currency) {
+			this.frm.set_df_property(
+				"plc_conversion_rate",
+				"description",
+				"1 " + this.frm.doc.price_list_currency + " = [?] " + company_currency
+			);
+		}
+
+		this.frm.toggle_display(["plc_conversion_rate", "price_list_currency"], (
+			this.frm.doc.price_list_currency
+			&& this.frm.doc.price_list_currency != company_currency
+			&& this.frm.doc.price_list_currency != this.frm.doc.currency
+		));
 
 		// toggle fields
 		this.frm.toggle_display([
@@ -1440,9 +1427,6 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			"base_operating_cost", "base_additional_operating_cost",
 			"base_total_cost", "base_unit_cost",
 		], this.frm.doc.currency != company_currency, true);
-
-		this.frm.toggle_display(["plc_conversion_rate", "price_list_currency"],
-			this.frm.doc.price_list_currency != company_currency, true);
 
 		var show_exclusive = (this.frm.doc.taxes || []).filter(function(d) {return d.included_in_print_rate===1}).length;
 
@@ -1906,15 +1890,17 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			return;
 		}
 
-		// We need to reset plc_conversion_rate sometimes because the call to
-		// `erpnext.stock.get_item_details.apply_price_list` is sensitive to its value
-		if (!reset_plc_conversion) {
-			this.frm.set_value("plc_conversion_rate", "");
+		let args = this._get_args(item);
+		if (!args.price_list) {
+			return;
 		}
 
-		let args = this._get_args(item);
-		if (!args.items || !args.items.length || !args.price_list) {
+		if (!args.items?.length && !reset_plc_conversion) {
 			return;
+		}
+
+		if (reset_plc_conversion) {
+			args.plc_conversion_rate = null;
 		}
 
 		this.in_apply_price_list = true;
@@ -1930,7 +1916,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 						() => this.frm.set_value("price_list_currency", r.message.parent.price_list_currency),
 						() => this.frm.set_value("plc_conversion_rate", r.message.parent.plc_conversion_rate),
 						() => {
-							if (args.items.length) {
+							if (args.items?.length) {
 								this._set_values_for_item_list(r.message.children);
 								this.calculate_taxes_and_totals();
 							}

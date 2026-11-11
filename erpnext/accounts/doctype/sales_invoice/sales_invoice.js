@@ -546,7 +546,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 				delivery_date: this.frm.doc.delivery_date,
 				company_address: this.frm.doc.company_address,
 
-				price_list: this.frm.doc.selling_price_list,
+				price_list: this.has_previous_document() ? this.frm.doc.selling_price_list : null,
 				pos_profile: this.frm.doc.is_pos ? this.frm.doc.pos_profile : null,
 			},
 			() => {

@@ -514,8 +514,7 @@
    "label": "Price List Currency",
    "options": "Currency",
    "print_hide": 1,
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "description": "Rate at which Price list currency is converted to company's base currency",
@@ -1778,7 +1777,7 @@
  "idx": 146,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-27 13:11:03.080014",
+ "modified": "2026-11-09 15:57:48.843171",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Delivery Note",
