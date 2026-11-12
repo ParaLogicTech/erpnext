@@ -179,6 +179,10 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 			d.discount_percentage = d.get("pr_discount_percentage_" + scrub(using_price_list))
 			d.discount_amount = d.get("pr_discount_amount_" + scrub(using_price_list))
 			d.pricing_rule_rate = d.get("pr_rate_" + scrub(using_price_list))
+			d.pricing_rule_free_item = d.get("pr_free_item_" + scrub(using_price_list))
+			d.pricing_rule_free_qty = d.get("pr_free_qty_" + scrub(using_price_list))
+			d.pricing_rule_buy_qty = d.get("pr_buy_qty_" + scrub(using_price_list))
+			d.pricing_rule_free_item_uom = d.get("pr_free_item_uom_" + scrub(using_price_list))
 			d.pricing_rule_conditional = bool(d.get("pr_conditional_" + scrub(using_price_list)))
 		else:
 			d.price_list_rate = d.standard_rate
@@ -186,6 +190,10 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 			d.discount_percentage = None
 			d.discount_amount = None
 			d.pricing_rule_rate = None
+			d.pricing_rule_free_item = None
+			d.pricing_rule_free_qty = None
+			d.pricing_rule_buy_qty = None
+			d.pricing_rule_free_item_uom = None
 			d.pricing_rule_conditional = False
 
 		d.print_price_list_rate = d.rate_with_margin or d.price_list_rate
@@ -332,12 +340,13 @@ def get_pricing_rule_map(filters):
 		customer_details = frappe._dict()
 
 	pricing_rule_data = frappe.db.sql("""
-		select pr.name, pr.for_price_list, pr.priority,
+		select pr.name, pr.for_price_list, pr.price_or_product_discount, pr.priority,
 			pr.apply_on, pr_item.item_code, pr_group.item_group, pr_brand.brand,
 			pr.applicable_for, pr.customer, pr.customer_group, pr.territory,
 			pr.margin_type, pr.margin_rate_or_amount,
 			pr.rate_or_discount, pr.rate, pr.discount_percentage, pr.discount_amount,
-			pr.min_qty, pr.max_qty, pr.min_amt, pr.max_amt
+			pr.min_qty, pr.max_qty, pr.min_amt, pr.max_amt,
+			pr.free_item, pr.same_item, pr.free_qty, pr.buy_qty, pr.free_item_uom, pr.free_item_rate
 		from `tabPricing Rule` pr
 		left join `tabPricing Rule Item Code` pr_item on pr_item.parent = pr.name
 		left join `tabPricing Rule Item Group` pr_group on pr_group.parent = pr.name
@@ -346,7 +355,6 @@ def get_pricing_rule_map(filters):
 			pr.disable = 0
 			and pr.selling = 1
 			and pr.apply_on in ('Item Code', 'Item Group', 'Brand')
-			and pr.price_or_product_discount = 'Price'
 			and (
 				%(date)s between pr.valid_from and pr.valid_upto
 				or (pr.valid_upto is null and %(date)s >= pr.valid_from)
@@ -414,9 +422,23 @@ def apply_pricing_rules(row, pricing_rule_map, price_lists):
 
 
 def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
-	price_precision = get_field_precision(frappe.get_meta("Item Price").get_field('price_list_rate'))
-
 	row['pricing_rule_' + scrub(price_list)] = pricing_rule.name
+
+	row['pr_conditional_' + scrub(price_list)] = bool(
+		pricing_rule.min_qty
+		or pricing_rule.max_qty
+		or pricing_rule.min_amt
+		or pricing_rule.max_amt
+	)
+
+	if pricing_rule.price_or_product_discount == "Price":
+		apply_price_discount_rule(row, price_list, pricing_rule)
+	else:
+		apply_product_discount_rule(row, price_list, pricing_rule)
+
+
+def apply_price_discount_rule(row, price_list, pricing_rule):
+	price_precision = get_field_precision(frappe.get_meta("Item Price").get_field('price_list_rate'))
 
 	price_list_rate = flt(row.get('rate_' + scrub(price_list)))
 
@@ -445,18 +467,27 @@ def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
 	pricing_rule_rate = flt(max(0.0, flt(pricing_rule_rate)), price_precision)
 	row['pr_rate_' + scrub(price_list)] = pricing_rule_rate
 
-	row['pr_conditional_' + scrub(price_list)] = bool((
-		pricing_rule.min_qty
-		or pricing_rule.max_qty
-		or pricing_rule.min_amt
-		or pricing_rule.max_amt
-	))
-
 	if flt(discount_percentage) > 0:
 		row['pr_discount_percentage_' + scrub(price_list)] = flt(discount_percentage)
 	elif flt(pricing_rule_rate) and flt(pricing_rule_rate) < rate_with_margin:
 		discount_amount = flt(rate_with_margin - pricing_rule_rate, price_precision)
 		row['pr_discount_amount_' + scrub(price_list)] = discount_amount
+
+
+def apply_product_discount_rule(row, price_list, pricing_rule):
+	free_item = row.item_code if pricing_rule.same_item else pricing_rule.free_item
+	if not free_item:
+		return
+
+	free_item_uom = pricing_rule.free_item_uom
+	if not free_item_uom and free_item == row.item_code:
+		free_item_uom = row.uom
+
+	row['pr_free_item_' + scrub(price_list)] = free_item
+	row['pr_buy_qty_' + scrub(price_list)] = flt(pricing_rule.buy_qty) or 1
+	row['pr_free_qty_' + scrub(price_list)] = flt(pricing_rule.free_qty) or 1
+	row['pr_free_item_uom_' + scrub(price_list)] = free_item_uom
+	row['pr_free_item_rate_' + scrub(price_list)] = flt(pricing_rule.free_item_rate)
 
 
 def get_po_data(filters):

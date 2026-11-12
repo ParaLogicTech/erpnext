@@ -930,6 +930,10 @@ def get_price_list_data(args, item_doc, out):
 	meta = frappe.get_meta(args.parenttype or args.doctype)
 
 	if meta.get_field("currency") or args.get("currency"):
+		if args.get("is_free_item") and args.get("price_list_rate"):
+			out.price_list_rate = flt(args.get("price_list_rate"))
+			return
+
 		pl_details = get_price_list_currency_and_exchange_rate(args)
 		args.update(pl_details)
 		if meta.get_field("currency"):
@@ -1449,6 +1453,7 @@ def apply_price_list(args, as_doc=False, doc=None):
 		for item in item_list:
 			args_copy = args.copy()
 			args_copy.update(item)
+			args_copy.pop("items", None)
 			args_copy = process_args(args_copy)
 
 			item_details = apply_price_list_on_item(args_copy, doc=doc)
@@ -1475,8 +1480,8 @@ def apply_price_list(args, as_doc=False, doc=None):
 def apply_price_list_on_item(args, doc=None):
 	item_details = frappe._dict()
 	item_doc = frappe.get_cached_doc("Item", args.item_code)
-	get_price_list_data(args, item_doc, item_details)
 
+	get_price_list_data(args, item_doc, item_details)
 	item_details.update(get_pricing_rule_for_item(args, item_details.price_list_rate, doc=doc))
 
 	return item_details
@@ -1692,7 +1697,14 @@ def get_blanket_order_details(args):
 				from `tabBlanket Order` bo, `tabBlanket Order Item` boi
 				where bo.company=%(company)s and boi.item_code=%(item_code)s
 					and bo.docstatus=1 and bo.name = boi.parent {0}
-			'''.format(condition), args, as_dict=True)
+			'''.format(condition), {
+			"company": args.get("company"),
+			"customer": args.get("customer"),
+			"supplier": args.get("supplier"),
+			"blanket_order": args.get("blanket_order"),
+			"transaction_date": args.get("transaction_date"),
+			"item_code": args.get("item_code"),
+		}, as_dict=True)
 
 		blanket_order_details = blanket_order_details[0] if blanket_order_details else ''
 	return blanket_order_details

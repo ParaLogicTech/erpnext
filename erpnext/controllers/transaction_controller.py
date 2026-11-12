@@ -17,8 +17,11 @@ from erpnext.stock.get_item_details import (
 	get_force_applies_to_fields,
 )
 from erpnext.accounts.doctype.pricing_rule.utils import (
-	apply_pricing_rule_for_free_items, get_applied_pricing_rules,
-	apply_pricing_rule_on_transaction, update_pricing_rule_table
+	get_applied_pricing_rules,
+	apply_pricing_rule_on_transaction,
+	apply_free_item_pricing_rule,
+	remove_free_item_pricing_rules,
+	update_pricing_rule_table,
 )
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 from erpnext.controllers.taxes_and_totals import calculate_taxes_and_totals, get_itemised_tax_breakup_html
@@ -212,6 +215,8 @@ class TransactionController(StockController):
 			for item in self.get("items"):
 				self.set_missing_item_details_for_row(item, for_validate=for_validate, parent_dict=parent_dict)
 
+			remove_free_item_pricing_rules(self)
+
 		self.set_missing_applies_to_details()
 
 	def set_missing_item_details_for_row(self, item, for_validate=False, skip_pricing_rules=False, parent_dict=None):
@@ -246,17 +251,24 @@ class TransactionController(StockController):
 			if flt(item_qty, item.precision("qty")) != len(get_serial_nos(item.get("serial_no"))):
 				item.set("serial_no", ret.get("serial_no"))
 
+		# Set Other Item Data in onload
+		if ret.get("apply_rule_on_other_items"):
+			item.set_onload("apply_rule_on_other_items", ret.get("apply_rule_on_other_items"))
+			item.set_onload("apply_rule_on", ret.get("apply_rule_on"))
+		if ret.get("free_item_data"):
+			item.set_onload("free_item_data", ret.get("free_item_data"))
+
 		# price list rate and pricing rules
 		if not skip_pricing_rules:
 			if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
 				self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
 			if (ret.get("pricing_rules") or ret.get("pricing_rule_removed")) and not self.get("ignore_pricing_rule"):
-				self.apply_pricing_rule_on_item(item, ret)
+				self.apply_pricing_rule_on_item(item, ret, for_validate=for_validate)
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
 		pass
 
-	def apply_pricing_rule_on_item(self, item, pricing_rule_args):
+	def apply_pricing_rule_on_item(self, item, pricing_rule_args, for_validate=False):
 		if pricing_rule_args.get("validate_applied_rule"):
 			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
 				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
@@ -290,8 +302,13 @@ class TransactionController(StockController):
 					if item.get('discount_amount'):
 						item.rate = item.price_list_rate - item.discount_amount
 
-			if pricing_rule_args.get('free_item_data'):
-				apply_pricing_rule_for_free_items(self, pricing_rule_args.get('free_item_data'))
+			if pricing_rule_args.get("free_item_data"):
+				apply_free_item_pricing_rule(
+					self,
+					pricing_rule_args.get("free_item_data"),
+					for_validate=for_validate,
+					row=item,
+				)
 
 			if item.meta.has_field("margin_type") and pricing_rule_args.get("margin_type"):
 				item.set("margin_rate_or_amount", pricing_rule_args.get("margin_rate_or_amount"))
@@ -457,7 +474,7 @@ class TransactionController(StockController):
 			if self.get("group_same_items_separate_rate"):
 				return cstr(it.item_code), cstr(it.item_name), it.uom, flt(item.rate, item.precision("rate"))
 			else:
-				return cstr(it.item_code), cstr(it.item_name), it.uom
+				return cstr(it.item_code), cstr(it.item_name), it.uom, cint(it.get("is_free_item"))
 
 		group_item_data = {}
 		item_meta = frappe.get_meta("Stock Entry Detail" if self.doctype == "Stock Entry" else self.doctype + " Item")

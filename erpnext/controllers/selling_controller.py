@@ -237,6 +237,9 @@ class SellingController(TransactionController):
 				self.precision("total_commission"))
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
+		if not item.get("item_code") or item.get("is_free_item"):
+			return
+
 		selling_settings = frappe.get_cached_doc("Selling Settings", None)
 		if not cint(selling_settings.restrict_price_list_rate):
 			return
@@ -300,11 +303,12 @@ class SellingController(TransactionController):
 
 	def validate_max_discount(self):
 		for d in self.get("items"):
-			if d.item_code:
-				discount = flt(frappe.get_cached_value("Item", d.item_code, "max_discount"))
+			if not d.get("item_code") or d.get("is_free_item"):
+				continue
 
-				if discount and flt(d.discount_percentage) > discount:
-					frappe.throw(_("Maximum discount for Item {0} is {1}%").format(d.item_code, discount))
+			max_discount = flt(frappe.get_cached_value("Item", d.item_code, "max_discount"))
+			if max_discount and flt(d.discount_percentage) > max_discount:
+				frappe.throw(_("Maximum discount for Item {0} is {1}%").format(d.item_code, max_discount))
 
 	def validate_discount_rule(self):
 		from erpnext.accounts.doctype.discount_rule.discount_rule import get_discount_rule_values
@@ -331,6 +335,9 @@ class SellingController(TransactionController):
 			return False
 
 		for d in self.get("items"):
+			if not d.get("item_code") or d.get("is_free_item"):
+				continue
+
 			percent_precision = d.precision("discount_percentage")
 			rate_precision = d.precision("discount_amount")
 
@@ -344,7 +351,7 @@ class SellingController(TransactionController):
 					total_discount_percentage = total_discount / flt(d.tax_exclusive_amount_before_discount) * 100\
 						if flt(d.tax_exclusive_amount_before_discount) else 0
 
-			if not d.item_code or not total_discount_percentage:
+			if not total_discount_percentage:
 				continue
 
 			discount_rule_values = get_discount_rule_values(d.item_code, self)
@@ -488,7 +495,7 @@ class SellingController(TransactionController):
 		validate_selling_price = cint(frappe.get_cached_value("Selling Settings", None, "validate_selling_price"))
 		rows_to_validate = []
 		for d in self.get("items"):
-			if not d.item_code:
+			if not d.get("item_code") or d.get("is_free_item"):
 				continue
 
 			is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")

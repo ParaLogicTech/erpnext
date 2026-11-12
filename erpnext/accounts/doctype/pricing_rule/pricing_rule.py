@@ -226,6 +226,7 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 	from erpnext.accounts.doctype.pricing_rule.utils import (
 		get_pricing_rules,
 		get_applied_pricing_rules,
+		get_pricing_rules_str,
 		get_product_discount_rule,
 		validate_pricing_rule_validity,
 		validate_pricing_rule_based_on_other_item,
@@ -239,8 +240,6 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 
 	if args.get("parenttype") == "Material Request":
 		return {}
-	if args.get("is_free_item"):
-		return {}
 
 	item_details = frappe._dict({
 		"doctype": args.doctype,
@@ -249,8 +248,12 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 		"parenttype": args.parenttype,
 		"child_docname": args.get("child_docname"),
 		"discount_percentage_on_rate": [],
-		"discount_amount_on_rate": []
+		"discount_amount_on_rate": [],
 	})
+
+	if args.get("is_free_item"):
+		item_details.pricing_rules = args.get("pricing_rules")
+		return item_details
 
 	update_args_for_pricing_rule(args)
 
@@ -331,10 +334,10 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 			if pricing_rule.price_or_product_discount == "Price":
 				apply_price_discount_rule(pricing_rule, item_details, args)
 			else:
-				get_product_discount_rule(pricing_rule, item_details, args, doc)
+				get_product_discount_rule(pricing_rule, item_details, args, doc=doc, for_validate=for_validate)
 
 	item_details.has_pricing_rule = 1 if rules else 0
-	item_details.pricing_rules = frappe.as_json([d.pricing_rule for d in reversed(rules)], indent=0) if rules else ''
+	item_details.pricing_rules = get_pricing_rules_str([d.pricing_rule for d in reversed(rules)])
 
 	if args.get("pricing_rules") and not rules:
 		remove_pricing_rules_for_item(
@@ -560,7 +563,7 @@ def remove_pricing_rules_for_item(
 	force=False,
 	to_remove=None,
 ):
-	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
+	from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules, get_pricing_rules_str
 
 	applied_pricing_rules = get_applied_pricing_rules(pricing_rules)
 	keep_pricing_rules = []
@@ -580,13 +583,13 @@ def remove_pricing_rules_for_item(
 
 		remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=item_code, price_list_rate=price_list_rate)
 
-	item_details.pricing_rules = frappe.as_json([d for d in keep_pricing_rules], indent=0) if keep_pricing_rules else ''
+	item_details.pricing_rules = get_pricing_rules_str(keep_pricing_rules)
 
 	return item_details
 
 
 def remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=None, price_list_rate=None):
-	from erpnext.accounts.doctype.pricing_rule.utils import get_pricing_rule_items
+	item_details.price_or_product_discount = pricing_rule.get("price_or_product_discount")
 
 	if pricing_rule.price_or_product_discount == 'Price':
 		item_details.pricing_rule_for = pricing_rule.rate_or_discount
@@ -608,14 +611,10 @@ def remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=None,
 			item_details.margin_rate_or_amount = 0.0
 			item_details.pricing_rule_removed = True
 
-	elif pricing_rule.get('free_item'):
-		item_details.remove_free_item = item_code if pricing_rule.get('same_item') else pricing_rule.get('free_item')
-
-	if pricing_rule.get("mixed_conditions") or pricing_rule.get("apply_rule_on_other"):
-		items = get_pricing_rule_items(pricing_rule, other_items=pricing_rule.get("apply_rule_on_other"))
-		item_details.apply_on = (frappe.scrub(pricing_rule.apply_rule_on_other) if pricing_rule.apply_rule_on_other else frappe.scrub(pricing_rule.get('apply_on')))
-		item_details.applied_on_items = json.dumps(items)
-		item_details.price_or_product_discount = pricing_rule.price_or_product_discount
+	elif pricing_rule.price_or_product_discount == "Product":
+		item_details.remove_free_item = item_code if pricing_rule.get("same_item") else pricing_rule.get("free_item")
+		item_details.free_item_pricing_rule = pricing_rule.name
+		# item_details.pricing_rule_removed = True
 
 
 @frappe.whitelist()

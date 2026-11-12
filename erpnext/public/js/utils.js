@@ -742,6 +742,38 @@ $.extend(erpnext.utils, {
 		dialog.show();
 	},
 
+	setup_rate_amount_formatter(doctype, fieldname, show_free_label=false) {
+		let df = frappe.meta.get_docfield(doctype, fieldname);
+		if (df) {
+			erpnext.utils.set_rate_amount_formatter(df, show_free_label);
+		}
+	},
+
+	set_rate_amount_formatter(df, show_free_label=false) {
+		df.formatter = (value, df, options, doc) => {
+			options = options || {};
+			options.css = {};
+
+			let item_code = doc?.item_code;
+			let qty = flt(doc?.qty);
+			let rate_or_amount = flt(doc[df.fieldname]);
+			let is_free_item = cint(doc?.is_free_item);
+
+			if (is_free_item) {
+				options.css["color"] = "var(--green-800)";
+				if (show_free_label && rate_or_amount == 0) {
+					return frappe.format(__("Free"), null, options, doc, true);
+				}
+			} else if (item_code && qty) {
+				if (rate_or_amount == 0) {
+					options.css["color"] = "var(--red-500)";
+				}
+			}
+
+			return frappe.format(value, df, options, doc, true);
+		}
+	},
+
 	setup_projected_qty_formatter(doctype, fieldname, item_code_field=null, qty_field=null) {
 		let df = frappe.meta.get_docfield(doctype, fieldname);
 		if (df) {

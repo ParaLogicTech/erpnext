@@ -197,6 +197,7 @@
   "print_settings_tab",
   "letter_head",
   "group_same_items",
+  "group_same_items_separate_rate",
   "cb_3",
   "select_print_heading",
   "language",
@@ -845,7 +846,7 @@
    "default": "0",
    "fieldname": "group_same_items",
    "fieldtype": "Check",
-   "label": "Group same items",
+   "label": "Merge Same Items in Print",
    "print_hide": 1
   },
   {
@@ -1657,6 +1658,15 @@
    "no_copy": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "depends_on": "group_same_items",
+   "fieldname": "group_same_items_separate_rate",
+   "fieldtype": "Check",
+   "label": "Do Not Merge Same Items with Different Rate",
+   "print_hide": 1
   }
  ],
  "grid_page_length": 500,
@@ -1664,7 +1674,7 @@
  "idx": 82,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-09 15:57:38.374293",
+ "modified": "2026-11-10 06:35:09.807640",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation",
