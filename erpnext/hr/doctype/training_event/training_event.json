@@ -28,6 +28,7 @@
   "column_break_12",
   "start_time",
   "end_time",
+  "training_hours",
   "section_break_15",
   "introduction",
   "section_break_18",
@@ -157,6 +158,12 @@
    "fieldtype": "Datetime",
    "label": "End Time",
    "reqd": 1
+  },
+  {
+   "fieldname": "training_hours",
+   "fieldtype": "Int",
+   "label": "Training Hours",
+   "non_negative": 1
   },
   {
    "fieldname": "section_break_15",
