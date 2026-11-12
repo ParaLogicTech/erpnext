@@ -12,6 +12,7 @@ from erpnext.assets.doctype.asset.depreciation \
 from erpnext.accounts.general_ledger import  delete_gl_entries
 from erpnext.controllers.accounts_controller import AccountsController
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
+from dateutil.relativedelta import relativedelta
 
 class Asset(AccountsController):
 	def validate(self):
@@ -839,8 +840,13 @@ def is_cwip_accounting_enabled(asset_category):
 
 def get_pro_rata_amt(row, depreciation_amount, from_date, to_date):
 	days = date_diff(to_date, from_date)
-	months = month_diff(to_date, from_date)
 	total_days = get_total_days(to_date, row.frequency_of_depreciation)
+
+	delta = relativedelta(getdate(to_date), getdate(from_date))
+	months = delta.years * 12 + delta.months
+
+	if days < total_days and months == 0:
+		months = 1
 
 	return (depreciation_amount * flt(days)) / flt(total_days), days, months
 
