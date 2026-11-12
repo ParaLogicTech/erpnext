@@ -8,6 +8,7 @@
  "field_order": [
   "employee",
   "employee_name",
+  "employee_email",
   "department",
   "course",
   "column_break_3",
@@ -15,6 +16,7 @@
   "event_name",
   "trainer_name",
   "section_break_6",
+  "training_feedback_rating",
   "feedback",
   "amended_from"
  ],
@@ -32,6 +34,13 @@
    "fieldname": "employee_name",
    "fieldtype": "Read Only",
    "label": "Employee Name"
+  },
+  {
+   "fieldname": "employee_email",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Employee Email",
+   "options": "Email"
   },
   {
    "fetch_from": "employee.department",
@@ -82,10 +91,16 @@
    "fieldtype": "Section Break"
   },
   {
+   "fieldname": "training_feedback_rating",
+   "fieldtype": "Table",
+   "label": "Training Feedback Rating",
+   "options": "Training Feedback Rating"
+  },
+  {
    "fieldname": "feedback",
    "fieldtype": "Text",
-   "label": "Feedback",
-   "reqd": 1
+   "hidden": 1,
+   "label": "Feedback"
   },
   {
    "fieldname": "amended_from",
@@ -100,7 +115,7 @@
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 16:26:35.412126",
+ "modified": "2026-11-12 16:30:00.000000",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Training Feedback",
