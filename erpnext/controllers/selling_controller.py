@@ -75,6 +75,18 @@ class SellingController(TransactionController):
 		self.validate_for_duplicate_items()
 		self.validate_target_warehouse()
 
+	def before_submit(self):
+		pass
+
+	def on_submit(self):
+		if self.doctype == "Sales Order":
+			if frappe.get_cached_value("Selling Settings", None, "update_prices_on_submission_of_sales_order"):
+				self.auto_update_item_prices()
+
+		if self.doctype == "Sales Invoice":
+			if frappe.get_cached_value("Selling Settings", None, "update_prices_on_submission_of_sales_invoice"):
+				self.auto_update_item_prices()
+
 	def before_update_after_submit(self):
 		self.calculate_sales_team_contribution(self.get('base_net_total'))
 
@@ -108,26 +120,24 @@ class SellingController(TransactionController):
 			return super().get_party_account()
 
 	def set_party_account(self, force=False):
-		if not self.meta.has_field("debit_to"):
-			return
-
-		if not self.get("debit_to") or force:
+		if self.meta.has_field("debit_to") and (not self.get("debit_to") or force):
 			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 			self.debit_to = get_party_account(
 				billing_party_type,
 				billing_party,
 				self.company,
-				transaction_type=self.get('transaction_type'),
+				transaction_type=self.get("transaction_type"),
+				currency=self.get("currency"),
 			)
 
-		if self.get("debit_to"):
-			self.party_account_currency = frappe.get_cached_value("Account", self.debit_to, "account_currency")
+		super().set_party_account(force=force)
 
 	def set_missing_values(self, for_validate=False):
 		super(SellingController, self).set_missing_values(for_validate)
 
 		# set contact and address details for customer, if they are not mentioned
 		self.set_missing_lead_customer_details()
+		self.set_party_account()
 		self.set_sales_person_details()
 		self.set_price_list_and_item_details(for_validate=for_validate)
 
@@ -227,6 +237,9 @@ class SellingController(TransactionController):
 				self.precision("total_commission"))
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
+		if not item.get("item_code") or item.get("is_free_item"):
+			return
+
 		selling_settings = frappe.get_cached_doc("Selling Settings", None)
 		if not cint(selling_settings.restrict_price_list_rate):
 			return
@@ -290,11 +303,12 @@ class SellingController(TransactionController):
 
 	def validate_max_discount(self):
 		for d in self.get("items"):
-			if d.item_code:
-				discount = flt(frappe.get_cached_value("Item", d.item_code, "max_discount"))
+			if not d.get("item_code") or d.get("is_free_item"):
+				continue
 
-				if discount and flt(d.discount_percentage) > discount:
-					frappe.throw(_("Maximum discount for Item {0} is {1}%").format(d.item_code, discount))
+			max_discount = flt(frappe.get_cached_value("Item", d.item_code, "max_discount"))
+			if max_discount and flt(d.discount_percentage) > max_discount:
+				frappe.throw(_("Maximum discount for Item {0} is {1}%").format(d.item_code, max_discount))
 
 	def validate_discount_rule(self):
 		from erpnext.accounts.doctype.discount_rule.discount_rule import get_discount_rule_values
@@ -321,6 +335,9 @@ class SellingController(TransactionController):
 			return False
 
 		for d in self.get("items"):
+			if not d.get("item_code") or d.get("is_free_item"):
+				continue
+
 			percent_precision = d.precision("discount_percentage")
 			rate_precision = d.precision("discount_amount")
 
@@ -334,7 +351,7 @@ class SellingController(TransactionController):
 					total_discount_percentage = total_discount / flt(d.tax_exclusive_amount_before_discount) * 100\
 						if flt(d.tax_exclusive_amount_before_discount) else 0
 
-			if not d.item_code or not total_discount_percentage:
+			if not total_discount_percentage:
 				continue
 
 			discount_rule_values = get_discount_rule_values(d.item_code, self)
@@ -462,7 +479,7 @@ class SellingController(TransactionController):
 
 	def validate_selling_price(self):
 		from erpnext.accounts.report.gross_profit.gross_profit import get_sle_outgoing_rate
-		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+		from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
 
 		def throw_message(row, min_rate):
 			frappe.throw(_("Row #{0}: Net Selling Rate for Item {1} cannot be less than {2}").format(
@@ -478,14 +495,14 @@ class SellingController(TransactionController):
 		validate_selling_price = cint(frappe.get_cached_value("Selling Settings", None, "validate_selling_price"))
 		rows_to_validate = []
 		for d in self.get("items"):
-			if not d.item_code:
+			if not d.get("item_code") or d.get("is_free_item"):
 				continue
 
 			is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
 			if not is_stock_item and not is_product_bundle(d.item_code):
 				continue
 
-			min_margin = get_min_margin_validation(d.item_code, self.get("transaction_type"), self.get("company"))
+			min_margin = get_min_margin_validation(d.item_code, self)
 			d._min_margin = min_margin
 			if not validate_selling_price and min_margin is None:
 				continue
@@ -534,7 +551,7 @@ class SellingController(TransactionController):
 
 	def get_valuation_rate_for_validation(self, row):
 		from erpnext.stock.stock_ledger import get_valuation_rate
-		from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle_from_item_code
+		from erpnext.stock.doctype.bundled_item.bundled_item import get_product_bundle_from_item_code
 
 		if not row.item_code:
 			return 0
@@ -542,7 +559,7 @@ class SellingController(TransactionController):
 		product_bundle = get_product_bundle_from_item_code(row.item_code)
 		if product_bundle:
 			parent_valuation_rate = 0
-			for child_row in self.get("packed_items") or []:
+			for child_row in self.get("bundled_items") or []:
 				if not child_row.item_code:
 					continue
 				if child_row.parent_detail_docname != row.name:
@@ -606,7 +623,7 @@ class SellingController(TransactionController):
 			self.db_set("skip_delivery_note", self.skip_delivery_note, update_modified=update_modified)
 
 	def get_item_list(self):
-		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+		from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
 
 		il = []
 		for d in self.get("items"):
@@ -614,7 +631,7 @@ class SellingController(TransactionController):
 				frappe.throw(_("Row {0}: Qty is mandatory").format(d.idx))
 
 			if is_product_bundle(d.item_code):
-				for p in self.get("packed_items"):
+				for p in self.get("bundled_items"):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
 						il.append(frappe._dict({
@@ -989,7 +1006,7 @@ class SellingController(TransactionController):
 
 	def validate_target_warehouse(self):
 		if frappe.get_meta(self.doctype + " Item").has_field("target_warehouse"):
-			items = self.get("items") + (self.get("packed_items") or [])
+			items = self.get("items") + (self.get("bundled_items") or [])
 
 			for d in items:
 				if d.get("target_warehouse") and d.get("warehouse") == d.get("target_warehouse"):
@@ -998,7 +1015,7 @@ class SellingController(TransactionController):
 						.format(d.idx, warehouse, warehouse))
 
 				if d.get('item_code'):
-					target_warehouse_validation = get_target_warehouse_validation(d.item_code, self.transaction_type, self.company)
+					target_warehouse_validation = get_target_warehouse_validation(d.item_code, self)
 
 					if target_warehouse_validation:
 						if target_warehouse_validation == "Mandatory" and not d.target_warehouse:

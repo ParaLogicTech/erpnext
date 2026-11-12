@@ -329,7 +329,7 @@
  "modified": "2025-06-18 01:11:28.133209",
  "modified_by": "Administrator",
  "module": "Stock",
- "name": "Packed Item",
+ "name": "Bundled Item",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

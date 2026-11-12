@@ -420,7 +420,8 @@
    "fieldtype": "Datetime",
    "label": "Actual End Date/Time",
    "no_copy": 1,
-   "read_only": 1
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "column_break_podyi",
@@ -435,7 +436,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 17:55:31.847988",
+ "modified": "2026-10-29 17:39:47.580025",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Job Card",

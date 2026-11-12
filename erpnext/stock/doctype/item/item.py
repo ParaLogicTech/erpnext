@@ -325,7 +325,7 @@ class Item(Document):
 					_("Default BOM ({0}) must be active for this item or its template").format(bom_item))
 
 	def set_is_product_bundle(self):
-		from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+		from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
 		self.is_product_bundle = is_product_bundle(self.name, cache=False) if not self.is_new() else 0
 
 	def fill_customer_code(self):
@@ -389,9 +389,9 @@ class Item(Document):
 
 	def update_item_price(self):
 		frappe.db.sql("""
-			update `tabItem Price` set item_name=%s, item_description=%s, item_group=%s, brand=%s
+			update `tabItem Price` set item_name=%s, item_group=%s, brand=%s
 			where item_code=%s
-		""", (self.item_name, self.description, self.item_group, self.brand, self.name))
+		""", (self.item_name, self.item_group, self.brand, self.name))
 
 	def update_serial_no(self):
 		if self.has_serial_no:
@@ -1059,7 +1059,7 @@ def change_uom(item_code, stock_uom=None, alt_uom=None, alt_uom_size=None):
 
 	one_uom_dts = [
 		'Bin', 'Stock Ledger Entry',
-		'Product Bundle Item', 'Packed Item',
+		'Product Bundle Item', 'Bundled Item',
 		'Purchase Receipt Item Supplied', 'Purchase Order Item Supplied',
 		'Item Price', 'Pricing Rule Item Code',
 		'Production Plan Item', 'Job Card Item', 'BOM', 'BOM Scrap Item', 'BOM Explosion Item', 'Work Order',

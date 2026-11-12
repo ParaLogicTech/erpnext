@@ -1,7 +1,8 @@
 {
  "charts": [],
- "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Manufacturing Module</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Bill of Materials\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}},{\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}}]",
+ "content": "[{\"id\":\"yFWNFbN1eF\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Manufacturing Module</b></span>\",\"col\":12}},{\"id\":\"J-Hma2iqso\",\"type\":\"card\",\"data\":{\"card_name\":\"Bill of Materials\",\"col\":3}},{\"id\":\"TYxx0du1uu\",\"type\":\"card\",\"data\":{\"card_name\":\"Production\",\"col\":3}},{\"id\":\"ZMNc0fofGk\",\"type\":\"card\",\"data\":{\"card_name\":\"Tools\",\"col\":3}},{\"id\":\"pHY4dHYXb7\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":3}},{\"id\":\"mofzLiJ65A\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":3}}]",
  "creation": "2022-11-16 04:31:57.184882",
+ "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -206,70 +207,6 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Reports",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Production Analytics",
-   "link_count": 0,
-   "link_to": "Production Analytics",
-   "link_type": "Report",
-   "onboard": 1,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Open Work Orders",
-   "link_count": 0,
-   "link_to": "Open Work Orders",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Work Orders in Progress",
-   "link_count": 0,
-   "link_to": "Work Orders in Progress",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Completed Work Orders",
-   "link_count": 0,
-   "link_to": "Completed Work Orders",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Issued Items Against Work Order",
-   "link_count": 0,
-   "link_to": "Issued Items Against Work Order",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
    "label": "Settings",
    "link_count": 0,
    "link_type": "DocType",
@@ -286,9 +223,50 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Production Register",
+   "link_count": 0,
+   "link_to": "Production Register",
+   "link_type": "Report",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Production Analytics",
+   "link_count": 0,
+   "link_to": "Production Analytics",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Issued Items Against Work Order",
+   "link_count": 0,
+   "link_to": "Issued Items Against Work Order",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2023-08-21 01:52:23.893305",
+ "modified": "2026-10-30 02:27:16.430751",
  "modified_by": "Administrator",
  "module": "Manufacturing",
  "name": "Manufacturing",

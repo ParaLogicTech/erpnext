@@ -179,6 +179,10 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 			d.discount_percentage = d.get("pr_discount_percentage_" + scrub(using_price_list))
 			d.discount_amount = d.get("pr_discount_amount_" + scrub(using_price_list))
 			d.pricing_rule_rate = d.get("pr_rate_" + scrub(using_price_list))
+			d.pricing_rule_free_item = d.get("pr_free_item_" + scrub(using_price_list))
+			d.pricing_rule_free_qty = d.get("pr_free_qty_" + scrub(using_price_list))
+			d.pricing_rule_buy_qty = d.get("pr_buy_qty_" + scrub(using_price_list))
+			d.pricing_rule_free_item_uom = d.get("pr_free_item_uom_" + scrub(using_price_list))
 			d.pricing_rule_conditional = bool(d.get("pr_conditional_" + scrub(using_price_list)))
 		else:
 			d.price_list_rate = d.standard_rate
@@ -186,6 +190,10 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 			d.discount_percentage = None
 			d.discount_amount = None
 			d.pricing_rule_rate = None
+			d.pricing_rule_free_item = None
+			d.pricing_rule_free_qty = None
+			d.pricing_rule_buy_qty = None
+			d.pricing_rule_free_item_uom = None
 			d.pricing_rule_conditional = False
 
 		d.print_price_list_rate = d.rate_with_margin or d.price_list_rate
@@ -332,12 +340,13 @@ def get_pricing_rule_map(filters):
 		customer_details = frappe._dict()
 
 	pricing_rule_data = frappe.db.sql("""
-		select pr.name, pr.for_price_list, pr.priority,
+		select pr.name, pr.for_price_list, pr.price_or_product_discount, pr.priority,
 			pr.apply_on, pr_item.item_code, pr_group.item_group, pr_brand.brand,
 			pr.applicable_for, pr.customer, pr.customer_group, pr.territory,
 			pr.margin_type, pr.margin_rate_or_amount,
 			pr.rate_or_discount, pr.rate, pr.discount_percentage, pr.discount_amount,
-			pr.min_qty, pr.max_qty, pr.min_amt, pr.max_amt
+			pr.min_qty, pr.max_qty, pr.min_amt, pr.max_amt,
+			pr.free_item, pr.same_item, pr.free_qty, pr.buy_qty, pr.free_item_uom, pr.free_item_rate
 		from `tabPricing Rule` pr
 		left join `tabPricing Rule Item Code` pr_item on pr_item.parent = pr.name
 		left join `tabPricing Rule Item Group` pr_group on pr_group.parent = pr.name
@@ -346,7 +355,6 @@ def get_pricing_rule_map(filters):
 			pr.disable = 0
 			and pr.selling = 1
 			and pr.apply_on in ('Item Code', 'Item Group', 'Brand')
-			and pr.price_or_product_discount = 'Price'
 			and (
 				%(date)s between pr.valid_from and pr.valid_upto
 				or (pr.valid_upto is null and %(date)s >= pr.valid_from)
@@ -414,9 +422,23 @@ def apply_pricing_rules(row, pricing_rule_map, price_lists):
 
 
 def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
-	price_precision = get_field_precision(frappe.get_meta("Item Price").get_field('price_list_rate'))
-
 	row['pricing_rule_' + scrub(price_list)] = pricing_rule.name
+
+	row['pr_conditional_' + scrub(price_list)] = bool(
+		pricing_rule.min_qty
+		or pricing_rule.max_qty
+		or pricing_rule.min_amt
+		or pricing_rule.max_amt
+	)
+
+	if pricing_rule.price_or_product_discount == "Price":
+		apply_price_discount_rule(row, price_list, pricing_rule)
+	else:
+		apply_product_discount_rule(row, price_list, pricing_rule)
+
+
+def apply_price_discount_rule(row, price_list, pricing_rule):
+	price_precision = get_field_precision(frappe.get_meta("Item Price").get_field('price_list_rate'))
 
 	price_list_rate = flt(row.get('rate_' + scrub(price_list)))
 
@@ -445,18 +467,27 @@ def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
 	pricing_rule_rate = flt(max(0.0, flt(pricing_rule_rate)), price_precision)
 	row['pr_rate_' + scrub(price_list)] = pricing_rule_rate
 
-	row['pr_conditional_' + scrub(price_list)] = bool((
-		pricing_rule.min_qty
-		or pricing_rule.max_qty
-		or pricing_rule.min_amt
-		or pricing_rule.max_amt
-	))
-
 	if flt(discount_percentage) > 0:
 		row['pr_discount_percentage_' + scrub(price_list)] = flt(discount_percentage)
 	elif flt(pricing_rule_rate) and flt(pricing_rule_rate) < rate_with_margin:
 		discount_amount = flt(rate_with_margin - pricing_rule_rate, price_precision)
 		row['pr_discount_amount_' + scrub(price_list)] = discount_amount
+
+
+def apply_product_discount_rule(row, price_list, pricing_rule):
+	free_item = row.item_code if pricing_rule.same_item else pricing_rule.free_item
+	if not free_item:
+		return
+
+	free_item_uom = pricing_rule.free_item_uom
+	if not free_item_uom and free_item == row.item_code:
+		free_item_uom = row.uom
+
+	row['pr_free_item_' + scrub(price_list)] = free_item
+	row['pr_buy_qty_' + scrub(price_list)] = flt(pricing_rule.buy_qty) or 1
+	row['pr_free_qty_' + scrub(price_list)] = flt(pricing_rule.free_qty) or 1
+	row['pr_free_item_uom_' + scrub(price_list)] = free_item_uom
+	row['pr_free_item_rate_' + scrub(price_list)] = flt(pricing_rule.free_item_rate)
 
 
 def get_po_data(filters):
@@ -641,7 +672,15 @@ def set_multiple_item_pl_rate(effective_date, price_list, items):
 
 
 @frappe.whitelist()
-def set_item_pl_rate(effective_date, item_code, price_list, price_list_rate, uom=None, conversion_factor=None, filters=None):
+def set_item_pl_rate(
+	effective_date,
+	item_code,
+	price_list,
+	price_list_rate,
+	uom=None,
+	conversion_factor=None,
+	filters=None,
+):
 	effective_date = getdate(effective_date)
 	_set_item_pl_rate(effective_date, item_code, price_list, price_list_rate, uom, conversion_factor)
 
@@ -653,9 +692,22 @@ def set_item_pl_rate(effective_date, item_code, price_list, price_list_rate, uom
 		return execute(filters)
 
 
-def _set_item_pl_rate(effective_date, item_code, price_list, price_list_rate, uom=None, conversion_factor=None):
+def _set_item_pl_rate(
+	effective_date,
+	item_code,
+	price_list,
+	price_list_rate,
+	uom=None,
+	conversion_factor=None,
+	party_type=None,
+	party=None,
+	ignore_permissions=False,
+):
 	from frappe.model.utils import get_fetch_values
 	from erpnext.stock.get_item_details import get_item_price
+
+	if not item_code or not price_list:
+		return
 
 	if not flt(price_list_rate):
 		frappe.msgprint(_("Rate not set for Item {0} because rate is 0").format(item_code, price_list),
@@ -667,35 +719,74 @@ def _set_item_pl_rate(effective_date, item_code, price_list, price_list_rate, uo
 		"item_code": item_code,
 		"price_list": price_list,
 		"uom": uom,
-		"min_qty": 0,
 		"transaction_date": effective_date,
 	}
-	current_effective_item_price = get_item_price(item_price_args, item_code)
 
+	# Determine Party
+	customer = None
+	supplier = None
+	using_fallback_non_party_price = False
+	if party:
+		if party_type == "Customer":
+			customer = party
+		elif party_type == "Supplier":
+			supplier = party
+
+		item_price_args["customer"] = customer
+		item_price_args["supplier"] = supplier
+
+	# Get Current Effective Price
+	current_effective_item_price = get_item_price(item_price_args, item_code)
+	if not current_effective_item_price and (customer or supplier):
+		item_price_args_without_party = item_price_args.copy()
+		item_price_args_without_party.pop("customer", None)
+		item_price_args_without_party.pop("supplier", None)
+		using_fallback_non_party_price = True
+
+		current_effective_item_price = get_item_price(item_price_args_without_party, item_code)
+
+	# Determine Past and Existing Price
 	existing_item_price = past_item_price = None
 	if current_effective_item_price and getdate(current_effective_item_price.valid_from) == effective_date:
 		existing_item_price = current_effective_item_price
 	else:
 		past_item_price = current_effective_item_price
 
+	# Check if price has changed or not
 	if current_effective_item_price:
 		price_precision = get_field_precision(frappe.get_meta("Item Price").get_field('price_list_rate'))
 
-		converted_rate = convert_item_uom_for(price_list_rate, item_code, uom, current_effective_item_price.uom,
-			conversion_factor=conversion_factor, is_rate=True)
+		converted_rate = convert_item_uom_for(
+			price_list_rate,
+			item_code,
+			uom,
+			current_effective_item_price.uom,
+			conversion_factor=conversion_factor,
+			is_rate=True,
+		)
 		if flt(converted_rate, price_precision) == flt(current_effective_item_price.price_list_rate, price_precision):
-			frappe.msgprint(_("Rate not set for Item {0} because it is the same").format(item_code, price_list),
-				alert=1, indicator="blue")
+			frappe.msgprint(
+				_("Rate not set for Item {0} because it is the same").format(item_code, price_list),
+				alert=True,
+				indicator="blue",
+			)
 			return
 
+	# Get future price
 	item_price_args['period'] = 'future'
 	future_item_price = get_item_price(item_price_args, item_code)
 
 	# Update or add item price
-	if existing_item_price:
+	if existing_item_price and not using_fallback_non_party_price:
 		doc = frappe.get_doc("Item Price", existing_item_price.name)
-		converted_rate = convert_item_uom_for(price_list_rate, item_code, uom, doc.uom,
-			conversion_factor=conversion_factor, is_rate=True)
+		converted_rate = convert_item_uom_for(
+			price_list_rate,
+			item_code,
+			uom,
+			doc.uom,
+			conversion_factor=conversion_factor,
+			is_rate=True,
+		)
 		doc.price_list_rate = converted_rate
 	else:
 		doc = frappe.new_doc("Item Price")
@@ -703,18 +794,30 @@ def _set_item_pl_rate(effective_date, item_code, price_list, price_list_rate, uo
 		doc.price_list = price_list
 		doc.uom = uom
 		doc.price_list_rate = flt(price_list_rate)
+		doc.customer = customer
+		doc.supplier = supplier
 		doc.update(get_fetch_values("Item Price", 'item_code', item_code))
 		doc.update(get_fetch_values("Item Price", 'price_list', price_list))
 
 	doc.valid_from = effective_date
 	if future_item_price:
 		doc.valid_upto = frappe.utils.add_days(future_item_price.valid_from, -1)
-	doc.save()
+
+	doc.save(ignore_permissions=ignore_permissions)
 
 	# Update previous item price
 	before_effective_date = frappe.utils.add_days(effective_date, -1)
-	if past_item_price and past_item_price.valid_upto != before_effective_date:
-		frappe.set_value("Item Price", past_item_price.name, 'valid_upto', before_effective_date)
+	if (
+		past_item_price
+		and past_item_price.valid_upto != before_effective_date
+		and not using_fallback_non_party_price
+	):
+		past_doc = frappe.get_doc("Item Price", past_item_price.name)
+		past_doc.valid_upto = before_effective_date
+		past_doc.save(ignore_permissions=ignore_permissions)
 
-	frappe.msgprint(_("Price updated for Item {0} in Price List {1}").format(item_code, price_list),
-		alert=1, indicator='green')
+	frappe.msgprint(
+		_("Price updated for Item {0} in Price List {1}").format(item_code, price_list),
+		alert=True,
+		indicator='green',
+	)

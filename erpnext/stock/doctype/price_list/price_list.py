@@ -2,7 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe import _, throw
+from frappe import _
 from frappe.utils import cint
 from frappe.model.document import Document
 import frappe.defaults
@@ -11,7 +11,7 @@ import frappe.defaults
 class PriceList(Document):
 	def validate(self):
 		if not cint(self.buying) and not cint(self.selling):
-			throw(_("Price List must be applicable for Buying or Selling"))
+			frappe.throw(_("Price List must be applicable for Buying or Selling"))
 
 	def on_update(self):
 		# self.set_default_if_missing()

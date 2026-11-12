@@ -7,11 +7,16 @@
  "engine": "InnoDB",
  "field_order": [
   "supp_master_name",
-  "supplier_group",
-  "buying_price_list",
   "column_break_3",
+  "supplier_group",
+  "price_lists_section",
+  "buying_price_list",
+  "column_break_n57f",
+  "price_lists",
+  "restrictions_and_validations_section",
   "po_required",
   "pr_required",
+  "column_break_ited",
   "allow_multiple_items",
   "subcontract",
   "backflush_raw_materials_of_subcontract_based_on",
@@ -19,11 +24,13 @@
   "default_subcontracting_supplier_warehouse",
   "over_transfer_allowance",
   "pricing_section",
-  "update_buying_prices_based_on",
-  "update_buying_prices_on_submission_of_purchase_order",
-  "column_break_qrkq3",
   "maintain_same_rate",
-  "do_not_allow_zero_amount"
+  "do_not_allow_zero_amount",
+  "column_break_qrkq3",
+  "update_prices_based_on",
+  "update_prices_on_submission_of_purchase_order",
+  "update_prices_on_submission_of_purchase_invoice",
+  "update_prices_party_specific"
  ],
  "fields": [
   {
@@ -97,12 +104,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
-   "fieldname": "update_buying_prices_on_submission_of_purchase_order",
-   "fieldtype": "Check",
-   "label": "Update Prices on Submission of Purchase Order"
-  },
-  {
    "fieldname": "default_subcontracting_supplier_warehouse",
    "fieldtype": "Link",
    "label": "Default Subcontracting Supplier Warehouse",
@@ -114,14 +115,6 @@
    "label": "Pricing"
   },
   {
-   "default": "Price List Rate",
-   "depends_on": "update_buying_prices_on_submission_of_purchase_order",
-   "fieldname": "update_buying_prices_based_on",
-   "fieldtype": "Select",
-   "label": "Update Prices on Submission Based On",
-   "options": "Price List Rate\nActual Rate"
-  },
-  {
    "fieldname": "column_break_qrkq3",
    "fieldtype": "Column Break"
   },
@@ -130,13 +123,64 @@
    "fieldname": "do_not_allow_zero_amount",
    "fieldtype": "Check",
    "label": "Do Not Allow Zero Amount"
+  },
+  {
+   "fieldname": "price_lists_section",
+   "fieldtype": "Section Break",
+   "label": "Price Lists"
+  },
+  {
+   "fieldname": "column_break_n57f",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "restrictions_and_validations_section",
+   "fieldtype": "Section Break",
+   "label": "Restrictions and Validations"
+  },
+  {
+   "fieldname": "column_break_ited",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "price_lists",
+   "fieldtype": "Table",
+   "label": "Multi Currency Default Price Lists",
+   "options": "Default Price List"
+  },
+  {
+   "default": "Price List Rate",
+   "depends_on": "eval:doc.update_prices_on_submission_of_purchase_order || doc.update_prices_on_submission_of_purchase_invoice",
+   "fieldname": "update_prices_based_on",
+   "fieldtype": "Select",
+   "label": "Auto Update Prices Based On",
+   "options": "Price List Rate\nActual Rate"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_prices_on_submission_of_purchase_order",
+   "fieldtype": "Check",
+   "label": "Update Prices on Submission of Purchase Order"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_prices_on_submission_of_purchase_invoice",
+   "fieldtype": "Check",
+   "label": "Update Prices on Submission of Purchase Invoice"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_prices_party_specific",
+   "fieldtype": "Check",
+   "label": "Auto Update Supplier Specific Prices Only"
   }
  ],
+ "grid_page_length": 500,
  "icon": "fa fa-cog",
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2024-12-27 15:16:57.138619",
+ "modified": "2026-11-06 15:26:47.504881",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Buying Settings",
@@ -156,6 +200,8 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

@@ -14,8 +14,8 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "actual_qty");
 		erpnext.utils.setup_projected_qty_formatter(this.frm.doc.doctype + " Item", "projected_qty");
 
-		erpnext.utils.setup_projected_qty_formatter("Packed Item", "actual_qty");
-		erpnext.utils.setup_projected_qty_formatter("Packed Item", "projected_qty");
+		erpnext.utils.setup_projected_qty_formatter("Bundled Item", "actual_qty");
+		erpnext.utils.setup_projected_qty_formatter("Bundled Item", "projected_qty");
 
 		erpnext.utils.setup_last_billed_rate_formatter(this.frm.doc.doctype + " Item", "last_billed_rate");
 	}
@@ -163,8 +163,8 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			});
 		}
 
-		if (this.frm.fields_dict.packed_items) {
-			this.frm.set_query("item_code", "packed_items", (doc, cdt, cdn) => {
+		if (this.frm.fields_dict.bundled_items) {
+			this.frm.set_query("item_code", "bundled_items", (doc, cdt, cdn) => {
 				let filters = {is_stock_item: 1};
 				let row = locals[cdt][cdn];
 				if (row.type == "Item Group" && row.item_group) {
@@ -174,8 +174,8 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 			});
 		}
 
-		if(this.frm.fields_dict["packed_items"]?.grid?.get_field('batch_no')) {
-			this.frm.set_query("batch_no", "packed_items", function(doc, cdt, cdn) {
+		if(this.frm.fields_dict["bundled_items"]?.grid?.get_field('batch_no')) {
+			this.frm.set_query("batch_no", "bundled_items", function(doc, cdt, cdn) {
 				return me.set_query_for_batch(doc, cdt, cdn)
 			});
 		}
@@ -232,11 +232,22 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 				bill_to: this.frm.doc.bill_to,
 				delivery_date: this.frm.doc.delivery_date,
 				company_address: this.frm.doc.company_address,
+
+				price_list: this.has_previous_document() ? this.frm.doc.selling_price_list : null,
 			},
 			() => {
 				this.apply_pricing_rule();
 			}
 		);
+	}
+
+	has_previous_document() {
+		if (this.frm.doc.return_against) {
+			return true;
+		}
+		return (this.frm.doc.items || []).filter(d => {
+			return d.quotation || d.sales_order || d.delivery_note || d.proforma_invoice || d.sales_invoice;
+		}).length > 0;
 	}
 
 	customer_address() {
@@ -258,7 +269,7 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 	}
 
 	selling_price_list() {
-		this.apply_price_list();
+		this.apply_price_list(null, true);
 		this.set_dynamic_labels();
 	}
 
@@ -507,7 +518,7 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 				child: item,
 				args: {
 					"batch_no": item.batch_no,
-					"stock_qty": item.stock_qty || item.qty, //if stock_qty field is not available fetch qty (in case of Packed Items table)
+					"stock_qty": item.stock_qty || item.qty,
 					"warehouse": item.warehouse,
 					"item_code": item.item_code,
 				},
@@ -759,5 +770,28 @@ erpnext.selling.SellingController = class SellingController extends erpnext.Tran
 				}
 			}
 		})
+	}
+
+	debit_to() {
+		if (this.frm.updating_party_details) {
+			return;
+		}
+
+		if (this.frm.doc.debit_to) {
+			this.frm.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "Account",
+					fieldname: "account_currency",
+					filters: { name: this.frm.doc.debit_to },
+				},
+				callback: (r) => {
+					if (r.message) {
+						this.frm.set_value("party_account_currency", r.message.account_currency);
+						this.set_dynamic_labels();
+					}
+				}
+			});
+		}
 	}
 };

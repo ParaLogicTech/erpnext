@@ -233,14 +233,14 @@ def set_batch_nos(doc, warehouse_field, throw=False):
 
 def auto_select_and_split_batches(doc, warehouse_field, additional_group_fields=None, exclude_item_codes=None):
 	def get_key(data):
-		key_fieldnames = ["item_code", "uom", warehouse_field]
+		key_fieldnames = ["item_code", "uom", warehouse_field, "is_free_item"]
 		if additional_group_fields:
 			if isinstance(additional_group_fields, list):
 				key_fieldnames += additional_group_fields
 			else:
 				key_fieldnames.append(additional_group_fields)
 
-		return tuple(cstr(data.get(f)) for f in key_fieldnames)
+		return tuple(cint(data.get(f)) if f == "is_free_item" else cstr(data.get(f)) for f in key_fieldnames)
 
 	def row_condtion(row):
 		return (

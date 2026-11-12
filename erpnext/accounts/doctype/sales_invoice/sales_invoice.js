@@ -546,7 +546,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 				delivery_date: this.frm.doc.delivery_date,
 				company_address: this.frm.doc.company_address,
 
-				price_list: this.frm.doc.selling_price_list,
+				price_list: this.has_previous_document() ? this.frm.doc.selling_price_list : null,
 				pos_profile: this.frm.doc.is_pos ? this.frm.doc.pos_profile : null,
 			},
 			() => {
@@ -576,26 +576,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 			method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.make_inter_company_purchase_invoice",
 			frm: this.frm
 		});
-	}
-
-	debit_to() {
-		var me = this;
-		if(this.frm.doc.debit_to) {
-			me.frm.call({
-				method: "frappe.client.get_value",
-				args: {
-					doctype: "Account",
-					fieldname: "account_currency",
-					filters: { name: me.frm.doc.debit_to },
-				},
-				callback: function(r, rt) {
-					if(r.message) {
-						me.frm.set_value("party_account_currency", r.message.account_currency);
-						me.set_dynamic_labels();
-					}
-				}
-			});
-		}
 	}
 
 	allocated_amount() {
@@ -657,7 +637,7 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 		erpnext.setup_serial_no();
 	}
 
-	packed_items_on_form_rendered() {
+	bundled_items_on_form_rendered() {
 		erpnext.setup_serial_no();
 	}
 

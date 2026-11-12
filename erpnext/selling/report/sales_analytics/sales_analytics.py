@@ -323,6 +323,10 @@ class Analytics(object):
 			conditions.append("""i.warehouse in (select name from `tabWarehouse`
 				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
+		hooks = frappe.get_hooks('set_sales_analytics_conditions')
+		for method in hooks:
+			frappe.get_attr(method)(self.filters, conditions, alias="s")
+
 		return "and {}".format(" and ".join(conditions)) if conditions else ""
 
 	def get_rows(self):

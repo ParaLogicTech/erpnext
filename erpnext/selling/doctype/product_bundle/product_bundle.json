@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "creation": "2013-06-20 11:53:21",
- "description": "Aggregate group of Items into another Item. This is useful if you are bundling a certain Items into a package and you maintain stock of the packed Items and not the aggregate Item. \n\nThe package Item will have \"Is Stock Item\" as \"No\" and \"Is Sales Item\" as \"Yes\".\n\nFor Example: If you are selling Laptops and Backpacks separately and have a special price if the customer buys both, then the Laptop + Backpack will be a new Product Bundle Item.",
+ "description": "Aggregate group of Items into another Item. This is useful if you are bundling a certain Items into a package and you maintain stock of the Bundled Items and not the aggregate Item. \n\nThe package Item will have \"Is Stock Item\" as \"No\" and \"Is Sales Item\" as \"Yes\".\n\nFor Example: If you are selling Laptops and Backpacks separately and have a special price if the customer buys both, then the Laptop + Backpack will be a new Product Bundle Item.",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -72,7 +72,7 @@
  "icon": "fa fa-sitemap",
  "idx": 1,
  "links": [],
- "modified": "2025-06-10 15:23:40.935064",
+ "modified": "2025-06-10 15:23:40.935065",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Product Bundle",

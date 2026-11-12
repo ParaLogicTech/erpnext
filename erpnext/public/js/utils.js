@@ -95,22 +95,6 @@ $.extend(erpnext, {
 			}
 		});
 	},
-
-	route_to_adjustment_jv: (args) => {
-		frappe.model.with_doctype('Journal Entry', () => {
-			// route to adjustment Journal Entry to handle Account Balance and Stock Value mismatch
-			let journal_entry = frappe.model.get_new_doc('Journal Entry');
-
-			args.accounts.forEach((je_account) => {
-				let child_row = frappe.model.add_child(journal_entry, "accounts");
-				child_row.account = je_account.account;
-				child_row.debit_in_account_currency = je_account.debit_in_account_currency;
-				child_row.credit_in_account_currency = je_account.credit_in_account_currency;
-				child_row.party_type = "" ;
-			});
-			frappe.set_route('Form','Journal Entry', journal_entry.name);
-		});
-	},
 });
 
 
@@ -207,6 +191,31 @@ $.extend(erpnext.utils, {
 		}
 	},
 
+	get_exchange_rate: function(args) {
+		if (!args.transaction_date || !args.from_currency || !args.to_currency) {
+			return;
+		}
+
+		if (args.from_currency == args.to_currency) {
+			args.callback?.(1.0);
+			return;
+		}
+
+		return frappe.call({
+			method: "erpnext.setup.utils.get_exchange_rate",
+			args: {
+				transaction_date: args.transaction_date,
+				from_currency: args.from_currency,
+				to_currency: args.to_currency,
+				args: args.args,
+				provider: args.provider,
+			},
+			callback: (r) => {
+				return args.callback?.(flt(r.message));
+			}
+		});
+	},
+
 	make_bank_account: function(doctype, docname) {
 		frappe.call({
 			method: "erpnext.accounts.doctype.bank_account.bank_account.make_bank_account",
@@ -243,6 +252,18 @@ $.extend(erpnext.utils, {
 		let filters = frappe.query_reports[report_name].filters;
 
 		(frappe.boot.additional_gl_filters || []).forEach((additional_filter) => {
+			let found = filters.some(el => el.fieldname === additional_filter['fieldname']);
+
+			if (!found) {
+				filters.push(additional_filter);
+			}
+		});
+	},
+
+	add_additional_selling_filters: function(report_name) {
+		let filters = frappe.query_reports[report_name].filters;
+
+		(frappe.boot.additional_selling_filters || []).forEach((additional_filter) => {
 			let found = filters.some(el => el.fieldname === additional_filter['fieldname']);
 
 			if (!found) {
@@ -457,16 +478,6 @@ $.extend(erpnext.utils, {
 					]);
 				}
 			}
-		});
-	},
-
-	create_new_doc: function (doctype, update_fields) {
-		frappe.model.with_doctype(doctype, function() {
-			var new_doc = frappe.model.get_new_doc(doctype);
-			for (let [key, value] of Object.entries(update_fields)) {
-				new_doc[key] = value;
-			}
-			frappe.ui.form.make_quick_entry(doctype, null, null, new_doc);
 		});
 	},
 
@@ -729,6 +740,38 @@ $.extend(erpnext.utils, {
 		});
 
 		dialog.show();
+	},
+
+	setup_rate_amount_formatter(doctype, fieldname, show_free_label=false) {
+		let df = frappe.meta.get_docfield(doctype, fieldname);
+		if (df) {
+			erpnext.utils.set_rate_amount_formatter(df, show_free_label);
+		}
+	},
+
+	set_rate_amount_formatter(df, show_free_label=false) {
+		df.formatter = (value, df, options, doc) => {
+			options = options || {};
+			options.css = {};
+
+			let item_code = doc?.item_code;
+			let qty = flt(doc?.qty);
+			let rate_or_amount = flt(doc[df.fieldname]);
+			let is_free_item = cint(doc?.is_free_item);
+
+			if (is_free_item) {
+				options.css["color"] = "var(--green-800)";
+				if (show_free_label && rate_or_amount == 0) {
+					return frappe.format(__("Free"), null, options, doc, true);
+				}
+			} else if (item_code && qty) {
+				if (rate_or_amount == 0) {
+					options.css["color"] = "var(--red-500)";
+				}
+			}
+
+			return frappe.format(value, df, options, doc, true);
+		}
 	},
 
 	setup_projected_qty_formatter(doctype, fieldname, item_code_field=null, qty_field=null) {

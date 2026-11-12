@@ -3,9 +3,10 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, add_days
-from frappe.utils import get_datetime_str, nowdate
+from frappe.utils import flt, cint, add_days, getdate
+from frappe.utils import get_datetime_str
 from erpnext import get_default_company
+
 
 def get_root_of(doctype):
 	"""Get root element of a DocType with a tree structure"""
@@ -14,12 +15,14 @@ def get_root_of(doctype):
 		(doctype, doctype))
 	return result[0] if result else None
 
+
 def get_ancestors_of(doctype, name):
 	"""Get ancestor elements of a DocType with a tree structure"""
 	lft, rgt = frappe.db.get_value(doctype, name, ["lft", "rgt"])
 	result = frappe.db.sql_list("""select name from `tab%s`
 		where lft<%s and rgt>%s order by lft desc""" % (doctype, "%s", "%s"), (lft, rgt))
 	return result or []
+
 
 def before_tests():
 	frappe.clear_cache()
@@ -49,24 +52,62 @@ def before_tests():
 	frappe.db.sql("delete from `tabSalary Slip`")
 	frappe.db.sql("delete from `tabItem Price`")
 
-	frappe.db.set_single_value("Stock Settings", "auto_insert_price_list_rate_if_missing", 0)
 	enable_all_roles_and_domains()
 
 	frappe.db.commit()
 
+
 @frappe.whitelist()
-def get_exchange_rate(from_currency, to_currency, transaction_date=None, args=None):
-	if not (from_currency and to_currency):
-		# manqala 19/09/2016: Should this be an empty return or should it throw and exception?
-		return
+def get_exchange_rate(
+	from_currency,
+	to_currency,
+	transaction_date=None,
+	args=None,
+	provider=None,
+):
+	if not from_currency or not to_currency:
+		return None
 	if from_currency == to_currency:
-		return 1
+		return 1.0
 
-	if not transaction_date:
-		transaction_date = nowdate()
-	currency_settings = frappe.get_doc("Accounts Settings").as_dict()
-	allow_stale_rates = currency_settings.get("allow_stale")
+	transaction_date = getdate(transaction_date)
 
+	# Get Currency Exchange record first
+	if not provider:
+		exchange_rate = get_exchange_rate_from_currency_exchange(
+			from_currency,
+			to_currency,
+			transaction_date,
+			args=args,
+		)
+		if exchange_rate:
+			return exchange_rate
+
+	# Then fetch from provider
+	exchange_rate = get_exchange_rate_from_provider(
+		from_currency,
+		to_currency,
+		transaction_date,
+		provider=provider,
+	)
+	return exchange_rate or 0.0
+
+
+def get_exchange_rate_from_currency_exchange(
+	from_currency,
+	to_currency,
+	transaction_date=None,
+	args=None,
+):
+	if not from_currency or not to_currency:
+		return None
+	if from_currency == to_currency:
+		return 1.0
+
+	settings = frappe.get_cached_doc("Accounts Settings", None)
+	allow_stale_rates = settings.get("allow_stale")
+
+	transaction_date = getdate(transaction_date)
 	filters = [
 		["date", "<=", get_datetime_str(transaction_date)],
 		["from_currency", "=", from_currency],
@@ -79,39 +120,71 @@ def get_exchange_rate(from_currency, to_currency, transaction_date=None, args=No
 		filters.append(["for_selling", "=", "1"])
 
 	if not allow_stale_rates:
-		stale_days = currency_settings.get("stale_days")
+		stale_days = cint(settings.get("stale_days"))
 		checkpoint_date = add_days(transaction_date, -stale_days)
-		filters.append(["date", ">", get_datetime_str(checkpoint_date)])
+		filters.append(["date", ">", checkpoint_date])
 
-	# cksgb 19/09/2016: get last entry in Currency Exchange with from_currency and to_currency.
 	entries = frappe.get_all(
-		"Currency Exchange", fields=["exchange_rate"], filters=filters, order_by="date desc",
-		limit=1)
+		"Currency Exchange",
+		fields=["exchange_rate"],
+		filters=filters,
+		order_by="date desc",
+		limit=1
+	)
 	if entries:
 		return flt(entries[0].exchange_rate)
 
-	return 0.0
-	'''try:
-		cache = frappe.cache
-		key = "currency_exchange_rate_{0}:{1}:{2}".format(transaction_date,from_currency, to_currency)
-		value = cache.get(key)
 
-		if not value:
-			import requests
-			api_url = "https://frankfurter.app/{0}".format(transaction_date)
-			response = requests.get(api_url, params={
-				"base": from_currency,
-				"symbols": to_currency
-			})
-			# expire in 6 hours
-			response.raise_for_status()
-			value = response.json()["rates"][to_currency]
-			cache.setex(key, value, 6 * 60 * 60)
-		return flt(value)
-	except:
-		frappe.log_error(title="Get Exchange Rate")
-		frappe.msgprint(_("Unable to find exchange rate for {0} to {1} for key date {2}. Please create a Currency Exchange record manually").format(from_currency, to_currency, transaction_date))
-		return 0.0'''
+def get_exchange_rate_from_provider(
+	from_currency,
+	to_currency,
+	transaction_date=None,
+	provider=None,
+):
+	if not from_currency or not to_currency:
+		return None
+	if not provider:
+		provider = frappe.get_cached_value("Accounts Settings", None, "default_currency_exchange_provider")
+	if not provider:
+		return None
+
+	transaction_date = getdate(transaction_date)
+
+	exchange_rate_providers = frappe.get_hooks("exchange_rate_providers") or {}
+	get_exchange_rate_method = exchange_rate_providers.get(provider)
+	get_exchange_rate_method = get_exchange_rate_method[0] if get_exchange_rate_method else None
+	if not get_exchange_rate_method:
+		return None
+
+	cache_key = f"exchange_rate:{provider}:{from_currency}:{to_currency}:{transaction_date}"
+	exchange_rate = flt(frappe.cache.get_value(cache_key, shared=True))
+	if exchange_rate > 0:
+		return flt(exchange_rate)
+
+	try:
+		exchange_rate = frappe.call(
+			get_exchange_rate_method,
+			from_currency,
+			to_currency,
+			transaction_date=transaction_date,
+			provider=provider,
+		)
+	except Exception:
+		frappe.log_error(title=f"Get Exchange Rate from {provider}")
+		frappe.msgprint(_("Unable to find exchange rate for {0} to {1} for key date {2}. Please enter exchange rate manually").format(
+			from_currency, to_currency, transaction_date
+		))
+
+	if flt(exchange_rate) > 0:
+		frappe.cache.set_value(cache_key, exchange_rate, expires_in_sec=6 * 60 * 60, shared=True)
+
+	return exchange_rate
+
+
+def get_exchange_rate_providers():
+	exchange_rate_providers = frappe.get_hooks("exchange_rate_providers") or {}
+	return list(exchange_rate_providers.keys())
+
 
 def enable_all_roles_and_domains():
 	""" enable all roles and domain for testing """
@@ -139,6 +212,7 @@ def insert_record(records):
 				pass
 			else:
 				raise
+
 
 def welcome_email():
 	site_name = get_default_company() or "ERPNext"

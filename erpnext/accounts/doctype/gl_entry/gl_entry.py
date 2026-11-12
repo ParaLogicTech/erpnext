@@ -6,7 +6,6 @@ from frappe import _
 from frappe.utils import flt, getdate, formatdate, cint
 from frappe.model.document import Document
 from frappe.model.meta import get_field_precision
-from erpnext.accounts.party import validate_party_gle_currency, validate_party_frozen_disabled
 from erpnext.accounts.utils import get_account_currency, get_fiscal_year
 from erpnext.accounts.doctype.accounting_period.accounting_period import get_closed_accounting_period
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_checks_for_pl_and_bs_accounts
@@ -188,7 +187,9 @@ class GLEntry(Document):
 				be used in transactions""").format(self.voucher_type, self.voucher_no, frappe.bold(self.cost_center)))
 
 	def validate_party(self):
-		validate_party_frozen_disabled(self.party_type, self.party)
+		from erpnext.accounts.party import validate_party_frozen_disabled
+		if self.party_type and self.party:
+			validate_party_frozen_disabled(self.party_type, self.party)
 
 	def validate_currency(self):
 		company_currency = erpnext.get_company_currency(self.company)
@@ -294,6 +295,15 @@ def update_against_account(voucher_type, voucher_no):
 
 		if d.against != new_against:
 			frappe.db.set_value("GL Entry", d.name, "against", new_against)
+
+
+def validate_party_gle_currency(party_type, party, company, party_account_currency):
+	"""Validate party account currency with existing GL Entry's currency"""
+	from erpnext.accounts.party import get_party_gle_currency
+	existing_gle_currency = get_party_gle_currency(party_type, party, company)
+	if existing_gle_currency and party_account_currency and party_account_currency != existing_gle_currency:
+		frappe.throw(_("Accounting Entry for {0}: {1} can only be made in currency: {2}")
+			.format(party_type, party, existing_gle_currency), InvalidAccountCurrency)
 
 
 def remove_dimensions_not_allowed_for_bs_account(gle):

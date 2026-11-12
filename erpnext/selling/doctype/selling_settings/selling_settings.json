@@ -8,28 +8,39 @@
  "field_order": [
   "defaults_section",
   "cust_master_name",
-  "customer_group",
-  "territory",
   "column_break_5",
+  "customer_group",
+  "column_break_0gbz",
+  "territory",
+  "price_lists_section",
   "selling_price_list",
   "retail_price_list",
-  "default_valid_till",
+  "column_break_4myg",
+  "price_lists",
   "pricing_restrictions_section",
+  "validate_duplicate_customer_mobile",
+  "validate_duplicate_customer_email",
   "validate_duplicate_customer_cnic",
   "validate_duplicate_customer_ntn",
-  "maintain_same_sales_rate",
-  "allow_multiple_items",
   "allow_against_multiple_purchase_orders",
-  "validate_selling_price",
-  "restrict_price_list_rate",
-  "restrict_price_list_rate_overrides",
+  "allow_multiple_items",
   "column_break_byhj",
   "so_required",
   "dn_required",
-  "validate_duplicate_customer_mobile",
-  "validate_duplicate_customer_email",
   "role_allowed_to_duplicate_customer_ntn",
+  "pricing_section",
+  "validate_selling_price",
+  "maintain_same_sales_rate",
+  "restrict_price_list_rate",
+  "restrict_price_list_rate_overrides",
+  "column_break_wk9k",
+  "update_prices_based_on",
+  "update_prices_on_submission_of_sales_order",
+  "update_prices_on_submission_of_sales_invoice",
+  "update_prices_party_specific",
   "quotation_notifications_section",
+  "default_valid_till",
+  "column_break_2uwv",
   "quotation_reminder_days_after",
   "column_break_7mge",
   "quotation_reminder_time"
@@ -101,7 +112,7 @@
    "default": "0",
    "fieldname": "allow_against_multiple_purchase_orders",
    "fieldtype": "Check",
-   "label": "Allow multiple Sales Orders against a Customer's Purchase Order"
+   "label": "Allow multiple Sales Orders against a Customer's PO No"
   },
   {
    "default": "0",
@@ -124,7 +135,7 @@
   {
    "fieldname": "role_allowed_to_duplicate_customer_ntn",
    "fieldtype": "Link",
-   "label": "Role Allowed To Create Customer With Duplicate NTN",
+   "label": "Role Allowed To Create Customer With Duplicate Tax ID",
    "options": "Role"
   },
   {
@@ -169,7 +180,7 @@
   {
    "fieldname": "quotation_notifications_section",
    "fieldtype": "Section Break",
-   "label": "Quotation Notifications"
+   "label": "Quotations"
   },
   {
    "fieldname": "quotation_reminder_days_after",
@@ -191,6 +202,64 @@
    "fieldtype": "Select",
    "label": "Validate Duplicate Customer Email Address",
    "options": "\nFor All Customers\nFor Individual Customers"
+  },
+  {
+   "fieldname": "price_lists_section",
+   "fieldtype": "Section Break",
+   "label": "Price Lists"
+  },
+  {
+   "fieldname": "column_break_2uwv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_4myg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "price_lists",
+   "fieldtype": "Table",
+   "label": "Multi Currency Default Price Lists",
+   "options": "Default Price List"
+  },
+  {
+   "fieldname": "column_break_0gbz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pricing_section",
+   "fieldtype": "Section Break",
+   "label": "Pricing"
+  },
+  {
+   "fieldname": "column_break_wk9k",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Price List Rate",
+   "depends_on": "eval:doc.update_prices_on_submission_of_sales_order || doc.update_prices_on_submission_of_sales_invoice",
+   "fieldname": "update_prices_based_on",
+   "fieldtype": "Select",
+   "label": "Auto Update Prices Based On",
+   "options": "Price List Rate\nActual Rate"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_prices_on_submission_of_sales_order",
+   "fieldtype": "Check",
+   "label": "Update Prices on Submission of Sales Order"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_prices_on_submission_of_sales_invoice",
+   "fieldtype": "Check",
+   "label": "Update Prices on Submission of Sales Invoice"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_prices_party_specific",
+   "fieldtype": "Check",
+   "label": "Auto Update Customer Specific Prices Only"
   }
  ],
  "grid_page_length": 500,
@@ -198,7 +267,7 @@
  "idx": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-19 11:16:51.697190",
+ "modified": "2026-11-06 15:26:53.592637",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling Settings",

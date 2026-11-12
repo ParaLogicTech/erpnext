@@ -6,7 +6,6 @@ from frappe import _
 from frappe.utils import flt, cint, add_days, cstr, add_months, getdate, add_years
 from erpnext.accounts.doctype.pricing_rule.pricing_rule import get_pricing_rule_for_item
 from erpnext.setup.utils import get_exchange_rate
-from frappe.model.meta import get_field_precision
 from erpnext import get_company_currency
 from erpnext.stock.doctype.item.item import get_uom_conv_factor, convert_item_uom_for
 from erpnext.setup.doctype.item_default_rule.item_default_rule import get_item_default_values
@@ -769,18 +768,18 @@ def get_default_allow_zero_valuation_rate(item, args):
 	return cint(allow_zero_valuation_rate == "Yes" if allow_zero_valuation_rate else args.get('allow_zero_valuation_rate'))
 
 
-def get_target_warehouse_validation(item_code, transaction_type_name, company):
-	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company})
+def get_target_warehouse_validation(item_code, transaction):
+	default_values = get_item_default_values(item_code, transaction)
 	return default_values.get("target_warehouse_validation")
 
 
-def get_project_validation(item_code, transaction_type_name, company):
-	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company})
+def get_project_validation(item_code, transaction):
+	default_values = get_item_default_values(item_code, transaction)
 	return default_values.get("project_validation")
 
 
-def get_min_margin_validation(item_code, transaction_type_name, company):
-	default_values = get_item_default_values(item_code, {'transaction_type': transaction_type_name, 'company': company})
+def get_min_margin_validation(item_code, transaction):
+	default_values = get_item_default_values(item_code, transaction)
 	if default_values.get("validate_min_margin") == "Yes":
 		return flt(default_values.get("min_margin"))
 	else:
@@ -930,63 +929,35 @@ def get_price_list_data(args, item_doc, out):
 
 	meta = frappe.get_meta(args.parenttype or args.doctype)
 
-	if meta.get_field("currency") or args.get('currency'):
+	if meta.get_field("currency") or args.get("currency"):
+		if args.get("is_free_item") and args.get("price_list_rate"):
+			out.price_list_rate = flt(args.get("price_list_rate"))
+			return
+
 		pl_details = get_price_list_currency_and_exchange_rate(args)
 		args.update(pl_details)
 		if meta.get_field("currency"):
-			validate_conversion_rate(args, meta)
+			validate_conversion_rate(args)
 
 		# price from variant or template
 		price_list_rate = get_price_list_rate(item_doc.name, args.get("price_list"), args) or 0
 		if not price_list_rate and item_doc.variant_of:
 			price_list_rate = get_price_list_rate(item_doc.variant_of, args.get("price_list"), args)
 
-		# insert in database
-		if not price_list_rate:
-			if args.price_list and args.rate:
-				insert_item_price(args)
-
-		out.price_list_rate = flt(price_list_rate) * flt(args.plc_conversion_rate) \
-			/ flt(args.conversion_rate)
+		out.price_list_rate = flt(price_list_rate) * flt(args.plc_conversion_rate) / flt(args.conversion_rate or 1)
 
 		if "retail_price_list" in args:
 			retail_rate = 0
-			if args.get("retail_price_list") and args.get("currency"):
-				if frappe.db.get_value("Price List", args.get("retail_price_list"), "currency", cache=True) == args.get("currency"):
-					retail_rate = get_price_list_rate(item_doc.name, args.get("retail_price_list"), args) or 0
-					if not retail_rate and item_doc.variant_of:
-						retail_rate = get_price_list_rate(item_doc.variant_of, args.get("retail_price_list"), args)
+			if (
+				args.get("retail_price_list")
+				and args.get("currency")
+				and frappe.get_cached_value("Price List", args.get("retail_price_list"), "currency") == args.get("currency")
+			):
+				retail_rate = get_price_list_rate(item_doc.name, args.get("retail_price_list"), args) or 0
+				if not retail_rate and item_doc.variant_of:
+					retail_rate = get_price_list_rate(item_doc.variant_of, args.get("retail_price_list"), args)
 
 			out.retail_rate = flt(retail_rate)
-
-
-def insert_item_price(args):
-	"""Insert Item Price if Price List and Price List Rate are specified and currency is the same"""
-	if frappe.get_cached_value("Price List", args.price_list, "currency") == args.currency \
-		and cint(frappe.get_cached_value("Stock Settings", None, "auto_insert_price_list_rate_if_missing")):
-		if frappe.has_permission("Item Price", "write"):
-			price_list_rate = (args.rate / args.get('conversion_factor')
-				if args.get("conversion_factor") else args.rate)
-
-			item_price = frappe.db.get_value('Item Price',
-				{'item_code': args.item_code, 'price_list': args.price_list, 'currency': args.currency},
-				['name', 'price_list_rate'], as_dict=1)
-			if item_price and item_price.name:
-				if item_price.price_list_rate != price_list_rate:
-					frappe.db.set_value('Item Price', item_price.name, "price_list_rate", price_list_rate)
-					frappe.msgprint(_("Item Price updated for {0} in Price List {1}").format(args.item_code,
-						args.price_list), alert=True)
-			else:
-				item_price = frappe.get_doc({
-					"doctype": "Item Price",
-					"price_list": args.price_list,
-					"item_code": args.item_code,
-					"currency": args.currency,
-					"price_list_rate": price_list_rate
-				})
-				item_price.insert()
-				frappe.msgprint(_("Item Price added for {0} in Price List {1}").format(args.item_code,
-					args.price_list), alert=True)
 
 
 def get_price_list_rate(item_code, price_list, args):
@@ -1020,12 +991,7 @@ def get_price_list_rate_for(item_code, price_list, args):
 	item_price_data = None
 	item_price = get_item_price(item_price_args, item_code)
 	if item_price:
-		desired_qty = args.get("qty")
-		if desired_qty is None:
-			desired_qty = 1
-
-		if desired_qty and check_packing_list(item_price, desired_qty, item_code):
-			item_price_data = item_price
+		item_price_data = item_price
 	else:
 		for field in ["customer", "supplier"]:
 			del item_price_args[field]
@@ -1098,8 +1064,7 @@ def get_item_price(args, item_code, ignore_party=False):
 			price_list_rate,
 			uom,
 			ifnull(valid_from, '2000-01-01') as valid_from,
-			ifnull(valid_upto, '2500-12-31') as valid_upto,
-			packing_unit
+			ifnull(valid_upto, '2500-12-31') as valid_upto
 		from `tabItem Price`
 		{conditions}
 		{order_by}
@@ -1151,56 +1116,20 @@ def get_last_purchase_rate(
 	return last_purchase_rate * conversion_factor / exchange_rate
 
 
-def check_packing_list(item_price, desired_qty, item_code):
-	"""
-		Check if the desired qty is within the increment of the packing list.
-		:param item_price: Name of Item Price
-		:param desired_qty: Desired Qt
-		:param item_code: str, Item Doctype field item_code
-		:param qty: Desired Qt
-	"""
-
-	flag = True
-	if item_price and item_price.packing_unit:
-		packing_increment = desired_qty % item_price.packing_unit
-
-		if packing_increment != 0:
-			flag = False
-
-	return flag
-
-
-def validate_conversion_rate(args, meta):
-	from erpnext.controllers.accounts_controller import validate_conversion_rate
-
-	if (not args.conversion_rate
-		and args.currency==frappe.get_cached_value('Company',  args.company,  "default_currency")):
+def validate_conversion_rate(args):
+	company_currency = get_company_currency(args.company)
+	if args.currency == company_currency:
 		args.conversion_rate = 1.0
 
-	# validate currency conversion rate
-	validate_conversion_rate(args.currency, args.conversion_rate,
-		meta.get_label("conversion_rate"), args.company)
-
-	args.conversion_rate = flt(args.conversion_rate,
-		get_field_precision(meta.get_field("conversion_rate"),
-			frappe._dict({"fields": args})))
+	args.conversion_rate = flt(args.conversion_rate, 9)
 
 	if args.price_list:
-		if (not args.plc_conversion_rate
-			and args.price_list_currency==frappe.db.get_value("Price List", args.price_list, "currency", cache=True)):
+		if args.price_list_currency == company_currency:
+			args.plc_conversion_rate = 1.0
+		elif args.price_list_currency == args.currency:
 			args.plc_conversion_rate = args.conversion_rate
 
-		# validate price list currency conversion rate
-		if not args.get("price_list_currency"):
-			frappe.throw(_("Price List Currency not selected"))
-		else:
-			validate_conversion_rate(args.price_list_currency, args.plc_conversion_rate,
-				meta.get_label("plc_conversion_rate"), args.company)
-
-			if meta.get_field("plc_conversion_rate"):
-				args.plc_conversion_rate = flt(args.plc_conversion_rate,
-					get_field_precision(meta.get_field("plc_conversion_rate"),
-					frappe._dict({"fields": args})))
+		args.plc_conversion_rate = flt(args.plc_conversion_rate, 9)
 
 
 def get_party_item_code(args, item_doc, out):
@@ -1524,6 +1453,7 @@ def apply_price_list(args, as_doc=False, doc=None):
 		for item in item_list:
 			args_copy = args.copy()
 			args_copy.update(item)
+			args_copy.pop("items", None)
 			args_copy = process_args(args_copy)
 
 			item_details = apply_price_list_on_item(args_copy, doc=doc)
@@ -1550,8 +1480,8 @@ def apply_price_list(args, as_doc=False, doc=None):
 def apply_price_list_on_item(args, doc=None):
 	item_details = frappe._dict()
 	item_doc = frappe.get_cached_doc("Item", args.item_code)
-	get_price_list_data(args, item_doc, item_details)
 
+	get_price_list_data(args, item_doc, item_details)
 	item_details.update(get_pricing_rule_for_item(args, item_details.price_list_rate, doc=doc))
 
 	return item_details
@@ -1568,22 +1498,32 @@ def get_price_list_currency_and_exchange_rate(args):
 	elif args.selling_or_buying == "buying":
 		args.update({"exchange_rate": "for_buying"})
 
-	price_list_details = frappe.get_cached_value("Price List", args.price_list,
-		["currency", "price_not_uom_dependent", "enabled"], as_dict=1)
+	price_list_details = frappe.get_cached_value("Price List", args.price_list, [
+		"currency", "price_not_uom_dependent", "enabled"
+	], as_dict=1)
 	if not price_list_details or not price_list_details.get("enabled"):
 		frappe.throw(_("Price List {0} is disabled or does not exist").format(args.price_list))
 
 	price_list_currency = price_list_details.get("currency")
 	price_list_uom_dependant = not price_list_details.get("price_not_uom_dependent")
 
-	plc_conversion_rate = args.plc_conversion_rate
 	company_currency = get_company_currency(args.company)
+	plc_conversion_rate = flt(args.plc_conversion_rate)
+	if price_list_currency == company_currency:
+		plc_conversion_rate = 1
+	elif price_list_currency == args.currency:
+		plc_conversion_rate = flt(args.conversion_rate) or plc_conversion_rate
 
-	if (not plc_conversion_rate) or (price_list_currency and args.price_list_currency \
-		and price_list_currency != args.price_list_currency):
-			# cksgb 19/09/2016: added args.transaction_date as posting_date argument for get_exchange_rate
-			plc_conversion_rate = get_exchange_rate(price_list_currency, company_currency,
-				args.transaction_date, args.exchange_rate) or plc_conversion_rate
+	if (
+		not plc_conversion_rate
+		or (price_list_currency and args.price_list_currency and price_list_currency != args.price_list_currency)
+	):
+		plc_conversion_rate = get_exchange_rate(
+			price_list_currency,
+			company_currency,
+			args.transaction_date,
+			args.exchange_rate,
+		) or plc_conversion_rate
 
 	return frappe._dict({
 		"price_list_currency": price_list_currency,
@@ -1622,7 +1562,7 @@ def get_default_bom(item_code, project=None):
 
 
 def set_valuation_rate(out, args, doc=None):
-	from erpnext.stock.doctype.packed_item.packed_item import is_product_bundle
+	from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
 
 	warehouse = out.get("warehouse") or args.get("warehouse")
 
@@ -1641,7 +1581,7 @@ def set_valuation_rate(out, args, doc=None):
 
 
 def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, doc=None):
-	from erpnext.stock.doctype.packed_item.packed_item import get_product_bundle_from_item_code
+	from erpnext.stock.doctype.bundled_item.bundled_item import get_product_bundle_from_item_code
 
 	valuation_rate = 0.0
 	if not parent_item:
@@ -1659,7 +1599,7 @@ def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, 
 			child_row = None
 			if parent_row_name and doc:
 				child_row = [
-					ch for ch in doc.get("packed_items") or []
+					ch for ch in doc.get("bundled_items") or []
 					if ch.parent_detail_docname == parent_row_name and ch.item_code == bundle_item.item_code
 				]
 				child_row = child_row[0] if child_row else None
@@ -1672,7 +1612,7 @@ def get_product_bundle_valuation_rate(parent_item, warehouse, parent_qty, args, 
 			valuation_rate += rate * flt(bundle_item.qty)
 
 		elif bundle_item.type == "Item Group" and doc:
-			for child_row in doc.get("packed_items") or []:
+			for child_row in doc.get("bundled_items") or []:
 				if not child_row.item_code:
 					continue
 				if child_row.parent_item != parent_item:
@@ -1757,7 +1697,14 @@ def get_blanket_order_details(args):
 				from `tabBlanket Order` bo, `tabBlanket Order Item` boi
 				where bo.company=%(company)s and boi.item_code=%(item_code)s
 					and bo.docstatus=1 and bo.name = boi.parent {0}
-			'''.format(condition), args, as_dict=True)
+			'''.format(condition), {
+			"company": args.get("company"),
+			"customer": args.get("customer"),
+			"supplier": args.get("supplier"),
+			"blanket_order": args.get("blanket_order"),
+			"transaction_date": args.get("transaction_date"),
+			"item_code": args.get("item_code"),
+		}, as_dict=True)
 
 		blanket_order_details = blanket_order_details[0] if blanket_order_details else ''
 	return blanket_order_details
@@ -1788,16 +1735,16 @@ def get_skip_delivery_note(item, delivered_by_supplier=False, doc=None):
 
 
 def has_stock_item_in_bundle(doc):
-	"""Checks if the packed items in the doc include any stock items."""
-	packed_items = doc.get("packed_items") or []
+	"""Checks if the bundled items in the doc include any stock items."""
+	bundled_items = doc.get("bundled_items") or []
 
-	for bundle_item in packed_items:
+	for bundle_item in bundled_items:
 		if bundle_item.type == "Item":
 			if item_is_product_bundle_with_stock_item(bundle_item.item_code):
 				return True
 		elif bundle_item.type == "Item Group":
-			for packed_item in packed_items:
-				if frappe.get_cached_value("Item", packed_item.item_code, "is_stock_item"):
+			for bundled_item in bundled_items:
+				if frappe.get_cached_value("Item", bundled_item.item_code, "is_stock_item"):
 					return True
 	return False
 

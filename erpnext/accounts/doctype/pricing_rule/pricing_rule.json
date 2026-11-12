@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "autoname": "field:title",
- "creation": "2014-02-21 15:02:51",
+ "creation": "2026-11-10 15:23:30.070860",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -72,11 +72,14 @@
   "for_price_list",
   "from_price_list",
   "product_discount_scheme_section",
-  "free_item",
+  "buy_qty",
   "free_qty",
-  "same_item",
+  "free_qty_recursive",
   "column_break_51",
+  "free_item",
   "free_item_uom",
+  "same_item",
+  "column_break_3r2q",
   "free_item_rate",
   "section_break_13",
   "priority",
@@ -380,7 +383,7 @@
    "reqd": 1
   },
   {
-   "depends_on": "eval: doc.selling == 1",
+   "depends_on": "eval:doc.selling == 1 && doc.price_or_product_discount == \"Price\"",
    "fieldname": "margin",
    "fieldtype": "Section Break",
    "label": "Margin"
@@ -480,7 +483,7 @@
    "default": "0",
    "fieldname": "free_qty",
    "fieldtype": "Float",
-   "label": "Qty"
+   "label": "Free Qty"
   },
   {
    "fieldname": "column_break_51",
@@ -489,13 +492,14 @@
   {
    "fieldname": "free_item_uom",
    "fieldtype": "Link",
-   "label": "UOM",
+   "label": "Free Item UOM",
    "options": "UOM"
   },
   {
    "fieldname": "free_item_rate",
    "fieldtype": "Currency",
-   "label": "Rate"
+   "label": "Free Item Rate",
+   "options": "currency"
   },
   {
    "collapsible": 1,
@@ -693,13 +697,28 @@
    "fieldname": "include_margin_in_price_list_rate",
    "fieldtype": "Check",
    "label": "Include Margin in Price List Rate"
+  },
+  {
+   "fieldname": "buy_qty",
+   "fieldtype": "Float",
+   "label": "Buy Qty"
+  },
+  {
+   "fieldname": "column_break_3r2q",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "free_qty_recursive",
+   "fieldtype": "Check",
+   "label": "Free Qty Recursive"
   }
  ],
  "grid_page_length": 500,
  "icon": "fa fa-gift",
  "idx": 1,
  "links": [],
- "modified": "2026-09-12 22:34:15.803036",
+ "modified": "2026-11-10 16:01:16.580034",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Pricing Rule",

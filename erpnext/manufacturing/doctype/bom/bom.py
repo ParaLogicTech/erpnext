@@ -305,7 +305,6 @@ class BOM(Document):
 							"conversion_rate": 1,  # Passed conversion rate as 1 purposefully, as conversion rate is applied at the end of the function
 							"conversion_factor": conversion_factor,
 							"plc_conversion_rate": 1,
-							"ignore_party": True
 						})
 						item_doc = frappe.get_cached_doc("Item", arg.get("item_code"))
 						out = frappe._dict()
@@ -493,8 +492,16 @@ class BOM(Document):
 		if self.rm_cost_as_per in ["Valuation Rate", "Last Purchase Rate"]:
 			self.plc_conversion_rate = 1
 		elif not self.plc_conversion_rate and self.price_list_currency:
-			self.plc_conversion_rate = get_exchange_rate(self.price_list_currency,
-				self.company_currency(), args="for_buying")
+			if self.price_list_currency == self.company_currency():
+				self.plc_conversion_rate = 1
+			elif self.price_list_currency == self.currency:
+				self.plc_conversion_rate = self.conversion_rate
+			else:
+				self.plc_conversion_rate = get_exchange_rate(
+					self.price_list_currency,
+					self.company_currency(),
+					args="for_buying",
+				)
 
 	def validate_materials(self):
 		""" Validate raw material entries """
@@ -1110,7 +1117,8 @@ def get_bom_diff(bom1, bom2):
 		'operations': 'operation',
 		'items': 'item_code',
 		'scrap_items': 'item_code',
-		'exploded_items': 'item_code'
+		'exploded_items': 'item_code',
+		'additional_costs': 'description',
 	}
 
 	for df in meta.fields:

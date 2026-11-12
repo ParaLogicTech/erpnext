@@ -10,11 +10,11 @@ frappe.ui.form.on("Customer", {
 		frm.make_methods = {
 			'Quotation': () => frappe.model.open_mapped_doc({
 				method: 'erpnext.selling.doctype.customer.customer.make_quotation',
-				frm: cur_frm
+				frm: frm
 			}),
 			'Opportunity': () => frappe.model.open_mapped_doc({
 				method: 'erpnext.selling.doctype.customer.customer.make_opportunity',
-				frm: cur_frm
+				frm: frm
 			}),
 			'Pricing Rule': () => erpnext.utils.make_pricing_rule(frm.doc.doctype, frm.doc.name)
 		}

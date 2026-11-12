@@ -17,8 +17,11 @@ from erpnext.stock.get_item_details import (
 	get_force_applies_to_fields,
 )
 from erpnext.accounts.doctype.pricing_rule.utils import (
-	apply_pricing_rule_for_free_items, get_applied_pricing_rules,
-	apply_pricing_rule_on_transaction, update_pricing_rule_table
+	get_applied_pricing_rules,
+	apply_pricing_rule_on_transaction,
+	apply_free_item_pricing_rule,
+	remove_free_item_pricing_rules,
+	update_pricing_rule_table,
 )
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
 from erpnext.controllers.taxes_and_totals import calculate_taxes_and_totals, get_itemised_tax_breakup_html
@@ -145,6 +148,7 @@ class TransactionController(StockController):
 		self.clean_item_names()
 
 		if self.meta.get_field("currency"):
+			self.validate_conversion_rate()
 			self.before_calculate_taxes_and_totals()
 			self.calculate_taxes_and_totals()
 			self.validate_grand_total()
@@ -211,6 +215,8 @@ class TransactionController(StockController):
 			for item in self.get("items"):
 				self.set_missing_item_details_for_row(item, for_validate=for_validate, parent_dict=parent_dict)
 
+			remove_free_item_pricing_rules(self)
+
 		self.set_missing_applies_to_details()
 
 	def set_missing_item_details_for_row(self, item, for_validate=False, skip_pricing_rules=False, parent_dict=None):
@@ -245,17 +251,24 @@ class TransactionController(StockController):
 			if flt(item_qty, item.precision("qty")) != len(get_serial_nos(item.get("serial_no"))):
 				item.set("serial_no", ret.get("serial_no"))
 
+		# Set Other Item Data in onload
+		if ret.get("apply_rule_on_other_items"):
+			item.set_onload("apply_rule_on_other_items", ret.get("apply_rule_on_other_items"))
+			item.set_onload("apply_rule_on", ret.get("apply_rule_on"))
+		if ret.get("free_item_data"):
+			item.set_onload("free_item_data", ret.get("free_item_data"))
+
 		# price list rate and pricing rules
 		if not skip_pricing_rules:
 			if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
 				self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
 			if (ret.get("pricing_rules") or ret.get("pricing_rule_removed")) and not self.get("ignore_pricing_rule"):
-				self.apply_pricing_rule_on_item(item, ret)
+				self.apply_pricing_rule_on_item(item, ret, for_validate=for_validate)
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
 		pass
 
-	def apply_pricing_rule_on_item(self, item, pricing_rule_args):
+	def apply_pricing_rule_on_item(self, item, pricing_rule_args, for_validate=False):
 		if pricing_rule_args.get("validate_applied_rule"):
 			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
 				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
@@ -289,8 +302,13 @@ class TransactionController(StockController):
 					if item.get('discount_amount'):
 						item.rate = item.price_list_rate - item.discount_amount
 
-			if pricing_rule_args.get('free_item_data'):
-				apply_pricing_rule_for_free_items(self, pricing_rule_args.get('free_item_data'))
+			if pricing_rule_args.get("free_item_data"):
+				apply_free_item_pricing_rule(
+					self,
+					pricing_rule_args.get("free_item_data"),
+					for_validate=for_validate,
+					row=item,
+				)
 
 			if item.meta.has_field("margin_type") and pricing_rule_args.get("margin_type"):
 				item.set("margin_rate_or_amount", pricing_rule_args.get("margin_rate_or_amount"))
@@ -456,7 +474,7 @@ class TransactionController(StockController):
 			if self.get("group_same_items_separate_rate"):
 				return cstr(it.item_code), cstr(it.item_name), it.uom, flt(item.rate, item.precision("rate"))
 			else:
-				return cstr(it.item_code), cstr(it.item_name), it.uom
+				return cstr(it.item_code), cstr(it.item_name), it.uom, cint(it.get("is_free_item"))
 
 		group_item_data = {}
 		item_meta = frappe.get_meta("Stock Entry Detail" if self.doctype == "Stock Entry" else self.doctype + " Item")
@@ -944,7 +962,7 @@ class TransactionController(StockController):
 				continue
 
 			selling_or_buying = is_doctype_selling_or_buying(self.doctype)
-			project_validation = get_project_validation(d.item_code, self.transaction_type, self.company)
+			project_validation = get_project_validation(d.item_code, self)
 
 			if (
 				project_validation == "Mandatory"
@@ -974,36 +992,92 @@ class TransactionController(StockController):
 		else:
 			return frappe.db.get_single_value("Global Defaults", "disable_rounded_total")
 
-	def update_item_prices(self):
-		from erpnext.stock.get_item_details import get_price_list_data, process_args
-		from erpnext.stock.report.item_prices.item_prices import _set_item_pl_rate
+	def auto_update_item_prices(self):
+		selling_or_buying = is_doctype_selling_or_buying(self.doctype)
 
-		parent_dict = frappe._dict({})
-		for fieldname in self.meta.get_valid_columns():
-			parent_dict[fieldname] = self.get(fieldname)
+		if selling_or_buying == "selling":
+			settings = frappe.get_cached_doc("Selling Settings", None)
+			price_list_field = "selling_price_list"
+		elif selling_or_buying == "buying":
+			settings = frappe.get_cached_doc("Buying Settings", None)
+			price_list_field = "buying_price_list"
+		else:
+			return
 
+		price_list = self.get(price_list_field)
+		if not price_list:
+			return
+
+		price_list_currency = frappe.get_cached_value("Price List", price_list, "currency")
+		if self.get("currency") != price_list_currency or not price_list_currency or not self.get("currency"):
+			return
+
+		rate_field = "rate" if settings.update_prices_based_on == "Actual Rate" else "price_list_rate"
+
+		party_specific_prices = settings.update_prices_party_specific
+		party_type, party = None, None
+		if party_specific_prices:
+			party_type, party, party_name = self.get_party()
+
+		item_codes_visited = set()
 		for item in self.get("items"):
-			if item.get("item_code"):
-				args = parent_dict.copy()
-				args.update(item.as_dict())
-				args = process_args(args)
+			if not item.get("item_code"):
+				continue
+			if item.get("is_free_item") or item.get("pricing_rules"):
+				continue
 
-				args["doctype"] = self.doctype
-				args["name"] = self.name
+			if item.item_code in item_codes_visited:
+				continue
 
-				if not args.get("transaction_date"):
-					args["transaction_date"] = args.get("posting_date")
+			item_codes_visited.add(item.item_code)
 
-				item_price_data = frappe._dict()
-				get_price_list_data(args, frappe.get_cached_doc("Item", item.item_code), item_price_data)
+			new_rate = flt(item.get(rate_field))
+			if not new_rate or not flt(item.get("rate")):
+				continue
 
-				rate_field_setting = frappe.get_cached_value("Buying Settings", None,
-					"update_buying_prices_based_on")
-				rate_field = "rate" if rate_field_setting == "Actual Rate" else "price_list_rate"
+			# do not update if there are multiple rows with different prices
+			other_item_code_rows = [d for d in self.get("items") if d.item_code == item.item_code and d != item]
+			if other_item_code_rows:
+				mismatch = False
+				for d in other_item_code_rows:
+					other_rate = flt(d.get(rate_field))
+					if abs(flt(other_rate - new_rate)) < 0.01:
+						mismatch = True
+						break
 
-				new_rate = flt(item.get(rate_field))
-				if new_rate and abs(flt(item_price_data.price_list_rate) - new_rate) > 0.005:
-					_set_item_pl_rate(args["transaction_date"], item.item_code, self.buying_price_list, new_rate, item.uom, item.conversion_factor)
+				if mismatch:
+					continue
+
+			self.update_item_price_for_row(item, price_list, new_rate, party_type=party_type, party=party)
+
+	def update_item_price_for_row(self, row, price_list, new_rate, party_type=None, party=None):
+		from erpnext.stock.report.item_prices.item_prices import _set_item_pl_rate
+		from erpnext.stock.get_item_details import get_price_list_data, process_args
+
+		if not row.get("item_code") or not price_list or not new_rate:
+			return
+
+		# Check if no change in price
+		parent_dict = self.get_item_details_parent_args()
+		args = self.get_item_details_child_args(row, parent_dict)
+		args = process_args(args)
+		item_price_data = frappe._dict()
+		get_price_list_data(args, frappe.get_cached_doc("Item", row.item_code), item_price_data)
+
+		if abs(flt(item_price_data.price_list_rate) - new_rate) <= 0.01:
+			return
+
+		_set_item_pl_rate(
+			self.get("posting_date") or self.get("transaction_date"),
+			row.item_code,
+			price_list,
+			new_rate,
+			row.uom,
+			row.conversion_factor,
+			party_type=party_type,
+			party=party,
+			ignore_permissions=True,
+		)
 
 	def is_inclusive_tax(self):
 		is_inclusive = cint(frappe.get_cached_value("Accounts Settings", None, "show_inclusive_tax_in_print"))
@@ -1116,37 +1190,61 @@ class TransactionController(StockController):
 
 		return {}
 
+	def validate_conversion_rate(self):
+		from erpnext.controllers.accounts_controller import validate_conversion_rate
+
+		if not self.meta.get_field("currency") or not self.meta.get_field("conversion_rate"):
+			return
+
+		if self.currency == self.company_currency:
+			self.conversion_rate = 1
+
+		validate_conversion_rate(
+			self.currency,
+			self.conversion_rate,
+			self.meta.get_label("conversion_rate"),
+			self.company,
+		)
+
 	def set_price_list_currency(self, selling_or_buying):
-		if self.meta.get_field("posting_date"):
-			transaction_date = self.posting_date
+		if not self.meta.get_field("currency"):
+			return
+
+		transaction_date = self.get("posting_date") or self.get("transaction_date")
+		if selling_or_buying.lower() == "selling":
+			fieldname = "selling_price_list"
+			args = "for_selling"
 		else:
-			transaction_date = self.transaction_date
+			fieldname = "buying_price_list"
+			args = "for_buying"
 
-		if self.meta.get_field("currency"):
-			# price list part
-			if selling_or_buying.lower() == "selling":
-				fieldname = "selling_price_list"
-				args = "for_selling"
-			else:
-				fieldname = "buying_price_list"
-				args = "for_buying"
-
-			if self.meta.get_field(fieldname) and self.get(fieldname):
-				self.price_list_currency = frappe.db.get_value("Price List", self.get(fieldname), "currency", cache=1)
-
-				if self.price_list_currency == self.company_currency:
-					self.plc_conversion_rate = 1.0
-				elif not self.plc_conversion_rate:
-					self.plc_conversion_rate = get_exchange_rate(self.price_list_currency, self.company_currency, transaction_date, args)
-
-			# currency
-			if not self.currency:
-				self.currency = self.price_list_currency
-				self.conversion_rate = self.plc_conversion_rate
-			elif self.currency == self.company_currency:
+		# missing exchange rate
+		if self.currency:
+			if self.currency == self.company_currency:
 				self.conversion_rate = 1.0
 			elif not self.conversion_rate:
-				self.conversion_rate = get_exchange_rate(self.currency, self.company_currency, transaction_date, args)
+				self.conversion_rate = get_exchange_rate(
+					self.currency,
+					self.company_currency,
+					transaction_date,
+					args=args,
+				)
+
+		# price list part
+		if self.meta.get_field(fieldname) and self.get(fieldname):
+			self.price_list_currency = frappe.get_cached_value("Price List", self.get(fieldname), "currency")
+
+			if self.price_list_currency == self.company_currency:
+				self.plc_conversion_rate = 1.0
+			elif self.price_list_currency == self.currency:
+				self.plc_conversion_rate = self.conversion_rate
+			elif not self.plc_conversion_rate:
+				self.plc_conversion_rate = get_exchange_rate(
+					self.price_list_currency,
+					self.company_currency,
+					transaction_date,
+					args=args,
+				)
 
 	def sort_items(self):
 		price_list_settings = frappe.get_cached_doc("Price List Settings", None)
@@ -1309,7 +1407,7 @@ def set_invoice_as_overdue():
 @frappe.whitelist()
 def update_child_items(parent_doctype, parent_name, data):
 	from frappe.model.workflow import get_workflow_name, is_transition_condition_satisfied, WorkflowPermissionError
-	from erpnext.stock.doctype.packed_item.packed_item import make_bundled_item_list, validate_bundled_item_list
+	from erpnext.stock.doctype.bundled_item.bundled_item import make_bundled_item_list, validate_bundled_item_list
 
 	def check_doc_permissions(doc, perm_type="create"):
 		try:

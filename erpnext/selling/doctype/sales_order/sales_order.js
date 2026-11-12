@@ -45,7 +45,7 @@ frappe.ui.form.on("Sales Order", {
 		});
 
 		erpnext.queries.setup_warehouse_qty_query(frm, "warehouse", "items");
-		erpnext.queries.setup_warehouse_qty_query(frm, "warehouse", "packed_items");
+		erpnext.queries.setup_warehouse_qty_query(frm, "warehouse", "bundled_items");
 
 		if (frm.doc.__islocal) {
 			frm.events.delivery_date(frm);

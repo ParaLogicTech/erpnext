@@ -27,10 +27,6 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		this.load_manual_distribution_data();
 		this.update_manual_distribution();
 		this.set_help_html();
-
-		if (this.frm.doc.party && !this.frm.doc.credit_to) {
-			this.party();
-		}
 	}
 
 	setup_queries() {
@@ -566,24 +562,40 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		this.frm.refresh_fields();
 	}
 
-	currency() {
-		let me = this;
-
-		let transaction_date = me.frm.doc.transaction_date || me.frm.doc.posting_date;
-		let company_currency = me.get_company_currency();
-		if (me.frm.doc.currency && me.frm.doc.currency !== company_currency) {
-			me.get_exchange_rate(transaction_date, me.frm.doc.currency, company_currency,
-				function(exchange_rate) {
-					me.frm.set_value("conversion_rate", exchange_rate);
-				});
+	company() {
+		if (!this.frm.doc.currency) {
+			this.frm.set_value("currency", this.get_company_currency());
 		} else {
-			me.conversion_rate();
+			this.set_exchange_rate();
 		}
-		me.set_dynamic_labels();
+		erpnext.utils.get_party_account_details(this.frm);
+		this.set_dynamic_labels();
 	}
 
 	posting_date() {
-		this.currency();
+		this.set_exchange_rate();
+	}
+
+	currency() {
+		this.set_dynamic_labels()
+		this.set_exchange_rate();
+		erpnext.utils.get_party_account_details(this.frm);
+	}
+
+	set_exchange_rate() {
+		let transaction_date = this.frm.doc.transaction_date || this.frm.doc.posting_date;
+		let company_currency = this.get_company_currency();
+		if (this.frm.doc.currency && this.frm.doc.currency !== company_currency) {
+			return this.get_exchange_rate(
+				transaction_date,
+				this.frm.doc.currency,
+				company_currency,
+				(exchange_rate) => {
+					this.frm.set_value("conversion_rate", exchange_rate);
+				});
+		} else {
+			return this.conversion_rate();
+		}
 	}
 
 	conversion_rate() {
@@ -594,19 +606,6 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		if (flt(this.frm.doc.conversion_rate) > 0.0) {
 			this.calculate_taxes_and_totals();
 		}
-
-		// Make read only if Accounts Settings doesn't allow stale rates
-		this.frm.set_df_property("conversion_rate", "read_only", erpnext.stale_rate_allowed() ? 0 : 1);
-	}
-
-	company() {
-		let company_currency = this.get_company_currency();
-		if (!this.frm.doc.currency) {
-			this.frm.set_value("currency", company_currency);
-		} else {
-			this.currency();
-		}
-		this.set_dynamic_labels();
 	}
 
 	credit_to() {
@@ -631,18 +630,12 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 	}
 
 	get_exchange_rate(transaction_date, from_currency, to_currency, callback) {
-		if (!transaction_date || !from_currency || !to_currency) return;
-		return frappe.call({
-			method: "erpnext.setup.utils.get_exchange_rate",
-			args: {
-				transaction_date: transaction_date,
-				from_currency: from_currency,
-				to_currency: to_currency,
-				args: "for_buying"
-			},
-			callback: function(r) {
-				callback(flt(r.message));
-			}
+		return erpnext.utils.get_exchange_rate({
+			transaction_date: transaction_date,
+			from_currency: from_currency,
+			to_currency: to_currency,
+			args: "for_buying",
+			callback: callback,
 		});
 	}
 };

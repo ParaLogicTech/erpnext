@@ -108,23 +108,12 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 	}
 
 	validate_conversion_rate() {
-		this.frm.doc.conversion_rate = flt(this.frm.doc.conversion_rate, (cur_frm) ? precision("conversion_rate") : 9);
-		var conversion_rate_label = frappe.meta.get_label(this.frm.doc.doctype, "conversion_rate",
-			this.frm.doc.name);
-		var company_currency = this.get_company_currency();
-
-		if(!this.frm.doc.conversion_rate) {
-			if(this.frm.doc.currency == company_currency) {
-				this.frm.set_value("conversion_rate", 1);
-			} else {
-				const err_message = __('{0} is mandatory. Maybe Currency Exchange record is not created for {1} to {2}', [
-					conversion_rate_label,
-					this.frm.doc.currency,
-					company_currency
-				]);
-				frappe.throw(err_message);
-			}
+		let company_currency = this.get_company_currency();
+		if (this.frm.doc.currency == company_currency) {
+			this.frm.doc.conversion_rate = 1;
 		}
+
+		this.frm.doc.conversion_rate = flt(this.frm.doc.conversion_rate, 9);
 	}
 
 	calculate_item_values() {
@@ -1290,7 +1279,7 @@ erpnext.taxes_and_totals = class TaxesAndTotals extends erpnext.payments {
 
 		if (this.frm.doc.redeem_loyalty_points && this.frm.doc.loyalty_amount) {
 			base_paid_amount += this.frm.doc.loyalty_amount;
-			paid_amount += flt(this.frm.doc.loyalty_amount / me.frm.doc.conversion_rate, precision("paid_amount"));
+			paid_amount += flt(this.frm.doc.loyalty_amount / (me.frm.doc.conversion_rate || 1), precision("paid_amount"));
 		}
 
 		this.frm.doc.paid_amount = flt(paid_amount, precision("paid_amount"));

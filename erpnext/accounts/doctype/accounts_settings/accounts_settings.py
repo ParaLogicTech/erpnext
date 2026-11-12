@@ -7,9 +7,13 @@ import frappe
 from frappe.utils import cint
 from frappe.model.document import Document
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
+from erpnext.setup.utils import get_exchange_rate_providers
 
 
 class AccountsSettings(Document):
+	def onload(self):
+		self.set_onload("exchange_rate_providers", get_exchange_rate_providers())
+
 	def on_update(self):
 		frappe.clear_cache()
 

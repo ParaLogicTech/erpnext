@@ -127,10 +127,10 @@ class ProductionPlan(Document):
 		if self.item_code:
 			item_condition = ' and so_item.item_code = {0}'.format(frappe.db.escape(self.item_code))
 
-		packed_items = frappe.db.sql("""select distinct pi.parent, pi.item_code, pi.warehouse as warehouse,
+		bundled_items = frappe.db.sql("""select distinct pi.parent, pi.item_code, pi.warehouse as warehouse,
 			(((so_item.qty - so_item.work_order_qty) * pi.qty) / so_item.qty)
 				as pending_qty, pi.parent_item, pi.description, so_item.name
-			from `tabSales Order Item` so_item, `tabPacked Item` pi
+			from `tabSales Order Item` so_item, `tabBundled Item` pi
 			where so_item.parent = pi.parent and so_item.docstatus = 1
 			and pi.parent_item = so_item.item_code
 			and so_item.parent in (%s) and so_item.qty > so_item.work_order_qty
@@ -138,7 +138,7 @@ class ProductionPlan(Document):
 					and bom.is_active = 1) %s""" % \
 			(", ".join(["%s"] * len(so_list)), item_condition), tuple(so_list), as_dict=1)
 
-		self.add_items(items + packed_items)
+		self.add_items(items + bundled_items)
 		self.calculate_total_planned_qty()
 
 	def get_mr_items(self):
@@ -585,7 +585,7 @@ def get_sales_orders(self):
 			and so_item.qty > so_item.work_order_qty {0} {1}
 			and (exists (select name from `tabBOM` bom where bom.item=so_item.item_code
 					and bom.is_active = 1)
-				or exists (select name from `tabPacked Item` pi
+				or exists (select name from `tabBundled Item` pi
 					where pi.parent = so.name and pi.parent_item = so_item.item_code
 						and exists (select name from `tabBOM` bom where bom.item=pi.item_code
 							and bom.is_active = 1)))

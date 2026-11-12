@@ -82,6 +82,15 @@ erpnext.financial_statements = {
 			if (column.format_link) {
 				let report_date = frappe.query_report.get_filter_value("report_date");
 
+				let row_dimensions = {};
+				if (data.is_dimension_row) {
+					for (let dimension_field of frappe.query_report.get_filter_value("dimension_fields") || []) {
+						if (data[dimension_field]) {
+							row_dimensions[dimension_field] = data[dimension_field];
+						}
+					}
+				}
+
 				if (data.account_group && report_date && data.row_type === "Account Group") {
 					let report_name = frappe.query_report.report_name;
 					if (data.group_level == "Fixed Asset Root") {
@@ -91,6 +100,7 @@ erpnext.financial_statements = {
 						report_name,
 						data.account_group,
 						report_date,
+						row_dimensions,
 					);
 				} else if (data.account && column.from_date && column.to_date && data.row_type === "Account") {
 					options.link_href = erpnext.financial_statements.get_account_ledger_link(
@@ -99,6 +109,7 @@ erpnext.financial_statements = {
 						column.to_date,
 						column.dimension_field,
 						column.dimension_value,
+						row_dimensions,
 					);
 				}
 			}
@@ -121,11 +132,12 @@ erpnext.financial_statements = {
 		return default_formatter(value, row, column, data, options);
 	},
 
-	get_account_ledger_link: function(account, from_date, to_date, dimension_field, dimension_value) {
+	get_account_ledger_link: function(account, from_date, to_date, dimension_field, dimension_value, extra_params) {
 		const params = this.get_params_for_link();
 		params["account"] = account;
 		params["from_date"] = from_date;
 		params["to_date"] = to_date;
+		Object.assign(params, extra_params || {});
 
 		if (dimension_field && dimension_value) {
 			params[dimension_field] = dimension_value;
@@ -138,10 +150,11 @@ erpnext.financial_statements = {
 		return `/app/query-report/General Ledger?${query_string}`;
 	},
 
-	get_summarized_statement_link: function(report_name, account_group, report_date) {
+	get_summarized_statement_link: function(report_name, account_group, report_date, extra_params) {
 		let params = this.get_params_for_link();
 		params["report_date"] = report_date;
 		params["account_group"] = account_group;
+		Object.assign(params, extra_params || {});
 
 		let format = frappe.query_report.get_filter_value('format');
 		if (format) {

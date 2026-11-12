@@ -200,11 +200,21 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 				letter_of_credit: this.frm.doc.letter_of_credit,
 				bill_date: this.frm.doc.bill_date,
 				shipping_address: this.frm.doc.shipping_address,
+				price_list: this.has_previous_document() ? this.frm.doc.selling_price_list : null,
 			},
 			() => {
 				this.apply_pricing_rule();
 			}
 		);
+	}
+
+	has_previous_document() {
+		if (this.frm.doc.return_against) {
+			return true;
+		}
+		return (this.frm.doc.items || []).filter(d => {
+			return d.supplier_quotation || d.purchase_order || d.purchase_receipt || d.purchase_invoice;
+		}).length > 0;
 	}
 
 	supplier_address() {
@@ -213,7 +223,8 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 	}
 
 	buying_price_list() {
-		this.apply_price_list();
+		this.apply_price_list(null, true);
+		this.set_dynamic_labels();
 	}
 
 	price_list_rate(doc, cdt, cdn) {
@@ -392,6 +403,29 @@ erpnext.buying.BuyingController = class BuyingController extends erpnext.Transac
 				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 			}
 		});
+	}
+
+	credit_to() {
+		if (this.frm.updating_party_details) {
+			return;
+		}
+
+		if (this.frm.doc.credit_to) {
+			this.frm.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "Account",
+					fieldname: "account_currency",
+					filters: { name: this.frm.doc.credit_to },
+				},
+				callback: (r) => {
+					if (r.message) {
+						this.frm.set_value("party_account_currency", r.message.account_currency);
+						this.set_dynamic_labels();
+					}
+				}
+			});
+		}
 	}
 
 	link_to_mrs() {
@@ -581,7 +615,7 @@ erpnext.buying.get_items_from_product_bundle = function(frm) {
 		dialog.hide();
 		return frappe.call({
 			type: "GET",
-			method: "erpnext.stock.doctype.packed_item.packed_item.get_items_from_product_bundle",
+			method: "erpnext.stock.doctype.bundled_item.bundled_item.get_items_from_product_bundle",
 			args: {
 				args: {
 					item_code: args.product_bundle,

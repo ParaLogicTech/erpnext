@@ -472,7 +472,7 @@ class TestSalesOrder(unittest.TestCase):
 		update_child_items('Sales Order', so.name, added_item)
 
 		so.reload()
-		self.assertEqual(so.packed_items[0].qty, 4)
+		self.assertEqual(so.bundled_items[0].qty, 4)
 
 	def test_warehouse_user(self):
 		frappe.permissions.add_user_permission("Warehouse", "_Test Warehouse 1 - _TC", "test@example.com")
@@ -523,8 +523,8 @@ class TestSalesOrder(unittest.TestCase):
 
 		so = make_sales_order(item_code = "_Test Service Product Bundle", warehouse=None)
 
-		self.assertTrue("_Test Service Product Bundle Item 1" in [d.item_code for d in so.packed_items])
-		self.assertTrue("_Test Service Product Bundle Item 2" in [d.item_code for d in so.packed_items])
+		self.assertTrue("_Test Service Product Bundle Item 1" in [d.item_code for d in so.bundled_items])
+		self.assertTrue("_Test Service Product Bundle Item 2" in [d.item_code for d in so.bundled_items])
 
 	def test_mix_type_product_bundle(self):
 		make_item("_Test Mix Product Bundle", {"is_stock_item": 0})
@@ -535,36 +535,6 @@ class TestSalesOrder(unittest.TestCase):
 			["_Test Mix Product Bundle Item 1", "_Test Mix Product Bundle Item 2"])
 
 		self.assertRaises(WarehouseRequired, make_sales_order, item_code = "_Test Mix Product Bundle", warehouse="")
-
-	def test_auto_insert_price(self):
-		make_item("_Test Item for Auto Price List", {"is_stock_item": 0})
-		frappe.db.set_single_value("Stock Settings", "auto_insert_price_list_rate_if_missing", 1)
-
-		item_price = frappe.db.get_value("Item Price", {"price_list": "_Test Price List",
-			"item_code": "_Test Item for Auto Price List"})
-		if item_price:
-			frappe.delete_doc("Item Price", item_price)
-
-		make_sales_order(item_code = "_Test Item for Auto Price List", selling_price_list="_Test Price List", rate=100)
-
-		self.assertEqual(frappe.db.get_value("Item Price",
-			{"price_list": "_Test Price List", "item_code": "_Test Item for Auto Price List"}, "price_list_rate"), 100)
-
-
-		# do not update price list
-		frappe.db.set_single_value("Stock Settings", "auto_insert_price_list_rate_if_missing", 0)
-
-		item_price = frappe.db.get_value("Item Price", {"price_list": "_Test Price List",
-			"item_code": "_Test Item for Auto Price List"})
-		if item_price:
-			frappe.delete_doc("Item Price", item_price)
-
-		make_sales_order(item_code = "_Test Item for Auto Price List", selling_price_list="_Test Price List", rate=100)
-
-		self.assertEqual(frappe.db.get_value("Item Price",
-			{"price_list": "_Test Price List", "item_code": "_Test Item for Auto Price List"}, "price_list_rate"), None)
-
-		frappe.db.set_single_value("Stock Settings", "auto_insert_price_list_rate_if_missing", 1)
 
 	def test_drop_shipping(self):
 		from erpnext.selling.doctype.sales_order.sales_order import make_purchase_order

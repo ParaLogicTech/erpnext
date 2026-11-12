@@ -8,7 +8,7 @@ from frappe.utils import flt, fmt_money
 from erpnext.controllers.accounts_controller import AccountsController, validate_conversion_rate
 from erpnext.accounts.general_ledger import make_gl_entries, delete_voucher_gl_entries
 from erpnext.accounts.doctype.account.account import get_account_currency
-from erpnext.accounts.party import get_party_account, get_party_name
+from erpnext.accounts.party import get_party_account, get_party_name, get_party_default_currency
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
 import json
 
@@ -77,6 +77,23 @@ class LandedCostVoucher(AccountsController):
 	def set_title(self):
 		self.title = self.party_name or self.bill_no
 
+	def set_missing_values(self, for_validate=False):
+		super().set_missing_values(for_validate=for_validate)
+		self.party_name = get_party_name(self.party_type, self.party)
+		self.set_party_account()
+
+	def set_party_account(self, force=False):
+		if not self.get("credit_to") or force:
+			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			self.credit_to = get_party_account(
+				billing_party_type,
+				billing_party,
+				self.company,
+				currency=self.get("currency"),
+			)
+
+		super().set_party_account(force=force)
+
 	def get_party_account(self):
 		return self.credit_to
 
@@ -96,10 +113,6 @@ class LandedCostVoucher(AccountsController):
 			"due_date": self.due_date,
 			"bill_no": self.bill_no,
 		}
-
-	def set_missing_values(self, for_validate=False):
-		super().set_missing_values(for_validate=for_validate)
-		self.party_name = get_party_name(self.party_type, self.party)
 
 	@frappe.whitelist()
 	def get_purchase_receipts_from_letter_of_credit(self):
@@ -591,10 +604,8 @@ def get_party_details(party_type, party, company):
 	out = frappe._dict()
 
 	out.party_name = get_party_name(party_type, party)
-	out.currency = erpnext.get_company_currency(company)
-	out.credit_to = get_party_account(party_type, party, company)
-	if party_type == 'Supplier':
-		out.currency = frappe.db.get_value(party_type, party, 'default_currency') or out.currency
+	out.currency = get_party_default_currency(party_type, party, company)
+	out.credit_to = get_party_account(party_type, party, company, currency=out.currency)
 
 	return out
 

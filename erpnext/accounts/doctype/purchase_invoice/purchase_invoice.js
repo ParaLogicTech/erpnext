@@ -351,7 +351,7 @@ erpnext.accounts.PurchaseInvoice = class PurchaseInvoice extends erpnext.buying.
 				bill_date: this.frm.doc.bill_date,
 				shipping_address: this.frm.doc.shipping_address,
 
-				price_list: this.frm.doc.buying_price_list,
+				price_list: this.has_previous_document() ? this.frm.doc.buying_price_list : null,
 			},
 			() => {
 				this.apply_pricing_rule();
@@ -373,26 +373,6 @@ erpnext.accounts.PurchaseInvoice = class PurchaseInvoice extends erpnext.buying.
 		} else {
 			me.frm.set_value("tax_withholding_category", me.frm.supplier_tds);
 			me.frm.set_df_property("tax_withholding_category", "hidden", 0);
-		}
-	}
-
-	credit_to() {
-		var me = this;
-		if(this.frm.doc.credit_to) {
-			me.frm.call({
-				method: "frappe.client.get_value",
-				args: {
-					doctype: "Account",
-					fieldname: "account_currency",
-					filters: { name: me.frm.doc.credit_to },
-				},
-				callback: function(r, rt) {
-					if(r.message) {
-						me.frm.set_value("party_account_currency", r.message.account_currency);
-						me.set_dynamic_labels();
-					}
-				}
-			});
 		}
 	}
 

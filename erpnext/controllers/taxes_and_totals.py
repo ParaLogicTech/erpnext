@@ -58,12 +58,8 @@ class calculate_taxes_and_totals(object):
 		if not self.doc.currency or self.doc.currency == company_currency:
 			self.doc.currency = company_currency
 			self.doc.conversion_rate = 1.0
-		else:
-			from erpnext.controllers.accounts_controller import validate_conversion_rate
-			validate_conversion_rate(self.doc.currency, self.doc.conversion_rate,
-				self.doc.meta.get_label("conversion_rate"), self.doc.company)
 
-		self.doc.conversion_rate = flt(self.doc.conversion_rate)
+		self.doc.conversion_rate = flt(self.doc.conversion_rate, 9)
 
 	def calculate_item_values(self):
 		if not self.discount_amount_applied:
@@ -1003,7 +999,7 @@ class calculate_taxes_and_totals(object):
 
 		if self.doc.redeem_loyalty_points and self.doc.loyalty_amount:
 			base_paid_amount += self.doc.loyalty_amount
-			paid_amount += (self.doc.loyalty_amount / flt(self.doc.conversion_rate))
+			paid_amount += (self.doc.loyalty_amount / flt(self.doc.conversion_rate or 1))
 
 		self.doc.paid_amount = flt(paid_amount, self.doc.precision("paid_amount"))
 		self.doc.base_paid_amount = flt(base_paid_amount, self.doc.precision("base_paid_amount"))

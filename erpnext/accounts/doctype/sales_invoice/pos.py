@@ -4,7 +4,6 @@
 import json
 
 import frappe
-from erpnext.accounts.party import get_party_account_currency
 from erpnext.controllers.transaction_controller import get_taxes_and_charges
 from erpnext.setup.utils import get_exchange_rate
 from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
