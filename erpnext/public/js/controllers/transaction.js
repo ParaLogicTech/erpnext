@@ -214,9 +214,8 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 					), 0);
 				}
 				if (item.free_item_data) {
-					setTimeout(() => frm.cscript.remove_free_item_pricing_rule(
-						item.free_item_data.item_code, item.free_item_data.pricing_rules
-					), 0);
+					item.qty = 0;
+					frm.cscript.apply_pricing_rule(item);
 				}
 			},
 
@@ -1967,21 +1966,21 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			return;
 		}
 
+		let to_remove = [];
 		if (remove_free_item) {
-			let filtered_items = [];
 			for (let d of this.frm.doc.items || []) {
 				if (
-					d.item_code != remove_free_item
-					|| !d.is_free_item
-					|| d.pricing_rules != free_item_pricing_rule
+					d.item_code == remove_free_item
+					&& d.is_free_item
+					&& d.pricing_rules == free_item_pricing_rule
 				) {
-					filtered_items.push(d);
+					to_remove.push(d);
 				}
 			}
+		}
 
-			this.frm.doc.items = filtered_items;
-			refresh_field("items");
-			this.calculate_taxes_and_totals();
+		for (let d of to_remove) {
+			this.frm.fields_dict.items.grid.grid_rows_by_docname[d.name]?.remove();
 		}
 	}
 

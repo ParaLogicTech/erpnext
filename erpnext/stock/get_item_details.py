@@ -930,10 +930,6 @@ def get_price_list_data(args, item_doc, out):
 	meta = frappe.get_meta(args.parenttype or args.doctype)
 
 	if meta.get_field("currency") or args.get("currency"):
-		if args.get("is_free_item") and args.get("price_list_rate"):
-			out.price_list_rate = flt(args.get("price_list_rate"))
-			return
-
 		pl_details = get_price_list_currency_and_exchange_rate(args)
 		args.update(pl_details)
 		if meta.get_field("currency"):

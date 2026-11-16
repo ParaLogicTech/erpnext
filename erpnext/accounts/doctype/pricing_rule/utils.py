@@ -527,6 +527,8 @@ def get_qty_amount_for_mixed_conditions(doc, pr_doc, args):
 		for row in doc.get('items'):
 			if row.get(apply_on_field) not in items:
 				continue
+			if row.get("is_free_item"):
+				continue
 
 			stock_qty = flt(row.get("qty")) * flt(row.get("conversion_factor"))
 			amount = flt(row.get("qty")) * (flt(row.get("price_list_rate")) or flt(args.get("rate")))
@@ -742,16 +744,22 @@ def get_product_discount_rule(
 	if not free_item:
 		return
 
+	qty = flt(main_item_args.qty)
+	stock_qty = flt(main_item_args.stock_qty)
+	if pricing_rule.mixed_conditions:
+		pr_doc = frappe.get_cached_doc('Pricing Rule', pricing_rule.name)
+		stock_qty, amount, items = get_qty_amount_for_mixed_conditions(doc, pr_doc, main_item_args)
+
 	if pricing_rule.free_qty:
 		if pricing_rule.free_qty_recursive and pricing_rule.buy_qty:
-			multiples = cint(flt(main_item_args.stock_qty) / flt(pricing_rule.buy_qty))
+			multiples = cint(stock_qty / flt(pricing_rule.buy_qty))
 			free_qty = flt(pricing_rule.free_qty) * multiples
 		elif pricing_rule.free_qty_recursive:
-			free_qty = flt(main_item_args.qty)
+			free_qty = stock_qty if pricing_rule.mixed_conditions else qty
 		else:
 			free_qty = flt(pricing_rule.free_qty)
 	else:
-		free_qty = flt(main_item_args.qty)
+		free_qty = stock_qty if pricing_rule.mixed_conditions else qty
 
 	free_item_uom = pricing_rule.free_item_uom
 	if not free_item_uom and pricing_rule.same_item:

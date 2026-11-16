@@ -200,6 +200,7 @@ def apply_pricing_rule(args, doc=None):
 		args_copy = copy.deepcopy(args)
 		args_copy.update(item)
 		args_copy = process_args(args_copy)
+		args_copy["stock_qty"] = flt(flt(args_copy.get("qty")) * flt(args_copy.get("conversion_factor") or 1), 6)
 
 		data = get_pricing_rule_for_item(args_copy, item.get('price_list_rate'), doc=doc)
 		out.append(data)
@@ -304,7 +305,13 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 			continue
 
 		# Apply Rule on Other details
-		if (pricing_rule.mixed_conditions or pricing_rule.apply_rule_on_other) and pricing_rule.get("apply_rule_on_other_items"):
+		if (
+			pricing_rule.get("apply_rule_on_other_items")
+			and (
+				(pricing_rule.mixed_conditions and pricing_rule.price_or_product_discount == "Price")
+				or pricing_rule.apply_rule_on_other
+			)
+		):
 			item_details.update({
 				'apply_rule_on_other_items': json.dumps(pricing_rule.apply_rule_on_other_items or []),
 				'apply_rule_on': (
