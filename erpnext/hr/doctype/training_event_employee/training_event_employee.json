@@ -10,8 +10,7 @@
   "department",
   "column_break_3",
   "status",
-  "attendance",
-  "signature"
+  "attendance"
  ],
  "fields": [
   {
@@ -64,16 +63,10 @@
    "in_list_view": 1,
    "label": "Attendance",
    "options": "Mandatory\nOptional"
-  },
-  {
-   "fieldname": "signature",
-   "fieldtype": "Signature",
-   "hidden": 1,
-   "label": "Signature"
   }
  ],
  "istable": 1,
- "modified": "2026-11-12 16:30:00.000000",
+ "modified": "2026-11-16 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Training Event Employee",

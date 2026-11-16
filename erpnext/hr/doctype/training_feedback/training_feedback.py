@@ -45,10 +45,10 @@ class TrainingFeedback(Document):
 		if not self.employee:
 			return
 
-		user_id, company_email, personal_email = frappe.db.get_value(
-			"Employee", self.employee, ["user_id", "company_email", "personal_email"]
+		prefered_email, company_email, personal_email = frappe.db.get_value(
+			"Employee", self.employee, ["prefered_email", "company_email", "personal_email"]
 		)
-		self.employee_email = company_email or personal_email or user_id
+		self.employee_email = prefered_email or company_email or personal_email
 
 
 @frappe.whitelist()
