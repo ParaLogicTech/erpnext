@@ -55,7 +55,7 @@
    "fieldname": "course",
    "fieldtype": "Link",
    "label": "Course",
-   "options": "Course",
+   "options": "Training Course",
    "read_only": 1
   },
   {

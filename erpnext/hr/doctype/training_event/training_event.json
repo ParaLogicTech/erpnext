@@ -133,7 +133,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Course",
-   "options": "Course"
+   "options": "Training Course"
   },
   {
    "fieldname": "location",
