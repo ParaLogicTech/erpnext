@@ -463,20 +463,6 @@ class SellingController(TransactionController):
 
 		return 0
 
-	def set_qty_as_per_stock_uom(self):
-		for d in self.get("items"):
-			if d.meta.get_field("stock_qty"):
-				if not d.conversion_factor and d.item_code:
-					frappe.throw(_("Row {0}: Conversion Factor is mandatory").format(d.idx))
-				d.stock_qty = flt(flt(d.qty) * flt(d.conversion_factor), 6)
-
-	def set_alt_uom_qty(self):
-		for d in self.get("items"):
-			if d.meta.get_field("alt_uom_qty"):
-				if not d.alt_uom:
-					d.alt_uom_size = 1.0
-				d.alt_uom_qty = flt(flt(d.stock_qty) * flt(d.alt_uom_size), d.precision("alt_uom_qty"))
-
 	def validate_selling_price(self):
 		from erpnext.accounts.report.gross_profit.gross_profit import get_sle_outgoing_rate
 		from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle

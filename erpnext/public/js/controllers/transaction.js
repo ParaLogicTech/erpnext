@@ -215,7 +215,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 				}
 				if (item.free_item_data) {
 					item.qty = 0;
-					frm.cscript.apply_pricing_rule(item);
+					frm.cscript.apply_pricing_rule(item, true);
 				}
 			},
 

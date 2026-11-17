@@ -326,6 +326,20 @@ class TransactionController(StockController):
 			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
 				self.set(k, v)
 
+	def set_qty_as_per_stock_uom(self):
+		for d in self.get("items"):
+			if d.meta.get_field("stock_qty"):
+				if not d.conversion_factor and d.item_code:
+					frappe.throw(_("Row {0}: Conversion Factor is mandatory").format(d.idx))
+				d.stock_qty = flt(flt(d.qty) * flt(d.conversion_factor), 6)
+
+	def set_alt_uom_qty(self):
+		for d in self.get("items"):
+			if d.meta.get_field("alt_uom_qty"):
+				if not d.alt_uom:
+					d.alt_uom_size = 1.0
+				d.alt_uom_qty = flt(flt(d.stock_qty) * flt(d.alt_uom_size), d.precision("alt_uom_qty"))
+
 	def before_calculate_taxes_and_totals(self):
 		pass
 
