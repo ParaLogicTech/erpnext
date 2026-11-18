@@ -99,7 +99,6 @@
   {
    "fieldname": "feedback",
    "fieldtype": "Text",
-   "hidden": 1,
    "label": "Feedback"
   },
   {
@@ -115,7 +114,7 @@
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-12 16:30:00.000000",
+ "modified": "2026-11-18 18:21:18.735618",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Training Feedback",
