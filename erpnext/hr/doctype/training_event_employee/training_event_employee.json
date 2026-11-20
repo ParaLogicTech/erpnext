@@ -6,6 +6,7 @@
  "field_order": [
   "employee",
   "employee_name",
+  "branch",
   "department",
   "column_break_3",
   "status",
@@ -24,6 +25,15 @@
    "fieldname": "employee_name",
    "fieldtype": "Read Only",
    "label": "Employee Name"
+  },
+  {
+   "fetch_from": "employee.branch",
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Branch",
+   "options": "Branch",
+   "read_only": 1
   },
   {
    "fetch_from": "employee.department",
@@ -56,7 +66,7 @@
   }
  ],
  "istable": 1,
- "modified": "2020-03-03 15:37:53.124486",
+ "modified": "2026-11-16 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Training Event Employee",
