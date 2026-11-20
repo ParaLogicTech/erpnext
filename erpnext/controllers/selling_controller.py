@@ -19,6 +19,10 @@ from erpnext.controllers.transaction_controller import (
 	update_item_batch_serial_based_on_purchase_and_production,
 )
 from erpnext.controllers.stock_controller import WarehouseRequired
+from erpnext.accounts.doctype.pricing_rule.utils import (
+	get_applied_pricing_rules,
+	is_product_discount_rule_free_item,
+)
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
@@ -237,7 +241,7 @@ class SellingController(TransactionController):
 				self.precision("total_commission"))
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
-		if not item.get("item_code") or item.get("is_free_item"):
+		if not item.get("item_code"):
 			return
 
 		selling_settings = frappe.get_cached_doc("Selling Settings", None)
@@ -303,7 +307,7 @@ class SellingController(TransactionController):
 
 	def validate_max_discount(self):
 		for d in self.get("items"):
-			if not d.get("item_code") or d.get("is_free_item"):
+			if not d.get("item_code") or is_product_discount_rule_free_item(d):
 				continue
 
 			max_discount = flt(frappe.get_cached_value("Item", d.item_code, "max_discount"))
@@ -312,7 +316,6 @@ class SellingController(TransactionController):
 
 	def validate_discount_rule(self):
 		from erpnext.accounts.doctype.discount_rule.discount_rule import get_discount_rule_values
-		from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
 		_customer_changed = None
 		_previous_additional_discount = None
@@ -335,7 +338,7 @@ class SellingController(TransactionController):
 			return False
 
 		for d in self.get("items"):
-			if not d.get("item_code") or d.get("is_free_item"):
+			if not d.get("item_code") or is_product_discount_rule_free_item(d):
 				continue
 
 			percent_precision = d.precision("discount_percentage")
@@ -481,7 +484,7 @@ class SellingController(TransactionController):
 		validate_selling_price = cint(frappe.get_cached_value("Selling Settings", None, "validate_selling_price"))
 		rows_to_validate = []
 		for d in self.get("items"):
-			if not d.get("item_code") or d.get("is_free_item"):
+			if not d.get("item_code") or is_product_discount_rule_free_item(d):
 				continue
 
 			is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
@@ -1096,6 +1099,7 @@ class SellingController(TransactionController):
 						item.discount_percentage = item.discount_amount / item.price_list_rate * 100
 					else:
 						item.discount_percentage = 0
+						item.discount_amount = 0
 						item.margin_type = "Amount"
 						item.margin_rate_or_amount = flt(item.rate) - flt(item.price_list_rate)
 				else:

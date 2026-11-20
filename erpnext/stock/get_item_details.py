@@ -1032,7 +1032,7 @@ def get_item_price(args, item_code, ignore_party=False):
 	args['item_code'] = item_code
 
 	conditions = """where item_code = %(item_code)s and price_list = %(price_list)s"""
-	order_by = "order by ifnull(valid_from, '2000-01-01') desc, uom desc"
+	order_by = "order by valid_from is null, valid_from desc, uom desc"
 
 	if not ignore_party:
 		if args.get("customer"):

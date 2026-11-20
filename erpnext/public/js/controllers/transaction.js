@@ -208,7 +208,11 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 			before_items_remove: function(frm, cdt, cdn) {
 				let item = frappe.get_doc(cdt, cdn);
-				if (item && item.apply_rule_on_other_items) {
+				if (!item) {
+					return;
+				}
+
+				if (item.apply_rule_on_other_items) {
 					setTimeout(() => frm.cscript.apply_rule_on_other_items(
 						item.apply_rule_on_other_items, item.apply_rule_on
 					), 0);
@@ -1880,7 +1884,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	apply_rule_on_other_items(other_items_data, apply_rule_on) {
 		let other_item_rows = this.get_other_item_rows(other_items_data, apply_rule_on);
 		if (other_item_rows?.length) {
-			this.apply_pricing_rule(other_item_rows, true);
+			return this.apply_pricing_rule(other_item_rows, true);
 		}
 	}
 
@@ -1898,6 +1902,15 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		}
 
 		return rows;
+	}
+
+	is_free_item(doc, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		if (cint(row.is_free_item)) {
+			frappe.model.set_value(cdt, cdn, "rate", 0);
+		} else {
+			frappe.model.set_value(cdt, cdn, "discount_percentage", 0);
+		}
 	}
 
 	apply_free_item_pricing_rule(free_item_data, row) {
@@ -1955,6 +1968,12 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	remove_free_item_on_item_change(free_item_data_before, free_item_data_after) {
 		if (!free_item_data_before?.item_code) {
 			return;
+		}
+		if (free_item_data_before.apply_rule_on_other_items) {
+			let other_item_rows = this.get_other_item_rows(free_item_data_before.apply_rule_on_other_items, free_item_data_before.apply_rule_on);
+			if (other_item_rows.length) {
+				return this.apply_pricing_rule(other_item_rows, true);
+			}
 		}
 		if (free_item_data_before.item_code != free_item_data_after?.item_code) {
 			this.remove_free_item_pricing_rule(free_item_data_before.item_code, free_item_data_before.pricing_rules);

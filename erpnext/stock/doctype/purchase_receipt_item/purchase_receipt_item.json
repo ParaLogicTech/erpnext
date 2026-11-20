@@ -444,8 +444,7 @@
    "fieldname": "is_free_item",
    "fieldtype": "Check",
    "label": "Is Free Item",
-   "print_hide": 1,
-   "read_only": 1
+   "print_hide": 1
   },
   {
    "collapsible": 1,
@@ -1507,7 +1506,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-12 17:55:25.403238",
+ "modified": "2026-11-19 06:23:09.126082",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Purchase Receipt Item",

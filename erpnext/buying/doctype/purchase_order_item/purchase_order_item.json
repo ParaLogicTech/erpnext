@@ -399,8 +399,7 @@
    "default": "0",
    "fieldname": "is_free_item",
    "fieldtype": "Check",
-   "label": "Is Free Item",
-   "read_only": 1
+   "label": "Is Free Item"
   },
   {
    "collapsible": 1,
@@ -1267,7 +1266,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-12 17:55:27.935499",
+ "modified": "2026-11-19 06:23:03.690367",
  "modified_by": "Administrator",
  "module": "Buying",
  "name": "Purchase Order Item",
