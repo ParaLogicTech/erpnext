@@ -5,7 +5,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
+from frappe.utils import flt, cint, getdate
 from frappe.model.document import Document
 from erpnext.stock.doctype.item.item import convert_item_uom_for
 import json
@@ -103,8 +103,12 @@ class PricingRule(Document):
 				if scrubbed_f != fieldname:
 					self.set(apply_on_f, None)
 
-		if self.mixed_conditions and self.get("same_item"):
+		if self.mixed_conditions or self.apply_on == "Transaction" or self.price_or_product_discount != "Product":
 			self.same_item = 0
+		if not self.mixed_conditions or self.apply_on == "Transaction" or self.price_or_product_discount != "Product":
+			self.mix_and_match = 0
+		if self.same_item or self.mix_and_match:
+			self.free_item = None
 
 		apply_rule_on_other = frappe.scrub(self.apply_rule_on_other or "")
 
@@ -119,11 +123,12 @@ class PricingRule(Document):
 			if flt(self.get(frappe.scrub(field))) < 0:
 				frappe.throw(_("{0} can not be negative").format(field))
 
-		if self.price_or_product_discount == 'Product' and not self.free_item:
-			if self.mixed_conditions:
-				frappe.throw(_("Free item code is not selected"))
-			else:
+		if self.price_or_product_discount == "Product":
+			if not self.free_item and not self.mixed_conditions and self.apply_on != "Transaction":
 				self.same_item = 1
+
+			if not self.free_item and not self.same_item and not self.mix_and_match:
+				frappe.throw(_("Free Item Code is not selected"))
 
 	def validate_max_discount(self):
 		if self.rate_or_discount == "Discount Percentage" and self.get("items"):
@@ -200,6 +205,7 @@ def apply_pricing_rule(args, doc=None):
 		args_copy = copy.deepcopy(args)
 		args_copy.update(item)
 		args_copy = process_args(args_copy)
+		args_copy["stock_qty"] = flt(flt(args_copy.get("qty")) * flt(args_copy.get("conversion_factor") or 1), 6)
 
 		data = get_pricing_rule_for_item(args_copy, item.get('price_list_rate'), doc=doc)
 		out.append(data)
@@ -227,7 +233,6 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 		get_pricing_rules,
 		get_applied_pricing_rules,
 		get_pricing_rules_str,
-		get_product_discount_rule,
 		validate_pricing_rule_validity,
 		validate_pricing_rule_based_on_other_item,
 		validate_pricing_rule_based_on_qty_amount,
@@ -249,11 +254,8 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 		"child_docname": args.get("child_docname"),
 		"discount_percentage_on_rate": [],
 		"discount_amount_on_rate": [],
+		"is_free_item": cint(args.get("is_free_item")),
 	})
-
-	if args.get("is_free_item"):
-		item_details.pricing_rules = args.get("pricing_rules")
-		return item_details
 
 	update_args_for_pricing_rule(args)
 
@@ -264,6 +266,7 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 				args.get("pricing_rules"),
 				item_details,
 				item_code=args.get("item_code"),
+				is_free_item=args.get("is_free_item"),
 			)
 			args["pricing_rules"] = item_details.pricing_rules
 
@@ -281,11 +284,19 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 				item_details,
 				item_code=args.get("item_code"),
 				price_list_rate=price_list_rate,
+				is_free_item=args.get("is_free_item"),
 				to_remove=pricing_rule.name,
 				force=True,
 			)
 			args["pricing_rules"] = item_details.pricing_rules
 			removed_invalid_rule = True
+
+	# Do not load pricing rules for free item
+	if args.get("is_free_item"):
+		item_details.pricing_rules = args.get("pricing_rules")
+		pricing_rules = get_applied_pricing_rules(args.get("pricing_rules"))
+		update_mix_and_match_pricing_rules_list(doc, pricing_rules)
+		return item_details
 
 	# Get pricing rules
 	if not for_validate or not pricing_rules or removed_invalid_rule:
@@ -304,7 +315,13 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 			continue
 
 		# Apply Rule on Other details
-		if (pricing_rule.mixed_conditions or pricing_rule.apply_rule_on_other) and pricing_rule.get("apply_rule_on_other_items"):
+		if (
+			pricing_rule.get("apply_rule_on_other_items")
+			and (
+				(pricing_rule.mixed_conditions and pricing_rule.price_or_product_discount == "Price")
+				or pricing_rule.apply_rule_on_other
+			)
+		):
 			item_details.update({
 				'apply_rule_on_other_items': json.dumps(pricing_rule.apply_rule_on_other_items or []),
 				'apply_rule_on': (
@@ -330,11 +347,18 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 			item_details.claim_customer = pricing_rule.get("claim_customer")
 
 		# Apply
+		if (
+			pricing_rule.price_or_product_discount == "Product"
+			and pricing_rule.mixed_conditions
+			and pricing_rule.mix_and_match
+		):
+			update_mix_and_match_pricing_rules_list(doc, [pricing_rule.name])
+
 		if not pricing_rule.validate_applied_rule:
 			if pricing_rule.price_or_product_discount == "Price":
 				apply_price_discount_rule(pricing_rule, item_details, args)
-			else:
-				get_product_discount_rule(pricing_rule, item_details, args, doc=doc, for_validate=for_validate)
+			elif pricing_rule.price_or_product_discount == "Product":
+				apply_product_discount_rule(pricing_rule, item_details, args, doc=doc, for_validate=for_validate)
 
 	item_details.has_pricing_rule = 1 if rules else 0
 	item_details.pricing_rules = get_pricing_rules_str([d.pricing_rule for d in reversed(rules)])
@@ -345,6 +369,7 @@ def get_pricing_rule_for_item(args, price_list_rate=None, doc=None, for_validate
 			item_details,
 			item_code=args.get('item_code'),
 			price_list_rate=price_list_rate,
+			is_free_item=args.get("is_free_item"),
 			force=True,
 		)
 
@@ -527,6 +552,49 @@ def apply_price_discount_rule(pricing_rule, item_details, args):
 				item_details["discount_amount"] = 0
 
 
+def apply_product_discount_rule(
+	pricing_rule,
+	main_item_details,
+	main_item_args=None,
+	doc=None,
+	for_validate=False,
+):
+	from erpnext.accounts.doctype.pricing_rule.utils import get_product_discount_rule
+
+	if pricing_rule.mixed_conditions and pricing_rule.mix_and_match:
+		main_item_details.mix_and_match_pricing_rule = pricing_rule.name
+		return
+
+	main_item_details.free_item_data = get_product_discount_rule(
+		pricing_rule,
+		main_item_details,
+		main_item_args,
+		doc,
+		for_validate,
+	)
+
+
+def update_mix_and_match_pricing_rules_list(doc, pricing_rules):
+	if not doc:
+		return
+
+	mix_and_match_pricing_rules = []
+	for pricing_rule in pricing_rules:
+		try:
+			pr_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+			if pr_doc.price_or_product_discount == "Product" and pr_doc.mixed_conditions and pr_doc.mix_and_match:
+				mix_and_match_pricing_rules.append(pricing_rule)
+		except frappe.DoesNotExistError:
+			pass
+
+	if mix_and_match_pricing_rules:
+		if not doc.get("mix_and_match_pricing_rules"):
+			doc.mix_and_match_pricing_rules = []
+		for pricing_rule in mix_and_match_pricing_rules:
+			if pricing_rule not in doc.mix_and_match_pricing_rules:
+				doc.mix_and_match_pricing_rules.append(pricing_rule)
+
+
 def set_discount_amount(rate, item_details):
 	for field in ['discount_percentage_on_rate', 'discount_amount_on_rate']:
 		for d in item_details.get(field):
@@ -560,6 +628,7 @@ def remove_pricing_rules_for_item(
 	item_details,
 	item_code=None,
 	price_list_rate=None,
+	is_free_item=False,
 	force=False,
 	to_remove=None,
 ):
@@ -581,14 +650,35 @@ def remove_pricing_rules_for_item(
 			keep_pricing_rules.append(pricing_rule.name)
 			continue
 
-		remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=item_code, price_list_rate=price_list_rate)
+		# Keep pricing rule in str so client / backend can find the row to remove
+		if (
+			is_free_item
+			and pricing_rule.price_or_product_discount == "Product"
+			and not pricing_rule.mix_and_match
+			and not force
+		):
+			keep_pricing_rules.append(pricing_rule.name)
+
+		remove_one_pricing_rule_for_item(
+			pricing_rule,
+			item_details,
+			item_code=item_code,
+			price_list_rate=price_list_rate,
+			is_free_item=is_free_item,
+		)
 
 	item_details.pricing_rules = get_pricing_rules_str(keep_pricing_rules)
 
 	return item_details
 
 
-def remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=None, price_list_rate=None):
+def remove_one_pricing_rule_for_item(
+	pricing_rule,
+	item_details,
+	item_code=None,
+	price_list_rate=None,
+	is_free_item=False,
+):
 	item_details.price_or_product_discount = pricing_rule.get("price_or_product_discount")
 
 	if pricing_rule.price_or_product_discount == 'Price':
@@ -612,9 +702,15 @@ def remove_one_pricing_rule_for_item(pricing_rule, item_details, item_code=None,
 			item_details.pricing_rule_removed = True
 
 	elif pricing_rule.price_or_product_discount == "Product":
-		item_details.remove_free_item = item_code if pricing_rule.get("same_item") else pricing_rule.get("free_item")
-		item_details.free_item_pricing_rule = pricing_rule.name
-		# item_details.pricing_rule_removed = True
+		if pricing_rule.mixed_conditions and pricing_rule.mix_and_match:
+			if is_free_item:
+				item_details.discount_percentage = 0.0
+				item_details.discount_amount = 0.0
+				item_details.is_free_item = 0
+				item_details.pricing_rule_removed = True
+		else:
+			item_details.remove_free_item = item_code if pricing_rule.get("same_item") else pricing_rule.get("free_item")
+			item_details.free_item_pricing_rule = pricing_rule.name
 
 
 @frappe.whitelist()

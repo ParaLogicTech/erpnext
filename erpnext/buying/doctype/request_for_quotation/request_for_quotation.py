@@ -24,7 +24,7 @@ class RequestforQuotation(BuyingController):
 		self.validate_duplicate_supplier()
 		self.validate_supplier_list()
 		validate_for_items(self)
-		super(RequestforQuotation, self).set_qty_as_per_stock_uom()
+		self.set_qty_as_per_stock_uom()
 		self.update_email_id()
 
 	def validate_duplicate_supplier(self):

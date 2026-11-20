@@ -447,8 +447,7 @@
    "fieldname": "is_free_item",
    "fieldtype": "Check",
    "label": "Is Free Item",
-   "print_hide": 1,
-   "read_only": 1
+   "print_hide": 1
   },
   {
    "fieldname": "net_weight_per_unit",
@@ -1140,7 +1139,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-12 22:37:25.847055",
+ "modified": "2026-11-19 06:22:58.741810",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Quotation Item",

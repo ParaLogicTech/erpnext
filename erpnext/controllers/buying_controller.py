@@ -844,22 +844,6 @@ class BuyingController(TransactionController):
 
 		return sle_map
 
-	def set_qty_as_per_stock_uom(self):
-		for d in self.get("items"):
-			if d.meta.get_field("stock_qty"):
-				# Check if item code is present
-				# Conversion factor should not be mandatory for non itemized items
-				if not d.conversion_factor and d.item_code:
-					frappe.throw(_("Row {0}: Conversion Factor is mandatory").format(d.idx))
-				d.stock_qty = flt(flt(d.qty) * flt(d.conversion_factor), 6)
-
-	def set_alt_uom_qty(self):
-		for d in self.get("items"):
-			if d.meta.get_field("alt_uom_qty"):
-				if not d.alt_uom:
-					d.alt_uom_size = 1.0
-				d.alt_uom_qty = flt(flt(d.stock_qty) * flt(d.alt_uom_size), d.precision("alt_uom_qty"))
-
 	def validate_purchase_return(self):
 		for d in self.get("items"):
 			if self.is_return and flt(d.rejected_qty) != 0:

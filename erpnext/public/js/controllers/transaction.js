@@ -208,15 +208,18 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 			before_items_remove: function(frm, cdt, cdn) {
 				let item = frappe.get_doc(cdt, cdn);
-				if (item && item.apply_rule_on_other_items) {
+				if (!item) {
+					return;
+				}
+
+				if (item.apply_rule_on_other_items) {
 					setTimeout(() => frm.cscript.apply_rule_on_other_items(
 						item.apply_rule_on_other_items, item.apply_rule_on
 					), 0);
 				}
 				if (item.free_item_data) {
-					setTimeout(() => frm.cscript.remove_free_item_pricing_rule(
-						item.free_item_data.item_code, item.free_item_data.pricing_rules
-					), 0);
+					item.qty = 0;
+					frm.cscript.apply_pricing_rule(item, true);
 				}
 			},
 
@@ -1881,7 +1884,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 	apply_rule_on_other_items(other_items_data, apply_rule_on) {
 		let other_item_rows = this.get_other_item_rows(other_items_data, apply_rule_on);
 		if (other_item_rows?.length) {
-			this.apply_pricing_rule(other_item_rows, true);
+			return this.apply_pricing_rule(other_item_rows, true);
 		}
 	}
 
@@ -1899,6 +1902,15 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		}
 
 		return rows;
+	}
+
+	is_free_item(doc, cdt, cdn) {
+		let row = frappe.get_doc(cdt, cdn);
+		if (cint(row.is_free_item)) {
+			frappe.model.set_value(cdt, cdn, "rate", 0);
+		} else {
+			frappe.model.set_value(cdt, cdn, "discount_percentage", 0);
+		}
 	}
 
 	apply_free_item_pricing_rule(free_item_data, row) {
@@ -1957,6 +1969,12 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 		if (!free_item_data_before?.item_code) {
 			return;
 		}
+		if (free_item_data_before.apply_rule_on_other_items) {
+			let other_item_rows = this.get_other_item_rows(free_item_data_before.apply_rule_on_other_items, free_item_data_before.apply_rule_on);
+			if (other_item_rows.length) {
+				return this.apply_pricing_rule(other_item_rows, true);
+			}
+		}
 		if (free_item_data_before.item_code != free_item_data_after?.item_code) {
 			this.remove_free_item_pricing_rule(free_item_data_before.item_code, free_item_data_before.pricing_rules);
 		}
@@ -1967,21 +1985,21 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			return;
 		}
 
+		let to_remove = [];
 		if (remove_free_item) {
-			let filtered_items = [];
 			for (let d of this.frm.doc.items || []) {
 				if (
-					d.item_code != remove_free_item
-					|| !d.is_free_item
-					|| d.pricing_rules != free_item_pricing_rule
+					d.item_code == remove_free_item
+					&& d.is_free_item
+					&& d.pricing_rules == free_item_pricing_rule
 				) {
-					filtered_items.push(d);
+					to_remove.push(d);
 				}
 			}
+		}
 
-			this.frm.doc.items = filtered_items;
-			refresh_field("items");
-			this.calculate_taxes_and_totals();
+		for (let d of to_remove) {
+			this.frm.fields_dict.items.grid.grid_rows_by_docname[d.name]?.remove();
 		}
 	}
 

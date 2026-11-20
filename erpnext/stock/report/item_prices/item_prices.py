@@ -152,16 +152,18 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 		d.margin_rate = (d.standard_rate - d.avg_lc_rate) * 100 / d.standard_rate if d.standard_rate else None
 
 		for price_list, price in item_price_map.get(item_code, {}).items():
-			d["rate_" + scrub(price_list)] = price.current_price
-			d["currency_" + scrub(price_list)] = price.currency
+			suffix = scrub(price_list)
+
+			d[f"rate_{suffix}"] = price.current_price
+			d[f"currency_{suffix}"] = price.currency
 			if d.standard_rate is not None:
-				d["rate_diff_" + scrub(price_list)] = flt(price.current_price) - flt(d.standard_rate)
+				d[f"rate_diff_{suffix}"] = flt(price.current_price) - flt(d.standard_rate)
 			if price.previous_price is not None:
-				d["rate_old_" + scrub(price_list)] = price.previous_price
+				d[f"rate_old_{suffix}"] = price.previous_price
 			if price.item_price:
-				d["item_price_" + scrub(price_list)] = price.item_price
+				d[f"item_price_{suffix}"] = price.item_price
 			if price.valid_from:
-				d["valid_from_" + scrub(price_list)] = price.valid_from
+				d[f"valid_from_{suffix}"] = price.valid_from
 
 		apply_pricing_rules(d, pricing_rule_map, price_lists)
 
@@ -173,17 +175,21 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 				d[ratio_field] = standard_rate / comparison_rate
 
 		using_price_list = selected_price_list or filters.standard_price_list
+		suffix = scrub(using_price_list)
+
 		if using_price_list:
-			d.price_list_rate = d.get("rate_" + scrub(using_price_list))
-			d.rate_with_margin = d.get("pr_rate_with_margin" + scrub(using_price_list))
-			d.discount_percentage = d.get("pr_discount_percentage_" + scrub(using_price_list))
-			d.discount_amount = d.get("pr_discount_amount_" + scrub(using_price_list))
-			d.pricing_rule_rate = d.get("pr_rate_" + scrub(using_price_list))
-			d.pricing_rule_free_item = d.get("pr_free_item_" + scrub(using_price_list))
-			d.pricing_rule_free_qty = d.get("pr_free_qty_" + scrub(using_price_list))
-			d.pricing_rule_buy_qty = d.get("pr_buy_qty_" + scrub(using_price_list))
-			d.pricing_rule_free_item_uom = d.get("pr_free_item_uom_" + scrub(using_price_list))
-			d.pricing_rule_conditional = bool(d.get("pr_conditional_" + scrub(using_price_list)))
+			d.price_list_rate = d.get(f"rate_{suffix}")
+			d.rate_with_margin = d.get(f"pr_rate_with_margin_{suffix}")
+			d.discount_percentage = d.get(f"pr_discount_percentage_{suffix}")
+			d.discount_amount = d.get(f"pr_discount_amount_{suffix}")
+			d.pricing_rule_rate = d.get(f"pr_rate_{suffix}")
+			d.pricing_rule_free_item = d.get(f"pr_free_item_{suffix}")
+			d.pricing_rule_mix_and_match = d.get(f"pr_mix_and_match_{suffix}")
+			d.pricing_rule_free_qty = d.get(f"pr_free_qty_{suffix}")
+			d.pricing_rule_buy_qty = d.get(f"pr_buy_qty_{suffix}")
+			d.pricing_rule_free_item_uom = d.get(f"pr_free_item_uom_{suffix}")
+			d.pricing_rule_conditional = bool(d.get(f"pr_conditional_{suffix}"))
+			d.pricing_rule_description = d.get(f"pr_description_{suffix}")
 		else:
 			d.price_list_rate = d.standard_rate
 			d.rate_with_margin = None
@@ -191,10 +197,12 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 			d.discount_amount = None
 			d.pricing_rule_rate = None
 			d.pricing_rule_free_item = None
+			d.pricing_rule_mix_and_match = None
 			d.pricing_rule_free_qty = None
 			d.pricing_rule_buy_qty = None
 			d.pricing_rule_free_item_uom = None
 			d.pricing_rule_conditional = False
+			d.pricing_rule_description = None
 
 		d.print_price_list_rate = d.rate_with_margin or d.price_list_rate
 		if flt(d.pricing_rule_rate) and flt(d.pricing_rule_rate) > flt(d.print_price_list_rate):
@@ -306,7 +314,7 @@ def get_current_item_prices(filters, price_lists, additional_conditions):
 			)
 			and ifnull(p.customer, '') = '' and ifnull(p.supplier, '') = ''
 			{0} {1}
-		order by p.uom
+		order by p.valid_from is not null, p.valid_from, p.uom
 	""".format(item_conditions, price_lists_cond), filters, as_dict=1)
 
 
@@ -346,7 +354,9 @@ def get_pricing_rule_map(filters):
 			pr.margin_type, pr.margin_rate_or_amount,
 			pr.rate_or_discount, pr.rate, pr.discount_percentage, pr.discount_amount,
 			pr.min_qty, pr.max_qty, pr.min_amt, pr.max_amt,
-			pr.free_item, pr.same_item, pr.free_qty, pr.buy_qty, pr.free_item_uom, pr.free_item_rate
+			pr.free_item, pr.same_item, pr.mix_and_match,
+			pr.free_qty, pr.buy_qty, pr.free_item_uom, pr.free_item_rate,
+			pr.rule_description, pr.`condition`
 		from `tabPricing Rule` pr
 		left join `tabPricing Rule Item Code` pr_item on pr_item.parent = pr.name
 		left join `tabPricing Rule Item Group` pr_group on pr_group.parent = pr.name
@@ -355,6 +365,7 @@ def get_pricing_rule_map(filters):
 			pr.disable = 0
 			and pr.selling = 1
 			and pr.apply_on in ('Item Code', 'Item Group', 'Brand')
+			and ifnull(pr.apply_rule_on_other, '') = ''
 			and (
 				%(date)s between pr.valid_from and pr.valid_upto
 				or (pr.valid_upto is null and %(date)s >= pr.valid_from)
@@ -398,33 +409,53 @@ def get_pricing_rule_map(filters):
 
 
 def apply_pricing_rules(row, pricing_rule_map, price_lists):
-	pricing_rule_all_price_lists = pricing_rule_map['items'].get(row.item_code, {}).get('')
-	if not pricing_rule_all_price_lists and row.item_group:
-		pricing_rule_all_price_lists = pricing_rule_map['item_groups'].get(row.item_group, {}).get('')
+	# Price List Specific Item Code Rules
+	for price_list, pricing_rules in pricing_rule_map["items"].get(row.item_code, {}).items():
+		if price_list:
+			for pricing_rule in pricing_rules:
+				apply_pricing_rule_to_price_list(row, price_list, pricing_rule)
+
+	# Price List Specific Brand Rules
+	for price_list, pricing_rules in pricing_rule_map["brands"].get(row.brand, {}).items():
+		if price_list:
+			for pricing_rule in pricing_rules:
+				apply_pricing_rule_to_price_list(row, price_list, pricing_rule)
+
+	# Price List Specific Item Group Rules
+	for price_list, pricing_rules in pricing_rule_map["item_groups"].get(row.item_group, {}).items():
+		if price_list:
+			for pricing_rule in pricing_rules:
+				apply_pricing_rule_to_price_list(row, price_list, pricing_rule)
+
+	# Price List Agnostic
+	pricing_rule_all_price_lists = pricing_rule_map["items"].get(row.item_code, {}).get("")
 	if not pricing_rule_all_price_lists and row.brand:
-		pricing_rule_all_price_lists = pricing_rule_map['brands'].get(row.brand, {}).get('')
+		pricing_rule_all_price_lists = pricing_rule_map["brands"].get(row.brand, {}).get("")
+	if not pricing_rule_all_price_lists and row.item_group:
+		pricing_rule_all_price_lists = pricing_rule_map["item_groups"].get(row.item_group, {}).get("")
 
 	if pricing_rule_all_price_lists:
 		for price_list in price_lists:
-			apply_pricing_rule_to_price_list(row, price_list, pricing_rule_all_price_lists[0])
-
-	for price_list, pricing_rule in pricing_rule_map['brands'].get(row.brand, {}).items():
-		if price_list and pricing_rule:
-			apply_pricing_rule_to_price_list(row, price_list, pricing_rule[0])
-
-	for price_list, pricing_rule in pricing_rule_map['item_groups'].get(row.item_group, {}).items():
-		if price_list and pricing_rule:
-			apply_pricing_rule_to_price_list(row, price_list, pricing_rule[0])
-
-	for price_list, pricing_rule in pricing_rule_map['items'].get(row.item_code, {}).items():
-		if price_list and pricing_rule:
-			apply_pricing_rule_to_price_list(row, price_list, pricing_rule[0])
+			for pricing_rule in pricing_rule_all_price_lists:
+				apply_pricing_rule_to_price_list(row, price_list, pricing_rule)
 
 
 def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
-	row['pricing_rule_' + scrub(price_list)] = pricing_rule.name
+	suffix = scrub(price_list)
 
-	row['pr_conditional_' + scrub(price_list)] = bool(
+	# Already applied
+	if row.get(f"pricing_rule_{suffix}"):
+		return
+
+	if cstr(pricing_rule.condition).strip():
+		from erpnext.accounts.doctype.pricing_rule.utils import evaluate_pricing_rule_condition
+		pr_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule.name)
+		if not evaluate_pricing_rule_condition(pr_doc, row):
+			return
+
+	row[f"pricing_rule_{suffix}"] = pricing_rule.name
+	row[f"pr_description_{suffix}"] = pricing_rule.rule_description
+	row[f"pr_conditional_{suffix}"] = bool(
 		pricing_rule.min_qty
 		or pricing_rule.max_qty
 		or pricing_rule.min_amt
@@ -439,8 +470,9 @@ def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
 
 def apply_price_discount_rule(row, price_list, pricing_rule):
 	price_precision = get_field_precision(frappe.get_meta("Item Price").get_field('price_list_rate'))
+	suffix = scrub(price_list)
 
-	price_list_rate = flt(row.get('rate_' + scrub(price_list)))
+	price_list_rate = flt(row.get(f"rate_{suffix}"))
 
 	if pricing_rule.margin_type == "Percentage":
 		rate_with_margin = price_list_rate * (1 + flt(pricing_rule.margin_rate_or_amount) / 100)
@@ -462,32 +494,35 @@ def apply_price_discount_rule(row, price_list, pricing_rule):
 		pricing_rule_rate = rate_with_margin
 
 	rate_with_margin = flt(rate_with_margin, price_precision)
-	row['pr_rate_with_margin' + scrub(price_list)] = rate_with_margin
+	row[f"pr_rate_with_margin_{suffix}"] = rate_with_margin
 
 	pricing_rule_rate = flt(max(0.0, flt(pricing_rule_rate)), price_precision)
-	row['pr_rate_' + scrub(price_list)] = pricing_rule_rate
+	row[f"pr_rate_{suffix}"] = pricing_rule_rate
 
 	if flt(discount_percentage) > 0:
-		row['pr_discount_percentage_' + scrub(price_list)] = flt(discount_percentage)
+		row[f"pr_discount_percentage_{suffix}"] = flt(discount_percentage)
 	elif flt(pricing_rule_rate) and flt(pricing_rule_rate) < rate_with_margin:
 		discount_amount = flt(rate_with_margin - pricing_rule_rate, price_precision)
-		row['pr_discount_amount_' + scrub(price_list)] = discount_amount
+		row[f"pr_discount_amount_{suffix}"] = discount_amount
 
 
 def apply_product_discount_rule(row, price_list, pricing_rule):
 	free_item = row.item_code if pricing_rule.same_item else pricing_rule.free_item
-	if not free_item:
+	if not free_item and not pricing_rule.mix_and_match:
 		return
 
 	free_item_uom = pricing_rule.free_item_uom
 	if not free_item_uom and free_item == row.item_code:
 		free_item_uom = row.uom
 
-	row['pr_free_item_' + scrub(price_list)] = free_item
-	row['pr_buy_qty_' + scrub(price_list)] = flt(pricing_rule.buy_qty) or 1
-	row['pr_free_qty_' + scrub(price_list)] = flt(pricing_rule.free_qty) or 1
-	row['pr_free_item_uom_' + scrub(price_list)] = free_item_uom
-	row['pr_free_item_rate_' + scrub(price_list)] = flt(pricing_rule.free_item_rate)
+	suffix = scrub(price_list)
+
+	row[f"pr_free_item_{suffix}"] = free_item
+	row[f"pr_mix_and_match_{suffix}"] = cint(pricing_rule.mix_and_match)
+	row[f"pr_buy_qty_{suffix}"] = flt(pricing_rule.buy_qty) or 1
+	row[f"pr_free_qty_{suffix}"] = flt(pricing_rule.free_qty) or 1
+	row[f"pr_free_item_uom_{suffix}"] = free_item_uom
+	row[f"pr_free_item_rate_{suffix}"] = flt(pricing_rule.free_item_rate)
 
 
 def get_po_data(filters):

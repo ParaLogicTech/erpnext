@@ -544,6 +544,8 @@ def get_item_details(args):
 	out.amount = flt(out.amount, stock_value_precision)
 	out.amount_difference = flt(out.amount) - flt(out.current_amount)
 
+	frappe.utils.call_hook_method("stock_reconciliation_get_item_details", args, out, item)
+
 	return out
 
 

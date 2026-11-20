@@ -930,10 +930,6 @@ def get_price_list_data(args, item_doc, out):
 	meta = frappe.get_meta(args.parenttype or args.doctype)
 
 	if meta.get_field("currency") or args.get("currency"):
-		if args.get("is_free_item") and args.get("price_list_rate"):
-			out.price_list_rate = flt(args.get("price_list_rate"))
-			return
-
 		pl_details = get_price_list_currency_and_exchange_rate(args)
 		args.update(pl_details)
 		if meta.get_field("currency"):
@@ -1036,7 +1032,7 @@ def get_item_price(args, item_code, ignore_party=False):
 	args['item_code'] = item_code
 
 	conditions = """where item_code = %(item_code)s and price_list = %(price_list)s"""
-	order_by = "order by ifnull(valid_from, '2000-01-01') desc, uom desc"
+	order_by = "order by valid_from is null, valid_from desc, uom desc"
 
 	if not ignore_party:
 		if args.get("customer"):

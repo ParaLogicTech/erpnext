@@ -16,6 +16,11 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 				"to_date": self.filters.report_date,
 				"is_gl_value": 1,
 			}),
+			"ytd_prev_year": frappe._dict({
+				"from_date": self.filters.prev_year_start,
+				"to_date": self.filters.prev_year_date,
+				"is_gl_value": 1,
+			}),
 			"ytd_prev_closing": frappe._dict({
 				"from_date": self.filters.prev_year_start,
 				"to_date": self.filters.prev_year_end,
@@ -87,6 +92,16 @@ class SummarizedCashFlow(SummarizedFinancialReport):
 				"width": 175,
 				"from_date": self.value_fields["ytd_actual"].from_date,
 				"to_date": self.value_fields["ytd_actual"].to_date,
+				"is_value_field": 1,
+				"format_link": 1,
+			},
+			{
+				"fieldname": "ytd_prev_year_display",
+				"label": _("Previous Year ({0})").format(frappe.format(self.value_fields["ytd_prev_year"].to_date)),
+				"fieldtype": "Float",
+				"width": 175,
+				"from_date": self.value_fields["ytd_prev_year"].from_date,
+				"to_date": self.value_fields["ytd_prev_year"].to_date,
 				"is_value_field": 1,
 				"format_link": 1,
 			},
