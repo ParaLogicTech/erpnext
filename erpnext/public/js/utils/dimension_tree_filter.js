@@ -9,6 +9,8 @@ erpnext.dimension_filters = frappe.boot.accounting_dimensions || [];
 // Master and config doctypes (POS Profile, Budget, ...) don't call set_default_dimensions at all.
 // Cost Center and Project are not handled here.
 erpnext.accounts.dimensions = {
+	exclude_doctypes: ["Vehicle"],
+
 	get accounting_dimensions() {
 		return frappe.boot.accounting_dimensions || [];
 	},
@@ -38,7 +40,7 @@ erpnext.accounts.dimensions = {
 			? frm.fields_dict[parentfield]?.grid?.get_field(dimension.fieldname)
 			: frm.fields_dict[dimension.fieldname];
 
-		// Leave queries the form set itself alone, e.g. Vehicle filtered by customer
+		// Leave queries the form set itself alone, e.g. a form's own Customer Group query
 		if (!field || field.get_query || field.df?.get_query) {
 			return;
 		}
@@ -46,8 +48,13 @@ erpnext.accounts.dimensions = {
 		let has_is_group = frappe.meta.has_field(dimension.document_type, "is_group");
 		let has_disabled = frappe.meta.has_field(dimension.document_type, "disabled");
 		let has_company = frappe.meta.has_field(dimension.document_type, "company");
+		let is_excluded = this.exclude_doctypes.includes(dimension.document_type);
 
-		if (!(has_is_group || has_disabled || has_company)) {
+		if (is_excluded) {
+			return;
+		}
+
+		if (!has_is_group && !has_disabled && !has_company) {
 			return;
 		}
 
