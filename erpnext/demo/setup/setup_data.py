@@ -190,13 +190,6 @@ def setup_user_roles(domain):
 		'Purchase Manager', 'Service User', 'Manufacturing User', 'Manufacturing Manager',
 		'Support Team')
 
-	if domain == "Healthcare":
-		user.add_roles('Physician', 'Healthcare Administrator', 'Laboratory User',
-			'Nursing User', 'Patient')
-
-	if domain == "Education":
-		user.add_roles('Academics User')
-
 	if not frappe.db.get_global('demo_hr_user'):
 		user = frappe.get_doc('User', 'CaitlinSnow@example.com')
 		user.add_roles('HR User', 'HR Manager', 'Accounts User')
@@ -246,13 +239,6 @@ def setup_user_roles(domain):
 		user.add_roles('HR User', 'Service User')
 		update_employee_department(user.name, 'Management')
 		frappe.db.set_global('demo_projects_user', user.name)
-
-	if domain == "Education":
-		if not frappe.db.get_global('demo_education_user'):
-			user = frappe.get_doc('User', 'ArthurCurry@example.com')
-			user.add_roles('Academics User')
-			update_employee_department(user.name, 'Management')
-			frappe.db.set_global('demo_education_user', user.name)
 
 	#Add Expense Approver
 	user = frappe.get_doc('User', 'ClarkKent@example.com')

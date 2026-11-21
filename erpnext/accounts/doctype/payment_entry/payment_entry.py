@@ -1698,7 +1698,7 @@ def get_payment_entry(
 	party_account_currency = doc.get("party_account_currency") or get_account_currency(party_account)
 
 	payment_type = "Receive" if erpnext.get_party_account_type(party_type) == "Receivable" else "Pay"
-	if dt in ("Sales Invoice", "Fees") and doc.outstanding_amount < 0:
+	if dt == "Sales Invoice" and doc.outstanding_amount < 0:
 		payment_type = "Pay"
 	if dt == "Purchase Invoice" and doc.outstanding_amount < 0:
 		payment_type = "Receive"
@@ -1897,8 +1897,6 @@ def get_valid_payment_reference_doctypes(party_type):
 		valid_reference_doctypes = ["Expense Claim", "Employee Advance"]
 	elif party_type == "Letter of Credit":
 		valid_reference_doctypes = ["Purchase Invoice", "Landed Cost Voucher"]
-	elif party_type == "Student":
-		valid_reference_doctypes = ["Fees"]
 
 	hooked_reference_doctypes_map = frappe.get_hooks("valid_payment_reference_doctypes") or {}
 	hooked_reference_doctypes = hooked_reference_doctypes_map.get(party_type) or []

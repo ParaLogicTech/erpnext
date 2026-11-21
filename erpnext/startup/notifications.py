@@ -76,11 +76,6 @@ def get_notification_config():
 				"docstatus": ("<", 2)
 			},
 
-			"Lab Test": {"docstatus": 0},
-			"Sample Collection": {"docstatus": 0},
-			"Patient Appointment": {"status": "Open"},
-			"Patient Encounter": {"docstatus": 0},
-
 			"Appointment": {"status": ("in", ("Open", "Draft"))},
 		},
 

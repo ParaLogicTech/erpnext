@@ -120,65 +120,6 @@ def get_data():
 			"description": "Point of Sale and cashier closing."
 		},
 		{
-			"module_name": "Education",
-			"category": "Domains",
-			"label": _("Education"),
-			"color": "#428B46",
-			"icon": "octicon octicon-mortar-board",
-			"type": "module",
-			"description": "Student admissions, fees, courses and scores."
-		},
-
-		{
-			"module_name": "Healthcare",
-			"category": "Domains",
-			"label": _("Healthcare"),
-			"color": "#FF888B",
-			"icon": "fa fa-heartbeat",
-			"type": "module",
-			"description": "Patient appointments, procedures and tests."
-		},
-		{
-			"module_name": "Agriculture",
-			"category": "Domains",
-			"label": _("Agriculture"),
-			"color": "#8BC34A",
-			"icon": "octicon octicon-globe",
-			"type": "module",
-			"description": "Crop cycles, land areas, soil and plant analysis."
-		},
-		{
-			"module_name": "Hotels",
-			"category": "Domains",
-			"label": _("Hotels"),
-			"color": "#EA81E8",
-			"icon": "fa fa-bed",
-			"type": "module",
-			"description": "Hotel rooms, pricing, reservation and amenities."
-		},
-
-		{
-			"module_name": "Non Profit",
-			"category": "Domains",
-			"label": _("Non Profit"),
-			"color": "#DE2B37",
-			"icon": "octicon octicon-heart",
-			"type": "module",
-			"description": "Volunteers, memberships, grants and chapters."
-		},
-		{
-			"module_name": "Restaurant",
-			"category": "Domains",
-			"label": _("Restaurant"),
-			"color": "#EA81E8",
-			"icon": "fa fa-cutlery",
-			"_doctype": "Restaurant",
-			"type": "module",
-			"link": "List/Restaurant",
-			"description": "Menu, Orders and Table Reservations."
-		},
-
-		{
 			"module_name": "Help",
 			"category": "Administration",
 			"label": _("Learn"),

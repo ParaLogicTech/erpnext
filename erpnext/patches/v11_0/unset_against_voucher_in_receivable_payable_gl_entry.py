@@ -1,11 +1,11 @@
 import frappe
 import erpnext
 
+
 def execute():
 	doctypes = [
 		('Sales Invoice', 'Customer'),
 		('Purchase Invoice', 'Supplier'),
-		('Fees', 'Student'),
 		('Expense Claim', 'Employee')
 	]
 

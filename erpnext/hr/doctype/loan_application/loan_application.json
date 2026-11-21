@@ -35,7 +35,7 @@
    "fieldname": "applicant_type",
    "fieldtype": "Select",
    "label": "Applicant Type",
-   "options": "Employee\nMember",
+   "options": "Employee",
    "reqd": 1
   },
   {
@@ -185,7 +185,7 @@
  "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 17:22:45.163011",
+ "modified": "2026-11-21 03:21:04.981711",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Loan Application",

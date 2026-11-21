@@ -285,39 +285,5 @@ data_map = {
 		"columns": ["name","status","creation","planned_start_date","planned_end_date","status","actual_start_date","actual_end_date", "modified"],
 		"conditions": ["docstatus = 1"],
 		"order_by": "creation"
-	},
-
-	#Medical
-	"Patient": {
-		"columns": ["name", "creation", "owner", "if(patient_name=name, '', patient_name) as patient_name"],
-		"conditions": ["docstatus < 2"],
-		"order_by": "name",
-		"links": {
-			"owner" : ["User", "name"]
-		}
-	},
-	"Patient Appointment": {
-		"columns": ["name", "appointment_type", "patient", "practitioner", "appointment_date", "department", "status", "company"],
-		"order_by": "name",
-		"links": {
-			"practitioner": ["Healthcare Practitioner", "name"],
-			"appointment_type": ["Patient Appointment Type", "name"]
-		}
-	},
-	"Healthcare Practitioner": {
-		"columns": ["name", "department"],
-		"order_by": "name",
-		"links": {
-			"department": ["Department", "name"],
-		}
-
-	},
-	"Patient Appointment Type": {
-		"columns": ["name"],
-		"order_by": "name"
-	},
-	"Medical Department": {
-		"columns": ["name"],
-		"order_by": "name"
 	}
 }

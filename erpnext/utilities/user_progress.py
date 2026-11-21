@@ -7,7 +7,6 @@ from erpnext.setup.doctype.setup_progress.setup_progress import get_action_compl
 
 def get_slide_settings():
 	defaults = frappe.defaults.get_defaults()
-	domain = frappe.get_cached_value('Company',  erpnext.get_default_company(),  'domain')
 	company = defaults.get("company") or ''
 	currency = defaults.get("currency") or ''
 
@@ -24,8 +23,8 @@ def get_slide_settings():
 	return [
 		frappe._dict(
 			action_name='Add Company',
-			title=_("Setup Company") if domain != 'Education' else _("Setup Institution"),
-			help=_('Setup your ' + ('company' if domain != 'Education' else 'institution') + ' and brand.'),
+			title=_("Setup Company"),
+			help=_('Setup your company and brand.'),
 			# image_src="/assets/erpnext/images/illustrations/shop.jpg",
 			fields=[],
 			done_state_title=_("You added " +  company),
@@ -87,7 +86,7 @@ def get_slide_settings():
 
 		frappe._dict(
 			action_name='Add Letterhead',
-			domains=('Manufacturing', 'Services', 'Retail', 'Distribution', 'Education'),
+			domains=('Manufacturing', 'Services', 'Retail', 'Distribution'),
 			title=_("Add Letterhead"),
 			help=_("Upload your letter head (Keep it web friendly as 900px by 100px)"),
 			fields=[
@@ -160,87 +159,6 @@ def get_slide_settings():
 				},
 			]
 		),
-
-		# Education slides begin
-		frappe._dict(
-			action_name='Add Programs',
-			domains=("Education"),
-			title=_("Program"),
-			help=_("Example: Masters in Computer Science"),
-			fields=[
-				{"fieldtype":"Section Break", "show_section_border": 1},
-				{"fieldtype":"Data", "fieldname":"program", "label":_("Program"), "placeholder": _("Program Name")},
-			],
-			add_more=1, max_count=3, mandatory_entry=1,
-			submit_method="erpnext.utilities.user_progress_utils.create_program",
-			done_state_title=_("Go to Programs"),
-			done_state_title_route=["List", "Program"],
-			help_links=[
-				{
-					"label": _("Student Application"),
-					"video_id": "l8PUACusN3E"
-				},
-			]
-
-		),
-		frappe._dict(
-			action_name='Add Courses',
-			domains=["Education"],
-			title=_("Course"),
-			help=_("Example: Basic Mathematics"),
-			fields=[
-				{"fieldtype":"Section Break", "show_section_border": 1},
-				{"fieldtype":"Data", "fieldname":"course", "label":_("Course"),  "placeholder": _("Course Name")},
-			],
-			add_more=1, max_count=3, mandatory_entry=1,
-			submit_method="erpnext.utilities.user_progress_utils.create_course",
-			done_state_title=_("Go to Courses"),
-			done_state_title_route=["List", "Course"],
-			help_links=[
-				{
-					"label": _('Add Students'),
-					"route": ["List", "Student"]
-				}
-			]
-		),
-		frappe._dict(
-			action_name='Add Instructors',
-			domains=["Education"],
-			title=_("Instructor"),
-			help=_("People who teach at your organisation"),
-			fields=[
-				{"fieldtype":"Section Break", "show_section_border": 1},
-				{"fieldtype":"Data", "fieldname":"instructor", "label":_("Instructor"),  "placeholder": _("Instructor Name")},
-			],
-			add_more=1, max_count=3, mandatory_entry=1,
-			submit_method="erpnext.utilities.user_progress_utils.create_instructor",
-			done_state_title=_("Go to Instructors"),
-			done_state_title_route=["List", "Instructor"],
-			help_links=[
-				{
-					"label": _('Student Batches'),
-					"route": ["List", "Student Batch"]
-				}
-			]
-		),
-		frappe._dict(
-			action_name='Add Rooms',
-			domains=["Education"],
-			title=_("Room"),
-			help=_("Classrooms/ Laboratories etc where lectures can be scheduled."),
-			fields=[
-				{"fieldtype":"Section Break", "show_section_border": 1},
-				{"fieldtype":"Data", "fieldname":"room", "label":_("Room")},
-				{"fieldtype":"Column Break"},
-				{"fieldtype":"Int", "fieldname":"room_capacity", "label":_("Room Capacity"), "static": 1},
-			],
-			add_more=1, max_count=3, mandatory_entry=1,
-			submit_method="erpnext.utilities.user_progress_utils.create_room",
-			done_state_title=_("Go to Rooms"),
-			done_state_title_route=["List", "Room"],
-			help_links=[]
-		),
-		# Education slides end
 
 		frappe._dict(
 			action_name='Add Users',

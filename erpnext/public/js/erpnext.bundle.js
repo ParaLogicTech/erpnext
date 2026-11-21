@@ -51,12 +51,5 @@ import "./payment/payment_details.html"
 // Dynamic Bundling
 import "./utils/bundling.js"
 
-// Agriculture Domain
-import "./agriculture/ternary_plot.js"
-
-// Education Domain
-import "./education/student_button.html"
-import "./education/assessment_result_tool.html"
-
 // Maintenance Schedule
 import "./templates/maintenance_schedule.html"

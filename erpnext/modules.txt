@@ -10,13 +10,7 @@ Support
 Utilities
 Assets
 Maintenance
-Education
 Regional
-Healthcare
-Restaurant
-Agriculture
 ERPNext Integrations
-Non Profit
-Hotels
 Quality Management
 Vehicles

@@ -100,53 +100,37 @@ def make_projects(domains):
 			"file": "explore.md"
 		}]
 
-	if 'Education' in domains:
-		tasks += [
-			{
-				"title": _("Setup your Institute in ERPNext"),
-				"start_date": current_date,
-				"end_date": frappe.utils.add_days(current_date, 1),
-				"file": "education_masters.md"
-			},
-			{
-				"title": "Setup Master Data",
-				"start_date": current_date,
-				"end_date": frappe.utils.add_days(current_date, 1),
-				"file": "education_masters.md"
-			}]
-
-	else:
-		tasks += [
-			{
-				"title": "Setup Your Company",
-				"start_date": current_date,
-				"end_date": frappe.utils.add_days(current_date, 1),
-				"file": "masters.md"
-			},
-			{
-				"title": "Start Tracking your Sales",
-				"start_date": current_date,
-				"end_date": frappe.utils.add_days(current_date, 2),
-				"file": "sales.md"
-			},
-			{
-				"title": "Start Managing Purchases",
-				"start_date": current_date,
-				"end_date": frappe.utils.add_days(current_date, 3),
-				"file": "purchase.md"
-			},
-			{
-				"title": "Import Data",
-				"start_date": current_date,
-				"end_date": frappe.utils.add_days(current_date, 4),
-				"file": "import_data.md"
-			},
-			{
-				"title": "Go Live!",
-				"start_date": current_date,
-				"end_date": frappe.utils.add_days(current_date, 5),
-				"file": "go_live.md"
-			}]
+	tasks += [
+		{
+			"title": "Setup Your Company",
+			"start_date": current_date,
+			"end_date": frappe.utils.add_days(current_date, 1),
+			"file": "masters.md"
+		},
+		{
+			"title": "Start Tracking your Sales",
+			"start_date": current_date,
+			"end_date": frappe.utils.add_days(current_date, 2),
+			"file": "sales.md"
+		},
+		{
+			"title": "Start Managing Purchases",
+			"start_date": current_date,
+			"end_date": frappe.utils.add_days(current_date, 3),
+			"file": "purchase.md"
+		},
+		{
+			"title": "Import Data",
+			"start_date": current_date,
+			"end_date": frappe.utils.add_days(current_date, 4),
+			"file": "import_data.md"
+		},
+		{
+			"title": "Go Live!",
+			"start_date": current_date,
+			"end_date": frappe.utils.add_days(current_date, 5),
+			"file": "go_live.md"
+		}]
 
 	for t in tasks:
 		with open (os.path.join(os.path.dirname(__file__), "tasks", t['file'])) as f:
@@ -171,5 +155,5 @@ def test_sample():
 	frappe.db.sql('delete from `tabNotification`')
 	frappe.db.sql('delete from tabProject')
 	frappe.db.sql('delete from tabTask')
-	make_projects('Education')
+	make_projects([])
 	import_notification()

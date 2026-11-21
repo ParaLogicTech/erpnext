@@ -412,7 +412,6 @@ erpnext.utils.get_party_name_field = function(party_type) {
 		'Customer': 'customer_name',
 		'Supplier': 'supplier_name',
 		'Employee': 'employee_name',
-		'Member': 'member_name'
 	};
 	return dict[party_type] || "name";
 };

@@ -163,7 +163,6 @@ treeviews = [
 	'Warehouse',
 	'Item Group',
 	'Customer Group',
-	'Assessment Group',
 	'Department',
 	'Quality Procedure',
 	'Location',
@@ -173,16 +172,11 @@ treeviews = [
 
 email_append_to = ["Job Applicant", "Issue"]
 
-calendars = ["Task", "Work Order", "Leave Application", "Sales Order", "Holiday List", "Course Schedule"]
+calendars = ["Task", "Work Order", "Leave Application", "Sales Order", "Holiday List"]
 
 domains = {
-	'Agriculture': 'erpnext.domains.agriculture',
 	'Distribution': 'erpnext.domains.distribution',
-	'Education': 'erpnext.domains.education',
-	'Healthcare': 'erpnext.domains.healthcare',
-	'Hospitality': 'erpnext.domains.hospitality',
 	'Manufacturing': 'erpnext.domains.manufacturing',
-	'Non Profit': 'erpnext.domains.non_profit',
 	'Retail': 'erpnext.domains.retail',
 	'Services': 'erpnext.domains.services',
 }
@@ -375,7 +369,6 @@ accounting_dimension_doctypes = [
 
 	"Loyalty Program", "Shipping Rule",
 	"Asset", "Asset Value Adjustment",
-	"Fees", "Fee Schedule", "Fee Structure",
 	"Budget",
 	"Payroll Entry",
 	"Travel Request",

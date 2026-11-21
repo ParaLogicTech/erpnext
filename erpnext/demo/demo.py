@@ -3,8 +3,7 @@ import frappe, sys
 import erpnext
 import frappe.utils
 from erpnext.demo.user import hr, sales, purchase, manufacturing, stock, accounts, projects, fixed_asset
-from erpnext.demo.user import education as edu
-from erpnext.demo.setup import education, manufacture, setup_data, healthcare, retail
+from erpnext.demo.setup import manufacture, setup_data, retail
 """
 Make a demo
 
@@ -30,10 +29,6 @@ def make(domain='Manufacturing', days=100):
 		manufacture.setup_data()
 	elif domain == "Retail":
 		retail.setup_data()
-	elif domain== 'Education':
-		education.setup_data()
-	elif domain== 'Healthcare':
-		healthcare.setup_data()
 
 	site = frappe.local.site
 	frappe.destroy()
@@ -84,8 +79,6 @@ def simulate(domain='Manufacturing', days=100):
 
 			if domain=='Manufacturing':
 				manufacturing.work()
-			elif domain=='Education':
-				edu.work()
 
 		except:
 			frappe.db.set_global('demo_last_date', current_date)

@@ -34,8 +34,7 @@ class GoCardlessSettings(Document):
 		call_hook_method('payment_gateway_enabled', gateway='GoCardless-' + self.gateway_name)
 
 	def on_payment_request_submission(self, data):
-		if data.reference_doctype != "Fees":
-			customer_data = frappe.db.get_value(data.reference_doctype, data.reference_name, ["company", "customer_name"], as_dict=1)
+		customer_data = frappe.db.get_value(data.reference_doctype, data.reference_name, ["company", "customer_name"], as_dict=1)
 
 		data = {
 					"amount": flt(data.grand_total, data.precision("grand_total")),

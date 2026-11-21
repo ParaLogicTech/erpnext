@@ -136,58 +136,6 @@ def make_item_price(item, price_list_name, item_price):
 		"price_list_rate": item_price
 	}).insert()
 
-# Education
-@frappe.whitelist()
-def create_program(args_data):
-	args = json.loads(args_data)
-	for i in range(1,4):
-		if args.get("program_" + str(i)):
-			program = frappe.new_doc("Program")
-			program.program_code = args.get("program_" + str(i))
-			program.program_name = args.get("program_" + str(i))
-			try:
-				program.save()
-			except frappe.DuplicateEntryError:
-				pass
-
-@frappe.whitelist()
-def create_course(args_data):
-	args = json.loads(args_data)
-	for i in range(1,4):
-		if args.get("course_" + str(i)):
-			course = frappe.new_doc("Course")
-			course.course_code = args.get("course_" + str(i))
-			course.course_name = args.get("course_" + str(i))
-			try:
-				course.save()
-			except frappe.DuplicateEntryError:
-				pass
-
-@frappe.whitelist()
-def create_instructor(args_data):
-	args = json.loads(args_data)
-	for i in range(1,4):
-		if args.get("instructor_" + str(i)):
-			instructor = frappe.new_doc("Instructor")
-			instructor.instructor_name = args.get("instructor_" + str(i))
-			try:
-				instructor.save()
-			except frappe.DuplicateEntryError:
-				pass
-
-@frappe.whitelist()
-def create_room(args_data):
-	args = json.loads(args_data)
-	for i in range(1,4):
-		if args.get("room_" + str(i)):
-			room = frappe.new_doc("Room")
-			room.room_name = args.get("room_" + str(i))
-			room.seating_capacity = args.get("room_capacity_" + str(i))
-			try:
-				room.save()
-			except frappe.DuplicateEntryError:
-				pass
-
 @frappe.whitelist()
 def create_users(args_data):
 	if frappe.session.user == 'Administrator':
