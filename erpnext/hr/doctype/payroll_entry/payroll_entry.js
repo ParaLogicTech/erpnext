@@ -5,6 +5,8 @@ var in_progress = false;
 
 frappe.ui.form.on('Payroll Entry', {
 	onload: function (frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+
 		if (!frm.doc.posting_date) {
 			frm.doc.posting_date = frappe.datetime.nowdate();
 		}
@@ -254,6 +256,7 @@ frappe.ui.form.on('Payroll Entry', {
 
 	company: function (frm) {
 		frm.events.clear_employee_table(frm);
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
 	},
 
 	department: function (frm) {

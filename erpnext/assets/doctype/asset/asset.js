@@ -5,6 +5,8 @@ frappe.provide("erpnext.asset");
 
 frappe.ui.form.on('Asset', {
 	onload: function(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+
 		frm.set_query("item_code", function() {
 			return {
 				"filters": {
@@ -229,6 +231,9 @@ frappe.ui.form.on('Asset', {
 		});
 	},
 
+	company: function(frm) {
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
+	},
 
 	item_code: function (frm) {
 		frm.set_value("item_detail", null);

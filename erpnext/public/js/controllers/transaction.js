@@ -396,6 +396,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 
 	onload() {
 		erpnext.utils.setup_scan_barcode_field(this.frm.fields_dict.scan_barcode);
+		erpnext.accounts.dimensions.setup_dimension_filters(this.frm);
 
 		let other_charges_calculation_df = this.frm.get_field("other_charges_calculation");
 		if (other_charges_calculation_df) {
@@ -922,6 +923,7 @@ erpnext.TransactionController = class TransactionController extends erpnext.taxe
 			]);
 		}
 
+		erpnext.accounts.dimensions.set_default_dimensions(this.frm);
 		this.set_dynamic_labels();
 		this.set_company_address();
 

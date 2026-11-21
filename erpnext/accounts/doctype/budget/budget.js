@@ -3,6 +3,8 @@
 
 frappe.ui.form.on('Budget', {
 	onload: function(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+
 		frm.set_query("cost_center", function() {
 			return {
 				filters: {

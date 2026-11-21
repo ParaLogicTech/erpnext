@@ -2,7 +2,7 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Travel Request', {
-	refresh: function(frm) {
-
-	}
+	onload: function(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+	},
 });

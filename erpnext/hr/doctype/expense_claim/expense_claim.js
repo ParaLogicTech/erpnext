@@ -109,6 +109,8 @@ erpnext.hr.ExpenseClaimController = class ExpenseClaimController extends frappe.
 
 	onload() {
 		var me = this;
+		erpnext.accounts.dimensions.setup_dimension_filters(me.frm);
+
 		if (me.frm.doc.docstatus == 0) {
 			return frappe.call({
 				method: "erpnext.hr.doctype.leave_application.leave_application.get_mandatory_approval",
@@ -233,6 +235,10 @@ erpnext.hr.ExpenseClaimController = class ExpenseClaimController extends frappe.
 				}
 			});
 		}
+	}
+
+	company() {
+		erpnext.accounts.dimensions.set_default_dimensions(this.frm);
 	}
 
 	employee() {

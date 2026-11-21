@@ -36,6 +36,8 @@ frappe.ui.form.on('Loyalty Program', {
 	},
 
 	onload: function(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+
 		frm.set_query("expense_account", function(doc) {
 			return {
 				filters: {

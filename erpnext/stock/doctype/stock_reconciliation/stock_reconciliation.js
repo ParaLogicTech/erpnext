@@ -5,6 +5,8 @@ frappe.provide("erpnext.stock");
 
 frappe.ui.form.on("Stock Reconciliation", {
 	onload: function(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+
 		frm.add_fetch("item_code", "item_name", "item_name");
 
 		// end of life
@@ -179,6 +181,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 		}
 	},
 	company: function(frm) {
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
 		frm.trigger("toggle_display_account_head");
 	},
 	toggle_display_account_head: function(frm) {

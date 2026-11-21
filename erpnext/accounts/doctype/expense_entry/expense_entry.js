@@ -72,8 +72,13 @@ frappe.ui.form.on('Expense Entry', {
 		erpnext.hide_company();
 	},
 
+	onload: function (frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+	},
+
 	company: function (frm) {
 		frm.events.get_other_company_accounts_and_cost_centers(frm);
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
 	},
 
 	get_other_company_accounts_and_cost_centers: function (frm) {
