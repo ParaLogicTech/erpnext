@@ -55,7 +55,6 @@ erpnext.patches.v11_0.create_department_records_for_each_company
 erpnext.patches.v11_0.make_location_from_warehouse
 erpnext.patches.v11_0.make_asset_finance_book_against_old_entries
 erpnext.patches.v11_0.check_buying_selling_in_currency_exchange
-erpnext.patches.v11_0.refactor_erpnext_shopify #2018-09-07
 erpnext.patches.v11_0.rename_overproduction_percent_field
 erpnext.patches.v11_0.update_backflush_subcontract_rm_based_on_bom
 erpnext.patches.v10_0.update_status_in_purchase_receipt
@@ -124,7 +123,6 @@ erpnext.patches.v11_1.move_apply_discount_after_taxes_to_company
 erpnext.patches.v11_1.set_item_naming_by
 erpnext.patches.v11_1.rename_stin_and_transaction_type
 erpnext.patches.v11_1.set_variant_based_on
-erpnext.patches.v11_1.woocommerce_set_creation_user
 erpnext.patches.v11_1.set_salary_details_submittable
 erpnext.patches.v11_1.rename_depends_on_lwp
 execute:frappe.delete_doc("Report", "Inactive Items")
@@ -149,7 +147,6 @@ erpnext.patches.v12_0.add_default_buying_selling_terms_in_company
 erpnext.patches.v12_0.update_ewaybill_field_position
 erpnext.patches.v12_0.create_accounting_dimensions_in_missing_doctypes #2020-05-11
 erpnext.patches.v11_1.set_status_for_material_request_type_manufacture
-erpnext.patches.v12_0.move_plaid_settings_to_doctype
 execute:frappe.reload_doc('desk', 'doctype', 'dashboard_chart_link')
 execute:frappe.reload_doc('desk', 'doctype', 'dashboard')
 execute:frappe.reload_doc('desk', 'doctype', 'dashboard_chart_source')
@@ -162,7 +159,6 @@ erpnext.patches.v12_0.move_credit_limit_to_customer_credit_limit
 erpnext.patches.v12_0.add_variant_of_in_item_attribute_table
 erpnext.patches.v12_0.rename_bank_account_field_in_journal_entry_account
 erpnext.patches.v12_0.create_default_energy_point_rules
-erpnext.patches.v12_0.set_default_shopify_app_type
 erpnext.patches.v12_0.set_cwip_and_delete_asset_settings
 erpnext.patches.v12_0.set_expense_account_in_landed_cost_voucher_taxes
 erpnext.patches.v12_0.replace_accounting_with_accounts_in_home_settings
@@ -177,7 +173,6 @@ erpnext.patches.v12_0.add_permission_in_lower_deduction
 erpnext.patches.v12_0.set_permission_einvoicing
 erpnext.patches.v12_0.set_received_qty_in_material_request_as_per_stock_uom
 erpnext.patches.v12_0.recalculate_requested_qty_in_bin
-erpnext.patches.v12_0.rename_mws_settings_fields
 erpnext.patches.v12_0.set_updated_purpose_in_pick_list
 erpnext.patches.v12_0.update_end_date_and_status_in_email_campaign
 erpnext.patches.v13_0.move_tax_slabs_from_payroll_period_to_income_tax_slab #123
@@ -454,3 +449,4 @@ execute:frappe.delete_doc_if_exists("Report", "Open Work Orders")
 execute:frappe.delete_doc_if_exists("Report", "Work Orders in Progress")
 execute:frappe.delete_doc_if_exists("Report", "Completed Work Orders")
 erpnext.patches.v15_0.remove_domain_modules
+erpnext.patches.v15_0.remove_erpnext_integrations
