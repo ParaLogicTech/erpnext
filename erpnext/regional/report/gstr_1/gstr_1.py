@@ -5,7 +5,6 @@ import frappe, json
 from frappe import _
 from frappe.utils import flt, formatdate, now_datetime, getdate
 from datetime import date
-from six import iteritems
 from erpnext.regional.doctype.gstr_3b_report.gstr_3b_report import get_period
 from erpnext.regional.india.utils import get_gst_accounts
 
@@ -98,7 +97,7 @@ class Gstr1Report(object):
 				row["cess_amount"] += flt(self.invoice_cess.get(inv), 2)
 				row["type"] = "E" if ecommerce_gstin else "OE"
 
-		for key, value in iteritems(b2cs_output):
+		for key, value in b2cs_output.items():
 			self.data.append(value)
 
 	def get_row_data_for_invoice(self, invoice, invoice_details, tax_rate, items):
@@ -269,7 +268,7 @@ class Gstr1Report(object):
 				+ "<br>" + "<br>".join(unidentified_gst_accounts), alert=True)
 
 		# Build itemised tax for export invoices where tax table is blank
-		for invoice, items in iteritems(self.invoice_items):
+		for invoice, items in self.invoice_items.items():
 			if invoice not in self.items_based_on_tax_rate \
 				and frappe.db.get_value(self.doctype, invoice, "export_type") == "Without Payment of Tax":
 					self.items_based_on_tax_rate.setdefault(invoice, {}).setdefault(0, items.keys())
@@ -597,7 +596,7 @@ def get_b2b_json(res, gstin):
 		b2b_item, inv = {"ctin": gst_in, "inv": []}, []
 		if not gst_in: continue
 
-		for number, invoice in iteritems(res[gst_in]):
+		for number, invoice in res[gst_in].items():
 			if not invoice[0]["place_of_supply"]:
 				frappe.throw(_("""{0} not entered in Invoice {1}.
 					Please update and try again""").format(frappe.bold("Place Of Supply"),

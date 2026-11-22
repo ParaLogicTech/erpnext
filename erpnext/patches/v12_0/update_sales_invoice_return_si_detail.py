@@ -2,7 +2,6 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from six import iteritems
 
 def execute():
 	frappe.reload_doctype("Sales Invoice")

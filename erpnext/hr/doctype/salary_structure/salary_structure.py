@@ -7,7 +7,6 @@ from frappe.utils import flt, cint, cstr
 from frappe import _
 from frappe.model.mapper import get_mapped_doc
 from frappe.model.document import Document
-from six import iteritems
 
 class SalaryStructure(Document):
 	def validate(self):

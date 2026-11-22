@@ -5,7 +5,7 @@
 import frappe
 from erpnext.controllers.status_updater import StatusUpdaterERP
 from frappe.utils import flt
-from six.moves import reduce
+from functools import reduce
 from frappe import _
 
 

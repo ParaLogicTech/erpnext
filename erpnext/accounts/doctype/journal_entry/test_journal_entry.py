@@ -7,7 +7,6 @@ from frappe.utils import flt, nowdate
 from erpnext.accounts.doctype.account.test_account import get_inventory_account
 from erpnext.exceptions import InvalidAccountCurrency
 from erpnext.accounts.utils import get_balance_on_voucher
-from six import iteritems
 
 class TestJournalEntry(unittest.TestCase):
 	def test_journal_entry_with_against_jv(self):
@@ -269,7 +268,7 @@ class TestJournalEntry(unittest.TestCase):
 		for gle in gle_list:
 			expected_values = expected_account_values.get(gle.account)
 			self.assertTrue(expected_values)
-			for field, value in iteritems(expected_values):
+			for field, value in expected_values.items():
 				self.assertEqual(gle.get(field), value)
 
 	def test_jv_with_cost_centre(self):

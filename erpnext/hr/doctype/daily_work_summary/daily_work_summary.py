@@ -8,7 +8,6 @@ from frappe import _
 from email_reply_parser import EmailReplyParser
 from erpnext.hr.doctype.employee.employee import is_holiday
 from frappe.utils import global_date_format
-from six import string_types
 
 
 class DailyWorkSummary(Document):
@@ -108,7 +107,7 @@ def get_user_emails_from_group(group):
 
 	:param group: Daily Work Summary Group `name`'''
 	group_doc = group
-	if isinstance(group_doc, string_types):
+	if isinstance(group_doc, str):
 		group_doc = frappe.get_doc('Daily Work Summary Group', group)
 
 	emails = get_users_email(group_doc)

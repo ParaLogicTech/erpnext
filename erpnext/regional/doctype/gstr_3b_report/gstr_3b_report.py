@@ -6,7 +6,6 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 import json
-from six import iteritems
 from frappe.utils import flt, getdate, cstr
 from erpnext.regional.india import state_numbers
 
@@ -228,7 +227,7 @@ class GSTR3BReport(Document):
 		for gst_category in gst_category_list:
 			txval += total_taxable_value.get(gst_category,0)
 			for account_head in self.account_heads:
-				for account_type, account_name in iteritems(account_head):
+				for account_type, account_name in account_head.items():
 					if account_map.get(account_type) in self.report_dict.get(supply_type).get(supply_category):
 						self.report_dict[supply_type][supply_category][account_map.get(account_type)] += \
 							flt(tax_details.get((account_name, gst_category), {}).get("amount"), 2)
@@ -239,7 +238,7 @@ class GSTR3BReport(Document):
 
 		osup_det = self.report_dict["sup_details"]["osup_det"]
 
-		for key, value in iteritems(inter_state_supply):
+		for key, value in inter_state_supply.items():
 			if key[0] == "Unregistered":
 				self.report_dict["inter_sup"]["unreg_details"].append(value)
 
@@ -325,7 +324,7 @@ class GSTR3BReport(Document):
 			if d.account_head in [a.cess_account for a in self.account_heads]:
 				inter_state_supply_tax_mapping[cstr(d.name)]['csamt'] += d.tax_amount
 
-		for key, value in iteritems(inter_state_supply_tax_mapping):
+		for key, value in inter_state_supply_tax_mapping.items():
 			if value.get('place_of_supply'):
 				osup_det = self.report_dict["sup_details"]["osup_det"]
 				osup_det["txval"] = flt(osup_det["txval"] + value['taxable_value'], 2)

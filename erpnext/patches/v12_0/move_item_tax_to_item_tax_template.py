@@ -1,6 +1,5 @@
 import frappe
 import json
-from six import iteritems
 from frappe.model.naming import make_autoname
 
 def execute():
@@ -80,7 +79,7 @@ def execute():
 
 def get_item_tax_template(item_tax_templates, item_tax_map, item_code, parenttype=None, parent=None):
 	# search for previously created item tax template by comparing tax maps
-	for template, item_tax_template_map in iteritems(item_tax_templates):
+	for template, item_tax_template_map in item_tax_templates.items():
 		if item_tax_map == item_tax_template_map:
 			return template
 
@@ -88,7 +87,7 @@ def get_item_tax_template(item_tax_templates, item_tax_map, item_code, parenttyp
 	item_tax_template = frappe.new_doc("Item Tax Template")
 	item_tax_template.title = make_autoname("Item Tax Template-.####")
 
-	for tax_type, tax_rate in iteritems(item_tax_map):
+	for tax_type, tax_rate in item_tax_map.items():
 		account_details = frappe.db.get_value("Account", tax_type, ['name', 'account_type'], as_dict=1)
 		if account_details:
 			if account_details.account_type not in ('Tax', 'Chargeable', 'Income Account', 'Expense Account', 'Expenses Included In Valuation'):

@@ -4,7 +4,6 @@
 import frappe, erpnext
 from frappe.utils import cint, flt
 
-from six import string_types
 
 @frappe.whitelist()
 def make_stock_entry(**args):
@@ -53,7 +52,7 @@ def make_stock_entry(**args):
 	if args.item_code:
 		args.item = args.item_code
 
-	if isinstance(args.qty, string_types):
+	if isinstance(args.qty, str):
 		if '.' in args.qty:
 			args.qty = flt(args.qty)
 		else:

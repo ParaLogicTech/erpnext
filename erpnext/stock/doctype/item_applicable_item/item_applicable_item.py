@@ -6,7 +6,6 @@ import frappe
 from frappe import _
 from frappe.utils import strip_html, cstr, cint
 from frappe.model.document import Document
-from six import string_types
 import json
 
 
@@ -17,9 +16,9 @@ class ItemApplicableItem(Document):
 @frappe.whitelist()
 def add_applicable_items(target_doc, applies_to_item, item_groups=None, items_type=None, check_duplicate=True,
 		service_template_detail=None, postprocess=True):
-	if isinstance(target_doc, string_types):
+	if isinstance(target_doc, str):
 		target_doc = frappe.get_doc(json.loads(target_doc))
-	if isinstance(item_groups, string_types):
+	if isinstance(item_groups, str):
 		item_groups = json.loads(item_groups)
 
 	if not item_groups:
@@ -76,7 +75,7 @@ def get_applicable_items(applies_to_item, item_groups, items_type=None):
 
 
 def append_applicable_items(target_doc, applicable_items, check_duplicate=False, service_template_detail=None):
-	if isinstance(service_template_detail, string_types):
+	if isinstance(service_template_detail, str):
 		service_template_detail = frappe._dict(json.loads(service_template_detail))
 
 	check_duplicate = cint(check_duplicate)

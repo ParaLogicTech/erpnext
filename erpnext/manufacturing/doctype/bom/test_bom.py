@@ -8,7 +8,6 @@ from frappe.utils import cstr
 from frappe.test_runner import make_test_records
 from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
 from erpnext.manufacturing.doctype.bom_update_tool.bom_update_tool import update_cost
-from six import string_types
 
 test_records = frappe.get_test_records('BOM')
 
@@ -140,7 +139,7 @@ def get_default_bom(item_code="_Test FG Item 2"):
 	return frappe.db.get_value("BOM", {"item": item_code, "is_active": 1, "is_default": 1})
 
 def reset_item_valuation_rate(item_code, warehouse_list=None, qty=None, rate=None):
-	if warehouse_list and isinstance(warehouse_list, string_types):
+	if warehouse_list and isinstance(warehouse_list, str):
 		warehouse_list = [warehouse_list]
 
 	if not warehouse_list:

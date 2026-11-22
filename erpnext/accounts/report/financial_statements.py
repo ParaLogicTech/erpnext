@@ -13,7 +13,6 @@ from frappe.utils import flt, getdate, add_months, add_days, formatdate, cstr, c
 from erpnext.accounts.report.utils import get_currency, convert_to_presentation_currency
 from erpnext.accounts.utils import get_fiscal_year
 
-from six import itervalues
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions,\
 	get_dimension_with_children
 
@@ -182,7 +181,7 @@ def get_appropriate_currency(company, filters=None):
 
 def calculate_values(accounts_by_name, gl_entries_by_account, period_list, accumulated_values,
 		ignore_accumulated_values_for_fy, filters):
-	for entries in itervalues(gl_entries_by_account):
+	for entries in gl_entries_by_account.values():
 		for entry in entries:
 			d = accounts_by_name.get(entry.account)
 			if not d:

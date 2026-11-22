@@ -1,4 +1,3 @@
-from six import iteritems
 
 states = [
  '',
@@ -79,4 +78,4 @@ state_numbers = {
  "West Bengal": "19",
 }
 
-number_state_mapping = {v: k for k, v in iteritems(state_numbers)}
+number_state_mapping = {v: k for k, v in state_numbers.items()}
