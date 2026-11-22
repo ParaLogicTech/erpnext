@@ -468,17 +468,6 @@
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 1,
-   "label": "Lead Details",
-   "link_count": 0,
-   "link_to": "Lead Details",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "dependencies": "",
-   "hidden": 0,
-   "is_query_report": 1,
    "label": "Customer Addresses And Contacts",
    "link_count": 0,
    "link_to": "Address And Contacts",
@@ -642,7 +631,7 @@
    "type": "Link"
   }
  ],
- "modified": "2024-05-18 18:22:59.872872",
+ "modified": "2026-11-22 22:49:03.265358",
  "modified_by": "Administrator",
  "module": "Selling",
  "name": "Selling",
@@ -681,6 +670,7 @@
    "doc_view": "List",
    "label": "Sales Details Report",
    "link_to": "Sales Details",
+   "report_ref_doctype": "Sales Order",
    "stats_filter": "",
    "type": "Report"
   },
@@ -707,6 +697,7 @@
    "doc_view": "List",
    "label": "Sales Analytics Report",
    "link_to": "Sales Analytics",
+   "report_ref_doctype": "Sales Order",
    "stats_filter": "",
    "type": "Report"
   },
