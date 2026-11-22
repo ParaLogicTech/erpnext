@@ -4,8 +4,8 @@
 
 import unittest
 import frappe
-from frappe.utils import flt, today
-from erpnext.accounts.utils import get_fiscal_year, now
+from frappe.utils import flt, now, today
+from erpnext.accounts.utils import get_fiscal_year
 from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
 
 class TestPeriodClosingVoucher(unittest.TestCase):
