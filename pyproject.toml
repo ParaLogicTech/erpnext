@@ -14,8 +14,6 @@ dependencies = [
 
     # integration dependencies
     "googlemaps",
-    "taxjar~=1.9.2",
-    "PyGithub==1.44.1",
 ]
 
 [build-system]
