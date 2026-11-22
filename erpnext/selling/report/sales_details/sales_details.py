@@ -14,7 +14,7 @@ def execute(filters=None):
 	return SalesPurchaseDetailsReport(filters).run()
 
 
-class SalesPurchaseDetailsReport(object):
+class SalesPurchaseDetailsReport:
 	def __init__(self, filters=None, doctype=None):
 		self.filters = frappe._dict(filters or {})
 

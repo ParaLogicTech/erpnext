@@ -10,7 +10,7 @@ import json
 import re
 
 
-class FBRInvoiceWiseTaxes(object):
+class FBRInvoiceWiseTaxes:
 	def __init__(self, filters=None):
 		self.ntn_regex = re.compile(r'^.......-.$')
 		self.filters = frappe._dict(filters or {})

@@ -9,7 +9,7 @@ from frappe.model.meta import get_field_precision
 import json
 
 
-class FBRInvoiceWiseTaxes(object):
+class FBRInvoiceWiseTaxes:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.filters.from_date = getdate(self.filters.from_date or nowdate())

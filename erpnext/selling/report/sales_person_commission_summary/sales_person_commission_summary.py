@@ -9,7 +9,7 @@ from erpnext.accounts.report.financial_statements import get_cost_centers_with_c
 from frappe.desk.query_report import group_report_data
 
 
-class SalesPersonCommissionSummary(object):
+class SalesPersonCommissionSummary:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.filters.from_date = getdate(self.filters.from_date or nowdate())

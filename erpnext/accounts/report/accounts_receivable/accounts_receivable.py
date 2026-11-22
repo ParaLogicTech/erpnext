@@ -15,7 +15,7 @@ from erpnext.accounts.utils import (
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 
-class ReceivablePayableReport(object):
+class ReceivablePayableReport:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.currency_precision = get_currency_precision() or 2

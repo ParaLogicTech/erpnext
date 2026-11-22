@@ -11,7 +11,7 @@ from erpnext.regional.india.utils import get_gst_accounts
 def execute(filters=None):
 	return Gstr1Report(filters).run()
 
-class Gstr1Report(object):
+class Gstr1Report:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.columns = []

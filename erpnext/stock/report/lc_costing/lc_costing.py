@@ -6,7 +6,7 @@ from frappe import _
 from frappe.utils import cint, getdate
 
 
-class LCCostingReport(object):
+class LCCostingReport:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"

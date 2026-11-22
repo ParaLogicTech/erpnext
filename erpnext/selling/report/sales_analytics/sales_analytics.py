@@ -13,7 +13,7 @@ def execute(filters=None):
 	return Analytics(filters).run()
 
 
-class Analytics(object):
+class Analytics:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.date_field = 'transaction_date' \
