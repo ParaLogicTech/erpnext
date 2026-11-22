@@ -9,7 +9,7 @@ from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sal
 from erpnext.stock.get_item_details import get_item_details
 from frappe import MandatoryError
 from erpnext.stock.doctype.item.test_item import make_item
-from erpnext.utilities.user_progress_utils import make_item_price
+
 
 class TestPricingRule(unittest.TestCase):
 	def setUp(self):
@@ -421,6 +421,16 @@ class TestPricingRule(unittest.TestCase):
 		details = get_item_details(args)
 
 		self.assertTrue(details)
+
+
+def make_item_price(item, price_list_name, item_price):
+	frappe.get_doc({
+		"doctype": "Item Price",
+		"price_list": price_list_name,
+		"item_code": item,
+		"price_list_rate": item_price
+	}).insert()
+
 
 def make_pricing_rule(**args):
 	args = frappe._dict(args)

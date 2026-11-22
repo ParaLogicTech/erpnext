@@ -25,10 +25,6 @@ def execute():
 
 	# rows on Users / Module Profiles blocking the removed modules
 	frappe.db.delete("Block Module", {"module": ("in", MODULES)})
-	# Education setup steps from the old user progress slides
-	frappe.db.delete("Setup Progress Action", {
-		"action_name": ("in", ("Add Programs", "Add Courses", "Add Instructors", "Add Rooms")),
-	})
 
 	frappe.db.delete("Domain", {"name": ("in", DOMAINS)})
 	frappe.db.delete("Module Def", {"name": ("in", MODULES)})
