@@ -1,5 +1,5 @@
 import frappe
-from frappe.model.rename_doc import get_fetch_fields
+from frappe.model.utils.rename_doc import get_fetch_fields
 
 def execute():
 	ignore_doctypes = ["Lead", "Opportunity", "POS Profile", "Tax Rule", "Pricing Rule"]
