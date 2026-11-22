@@ -11,7 +11,7 @@ class IncompleteTaskError(frappe.ValidationError): pass
 
 class EmployeeOnboarding(EmployeeBoardingController):
 	def validate(self):
-		super(EmployeeOnboarding, self).validate()
+		super().validate()
 
 	def validate_employee_creation(self):
 		if self.docstatus != 1:
@@ -26,13 +26,13 @@ class EmployeeOnboarding(EmployeeBoardingController):
 						frappe.throw(_("All the mandatory Task for employee creation hasn't been done yet."), IncompleteTaskError)
 
 	def on_submit(self):
-		super(EmployeeOnboarding, self).on_submit()
+		super().on_submit()
 
 	def on_update_after_submit(self):
 		self.create_task_and_notify_user()
 
 	def on_cancel(self):
-		super(EmployeeOnboarding, self).on_cancel()
+		super().on_cancel()
 
 @frappe.whitelist()
 def make_employee(source_name, target_doc=None):

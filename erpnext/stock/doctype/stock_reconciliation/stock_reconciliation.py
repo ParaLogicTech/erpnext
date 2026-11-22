@@ -22,7 +22,7 @@ class EmptyStockReconciliationItemsError(frappe.ValidationError): pass
 
 class StockReconciliation(StockController):
 	def __init__(self, *args, **kwargs):
-		super(StockReconciliation, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.head_row = ["Item Code", "Warehouse", "Quantity", "Valuation Rate"]
 
 	def validate(self):

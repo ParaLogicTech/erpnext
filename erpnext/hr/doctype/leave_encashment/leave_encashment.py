@@ -17,7 +17,7 @@ import datetime
 
 class LeaveEncashment(Document):
 	def __init__(self, *args, **kwargs):
-		super(LeaveEncashment, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.whitelisted_globals = {
 			"int": int,
 			"float": float,

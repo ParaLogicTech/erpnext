@@ -64,7 +64,7 @@ class PackingSlip(TransactionController):
 
 	def validate(self):
 		self.validate_posting_time()
-		super(PackingSlip, self).validate()
+		super().validate()
 		self.validate_items()
 		self.validate_purchase_order()
 		self.validate_source_packing_slips()
@@ -393,7 +393,7 @@ class PackingSlip(TransactionController):
 				self.target_warehouse = warehouses[0]
 
 	def validate_with_previous_doc(self):
-		super(PackingSlip, self).validate_with_previous_doc({
+		super().validate_with_previous_doc({
 			"Sales Order Item": {
 				"ref_dn_field": "sales_order_item",
 				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="]],
@@ -411,7 +411,7 @@ class PackingSlip(TransactionController):
 		})
 
 		if self.get("is_unpack"):
-			super(PackingSlip, self).validate_with_previous_doc({
+			super().validate_with_previous_doc({
 				"Packing Slip Item": {
 					"ref_dn_field": "unpack_against_row",
 					"compare_fields": [
@@ -422,7 +422,7 @@ class PackingSlip(TransactionController):
 				},
 			})
 
-			super(PackingSlip, self).validate_with_previous_doc({
+			super().validate_with_previous_doc({
 				"Packing Slip Packaging Material": {
 					"ref_dn_field": "unpack_against_row",
 					"compare_fields": [

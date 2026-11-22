@@ -37,7 +37,7 @@ class SalesInvoice(SellingController):
 	allow_advances_unlink = True
 
 	def __init__(self, *args, **kwargs):
-		super(SalesInvoice, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 	def autoname(self):
 		if self.has_stin:
@@ -730,7 +730,7 @@ class SalesInvoice(SellingController):
 			# set null so it will be set based on customer details
 			self.is_goodwill_invoice = None
 
-		super(SalesInvoice, self).set_missing_values(for_validate)
+		super().set_missing_values(for_validate)
 		self.set_skip_delivery_note_for_transaction()
 		self.set_goodwill_invoicing_details()
 
@@ -896,7 +896,7 @@ class SalesInvoice(SellingController):
 			sales_order_compare += [["customer", "="]]
 			delivery_note_compare += [["customer", "="]]
 
-		super(SalesInvoice, self).validate_with_previous_doc({
+		super().validate_with_previous_doc({
 			"Sales Order": {
 				"ref_dn_field": "sales_order",
 				"compare_fields": sales_order_compare
@@ -934,7 +934,7 @@ class SalesInvoice(SellingController):
 		self.validate_packing_slips()
 
 		if not self.get('project'):
-			super(SalesInvoice, self).validate_with_previous_doc({
+			super().validate_with_previous_doc({
 				"Delivery Note": {
 					"ref_dn_field": "delivery_note",
 					"compare_fields": [["project", "="]],

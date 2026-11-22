@@ -23,7 +23,7 @@ form_grid_templates = {
 
 class MaterialRequest(BuyingController):
 	def __init__(self, *args, **kwargs):
-		super(MaterialRequest, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Draft", None],
 			["Pending", "eval:self.order_status == 'To Order' and self.docstatus == 1"],

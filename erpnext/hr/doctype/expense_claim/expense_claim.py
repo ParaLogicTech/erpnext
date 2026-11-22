@@ -18,7 +18,7 @@ class ExpenseClaim(AccountsController):
 	allow_advances_unlink = True
 
 	def __init__(self, *args, **kwargs):
-		super(ExpenseClaim, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Draft", None],
 			["Submitted", "eval:self.docstatus==1"],

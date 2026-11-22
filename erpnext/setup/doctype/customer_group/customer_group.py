@@ -17,7 +17,7 @@ class CustomerGroup(NestedSet):
 			self.disable_selection = 0
 
 	def on_update(self):
-		super(CustomerGroup, self).on_update()
+		super().on_update()
 		self.validate_one_root()
 
 

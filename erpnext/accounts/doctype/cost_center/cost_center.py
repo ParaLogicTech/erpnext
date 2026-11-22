@@ -57,14 +57,14 @@ class CostCenter(NestedSet):
 		new_cost_center = get_name_with_abbr(newdn, self.company)
 
 		# Validate properties before merging
-		super(CostCenter, self).before_rename(olddn, new_cost_center, merge, "is_group")
+		super().before_rename(olddn, new_cost_center, merge, "is_group")
 		if not merge:
 			new_cost_center = get_name_with_number(new_cost_center, self.cost_center_number)
 
 		return new_cost_center
 
 	def after_rename(self, olddn, newdn, merge=False):
-		super(CostCenter, self).after_rename(olddn, newdn, merge)
+		super().after_rename(olddn, newdn, merge)
 
 		if not merge:
 			new_cost_center = frappe.db.get_value("Cost Center", newdn, ["cost_center_name", "cost_center_number"], as_dict=1)

@@ -17,7 +17,7 @@ class LandedCostVoucher(AccountsController):
 	allow_advances_unlink = True
 
 	def __init__(self, *args, **kwargs):
-		super(LandedCostVoucher, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Draft", None],
 			["Submitted", "eval:self.docstatus==1"],
@@ -28,7 +28,7 @@ class LandedCostVoucher(AccountsController):
 		]
 
 	def validate(self):
-		super(LandedCostVoucher, self).validate()
+		super().validate()
 		self.check_mandatory()
 		self.validate_credit_to_account()
 		self.validate_purchase_receipts()

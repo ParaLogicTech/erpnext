@@ -54,7 +54,7 @@ class SellingController(TransactionController):
 				self.get_formatted("grand_total"))
 
 	def onload(self):
-		super(SellingController, self).onload()
+		super().onload()
 
 		if self.doctype in ("Sales Order", "Delivery Note", "Sales Invoice"):
 			self.set_onload("is_internal_customer",
@@ -64,7 +64,7 @@ class SellingController(TransactionController):
 			self.calculate_taxes_and_totals()
 
 	def validate(self):
-		super(SellingController, self).validate()
+		super().validate()
 		self.validate_bill_to()
 		self.validate_items()
 		self.set_qty_as_per_stock_uom()
@@ -137,7 +137,7 @@ class SellingController(TransactionController):
 		super().set_party_account(force=force)
 
 	def set_missing_values(self, for_validate=False):
-		super(SellingController, self).set_missing_values(for_validate)
+		super().set_missing_values(for_validate)
 
 		# set contact and address details for customer, if they are not mentioned
 		self.set_missing_lead_customer_details()
@@ -1013,7 +1013,7 @@ class SellingController(TransactionController):
 							frappe.throw(_("Row #{0}: Target Warehouse must be not set for Item {1}").format(d.idx, d.item_code))
 
 	def validate_transaction_type(self):
-		super(SellingController, self).validate_transaction_type()
+		super().validate_transaction_type()
 
 		if self.get('transaction_type'):
 			if not frappe.get_cached_value("Transaction Type", self.transaction_type, 'selling'):

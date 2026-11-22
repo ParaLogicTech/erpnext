@@ -13,7 +13,7 @@ from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of
 
 class JournalEntry(AccountsController):
 	def __init__(self, *args, **kwargs):
-		super(JournalEntry, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 	def get_feed(self):
 		parties = set()

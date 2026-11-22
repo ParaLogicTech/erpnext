@@ -37,7 +37,7 @@ class InvalidPaymentEntry(frappe.ValidationError):
 
 class PaymentEntry(AccountsController):
 	def __init__(self, *args, **kwargs):
-		super(PaymentEntry, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.setup_party_account_field()
 
 	def get_feed(self):

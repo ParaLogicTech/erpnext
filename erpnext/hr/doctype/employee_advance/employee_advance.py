@@ -16,7 +16,7 @@ class EmployeeAdvanceOverPayment(frappe.ValidationError):
 
 class EmployeeAdvance(AccountsController):
 	def __init__(self, *args, **kwargs):
-		super(EmployeeAdvance, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Draft", None],
 			["Unpaid", "eval:self.docstatus==1"],

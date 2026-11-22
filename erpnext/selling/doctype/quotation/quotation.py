@@ -21,7 +21,7 @@ form_grid_templates = {
 
 class Quotation(SellingController):
 	def validate(self):
-		super(Quotation, self).validate()
+		super().validate()
 		self.validate_quotation_valid_till()
 		self.validate_delivery_date()
 		self.validate_project()
@@ -75,7 +75,7 @@ class Quotation(SellingController):
 		self.validate_approval_date()
 
 	def onload(self):
-		super(Quotation, self).onload()
+		super().onload()
 		if self.quotation_to == "Customer":
 			self.set_onload('customer', self.party_name)
 		elif self.quotation_to == "Lead":

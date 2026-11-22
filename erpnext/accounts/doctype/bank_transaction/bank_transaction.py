@@ -11,7 +11,7 @@ from frappe import _
 
 class BankTransaction(StatusUpdaterERP):
 	def __init__(self, *args, **kwargs):
-		super(BankTransaction, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Unreconciled", "eval:self.docstatus == 1 and self.unallocated_amount>0"],
 			["Reconciled", "eval:self.docstatus == 1 and self.unallocated_amount<=0"]

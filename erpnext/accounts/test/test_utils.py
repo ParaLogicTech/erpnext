@@ -6,7 +6,7 @@ from frappe.test_runner import make_test_objects
 class TestUtils(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
-		super(TestUtils, cls).setUpClass()
+		super().setUpClass()
 		make_test_objects('Address', ADDRESS_RECORDS)
 
 	def test_get_party_shipping_address(self):

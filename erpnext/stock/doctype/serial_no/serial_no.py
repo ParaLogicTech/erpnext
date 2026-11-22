@@ -53,7 +53,7 @@ class SerialNoDuplicateError(frappe.ValidationError):
 
 class SerialNo(StockController):
 	def __init__(self, *args, **kwargs):
-		super(SerialNo, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.via_stock_ledger = False
 
 	def onload(self):
