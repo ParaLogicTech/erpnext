@@ -448,3 +448,4 @@ execute:frappe.delete_doc_if_exists("Report", "Completed Work Orders")
 erpnext.patches.v15_0.remove_domain_modules
 erpnext.patches.v15_0.remove_erpnext_integrations
 erpnext.patches.v15_0.remove_setup_progress
+execute:frappe.delete_doc_if_exists("Report", "IRS 1099")
