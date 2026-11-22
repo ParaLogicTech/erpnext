@@ -1,8 +1,0 @@
-erpnext/setup/doctype/company/tests/test_company.js
-erpnext/crm/doctype/lead/tests/test_lead_individual.js
-erpnext/crm/doctype/lead/tests/test_lead_organization.js
-erpnext/setup/doctype/company/tests/test_company_production.js
-erpnext/hr/doctype/leave_block_list/test_leave_block_list.js
-erpnext/hr/doctype/department/test_department.js
-erpnext/hr/doctype/designation/test_designation.js
-erpnext/projects/doctype/task/tests/test_task_tree.js
