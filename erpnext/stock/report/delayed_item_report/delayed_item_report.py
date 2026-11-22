@@ -40,7 +40,8 @@ class DelayedItemReport(object):
 			sales_order_field = "sales_order"
 
 		if self.filters.get("sales_order"):
-			conditions = " and `tab%s`.%s = '%s'" %(child_doc, sales_order_field, self.filters.get("sales_order"))
+			conditions += " and `tab%s`.%s = %s" % (child_doc, sales_order_field,
+				frappe.db.escape(self.filters.get("sales_order")))
 
 		self.transactions = frappe.db.sql(""" SELECT `tab{child_doc}`.item_code, `tab{child_doc}`.item_name,
 				`tab{child_doc}`.item_group, `tab{child_doc}`.qty, `tab{child_doc}`.rate, `tab{child_doc}`.amount,
@@ -72,19 +73,26 @@ class DelayedItemReport(object):
 			doctype = "Sales Order Item"
 			filters = {'parent': ('in', sales_orders), 'name': ('in', sales_order_items)}
 
+		fields = ["delivery_date", "name"]
+		if not consolidated:
+			fields.append("parent")
+
 		so_data = {}
-		for d in frappe.get_all(doctype, filters = filters,
-			fields = ["delivery_date", "parent", "name"]):
+		for d in frappe.get_all(doctype, filters=filters, fields=fields):
 			key = d.name if consolidated else (d.parent, d.name)
 			if key not in so_data:
 				so_data.setdefault(key, d.delivery_date)
 
 		for row in self.transactions:
 			key = row.sales_order if consolidated else (row.sales_order, row.sales_order_item)
+			delivery_date = so_data.get(key)
 			row.update({
-				'delivery_date': so_data.get(key),
-				'delayed_days': date_diff(row.posting_date, so_data.get(key))
+				'delivery_date': delivery_date,
+				'delayed_days': date_diff(row.posting_date, delivery_date) if delivery_date else None
 			})
+
+		# without an expected delivery date a row can't be late, and on-time rows aren't delayed
+		self.transactions = [row for row in self.transactions if row.delayed_days and row.delayed_days > 0]
 
 		return self.transactions
 
