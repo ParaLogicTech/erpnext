@@ -39,7 +39,7 @@ function set_training_hours(frm) {
 		let diff_hours = end.diff(start, "hours", true);
 
 		if (diff_hours > 0) {
-			let hours = flt(diff_hours, 2);
+			let hours = flt(diff_hours, precision("training_hours"));
 			if (flt(frm.doc.training_hours) !== hours) {
 				frm.set_value("training_hours", hours);
 			}
