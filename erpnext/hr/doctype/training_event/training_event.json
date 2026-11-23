@@ -161,7 +161,7 @@
   },
   {
    "fieldname": "training_hours",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "label": "Training Hours",
    "non_negative": 1
   },
@@ -208,7 +208,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-23 16:31:49.355236",
+ "modified": "2026-11-23 17:36:16.788609",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Training Event",
