@@ -1,0 +1,39 @@
+{
+ "actions": [],
+ "creation": "2026-11-16 15:30:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "topic",
+  "topic_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "topic",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Topic",
+   "options": "Training Topic"
+  },
+  {
+   "fetch_from": "topic.topic_name",
+   "fieldname": "topic_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Topic Name"
+  }
+ ],
+ "istable": 1,
+ "modified": "2026-11-16 15:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Training Course Topic",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
