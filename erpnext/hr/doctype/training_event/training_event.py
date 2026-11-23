@@ -74,6 +74,7 @@ def make_training_feedback(source_name, target_doc=None):
 			"doctype": "Training Feedback",
 			"field_map": {
 				"name": "training_event",
+				"event_name": "event_name"
 			},
 		},
 	}

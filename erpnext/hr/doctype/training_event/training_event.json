@@ -59,7 +59,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Event Status",
-   "options": "Scheduled\nCompleted\nCancelled",
+   "options": "Scheduled\nCompleted\nFeedback Submitted\nCancelled",
    "reqd": 1
   },
   {
@@ -161,7 +161,7 @@
   },
   {
    "fieldname": "training_hours",
-   "fieldtype": "Float",
+   "fieldtype": "Int",
    "label": "Training Hours",
    "non_negative": 1
   },
@@ -208,7 +208,7 @@
  "is_calendar_and_gantt": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-11-23 03:21:03.857753",
+ "modified": "2026-11-23 16:31:49.355236",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Training Event",
