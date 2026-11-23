@@ -14,7 +14,7 @@ from frappe.utils import cint, get_datetime, get_link_to_form
 
 class DeliveryTrip(Document):
 	def __init__(self, *args, **kwargs):
-		super(DeliveryTrip, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 		# Google Maps returns distances in meters by default
 		self.default_distance_uom = frappe.db.get_single_value("Global Defaults", "default_distance_unit") or "Meter"

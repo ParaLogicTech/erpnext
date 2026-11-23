@@ -6,7 +6,6 @@ import frappe
 import json
 from frappe.utils import getdate
 from frappe.utils.dateutils import parse_date
-from six import iteritems
 
 @frappe.whitelist()
 def upload_bank_statement():
@@ -41,7 +40,7 @@ def create_bank_entries(columns, data, bank_account):
 		if all(item is None for item in d) is True:
 			continue
 		fields = {}
-		for key, value in iteritems(header_map):
+		for key, value in header_map.items():
 			fields.update({key: d[int(value)-1]})
 
 		try:

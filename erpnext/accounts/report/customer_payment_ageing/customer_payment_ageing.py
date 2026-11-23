@@ -106,9 +106,8 @@ class PaymentAgeingReport:
 
 				if gle_currency:
 					account_currency = gle_currency
-				else:
-					account_currency = (None if self.filters.party_type in ["Employee", "Student", "Shareholder", "Member",
-						"Letter of Credit"] else frappe.db.get_value(self.filters.party_type, self.filters.party, "default_currency"))
+				elif frappe.get_meta(self.filters.party_type).has_field("default_currency"):
+					account_currency = frappe.db.get_value(self.filters.party_type, self.filters.party, "default_currency")
 
 			self.filters.account_currency = account_currency or self.filters.company_currency
 

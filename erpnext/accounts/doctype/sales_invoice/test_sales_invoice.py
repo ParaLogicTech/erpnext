@@ -16,7 +16,6 @@ from frappe.model.naming import make_autoname
 from erpnext.accounts.doctype.account.test_account import get_inventory_account, create_account
 from erpnext.controllers.taxes_and_totals import get_itemised_tax_breakup_data
 from erpnext.stock.doctype.item.test_item import create_item
-from six import iteritems
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_inter_company_transaction
 from erpnext.regional.india.utils import get_ewb_data
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
@@ -298,7 +297,7 @@ class TestSalesInvoice(unittest.TestCase):
 
 		# check if item values are calculated
 		for i, d in enumerate(si.get("items")):
-			for k, v in iteritems(expected_values[i]):
+			for k, v in expected_values[i].items():
 				self.assertEqual(d.get(k), v)
 
 		# check net total
@@ -553,7 +552,7 @@ class TestSalesInvoice(unittest.TestCase):
 
 		# check if item values are calculated
 		for d in si.get("items"):
-			for k, v in iteritems(expected_values[d.item_code]):
+			for k, v in expected_values[d.item_code].items():
 				self.assertEqual(d.get(k), v)
 
 		# check net total
@@ -660,7 +659,7 @@ class TestSalesInvoice(unittest.TestCase):
 
 		# check if item values are calculated
 		for i, d in enumerate(si.get("items")):
-			for key, val in iteritems(expected_values[i]):
+			for key, val in expected_values[i].items():
 				self.assertEqual(d.get(key), val)
 
 		# check amounts before discount

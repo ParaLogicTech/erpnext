@@ -8,7 +8,6 @@ def get_data():
 		'non_standard_fieldnames': {
 			'Tax Rule': 'sales_tax_template',
 			'Subscription': 'tax_template',
-			'Restaurant': 'default_tax_template'
 		},
 		'transactions': [
 			{
@@ -17,7 +16,7 @@ def get_data():
 			},
 			{
 				'label': _('References'),
-				'items': ['POS Profile', 'Subscription', 'Restaurant', 'Tax Rule']
+				'items': ['POS Profile', 'Subscription', 'Tax Rule']
 			}
 		]
 	}

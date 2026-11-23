@@ -15,6 +15,10 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		this.setup_queries();
 	}
 
+	onload() {
+		erpnext.accounts.dimensions.setup_dimension_filters(this.frm);
+	}
+
 	refresh() {
 		erpnext.hide_company();
 		this.setup_buttons();
@@ -133,6 +137,10 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		}
 
 		erpnext.utils.setup_remove_zero_qty_rows(this.frm, ['qty', 'rejected_qty']);
+	}
+
+	company() {
+		erpnext.accounts.dimensions.set_default_dimensions(this.frm);
 	}
 
 	rejected_qty() {

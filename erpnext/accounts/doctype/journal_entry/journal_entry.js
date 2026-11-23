@@ -20,6 +20,7 @@ erpnext.accounts.JournalEntry = class JournalEntry extends frappe.ui.form.Contro
 
 	onload() {
 		this.load_defaults();
+		erpnext.accounts.dimensions.setup_dimension_filters(this.frm);
 	}
 
 	validate() {
@@ -212,6 +213,7 @@ erpnext.accounts.JournalEntry = class JournalEntry extends frappe.ui.form.Contro
 
 	company() {
 		this.get_other_company_accounts_and_cost_centers();
+		erpnext.accounts.dimensions.set_default_dimensions(this.frm);
 	}
 
 	multi_currency() {

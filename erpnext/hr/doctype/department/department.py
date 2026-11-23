@@ -38,7 +38,7 @@ class Department(NestedSet):
 		NestedSet.on_update(self)
 
 	def on_trash(self):
-		super(Department, self).on_trash()
+		super().on_trash()
 		delete_events(self.doctype, self.name)
 
 

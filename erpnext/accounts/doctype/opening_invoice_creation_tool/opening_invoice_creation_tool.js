@@ -28,6 +28,10 @@ frappe.ui.form.on('Opening Invoice Creation Tool', {
 		});
 	},
 
+	onload: function(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+	},
+
 	refresh: function(frm) {
 		erpnext.hide_company(frm);
 		frm.disable_save();
@@ -53,6 +57,8 @@ frappe.ui.form.on('Opening Invoice Creation Tool', {
 	},
 
 	company: function(frm) {
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
+
 		frappe.call({
 			method: 'erpnext.accounts.doctype.opening_invoice_creation_tool.opening_invoice_creation_tool.get_temporary_opening_account',
 			args: {

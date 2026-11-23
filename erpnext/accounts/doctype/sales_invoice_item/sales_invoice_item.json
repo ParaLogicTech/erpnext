@@ -462,8 +462,7 @@
    "fieldname": "is_free_item",
    "fieldtype": "Check",
    "label": "Is Free Item",
-   "print_hide": 1,
-   "read_only": 1
+   "print_hide": 1
   },
   {
    "fieldname": "net_rate",
@@ -1694,7 +1693,7 @@
  "idx": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-09-12 17:52:28.874623",
+ "modified": "2026-11-19 06:26:16.608201",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Sales Invoice Item",

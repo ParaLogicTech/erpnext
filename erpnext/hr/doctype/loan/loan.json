@@ -53,7 +53,7 @@
    "fieldtype": "Select",
    "in_standard_filter": 1,
    "label": "Applicant Type",
-   "options": "Employee\nMember",
+   "options": "Employee",
    "reqd": 1
   },
   {
@@ -299,13 +299,14 @@
    "fieldtype": "Column Break"
   }
  ],
+ "grid_page_length": 500,
  "is_submittable": 1,
  "links": [],
- "modified": "2023-09-14 16:03:19.169102",
+ "modified": "2026-11-21 03:21:04.671253",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Loan",
- "naming_rule": "Expression (old style)",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -344,6 +345,8 @@
    "role": "Employee"
   }
  ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
  "search_fields": "applicant_name, posting_date, status, loan_amount",
  "sort_field": "creation",
  "sort_order": "DESC",

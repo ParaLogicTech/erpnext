@@ -27,7 +27,6 @@ from erpnext.stock.doctype.bundled_item.bundled_item import make_bundled_item_li
 from erpnext.accounts.doctype.invoice_discounting.invoice_discounting import \
 	get_party_account_based_on_invoice_discounting
 
-from erpnext.healthcare.utils import manage_invoice_submit_cancel
 
 form_grid_templates = {
 	"items": "templates/form_grid/item_grid.html"
@@ -38,7 +37,7 @@ class SalesInvoice(SellingController):
 	allow_advances_unlink = True
 
 	def __init__(self, *args, **kwargs):
-		super(SalesInvoice, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 	def autoname(self):
 		if self.has_stin:
@@ -178,10 +177,6 @@ class SalesInvoice(SellingController):
 		self.validate_zero_outstanding()
 		self.validate_zero_amount_invoice()
 
-		# Healthcare Service Invoice.
-		if "Healthcare" in frappe.get_active_domains():
-			manage_invoice_submit_cancel(self, "on_submit")
-
 	def before_cancel(self):
 		self.update_time_sheet(None)
 
@@ -215,10 +210,6 @@ class SalesInvoice(SellingController):
 		self.update_project_billing_and_sales(material_cost_of_sales=True)
 
 		unlink_inter_company_doc(self.doctype, self.name, self.inter_company_reference)
-
-		# Healthcare Service Invoice.
-		if "Healthcare" in frappe.get_active_domains():
-			manage_invoice_submit_cancel(self, "on_cancel")
 
 	def on_gl_against_voucher(self, account, party_type, party, on_cancel):
 		if not party_type or not party:
@@ -739,7 +730,7 @@ class SalesInvoice(SellingController):
 			# set null so it will be set based on customer details
 			self.is_goodwill_invoice = None
 
-		super(SalesInvoice, self).set_missing_values(for_validate)
+		super().set_missing_values(for_validate)
 		self.set_skip_delivery_note_for_transaction()
 		self.set_goodwill_invoicing_details()
 
@@ -905,7 +896,7 @@ class SalesInvoice(SellingController):
 			sales_order_compare += [["customer", "="]]
 			delivery_note_compare += [["customer", "="]]
 
-		super(SalesInvoice, self).validate_with_previous_doc({
+		super().validate_with_previous_doc({
 			"Sales Order": {
 				"ref_dn_field": "sales_order",
 				"compare_fields": sales_order_compare
@@ -943,7 +934,7 @@ class SalesInvoice(SellingController):
 		self.validate_packing_slips()
 
 		if not self.get('project'):
-			super(SalesInvoice, self).validate_with_previous_doc({
+			super().validate_with_previous_doc({
 				"Delivery Note": {
 					"ref_dn_field": "delivery_note",
 					"compare_fields": [["project", "="]],
@@ -1791,45 +1782,6 @@ class SalesInvoice(SellingController):
 			points_to_redeem -= redeemed_points
 			if points_to_redeem < 1: # since points_to_redeem is integer
 				break
-
-	# Healthcare
-	@frappe.whitelist()
-	def set_healthcare_services(self, checked_values):
-		self.set("items", [])
-		from erpnext.stock.get_item_details import get_item_details
-		for checked_item in checked_values:
-			item_line = self.append("items", {})
-			price_list, price_list_currency = frappe.db.get_values("Price List", {"selling": 1}, ['name', 'currency'])[0]
-			args = {
-				'doctype': "Sales Invoice",
-				'item_code': checked_item['item'],
-				'company': self.company,
-				'customer': frappe.db.get_value("Patient", self.patient, "customer"),
-				'selling_price_list': price_list,
-				'price_list_currency': price_list_currency,
-				'plc_conversion_rate': 1.0,
-				'conversion_rate': 1.0
-			}
-			item_details = get_item_details(args)
-			item_line.item_code = checked_item['item']
-			item_line.qty = 1
-			if checked_item['qty']:
-				item_line.qty = checked_item['qty']
-			if checked_item['rate']:
-				item_line.rate = checked_item['rate']
-			else:
-				item_line.rate = item_details.price_list_rate
-			item_line.amount = float(item_line.rate) * float(item_line.qty)
-			if checked_item['income_account']:
-				item_line.income_account = checked_item['income_account']
-			if checked_item['dt']:
-				item_line.reference_dt = checked_item['dt']
-			if checked_item['dn']:
-				item_line.reference_dn = checked_item['dn']
-			if checked_item['description']:
-				item_line.description = checked_item['description']
-
-		self.set_missing_values(for_validate = True)
 
 	def validate_zero_amount_invoice(self):
 		if self.get("rounded_total") or self.get("grand_total"):

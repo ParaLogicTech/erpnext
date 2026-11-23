@@ -4,7 +4,6 @@
 
 import frappe, erpnext, math, json
 from frappe import _
-from six import string_types
 from frappe.utils import flt, add_months, cint, nowdate, getdate, today, date_diff, month_diff, add_days, get_datetime, get_link_to_form
 from erpnext.assets.doctype.asset_category.asset_category import get_asset_category_account
 from erpnext.assets.doctype.asset.depreciation \
@@ -631,7 +630,7 @@ class Asset(AccountsController):
 
 	@frappe.whitelist()
 	def get_depreciation_rate(self, args, on_validate=False):
-		if isinstance(args, string_types):
+		if isinstance(args, str):
 			args = json.loads(args)
 
 		float_precision = cint(frappe.db.get_default("float_precision")) or 2
@@ -812,9 +811,8 @@ def make_journal_entry(asset_name):
 @frappe.whitelist()
 def make_asset_movement(assets, purpose=None):
 	import json
-	from six import string_types
 
-	if isinstance(assets, string_types):
+	if isinstance(assets, str):
 		assets = json.loads(assets)
 
 	if len(assets) == 0:

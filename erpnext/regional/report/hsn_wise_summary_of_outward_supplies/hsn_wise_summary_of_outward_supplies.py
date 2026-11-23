@@ -6,7 +6,6 @@ from frappe import _
 from frappe.utils import flt, getdate, cstr
 from frappe.model.meta import get_field_precision
 from frappe.utils.xlsxutils import handle_html
-from six import iteritems
 import json
 from erpnext.regional.india.utils import get_gst_accounts
 from erpnext.regional.report.gstr_1.gstr_1 import get_company_gstin_number
@@ -214,7 +213,7 @@ def get_merged_data(columns, data):
 				else:
 					merged_hsn_dict[row[0]][d['fieldname']] = row[i]
 
-	for key, value in iteritems(merged_hsn_dict):
+	for key, value in merged_hsn_dict.items():
 		result.append(value)
 
 	return result

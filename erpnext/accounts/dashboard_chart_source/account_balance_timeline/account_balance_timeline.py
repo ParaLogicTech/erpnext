@@ -10,7 +10,7 @@ from frappe.utils.nestedset import get_descendants_of
 from erpnext import get_company_currency, get_default_currency
 
 
-class AccountBalanceTimeline(object):
+class AccountBalanceTimeline:
 	def __init__(self, chart_name, chart, from_date, to_date, filters=None, timespan=None, time_interval=None):
 		if chart_name:
 			self.chart = frappe.get_doc("Dashboard Chart", chart_name)

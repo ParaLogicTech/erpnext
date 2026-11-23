@@ -19,8 +19,10 @@ from erpnext.stock.get_item_details import (
 from erpnext.accounts.doctype.pricing_rule.utils import (
 	get_applied_pricing_rules,
 	apply_pricing_rule_on_transaction,
+	get_product_discount_rule,
 	apply_free_item_pricing_rule,
 	remove_free_item_pricing_rules,
+	apply_mix_and_match_product_discount_rules,
 	update_pricing_rule_table,
 )
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
@@ -181,7 +183,7 @@ class TransactionController(StockController):
 		self.run_method("calculate_taxes_and_totals")
 
 	def get_item_details_parent_args(self):
-		parent_dict = {}
+		parent_dict = frappe._dict()
 		for fieldname in self.meta.get_valid_columns():
 			parent_dict[fieldname] = self.get(fieldname)
 
@@ -216,6 +218,7 @@ class TransactionController(StockController):
 				self.set_missing_item_details_for_row(item, for_validate=for_validate, parent_dict=parent_dict)
 
 			remove_free_item_pricing_rules(self)
+			apply_mix_and_match_product_discount_rules(self)
 
 		self.set_missing_applies_to_details()
 
@@ -229,9 +232,9 @@ class TransactionController(StockController):
 			parent_dict = self.get_item_details_parent_args()
 
 		args = self.get_item_details_child_args(item, parent_dict)
-		ret = get_item_details(args, self, for_validate=for_validate, overwrite_warehouse=False)
+		item_details = get_item_details(args, self, for_validate=for_validate, overwrite_warehouse=False)
 
-		for fieldname, value in ret.items():
+		for fieldname, value in item_details.items():
 			if not item.meta.get_field(fieldname) or value is None:
 				continue
 
@@ -246,74 +249,128 @@ class TransactionController(StockController):
 				item.set(fieldname, value)
 
 		# auto serial no
-		if ret.get("serial_no") and item.meta.has_field("serial_no"):
+		if item_details.get("serial_no") and item.meta.has_field("serial_no"):
 			item_qty = abs(flt(item.get("qty"))) * flt(item.get("conversion_factor") or 1)
 			if flt(item_qty, item.precision("qty")) != len(get_serial_nos(item.get("serial_no"))):
-				item.set("serial_no", ret.get("serial_no"))
+				item.set("serial_no", item_details.get("serial_no"))
 
 		# Set Other Item Data in onload
-		if ret.get("apply_rule_on_other_items"):
-			item.set_onload("apply_rule_on_other_items", ret.get("apply_rule_on_other_items"))
-			item.set_onload("apply_rule_on", ret.get("apply_rule_on"))
-		if ret.get("free_item_data"):
-			item.set_onload("free_item_data", ret.get("free_item_data"))
+		if item_details.get("apply_rule_on_other_items"):
+			item.set_onload("apply_rule_on_other_items", item_details.get("apply_rule_on_other_items"))
+			item.set_onload("apply_rule_on", item_details.get("apply_rule_on"))
+		if item_details.get("free_item_data"):
+			item.set_onload("free_item_data", item_details.get("free_item_data"))
 
 		# price list rate and pricing rules
 		if not skip_pricing_rules:
-			if ret.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
-				self.set_restricted_price_list_rate(item, ret.get("price_list_rate"))
-			if (ret.get("pricing_rules") or ret.get("pricing_rule_removed")) and not self.get("ignore_pricing_rule"):
-				self.apply_pricing_rule_on_item(item, ret, for_validate=for_validate)
+			if item_details.get("price_list_rate") is not None and item.meta.has_field("price_list_rate"):
+				self.set_restricted_price_list_rate(item, item_details.get("price_list_rate"))
+			if (item_details.get("pricing_rules") or item_details.get("pricing_rule_removed")) and not self.get("ignore_pricing_rule"):
+				self.apply_pricing_rule_on_item(item, item_details, args, for_validate=for_validate)
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
 		pass
 
-	def apply_pricing_rule_on_item(self, item, pricing_rule_args, for_validate=False):
-		if pricing_rule_args.get("validate_applied_rule"):
-			for pricing_rule in get_applied_pricing_rules(item.get('pricing_rules')):
-				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
-				for field in ['discount_percentage', 'discount_amount', 'rate']:
-					if item.get(field) < pricing_rule_doc.get(field):
-						title = frappe.utils.get_link_to_form("Pricing Rule", pricing_rule)
+	def apply_pricing_rule_on_item(self, item, item_details, args, for_validate=False):
+		item.set("pricing_rules", item_details.get("pricing_rules"))
 
-						frappe.msgprint(_("Row {0}: user has not applied the rule {1} on the item {2}")
-							.format(item.idx, frappe.bold(title), frappe.bold(item.item_code)))
+		if item_details.get("validate_applied_rule"):
+			self.validate_applied_pricing_rules_on_item(item, item_details, args)
 			return
 
-		if not pricing_rule_args.get("do_not_force_pricing_rule") or pricing_rule_args.get("pricing_rule_removed"):
-			if pricing_rule_args.get("price_or_product_discount") == 'Price':
-				item.set("pricing_rules", pricing_rule_args.get("pricing_rules"))
-				item.set("discount_percentage", pricing_rule_args.get("discount_percentage"))
-				item.set("discount_amount", pricing_rule_args.get("discount_amount"))
+		if not item_details.get("do_not_force_pricing_rule") or item_details.get("pricing_rule_removed"):
+			item.set("is_free_item", cint(item_details.get("is_free_item")))
 
-				if pricing_rule_args.get("pricing_rule_for") == "Rate":
-					item.set("price_list_rate", pricing_rule_args.get("price_list_rate"))
+			if item_details.get("price_or_product_discount") == 'Price':
+				item.set("discount_percentage", item_details.get("discount_percentage"))
+				item.set("discount_amount", item_details.get("discount_amount"))
+
+				if item_details.get("pricing_rule_for") == "Rate":
+					item.set("price_list_rate", item_details.get("price_list_rate"))
 
 				if (
-					pricing_rule_args.get("pricing_rule_for") in ("Valuation Rate", "Last Purchase Rate", "Price List Rate", "Higher of Valuation / Last Purchase Rate")
-					and pricing_rule_args.get("price_list_rate")
+					item_details.get("pricing_rule_for") in ("Valuation Rate", "Last Purchase Rate", "Price List Rate", "Higher of Valuation / Last Purchase Rate")
+					and item_details.get("price_list_rate")
 				):
-					item.set("price_list_rate", pricing_rule_args.get("price_list_rate"))
+					item.set("price_list_rate", item_details.get("price_list_rate"))
 
 				if item.get("price_list_rate"):
 					item.rate = flt(item.price_list_rate * (1.0 - (flt(item.discount_percentage) / 100.0)),
 						item.precision("rate"))
 
-					if item.get('discount_amount'):
+					if item.get("discount_amount"):
 						item.rate = item.price_list_rate - item.discount_amount
 
-			if pricing_rule_args.get("free_item_data"):
+				if item.meta.has_field("margin_type") and item_details.get("margin_type"):
+					item.set("margin_rate_or_amount", item_details.get("margin_rate_or_amount"))
+					if item_details.get("margin_rate_or_amount"):
+						item.set("margin_type", item_details.get("margin_type"))
+
+			elif item_details.get("price_or_product_discount") == "Product":
+				item.set("discount_percentage", item_details.get("discount_percentage"))
+				item.set("discount_amount", item_details.get("discount_amount"))
+
+			if item_details.get("free_item_data"):
 				apply_free_item_pricing_rule(
 					self,
-					pricing_rule_args.get("free_item_data"),
+					item_details.get("free_item_data"),
 					for_validate=for_validate,
 					row=item,
 				)
 
-			if item.meta.has_field("margin_type") and pricing_rule_args.get("margin_type"):
-				item.set("margin_rate_or_amount", pricing_rule_args.get("margin_rate_or_amount"))
-				if pricing_rule_args.get("margin_rate_or_amount"):
-					item.set("margin_type", pricing_rule_args.get("margin_type"))
+	def validate_applied_pricing_rules_on_item(self, item, item_details, args):
+		if item.get("_applied_pricing_rules_validated"):
+			return
+
+		for pricing_rule in get_applied_pricing_rules(item.get("pricing_rules")):
+			pr_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+
+			if pr_doc.price_or_product_discount == "Price":
+				rate_or_discount_to_validate = ("Discount Percentage", "Discount Amount", "Rate")
+				if pr_doc.rate_or_discount not in rate_or_discount_to_validate:
+					continue
+
+				field = frappe.scrub(pr_doc.rate_or_discount)
+				item_value = flt(item.get(field), item.precision(field))
+				rule_value = flt(pr_doc.get(field), item.precision(field))
+
+				# Rate should not be higher, discount should not be lower
+				if field == "rate":
+					is_not_applied = item_value > rule_value
+					message = _("Row {0}: Pricing Rule {1} is not applied on the Item {2}, {3} should be {4} or lower")
+				else:
+					is_not_applied = item_value < rule_value
+					message = _("Row {0}: Pricing Rule {1} is not applied on the Item {2}, {3} should be {4} or greater")
+
+				if is_not_applied:
+					frappe.msgprint(message.format(
+						item.idx,
+						frappe.utils.get_link_to_form("Pricing Rule", pricing_rule),
+						frappe.bold(item.item_code),
+						frappe.bold(pr_doc.meta.get_label(field)),
+						frappe.bold(pr_doc.get_formatted(field)),
+					))
+					item._applied_pricing_rules_validated = True
+
+			elif pr_doc.price_or_product_discount == "Product":
+				if pr_doc.mixed_conditions and pr_doc.mix_and_match:
+					continue
+
+				free_item_data = get_product_discount_rule(pr_doc, item_details, main_item_args=args, doc=self, for_validate=True)
+				if not free_item_data or not free_item_data.item_code:
+					continue
+
+				free_item_code = free_item_data.item_code
+				free_rows = [d for d in self.get("items") if d.item_code == free_item_code and (d.get("is_free_item") or not d.rate)]
+				if not free_rows:
+					frappe.msgprint(_("Row {0}: Pricing Rule {1} is not applied, {2} {3} of Free Item {4} should be included").format(
+						item.idx,
+						frappe.utils.get_link_to_form("Pricing Rule", pricing_rule),
+						frappe.bold(frappe.format(free_item_data.qty, df=item.meta.get_field("qty"))),
+						frappe.bold(free_item_data.uom or ""),
+						frappe.bold(free_item_code),
+					))
+					item._applied_pricing_rules_validated = True
 
 	def set_missing_applies_to_details(self):
 		if not self.meta.has_field('applies_to_item'):
@@ -325,6 +382,20 @@ class TransactionController(StockController):
 		for k, v in applies_to_details.items():
 			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
 				self.set(k, v)
+
+	def set_qty_as_per_stock_uom(self):
+		for d in self.get("items"):
+			if d.meta.get_field("stock_qty"):
+				if not d.conversion_factor and d.item_code:
+					frappe.throw(_("Row {0}: Conversion Factor is mandatory").format(d.idx))
+				d.stock_qty = flt(flt(d.qty) * flt(d.conversion_factor), 6)
+
+	def set_alt_uom_qty(self):
+		for d in self.get("items"):
+			if d.meta.get_field("alt_uom_qty"):
+				if not d.alt_uom:
+					d.alt_uom_size = 1.0
+				d.alt_uom_qty = flt(flt(d.stock_qty) * flt(d.alt_uom_size), d.precision("alt_uom_qty"))
 
 	def before_calculate_taxes_and_totals(self):
 		pass
@@ -375,6 +446,10 @@ class TransactionController(StockController):
 			pricing_rules = get_applied_pricing_rules(d.pricing_rules)
 			for pricing_rule in pricing_rules:
 				if frappe.get_cached_value("Pricing Rule", pricing_rule, "show_in_print"):
+					is_product_discount = frappe.get_cached_value("Pricing Rule", pricing_rule, "price_or_product_discount") == "Product"
+					if is_product_discount and not d.get("is_free_item"):
+						continue
+
 					description = cstr(frappe.get_cached_value("Pricing Rule", pricing_rule, "rule_description")).strip()
 					d.print_pricing_rule_descriptions.append(description or pricing_rule)
 					self.print_pricing_rules.add(pricing_rule)
@@ -1595,6 +1670,7 @@ def update_child_items(parent_doctype, parent_name, data):
 			if flt(doc_row.price_list_rate):
 				if flt(doc_row.rate) > flt(doc_row.price_list_rate):
 					doc_row.discount_percentage = 0
+					doc_row.discount_amount = 0
 					if doc_row.meta.has_field("margin_type"):
 						doc_row.margin_type = "Amount"
 						doc_row.margin_rate_or_amount = flt(doc_row.rate - doc_row.price_list_rate,

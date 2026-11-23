@@ -74,6 +74,8 @@ frappe.ui.form.on('Payment Entry', {
 			if (!frm.doc.paid_from) frm.set_value("paid_from_account_currency", null);
 			if (!frm.doc.paid_to) frm.set_value("paid_to_account_currency", null);
 		}
+
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
 	},
 
 	setup: function(frm) {
@@ -294,6 +296,7 @@ frappe.ui.form.on('Payment Entry', {
 
 	company: function(frm) {
 		frm.events.get_other_company_accounts_and_cost_centers(frm);
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
 		frm.events.hide_unhide_fields(frm);
 		frm.events.set_dynamic_labels(frm);
 	},

@@ -23,7 +23,7 @@ form_grid_templates = {
 
 class PurchaseOrder(BuyingController):
 	def __init__(self, *args, **kwargs):
-		super(PurchaseOrder, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Draft", None],
 			["To Receive and Bill", "eval:self.receipt_status == 'To Receive' and self.billing_status == 'To Bill' and self.docstatus == 1"],
@@ -69,7 +69,7 @@ class PurchaseOrder(BuyingController):
 		self.validate_raw_materials_reserve_warehouse()
 
 	def on_submit(self):
-		super(PurchaseOrder, self).on_submit()
+		super().on_submit()
 
 		self.update_previous_doc_status()
 		self.update_requested_qty()
@@ -88,7 +88,7 @@ class PurchaseOrder(BuyingController):
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
 
 	def on_cancel(self):
-		super(PurchaseOrder, self).on_cancel()
+		super().on_cancel()
 		self.unlink_payments_on_order_cancel()
 		self.update_status_on_cancel()
 
@@ -229,7 +229,7 @@ class PurchaseOrder(BuyingController):
 			self.db_set("advance_paid", self.advance_paid, update_modified=update_modified)
 
 	def validate_with_previous_doc(self):
-		super(PurchaseOrder, self).validate_with_previous_doc({
+		super().validate_with_previous_doc({
 			"Supplier Quotation": {
 				"ref_dn_field": "supplier_quotation",
 				"compare_fields": [["supplier", "="], ["company", "="], ["currency", "="]],

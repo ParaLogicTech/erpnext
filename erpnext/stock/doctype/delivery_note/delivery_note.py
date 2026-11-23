@@ -23,7 +23,7 @@ form_grid_templates = {
 
 class DeliveryNote(SellingController):
 	def __init__(self, *args, **kwargs):
-		super(DeliveryNote, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Draft", None],
 			["To Bill", "eval:self.billing_status == 'To Bill' and self.docstatus == 1"],
@@ -35,7 +35,7 @@ class DeliveryNote(SellingController):
 
 	def validate(self):
 		self.validate_posting_time()
-		super(DeliveryNote, self).validate()
+		super().validate()
 		self.validate_order_required()
 		self.check_order_on_hold_or_closed()
 		self.validate_project()
@@ -128,7 +128,7 @@ class DeliveryNote(SellingController):
 			for f in fieldname:
 				toggle_print_hide(self.meta if key == "parent" else item_meta, f)
 
-		super(DeliveryNote, self).before_print(print_settings=print_settings)
+		super().before_print(print_settings=print_settings)
 
 	def set_company_address_doc_before_print(self):
 		doc_dict = self.as_dict()
@@ -507,7 +507,7 @@ class DeliveryNote(SellingController):
 					))
 
 	def validate_with_previous_doc(self):
-		super(DeliveryNote, self).validate_with_previous_doc({
+		super().validate_with_previous_doc({
 			"Sales Order": {
 				"ref_dn_field": "sales_order",
 				"compare_fields": [["customer", "="], ["company", "="], ["branch", "="], ["project", "="], ["currency", "="]]

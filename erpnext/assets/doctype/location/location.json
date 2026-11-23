@@ -143,7 +143,7 @@
  "grid_page_length": 500,
  "is_tree": 1,
  "links": [],
- "modified": "2026-10-31 19:43:20.304728",
+ "modified": "2026-11-21 03:22:00.947987",
  "modified_by": "Administrator",
  "module": "Assets",
  "name": "Location",
@@ -197,28 +197,6 @@
    "read": 1,
    "report": 1,
    "role": "Stock Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Agriculture Manager",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Agriculture User",
    "share": 1,
    "write": 1
   }

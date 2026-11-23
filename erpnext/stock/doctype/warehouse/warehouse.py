@@ -64,7 +64,7 @@ class Warehouse(NestedSet):
 			where parent_warehouse = %s limit 1""", self.name)
 
 	def before_rename(self, old_name, new_name, merge=False):
-		super(Warehouse, self).before_rename(old_name, new_name, merge)
+		super().before_rename(old_name, new_name, merge)
 
 		# Add company abbr if not provided
 		new_warehouse = erpnext.encode_company_abbr(new_name, self.company)
@@ -79,7 +79,7 @@ class Warehouse(NestedSet):
 		return new_warehouse
 
 	def after_rename(self, old_name, new_name, merge=False):
-		super(Warehouse, self).after_rename(old_name, new_name, merge)
+		super().after_rename(old_name, new_name, merge)
 
 		new_warehouse_name = self.get_new_warehouse_name_without_abbr(new_name)
 		self.db_set("warehouse_name", new_warehouse_name)

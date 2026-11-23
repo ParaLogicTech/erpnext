@@ -14,6 +14,10 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 		this.setup_queries();
 	}
 
+	onload() {
+		erpnext.accounts.dimensions.setup_dimension_filters(this.frm);
+	}
+
 	validate() {
 		this.update_manual_distribution_json();
 		this.calculate_taxes_and_totals();
@@ -569,6 +573,7 @@ erpnext.stock.LandedCostVoucher = class LandedCostVoucher extends erpnext.stock.
 			this.set_exchange_rate();
 		}
 		erpnext.utils.get_party_account_details(this.frm);
+		erpnext.accounts.dimensions.set_default_dimensions(this.frm);
 		this.set_dynamic_labels();
 	}
 

@@ -31,7 +31,7 @@ import copy
 
 class Project(StatusUpdaterERP):
 	def __init__(self, *args, **kwargs):
-		super(Project, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 		self.force_customer_fields = [
 			"customer_name", "customer_group",

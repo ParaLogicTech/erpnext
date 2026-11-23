@@ -99,13 +99,13 @@ def _get_pricing_rules(apply_on, args, values):
 
 	pricing_rules = frappe.db.sql(f"""
 		select `tabPricing Rule`.*, {child_table}.{apply_on_field}, {child_table}.uom
-		from `tabPricing Rule`, {child_table}
+		from `tabPricing Rule`
+		left join {child_table} on {child_table}.parent = `tabPricing Rule`.name
 		where
 			(
 				({item_conditions})
 				or (({other_item_conditions}) and ifnull(`tabPricing Rule`.apply_rule_on_other, '') != '')
 			)
-			and {child_table}.parent = `tabPricing Rule`.name
 			and `tabPricing Rule`.disable = 0
 			and `tabPricing Rule`.{args.selling_or_buying} = 1
 			{parent_doc_conditions}
@@ -131,8 +131,17 @@ def filter_pricing_rules(pricing_rules, args, doc=None):
 
 
 def validate_pricing_rule_validity(rule, args, doc=None, keep_apply_on_other=False):
-	if not evaluate_pricing_rule_condition(rule, args, doc=doc):
+	# Free item of a Product Discount rule (except mix and match) is validated through its main item
+	if args.get("is_free_item") and rule.price_or_product_discount == "Product" and not rule.mix_and_match:
+		return True
+
+	if (
+		not check_is_other_item(args, rule)
+		and not args.get("is_free_item")
+		and not evaluate_pricing_rule_condition(rule, args, doc=doc)
+	):
 		return False
+
 	if not validate_pricing_rule_based_on_coupon_code(rule, args):
 		return False
 	if not validate_pricing_rule_based_on_other_item(rule, args, doc=doc, keep_apply_on_other=keep_apply_on_other):
@@ -146,7 +155,7 @@ def validate_pricing_rule_validity(rule, args, doc=None, keep_apply_on_other=Fal
 def evaluate_pricing_rule_condition(rule, args, doc=None):
 	from frappe.utils.safe_exec import get_safe_globals
 
-	if not cstr(rule.condition).strip():
+	if not cstr(rule.get("condition")).strip():
 		return True
 
 	eval_globals = get_safe_globals()
@@ -186,23 +195,31 @@ def validate_pricing_rule_based_on_other_item(rule, args, doc=None, keep_apply_o
 
 	pr_doc = frappe.get_cached_doc("Pricing Rule", rule.name)
 
-	other_items = get_pricing_rule_items(pr_doc, other_items=True)
+	other_item_apply_on_data = get_pricing_rule_apply_on_data(pr_doc, other_items=True)
 	apply_on_other_field = frappe.scrub(pr_doc.get("apply_rule_on_other"))
-	is_other_item = args.get(apply_on_other_field) in other_items
+	is_other_item = args.get(apply_on_other_field) in other_item_apply_on_data
 
-	main_items = get_pricing_rule_items(pr_doc, other_items=False)
+	main_item_apply_on_data = get_pricing_rule_apply_on_data(pr_doc, other_items=False)
 	apply_on_main_field = frappe.scrub(pr_doc.get("apply_on"))
-	is_main_item = args.get(apply_on_main_field) in main_items
-	has_main_item = False
+	is_main_item = args.get(apply_on_main_field) in main_item_apply_on_data
 
-	if doc:
-		for row in doc.items:
-			if row.get(apply_on_main_field) in main_items and row.get("qty"):
-				has_main_item = True
-				break
+	has_main_item = False
+	if is_main_item:
+		has_main_item = True
+	elif is_other_item:
+		main_rows = get_rows_based_on_apply_on(
+			doc,
+			rule,
+			main_item_apply_on_data,
+			apply_on_main_field,
+			args,
+			eval_condition=True,
+		)
+		if any(row.get("qty") for row in main_rows):
+			has_main_item = True
 
 	if is_main_item:
-		rule.apply_rule_on_other_items = other_items
+		rule.apply_rule_on_other_items = other_item_apply_on_data
 
 	if is_other_item and has_main_item:
 		return True
@@ -210,6 +227,12 @@ def validate_pricing_rule_based_on_other_item(rule, args, doc=None, keep_apply_o
 		return True
 
 	return False
+
+
+def check_is_other_item(args, pr_doc):
+	other_item_apply_on_data = get_pricing_rule_apply_on_data(pr_doc, other_items=True)
+	apply_on_other_field = frappe.scrub(pr_doc.get("apply_rule_on_other"))
+	return args.get(apply_on_other_field) in other_item_apply_on_data
 
 
 def validate_pricing_rule_based_on_qty_amount(rule, args, doc=None, keep_apply_on_other=False):
@@ -262,8 +285,8 @@ def validate_pricing_rule_qty_amount(stock_qty, amount, rule, item_code=None):
 
 	min_qty = flt(flt(rule.min_qty) * conversion_factor, 6)
 	max_qty = flt(flt(rule.max_qty) * conversion_factor, 6)
-	min_amt = flt(flt(rule.min_amt) * conversion_factor, 6)
-	max_amt = flt(flt(rule.min_amt) * conversion_factor, 6)
+	min_amt = flt(rule.min_amt)
+	max_amt = flt(rule.max_amt)
 
 	if rule.price_or_product_discount == "Product":
 		if not stock_qty:
@@ -271,6 +294,10 @@ def validate_pricing_rule_qty_amount(stock_qty, amount, rule, item_code=None):
 
 		if rule.buy_qty:
 			buy_qty = flt(rule.buy_qty)
+			# mix and match qty includes free qty, so buy qty and free qty are both required
+			if rule.mixed_conditions and rule.mix_and_match:
+				buy_qty += flt(rule.free_qty)
+
 			min_qty = max(min_qty, buy_qty)
 
 	if stock_qty < min_qty or (max_qty and stock_qty > max_qty):
@@ -517,59 +544,117 @@ def apply_internal_priority(pricing_rules, field_set, args):
 
 
 def get_qty_amount_for_mixed_conditions(doc, pr_doc, args):
-	items = get_pricing_rule_items(pr_doc) or []
+	apply_on_data = get_pricing_rule_apply_on_data(pr_doc) or []
 	apply_on_field = frappe.scrub(pr_doc.get("apply_on"))
 
 	sum_qty = 0
 	sum_amt = 0
 
-	if items and doc and doc.get("items"):
-		for row in doc.get('items'):
-			if row.get(apply_on_field) not in items:
-				continue
+	rows = get_rows_based_on_apply_on(
+		doc,
+		pr_doc,
+		apply_on_data,
+		apply_on_field,
+		args,
+		eval_condition=True,
+	)
 
-			stock_qty = flt(row.get("qty")) * flt(row.get("conversion_factor"))
-			amount = flt(row.get("qty")) * (flt(row.get("price_list_rate")) or flt(args.get("rate")))
+	for row in rows:
+		row_data = args if args.get("child_docname") == row.name else row
 
-			sum_qty += stock_qty
-			sum_amt += amount
+		stock_qty = flt(row_data.get("qty")) * flt(row_data.get("conversion_factor"))
+		amount = flt(row_data.get("qty")) * flt(row_data.get("price_list_rate"))
 
-		if pr_doc.is_cumulative:
-			cum_qty, cum_amt = get_qty_amount_data_for_cumulative(pr_doc, doc, items)
-			if cum_qty:
-				sum_qty += cum_qty
-				sum_amt += cum_amt
+		sum_qty += stock_qty
+		sum_amt += amount
 
-	return sum_qty, sum_amt, items
+	if pr_doc.is_cumulative:
+		cum_qty, cum_amt = get_qty_amount_data_for_cumulative(pr_doc, doc, apply_on_data)
+		if cum_qty:
+			sum_qty += cum_qty
+			sum_amt += cum_amt
+
+	return sum_qty, sum_amt, apply_on_data
 
 
 def get_qty_amount_for_other_item(doc, rule, pr_doc, args):
-	main_items = get_pricing_rule_items(pr_doc, other_items=False)
+	main_item_apply_on_data = get_pricing_rule_apply_on_data(pr_doc, other_items=False)
 	apply_on_main_field = frappe.scrub(pr_doc.get("apply_on"))
-	is_main_item = args.get(apply_on_main_field) in main_items
+	is_main_item = args.get(apply_on_main_field) in main_item_apply_on_data
 
 	max_stock_qty = 0
 	max_amount = 0
 	main_item_code = None
 
-	if doc:
-		for row in doc.get("items"):
-			if row.get(apply_on_main_field) in main_items and row.get("qty"):
-				stock_qty = flt(row.get("qty")) * flt(row.get("conversion_factor"))
-				amount = flt(row.get("qty")) * (flt(row.get("price_list_rate")) or flt(args.get("rate")))
+	main_rows = get_rows_based_on_apply_on(
+		doc,
+		pr_doc,
+		main_item_apply_on_data,
+		apply_on_main_field,
+		args,
+		eval_condition=True,
+	)
 
-				if validate_pricing_rule_qty_amount(stock_qty, amount, rule, item_code=row.item_code):
-					return stock_qty, amount, row.item_code, is_main_item
+	for row in main_rows:
+		if not row.get("qty"):
+			continue
 
-				if stock_qty > max_stock_qty or amount > max_amount:
-					max_stock_qty = stock_qty
-					max_amount = amount
-					main_item_code = row.item_code
+		row_data = args if args.get("child_docname") == row.name else row
+
+		stock_qty = flt(row_data.get("qty")) * flt(row_data.get("conversion_factor"))
+		amount = flt(row_data.get("qty")) * flt(row_data.get("price_list_rate"))
+
+		if validate_pricing_rule_qty_amount(stock_qty, amount, rule, item_code=row.item_code):
+			return stock_qty, amount, row.item_code, is_main_item
+
+		if stock_qty > max_stock_qty or amount > max_amount:
+			max_stock_qty = stock_qty
+			max_amount = amount
+			main_item_code = row.item_code
 
 	return max_stock_qty, max_amount, main_item_code, is_main_item
 
 
-def get_qty_amount_data_for_cumulative(pr_doc, doc, items=None):
+def get_rows_based_on_apply_on(doc, pricing_rule, apply_on_data, apply_on_field, args, eval_condition=False):
+	rows = []
+	if apply_on_data and doc and doc.get("items"):
+		parent_dict = doc.get_item_details_parent_args()
+		for row in doc.get("items"):
+			row_args = get_args_for_other_item(doc, row, args, parent_dict=parent_dict)
+
+			if row_args.get(apply_on_field) not in apply_on_data:
+				continue
+
+			if row.get("is_free_item") and not pricing_rule.mix_and_match:
+				continue
+
+			if eval_condition:
+				if not evaluate_pricing_rule_condition(pricing_rule, row_args, doc=doc):
+					continue
+
+			rows.append(row)
+
+	return rows
+
+
+def get_args_for_other_item(doc, row, args, parent_dict=None):
+	if args.get("child_docname") == row.name:
+		return args
+	elif doc:
+		from erpnext.accounts.doctype.pricing_rule.pricing_rule import update_args_for_pricing_rule
+
+		if not parent_dict:
+			parent_dict = doc.get_item_details_parent_args()
+
+		row_args = doc.get_item_details_child_args(row, parent_dict)
+		row_args.selling_or_buying = args.get("selling_or_buying")
+		update_args_for_pricing_rule(row_args)
+		return row_args
+	else:
+		return frappe._dict()
+
+
+def get_qty_amount_data_for_cumulative(pr_doc, doc, apply_on_data=None):
 	doctype = doc.get("parenttype") or doc.doctype
 
 	date_field = "transaction_date" if frappe.get_meta(doctype).has_field('transaction_date') else "posting_date"
@@ -585,9 +670,9 @@ def get_qty_amount_data_for_cumulative(pr_doc, doc, items=None):
 		condition += f""" and `tab{child_doctype}`.warehouse in ({','.join(['%s'] * len(warehouses))})"""
 		values.extend(warehouses)
 
-	if items:
-		condition = f" and `tab{child_doctype}`.{apply_on_field} in ({','.join(['%s'] * len(items))})"
-		values.extend(items)
+	if apply_on_data:
+		condition = f" and `tab{child_doctype}`.{apply_on_field} in ({','.join(['%s'] * len(apply_on_data))})"
+		values.extend(apply_on_data)
 
 	data_set = frappe.db.sql(f"""
 		SELECT `tab{child_doctype}`.stock_qty, `tab{child_doctype}`.amount
@@ -663,10 +748,10 @@ def apply_pricing_rule_on_transaction(doc):
 
 				doc.calculate_taxes_and_totals()
 
-			elif rule.price_or_product_discount == 'Product':
+			elif rule.price_or_product_discount == 'Product' and not rule.mix_and_match:
 				item_details = frappe._dict({'parenttype': doc.doctype})
-				get_product_discount_rule(rule, item_details, doc=doc, for_validate=True)
-				apply_free_item_pricing_rule(doc, item_details.free_item_data, set_missing_values=True)
+				free_item_data = get_product_discount_rule(rule, item_details, doc=doc, for_validate=True)
+				apply_free_item_pricing_rule(doc, free_item_data, set_missing_values=True)
 				doc.calculate_taxes_and_totals()
 
 
@@ -740,38 +825,92 @@ def get_product_discount_rule(
 		free_item = main_item_details.item_code or main_item_args.item_code
 
 	if not free_item:
-		return
+		return None
 
+	free_qty, free_item_uom = calculate_free_qty_and_uom(pricing_rule, main_item_args, doc)
+
+	free_item_data = get_free_item_data(
+		pricing_rule,
+		free_item,
+		free_qty,
+		free_item_uom or None,
+		main_item_args=main_item_args,
+		doc=doc,
+		for_validate=for_validate,
+	)
+
+	if pricing_rule.get("apply_rule_on_other_items"):
+		free_item_data.update({
+			'apply_rule_on_other_items': json.dumps(pricing_rule.apply_rule_on_other_items or []),
+			'apply_rule_on': frappe.scrub(pricing_rule.get('apply_on'))
+		})
+
+	return free_item_data
+
+
+def calculate_free_qty_and_uom(pricing_rule, main_item_args, doc, rows=None):
+	qty = flt(main_item_args.qty)
+	stock_qty = flt(main_item_args.stock_qty)
+
+	if rows:
+		stock_qty = flt(sum([flt(d.stock_qty) for d in rows]), 6)
+	elif pricing_rule.mixed_conditions:
+		pr_doc = frappe.get_cached_doc('Pricing Rule', pricing_rule.name)
+		stock_qty, amount, items = get_qty_amount_for_mixed_conditions(doc, pr_doc, main_item_args)
+
+	# mix and match needs to calculate from total qty that includes free qty, calculate paid qty first
+	# non recursive free qty is fixed, minimum qty is validated in validate_pricing_rule_qty_amount
+	if pricing_rule.mixed_conditions and pricing_rule.mix_and_match:
+		if pricing_rule.free_qty:
+			if pricing_rule.buy_qty and pricing_rule.free_qty_recursive:
+				stock_qty = stock_qty * flt(pricing_rule.buy_qty) / (flt(pricing_rule.free_qty) + flt(pricing_rule.buy_qty))
+			elif pricing_rule.free_qty_recursive:
+				stock_qty /= 2
+			else:
+				stock_qty -= flt(pricing_rule.free_qty)
+		else:
+			stock_qty /= 2
+
+	# calculate actual free qty
 	if pricing_rule.free_qty:
-		if pricing_rule.free_qty_recursive and pricing_rule.buy_qty:
-			multiples = cint(flt(main_item_args.stock_qty) / flt(pricing_rule.buy_qty))
+		if pricing_rule.buy_qty and pricing_rule.free_qty_recursive:
+			multiples = cint(stock_qty / flt(pricing_rule.buy_qty))
 			free_qty = flt(pricing_rule.free_qty) * multiples
 		elif pricing_rule.free_qty_recursive:
-			free_qty = flt(main_item_args.qty)
+			free_qty = stock_qty if pricing_rule.mixed_conditions else qty
 		else:
 			free_qty = flt(pricing_rule.free_qty)
 	else:
-		free_qty = flt(main_item_args.qty)
+		free_qty = stock_qty if pricing_rule.mixed_conditions else qty
 
 	free_item_uom = pricing_rule.free_item_uom
 	if not free_item_uom and pricing_rule.same_item:
 		free_item_uom = main_item_args.uom
 
+	return free_qty, free_item_uom or None
+
+
+def get_free_item_data(
+	pricing_rule,
+	free_item,
+	free_qty,
+	free_item_uom,
+	main_item_args=None,
+	doc=None,
+	for_validate=False,
+):
 	free_item_data = frappe._dict({
 		"item_code": free_item,
 		"qty": free_qty,
 		"uom": free_item_uom or None,
-		"rate": pricing_rule.free_item_rate or 0,
-		"discount_percentage": 100 if not pricing_rule.free_item_rate else 0,
+		"rate": flt(pricing_rule.free_item_rate),
+		"discount_percentage": 100,
 		"discount_amount": 0,
 		"is_free_item": 1,
 		"pricing_rules": pricing_rule.name,
 	})
 
-	if pricing_rule.free_item_rate:
-		free_item_data["price_list_rate"] = pricing_rule.free_item_rate
-
-	if not for_validate:
+	if not for_validate and main_item_args:
 		from erpnext.stock.get_item_details import get_item_details
 
 		free_item_args = main_item_args.copy()
@@ -787,7 +926,25 @@ def get_product_discount_rule(
 
 		free_item_data = free_item_details
 
-	main_item_details.free_item_data = free_item_data
+	set_free_item_rate_and_discount(free_item_data, pricing_rule.free_item_rate)
+
+	return free_item_data
+
+
+def set_free_item_rate_and_discount(row, free_item_rate):
+	free_item_rate = flt(free_item_rate)
+	rate_before_discount = flt(row.get("rate_with_margin")) or flt(row.get("price_list_rate"))
+
+	row.rate = free_item_rate
+	if not free_item_rate:
+		row.discount_percentage = 100
+		row.discount_amount = 0
+	elif rate_before_discount:
+		row.discount_amount = max(rate_before_discount - free_item_rate, 0)
+		row.discount_percentage = row.discount_amount / rate_before_discount * 100
+	else:
+		row.discount_percentage = 0
+		row.discount_amount = 0
 
 
 def apply_free_item_pricing_rule(
@@ -802,7 +959,6 @@ def apply_free_item_pricing_rule(
 
 	update_fields = [
 		"qty",
-		"uom",
 		"rate",
 		"discount_percentage",
 		"discount_amount",
@@ -826,14 +982,23 @@ def apply_free_item_pricing_rule(
 
 		if free_item_data.get("price_list_rate"):
 			free_row.price_list_rate = flt(free_item_data.get("price_list_rate"))
+
+		if free_item_data.get("uom"):
+			free_row.uom = free_item_data.get("uom")
+			free_row.conversion_factor = flt(get_conversion_factor(free_row.item_code, free_row.uom).get("conversion_factor") or 1)
 	else:
 		position = -1
 		if row and row in doc.items:
 			position = doc.items.index(row) + 1
 
 		free_row = doc.append("items", free_item_data, position=position)
-		if set_missing_values:
+
+		# price list rate is required to apply free item rate as discount
+		if set_missing_values or (free_item_data.get("price_list_rate") is None and free_item_data.get("rate")):
 			doc.set_missing_item_details_for_row(free_row, skip_pricing_rules=True, for_validate=for_validate)
+
+	# free item data may have been calculated without price list rate (for validate)
+	set_free_item_rate_and_discount(free_row, free_item_data.get("rate"))
 
 	for d in to_remove:
 		doc.items.remove(d)
@@ -847,18 +1012,20 @@ def remove_free_item_pricing_rules(doc):
 	if doc.get("ignore_pricing_rule"):
 		return
 
-	free_rows = [d for d in doc.items if d.get("is_free_item")]
+	free_rows = [d for d in doc.items if is_product_discount_rule_free_item(d)]
 	to_remove = []
 	for free_row in free_rows:
 		free_item_pricing_rule = free_row.get("pricing_rules")
 		if not free_item_pricing_rule:
-			to_remove.append(free_row)
 			continue
 
 		main_item_code = None
 		free_item_code = None
 		try:
 			pr_doc = frappe.get_cached_doc("Pricing Rule", free_item_pricing_rule)
+			if pr_doc.mix_and_match:
+				continue
+
 			free_item_code = free_row.item_code if pr_doc.same_item else pr_doc.get("free_item")
 			main_item_code = free_row.item_code if pr_doc.same_item else None
 		except frappe.DoesNotExistError:
@@ -889,7 +1056,224 @@ def remove_free_item_pricing_rules(doc):
 			d.idx = i + 1
 
 
-def get_pricing_rule_items(pr_doc, other_items=False):
+def apply_mix_and_match_product_discount_rules(doc):
+	def get_free_rows():
+		return [d for d in pr_item_rows if d.get("is_free_item")]
+
+	def get_free_row():
+		free_rows = get_free_rows()
+		return free_rows[0] if free_rows else None
+
+	def get_paid_rows():
+		return [d for d in pr_item_rows if not d.get("is_free_item")]
+
+	def get_paid_row():
+		paid_rows = get_paid_rows()
+		return paid_rows[0] if paid_rows else None
+
+	def duplicate_and_swap_row(row, prepend=False):
+		new_row = frappe.copy_doc(row)
+		new_row.qty = 0
+		new_row.stock_qty = 0
+		new_row.pricing_rules = pr_doc.name
+		swap_free_paid_row(new_row)
+
+		position = -1
+		if row in doc.items:
+			position = doc.items.index(row)
+			if not prepend:
+				position += 1
+
+		doc.append("items", new_row, position=position)
+
+		return new_row
+
+	def swap_free_paid_row(row):
+		if row.get("is_free_item"):
+			swap_free_paid_uom(row, 0)
+			row.is_free_item = 0
+			row.discount_percentage = 0
+			row.discount_amount = 0
+			row.rate = row.get("rate_with_margin") or row.get("price_list_rate") or row.get("rate") or None
+		else:
+			swap_free_paid_uom(row, 1)
+			row.is_free_item = 1
+			set_free_item_rate(row)
+
+	def set_free_item_rate(row):
+		if row.get("is_free_item"):
+			set_free_item_rate_and_discount(row, pr_doc.free_item_rate)
+
+	def adjust_qty(row, diff):
+		set_free_item_uom(row)
+		row.stock_qty = flt(flt(row.stock_qty) + diff, 6)
+		row.qty = flt(row.stock_qty / (flt(row.conversion_factor) or 1), 6)
+
+	def set_free_item_uom(row):
+		if pr_doc.free_item_uom and row.get("is_free_item"):
+			row.uom = pr_doc.free_item_uom
+			set_conversion_factor(row)
+
+	def swap_free_paid_uom(row, new_is_free_item):
+		if new_is_free_item and pr_doc.free_item_uom:
+			set_free_item_uom(row)
+			return
+
+		paid_rows = [d for d in pr_item_rows if not d.get("is_free_item") and d != row]
+		paid_row = paid_rows[0] if paid_rows else None
+		if paid_row:
+			row.uom = paid_row.uom
+			set_conversion_factor(row)
+
+	def set_conversion_factor(row):
+		row.conversion_factor = flt(
+			get_conversion_factor(row.item_code, row.uom).get("conversion_factor") or 1
+		)
+
+	if not doc.get("mix_and_match_pricing_rules"):
+		return
+	if doc.get("ignore_pricing_rule"):
+		return
+
+	doc.set_qty_as_per_stock_uom()
+
+	to_remove = []
+	for pricing_rule in doc.get("mix_and_match_pricing_rules"):
+		pr_rows = [d for d in doc.items if pricing_rule in get_applied_pricing_rules(d.get("pricing_rules"))]
+		if not pr_rows:
+			continue
+
+		pr_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
+		free_item_map = get_mix_and_match_free_item_map(pr_doc, doc, pr_rows)
+
+		# validate only
+		if pr_doc.get("validate_applied_rule"):
+			if doc.get("_mix_and_match_pricing_rules_validated") and pricing_rule in doc.get("_mix_and_match_pricing_rules_validated"):
+				continue
+
+			valid_free_items = {k: v for (k, v) in free_item_map.items() if flt(v)}
+			if valid_free_items:
+				validation_free_rows = [d for d in pr_rows if d.get("is_free_item") or not d.get("rate")]
+				if not validation_free_rows:
+					free_item_list = []
+					for free_item_code, rule_free_qty in valid_free_items.items():
+						free_item_list.append(_("{0} {1} of Item {2}").format(
+							frappe.bold(frappe.format(rule_free_qty, df=pr_rows[0].meta.get_field("qty"))),
+							frappe.bold(frappe.get_cached_value("Item", free_item_code, "stock_uom")),
+							frappe.bold(free_item_code),
+						))
+
+					free_item_txt = ", ".join(free_item_list)
+
+					frappe.msgprint(_("Pricing Rule {0} is not applied, {1} should be considered as free").format(
+						frappe.utils.get_link_to_form("Pricing Rule", pricing_rule),
+						free_item_txt,
+					))
+
+					if not doc.get("_mix_and_match_pricing_rules_validated"):
+						doc._mix_and_match_pricing_rules_validated = set()
+					doc._mix_and_match_pricing_rules_validated.add(pricing_rule)
+
+			continue
+
+		# apply
+		pr_item_codes = set([d.item_code for d in pr_rows if d.item_code])
+		for item_code in pr_item_codes:
+			rule_free_qty = flt(free_item_map.get(item_code), 6)
+			pr_item_rows = [d for d in pr_rows if d.item_code == item_code]
+			if not pr_item_rows:
+				continue
+
+			doc_free_qty = flt(sum(d.stock_qty for d in pr_item_rows if d.get("is_free_item")), 6)
+			if doc_free_qty == rule_free_qty:
+				free_row = get_free_row()
+				if free_row:
+					adjust_qty(free_row, 0)
+					set_free_item_rate(free_row)
+				continue
+
+			difference = doc_free_qty - rule_free_qty
+			reduce_diff = difference
+
+			# reduce first then add
+			if difference < 0:
+				paid_rows = get_paid_rows()
+				for paid_row in reversed(paid_rows):
+					diff = -flt(paid_row.stock_qty) if abs(reduce_diff) > flt(paid_row.stock_qty) else reduce_diff
+					reduce_diff -= diff
+					adjust_qty(paid_row, diff)
+					if not paid_row.stock_qty:
+						if not get_free_row():
+							swap_free_paid_row(paid_row)
+						else:
+							to_remove.append(paid_row)
+
+				free_row = get_free_row()
+				if not free_row:
+					free_row = duplicate_and_swap_row(get_paid_row())
+				adjust_qty(free_row, -difference)
+			else:
+				free_rows = get_free_rows()
+				for free_row in reversed(free_rows):
+					diff = flt(free_row.stock_qty) if abs(reduce_diff) > flt(free_row.stock_qty) else reduce_diff
+					reduce_diff -= diff
+					adjust_qty(free_row, -diff)
+					if not free_row.stock_qty:
+						if not get_paid_row():
+							swap_free_paid_row(free_row)
+						else:
+							to_remove.append(free_row)
+
+				paid_row = get_paid_row()
+				if not paid_row:
+					paid_row = duplicate_and_swap_row(get_free_row(), prepend=True)
+				adjust_qty(paid_row, difference)
+
+	for d in to_remove:
+		doc.remove(d)
+
+	if to_remove:
+		for i, d in enumerate(doc.items):
+			d.idx = i + 1
+
+
+def get_mix_and_match_free_item_map(pr_doc, doc, pr_rows):
+	free_item_map = {}
+
+	if not pr_rows:
+		return free_item_map
+
+	pr_rows = sorted(
+		reversed(pr_rows),
+		key=lambda d: flt(d.get("rate_with_margin") or d.get("price_list_rate") or d.get("rate"))
+	)
+	example_row = [d for d in pr_rows if not d.get("is_free_item")] or pr_rows
+	example_row = example_row[0]
+
+	free_qty, free_item_uom = calculate_free_qty_and_uom(pr_doc, example_row, doc, rows=pr_rows)
+	remaining_free_qty = free_qty
+
+	for row in pr_rows:
+		if flt(remaining_free_qty, 6) <= 0:
+			break
+
+		if flt(row.stock_qty) >= remaining_free_qty:
+			free_item_map.setdefault(row.item_code, 0)
+			free_item_map[row.item_code] += remaining_free_qty
+			remaining_free_qty = 0
+		else:
+			free_item_map.setdefault(row.item_code, 0)
+			free_item_map[row.item_code] += flt(row.stock_qty)
+			remaining_free_qty -= flt(row.stock_qty)
+			remaining_free_qty = flt(remaining_free_qty, 6)
+
+	for item_code in free_item_map:
+		free_item_map[item_code] = flt(free_item_map[item_code], 6)
+
+	return free_item_map
+
+
+def get_pricing_rule_apply_on_data(pr_doc, other_items=False):
 	apply_on_data = []
 
 	if other_items:
@@ -909,6 +1293,17 @@ def get_pricing_rule_items(pr_doc, other_items=False):
 				apply_on_data.append(d.get(apply_on_field))
 
 	return list(set(apply_on_data))
+
+
+def is_product_discount_rule_free_item(row):
+	if not row.get("is_free_item"):
+		return False
+
+	for pricing_rule in get_applied_pricing_rules(row.get("pricing_rules")):
+		if frappe.get_cached_value("Pricing Rule", pricing_rule, "price_or_product_discount") == "Product":
+			return True
+
+	return False
 
 
 def validate_coupon_code(coupon_name):

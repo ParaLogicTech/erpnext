@@ -6,7 +6,6 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 from frappe.model.document import Document
-from six import string_types
 import json
 
 class StockEntryType(Document):
@@ -17,7 +16,7 @@ class StockEntryType(Document):
 def get_stock_entry_type_details(args):
 	from erpnext.stock.doctype.stock_entry.stock_entry import get_item_expense_accounts
 
-	if isinstance(args, string_types):
+	if isinstance(args, str):
 		args = json.loads(args)
 
 	args = frappe._dict(args)

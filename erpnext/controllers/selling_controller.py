@@ -19,6 +19,10 @@ from erpnext.controllers.transaction_controller import (
 	update_item_batch_serial_based_on_purchase_and_production,
 )
 from erpnext.controllers.stock_controller import WarehouseRequired
+from erpnext.accounts.doctype.pricing_rule.utils import (
+	get_applied_pricing_rules,
+	is_product_discount_rule_free_item,
+)
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
@@ -50,7 +54,7 @@ class SellingController(TransactionController):
 				self.get_formatted("grand_total"))
 
 	def onload(self):
-		super(SellingController, self).onload()
+		super().onload()
 
 		if self.doctype in ("Sales Order", "Delivery Note", "Sales Invoice"):
 			self.set_onload("is_internal_customer",
@@ -60,7 +64,7 @@ class SellingController(TransactionController):
 			self.calculate_taxes_and_totals()
 
 	def validate(self):
-		super(SellingController, self).validate()
+		super().validate()
 		self.validate_bill_to()
 		self.validate_items()
 		self.set_qty_as_per_stock_uom()
@@ -133,7 +137,7 @@ class SellingController(TransactionController):
 		super().set_party_account(force=force)
 
 	def set_missing_values(self, for_validate=False):
-		super(SellingController, self).set_missing_values(for_validate)
+		super().set_missing_values(for_validate)
 
 		# set contact and address details for customer, if they are not mentioned
 		self.set_missing_lead_customer_details()
@@ -237,7 +241,7 @@ class SellingController(TransactionController):
 				self.precision("total_commission"))
 
 	def set_restricted_price_list_rate(self, item, price_list_rate):
-		if not item.get("item_code") or item.get("is_free_item"):
+		if not item.get("item_code"):
 			return
 
 		selling_settings = frappe.get_cached_doc("Selling Settings", None)
@@ -303,7 +307,7 @@ class SellingController(TransactionController):
 
 	def validate_max_discount(self):
 		for d in self.get("items"):
-			if not d.get("item_code") or d.get("is_free_item"):
+			if not d.get("item_code") or is_product_discount_rule_free_item(d):
 				continue
 
 			max_discount = flt(frappe.get_cached_value("Item", d.item_code, "max_discount"))
@@ -312,7 +316,6 @@ class SellingController(TransactionController):
 
 	def validate_discount_rule(self):
 		from erpnext.accounts.doctype.discount_rule.discount_rule import get_discount_rule_values
-		from erpnext.accounts.doctype.pricing_rule.utils import get_applied_pricing_rules
 
 		_customer_changed = None
 		_previous_additional_discount = None
@@ -335,7 +338,7 @@ class SellingController(TransactionController):
 			return False
 
 		for d in self.get("items"):
-			if not d.get("item_code") or d.get("is_free_item"):
+			if not d.get("item_code") or is_product_discount_rule_free_item(d):
 				continue
 
 			percent_precision = d.precision("discount_percentage")
@@ -463,20 +466,6 @@ class SellingController(TransactionController):
 
 		return 0
 
-	def set_qty_as_per_stock_uom(self):
-		for d in self.get("items"):
-			if d.meta.get_field("stock_qty"):
-				if not d.conversion_factor and d.item_code:
-					frappe.throw(_("Row {0}: Conversion Factor is mandatory").format(d.idx))
-				d.stock_qty = flt(flt(d.qty) * flt(d.conversion_factor), 6)
-
-	def set_alt_uom_qty(self):
-		for d in self.get("items"):
-			if d.meta.get_field("alt_uom_qty"):
-				if not d.alt_uom:
-					d.alt_uom_size = 1.0
-				d.alt_uom_qty = flt(flt(d.stock_qty) * flt(d.alt_uom_size), d.precision("alt_uom_qty"))
-
 	def validate_selling_price(self):
 		from erpnext.accounts.report.gross_profit.gross_profit import get_sle_outgoing_rate
 		from erpnext.stock.doctype.bundled_item.bundled_item import is_product_bundle
@@ -495,7 +484,7 @@ class SellingController(TransactionController):
 		validate_selling_price = cint(frappe.get_cached_value("Selling Settings", None, "validate_selling_price"))
 		rows_to_validate = []
 		for d in self.get("items"):
-			if not d.get("item_code") or d.get("is_free_item"):
+			if not d.get("item_code") or is_product_discount_rule_free_item(d):
 				continue
 
 			is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
@@ -1024,7 +1013,7 @@ class SellingController(TransactionController):
 							frappe.throw(_("Row #{0}: Target Warehouse must be not set for Item {1}").format(d.idx, d.item_code))
 
 	def validate_transaction_type(self):
-		super(SellingController, self).validate_transaction_type()
+		super().validate_transaction_type()
 
 		if self.get('transaction_type'):
 			if not frappe.get_cached_value("Transaction Type", self.transaction_type, 'selling'):
@@ -1110,6 +1099,7 @@ class SellingController(TransactionController):
 						item.discount_percentage = item.discount_amount / item.price_list_rate * 100
 					else:
 						item.discount_percentage = 0
+						item.discount_amount = 0
 						item.margin_type = "Amount"
 						item.margin_rate_or_amount = flt(item.rate) - flt(item.price_list_rate)
 				else:

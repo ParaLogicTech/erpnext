@@ -6,7 +6,7 @@ from frappe import _
 from frappe.utils import getdate, nowdate, flt, cint
 
 
-class FBRInvoiceWiseTaxes(object):
+class FBRInvoiceWiseTaxes:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.filters.from_date = getdate(self.filters.from_date or nowdate())

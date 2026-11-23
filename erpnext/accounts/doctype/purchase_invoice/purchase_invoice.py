@@ -37,10 +37,10 @@ class PurchaseInvoice(BuyingController):
 	allow_advances_unlink = True
 
 	def __init__(self, *args, **kwargs):
-		super(PurchaseInvoice, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 	def onload(self):
-		super(PurchaseInvoice, self).onload()
+		super().onload()
 		supplier_tds = frappe.db.get_value("Supplier", self.supplier, "tax_withholding_category")
 		self.set_onload("supplier_tds", supplier_tds)
 
@@ -103,7 +103,7 @@ class PurchaseInvoice(BuyingController):
 		if self.update_stock and not self.is_return:
 			self.auto_create_batches('warehouse')
 
-		super(PurchaseInvoice, self).on_submit()
+		super().on_submit()
 
 		self.validate_previous_docstatus()
 		self.update_previous_doc_status()
@@ -136,7 +136,7 @@ class PurchaseInvoice(BuyingController):
 		update_linked_doc(self.doctype, self.name, self.inter_company_reference)
 
 	def on_cancel(self):
-		super(PurchaseInvoice, self).on_cancel()
+		super().on_cancel()
 		self.unlink_payments_on_invoice_cancel()
 		self.update_status_on_cancel()
 		self.update_previous_doc_status()
@@ -316,7 +316,7 @@ class PurchaseInvoice(BuyingController):
 			frappe.throw(_("Return Against Purchase Invoice {0} is not submitted").format(self.return_against))
 
 	def validate_with_previous_doc(self):
-		super(PurchaseInvoice, self).validate_with_previous_doc({
+		super().validate_with_previous_doc({
 			"Purchase Order": {
 				"ref_dn_field": "purchase_order",
 				"compare_fields": [["supplier", "="], ["company", "="], ["currency", "="]],
@@ -582,7 +582,7 @@ class PurchaseInvoice(BuyingController):
 				company=self.company
 			)
 
-		super(PurchaseInvoice, self).set_missing_values(for_validate)
+		super().set_missing_values(for_validate)
 		self.set_expense_account()
 
 	def check_conversion_rate(self):
@@ -1379,6 +1379,7 @@ def make_sales_order(customer, source_name, target_doc=None):
 	def update_item(source, target, source_parent, target_parent):
 		target.price_list_rate = None
 		target.discount_percentage = None
+		target.discount_amount = None
 		target.rate = None
 
 	doc = get_mapped_doc("Purchase Invoice", source_name, {

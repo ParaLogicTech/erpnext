@@ -4,7 +4,7 @@
 import frappe
 
 
-class website_maker(object):
+class website_maker:
 	def __init__(self, args):
 		self.args = args
 		self.company = args.company_name

@@ -1,83 +1,105 @@
-frappe.provide('frappe.ui.form');
+frappe.provide("erpnext.accounts");
 
-let default_dimensions = {};
+// Reports and financial statements read the dimension list from here
+erpnext.dimension_filters = frappe.boot.accounting_dimensions || [];
 
-let doctypes_with_dimensions = ["GL Entry", "Sales Invoice", "Purchase Invoice", "Payment Entry", "Asset",
-	"Expense Claim", "Stock Entry", "Budget", "Payroll Entry", "Delivery Note", "Shipping Rule", "Loyalty Program",
-	"Fee Schedule", "Fee Structure", "Stock Reconciliation", "Travel Request", "Fees", "POS Profile", "Opening Invoice Creation Tool",
-	"Subscription", "Purchase Order", "Journal Entry", "Material Request", "Purchase Receipt", "Landed Cost Item", "Asset"];
+// Forms opt in by calling setup_dimension_filters on load and set_default_dimensions on company change.
+// New documents get their defaults through the company trigger, which frappe runs for link fields with default values.
+// Mapped, duplicated and amended documents don't run that trigger, so they keep the dimensions they were created with.
+// Master and config doctypes (POS Profile, Budget, ...) don't call set_default_dimensions at all.
+// Cost Center and Project are not handled here.
+erpnext.accounts.dimensions = {
+	exclude_doctypes: ["Vehicle"],
 
-let child_docs = ["Sales Invoice Item", "Purchase Invoice Item", "Purchase Order Item", "Journal Entry Account",
-	"Material Request Item", "Delivery Note Item", "Purchase Receipt Item", "Stock Entry Detail", "Payment Entry Deduction",
-	"Landed Cost Item", "Asset Value Adjustment", "Opening Invoice Creation Tool Item", "Subscription Plan"];
+	get accounting_dimensions() {
+		return frappe.boot.accounting_dimensions || [];
+	},
 
-frappe.call({
-	method: "erpnext.accounts.doctype.accounting_dimension.accounting_dimension.get_dimension_filters",
-	callback: function(r) {
-		erpnext.dimension_filters = r.message[0];
-		default_dimensions = r.message[1];
-	}
-});
+	get default_dimensions() {
+		return frappe.boot.default_accounting_dimensions || {};
+	},
 
-doctypes_with_dimensions.forEach((doctype) => {
-	frappe.ui.form.on(doctype, {
-		onload: function(frm) {
-			erpnext.dimension_filters.forEach((dimension) => {
-				frappe.model.with_doctype(dimension['document_type'], () => {
-					if(frappe.meta.has_field(dimension['document_type'], 'is_group')) {
-						frm.set_query(dimension['fieldname'], {
-							"is_group": 0
-						});
-					}
-				});
-			});
-		},
+	setup_dimension_filters(frm) {
+		for (let dimension of this.accounting_dimensions) {
+			frappe.model.with_doctype(dimension.document_type, () => {
+				if (frappe.meta.has_field(frm.doctype, dimension.fieldname)) {
+					this.set_dimension_query(frm, dimension);
+				}
 
-		company: function(frm) {
-			if(frm.doc.company && (Object.keys(default_dimensions || {}).length > 0)
-				&& default_dimensions[frm.doc.company]) {
-				frm.trigger('update_dimension');
-			}
-		},
-
-		update_dimension: function(frm) {
-			erpnext.dimension_filters.forEach((dimension) => {
-				if(frm.is_new()) {
-					if(frm.doc.company && Object.keys(default_dimensions || {}).length > 0
-						&& default_dimensions[frm.doc.company]) {
-
-						let default_dimension = default_dimensions[frm.doc.company][dimension['fieldname']];
-
-						if(default_dimension) {
-							if (frappe.meta.has_field(doctype, dimension['fieldname'])) {
-								frm.set_value(dimension['fieldname'], default_dimension);
-							}
-
-							$.each(frm.doc.items || frm.doc.accounts || [], function(i, row) {
-								frappe.model.set_value(row.doctype, row.name, dimension['fieldname'], default_dimension);
-							});
-						}
+				for (let df of frappe.meta.get_docfields(frm.doctype)) {
+					if (df.fieldtype === "Table" && frappe.meta.has_field(df.options, dimension.fieldname)) {
+						this.set_dimension_query(frm, dimension, df.fieldname);
 					}
 				}
 			});
 		}
-	});
-});
+	},
 
-child_docs.forEach((doctype) => {
-	frappe.ui.form.on(doctype, {
-		items_add: function(frm, cdt, cdn) {
-			erpnext.dimension_filters.forEach((dimension) => {
-				var row = frappe.get_doc(cdt, cdn);
-				frm.script_manager.copy_from_first_row("items", row, [dimension['fieldname']]);
-			});
-		},
+	set_dimension_query(frm, dimension, parentfield) {
+		let field = parentfield
+			? frm.fields_dict[parentfield]?.grid?.get_field(dimension.fieldname)
+			: frm.fields_dict[dimension.fieldname];
 
-		accounts_add: function(frm, cdt, cdn) {
-			erpnext.dimension_filters.forEach((dimension) => {
-				var row = frappe.get_doc(cdt, cdn);
-				frm.script_manager.copy_from_first_row("accounts", row, [dimension['fieldname']]);
-			});
+		// Leave queries the form set itself alone, e.g. a form's own Customer Group query
+		if (!field || field.get_query || field.df?.get_query) {
+			return;
 		}
-	});
-});
+
+		let has_is_group = frappe.meta.has_field(dimension.document_type, "is_group");
+		let has_disabled = frappe.meta.has_field(dimension.document_type, "disabled");
+		let has_company = frappe.meta.has_field(dimension.document_type, "company");
+		let is_excluded = this.exclude_doctypes.includes(dimension.document_type);
+
+		if (is_excluded) {
+			return;
+		}
+
+		if (!has_is_group && !has_disabled && !has_company) {
+			return;
+		}
+
+		let get_query = (doc) => {
+			let filters = {};
+			if (has_is_group) {
+				filters.is_group = 0;
+			}
+			if (has_disabled) {
+				filters.disabled = 0;
+			}
+			// Records without a company (e.g. shared across companies) stay selectable
+			if (has_company && doc.company) {
+				filters.company = ["in", [doc.company, ""]];
+			}
+			return { filters: filters };
+		};
+
+		if (parentfield) {
+			frm.set_query(dimension.fieldname, parentfield, get_query);
+		} else {
+			frm.set_query(dimension.fieldname, get_query);
+		}
+	},
+
+	set_default_dimensions(frm) {
+		let company_defaults = this.default_dimensions[frm.doc.company];
+		if (!frm.is_new() || !company_defaults) {
+			return;
+		}
+
+		// don't set default dimensions if any of the dimension is already set due to mapping
+		if (frm.doc.__onload?.load_after_mapping) {
+			for (const dimension of this.accounting_dimensions) {
+				if (frm.doc[dimension.fieldname]) {
+					return;
+				}
+			}
+		}
+
+		for (let dimension of this.accounting_dimensions) {
+			let default_dimension = company_defaults[dimension.fieldname];
+			if (default_dimension && frappe.meta.has_field(frm.doctype, dimension.fieldname)) {
+				frm.set_value(dimension.fieldname, default_dimension);
+			}
+		}
+	},
+};

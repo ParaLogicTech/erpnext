@@ -4,6 +4,8 @@
 {% include "erpnext/public/js/controllers/accounts.js" %}
 
 frappe.ui.form.on("POS Profile", "onload", function(frm) {
+	erpnext.accounts.dimensions.setup_dimension_filters(frm);
+
 	frm.set_query("selling_price_list", function() {
 		return { filters: { selling: 1 } };
 	});

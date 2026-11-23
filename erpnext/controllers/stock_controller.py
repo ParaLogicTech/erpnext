@@ -23,7 +23,7 @@ class WarehouseRequired(frappe.ValidationError): pass
 
 class StockController(AccountsController):
 	def validate(self):
-		super(StockController, self).validate()
+		super().validate()
 		self.validate_inspection()
 		self.validate_serialized_batch()
 		self.validate_customer_provided_item()

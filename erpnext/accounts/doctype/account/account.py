@@ -43,14 +43,14 @@ class Account(NestedSet):
 		if frappe.local.flags.ignore_on_update:
 			return
 		else:
-			super(Account, self).on_update()
+			super().on_update()
 
 	def on_trash(self):
 		# checks gl entries and if child exists
 		if self.check_gle_exists():
 			throw(_("Account with existing transaction can not be deleted"))
 
-		super(Account, self).on_trash(True)
+		super().on_trash(True)
 
 	def validate_parent(self):
 		"""Fetch Parent Details and validate parent account"""

@@ -34,7 +34,12 @@ class AccountingDimension(Document):
 		else:
 			frappe.enqueue(make_dimension_in_accounting_doctypes, dimension_doc=self)
 
+	def on_update(self):
+		frappe.cache.delete_key("bootinfo")
+
 	def on_trash(self):
+		frappe.cache.delete_key("bootinfo")
+
 		if frappe.flags.in_test:
 			delete_accounting_dimension(doc=self)
 		else:
@@ -233,7 +238,6 @@ def get_dimension_with_children(doctype, dimension):
 	return all_dimensions
 
 
-@frappe.whitelist()
 def get_dimension_filters():
 	dimension_filters = frappe.db.sql("""
 		SELECT label, fieldname, document_type

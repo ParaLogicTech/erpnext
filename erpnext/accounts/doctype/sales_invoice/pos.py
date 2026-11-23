@@ -11,7 +11,6 @@ from frappe import _
 from frappe.core.doctype.communication.email import make
 from frappe.utils import nowdate, cint
 
-from six import string_types, iteritems
 
 
 @frappe.whitelist()
@@ -221,7 +220,7 @@ def get_customers_list(pos_profile={}):
 
 def get_customers_address(customers):
 	customer_address = {}
-	if isinstance(customers, string_types):
+	if isinstance(customers, str):
 		customers = [frappe._dict({'name': customers})]
 
 	for data in customers:
@@ -241,7 +240,7 @@ def get_customers_address(customers):
 
 def get_contacts(customers):
 	customer_contact = {}
-	if isinstance(customers, string_types):
+	if isinstance(customers, str):
 		customers = [frappe._dict({'name': customers})]
 
 	for data in customers:
@@ -394,19 +393,19 @@ def get_pricing_rule_data(doc):
 def make_invoice(pos_profile, doc_list={}, email_queue_list={}, customers_list={}):
 	import json
 
-	if isinstance(doc_list, string_types):
+	if isinstance(doc_list, str):
 		doc_list = json.loads(doc_list)
 
-	if isinstance(email_queue_list, string_types):
+	if isinstance(email_queue_list, str):
 		email_queue_list = json.loads(email_queue_list)
 
-	if isinstance(customers_list, string_types):
+	if isinstance(customers_list, str):
 		customers_list = json.loads(customers_list)
 
 	customers_list = make_customer_and_address(customers_list)
 	name_list = []
 	for docs in doc_list:
-		for name, doc in iteritems(docs):
+		for name, doc in docs.items():
 			if not frappe.db.exists('Sales Invoice', {'offline_pos_name': name}):
 				if isinstance(doc, dict):
 					validate_records(doc)
@@ -428,7 +427,7 @@ def make_invoice(pos_profile, doc_list={}, email_queue_list={}, customers_list={
 
 	email_queue = make_email_queue(email_queue_list)
 	
-	if isinstance(pos_profile, string_types):
+	if isinstance(pos_profile, str):
 		pos_profile = json.loads(pos_profile)
 	
 	customers = get_customers_list(pos_profile)
@@ -462,7 +461,7 @@ def get_customer_id(doc, customer=None):
 
 def make_customer_and_address(customers):
 	customers_list = []
-	for customer, data in iteritems(customers):
+	for customer, data in customers.items():
 		data = json.loads(data)
 		cust_id = get_customer_id(data, customer)
 		if not cust_id:
@@ -561,7 +560,7 @@ def make_address(args, customer):
 def make_email_queue(email_queue):
 	name_list = []
 
-	for key, data in iteritems(email_queue):
+	for key, data in email_queue.items():
 		name = frappe.db.get_value('Sales Invoice', {'offline_pos_name': key}, 'name')
 		if not name: continue
 

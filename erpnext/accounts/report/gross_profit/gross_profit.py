@@ -12,7 +12,7 @@ def execute(filters=None):
 	return GrossProfitGenerator(filters).run()
 
 
-class GrossProfitGenerator(object):
+class GrossProfitGenerator:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
 		self.filters.from_date = getdate(self.filters.from_date or nowdate())

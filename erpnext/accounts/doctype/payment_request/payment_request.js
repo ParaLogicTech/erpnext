@@ -9,6 +9,10 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 		};
 	}
 
+	onload() {
+		erpnext.accounts.dimensions.setup_dimension_filters(this.frm);
+	}
+
 	refresh() {
 		this.setup_buttons();
 		this.setup_dashboard();
@@ -118,6 +122,10 @@ erpnext.accounts.PaymentRequest = class PaymentRequest extends frappe.ui.form.Co
 			let payment_error_status = frappe.get_notification_count_str(this.frm, 'Payment Error');
 			this.frm.dashboard.add_indicator(__('Payment Error: {0}', [payment_error_status]), payment_error_color);
 		}
+	}
+
+	company() {
+		erpnext.accounts.dimensions.set_default_dimensions(this.frm);
 	}
 
 	trigger_payment_request_notification() {

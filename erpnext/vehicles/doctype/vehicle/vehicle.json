@@ -698,6 +698,7 @@
   {
    "fieldname": "company",
    "fieldtype": "Link",
+   "ignore_user_permissions": 1,
    "label": "Company",
    "options": "Company",
    "read_only": 1,
@@ -744,7 +745,7 @@
  "grid_page_length": 500,
  "image_field": "image",
  "links": [],
- "modified": "2026-09-12 23:19:05.993276",
+ "modified": "2026-11-22 01:19:25.056970",
  "modified_by": "Administrator",
  "module": "Vehicles",
  "name": "Vehicle",

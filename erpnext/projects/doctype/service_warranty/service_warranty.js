@@ -7,6 +7,10 @@ frappe.ui.form.on("Service Warranty", {
 		frm.events.setup_queries(frm);
 	},
 
+	onload(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+	},
+
 	refresh(frm) {
 		frm.events.setup_buttons(frm);
 	},
@@ -59,6 +63,10 @@ frappe.ui.form.on("Service Warranty", {
 				frappe.set_route("query-report", "General Ledger");
 			}, __('View'));
 		}
+	},
+
+	company(frm) {
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
 	},
 
 	project(frm) {

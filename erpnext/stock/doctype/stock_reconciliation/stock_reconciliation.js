@@ -5,6 +5,8 @@ frappe.provide("erpnext.stock");
 
 frappe.ui.form.on("Stock Reconciliation", {
 	onload: function(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+
 		frm.add_fetch("item_code", "item_name", "item_name");
 
 		// end of life
@@ -29,6 +31,15 @@ frappe.ui.form.on("Stock Reconciliation", {
 			return {
 				query : "erpnext.controllers.queries.get_batch_no",
 				filters: filters
+			}
+		});
+
+		frm.set_query("default_warehouse", function(doc) {
+			return {
+				filters: {
+					"company": doc.company,
+					"is_group": cint(doc.group_warehouse)
+				}
 			}
 		});
 
@@ -57,6 +68,10 @@ frappe.ui.form.on("Stock Reconciliation", {
 		if(frm.doc.company) {
 			frm.trigger("toggle_display_account_head");
 		}
+	},
+
+	group_warehouse: function(frm) {
+		frm.set_value("default_warehouse", null);
 	},
 
 	reset_rate: function (frm) {
@@ -115,7 +130,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 						valuation_rate: d.valuation_rate,
 						reset_rate: frm.doc.reset_rate,
 						loose_uom: frm.doc.loose_uom,
-						default_warehouse: frm.doc.default_warehouse,
+						default_warehouse: cint(frm.doc.group_warehouse) ? null : frm.doc.default_warehouse,
 					}
 				},
 				callback: function(r) {
@@ -166,6 +181,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 		}
 	},
 	company: function(frm) {
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
 		frm.trigger("toggle_display_account_head");
 	},
 	toggle_display_account_head: function(frm) {

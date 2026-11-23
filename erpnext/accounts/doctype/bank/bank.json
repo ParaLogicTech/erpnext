@@ -11,8 +11,7 @@
   "abbreviation",
   "data_import_configuration_section",
   "bank_transaction_mapping",
-  "section_break_4",
-  "plaid_access_token"
+  "section_break_4"
  ],
  "fields": [
   {
@@ -40,14 +39,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "plaid_access_token",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Plaid Access Token",
-   "no_copy": 1,
-   "read_only": 1
-  },
-  {
    "allow_in_quick_entry": 1,
    "fieldname": "abbreviation",
    "fieldtype": "Data",
@@ -57,7 +48,7 @@
  ],
  "grid_page_length": 500,
  "links": [],
- "modified": "2026-09-12 16:49:09.151819",
+ "modified": "2026-11-22 02:24:53.920168",
  "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Bank",

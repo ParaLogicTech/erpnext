@@ -15,7 +15,6 @@ from erpnext.stock.doctype.material_request.material_request import set_missing_
 from erpnext.controllers.buying_controller import BuyingController
 from erpnext.buying.utils import validate_for_items
 
-from six import string_types
 
 STANDARD_USERS = ("Guest", "Administrator")
 
@@ -24,7 +23,7 @@ class RequestforQuotation(BuyingController):
 		self.validate_duplicate_supplier()
 		self.validate_supplier_list()
 		validate_for_items(self)
-		super(RequestforQuotation, self).set_qty_as_per_stock_uom()
+		self.set_qty_as_per_stock_uom()
 		self.update_email_id()
 
 	def validate_duplicate_supplier(self):
@@ -234,7 +233,7 @@ def make_supplier_quotation(source_name, for_supplier, target_doc=None):
 # This method is used to make supplier quotation from supplier's portal.
 @frappe.whitelist()
 def create_supplier_quotation(doc):
-	if isinstance(doc, string_types):
+	if isinstance(doc, str):
 		doc = json.loads(doc)
 
 	try:

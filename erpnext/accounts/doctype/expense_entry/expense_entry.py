@@ -443,7 +443,7 @@ class ExpenseEntry(Document):
 		parent_source = parent_source or frappe._dict()
 		row_source = row_source or frappe._dict()
 
-		if not hasattr(self, 'acccounting_dimensions'):
+		if not hasattr(self, 'accounting_dimensions'):
 			self.accounting_dimensions = get_all_dimension_fields()
 			self.accounting_dimensions = list(set(self.accounting_dimensions))
 

@@ -5,13 +5,13 @@
 import frappe
 from erpnext.controllers.status_updater import StatusUpdaterERP
 from frappe.utils import flt
-from six.moves import reduce
+from functools import reduce
 from frappe import _
 
 
 class BankTransaction(StatusUpdaterERP):
 	def __init__(self, *args, **kwargs):
-		super(BankTransaction, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Unreconciled", "eval:self.docstatus == 1 and self.unallocated_amount>0"],
 			["Reconciled", "eval:self.docstatus == 1 and self.unallocated_amount<=0"]

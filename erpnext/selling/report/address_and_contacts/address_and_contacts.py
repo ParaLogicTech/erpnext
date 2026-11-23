@@ -1,8 +1,6 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-from six.moves import range
-from six import iteritems
 import frappe
 
 
@@ -66,7 +64,7 @@ def get_party_addresses_and_contact(party_type, party, party_group):
 	party_details = get_party_details(party_type, party_list, "Address", party_details)
 	party_details = get_party_details(party_type, party_list, "Contact", party_details)
 
-	for party, details in iteritems(party_details):
+	for party, details in party_details.items():
 		addresses = details.get("address", [])
 		contacts  = details.get("contact", [])
 		if not any([addresses, contacts]):

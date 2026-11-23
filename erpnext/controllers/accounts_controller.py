@@ -39,7 +39,7 @@ import json
 
 class AccountsController(TransactionBase):
 	def __init__(self, *args, **kwargs):
-		super(AccountsController, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 	@property
 	def company_currency(self):

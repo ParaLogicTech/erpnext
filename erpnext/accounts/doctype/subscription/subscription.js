@@ -2,6 +2,10 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Subscription', {
+	onload: function(frm) {
+		erpnext.accounts.dimensions.setup_dimension_filters(frm);
+	},
+
 	refresh: function(frm) {
 		if(!frm.is_new()){
 			if(frm.doc.status !== 'Cancelled'){

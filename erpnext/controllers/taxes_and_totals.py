@@ -8,7 +8,7 @@ from frappe.utils import cint, flt, ceil, money_in_words, round_based_on_smalles
 import json
 
 
-class calculate_taxes_and_totals(object):
+class calculate_taxes_and_totals:
 	def __init__(self, doc):
 		self.doc = doc
 		self.calculate()

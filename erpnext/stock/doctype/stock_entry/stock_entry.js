@@ -153,6 +153,8 @@ frappe.ui.form.on('Stock Entry', {
 			}
 			frm.trigger("toggle_display_account_head");
 		}
+
+		erpnext.accounts.dimensions.set_default_dimensions(frm);
 	},
 
 	set_serial_no: function(frm, cdt, cdn, callback) {
@@ -634,6 +636,7 @@ erpnext.stock.StockEntry = class StockEntry extends erpnext.stock.StockControlle
 
 	onload() {
 		erpnext.utils.setup_scan_barcode_field(this.frm.fields_dict.scan_barcode);
+		erpnext.accounts.dimensions.setup_dimension_filters(this.frm);
 	}
 
 	onload_post_render() {

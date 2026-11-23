@@ -4,7 +4,6 @@ from frappe.utils import flt, cstr
 from erpnext.controllers.taxes_and_totals import get_itemised_tax
 from frappe import _
 from frappe.utils.file_manager import remove_file
-from six import string_types
 from frappe.desk.form.load import get_attachments
 from erpnext.regional.italy import state_codes
 
@@ -166,7 +165,7 @@ def get_invoice_summary(items, taxes):
 		if tax.rate == 0:
 			for item in items:
 				item_tax_rate = item.item_tax_rate
-				if isinstance(item.item_tax_rate, string_types):
+				if isinstance(item.item_tax_rate, str):
 					item_tax_rate = json.loads(item.item_tax_rate)
 
 				if item_tax_rate and tax.account_head in item_tax_rate:

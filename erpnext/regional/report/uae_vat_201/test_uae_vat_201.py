@@ -7,8 +7,7 @@ from erpnext.accounts.doctype.purchase_invoice.test_purchase_invoice import make
 from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
 from erpnext.regional.report.uae_vat_201.uae_vat_201 import (
 	get_exempt_total,
-	get_standard_rated_expenses_tax,
-	get_standard_rated_expenses_total,
+	get_standard_rated_expenses,
 	get_total_emiratewise,
 	get_tourist_tax_return_tax,
 	get_tourist_tax_return_total,
@@ -61,8 +60,9 @@ class TestUaeVat201(TestCase):
 		self.assertEqual(get_tourist_tax_return_tax(filters), 2)
 		self.assertEqual(get_zero_rated_total(filters), 100)
 		self.assertEqual(get_exempt_total(filters), 100)
-		self.assertEqual(get_standard_rated_expenses_total(filters), 250)
-		self.assertEqual(get_standard_rated_expenses_tax(filters), 1)
+		standard_rated_expenses_total, standard_rated_expenses_tax = get_standard_rated_expenses(filters)
+		self.assertEqual(standard_rated_expenses_total, 250)
+		self.assertEqual(standard_rated_expenses_tax, 1)
 
 
 def make_company(company_name, abbr):

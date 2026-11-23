@@ -42,7 +42,7 @@ class SalesOrder(SellingController):
 		]
 
 	def validate(self):
-		super(SalesOrder, self).validate()
+		super().validate()
 		self.validate_delivery_date()
 		self.validate_po()
 		self.validate_project()
@@ -107,7 +107,7 @@ class SalesOrder(SellingController):
 		self.update_coupon_code("cancelled")
 
 	def before_update_after_submit(self):
-		super(SalesOrder, self).before_update_after_submit()
+		super().before_update_after_submit()
 		self.validate_po()
 		self.validate_drop_ship()
 		self.validate_supplier_after_submit()
@@ -194,7 +194,7 @@ class SalesOrder(SellingController):
 			self.db_set("advance_paid", self.advance_paid, update_modified=update_modified)
 
 	def validate_with_previous_doc(self):
-		super(SalesOrder, self).validate_with_previous_doc({
+		super().validate_with_previous_doc({
 			"Quotation": {
 				"ref_dn_field": "quotation",
 				"compare_fields": [["company", "="], ["branch", "="], ["order_type", "="]]
@@ -1052,6 +1052,7 @@ def make_purchase_invoice(supplier, source_name, target_doc=None):
 
 	def update_item(source, target, source_parent, target_parent):
 		target.discount_percentage = 0
+		target.discount_amount = 0
 		target.price_list_rate = 0
 		target.rate = 0
 		target.qty = flt(source.qty) - flt(source.ordered_qty)

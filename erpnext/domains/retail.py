@@ -1,15 +1,5 @@
 
 data = {
-	'desktop_icons': [
-		'POS',
-		'Item',
-		'Customer',
-		'Sales Invoice',
-		'Purchase Order',
-		'Accounts',
-		'Task',
-		'ToDo'
-	],
 	'set_value': [
 
 	],

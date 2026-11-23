@@ -23,13 +23,9 @@ erpnext.setup.slides_settings = [
 				fieldtype: 'MultiCheck',
 				options: [
 					{ "label": __("Distribution"), "value": "Distribution" },
-					{ "label": __("Education"), "value": "Education" },
 					{ "label": __("Manufacturing"), "value": "Manufacturing" },
 					{ "label": __("Retail"), "value": "Retail" },
 					{ "label": __("Services"), "value": "Services" },
-					{ "label": __("Agriculture (beta)"), "value": "Agriculture" },
-					{ "label": __("Healthcare (beta)"), "value": "Healthcare" },
-					{ "label": __("Non Profit (beta)"), "value": "Non Profit" }
 				], reqd: 1
 			},
 		],
@@ -60,15 +56,13 @@ erpnext.setup.slides_settings = [
 			},
 			{
 				fieldname: 'company_name',
-				label: frappe.setup.domains.includes('Education') ?
-					__('Institute Name') : __('Company Name'),
+				label: __('Company Name'),
 				fieldtype: 'Data',
 				reqd: 1
 			},
 			{
 				fieldname: 'company_abbr',
-				label: frappe.setup.domains.includes('Education') ?
-					__('Institute Abbreviation') : __('Company Abbreviation'),
+				label: __('Company Abbreviation'),
 				fieldtype: 'Data'
 			}
 		],
@@ -108,17 +102,12 @@ erpnext.setup.slides_settings = [
 		name: 'organisation',
 		title: __("Your Organization"),
 		icon: "fa fa-building",
-		// help: frappe.setup.domains.includes('Education') ?
-		// 	__('The name of the institute for which you are setting up this system.') :
-		// 	__('The name of your company for which you are setting up this system.')),
 		fields: [
 			{
 				fieldname: 'company_tagline',
 				label: __('What does it do?'),
 				fieldtype: 'Data',
-				placeholder: frappe.setup.domains.includes('Education') ?
-					__('e.g. "Primary School" or "University"') :
-					__('e.g. "Build tools for builders"'),
+				placeholder: __('e.g. "Build tools for builders"'),
 				reqd: 1
 			},
 			{ fieldname: 'bank_account', label: __('Bank Name'), fieldtype: 'Data', reqd: 1 },

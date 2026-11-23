@@ -21,7 +21,7 @@ form_grid_templates = {
 
 class PurchaseReceipt(BuyingController):
 	def __init__(self, *args, **kwargs):
-		super(PurchaseReceipt, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Draft", None],
 			["To Bill", "eval:self.billing_status == 'To Bill' and self.docstatus == 1"],
@@ -33,7 +33,7 @@ class PurchaseReceipt(BuyingController):
 
 	def validate(self):
 		self.validate_posting_time()
-		super(PurchaseReceipt, self).validate()
+		super().validate()
 
 		self.validate_order_required()
 		self.validate_with_previous_doc()
@@ -59,7 +59,7 @@ class PurchaseReceipt(BuyingController):
 		if not self.is_return:
 			self.auto_create_batches('warehouse')
 
-		super(PurchaseReceipt, self).on_submit()
+		super().on_submit()
 
 		# Check for Approving Authority
 		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype, self.company, self.base_grand_total)
@@ -85,7 +85,7 @@ class PurchaseReceipt(BuyingController):
 		self.make_gl_entries()
 
 	def on_cancel(self):
-		super(PurchaseReceipt, self).on_cancel()
+		super().on_cancel()
 		self.update_status_on_cancel()
 
 		# Check if Purchase Invoice has been submitted against current Purchase Order
@@ -279,7 +279,7 @@ class PurchaseReceipt(BuyingController):
 			frappe.throw(_("Return Against Purchase Receipt {0} is not submitted").format(self.return_against))
 
 	def validate_with_previous_doc(self):
-		super(PurchaseReceipt, self).validate_with_previous_doc({
+		super().validate_with_previous_doc({
 			"Purchase Order": {
 				"ref_dn_field": "purchase_order",
 				"compare_fields": [["supplier", "="], ["company", "="],	["currency", "="],

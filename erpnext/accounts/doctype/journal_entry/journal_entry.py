@@ -13,7 +13,7 @@ from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of
 
 class JournalEntry(AccountsController):
 	def __init__(self, *args, **kwargs):
-		super(JournalEntry, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 	def get_feed(self):
 		parties = set()
@@ -987,7 +987,7 @@ def get_payment_entry_against_invoice(
 	party_account_type = erpnext.get_party_account_type(party_type)
 
 	payment_type = "Receive" if party_account_type == "Receivable" else "Pay"
-	if dt in ("Sales Invoice", "Fees") and ref_doc.outstanding_amount < 0:
+	if dt == "Sales Invoice" and ref_doc.outstanding_amount < 0:
 		payment_type = "Pay"
 	if dt == "Purchase Invoice" and ref_doc.outstanding_amount < 0:
 		payment_type = "Receive"

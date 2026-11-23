@@ -7,13 +7,12 @@ from frappe import _
 from frappe.utils import date_diff, getdate, ceil
 from frappe.model.document import Document
 from erpnext.hr.utils import validate_overlap, get_employee_leave_policy
-from six import iteritems
 
 
 class LeavePeriod(Document):
 	def get_employees(self, args):
 		conditions, values = [], []
-		for field, value in iteritems(args):
+		for field, value in args.items():
 			if value:
 				conditions.append("{0}=%s".format(field))
 				values.append(value)

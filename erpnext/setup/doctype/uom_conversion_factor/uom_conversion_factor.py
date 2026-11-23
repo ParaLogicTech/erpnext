@@ -7,7 +7,6 @@ from frappe import _
 from frappe.utils import flt, cstr
 from frappe.model.document import Document
 from collections import defaultdict
-from six import string_types
 
 
 class UOMConversionFactor(Document):
@@ -74,7 +73,7 @@ class UOMConversionGraph:
 	def validate_multiple_conversions(self, from_uom, to_uom, weights, paths, for_uoms=None, raise_exception=False):
 		precision = frappe.get_precision('UOM Conversion Factor', 'value')
 
-		if isinstance(for_uoms, string_types):
+		if isinstance(for_uoms, str):
 			for_uoms = [for_uoms]
 
 		all_conversion_factors = []

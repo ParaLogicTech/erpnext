@@ -4,7 +4,6 @@
 
 import frappe, json
 from frappe import msgprint, _
-from six import string_types, iteritems
 
 from frappe.model.document import Document
 from frappe.utils import cstr, flt, cint, nowdate, add_days, comma_and, now_datetime, ceil
@@ -428,7 +427,7 @@ def download_raw_materials(doc):
 	item_list = [['Item Code', 'Description', 'Stock UOM', 'Required Qty', 'Warehouse',
 		'projected Qty', 'Actual Qty']]
 
-	if isinstance(doc, string_types):
+	if isinstance(doc, str):
 		doc = frappe._dict(json.loads(doc))
 
 	for d in get_items_for_material_requests(doc, ignore_existing_ordered_qty=True):
@@ -602,7 +601,7 @@ def get_sales_orders(self):
 
 @frappe.whitelist()
 def get_bin_details(row, company, for_warehouse=None, all_warehouse=False):
-	if isinstance(row, string_types):
+	if isinstance(row, str):
 		row = frappe._dict(json.loads(row))
 
 	company = frappe.db.escape(company)
@@ -626,7 +625,7 @@ def get_bin_details(row, company, for_warehouse=None, all_warehouse=False):
 
 @frappe.whitelist()
 def get_items_for_material_requests(doc, ignore_existing_ordered_qty=None):
-	if isinstance(doc, string_types):
+	if isinstance(doc, str):
 		doc = frappe._dict(json.loads(doc))
 
 	doc['mr_items'] = []
@@ -697,7 +696,7 @@ def get_items_for_material_requests(doc, ignore_existing_ordered_qty=None):
 
 		sales_order = doc.get("sales_order")
 
-		for item_code, details in iteritems(item_details):
+		for item_code, details in item_details.items():
 			so_item_details.setdefault(sales_order, frappe._dict())
 			if item_code in so_item_details.get(sales_order, {}):
 				so_item_details[sales_order][item_code]['qty'] = so_item_details[sales_order][item_code].get("qty", 0) + flt(details.qty)
@@ -705,7 +704,7 @@ def get_items_for_material_requests(doc, ignore_existing_ordered_qty=None):
 				so_item_details[sales_order][item_code] = details
 
 	mr_items = []
-	for sales_order, item_code in iteritems(so_item_details):
+	for sales_order, item_code in so_item_details.items():
 		item_dict = so_item_details[sales_order]
 		for details in item_dict.values():
 			bin_dict = get_bin_details(details, doc.company, warehouse)

@@ -35,6 +35,7 @@ def boot_session(bootinfo):
 			from `tabMode of Payment`
 		""", as_dict=1, update={"doctype": ":Mode of Payment"})
 
+		update_accounting_dimensions(bootinfo)
 		update_party_type_details(bootinfo)
 		update_price_list_rate_restriction(bootinfo)
 
@@ -71,6 +72,12 @@ def update_price_list_rate_restriction(bootinfo):
 			if override.role and override.role in frappe.get_roles():
 				bootinfo.restrict_price_list_rate_overriden = 1
 				break
+
+
+def update_accounting_dimensions(bootinfo):
+	from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_dimension_filters
+
+	bootinfo.accounting_dimensions, bootinfo.default_accounting_dimensions = get_dimension_filters()
 
 
 def update_page_info(bootinfo):

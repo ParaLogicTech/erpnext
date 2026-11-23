@@ -21,10 +21,6 @@ def install(country=None):
 		{ 'doctype': 'Domain', 'domain': 'Manufacturing'},
 		{ 'doctype': 'Domain', 'domain': 'Retail'},
 		{ 'doctype': 'Domain', 'domain': 'Services'},
-		{ 'doctype': 'Domain', 'domain': 'Education'},
-		{ 'doctype': 'Domain', 'domain': 'Healthcare'},
-		{ 'doctype': 'Domain', 'domain': 'Agriculture'},
-		{ 'doctype': 'Domain', 'domain': 'Non Profit'},
 
 		# address template
 		{'doctype':"Address Template", "country": country},
@@ -181,9 +177,7 @@ def install(country=None):
 		{'doctype': "Party Type", "party_type": "Supplier", "account_type": "Payable"},
 		{'doctype': "Party Type", "party_type": "Letter of Credit", "account_type": "Payable"},
 		{'doctype': "Party Type", "party_type": "Employee", "account_type": "Payable"},
-		{'doctype': "Party Type", "party_type": "Member", "account_type": "Receivable"},
 		{'doctype': "Party Type", "party_type": "Shareholder", "account_type": "Payable"},
-		{'doctype': "Party Type", "party_type": "Student", "account_type": "Receivable"},
 
 		{'doctype': "Project Type", "project_type": "Internal"},
 		{'doctype': "Project Type", "project_type": "External"},
@@ -204,10 +198,6 @@ def install(country=None):
 
 		{'doctype': "Print Heading", 'print_heading': _("Credit Note")},
 		{'doctype': "Print Heading", 'print_heading': _("Debit Note")},
-
-		# Assessment Group
-		{'doctype': 'Assessment Group', 'assessment_group_name': _('All Assessment Groups'),
-			'is_group': 1, 'parent_assessment_group': ''},
 
 		# Share Management
 		{"doctype": "Share Type", "title": _("Equity")},

@@ -1079,7 +1079,7 @@ def get_party_name(party_type, party):
 	if party_type == "Letter of Credit":
 		return party
 	else:
-		name_fieldname = "title" if party_type in ["Student", "Shareholder"] else scrub(party_type) + "_name"
+		name_fieldname = "title" if party_type == "Shareholder" else scrub(party_type) + "_name"
 		return frappe.get_cached_value(party_type, party, name_fieldname)
 
 

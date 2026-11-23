@@ -4,7 +4,6 @@
 
 import frappe
 import json
-from six import iteritems
 from frappe.model.document import Document
 from frappe import _
 from collections import OrderedDict
@@ -186,7 +185,7 @@ def get_available_item_locations_for_serialized_item(item_code, from_warehouses,
 		warehouse_serial_nos_map.setdefault(warehouse, []).append(serial_no)
 
 	locations = []
-	for warehouse, serial_nos in iteritems(warehouse_serial_nos_map):
+	for warehouse, serial_nos in warehouse_serial_nos_map.items():
 		locations.append({
 			'qty': len(serial_nos),
 			'warehouse': warehouse,

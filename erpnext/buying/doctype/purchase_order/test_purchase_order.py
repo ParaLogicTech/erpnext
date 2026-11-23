@@ -16,7 +16,6 @@ from erpnext.stock.doctype.material_request.material_request import make_purchas
 from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
 from erpnext.controllers.transaction_controller import update_child_items
 from erpnext.stock.doctype.batch.test_batch import make_new_batch
-from erpnext.controllers.buying_controller import get_backflushed_subcontracted_raw_materials
 
 class TestPurchaseOrder(unittest.TestCase):
 	def test_make_purchase_receipt(self):
@@ -723,11 +722,11 @@ class TestPurchaseOrder(unittest.TestCase):
 		pr1.get('items')[0].batch_no = "ABCD1"
 		pr1.save()
 
-		pr_key = ("Sub Contracted Raw Material 2", po.name)
-		consumed_qty = get_backflushed_subcontracted_raw_materials([po.name]).get(pr_key)
+		# the remaining receipt consumes whatever the first receipt left of the 552 transferred
+		backflushed_qty = sum(d.qty for d in pr1.get_raw_materials_backflushed_against_item(pr1.items[0]))
 
 		self.assertTrue(pr1.supplied_items[0].consumed_qty > 0)
-		self.assertTrue(pr1.supplied_items[0].consumed_qty,  flt(552.0) - flt(consumed_qty))
+		self.assertEqual(flt(pr1.supplied_items[0].consumed_qty, 3), flt(552.0 - backflushed_qty, 3))
 
 		update_backflush_based_on("BOM")
 

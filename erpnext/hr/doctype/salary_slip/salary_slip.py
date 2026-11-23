@@ -24,7 +24,7 @@ from erpnext.hr.doctype.department.department import get_department_cost_center
 
 class SalarySlip(TransactionBase):
 	def __init__(self, *args, **kwargs):
-		super(SalarySlip, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 		self.series = 'Sal Slip/{0}/.###'.format(self.employee)
 		self.whitelisted_globals = {
 			"int": int,

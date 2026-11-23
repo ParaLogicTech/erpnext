@@ -105,7 +105,7 @@ def get_allow_negative_stock(sle=None):
 	return cint(allow_negative_stock_setting and has_negative_stock_role_permission)
 
 
-class update_entries_after(object):
+class update_entries_after:
 	"""
 		update valution rate and qty after transaction
 		from the current time-bucket onwards

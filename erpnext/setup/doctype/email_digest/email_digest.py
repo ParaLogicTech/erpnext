@@ -16,7 +16,7 @@ user_specific_content = ["calendar_events", "todo_list"]
 from frappe.model.document import Document
 class EmailDigest(Document):
 	def __init__(self, *args, **kwargs):
-		super(EmailDigest, self).__init__(*args, **kwargs)
+		super().__init__(*args, **kwargs)
 
 		self.from_date, self.to_date = self.get_from_to_date()
 		self.set_dates()

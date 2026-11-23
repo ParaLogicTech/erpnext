@@ -1,0 +1,186 @@
+{
+ "actions": [],
+ "autoname": "HR-TRF-.YYYY.-.#####",
+ "creation": "2016-08-08 06:35:34.158568",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "employee_name",
+  "employee_email",
+  "department",
+  "column_break_3",
+  "training_event",
+  "event_name",
+  "trainer_name",
+  "section_break_6",
+  "training_feedback_rating",
+  "feedback",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Read Only",
+   "label": "Employee Name"
+  },
+  {
+   "fieldname": "employee_email",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Employee Email",
+   "options": "Email"
+  },
+  {
+   "fetch_from": "employee.department",
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1
+  },
+  {
+<<<<<<< HEAD
+   "fetch_from": "training_event.course",
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "Training Course",
+   "read_only": 1
+  },
+  {
+=======
+>>>>>>> 11df55ce316e538387bd45238578b0334fe536a8
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "training_event",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Training Event",
+   "options": "Training Event",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "training_event.event_name",
+   "fieldname": "event_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Event Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "training_event.trainer_name",
+   "fieldname": "trainer_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Trainer Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "training_feedback_rating",
+   "fieldtype": "Table",
+   "label": "Training Feedback Rating",
+   "options": "Training Feedback Rating"
+  },
+  {
+   "fieldname": "feedback",
+   "fieldtype": "Text",
+   "label": "Feedback"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Training Feedback",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 500,
+ "is_submittable": 1,
+ "links": [],
+<<<<<<< HEAD
+ "modified": "2026-11-18 18:21:18.735618",
+=======
+ "modified": "2026-11-21 03:21:04.413218",
+>>>>>>> 11df55ce316e538387bd45238578b0334fe536a8
+ "modified_by": "Administrator",
+ "module": "HR",
+ "name": "Training Feedback",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Trainer",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Employee",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "employee_name"
+}

@@ -16,11 +16,10 @@ from erpnext.accounts.doctype.account.test_account import get_inventory_account
 from erpnext.stock.doctype.stock_entry.stock_entry import move_sample_to_retention_warehouse, make_stock_in_entry
 from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import OpeningEntryAccountError
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
-from six import iteritems
 
 def get_sle(**args):
 	condition, values = "", []
-	for key, value in iteritems(args):
+	for key, value in args.items():
 		condition += " and " if condition else " where "
 		condition += "`{0}`=%s".format(key)
 		values.append(value)
@@ -80,7 +79,7 @@ class TestStockEntry(unittest.TestCase):
 			frappe.get_doc("Stock Entry", d.name).cancel()
 
 		def assert_sle(sle, values):
-			for k, v in iteritems(values):
+			for k, v in values.items():
 				self.assertEqual(sle.get(k), v)
 
 		# For a spreadsheet view go to
