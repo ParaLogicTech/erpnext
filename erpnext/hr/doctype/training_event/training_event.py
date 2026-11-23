@@ -24,13 +24,10 @@ class TrainingEvent(Document):
 
 	def set_training_hours(self):
 		if self.start_time and self.end_time:
-			diff_hours = time_diff_in_hours(self.end_time, self.start_time)
-			if diff_hours > 0:
-				self.training_hours = flt(diff_hours, 2)
-			else:
-				self.training_hours = 0.0
-		else:
-			self.training_hours = 0.0
+			self.training_hours = flt(
+				time_diff_in_hours(self.end_time, self.start_time),
+				self.precision("training_hours"),
+			)
 
 
 @frappe.whitelist()
@@ -68,14 +65,15 @@ def make_training_result(source_name, target_doc=None):
 def make_training_feedback(source_name, target_doc=None):
 	from frappe.model.mapper import get_mapped_doc
 
+	def postprocess(source, target):
+		if source.employees and len(source.employees) == 1:
+			target.employee = source.employees[0].employee
+
 	mapping = {
 		"Training Event": {
 			"doctype": "Training Feedback",
 			"field_map": {
 				"name": "training_event",
-				"event_name": "event_name",
-				"trainer_name": "trainer_name",
-				"course": "course",
 			},
 		},
 	}
@@ -85,10 +83,7 @@ def make_training_feedback(source_name, target_doc=None):
 		source_name,
 		mapping,
 		target_doc=target_doc,
+		postprocess=postprocess,
 	)
-
-	source = frappe.get_doc("Training Event", source_name)
-	if source.employees and len(source.employees) == 1:
-		target_doc.employee = source.employees[0].employee
 
 	return target_doc
