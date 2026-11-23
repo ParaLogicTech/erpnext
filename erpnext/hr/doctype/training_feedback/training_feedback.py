@@ -12,6 +12,8 @@ class TrainingFeedback(Document):
 		if training_event.docstatus != 1:
 			frappe.throw(_('{0} must be submitted').format(_('Training Event')))
 
+		self.set_employee_email()
+
 	def on_submit(self):
 		training_event = frappe.get_doc("Training Event", self.training_event)
 		event_status = None
@@ -33,9 +35,6 @@ class TrainingFeedback(Document):
 		if getattr(self, "mute_notification", None) or self.flags.mute_notification:
 			return
 
-		if self.is_new():
-			return
-
 		if self.docstatus in (1, 2):
 			return
 
@@ -54,7 +53,7 @@ class TrainingFeedback(Document):
 @frappe.whitelist()
 def trigger_training_feedback_notification(training_feedback):
 	doc = frappe.get_doc("Training Feedback", training_feedback)
-	doc.check_permission("read")
+	doc.check_permission("write")
 	doc.trigger_training_feedback_notification()
 
 	if doc.flags.notifications_executed:

@@ -8,19 +8,19 @@ frappe.ui.form.on('Training Feedback', {
 	},
 
 	refresh: function (frm) {
-		if (!frm.doc.__islocal && !frm.doc.__unsaved) {
-			if (![1, 2].includes(frm.doc.docstatus)) {
-				frm.add_custom_button(__("Resend Link"), function () {
-					frappe.call({
-						method: "erpnext.hr.doctype.training_feedback.training_feedback.trigger_training_feedback_notification",
-						args: {
-							training_feedback: frm.doc.name
-						},
-						freeze: true,
-						freeze_message: __("Sending"),
-					});
-				});
-			}
+		if (frm.doc.__islocal || frm.doc.__unsaved || [1, 2].includes(frm.doc.docstatus)) {
+			return;
 		}
-	},
+
+		frm.add_custom_button(__("Resend Link"), function () {
+			frappe.call({
+				method: "erpnext.hr.doctype.training_feedback.training_feedback.trigger_training_feedback_notification",
+				args: {
+					training_feedback: frm.doc.name
+				},
+				freeze: true,
+				freeze_message: __("Sending"),
+			});
+		});
+	}
 });

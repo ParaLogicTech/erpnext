@@ -6,20 +6,23 @@ frappe.ui.form.on('Training Event', {
 		frm.get_field("employees").grid.set_multiple_add("employee");
 	},
 	refresh: function (frm) {
-		if (!frm.doc.__islocal && !frm.doc.__unsaved) {
-			frm.add_custom_button(__("Training Result"), function () {
-				frappe.model.open_mapped_doc({
-					method: "erpnext.hr.doctype.training_event.training_event.make_training_result",
-					frm: frm
-				});
-			});
-			frm.add_custom_button(__("Training Feedback"), function () {
-				frappe.model.open_mapped_doc({
-					method: "erpnext.hr.doctype.training_event.training_event.make_training_feedback",
-					frm: frm
-				});
-			});
+		if (frm.doc.__islocal || frm.doc.__unsaved || frm.doc.docstatus !== 1) {
+			return;
 		}
+
+		frm.add_custom_button(__("Training Result"), function () {
+			frappe.model.open_mapped_doc({
+				method: "erpnext.hr.doctype.training_event.training_event.make_training_result",
+				frm: frm
+			});
+		});
+
+		frm.add_custom_button(__("Training Feedback"), function () {
+			frappe.model.open_mapped_doc({
+				method: "erpnext.hr.doctype.training_event.training_event.make_training_feedback",
+				frm: frm
+			});
+		});
 	},
 	start_time: function (frm) {
 		set_training_hours(frm);
@@ -36,8 +39,8 @@ function set_training_hours(frm) {
 		let diff_hours = end.diff(start, "hours", true);
 
 		if (diff_hours > 0) {
-			let hours = Math.round(diff_hours);
-			if (cint(frm.doc.training_hours) !== hours) {
+			let hours = flt(diff_hours, 2);
+			if (flt(frm.doc.training_hours) !== hours) {
 				frm.set_value("training_hours", hours);
 			}
 		} else {

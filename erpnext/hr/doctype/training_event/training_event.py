@@ -5,7 +5,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe import _
-from frappe.utils import time_diff_in_hours, time_diff_in_seconds
+from frappe.utils import flt, time_diff_in_hours, time_diff_in_seconds
 from erpnext.hr.doctype.employee.employee import get_employee_emails
 
 class TrainingEvent(Document):
@@ -26,16 +26,20 @@ class TrainingEvent(Document):
 		if self.start_time and self.end_time:
 			diff_hours = time_diff_in_hours(self.end_time, self.start_time)
 			if diff_hours > 0:
-				self.training_hours = round(diff_hours)
+				self.training_hours = flt(diff_hours, 2)
 			else:
-				self.training_hours = 0
+				self.training_hours = 0.0
 		else:
-			self.training_hours = 0
+			self.training_hours = 0.0
 
 
 @frappe.whitelist()
 def make_training_result(source_name, target_doc=None):
 	from frappe.model.mapper import get_mapped_doc
+
+	def postprocess(source, target):
+		for row in (target.employees or []):
+			row.hours = flt(source.training_hours)
 
 	mapping = {
 		"Training Event": {
@@ -46,10 +50,6 @@ def make_training_result(source_name, target_doc=None):
 		},
 		"Training Event Employee": {
 			"doctype": "Training Result Employee",
-			"field_map": {
-				"parent": "training_event",
-				"name": "training_event_employee",
-			},
 		},
 	}
 
@@ -58,6 +58,7 @@ def make_training_result(source_name, target_doc=None):
 		source_name,
 		mapping,
 		target_doc=target_doc,
+		postprocess=postprocess,
 	)
 
 	return target_doc

@@ -161,7 +161,7 @@
   },
   {
    "fieldname": "training_hours",
-   "fieldtype": "Int",
+   "fieldtype": "Float",
    "label": "Training Hours",
    "non_negative": 1
   },
