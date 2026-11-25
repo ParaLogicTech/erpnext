@@ -317,14 +317,14 @@ class Quotation(SellingController):
 		doc.notify_update()
 
 	def set_can_notify_onload(self):
-		notification_types = [
+		notification_keys = [
 			'Quotation Delivery',
 			'Quotation Reminder',
 		]
 
 		can_notify = frappe._dict()
-		for notification_type in notification_types:
-			can_notify[notification_type] = self.validate_notification(notification_type, throw=False)
+		for notification_key in notification_keys:
+			can_notify[notification_key] = self.validate_notification(notification_key, throw=False)
 
 		self.set_onload('can_notify', can_notify)
 
@@ -343,8 +343,8 @@ class Quotation(SellingController):
 		if self.name in quotations_for_reminder:
 			return get_quotation_reminders_scheduled_time(reminder_date)
 
-	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if notification_type in ("Quotation Delivery", "Quotation Reminder"):
+	def validate_notification(self, notification_key=None, child_doctype=None, child_name=None, throw=False):
+		if notification_key in ("Quotation Delivery", "Quotation Reminder"):
 			# Must be submitted
 			if self.docstatus != 1:
 				if throw:
@@ -352,11 +352,11 @@ class Quotation(SellingController):
 				return False
 
 		# Must be Open
-		if notification_type in ("Quotation Delivery", "Quotation Reminder"):
+		if notification_key in ("Quotation Delivery", "Quotation Reminder"):
 			if self.status != "Open":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Quotation status is not 'Open'").format(
-						notification_type
+						notification_key
 					))
 				return False
 
@@ -604,7 +604,7 @@ def send_quotation_reminder_notifications():
 def automated_reminder_enabled():
 	return has_notification(
 		"Quotation",
-		notification_type="Quotation Reminder",
+		notification_key="Quotation Reminder",
 		trigger_method="notify_quotation_reminder",
 	)
 
@@ -624,7 +624,7 @@ def get_quotations_for_reminder_notification(reminder_date=None, quotations=None
 		select qtn.name
 		from `tabQuotation` qtn
 		left join `tabNotification Count` n on n.reference_doctype = 'Quotation' and n.reference_name = qtn.name
-			and n.notification_type = 'Quotation Reminder'
+			and n.notification_key = 'Quotation Reminder'
 		where qtn.docstatus = 1
 			and qtn.status = 'Open'
 			and qtn.submission_date = %(submission_date)s

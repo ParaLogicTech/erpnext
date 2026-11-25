@@ -94,8 +94,8 @@ class MaintenanceSchedule(TransactionBase):
 		})
 		self.run_method("notify_maintenance_opportunity", context=context)
 
-	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if notification_type in ("Maintenance Reminder",):
+	def validate_notification(self, notification_key=None, child_doctype=None, child_name=None, throw=False):
+		if notification_key in ("Maintenance Reminder",):
 			ms_row = [d for d in self.schedules if d.name == child_name]
 			if not ms_row:
 				frappe.throw(_("Invalid Maintenance Schedule"))
@@ -109,13 +109,13 @@ class MaintenanceSchedule(TransactionBase):
 			if getdate(ms_row.scheduled_date) < getdate():
 				if throw:
 					frappe.throw(_("Cannot send {0} notification after Scheduled Date has passed")
-						.format(notification_type))
+						.format(notification_key))
 				return False
 
 			if self.status != "Active":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Maintenance Schedule status is not 'Active'")
-						.format(notification_type))
+						.format(notification_key))
 				return False
 		return True
 
@@ -500,7 +500,7 @@ def automated_maintenance_opportunity_enabled():
 		cint(frappe.db.get_single_value("Projects Settings", "auto_create_opportunity_from_schedule"))
 		or has_notification(
 			"Maintenance Schedule",
-			notification_type="Maintenance Opportunity",
+			notification_key="Maintenance Opportunity",
 			trigger_method="notify_maintenance_opportunity",
 		)
 	)
@@ -510,7 +510,7 @@ def automated_maintenance_reminder_enabled():
 	from frappe.email.doctype.notification.notification import has_notification
 	return has_notification(
 		"Maintenance Schedule",
-		notification_type="Maintenance Reminder",
+		notification_key="Maintenance Reminder",
 		trigger_method="notify_maintenance_reminder",
 	)
 
