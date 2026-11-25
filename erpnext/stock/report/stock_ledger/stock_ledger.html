@@ -96,24 +96,24 @@
 
 				<td class="text-center text-nowrap">
 					{% if(data[i].voucher_no) { %}
-					<strong><a href="/app/{%= encodeURIComponent(frappe.router.slug(data[i].voucher_type)) %}/{%= encodeURIComponent(data[i].voucher_no) %}" target="_blank">{%= data[i].voucher_no %}</a></strong>
+					<strong>{%= data[i].voucher_no %}</strong>
 					{% } %}
 					<div>{%= data[i].voucher_type %}</div>
 				</td>
 
 				<td>
-					<a href="/app/item/{%= encodeURIComponent(data[i].item_code) %}" target="_blank">{%= data[i].item_code %}</a>
+					{%= data[i].item_code %}
 					{% if(data[i].item_name && data[i].item_name != data[i].item_code) { %}
 					<div>{%= data[i].item_name %}</div>
 					{% } %}
 				</td>
 
-				<td><a href="/app/warehouse/{%= encodeURIComponent(data[i].warehouse) %}" target="_blank">{%= (data[i].warehouse || " - ").split(" - ")[0] %}</a></td>
+				<td>{%= (data[i].warehouse || " - ").split(" - ")[0] %}</td>
 
 				{% if(!filters.party && !group.party) { %}
 				<td>
 					{%= data[i].party_type %}
-					<br /><a href="/app/{%= encodeURIComponent(frappe.router.slug(data[i].party_type)) %}/{%= encodeURIComponent(data[i].party) %}" target="_blank">{%= data[i].party %}</a>
+					<br />{%= data[i].party %}
 					{% if (data[i].party_name && data[i].party_name != data[i].party) { %}
 						- {%= data[i].party_name %}
 					{% } %}

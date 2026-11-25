@@ -98,7 +98,7 @@
 				<td>
 					{% if (!data[i].is_total_row) { %}
 						<div>
-							<a href="/app/item/{%= encodeURIComponent(data[i].item_code) %}" target="_blank">{%= data[i].item_code %}</a>
+							{%= data[i].item_code %}
 						</div>
 						{% if(data[i].item_name && data[i].item_name != data[i].item_code) { %}
 							<div>{%= data[i].item_name %}</div>
@@ -109,16 +109,16 @@
 				</td>
 
 				{% if (has_warehouse) { %}
-				<td><a href="/app/warehouse/{%= encodeURIComponent(data[i].warehouse) %}" target="_blank">{%= (data[i].warehouse || " - ").split(" - ")[0] %}</a></td>
+				<td>{%= (data[i].warehouse || " - ").split(" - ")[0] %}</td>
 				{% } %}
 
 				{% if (has_batch) { %}
-				<td><a href="/app/batch/{%= encodeURIComponent(data[i].batch_no) %}" target="_blank">{%= data[i].batch_no %}</a></td>
+				<td>{%= data[i].batch_no %}</td>
 				{% } %}
 
 				{% if (has_package) { %}
 				<td>
-					<div><a href="/app/packing-slip/{%= encodeURIComponent(data[i].packing_slip) %}" target="_blank">{%= data[i].packing_slip %}</a></div>
+					<div>{%= data[i].packing_slip %}</div>
 					<div>{%= data[i].package_type %}</div>
 				</td>
 				{% } %}
