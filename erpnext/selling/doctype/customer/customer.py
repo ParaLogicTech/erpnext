@@ -437,8 +437,8 @@ class Customer(TransactionBase):
 	def validate_customer_override_values(self):
 		get_customer_override_values(self.as_dict(), validate=True)
 
-	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if notification_type == "Customer Birthday":
+	def validate_notification(self, notification_key=None, child_doctype=None, child_name=None, throw=False):
+		if notification_key == "Customer Birthday":
 			if not self.date_of_birth:
 				if throw:
 					frappe.throw(_("Cannot send Customer Birthday notification because Customer Date of Birth is not set"))
@@ -834,7 +834,7 @@ def automated_customer_birthday_enabled():
 	from frappe.email.doctype.notification.notification import has_notification
 	return has_notification(
 		"Customer",
-		notification_type="Customer Birthday",
+		notification_key="Customer Birthday",
 		trigger_method="notify_customer_birthday",
 	)
 
@@ -858,7 +858,7 @@ def get_customers_for_birthday_notifications(notification_date=None):
 		LEFT JOIN `tabNotification Count` nc
 			ON nc.reference_doctype = 'Customer'
 			AND nc.reference_name = c.name
-			AND nc.notification_type = 'Customer Birthday'
+			AND nc.notification_key = 'Customer Birthday'
 		WHERE day(c.date_of_birth) = %(day)s
 			AND month(c.date_of_birth)= %(month)s
 			AND (nc.last_scheduled_dt is null OR DATE(nc.last_scheduled_dt) != %(date_today)s)

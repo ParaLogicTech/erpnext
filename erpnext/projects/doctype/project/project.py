@@ -1667,13 +1667,13 @@ class Project(StatusUpdaterERP):
 
 		return self._item_group_subtree[item_group]
 
-	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if notification_type == "Ready to Close":
+	def validate_notification(self, notification_key=None, child_doctype=None, child_name=None, throw=False):
+		if notification_key == "Ready to Close":
 			# Notification should not be sent if status is not 'To Close'
 			if self.status != "To Close":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because status is not 'To Close'").format(
-						notification_type
+						notification_key
 					))
 				return False
 
@@ -1681,7 +1681,7 @@ class Project(StatusUpdaterERP):
 			if not self.ready_to_close:
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because ready to close is not marked").format(
-						notification_type
+						notification_key
 					))
 				return False
 

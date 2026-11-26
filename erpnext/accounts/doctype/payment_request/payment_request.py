@@ -600,27 +600,27 @@ class PaymentRequest(AccountsController):
 			if pref:
 				frappe.throw(_("Payment Entry is already submitted"), title=_('Error'))
 
-	def validate_notification(self, notification_type=None, child_doctype=None, child_name=None, throw=False):
-		if notification_type in ("Payment Link", "Payment Received"):
+	def validate_notification(self, notification_key=None, child_doctype=None, child_name=None, throw=False):
+		if notification_key in ("Payment Link", "Payment Received"):
 			if self.docstatus != 1:
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Payment Request is not submitted").format(
-						notification_type
+						notification_key
 					))
 				return False
 
 			if self.payment_request_type != "Inward":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Payment Request Type is not 'Inward'").format(
-						notification_type
+						notification_key
 					))
 				return False
 
-		if notification_type == "Payment Link":
+		if notification_key == "Payment Link":
 			if self.mute_notification:
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because notifications are muted for this Payment Request").format(
-						notification_type
+						notification_key
 					))
 
 			if not self.payment_url:
@@ -631,19 +631,19 @@ class PaymentRequest(AccountsController):
 			if self.status == "Paid":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because reference document is already paid").format(
-						notification_type
+						notification_key
 					))
 				return False
 
-		if notification_type == "Payment Received":
+		if notification_key == "Payment Received":
 			if self.status != "Paid":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Payment Request is not fully paid").format(
-						notification_type
+						notification_key
 					))
 				return False
 
-		if notification_type == "Payment Error":
+		if notification_key == "Payment Error":
 			if not self.payment_entry_creation_failed:
 				if throw:
 					frappe.throw(_("Cannot send Payment Error notification because payment entry creation did not fail"))
@@ -651,9 +651,9 @@ class PaymentRequest(AccountsController):
 
 		return True
 
-	def get_notification_attachment(self, notification_type=None):
+	def get_notification_attachment(self, notification_key=None):
 		with_letterhead = frappe.get_cached_value("Print Settings", "Print Settings", "with_letterhead")
-		if notification_type == "Payment Received":
+		if notification_key == "Payment Received":
 			payment_entries = frappe.db.get_all("Payment Entry", {
 				"payment_type": "Receive",
 				"payment_request": self.name,
