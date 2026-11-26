@@ -30,7 +30,7 @@ def execute():
 				select voucher_detail_no, serial_no
 				from `tabStock Ledger Entry`
 				where ifnull(serial_no, '') != ''
-					and voucher_detail_no in (%s)
+					and voucher_detail_no in ({0})
 			""".format(', '.join(['%s']*len(item_rows))),
 				tuple([d[0] for d in item_rows])))
 

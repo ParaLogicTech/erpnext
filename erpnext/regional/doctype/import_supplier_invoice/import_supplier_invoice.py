@@ -396,7 +396,7 @@ def get_full_path(file_name):
 	elif file_path.startswith("http"):
 		pass
 
-	elif not self.file_url:
+	else:
 		frappe.throw(_("There is some problem with the file url: {0}").format(file_path))
 
 	return file_path
