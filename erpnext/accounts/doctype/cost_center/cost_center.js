@@ -91,8 +91,8 @@ frappe.ui.form.on('Cost Center', {
 							if(r.message) {
 								frappe.set_route("Form", "Cost Center", r.message);
 							} else {
-								me.frm.set_value("cost_center_name", data.cost_center_name);
-								me.frm.set_value("cost_center_number", data.cost_center_number);
+								frm.set_value("cost_center_name", data.cost_center_name);
+								frm.set_value("cost_center_number", data.cost_center_number);
 							}
 							d.hide();
 						}

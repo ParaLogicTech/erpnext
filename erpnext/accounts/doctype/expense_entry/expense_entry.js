@@ -257,7 +257,7 @@ frappe.ui.form.on('Expense Entry Detail', {
 				details.party = row.supplier;
 				details.party_name = row.supplier_name;
 				if (details.expense_account && !row.expense_account) {
-					frappe.model.set_value(cdt, cdn, "expense_account", expense_account);
+					frappe.model.set_value(cdt, cdn, "expense_account", details.expense_account);
 				}
 			})
 		}

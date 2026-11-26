@@ -302,7 +302,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 			callback: (r) => {
 				frappe.model.set_value(row.doctype, row.name, "base_hour_rate", r.message.hour_rate);
 				frappe.model.set_value(row.doctype, row.name, "hour_rate",
-					flt(flt(r.message.hour_rate) / flt(frm.doc.conversion_rate)), 2);
+					flt(flt(r.message.hour_rate) / flt(this.frm.doc.conversion_rate)), 2);
 
 				this.calculate_cost();
 			}

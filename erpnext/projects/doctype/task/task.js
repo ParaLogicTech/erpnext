@@ -77,9 +77,9 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 			});
 			this.frm.add_custom_button(__('Create Child Task'), () => {
 				frappe.new_doc("Task", {
-					parent_task: frm.doc.name,
-					project: frm.doc.project,
-					issue: frm.doc.issue,
+					parent_task: this.frm.doc.name,
+					project: this.frm.doc.project,
+					issue: this.frm.doc.issue,
 				});
 			});
 		}
