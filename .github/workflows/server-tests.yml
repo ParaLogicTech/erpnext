@@ -1,0 +1,258 @@
+name: Server
+
+on:
+  push:
+    branches:
+      - version-15
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+  schedule:
+    # Weekly, Sunday 00:00 UTC, to catch frappe and crm changes that break erpnext
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+    inputs:
+      frappe_repo:
+        description: "Frappe repository to test against (e.g. a fork with a pending change)"
+        default: "ParaLogicTech/frappe"
+        type: string
+      frappe_branch:
+        description: "Frappe branch"
+        default: "version-15"
+        type: string
+      crm_repo:
+        description: "CRM repository to test against (e.g. a fork with a pending change)"
+        default: "ParaLogicTech/crm"
+        type: string
+      crm_branch:
+        description: "CRM branch"
+        default: "version-15"
+        type: string
+
+concurrency:
+  group: server-${{ github.event_name }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: Install
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    services:
+      mariadb:
+        image: mariadb:10.6.24
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check for valid Python & Merge Conflicts
+        run: |
+          python -m compileall -q -f "${GITHUB_WORKSPACE}"
+          if grep -lr --exclude-dir=node_modules "^<<<<<<< " "${GITHUB_WORKSPACE}"
+              then echo "Found merge conflicts"
+              exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          check-latest: true
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      # Redis comes from Ubuntu and is started by `bench start`, as in frappe's CI
+      - name: Install System Dependencies
+        run: sudo apt-get update && sudo apt-get install -y redis-server mariadb-client
+
+      # A PR that needs an unmerged frappe or crm change names it in its description:
+      # "Depends on ParaLogicTech/frappe#123", "Depends on ParaLogicTech/crm#45".
+      # The description is read when the job runs (not from the event), so a re-run picks up an edited description.
+      # Once that PR is merged, its branch may be deleted, so version-15 is used again.
+      - name: Find Frappe and CRM Branches
+        id: branches
+        run: |
+          body=""
+          if [ -n "${PR_NUMBER}" ]; then
+            body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq ".body // \"\"")
+          fi
+
+          find_branch() {
+            local app="$1" repo="$2" branch="$3"
+            local app_pr merged head_repo head_ref
+
+            app_pr=$(grep -ioE "depends on ParaLogicTech/${app}#[0-9]+" <<< "${body}" | head -n 1 | grep -oE "[0-9]+$" || true)
+
+            if [ -n "${app_pr}" ]; then
+              if ! pr_info=$(gh api "repos/ParaLogicTech/${app}/pulls/${app_pr}" \
+                --jq "[(.merged | tostring), .head.repo.full_name // \"\", .head.ref] | join(\"\u001f\")"); then
+                echo "::error::Can't read ParaLogicTech/${app}#${app_pr}, named in this PR's description"
+                exit 1
+              fi
+
+              # Split on the unit separator: tabs or spaces would merge an empty head repo into the next field
+              IFS=$'\x1f' read -r merged head_repo head_ref <<< "${pr_info}"
+
+              if [ "${merged}" = "true" ]; then
+                echo "ParaLogicTech/${app}#${app_pr} is merged, using ${repo}@${branch}"
+              elif [ -z "${head_repo}" ]; then
+                echo "::error::The head repository of ParaLogicTech/${app}#${app_pr} no longer exists"
+                exit 1
+              else
+                repo="${head_repo}"
+                branch="${head_ref}"
+              fi
+            fi
+
+            echo "Testing against ${app} from ${repo}@${branch}"
+            echo "${app}_repo=${repo}" >> "${GITHUB_OUTPUT}"
+            echo "${app}_branch=${branch}" >> "${GITHUB_OUTPUT}"
+          }
+
+          find_branch frappe "${INPUT_FRAPPE_REPO:-ParaLogicTech/frappe}" "${INPUT_FRAPPE_BRANCH:-version-15}"
+          find_branch crm "${INPUT_CRM_REPO:-ParaLogicTech/crm}" "${INPUT_CRM_BRANCH:-version-15}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_FRAPPE_REPO: ${{ inputs.frappe_repo }}
+          INPUT_FRAPPE_BRANCH: ${{ inputs.frappe_branch }}
+          INPUT_CRM_REPO: ${{ inputs.crm_repo }}
+          INPUT_CRM_BRANCH: ${{ inputs.crm_branch }}
+
+      # erpnext depends on ParaLogic's frappe fork, not stock frappe
+      - name: Setup Bench
+        id: bench
+        run: |
+          pip install frappe-bench
+          bench init --skip-assets --python "$(which python)" \
+            --frappe-path "https://github.com/${FRAPPE_REPO}" --frappe-branch "${FRAPPE_BRANCH}" ~/frappe-bench
+          mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
+          mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
+        env:
+          FRAPPE_REPO: ${{ steps.branches.outputs.frappe_repo }}
+          FRAPPE_BRANCH: ${{ steps.branches.outputs.frappe_branch }}
+
+      # Installing erpnext installs its required_apps (payments, crm) first, so they're fetched before it
+      - name: Install
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench get-app --skip-assets --branch version-15 https://github.com/frappe/payments
+          bench get-app --skip-assets --branch "${CRM_BRANCH}" "https://github.com/${CRM_REPO}"
+          bench get-app --skip-assets erpnext "${GITHUB_WORKSPACE}"
+          bench setup requirements --dev
+
+          sed -i 's/^watch:/# watch:/g' Procfile
+          sed -i 's/^schedule:/# schedule:/g' Procfile
+          sed -i 's/^socketio:/# socketio:/g' Procfile
+          sed -i 's/^redis_socketio:/# redis_socketio:/g' Procfile
+          bench start &> bench_start.log &
+
+          for port in 13000 11000; do
+            timeout 60 bash -c "until redis-cli -p $port ping; do sleep 1; done"
+          done
+
+          bench new-site --db-host 127.0.0.1 --db-root-password root --admin-password admin test_site
+          bench --site test_site install-app erpnext
+        env:
+          CI: "Yes"
+          CRM_REPO: ${{ steps.branches.outputs.crm_repo }}
+          CRM_BRANCH: ${{ steps.branches.outputs.crm_branch }}
+
+      # The setup every test run needs: setup wizard (company, chart of accounts, fiscal year), roles and domains
+      - name: Setup for Tests
+        working-directory: /home/runner/frappe-bench
+        run: bench --site test_site execute erpnext.setup.utils.before_tests
+
+      # A fresh install marks patches as done, so this checks that syncing again works, not the patches
+      - name: Migrate
+        working-directory: /home/runner/frappe-bench
+        run: bench --site test_site migrate
+
+      # compileall only checks syntax: this catches imports of names that no longer exist in frappe or crm
+      - name: Import All Modules
+        working-directory: /home/runner/frappe-bench/sites
+        run: |
+          ../env/bin/python - <<'EOF'
+          import importlib
+          import pkgutil
+          import sys
+
+          import frappe
+
+          frappe.init(site="test_site", sites_path=".")
+          frappe.connect()
+
+          import erpnext
+
+          failed = []
+          count = 0
+
+          def on_package_error(name):
+              failed.append((name, repr(sys.exc_info()[1])))
+
+          for module in pkgutil.walk_packages(erpnext.__path__, "erpnext.", onerror=on_package_error):
+              count += 1
+              try:
+                  importlib.import_module(module.name)
+              except Exception as e:
+                  failed.append((module.name, repr(e)))
+
+          frappe.db.rollback()
+          frappe.destroy()
+
+          print(f"Imported {count - len(failed)} of {count} modules")
+          for name, error in failed:
+              print(f"::error::{name}: {error}")
+
+          sys.exit(1 if failed else 0)
+          EOF
+
+      - name: Build
+        working-directory: /home/runner/frappe-bench
+        run: bench build
+
+      # Only once the bench exists: an earlier failure has no bench output to show
+      - name: Show bench output
+        if: ${{ always() && steps.bench.outcome == 'success' }}
+        working-directory: /home/runner/frappe-bench
+        run: |
+          cat bench_start.log || true
+          for f in logs/*.log*; do
+            echo "Printing log: $f"
+            cat "$f"
+          done
