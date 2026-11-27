@@ -452,8 +452,6 @@ class PayrollEntry(Document):
 						"credit_in_account_currency": data.interest_amount,
 						"cost_center": self.cost_center,
 						"project": self.project,
-						"party_type": "Employee",
-						"party": data.employee,
 					})
 				payable_amount -= flt(data.repayment_amount, precision)
 
