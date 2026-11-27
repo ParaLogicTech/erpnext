@@ -75,12 +75,12 @@ def get_revenue(data, period_list, include_in_gross=1):
 
 	data_to_be_removed =True
 	while data_to_be_removed:
-		revenue, data_to_be_removed = remove_parent_with_no_child(revenue, period_list)
+		revenue, data_to_be_removed = remove_parent_with_no_child(revenue)
 	revenue = adjust_account(revenue, period_list)
 	return copy.deepcopy(revenue)
 
-def remove_parent_with_no_child(data, period_list):
-	data_to_be_removed = False
+def remove_parent_with_no_child(data):
+	to_remove = []
 	for parent in data:
 		if 'is_group' in parent and parent.get("is_group") == 1:
 			have_child = False
@@ -90,10 +90,12 @@ def remove_parent_with_no_child(data, period_list):
 					break
 
 			if not have_child:
-				data_to_be_removed = True
-				data.remove(parent)
+				to_remove.append(parent)
 
-	return data, data_to_be_removed
+	for parent in to_remove:
+		data.remove(parent)
+
+	return data, bool(to_remove)
 
 def adjust_account(data, period_list, consolidated= False):
 	leaf_nodes = [item for item in data if item['is_group'] == 0]

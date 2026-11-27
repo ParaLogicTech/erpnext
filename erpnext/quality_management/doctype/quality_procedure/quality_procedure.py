@@ -26,10 +26,12 @@ class QualityProcedure(NestedSet):
 	def on_trash(self):
 		if self.parent_quality_procedure:
 			doc = frappe.get_doc("Quality Procedure", self.parent_quality_procedure)
-			for process in doc.processes:
-				if process.procedure == self.name:
-					doc.processes.remove(process)
-					doc.save(ignore_permissions=True)
+			to_remove = [process for process in doc.processes if process.procedure == self.name]
+			for process in to_remove:
+				doc.processes.remove(process)
+
+			if to_remove:
+				doc.save(ignore_permissions=True)
 
 			flag_is_group = 0
 			doc.load_from_db()

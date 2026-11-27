@@ -323,9 +323,10 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 
 			# Serialized Outgoing
 			else:
-				for serial_batch in fifo_queue:
-					if serial_batch[0] in serial_no_list:
-						fifo_queue.remove(serial_batch)
+				# One pass over the queue: it can hold every serial no in stock. Slice assignment keeps the
+				# list object, which is fifo_dict["fifo_queue"].
+				outgoing_serial_nos = set(serial_no_list)
+				fifo_queue[:] = [serial_batch for serial_batch in fifo_queue if serial_batch[0] not in outgoing_serial_nos]
 
 		# Non Serialized Inventory
 		else:

@@ -1472,10 +1472,11 @@ def _create_work_orders(
 		work_order_docs.append(work_order)
 
 	if create_sub_assembly_work_orders:
+		# Appending while looping is intended: sub-assembly work orders get their own sub-assemblies too
 		for work_order in work_order_docs:
 			sub_assembly_items = work_order.get_sub_assembly_items()
 			if sub_assembly_items:
-				work_order_docs += _create_work_orders(
+				work_order_docs += _create_work_orders(  # ruff: ignore[loop-iterator-mutation]
 					sub_assembly_items,
 					company=company,
 					use_multi_level_bom=0,
