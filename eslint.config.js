@@ -17,6 +17,21 @@ const frappe_globals = [
 	"crm", "erpnext",
 ];
 
+// Form scripts may start with a jinja `{% include "..." %}` line, which frappe expands when it serves the file.
+// Lint them by turning each tag into a comment of the same length (`{%` -> `/*`, `%}` -> `*/`): every offset stays the
+// same, so fixes apply to the real file, and ESLint leaves comments alone.
+const jinja_tag = /^([ \t]*)\{%(.*)%\}/gm;
+const jinja_include_processor = {
+	meta: {name: "jinja-include"},
+	supportsAutofix: true,
+	preprocess(text) {
+		return [text.replace(jinja_tag, "$1/*$2*/")];
+	},
+	postprocess(messages) {
+		return messages[0];
+	},
+};
+
 module.exports = [
 	{
 		ignores: ["erpnext/public/dist/**", "**/node_modules/**"],
@@ -24,6 +39,7 @@ module.exports = [
 	js.configs.recommended,
 	{
 		files: ["**/*.js"],
+		processor: jinja_include_processor,
 		languageOptions: {
 			ecmaVersion: 2022,
 			sourceType: "module",
