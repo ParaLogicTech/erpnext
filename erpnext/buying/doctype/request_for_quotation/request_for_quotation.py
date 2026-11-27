@@ -1,7 +1,6 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import json
 
 import frappe
 from frappe import _
@@ -212,7 +211,7 @@ def get_supplier_contacts(doctype, txt, searchfield, start, page_len, filters):
 def make_supplier_quotation(source_name, for_supplier, target_doc=None):
 	def postprocess(source, target_doc):
 		target_doc.supplier = for_supplier
-		args = get_party_details(for_supplier, party_type="Supplier", company=source.company, ignore_permissions=True)
+		args = get_party_details(party_type="Supplier", party=for_supplier, company=source.company, ignore_permissions=True)
 		target_doc.currency = args.currency or get_party_account_currency("Supplier", for_supplier, source.company)
 		target_doc.buying_price_list = args.buying_price_list or frappe.db.get_value("Buying Settings", None, "buying_price_list")
 		set_missing_values(source, target_doc)
@@ -234,55 +233,6 @@ def make_supplier_quotation(source_name, for_supplier, target_doc=None):
 	}, target_doc, postprocess)
 
 	return doclist
-
-
-# This method is used to make supplier quotation from supplier's portal.
-@frappe.whitelist()
-def create_supplier_quotation(doc):
-	if isinstance(doc, str):
-		doc = json.loads(doc)
-
-	try:
-		sq_doc = frappe.get_doc({
-			"doctype": "Supplier Quotation",
-			"supplier": doc.get("supplier"),
-			"terms": doc.get("terms"),
-			"company": doc.get("company"),
-			"currency": doc.get("currency") or get_party_account_currency("Supplier", doc.get("supplier"), doc.get("company")),
-			"buying_price_list": doc.get("buying_price_list") or frappe.db.get_value("Buying Settings", None, "buying_price_list"),
-		})
-		add_items(sq_doc, doc.get("supplier"), doc.get("items"))
-		sq_doc.flags.ignore_permissions = True
-		sq_doc.run_method("set_missing_values")
-		sq_doc.save()
-		frappe.msgprint(_("Supplier Quotation {0} Created").format(sq_doc.name))
-		return sq_doc.name
-	except Exception:
-		return None
-
-
-def add_items(sq_doc, supplier, items):
-	for data in items:
-		if data.get("qty") > 0:
-			if isinstance(data, dict):
-				data = frappe._dict(data)
-
-			create_rfq_items(sq_doc, supplier, data)
-
-
-def create_rfq_items(sq_doc, supplier, data):
-	sq_doc.append("items", {
-		"item_code": data.item_code,
-		"item_name": data.item_name,
-		"description": data.description,
-		"qty": data.qty,
-		"rate": data.rate,
-		"conversion_factor": data.conversion_factor if data.conversion_factor else None,
-		"supplier_part_no": frappe.db.get_value("Item Supplier", {"parent": data.item_code, "supplier": supplier}, "supplier_part_no"),
-		"warehouse": data.warehouse or "",
-		"request_for_quotation_item": data.name,
-		"request_for_quotation": data.parent,
-	})
 
 
 @frappe.whitelist()
