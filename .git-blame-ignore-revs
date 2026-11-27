@@ -10,3 +10,6 @@
 
 # Apply ruff and eslint fixes
 09d356afdede14f9514b6d79189e79284889f0bc
+
+# Apply eslint fixes to JS files with jinja includes
+028209c87f5d3a023e8ea06d517032b54dddc415
