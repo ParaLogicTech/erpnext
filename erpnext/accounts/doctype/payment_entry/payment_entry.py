@@ -148,7 +148,7 @@ class PaymentEntry(AccountsController):
 		outstanding_amount = self.unallocated_amount
 
 		party_account_type = erpnext.get_party_account_type(self.party_type)
-		negative_payment_type = "Receive" if party_account_type == "Receivable" else "Receive"
+		negative_payment_type = "Receive" if party_account_type == "Receivable" else "Pay"
 		if self.payment_type == negative_payment_type:
 			total_amount *= -1
 			outstanding_amount *= -1
