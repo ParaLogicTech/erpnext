@@ -1,19 +1,18 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
-// eslint-disable-next-line
 {% include 'erpnext/public/js/controllers/buying.js' %};
 
 erpnext.buying.MaterialRequestController = class MaterialRequestController extends erpnext.buying.BuyingController {
 	setup() {
 		this.frm.custom_make_buttons = {
-			'Stock Entry': 'Transfer Material',
-			'Pick List': 'Pick List',
-			'Purchase Order': 'Purchase Order',
-			'Request for Quotation': 'Request for Quotation',
-			'Supplier Quotation': 'Supplier Quotation',
-			'Work Order': 'Work Order',
-			'Material Request': 'Procurement Request',
+			"Stock Entry": "Transfer Material",
+			"Pick List": "Pick List",
+			"Purchase Order": "Purchase Order",
+			"Request for Quotation": "Request for Quotation",
+			"Supplier Quotation": "Supplier Quotation",
+			"Work Order": "Work Order",
+			"Material Request": "Procurement Request",
 		};
 
 		erpnext.setup_applies_to_fields(this.frm);
@@ -29,7 +28,7 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		this.setup_buttons();
 
 		// formatter for material request item
-		this.frm.set_indicator_formatter('item_code', (doc) => {
+		this.frm.set_indicator_formatter("item_code", (doc) => {
 			if (this.frm.doc.docstatus == 1) {
 				let completed_qty = Math.max(doc.ordered_qty, doc.received_qty);
 				if (!completed_qty) {
@@ -56,24 +55,24 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 			return erpnext.queries.warehouse(this.frm.doc);
 		});
 
-		this.frm.set_query('warehouse_address', () => {
+		this.frm.set_query("warehouse_address", () => {
 			return {
-				query: 'frappe.contacts.doctype.address.address.address_query',
+				query: "frappe.contacts.doctype.address.address.address_query",
 				filters: {
 					link_doctype: "Warehouse",
 					link_name: this.frm.doc.set_warehouse,
-				}
-			}
+				},
+			};
 		});
 
-		this.frm.set_query('source_warehouse_address', () => {
+		this.frm.set_query("source_warehouse_address", () => {
 			return {
-				query: 'frappe.contacts.doctype.address.address.address_query',
+				query: "frappe.contacts.doctype.address.address.address_query",
 				filters: {
 					link_doctype: "Warehouse",
-					link_name: this.frm.doc.from_warehouse
-				}
-			}
+					link_name: this.frm.doc.from_warehouse,
+				},
+			};
 		});
 
 		this.frm.set_query("item_code", "items", (doc) => {
@@ -94,8 +93,8 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 				return {
 					filters: {
 						"company": doc.company,
-						"is_group": 0
-					}
+						"is_group": 0,
+					},
 				};
 			});
 		}
@@ -111,7 +110,7 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 	setup_buttons() {
 		if (this.frm.doc.docstatus == 0) {
 			if (frappe.model.can_read("Sales Order")) {
-				this.frm.add_custom_button(__('Sales Order'), () => this.get_items_from_sales_order(),
+				this.frm.add_custom_button(__("Sales Order"), () => this.get_items_from_sales_order(),
 					__("Get Items From"));
 			}
 
@@ -130,26 +129,26 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		}
 
 		if (this.frm.doc.docstatus == 1 && this.frm.has_perm("write")) {
-			if (this.frm.doc.status == 'Stopped') {
-				this.frm.add_custom_button(__('Re-Open'), () => this.update_status('Submitted'));
+			if (this.frm.doc.status == "Stopped") {
+				this.frm.add_custom_button(__("Re-Open"), () => this.update_status("Submitted"));
 			} else if (this.frm.doc.order_status == "To Order" || this.frm.doc.receipt_status == "To Receive") {
-				this.frm.add_custom_button(__('Stop'), () => this.update_status('Stopped'));
+				this.frm.add_custom_button(__("Stop"), () => this.update_status("Stopped"));
 			}
 		}
 
-		if (this.frm.doc.docstatus == 1 && this.frm.doc.status != 'Stopped') {
+		if (this.frm.doc.docstatus == 1 && this.frm.doc.status != "Stopped") {
 			if (this.frm.doc.order_status == "To Order") {
 				const add_create_pick_list_button = () => {
 					if (frappe.model.can_create("Pick List")) {
-						this.frm.add_custom_button(__('Pick List'), () => this.create_pick_list(),
-							__('Create'));
+						this.frm.add_custom_button(__("Pick List"), () => this.create_pick_list(),
+							__("Create"));
 					}
-				}
+				};
 
 				if (this.frm.doc.material_request_type === "Material Transfer") {
 					if (frappe.model.can_create("Stock Entry")) {
 						this.frm.add_custom_button(__("Transfer Material"), () => this.make_stock_entry(),
-							__('Create'));
+							__("Create"));
 					}
 					add_create_pick_list_button();
 				}
@@ -157,49 +156,49 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 				if (this.frm.doc.material_request_type === "Material Issue") {
 					if (frappe.model.can_create("Stock Entry")) {
 						this.frm.add_custom_button(__("Issue Material"), () => this.make_stock_entry(),
-							__('Create'));
+							__("Create"));
 					}
 
 					add_create_pick_list_button();
 
 					if (frappe.model.can_create("Material Request")) {
 						this.frm.add_custom_button(__("Procurement Request"), () => this.make_procurement_request(),
-							__('Create'));
+							__("Create"));
 					}
 				}
 
 				if (this.frm.doc.material_request_type === "Customer Provided") {
 					if (frappe.model.can_create("Stock Entry")) {
 						this.frm.add_custom_button(__("Material Receipt"), () => this.make_stock_entry(),
-							__('Create'));
+							__("Create"));
 					}
 				}
 
 				if (this.frm.doc.material_request_type === "Purchase") {
 					if (frappe.model.can_create("Purchase Order")) {
-						this.frm.add_custom_button(__('Purchase Order'), () => this.make_purchase_order(),
-							__('Create'));
+						this.frm.add_custom_button(__("Purchase Order"), () => this.make_purchase_order(),
+							__("Create"));
 					}
 
 					if (frappe.model.can_create("Request for Quotation")) {
 						this.frm.add_custom_button(__("Request for Quotation"), () => this.make_request_for_quotation(),
-							__('Create'));
+							__("Create"));
 					}
 
 					if (frappe.model.can_create("Supplier Quotation")) {
 						this.frm.add_custom_button(__("Supplier Quotation"), () => this.make_supplier_quotation(),
-							__('Create'));
+							__("Create"));
 					}
 				}
 
 				if (this.frm.doc.material_request_type === "Manufacture") {
 					if (frappe.model.can_create("Work Order")) {
 						this.frm.add_custom_button(__("Work Order"), () => this.raise_work_orders(),
-							__('Create'));
+							__("Create"));
 					}
 				}
 
-				this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+				this.frm.page.set_inner_btn_group_as_primary(__("Create"));
 			}
 		}
 	}
@@ -208,7 +207,7 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		if (cdt && cdn) {
 			let row = locals[cdt][cdn];
 			if (row.schedule_date) {
-				if(!this.frm.doc.schedule_date) {
+				if (!this.frm.doc.schedule_date) {
 					erpnext.utils.copy_value_in_all_rows(this.frm.doc, cdt, cdn, "items", "schedule_date");
 				} else {
 					set_schedule_date(this.frm);
@@ -229,11 +228,11 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 	}
 
 	warehouse_address() {
-		erpnext.utils.get_address_display(this.frm, 'warehouse_address', 'address_display', false);
+		erpnext.utils.get_address_display(this.frm, "warehouse_address", "address_display", false);
 	}
 
 	source_warehouse_address() {
-		erpnext.utils.get_address_display(this.frm, 'source_warehouse_address', 'source_address_display', false);
+		erpnext.utils.get_address_display(this.frm, "source_warehouse_address", "source_address_display", false);
 	}
 
 	project() {
@@ -273,7 +272,7 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 				doc: this.frm.doc,
 				callback: (r) => {
 					this.frm.dirty();
-				}
+				},
 			});
 		}
 	}
@@ -281,10 +280,10 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 	items_add(doc, cdt, cdn) {
 		let row = frappe.get_doc(cdt, cdn);
 		// var item = frappe.get_doc(cdt, cdn);
-		if(!row.warehouse && doc.set_warehouse) {
+		if (!row.warehouse && doc.set_warehouse) {
 			row.warehouse = doc.set_warehouse;
 			refresh_field("warehouse", cdn, "items");
-		} if(doc.schedule_date) {
+		} if (doc.schedule_date) {
 			row.schedule_date = doc.schedule_date;
 			refresh_field("schedule_date", cdn, "items");
 		} else {
@@ -297,23 +296,23 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		this.frm.doc.total_alt_uom_qty = 0;
 		this.frm.doc.total_net_weight = 0;
 		if (frappe.meta.has_field(this.frm.doc.doctype, "total_stock_qty")) {
-			this.frm.doc.total_stock_qty = 0.0
+			this.frm.doc.total_stock_qty = 0.0;
 		}
-		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_carton_qty')) {
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_carton_qty")) {
 			this.frm.doc.total_carton_qty = 0;
 		}
-		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_pallet_qty')) {
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_pallet_qty")) {
 			this.frm.doc.total_pallet_qty = 0;
 		}
 		if (frappe.meta.has_field(this.frm.doc.doctype, "total_gross_weight")) {
-			this.frm.doc.total_gross_weight = 0.0
+			this.frm.doc.total_gross_weight = 0.0;
 		}
 
 		for (let d of this.frm.doc.items || []) {
-			frappe.model.round_floats_in(d, null, ['net_weight_per_unit', 'gross_weight_per_unit']);
+			frappe.model.round_floats_in(d, null, ["net_weight_per_unit", "gross_weight_per_unit"]);
 
 			d.stock_qty = flt(d.qty * d.conversion_factor, 6);
-			d.alt_uom_size = d.alt_uom ? d.alt_uom_size : 1.0
+			d.alt_uom_size = d.alt_uom ? d.alt_uom_size : 1.0;
 			d.alt_uom_qty = flt(d.stock_qty * d.alt_uom_size, precision("alt_uom_qty", d));
 			d.net_weight = flt(flt(d.net_weight_per_unit) * flt(d.stock_qty), precision("net_weight", d));
 
@@ -353,28 +352,28 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 			this.frm.doc.total_alt_uom_qty += d.alt_uom_qty;
 			this.frm.doc.total_net_weight += d.net_weight;
 
-			if (frappe.meta.has_field(this.frm.doc.doctype, 'total_stock_qty') && frappe.meta.has_field(d.doctype, 'stock_qty')) {
+			if (frappe.meta.has_field(this.frm.doc.doctype, "total_stock_qty") && frappe.meta.has_field(d.doctype, "stock_qty")) {
 				this.frm.doc.total_stock_qty += d.stock_qty;
 			}
-			if (frappe.meta.has_field(this.frm.doc.doctype, 'total_carton_qty') && frappe.meta.has_field(d.doctype, 'carton_qty')) {
+			if (frappe.meta.has_field(this.frm.doc.doctype, "total_carton_qty") && frappe.meta.has_field(d.doctype, "carton_qty")) {
 				this.frm.doc.total_carton_qty += d.carton_qty;
 			}
-			if (frappe.meta.has_field(this.frm.doc.doctype, 'total_pallet_qty') && frappe.meta.has_field(d.doctype, 'pallet_qty')) {
+			if (frappe.meta.has_field(this.frm.doc.doctype, "total_pallet_qty") && frappe.meta.has_field(d.doctype, "pallet_qty")) {
 				this.frm.doc.total_pallet_qty += d.pallet_qty;
 			}
-			if (frappe.meta.has_field(this.frm.doc.doctype, 'total_gross_weight') && frappe.meta.has_field(d.doctype, 'gross_weight')) {
+			if (frappe.meta.has_field(this.frm.doc.doctype, "total_gross_weight") && frappe.meta.has_field(d.doctype, "gross_weight")) {
 				this.frm.doc.total_gross_weight += d.gross_weight;
 			}
 		}
 
 		frappe.model.round_floats_in(this.frm.doc, [
-			'total_qty', 'total_alt_uom_qty', 'total_net_weight',
+			"total_qty", "total_alt_uom_qty", "total_net_weight",
 		]);
-		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_gross_weight')) {
-			frappe.model.round_floats_in(this.frm.doc, ["total_gross_weight",]);
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_gross_weight")) {
+			frappe.model.round_floats_in(this.frm.doc, ["total_gross_weight"]);
 		}
-		if (frappe.meta.has_field(this.frm.doc.doctype, 'total_pallet_qty')) {
-			frappe.model.round_floats_in(this.frm.doc, ["total_pallet_qty",]);
+		if (frappe.meta.has_field(this.frm.doc.doctype, "total_pallet_qty")) {
+			frappe.model.round_floats_in(this.frm.doc, ["total_pallet_qty"]);
 		}
 
 		this.frm.refresh_fields();
@@ -386,13 +385,13 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 			source_doctype: "Sales Order",
 			target: this.frm,
 			setters: {
-				company: this.frm.doc.company
+				company: this.frm.doc.company,
 			},
 			get_query_filters: {
 				docstatus: 1,
 				status: ["not in", ["Closed", "On Hold"]],
 				delivery_status: "To Deliver",
-			}
+			},
 		});
 	}
 
@@ -400,18 +399,18 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		let dialog = new frappe.ui.Dialog({
 			title: __("Get Items from BOM"),
 			fields: [
-				{"fieldname":"bom", "fieldtype":"Link", "label":__("BOM"),
-					options:"BOM", reqd: 1, get_query: () => {
-						return {filters: { docstatus:1 }};
+				{"fieldname": "bom", "fieldtype": "Link", "label": __("BOM"),
+					options: "BOM", reqd: 1, get_query: () => {
+						return {filters: {docstatus: 1}};
 					}},
-				{"fieldname":"warehouse", "fieldtype":"Link", "label":__("Warehouse"),
-					options:"Warehouse"},
-				{"fieldname":"qty", "fieldtype":"Float", "label":__("Quantity"),
+				{"fieldname": "warehouse", "fieldtype": "Link", "label": __("Warehouse"),
+					options: "Warehouse"},
+				{"fieldname": "qty", "fieldtype": "Float", "label": __("Quantity"),
 					reqd: 1, "default": 1},
-				{"fieldname":"fetch_exploded", "fieldtype":"Check",
-					"label":__("Fetch exploded BOM (including sub-assemblies)"), "default":1},
-				{fieldname:"fetch", "label":__("Get Items from BOM"), "fieldtype":"Button"}
-			]
+				{"fieldname": "fetch_exploded", "fieldtype": "Check",
+					"label": __("Fetch exploded BOM (including sub-assemblies)"), "default": 1},
+				{fieldname: "fetch", "label": __("Get Items from BOM"), "fieldtype": "Button"},
+			],
 		});
 
 		dialog.get_input("fetch").on("click", () => {
@@ -435,7 +434,7 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 						set_schedule_date(this.frm);
 						refresh_field("items");
 					}
-				}
+				},
 			});
 		});
 		dialog.show();
@@ -446,13 +445,13 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 			method: "erpnext.stock.doctype.material_request.material_request.update_status",
 			args: {
 				name: this.frm.doc.name,
-				status: status
+				status: status,
 			},
 			callback: (r) => {
 				if (!r.exc) {
 					this.frm.reload_doc();
 				}
-			}
+			},
 		});
 	}
 
@@ -471,8 +470,8 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 					warehouse: item.warehouse,
 					set_warehouse: this.frm.doc.set_warehouse,
 					project: this.frm.doc.project,
-					buying_price_list: frappe.defaults.get_default('buying_price_list'),
-					currency: frappe.defaults.get_default('Currency'),
+					buying_price_list: frappe.defaults.get_default("buying_price_list"),
+					currency: frappe.defaults.get_default("Currency"),
 					name: this.frm.doc.name,
 					transaction_date: this.frm.doc.transaction_date,
 					qty: item.qty || 1,
@@ -485,11 +484,11 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 					rate: item.rate,
 					conversion_factor: item.conversion_factor,
 					child_docname: item.name,
-				}
+				},
 			},
 			callback: (r) => {
 				this.calculate_totals();
-			}
+			},
 		});
 	}
 
@@ -504,21 +503,21 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.material_request.material_request.make_request_for_quotation",
 			frm: this.frm,
-			run_link_triggers: true
+			run_link_triggers: true,
 		});
 	}
 
 	make_supplier_quotation() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.material_request.material_request.make_supplier_quotation",
-			frm: this.frm
+			frm: this.frm,
 		});
 	}
 
 	make_stock_entry() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.material_request.material_request.make_stock_entry",
-			frm: this.frm
+			frm: this.frm,
 		});
 	}
 
@@ -535,27 +534,27 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 			} else if (values.material_request_type == "Material Transfer") {
 				this.make_transfer_request();
 			}
-		}, __("Select Request Type"))
+		}, __("Select Request Type"));
 	}
 
 	make_purchase_request() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.material_request.material_request.make_purchase_request",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
 
 	make_transfer_request() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.material_request.material_request.make_transfer_request",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
 
 	create_pick_list() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.material_request.material_request.create_pick_list",
-			frm: this.frm
+			frm: this.frm,
 		});
 	}
 
@@ -563,13 +562,13 @@ erpnext.buying.MaterialRequestController = class MaterialRequestController exten
 		return frappe.call({
 			method: "erpnext.stock.doctype.material_request.material_request.raise_work_orders",
 			args: {
-				"material_request": this.frm.doc.name
+				"material_request": this.frm.doc.name,
 			},
 			callback: (r) => {
 				if (r.message.length) {
 					this.frm.reload_doc();
 				}
-			}
+			},
 		});
 	}
 };

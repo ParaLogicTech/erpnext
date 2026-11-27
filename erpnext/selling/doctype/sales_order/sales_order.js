@@ -6,29 +6,29 @@
 frappe.ui.form.on("Sales Order", {
 	setup: function(frm) {
 		frm.custom_make_buttons = {
-			'Delivery Note': __('Delivery Note'),
-			'Pick List': __('Pick List'),
-			'Sales Invoice': __('Sales Invoice'),
-			'Proforma Invoice': __('Proforma Invoice'),
-			'Material Request': __('Material Request'),
-			'Purchase Order': __('Purchase Order'),
-			'Project': __('Project'),
-			'Appointment': __('Appointment'),
-			'Payment Entry': __("Payment"),
-			'Purchase Invoice': __('Purchase Invoice'),
-			'Work Order': __("Work Order"),
-			'Auto Repeat': __("Subscription"),
-			'Payment Request': __("Payment Request"),
-			'Packing Slip': __("Packing Slip"),
-		}
+			"Delivery Note": __("Delivery Note"),
+			"Pick List": __("Pick List"),
+			"Sales Invoice": __("Sales Invoice"),
+			"Proforma Invoice": __("Proforma Invoice"),
+			"Material Request": __("Material Request"),
+			"Purchase Order": __("Purchase Order"),
+			"Project": __("Project"),
+			"Appointment": __("Appointment"),
+			"Payment Entry": __("Payment"),
+			"Purchase Invoice": __("Purchase Invoice"),
+			"Work Order": __("Work Order"),
+			"Auto Repeat": __("Subscription"),
+			"Payment Request": __("Payment Request"),
+			"Packing Slip": __("Packing Slip"),
+		};
 	},
 	refresh: function(frm) {
 		if (
 			frm.doc.docstatus === 1
-			&& frm.doc.status !== 'Closed'
+			&& frm.doc.status !== "Closed"
 			&& (frm.doc.delivery_status == "To Deliver" || frm.doc.billing_status == "To Bill")
 		) {
-			frm.add_custom_button(__('Update Items'), () => {
+			frm.add_custom_button(__("Update Items"), () => {
 				erpnext.utils.update_child_items({
 					frm: frm,
 					cannot_add_row: false,
@@ -37,8 +37,8 @@ frappe.ui.form.on("Sales Order", {
 		}
 	},
 	onload: function(frm) {
-		if (!frm.doc.transaction_date){
-			frm.set_value('transaction_date', frappe.datetime.get_today())
+		if (!frm.doc.transaction_date) {
+			frm.set_value("transaction_date", frappe.datetime.get_today());
 		}
 		erpnext.queries.setup_queries(frm, "Warehouse", function() {
 			return erpnext.queries.warehouse(frm.doc);
@@ -54,16 +54,16 @@ frappe.ui.form.on("Sales Order", {
 
 	delivery_date: function(frm) {
 		if (frm.doc.delivery_date) {
-			$.each(frm.doc.items || [], function (i, d) {
+			$.each(frm.doc.items || [], function(i, d) {
 				d.delivery_date = frm.doc.delivery_date;
 			});
 			refresh_field("items");
 		}
-	}
+	},
 });
 
 frappe.ui.form.on("Sales Order Item", {
-	item_code: function(frm,cdt,cdn) {
+	item_code: function(frm, cdt, cdn) {
 		var row = locals[cdt][cdn];
 		if (frm.doc.delivery_date) {
 			row.delivery_date = frm.doc.delivery_date;
@@ -73,10 +73,10 @@ frappe.ui.form.on("Sales Order Item", {
 		}
 	},
 	delivery_date: function(frm, cdt, cdn) {
-		if(!frm.doc.delivery_date) {
+		if (!frm.doc.delivery_date) {
 			erpnext.utils.copy_value_in_all_rows(frm.doc, cdt, cdn, "items", "delivery_date");
 		}
-	}
+	},
 });
 
 erpnext.selling.SalesOrderController = class SalesOrderController extends erpnext.selling.SellingController {
@@ -90,7 +90,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		this.setup_progressbars();
 
 		// formatter for items table
-		this.frm.set_indicator_formatter('item_code', function(doc) {
+		this.frm.set_indicator_formatter("item_code", function(doc) {
 			if (doc.docstatus === 0) {
 				if (!doc.is_stock_item || doc.skip_delivery_note) {
 					return "blue";
@@ -136,40 +136,40 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 
 		me.add_transaction_details_report_button("Sales Details");
 
-		if (me.frm.doc.docstatus==1) {
-			if(me.frm.has_perm("submit")) {
-				if(me.frm.doc.status === 'On Hold') {
-				   // un-hold
-				   me.frm.add_custom_button(__('Resume'), function() {
-					   me.update_status('Resume', 'Resumed')
-				   }, __("Status"));
+		if (me.frm.doc.docstatus == 1) {
+			if (me.frm.has_perm("submit")) {
+				if (me.frm.doc.status === "On Hold") {
+					// un-hold
+					me.frm.add_custom_button(__("Resume"), function() {
+						me.update_status("Resume", "Resumed");
+					}, __("Status"));
 
-				   if (me.frm.doc.delivery_status == "To Deliver" || me.frm.doc.billing_status == "To Bill") {
+					if (me.frm.doc.delivery_status == "To Deliver" || me.frm.doc.billing_status == "To Bill") {
 						// close
-						me.frm.add_custom_button(__('Close'), () => me.close_sales_order(), __("Status"))
-				   }
+						me.frm.add_custom_button(__("Close"), () => me.close_sales_order(), __("Status"));
+					}
 				}
-				else if(me.frm.doc.status === 'Closed') {
-				   // un-close
-				   me.frm.add_custom_button(__('Re-Open'), function() {
-					   me.update_status('Re-Open', 'Re-Opened')
-				   }, __("Status"));
-			   }
+				else if (me.frm.doc.status === "Closed") {
+					// un-close
+					me.frm.add_custom_button(__("Re-Open"), function() {
+						me.update_status("Re-Open", "Re-Opened");
+					}, __("Status"));
+				}
 			}
 
-			if(me.frm.doc.status !== 'Closed') {
-				if(me.frm.doc.status !== 'On Hold') {
+			if (me.frm.doc.status !== "Closed") {
+				if (me.frm.doc.status !== "On Hold") {
 					allow_delivery = (
 						me.frm.doc.items.some(item => !item.skip_delivery_note && item.qty > flt(item.delivered_qty))
 						&& !me.frm.doc.skip_delivery_note
 					);
 
 					if (me.frm.has_perm("submit")) {
-						if(me.frm.doc.delivery_status == "To Deliver" || me.frm.doc.billing_status == "To Bill") {
+						if (me.frm.doc.delivery_status == "To Deliver" || me.frm.doc.billing_status == "To Bill") {
 							// hold
-							me.frm.add_custom_button(__('Hold'), () => me.hold_sales_order(), __("Status"))
+							me.frm.add_custom_button(__("Hold"), () => me.hold_sales_order(), __("Status"));
 							// close
-							me.frm.add_custom_button(__('Close'), () => me.close_sales_order(), __("Status"))
+							me.frm.add_custom_button(__("Close"), () => me.close_sales_order(), __("Status"));
 						}
 					}
 
@@ -199,36 +199,36 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 						&& allow_delivery
 					) {
 						if (frappe.model.can_create("Delivery Note")) {
-							me.frm.add_custom_button(__('Delivery Note'), () => me.make_delivery_note_based_on(), __('Create'));
+							me.frm.add_custom_button(__("Delivery Note"), () => me.make_delivery_note_based_on(), __("Create"));
 						}
 
 						if (frappe.model.can_create("Work Order")) {
-							me.frm.add_custom_button(__('Work Order'), () => me.make_work_orders(), __('Create'));
+							me.frm.add_custom_button(__("Work Order"), () => me.make_work_orders(), __("Create"));
 						}
 
 						if ((has_unpacked || me.frm.doc.packing_status == "To Pack") && frappe.model.can_create("Packing Slip")) {
-							me.frm.add_custom_button(__('Packing Slip'), () => me.make_packing_slip(), __('Create'));
+							me.frm.add_custom_button(__("Packing Slip"), () => me.make_packing_slip(), __("Create"));
 						}
 
 						if (has_packed && has_undelivered && frappe.model.can_create("Packing Slip")) {
-							me.frm.add_custom_button(__('Pallet Packing'), () => me.make_pallet_packing_slip(), __('Create'));
+							me.frm.add_custom_button(__("Pallet Packing"), () => me.make_pallet_packing_slip(), __("Create"));
 						}
 
 						if (frappe.model.can_create("Pick List")) {
-							me.frm.add_custom_button(__('Pick List'), () => me.create_pick_list(), __('Create'));
+							me.frm.add_custom_button(__("Pick List"), () => me.create_pick_list(), __("Create"));
 						}
 					}
 
 					// sales invoice
 					if (flt(me.frm.doc.per_completed, 6) < 100) {
 						if (frappe.model.can_create("Sales Invoice")) {
-							me.frm.add_custom_button(__('Sales Invoice'), () => me.make_sales_invoice(), __('Create'));
+							me.frm.add_custom_button(__("Sales Invoice"), () => me.make_sales_invoice(), __("Create"));
 						}
 					}
 
 					// material request
 					if (frappe.model.can_create("Material Request")) {
-						me.frm.add_custom_button(__('Material Request'), () => me.make_material_request(), __('Create'));
+						me.frm.add_custom_button(__("Material Request"), () => me.make_material_request(), __("Create"));
 					}
 
 					if (
@@ -236,12 +236,12 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 						&& me.frm.doc.delivery_status == "To Deliver"
 						&& frappe.model.can_create("Material Request")
 					) {
-						me.frm.add_custom_button(__('Request for Raw Materials'), () => me.make_raw_material_request(), __('Create'));
+						me.frm.add_custom_button(__("Request for Raw Materials"), () => me.make_raw_material_request(), __("Create"));
 					}
 
 					// make purchase order
 					if (frappe.model.can_create("Purchase Order")) {
-						me.frm.add_custom_button(__('Purchase Order'), () => me.make_purchase_order(), __('Create'));
+						me.frm.add_custom_button(__("Purchase Order"), () => me.make_purchase_order(), __("Create"));
 					}
 
 					if (
@@ -254,37 +254,37 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 						me.frm.add_custom_button(__("Project"), () => me.make_project(), __("Create"));
 					}
 
-					if(!me.frm.doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
-						me.frm.add_custom_button(__('Subscription'), function() {
-							erpnext.utils.make_subscription(me.frm.doc.doctype, me.frm.doc.name)
-						}, __('Create'))
+					if (!me.frm.doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
+						me.frm.add_custom_button(__("Subscription"), function() {
+							erpnext.utils.make_subscription(me.frm.doc.doctype, me.frm.doc.name);
+						}, __("Create"));
 					}
 
 					if (me.frm.doc.docstatus === 1 && !me.frm.doc.inter_company_reference) {
 						if (me.frm.doc.__onload?.is_internal_customer) {
 							me.frm.add_custom_button("Inter Company Order", function() {
 								me.make_inter_company_order();
-							}, __('Create'));
+							}, __("Create"));
 						}
 					}
 				}
 				// payment request
-				if(flt(me.frm.doc.per_billed) == 0) {
+				if (flt(me.frm.doc.per_billed) == 0) {
 					if (frappe.model.can_create("Payment Request")) {
-						me.frm.add_custom_button(__('Payment Request'), () => me.make_payment_request(), __('Create'));
+						me.frm.add_custom_button(__("Payment Request"), () => me.make_payment_request(), __("Create"));
 					}
 
 					if (frappe.model.can_create("Payment Entry") || frappe.model.can_create("Journal Entry")) {
-						me.frm.add_custom_button(__('Payment'), () => me.make_payment_entry(true), __('Create'));
+						me.frm.add_custom_button(__("Payment"), () => me.make_payment_entry(true), __("Create"));
 					}
 				}
-				me.frm.page.set_inner_btn_group_as_primary(__('Create'));
+				me.frm.page.set_inner_btn_group_as_primary(__("Create"));
 			}
 		}
 
 		if (me.frm.doc.docstatus === 0) {
 			if (frappe.model.can_read("Quotation")) {
-				me.frm.add_custom_button(__('Quotation'), () => me.get_items_from_quotation(),
+				me.frm.add_custom_button(__("Quotation"), () => me.get_items_from_quotation(),
 					__("Get Items From"));
 			}
 
@@ -313,28 +313,28 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 					fieldname: "party_name",
 					fieldtype: "Link",
 					options: "Customer",
-					default: this.frm.doc.customer || undefined
+					default: this.frm.doc.customer || undefined,
 				},
 				{
-					fieldtype: 'Link',
-					label: __('Project'),
-					options: 'Project',
-					fieldname: 'project',
+					fieldtype: "Link",
+					label: __("Project"),
+					options: "Project",
+					fieldname: "project",
 					default: this.frm.doc.project || undefined,
 				},
 				{
-					fieldtype: 'DateRange',
-					label: __('Date Range'),
-					fieldname: 'transaction_date',
-				}
+					fieldtype: "DateRange",
+					label: __("Date Range"),
+					fieldname: "transaction_date",
+				},
 			],
-			columns: ['customer_name', 'transaction_date', 'project'],
+			columns: ["customer_name", "transaction_date", "project"],
 			get_query_filters: {
 				company: this.frm.doc.company,
 				docstatus: 1,
-				status: ["!=", "Lost"]
-			}
-		})
+				status: ["!=", "Lost"],
+			},
+		});
 	}
 
 	setup_progressbars() {
@@ -352,11 +352,11 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 
 		erpnext.utils.show_progress_for_qty({
 			frm: this.frm,
-			title: __('Production Status'),
+			title: __("Production Status"),
 			total_qty: total_wo_qty,
 			progress_bars: [
 				{
-					title: __('<b>Produced:</b> {0}%', [
+					title: __("<b>Produced:</b> {0}%", [
 						format_number(produced_qty / total_wo_qty * 100, null, 1),
 					]),
 					completed_qty: produced_qty,
@@ -374,8 +374,8 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 	create_pick_list() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.create_pick_list",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
 
 	make_work_orders() {
@@ -385,33 +385,33 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 			callback: (r) => {
 				if (!r.message || !r.message.length) {
 					frappe.msgprint({
-						title: __('Work Orders not created'),
-						message: __('No pending Items with Bill of Materials to Manufacture'),
-						indicator: 'orange'
+						title: __("Work Orders not created"),
+						message: __("No pending Items with Bill of Materials to Manufacture"),
+						indicator: "orange",
 					});
 					return;
 				}
 				return erpnext.manufacturing.make_work_orders_from_order_dialog(r.message, this.frm.doc);
-			}
+			},
 		});
 	}
 
 	set_skip_delivery_note() {
 		let items = (this.frm.doc.items || []).filter(d => d.item_code);
 		if (!items.length) {
-			this.frm.set_value('skip_delivery_note', 0);
+			this.frm.set_value("skip_delivery_note", 0);
 			return;
 		}
 
 		let has_deliverable = items.some(d => !d.skip_delivery_note);
-		this.frm.set_value('skip_delivery_note', cint(!has_deliverable));
+		this.frm.set_value("skip_delivery_note", cint(!has_deliverable));
 	}
 
 	make_material_request() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_material_request",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
 
 	make_raw_material_request() {
@@ -419,18 +419,18 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 			doc: this.frm.doc,
 			method: "get_work_order_items",
 			args: {
-				for_raw_material_request: 1
+				for_raw_material_request: 1,
 			},
 			callback: (r) => {
 				if (!r.message || !r.message.length) {
 					frappe.msgprint({
-						message: __('No Items with Bill of Materials.'),
-						indicator: 'orange'
+						message: __("No Items with Bill of Materials."),
+						indicator: "orange",
 					});
 					return;
 				}
 				this.make_raw_material_request_dialog(r.message);
-			}
+			},
 		});
 	}
 
@@ -440,10 +440,10 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 			include_exploded_items: 1,
 			ignore_existing_ordered_qty: 0,
 			items: items_data,
-		}
+		};
 		const fields = [
 			{fieldname: "for_warehouse", label: __("For Warehouse"), fieldtype: "Link", options: "Warehouse", reqd: 1,
-				get_query: () => erpnext.queries.warehouse(this.frm.doc)
+				get_query: () => erpnext.queries.warehouse(this.frm.doc),
 			},
 			{fieldtype: "Column Break"},
 			{fieldname: "include_exploded_items", label: __("Include Exploded Items"), fieldtype: "Check"},
@@ -453,20 +453,20 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 				fieldname: "items",
 				fieldtype: "Table",
 				label: __("Items"),
-				description: __('Select BOM and Qty'),
+				description: __("Select BOM and Qty"),
 				fields: [
 					{fieldname: "item_code", label: __("Item Code"), fieldtype: "Link", options: "Item", read_only: 1, reqd: 1, columns: 5, in_list_view: 1},
 					{fieldname: "item_name", label: __("Item Name"), fieldtype: "Data", read_only: 1},
 					{fieldname: "bom_no", label: __("BOM No"), fieldtype: "Link", options: "BOM", reqd: 1, columns: 3, in_list_view: 1,
-						get_query: (doc) => { return { filters: {
+						get_query: (doc) => { return {filters: {
 							item: doc.item_code, is_active: 1, docstatus: 1,
-						} } }
+						}}; },
 					},
 					{fieldname: "required_qty", label: __("Qty"), fieldtype: "Float", reqd: 1, columns: 1, in_list_view: 1},
 					{fieldname: "stock_uom", label: __("UOM"), fieldtype: "Data", read_only: 1, columns: 1, in_list_view: 1},
 				],
 				data: dialog_doc.items,
-			}
+			},
 		];
 
 		let dialog = new frappe.ui.Dialog({
@@ -482,7 +482,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 						items: values,
 						company: this.frm.doc.company,
 						sales_order: this.frm.docname,
-						project: this.frm.project
+						project: this.frm.project,
 					},
 					freeze: true,
 					callback: (r) => {
@@ -491,10 +491,10 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 							frappe.set_route("Form", r.message.doctype, r.message.name);
 						}
 						dialog.hide();
-					}
+					},
 				});
 			},
-			primary_action_label: __("Create")
+			primary_action_label: __("Create"),
 		});
 		dialog.show();
 	}
@@ -516,11 +516,11 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		let delivery_dates = [];
 		let has_packed_qty = false;
 		$.each(filtered_items, function(i, d) {
-			if(d.warehouse && !warehouses.includes(d.warehouse)) {
+			if (d.warehouse && !warehouses.includes(d.warehouse)) {
 				warehouses.push(d.warehouse);
 			}
 
-			if(!delivery_dates.includes(d.delivery_date)) {
+			if (!delivery_dates.includes(d.delivery_date)) {
 				delivery_dates.push(d.delivery_date);
 			}
 
@@ -556,8 +556,8 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 			label: __("Deliver Packed or Unpacked Items"),
 			fieldname: "type",
 			fieldtype: "Select",
-			options: ['', 'Packed Items Only', 'Unpacked Items Only', 'All Items'],
-			reqd: 1
+			options: ["", "Packed Items Only", "Unpacked Items Only", "All Items"],
+			reqd: 1,
 		}, (values) => {
 			this.make_delivery_note_based_on(filters, values.type);
 		}, __("Deliver Packed or Unpacked Items"), __("Select"));
@@ -568,14 +568,14 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 
 		var dialog = new frappe.ui.Dialog({
 			title: __("Select Items based on Warehouse"),
-			fields: [{fieldtype: "HTML", fieldname: "warehouses_html"}]
+			fields: [{fieldtype: "HTML", fieldname: "warehouses_html"}],
 		});
 
 		var html = $(`
 			<div style="border: 1px solid #d1d8dd">
 				<div class="list-item list-item--head">
 					<div class="list-item__content list-item__content--flex-2">
-						${__('Warehouse')}
+						${__("Warehouse")}
 					</div>
 				</div>
 				${warehouses.map(warehouse => `
@@ -595,14 +595,14 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		wrapper.html(html);
 
 		dialog.set_primary_action(__("Select"), function() {
-			var warehouses = wrapper.find('input[type=checkbox]:checked')
-				.map((i, el) => $(el).attr('data-warehouse')).toArray();
+			var warehouses = wrapper.find("input[type=checkbox]:checked")
+				.map((i, el) => $(el).attr("data-warehouse")).toArray();
 
-			if(!warehouses) return;
+			if (!warehouses) return;
 
 			dialog.hide();
 
-			filters["warehouse"] = ["in", warehouses]
+			filters["warehouse"] = ["in", warehouses];
 			me.make_delivery_note_based_on(filters, packing_filter);
 		});
 		dialog.show();
@@ -613,14 +613,14 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 
 		var dialog = new frappe.ui.Dialog({
 			title: __("Select Items based on Delivery Date"),
-			fields: [{fieldtype: "HTML", fieldname: "dates_html"}]
+			fields: [{fieldtype: "HTML", fieldname: "dates_html"}],
 		});
 
 		var html = $(`
 			<div style="border: 1px solid #d1d8dd">
 				<div class="list-item list-item--head">
 					<div class="list-item__content list-item__content--flex-2">
-						${__('Delivery Date')}
+						${__("Delivery Date")}
 					</div>
 				</div>
 				${delivery_dates.map(date => `
@@ -640,10 +640,10 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		wrapper.html(html);
 
 		dialog.set_primary_action(__("Select"), function() {
-			var dates = wrapper.find('input[type=checkbox]:checked')
-				.map((i, el) => $(el).attr('data-date')).toArray();
+			var dates = wrapper.find("input[type=checkbox]:checked")
+				.map((i, el) => $(el).attr("data-date")).toArray();
 
-			if(!dates) return;
+			if (!dates) return;
 
 			dialog.hide();
 
@@ -658,9 +658,9 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_delivery_note",
 			frm: this.frm,
 			args: {
-				warehouse: warehouse
-			}
-		})
+				warehouse: warehouse,
+			},
+		});
 	}
 
 	make_delivery_note_from_packing_slips(packing_filter, warehouse) {
@@ -669,9 +669,9 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 			frm: this.frm,
 			args: {
 				packing_filter: packing_filter,
-				warehouse: warehouse
-			}
-		})
+				warehouse: warehouse,
+			},
+		});
 	}
 
 	make_packing_slip(warehouse) {
@@ -679,9 +679,9 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_packing_slip",
 			frm: this.frm,
 			args: {
-				warehouse: warehouse
-			}
-		})
+				warehouse: warehouse,
+			},
+		});
 	}
 
 	make_pallet_packing_slip() {
@@ -741,37 +741,37 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 					callback: (r) => {
 						let doclist = frappe.model.sync(r.message);
 						frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-					}
+					},
 				});
-			}
+			},
 		});
 	}
 
 	make_sales_invoice() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
 
 	make_project() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_project",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
 
 	make_appointment() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_appointment",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
 
 	make_inter_company_order() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.sales_order.sales_order.make_inter_company_purchase_order",
-			frm: this.frm
+			frm: this.frm,
 		});
 	}
 
@@ -780,9 +780,9 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		var dialog = new frappe.ui.Dialog({
 			title: __("Supplier"),
 			fields: [
-				{"fieldtype": "Link", "label": __("Supplier"), "fieldname": "supplier", "options":"Supplier", "reqd":true},
+				{"fieldtype": "Link", "label": __("Supplier"), "fieldname": "supplier", "options": "Supplier", "reqd": true},
 				{"fieldtype": "Button", "label": __("Make Purchase Invoice"), "fieldname": "make_purchase_invoice", "cssClass": "btn-primary"},
-			]
+			],
 		});
 
 		dialog.fields_dict.make_purchase_invoice.$input.click(function() {
@@ -793,16 +793,16 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 				method: "erpnext.selling.doctype.sales_order.sales_order.make_purchase_invoice",
 				args: {
 					"supplier": args.supplier,
-					"source_name": me.frm.doc.name
+					"source_name": me.frm.doc.name,
 				},
 				freeze: true,
 				callback: function(r) {
-					if(!r.exc) {
+					if (!r.exc) {
 						var doc = frappe.model.sync(r.message);
 						frappe.set_route("Form", r.message.doctype, r.message.name);
 					}
-				}
-			})
+				},
+			});
 		});
 		dialog.show();
 	}
@@ -832,7 +832,7 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 				"packed_qty": d.packed_qty,
 				"delivered_qty": d.delivered_qty,
 				"work_order_qty": d.work_order_qty,
-			}
+			};
 		});
 
 		this.show_dialog_for_packing_slip_reassignment(selected_items, (selections) => {
@@ -843,14 +843,14 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 	hold_sales_order() {
 		var me = this;
 		var d = new frappe.ui.Dialog({
-			title: __('Reason for Hold'),
+			title: __("Reason for Hold"),
 			fields: [
 				{
 					"label": __("Reason"),
 					"fieldname": "reason_for_hold",
 					"fieldtype": "Text",
 					"reqd": 1,
-				}
+				},
 			],
 			primary_action: function() {
 				var data = d.get_values();
@@ -859,24 +859,24 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 					args: {
 						reference_doctype: me.frm.doctype,
 						reference_name: me.frm.docname,
-						content: __('Reason for hold: ') + data.reason_for_hold,
+						content: __("Reason for hold: ") + data.reason_for_hold,
 						comment_email: frappe.session.user,
 						comment_by: frappe.session.user,
 					},
 					callback: function(r) {
-						if(!r.exc) {
-							me.update_status('Hold', 'On Hold')
+						if (!r.exc) {
+							me.update_status("Hold", "On Hold");
 							d.hide();
 						}
-					}
+					},
 				});
-			}
+			},
 		});
 		d.show();
 	}
 
 	close_sales_order() {
-		this.update_status("Close", "Closed")
+		this.update_status("Close", "Closed");
 	}
 
 	update_status(label, status) {
@@ -886,12 +886,12 @@ erpnext.selling.SalesOrderController = class SalesOrderController extends erpnex
 		frappe.call({
 			method: "erpnext.selling.doctype.sales_order.sales_order.update_status",
 			args: {status: status, name: doc.name},
-			callback: function(r){
+			callback: function(r) {
 				me.frm.reload_doc();
 			},
 			always: function() {
 				frappe.ui.form.is_saving = false;
-			}
+			},
 		});
 	}
 };

@@ -7,9 +7,9 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 		super.setup();
 
 		this.frm.custom_make_buttons = {
-			'Sales Invoice': 'Sales Invoice',
-			'Payment Request': 'Payment Request',
-			'Payment Entry': 'Payment',
+			"Sales Invoice": "Sales Invoice",
+			"Payment Request": "Payment Request",
+			"Payment Entry": "Payment",
 		};
 
 		this.setup_queries();
@@ -25,13 +25,13 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			this.add_get_latest_price_button();
 
 			if (frappe.model.can_read("Delivery Note")) {
-				this.frm.add_custom_button(__('Delivery Note'), () => {
+				this.frm.add_custom_button(__("Delivery Note"), () => {
 					this.get_items_from_delivery_note();
 				}, __("Get Items From"));
 			}
 
 			if (frappe.model.can_read("Sales Order")) {
-				this.frm.add_custom_button(__('Sales Order'), () => {
+				this.frm.add_custom_button(__("Sales Order"), () => {
 					this.get_items_from_sales_order();
 				}, __("Get Items From"));
 			}
@@ -51,25 +51,25 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			}
 
 			if (flt(this.frm.doc.per_billed) < 100 && frappe.model.can_create("Sales Invoice")) {
-				this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(),
-					__('Create'));
+				this.frm.add_custom_button(__("Sales Invoice"), () => this.make_sales_invoice(),
+					__("Create"));
 			}
 
 			if (flt(this.frm.doc.per_billed) == 0) {
 				if (frappe.model.can_create("Payment Request")) {
-					this.frm.add_custom_button(__('Payment Request'), () => this.make_payment_request(),
-						__('Create'));
+					this.frm.add_custom_button(__("Payment Request"), () => this.make_payment_request(),
+						__("Create"));
 				}
 
 				if (frappe.model.can_create("Payment Entry") || frappe.model.can_create("Journal Entry")) {
-					this.frm.add_custom_button(__('Payment'), () => this.make_payment_entry(true),
-						__('Create'));
+					this.frm.add_custom_button(__("Payment"), () => this.make_payment_entry(true),
+						__("Create"));
 				}
 			}
 		}
 
 		if (this.frm.page.get_inner_group_button(__("Create")).length) {
-			this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+			this.frm.page.set_inner_btn_group_as_primary(__("Create"));
 		}
 	}
 
@@ -82,33 +82,33 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			target: me.frm,
 			setters: [
 				{
-					fieldtype: 'Link',
-					label: __('Customer'),
-					options: 'Customer',
-					fieldname: 'customer',
+					fieldtype: "Link",
+					label: __("Customer"),
+					options: "Customer",
+					fieldname: "customer",
 					default: me.frm.doc.customer || undefined,
 				},
 				{
-					fieldtype: 'Link',
-					label: __('Project'),
-					options: 'Project',
-					fieldname: 'project',
+					fieldtype: "Link",
+					label: __("Project"),
+					options: "Project",
+					fieldname: "project",
 					default: me.frm.doc.project || undefined,
 				},
 				{
-					fieldtype: 'Link',
-					label: __('Branch'),
-					options: 'Branch',
-					fieldname: 'branch',
+					fieldtype: "Link",
+					label: __("Branch"),
+					options: "Branch",
+					fieldname: "branch",
 					default: me.frm.doc.branch || undefined,
 				},
 				{
-					fieldtype: 'DateRange',
-					label: __('Date Range'),
-					fieldname: 'transaction_date',
-				}
+					fieldtype: "DateRange",
+					label: __("Date Range"),
+					fieldname: "transaction_date",
+				},
 			],
-			columns: ['customer_name', 'transaction_date', 'project'],
+			columns: ["customer_name", "transaction_date", "project"],
 			get_query: function() {
 				var filters = {
 					company: me.frm.doc.company,
@@ -120,7 +120,7 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 
 				return {
 					query: "erpnext.controllers.queries.get_sales_orders_to_be_billed",
-					filters: filters
+					filters: filters,
 				};
 			},
 		});
@@ -135,46 +135,46 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			target: me.frm,
 			setters: [
 				{
-					fieldtype: 'Link',
-					label: __('Customer'),
-					options: 'Customer',
-					fieldname: 'customer',
+					fieldtype: "Link",
+					label: __("Customer"),
+					options: "Customer",
+					fieldname: "customer",
 					default: me.frm.doc.customer || undefined,
 				},
 				{
-					fieldtype: 'Link',
-					label: __('Project'),
-					options: 'Project',
-					fieldname: 'project',
+					fieldtype: "Link",
+					label: __("Project"),
+					options: "Project",
+					fieldname: "project",
 					default: me.frm.doc.project || undefined,
 				},
 				{
-					fieldtype: 'Link',
-					label: __('Branch'),
-					options: 'Branch',
-					fieldname: 'branch',
+					fieldtype: "Link",
+					label: __("Branch"),
+					options: "Branch",
+					fieldname: "branch",
 					default: me.frm.doc.branch || undefined,
 				},
 				{
-					fieldtype: 'DateRange',
-					label: __('Date Range'),
-					fieldname: 'posting_date',
-				}
+					fieldtype: "DateRange",
+					label: __("Date Range"),
+					fieldname: "posting_date",
+				},
 			],
-			columns: ['customer_name', 'posting_date', 'project'],
+			columns: ["customer_name", "posting_date", "project"],
 			get_query: function() {
 				var filters = {
 					company: me.frm.doc.company,
 					is_return: 0,
 					claim_billing: 0,
 				};
-				if(me.frm.doc.customer) {
+				if (me.frm.doc.customer) {
 					filters["customer"] = me.frm.doc.customer;
 				}
 
 				return {
 					query: "erpnext.controllers.queries.get_delivery_notes_to_be_billed",
-					filters: filters
+					filters: filters,
 				};
 			},
 		});
@@ -183,8 +183,8 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 	make_sales_invoice() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.accounts.doctype.proforma_invoice.proforma_invoice.make_sales_invoice",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
 
 	update_status(status) {
@@ -193,14 +193,14 @@ erpnext.accounts.ProformaInvoiceController = class ProformaInvoiceController ext
 			method: "erpnext.accounts.doctype.proforma_invoice.proforma_invoice.update_status",
 			args: {
 				status: status,
-				name: this.frm.doc.name
+				name: this.frm.doc.name,
 			},
 			callback: (r) => {
 				this.frm.reload_doc();
 			},
 			always: function() {
 				frappe.ui.form.is_saving = false;
-			}
+			},
 		});
 	}
 

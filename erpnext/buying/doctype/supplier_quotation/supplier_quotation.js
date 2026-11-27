@@ -7,10 +7,10 @@
 erpnext.buying.SupplierQuotationController = class SupplierQuotationController extends erpnext.buying.BuyingController {
 	setup() {
 		this.frm.custom_make_buttons = {
-			'Purchase Order': 'Purchase Order',
-			'Quotation': 'Quotation',
-			'Subscription': 'Subscription'
-		}
+			"Purchase Order": "Purchase Order",
+			"Quotation": "Quotation",
+			"Subscription": "Subscription",
+		};
 
 		super.setup();
 	}
@@ -21,52 +21,52 @@ erpnext.buying.SupplierQuotationController = class SupplierQuotationController e
 		if (this.frm.doc.docstatus === 1) {
 			if (frappe.model.can_create("Purchase Order")) {
 				this.frm.add_custom_button(__("Purchase Order"), this.make_purchase_order,
-					__('Create'));
+					__("Create"));
 			}
 
 			if (frappe.model.can_create("Quotation")) {
 				this.frm.add_custom_button(__("Quotation"), this.make_quotation,
-					__('Create'));
+					__("Create"));
 			}
 
-			this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+			this.frm.page.set_inner_btn_group_as_primary(__("Create"));
 
-			if(!this.frm.doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
-				this.frm.add_custom_button(__('Subscription'), function() {
-					erpnext.utils.make_subscription(me.frm.doc.doctype, me.frm.doc.name)
-				}, __('Create'))
+			if (!this.frm.doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
+				this.frm.add_custom_button(__("Subscription"), function() {
+					erpnext.utils.make_subscription(me.frm.doc.doctype, me.frm.doc.name);
+				}, __("Create"));
 			}
-		} else if (this.frm.doc.docstatus===0) {
+		} else if (this.frm.doc.docstatus === 0) {
 			if (frappe.model.can_read("Material Request")) {
-				this.frm.add_custom_button(__('Material Request'),
-					function () {
+				this.frm.add_custom_button(__("Material Request"),
+					function() {
 						erpnext.utils.map_current_doc({
 							method: "erpnext.stock.doctype.material_request.material_request.make_supplier_quotation",
 							source_doctype: "Material Request",
 							target: me.frm,
 							setters: [
 								{
-									fieldtype: 'Link',
-									label: __('Project'),
-									options: 'Project',
-									fieldname: 'project',
+									fieldtype: "Link",
+									label: __("Project"),
+									options: "Project",
+									fieldname: "project",
 									default: me.frm.doc.project || undefined,
 								},
 								{
-									fieldtype: 'DateRange',
-									label: __('Date Range'),
-									fieldname: 'transaction_date',
-								}
+									fieldtype: "DateRange",
+									label: __("Date Range"),
+									fieldname: "transaction_date",
+								},
 							],
-							columns: ['project', 'transaction_date'],
+							columns: ["project", "transaction_date"],
 							get_query_filters: {
 								company: me.frm.doc.company,
 								material_request_type: "Purchase",
 								docstatus: 1,
 								status: ["!=", "Stopped"],
 								order_status: "To Order",
-							}
-						})
+							},
+						});
 					}, __("Get Items From"));
 			}
 		}
@@ -75,14 +75,14 @@ erpnext.buying.SupplierQuotationController = class SupplierQuotationController e
 	make_purchase_order() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.buying.doctype.supplier_quotation.supplier_quotation.make_purchase_order",
-			frm: cur_frm
-		})
+			frm: cur_frm,
+		});
 	}
 	make_quotation() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.buying.doctype.supplier_quotation.supplier_quotation.make_quotation",
-			frm: cur_frm
-		})
+			frm: cur_frm,
+		});
 
 	}
 };
@@ -90,11 +90,11 @@ erpnext.buying.SupplierQuotationController = class SupplierQuotationController e
 // for backward compatibility: combine new and previous states
 extend_cscript(cur_frm.cscript, new erpnext.buying.SupplierQuotationController({frm: cur_frm}));
 
-cur_frm.fields_dict['items'].grid.get_field('project').get_query =
-	function(doc, cdt, cdn) {
-		return{
-			filters:[
-				['Project', 'status', 'not in', 'Completed, Cancelled']
-			]
-		}
-	}
+cur_frm.fields_dict["items"].grid.get_field("project").get_query
+	= function(doc, cdt, cdn) {
+		return {
+			filters: [
+				["Project", "status", "not in", "Completed, Cancelled"],
+			],
+		};
+	};

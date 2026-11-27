@@ -4,57 +4,57 @@
 
 {% include 'erpnext/public/js/controllers/buying.js' %};
 
-cur_frm.add_fetch('contact', 'email_id', 'email_id')
+cur_frm.add_fetch("contact", "email_id", "email_id");
 
-frappe.ui.form.on("Request for Quotation",{
+frappe.ui.form.on("Request for Quotation", {
 	setup: function(frm) {
 		frm.custom_make_buttons = {
-			'Supplier Quotation': 'Create'
-		}
+			"Supplier Quotation": "Create",
+		};
 
 		frm.fields_dict["suppliers"].grid.get_field("contact").get_query = function(doc, cdt, cdn) {
 			let d = locals[cdt][cdn];
 			return {
 				query: "erpnext.buying.doctype.request_for_quotation.request_for_quotation.get_supplier_contacts",
-				filters: {'supplier': d.supplier}
-			}
-		}
+				filters: {"supplier": d.supplier},
+			};
+		};
 	},
 
 	onload: function(frm) {
-		frm.add_fetch('email_template', 'response', 'message_for_supplier');
+		frm.add_fetch("email_template", "response", "message_for_supplier");
 
-		if(!frm.doc.message_for_supplier) {
-			frm.set_value("message_for_supplier", __("Please supply the specified items at the best possible rates"))
+		if (!frm.doc.message_for_supplier) {
+			frm.set_value("message_for_supplier", __("Please supply the specified items at the best possible rates"));
 		}
 	},
 
 	refresh: function(frm, cdt, cdn) {
 		if (frm.doc.docstatus === 1) {
-			frm.add_custom_button(__('Create'),
-				function(){ frm.trigger("make_suppplier_quotation") }, __("Supplier Quotation"));
+			frm.add_custom_button(__("Create"),
+				function() { frm.trigger("make_suppplier_quotation"); }, __("Supplier Quotation"));
 
 			frm.add_custom_button(__("View"),
-				function(){ frappe.set_route('List', 'Supplier Quotation',
-					{'request_for_quotation': frm.doc.name}) }, __("Supplier Quotation"));
+				function() { frappe.set_route("List", "Supplier Quotation",
+					{"request_for_quotation": frm.doc.name}); }, __("Supplier Quotation"));
 
 			frm.add_custom_button(__("Send Supplier Emails"), function() {
 				frappe.call({
-					method: 'erpnext.buying.doctype.request_for_quotation.request_for_quotation.send_supplier_emails',
+					method: "erpnext.buying.doctype.request_for_quotation.request_for_quotation.send_supplier_emails",
 					freeze: true,
 					args: {
-						rfq_name: frm.doc.name
+						rfq_name: frm.doc.name,
 					},
-					callback: function(r){
+					callback: function(r) {
 						frm.reload_doc();
-					}
+					},
 				});
 			});
 		}
 
 	},
 
-	get_suppliers_button: function (frm) {
+	get_suppliers_button: function(frm) {
 		var doc = frm.doc;
 		var dialog = new frappe.ui.Dialog({
 			title: __("Get Suppliers"),
@@ -62,24 +62,24 @@ frappe.ui.form.on("Request for Quotation",{
 				{
 					"fieldtype": "Select", "label": __("Get Suppliers By"),
 					"fieldname": "search_type",
-					"options": ["Tag","Supplier Group"],
+					"options": ["Tag", "Supplier Group"],
 					"reqd": 1,
 					onchange() {
-						if(dialog.get_value('search_type') == 'Tag'){
+						if (dialog.get_value("search_type") == "Tag") {
 							frappe.call({
-								method: 'erpnext.buying.doctype.request_for_quotation.request_for_quotation.get_supplier_tag',
+								method: "erpnext.buying.doctype.request_for_quotation.request_for_quotation.get_supplier_tag",
 							}).then(r => {
-								dialog.set_df_property("tag", "options", r.message)
-						});
+								dialog.set_df_property("tag", "options", r.message);
+							});
 						}
-					}
+					},
 				},
 				{
 					"fieldtype": "Link", "label": __("Supplier Group"),
 					"fieldname": "supplier_group",
 					"options": "Supplier Group",
 					"reqd": 0,
-					"depends_on": "eval:doc.search_type == 'Supplier Group'"
+					"depends_on": "eval:doc.search_type == 'Supplier Group'",
 				},
 				{
 					"fieldtype": "Select", "label": __("Tag"),
@@ -89,31 +89,32 @@ frappe.ui.form.on("Request for Quotation",{
 				},
 				{
 					"fieldtype": "Button", "label": __("Add All Suppliers"),
-					"fieldname": "add_suppliers"
+					"fieldname": "add_suppliers",
 				},
-			]
+			],
 		});
 
 		dialog.fields_dict.add_suppliers.$input.click(function() {
 			var args = dialog.get_values();
-			if(!args) return;
+			if (!args) return;
 			dialog.hide();
 
 			//Remove blanks
 			for (var j = 0; j < frm.doc.suppliers.length; j++) {
-				if(!frm.doc.suppliers[j].hasOwnProperty("supplier")) {
+				if (!Object.hasOwn(frm.doc.suppliers[j], "supplier")) {
 					frm.get_field("suppliers").grid.grid_rows[j].remove();
 				}
 			}
 
-			 function load_suppliers(r) {
-				if(r.message) {
+			function load_suppliers(r) {
+				if (r.message) {
 					for (var i = 0; i < r.message.length; i++) {
 						var exists = false;
-						if (r.message[i].constructor === Array){
-							var supplier = r.message[i][0];
+						var supplier;
+						if (r.message[i].constructor === Array) {
+							supplier = r.message[i][0];
 						} else {
-							var supplier = r.message[i].name;
+							supplier = r.message[i].name;
 						}
 
 						for (var j = 0; j < doc.suppliers.length;j++) {
@@ -121,8 +122,8 @@ frappe.ui.form.on("Request for Quotation",{
 								exists = true;
 							}
 						}
-						if(!exists) {
-							var d = frm.add_child('suppliers');
+						if (!exists) {
+							var d = frm.add_child("suppliers");
 							d.supplier = supplier;
 							frm.script_manager.trigger("supplier", d.doctype, d.name);
 						}
@@ -137,9 +138,9 @@ frappe.ui.form.on("Request for Quotation",{
 					method: "frappe.desk.doctype.tag.tag.get_tagged_docs",
 					args: {
 						"doctype": "Supplier",
-						"tag": args.tag
+						"tag": args.tag,
 					},
-					callback: load_suppliers
+					callback: load_suppliers,
 				});
 			} else if (args.supplier_group) {
 				return frappe.call({
@@ -148,10 +149,10 @@ frappe.ui.form.on("Request for Quotation",{
 						doctype: "Supplier",
 						order_by: "name",
 						fields: ["name"],
-						filters: [["Supplier", "supplier_group", "=", args.supplier_group]]
+						filters: [["Supplier", "supplier_group", "=", args.supplier_group]],
 
 					},
-					callback: load_suppliers
+					callback: load_suppliers,
 				});
 			}
 		});
@@ -163,102 +164,102 @@ frappe.ui.form.on("Request for Quotation",{
 		var dialog = new frappe.ui.Dialog({
 			title: __("For Supplier"),
 			fields: [
-				{	"fieldtype": "Select", "label": __("Supplier"),
+				{"fieldtype": "Select", "label": __("Supplier"),
 					"fieldname": "supplier",
 					"options": doc.suppliers.map(d => d.supplier),
 					"reqd": 1,
-					"default": doc.suppliers.length === 1 ? doc.suppliers[0].supplier_name : "" },
-				{	"fieldtype": "Button", "label": __('Create Supplier Quotation'),
-					"fieldname": "make_supplier_quotation", "cssClass": "btn-primary" },
-			]
+					"default": doc.suppliers.length === 1 ? doc.suppliers[0].supplier_name : ""},
+				{"fieldtype": "Button", "label": __("Create Supplier Quotation"),
+					"fieldname": "make_supplier_quotation", "cssClass": "btn-primary"},
+			],
 		});
 
 		dialog.fields_dict.make_supplier_quotation.$input.click(function() {
 			var args = dialog.get_values();
-			if(!args) return;
+			if (!args) return;
 			dialog.hide();
 			return frappe.call({
 				type: "GET",
 				method: "erpnext.buying.doctype.request_for_quotation.request_for_quotation.make_supplier_quotation",
 				args: {
 					"source_name": doc.name,
-					"for_supplier": args.supplier
+					"for_supplier": args.supplier,
 				},
 				freeze: true,
 				callback: function(r) {
-					if(!r.exc) {
+					if (!r.exc) {
 						var doc = frappe.model.sync(r.message);
 						frappe.set_route("Form", r.message.doctype, r.message.name);
 					}
-				}
+				},
 			});
 		});
-		dialog.show()
-	}
-})
+		dialog.show();
+	},
+});
 
-frappe.ui.form.on("Request for Quotation Supplier",{
+frappe.ui.form.on("Request for Quotation Supplier", {
 	supplier: function(frm, cdt, cdn) {
-		var d = locals[cdt][cdn]
+		var d = locals[cdt][cdn];
 		frappe.call({
-			method:"erpnext.accounts.party.get_party_details",
-			args:{
+			method: "erpnext.accounts.party.get_party_details",
+			args: {
 				party: d.supplier,
-				party_type: 'Supplier'
+				party_type: "Supplier",
 			},
-			callback: function(r){
-				if(r.message){
-					frappe.model.set_value(cdt, cdn, 'contact', r.message.contact_person)
-					frappe.model.set_value(cdt, cdn, 'email_id', r.message.contact_email)
+			callback: function(r) {
+				if (r.message) {
+					frappe.model.set_value(cdt, cdn, "contact", r.message.contact_person);
+					frappe.model.set_value(cdt, cdn, "email_id", r.message.contact_email);
 				}
-			}
-		})
+			},
+		});
 	},
 
 	download_pdf: function(frm, cdt, cdn) {
-		var child = locals[cdt][cdn]
+		var child = locals[cdt][cdn];
 
 		var w = window.open(
 			frappe.urllib.get_full_url("/api/method/erpnext.buying.doctype.request_for_quotation.request_for_quotation.get_pdf?"
-			+"doctype="+encodeURIComponent(frm.doc.doctype)
-			+"&name="+encodeURIComponent(frm.doc.name)
-			+"&supplier_idx="+encodeURIComponent(child.idx)
-			+"&no_letterhead=0"));
-		if(!w) {
+			+ "doctype=" + encodeURIComponent(frm.doc.doctype)
+			+ "&name=" + encodeURIComponent(frm.doc.name)
+			+ "&supplier_idx=" + encodeURIComponent(child.idx)
+			+ "&no_letterhead=0"));
+		if (!w) {
 			frappe.msgprint(__("Please enable pop-ups")); return;
 		}
 	},
 	no_quote: function(frm, cdt, cdn) {
 		var d = locals[cdt][cdn];
 		if (d.no_quote) {
-			if (d.quote_status != __('Received')) {
-				frappe.model.set_value(cdt, cdn, 'quote_status', 'No Quote');
+			if (d.quote_status != __("Received")) {
+				frappe.model.set_value(cdt, cdn, "quote_status", "No Quote");
 			} else {
 				frappe.msgprint(__("Cannot set a received RFQ to No Quote"));
-				frappe.model.set_value(cdt, cdn, 'no_quote', 0);
+				frappe.model.set_value(cdt, cdn, "no_quote", 0);
 			}
 		} else {
-			d.quote_status = __('Pending');
+			d.quote_status = __("Pending");
 			frm.call({
-				method:"update_rfq_supplier_status",
+				method: "update_rfq_supplier_status",
 				doc: frm.doc,
 				args: {
-					sup_name: d.supplier
+					sup_name: d.supplier,
 				},
 				callback: function(r) {
 					frm.refresh_field("suppliers");
-				}
+				},
 			});
 		}
-	}
-})
+	},
+});
 
 erpnext.buying.RequestforQuotationController = class RequestforQuotationController extends erpnext.buying.BuyingController {
 	refresh() {
 		var me = this;
 		super.refresh();
-		if (this.frm.doc.docstatus===0) {
-			this.frm.add_custom_button(__('Material Request'),
+		if (this.frm.doc.docstatus === 0) {
+			this.frm.add_custom_button(__("Material Request"),
 				function() {
 					erpnext.utils.map_current_doc({
 						method: "erpnext.stock.doctype.material_request.material_request.make_request_for_quotation",
@@ -266,56 +267,56 @@ erpnext.buying.RequestforQuotationController = class RequestforQuotationControll
 						target: me.frm,
 						setters: [
 							{
-								fieldtype: 'Link',
-								label: __('Project'),
-								options: 'Project',
-								fieldname: 'project',
+								fieldtype: "Link",
+								label: __("Project"),
+								options: "Project",
+								fieldname: "project",
 								default: me.frm.doc.project || undefined,
 							},
 							{
-								fieldtype: 'DateRange',
-								label: __('Date Range'),
-								fieldname: 'transaction_date',
-							}
+								fieldtype: "DateRange",
+								label: __("Date Range"),
+								fieldname: "transaction_date",
+							},
 						],
-						columns: ['project', 'transaction_date'],
+						columns: ["project", "transaction_date"],
 						get_query_filters: {
 							company: me.frm.doc.company,
 							material_request_type: "Purchase",
 							docstatus: 1,
 							status: ["!=", "Stopped"],
 							order_status: "To Order",
-						}
-					})
+						},
+					});
 				}, __("Get Items From"));
 			// Get Items From Opportunity
-            this.frm.add_custom_button(__('Opportunity'),
+			this.frm.add_custom_button(__("Opportunity"),
 				function() {
 					erpnext.utils.map_current_doc({
 						method: "erpnext.overrides.opportunity.opportunity_hooks.make_request_for_quotation",
 						source_doctype: "Opportunity",
 						target: me.frm,
 						setters: {
-							company: me.frm.doc.company
+							company: me.frm.doc.company,
 						},
-					})
+					});
 				}, __("Get Items From"));
 			// Get Items From open Material Requests based on supplier
-			this.frm.add_custom_button(__('Possible Supplier'), function() {
+			this.frm.add_custom_button(__("Possible Supplier"), function() {
 				// Create a dialog window for the user to pick their supplier
 				var d = new frappe.ui.Dialog({
-					title: __('Select Possible Supplier'),
+					title: __("Select Possible Supplier"),
 					fields: [
-					{fieldname: 'supplier', fieldtype:'Link', options:'Supplier', label:'Supplier', reqd:1},
-					{fieldname: 'ok_button', fieldtype:'Button', label:'Get Items from Material Requests'},
-					]
+						{fieldname: "supplier", fieldtype: "Link", options: "Supplier", label: "Supplier", reqd: 1},
+						{fieldname: "ok_button", fieldtype: "Button", label: "Get Items from Material Requests"},
+					],
 				});
 
 				// On the user clicking the ok button
 				d.fields_dict.ok_button.input.onclick = function() {
 					var btn = d.fields_dict.ok_button.input;
 					var v = d.get_values();
-					if(v) {
+					if (v) {
 						$(btn).set_working();
 
 						erpnext.utils.map_current_doc({
@@ -323,19 +324,19 @@ erpnext.buying.RequestforQuotationController = class RequestforQuotationControll
 							source_name: v.supplier,
 							target: me.frm,
 							setters: {
-								company: me.frm.doc.company
+								company: me.frm.doc.company,
 							},
 							get_query_filters: {
 								material_request_type: "Purchase",
 								docstatus: 1,
 								status: ["!=", "Stopped"],
 								order_status: "To Order",
-							}
+							},
 						});
 						$(btn).done_working();
 						d.hide();
 					}
-				}
+				};
 				d.show();
 			}, __("Get Items From"));
 

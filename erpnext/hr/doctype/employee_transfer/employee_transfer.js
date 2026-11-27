@@ -3,8 +3,8 @@
 
 {% include 'erpnext/hr/employee_property_update.js' %}
 
-frappe.ui.form.on('Employee Transfer', {
+frappe.ui.form.on("Employee Transfer", {
 	refresh: function(frm) {
 
-	}
+	},
 });

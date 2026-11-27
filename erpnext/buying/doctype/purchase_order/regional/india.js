@@ -1,3 +1,3 @@
 {% include "erpnext/regional/india/taxes.js" %}
 
-erpnext.setup_auto_gst_taxation('Purchase Order');
+erpnext.setup_auto_gst_taxation("Purchase Order");
