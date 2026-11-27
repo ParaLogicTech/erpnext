@@ -11,7 +11,7 @@ def execute():
 	""")
 
 	for i, name in enumerate(projects):
-		print(f"{i+1}/{len(projects)}: {name}")
+		print(f"{i + 1}/{len(projects)}: {name}")
 
 		doc = frappe.get_doc("Project", name)
 		doc.set_billing_and_delivery_status(update=True, update_modified=False)

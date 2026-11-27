@@ -2,17 +2,19 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe import msgprint, _
+from frappe import _, msgprint
+
 
 def execute(filters=None):
-	if not filters: filters = {}
+	if not filters:
+		filters = {}
 
 	if not filters.get("date"):
 		frappe.throw(_("Please select date"))
 
 	columns = get_columns(filters)
 
-	date = filters.get("date")
+	filters.get("date")
 
 	data = []
 
@@ -43,15 +45,17 @@ def execute(filters=None):
 
 	return columns, data
 
+
 def get_columns(filters):
 	columns = [
 		_("Shareholder") + ":Link/Shareholder:150",
 		_("Share Type") + "::90",
 		_("No of Shares") + "::90",
 		_("Average Rate") + ":Currency:90",
-		_("Amount") + ":Currency:90"
+		_("Amount") + ":Currency:90",
 	]
 	return columns
 
+
 def get_all_shares(shareholder):
-	return frappe.get_doc('Shareholder', shareholder).share_balance
+	return frappe.get_doc("Shareholder", shareholder).share_balance

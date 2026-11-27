@@ -1,7 +1,8 @@
 import frappe
-import erpnext
 from frappe import _, scrub
 from frappe.utils import flt, format_date
+
+import erpnext
 from erpnext.accounts.report.summarized_balance_sheet.summarized_balance_sheet import SummarizedBalanceSheet
 
 
@@ -71,7 +72,7 @@ class FixedAssetsStatement(SummarizedBalanceSheet):
 		root_group = frappe.db.get_value(
 			"Account Group",
 			{
-				"company": self.filters.get('company'),
+				"company": self.filters.get("company"),
 				"group_level": "Fixed Asset Root",
 				"report_type": self.get_report_type(),
 			},

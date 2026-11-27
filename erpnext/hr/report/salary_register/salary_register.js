@@ -4,45 +4,45 @@
 frappe.query_reports["Salary Register"] = {
 	"filters": [
 		{
-			"fieldname":"company",
+			"fieldname": "company",
 			"label": __("Company"),
 			"fieldtype": "Link",
 			"options": "Company",
-			"default": frappe.defaults.get_user_default("Company")
+			"default": frappe.defaults.get_user_default("Company"),
 		},
 		{
-			"fieldname":"from_date",
+			"fieldname": "from_date",
 			"label": __("From"),
 			"fieldtype": "Date",
 			"default": frappe.datetime.add_months(frappe.datetime.month_start(), -1),
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
-			"fieldname":"to_date",
+			"fieldname": "to_date",
 			"label": __("To"),
 			"fieldtype": "Date",
 			"default": frappe.datetime.add_days(frappe.datetime.month_start(), -1),
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
-			"fieldname":"employee",
+			"fieldname": "employee",
 			"label": __("Employee"),
 			"fieldtype": "Link",
-			"options": "Employee"
+			"options": "Employee",
 		},
 		{
 			"fieldname": "docstatus",
 			"label": __("Document Status"),
 			"fieldtype": "Select",
 			"options": ["Draft", "Submitted", "Cancelled", "Draft and Submitted"],
-			"default": "Draft and Submitted"
+			"default": "Draft and Submitted",
 		},
 		{
 			"fieldname": "group_by_1",
 			"label": __("Group By Level 1"),
 			"fieldtype": "Select",
 			"options": ["", "Group by Department", "Group by Designation", "Group by Branch"],
-			"default": ""
+			"default": "",
 		},
 		{
 			"fieldname": "show_date_of_joining",
@@ -75,28 +75,28 @@ frappe.query_reports["Salary Register"] = {
 		var link;
 
 		if (column.fieldname == "leave_without_pay" && flt(value)) {
-			style['color'] = 'red';
+			style["color"] = "red";
 		}
 		if (column.fieldname == "late_days" && flt(value)) {
-			style['color'] = 'orange';
+			style["color"] = "orange";
 		}
 
-		if (data && ['leave_without_pay', 'late_days'].includes(column.fieldname) && data.employee && data.start_date && data.end_date) {
-			link = `/app/query-report/Employee Checkin Sheet?employee=${encodeURIComponent(data.employee)}&from_date=${data.start_date}&to_date=${data.end_date}`
+		if (data && ["leave_without_pay", "late_days"].includes(column.fieldname) && data.employee && data.start_date && data.end_date) {
+			link = `/app/query-report/Employee Checkin Sheet?employee=${encodeURIComponent(data.employee)}&from_date=${data.start_date}&to_date=${data.end_date}`;
 		}
 
-		if (column.is_earning || ['gross_pay', 'net_pay', 'rounded_total'].includes(column.fieldname)) {
-			style['color'] = 'green';
-		} else if (column.is_deduction || column.fieldname == 'total_deduction') {
-			style['color'] = 'red';
-		} else if (['loan_repayment', 'advance_deduction'].includes(column.fieldname)) {
-			style['color'] = 'orange';
+		if (column.is_earning || ["gross_pay", "net_pay", "rounded_total"].includes(column.fieldname)) {
+			style["color"] = "green";
+		} else if (column.is_deduction || column.fieldname == "total_deduction") {
+			style["color"] = "red";
+		} else if (["loan_repayment", "advance_deduction"].includes(column.fieldname)) {
+			style["color"] = "orange";
 		}
 
-		if (['gross_pay', 'total_deduction', 'rounded_total'].includes(column.fieldname)) {
-			style['font-weight'] = 'bold';
+		if (["gross_pay", "total_deduction", "rounded_total"].includes(column.fieldname)) {
+			style["font-weight"] = "bold";
 		}
 
 		return default_formatter(value, row, column, data, {css: style, link_href: link, link_target: "_blank"});
 	},
-}
+};

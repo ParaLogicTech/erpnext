@@ -3,10 +3,11 @@
 
 import frappe
 from frappe import _
-from frappe.utils import add_to_date, formatdate, get_link_to_form, getdate, cint
+from frappe.utils import add_to_date, cint, formatdate, get_link_to_form, getdate
 from frappe.utils.dashboard import cache_source
-from frappe.utils.dateutils import get_from_date_from_timespan, get_period_ending, get_period_beginning
+from frappe.utils.dateutils import get_from_date_from_timespan, get_period_beginning, get_period_ending
 from frappe.utils.nestedset import get_descendants_of
+
 from erpnext import get_company_currency, get_default_currency
 
 
@@ -58,8 +59,8 @@ class AccountBalanceTimeline:
 		if self.filters.account and not frappe.db.exists("Account", self.filters.account):
 			frappe.throw(
 				_("Account {0} does not exists in the dashboard chart {1}").format(
-					self.filters.account, get_link_to_form("Dashboard Chart", self.chart_name)
-				)
+					self.filters.account, get_link_to_form("Dashboard Chart", self.chart_name),
+				),
 			)
 
 		if self.timespan == "Select Date Range":
@@ -85,7 +86,7 @@ class AccountBalanceTimeline:
 			accounts.append(self.filters.account)
 
 		if not accounts and accounts_filters:
-			accounts = frappe.get_all("Account", filters=accounts_filters, pluck='name')
+			accounts = frappe.get_all("Account", filters=accounts_filters, pluck="name")
 
 		for account in accounts.copy():
 			child_accounts = get_descendants_of("Account", account, ignore_permissions=True)
@@ -96,8 +97,8 @@ class AccountBalanceTimeline:
 		if not accounts:
 			frappe.throw(
 				_("Account is not set for Dashboard Chart {0}").format(
-					get_link_to_form("Dashboard Chart", self.chart_name)
-				)
+					get_link_to_form("Dashboard Chart", self.chart_name),
+				),
 			)
 
 		return accounts
@@ -180,19 +181,19 @@ class AccountBalanceTimeline:
 			expense_dataset = root_type_datasets["Expense"]
 
 			pnl_values = []
-			for i in range(len(income_dataset['values'])):
-				pnl_values.append(income_dataset['values'][i] - expense_dataset['values'][i])
+			for i in range(len(income_dataset["values"])):
+				pnl_values.append(income_dataset["values"][i] - expense_dataset["values"][i])
 
 			pnl_dataset = {
 				"name": _("Profit/Loss"),
-				"values": pnl_values
+				"values": pnl_values,
 			}
 			datasets.append(pnl_dataset)
 
 	def build_dataset(self, gl_entries, dataset_name, root_type=None):
 		dataset = {
 			"name": dataset_name,
-			"values": [{"date": getdate(date), "total": 0.0} for date in self.dates]
+			"values": [{"date": getdate(date), "total": 0.0} for date in self.dates],
 		}
 
 		# start with the first date
@@ -263,7 +264,7 @@ def get_dates_from_timegrain(from_date, to_date, timegrain):
 	dates = [get_period_ending(from_date, timegrain)]
 	while getdate(dates[-1]) < getdate(to_date):
 		date = get_period_ending(
-			add_to_date(dates[-1], years=years, months=months, days=days), timegrain
+			add_to_date(dates[-1], years=years, months=months, days=days), timegrain,
 		)
 		dates.append(date)
 

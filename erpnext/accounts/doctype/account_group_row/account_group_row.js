@@ -1,3 +1,3 @@
-frappe.ui.form.on('Account Group Row', {
+frappe.ui.form.on("Account Group Row", {
 
 });

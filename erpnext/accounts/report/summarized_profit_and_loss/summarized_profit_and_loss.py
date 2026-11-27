@@ -1,13 +1,15 @@
 # Copyright (c) 2024, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+from datetime import timedelta
+
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, add_months, get_last_day, get_first_day, format_date
-from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
+from frappe.utils import add_months, flt, format_date, get_first_day, get_last_day, getdate
+
 from erpnext.accounts.doctype.budget.budget import get_accumulated_monthly_budget
+from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
 from erpnext.accounts.report.trial_balance.trial_balance import get_dimension_column_details
-from datetime import timedelta
 
 
 def execute(filters=None):
@@ -253,7 +255,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 				"report_type": self.get_report_type(),
 				"is_group": 0,
 			},
-			pluck="name"
+			pluck="name",
 		)
 		if not accounts:
 			return result
@@ -305,7 +307,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 
 		fiscal_years = self.get_fiscal_years_for_period(from_date, to_date)
 		dimension_conditions, dimension_args = self.get_dimension_conditions()
-		
+
 		# Check if any dimension filter is applied
 		dimension_filter_applied = bool(dimension_conditions.strip())
 		all_budget_records = []
@@ -314,7 +316,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 		for fy in fiscal_years:
 			args = {
 				"accounts": accounts,
-				"fiscal_year": fy['name'],
+				"fiscal_year": fy["name"],
 				**dimension_args,
 			}
 
@@ -331,7 +333,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 					AND b.docstatus = 1
 					{dimension_conditions}
 					{extra_condition}
-			""", {**args, "fy_start": fy['year_start_date'], "fy_end": fy['year_end_date']}, as_dict=1)
+			""", {**args, "fy_start": fy["year_start_date"], "fy_end": fy["year_end_date"]}, as_dict=1)
 			all_budget_records.extend(records)
 
 		return all_budget_records
@@ -346,7 +348,7 @@ class SummarizedProfitAndLossReport(SummarizedFinancialReport):
 			ORDER BY year_start_date
 			""",
 			{"start_date": start_date, "end_date": end_date},
-			as_dict=True
+			as_dict=True,
 		)
 		return fiscal_years
 

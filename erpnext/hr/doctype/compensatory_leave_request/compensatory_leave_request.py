@@ -1,13 +1,19 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import date_diff, add_days, getdate, cint
 from frappe.model.document import Document
-from erpnext.hr.utils import validate_dates, validate_overlap, get_leave_period, \
-	get_holidays_for_employee, create_additional_leave_ledger_entry
+from frappe.utils import add_days, cint, date_diff, getdate
+
+from erpnext.hr.utils import (
+	create_additional_leave_ledger_entry,
+	get_holidays_for_employee,
+	get_leave_period,
+	validate_dates,
+	validate_overlap,
+)
+
 
 class CompensatoryLeaveRequest(Document):
 
@@ -16,7 +22,7 @@ class CompensatoryLeaveRequest(Document):
 		if self.half_day:
 			if not self.half_day_date:
 				frappe.throw(_("Half Day Date is mandatory"))
-			if not getdate(self.work_from_date)<=getdate(self.half_day_date)<=getdate(self.work_end_date):
+			if not getdate(self.work_from_date) <= getdate(self.half_day_date) <= getdate(self.work_end_date):
 				frappe.throw(_("Half Day Date should be in between Work From Date and Work End Date"))
 		validate_overlap(self, self.work_from_date, self.work_end_date)
 		self.validate_holidays()
@@ -25,13 +31,13 @@ class CompensatoryLeaveRequest(Document):
 			frappe.throw(_("Leave Type is madatory"))
 
 	def validate_attendance(self):
-		attendance = frappe.get_all('Attendance',
+		attendance = frappe.get_all("Attendance",
 			filters={
-				'attendance_date': ['between', (self.work_from_date, self.work_end_date)],
-				'status': 'Present',
-				'docstatus': 1,
-				'employee': self.employee
-			}, fields=['attendance_date', 'status'])
+				"attendance_date": ["between", (self.work_from_date, self.work_end_date)],
+				"status": "Present",
+				"docstatus": 1,
+				"employee": self.employee,
+			}, fields=["attendance_date", "status"])
 
 		if len(attendance) < date_diff(self.work_end_date, self.work_from_date) + 1:
 			frappe.throw(_("You are not present all day(s) between compensatory leave request days"))
@@ -60,7 +66,7 @@ class CompensatoryLeaveRequest(Document):
 
 			else:
 				leave_allocation = self.create_leave_allocation(leave_period, date_difference)
-			self.leave_allocation=leave_allocation.name
+			self.leave_allocation = leave_allocation.name
 		else:
 			frappe.throw(_("There is no leave period in between {0} and {1}").format(self.work_from_date, self.work_end_date))
 
@@ -94,7 +100,7 @@ class CompensatoryLeaveRequest(Document):
 			"from_date": leave_period[0].from_date,
 			"to_date": leave_period[0].to_date,
 			"employee": self.employee,
-			"leave_type": self.leave_type
+			"leave_type": self.leave_type,
 		}, as_dict=1)
 
 		if leave_allocation:
@@ -114,7 +120,7 @@ class CompensatoryLeaveRequest(Document):
 			carry_forward=cint(is_carry_forward),
 			new_leaves_allocated=date_difference,
 			total_leaves_allocated=date_difference,
-			description=self.reason
+			description=self.reason,
 		))
 		allocation.insert(ignore_permissions=True)
 		allocation.submit()

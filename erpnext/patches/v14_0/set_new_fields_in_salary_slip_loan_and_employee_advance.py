@@ -1,6 +1,7 @@
 import frappe
 from frappe.model.utils.rename_field import rename_field
 
+
 def execute():
 	frappe.reload_doc("hr", "doctype", "salary_slip_loan")
 	frappe.reload_doc("hr", "doctype", "salary_slip_employee_advance")
@@ -25,6 +26,5 @@ def execute():
 		SET advance.balance_amount = advance.advance_amount - advance.allocated_amount
 	""")
 
-
-	for d in frappe.get_all('Salary Slip', filters={'docstatus': 0}):
-		frappe.get_doc('Salary Slip', d.name).save()
+	for d in frappe.get_all("Salary Slip", filters={"docstatus": 0}):
+		frappe.get_doc("Salary Slip", d.name).save()

@@ -1,14 +1,21 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
 from frappe.utils import nowdate
-from erpnext.stock.doctype.item.test_item import create_item
+
+from erpnext.controllers.stock_controller import (
+	QualityInspectionNotSubmittedError,
+	QualityInspectionRejectedError,
+	QualityInspectionRequiredError,
+)
 from erpnext.stock.doctype.delivery_note.test_delivery_note import create_delivery_note
-from erpnext.controllers.stock_controller import QualityInspectionRejectedError, QualityInspectionRequiredError, QualityInspectionNotSubmittedError
+from erpnext.stock.doctype.item.test_item import create_item
 
 # test_records = frappe.get_test_records('Quality Inspection')
+
 
 class TestQualityInspection(unittest.TestCase):
 	def setUp(self):
@@ -33,6 +40,7 @@ class TestQualityInspection(unittest.TestCase):
 		dn.items[0].quality_inspection = qa.name
 		self.assertRaises(QualityInspectionNotSubmittedError, dn.submit)
 
+
 def create_quality_inspection(**args):
 	args = frappe._dict(args)
 	qa = frappe.new_doc("Quality Inspection")
@@ -45,7 +53,7 @@ def create_quality_inspection(**args):
 	qa.inspected_by = frappe.session.user
 	qa.append("readings", {
 		"specification": "Size",
-		"status": args.status
+		"status": args.status,
 	})
 	qa.save()
 	if args.submit:

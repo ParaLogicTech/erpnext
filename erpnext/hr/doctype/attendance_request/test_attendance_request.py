@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
-from frappe.utils import nowdate
 from datetime import date
+
+import frappe
+from frappe.utils import nowdate
+
 
 class TestAttendanceRequest(unittest.TestCase):
 	def setUp(self):
@@ -13,7 +14,7 @@ class TestAttendanceRequest(unittest.TestCase):
 			frappe.db.sql("delete from `tab{doctype}`".format(doctype=doctype))
 
 	def test_attendance_request(self):
-		today = nowdate()
+		nowdate()
 		employee = get_employee()
 		attendance_request = frappe.new_doc("Attendance Request")
 		attendance_request.employee = employee.name
@@ -23,15 +24,16 @@ class TestAttendanceRequest(unittest.TestCase):
 		attendance_request.company = "_Test Company"
 		attendance_request.insert()
 		attendance_request.submit()
-		attendance = frappe.get_doc('Attendance', {
-			'employee': employee.name,
-			'attendance_date': date(date.today().year, 1, 1),
-			'docstatus': 1
+		attendance = frappe.get_doc("Attendance", {
+			"employee": employee.name,
+			"attendance_date": date(date.today().year, 1, 1),
+			"docstatus": 1,
 		})
-		self.assertEqual(attendance.status, 'Present')
+		self.assertEqual(attendance.status, "Present")
 		attendance_request.cancel()
 		attendance.reload()
 		self.assertEqual(attendance.docstatus, 2)
+
 
 def get_employee():
 	return frappe.get_doc("Employee", "_T-Employee-00001")

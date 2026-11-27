@@ -5,6 +5,7 @@
 import frappe
 from frappe.model.utils.rename_field import rename_field
 
+
 def execute():
 	if not (frappe.db.table_exists("Payroll Period") and frappe.db.table_exists("Taxable Salary Slab")):
 		return
@@ -12,17 +13,16 @@ def execute():
 	for doctype in ("income_tax_slab", "salary_structure_assignment", "employee_other_income", "income_tax_slab_other_charges"):
 		frappe.reload_doc("hr", "doctype", doctype)
 
-
 	for company in frappe.get_all("Company"):
-		payroll_periods =  frappe.db.sql("""
+		payroll_periods = frappe.db.sql("""
 			SELECT
 				name, start_date, end_date, standard_tax_exemption_amount
 			FROM
 				`tabPayroll Period`
 			WHERE company=%s
 			ORDER BY start_date DESC
-		""", company.name, as_dict = 1)
-			
+		""", company.name, as_dict=1)
+
 		for i, period in enumerate(payroll_periods):
 			income_tax_slab = frappe.new_doc("Income Tax Slab")
 			income_tax_slab.name = "Tax Slab:" + period.name
@@ -44,7 +44,7 @@ def execute():
 			""" UPDATE `tabTaxable Salary Slab`
 				SET parent = %s , parentfield = 'slabs' , parenttype = "Income Tax Slab"
 				WHERE parent = %s
-			""", (income_tax_slab.name, period.name), as_dict = 1)
+			""", (income_tax_slab.name, period.name), as_dict=1)
 
 			if i == 0:
 				frappe.db.sql("""
@@ -64,8 +64,8 @@ def execute():
 
 	migrated = []
 	proofs = frappe.get_all("Employee Tax Exemption Proof Submission",
-		filters = {'docstatus': 1},
-		fields =['payroll_period', 'employee', 'company', 'income_from_other_sources']
+		filters={"docstatus": 1},
+		fields=["payroll_period", "employee", "company", "income_from_other_sources"],
 	)
 	for proof in proofs:
 		if proof.income_from_other_sources:
@@ -78,15 +78,15 @@ def execute():
 			try:
 				employee_other_income.submit()
 				migrated.append([proof.employee, proof.payroll_period])
-			except:
+			except Exception:
 				pass
 
 	if not frappe.db.table_exists("Employee Tax Exemption Declaration"):
 		return
 
 	declerations = frappe.get_all("Employee Tax Exemption Declaration",
-		filters = {'docstatus': 1},
-		fields =['payroll_period', 'employee', 'company', 'income_from_other_sources']
+		filters={"docstatus": 1},
+		fields=["payroll_period", "employee", "company", "income_from_other_sources"],
 	)
 
 	for declaration in declerations:
@@ -100,5 +100,5 @@ def execute():
 
 			try:
 				employee_other_income.submit()
-			except:
+			except Exception:
 				pass

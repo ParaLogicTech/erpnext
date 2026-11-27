@@ -1,18 +1,24 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
+
+import datetime
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import getdate, nowdate, flt, add_days, today
-from erpnext.hr.utils import set_employee_name
-from erpnext.hr.doctype.salary_structure_assignment.salary_structure_assignment import get_assigned_salary_structure,\
-	get_salary_structure_assignment
-from erpnext.hr.doctype.leave_ledger_entry.leave_ledger_entry import create_leave_ledger_entry,\
-	delete_expired_leave_ledger_entry, get_leave_allocation
+from frappe.utils import add_days, flt, getdate, nowdate, today
+
 from erpnext.hr.doctype.leave_application.leave_application import get_leaves_for_period
-import datetime
+from erpnext.hr.doctype.leave_ledger_entry.leave_ledger_entry import (
+	create_leave_ledger_entry,
+	delete_expired_leave_ledger_entry,
+	get_leave_allocation,
+)
+from erpnext.hr.doctype.salary_structure_assignment.salary_structure_assignment import (
+	get_assigned_salary_structure,
+	get_salary_structure_assignment,
+)
+from erpnext.hr.utils import set_employee_name
 
 
 class LeaveEncashment(Document):
@@ -25,7 +31,7 @@ class LeaveEncashment(Document):
 			"round": round,
 			"date": datetime.date,
 			"getdate": getdate,
-			"date_diff": frappe.utils.date_diff
+			"date_diff": frappe.utils.date_diff,
 		}
 
 	def validate(self):
@@ -52,7 +58,7 @@ class LeaveEncashment(Document):
 
 		# Set encashed leaves in Allocation
 		frappe.db.set_value("Leave Allocation", self.leave_allocation, "total_leaves_encashed",
-				frappe.db.get_value('Leave Allocation', self.leave_allocation, 'total_leaves_encashed') + self.encashable_days)
+				frappe.db.get_value("Leave Allocation", self.leave_allocation, "total_leaves_encashed") + self.encashable_days)
 
 		self.create_leave_ledger_entry()
 
@@ -63,7 +69,7 @@ class LeaveEncashment(Document):
 
 		if self.leave_allocation:
 			frappe.db.set_value("Leave Allocation", self.leave_allocation, "total_leaves_encashed",
-				frappe.db.get_value('Leave Allocation', self.leave_allocation, 'total_leaves_encashed') - self.encashable_days)
+				frappe.db.get_value("Leave Allocation", self.leave_allocation, "total_leaves_encashed") - self.encashable_days)
 
 		self.create_leave_ledger_entry(submit=False)
 
@@ -73,9 +79,9 @@ class LeaveEncashment(Document):
 		if not self.salary_structure:
 			frappe.throw(_("No Salary Structure assigned for Employee {0} on given date {1}").format(self.employee, self.encashment_date))
 
-		self.date_of_joining = frappe.db.get_value("Employee", self.employee, 'date_of_joining')
+		self.date_of_joining = frappe.db.get_value("Employee", self.employee, "date_of_joining")
 
-		if not frappe.db.get_value("Leave Type", self.leave_type, 'allow_encashment'):
+		if not frappe.db.get_value("Leave Type", self.leave_type, "allow_encashment"):
 			frappe.throw(_("Leave Type {0} is not encashable").format(self.leave_type))
 
 		allocation = self.get_leave_allocation()
@@ -86,11 +92,11 @@ class LeaveEncashment(Document):
 		self.leaves_taken = -1 * get_leaves_for_period(self.employee, self.leave_type, allocation.from_date, self.encashment_date)
 		self.leave_balance = self.total_leaves_allocated - allocation.carry_forwarded_leaves_count - self.leaves_taken
 
-		encashable_days = self.leave_balance - frappe.db.get_value('Leave Type', self.leave_type, 'encashment_threshold_days')
+		encashable_days = self.leave_balance - frappe.db.get_value("Leave Type", self.leave_type, "encashment_threshold_days")
 		self.encashable_days = encashable_days if encashable_days > 0 else 0
 
 		self.leave_encashment_amount_per_day = self.get_encashment_amount_per_day()
-		self.encashment_amount = flt(self.encashable_days * self.leave_encashment_amount_per_day, self.precision('encashment_amount'))\
+		self.encashment_amount = flt(self.encashable_days * self.leave_encashment_amount_per_day, self.precision("encashment_amount"))\
 			if self.leave_encashment_amount_per_day > 0 else 0
 
 		self.leave_allocation = allocation.name
@@ -106,7 +112,7 @@ class LeaveEncashment(Document):
 			leaves=self.encashable_days * -1,
 			from_date=self.encashment_date,
 			to_date=self.encashment_date,
-			is_carry_forward=0
+			is_carry_forward=0,
 		)
 		create_leave_ledger_entry(self, args, submit)
 		delete_expired_leave_ledger_entry(self.leave_allocation)
@@ -143,7 +149,7 @@ class LeaveEncashment(Document):
 			raise
 
 	def get_data_for_eval(self):
-		'''Returns data for evaluating formula'''
+		"""Returns data for evaluating formula"""
 		data = frappe._dict()
 
 		salary_structure_assignment = get_salary_structure_assignment(self.employee, self.salary_structure,
@@ -157,7 +163,7 @@ class LeaveEncashment(Document):
 
 
 def auto_generate_leave_encashment():
-	if frappe.db.get_single_value('HR Settings', 'auto_leave_encashment'):
+	if frappe.db.get_single_value("HR Settings", "auto_leave_encashment"):
 		generate_leave_encashment()
 
 
@@ -173,7 +179,7 @@ def generate_leave_encashment(date=None):
 		inner join `tabLeave Type` lt on lt.name = la.leave_type
 		where la.to_date = %(date)s and lt.allow_encashment = 1 and la.docstatus = 1
 			and (ifnull(emp.relieving_date, '0000-00-00') = '0000-00-00' or emp.relieving_date >= %(date)s)
-	""", {'date': date}, as_dict=1)
+	""", {"date": date}, as_dict=1)
 
 	for allocation in leave_allocations:
 		if not get_assigned_salary_structure(allocation.employee, allocation.to_date):
@@ -183,6 +189,6 @@ def generate_leave_encashment(date=None):
 			doctype="Leave Encashment",
 			employee=allocation.employee,
 			leave_type=allocation.leave_type,
-			encashment_date=allocation.to_date
+			encashment_date=allocation.to_date,
 		))
 		leave_encashment.insert(ignore_permissions=True)

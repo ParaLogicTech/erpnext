@@ -6,7 +6,7 @@ frappe.views.calendar["Job Card"] = {
 		"title": "subject",
 		"color": "color",
 		"allDay": "allDay",
-		"progress": "progress"
+		"progress": "progress",
 	},
 	gantt: true,
 	filters: [
@@ -14,8 +14,8 @@ frappe.views.calendar["Job Card"] = {
 			"fieldtype": "Link",
 			"fieldname": "employee",
 			"options": "Employee",
-			"label": __("Employee")
-		}
+			"label": __("Employee"),
+		},
 	],
-	get_events_method: "erpnext.manufacturing.doctype.job_card.job_card.get_job_details"
+	get_events_method: "erpnext.manufacturing.doctype.job_card.job_card.get_job_details",
 };

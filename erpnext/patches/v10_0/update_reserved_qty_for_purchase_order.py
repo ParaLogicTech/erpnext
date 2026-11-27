@@ -1,5 +1,7 @@
 import frappe
+
 from erpnext.stock.utils import get_bin
+
 
 def execute():
 	po_item = list(frappe.db.sql(("""
@@ -40,8 +42,9 @@ def execute():
 		try:
 			stock_bin = get_bin(d["rm_item_code"], d["reserve_warehouse"])
 			stock_bin.update_reserved_qty_for_sub_contracting()
-		except:
+		except Exception:
 			pass
+
 
 def get_warehouse(item_code, company, company_warehouse, item_wh):
 	reserve_warehouse = item_wh.get(item_code)

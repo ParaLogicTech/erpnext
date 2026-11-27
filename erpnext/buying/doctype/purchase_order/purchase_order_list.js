@@ -1,10 +1,10 @@
-frappe.listview_settings['Purchase Order'] = {
+frappe.listview_settings["Purchase Order"] = {
 	add_fields: [
 		"supplier", "supplier_name",
-		"receipt_status", "billing_status", "status"
+		"receipt_status", "billing_status", "status",
 	],
 
-	get_indicator: function (doc) {
+	get_indicator: function(doc) {
 		// Closed
 		if (doc.status === "Closed") {
 			return [__("Closed"), "green", "status,=,Closed"];
@@ -41,17 +41,17 @@ frappe.listview_settings['Purchase Order'] = {
 		}
 	},
 
-	onload: function (listview) {
+	onload: function(listview) {
 		erpnext.setup_applies_to_listview_filters(listview);
 
 		const method = "erpnext.buying.doctype.purchase_order.purchase_order.close_or_unclose_purchase_orders";
 
-		listview.page.add_action_item(__("Close"), function () {
-			listview.call_for_selected_items(method, { "status": "Closed" });
+		listview.page.add_action_item(__("Close"), function() {
+			listview.call_for_selected_items(method, {"status": "Closed"});
 		});
 
-		listview.page.add_action_item(__("Re-Open"), function () {
-			listview.call_for_selected_items(method, { "status": "Submitted" });
+		listview.page.add_action_item(__("Re-Open"), function() {
+			listview.call_for_selected_items(method, {"status": "Submitted"});
 		});
-	}
+	},
 };

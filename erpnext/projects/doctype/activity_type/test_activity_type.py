@@ -3,4 +3,5 @@
 
 
 import frappe
-test_records = frappe.get_test_records('Activity Type')
+
+test_records = frappe.get_test_records("Activity Type")

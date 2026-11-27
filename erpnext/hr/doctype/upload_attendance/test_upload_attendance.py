@@ -1,12 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
 from frappe.utils import getdate
-from erpnext.hr.doctype.upload_attendance.upload_attendance import get_data
+
 from erpnext.hr.doctype.employee.test_employee import make_employee
+from erpnext.hr.doctype.upload_attendance.upload_attendance import get_data
+
 
 class TestUploadAttendance(unittest.TestCase):
 	def test_date_range(self):
@@ -21,7 +23,7 @@ class TestUploadAttendance(unittest.TestCase):
 		employee_doc.save()
 		args = {
 			"from_date": from_date,
-			"to_date": to_date
+			"to_date": to_date,
 		}
 		data = get_data(args)
 		filtered_data = []

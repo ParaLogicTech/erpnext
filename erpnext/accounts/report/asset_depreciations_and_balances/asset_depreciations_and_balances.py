@@ -20,7 +20,8 @@ def get_data(filters):
 		return get_group_by_asset_category_data(filters)
 	elif filters.get("group_by") == "Asset":
 		return get_group_by_asset_data(filters)
-	
+
+
 def get_group_by_asset_category_group_data(filters):
 	data = []
 
@@ -52,7 +53,7 @@ def get_group_by_asset_category_group_data(filters):
 				asset
 				for asset in assets
 				if asset["asset_category_group"] == asset_category_group.get("asset_category_group", "")
-			)
+			),
 		)
 
 		row.accumulated_depreciation_as_on_to_date = (
@@ -63,16 +64,17 @@ def get_group_by_asset_category_group_data(filters):
 		)
 
 		row.net_asset_value_as_on_from_date = flt(row.value_as_on_from_date) - flt(
-			row.accumulated_depreciation_as_on_from_date
+			row.accumulated_depreciation_as_on_from_date,
 		)
 
 		row.net_asset_value_as_on_to_date = flt(row.value_as_on_to_date) - flt(
-			row.accumulated_depreciation_as_on_to_date
+			row.accumulated_depreciation_as_on_to_date,
 		)
 
 		data.append(row)
 
 	return data
+
 
 def get_group_by_asset_category_data(filters):
 	data = []
@@ -105,7 +107,7 @@ def get_group_by_asset_category_data(filters):
 				asset
 				for asset in assets
 				if asset["asset_category"] == asset_category.get("asset_category", "")
-			)
+			),
 		)
 
 		row.accumulated_depreciation_as_on_to_date = (
@@ -116,19 +118,20 @@ def get_group_by_asset_category_data(filters):
 		)
 
 		row.net_asset_value_as_on_from_date = flt(row.value_as_on_from_date) - flt(
-			row.accumulated_depreciation_as_on_from_date
+			row.accumulated_depreciation_as_on_from_date,
 		)
 
 		row.net_asset_value_as_on_to_date = flt(row.value_as_on_to_date) - flt(
-			row.accumulated_depreciation_as_on_to_date
+			row.accumulated_depreciation_as_on_to_date,
 		)
 
 		data.append(row)
 
 	return data
 
+
 def get_asset_category_groups_for_grouped_by_asset_category_group(filters):
-	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
+	condition_values_dict, condition, _finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -188,13 +191,14 @@ def get_asset_category_groups_for_grouped_by_asset_category_group(filters):
 		as_dict=1,
 	)
 
+
 def get_asset_categories_for_grouped_by_category(filters):
-	
-	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
+
+	condition_values_dict, condition, _finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
-		SELECT a.asset_category, a.asset_category_group, 
+		SELECT a.asset_category, a.asset_category_group,
 			   ifnull(sum(case when a.purchase_date < %(from_date)s then
 							   case when ifnull(a.disposal_date, 0) = 0 or a.disposal_date >= %(from_date)s then
 									a.gross_purchase_amount
@@ -250,8 +254,9 @@ def get_asset_categories_for_grouped_by_category(filters):
 		as_dict=1,
 	)
 
+
 def get_assets_for_grouped_by_category_group(filters):
-	
+
 	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
@@ -323,7 +328,7 @@ def get_assets_for_grouped_by_category_group(filters):
 
 
 def get_assets_for_grouped_by_category(filters):
-	
+
 	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
@@ -393,9 +398,10 @@ def get_assets_for_grouped_by_category(filters):
 		as_dict=1,
 	)
 
+
 def get_asset_value_adjustment_map_by_category_group(filters):
-	
-	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
+
+	condition_values_dict, condition, _finance_book_filter = get_conditions(filters)
 
 	asset_value_adjustments = frappe.db.sql(
 		"""
@@ -449,8 +455,8 @@ def get_asset_value_adjustment_map_by_category_group(filters):
 
 
 def get_asset_value_adjustment_map_by_category(filters):
-	
-	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
+
+	condition_values_dict, condition, _finance_book_filter = get_conditions(filters)
 
 	asset_value_adjustments = frappe.db.sql(
 		"""
@@ -545,11 +551,11 @@ def get_group_by_asset_data(filters):
 		)
 
 		row.net_asset_value_as_on_from_date = flt(row.value_as_on_from_date) - flt(
-			row.accumulated_depreciation_as_on_from_date
+			row.accumulated_depreciation_as_on_from_date,
 		)
 
 		row.net_asset_value_as_on_to_date = flt(row.value_as_on_to_date) - flt(
-			row.accumulated_depreciation_as_on_to_date
+			row.accumulated_depreciation_as_on_to_date,
 		)
 
 		data.append(row)
@@ -558,8 +564,8 @@ def get_group_by_asset_data(filters):
 
 
 def get_asset_details_for_grouped_by_category(filters):
-	
-	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
+
+	condition_values_dict, condition, _finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
 		f"""
@@ -621,7 +627,7 @@ def get_asset_details_for_grouped_by_category(filters):
 
 
 def get_assets_for_grouped_by_asset(filters):
-	
+
 	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
 	# nosemgrep
 	return frappe.db.sql(
@@ -699,8 +705,8 @@ def get_assets_for_grouped_by_asset(filters):
 
 
 def get_asset_value_adjustment_map(filters):
-	
-	condition_values_dict, condition, finance_book_filter = get_conditions(filters)
+
+	condition_values_dict, condition, _finance_book_filter = get_conditions(filters)
 
 	asset_with_value_adjustments = frappe.db.sql(
 		"""
@@ -752,6 +758,7 @@ def get_asset_value_adjustment_map(filters):
 
 	return asset_value_adjustment_map
 
+
 def get_conditions(filters):
 	condition_values_dict = {
 			"to_date": filters.to_date,
@@ -768,7 +775,7 @@ def get_conditions(filters):
 	if filters.get("asset_category"):
 		condition += " and a.asset_category in %(asset_category)s"
 		condition_values_dict["asset_category"] = tuple(filters.get("asset_category"))
-	
+
 	finance_book_filter = ""
 	if filters.get("finance_book"):
 		finance_book_filter += " and ifnull(gle.finance_book, '')=%(finance_book)s"
@@ -786,10 +793,11 @@ def get_conditions(filters):
 	if filters.get("status"):
 		condition += " and a.status = %(status)s"
 		condition_values_dict["status"] = filters.get("status")
-	
+
 	if filters.get("cost_center"):
 		condition += " and a.cost_center = '{cost_center}'".format(cost_center=filters.get("cost_center"))
 	return condition_values_dict, condition, finance_book_filter
+
 
 def get_columns(filters):
 	columns = []
@@ -799,9 +807,9 @@ def get_columns(filters):
 				"label": _("Asset Categroy Group"),
 				"fieldname": "asset_category_group",
 				"fieldtype": "Link",
-				"options":"Account Group",
+				"options": "Account Group",
 				"width": 140,
-			}
+			},
 		)
 	elif filters.get("group_by") == "Asset Category":
 		columns.append(
@@ -811,16 +819,16 @@ def get_columns(filters):
 				"fieldtype": "Link",
 				"options": "Asset Category",
 				"width": 120,
-			}
+			},
 		)
 		columns.append(
 			{
 				"label": _("Asset Categroy Group"),
 				"fieldname": "asset_category_group",
 				"fieldtype": "Link",
-				"options":"Account Group",
+				"options": "Account Group",
 				"width": 140,
-			}
+			},
 		)
 	elif filters.get("group_by") == "Asset":
 		columns.append(
@@ -830,7 +838,7 @@ def get_columns(filters):
 				"fieldtype": "Link",
 				"options": "Asset",
 				"width": 120,
-			}
+			},
 		)
 		columns.append(
 			{
@@ -838,7 +846,7 @@ def get_columns(filters):
 				"fieldname": "asset_name",
 				"fieldtype": "Data",
 				"width": 140,
-			}
+			},
 		)
 		columns.append(
 			{
@@ -846,34 +854,34 @@ def get_columns(filters):
 				"fieldname": "status",
 				"fieldtype": "Data",
 				"width": 140,
-			}
+			},
 		)
 		columns.append(
 			{
 				"label": _("Asset Categroy"),
 				"fieldname": "asset_category",
 				"fieldtype": "Link",
-				"options":"Asset Category",
+				"options": "Asset Category",
 				"width": 140,
-			}
+			},
 		)
 		columns.append(
 			{
 				"label": _("Asset Categroy Group"),
 				"fieldname": "asset_category_group",
 				"fieldtype": "Link",
-				"options":"Account Group",
+				"options": "Account Group",
 				"width": 140,
-			}
+			},
 		)
 		columns.append(
 			{
 				"label": _("Cost Center"),
 				"fieldname": "cost_center",
 				"fieldtype": "Link",
-				"options":"Cost Center",
+				"options": "Cost Center",
 				"width": 140,
-			}
+			},
 		)
 		columns.append(
 			{
@@ -881,7 +889,7 @@ def get_columns(filters):
 				"fieldname": "total_number_of_depreciations",
 				"fieldtype": "Int",
 				"width": 140,
-			}
+			},
 		)
 		columns.append(
 			{
@@ -889,7 +897,7 @@ def get_columns(filters):
 				"fieldname": "useful_life",
 				"fieldtype": "Float",
 				"width": 140,
-			}
+			},
 		)
 
 	columns += [

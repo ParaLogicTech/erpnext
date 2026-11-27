@@ -4,9 +4,9 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe.model.document import Document
 
 from erpnext.controllers.print_settings import print_settings_for_item_table
-from frappe.model.document import Document
 
 
 class MaterialRequestItem(Document):

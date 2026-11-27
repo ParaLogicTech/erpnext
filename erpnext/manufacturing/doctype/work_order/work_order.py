@@ -1,37 +1,49 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import copy
+import json
+import math
+
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, cint, get_link_to_form, round_up
-from erpnext.manufacturing.doctype.bom.bom import validate_bom_no, get_bom_items_as_dict
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cint, flt, get_link_to_form, getdate, round_up
+
+from erpnext.controllers.status_updater import StatusUpdaterERP
+from erpnext.manufacturing.doctype.bom.bom import get_bom_items_as_dict, validate_bom_no
+from erpnext.setup.doctype.item_default_rule.item_default_rule import (
+	get_default_values_for_filters,
+	get_item_default_values,
+)
 from erpnext.stock.doctype.item.item import (
 	validate_end_of_life,
 	validate_is_not_template_item,
-	validate_item_carton_type
+	validate_item_carton_type,
 )
-from erpnext.stock.stock_balance import get_planned_qty, update_bin_qty
-from erpnext.stock.utils import get_bin, validate_warehouse_company, get_latest_stock_qty
-from erpnext.setup.doctype.item_default_rule.item_default_rule import (
-	get_item_default_values,
-	get_default_values_for_filters,
-)
-from erpnext.controllers.status_updater import StatusUpdaterERP
 from erpnext.stock.get_item_details import get_default_bom, get_default_cost_center, get_item_packaging_details
-from frappe.model.mapper import get_mapped_doc
-import json
-import math
-import copy
+from erpnext.stock.stock_balance import get_planned_qty, update_bin_qty
+from erpnext.stock.utils import get_bin, get_latest_stock_qty, validate_warehouse_company
 
 
-class OverProductionError(frappe.ValidationError): pass
-class StockOverProductionError(frappe.ValidationError): pass
-class OperationTooLongError(frappe.ValidationError): pass
-class ItemHasVariantError(frappe.ValidationError): pass
+class OverProductionError(frappe.ValidationError):
+	pass
+
+
+class StockOverProductionError(frappe.ValidationError):
+	pass
+
+
+class OperationTooLongError(frappe.ValidationError):
+	pass
+
+
+class ItemHasVariantError(frappe.ValidationError):
+	pass
 
 
 form_grid_templates = {
-	"operations": "templates/form_grid/work_order_grid.html"
+	"operations": "templates/form_grid/work_order_grid.html",
 }
 
 settings_checkbox_fields = [
@@ -56,7 +68,7 @@ class WorkOrder(StatusUpdaterERP):
 
 	def get_feed(self):
 		return "{0} {1} of {2}".format(
-			frappe.format(self.get_formatted('qty')), self.get('stock_uom'), self.get('item_name') or self.get('production_item')
+			frappe.format(self.get_formatted("qty")), self.get("stock_uom"), self.get("item_name") or self.get("production_item"),
 		)
 
 	def onload(self):
@@ -178,7 +190,7 @@ class WorkOrder(StatusUpdaterERP):
 
 		if self.customer and self.customer != sales_order_customer:
 			frappe.throw(_("Customer does not match with {0}").format(
-				frappe.get_desk_link("Sales Order", self.sales_order))
+				frappe.get_desk_link("Sales Order", self.sales_order)),
 			)
 
 		so = frappe.db.sql("""
@@ -230,7 +242,7 @@ class WorkOrder(StatusUpdaterERP):
 			where production_item = %s and sales_order = %s and docstatus < 2 and name != %s
 		""", (self.production_item, self.sales_order, self.name))[0][0]
 
-		total_qty = flt(flt(ordered_qty_against_so) + flt(self.qty), self.precision('qty'))
+		total_qty = flt(flt(ordered_qty_against_so) + flt(self.qty), self.precision("qty"))
 
 		# get qty from Sales Order Item table
 		so_item_qty = frappe.db.sql("""
@@ -247,13 +259,13 @@ class WorkOrder(StatusUpdaterERP):
 		""", (self.sales_order, self.production_item))[0][0]
 
 		# total qty in SO
-		so_qty = round_up(flt(so_item_qty) + flt(dnpi_qty), self.precision('qty'))
+		so_qty = round_up(flt(so_item_qty) + flt(dnpi_qty), self.precision("qty"))
 
 		allowance_percentage = flt(frappe.db.get_single_value("Manufacturing Settings", "overproduction_percentage_for_sales_order"))
 
-		if total_qty > so_qty + (allowance_percentage/100 * so_qty):
+		if total_qty > so_qty + (allowance_percentage / 100 * so_qty):
 			frappe.throw(_("Cannot produce more Item {0} than Sales Order quantity {1}").format(
-				frappe.bold(self.production_item), frappe.format(so_qty)
+				frappe.bold(self.production_item), frappe.format(so_qty),
 			), OverProductionError)
 
 	def validate_warehouses(self):
@@ -300,7 +312,7 @@ class WorkOrder(StatusUpdaterERP):
 		self.calculate_total_cost()
 
 	def set_required_items(self, reset_only_qty=False):
-		'''set required_items for production to keep track of reserved qty'''
+		"""set required_items for production to keep track of reserved qty"""
 		if not reset_only_qty:
 			self.required_items = []
 
@@ -328,19 +340,19 @@ class WorkOrder(StatusUpdaterERP):
 				row.required_qty = row.total_qty / self.qty * self.get_producible_qty()
 				row.stock_required_qty = row.required_qty * row.conversion_factor
 		else:
-			for item in sorted(item_dict.values(), key=lambda d: d.get('idx') or 9999):
-				row = self.append('required_items', {
-					'operation': item.operation,
-					'item_code': item.item_code,
-					'item_name': item.item_name,
-					'description': item.description,
-					'total_qty': flt(item.qty),
-					'uom': item.uom,
-					'stock_uom': item.stock_uom,
-					'conversion_factor': flt(item.conversion_factor) or 1,
-					'has_batch_no': cint(item.has_batch_no),
-					'source_warehouse': item.source_warehouse or item.default_warehouse or self.source_warehouse,
-					'skip_transfer_for_manufacture': item.skip_transfer_for_manufacture
+			for item in sorted(item_dict.values(), key=lambda d: d.get("idx") or 9999):
+				row = self.append("required_items", {
+					"operation": item.operation,
+					"item_code": item.item_code,
+					"item_name": item.item_name,
+					"description": item.description,
+					"total_qty": flt(item.qty),
+					"uom": item.uom,
+					"stock_uom": item.stock_uom,
+					"conversion_factor": flt(item.conversion_factor) or 1,
+					"has_batch_no": cint(item.has_batch_no),
+					"source_warehouse": item.source_warehouse or item.default_warehouse or self.source_warehouse,
+					"skip_transfer_for_manufacture": item.skip_transfer_for_manufacture,
 				})
 
 				row.required_qty = row.total_qty / self.qty * self.get_producible_qty()
@@ -397,8 +409,8 @@ class WorkOrder(StatusUpdaterERP):
 		"""Fetch operations from BOM and set in 'Work Order'"""
 		from erpnext.manufacturing.doctype.bom.bom import get_bom_additional_costs
 
-		self.set('operations', [])
-		self.set('additional_costs', [])
+		self.set("operations", [])
+		self.set("additional_costs", [])
 
 		if not self.bom_no:
 			return
@@ -409,21 +421,21 @@ class WorkOrder(StatusUpdaterERP):
 			bom_list = [self.bom_no]
 
 		operations = self.get_work_order_operations(bom_list)
-		self.set('operations', operations)
+		self.set("operations", operations)
 
-		if self.use_multi_level_bom and self.get('operations') and self.get('items'):
-			raw_material_operations = [d.operation for d in self.get('items')]
-			operations = [d.operation for d in self.get('operations')]
+		if self.use_multi_level_bom and self.get("operations") and self.get("items"):
+			raw_material_operations = [d.operation for d in self.get("items")]
+			operations = [d.operation for d in self.get("operations")]
 
 			for operation in raw_material_operations:
 				if operation not in operations:
-					self.append('operations', {
-						'operation': operation
+					self.append("operations", {
+						"operation": operation,
 					})
 
 		# Additional costs
 		additional_costs = get_bom_additional_costs(self.bom_no, self.use_multi_level_bom)
-		self.set('additional_costs', additional_costs)
+		self.set("additional_costs", additional_costs)
 
 		self.calculate_time()
 
@@ -431,7 +443,7 @@ class WorkOrder(StatusUpdaterERP):
 	def get_work_order_operations(bom_list):
 		operations = []
 		if bom_list:
-			bom_list_order_str = ', '.join(frappe.db.escape(bom) for bom in bom_list)
+			bom_list_order_str = ", ".join(frappe.db.escape(bom) for bom in bom_list)
 			operations = frappe.db.sql("""
 				SELECT
 					operation,
@@ -475,8 +487,8 @@ class WorkOrder(StatusUpdaterERP):
 
 		for i, d in enumerate(self.operations):
 			# set operation status
-			d.completed_qty = flt(operation_data_map.get(d.name, {}).get('completed_qty'))
-			d.process_loss_qty = flt(operation_data_map.get(d.name, {}).get('process_loss_qty'))
+			d.completed_qty = flt(operation_data_map.get(d.name, {}).get("completed_qty"))
+			d.process_loss_qty = flt(operation_data_map.get(d.name, {}).get("process_loss_qty"))
 
 			if i == 0:
 				d.previous_loss_qty = 0
@@ -494,36 +506,36 @@ class WorkOrder(StatusUpdaterERP):
 			else:
 				d.status = "Completed"
 
-			d.actual_operation_time = flt(operation_data_map.get(d.name, {}).get('time_in_mins'))
-			d.actual_start_time = operation_data_map.get(d.name, {}).get('start_time')
-			d.actual_end_time = operation_data_map.get(d.name, {}).get('end_time') if d.status == "Completed" else None
+			d.actual_operation_time = flt(operation_data_map.get(d.name, {}).get("time_in_mins"))
+			d.actual_start_time = operation_data_map.get(d.name, {}).get("start_time")
+			d.actual_end_time = operation_data_map.get(d.name, {}).get("end_time") if d.status == "Completed" else None
 
 		self.calculate_operating_cost()
 
 		if update:
 			for row in self.operations:
 				row.db_set({
-					'completed_qty': row.completed_qty,
-					'process_loss_qty': row.process_loss_qty,
-					'previous_loss_qty': row.previous_loss_qty,
-					'actual_start_time': row.actual_start_time,
-					'actual_end_time': row.actual_end_time,
-					'actual_operation_time': row.actual_operation_time,
-					'actual_operating_cost': row.actual_operating_cost,
-					'planned_operating_cost': row.planned_operating_cost,
-					'status': row.status,
+					"completed_qty": row.completed_qty,
+					"process_loss_qty": row.process_loss_qty,
+					"previous_loss_qty": row.previous_loss_qty,
+					"actual_start_time": row.actual_start_time,
+					"actual_end_time": row.actual_end_time,
+					"actual_operation_time": row.actual_operation_time,
+					"actual_operating_cost": row.actual_operating_cost,
+					"planned_operating_cost": row.planned_operating_cost,
+					"status": row.status,
 				}, update_modified=update_modified)
 
-			for row in self.get('additional_costs'):
+			for row in self.get("additional_costs"):
 				row.db_set({
-					'amount': row.amount
+					"amount": row.amount,
 				}, update_modified=update_modified)
 
 			self.db_set({
-				'actual_operating_cost': self.actual_operating_cost,
-				'planned_operating_cost': self.planned_operating_cost,
-				'additional_operating_cost': self.additional_operating_cost,
-				'total_operating_cost': self.total_operating_cost,
+				"actual_operating_cost": self.actual_operating_cost,
+				"planned_operating_cost": self.planned_operating_cost,
+				"additional_operating_cost": self.additional_operating_cost,
+				"total_operating_cost": self.total_operating_cost,
 			}, update_modified=update_modified)
 
 	def validate_completed_qty_in_operations(self, from_doctype=None):
@@ -540,7 +552,7 @@ class WorkOrder(StatusUpdaterERP):
 					self.stock_uom,
 					frappe.bold(d.operation),
 					frappe.bold(frappe.format(max_production_qty)),
-					frappe.get_desk_link("Work Order", self.name)
+					frappe.get_desk_link("Work Order", self.name),
 				), StockOverProductionError)
 
 			if self.produced_qty > completed_without_loss_qty:
@@ -549,7 +561,7 @@ class WorkOrder(StatusUpdaterERP):
 					self.stock_uom,
 					frappe.bold(d.operation),
 					frappe.bold(d.get_formatted("completed_qty")),
-					frappe.get_desk_link("Work Order", self.name)
+					frappe.get_desk_link("Work Order", self.name),
 				), StockOverProductionError)
 
 			transferred_qty = flt(self.material_transferred_for_manufacturing, self.precision("qty"))
@@ -559,7 +571,7 @@ class WorkOrder(StatusUpdaterERP):
 					self.stock_uom,
 					frappe.bold(d.operation),
 					frappe.bold(frappe.format(transferred_qty)),
-					frappe.get_desk_link("Work Order", self.name)
+					frappe.get_desk_link("Work Order", self.name),
 				), StockOverProductionError)
 
 			transferred_without_previous_loss = flt(self.material_transferred_for_manufacturing - d.previous_loss_qty, self.precision("qty"))
@@ -569,7 +581,7 @@ class WorkOrder(StatusUpdaterERP):
 					self.stock_uom,
 					frappe.bold(d.operation),
 					frappe.bold(frappe.format(transferred_without_previous_loss)),
-					frappe.get_desk_link("Work Order", self.name)
+					frappe.get_desk_link("Work Order", self.name),
 				), StockOverProductionError)
 
 	def calculate_time(self):
@@ -582,7 +594,7 @@ class WorkOrder(StatusUpdaterERP):
 
 	def calculate_material_cost(self):
 		bom_details = frappe.db.get_value("BOM", self.bom_no, [
-			"quantity", "base_total_material_cost", "base_child_operating_cost"
+			"quantity", "base_total_material_cost", "base_child_operating_cost",
 		], as_dict=1)
 
 		unit_cost = 0
@@ -607,7 +619,7 @@ class WorkOrder(StatusUpdaterERP):
 			self.actual_operating_cost += flt(d.actual_operating_cost)
 
 		self.additional_operating_cost = 0.0
-		for d in self.get('additional_costs'):
+		for d in self.get("additional_costs"):
 			d.amount = flt(flt(d.rate) * flt(self.qty))
 			self.additional_operating_cost += d.amount
 
@@ -728,7 +740,7 @@ class WorkOrder(StatusUpdaterERP):
 			"process_loss_qty": flt(ste_qty_map.get("Manufacture", {}).get("process_loss_qty")),
 			"material_transferred_for_manufacturing": flt(ste_qty_map.get("Material Transfer for Manufacture", {}).get("fg_completed_qty")),
 		})
-		if self.operations and self.transfer_material_against == 'Job Card':
+		if self.operations and self.transfer_material_against == "Job Card":
 			del to_update["material_transferred_for_manufacturing"]
 		else:
 			# Set percentage transferred
@@ -876,9 +888,9 @@ class WorkOrder(StatusUpdaterERP):
 			""", self.name, as_dict=1)
 
 			for d in reject_loss_data:
-				if d.purpose == 'Material Issue':
+				if d.purpose == "Material Issue":
 					self.reconciled_qty += flt(d.stock_qty)
-				elif d.purpose == 'Material Transfer':
+				elif d.purpose == "Material Transfer":
 					self.rejected_qty += flt(d.stock_qty)
 
 		self.per_packed = flt(self.packed_qty / self.qty * 100, 3)
@@ -915,7 +927,7 @@ class WorkOrder(StatusUpdaterERP):
 					frappe.bold(self.get_formatted("subcontract_order_qty")),
 					frappe.bold(frappe.format(subcontractable_qty + self.subcontract_order_qty)),
 					self.stock_uom,
-					frappe.get_desk_link("Work Order", self.name)
+					frappe.get_desk_link("Work Order", self.name),
 				))
 
 		max_production_qty = flt(self.get_qty_with_allowance(self.producible_qty), self.precision("qty"))
@@ -928,7 +940,7 @@ class WorkOrder(StatusUpdaterERP):
 					frappe.bold(self.get_formatted(fieldname)),
 					self.stock_uom,
 					frappe.bold(frappe.format(max_production_qty)),
-					frappe.get_desk_link("Work Order", self.name)
+					frappe.get_desk_link("Work Order", self.name),
 				), StockOverProductionError)
 
 		produced_qty = flt(self.produced_qty + self.process_loss_qty, self.precision("qty"))
@@ -938,7 +950,7 @@ class WorkOrder(StatusUpdaterERP):
 				frappe.bold(frappe.format(produced_qty, df=self.meta.get_field("produced_qty"))),
 				self.stock_uom,
 				frappe.bold(self.get_formatted("material_transferred_for_manufacturing")),
-				frappe.get_desk_link("Work Order", self.name)
+				frappe.get_desk_link("Work Order", self.name),
 			), StockOverProductionError)
 
 	def validate_overpacking(self, from_doctype=None):
@@ -951,7 +963,7 @@ class WorkOrder(StatusUpdaterERP):
 					frappe.bold(self.get_formatted(fieldname)),
 					self.stock_uom,
 					frappe.bold(frappe.format(max_qty)),
-					frappe.get_desk_link("Work Order", self.name)
+					frappe.get_desk_link("Work Order", self.name),
 				))
 
 		completed_qty = flt(self.completed_qty, self.precision("qty"))
@@ -961,7 +973,7 @@ class WorkOrder(StatusUpdaterERP):
 				frappe.bold(self.get_formatted("packed_qty")),
 				self.stock_uom,
 				frappe.bold(self.get_formatted("completed_qty")),
-				frappe.get_desk_link("Work Order", self.name)
+				frappe.get_desk_link("Work Order", self.name),
 			), StockOverProductionError)
 
 		pack_reconcile_qty = flt(flt(self.packed_qty) + flt(self.rejected_qty) + flt(self.reconciled_qty),
@@ -972,7 +984,7 @@ class WorkOrder(StatusUpdaterERP):
 				frappe.bold(frappe.format(pack_reconcile_qty)),
 				self.stock_uom,
 				frappe.bold(self.get_formatted("completed_qty")),
-				frappe.get_desk_link("Work Order", self.name)
+				frappe.get_desk_link("Work Order", self.name),
 			), StockOverProductionError)
 
 	def get_qty_with_allowance(self, qty):
@@ -1019,7 +1031,7 @@ class WorkOrder(StatusUpdaterERP):
 			self.status = status
 
 		if self.docstatus == 0:
-			self.status = 'Draft'
+			self.status = "Draft"
 
 		elif self.docstatus == 1:
 			if self.status == "Stopped":
@@ -1040,7 +1052,7 @@ class WorkOrder(StatusUpdaterERP):
 		self.add_status_comment(previous_status)
 
 		if update:
-			self.db_set('status', self.status, update_modified=update_modified)
+			self.db_set("status", self.status, update_modified=update_modified)
 
 	def has_stock_entry(self):
 		return frappe.db.get_value("Stock Entry", {"work_order": self.name, "docstatus": 1})
@@ -1054,23 +1066,23 @@ class WorkOrder(StatusUpdaterERP):
 	def update_production_plan_ordered_qty(self):
 		if self.production_plan and self.production_plan_item:
 			qty = self.qty if self.docstatus == 1 else 0
-			frappe.db.set_value('Production Plan Item', self.production_plan_item, 'ordered_qty', qty)
+			frappe.db.set_value("Production Plan Item", self.production_plan_item, "ordered_qty", qty)
 
-			doc = frappe.get_doc('Production Plan', self.production_plan)
+			doc = frappe.get_doc("Production Plan", self.production_plan)
 			doc.set_status()
-			doc.db_set('status', doc.status)
+			doc.db_set("status", doc.status)
 
 	def update_production_plan_produced_qty(self):
 		if not self.production_plan:
 			return
 
-		production_plan = frappe.get_doc('Production Plan', self.production_plan)
+		production_plan = frappe.get_doc("Production Plan", self.production_plan)
 		completed_qty = 0
 		if self.production_plan_item:
 			total_qty = frappe.get_all("Work Order", fields="sum(completed_qty) as completed_qty", filters={
-				'docstatus': 1,
-				'production_plan': self.production_plan,
-				'production_plan_item': self.production_plan_item
+				"docstatus": 1,
+				"production_plan": self.production_plan,
+				"production_plan_item": self.production_plan_item,
 			}, as_list=1)
 
 			completed_qty = total_qty[0][0] if total_qty else 0
@@ -1094,7 +1106,7 @@ class WorkOrder(StatusUpdaterERP):
 
 	def update_planned_qty(self):
 		update_bin_qty(self.production_item, self.fg_warehouse, {
-			"planned_qty": get_planned_qty(self.production_item, self.fg_warehouse)
+			"planned_qty": get_planned_qty(self.production_item, self.fg_warehouse),
 		})
 
 	def update_reserved_qty_for_production(self):
@@ -1120,7 +1132,7 @@ class WorkOrder(StatusUpdaterERP):
 
 		if stock_entry:
 			frappe.throw(_("Cannot cancel because submitted Stock Entry {0} exists").format(
-				frappe.utils.get_link_to_form('Stock Entry', stock_entry[0][0]))
+				frappe.utils.get_link_to_form("Stock Entry", stock_entry[0][0])),
 			)
 
 	def update_status_on_cancel(self):
@@ -1164,14 +1176,14 @@ class WorkOrder(StatusUpdaterERP):
 		bom.conversion_rate = 1
 
 		for d in data:
-			bom.append('items', {
-				'item_code': d.item_code,
-				'qty': d.qty,
-				'source_warehouse': d.s_warehouse
+			bom.append("items", {
+				"item_code": d.item_code,
+				"qty": d.qty,
+				"source_warehouse": d.s_warehouse,
 			})
 
 		if self.operations:
-			bom.set('operations', self.operations)
+			bom.set("operations", self.operations)
 			bom.with_operations = 1
 
 		bom.set_bom_material_details()
@@ -1267,9 +1279,9 @@ def get_over_production_allowance(qty_to_produce, max_qty):
 @frappe.validate_and_sanitize_search_inputs
 def get_bom_operations(doctype, txt, searchfield, start, page_len, filters):
 	if txt:
-		filters['operation'] = ('like', '%%%s%%' % txt)
+		filters["operation"] = ("like", "%%%s%%" % txt)
 
-	return frappe.get_all('BOM Operation', filters=filters, fields=['operation'], as_list=1)
+	return frappe.get_all("BOM Operation", filters=filters, fields=["operation"], as_list=1)
 
 
 @frappe.whitelist()
@@ -1451,7 +1463,7 @@ def _create_work_orders(
 	ignore_version=True,
 	ignore_feed=False,
 ):
-	'''Make Work Orders against the given Sales Order for the given `items`'''
+	"""Make Work Orders against the given Sales Order for the given `items`"""
 	if isinstance(items, str):
 		items = json.loads(items)
 
@@ -1472,10 +1484,11 @@ def _create_work_orders(
 		work_order_docs.append(work_order)
 
 	if create_sub_assembly_work_orders:
+		# Appending while looping is intended: sub-assembly work orders get their own sub-assemblies too
 		for work_order in work_order_docs:
 			sub_assembly_items = work_order.get_sub_assembly_items()
 			if sub_assembly_items:
-				work_order_docs += _create_work_orders(
+				work_order_docs += _create_work_orders(  # ruff: ignore[loop-iterator-mutation]
 					sub_assembly_items,
 					company=company,
 					use_multi_level_bom=0,
@@ -1527,7 +1540,7 @@ def create_work_order(
 	# set missing order line no
 	order_line_no = cint(row.get("order_line_no"))
 	if not order_line_no and row.get("sales_order_item"):
-		order_line_no = frappe.db.get_value("Sales Order Item", row.get("sales_order_item"), 'idx')
+		order_line_no = frappe.db.get_value("Sales Order Item", row.get("sales_order_item"), "idx")
 
 	# create work order
 	work_order = frappe.new_doc("Work Order")
@@ -1602,19 +1615,19 @@ def make_stock_entry_against_multiple_work_orders(work_orders, args=None):
 	frappe.publish_progress(
 		0.5,
 		title=_("Submitting Manufacture Entries..."),
-		description=_("Submitting {0}/{1}").format(1, len(work_orders))
+		description=_("Submitting {0}/{1}").format(1, len(work_orders)),
 	)
 
 	for i, d in enumerate(work_orders):
-		work_order = d.get('work_order')
-		qty = flt(d.get('finished_qty'))
+		work_order = d.get("work_order")
+		qty = flt(d.get("finished_qty"))
 
 		make_stock_entry(work_order, "Manufacture", qty, args=args, auto_submit=True)
 
 		frappe.publish_progress(
 			(i + 1) * 100 / len(work_orders),
 			title=_("Submitting Manufacture Entries..."),
-			description=_("Submitting {0}/{1}").format(min(i + 2, len(work_orders)), len(work_orders))
+			description=_("Submitting {0}/{1}").format(min(i + 2, len(work_orders)), len(work_orders)),
 		)
 
 
@@ -1627,7 +1640,7 @@ def make_stock_entry(
 	use_alternative_item=False,
 	job_card=None,
 	auto_submit=False,
-	args=None
+	args=None,
 ):
 	if args and isinstance(args, str):
 		args = json.loads(args)
@@ -1639,7 +1652,7 @@ def make_stock_entry(
 	for_submit = (
 		auto_submit
 		or (purpose == "Material Transfer for Manufacture" and settings.auto_submit_material_transfer_entry)
-		or purpose == "Manufacture" and settings.auto_submit_manufacture_entry
+		or (purpose == "Manufacture" and settings.auto_submit_manufacture_entry)
 	)
 
 	work_order = frappe.get_doc("Work Order", work_order_id, for_update=for_submit)
@@ -1678,7 +1691,7 @@ def make_stock_entry(
 	stock_entry.process_loss_qty = max(0.0, process_loss_qty)
 
 	if work_order.bom_no:
-		stock_entry.inspection_required = frappe.db.get_value('BOM', work_order.bom_no, 'inspection_required')
+		stock_entry.inspection_required = frappe.db.get_value("BOM", work_order.bom_no, "inspection_required")
 
 	if work_order.meta.has_field("cost_center") and work_order.get("cost_center"):
 		stock_entry.cost_center = work_order.cost_center
@@ -1744,7 +1757,7 @@ def create_job_cards(work_order, operations):
 	if isinstance(operations, str):
 		operations = json.loads(operations)
 
-	work_order = frappe.get_doc('Work Order', work_order)
+	work_order = frappe.get_doc("Work Order", work_order)
 	for row in operations:
 		validate_operation_data(row)
 		doc = _make_job_card(work_order, row, row.get("qty"))
@@ -1756,12 +1769,12 @@ def create_job_cards(work_order, operations):
 def validate_operation_data(row):
 	if row.get("qty") <= 0:
 		frappe.throw(_("Quantity to Produce can not be zero for the operation {0}").format(
-			frappe.bold(row.get("operation"))
+			frappe.bold(row.get("operation")),
 		))
 
 	if row.get("qty") > row.get("pending_qty"):
 		frappe.throw(_("For operation {0}: Quantity ({1}) can not be greter than pending quantity ({2})").format(
-			frappe.bold(row.get("operation")), frappe.bold(row.get("qty")), frappe.bold(row.get("pending_qty"))
+			frappe.bold(row.get("operation")), frappe.bold(row.get("qty")), frappe.bold(row.get("pending_qty")),
 		))
 
 
@@ -1772,9 +1785,9 @@ def make_job_card(
 	workstation,
 	qty,
 	process_loss_qty=0,
-	auto_submit=False
+	auto_submit=False,
 ):
-	for_submit = auto_submit or frappe.db.get_single_value('Manufacturing Settings', 'auto_submit_job_card')
+	for_submit = auto_submit or frappe.db.get_single_value("Manufacturing Settings", "auto_submit_job_card")
 
 	pro_doc = frappe.get_doc("Work Order", work_order, for_update=for_submit)
 	qty = flt(qty)
@@ -1808,17 +1821,17 @@ def _make_job_card(work_order, row, qty, process_loss_qty=0.0):
 	process_loss_qty = max(0.0, flt(process_loss_qty))
 
 	doc.update({
-		'work_order': work_order.name,
-		'operation': row.get("operation"),
-		'workstation': row.get("workstation"),
-		'posting_date': getdate(),
-		'for_quantity': flt(qty) + process_loss_qty,
-		'process_loss_qty': process_loss_qty,
-		'operation_id': row.get("name"),
-		'bom_no': work_order.bom_no,
-		'project': work_order.project,
-		'company': work_order.company,
-		'wip_warehouse': work_order.wip_warehouse
+		"work_order": work_order.name,
+		"operation": row.get("operation"),
+		"workstation": row.get("workstation"),
+		"posting_date": getdate(),
+		"for_quantity": flt(qty) + process_loss_qty,
+		"process_loss_qty": process_loss_qty,
+		"operation_id": row.get("name"),
+		"bom_no": work_order.bom_no,
+		"project": work_order.project,
+		"company": work_order.company,
+		"wip_warehouse": work_order.wip_warehouse,
 	})
 
 	frappe.utils.call_hook_method("update_job_card_on_create", doc)
@@ -1835,8 +1848,8 @@ def get_subcontractable_qty(producible_qty, material_transferred_for_manufacturi
 
 @frappe.whitelist()
 def create_pick_list(source_name, target_doc=None, for_qty=None):
-	for_qty = for_qty or json.loads(target_doc).get('for_qty')
-	max_finished_goods_qty = frappe.db.get_value('Work Order', source_name, 'qty')
+	for_qty = for_qty or json.loads(target_doc).get("for_qty")
+	max_finished_goods_qty = frappe.db.get_value("Work Order", source_name, "qty")
 
 	def update_item_quantity(source, target, source_parent, target_parent):
 		pending_to_issue = flt(source.required_qty) - flt(source.transferred_qty)
@@ -1851,23 +1864,23 @@ def create_pick_list(source_name, target_doc=None, for_qty=None):
 		if qty:
 			target.qty = qty
 			target.stock_qty = qty
-			target.uom = frappe.get_value('Item', source.item_code, 'stock_uom')
+			target.uom = frappe.get_value("Item", source.item_code, "stock_uom")
 			target.stock_uom = target.uom
 			target.conversion_factor = 1
 		else:
 			target.delete()
 
-	doc = get_mapped_doc('Work Order', source_name, {
-		'Work Order': {
-			'doctype': 'Pick List',
-			'validation': {
-				'docstatus': ['=', 1]
-			}
+	doc = get_mapped_doc("Work Order", source_name, {
+		"Work Order": {
+			"doctype": "Pick List",
+			"validation": {
+				"docstatus": ["=", 1],
+			},
 		},
-		'Work Order Item': {
-			'doctype': 'Pick List Item',
-			'postprocess': update_item_quantity,
-			'condition': lambda doc, source, target: abs(doc.transferred_qty) < abs(doc.required_qty)
+		"Work Order Item": {
+			"doctype": "Pick List Item",
+			"postprocess": update_item_quantity,
+			"condition": lambda doc, source, target: abs(doc.transferred_qty) < abs(doc.required_qty),
 		},
 	}, target_doc)
 
@@ -1902,7 +1915,7 @@ def create_bulk_packing_slips(work_order, carton_type, qty_per_carton, carton_qt
 		))
 
 	names = []
-	for i in range(carton_qty):
+	for _i in range(carton_qty):
 		doc = make_packing_slip([{
 			"name": work_order,
 			"qty": qty_per_carton,
@@ -1919,6 +1932,8 @@ def create_bulk_packing_slips(work_order, carton_type, qty_per_carton, carton_qt
 def make_packing_slip(work_orders, package_type=None, target_doc=None):
 	from erpnext.selling.doctype.sales_order.sales_order import (
 		make_packing_slip as make_packing_slip_from_so,
+	)
+	from erpnext.selling.doctype.sales_order.sales_order import (
 		postprocess_packing_slip_from_sales_order,
 	)
 

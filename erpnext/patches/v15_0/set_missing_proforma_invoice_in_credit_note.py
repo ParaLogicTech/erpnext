@@ -20,7 +20,7 @@ def execute():
 	""")
 
 	for i, name in enumerate(proforma_invoices):
-		print(f"{i+1}/{len(proforma_invoices)}: {name}")
+		print(f"{i + 1}/{len(proforma_invoices)}: {name}")
 		doc = frappe.get_doc("Proforma Invoice", name)
 		doc.set_billing_status(update=True, update_modified=False)
 		doc.set_status(update=True, update_modified=False)

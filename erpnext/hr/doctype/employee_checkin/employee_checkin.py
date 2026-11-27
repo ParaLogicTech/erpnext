@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import cint, get_datetime
-from frappe.model.document import Document
 from frappe import _
+from frappe.model.document import Document
+from frappe.utils import cint, get_datetime
 
 from erpnext.hr.doctype.shift_assignment.shift_assignment import get_actual_start_end_datetime_of_shift
 
@@ -45,7 +44,7 @@ class EmployeeCheckin(Document):
 
 		if existing_checkin:
 			frappe.throw(_("This employee already has a log with the same timestamp.{0}").format(
-				"<br>" + frappe.get_desk_link("Employee Checkin", existing_checkin)
+				"<br>" + frappe.get_desk_link("Employee Checkin", existing_checkin),
 			))
 
 	def fetch_shift(self):
@@ -63,8 +62,8 @@ class EmployeeCheckin(Document):
 			and not self.log_type
 			and not self.skip_auto_attendance
 		):
-			frappe.throw(_('Log Type is required for check-ins falling in the shift: {0}.').format(
-				shift_actual_timings[2].shift_type.name)
+			frappe.throw(_("Log Type is required for check-ins falling in the shift: {0}.").format(
+				shift_actual_timings[2].shift_type.name),
 			)
 
 		if has_shift:
@@ -87,7 +86,7 @@ class EmployeeCheckin(Document):
 			return
 
 		employee = frappe.db.get_value("Employee", filters={
-			"attendance_device_id": self.attendance_device_id
+			"attendance_device_id": self.attendance_device_id,
 		}, fieldname=["name as employee", "employee_name", "department", "designation"], as_dict=1)
 
 		if employee:
@@ -117,7 +116,7 @@ def add_log_based_on_employee_field(employee_field_value, timestamp, device_id=N
 
 		if not employee:
 			frappe.throw(_("No Employee found for the given employee field value. '{}': {}").format(
-				employee_fieldname, employee_field_value
+				employee_fieldname, employee_field_value,
 			))
 
 	doc = frappe.new_doc("Employee Checkin")
@@ -161,23 +160,23 @@ def mark_attendance_and_link_log(
 	"""
 	log_names = [x.name for x in logs]
 	employee = logs[0].employee
-	if attendance_status == 'Skip':
+	if attendance_status == "Skip":
 		frappe.db.sql("""update `tabEmployee Checkin`
 			set skip_auto_attendance = %s
-			where name in %s""", ('1', log_names))
+			where name in %s""", ("1", log_names))
 		return None
-	elif attendance_status in ('Present', 'Absent', 'Half Day'):
-		if not frappe.db.exists('Attendance', {'employee': employee, 'attendance_date': attendance_date, 'docstatus': 1}):
+	elif attendance_status in ("Present", "Absent", "Half Day"):
+		if not frappe.db.exists("Attendance", {"employee": employee, "attendance_date": attendance_date, "docstatus": 1}):
 			doc_dict = {
-				'doctype': 'Attendance',
-				'employee': employee,
-				'attendance_date': attendance_date,
-				'status': attendance_status,
-				'working_hours': working_hours,
-				'company': frappe.db.get_value("Employee", employee, "company", cache=1),
-				'shift': shift,
-				'late_entry': late_entry,
-				'early_exit': early_exit
+				"doctype": "Attendance",
+				"employee": employee,
+				"attendance_date": attendance_date,
+				"status": attendance_status,
+				"working_hours": working_hours,
+				"company": frappe.db.get_value("Employee", employee, "company", cache=1),
+				"shift": shift,
+				"late_entry": late_entry,
+				"early_exit": early_exit,
 			}
 
 			attendance = frappe.get_doc(doc_dict)
@@ -192,45 +191,45 @@ def mark_attendance_and_link_log(
 		else:
 			frappe.db.sql("""update `tabEmployee Checkin`
 				set skip_auto_attendance = %s
-				where name in %s""", ('1', log_names))
+				where name in %s""", ("1", log_names))
 			return None
 	else:
-		frappe.throw(_('{} is an invalid Attendance Status.').format(attendance_status))
+		frappe.throw(_("{} is an invalid Attendance Status.").format(attendance_status))
 
 
 def calculate_working_hours(logs, check_in_out_type, working_hours_calc_type):
 	"""Given a set of logs in chronological order calculates the total working hours based on the parameters.
 	Zero is returned for all invalid cases.
-	
+
 	:param logs: The List of 'Employee Checkin'.
 	:param check_in_out_type: One of: 'Alternating entries as IN and OUT during the same shift', 'Strictly based on Log Type in Employee Checkin'
 	:param working_hours_calc_type: One of: 'First Check-in and Last Check-out', 'Every Valid Check-in and Check-out'
 	"""
 	total_hours = 0
 	in_time = out_time = None
-	if check_in_out_type == 'Alternating entries as IN and OUT during the same shift':
+	if check_in_out_type == "Alternating entries as IN and OUT during the same shift":
 		in_time = logs[0].time
 		if len(logs) >= 2:
 			out_time = logs[-1].time
-		if working_hours_calc_type == 'First Check-in and Last Check-out':
+		if working_hours_calc_type == "First Check-in and Last Check-out":
 			# assumption in this case: First log always taken as IN, Last log always taken as OUT
 			total_hours = time_diff_in_hours(in_time, logs[-1].time)
-		elif working_hours_calc_type == 'Every Valid Check-in and Check-out':
+		elif working_hours_calc_type == "Every Valid Check-in and Check-out":
 			logs = logs[:]
 			while len(logs) >= 2:
 				total_hours += time_diff_in_hours(logs[0].time, logs[1].time)
 				del logs[:2]
 
-	elif check_in_out_type == 'Strictly based on Log Type in Employee Checkin':
-		if working_hours_calc_type == 'First Check-in and Last Check-out':
-			first_in_log_index = find_index_in_dict(logs, 'log_type', 'IN')
+	elif check_in_out_type == "Strictly based on Log Type in Employee Checkin":
+		if working_hours_calc_type == "First Check-in and Last Check-out":
+			first_in_log_index = find_index_in_dict(logs, "log_type", "IN")
 			first_in_log = logs[first_in_log_index] if first_in_log_index or first_in_log_index == 0 else None
-			last_out_log_index = find_index_in_dict(reversed(logs), 'log_type', 'OUT')
-			last_out_log = logs[len(logs)-1-last_out_log_index] if last_out_log_index or last_out_log_index == 0 else None
+			last_out_log_index = find_index_in_dict(reversed(logs), "log_type", "OUT")
+			last_out_log = logs[len(logs) - 1 - last_out_log_index] if last_out_log_index or last_out_log_index == 0 else None
 			if first_in_log and last_out_log:
 				in_time, out_time = first_in_log.time, last_out_log.time
 				total_hours = time_diff_in_hours(in_time, out_time)
-		elif working_hours_calc_type == 'Every Valid Check-in and Check-out':
+		elif working_hours_calc_type == "Every Valid Check-in and Check-out":
 			in_log = out_log = None
 			for log in logs:
 				if in_log and out_log:
@@ -240,9 +239,9 @@ def calculate_working_hours(logs, check_in_out_type, working_hours_calc_type):
 					total_hours += time_diff_in_hours(in_log.time, out_log.time)
 					in_log = out_log = None
 				if not in_log:
-					in_log = log if log.log_type == 'IN'  else None
+					in_log = log if log.log_type == "IN" else None
 				elif not out_log:
-					out_log = log if log.log_type == 'OUT'  else None
+					out_log = log if log.log_type == "OUT" else None
 			if in_log and out_log:
 				out_time = out_log.time
 				total_hours += time_diff_in_hours(in_log.time, out_log.time)
@@ -250,7 +249,7 @@ def calculate_working_hours(logs, check_in_out_type, working_hours_calc_type):
 
 
 def time_diff_in_hours(start, end):
-	return round((end-start).total_seconds() / 3600, 1)
+	return round((end - start).total_seconds() / 3600, 1)
 
 
 def find_index_in_dict(dict_list, key, value):

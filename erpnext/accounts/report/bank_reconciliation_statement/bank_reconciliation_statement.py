@@ -4,8 +4,9 @@
 import frappe
 from frappe import _
 from frappe.utils import flt, getdate, nowdate
-from erpnext.accounts.utils import get_balance_on
+
 from erpnext.accounts.doctype.bank_reconciliation.bank_reconciliation import get_opening_balance
+from erpnext.accounts.utils import get_balance_on
 
 
 def execute(filters=None):
@@ -41,7 +42,7 @@ def execute(filters=None):
 	for d in entries:
 		d.indent = 1
 
-		is_cleared = d.get('clearance_date') and filters['from_date'] <= getdate(d.get('clearance_date')) <= filters['to_date']
+		is_cleared = d.get("clearance_date") and filters["from_date"] <= getdate(d.get("clearance_date")) <= filters["to_date"]
 		diff = d.debit - d.credit
 
 		if diff > 0:
@@ -70,14 +71,14 @@ def execute(filters=None):
 		get_balance_row(
 			_("'Bank Statement Opening Balance'"),
 			opening_balance_statement,
-			account_currency
+			account_currency,
 		),
 		{},
 
 		get_balance_row(
 			_("'Total Uncleared Incoming'"),
 			total_uncleared_incoming,
-			account_currency
+			account_currency,
 		),
 		*uncleared_incoming,
 		{},
@@ -85,7 +86,7 @@ def execute(filters=None):
 		get_balance_row(
 			_("'Total Uncleared Outgoing'"),
 			total_uncleared_outgoing,
-			account_currency
+			account_currency,
 		),
 		*uncleared_outgoing,
 		{},
@@ -94,7 +95,7 @@ def execute(filters=None):
 			_("'Total Cleared Incoming'"),
 			total_cleared_incoming,
 			account_currency,
-			collapsed=True
+			collapsed=True,
 		),
 		*cleared_incoming,
 		{},
@@ -111,13 +112,13 @@ def execute(filters=None):
 		get_balance_row(
 			_("'General Ledger Closing Balance'"),
 			closing_balance_ledger,
-			account_currency
+			account_currency,
 		),
 		get_balance_row(
 			_("'Bank Statement Closing Balance'"),
 			closing_balance_statement,
-			account_currency
-		)
+			account_currency,
+		),
 	]
 
 	return columns, data
@@ -223,7 +224,7 @@ def get_entries(account, from_date, to_date, exclude_reconciliation_jv=False):
 
 	return sorted(
 		payment_entries + journal_entries + pos_sales_invoices + paid_purchase_invoices,
-		key=lambda k: k['posting_date'] or getdate(nowdate())
+		key=lambda k: k["posting_date"] or getdate(nowdate()),
 	)
 
 
@@ -235,7 +236,7 @@ def get_balance_row(label, amount, account_currency, collapsed=False):
 			"credit": 0,
 			"account_currency": account_currency,
 			"_bold": 1,
-			"_collapsed": collapsed
+			"_collapsed": collapsed,
 		}
 	else:
 		return {
@@ -244,7 +245,7 @@ def get_balance_row(label, amount, account_currency, collapsed=False):
 			"credit": abs(amount),
 			"account_currency": account_currency,
 			"_bold": 1,
-			"_collapsed": collapsed
+			"_collapsed": collapsed,
 		}
 
 
@@ -255,51 +256,51 @@ def get_columns():
 			"label": _("Payment Entry"),
 			"fieldtype": "Dynamic Link",
 			"options": "payment_document",
-			"width": 250
+			"width": 250,
 		},
 		{
 			"fieldname": "posting_date",
 			"label": _("Posting Date"),
 			"fieldtype": "Date",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"fieldname": "clearance_date",
 			"label": _("Clearance Date"),
 			"fieldtype": "Date",
-			"width": 110
+			"width": 110,
 		},
 		{
 			"fieldname": "reference_no",
 			"label": _("Reference"),
 			"fieldtype": "Data",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"fieldname": "debit",
 			"label": _("Debit"),
 			"fieldtype": "Currency",
 			"options": "account_currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"fieldname": "credit",
 			"label": _("Credit"),
 			"fieldtype": "Currency",
 			"options": "account_currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"fieldname": "against_account",
 			"label": _("Against Account"),
 			"fieldtype": "Data",
-			"width": 200
+			"width": 200,
 		},
 		{
 			"fieldname": "account_currency",
 			"label": _("Currency"),
 			"fieldtype": "Link",
 			"options": "Currency",
-			"width": 100
-		}
+			"width": 100,
+		},
 	]

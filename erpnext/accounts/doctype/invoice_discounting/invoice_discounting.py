@@ -1,13 +1,17 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe, json, erpnext
+import json
+
+import frappe
 from frappe import _
-from frappe.utils import flt, getdate, nowdate, add_days
-from erpnext.controllers.accounts_controller import AccountsController
-from erpnext.accounts.general_ledger import make_gl_entries
+from frappe.utils import add_days, flt, getdate, nowdate
+
+import erpnext
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
+from erpnext.accounts.general_ledger import make_gl_entries
+from erpnext.controllers.accounts_controller import AccountsController
+
 
 class InvoiceDiscounting(AccountsController):
 	def validate(self):
@@ -27,15 +31,15 @@ class InvoiceDiscounting(AccountsController):
 
 	def validate_invoices(self):
 		discounted_invoices = [record.sales_invoice for record in
-			frappe.get_all("Discounted Invoice",fields=["sales_invoice"], filters={"docstatus":1})]
+			frappe.get_all("Discounted Invoice", fields=["sales_invoice"], filters={"docstatus": 1})]
 
 		for record in self.invoices:
 			if record.sales_invoice in discounted_invoices:
 				frappe.throw(_("Row({0}): {1} is already discounted in {2}")
 					.format(record.idx, frappe.bold(record.sales_invoice), frappe.bold(record.parent)))
 
-			actual_outstanding = frappe.db.get_value("Sales Invoice", record.sales_invoice,"outstanding_amount")
-			if record.outstanding_amount > actual_outstanding :
+			actual_outstanding = frappe.db.get_value("Sales Invoice", record.sales_invoice, "outstanding_amount")
+			if record.outstanding_amount > actual_outstanding:
 				frappe.throw(_
 					("Row({0}): Outstanding Amount cannot be greater than actual Outstanding Amount {1} in {2}").format(
 					record.idx, frappe.bold(actual_outstanding), frappe.bold(record.sales_invoice)))
@@ -73,14 +77,13 @@ class InvoiceDiscounting(AccountsController):
 				discounted_invoice = frappe.db.exists({
 					"doctype": "Discounted Invoice",
 					"sales_invoice": d.sales_invoice,
-					"docstatus": 1
+					"docstatus": 1,
 				})
 				is_discounted = 1 if discounted_invoice else 0
 			frappe.db.set_value("Sales Invoice", d.sales_invoice, "is_discounted", is_discounted)
 
 	def make_gl_entries(self):
-		company_currency = frappe.get_cached_value('Company',  self.company, "default_currency")
-
+		company_currency = frappe.get_cached_value("Company", self.company, "default_currency")
 
 		gl_entries = []
 		invoice_fields = ["debit_to", "party_account_currency", "conversion_rate", "cost_center"]
@@ -102,11 +105,11 @@ class InvoiceDiscounting(AccountsController):
 					"party": d.customer,
 					"against": self.accounts_receivable_credit,
 					"credit": outstanding_in_company_currency,
-					"credit_in_account_currency": outstanding_in_company_currency \
-						if inv.party_account_currency==company_currency else d.outstanding_amount,
+					"credit_in_account_currency": outstanding_in_company_currency
+						if inv.party_account_currency == company_currency else d.outstanding_amount,
 					"cost_center": inv.cost_center,
 					"against_voucher": d.sales_invoice,
-					"against_voucher_type": "Sales Invoice"
+					"against_voucher_type": "Sales Invoice",
 				}, inv.party_account_currency, item=inv))
 
 				gl_entries.append(self.get_gl_dict({
@@ -115,32 +118,32 @@ class InvoiceDiscounting(AccountsController):
 					"party": d.customer,
 					"against": inv.debit_to,
 					"debit": outstanding_in_company_currency,
-					"debit_in_account_currency": outstanding_in_company_currency \
-						if ar_credit_account_currency==company_currency else d.outstanding_amount,
+					"debit_in_account_currency": outstanding_in_company_currency
+						if ar_credit_account_currency == company_currency else d.outstanding_amount,
 					"cost_center": inv.cost_center,
 					"against_voucher": d.sales_invoice,
-					"against_voucher_type": "Sales Invoice"
+					"against_voucher_type": "Sales Invoice",
 				}, ar_credit_account_currency, item=inv))
 
-		make_gl_entries(gl_entries, cancel=(self.docstatus == 2), update_outstanding='No')
+		make_gl_entries(gl_entries, cancel=(self.docstatus == 2), update_outstanding="No")
 
 	@frappe.whitelist()
 	def create_disbursement_entry(self):
 		je = frappe.new_doc("Journal Entry")
-		je.voucher_type = 'Journal Entry'
+		je.voucher_type = "Journal Entry"
 		je.company = self.company
-		je.remark = 'Loan Disbursement entry against Invoice Discounting: ' + self.name
+		je.remark = "Loan Disbursement entry against Invoice Discounting: " + self.name
 
 		je.append("accounts", {
 			"account": self.bank_account,
 			"debit_in_account_currency": flt(self.total_amount) - flt(self.bank_charges),
-			"cost_center": erpnext.get_default_cost_center(self.company)
+			"cost_center": erpnext.get_default_cost_center(self.company),
 		})
 
 		je.append("accounts", {
 			"account": self.bank_charges_account,
 			"debit_in_account_currency": flt(self.bank_charges),
-			"cost_center": erpnext.get_default_cost_center(self.company)
+			"cost_center": erpnext.get_default_cost_center(self.company),
 		})
 
 		je.append("accounts", {
@@ -148,7 +151,7 @@ class InvoiceDiscounting(AccountsController):
 			"credit_in_account_currency": flt(self.total_amount),
 			"cost_center": erpnext.get_default_cost_center(self.company),
 			"reference_type": "Invoice Discounting",
-			"reference_name": self.name
+			"reference_name": self.name,
 		})
 		for d in self.invoices:
 			je.append("accounts", {
@@ -158,7 +161,7 @@ class InvoiceDiscounting(AccountsController):
 				"reference_type": "Invoice Discounting",
 				"reference_name": self.name,
 				"party_type": "Customer",
-				"party": d.customer
+				"party": d.customer,
 			})
 
 			je.append("accounts", {
@@ -168,7 +171,7 @@ class InvoiceDiscounting(AccountsController):
 				"reference_type": "Invoice Discounting",
 				"reference_name": self.name,
 				"party_type": "Customer",
-				"party": d.customer
+				"party": d.customer,
 			})
 
 		return je
@@ -176,9 +179,9 @@ class InvoiceDiscounting(AccountsController):
 	@frappe.whitelist()
 	def close_loan(self):
 		je = frappe.new_doc("Journal Entry")
-		je.voucher_type = 'Journal Entry'
+		je.voucher_type = "Journal Entry"
 		je.company = self.company
-		je.remark = 'Loan Settlement entry against Invoice Discounting: ' + self.name
+		je.remark = "Loan Settlement entry against Invoice Discounting: " + self.name
 
 		je.append("accounts", {
 			"account": self.short_term_loan,
@@ -191,7 +194,7 @@ class InvoiceDiscounting(AccountsController):
 		je.append("accounts", {
 			"account": self.bank_account,
 			"credit_in_account_currency": flt(self.total_amount),
-			"cost_center": erpnext.get_default_cost_center(self.company)
+			"cost_center": erpnext.get_default_cost_center(self.company),
 		})
 
 		if getdate(self.loan_end_date) > getdate(nowdate()):
@@ -205,7 +208,7 @@ class InvoiceDiscounting(AccountsController):
 						"reference_type": "Invoice Discounting",
 						"reference_name": self.name,
 						"party_type": "Customer",
-						"party": d.customer
+						"party": d.customer,
 					})
 
 					je.append("accounts", {
@@ -215,10 +218,11 @@ class InvoiceDiscounting(AccountsController):
 						"reference_type": "Invoice Discounting",
 						"reference_name": self.name,
 						"party_type": "Customer",
-						"party": d.customer
+						"party": d.customer,
 					})
 
 		return je
+
 
 @frappe.whitelist()
 def get_invoices(filters):
@@ -254,6 +258,7 @@ def get_invoices(filters):
 			and not exists(select di.name from `tabDiscounted Invoice` di
 				where di.docstatus=1 and di.sales_invoice=si.name)
 	""" % where_condition, filters, as_dict=1)
+
 
 def get_party_account_based_on_invoice_discounting(sales_invoice):
 	party_account = None

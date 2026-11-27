@@ -12,7 +12,7 @@ frappe.ui.form.on("Selling Settings", {
 		return {
 			filters: {
 				selling: 1,
-			}
-		}
+			},
+		};
 	},
 });

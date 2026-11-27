@@ -1,12 +1,14 @@
 # Copyright (c) 2024, ParaLogic and contributors
 # For license information, please see license.txt
 
+import re
+
 import frappe
 from frappe import _
-from frappe.utils import cstr
 from frappe.model.document import Document
+from frappe.utils import cstr
+
 from erpnext.vehicles.utils import format_vehicle_id
-import re
 
 
 class VehiclePlateRegion(Document):
@@ -28,7 +30,7 @@ class VehiclePlateRegion(Document):
 
 		if self.prefix and not license_plate.startswith(self.prefix):
 			frappe.throw(_("Invalid Plate Number {0} for Plate Region {1}. Plate number should include the prefix {2}").format(
-				frappe.bold(license_plate), frappe.bold(self.name), frappe.bold(self.prefix)
+				frappe.bold(license_plate), frappe.bold(self.name), frappe.bold(self.prefix),
 			))
 
 		license_plate_without_prefix = license_plate
@@ -54,7 +56,7 @@ class VehiclePlateRegion(Document):
 				example_str = _("Example Plate Number: {0}").format(self.example_plate_number)
 
 			frappe.throw(_("Invalid Plate Number {0} for Plate Region {1}. {2}").format(
-				frappe.bold(license_plate), frappe.bold(self.name), example_str
+				frappe.bold(license_plate), frappe.bold(self.name), example_str,
 			))
 
 

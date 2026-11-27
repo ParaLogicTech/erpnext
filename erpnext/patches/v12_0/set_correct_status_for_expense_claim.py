@@ -3,10 +3,11 @@
 
 import frappe
 
+
 def execute():
 
     frappe.reload_doc("hr", "doctype", "expense_claim")
-    
+
     frappe.db.sql("""
         update `tabExpense Claim`
         set status = 'Paid'

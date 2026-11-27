@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import date_diff, add_days, getdate, formatdate
+from frappe.utils import add_days, date_diff, formatdate, getdate
+
 from erpnext.hr.doctype.employee.employee import is_holiday
 from erpnext.hr.utils import validate_dates, validate_overlap
 
@@ -39,28 +39,28 @@ class AttendanceRequest(Document):
 				else:
 					status = "Present"
 
-				attendance_name = frappe.db.exists('Attendance', dict(employee=self.employee,
+				attendance_name = frappe.db.exists("Attendance", dict(employee=self.employee,
 					attendance_date=attendance_date, docstatus=1))
 				if attendance_name:
 					# update existing attendance
-					existing_doc = frappe.get_doc('Attendance', attendance_name)
+					existing_doc = frappe.get_doc("Attendance", attendance_name)
 
 					changes = {
-						'status': status,
-						'previous_status': existing_doc.status,
-						'attendance_request': self.name
+						"status": status,
+						"previous_status": existing_doc.status,
+						"attendance_request": self.name,
 					}
 
 					if self.remove_late_entry:
 						changes.update({
-							'late_entry': 0,
-							'previous_late_entry': existing_doc.late_entry,
+							"late_entry": 0,
+							"previous_late_entry": existing_doc.late_entry,
 						})
-					
+
 					if self.remove_early_exit:
 						changes.update({
-							'early_exit': 0,
-							'previous_early_exit': existing_doc.early_exit,
+							"early_exit": 0,
+							"previous_early_exit": existing_doc.early_exit,
 						})
 
 					existing_doc.db_set(changes, notify=1)
@@ -88,26 +88,26 @@ class AttendanceRequest(Document):
 
 	def cancel_attendance(self):
 		attendance_list = frappe.get_all("Attendance",
-			{'employee': self.employee, 'attendance_request': self.name, 'docstatus': 1, 'status': ['!=', 'On Leave']})
+			{"employee": self.employee, "attendance_request": self.name, "docstatus": 1, "status": ["!=", "On Leave"]})
 		if attendance_list:
 			for attendance in attendance_list:
-				att_doc = frappe.get_doc("Attendance", attendance['name'])
+				att_doc = frappe.get_doc("Attendance", attendance["name"])
 
 				if att_doc.previous_status:
 					changes = {
-						'status': att_doc.previous_status,
-						'previous_status': None,
-						'attendance_request': None
+						"status": att_doc.previous_status,
+						"previous_status": None,
+						"attendance_request": None,
 					}
 					if self.remove_late_entry:
 						changes.update({
-							'late_entry': att_doc.previous_late_entry,
-							'previous_late_entry': 0,
+							"late_entry": att_doc.previous_late_entry,
+							"previous_late_entry": 0,
 						})
 					if self.remove_early_exit:
 						changes.update({
-							'early_exit': att_doc.previous_early_exit,
-							'previous_early_exit': 0,
+							"early_exit": att_doc.previous_early_exit,
+							"previous_early_exit": 0,
 						})
 					att_doc.db_set(changes, notify=1)
 				else:
@@ -131,8 +131,8 @@ class AttendanceRequest(Document):
 			return True
 
 		existing_attendance = frappe.db.get_value("Attendance",
-			{'employee': self.employee, 'attendance_date': attendance_date, 'docstatus': 1},
-			['status', 'late_entry', 'early_exit'], as_dict=1)
+			{"employee": self.employee, "attendance_date": attendance_date, "docstatus": 1},
+			["status", "late_entry", "early_exit"], as_dict=1)
 		if existing_attendance:
 			if existing_attendance.status == "Present":
 				if self.remove_late_entry:

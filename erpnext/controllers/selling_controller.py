@@ -2,32 +2,33 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.utils import cint, flt, cstr
 from frappe import _
-from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
-from erpnext.stock.get_item_details import (
-	get_target_warehouse_validation,
-	get_last_purchase_rate,
-	get_min_margin_validation,
-	get_skip_delivery_note,
-)
-from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
-from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
-from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
-from erpnext.controllers.transaction_controller import (
-	TransactionController,
-	update_item_batch_serial_based_on_purchase_and_production,
-)
-from erpnext.controllers.stock_controller import WarehouseRequired
+from frappe.model.utils import get_fetch_values
+from frappe.utils import cint, cstr, flt
+
 from erpnext.accounts.doctype.pricing_rule.utils import (
 	get_applied_pricing_rules,
 	is_product_discount_rule_free_item,
 )
 from erpnext.accounts.general_ledger import get_round_off_account_and_cost_center
-from erpnext.accounts.utils import get_account_currency
-from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
-from frappe.model.utils import get_fetch_values
 from erpnext.accounts.party import get_party_account
+from erpnext.accounts.utils import get_account_currency
+from erpnext.controllers.stock_controller import WarehouseRequired
+from erpnext.controllers.transaction_controller import (
+	TransactionController,
+	update_item_batch_serial_based_on_purchase_and_production,
+)
+from erpnext.overrides.campaign.campaign_hooks import validate_campaign_voucher_code
+from erpnext.overrides.sales_person.sales_person_hooks import get_sales_person_commission_details
+from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
+from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
+from erpnext.stock.get_item_details import (
+	get_last_purchase_rate,
+	get_min_margin_validation,
+	get_skip_delivery_note,
+	get_target_warehouse_validation,
+)
+from erpnext.stock.utils import get_incoming_rate, has_valuation_read_permission
 
 
 class SellingController(TransactionController):
@@ -45,7 +46,7 @@ class SellingController(TransactionController):
 
 			self.print_templates = {
 				"total": "templates/print_formats/includes/total.html",
-				"taxes": "templates/print_formats/includes/taxes.html"
+				"taxes": "templates/print_formats/includes/taxes.html",
 			}
 
 	def get_feed(self):
@@ -92,7 +93,7 @@ class SellingController(TransactionController):
 				self.auto_update_item_prices()
 
 	def before_update_after_submit(self):
-		self.calculate_sales_team_contribution(self.get('base_net_total'))
+		self.calculate_sales_team_contribution(self.get("base_net_total"))
 
 	def set_title(self):
 		if self.meta.has_field("bill_to") and self.get("bill_to") and self.bill_to != self.customer:
@@ -125,7 +126,7 @@ class SellingController(TransactionController):
 
 	def set_party_account(self, force=False):
 		if self.meta.has_field("debit_to") and (not self.get("debit_to") or force):
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			billing_party_type, billing_party, _billing_party_name = self.get_billing_party()
 			self.debit_to = get_party_account(
 				billing_party_type,
 				billing_party,
@@ -191,7 +192,7 @@ class SellingController(TransactionController):
 				project=self.get("project"),
 				currency=self.get("currency"),
 				price_list=self.get("selling_price_list"),
-				payment_terms_template=self.get('payment_terms_template'),
+				payment_terms_template=self.get("payment_terms_template"),
 				account=self.get("debit_to"),
 				cost_center=self.get("cost_center"),
 				has_stin=self.get("has_stin"),
@@ -216,7 +217,7 @@ class SellingController(TransactionController):
 	def calculate_taxes_and_totals(self):
 		super().calculate_taxes_and_totals()
 		self.calculate_commission()
-		self.calculate_sales_team_contribution(self.get('base_net_total'))
+		self.calculate_sales_team_contribution(self.get("base_net_total"))
 
 	def remove_shipping_charge(self):
 		if self.shipping_rule:
@@ -225,7 +226,7 @@ class SellingController(TransactionController):
 				"doctype": "Sales Taxes and Charges",
 				"charge_type": "Actual",
 				"account_head": shipping_rule.account,
-				"cost_center": shipping_rule.cost_center
+				"cost_center": shipping_rule.cost_center,
 			})
 			if existing_shipping_charge:
 				self.get("taxes").remove(existing_shipping_charge[-1])
@@ -317,8 +318,8 @@ class SellingController(TransactionController):
 	def validate_discount_rule(self):
 		from erpnext.accounts.doctype.discount_rule.discount_rule import get_discount_rule_values
 
-		_customer_changed = None
-		_previous_additional_discount = None
+		customer_changed_ = None
+		previous_additional_discount = None
 
 		def customer_changed():
 			if self.is_new():
@@ -367,7 +368,7 @@ class SellingController(TransactionController):
 
 			# skip if pricing rule discount applied
 			discount_from_pricing_rule = False
-			for pricing_rule in get_applied_pricing_rules(d.get('pricing_rules')):
+			for pricing_rule in get_applied_pricing_rules(d.get("pricing_rules")):
 				pricing_rule_doc = frappe.get_cached_doc("Pricing Rule", pricing_rule)
 				if not self.get("ignore_pricing_rule") or pricing_rule_doc.prevent_ignore_pricing_rule:
 					if pricing_rule_doc.rate_or_discount == "Discount Percentage":
@@ -392,19 +393,19 @@ class SellingController(TransactionController):
 				check_rule = True
 
 			if not check_rule:
-				if _customer_changed is None:
-					_customer_changed = customer_changed()
-				if _customer_changed:
+				if customer_changed_ is None:
+					customer_changed_ = customer_changed()
+				if customer_changed_:
 					check_rule = True
 
 			if not check_rule and has_additional_discount:
-				if _previous_additional_discount is None:
+				if previous_additional_discount is None:
 					if self.is_new():
-						_previous_additional_discount = self.get_previous_doc_additional_discount()
+						previous_additional_discount = self.get_previous_doc_additional_discount()
 					else:
-						_previous_additional_discount = flt(self.db_get("discount_amount"))
+						previous_additional_discount = flt(self.db_get("discount_amount"))
 
-				if flt(_previous_additional_discount, rate_precision) != flt(self.discount_amount, rate_precision):
+				if flt(previous_additional_discount, rate_precision) != flt(self.discount_amount, rate_precision):
 					check_rule = True
 
 			if check_rule:
@@ -412,7 +413,7 @@ class SellingController(TransactionController):
 					d.idx,
 					frappe.bold(d.item_code),
 					frappe.bold(self.get("bill_to_name") or self.get("bill_to") or self.customer_name or self.customer),
-					frappe.bold(frappe.format(max_discount, df={"fieldtype": "Percent"}))
+					frappe.bold(frappe.format(max_discount, df={"fieldtype": "Percent"})),
 				))
 
 	def get_previous_doc_discount_percentage(self, item):
@@ -535,12 +536,12 @@ class SellingController(TransactionController):
 				valuation_rate_with_margin = valuation_rate_in_sales_uom / (1 - d._min_margin / 100)
 
 			selling_rate = d.base_rate if self.get("depreciation_type") and not d.get("ignore_depreciation") else d.base_net_rate
-			if flt(selling_rate, d.precision('rate')) < flt(valuation_rate_with_margin, d.precision('rate')):
+			if flt(selling_rate, d.precision("rate")) < flt(valuation_rate_with_margin, d.precision("rate")):
 				throw_message(d, valuation_rate_with_margin)
 
 	def get_valuation_rate_for_validation(self, row):
-		from erpnext.stock.stock_ledger import get_valuation_rate
 		from erpnext.stock.doctype.bundled_item.bundled_item import get_product_bundle_from_item_code
+		from erpnext.stock.stock_ledger import get_valuation_rate
 
 		if not row.item_code:
 			return 0
@@ -624,50 +625,50 @@ class SellingController(TransactionController):
 					if p.parent_detail_docname == d.name and p.parent_item == d.item_code:
 						# the packing details table's qty is already multiplied with parent's qty
 						il.append(frappe._dict({
-							'item_code': p.item_code,
-							'warehouse': p.warehouse or d.warehouse,
-							'qty': flt(p.qty),
-							'bundle_qty': flt(d.qty),
-							'uom': p.uom,
-							'stock_uom': p.get("stock_uom") or p.uom,
-							'conversion_factor': flt(d.get("conversion_factor")) or 1,
-							'batch_no': p.get("batch_no"),
-							'packing_slip': p.get("packing_slip"),
-							'serial_no': cstr(p.get("serial_no")).strip(),
-							'name': d.name,
-							'target_warehouse': p.get("target_warehouse"),
-							'company': self.company,
-							'voucher_type': self.doctype,
-							'allow_zero_valuation': d.get("allow_zero_valuation_rate"),
-							'delivery_note': d.get("delivery_note"),
+							"item_code": p.item_code,
+							"warehouse": p.warehouse or d.warehouse,
+							"qty": flt(p.qty),
+							"bundle_qty": flt(d.qty),
+							"uom": p.uom,
+							"stock_uom": p.get("stock_uom") or p.uom,
+							"conversion_factor": flt(d.get("conversion_factor")) or 1,
+							"batch_no": p.get("batch_no"),
+							"packing_slip": p.get("packing_slip"),
+							"serial_no": cstr(p.get("serial_no")).strip(),
+							"name": d.name,
+							"target_warehouse": p.get("target_warehouse"),
+							"company": self.company,
+							"voucher_type": self.doctype,
+							"allow_zero_valuation": d.get("allow_zero_valuation_rate"),
+							"delivery_note": d.get("delivery_note"),
 						}))
 			else:
 				il.append(frappe._dict({
-					'item_code': d.item_code,
-					'warehouse': d.warehouse,
-					'qty': flt(d.stock_qty),
-					'uom': d.uom,
-					'stock_uom': d.stock_uom,
-					'conversion_factor': flt(d.conversion_factor),
-					'batch_no': d.get("batch_no"),
-					'packing_slip': d.get("packing_slip"),
-					'serial_no': cstr(d.get("serial_no")).strip(),
-					'name': d.name,
-					'target_warehouse': d.get("target_warehouse"),
-					'company': self.company,
-					'voucher_type': self.doctype,
-					'allow_zero_valuation': d.get('allow_zero_valuation_rate'),
-					'delivery_note': d.get('delivery_note'),
-					'delivery_note_item': d.get('delivery_note_item'),
-					'sales_invoice_item': d.get('sales_invoice_item'),
-					'skip_delivery_note': d.get('skip_delivery_note'),
+					"item_code": d.item_code,
+					"warehouse": d.warehouse,
+					"qty": flt(d.stock_qty),
+					"uom": d.uom,
+					"stock_uom": d.stock_uom,
+					"conversion_factor": flt(d.conversion_factor),
+					"batch_no": d.get("batch_no"),
+					"packing_slip": d.get("packing_slip"),
+					"serial_no": cstr(d.get("serial_no")).strip(),
+					"name": d.name,
+					"target_warehouse": d.get("target_warehouse"),
+					"company": self.company,
+					"voucher_type": self.doctype,
+					"allow_zero_valuation": d.get("allow_zero_valuation_rate"),
+					"delivery_note": d.get("delivery_note"),
+					"delivery_note_item": d.get("delivery_note_item"),
+					"sales_invoice_item": d.get("sales_invoice_item"),
+					"skip_delivery_note": d.get("skip_delivery_note"),
 				}))
 		return il
 
 	@frappe.whitelist()
 	def auto_select_batches(self):
-		if (self.doctype == "Delivery Note" or self.get('update_stock')) and not self.get('is_return'):
-			auto_select_and_split_batches(self, 'warehouse', additional_group_fields=[
+		if (self.doctype == "Delivery Note" or self.get("update_stock")) and not self.get("is_return"):
+			auto_select_and_split_batches(self, "warehouse", additional_group_fields=[
 				"sales_order", "sales_order_item",
 				"delivery_note", "delivery_note_item",
 				"proforma_invoice", "proforma_invoice_item",
@@ -677,7 +678,7 @@ class SellingController(TransactionController):
 			self.run_method("calculate_taxes_and_totals")
 
 	def auto_select_batches_based_on_purchase_and_production(self):
-		if (self.doctype == "Delivery Note" or self.get('update_stock')) and not self.get('is_return'):
+		if (self.doctype == "Delivery Note" or self.get("update_stock")) and not self.get("is_return"):
 			update_item_batch_serial_based_on_purchase_and_production(self)
 			self.run_method("calculate_taxes_and_totals")
 
@@ -702,23 +703,23 @@ class SellingController(TransactionController):
 	def get_so_qty_and_warehouse(self, sales_order_item):
 		so_item = frappe.db.sql("""select qty, warehouse from `tabSales Order Item`
 			where name = %s and docstatus = 1""", sales_order_item, as_dict=1)
-		so_qty = so_item and flt(so_item[0]["qty"]) or 0.0
-		so_warehouse = so_item and so_item[0]["warehouse"] or ""
+		so_qty = (so_item and flt(so_item[0]["qty"])) or 0.0
+		so_warehouse = (so_item and so_item[0]["warehouse"]) or ""
 		return so_qty, so_warehouse
 
 	def check_order_on_hold_or_closed(self):
 		for d in self.get("items"):
-			if d.get('sales_order') and not d.get('delivery_note'):
-				status = frappe.db.get_value("Sales Order", d.get('sales_order'), "status", cache=1)
-				if status == "Closed" and not cint(self.get('is_return')):
-					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Sales Order", d.get('sales_order')), status))
+			if d.get("sales_order") and not d.get("delivery_note"):
+				status = frappe.db.get_value("Sales Order", d.get("sales_order"), "status", cache=1)
+				if status == "Closed" and not cint(self.get("is_return")):
+					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Sales Order", d.get("sales_order")), status))
 				if status == "On Hold":
-					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Sales Order", d.get('sales_order')), status))
+					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Sales Order", d.get("sales_order")), status))
 
-			if d.get('proforma_invoice'):
-				status = frappe.db.get_value("Proforma Invoice", d.get('proforma_invoice'), "status", cache=1)
-				if status == "Closed" and not cint(self.get('is_return')):
-					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Proforma Invoice", d.get('proforma_invoice')), status))
+			if d.get("proforma_invoice"):
+				status = frappe.db.get_value("Proforma Invoice", d.get("proforma_invoice"), "status", cache=1)
+				if status == "Closed" and not cint(self.get("is_return")):
+					frappe.throw(_("Row #{0}: {1} is {2}").format(d.idx, frappe.get_desk_link("Proforma Invoice", d.get("proforma_invoice")), status))
 
 	def update_reserved_qty(self):
 		so_map = {}
@@ -750,23 +751,23 @@ class SellingController(TransactionController):
 				return_dependency = []
 
 				if (cint(self.is_return) or flt(d.qty) < 0) and self.docstatus == 1:
-					delivery_note = self.return_against if self.doctype == "Delivery Note" else d.get('delivery_note')
-					if d.get('delivery_note_item') and delivery_note:
+					delivery_note = self.return_against if self.doctype == "Delivery Note" else d.get("delivery_note")
+					if d.get("delivery_note_item") and delivery_note:
 						return_dependency = [{
 							"dependent_voucher_type": "Delivery Note",
 							"dependent_voucher_no": delivery_note,
 							"dependent_voucher_detail_no": d.delivery_note_item,
-							"dependency_type": "Rate"
+							"dependency_type": "Rate",
 						}]
 						return_rate = self.get_incoming_rate_for_sales_return(voucher_detail_no=d.delivery_note_item,
 							against_document_type="Delivery Note", against_document=delivery_note)
-					elif self.doctype == "Sales Invoice" and d.get('sales_invoice_item') and self.get('return_against')\
-							and frappe.db.get_value("Sales Invoice", self.return_against, 'update_stock', cache=1):
+					elif self.doctype == "Sales Invoice" and d.get("sales_invoice_item") and self.get("return_against")\
+							and frappe.db.get_value("Sales Invoice", self.return_against, "update_stock", cache=1):
 						return_dependency = [{
 							"dependent_voucher_type": "Sales Invoice",
 							"dependent_voucher_no": self.return_against,
 							"dependent_voucher_detail_no": d.sales_invoice_item,
-							"dependency_type": "Rate"
+							"dependency_type": "Rate",
 						}]
 						return_rate = self.get_incoming_rate_for_sales_return(voucher_detail_no=d.sales_invoice_item,
 							against_document_type="Sales Invoice", against_document=self.return_against)
@@ -777,11 +778,11 @@ class SellingController(TransactionController):
 				# On cancellation or if return entry submission, make stock ledger entry for
 				# target warehouse first, to update serial no values properly
 
-				if d.warehouse and ((not cint(self.is_return) and self.docstatus==1)
-					or (cint(self.is_return) and self.docstatus==2)):
+				if d.warehouse and ((not cint(self.is_return) and self.docstatus == 1)
+					or (cint(self.is_return) and self.docstatus == 2)):
 						sl_entries.append(self.get_sl_entries(d, {
-							"actual_qty": -1*flt(d.qty),
-							"bundle_qty": -1*flt(d.bundle_qty),
+							"actual_qty": -1 * flt(d.qty),
+							"bundle_qty": -1 * flt(d.bundle_qty),
 							"incoming_rate": return_rate,
 							"is_transfer": cint(bool(d.get("target_warehouse"))),
 						}))
@@ -799,7 +800,7 @@ class SellingController(TransactionController):
 					if self.is_return:
 						target_warehouse_dependency, return_dependency = return_dependency, target_warehouse_dependency
 						if target_warehouse_dependency:
-							target_warehouse_dependency[0]['dependency_qty_filter'] = 'Positive'
+							target_warehouse_dependency[0]["dependency_qty_filter"] = "Positive"
 
 					target_warehouse_sle = self.get_sl_entries(d, {
 						"actual_qty": flt(d.qty),
@@ -817,27 +818,27 @@ class SellingController(TransactionController):
 								"batch_no": d.batch_no,
 								"posting_date": self.posting_date,
 								"posting_time": self.posting_time,
-								"qty": -1*flt(d.qty),
+								"qty": -1 * flt(d.qty),
 								"serial_no": d.serial_no,
 								"company": d.company,
 								"voucher_type": d.voucher_type,
 								"voucher_no": d.name,
-								"allow_zero_valuation": d.allow_zero_valuation
+								"allow_zero_valuation": d.allow_zero_valuation,
 							})
 							target_warehouse_sle.update({
-								"incoming_rate": get_incoming_rate(args)
+								"incoming_rate": get_incoming_rate(args),
 							})
 						else:
 							target_warehouse_sle.update({
-								"outgoing_rate": return_rate
+								"outgoing_rate": return_rate,
 							})
 					sl_entries.append(target_warehouse_sle)
 
-				if d.warehouse and ((not cint(self.is_return) and self.docstatus==2)
-					or (cint(self.is_return) and self.docstatus==1)):
+				if d.warehouse and ((not cint(self.is_return) and self.docstatus == 2)
+					or (cint(self.is_return) and self.docstatus == 1)):
 						sl_entries.append(self.get_sl_entries(d, {
-							"actual_qty": -1*flt(d.qty),
-							"bundle_qty": -1*flt(d.bundle_qty),
+							"actual_qty": -1 * flt(d.qty),
+							"bundle_qty": -1 * flt(d.bundle_qty),
 							"incoming_rate": return_rate,
 							"dependencies": return_dependency,
 							"is_transfer": cint(bool(d.get("target_warehouse"))),
@@ -882,7 +883,7 @@ class SellingController(TransactionController):
 				return
 
 		if self.doctype in ("Delivery Note", "Sales Invoice") and hasattr(self, "items"):
-			sales_orders = list(set([d.get('sales_order') for d in self.items if d.get('sales_order')]))
+			sales_orders = list(set([d.get("sales_order") for d in self.items if d.get("sales_order")]))
 			if sales_orders:
 				po_nos = frappe.db.sql_list("""
 					select distinct po_no
@@ -891,7 +892,7 @@ class SellingController(TransactionController):
 					order by transaction_date
 				""", [sales_orders])
 				if po_nos:
-					self.po_no = ', '.join(po_nos)
+					self.po_no = ", ".join(po_nos)
 					if len(self.po_no) > 140:
 						self.po_no = self.po_no[:137] + "..."
 
@@ -901,10 +902,10 @@ class SellingController(TransactionController):
 				item.gross_profit = flt(((item.base_net_rate - item.valuation_rate) * item.stock_qty), self.precision("amount", item))
 
 	def validate_bill_to(self):
-		if not self.meta.get_field('bill_to'):
+		if not self.meta.get_field("bill_to"):
 			return
 
-		if not self.get('bill_to'):
+		if not self.get("bill_to"):
 			if self.doctype == "Quotation":
 				if self.quotation_to == "Customer":
 					self.bill_to = self.party_name
@@ -942,15 +943,15 @@ class SellingController(TransactionController):
 		if cint(frappe.get_cached_value("Selling Settings", None, "allow_multiple_items")):
 			return
 
-		for d in self.get('items'):
+		for d in self.get("items"):
 			if self.doctype == "Sales Invoice":
-				e = [d.item_code, d.description, d.warehouse, d.sales_order or d.delivery_note, d.batch_no or '']
+				e = [d.item_code, d.description, d.warehouse, d.sales_order or d.delivery_note, d.batch_no or ""]
 				f = [d.item_code, d.description, d.sales_order or d.delivery_note]
 			elif self.doctype == "Delivery Note":
-				e = [d.item_code, d.description, d.warehouse, d.sales_order or d.sales_invoice, d.batch_no or '']
+				e = [d.item_code, d.description, d.warehouse, d.sales_order or d.sales_invoice, d.batch_no or ""]
 				f = [d.item_code, d.description, d.sales_order or d.sales_invoice]
 			elif self.doctype in ["Sales Order", "Quotation"]:
-				e = [d.item_code, d.description, d.warehouse, '']
+				e = [d.item_code, d.description, d.warehouse, ""]
 				f = [d.item_code, d.description]
 
 			if frappe.get_cached_value("Item", d.item_code, "is_stock_item"):
@@ -969,13 +970,13 @@ class SellingController(TransactionController):
 		from erpnext.controllers.buying_controller import validate_item_type
 		validate_item_type(self, "is_sales_item", "sales")
 
-		for d in self.get('items'):
+		for d in self.get("items"):
 			self.validate_item_row(d)
 
 	def validate_item_row(self, row):
 		from erpnext.stock.doctype.item.item import validate_end_of_life, validate_is_not_template_item
 		if row.get("item_code"):
-			if not row.get('sales_order') and not row.get('delivery_note'):
+			if not row.get("sales_order") and not row.get("delivery_note"):
 				validate_end_of_life(row.item_code)
 
 			validate_is_not_template_item(row.item_code)
@@ -990,7 +991,7 @@ class SellingController(TransactionController):
 			is_stock_item = cint(frappe.get_cached_value("Item", d.item_code, "is_stock_item"))
 			if is_stock_item and not cint(d.get("skip_delivery_note")):
 				frappe.throw(_("Delivery Warehouse is mandatory for Stock Item {0}").format(
-					frappe.bold(d.get("item_code"))
+					frappe.bold(d.get("item_code")),
 				), WarehouseRequired)
 
 	def validate_target_warehouse(self):
@@ -1003,7 +1004,7 @@ class SellingController(TransactionController):
 					frappe.throw(_("Row {0}: Source Warehouse ({1}) and Target Warehouse ({2}) can not be same")
 						.format(d.idx, warehouse, warehouse))
 
-				if d.get('item_code'):
+				if d.get("item_code"):
 					target_warehouse_validation = get_target_warehouse_validation(d.item_code, self)
 
 					if target_warehouse_validation:
@@ -1015,8 +1016,8 @@ class SellingController(TransactionController):
 	def validate_transaction_type(self):
 		super().validate_transaction_type()
 
-		if self.get('transaction_type'):
-			if not frappe.get_cached_value("Transaction Type", self.transaction_type, 'selling'):
+		if self.get("transaction_type"):
+			if not frappe.get_cached_value("Transaction Type", self.transaction_type, "selling"):
 				frappe.throw(_("Transaction Type {0} is not allowed for sales transactions").format(frappe.bold(self.transaction_type)))
 
 	def validate_project(self):
@@ -1030,21 +1031,21 @@ class SellingController(TransactionController):
 
 		if project_details.status == "Cancelled":
 			frappe.throw(_("{0} is cancelled").format(
-				frappe.get_desk_link("Project", self.project)
+				frappe.get_desk_link("Project", self.project),
 			))
 
 		if project_details.customer and self.customer != project_details.customer:
 			frappe.throw(_("Customer {0} does not belong to {1}").format(
-				frappe.bold(self.customer), frappe.get_desk_link("Project", self.project)
+				frappe.bold(self.customer), frappe.get_desk_link("Project", self.project),
 			))
 
 	def update_project_billing_and_sales(self, material_cost_of_sales=False, validate_insurance_excess=False):
 		projects = []
-		if self.get('project'):
-			projects.append(self.get('project'))
+		if self.get("project"):
+			projects.append(self.get("project"))
 		for d in self.items:
-			if d.get('project'):
-				projects.append(d.get('project'))
+			if d.get("project"):
+				projects.append(d.get("project"))
 
 		projects = list(set(projects))
 		for project in projects:
@@ -1114,7 +1115,7 @@ class SellingController(TransactionController):
 		if item.get("delivery_note") and item.get("delivery_note_item"):
 			sle_totals = frappe.db.sql("""
 				SELECT SUM(stock_value_difference) as stock_value_difference, SUM(actual_qty) as actual_qty
-				FROM `tabStock Ledger Entry` 
+				FROM `tabStock Ledger Entry`
 				WHERE voucher_type = 'Delivery Note' AND voucher_no = %s AND voucher_detail_no = %s
 			""", (item.delivery_note, item.delivery_note_item), as_dict=1)
 
@@ -1138,14 +1139,14 @@ class SellingController(TransactionController):
 				"qty": item.qty,
 				"voucher_type": self.doctype,
 				"voucher_no": self.name,
-				"company": self.company
+				"company": self.company,
 			})
 			cost_rate = get_incoming_rate(args, raise_error_if_no_rate=False)
 
 		return cost_rate
 
 	def adjust_rate_for_claim_item(self, source_row, target_row):
-		if not source_row.get('claim_customer'):
+		if not source_row.get("claim_customer"):
 			return
 
 		if source_row.discount_amount:
@@ -1154,7 +1155,7 @@ class SellingController(TransactionController):
 			self.adjust_rate_for_claim_free_item(source_row, target_row)
 
 	def adjust_rate_for_claim_discount_item(self, source_row, target_row):
-		bill_to = self.get('bill_to') or self.get('customer')
+		bill_to = self.get("bill_to") or self.get("customer")
 		if bill_to == source_row.claim_customer:
 			target_row.price_list_rate = source_row.discount_amount
 			target_row.rate = source_row.discount_amount
@@ -1163,7 +1164,7 @@ class SellingController(TransactionController):
 			target_row.discount_amount = 0
 
 	def adjust_rate_for_claim_free_item(self, source_row, target_row):
-		bill_to = self.get('bill_to') or self.get('customer')
+		bill_to = self.get("bill_to") or self.get("customer")
 		if bill_to and bill_to != source_row.claim_customer:
 			target_row.price_list_rate = 0
 			target_row.rate = 0
@@ -1187,13 +1188,13 @@ class SellingController(TransactionController):
 					and (not project_details.insurance_company or bill_to != project_details.insurance_company)
 				):
 					frappe.throw(_("Outstanding Amount must be 0 for Cash {0}").format(
-						frappe.get_desk_link("Project", self.project)
+						frappe.get_desk_link("Project", self.project),
 					))
 
 			cash_billing = frappe.get_cached_value("Customer", bill_to, "cash_billing")
 			if cash_billing and self.outstanding_amount != 0:
 				frappe.throw(_("Outstanding Amount must be 0 for Cash Customer {0}").format(
-					frappe.utils.get_link_to_form("Customer", bill_to)
+					frappe.utils.get_link_to_form("Customer", bill_to),
 				))
 
 	def get_billed_qty_map(self, billing_data, item_ref_field):
@@ -1204,18 +1205,18 @@ class SellingController(TransactionController):
 			item_row_name = d.get(item_ref_field)
 
 			bill_to = d.bill_to or d.customer
-			so_row = self.getone('items', {'name': item_row_name})
+			so_row = self.getone("items", {"name": item_row_name})
 			claim_customer = so_row.claim_customer if so_row else None
 
 			depreciation_type = d.depreciation_type
 			if not depreciation_type or d.ignore_depreciation:
-				depreciation_type = 'No Depreciation'
+				depreciation_type = "No Depreciation"
 
 			depreciation_type_qty.setdefault(item_row_name, {}).setdefault(depreciation_type, 0)
 			depreciation_type_qty[item_row_name][depreciation_type] += d.qty
 
 			if (
-				depreciation_type != 'Depreciation Amount Only'
+				depreciation_type != "Depreciation Amount Only"
 				and (not claim_customer or bill_to == claim_customer)
 				and not d.for_depreciation_qty
 			):
@@ -1224,9 +1225,9 @@ class SellingController(TransactionController):
 
 		# Do not mark as billed if both depreciation type invoices not created
 		for row_name, depreciation_types in depreciation_type_qty.items():
-			if 'No Depreciation' not in depreciation_types:
-				depreciation_qty = flt(depreciation_types.get('Depreciation Amount Only'), 6)
-				after_depreciation_qty = flt(depreciation_types.get('After Depreciation Amount'), 6)
+			if "No Depreciation" not in depreciation_types:
+				depreciation_qty = flt(depreciation_types.get("Depreciation Amount Only"), 6)
+				after_depreciation_qty = flt(depreciation_types.get("After Depreciation Amount"), 6)
 				if not depreciation_qty or not after_depreciation_qty:
 					billed_qty_map[row_name] = 0
 
@@ -1268,10 +1269,10 @@ class SellingController(TransactionController):
 
 		self.sales_team = []
 		self.append("sales_team", row)
-		self.calculate_sales_team_contribution(self.get('base_net_total'))
+		self.calculate_sales_team_contribution(self.get("base_net_total"))
 
 	def make_tax_gl_entries(self, gl_entries):
-		billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+		_billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 		for tax in self.get("taxes"):
 			if flt(tax.base_tax_amount_after_discount_amount):
@@ -1283,10 +1284,10 @@ class SellingController(TransactionController):
 						"credit": flt(tax.base_tax_amount_after_discount_amount,
 							tax.precision("tax_amount_after_discount_amount")),
 						"credit_in_account_currency": (flt(tax.base_tax_amount_after_discount_amount,
-							tax.precision("base_tax_amount_after_discount_amount")) if account_currency==self.company_currency else
+							tax.precision("base_tax_amount_after_discount_amount")) if account_currency == self.company_currency else
 							flt(tax.tax_amount_after_discount_amount, tax.precision("tax_amount_after_discount_amount"))),
-						"cost_center": tax.cost_center or self.cost_center
-					}, account_currency, item=tax)
+						"cost_center": tax.cost_center or self.cost_center,
+					}, account_currency, item=tax),
 				)
 
 	def make_advance_reversal_gl_entries(self, gl_entries):
@@ -1311,7 +1312,7 @@ class SellingController(TransactionController):
 						),
 						"cost_center": tax.cost_center or self.cost_center,
 						"reference_no": reference_no,
-					}, account_currency, item=tax)
+					}, account_currency, item=tax),
 				)
 
 				gl_entries.append(
@@ -1326,18 +1327,18 @@ class SellingController(TransactionController):
 							if account_currency == self.company_currency else
 							flt(tax.advance_tax, self.precision("grand_total"))
 						),
-						"against_voucher": self.get("return_against")\
+						"against_voucher": self.get("return_against")
 							if cint(self.get("is_return")) and self.get("return_against") else self.name,
 						"against_voucher_type": self.doctype,
 						"cost_center": self.get("cost_center"),
 						"project": self.get("project"),
 						"reference_no": reference_no,
-					}, self.party_account_currency, item=self)
+					}, self.party_account_currency, item=self),
 				)
 
 	def make_gle_for_rounding_adjustment(self, gl_entries):
 		if flt(self.rounding_adjustment, self.precision("rounding_adjustment")) and self.base_rounding_adjustment:
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			_billing_party_type, billing_party, billing_party_name = self.get_billing_party()
 
 			round_off_account, round_off_cost_center = get_round_off_account_and_cost_center(self.company)
 			round_off_account_currency = get_account_currency(round_off_account)
@@ -1347,7 +1348,7 @@ class SellingController(TransactionController):
 					"account": round_off_account,
 					"against": billing_party_name or billing_party,
 					"credit_in_account_currency": (
-						flt(self.base_rounding_adjustment, self.precision('base_rounding_adjustment'))
+						flt(self.base_rounding_adjustment, self.precision("base_rounding_adjustment"))
 						if round_off_account_currency == self.company_currency
 						else flt(self.rounding_adjustment, self.precision("rounding_adjustment"))
 					),

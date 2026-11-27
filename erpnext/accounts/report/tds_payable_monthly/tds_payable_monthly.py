@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import getdate
 
+
 def execute(filters=None):
 	filters["invoices"] = frappe.cache.hget("invoices", frappe.session.user)
 	validate_filters(filters)
@@ -18,10 +19,12 @@ def execute(filters=None):
 
 	return columns, res
 
+
 def validate_filters(filters):
-	''' Validate if dates are properly set '''
+	""" Validate if dates are properly set """
 	if filters.from_date > filters.to_date:
 		frappe.throw(_("From Date must be before To Date"))
+
 
 def set_filters(filters):
 	invoices = []
@@ -42,7 +45,8 @@ def set_filters(filters):
 				invoices.append(d)
 
 	filters["invoices"] = invoices if invoices else filters["invoices"]
-	filters.naming_series = frappe.db.get_single_value('Buying Settings', 'supp_master_name')
+	filters.naming_series = frappe.db.get_single_value("Buying Settings", "supp_master_name")
+
 
 def get_result(filters):
 	supplier_map, tds_docs = get_supplier_map(filters)
@@ -76,7 +80,7 @@ def get_result(filters):
 				and getdate(filters.to_date) >= gle_map[d][0].posting_date:
 				row = [supplier.pan, supplier.name]
 
-				if filters.naming_series == 'Naming Series':
+				if filters.naming_series == "Naming Series":
 					row.append(supplier.supplier_name)
 
 				row.extend([tds_doc.name, supplier.supplier_type, rate, total_amount_credited,
@@ -85,14 +89,15 @@ def get_result(filters):
 
 	return out
 
+
 def get_supplier_map(filters):
 	# create a supplier_map of the form {"purchase_invoice": {supplier_name, pan, tds_name}}
 	# pre-fetch all distinct applicable tds docs
 	supplier_map, tds_docs = {}, {}
 	pan = "pan" if frappe.db.has_column("Supplier", "pan") else "tax_id"
-	supplier_detail = frappe.db.get_all('Supplier',
+	supplier_detail = frappe.db.get_all("Supplier",
 		{"name": ["in", [d.supplier for d in filters["invoices"]]]},
-		["tax_withholding_category", "name", pan+" as pan", "supplier_type", "supplier_name"])
+		["tax_withholding_category", "name", pan + " as pan", "supplier_type", "supplier_name"])
 
 	for d in filters["invoices"]:
 		supplier_map[d.get("name")] = [k for k in supplier_detail
@@ -105,21 +110,23 @@ def get_supplier_map(filters):
 
 	return supplier_map, tds_docs
 
+
 def get_gle_map(filters):
 	# create gle_map of the form
 	# {"purchase_invoice": list of dict of all gle created for this invoice}
 	gle_map = {}
-	gle = frappe.db.get_all('GL Entry',\
+	gle = frappe.db.get_all("GL Entry",
 		{"voucher_no": ["in", [d.get("name") for d in filters["invoices"]]]},
 		["fiscal_year", "credit", "debit", "account", "voucher_no", "posting_date"])
 
 	for d in gle:
-		if not d.voucher_no in gle_map:
+		if d.voucher_no not in gle_map:
 			gle_map[d.voucher_no] = [d]
 		else:
 			gle_map[d.voucher_no].append(d)
 
 	return gle_map
+
 
 def get_columns(filters):
 	pan = "pan" if frappe.db.has_column("Supplier", "pan") else "tax_id"
@@ -128,22 +135,22 @@ def get_columns(filters):
 			"label": _(frappe.unscrub(pan)),
 			"fieldname": pan,
 			"fieldtype": "Data",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Supplier"),
 			"options": "Supplier",
 			"fieldname": "supplier",
 			"fieldtype": "Link",
-			"width": 180
+			"width": 180,
 		}]
 
-	if filters.naming_series == 'Naming Series':
+	if filters.naming_series == "Naming Series":
 		columns.append({
 			"label": _("Supplier Name"),
 			"fieldname": "supplier_name",
 			"fieldtype": "Data",
-			"width": 180
+			"width": 180,
 		})
 
 	columns.extend([
@@ -152,53 +159,54 @@ def get_columns(filters):
 			"options": "Tax Withholding Category",
 			"fieldname": "section_code",
 			"fieldtype": "Link",
-			"width": 180
+			"width": 180,
 		},
 		{
 			"label": _("Entity Type"),
 			"fieldname": "entity_type",
 			"fieldtype": "Data",
-			"width": 180
+			"width": 180,
 		},
 		{
 			"label": _("TDS Rate %"),
 			"fieldname": "tds_rate",
 			"fieldtype": "Percent",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Total Amount Credited"),
 			"fieldname": "total_amount_credited",
 			"fieldtype": "Float",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Amount of TDS Deducted"),
 			"fieldname": "tds_deducted",
 			"fieldtype": "Float",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Date of Transaction"),
 			"fieldname": "transaction_date",
 			"fieldtype": "Date",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Transaction Type"),
 			"fieldname": "transaction_type",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Reference No."),
 			"fieldname": "ref_no",
 			"fieldtype": "Dynamic Link",
 			"options": "transaction_type",
-			"width": 90
-		}
+			"width": 90,
+		},
 	])
 
 	return columns
+
 
 @frappe.whitelist()
 def get_tds_invoices():

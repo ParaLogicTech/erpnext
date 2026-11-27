@@ -1,4 +1,4 @@
-frappe.listview_settings['Delivery Note'] = {
+frappe.listview_settings["Delivery Note"] = {
 	add_fields: [
 		"customer", "customer_name",
 		"billing_status", "is_return", "status",
@@ -6,7 +6,7 @@ frappe.listview_settings['Delivery Note'] = {
 
 	get_indicator: function(doc) {
 		// Return
-		if(cint(doc.is_return)) {
+		if (cint(doc.is_return)) {
 			return [__("Return"), "grey", "is_return,=,Yes|docstatus,=,1"];
 
 		// Closed
@@ -23,7 +23,7 @@ frappe.listview_settings['Delivery Note'] = {
 		}
 	},
 
-	onload: function (listview) {
+	onload: function(listview) {
 		erpnext.setup_applies_to_listview_filters(listview);
 
 		const action = () => {
@@ -51,20 +51,20 @@ frappe.listview_settings['Delivery Note'] = {
 							args: {
 								"method": "erpnext.stock.doctype.delivery_note.delivery_note.make_delivery_trip",
 								"source_names": docnames,
-								"target_doc": cur_frm.doc
+								"target_doc": cur_frm.doc,
 							},
-							callback: function (r) {
+							callback: function(r) {
 								if (!r.exc) {
 									frappe.model.sync(r.message);
 									cur_frm.dirty();
 									cur_frm.refresh();
 								}
-							}
+							},
 						});
-					})
+					});
 			}
 		};
 
-		listview.page.add_actions_menu_item(__('Create Delivery Trip'), action, false);
-	}
+		listview.page.add_actions_menu_item(__("Create Delivery Trip"), action, false);
+	},
 };

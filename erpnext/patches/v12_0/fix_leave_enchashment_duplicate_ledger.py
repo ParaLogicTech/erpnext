@@ -1,4 +1,5 @@
 import frappe
+
 from erpnext.hr.doctype.leave_ledger_entry.leave_ledger_entry import process_expired_allocation
 
 
@@ -7,7 +8,7 @@ def execute():
 	leave_encashments = get_leave_encashment_with_duplicate_ledger_entries()
 	if leave_encashments:
 		for name in leave_encashments:
-			doc = frappe.get_doc('Leave Encashment', name)
+			doc = frappe.get_doc("Leave Encashment", name)
 			doc.create_leave_ledger_entry(submit=False)
 			doc.create_leave_ledger_entry(submit=True)
 

@@ -2,13 +2,16 @@
 # License: GNU General Public License v3. See license.txt
 
 
-import frappe
-import erpnext
 import unittest
+
+import frappe
 import frappe.utils
+
+import erpnext
 from erpnext.hr.doctype.employee.employee import EmployeeLeftValidationError
 
-test_records = frappe.get_test_records('Employee')
+test_records = frappe.get_test_records("Employee")
+
 
 class TestEmployee(unittest.TestCase):
 	def test_birthday_reminders(self):
@@ -41,8 +44,9 @@ class TestEmployee(unittest.TestCase):
 		employee2_doc.reports_to = employee1_doc.name
 		employee2_doc.save()
 		employee1_doc.reload()
-		employee1_doc.status = 'Left'
+		employee1_doc.status = "Left"
 		self.assertRaises(EmployeeLeftValidationError, employee1_doc.save)
+
 
 def make_employee(user, company=None):
 	if not frappe.db.get_value("User", user):
@@ -51,10 +55,10 @@ def make_employee(user, company=None):
 			"email": user,
 			"first_name": user,
 			"new_password": "password",
-			"roles": [{"doctype": "Has Role", "role": "Employee"}]
+			"roles": [{"doctype": "Has Role", "role": "Employee"}],
 		}).insert()
 
-	if not frappe.db.get_value("Employee", { "user_id": user, "company": company or erpnext.get_default_company() }):
+	if not frappe.db.get_value("Employee", {"user_id": user, "company": company or erpnext.get_default_company()}):
 		employee = frappe.get_doc({
 			"doctype": "Employee",
 			"naming_series": "EMP-",
@@ -69,8 +73,8 @@ def make_employee(user, company=None):
 			"prefered_contact_email": "Company Email",
 			"prefered_email": user,
 			"status": "Active",
-			"employment_type": "Intern"
+			"employment_type": "Intern",
 		}).insert()
 		return employee.name
 	else:
-		return frappe.get_value("Employee", {"employee_name":user}, "name")
+		return frappe.get_value("Employee", {"employee_name": user}, "name")

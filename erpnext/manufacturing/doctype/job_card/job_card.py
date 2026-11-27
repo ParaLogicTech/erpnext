@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, time_diff_in_hours, get_datetime, get_link_to_form
-from frappe.model.mapper import get_mapped_doc
 from frappe.model.document import Document
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cint, flt, get_datetime, get_link_to_form, time_diff_in_hours
 
 
-class OperationMismatchError(frappe.ValidationError): pass
+class OperationMismatchError(frappe.ValidationError):
+	pass
 
 
 class JobCard(Document):
@@ -71,8 +71,8 @@ class JobCard(Document):
 		self.total_completed_qty = 0.0
 		self.total_time_in_mins = 0.0
 
-		if self.get('time_logs'):
-			for d in self.get('time_logs'):
+		if self.get("time_logs"):
+			for d in self.get("time_logs"):
 				if get_datetime(d.from_time) > get_datetime(d.to_time):
 					frappe.throw(_("Row {0}: From time must be less than to time").format(d.idx))
 
@@ -104,7 +104,7 @@ class JobCard(Document):
 				"to_time": args.to_time,
 				"name": args.name or "No Name",
 				"parent": args.parent or "No Name",
-				"employee": self.employee
+				"employee": self.employee,
 			}, as_dict=True)
 
 		return existing[0] if existing else None
@@ -123,31 +123,31 @@ class JobCard(Document):
 		self.status = {
 			0: "Open",
 			1: "Submitted",
-			2: "Cancelled"
+			2: "Cancelled",
 		}[self.docstatus or 0]
 
 		if self.time_logs:
-			self.status = 'Work In Progress'
+			self.status = "Work In Progress"
 
 		if self.docstatus == 1 and (self.for_quantity == self.transferred_qty or not self.material_transfer_required):
-			self.status = 'Completed'
+			self.status = "Completed"
 
-		if self.status != 'Completed':
+		if self.status != "Completed":
 			if self.for_quantity == self.transferred_qty:
-				self.status = 'Material Transferred'
+				self.status = "Material Transferred"
 
 		if update_status:
-			self.db_set('status', self.status)
+			self.db_set("status", self.status)
 
 	@frappe.whitelist()
 	def set_required_items(self):
 		self.items = []
 
-		if not self.get('work_order'):
+		if not self.get("work_order"):
 			return
 
-		doc = frappe.get_doc('Work Order', self.get('work_order'))
-		material_transfer_required = doc.transfer_material_against == 'Job Card' and not doc.skip_transfer
+		doc = frappe.get_doc("Work Order", self.get("work_order"))
+		material_transfer_required = doc.transfer_material_against == "Job Card" and not doc.skip_transfer
 		if not material_transfer_required and not self.material_consumption_required:
 			return
 
@@ -156,17 +156,17 @@ class JobCard(Document):
 				frappe.throw(_("Row {0}: Operation is not set against Raw Material {1} in {2}").format(
 					d.idx,
 					frappe.get_desk_link("Item", d.item_code),
-					frappe.get_desk_link("Work Order", self.work_order)
+					frappe.get_desk_link("Work Order", self.work_order),
 				))
 
-			if self.get('operation') == d.operation:
-				self.append('items', {
-					'item_code': d.item_code,
-					'item_name': d.item_name,
-					'description': d.description,
-					'source_warehouse': d.source_warehouse,
-					'required_qty': (d.required_qty * flt(self.for_quantity)) / doc.qty,
-					'uom': d.uom,
+			if self.get("operation") == d.operation:
+				self.append("items", {
+					"item_code": d.item_code,
+					"item_name": d.item_name,
+					"description": d.description,
+					"source_warehouse": d.source_warehouse,
+					"required_qty": (d.required_qty * flt(self.for_quantity)) / doc.qty,
+					"uom": d.uom,
 				})
 
 	def validate_job_card(self):
@@ -182,7 +182,7 @@ class JobCard(Document):
 				frappe.bold(_("Total Completed Qty")),
 				frappe.bold(frappe.format(completed_qty)),
 				frappe.bold(_("Qty to Produce")),
-				frappe.bold(frappe.format(for_quantity))
+				frappe.bold(frappe.format(for_quantity)),
 			)))
 
 	def update_work_order(self):
@@ -201,32 +201,32 @@ class JobCard(Document):
 			return
 
 		if self.items:
-			self.transferred_qty = frappe.db.get_value('Stock Entry', {
-				'job_card': self.name,
-				'work_order': self.work_order,
-				'docstatus': 1
-			}, 'sum(fg_completed_qty)') or 0
+			self.transferred_qty = frappe.db.get_value("Stock Entry", {
+				"job_card": self.name,
+				"work_order": self.work_order,
+				"docstatus": 1,
+			}, "sum(fg_completed_qty)") or 0
 
 		self.db_set("transferred_qty", self.transferred_qty)
 
 		qty = 0
 		if self.work_order:
-			doc = frappe.get_doc('Work Order', self.work_order)
-			if doc.transfer_material_against == 'Job Card' and not doc.skip_transfer:
+			doc = frappe.get_doc("Work Order", self.work_order)
+			if doc.transfer_material_against == "Job Card" and not doc.skip_transfer:
 				completed = True
 				for d in doc.operations:
-					if d.status != 'Completed':
+					if d.status != "Completed":
 						completed = False
 						break
 
 				if completed:
-					job_cards = frappe.get_all('Job Card', filters = {'work_order': self.work_order,
-						'docstatus': ('!=', 2)}, fields = 'sum(transferred_qty) as qty', group_by='operation_id')
+					job_cards = frappe.get_all("Job Card", filters={"work_order": self.work_order,
+						"docstatus": ("!=", 2)}, fields="sum(transferred_qty) as qty", group_by="operation_id")
 
 					if job_cards:
 						qty = min([d.qty for d in job_cards])
 
-			doc.db_set('material_transferred_for_manufacturing', qty)
+			doc.db_set("material_transferred_for_manufacturing", qty)
 
 		self.set_status(update_status)
 
@@ -241,7 +241,7 @@ class JobCard(Document):
 			qty=self.total_completed_qty,
 			process_loss_qty=self.process_loss_qty,
 			job_card=self.name,
-			auto_submit=True
+			auto_submit=True,
 		)
 
 	def cancel_material_consumption_entry(self):
@@ -262,6 +262,7 @@ class JobCard(Document):
 		else:
 			self.actual_start_dt = self.actual_end_dt = get_datetime()
 
+
 @frappe.whitelist()
 def get_operation_details(work_order, operation):
 	if work_order and operation:
@@ -269,8 +270,8 @@ def get_operation_details(work_order, operation):
 			fields=["name", "idx"],
 			filters={
 				"parent": work_order,
-				"operation": operation
-			}
+				"operation": operation,
+			},
 		)
 
 
@@ -288,7 +289,7 @@ def get_operations(doctype, txt, searchfield, start, page_len, filters):
 			limit_start=start,
 			limit_page_length=page_len,
 			order_by="idx asc",
-			as_list=1
+			as_list=1,
 		)
 	else:
 		return []
@@ -313,10 +314,10 @@ def make_material_request(source_name, target_doc=None):
 			"doctype": "Material Request Item",
 			"field_map": {
 				"required_qty": "qty",
-				"uom": "stock_uom"
+				"uom": "stock_uom",
 			},
 			"postprocess": update_item,
-		}
+		},
 	}, target_doc, set_missing_values)
 
 	return doclist
@@ -330,7 +331,7 @@ def make_material_transfer(source_name, target_doc=None):
 	def set_missing_values(source, target):
 		target.purpose = "Material Transfer for Manufacture"
 		target.from_bom = 1
-		target.fg_completed_qty = source.get('for_quantity', 0) - source.get('transferred_qty', 0)
+		target.fg_completed_qty = source.get("for_quantity", 0) - source.get("transferred_qty", 0)
 		target.set_stock_entry_type()
 		target.run_method("postprocess_after_mapping")
 
@@ -339,7 +340,7 @@ def make_material_transfer(source_name, target_doc=None):
 			"doctype": "Stock Entry",
 			"field_map": {
 				"name": "job_card",
-				"for_quantity": "fg_completed_qty"
+				"for_quantity": "fg_completed_qty",
 			},
 		},
 		"Job Card Item": {
@@ -347,10 +348,10 @@ def make_material_transfer(source_name, target_doc=None):
 			"field_map": {
 				"source_warehouse": "s_warehouse",
 				"required_qty": "qty",
-				"uom": "uom"
+				"uom": "uom",
 			},
 			"postprocess": update_item,
-		}
+		},
 	}, target_doc, set_missing_values)
 
 	return doclist
@@ -388,7 +389,7 @@ def get_job_details(start, end, filters=None):
 	event_color = {
 		"Completed": "#cdf5a6",
 		"Material Transferred": "#ffdd9e",
-		"Work In Progress": "#D3D3D3"
+		"Work In Progress": "#D3D3D3",
 	}
 
 	from frappe.desk.reportview import get_filters_cond
@@ -406,17 +407,18 @@ def get_job_details(start, end, filters=None):
 	for d in job_cards:
 			subject_data = []
 			for field in ["name", "work_order", "remarks", "employee_name"]:
-				if not d.get(field): continue
+				if not d.get(field):
+					continue
 
 				subject_data.append(d.get(field))
 
 			color = event_color.get(d.status)
 			job_card_data = {
-				'from_time': d.from_time,
-				'to_time': d.to_time,
-				'name': d.name,
-				'subject': '\n'.join(subject_data),
-				'color': color if color else "#89bcde"
+				"from_time": d.from_time,
+				"to_time": d.to_time,
+				"name": d.name,
+				"subject": "\n".join(subject_data),
+				"color": color if color else "#89bcde",
 			}
 
 			events.append(job_card_data)

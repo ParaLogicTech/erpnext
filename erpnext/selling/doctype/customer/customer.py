@@ -1,42 +1,44 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import json
+
 import frappe
-from frappe.model.naming import set_name_by_naming_series
-from frappe import _, unscrub
 import frappe.defaults
-from frappe.utils import flt, cint, cstr, today, clean_whitespace, getdate, now_datetime, get_time, combine_datetime
-from erpnext.utilities.transaction_base import TransactionBase
-from erpnext.accounts.party import validate_party_accounts, get_dashboard_info, render_address
-from frappe.contacts.address_and_contact import load_address_and_contact, delete_contact_and_address
-from frappe.contacts.doctype.contact.contact import get_default_contact
+from frappe import _, unscrub
+from frappe.contacts.address_and_contact import delete_contact_and_address, load_address_and_contact
 from frappe.contacts.doctype.address.address import get_default_address
+from frappe.contacts.doctype.contact.contact import get_default_contact
 from frappe.core.doctype.notification_count.notification_count import (
 	get_notification_last_scheduled,
 	set_notification_last_scheduled,
 )
 from frappe.model.mapper import get_mapped_doc
-import json
+from frappe.model.naming import set_name_by_naming_series
+from frappe.utils import cint, clean_whitespace, combine_datetime, cstr, flt, get_time, getdate, now_datetime, today
+
+from erpnext.accounts.party import get_dashboard_info, render_address, validate_party_accounts
+from erpnext.utilities.transaction_base import TransactionBase
 
 primary_address_fields = [
-	{'customer_field': 'address_line1', 'address_field': 'address_line1'},
-	{'customer_field': 'address_line2', 'address_field': 'address_line2'},
-	{'customer_field': 'address_line3', 'address_field': 'address_line3'},
-	{'customer_field': 'city', 'address_field': 'city'},
-	{'customer_field': 'state', 'address_field': 'state'},
-	{'customer_field': 'country', 'address_field': 'country'},
-	{'customer_field': 'pincode', 'address_field': 'pincode'},
+	{"customer_field": "address_line1", "address_field": "address_line1"},
+	{"customer_field": "address_line2", "address_field": "address_line2"},
+	{"customer_field": "address_line3", "address_field": "address_line3"},
+	{"customer_field": "city", "address_field": "city"},
+	{"customer_field": "state", "address_field": "state"},
+	{"customer_field": "country", "address_field": "country"},
+	{"customer_field": "pincode", "address_field": "pincode"},
 ]
 primary_contact_fields = [
-	{'customer_field': 'salutation', 'contact_field': 'salutation'},
-	{'customer_field': 'contact_first_name', 'contact_field': 'first_name', 'default_from': 'customer_name'},
-	{'customer_field': 'contact_middle_name', 'contact_field': 'middle_name'},
-	{'customer_field': 'contact_last_name', 'contact_field': 'last_name'},
-	{'customer_field': 'mobile_no', 'contact_field': 'mobile_no'},
-	{'customer_field': 'mobile_no_2', 'contact_field': 'mobile_no_2'},
-	{'customer_field': 'phone_no', 'contact_field': 'phone'},
-	{'customer_field': 'email_id', 'contact_field': 'email_id'},
-	{'customer_field': 'email_id_2', 'contact_field': 'email_id_2'},
+	{"customer_field": "salutation", "contact_field": "salutation"},
+	{"customer_field": "contact_first_name", "contact_field": "first_name", "default_from": "customer_name"},
+	{"customer_field": "contact_middle_name", "contact_field": "middle_name"},
+	{"customer_field": "contact_last_name", "contact_field": "last_name"},
+	{"customer_field": "mobile_no", "contact_field": "mobile_no"},
+	{"customer_field": "mobile_no_2", "contact_field": "mobile_no_2"},
+	{"customer_field": "phone_no", "contact_field": "phone"},
+	{"customer_field": "email_id", "contact_field": "email_id"},
+	{"customer_field": "email_id_2", "contact_field": "email_id_2"},
 ]
 
 
@@ -51,11 +53,11 @@ class Customer(TransactionBase):
 
 	def load_dashboard_info(self):
 		info = get_dashboard_info(self.doctype, self.name, self.loyalty_program)
-		self.set_onload('dashboard_info', info)
+		self.set_onload("dashboard_info", info)
 
 	def autoname(self):
-		cust_master_name = frappe.defaults.get_global_default('cust_master_name')
-		if cust_master_name == 'Customer Name':
+		cust_master_name = frappe.defaults.get_global_default("cust_master_name")
+		if cust_master_name == "Customer Name":
 			self.customer_name = clean_whitespace(self.customer_name)
 			self.name = self.get_customer_name()
 		else:
@@ -83,8 +85,8 @@ class Customer(TransactionBase):
 		self.validate_mobile_no()
 
 		# set loyalty program tier
-		if frappe.db.exists('Customer', self.name):
-			customer = frappe.get_doc('Customer', self.name)
+		if frappe.db.exists("Customer", self.name):
+			customer = frappe.get_doc("Customer", self.name)
 			if self.loyalty_program == customer.loyalty_program and not self.loyalty_program_tier:
 				self.loyalty_program_tier = customer.loyalty_program_tier
 
@@ -118,7 +120,7 @@ class Customer(TransactionBase):
 
 	def validate_default_bank_account(self):
 		if self.default_bank_account:
-			is_company_account = frappe.db.get_value('Bank Account', self.default_bank_account, 'is_company_account')
+			is_company_account = frappe.db.get_value("Bank Account", self.default_bank_account, "is_company_account")
 			if not is_company_account:
 				frappe.throw(_("{0} is not a company bank account").format(frappe.bold(self.default_bank_account)))
 
@@ -126,15 +128,15 @@ class Customer(TransactionBase):
 		from frappe.regional.regional import _validate_duplicate_tax_id, validate_tax_ids
 		validate_tax_ids(self.tax_id, self.tax_cnic, self.tax_strn)
 
-		cnic_throw = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_cnic')
-		ntn_throw = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_ntn')
-		role_allowed_to_duplicate_customer_ntn = frappe.db.get_single_value('Selling Settings', 'role_allowed_to_duplicate_customer_ntn')
+		cnic_throw = frappe.db.get_single_value("Selling Settings", "validate_duplicate_customer_cnic")
+		ntn_throw = frappe.db.get_single_value("Selling Settings", "validate_duplicate_customer_ntn")
+		role_allowed_to_duplicate_customer_ntn = frappe.db.get_single_value("Selling Settings", "role_allowed_to_duplicate_customer_ntn")
 
 		if cnic_throw:
-			cnic_throw = self.restrict_duplicate_field('tax_cnic')
+			cnic_throw = self.restrict_duplicate_field("tax_cnic")
 
 		if ntn_throw:
-			ntn_throw = self.restrict_duplicate_field('tax_id')
+			ntn_throw = self.restrict_duplicate_field("tax_id")
 
 		if role_allowed_to_duplicate_customer_ntn in frappe.get_roles():
 			ntn_throw = False
@@ -185,7 +187,7 @@ class Customer(TransactionBase):
 		duplicate_filters = {}
 
 		throw = False
-		duplicate_validation = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_mobile')
+		duplicate_validation = frappe.db.get_single_value("Selling Settings", "validate_duplicate_customer_mobile")
 		if duplicate_validation == "For Individual Customers":
 			if self.customer_type == "Individual":
 				duplicate_filters["customer_type"] = "Individual"
@@ -210,7 +212,7 @@ class Customer(TransactionBase):
 		duplicate_filters = {}
 
 		throw = False
-		duplicate_validation = frappe.db.get_single_value('Selling Settings', 'validate_duplicate_customer_email')
+		duplicate_validation = frappe.db.get_single_value("Selling Settings", "validate_duplicate_customer_email")
 		if duplicate_validation == "For Individual Customers":
 			if self.customer_type == "Individual":
 				duplicate_filters["customer_type"] = "Individual"
@@ -237,7 +239,7 @@ class Customer(TransactionBase):
 			push_or_pull = "pull"
 
 		contact = None
-		data_provided = any([self.get(d['customer_field']) for d in primary_contact_fields])
+		data_provided = any([self.get(d["customer_field"]) for d in primary_contact_fields])
 
 		if not self.customer_primary_contact and data_provided:
 			contact = make_contact(self)
@@ -259,27 +261,27 @@ class Customer(TransactionBase):
 			contact.add_link("Customer", self.name, update=True)
 
 	def pull_primary_contact(self, contact):
-		to_set = {'customer_primary_contact': contact.name}
+		to_set = {"customer_primary_contact": contact.name}
 		for d in primary_contact_fields:
-			if self.meta.has_field(d['customer_field']):
-				to_set[d['customer_field']] = contact.get(d['contact_field']) or None
+			if self.meta.has_field(d["customer_field"]):
+				to_set[d["customer_field"]] = contact.get(d["contact_field"]) or None
 
 		self.update(to_set)
 		frappe.db.set_value("Customer", self.name, to_set, None,
 			notify=cint(self.flags.pull_contact), update_modified=cint(self.flags.pull_contact))
 
 	def push_primary_contact(self, contact):
-		data_changed = any([cstr(self.get(d['customer_field'])) != cstr(contact.get(d['contact_field']))
+		data_changed = any([cstr(self.get(d["customer_field"])) != cstr(contact.get(d["contact_field"]))
 			for d in primary_contact_fields])
 
 		if data_changed:
 			for field in primary_contact_fields:
-				if not field.get('custom_setter') and self.meta.has_field(field['customer_field']):
-					value = self.get(field['customer_field'])
-					if not value and field.get('default_from'):
-						value = self.get(field.get('default_from'))
+				if not field.get("custom_setter") and self.meta.has_field(field["customer_field"]):
+					value = self.get(field["customer_field"])
+					if not value and field.get("default_from"):
+						value = self.get(field.get("default_from"))
 
-					contact.set(field['contact_field'], value)
+					contact.set(field["contact_field"], value)
 
 			contact.flags.from_linked_document = ("Customer", self.name)
 			contact.save(ignore_permissions=True)
@@ -292,7 +294,7 @@ class Customer(TransactionBase):
 			push_or_pull = "pull"
 
 		address = None
-		data_provided = any([self.get(d['customer_field']) for d in primary_address_fields])
+		data_provided = any([self.get(d["customer_field"]) for d in primary_address_fields])
 
 		if not self.customer_primary_address and data_provided and self.address_line1:
 			address = make_address(self)
@@ -314,27 +316,27 @@ class Customer(TransactionBase):
 			address.add_link("Customer", self.name, update=True)
 
 	def pull_primary_address(self, address):
-		to_set = {'customer_primary_address': address.name, 'primary_address': render_address(address.as_dict())}
+		to_set = {"customer_primary_address": address.name, "primary_address": render_address(address.as_dict())}
 		for d in primary_address_fields:
-			if self.meta.has_field(d['customer_field']):
-				to_set[d['customer_field']] = address.get(d['address_field']) or None
+			if self.meta.has_field(d["customer_field"]):
+				to_set[d["customer_field"]] = address.get(d["address_field"]) or None
 
 		self.update(to_set)
 		frappe.db.set_value("Customer", self.name, to_set, None,
 			notify=cint(self.flags.pull_address), update_modified=cint(self.flags.pull_address))
 
 	def push_primary_address(self, address):
-		data_changed = any([cstr(self.get(d['customer_field'])) != cstr(address.get(d['address_field']))
+		data_changed = any([cstr(self.get(d["customer_field"])) != cstr(address.get(d["address_field"]))
 			for d in primary_address_fields])
 
 		if data_changed:
 			for field in primary_address_fields:
-				if not field.get('custom_setter') and self.meta.has_field(field['customer_field']):
-					value = self.get(field['customer_field'])
-					if not value and field.get('default_from'):
-						value = self.get(field.get('default_from'))
+				if not field.get("custom_setter") and self.meta.has_field(field["customer_field"]):
+					value = self.get(field["customer_field"])
+					if not value and field.get("default_from"):
+						value = self.get(field.get("default_from"))
 
-					address.set(field['address_field'], value)
+					address.set(field["address_field"], value)
 
 			address.flags.from_linked_document = ("Customer", self.name)
 			address.save(ignore_permissions=True)
@@ -350,38 +352,38 @@ class Customer(TransactionBase):
 	def assign_lead_address_contact(self):
 		if self.lead_name:
 			# Assign Addresses
-			address_names = frappe.get_all('Dynamic Link', filters={
+			address_names = frappe.get_all("Dynamic Link", filters={
 				"parenttype": "Address",
 				"link_doctype": "Lead",
-				"link_name": self.lead_name
+				"link_name": self.lead_name,
 			}, fields=["parent as name"])
 
 			for address_name in address_names:
-				address = frappe.get_doc('Address', address_name.get('name'))
-				if not address.has_link('Customer', self.name):
-					address.append('links', dict(link_doctype='Customer', link_name=self.name))
+				address = frappe.get_doc("Address", address_name.get("name"))
+				if not address.has_link("Customer", self.name):
+					address.append("links", dict(link_doctype="Customer", link_name=self.name))
 					address.save()
 
 			# Assign Contacts
-			contact_names = frappe.get_all('Dynamic Link', filters={
+			contact_names = frappe.get_all("Dynamic Link", filters={
 				"parenttype": "Contact",
 				"link_doctype": "Lead",
-				"link_name": self.lead_name
+				"link_name": self.lead_name,
 			}, fields=["parent as name"])
 
 			for contact_name in contact_names:
-				contact = frappe.get_doc('Contact', contact_name.get('name'))
-				if not contact.has_link('Customer', self.name):
-					contact.append('links', dict(link_doctype='Customer', link_name=self.name))
+				contact = frappe.get_doc("Contact", contact_name.get("name"))
+				if not contact.has_link("Customer", self.name):
+					contact.append("links", dict(link_doctype="Customer", link_name=self.name))
 					contact.save()
 
 	def validate_credit_limit_on_change(self):
 		if self.get("__islocal") or not self.credit_limits:
 			return
-		
+
 		past_credit_limits = [d.credit_limit
-			for d in frappe.db.get_all("Customer Credit Limit", filters={'parent': self.name}, fields=["credit_limit"], order_by="company")]
-		
+			for d in frappe.db.get_all("Customer Credit Limit", filters={"parent": self.name}, fields=["credit_limit"], order_by="company")]
+
 		current_credit_limits = [d.credit_limit for d in sorted(self.credit_limits, key=lambda k: k.company)]
 
 		if past_credit_limits == current_credit_limits:
@@ -404,34 +406,36 @@ class Customer(TransactionBase):
 				set customer_primary_contact=null, customer_primary_address=null
 				where name=%s""", self.name)
 
-		delete_contact_and_address('Customer', self.name)
+		delete_contact_and_address("Customer", self.name)
 		self.unlink_leads()
 
 	def unlink_leads(self):
 		if self.lead_name:
-			self.db_set('lead_name', None)
+			self.db_set("lead_name", None)
 
-		customer_leads = frappe.get_all("Lead", {'customer': self.name})
+		customer_leads = frappe.get_all("Lead", {"customer": self.name})
 		for d in customer_leads:
 			doc = frappe.get_doc("Lead", d.name)
 			doc.update_customer_reference(None)
 			doc.notify_update()
 
 	def after_rename(self, olddn, newdn, merge=False):
-		if frappe.defaults.get_global_default('cust_master_name') == 'Customer Name':
+		if frappe.defaults.get_global_default("cust_master_name") == "Customer Name":
 			self.db_set("customer_name", newdn)
 
 	def set_loyalty_program(self):
-		if self.loyalty_program: return
+		if self.loyalty_program:
+			return
 		loyalty_program = get_loyalty_programs(self)
-		if not loyalty_program: return
+		if not loyalty_program:
+			return
 		if len(loyalty_program) == 1:
 			self.loyalty_program = loyalty_program[0]
 		else:
 			frappe.msgprint(_("Multiple Loyalty Program found for the Customer. Please select manually."))
 
 	def set_customer_override_values(self):
-		override_values = get_customer_override_values(self.as_dict())['values']
+		override_values = get_customer_override_values(self.as_dict())["values"]
 		self.update(override_values)
 
 	def validate_customer_override_values(self):
@@ -466,8 +470,8 @@ def make_quotation(source_name, target_doc=None):
 			},
 			"field_no_map": [
 				"insurance_company",
-			]
-		}
+			],
+		},
 	}, target_doc, set_missing_values)
 
 
@@ -485,14 +489,14 @@ def make_opportunity(source_name, target_doc=None):
 				"customer_name": "customer_name",
 				"customer_primary_contact": "contact_person",
 				"customer_primary_address": "customer_address",
-			}
-		}
+			},
+		},
 	}, target_doc, set_missing_values)
 
 
 @frappe.whitelist()
 def get_loyalty_programs(doc):
-	''' returns applicable loyalty programs for a customer '''
+	""" returns applicable loyalty programs for a customer """
 	from frappe.desk.treeview import get_children
 
 	lp_details = []
@@ -523,12 +527,11 @@ def check_credit_limit(customer, company, ignore_outstanding_sales_order=False, 
 			.format(customer, customer_outstanding, credit_limit))
 
 		# If not authorized person raise exception
-		credit_controller = frappe.db.get_value('Accounts Settings', None, 'credit_controller')
+		credit_controller = frappe.db.get_value("Accounts Settings", None, "credit_controller")
 		if not credit_controller or credit_controller not in frappe.get_roles():
-			frappe.throw(_("Credit limit has been crossed for customer {1}, " \
+			frappe.throw(_("Credit limit has been crossed for customer {1}, "
 			"Please contact to the user who have Sales Master Manager {0} role")
 				.format(" / " + credit_controller if credit_controller else "", customer))
-		
 
 
 def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=False, cost_center=None, no_sum=False):
@@ -537,7 +540,7 @@ def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=F
 	cond = ""
 	if cost_center:
 		lft, rgt = frappe.get_cached_value("Cost Center",
-			cost_center, ['lft', 'rgt'])
+			cost_center, ["lft", "rgt"])
 
 		cond = """ and cost_center in (select name from `tabCost Center` where
 			lft >= {0} and rgt <= {1})""".format(lft, rgt)
@@ -583,7 +586,7 @@ def get_customer_outstanding(customer, company, ignore_outstanding_sales_order=F
 			where delivery_note_item = %s and docstatus = 1""", dn_item.name)[0][0]
 
 		if flt(dn_item.amount) > flt(si_amount) and dn_item.base_net_total:
-			outstanding_based_on_dn += ((flt(dn_item.amount) - flt(si_amount)) \
+			outstanding_based_on_dn += ((flt(dn_item.amount) - flt(si_amount))
 				/ dn_item.base_net_total) * dn_item.base_grand_total
 	if not no_sum:
 		return outstanding_based_on_gle + outstanding_based_on_so + outstanding_based_on_dn
@@ -596,15 +599,15 @@ def get_credit_limit(customer, company):
 
 	if customer:
 		credit_limit = frappe.db.get_value("Customer Credit Limit",
-			{'parent': customer, 'parenttype': 'Customer', 'company': company}, 'credit_limit')
+			{"parent": customer, "parenttype": "Customer", "company": company}, "credit_limit")
 
 		if not credit_limit:
-			customer_group = frappe.get_cached_value("Customer", customer, 'customer_group')
+			customer_group = frappe.get_cached_value("Customer", customer, "customer_group")
 			credit_limit = frappe.db.get_value("Customer Credit Limit",
-				{'parent': customer_group, 'parenttype': 'Customer Group', 'company': company}, 'credit_limit')
+				{"parent": customer_group, "parenttype": "Customer Group", "company": company}, "credit_limit")
 
 	if not credit_limit:
-		credit_limit = frappe.get_cached_value('Company',  company,  "credit_limit")
+		credit_limit = frappe.get_cached_value("Company", company, "credit_limit")
 
 	return flt(credit_limit)
 
@@ -612,32 +615,32 @@ def get_credit_limit(customer, company):
 def make_contact(args, is_primary_contact=1):
 	contact = frappe.new_doc("Contact")
 	contact.update({
-		'is_primary_contact': is_primary_contact,
-		'links': [{
-			'link_doctype': args.get('doctype'),
-			'link_name': args.get('name')
-		}]
+		"is_primary_contact": is_primary_contact,
+		"links": [{
+			"link_doctype": args.get("doctype"),
+			"link_name": args.get("name"),
+		}],
 	})
 
-	if args.get('contact_first_name'):
-		contact.first_name = args.get('contact_first_name')
-		contact.middle_name = args.get('contact_middle_name')
-		contact.last_name = args.get('contact_last_name')
+	if args.get("contact_first_name"):
+		contact.first_name = args.get("contact_first_name")
+		contact.middle_name = args.get("contact_middle_name")
+		contact.last_name = args.get("contact_last_name")
 	else:
-		contact.first_name = args.get('customer_name') or args.get('name')
+		contact.first_name = args.get("customer_name") or args.get("name")
 
-	if args.get('email_id'):
-		contact.add_email(args.get('email_id'), is_primary=True)
-	if args.get('email_id_2'):
-		contact.add_email(args.get('email_id_2'))
-	if args.get('mobile_no'):
-		contact.add_phone(args.get('mobile_no'), is_primary_mobile_no=True)
-	if args.get('mobile_no_2'):
-		contact.add_phone(args.get('mobile_no_2'), is_primary_mobile_no=True)
-	if args.get('phone_no'):
-		contact.add_phone(args.get('phone_no'), is_primary_phone=True)
+	if args.get("email_id"):
+		contact.add_email(args.get("email_id"), is_primary=True)
+	if args.get("email_id_2"):
+		contact.add_email(args.get("email_id_2"))
+	if args.get("mobile_no"):
+		contact.add_phone(args.get("mobile_no"), is_primary_mobile_no=True)
+	if args.get("mobile_no_2"):
+		contact.add_phone(args.get("mobile_no_2"), is_primary_mobile_no=True)
+	if args.get("phone_no"):
+		contact.add_phone(args.get("phone_no"), is_primary_phone=True)
 
-	contact.flags.from_linked_document = (args.get('doctype'), args.get('name'))
+	contact.flags.from_linked_document = (args.get("doctype"), args.get("name"))
 	contact.insert(ignore_permissions=True)
 
 	return contact
@@ -645,33 +648,33 @@ def make_contact(args, is_primary_contact=1):
 
 def make_address(args, is_primary_address=1):
 	reqd_fields = []
-	for field in ['city', 'country']:
+	for field in ["city", "country"]:
 		if not args.get(field):
-			reqd_fields.append( '<li>' + field.title() + '</li>')
+			reqd_fields.append("<li>" + field.title() + "</li>")
 
 	if reqd_fields:
 		msg = _("Following fields are mandatory to create address:")
-		frappe.throw("{0} <br><br> <ul>{1}</ul>".format(msg, '\n'.join(reqd_fields)),
-			title = _("Missing Values Required"))
+		frappe.throw("{0} <br><br> <ul>{1}</ul>".format(msg, "\n".join(reqd_fields)),
+			title=_("Missing Values Required"))
 
 	address = frappe.new_doc("Address")
 	address.update({
-		'address_title': args.get('customer_name') or args.get('name'),
-		'links': [{
-			'link_doctype': args.get('doctype'),
-			'link_name': args.get('name')
-		}]
+		"address_title": args.get("customer_name") or args.get("name"),
+		"links": [{
+			"link_doctype": args.get("doctype"),
+			"link_name": args.get("name"),
+		}],
 	})
 
 	for field in primary_address_fields:
-		if not field.get('custom_setter'):
-			value = args.get(field['customer_field'])
-			if not value and field.get('default_from'):
-				value = args.get(field.get('default_from'))
+		if not field.get("custom_setter"):
+			value = args.get(field["customer_field"])
+			if not value and field.get("default_from"):
+				value = args.get(field.get("default_from"))
 
-			address.set(field['address_field'], value)
+			address.set(field["address_field"], value)
 
-	address.flags.from_linked_document = (args.get('doctype'), args.get('name'))
+	address.flags.from_linked_document = (args.get("doctype"), args.get("name"))
 	address.insert(ignore_permissions=True)
 
 	return address
@@ -695,9 +698,9 @@ def get_customer_primary_contact(doctype, txt, searchfield, start, page_len, fil
 def get_primary_address_details(address_name):
 	doc = frappe.get_doc("Address", address_name)
 	doc.check_permission()
-	out = {'primary_address': render_address(doc.as_dict())}
+	out = {"primary_address": render_address(doc.as_dict())}
 	for field in primary_address_fields:
-		out[field['customer_field']] = doc.get(field['address_field'])
+		out[field["customer_field"]] = doc.get(field["address_field"])
 
 	return out
 
@@ -708,7 +711,7 @@ def get_primary_contact_details(contact_name):
 	doc.check_permission()
 	out = {}
 	for field in primary_contact_fields:
-		out[field['customer_field']] = doc.get(field['contact_field'])
+		out[field["customer_field"]] = doc.get(field["contact_field"])
 
 	return out
 
@@ -722,12 +725,12 @@ def get_customer_override_values(args, validate=False):
 
 	override_values = frappe._dict()
 	customer_fields = {
-		'customer_type': 'Data',
-		'cash_billing': 'YesNo',
-		'is_goodwill_customer': 'YesNo',
+		"customer_type": "Data",
+		"cash_billing": "YesNo",
+		"is_goodwill_customer": "YesNo",
 	}
 
-	hooks = frappe.get_hooks('update_customer_override_fields')
+	hooks = frappe.get_hooks("update_customer_override_fields")
 	for method in hooks:
 		frappe.get_attr(method)(customer_fields, args, validate)
 
@@ -749,8 +752,8 @@ def get_customer_override_values(args, validate=False):
 				source_value = doc.get(source_fieldname)
 				if source_value:
 					target_value = source_value
-					if fieldtype == 'YesNo':
-						target_value = cint(source_value == 'Yes')
+					if fieldtype == "YesNo":
+						target_value = cint(source_value == "Yes")
 
 					if validate and target_value != args.get(target_fieldname):
 						throw_override_must_be(doc, target_fieldname, source_value)
@@ -764,8 +767,8 @@ def get_customer_override_values(args, validate=False):
 		current_customer_group_name = custmer_group.parent_customer_group
 
 	return {
-		'fieldnames': list(customer_fields.keys()),
-		'values': override_values
+		"fieldnames": list(customer_fields.keys()),
+		"values": override_values,
 	}
 
 
@@ -867,7 +870,7 @@ def get_customers_for_birthday_notifications(notification_date=None):
 	""", {
 		"day": notification_date.day,
 		"month": notification_date.month,
-		"date_today": notification_date
+		"date_today": notification_date,
 	}, as_dict=1)
 
 	return customer_birthday_data

@@ -9,7 +9,7 @@ class website_maker:
 		self.args = args
 		self.company = args.company_name
 		self.tagline = args.company_tagline
-		self.user = args.get('email')
+		self.user = args.get("email")
 		self.make_website_settings()
 
 	def make_website_settings(self):

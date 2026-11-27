@@ -3,6 +3,7 @@
 
 import frappe
 
+
 def execute():
 	item_numeric_attributes = frappe.db.sql("""
 		select name, numeric_values, from_range, to_range, increment
@@ -29,6 +30,6 @@ def execute():
 				numeric_values = %(numeric_values)s
 			where
 				attribute = %(name)s
-				and exists(select name from tabItem 
+				and exists(select name from tabItem
 					where name=`tabItem Variant Attribute`.parent and has_variants=1)
 		""", d)

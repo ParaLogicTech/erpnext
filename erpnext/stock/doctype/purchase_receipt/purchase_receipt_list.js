@@ -1,4 +1,4 @@
-frappe.listview_settings['Purchase Receipt'] = {
+frappe.listview_settings["Purchase Receipt"] = {
 	add_fields: [
 		"supplier", "supplier_name",
 		"is_return", "status", "billing_status",

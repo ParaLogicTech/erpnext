@@ -2,17 +2,18 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe import _
-from erpnext.utilities.transaction_base import TransactionBase
-from dateutil.relativedelta import relativedelta
-from frappe.utils import add_days, getdate, get_time, now_datetime, combine_datetime, add_to_date, cstr, cint
-from erpnext.accounts.party import _get_contact_details
 from crm.crm.utils import get_primary_contact
-from frappe.model.document import Document
+from dateutil.relativedelta import relativedelta
+from frappe import _
 from frappe.core.doctype.notification_count.notification_count import (
 	get_notification_last_scheduled,
 	set_notification_last_scheduled,
 )
+from frappe.model.document import Document
+from frappe.utils import add_days, add_to_date, cint, combine_datetime, cstr, get_time, getdate, now_datetime
+
+from erpnext.accounts.party import _get_contact_details
+from erpnext.utilities.transaction_base import TransactionBase
 
 
 class MaintenanceSchedule(TransactionBase):
@@ -27,7 +28,7 @@ class MaintenanceSchedule(TransactionBase):
 	def set_contact_details(self):
 		force = False
 		if not self.contact_person and self.customer:
-			contact = get_primary_contact('Customer', self.customer)
+			contact = get_primary_contact("Customer", self.customer)
 			self.contact_person = contact
 			force = True
 
@@ -53,12 +54,12 @@ class MaintenanceSchedule(TransactionBase):
 				frappe.throw(_("Row {0}: Duplicate schedule found".format(d.idx)))
 
 	def sort_schedules(self):
-		self.schedules.sort(key=lambda x: x.get('scheduled_date'))
+		self.schedules.sort(key=lambda x: x.get("scheduled_date"))
 		for index, d in enumerate(self.schedules):
 			d.idx = index + 1
 
 	def adjust_scheduled_date_for_holiday(self, scheduled_date):
-		from erpnext.hr.doctype.holiday_list.holiday_list import get_default_holiday_list, adjust_date_for_holidays
+		from erpnext.hr.doctype.holiday_list.holiday_list import adjust_date_for_holidays, get_default_holiday_list
 
 		holiday_list = frappe.get_cached_value("Projects Settings", None, "maintenance_schedule_holiday_list")
 		if not holiday_list:
@@ -152,7 +153,7 @@ def auto_schedule_next_service_templates():
 			schedule.serial_no,
 			service_type="Maintenance",
 			args={"reference_date": schedule_date},
-			overwrite_existing=False
+			overwrite_existing=False,
 		)
 
 
@@ -177,20 +178,20 @@ def schedule_next_service_template(
 	doc = get_maintenance_schedule_doc(serial_no)
 
 	schedule = frappe._dict({
-		'service_template': template_details.next_service_template,
-		'service_type': service_type,
-		'reference_doctype': args.reference_doctype,
-		'reference_name': args.reference_name,
-		'reference_date': getdate(args.reference_date)
+		"service_template": template_details.next_service_template,
+		"service_type": service_type,
+		"reference_doctype": args.reference_doctype,
+		"reference_name": args.reference_name,
+		"reference_date": getdate(args.reference_date),
 	})
 	schedule.scheduled_date = schedule.reference_date + relativedelta(months=template_details.next_due_after)
 
 	remind_days_before = cint(frappe.get_cached_value("Projects Settings", None, "maintenance_reminder_days_before"))
 	future_reference_date = add_days(schedule.reference_date, remind_days_before)
-	future_rows = [d for d in doc.get('schedules') if getdate(d.scheduled_date) > future_reference_date]
+	future_rows = [d for d in doc.get("schedules") if getdate(d.scheduled_date) > future_reference_date]
 
 	if service_type == "Maintenance":
-		existing_row = [d for d in doc.get('schedules') if (
+		existing_row = [d for d in doc.get("schedules") if (
 			d.reference_doctype == schedule.reference_doctype
 			and d.reference_name == schedule.reference_name
 			and d.service_type == "Maintenance"
@@ -198,7 +199,7 @@ def schedule_next_service_template(
 		if not existing_row:
 			existing_row = [d for d in future_rows if d.service_type == "Maintenance"]
 	else:
-		existing_row = [d for d in doc.get('schedules') if (
+		existing_row = [d for d in doc.get("schedules") if (
 			d.reference_doctype == schedule.reference_doctype
 			and d.reference_name == schedule.reference_name
 			and d.service_template == template_details.next_service_template
@@ -214,7 +215,7 @@ def schedule_next_service_template(
 	if existing_row:
 		existing_row.update(schedule)
 	else:
-		doc.append('schedules', schedule)
+		doc.append("schedules", schedule)
 
 	update_customer_and_contact(args, doc)
 	doc.save(ignore_permissions=True)
@@ -230,10 +231,10 @@ def schedule_service_templates_after_delivery(serial_no, args):
 		frappe.throw(_("Invalid reference for Maintenance Schedule after Delivery"))
 
 	schedule_template = frappe._dict({
-		'reference_doctype': args.reference_doctype,
-		'reference_name': args.reference_name,
-		'reference_date': getdate(args.reference_date),
-		'service_type': 'Maintenance',
+		"reference_doctype": args.reference_doctype,
+		"reference_name": args.reference_name,
+		"reference_date": getdate(args.reference_date),
+		"service_type": "Maintenance",
 	})
 
 	service_templates = get_service_templates_due_after_delivery(item_code)
@@ -243,7 +244,7 @@ def schedule_service_templates_after_delivery(serial_no, args):
 
 	update_customer_and_contact(args, doc)
 
-	existing_templates = [d.get('service_template') for d in doc.get('schedules', []) if d.get('service_template')]
+	existing_templates = [d.get("service_template") for d in doc.get("schedules", []) if d.get("service_template")]
 
 	for d in service_templates:
 		if d.name not in existing_templates:
@@ -251,7 +252,7 @@ def schedule_service_templates_after_delivery(serial_no, args):
 			schedule.service_template = d.name
 			schedule.scheduled_date = schedule.reference_date + relativedelta(months=d.due_after_delivery_date)
 			schedule.scheduled_date = doc.adjust_scheduled_date_for_holiday(schedule.scheduled_date)
-			doc.append('schedules', schedule)
+			doc.append("schedules", schedule)
 
 			modified = True
 
@@ -262,7 +263,7 @@ def schedule_service_templates_after_delivery(serial_no, args):
 def remove_schedule_for_reference_document(serial_no, reference_doctype, reference_name):
 	doc = get_maintenance_schedule_doc(serial_no)
 
-	if not doc.get('schedules'):
+	if not doc.get("schedules"):
 		return
 
 	to_remove = [d for d in doc.schedules if d.reference_doctype == reference_doctype and d.reference_name == reference_name]
@@ -274,30 +275,30 @@ def remove_schedule_for_reference_document(serial_no, reference_doctype, referen
 
 
 def get_service_templates_due_after_delivery(item_code):
-	filters = {'due_after_delivery_date': ['>', 0]}
+	filters = {"due_after_delivery_date": [">", 0]}
 
-	fields = ['name', 'due_after_delivery_date']
+	fields = ["name", "due_after_delivery_date"]
 	order_by = "due_after_delivery_date"
 
-	filters['applies_to_item'] = item_code
-	service_templates = frappe.get_all('Service Template', filters=filters, fields=fields, order_by=order_by)
+	filters["applies_to_item"] = item_code
+	service_templates = frappe.get_all("Service Template", filters=filters, fields=fields, order_by=order_by)
 
 	if not service_templates:
 		variant_of = frappe.get_cached_value("Item", item_code, "variant_of")
 		if variant_of:
 			filters["applies_to_item"] = variant_of
-			service_templates = frappe.get_all('Service Template', filters=filters, fields=fields, order_by=order_by)
+			service_templates = frappe.get_all("Service Template", filters=filters, fields=fields, order_by=order_by)
 
 	return service_templates
 
 
 def get_maintenance_schedule_doc(serial_no):
-	schedule_name = frappe.db.get_value('Maintenance Schedule', filters={'serial_no': serial_no})
+	schedule_name = frappe.db.get_value("Maintenance Schedule", filters={"serial_no": serial_no})
 
 	if schedule_name:
-		doc = frappe.get_doc('Maintenance Schedule', schedule_name)
+		doc = frappe.get_doc("Maintenance Schedule", schedule_name)
 	else:
-		doc = frappe.new_doc('Maintenance Schedule')
+		doc = frappe.new_doc("Maintenance Schedule")
 		doc.serial_no = serial_no
 		doc.item_code, doc.item_name = frappe.db.get_value("Serial No", serial_no, ["item_code", "item_name"])
 
@@ -305,8 +306,8 @@ def get_maintenance_schedule_doc(serial_no):
 
 
 def update_customer_and_contact(source, target_doc):
-	customer_fields = ['customer', 'customer_name']
-	contact_fields = ['contact_person', 'contact_display', 'contact_mobile', 'contact_phone', 'contact_email']
+	customer_fields = ["customer", "customer_name"]
+	contact_fields = ["contact_person", "contact_display", "contact_mobile", "contact_phone", "contact_email"]
 
 	if source.customer:
 		for f in customer_fields:
@@ -321,10 +322,10 @@ def update_customer_and_contact(source, target_doc):
 
 
 def get_maintenance_schedule_from_serial_no(serial_no):
-	schedule_name = frappe.db.get_value('Maintenance Schedule', filters={'serial_no': serial_no})
+	schedule_name = frappe.db.get_value("Maintenance Schedule", filters={"serial_no": serial_no})
 
 	if schedule_name:
-		schedule_doc = frappe.get_doc('Maintenance Schedule', schedule_name)
+		schedule_doc = frappe.get_doc("Maintenance Schedule", schedule_name)
 		return schedule_doc.schedules
 
 
@@ -350,12 +351,12 @@ def trigger_maintenance_schedule_opportunities(for_date=None):
 
 def get_maintenance_schedule_opportunity(maintenance_schedule, row):
 	maintenance_opp = frappe.db.get_value("Opportunity", filters={
-		'maintenance_schedule': maintenance_schedule,
-		'maintenance_schedule_row': row
+		"maintenance_schedule": maintenance_schedule,
+		"maintenance_schedule_row": row,
 	})
 
 	if maintenance_opp:
-		return frappe.get_doc('Opportunity', maintenance_opp)
+		return frappe.get_doc("Opportunity", maintenance_opp)
 	else:
 		return make_maintenance_opportunity(maintenance_schedule, row)
 
@@ -365,21 +366,21 @@ def make_maintenance_opportunity(maintenance_schedule, row):
 	if isinstance(maintenance_schedule, Document):
 		schedule_doc = maintenance_schedule
 	else:
-		schedule_doc = frappe.get_doc('Maintenance Schedule', maintenance_schedule)
+		schedule_doc = frappe.get_doc("Maintenance Schedule", maintenance_schedule)
 
-	schedule = schedule_doc.getone('schedules', {'name': row})
+	schedule = schedule_doc.getone("schedules", {"name": row})
 	if not schedule:
 		frappe.throw(_("Invalid Maintenance Schedule Row Provided"))
 
 	default_opportunity_type = frappe.get_cached_value("Projects Settings", None, "default_opportunity_type_for_schedule")
 
-	target_doc = frappe.new_doc('Opportunity')
+	target_doc = frappe.new_doc("Opportunity")
 
-	target_doc.opportunity_from = 'Customer'
+	target_doc.opportunity_from = "Customer"
 	target_doc.party_name = schedule_doc.customer
 	target_doc.transaction_date = getdate()
 	target_doc.due_date = schedule.scheduled_date
-	target_doc.status = 'Open'
+	target_doc.status = "Open"
 	target_doc.opportunity_type = default_opportunity_type
 	target_doc.applies_to_serial_no = schedule_doc.serial_no
 
@@ -464,8 +465,8 @@ def get_maintenance_schedules_for_reminder_notification(reminder_date=None):
 			AND nc.last_scheduled_dt is null
 			AND nc.last_sent_dt is null
 	""", {
-		'schedule_date': schedule_date,
-		'reminder_date': reminder_date,
+		"schedule_date": schedule_date,
+		"reminder_date": reminder_date,
 	}, as_dict=1)
 
 	return schedule_to_remind

@@ -1,10 +1,11 @@
 import frappe
+
 from erpnext.accounts.party import get_party_name
 
 
 def execute():
-	frappe.reload_doc('accounts', 'doctype', 'journal_entry')
-	frappe.reload_doc('accounts', 'doctype', 'journal_entry_account')
+	frappe.reload_doc("accounts", "doctype", "journal_entry")
+	frappe.reload_doc("accounts", "doctype", "journal_entry_account")
 
 	names = frappe.db.sql_list("""
 		select distinct parent

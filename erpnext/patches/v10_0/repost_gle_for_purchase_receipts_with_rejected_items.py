@@ -1,7 +1,10 @@
 # Copyright (c) 2017, Frappe and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
+
+import erpnext
+
 
 def execute():
 	for company in frappe.get_all("Company"):
@@ -24,7 +27,6 @@ def execute():
 
 			doc.docstatus = 2
 			doc.make_gl_entries_on_cancel(repost_future_gle=False)
-
 
 			# update gl entries for submit state of PR
 			doc.docstatus = 1

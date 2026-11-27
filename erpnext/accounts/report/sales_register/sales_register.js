@@ -48,7 +48,7 @@ frappe.query_reports["Sales Register"] = {
 			"fieldtype": "Link",
 			"options": "Cost Center",
 			get_query: () => {
-				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+				return {filters: {company: frappe.query_report.get_filter_value("company")}};
 			},
 		},
 		{
@@ -57,7 +57,7 @@ frappe.query_reports["Sales Register"] = {
 			"fieldtype": "Link",
 			"options": "Branch",
 		},
-	]
-}
+	],
+};
 
-erpnext.utils.add_dimensions('Sales Register', 8);
+erpnext.utils.add_dimensions("Sales Register", 8);

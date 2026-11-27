@@ -59,10 +59,10 @@ frappe.ui.form.on("Bank Reconciliation", {
 
 	get_route_fields(frm) {
 		let route_fields = [
-			'bank_account',
-			'from_date',
-			'to_date',
-			'allow_corrections',
+			"bank_account",
+			"from_date",
+			"to_date",
+			"allow_corrections",
 		];
 
 		let meta = frappe.get_meta(frm.doc.doctype);
@@ -100,7 +100,7 @@ frappe.ui.form.on("Bank Reconciliation", {
 				bank_account: frm.doc.bank_account,
 				from_date: frm.doc.from_date,
 				to_date: frm.doc.to_date,
-			}
+			};
 			frappe.open_in_new_tab = true;
 			frappe.set_route("query-report", "Bank Reconciliation Statement");
 		}, __("Report"));
@@ -120,7 +120,7 @@ frappe.ui.form.on("Bank Reconciliation", {
 				filters: {
 					"company": frm.doc.company,
 					"is_company_account": 1,
-				}
+				},
 			};
 		});
 
@@ -129,8 +129,8 @@ frappe.ui.form.on("Bank Reconciliation", {
 				filters: {
 					"company": frm.doc.company,
 					"account_type": ["in", ["Bank", "Cash"]],
-					"is_group": 0
-				}
+					"is_group": 0,
+				},
 			};
 		});
 
@@ -139,8 +139,8 @@ frappe.ui.form.on("Bank Reconciliation", {
 				filters: {
 					"company": frm.doc.company,
 					"account_type": ["in", ["Bank", "Cash"]],
-					"is_group": 0
-				}
+					"is_group": 0,
+				},
 			};
 		});
 	},
@@ -154,24 +154,24 @@ frappe.ui.form.on("Bank Reconciliation", {
 
 		cleared_amount_df.formatter = (value, df, options, doc) => {
 			return erpnext.utils.banking_amount_formatter(value, df, options, doc);
-		}
+		};
 		cleared_incoming_df.formatter = (value, df, options, doc) => {
 			return erpnext.utils.banking_amount_formatter(value, df, options, doc, "var(--green-800)");
-		}
+		};
 		cleared_outgoing_df.formatter = (value, df, options, doc) => {
 			return erpnext.utils.banking_amount_formatter(value, df, options, doc, "var(--red-700)");
-		}
+		};
 		difference_df.formatter = (value, df, options, doc) => {
 			return erpnext.utils.banking_amount_formatter(value, df, options, doc, "var(--red-700)", "var(--green-800)");
-		}
+		};
 		row_amount_df.formatter = (value, df, options, doc) => {
 			return erpnext.utils.banking_amount_formatter(value, df, options, doc);
-		}
+		};
 	},
 
 	setup_row_checkbox_selection(frm) {
 		// reconcile when the row is selected or deselected
-		frm.fields_dict.payment_entries.grid.wrapper.on('click', '.grid-row-check', (e) => {
+		frm.fields_dict.payment_entries.grid.wrapper.on("click", ".grid-row-check", (e) => {
 			const $check = $(e.currentTarget);
 			const is_select_all = $check.parents(".grid-heading-row:first").length !== 0;
 			const docname = $check.parents(".grid-row:first")?.attr("data-name");
@@ -261,7 +261,7 @@ frappe.ui.form.on("Bank Reconciliation", {
 				},
 				callback: (r) => {
 					frm.set_value("opening_balance", flt(r.message));
-				}
+				},
 			});
 		} else {
 			frm.set_value("opening_balance", 0);
@@ -277,7 +277,7 @@ frappe.ui.form.on("Bank Reconciliation", {
 				},
 				callback: (r) => {
 					frm.set_value("last_clearance_date", r.message || null);
-				}
+				},
 			});
 		} else {
 			frm.set_value("last_clearance_date", null);
@@ -294,7 +294,7 @@ frappe.ui.form.on("Bank Reconciliation", {
 				frm.events.reset_checked(frm);
 				frm.events.calculate_totals(frm);
 				frm.refresh_fields();
-			}
+			},
 		});
 	},
 
@@ -314,7 +314,7 @@ frappe.ui.form.on("Bank Reconciliation", {
 				frm.events.calculate_totals(frm);
 				frm.events.set_query_params(frm);
 				frm.refresh_fields();
-			}
+			},
 		});
 	},
 

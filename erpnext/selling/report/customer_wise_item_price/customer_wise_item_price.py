@@ -3,10 +3,11 @@
 
 
 import frappe
+from frappe import _
+
 from erpnext import get_default_company
 from erpnext.accounts.party import get_party_details
 from erpnext.stock.get_item_details import get_price_list_rate
-from frappe import _
 
 
 def execute(filters=None):
@@ -29,32 +30,32 @@ def get_columns(filters=None):
 			"fieldname": "item_code",
 			"fieldtype": "Link",
 			"options": "Item",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Item Name"),
 			"fieldname": "item_name",
 			"fieldtype": "Data",
-			"width": 200
+			"width": 200,
 		},
 		{
 			"label": _("Selling Rate"),
 			"fieldname": "selling_rate",
-			"fieldtype": "Currency"
+			"fieldtype": "Currency",
 		},
 		{
 			"label": _("Available Stock"),
 			"fieldname": "available_stock",
 			"fieldtype": "Float",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Price List"),
 			"fieldname": "price_list",
 			"fieldtype": "Link",
 			"options": "Price List",
-			"width": 120
-		}
+			"width": 120,
+		},
 	]
 
 
@@ -85,7 +86,7 @@ def get_customer_details(filters):
 	customer_details = get_party_details(party=filters.get("customer"), party_type="Customer")
 	customer_details.update({
 		"company": get_default_company(),
-		"price_list": customer_details.get("selling_price_list")
+		"price_list": customer_details.get("selling_price_list"),
 	})
 
 	return customer_details

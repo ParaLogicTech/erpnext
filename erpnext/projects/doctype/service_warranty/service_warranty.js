@@ -17,7 +17,7 @@ frappe.ui.form.on("Service Warranty", {
 
 	setup_queries(frm) {
 		frm.set_query("service_template", () => {
-			return { filters: { includes_service_warranty: 1 } }
+			return {filters: {includes_service_warranty: 1}};
 		});
 
 		frm.set_query("warranty_provision_account", () => {
@@ -26,8 +26,8 @@ frappe.ui.form.on("Service Warranty", {
 					company: frm.doc.company,
 					is_group: 0,
 					root_type: "Liability",
-				}
-			}
+				},
+			};
 		});
 
 		frm.set_query("warranty_expense_account", () => {
@@ -36,8 +36,8 @@ frappe.ui.form.on("Service Warranty", {
 					company: frm.doc.company,
 					is_group: 0,
 					root_type: "Expense",
-				}
-			}
+				},
+			};
 		});
 
 		frm.set_query("cost_center", () => {
@@ -45,23 +45,23 @@ frappe.ui.form.on("Service Warranty", {
 				filters: {
 					company: frm.doc.company,
 					is_group: 0,
-				}
-			}
+				},
+			};
 		});
 	},
 
 	setup_buttons(frm) {
 		if (frm.doc.docstatus == 1) {
-			frm.add_custom_button(__('Accounting Ledger'), () => {
+			frm.add_custom_button(__("Accounting Ledger"), () => {
 				frappe.route_options = {
 					"voucher_no": frm.doc.name,
 					"from_date": frm.doc.posting_date,
 					"to_date": frm.doc.posting_date,
 					"company": frm.doc.company,
-					"merge_similar_entries": 0
+					"merge_similar_entries": 0,
 				};
 				frappe.set_route("query-report", "General Ledger");
-			}, __('View'));
+			}, __("View"));
 		}
 	},
 
@@ -76,7 +76,7 @@ frappe.ui.form.on("Service Warranty", {
 	get_project_details(frm) {
 		if (frm.doc.project) {
 			return frappe.call({
-				method: 'erpnext.projects.doctype.project.project.get_project_details',
+				method: "erpnext.projects.doctype.project.project.get_project_details",
 				args: {
 					project: frm.doc.project,
 					doctype: frm.doc.doctype,
@@ -85,7 +85,7 @@ frappe.ui.form.on("Service Warranty", {
 					if (r.message) {
 						return frm.set_value(r.message);
 					}
-				}
+				},
 			});
 		}
 	},
@@ -104,7 +104,7 @@ frappe.ui.form.on("Service Warranty", {
 		}
 
 		let valid_upto = frappe.datetime.add_months(frm.doc.valid_from, cint(frm.doc.warranty_validity));
-		valid_upto = frappe.datetime.add_days(valid_upto,-1);
+		valid_upto = frappe.datetime.add_days(valid_upto, -1);
 
 		frm.set_value("valid_upto", valid_upto);
 	},
@@ -117,5 +117,5 @@ frappe.ui.form.on("Service Warranty", {
 		} else {
 			frm.set_value("terms", null);
 		}
-	}
+	},
 });

@@ -1,20 +1,20 @@
 
 def get_data():
 	return {
-		'fieldname': 'employee_advance',
-		'non_standard_fieldnames': {
-			'Journal Entry': 'reference_name',
-			'Payment Entry': 'reference_name',
-			'Expense Claim': 'reference_name',
+		"fieldname": "employee_advance",
+		"non_standard_fieldnames": {
+			"Journal Entry": "reference_name",
+			"Payment Entry": "reference_name",
+			"Expense Claim": "reference_name",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'label': ['Payment'],
-				'items': ['Payment Entry', 'Journal Entry']
+				"label": ["Payment"],
+				"items": ["Payment Entry", "Journal Entry"],
 			},
 			{
-				'label': ['Adjustments'],
-				'items': ['Expense Claim', 'Salary Slip']
-			}
-		]
+				"label": ["Adjustments"],
+				"items": ["Expense Claim", "Salary Slip"],
+			},
+		],
 	}

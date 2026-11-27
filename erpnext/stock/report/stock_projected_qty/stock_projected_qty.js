@@ -4,54 +4,54 @@
 frappe.query_reports["Stock Projected Qty"] = {
 	"filters": [
 		{
-			"fieldname":"company",
+			"fieldname": "company",
 			"label": __("Company"),
 			"fieldtype": "Link",
 			"options": "Company",
-			"default": frappe.defaults.get_user_default("Company")
+			"default": frappe.defaults.get_user_default("Company"),
 		},
 		{
-			"fieldname":"qty_field",
+			"fieldname": "qty_field",
 			"label": __("Stock Qty or Contents Qty"),
 			"fieldtype": "Select",
 			"options": "Stock Qty\nContents Qty",
-			"default": "Stock Qty"
+			"default": "Stock Qty",
 		},
 		{
-			"fieldname":"warehouse",
+			"fieldname": "warehouse",
 			"label": __("Warehouse"),
 			"fieldtype": "Link",
-			"options": "Warehouse"
+			"options": "Warehouse",
 		},
 		{
-			"fieldname":"item_code",
+			"fieldname": "item_code",
 			"label": __("Item"),
 			"fieldtype": "Link",
 			"options": "Item",
 			"get_query": function() {
 				return {
 					query: "erpnext.controllers.queries.item_query",
-					filters: {'include_disabled': 1, 'include_templates':1}
-				}
-			}
+					filters: {"include_disabled": 1, "include_templates": 1},
+				};
+			},
 		},
 		{
-			"fieldname":"item_group",
+			"fieldname": "item_group",
 			"label": __("Item Group"),
 			"fieldtype": "Link",
-			"options": "Item Group"
+			"options": "Item Group",
 		},
 		{
-			"fieldname":"brand",
+			"fieldname": "brand",
 			"label": __("Brand"),
 			"fieldtype": "Link",
-			"options": "Brand"
+			"options": "Brand",
 		},
 		{
-			"fieldname":"include_uom",
+			"fieldname": "include_uom",
 			"label": __("Include UOM"),
 			"fieldtype": "Link",
-			"options": "UOM"
+			"options": "UOM",
 		},
 		{
 			fieldname: "customer_provided_items",
@@ -61,7 +61,7 @@ frappe.query_reports["Stock Projected Qty"] = {
 				"",
 				"Customer Provided Items Only",
 				"Exclude Customer Provided Items",
-			]
+			],
 		},
 		{
 			fieldname: "customer",
@@ -74,14 +74,14 @@ frappe.query_reports["Stock Projected Qty"] = {
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
 			options: ["", "Group by Item", "Group by Warehouse", "Group by Item Group", "Group by Brand"],
-			default: ""
+			default: "",
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
 			options: ["", "Group by Item", "Group by Warehouse", "Group by Item Group", "Group by Brand"],
-			default: ""
+			default: "",
 		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {
@@ -90,26 +90,26 @@ frappe.query_reports["Stock Projected Qty"] = {
 			link_target: "_blank",
 		};
 
-		if (['actual_qty', 'projected_qty', 'shortage_qty'].includes(column.fieldname)) {
+		if (["actual_qty", "projected_qty", "shortage_qty"].includes(column.fieldname)) {
 			if (flt(value) < 0) {
-				options.css['background-color'] = 'pink';
-				options.css['font-weight'] = 'bold';
+				options.css["background-color"] = "pink";
+				options.css["font-weight"] = "bold";
 			}
 		}
 
-		if (['projected_qty', 'ordered_qty', 'planned_qty', 'indented_qty'].includes(column.fieldname)) {
+		if (["projected_qty", "ordered_qty", "planned_qty", "indented_qty"].includes(column.fieldname)) {
 			if (flt(value) > 0) {
-				options.css['color'] = 'var(--green-700)';
-			} else if(flt(value) < 0 && column.fieldname !== 'projected_qty') {
-				options.css['color'] = 'var(--red-500)';
+				options.css["color"] = "var(--green-700)";
+			} else if (flt(value) < 0 && column.fieldname !== "projected_qty") {
+				options.css["color"] = "var(--red-500)";
 			}
 		}
 
-		if (['reserved_qty', 'reserved_qty_for_production', 'reserved_qty_for_sub_contract'].includes(column.fieldname)) {
+		if (["reserved_qty", "reserved_qty_for_production", "reserved_qty_for_sub_contract"].includes(column.fieldname)) {
 			if (flt(value) > 0) {
-				options.css['color'] = 'var(--red-500)';
-			} else if(flt(value) < 0) {
-				options.css['color'] = 'var(--green-700)';
+				options.css["color"] = "var(--red-500)";
+			} else if (flt(value) < 0) {
+				options.css["color"] = "var(--green-700)";
 			}
 		}
 
@@ -122,7 +122,7 @@ frappe.query_reports["Stock Projected Qty"] = {
 			}
 			const query_string = Object.entries(params)
 				.map(([key, val]) => `${key}=${encodeURIComponent(val)}`)
-				.join('&');
+				.join("&");
 
 			if (column.fieldname == "actual_qty") {
 				options.link_href = `/app/query-report/Stock Balance?${query_string}`;
@@ -139,7 +139,7 @@ frappe.query_reports["Stock Projected Qty"] = {
 
 		return default_formatter(value, row, column, data, options);
 	},
-	"initial_depth": 0
-}
+	"initial_depth": 0,
+};
 
 erpnext.utils.add_additional_sle_filters("Stock Projected Qty");

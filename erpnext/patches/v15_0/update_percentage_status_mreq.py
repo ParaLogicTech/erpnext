@@ -17,7 +17,7 @@ def execute():
 		doc.clear_cache()
 
 	# Cancelled Status
-	frappe.db.sql(f"""
+	frappe.db.sql("""
 		update `tabMaterial Request`
 		set status = 'Cancelled', order_status = 'Not Applicable', receipt_status = 'Not Applicable'
 		where docstatus = 2

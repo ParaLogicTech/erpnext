@@ -1,7 +1,7 @@
-frappe.provide('frappe.ui.form');
+frappe.provide("frappe.ui.form");
 
 frappe.ui.form.VehicleQuickEntryForm = class VehicleQuickEntryForm extends frappe.ui.form.QuickEntryForm {
-	skip_redirect_on_error = true
+	skip_redirect_on_error = true;
 
 	render_dialog() {
 		super.render_dialog();
@@ -14,10 +14,10 @@ frappe.ui.form.VehicleQuickEntryForm = class VehicleQuickEntryForm extends frapp
 		let engine_no_field = me.dialog.get_field("engine_no");
 		if (engine_no_field) {
 			engine_no_field.df.onchange = () => {
-				let value = me.dialog.get_value('engine_no');
+				let value = me.dialog.get_value("engine_no");
 				value = erpnext.utils.get_formatted_vehicle_id(value);
 				me.dialog.doc.engine_no = value;
-				me.dialog.get_field('engine_no').refresh();
+				me.dialog.get_field("engine_no").refresh();
 				erpnext.utils.validate_duplicate_vehicle(me.dialog.doc, "engine_no");
 			};
 		}
@@ -25,10 +25,10 @@ frappe.ui.form.VehicleQuickEntryForm = class VehicleQuickEntryForm extends frapp
 		let chassis_no_field = me.dialog.get_field("chassis_no");
 		if (chassis_no_field) {
 			chassis_no_field.df.onchange = () => {
-				let value = me.dialog.get_value('chassis_no');
+				let value = me.dialog.get_value("chassis_no");
 				value = erpnext.utils.get_formatted_vehicle_id(value);
 				me.dialog.doc.chassis_no = value;
-				me.dialog.get_field('chassis_no').refresh();
+				me.dialog.get_field("chassis_no").refresh();
 				erpnext.utils.validate_duplicate_vehicle(me.dialog.doc, "chassis_no");
 			};
 		}
@@ -36,10 +36,10 @@ frappe.ui.form.VehicleQuickEntryForm = class VehicleQuickEntryForm extends frapp
 		let license_plate_field = me.dialog.get_field("license_plate");
 		if (license_plate_field) {
 			license_plate_field.df.onchange = () => {
-				let value = me.dialog.get_value('license_plate');
+				let value = me.dialog.get_value("license_plate");
 				value = erpnext.utils.get_formatted_vehicle_id(value);
 				me.dialog.doc.license_plate = value;
-				me.dialog.get_field('license_plate').refresh();
+				me.dialog.get_field("license_plate").refresh();
 				erpnext.utils.validate_duplicate_vehicle(me.dialog.doc, "license_plate");
 			};
 		}
@@ -47,8 +47,8 @@ frappe.ui.form.VehicleQuickEntryForm = class VehicleQuickEntryForm extends frapp
 		let plate_region_field = me.dialog.get_field("plate_region");
 		if (plate_region_field) {
 			plate_region_field.df.onchange = () => {
-				let plate_region = me.dialog.get_value('plate_region');
-				let license_plate = me.dialog.get_value('license_plate');
+				let plate_region = me.dialog.get_value("plate_region");
+				let license_plate = me.dialog.get_value("license_plate");
 				if (plate_region) {
 					return erpnext.utils.get_license_plate_with_prefix(
 						plate_region,
@@ -99,10 +99,10 @@ frappe.ui.form.VehicleQuickEntryForm = class VehicleQuickEntryForm extends frapp
 					filters.brand = me.dialog.get_value("brand");
 				}
 				return erpnext.queries.item(filters);
-			}
+			};
 
 			item_code_field.df.onchange = () => {
-				let item_code = me.dialog.get_value('item_code');
+				let item_code = me.dialog.get_value("item_code");
 				if (item_code) {
 					erpnext.utils.get_vehicle_make_model(item_code, (r) => {
 						if (r.message) {
@@ -121,28 +121,28 @@ frappe.ui.form.VehicleQuickEntryForm = class VehicleQuickEntryForm extends frapp
 
 		let insurance_field = me.dialog.get_field("insurance_company");
 		if (insurance_field) {
-			insurance_field.get_query = function () {
+			insurance_field.get_query = function() {
 				return {
 					query: "erpnext.controllers.queries.customer_query",
 					filters: {
-						'is_insurance_company': 1
-					}
-				}
-			}
+						"is_insurance_company": 1,
+					},
+				};
+			};
 		}
 
 		let color_field = me.dialog.get_field("color");
 		if (color_field) {
-			color_field.get_query = function () {
-				return erpnext.queries.vehicle_color({item_code: me.dialog.get_value('item_code')});
-			}
+			color_field.get_query = function() {
+				return erpnext.queries.vehicle_color({item_code: me.dialog.get_value("item_code")});
+			};
 		}
 
 		let interior_field = me.dialog.get_field("interior");
 		if (interior_field) {
-			interior_field.get_query = function () {
-				return erpnext.queries.vehicle_interior({item_code: me.dialog.get_value('item_code')});
-			}
+			interior_field.get_query = function() {
+				return erpnext.queries.vehicle_interior({item_code: me.dialog.get_value("item_code")});
+			};
 		}
 	}
 };

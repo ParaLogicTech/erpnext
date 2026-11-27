@@ -1,4 +1,5 @@
 import frappe
+
 from erpnext.vehicles.doctype.vehicle.vehicle import get_vehicle_make_model
 
 

@@ -1,12 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
-import frappe
 import unittest
+
+import frappe
+
 from erpnext.hr.doctype.employee.test_employee import make_employee
+
 
 class TestEmployeeGroup(unittest.TestCase):
 	pass
+
 
 def make_employee_group():
 	employee = make_employee("testemployee@example.com")
@@ -15,9 +18,9 @@ def make_employee_group():
 		"employee_group_name": "_Test Employee Group",
 		"employee_list": [
 			{
-				"employee": employee
-			}
-		]
+				"employee": employee,
+			},
+		],
 	})
 	employee_group_exist = frappe.db.exists("Employee Group", "_Test Employee Group")
 	if not employee_group_exist:
@@ -25,6 +28,7 @@ def make_employee_group():
 		return employee_group.employee_group_name
 	else:
 		return employee_group_exist
+
 
 def get_employee_group():
 	employee_group = frappe.db.exists("Employee Group", "_Test Employee Group")

@@ -1,37 +1,39 @@
+import json
+import math
+from collections import OrderedDict
+
 import frappe
 from frappe import _
 from frappe.utils import (
-	flt,
-	cstr,
 	cint,
-	getdate,
-	format_date,
 	clean_whitespace,
+	cstr,
+	flt,
+	format_date,
+	getdate,
 	round_based_on_smallest_currency_fraction,
 )
-from erpnext.controllers.stock_controller import StockController
-from erpnext.stock.doctype.item.item import validate_item_carton_type
-from erpnext.stock.get_item_details import (
-	get_item_details,
-	get_applies_to_details,
-	get_force_applies_to_fields,
-)
+
 from erpnext.accounts.doctype.pricing_rule.utils import (
-	get_applied_pricing_rules,
-	apply_pricing_rule_on_transaction,
-	get_product_discount_rule,
 	apply_free_item_pricing_rule,
-	remove_free_item_pricing_rules,
 	apply_mix_and_match_product_discount_rules,
+	apply_pricing_rule_on_transaction,
+	get_applied_pricing_rules,
+	get_product_discount_rule,
+	remove_free_item_pricing_rules,
 	update_pricing_rule_table,
 )
-from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+from erpnext.controllers.sales_and_purchase_return import validate_return
+from erpnext.controllers.stock_controller import StockController
 from erpnext.controllers.taxes_and_totals import calculate_taxes_and_totals, get_itemised_tax_breakup_html
 from erpnext.setup.utils import get_exchange_rate
-from erpnext.controllers.sales_and_purchase_return import validate_return
-from collections import OrderedDict
-import json
-import math
+from erpnext.stock.doctype.item.item import validate_item_carton_type
+from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+from erpnext.stock.get_item_details import (
+	get_applies_to_details,
+	get_force_applies_to_fields,
+	get_item_details,
+)
 
 
 class TransactionController(StockController):
@@ -68,54 +70,54 @@ class TransactionController(StockController):
 		]
 
 		self.merge_items_sum_fields = [
-			'qty', 'stock_qty', 'alt_uom_qty', 'net_weight', 'gross_weight',
-			'amount', 'taxable_amount', 'net_amount', 'total_discount', 'amount_before_discount',
-			'item_taxes', 'item_taxes_before_discount', 'tax_inclusive_amount', 'tax_inclusive_amount_before_discount',
-			'amount_before_depreciation', 'depreciation_amount', 'underinsurance_amount',
+			"qty", "stock_qty", "alt_uom_qty", "net_weight", "gross_weight",
+			"amount", "taxable_amount", "net_amount", "total_discount", "amount_before_discount",
+			"item_taxes", "item_taxes_before_discount", "tax_inclusive_amount", "tax_inclusive_amount_before_discount",
+			"amount_before_depreciation", "depreciation_amount", "underinsurance_amount",
 		]
 
 		self.merge_items_rate_fields = [
-			('rate', 'amount', 'qty'),
-			('taxable_rate', 'taxable_amount', 'qty'),
-			('net_rate', 'net_amount', 'qty'),
-			('discount_amount', 'total_discount', 'qty'),
-			('price_list_rate', 'amount_before_discount', 'qty'),
-			('tax_inclusive_rate', 'tax_inclusive_amount', 'qty'),
-			('tax_inclusive_rate_before_discount', 'tax_inclusive_amount_before_discount', 'qty'),
-			('net_weight_per_unit', 'net_weight', 'stock_qty'),
-			('gross_weight_per_unit', 'gross_weight', 'stock_qty'),
-			('alt_uom_rate', 'amount', 'stock_qty'),
+			("rate", "amount", "qty"),
+			("taxable_rate", "taxable_amount", "qty"),
+			("net_rate", "net_amount", "qty"),
+			("discount_amount", "total_discount", "qty"),
+			("price_list_rate", "amount_before_discount", "qty"),
+			("tax_inclusive_rate", "tax_inclusive_amount", "qty"),
+			("tax_inclusive_rate_before_discount", "tax_inclusive_amount_before_discount", "qty"),
+			("net_weight_per_unit", "net_weight", "stock_qty"),
+			("gross_weight_per_unit", "gross_weight", "stock_qty"),
+			("alt_uom_rate", "amount", "stock_qty"),
 		]
 
 		self.print_total_fields_from_items = [
-			('total_qty', 'qty'),
-			('total_alt_uom_qty', 'alt_uom_qty'),
-			('total_stock_qty', 'stock_qty'),
-			('total_net_weight', 'net_weight'),
-			('total_gross_weight', 'gross_weight'),
+			("total_qty", "qty"),
+			("total_alt_uom_qty", "alt_uom_qty"),
+			("total_stock_qty", "stock_qty"),
+			("total_net_weight", "net_weight"),
+			("total_gross_weight", "gross_weight"),
 
-			('total', 'amount'),
-			('tax_exclusive_total', 'tax_exclusive_amount'),
-			('retail_total', 'retail_amount'),
-			('net_total', 'net_amount'),
-			('taxable_total', 'taxable_amount'),
+			("total", "amount"),
+			("tax_exclusive_total", "tax_exclusive_amount"),
+			("retail_total", "retail_amount"),
+			("net_total", "net_amount"),
+			("taxable_total", "taxable_amount"),
 
-			('total_discount', 'total_discount'),
-			('tax_exclusive_total_discount', 'tax_exclusive_total_discount'),
-			('total_before_discount', 'amount_before_discount'),
-			('tax_exclusive_total_before_discount', 'tax_exclusive_amount_before_discount'),
+			("total_discount", "total_discount"),
+			("tax_exclusive_total_discount", "tax_exclusive_total_discount"),
+			("total_before_discount", "amount_before_discount"),
+			("tax_exclusive_total_before_discount", "tax_exclusive_amount_before_discount"),
 
-			('total_before_depreciation', 'amount_before_depreciation'),
-			('tax_exclusive_total_before_depreciation', 'tax_exclusive_amount_before_depreciation'),
-			('total_depreciation', 'depreciation_amount'),
-			('tax_exclusive_total_depreciation', 'tax_exclusive_depreciation_amount'),
-			('total_underinsurance', 'underinsurance_amount'),
-			('tax_exclusive_total_underinsurance', 'tax_exclusive_underinsurance_amount'),
+			("total_before_depreciation", "amount_before_depreciation"),
+			("tax_exclusive_total_before_depreciation", "tax_exclusive_amount_before_depreciation"),
+			("total_depreciation", "depreciation_amount"),
+			("tax_exclusive_total_depreciation", "tax_exclusive_depreciation_amount"),
+			("total_underinsurance", "underinsurance_amount"),
+			("tax_exclusive_total_underinsurance", "tax_exclusive_underinsurance_amount"),
 
-			('grand_total', 'tax_inclusive_amount'),
-			('grand_total_before_discount', 'tax_inclusive_amount_before_discount'),
-			('total_taxes_and_charges', 'item_taxes'),
-			('total_taxes_and_charges_before_discount', 'item_taxes_before_discount'),
+			("grand_total", "tax_inclusive_amount"),
+			("grand_total_before_discount", "tax_inclusive_amount_before_discount"),
+			("total_taxes_and_charges", "item_taxes"),
+			("total_taxes_and_charges_before_discount", "item_taxes_before_discount"),
 		]
 
 		self.force_applies_to_fields = get_force_applies_to_fields(self.doctype)
@@ -162,7 +164,7 @@ class TransactionController(StockController):
 		self.validate_transaction_type()
 		self.validate_item_project_mandatory()
 
-		if self.doctype != 'Material Request':
+		if self.doctype != "Material Request":
 			apply_pricing_rule_on_transaction(self)
 			update_pricing_rule_table(self)
 
@@ -187,8 +189,8 @@ class TransactionController(StockController):
 		for fieldname in self.meta.get_valid_columns():
 			parent_dict[fieldname] = self.get(fieldname)
 
-		if 'transaction_type' in parent_dict:
-			parent_dict['transaction_type_name'] = parent_dict.pop('transaction_type')
+		if "transaction_type" in parent_dict:
+			parent_dict["transaction_type_name"] = parent_dict.pop("transaction_type")
 
 		# party_name field used for customer in quotation
 		if self.get("quotation_to") == "Customer" and parent_dict.get("party_name"):
@@ -241,10 +243,10 @@ class TransactionController(StockController):
 			if item.get(fieldname) is None or fieldname in self.force_item_fields:
 				item.set(fieldname, value)
 			elif fieldname in [
-				'cost_center',
-				'customs_tariff_number',
-				'net_weight_per_unit',
-				'gross_weight_per_unit'
+				"cost_center",
+				"customs_tariff_number",
+				"net_weight_per_unit",
+				"gross_weight_per_unit",
 			] and not item.get(fieldname):
 				item.set(fieldname, value)
 
@@ -281,7 +283,7 @@ class TransactionController(StockController):
 		if not item_details.get("do_not_force_pricing_rule") or item_details.get("pricing_rule_removed"):
 			item.set("is_free_item", cint(item_details.get("is_free_item")))
 
-			if item_details.get("price_or_product_discount") == 'Price':
+			if item_details.get("price_or_product_discount") == "Price":
 				item.set("discount_percentage", item_details.get("discount_percentage"))
 				item.set("discount_amount", item_details.get("discount_amount"))
 
@@ -373,14 +375,14 @@ class TransactionController(StockController):
 					item._applied_pricing_rules_validated = True
 
 	def set_missing_applies_to_details(self):
-		if not self.meta.has_field('applies_to_item'):
+		if not self.meta.has_field("applies_to_item"):
 			return
 
 		args = self.get_item_details_parent_args()
 		applies_to_details = get_applies_to_details(args, for_validate=True)
 
 		for k, v in applies_to_details.items():
-			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
+			if (self.meta.has_field(k) and not self.get(k)) or k in self.force_applies_to_fields:
 				self.set(k, v)
 
 	def set_qty_as_per_stock_uom(self):
@@ -404,21 +406,21 @@ class TransactionController(StockController):
 		calculate_taxes_and_totals(self)
 
 	def dynamic_bundling_enabled(self):
-		return self.doctype in ['Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice'] and\
-			frappe.get_cached_value('Stock Settings', None, "enable_dynamic_bundling")
+		return self.doctype in ["Quotation", "Sales Order", "Delivery Note", "Sales Invoice"] and\
+			frappe.get_cached_value("Stock Settings", None, "enable_dynamic_bundling")
 
 	def set_previous_document_reference_before_print(self):
 		if self.doctype == "Sales Order":
 			self.quotations = list(set(item.quotation for item in self.items if item.get("quotation")))
 		if self.doctype in ["Sales Invoice", "Delivery Note", "Material Request"]:
-			self.sales_orders = list(set(item.sales_order for item in self.items if item.get('sales_order')))
+			self.sales_orders = list(set(item.sales_order for item in self.items if item.get("sales_order")))
 		if self.doctype == "Sales Invoice":
 			self.delivery_notes = list(set(item.delivery_note for item in self.items if item.get("delivery_note")))
 
 		if self.doctype == "Purchase Order":
 			self.supplier_quotations = list(set(item.supplier_quotation for item in self.items if item.get("supplier_quotation")))
 		if self.doctype in ["Purchase Invoice", "Purchase Receipt"]:
-			self.purchase_orders = list(set(item.purchase_order for item in self.items if item.get('purchase_order')))
+			self.purchase_orders = list(set(item.purchase_order for item in self.items if item.get("purchase_order")))
 		if self.doctype == "Purchase Invoice":
 			self.purchase_receipts = list(set(item.purchase_receipt for item in self.items if item.get("purchase_receipt")))
 
@@ -477,35 +479,35 @@ class TransactionController(StockController):
 			if self.meta.has_field("taxes"):
 				self.calculate_tax_rates_for_print()
 
-		self.warehouses = list(set([frappe.get_cached_value("Warehouse", item.warehouse, 'warehouse_name')
-			for item in self.items if item.get('warehouse')]))
+		self.warehouses = list(set([frappe.get_cached_value("Warehouse", item.warehouse, "warehouse_name")
+			for item in self.items if item.get("warehouse")]))
 
 	def merge_bundled_items(self):
 		bundles = {}
 		item_meta = frappe.get_meta("Stock Entry Detail" if self.doctype == "Stock Entry" else self.doctype + " Item")
 		count = 0
 
-		copy_fields = ['qty', 'stock_qty', 'alt_uom_qty']
+		copy_fields = ["qty", "stock_qty", "alt_uom_qty"]
 
 		sum_fields = [f for f in self.merge_items_sum_fields if item_meta.has_field(f)]
 		sum_fields = [f for f in sum_fields if f not in copy_fields]
-		sum_fields += ['tax_exclusive_' + f for f in sum_fields if item_meta.has_field('tax_exclusive_' + f)]
+		sum_fields += ["tax_exclusive_" + f for f in sum_fields if item_meta.has_field("tax_exclusive_" + f)]
 
 		rate_fields = [(t, s, qf) for t, s, qf in self.merge_items_rate_fields if item_meta.has_field(s)]
-		rate_fields += [('tax_exclusive_' + t, 'tax_exclusive_' + s, qf) for t, s, qf in rate_fields
-			if item_meta.has_field('tax_exclusive_' + s)]
+		rate_fields += [("tax_exclusive_" + t, "tax_exclusive_" + s, qf) for t, s, qf in rate_fields
+			if item_meta.has_field("tax_exclusive_" + s)]
 
-		base_fields = [('base_' + f, f) for f in sum_fields if item_meta.has_field('base_' + f)]
-		base_fields += [('base_' + t, t) for t, s, qf in rate_fields if item_meta.has_field('base_' + t)]
-		base_fields += [('base_' + f, f) for f in copy_fields if item_meta.has_field('base_' + f)]
+		base_fields = [("base_" + f, f) for f in sum_fields if item_meta.has_field("base_" + f)]
+		base_fields += [("base_" + t, t) for t, s, qf in rate_fields if item_meta.has_field("base_" + t)]
+		base_fields += [("base_" + f, f) for f in copy_fields if item_meta.has_field("base_" + f)]
 
 		# Sum amounts
 		in_bundle = 0
 		for item in self.items:
-			if item.get('bundling_state') == 'Start':
+			if item.get("bundling_state") == "Start":
 				in_bundle = item.idx
 
-			if not in_bundle or item.get('bundling_state') == 'Start':
+			if not in_bundle or item.get("bundling_state") == "Start":
 				new_bundle = frappe._dict()
 				for f in copy_fields:
 					new_bundle[f] = item.get(f)
@@ -513,7 +515,7 @@ class TransactionController(StockController):
 
 			group_item = bundles[in_bundle or item.idx]
 
-			if item.get('bundling_state') == 'Terminate':
+			if item.get("bundling_state") == "Terminate":
 				in_bundle = 0
 
 			self.merge_similar_item_aggregate(item, group_item, sum_fields)
@@ -557,15 +559,15 @@ class TransactionController(StockController):
 
 		sum_fields = [f for f in self.merge_items_sum_fields if item_meta.has_field(f)]
 		sum_fields += additional_sum_fields or []
-		sum_fields += ['tax_exclusive_' + f for f in sum_fields if item_meta.has_field('tax_exclusive_' + f)]
+		sum_fields += ["tax_exclusive_" + f for f in sum_fields if item_meta.has_field("tax_exclusive_" + f)]
 
 		rate_fields = [(t, s, qf) for t, s, qf in self.merge_items_rate_fields if item_meta.has_field(s)]
 		rate_fields += additional_rate_fields or []
-		rate_fields += [('tax_exclusive_' + t, 'tax_exclusive_' + s, qf) for t, s, qf in rate_fields
-			if item_meta.has_field('tax_exclusive_' + s)]
+		rate_fields += [("tax_exclusive_" + t, "tax_exclusive_" + s, qf) for t, s, qf in rate_fields
+			if item_meta.has_field("tax_exclusive_" + s)]
 
-		base_fields = [('base_' + f, f) for f in sum_fields if item_meta.has_field('base_' + f)]
-		base_fields += [('base_' + t, t) for t, s, qf in rate_fields if item_meta.has_field('base_' + t)]
+		base_fields = [("base_" + f, f) for f in sum_fields if item_meta.has_field("base_" + f)]
+		base_fields += [("base_" + t, t) for t, s, qf in rate_fields if item_meta.has_field("base_" + t)]
 
 		# Sum amounts
 		for item in self.items:
@@ -590,9 +592,9 @@ class TransactionController(StockController):
 				count += 1
 
 				# Will set price_list_rate instead
-				if item.get('rate_with_margin'):
+				if item.get("rate_with_margin"):
 					item.rate_with_margin = 0
-				if item.get('tax_exclusive_rate_with_margin'):
+				if item.get("tax_exclusive_rate_with_margin"):
 					item.tax_exclusive_rate_with_margin = 0
 
 				item.update(group_item_data[group_key])
@@ -645,8 +647,8 @@ class TransactionController(StockController):
 			if item.get("batch_expiry_date") and item.batch_expiry_date not in group_item.batch_expiry_date_list:
 				group_item["batch_expiry_date_list"].append(getdate(item.batch_expiry_date))
 
-		group_item_tax_detail = group_item.setdefault('item_tax_detail', {})
-		item_tax_detail = json.loads(item.item_tax_detail or '{}')
+		group_item_tax_detail = group_item.setdefault("item_tax_detail", {})
+		item_tax_detail = json.loads(item.item_tax_detail or "{}")
 		for tax_row_name, tax_amount in item_tax_detail.items():
 			group_item_tax_detail.setdefault(tax_row_name, 0)
 			group_item_tax_detail[tax_row_name] += flt(tax_amount)
@@ -654,10 +656,10 @@ class TransactionController(StockController):
 	def merge_similar_items_postprocess(self, group_item, rate_fields):
 		for target, source, qty_field in rate_fields:
 			if group_item.get(qty_field):
-				if target == "price_list_rate" and group_item.get('amount_before_depreciation'):
-					source = 'amount_before_depreciation'
-				if target == "tax_exclusive_price_list_rate" and group_item.get('tax_exclusive_amount_before_depreciation'):
-					source = 'tax_exclusive_amount_before_depreciation'
+				if target == "price_list_rate" and group_item.get("amount_before_depreciation"):
+					source = "amount_before_depreciation"
+				if target == "tax_exclusive_price_list_rate" and group_item.get("tax_exclusive_amount_before_depreciation"):
+					source = "tax_exclusive_amount_before_depreciation"
 				group_item[target] = flt(group_item[source]) / flt(group_item.qty)
 			else:
 				group_item[target] = 0
@@ -687,15 +689,15 @@ class TransactionController(StockController):
 
 	def group_items_by_item_tax_and_item_group(self):
 		grouped = self.group_items_by(key="item_tax_template")
-		for item_tax_template, group_data in grouped.items():
+		for _item_tax_template, group_data in grouped.items():
 			# group item groups in item tax template group
-			group_data.item_groups = self.group_items_by_item_group(group_data['items'], idx_field=None)
+			group_data.item_groups = self.group_items_by_item_group(group_data["items"], idx_field=None)
 
 		# reset item index
 		item_idx = 1
 		for item_tax_group in grouped.values():
 			for item_group_group in item_tax_group.item_groups.values():
-				for item in item_group_group['items']:
+				for item in item_group_group["items"]:
 					item.g_idx = item_idx
 					item_idx += 1
 
@@ -714,7 +716,7 @@ class TransactionController(StockController):
 				out[d.item_group] = grouped[d.item_group]
 				del grouped[d.item_group]
 
-		for item_group, group_data in grouped.items():
+		for item_group, _group_data in grouped.items():
 			out[item_group] = grouped[item_group]
 
 		# reset item index
@@ -722,7 +724,7 @@ class TransactionController(StockController):
 			item_idx = 1
 			for item_group_i, item_group_group in enumerate(out.values()):
 				item_group_group.index = item_group_i + 1
-				for item in item_group_group['items']:
+				for item in item_group_group["items"]:
 					item.set(idx_field, item_idx)
 					item_idx += 1
 
@@ -761,7 +763,7 @@ class TransactionController(StockController):
 			trn_item_child.packing_slip_item = ps_item.get("packing_slip_item")
 
 			child_group = child_groups.setdefault(child_packing_slip, frappe._dict({"items": []}))
-			child_group['items'].append(trn_item_child)
+			child_group["items"].append(trn_item_child)
 
 		child_groups = OrderedDict(sorted(child_groups.items(), key=lambda x: not x[0]))
 		parent_group["packing_slips"] = child_groups
@@ -802,7 +804,7 @@ class TransactionController(StockController):
 				key_value = cstr(item.get(key))
 
 			group_data = grouped.setdefault(key_value, frappe._dict({"items": []}))
-			group_data['items'].append(item)
+			group_data["items"].append(item)
 
 		# calculate group totals
 		self.group_items_by_postprocess(grouped)
@@ -811,7 +813,7 @@ class TransactionController(StockController):
 	def group_items_by_postprocess(self, grouped):
 		item_meta = frappe.get_meta("Stock Entry Detail" if self.doctype == "Stock Entry" else self.doctype + " Item")
 
-		for key_value, group_data in grouped.items():
+		for _key_value, group_data in grouped.items():
 			group_data.item_code = self.get_common_item(group_data["items"])
 			group_data.item_name = ""
 			if group_data.item_code and group_data["items"]:
@@ -824,7 +826,7 @@ class TransactionController(StockController):
 				if not item_meta.has_field(source_field):
 					continue
 
-				group_data[total_field] = sum([flt(d.get(source_field)) for d in group_data['items']])
+				group_data[total_field] = sum([flt(d.get(source_field)) for d in group_data["items"]])
 				if self.meta.has_field("conversion_rate") and self.meta.has_field("base_" + total_field):
 					group_data["base_" + total_field] = group_data[total_field] * self.conversion_rate
 
@@ -846,12 +848,12 @@ class TransactionController(StockController):
 				self.calculate_taxes_for_group(group_data)
 
 	def calculate_taxes_for_group(self, group_data, taxes_as_dict=False):
-		tax_copy_fields = ['name', 'idx', 'account_head', 'description', 'charge_type', 'row_id']
+		tax_copy_fields = ["name", "idx", "account_head", "description", "charge_type", "row_id"]
 
 		# initialize tax rows for item tax template group
 		group_data.taxes = OrderedDict()
 		for tax in self.taxes:
-			new_tax_row = frappe._dict({k:v for (k, v) in tax.as_dict().items() if k in tax_copy_fields})
+			new_tax_row = frappe._dict({k: v for (k, v) in tax.as_dict().items() if k in tax_copy_fields})
 			new_tax_row.tax_amount_after_discount_amount = 0
 			new_tax_row.tax_amount = 0
 			new_tax_row.total = 0
@@ -860,12 +862,12 @@ class TransactionController(StockController):
 			group_data.taxes[tax.name] = new_tax_row
 
 		# sum up tax amounts
-		for item in group_data['items']:
-			item_tax_detail = json.loads(item.item_tax_detail or '{}')
+		for item in group_data["items"]:
+			item_tax_detail = json.loads(item.item_tax_detail or "{}")
 			for tax_row_name, tax_amount in item_tax_detail.items():
 				group_data.taxes[tax_row_name].tax_amount_after_discount_amount += flt(tax_amount)
 
-			item_tax_detail_before_discount = json.loads(item.item_tax_detail_before_discount or '{}')
+			item_tax_detail_before_discount = json.loads(item.item_tax_detail_before_discount or "{}")
 			for tax_row_name, tax_amount in item_tax_detail_before_discount.items():
 				group_data.taxes[tax_row_name].tax_amount += flt(tax_amount)
 
@@ -874,13 +876,13 @@ class TransactionController(StockController):
 			if i == 0:
 				tax.total = group_data.taxable_total + tax.tax_amount_after_discount_amount
 			else:
-				tax.total = list(group_data.taxes.values())[i-1].total + tax.tax_amount_after_discount_amount
+				tax.total = list(group_data.taxes.values())[i - 1].total + tax.tax_amount_after_discount_amount
 
 		# get default tax rate
 		default_tax_rate = {}
 		default_tax_item_rates = {}
-		for item in group_data['items']:
-			item_tax_rate = json.loads(item.item_tax_rate or '{}')
+		for item in group_data["items"]:
+			item_tax_rate = json.loads(item.item_tax_rate or "{}")
 			for tax in group_data.taxes.values():
 				rate = tax.default_rate
 				if tax.account_head in item_tax_rate:
@@ -893,10 +895,10 @@ class TransactionController(StockController):
 				default_tax_rate[account_head] = rate_list[0]
 
 		# calculate tax rates
-		for i, tax in enumerate(group_data.taxes.values()):
-			if tax.charge_type in ('On Previous Row Total', 'On Previous Row Amount'):
-				fieldname = 'total' if tax.charge_type == 'On Previous Row Total' else 'tax_amount_after_discount_amount'
-				prev_row_taxable = list(group_data.taxes.values())[cint(tax.row_id)-1].get(fieldname)
+		for _i, tax in enumerate(group_data.taxes.values()):
+			if tax.charge_type in ("On Previous Row Total", "On Previous Row Amount"):
+				fieldname = "total" if tax.charge_type == "On Previous Row Total" else "tax_amount_after_discount_amount"
+				prev_row_taxable = list(group_data.taxes.values())[cint(tax.row_id) - 1].get(fieldname)
 				tax.rate = (tax.tax_amount_after_discount_amount / prev_row_taxable) * 100 if prev_row_taxable else 0
 			else:
 				tax.rate = (tax.tax_amount_after_discount_amount / group_data.taxable_total) * 100 if group_data.taxable_total\
@@ -917,17 +919,17 @@ class TransactionController(StockController):
 			self.calculate_tax_rate(tax)
 
 	def calculate_tax_rate(self, tax):
-		group_data = frappe._dict({'items': [], 'taxable_total': 0})
+		group_data = frappe._dict({"items": [], "taxable_total": 0})
 		for item in self.items:
-			item_tax_detail = json.loads(item.item_tax_detail or '{}')
+			item_tax_detail = json.loads(item.item_tax_detail or "{}")
 			if item_tax_detail.get(tax.name):
-				group_data['items'].append(item)
+				group_data["items"].append(item)
 				group_data.taxable_total += item.taxable_amount
 
 		self.calculate_taxes_for_group(group_data, taxes_as_dict=True)
 		tax.calculated_rate = group_data.taxes[tax.name].rate
 
-		if not tax.rate and tax.charge_type in ('On Net Total', 'On Previous Row Total', 'On Previous Row Amount'):
+		if not tax.rate and tax.charge_type in ("On Net Total", "On Previous Row Total", "On Previous Row Amount"):
 			tax.rate = tax.calculated_rate
 
 	@staticmethod
@@ -951,11 +953,11 @@ class TransactionController(StockController):
 				frappe.throw(_("Row #{0}: Item Code is mandatory").format(d.idx))
 
 	def validate_qty_is_not_zero(self):
-		if self.get('is_return') and self.doctype in ("Sales Invoice", "Purchase Invoice"):
+		if self.get("is_return") and self.doctype in ("Sales Invoice", "Purchase Invoice"):
 			return
 
 		for item in self.get("items"):
-			if not item.qty and not item.get('rejected_qty'):
+			if not item.qty and not item.get("rejected_qty"):
 				frappe.throw(_("Row #{0}: Item Quantity can not be zero").format(item.idx))
 
 	def validate_grand_total(self):
@@ -973,19 +975,19 @@ class TransactionController(StockController):
 				d.item_name = clean_whitespace(d.item_name)
 
 	def set_project_reference_no(self):
-		if self.meta.has_field('project_reference_no'):
-			if self.get('project'):
-				self.project_reference_no = frappe.db.get_value("Project", self.project, 'reference_no')
+		if self.meta.has_field("project_reference_no"):
+			if self.get("project"):
+				self.project_reference_no = frappe.db.get_value("Project", self.project, "reference_no")
 			else:
 				self.project_reference_no = None
 
 	def trigger_project_status(self, action=None):
 		projects = []
-		if self.get('project'):
-			projects.append(self.get('project'))
+		if self.get("project"):
+			projects.append(self.get("project"))
 		for d in self.items:
-			if d.get('project'):
-				projects.append(d.get('project'))
+			if d.get("project"):
+				projects.append(d.get("project"))
 
 		projects = list(set(projects))
 		for project in projects:
@@ -999,30 +1001,30 @@ class TransactionController(StockController):
 			doc.notify_update()
 
 	def validate_transaction_type(self):
-		if self.get('transaction_type'):
-			doc = frappe.get_cached_doc("Transaction Type", self.get('transaction_type'))
+		if self.get("transaction_type"):
+			doc = frappe.get_cached_doc("Transaction Type", self.get("transaction_type"))
 			dt_not_allowed = [d.document_type for d in doc.document_types_not_allowed]
 			if self.doctype in dt_not_allowed:
 				frappe.throw(_("Not allowed to create {0} for Transaction Type {1}")
-					.format(frappe.bold(self.doctype), frappe.bold(self.get('transaction_type'))))
+					.format(frappe.bold(self.doctype), frappe.bold(self.get("transaction_type"))))
 
-			if self.meta.has_field('allocate_advances_automatically') and doc.allocate_advances_automatically:
+			if self.meta.has_field("allocate_advances_automatically") and doc.allocate_advances_automatically:
 				self.allocate_advances_automatically = cint(doc.allocate_advances_automatically == "Yes")
 
-			if self.meta.has_field('disable_rounded_total') and doc.disable_rounded_total:
+			if self.meta.has_field("disable_rounded_total") and doc.disable_rounded_total:
 				self.disable_rounded_total = cint(doc.disable_rounded_total == "Yes")
 
-			if self.meta.has_field('calculate_tax_on_company_currency') and doc.calculate_tax_on_company_currency:
+			if self.meta.has_field("calculate_tax_on_company_currency") and doc.calculate_tax_on_company_currency:
 				self.calculate_tax_on_company_currency = cint(doc.calculate_tax_on_company_currency == "Yes")
 
 	def validate_zero_outstanding(self):
-		if self.get('transaction_type'):
-			validate_zero_outstanding = cint(frappe.get_cached_value('Transaction Type', self.get('transaction_type'),
-				'validate_zero_outstanding'))
+		if self.get("transaction_type"):
+			validate_zero_outstanding = cint(frappe.get_cached_value("Transaction Type", self.get("transaction_type"),
+				"validate_zero_outstanding"))
 
 			if validate_zero_outstanding and self.outstanding_amount != 0:
 				frappe.throw(_("Outstanding Amount must be 0 for Transaction Type {0}")
-					.format(frappe.bold(self.get('transaction_type'))))
+					.format(frappe.bold(self.get("transaction_type"))))
 
 	def validate_item_project_mandatory(self):
 		from erpnext.stock.get_item_details import get_project_validation
@@ -1045,7 +1047,7 @@ class TransactionController(StockController):
 				or (project_validation == "Mandatory for Sales" and selling_or_buying == "selling")
 			):
 				frappe.throw(_("Row #{0}: {1} is mandatory for Item {2}").format(
-					d.idx, _("Project"), frappe.bold(d.item_code)
+					d.idx, _("Project"), frappe.bold(d.item_code),
 				))
 
 	def validate_items_carton_type(self):
@@ -1092,7 +1094,7 @@ class TransactionController(StockController):
 		party_specific_prices = settings.update_prices_party_specific
 		party_type, party = None, None
 		if party_specific_prices:
-			party_type, party, party_name = self.get_party()
+			party_type, party, _party_name = self.get_party()
 
 		item_codes_visited = set()
 		for item in self.get("items"):
@@ -1126,8 +1128,8 @@ class TransactionController(StockController):
 			self.update_item_price_for_row(item, price_list, new_rate, party_type=party_type, party=party)
 
 	def update_item_price_for_row(self, row, price_list, new_rate, party_type=None, party=None):
-		from erpnext.stock.report.item_prices.item_prices import _set_item_pl_rate
 		from erpnext.stock.get_item_details import get_price_list_data, process_args
+		from erpnext.stock.report.item_prices.item_prices import _set_item_pl_rate
 
 		if not row.get("item_code") or not price_list or not new_rate:
 			return
@@ -1185,7 +1187,7 @@ class TransactionController(StockController):
 			party_type = "Customer"
 			party = self.get("bill_to")
 		else:
-			party_type, party, party_name = self.get_party()
+			party_type, party, _party_name = self.get_party()
 
 		billing_address = None
 		shipping_address = None
@@ -1241,7 +1243,7 @@ class TransactionController(StockController):
 				tax_account_company = frappe.get_cached_value("Account", d.account_head, "company")
 				if tax_account_company != self.company:
 					frappe.throw(_("Row #{0}: Account {1} does not belong to company {2}").format(
-						d.idx, d.account_head, self.company
+						d.idx, d.account_head, self.company,
 					))
 
 	@frappe.whitelist()
@@ -1252,16 +1254,16 @@ class TransactionController(StockController):
 			self.calculate_taxes_and_totals()
 
 	def get_shipping_address(self):
-		'''Returns Address object from shipping address fields if present'''
+		"""Returns Address object from shipping address fields if present"""
 
 		# shipping address fields can be `shipping_address_name` or `shipping_address`
 		# try getting value from both
 
-		for fieldname in ('shipping_address_name', 'shipping_address'):
+		for fieldname in ("shipping_address_name", "shipping_address"):
 			shipping_field = self.meta.get_field(fieldname)
-			if shipping_field and shipping_field.fieldtype == 'Link':
+			if shipping_field and shipping_field.fieldtype == "Link":
 				if self.get(fieldname):
-					return frappe.get_doc('Address', self.get(fieldname))
+					return frappe.get_doc("Address", self.get(fieldname))
 
 		return {}
 
@@ -1377,8 +1379,8 @@ def get_default_taxes_and_charges(master_doctype, tax_template=None, company=Non
 	default_tax = frappe.db.get_value(master_doctype, {"is_default": 1, "company": company})
 
 	return {
-		'taxes_and_charges': default_tax,
-		'taxes': get_taxes_and_charges(master_doctype, default_tax)
+		"taxes_and_charges": default_tax,
+		"taxes": get_taxes_and_charges(master_doctype, default_tax),
 	}
 
 
@@ -1410,9 +1412,9 @@ def get_taxes_and_charges(master_doctype, master_name, for_payment_entry=False):
 
 
 def validate_taxes_and_charges(tax):
-	if tax.charge_type not in ['On Previous Row Amount', 'On Previous Row Total'] and tax.row_id:
+	if tax.charge_type not in ["On Previous Row Amount", "On Previous Row Total"] and tax.row_id:
 		frappe.throw(_("Can refer row only if the charge type is 'On Previous Row Amount' or 'Previous Row Total'"))
-	elif tax.charge_type in ('On Previous Row Amount', 'On Previous Row Total'):
+	elif tax.charge_type in ("On Previous Row Amount", "On Previous Row Total"):
 		if cint(tax.idx) == 1:
 			frappe.throw(_("Cannot select charge type as 'On Previous Row Amount' or 'On Previous Row Total' for first row"))
 		elif not tax.row_id:
@@ -1427,7 +1429,7 @@ def validate_taxes_and_charges(tax):
 def validate_inclusive_tax(tax, doc):
 	def _on_previous_row_error(row_range):
 		frappe.throw(_("To include tax in row {0} in Item rate, taxes in rows {1} must also be included").format(
-			tax.idx, row_range
+			tax.idx, row_range,
 		))
 
 	if cint(getattr(tax, "included_in_print_rate", None)):
@@ -1451,7 +1453,7 @@ def validate_inclusive_tax(tax, doc):
 
 def validate_doc_items_carton_type(doc):
 	for d in doc.items:
-		validate_item_carton_type(d.get('item_code'), d.get('carton_type'))
+		validate_item_carton_type(d.get("item_code"), d.get("carton_type"))
 
 
 def is_doctype_selling_or_buying(doctype):
@@ -1481,7 +1483,8 @@ def set_invoice_as_overdue():
 
 @frappe.whitelist()
 def update_child_items(parent_doctype, parent_name, data):
-	from frappe.model.workflow import get_workflow_name, is_transition_condition_satisfied, WorkflowPermissionError
+	from frappe.model.workflow import WorkflowPermissionError, get_workflow_name, is_transition_condition_satisfied
+
 	from erpnext.stock.doctype.bundled_item.bundled_item import make_bundled_item_list, validate_bundled_item_list
 
 	def check_doc_permissions(doc, perm_type="create"):
@@ -1495,7 +1498,7 @@ def update_child_items(parent_doctype, parent_name, data):
 			}
 
 			frappe.throw(_("You do not have permissions to {} items in a {}.").format(
-				actions[perm_type], parent_doctype
+				actions[perm_type], parent_doctype,
 			), title=_("Insufficient Permissions"), exc=frappe.PermissionError)
 
 	def validate_workflow_conditions(doc):
@@ -1544,30 +1547,30 @@ def update_child_items(parent_doctype, parent_name, data):
 			if parent_doc.doctype == "Sales Order":
 				if flt(d.get("packed_qty")):
 					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has already been packed").format(
-						d.idx, frappe.bold(d.item_code)
+						d.idx, frappe.bold(d.item_code),
 					))
 				if flt(d.get("delivered_qty")) or flt(d.get("returned_qty")):
 					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has already been delivered").format(
-						d.idx, frappe.bold(d.item_code)
+						d.idx, frappe.bold(d.item_code),
 					))
 				if flt(d.get("work_order_qty")):
 					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has Work Orders against it").format(
-						d.idx, frappe.bold(d.item_code)
+						d.idx, frappe.bold(d.item_code),
 					))
 				if flt(d.get("ordered_qty")):
 					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has Purchase Orders against it").format(
-						d.idx, frappe.bold(d.item_code)
+						d.idx, frappe.bold(d.item_code),
 					))
 
 			if parent_doc.doctype == "Purchase Order":
 				if flt(d.get("received_qty")) or flt(d.get("returned_qty")):
 					frappe.throw(_("Row #{0}: Cannot remove Item {1} which has already been received").format(
-						d.idx, frappe.bold(d.item_code)
+						d.idx, frappe.bold(d.item_code),
 					))
 
 			if flt(d.get("billed_amt")) or flt(d.get("billed_qty")) or flt(d.get("proforma_qty")):
 				frappe.throw(_("Row #{0}: Cannot remove Item {1} which has already been billed.").format(
-					d.idx, frappe.bold(d.item_code)
+					d.idx, frappe.bold(d.item_code),
 				))
 
 		for d in to_remove:
@@ -1602,7 +1605,7 @@ def update_child_items(parent_doctype, parent_name, data):
 			if not user_row.get("item_code"):
 				continue
 
-			check_doc_permissions(parent_doc, 'create')
+			check_doc_permissions(parent_doc, "create")
 
 			doc_row = parent_doc.append("items", frappe.new_doc(parent_doc.doctype + " Item"))
 			doc_row.item_code = user_row.get("item_code")
@@ -1616,7 +1619,7 @@ def update_child_items(parent_doctype, parent_name, data):
 			if not doc_row:
 				continue
 
-			check_doc_permissions(parent_doc, 'write')
+			check_doc_permissions(parent_doc, "write")
 
 			# Skip if no change
 			qty_changed = flt(doc_row.get("qty"), doc_row.precision("qty")) != flt(user_row.get("qty"), doc_row.precision("qty"))
@@ -1656,7 +1659,7 @@ def update_child_items(parent_doctype, parent_name, data):
 
 			if flt(doc_row.billed_amt, doc_row.precision("amount")) > flt(new_amount, doc_row.precision("amount")):
 				frappe.throw(_("Row #{0}: Cannot set Rate if Amount is greater than Billed Amount for Item {1}").format(
-					doc_row.idx, doc_row.item_code
+					doc_row.idx, doc_row.item_code,
 				))
 
 			if should_maintain_same_rate() and any(
@@ -1664,7 +1667,7 @@ def update_child_items(parent_doctype, parent_name, data):
 				for field in ["delivered_qty", "received_qty", "proforma_qty", "billed_qty", "billed_amt"]
 			):
 				frappe.throw(_("Row #{0}: Cannot change rate because there are transactions against Item {1}").format(
-					doc_row.idx, frappe.bold(doc_row.item_code)
+					doc_row.idx, frappe.bold(doc_row.item_code),
 				))
 
 			if flt(doc_row.price_list_rate):
@@ -1713,7 +1716,7 @@ def update_child_items(parent_doctype, parent_name, data):
 		parent_doc.validate_budget()
 		parent_doc.validate_zero_amount()
 
-	frappe.get_doc('Authorization Control').validate_approving_authority(
+	frappe.get_doc("Authorization Control").validate_approving_authority(
 		parent_doc.doctype,
 		parent_doc.company,
 		parent_doc.base_grand_total,
@@ -1794,7 +1797,7 @@ def update_item_batch_serial_based_on_purchase_and_production(target):
 			continue
 
 		item = frappe.get_cached_value("Item", target_item.item_code,
-			['has_batch_no', 'has_serial_no'], as_dict=1)
+			["has_batch_no", "has_serial_no"], as_dict=1)
 		if not item:
 			continue
 		if not item.has_batch_no and not item.has_serial_no:
@@ -1913,7 +1916,7 @@ def update_item_batch_serial_based_on_purchase_and_production(target):
 		# Get received batch/serial details
 		for in_item in incoming_items:
 			current_batch = batch_wise_details.setdefault(cstr(in_item.batch_no), frappe._dict({
-				"batch_no": in_item.batch_no, "serial_nos": [], "remaining_qty": 0
+				"batch_no": in_item.batch_no, "serial_nos": [], "remaining_qty": 0,
 			}))
 			current_batch.remaining_qty += abs(flt(in_item.qty))
 			current_batch.serial_nos += get_serial_nos(in_item.serial_no)

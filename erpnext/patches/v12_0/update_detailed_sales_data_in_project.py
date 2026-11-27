@@ -5,10 +5,10 @@ def execute():
 	frappe.reload_doc("projects", "doctype", "project")
 
 	update_fields = [
-		'part_sales_amount',
-		'lubricant_sales_amount',
-		'labour_sales_amount',
-		'sublet_sales_amount',
+		"part_sales_amount",
+		"lubricant_sales_amount",
+		"labour_sales_amount",
+		"sublet_sales_amount",
 	]
 
 	projects = frappe.get_all("Project")
@@ -16,7 +16,7 @@ def execute():
 
 	total = len(projects)
 	for i, project in enumerate(projects):
-		print("Project {0}/{1}".format(i+1, total))
+		print("Project {0}/{1}".format(i + 1, total))
 		doc = frappe.get_doc("Project", project)
 		doc.set_sales_amount()
 

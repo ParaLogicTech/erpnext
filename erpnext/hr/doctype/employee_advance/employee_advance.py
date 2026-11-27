@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe
-import erpnext
-from frappe import _
-from frappe.utils import flt, nowdate, cint
-from erpnext.controllers.accounts_controller import AccountsController
 import json
+
+import frappe
+from frappe import _
+from frappe.utils import cint, flt, nowdate
+
+import erpnext
+from erpnext.controllers.accounts_controller import AccountsController
 
 
 class EmployeeAdvanceOverPayment(frappe.ValidationError):
@@ -27,8 +28,8 @@ class EmployeeAdvance(AccountsController):
 		]
 
 	def onload(self):
-		self.get("__onload").make_payment_via_journal_entry = frappe.db.get_single_value('Accounts Settings',
-			'make_payment_via_journal_entry')
+		self.get("__onload").make_payment_via_journal_entry = frappe.db.get_single_value("Accounts Settings",
+			"make_payment_via_journal_entry")
 
 	def validate(self):
 		self.set_status()
@@ -42,7 +43,7 @@ class EmployeeAdvance(AccountsController):
 			frappe.throw(_("Advance Account is mandatory"))
 
 	def on_cancel(self):
-		self.db_set('status', 'Cancelled')
+		self.db_set("status", "Cancelled")
 
 	def on_gl_against_voucher(self, account, party_type, party, on_cancel):
 		if not party_type or not party:
@@ -79,7 +80,7 @@ class EmployeeAdvance(AccountsController):
 
 		company_currency = erpnext.get_company_currency(self.company)
 		if (self.advance_account and
-			company_currency != frappe.db.get_value('Account', self.advance_account, 'account_currency')):
+			company_currency != frappe.db.get_value("Account", self.advance_account, "account_currency")):
 			frappe.throw(_("Advance account currency should be same as company currency {0}")
 				.format(company_currency))
 
@@ -138,7 +139,7 @@ class EmployeeAdvance(AccountsController):
 			"paid_amount": payments.paid_amount,
 			"returned_amount": payments.returned_amount,
 			"salary_deduction_amount": salary_deduction,
-			"claimed_amount": flt(claimed_amount)
+			"claimed_amount": flt(claimed_amount),
 		}
 		self.update(values)
 		if update:
@@ -147,9 +148,9 @@ class EmployeeAdvance(AccountsController):
 
 @frappe.whitelist()
 def get_due_advance_amount(employee, posting_date):
-	employee_due_amount = frappe.get_all("Employee Advance", \
-		filters = {"employee":employee, "docstatus":1, "posting_date":("<=", posting_date)}, \
-		fields = ["advance_amount", "paid_amount"])
+	employee_due_amount = frappe.get_all("Employee Advance",
+		filters={"employee": employee, "docstatus": 1, "posting_date": ("<=", posting_date)},
+		fields=["advance_amount", "paid_amount"])
 	return sum([(emp.advance_amount - emp.paid_amount) for emp in employee_due_amount])
 
 
@@ -194,11 +195,11 @@ def make_bank_entry(dt, dn, is_advance_return=False):
 
 	je = frappe.new_doc("Journal Entry")
 	je.posting_date = nowdate()
-	je.voucher_type = 'Bank Entry'
+	je.voucher_type = "Bank Entry"
 	je.company = doc.company
 	je.cost_center = doc.cost_center
 	je.project = doc.project
-	je.remark = 'Payment against Employee Advance: ' + dn + '\n' + doc.purpose
+	je.remark = "Payment against Employee Advance: " + dn + "\n" + doc.purpose
 
 	je.append("accounts", {
 		"account": doc.advance_account,
@@ -207,7 +208,7 @@ def make_bank_entry(dt, dn, is_advance_return=False):
 		"reference_type": "Employee Advance",
 		"reference_name": doc.name,
 		"party_type": "Employee",
-		"party": doc.employee
+		"party": doc.employee,
 	})
 
 	je.append("accounts", {
@@ -215,7 +216,7 @@ def make_bank_entry(dt, dn, is_advance_return=False):
 		"credit_in_account_currency": flt(doc.advance_amount) if not is_advance_return else 0,
 		"debit_in_account_currency": flt(doc.advance_amount) if is_advance_return else 0,
 		"account_currency": payment_account.account_currency,
-		"account_type": payment_account.account_type
+		"account_type": payment_account.account_type,
 	})
 
 	return je.as_dict()
@@ -233,7 +234,7 @@ def make_multiple_bank_entries(names):
 
 	je = frappe.new_doc("Journal Entry")
 	je.posting_date = nowdate()
-	je.voucher_type = 'Bank Entry'
+	je.voucher_type = "Bank Entry"
 
 	total_amount = 0
 	company = None
@@ -258,7 +259,7 @@ def make_multiple_bank_entries(names):
 			"party_type": "Employee",
 			"party": ead.employee,
 			"cost_center": ead.cost_center,
-			"project": ead.project
+			"project": ead.project,
 		})
 		total_amount += flt(ead.advance_amount)
 
@@ -270,7 +271,7 @@ def make_multiple_bank_entries(names):
 		"account": payment_account.account,
 		"credit_in_account_currency": total_amount,
 		"account_currency": payment_account.account_currency,
-		"account_type": payment_account.account_type
+		"account_type": payment_account.account_type,
 	})
 
 	je.set_amounts_in_company_currency()

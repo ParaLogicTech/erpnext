@@ -1,26 +1,27 @@
 from frappe import _
 
+
 def get_data():
 	return {
-		'fieldname': 'bom_no',
-		'non_standard_fieldnames': {
-			'Item': 'default_bom',
-			'Purchase Order': 'bom',
-			'Purchase Receipt': 'bom',
-			'Purchase Invoice': 'bom'
+		"fieldname": "bom_no",
+		"non_standard_fieldnames": {
+			"Item": "default_bom",
+			"Purchase Order": "bom",
+			"Purchase Receipt": "bom",
+			"Purchase Invoice": "bom",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'label': _('Stock'),
-				'items': ['Item', 'Stock Entry', 'Quality Inspection']
+				"label": _("Stock"),
+				"items": ["Item", "Stock Entry", "Quality Inspection"],
 			},
 			{
-				'label': _('Manufacture'),
-				'items': ['BOM', 'Work Order', 'Job Card']
+				"label": _("Manufacture"),
+				"items": ["BOM", "Work Order", "Job Card"],
 			},
 			{
-				'label': _('Subcontract'),
-				'items': ['Purchase Order', 'Purchase Receipt', 'Purchase Invoice']
-			}
-		]
+				"label": _("Subcontract"),
+				"items": ["Purchase Order", "Purchase Receipt", "Purchase Invoice"],
+			},
+		],
 	}

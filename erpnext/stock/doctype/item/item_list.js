@@ -1,4 +1,4 @@
-frappe.listview_settings['Item'] = {
+frappe.listview_settings["Item"] = {
 	add_fields: ["item_name", "stock_uom", "alt_uom", "item_group", "image", "variant_of",
 		"has_variants", "end_of_life", "disabled"],
 	filters: [["disabled", "=", "0"]],
@@ -17,24 +17,24 @@ frappe.listview_settings['Item'] = {
 
 	reports: [
 		{
-			name: 'Stock Summary',
-			report_type: 'Page',
-			route: 'stock-balance'
+			name: "Stock Summary",
+			report_type: "Page",
+			route: "stock-balance",
 		},
 		{
-			name: 'Stock Ledger',
-			report_type: 'Script Report'
+			name: "Stock Ledger",
+			report_type: "Script Report",
 		},
 		{
-			name: 'Stock Balance',
-			report_type: 'Script Report'
+			name: "Stock Balance",
+			report_type: "Script Report",
 		},
 		{
-			name: 'Stock Projected Qty',
-			report_type: 'Script Report'
-		}
+			name: "Stock Projected Qty",
+			report_type: "Script Report",
+		},
 
-	]
+	],
 };
 
 frappe.help.youtube_id["Item"] = "qXaEwld4_Ps";

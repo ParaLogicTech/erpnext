@@ -1,14 +1,16 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate, get_datetime, add_to_date, time_diff_in_hours, cstr, cint
-import json
+from frappe.utils import add_to_date, cint, cstr, flt, get_datetime, getdate, time_diff_in_hours
 
 
-class OverlapError(frappe.ValidationError): pass
+class OverlapError(frappe.ValidationError):
+	pass
 
 
 class Timesheet(Document):
@@ -67,11 +69,11 @@ class Timesheet(Document):
 				continue
 
 			if force:
-				d.billing_rate = flt(activity_cost.get('billing_rate')) or flt(d.billing_rate)
-				d.costing_rate = flt(activity_cost.get('costing_rate')) or flt(d.costing_rate)
+				d.billing_rate = flt(activity_cost.get("billing_rate")) or flt(d.billing_rate)
+				d.costing_rate = flt(activity_cost.get("costing_rate")) or flt(d.costing_rate)
 			else:
-				d.billing_rate = flt(d.billing_rate) or flt(activity_cost.get('billing_rate'))
-				d.costing_rate = flt(d.costing_rate) or flt(activity_cost.get('costing_rate'))
+				d.billing_rate = flt(d.billing_rate) or flt(activity_cost.get("billing_rate"))
+				d.costing_rate = flt(d.costing_rate) or flt(activity_cost.get("costing_rate"))
 
 	def validate_dates(self):
 		for d in self.time_logs:
@@ -153,7 +155,7 @@ class Timesheet(Document):
 		self.status = {
 			"0": "Draft",
 			"1": "Submitted",
-			"2": "Cancelled"
+			"2": "Cancelled",
 		}[str(self.docstatus or 0)]
 
 		if self.per_billed == 100:
@@ -251,7 +253,7 @@ class Timesheet(Document):
 
 @frappe.whitelist()
 def make_sales_invoice(source_name, item_code=None, customer=None):
-	ts_doc = frappe.get_doc('Timesheet', source_name)
+	ts_doc = frappe.get_doc("Timesheet", source_name)
 
 	if not ts_doc.total_billable_hours:
 		frappe.throw(_("Invoice can't be made for zero billing hour"))
@@ -269,16 +271,16 @@ def make_sales_invoice(source_name, item_code=None, customer=None):
 		target.customer = customer
 
 	if item_code:
-		target.append('items', {
-			'item_code': item_code,
-			'qty': hours,
-			'rate': billing_rate
+		target.append("items", {
+			"item_code": item_code,
+			"qty": hours,
+			"rate": billing_rate,
 		})
 
-	target.append('timesheets', {
-		'time_sheet': ts_doc.name,
-		'billing_hours': hours,
-		'billing_amount': billing_amount
+	target.append("timesheets", {
+		"time_sheet": ts_doc.name,
+		"billing_hours": hours,
+		"billing_amount": billing_amount,
 	})
 
 	target.run_method("calculate_billing_amount_for_timesheet")
@@ -289,7 +291,7 @@ def make_sales_invoice(source_name, item_code=None, customer=None):
 
 @frappe.whitelist()
 def make_salary_slip(source_name, target_doc=None):
-	doc = frappe.get_doc('Timesheet', source_name)
+	doc = frappe.get_doc("Timesheet", source_name)
 
 	if not target_doc:
 		target_doc = frappe.new_doc("Salary Slip")
@@ -301,9 +303,9 @@ def make_salary_slip(source_name, target_doc=None):
 	target_doc.end_date = doc.end_date
 	target_doc.posting_date = doc.modified
 	target_doc.total_working_hours = doc.total_hours
-	target_doc.append('timesheets', {
-		'time_sheet': doc.name,
-		'working_hours': doc.total_hours
+	target_doc.append("timesheets", {
+		"time_sheet": doc.name,
+		"working_hours": doc.total_hours,
 	})
 
 	target_doc.run_method("get_emp_and_leave_details")
@@ -340,18 +342,18 @@ def _get_activity_cost(employee=None, activity_type=None, cache=True):
 		if employee:
 			filters["employee"] = employee
 		else:
-			filters["employee"] = ['is', 'not set']
+			filters["employee"] = ["is", "not set"]
 
 		if activity_type:
 			filters["activity_type"] = activity_type
 		else:
-			filters["activity_type"] = ['is', 'not set']
+			filters["activity_type"] = ["is", "not set"]
 
 		data = frappe.get_all(
 			"Activity Cost",
 			filters=filters,
 			fields=["costing_rate", "billing_rate"],
-			limit=1
+			limit=1,
 		)
 		return data[0] if data else None
 
@@ -384,26 +386,27 @@ def get_projectwise_timesheet_data(project=None, timesheet=None):
 @frappe.whitelist()
 def get_timesheet_data(name, project):
 	data = None
-	if project and project!='':
+	if project and project != "":
 		data = get_projectwise_timesheet_data(project, name)
 	else:
-		data = frappe.get_all('Timesheet',
-			fields = ["(total_billable_amount - total_billed_amount) AS billing_amt", "total_billable_hours AS billing_hours"], filters = {'name': name})
+		data = frappe.get_all("Timesheet",
+			fields=["(total_billable_amount - total_billed_amount) AS billing_amt", "total_billable_hours AS billing_hours"], filters={"name": name})
 	return {
-		'billing_hours': data[0].billing_hours if data else None,
-		'billing_amount': data[0].billing_amt if data else None,
-		'timesheet_detail': data[0].name if data and project and project!= '' else None
+		"billing_hours": data[0].billing_hours if data else None,
+		"billing_amount": data[0].billing_amt if data else None,
+		"timesheet_detail": data[0].name if data and project and project != "" else None,
 	}
 
 
 @frappe.whitelist()
 def get_events(start, end, filters=None):
 	from frappe.desk.calendar import get_event_conditions
+
 	from erpnext.controllers.queries import get_match_cond
 
 	filters = json.loads(filters)
 	conditions = get_event_conditions("Timesheet", filters)
-	match_cond = get_match_cond('Timesheet')
+	match_cond = get_match_cond("Timesheet")
 
 	return frappe.db.sql("""
 		SELECT

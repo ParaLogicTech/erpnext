@@ -3,10 +3,13 @@
 
 
 import unittest
+
 import frappe
 from frappe.utils import flt, now, today
-from erpnext.accounts.utils import get_fiscal_year
+
 from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
+from erpnext.accounts.utils import get_fiscal_year
+
 
 class TestPeriodClosingVoucher(unittest.TestCase):
 	def test_closing_entry(self):
@@ -60,9 +63,9 @@ class TestPeriodClosingVoucher(unittest.TestCase):
 				where voucher_type='Period Closing Voucher' and voucher_no=%s and account =%s""",
 				(pcv.name, random_expense_account[0].account), as_dict=True)
 
-			self.assertEqual(gle_for_random_expense_account[0].amount, -1*random_expense_account[0].balance)
+			self.assertEqual(gle_for_random_expense_account[0].amount, -1 * random_expense_account[0].balance)
 			self.assertEqual(gle_for_random_expense_account[0].amount_in_account_currency,
-				-1*random_expense_account[0].balance_in_account_currency)
+				-1 * random_expense_account[0].balance_in_account_currency)
 
 	def make_period_closing_voucher(self):
 		pcv = frappe.get_doc({
@@ -72,7 +75,7 @@ class TestPeriodClosingVoucher(unittest.TestCase):
 			"fiscal_year": get_fiscal_year(today(), company="_Test Company")[0],
 			"posting_date": today(),
 			"cost_center": "_Test Cost Center - _TC",
-			"remarks": "test"
+			"remarks": "test",
 		})
 		pcv.insert()
 		pcv.submit()

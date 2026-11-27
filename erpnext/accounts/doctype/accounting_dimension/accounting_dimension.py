@@ -1,15 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe
-from frappe import _
 import json
-from frappe.model.document import Document
+
+import frappe
+from frappe import _, scrub
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
-from frappe import scrub
-from frappe.utils import cstr
 from frappe.model import core_doctypes_list
+from frappe.model.document import Document
+from frappe.utils import cstr
 
 
 class AccountingDimension(Document):
@@ -17,13 +16,13 @@ class AccountingDimension(Document):
 		self.set_fieldname_and_label()
 
 	def validate(self):
-		if self.document_type in core_doctypes_list + ('Accounting Dimension', 'Project',
-				'Cost Center', 'Accounting Dimension Detail'):
+		if self.document_type in core_doctypes_list + ("Accounting Dimension", "Project",
+				"Cost Center", "Accounting Dimension Detail"):
 
 			msg = _("Not allowed to create accounting dimension for {0}").format(self.document_type)
 			frappe.throw(msg)
 
-		exists = frappe.db.get_value("Accounting Dimension", {'document_type': self.document_type}, ['name'])
+		exists = frappe.db.get_value("Accounting Dimension", {"document_type": self.document_type}, ["name"])
 
 		if exists and self.is_new():
 			frappe.throw("Document Type already used as a dimension")
@@ -62,7 +61,7 @@ def make_dimension_in_accounting_doctypes(dimension_doc):
 		make_dimension_field_for_doctype(doctype, dimension_doc, dimension_count=dimension_count)
 		count += 1
 
-		frappe.publish_progress(count*100/len(doclist), title=_("Creating Dimensions..."))
+		frappe.publish_progress(count * 100 / len(doclist), title=_("Creating Dimensions..."))
 		frappe.clear_cache(doctype=doctype)
 
 
@@ -71,9 +70,9 @@ def make_dimension_field_for_doctype(doctype, dimension_doc, dimension_count=Non
 		dimension_count = len(get_accounting_dimensions())
 
 	if (dimension_count + 1) % 2 == 0:
-		insert_after_field = 'dimension_col_break'
+		insert_after_field = "dimension_col_break"
 	else:
-		insert_after_field = 'accounting_dimensions_section'
+		insert_after_field = "accounting_dimensions_section"
 
 	df = {
 		"fieldname": dimension_doc.fieldname,
@@ -82,7 +81,7 @@ def make_dimension_field_for_doctype(doctype, dimension_doc, dimension_count=Non
 		"options": dimension_doc.document_type,
 		"insert_after": insert_after_field,
 		"ignore_user_permissions": 1,
-		"owner": "Administrator"
+		"owner": "Administrator",
 	}
 
 	if doctype == "Budget":
@@ -95,7 +94,7 @@ def make_dimension_field_for_doctype(doctype, dimension_doc, dimension_count=Non
 def add_dimension_to_budget_doctype(df, doc):
 	df.update({
 		"insert_after": "cost_center",
-		"depends_on": "eval:doc.budget_against == '{0}'".format(doc.document_type)
+		"depends_on": "eval:doc.budget_against == '{0}'".format(doc.document_type),
 	})
 
 	create_custom_field("Budget", df, is_system_generated=False)
@@ -107,7 +106,7 @@ def add_dimension_to_budget_doctype(df, doc):
 		property_setter_doc.value = property_setter_doc.value + "\n" + doc.document_type
 		property_setter_doc.save()
 
-		frappe.clear_cache(doctype='Budget')
+		frappe.clear_cache(doctype="Budget")
 	else:
 		frappe.get_doc({
 			"doctype": "Property Setter",
@@ -116,7 +115,7 @@ def add_dimension_to_budget_doctype(df, doc):
 			"field_name": "budget_against",
 			"property": "options",
 			"property_type": "Text",
-			"value": "\nCost Center\nProject\n" + doc.document_type
+			"value": "\nCost Center\nProject\n" + doc.document_type,
 		}).insert(ignore_permissions=True)
 
 
@@ -126,17 +125,17 @@ def delete_accounting_dimension(doc):
 	frappe.db.sql("""
 		DELETE FROM `tabCustom Field`
 		WHERE fieldname = %s
-		AND dt IN (%s)""" %			#nosec
-		('%s', ', '.join(['%s']* len(doclist))), tuple([doc.fieldname] + doclist))
+		AND dt IN (%s)""" %			# nosec
+		("%s", ", ".join(["%s"] * len(doclist))), tuple([doc.fieldname] + doclist))
 
 	frappe.db.sql("""
 		DELETE FROM `tabProperty Setter`
 		WHERE field_name = %s
-		AND doc_type IN (%s)""" %		#nosec
-		('%s', ', '.join(['%s']* len(doclist))), tuple([doc.fieldname] + doclist))
+		AND doc_type IN (%s)""" %		# nosec
+		("%s", ", ".join(["%s"] * len(doclist))), tuple([doc.fieldname] + doclist))
 
 	budget_against_property = frappe.get_doc("Property Setter", "Budget-budget_against-options")
-	value_list = budget_against_property.value.split('\n')[3:]
+	value_list = budget_against_property.value.split("\n")[3:]
 
 	if doc.document_type in value_list:
 		value_list.remove(doc.document_type)
@@ -159,7 +158,7 @@ def disable_dimension(doc):
 def toggle_disabling(doc):
 	doc = json.loads(doc)
 
-	if doc.get('disabled'):
+	if doc.get("disabled"):
 		df = {"read_only": 1}
 	else:
 		df = {"read_only": 0}
@@ -167,7 +166,7 @@ def toggle_disabling(doc):
 	doclist = get_doctypes_with_dimensions()
 
 	for doctype in doclist:
-		field = frappe.db.get_value("Custom Field", {"dt": doctype, "fieldname": doc.get('fieldname')})
+		field = frappe.db.get_value("Custom Field", {"dt": doctype, "fieldname": doc.get("fieldname")})
 		if field:
 			custom_field = frappe.get_doc("Custom Field", field)
 			custom_field.update(df)
@@ -206,7 +205,7 @@ def _get_accounting_dimensions(cache=False):
 		return frappe.get_all(
 			"Accounting Dimension",
 			fields=["label", "fieldname", "disabled", "document_type", "disable_pcv"],
-			filters={"disabled": 0}
+			filters={"disabled": 0},
 		)
 
 	if cache:

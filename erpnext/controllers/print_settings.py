@@ -4,11 +4,12 @@
 import frappe
 from frappe.utils import cint
 
+
 def print_settings_for_item_table(doc):
 
 	doc.print_templates = {
 		"qty": "templates/print_formats/includes/item_table_qty.html",
-		"alt_uom_qty": "templates/print_formats/includes/item_table_alt_uom_qty.html"
+		"alt_uom_qty": "templates/print_formats/includes/item_table_alt_uom_qty.html",
 	}
 	doc.hide_in_print_layout = ["uom", "stock_uom", "alt_uom"]
 
@@ -18,6 +19,7 @@ def print_settings_for_item_table(doc):
 		doc.print_templates["description"] = "templates/print_formats/includes/item_table_description.html"
 		doc.flags.compact_item_fields = ["description", "qty", "rate", "amount"]
 		doc.flags.format_columns = format_columns
+
 
 def format_columns(display_columns, compact_fields):
 	compact_fields = compact_fields + ["image", "item_code", "item_name"]

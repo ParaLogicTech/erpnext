@@ -6,7 +6,8 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from erpnext.hr.doctype.staffing_plan.staffing_plan import get_designation_counts, get_active_staffing_plan_details
+
+from erpnext.hr.doctype.staffing_plan.staffing_plan import get_active_staffing_plan_details, get_designation_counts
 
 
 class JobOpening(Document):
@@ -28,10 +29,10 @@ class JobOpening(Document):
 
 		if self.staffing_plan and self.planned_vacancies:
 			staffing_plan_company = frappe.db.get_value("Staffing Plan", self.staffing_plan, "company")
-			lft, rgt = frappe.get_cached_value('Company',  staffing_plan_company,  ["lft", "rgt"])
+			_lft, _rgt = frappe.get_cached_value("Company", staffing_plan_company, ["lft", "rgt"])
 
 			designation_counts = get_designation_counts(self.designation, self.company)
-			current_count = designation_counts['employee_count'] + designation_counts['job_openings']
+			current_count = designation_counts["employee_count"] + designation_counts["job_openings"]
 
 			if self.planned_vacancies <= current_count:
 				frappe.throw(_("Job Openings for designation {0} already open \

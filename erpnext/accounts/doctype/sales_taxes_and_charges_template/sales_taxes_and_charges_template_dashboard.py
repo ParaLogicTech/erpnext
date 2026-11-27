@@ -4,19 +4,19 @@ from frappe import _
 
 def get_data():
 	return {
-		'fieldname': 'taxes_and_charges',
-		'non_standard_fieldnames': {
-			'Tax Rule': 'sales_tax_template',
-			'Subscription': 'tax_template',
+		"fieldname": "taxes_and_charges",
+		"non_standard_fieldnames": {
+			"Tax Rule": "sales_tax_template",
+			"Subscription": "tax_template",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'label': _('Transactions'),
-				'items': ['Sales Invoice', 'Sales Order', 'Delivery Note']
+				"label": _("Transactions"),
+				"items": ["Sales Invoice", "Sales Order", "Delivery Note"],
 			},
 			{
-				'label': _('References'),
-				'items': ['POS Profile', 'Subscription', 'Tax Rule']
-			}
-		]
+				"label": _("References"),
+				"items": ["POS Profile", "Subscription", "Tax Rule"],
+			},
+		],
 	}

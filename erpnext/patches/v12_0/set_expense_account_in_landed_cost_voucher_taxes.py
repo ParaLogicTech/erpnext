@@ -1,7 +1,8 @@
 import frappe
 
+
 def execute():
-	frappe.reload_doctype('Stock Entry Taxes and Charges')
+	frappe.reload_doctype("Stock Entry Taxes and Charges")
 
 	company_account_map = frappe._dict(frappe.db.sql("""
 		SELECT name, expenses_included_in_valuation from `tabCompany`

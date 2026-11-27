@@ -11,7 +11,7 @@ const cpa_group_by_options = [
 	{label: __("Group by ") + __("Cost Center"), value: "Group by Cost Center"},
 	{label: __("Group by ") + __("Branch"), value: "Group by Branch"},
 	{label: __("Group by ") + __("Project"), value: "Group by Project"},
-]
+];
 
 frappe.query_reports["Customer Payment Ageing"] = {
 	"filters": [
@@ -21,7 +21,7 @@ frappe.query_reports["Customer Payment Ageing"] = {
 			fieldtype: "Link",
 			options: "Company",
 			reqd: 1,
-			default: frappe.defaults.get_user_default("Company")
+			default: frappe.defaults.get_user_default("Company"),
 		},
 		{
 			fieldname: "from_date",
@@ -56,22 +56,22 @@ frappe.query_reports["Customer Payment Ageing"] = {
 			fieldtype: "Link",
 			options: "Customer",
 			on_change: () => {
-				let customer = frappe.query_report.get_filter_value('customer');
+				let customer = frappe.query_report.get_filter_value("customer");
 				if (customer) {
-					frappe.db.get_value('Customer', customer, ["customer_name", "tax_id"], (value) => {
-						frappe.query_report.set_filter_value('customer_name', value["customer_name"]);
-						frappe.query_report.set_filter_value('tax_id', value["tax_id"]);
+					frappe.db.get_value("Customer", customer, ["customer_name", "tax_id"], (value) => {
+						frappe.query_report.set_filter_value("customer_name", value["customer_name"]);
+						frappe.query_report.set_filter_value("tax_id", value["tax_id"]);
 					});
 				} else {
-					frappe.query_report.set_filter_value('customer_name', "");
-					frappe.query_report.set_filter_value('tax_id', "");
+					frappe.query_report.set_filter_value("customer_name", "");
+					frappe.query_report.set_filter_value("tax_id", "");
 				}
 			},
 			get_query: function() {
 				return {
-					query: "erpnext.controllers.queries.customer_query"
+					query: "erpnext.controllers.queries.customer_query",
 				};
-			}
+			},
 		},
 		{
 			fieldname: "customer_group",
@@ -103,7 +103,7 @@ frappe.query_reports["Customer Payment Ageing"] = {
 			fieldtype: "Link",
 			options: "Cost Center",
 			get_query: () => {
-				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+				return {filters: {company: frappe.query_report.get_filter_value("company")}};
 			},
 		},
 		{
@@ -124,29 +124,29 @@ frappe.query_reports["Customer Payment Ageing"] = {
 			fieldtype: "Link",
 			options: "Account",
 			get_query: function() {
-				let company = frappe.query_report.get_filter_value('company');
+				let company = frappe.query_report.get_filter_value("company");
 				return {
 					filters: {
 						"company": company,
 						"account_type": "Receivable",
-						"is_group": 0
-					}
-				}
-			}
+						"is_group": 0,
+					},
+				};
+			},
 		},
 		{
 			fieldname: "group_by",
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
 			options: cpa_group_by_options,
-			default: ""
+			default: "",
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
 			options: cpa_group_by_options,
-			default: ""
+			default: "",
 		},
 		{
 			fieldname: "exclude_unallocated",
@@ -172,23 +172,23 @@ frappe.query_reports["Customer Payment Ageing"] = {
 		},
 	],
 
-	formatter: function (value, row, column, data, default_formatter) {
+	formatter: function(value, row, column, data, default_formatter) {
 		let style = {};
 
 		if (["opening_balance", "closing_balance"].includes(column.fieldname)) {
-			style['font-weight'] = 'bold';
+			style["font-weight"] = "bold";
 		}
 
 		if (flt(value) && (column.fieldname == "total_deductions" || column.is_adjustment)) {
-			style['color'] = 'var(--red-600)';
+			style["color"] = "var(--red-600)";
 		}
 
 		if (flt(value) && column.fieldname == "payment_amount") {
-			style['color'] = 'var(--green-800)';
+			style["color"] = "var(--green-800)";
 		}
 
 		if (flt(value) && column.fieldname == "cleared_amount") {
-			style['color'] = 'var(--blue-700)';
+			style["color"] = "var(--blue-700)";
 		}
 
 		if (
@@ -199,11 +199,11 @@ frappe.query_reports["Customer Payment Ageing"] = {
 			let payment_date = frappe.datetime.str_to_obj(data.payment_date);
 			let due_date = frappe.datetime.str_to_obj(data.due_date);
 			if (payment_date > due_date) {
-				style['color'] = 'var(--red-600)';
+				style["color"] = "var(--red-600)";
 			} else if (payment_date < due_date) {
-				style['color'] = 'var(--green-800)';
+				style["color"] = "var(--green-800)";
 			} else {
-				style['color'] = 'var(--blue-700)';
+				style["color"] = "var(--blue-700)";
 			}
 		}
 

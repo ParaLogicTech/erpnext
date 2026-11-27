@@ -5,10 +5,12 @@ import frappe
 from frappe import _
 from frappe.utils import date_diff
 
-def execute(filters=None, consolidated = False):
+
+def execute(filters=None, consolidated=False):
 	data, columns = DelayedItemReport(filters).run()
 
 	return data, columns
+
 
 class DelayedItemReport:
 	def __init__(self, filters=None):
@@ -21,7 +23,7 @@ class DelayedItemReport:
 		conditions = ""
 
 		doctype = self.filters.get("based_on")
-		child_doc= "%s Item" % doctype
+		child_doc = "%s Item" % doctype
 
 		if doctype == "Sales Invoice":
 			conditions = " and `tabSales Invoice`.update_stock = 1 and `tabSales Invoice`.is_pos = 0"
@@ -54,8 +56,8 @@ class DelayedItemReport:
 				`tab{doctype}`.posting_date between %(from_date)s and %(to_date)s and
 				`tab{child_doc}`.{so_field} is not null and `tab{child_doc}`.{so_field} != '' {cond}
 		""".format(cond=conditions, doctype=doctype, child_doc=child_doc, so_field=sales_order_field), {
-			'from_date': self.filters.get('from_date'),
-			'to_date': self.filters.get('to_date')
+			"from_date": self.filters.get("from_date"),
+			"to_date": self.filters.get("to_date"),
 		}, as_dict=1)
 
 		if self.transactions:
@@ -66,12 +68,12 @@ class DelayedItemReport:
 	def filter_transactions_data(self, consolidated=False):
 		sales_orders = [d.sales_order for d in self.transactions]
 		doctype = "Sales Order"
-		filters = {'name': ('in', sales_orders)}
+		filters = {"name": ("in", sales_orders)}
 
 		if not consolidated:
 			sales_order_items = [d.sales_order_item for d in self.transactions]
 			doctype = "Sales Order Item"
-			filters = {'parent': ('in', sales_orders), 'name': ('in', sales_order_items)}
+			filters = {"parent": ("in", sales_orders), "name": ("in", sales_order_items)}
 
 		fields = ["delivery_date", "name"]
 		if not consolidated:
@@ -87,8 +89,8 @@ class DelayedItemReport:
 			key = row.sales_order if consolidated else (row.sales_order, row.sales_order_item)
 			delivery_date = so_data.get(key)
 			row.update({
-				'delivery_date': delivery_date,
-				'delayed_days': date_diff(row.posting_date, delivery_date) if delivery_date else None
+				"delivery_date": delivery_date,
+				"delayed_days": date_diff(row.posting_date, delivery_date) if delivery_date else None,
 			})
 
 		# without an expected delivery date a row can't be late, and on-time rows aren't delayed
@@ -104,81 +106,81 @@ class DelayedItemReport:
 			"fieldname": "name",
 			"fieldtype": "Link",
 			"options": based_on,
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Customer"),
 			"fieldname": "customer",
 			"fieldtype": "Link",
 			"options": "Customer",
-			"width": 200
+			"width": 200,
 		},
 		{
 			"label": _("Shipping Address"),
 			"fieldname": "shipping_address_name",
 			"fieldtype": "Link",
 			"options": "Address",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"label": _("Expected Delivery Date"),
 			"fieldname": "delivery_date",
 			"fieldtype": "Date",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Actual Delivery Date"),
 			"fieldname": "posting_date",
 			"fieldtype": "Date",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Item Code"),
 			"fieldname": "item_code",
 			"fieldtype": "Link",
 			"options": "Item",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Item Name"),
 			"fieldname": "item_name",
 			"fieldtype": "Data",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Quantity"),
 			"fieldname": "qty",
 			"fieldtype": "Float",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Rate"),
 			"fieldname": "rate",
 			"fieldtype": "Currency",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Amount"),
 			"fieldname": "amount",
 			"fieldtype": "Currency",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Delayed Days"),
 			"fieldname": "delayed_days",
 			"fieldtype": "Int",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Sales Order"),
 			"fieldname": "sales_order",
 			"fieldtype": "Link",
 			"options": "Sales Order",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Customer PO"),
 			"fieldname": "po_no",
 			"fieldtype": "Data",
-			"width": 100
+			"width": 100,
 		}]

@@ -1,12 +1,14 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
+from frappe.model.meta import get_field_precision
 from frappe.utils import flt
+
+import erpnext
 from erpnext.accounts.utils import get_stock_accounts
 from erpnext.stock.doctype.warehouse.warehouse import get_warehouses_based_on_account
-from frappe.model.meta import get_field_precision
 
 
 def execute(filters=None):
@@ -60,7 +62,7 @@ def get_stock_ledger_data(report_filters, filters):
 		filters["warehouse"] = ("in", warehouses)
 
 	return frappe.get_all("Stock Ledger Entry", filters=filters,
-		fields = ["name", "voucher_type", "voucher_no",
+		fields=["name", "voucher_type", "voucher_no",
 			"sum(stock_value_difference) as stock_value", "posting_date", "posting_time"],
 		group_by="voucher_type, voucher_no",
 		order_by="posting_date ASC, posting_time ASC")
@@ -73,7 +75,7 @@ def get_gl_data(report_filters, filters):
 		stock_accounts = [k.name for k in get_stock_accounts(report_filters.company)]
 
 	filters.update({
-		"account": ("in", stock_accounts)
+		"account": ("in", stock_accounts),
 	})
 
 	if filters.get("warehouse"):
@@ -99,46 +101,46 @@ def get_columns(filters):
 			"fieldname": "name",
 			"fieldtype": "Link",
 			"options": "Stock Ledger Entry",
-			"width": "80"
+			"width": "80",
 		},
 		{
 			"label": _("Posting Date"),
 			"fieldname": "posting_date",
-			"fieldtype": "Date"
+			"fieldtype": "Date",
 		},
 		{
 			"label": _("Posting Time"),
 			"fieldname": "posting_time",
-			"fieldtype": "Time"
+			"fieldtype": "Time",
 		},
 		{
 			"label": _("Voucher Type"),
 			"fieldname": "voucher_type",
-			"width": "110"
+			"width": "110",
 		},
 		{
 			"label": _("Voucher No"),
 			"fieldname": "voucher_no",
 			"fieldtype": "Dynamic Link",
 			"options": "voucher_type",
-			"width": "110"
+			"width": "110",
 		},
 		{
 			"label": _("Stock Value"),
 			"fieldname": "stock_value",
 			"fieldtype": "Currency",
-			"width": "120"
+			"width": "120",
 		},
 		{
 			"label": _("Account Value"),
 			"fieldname": "account_value",
 			"fieldtype": "Currency",
-			"width": "120"
+			"width": "120",
 		},
 		{
 			"label": _("Difference Value"),
 			"fieldname": "difference_value",
 			"fieldtype": "Currency",
-			"width": "120"
-		}
+			"width": "120",
+		},
 	]

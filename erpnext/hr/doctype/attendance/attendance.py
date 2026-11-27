@@ -3,12 +3,13 @@
 
 import frappe
 from frappe import _
-from frappe.model.utils import get_fetch_values
-from frappe.utils import getdate, nowdate, flt, cstr
 from frappe.model.document import Document
+from frappe.model.utils import get_fetch_values
+from frappe.utils import cstr, flt, getdate, nowdate
+
 from erpnext.hr.doctype.employee.employee import (
-	get_standard_working_hours_for_employee,
 	get_standard_break_hours_for_employee,
+	get_standard_working_hours_for_employee,
 )
 
 
@@ -52,15 +53,15 @@ class Attendance(Document):
 				self.leave_application = d.name
 
 				if d.half_day_date == getdate(self.attendance_date):
-					if self.status != 'Half Day':
+					if self.status != "Half Day":
 						frappe.msgprint(_("Employee {0} is on Half day on {1} based on Leave Application")
 							.format(self.employee, self.attendance_date))
-					self.status = 'Half Day'
+					self.status = "Half Day"
 				else:
-					if self.status != 'On Leave':
+					if self.status != "On Leave":
 						frappe.msgprint(_("Employee {0} is on Leave on {1} based on Leave Application")
 							.format(self.employee, self.attendance_date))
-					self.status = 'On Leave'
+					self.status = "On Leave"
 		else:
 			self.leave_type = None
 			self.leave_application = None
@@ -86,15 +87,15 @@ class Attendance(Document):
 				self.attendance_request = d.name
 
 				if d.half_day and d.half_day_date == getdate(self.attendance_date):
-					if self.status != 'Half Day':
+					if self.status != "Half Day":
 						frappe.msgprint(_("Employee {0} is on Half Day on {1} based on Attendance Request")
 							.format(self.employee, self.attendance_date))
-					self.status = 'Half Day'
+					self.status = "Half Day"
 				else:
-					if self.status != 'Present':
+					if self.status != "Present":
 						frappe.msgprint(_("Employee {0} is Present on {1} based on Attendance Request")
 							.format(self.employee, self.attendance_date))
-					self.status = 'Present'
+					self.status = "Present"
 		else:
 			self.attendance_request = None
 
@@ -103,7 +104,7 @@ class Attendance(Document):
 
 		# leaves and attendance requests can be marked for future dates
 		if getdate(self.attendance_date) > getdate(nowdate()):
-			if self.status != 'On Leave' and not self.leave_application and not self.attendance_request:
+			if self.status != "On Leave" and not self.leave_application and not self.attendance_request:
 				frappe.throw(_("Attendance can not be marked for future dates"))
 
 		if not self.flags.from_auto_attendance:
@@ -171,28 +172,28 @@ def add_attendance(events, start, end, conditions=None):
 	if conditions:
 		query += conditions
 
-	for d in frappe.db.sql(query, {"from_date":start, "to_date":end}, as_dict=True):
+	for d in frappe.db.sql(query, {"from_date": start, "to_date": end}, as_dict=True):
 		e = {
 			"name": d.name,
 			"doctype": "Attendance",
 			"start": d.attendance_date,
 			"end": d.attendance_date,
 			"title": cstr(d.status),
-			"docstatus": d.docstatus
+			"docstatus": d.docstatus,
 		}
 		if e not in events:
 			events.append(e)
 
 
 def mark_absent(employee, attendance_date, shift=None):
-	if not frappe.db.exists('Attendance', {'employee': employee, 'attendance_date': attendance_date, 'docstatus': 1}):
+	if not frappe.db.exists("Attendance", {"employee": employee, "attendance_date": attendance_date, "docstatus": 1}):
 		doc_dict = {
-			'doctype': 'Attendance',
-			'employee': employee,
-			'attendance_date': attendance_date,
-			'status': 'Absent',
-			'company': frappe.db.get_value("Employee", employee, "company", cache=1),
-			'shift': shift
+			"doctype": "Attendance",
+			"employee": employee,
+			"attendance_date": attendance_date,
+			"status": "Absent",
+			"company": frappe.db.get_value("Employee", employee, "company", cache=1),
+			"shift": shift,
 		}
 		attendance = frappe.get_doc(doc_dict).insert()
 		attendance.submit()

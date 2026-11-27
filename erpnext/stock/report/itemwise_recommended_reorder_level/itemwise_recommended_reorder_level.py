@@ -3,16 +3,18 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, flt
+from frappe.utils import flt, getdate
+
 
 def execute(filters=None):
-	if not filters: filters = {}
+	if not filters:
+		filters = {}
 	float_preceision = frappe.db.get_default("float_preceision")
 
 	condition = get_condition(filters)
 
 	avg_daily_outgoing = 0
-	diff = ((getdate(filters.get("to_date")) - getdate(filters.get("from_date"))).days)+1
+	diff = ((getdate(filters.get("to_date")) - getdate(filters.get("from_date"))).days) + 1
 	if diff <= 0:
 		frappe.throw(_("'From Date' must be after 'To Date'"))
 
@@ -23,24 +25,26 @@ def execute(filters=None):
 
 	data = []
 	for item in items:
-		total_outgoing = flt(consumed_item_map.get(item.name, 0)) + flt(delivered_item_map.get(item.name,0))
+		total_outgoing = flt(consumed_item_map.get(item.name, 0)) + flt(delivered_item_map.get(item.name, 0))
 		avg_daily_outgoing = flt(total_outgoing / diff, float_preceision)
 		reorder_level = (avg_daily_outgoing * flt(item.lead_time_days)) + flt(item.safety_stock)
 
 		data.append([item.name, item.item_name, item.item_group, item.brand, item.description,
 			item.safety_stock, item.lead_time_days, consumed_item_map.get(item.name, 0),
-			delivered_item_map.get(item.name,0), total_outgoing, avg_daily_outgoing, reorder_level])
+			delivered_item_map.get(item.name, 0), total_outgoing, avg_daily_outgoing, reorder_level])
 
-	return columns , data
+	return columns, data
+
 
 def get_columns():
-	return[
+	return [
 			_("Item") + ":Link/Item:120", _("Item Name") + ":Data:120", _("Item Group") + ":Link/Item Group:100",
 			_("Brand") + ":Link/Brand:100", _("Description") + "::160",
 			_("Safety Stock") + ":Float:160", _("Lead Time Days") + ":Float:120", _("Consumed") + ":Float:120",
 			_("Delivered") + ":Float:120", _("Total Outgoing") + ":Float:120", _("Avg Daily Outgoing") + ":Float:160",
-			_("Reorder Level") + ":Float:120"
+			_("Reorder Level") + ":Float:120",
 	]
+
 
 def get_item_info(filters):
 	from erpnext.stock.report.stock_ledger.stock_ledger import get_item_group_condition
@@ -69,6 +73,7 @@ def get_consumed_items(condition):
 
 	return consumed_items_map
 
+
 def get_delivered_items(condition):
 	dn_items = frappe.db.sql("""select dn_item.item_code, sum(dn_item.stock_qty) as dn_qty
 		from `tabDelivery Note` dn, `tabDelivery Note Item` dn_item
@@ -90,10 +95,11 @@ def get_delivered_items(condition):
 
 	return dn_item_map
 
+
 def get_condition(filters):
 	conditions = ""
 	if filters.get("from_date") and filters.get("to_date"):
-		conditions += " and posting_date between '%s' and '%s'" % (filters["from_date"],filters["to_date"])
+		conditions += " and posting_date between '%s' and '%s'" % (filters["from_date"], filters["to_date"])
 	else:
 		frappe.throw(_("From and To dates required"))
 	return conditions

@@ -4,182 +4,182 @@
 frappe.query_reports["Stock Ledger"] = {
 	"filters": [
 		{
-			"fieldname":"company",
+			"fieldname": "company",
 			"label": __("Company"),
 			"fieldtype": "Link",
 			"options": "Company",
 			"default": frappe.defaults.get_user_default("Company"),
-			"bold": 1
+			"bold": 1,
 		},
 		{
-			"fieldname":"qty_field",
+			"fieldname": "qty_field",
 			"label": __("Stock Qty or Contents Qty"),
 			"fieldtype": "Select",
 			"options": "Stock Qty\nContents Qty",
-			"default": "Stock Qty"
+			"default": "Stock Qty",
 		},
 		{
-			"fieldname":"from_date",
+			"fieldname": "from_date",
 			"label": __("From Date"),
 			"fieldtype": "Date",
 			"default": frappe.datetime.add_months(frappe.datetime.get_today(), -1),
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
-			"fieldname":"to_date",
+			"fieldname": "to_date",
 			"label": __("To Date"),
 			"fieldtype": "Date",
 			"default": frappe.datetime.get_today(),
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
-			"fieldname":"item_code",
+			"fieldname": "item_code",
 			"label": __("Item"),
 			"fieldtype": "Link",
 			"options": "Item",
 			"get_query": function() {
 				return {
 					query: "erpnext.controllers.queries.item_query",
-					filters: {'include_disabled': 1, "include_templates": 1}
-				}
+					filters: {"include_disabled": 1, "include_templates": 1},
+				};
 			},
 			on_change: function() {
-				var item_code = frappe.query_report.get_filter_value('item_code');
-				if(!item_code) {
-					frappe.query_report.set_filter_value('item_name', "");
+				var item_code = frappe.query_report.get_filter_value("item_code");
+				if (!item_code) {
+					frappe.query_report.set_filter_value("item_name", "");
 				} else {
-					frappe.db.get_value("Item", item_code, 'item_name', function(value) {
-						frappe.query_report.set_filter_value('item_name', value['item_name']);
+					frappe.db.get_value("Item", item_code, "item_name", function(value) {
+						frappe.query_report.set_filter_value("item_name", value["item_name"]);
 					});
 				}
-			}
+			},
 		},
 		{
-			"fieldname":"item_name",
+			"fieldname": "item_name",
 			"label": __("Item Name"),
 			"fieldtype": "Data",
-			"hidden": 1
+			"hidden": 1,
 		},
 		{
-			"fieldname":"warehouse",
+			"fieldname": "warehouse",
 			"label": __("Warehouse"),
 			"fieldtype": "Link",
-			"options": "Warehouse"
+			"options": "Warehouse",
 		},
 		{
-			"fieldname":"item_group",
+			"fieldname": "item_group",
 			"label": __("Item Group"),
 			"fieldtype": "Link",
-			"options": "Item Group"
+			"options": "Item Group",
 		},
 		{
-			"fieldname":"brand",
+			"fieldname": "brand",
 			"label": __("Brand"),
 			"fieldtype": "Link",
-			"options": "Brand"
+			"options": "Brand",
 		},
 		{
-			"fieldname":"batch_no",
+			"fieldname": "batch_no",
 			"label": __("Batch No"),
 			"fieldtype": "Link",
-			"options": "Batch"
+			"options": "Batch",
 		},
 		{
-			"fieldname":"serial_no",
+			"fieldname": "serial_no",
 			"label": __("Serial No"),
 			"fieldtype": "Link",
-			"options": "Serial No"
+			"options": "Serial No",
 		},
 		{
 			"fieldname": "packing_slip",
 			"label": __("Packing Slip"),
 			"fieldtype": "Link",
-			"options": "Packing Slip"
+			"options": "Packing Slip",
 		},
 		{
-			"fieldname":"voucher_no",
+			"fieldname": "voucher_no",
 			"label": __("Voucher #"),
-			"fieldtype": "Data"
+			"fieldtype": "Data",
 		},
 		{
-			"fieldname":"project",
+			"fieldname": "project",
 			"label": __("Project"),
 			"fieldtype": "Link",
-			"options": "Project"
+			"options": "Project",
 		},
 		{
-			"fieldname":"include_uom",
+			"fieldname": "include_uom",
 			"label": __("Include UOM"),
 			"fieldtype": "Link",
-			"options": "UOM"
+			"options": "UOM",
 		},
 		{
-			"fieldname":"party_type",
+			"fieldname": "party_type",
 			"label": __("Party Type"),
 			"fieldtype": "Link",
-			"options": "Party Type"
+			"options": "Party Type",
 		},
 		{
-			"fieldname":"party",
+			"fieldname": "party",
 			"label": __("Party"),
 			"fieldtype": "Dynamic Link",
 			"options": "party_type",
 			on_change: function() {
-				var party_type = frappe.query_report.get_filter_value('party_type');
-				var party = frappe.query_report.get_filter_value('party');
+				var party_type = frappe.query_report.get_filter_value("party_type");
+				var party = frappe.query_report.get_filter_value("party");
 
-				if(!party_type || !party) {
-					frappe.query_report.set_filter_value('party_name', "");
+				if (!party_type || !party) {
+					frappe.query_report.set_filter_value("party_name", "");
 				} else {
-					erpnext.utils.get_party_name(party_type, party, function (party_name) {
-						frappe.query_report.set_filter_value('party_name', party_name);
+					erpnext.utils.get_party_name(party_type, party, function(party_name) {
+						frappe.query_report.set_filter_value("party_name", party_name);
 					});
 				}
-			}
+			},
 		},
 		{
-			"fieldname":"party_name",
+			"fieldname": "party_name",
 			"label": __("Party Name"),
 			"fieldtype": "Data",
-			"hidden": 1
+			"hidden": 1,
 		},
 		{
-			"fieldname":"group_by",
+			"fieldname": "group_by",
 			"label": __("Group By"),
 			"fieldtype": "Select",
 			"options": "\nGroup by Item-Warehouse\nGroup by Item\nGroup by Warehouse\nGroup by Item Group\nGroup by Brand\nGroup by Party\nGroup by Voucher",
-			"default": "Group by Item-Warehouse"
+			"default": "Group by Item-Warehouse",
 		},
 		{
-			"fieldname":"show_amounts_in_print",
+			"fieldname": "show_amounts_in_print",
 			"label": __("Print with Amounts"),
 			"fieldtype": "Check",
 			"default": 0,
-			on_change: function() { return false; }
-		}
+			on_change: function() { return false; },
+		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {
 		var style = {};
 
-		if (['actual_qty', 'stock_value_difference'].includes(column.fieldname)) {
+		if (["actual_qty", "stock_value_difference"].includes(column.fieldname)) {
 			if (flt(value) > 0) {
-				style['color'] = 'green';
+				style["color"] = "green";
 			} else if (flt(value) < 0) {
-				style['color'] = 'red';
+				style["color"] = "red";
 			}
 		}
-		if (['qty_after_transaction', 'stock_value', 'valuation_rate'].includes(column.fieldname)) {
+		if (["qty_after_transaction", "stock_value", "valuation_rate"].includes(column.fieldname)) {
 			if (flt(value) < 0) {
-				style['background-color'] = 'pink';
-				style['font-weight'] = 'bold';
+				style["background-color"] = "pink";
+				style["font-weight"] = "bold";
 			}
 		}
-		if (column.fieldname == 'qty_after_transaction' && !flt(value)) {
-			style['color'] = '#00009a';
+		if (column.fieldname == "qty_after_transaction" && !flt(value)) {
+			style["color"] = "#00009a";
 		}
 
 		return default_formatter(value, row, column, data, {css: style});
 	},
-}
+};
 
 erpnext.utils.add_additional_sle_filters("Stock Ledger");

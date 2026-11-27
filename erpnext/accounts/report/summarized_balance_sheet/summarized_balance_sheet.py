@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+
 from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
 
 

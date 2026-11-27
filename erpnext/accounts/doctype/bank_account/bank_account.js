@@ -1,24 +1,24 @@
 // Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Bank Account', {
+frappe.ui.form.on("Bank Account", {
 	setup: function(frm) {
 		frm.set_query("account", function() {
 			return {
 				filters: {
-					'account_type': 'Bank',
-					'company': frm.doc.company,
-					'is_group': 0
-				}
+					"account_type": "Bank",
+					"company": frm.doc.company,
+					"is_group": 0,
+				},
 			};
 		});
 		frm.set_query("suspense_account", function() {
 			return {
 				filters: {
-					'account_type': 'Bank',
-					'company': frm.doc.company,
-					'is_group': 0
-				}
+					"account_type": "Bank",
+					"company": frm.doc.company,
+					"is_group": 0,
+				},
 			};
 		});
 		frm.set_query("party_type", function() {
@@ -28,9 +28,9 @@ frappe.ui.form.on('Bank Account', {
 		});
 	},
 	refresh: function(frm) {
-		frappe.dynamic_link = { doc: frm.doc, fieldname: 'name', doctype: 'Bank Account' }
+		frappe.dynamic_link = {doc: frm.doc, fieldname: "name", doctype: "Bank Account"};
 
-		frm.toggle_display(['address_html','contact_html'], !frm.doc.__islocal);
+		frm.toggle_display(["address_html", "contact_html"], !frm.doc.__islocal);
 
 		if (frm.doc.__islocal) {
 			frappe.contacts.clear_address_and_contact(frm);
@@ -49,6 +49,6 @@ frappe.ui.form.on('Bank Account', {
 	},
 
 	is_company_account: function(frm) {
-		frm.set_df_property('account', 'reqd', frm.doc.is_company_account);
-	}
+		frm.set_df_property("account", "reqd", frm.doc.is_company_account);
+	},
 });

@@ -1,15 +1,16 @@
 from frappe import _
 
+
 def get_data():
 	return {
-		'fieldname': 'maintenance_schedule',
-		'non_standard_fieldnames': {
-			'Maintenance Visit': 'prevdoc_docname',
+		"fieldname": "maintenance_schedule",
+		"non_standard_fieldnames": {
+			"Maintenance Visit": "prevdoc_docname",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'label': _('Reference'),
-				'items': ['Maintenance Visit', 'Opportunity']
+				"label": _("Reference"),
+				"items": ["Maintenance Visit", "Opportunity"],
 			},
-		]
+		],
 	}

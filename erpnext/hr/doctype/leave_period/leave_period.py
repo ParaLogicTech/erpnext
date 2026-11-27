@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import date_diff, getdate, ceil
 from frappe.model.document import Document
-from erpnext.hr.utils import validate_overlap, get_employee_leave_policy
+from frappe.utils import ceil, date_diff, getdate
+
+from erpnext.hr.utils import get_employee_leave_policy, validate_overlap
 
 
 class LeavePeriod(Document):
@@ -42,7 +42,7 @@ class LeavePeriod(Document):
 			"grade": grade,
 			"department": department,
 			"designation": designation,
-			"name": employee
+			"name": employee,
 		})
 
 		if employee_records:
@@ -93,7 +93,7 @@ def get_existing_allocations(employees, leave_period):
 			AND employee in (%s)
 			AND carry_forward=0
 			AND docstatus=1
-	""" % ('%s', ', '.join(['%s']*len(employees))), [leave_period] + employees)
+	""" % ("%s", ", ".join(["%s"] * len(employees))), [leave_period] + employees)
 	if leave_allocations:
 		frappe.msgprint(_("Skipping Leave Allocation for the following employees, as Leave Allocation records already exists against them. {0}")
 			.format("\n".join(leave_allocations)))
@@ -111,7 +111,7 @@ def get_leave_type_details():
 
 def create_leave_allocation(employee, leave_type, new_leaves_allocated, leave_type_details, leave_period, carry_forward,
 		date_of_joining):
-	''' Creates leave allocation for the given employee in the provided leave period '''
+	""" Creates leave allocation for the given employee in the provided leave period """
 	if carry_forward and not leave_type_details.get(leave_type).is_carry_forward:
 		carry_forward = 0
 
@@ -132,7 +132,7 @@ def create_leave_allocation(employee, leave_type, new_leaves_allocated, leave_ty
 		to_date=leave_period.to_date,
 		new_leaves_allocated=new_leaves_allocated,
 		leave_period=leave_period.name,
-		carry_forward=carry_forward
+		carry_forward=carry_forward,
 		))
 	allocation.save(ignore_permissions=True)
 	allocation.submit()

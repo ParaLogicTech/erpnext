@@ -1,17 +1,21 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import unittest
 import json
-import frappe, erpnext
+import unittest
+
+import frappe
 import frappe.defaults
-from frappe.utils import cint, flt, cstr, today, random_string
-from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
-from erpnext.stock.doctype.item.test_item import create_item
+from frappe.utils import cint, cstr, flt, random_string, today
+
+import erpnext
 from erpnext import set_perpetual_inventory
-from erpnext.stock.doctype.serial_no.serial_no import SerialNoDuplicateError
 from erpnext.accounts.doctype.account.test_account import get_inventory_account
-from erpnext.stock.doctype.item.test_item import make_item
+from erpnext.stock.doctype.item.test_item import create_item, make_item
+from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
+from erpnext.stock.doctype.serial_no.serial_no import SerialNoDuplicateError
+
+
 class TestPurchaseReceipt(unittest.TestCase):
 	def setUp(self):
 		set_perpetual_inventory(0)
@@ -32,7 +36,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		self.assertRaises(frappe.ValidationError, frappe.get_doc(pi).submit)
 
 	def test_purchase_receipt_no_gl_entry(self):
-		company = frappe.db.get_value('Warehouse', '_Test Warehouse - _TC', 'company')
+		frappe.db.get_value("Warehouse", "_Test Warehouse - _TC", "company")
 
 		existing_bin_stock_value = frappe.db.get_value("Bin", {"item_code": "_Test Item",
 			"warehouse": "_Test Warehouse - _TC"}, "stock_value")
@@ -52,7 +56,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		self.assertFalse(get_gl_entries("Purchase Receipt", pr.name))
 
 	def test_batched_serial_no_purchase(self):
-		item = frappe.db.exists("Item", {'item_name': 'Batched Serialized Item'})
+		item = frappe.db.exists("Item", {"item_name": "Batched Serialized Item"})
 		if not item:
 			item = create_item("Batched Serialized Item")
 			item.has_batch_no = 1
@@ -62,21 +66,21 @@ class TestPurchaseReceipt(unittest.TestCase):
 			item.serial_no_series = "BS-.####"
 			item.save()
 		else:
-			item = frappe.get_doc("Item", {'item_name': 'Batched Serialized Item'})
+			item = frappe.get_doc("Item", {"item_name": "Batched Serialized Item"})
 
 		pr = make_purchase_receipt(item_code=item.name, qty=5, rate=500)
 
-		self.assertTrue(frappe.db.get_value('Batch', {'item': item.name, 'reference_name': pr.name}))
+		self.assertTrue(frappe.db.get_value("Batch", {"item": item.name, "reference_name": pr.name}))
 
 		pr.load_from_db()
 		batch_no = pr.items[0].batch_no
 		pr.cancel()
 
-		self.assertFalse(frappe.db.get_value('Batch', {'item': item.name, 'reference_name': pr.name}))
-		self.assertFalse(frappe.db.get_all('Serial No', {'batch_no': batch_no}))
+		self.assertFalse(frappe.db.get_value("Batch", {"item": item.name, "reference_name": pr.name}))
+		self.assertFalse(frappe.db.get_all("Serial No", {"batch_no": batch_no}))
 
 	def test_purchase_receipt_gl_entry(self):
-		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse = "Stores - TCP1", supplier_warehouse = "Work in Progress - TCP1", get_multiple_items = True, get_taxes_and_charges = True)
+		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work in Progress - TCP1", get_multiple_items=True, get_taxes_and_charges=True)
 		self.assertEqual(cint(erpnext.is_perpetual_inventory_enabled(pr.company)), 1)
 
 		gl_entries = get_gl_entries("Purchase Receipt", pr.name)
@@ -91,14 +95,14 @@ class TestPurchaseReceipt(unittest.TestCase):
 				stock_in_hand_account: [750.0, 0.0],
 				"Stock Received But Not Billed - TCP1": [0.0, 500.0],
 				"_Test Account Shipping Charges - TCP1": [0.0, 100.0],
-				"_Test Account Customs Duty - TCP1": [0.0, 150.0]
+				"_Test Account Customs Duty - TCP1": [0.0, 150.0],
 			}
 		else:
 			expected_values = {
 				stock_in_hand_account: [375.0, 0.0],
 				fixed_asset_account: [375.0, 0.0],
 				"Stock Received But Not Billed - TCP1": [0.0, 500.0],
-				"_Test Account Shipping Charges - TCP1": [0.0, 250.0]
+				"_Test Account Shipping Charges - TCP1": [0.0, 250.0],
 			}
 		for gle in gl_entries:
 			self.assertEqual(expected_values[gle.account][0], gle.debit)
@@ -128,7 +132,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		make_stock_entry(item_code="_Test Item Home Desktop 100", target="Work In Progress - TCP1",
 			qty=100, basic_rate=100, company="_Test Company with perpetual inventory")
 		pr = make_purchase_receipt(item_code="_Test FG Item", qty=10, rate=0, is_subcontracted=1,
-			company="_Test Company with perpetual inventory", warehouse='Stores - TCP1', supplier_warehouse='Work In Progress - TCP1')
+			company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work In Progress - TCP1")
 
 		gl_entries = get_gl_entries("Purchase Receipt", pr.name)
 
@@ -142,11 +146,16 @@ class TestPurchaseReceipt(unittest.TestCase):
 				receive more than the required qty in the PO.
 			Expected Result: Error Raised for Over Receipt against PO.
 		"""
+		from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
+		from erpnext.buying.doctype.purchase_order.purchase_order import (
+			make_rm_stock_entry as make_subcontract_transfer_entry,
+		)
+		from erpnext.buying.doctype.purchase_order.test_purchase_order import (
+			create_purchase_order,
+			make_subcontracted_item,
+			update_backflush_based_on,
+		)
 		from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
-		from erpnext.buying.doctype.purchase_order.test_purchase_order import (update_backflush_based_on,
-			make_subcontracted_item, create_purchase_order)
-		from erpnext.buying.doctype.purchase_order.purchase_order import (make_purchase_receipt,
-			make_rm_stock_entry as make_subcontract_transfer_entry)
 
 		update_backflush_based_on("Material Transferred for Subcontract")
 		item_code = "_Test Subcontracted FG Item 1"
@@ -155,13 +164,13 @@ class TestPurchaseReceipt(unittest.TestCase):
 		po = create_purchase_order(item_code=item_code, qty=1,
 			is_subcontracted=1, supplier_warehouse="_Test Warehouse 1 - _TC")
 
-		#stock raw materials in a warehouse before transfer
+		# stock raw materials in a warehouse before transfer
 		make_stock_entry(target="_Test Warehouse - _TC",
 			item_code="_Test Item Home Desktop 100", qty=1, basic_rate=100)
 		make_stock_entry(target="_Test Warehouse - _TC",
-			item_code = "Test Extra Item 1", qty=1, basic_rate=100)
+			item_code="Test Extra Item 1", qty=1, basic_rate=100)
 		make_stock_entry(target="_Test Warehouse - _TC",
-			item_code = "_Test Item", qty=1, basic_rate=100)
+			item_code="_Test Item", qty=1, basic_rate=100)
 
 		rm_items = [
 			{
@@ -170,7 +179,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 				"item_name": "_Test Item",
 				"qty": po.supplied_items[0].required_qty,
 				"warehouse": "_Test Warehouse - _TC",
-				"stock_uom": "Nos"
+				"stock_uom": "Nos",
 			},
 			{
 				"item_code": item_code,
@@ -178,7 +187,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 				"item_name": "Test Extra Item 1",
 				"qty": po.supplied_items[1].required_qty,
 				"warehouse": "_Test Warehouse - _TC",
-				"stock_uom": "Nos"
+				"stock_uom": "Nos",
 			},
 			{
 				"item_code": item_code,
@@ -186,8 +195,8 @@ class TestPurchaseReceipt(unittest.TestCase):
 				"item_name": "_Test Item Home Desktop 100",
 				"qty": po.supplied_items[2].required_qty,
 				"warehouse": "_Test Warehouse - _TC",
-				"stock_uom": "Nos"
-			}
+				"stock_uom": "Nos",
+			},
 		]
 		rm_item_string = json.dumps(rm_items)
 		se = frappe.get_doc(make_subcontract_transfer_entry(po.name, rm_item_string))
@@ -233,16 +242,15 @@ class TestPurchaseReceipt(unittest.TestCase):
 
 	def test_purchase_return(self):
 
-		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse = "Stores - TCP1", supplier_warehouse = "Work in Progress - TCP1")
+		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work in Progress - TCP1")
 
-		return_pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse = "Stores - TCP1", supplier_warehouse = "Work in Progress - TCP1", is_return=1, return_against=pr.name, qty=-2)
+		return_pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work in Progress - TCP1", is_return=1, return_against=pr.name, qty=-2)
 
 		# check sle
 		outgoing_rate = frappe.db.get_value("Stock Ledger Entry", {"voucher_type": "Purchase Receipt",
 			"voucher_no": return_pr.name}, "outgoing_rate")
 
 		self.assertEqual(outgoing_rate, 50)
-
 
 		# check gl entries for return
 		gl_entries = get_gl_entries("Purchase Receipt", return_pr.name)
@@ -259,24 +267,22 @@ class TestPurchaseReceipt(unittest.TestCase):
 			self.assertEqual(expected_values[gle.account][0], gle.debit)
 			self.assertEqual(expected_values[gle.account][1], gle.credit)
 
-
 	def test_purchase_return_for_rejected_qty(self):
 		from erpnext.stock.doctype.warehouse.test_warehouse import get_warehouse
 
-		rejected_warehouse="_Test Rejected Warehouse - TCP1"
+		rejected_warehouse = "_Test Rejected Warehouse - TCP1"
 		if not frappe.db.exists("Warehouse", rejected_warehouse):
-			get_warehouse(company = "_Test Company with perpetual inventory",
-				abbr = " - TCP1", warehouse_name = "_Test Rejected Warehouse").name
+			get_warehouse(company="_Test Company with perpetual inventory",
+				abbr=" - TCP1", warehouse_name="_Test Rejected Warehouse").name
 
-		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse = "Stores - TCP1", supplier_warehouse = "Work in Progress - TCP1", received_qty=4, qty=2, rejected_warehouse=rejected_warehouse)
+		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work in Progress - TCP1", received_qty=4, qty=2, rejected_warehouse=rejected_warehouse)
 
-		return_pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse = "Stores - TCP1", supplier_warehouse = "Work in Progress - TCP1", is_return=1, return_against=pr.name, received_qty = -4, qty=-2, rejected_warehouse=rejected_warehouse)
+		return_pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work in Progress - TCP1", is_return=1, return_against=pr.name, received_qty=-4, qty=-2, rejected_warehouse=rejected_warehouse)
 
 		actual_qty = frappe.db.get_value("Stock Ledger Entry", {"voucher_type": "Purchase Receipt",
-			"voucher_no": return_pr.name, 'warehouse': return_pr.items[0].rejected_warehouse}, "actual_qty")
+			"voucher_no": return_pr.name, "warehouse": return_pr.items[0].rejected_warehouse}, "actual_qty")
 
 		self.assertEqual(actual_qty, -2)
-
 
 	def test_purchase_return_for_serialized_items(self):
 		def _check_serial_no_values(serial_no, field_values):
@@ -292,7 +298,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 
 		_check_serial_no_values(serial_no, {
 			"warehouse": "_Test Warehouse - _TC",
-			"purchase_document_no": pr.name
+			"purchase_document_no": pr.name,
 		})
 
 		return_pr = make_purchase_receipt(item_code="_Test Serialized Item With Series", qty=-1,
@@ -301,18 +307,18 @@ class TestPurchaseReceipt(unittest.TestCase):
 		_check_serial_no_values(serial_no, {
 			"warehouse": "",
 			"purchase_document_no": pr.name,
-			"delivery_document_no": return_pr.name
+			"delivery_document_no": return_pr.name,
 		})
 
 	def test_purchase_return_for_multi_uom(self):
 		item_code = "_Test Purchase Return For Multi-UOM"
-		if not frappe.db.exists('Item', item_code):
-			item = make_item(item_code, {'stock_uom': 'Box'})
-			row = item.append('uom_conversion_graph', {
-				'from_qty': 1,
-				'from_uom': 'Unit',
-				'to_qty': 0.1, # conversion factor
-				'to_uom': item.stock_uom
+		if not frappe.db.exists("Item", item_code):
+			item = make_item(item_code, {"stock_uom": "Box"})
+			row = item.append("uom_conversion_graph", {
+				"from_qty": 1,
+				"from_uom": "Unit",
+				"to_qty": 0.1,  # conversion factor
+				"to_uom": item.stock_uom,
 			})
 			row.db_update()
 
@@ -333,9 +339,11 @@ class TestPurchaseReceipt(unittest.TestCase):
 
 	def test_pr_billing_status(self):
 		# PO -> PR1 -> PI and PO -> PI and PO -> PR2
+		from erpnext.buying.doctype.purchase_order.purchase_order import (
+			make_purchase_invoice as make_purchase_invoice_from_po,
+		)
+		from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
 		from erpnext.buying.doctype.purchase_order.test_purchase_order import create_purchase_order
-		from erpnext.buying.doctype.purchase_order.purchase_order \
-			import make_purchase_receipt, make_purchase_invoice as make_purchase_invoice_from_po
 
 		po = create_purchase_order()
 
@@ -377,11 +385,11 @@ class TestPurchaseReceipt(unittest.TestCase):
 
 		item_code = "Test Manual Created Serial No"
 		if not frappe.db.exists("Item", item_code):
-			item = make_item(item_code, dict(has_serial_no=1))
+			make_item(item_code, dict(has_serial_no=1))
 
 		serial_no = "12903812901"
 		pr_doc = make_purchase_receipt(item_code=item_code,
-			qty=1, serial_no = serial_no)
+			qty=1, serial_no=serial_no)
 
 		self.assertEqual(serial_no, frappe.db.get_value("Serial No",
 			{"purchase_document_type": "Purchase Receipt", "purchase_document_no": pr_doc.name}, "name"))
@@ -390,7 +398,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 
 		item_code = "Test Auto Created Serial No"
 		if not frappe.db.exists("Item", item_code):
-			item = make_item(item_code, dict(has_serial_no=1, serial_no_series="KLJL.###"))
+			make_item(item_code, dict(has_serial_no=1, serial_no_series="KLJL.###"))
 
 		new_pr_doc = make_purchase_receipt(item_code=item_code, qty=1)
 
@@ -399,10 +407,10 @@ class TestPurchaseReceipt(unittest.TestCase):
 			{"purchase_document_type": "Purchase Receipt", "purchase_document_no": new_pr_doc.name}, "name"))
 
 	def test_not_accept_duplicate_serial_no(self):
-		from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
 		from erpnext.stock.doctype.delivery_note.test_delivery_note import create_delivery_note
+		from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
 
-		item_code = frappe.db.get_value('Item', {'has_serial_no': 1, 'is_fixed_asset': 0, "has_batch_no": 0})
+		item_code = frappe.db.get_value("Item", {"has_serial_no": 1, "is_fixed_asset": 0, "has_batch_no": 0})
 		if not item_code:
 			item = make_item("Test Serial Item 1", dict(has_serial_no=1, has_batch_no=0))
 			item_code = item.name
@@ -421,41 +429,41 @@ class TestPurchaseReceipt(unittest.TestCase):
 	def test_auto_asset_creation(self):
 		asset_item = "Test Asset Item"
 
-		if not frappe.db.exists('Item', asset_item):
-			asset_category = frappe.get_all('Asset Category')
+		if not frappe.db.exists("Item", asset_item):
+			asset_category = frappe.get_all("Asset Category")
 
 			if asset_category:
 				asset_category = asset_category[0].name
 
 			if not asset_category:
 				doc = frappe.get_doc({
-					'doctype': 'Asset Category',
-					'asset_category_name': 'Test Asset Category',
-					'depreciation_method': 'Straight Line',
-					'total_number_of_depreciations': 12,
-					'frequency_of_depreciation': 1,
-					'accounts': [{
-						'company_name': '_Test Company',
-						'fixed_asset_account': '_Test Fixed Asset - _TC',
-						'accumulated_depreciation_account': '_Test Accumulated Depreciations - _TC',
-						'depreciation_expense_account': '_Test Depreciation - _TC'
-					}]
+					"doctype": "Asset Category",
+					"asset_category_name": "Test Asset Category",
+					"depreciation_method": "Straight Line",
+					"total_number_of_depreciations": 12,
+					"frequency_of_depreciation": 1,
+					"accounts": [{
+						"company_name": "_Test Company",
+						"fixed_asset_account": "_Test Fixed Asset - _TC",
+						"accumulated_depreciation_account": "_Test Accumulated Depreciations - _TC",
+						"depreciation_expense_account": "_Test Depreciation - _TC",
+					}],
 				}).insert()
 
 				asset_category = doc.name
 
-			item_data = make_item(asset_item, {'is_stock_item':0,
-				'stock_uom': 'Box', 'is_fixed_asset': 1, 'auto_create_assets': 1,
-				'asset_category': asset_category, 'asset_naming_series': 'ABC.###'})
+			item_data = make_item(asset_item, {"is_stock_item": 0,
+				"stock_uom": "Box", "is_fixed_asset": 1, "auto_create_assets": 1,
+				"asset_category": asset_category, "asset_naming_series": "ABC.###"})
 			asset_item = item_data.item_code
 
 		pr = make_purchase_receipt(item_code=asset_item, qty=3)
-		assets = frappe.db.get_all('Asset', filters={'purchase_receipt': pr.name})
+		assets = frappe.db.get_all("Asset", filters={"purchase_receipt": pr.name})
 
-		self.assertEquals(len(assets), 3)
+		self.assertEqual(len(assets), 3)
 
-		location = frappe.db.get_value('Asset', assets[0].name, 'location')
-		self.assertEquals(location, "Test Location")
+		location = frappe.db.get_value("Asset", assets[0].name, "location")
+		self.assertEqual(location, "Test Location")
 
 	def test_purchase_return_with_submitted_asset(self):
 		from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_return
@@ -463,7 +471,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		pr = make_purchase_receipt(item_code="Test Asset Item", qty=1)
 
 		asset = frappe.get_doc("Asset", {
-			'purchase_receipt': pr.name
+			"purchase_receipt": pr.name,
 		})
 		asset.available_for_use_date = frappe.utils.nowdate()
 		asset.gross_purchase_amount = 50.0
@@ -472,7 +480,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 			"depreciation_method": "Straight Line",
 			"total_number_of_depreciations": 3,
 			"frequency_of_depreciation": 1,
-			"depreciation_start_date": frappe.utils.nowdate()
+			"depreciation_start_date": frappe.utils.nowdate(),
 		})
 		asset.submit()
 
@@ -489,13 +497,13 @@ class TestPurchaseReceipt(unittest.TestCase):
 		cost_center = "_Test Cost Center for BS Account - TCP1"
 		create_cost_center(cost_center_name="_Test Cost Center for BS Account", company="_Test Company with perpetual inventory")
 
-		if not frappe.db.exists('Location', 'Test Location'):
+		if not frappe.db.exists("Location", "Test Location"):
 			frappe.get_doc({
-				'doctype': 'Location',
-				'location_name': 'Test Location'
+				"doctype": "Location",
+				"location_name": "Test Location",
 			}).insert()
 
-		pr = make_purchase_receipt(cost_center=cost_center, company="_Test Company with perpetual inventory", warehouse = "Stores - TCP1", supplier_warehouse = "Work in Progress - TCP1")
+		pr = make_purchase_receipt(cost_center=cost_center, company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work in Progress - TCP1")
 
 		stock_in_hand_account = get_inventory_account(pr.company, pr.get("items")[0].warehouse)
 		gl_entries = get_gl_entries("Purchase Receipt", pr.name)
@@ -504,42 +512,45 @@ class TestPurchaseReceipt(unittest.TestCase):
 
 		expected_values = {
 			"Stock Received But Not Billed - TCP1": {
-				"cost_center": cost_center
+				"cost_center": cost_center,
 			},
 			stock_in_hand_account: {
-				"cost_center": cost_center
-			}
+				"cost_center": cost_center,
+			},
 		}
-		for i, gle in enumerate(gl_entries):
+		for _i, gle in enumerate(gl_entries):
 			self.assertEqual(expected_values[gle.account]["cost_center"], gle.cost_center)
 
 	def test_purchase_receipt_cost_center_with_balance_sheet_account(self):
-		if not frappe.db.exists('Location', 'Test Location'):
+		if not frappe.db.exists("Location", "Test Location"):
 			frappe.get_doc({
-				'doctype': 'Location',
-				'location_name': 'Test Location'
+				"doctype": "Location",
+				"location_name": "Test Location",
 			}).insert()
-		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse = "Stores - TCP1", supplier_warehouse = "Work in Progress - TCP1")
+		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work in Progress - TCP1")
 
 		stock_in_hand_account = get_inventory_account(pr.company, pr.get("items")[0].warehouse)
 		gl_entries = get_gl_entries("Purchase Receipt", pr.name)
 
 		self.assertTrue(gl_entries)
-		cost_center = pr.get('items')[0].cost_center
+		cost_center = pr.get("items")[0].cost_center
 
 		expected_values = {
 			"Stock Received But Not Billed - TCP1": {
-				"cost_center": cost_center
+				"cost_center": cost_center,
 			},
 			stock_in_hand_account: {
-				"cost_center": cost_center
-			}
+				"cost_center": cost_center,
+			},
 		}
-		for i, gle in enumerate(gl_entries):
+		for _i, gle in enumerate(gl_entries):
 			self.assertEqual(expected_values[gle.account]["cost_center"], gle.cost_center)
 
 	def test_make_purchase_invoice_from_pr_for_returned_qty(self):
-		from erpnext.buying.doctype.purchase_order.test_purchase_order import create_purchase_order, create_pr_against_po
+		from erpnext.buying.doctype.purchase_order.test_purchase_order import (
+			create_pr_against_po,
+			create_purchase_order,
+		)
 
 		po = create_purchase_order()
 		pr = create_pr_against_po(po.name)
@@ -551,7 +562,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		pr1.submit()
 
 		pi = make_purchase_invoice(pr.name)
-		self.assertEquals(pi.items[0].qty, 3)
+		self.assertEqual(pi.items[0].qty, 3)
 
 	def test_make_purchase_invoice_from_pr_with_returned_qty_duplicate_items(self):
 		pr1 = make_purchase_receipt(qty=8, do_not_submit=True)
@@ -576,23 +587,25 @@ class TestPurchaseReceipt(unittest.TestCase):
 		pr2.submit()
 
 		pi2 = make_purchase_invoice(pr1.name)
-		self.assertEquals(pi2.items[0].qty, 2)
-		self.assertEquals(pi2.items[1].qty, 1)
+		self.assertEqual(pi2.items[0].qty, 2)
+		self.assertEqual(pi2.items[1].qty, 1)
 
 	def test_subcontracted_pr_for_multi_transfer_batches(self):
+		from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt, make_rm_stock_entry
+		from erpnext.buying.doctype.purchase_order.test_purchase_order import (
+			create_purchase_order,
+			update_backflush_based_on,
+		)
 		from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
-		from erpnext.buying.doctype.purchase_order.purchase_order import make_rm_stock_entry, make_purchase_receipt
-		from erpnext.buying.doctype.purchase_order.test_purchase_order import (update_backflush_based_on,
-			create_purchase_order)
 
 		update_backflush_based_on("Material Transferred for Subcontract")
 		item_code = "_Test Subcontracted FG Item 3"
 
-		make_item('Sub Contracted Raw Material 3', {
-			'is_stock_item': 1,
-			'is_sub_contracted_item': 1,
-			'has_batch_no': 1,
-			'create_new_batch': 1
+		make_item("Sub Contracted Raw Material 3", {
+			"is_stock_item": 1,
+			"is_sub_contracted_item": 1,
+			"has_batch_no": 1,
+			"create_new_batch": 1,
 		})
 
 		create_subcontracted_item(item_code=item_code, has_batch_no=1,
@@ -602,21 +615,21 @@ class TestPurchaseReceipt(unittest.TestCase):
 		po = create_purchase_order(item_code=item_code, qty=order_qty,
 			is_subcontracted=1, supplier_warehouse="_Test Warehouse 1 - _TC")
 
-		ste1=make_stock_entry(target="_Test Warehouse - _TC",
-			item_code = "Sub Contracted Raw Material 3", qty=300, basic_rate=100)
-		ste2=make_stock_entry(target="_Test Warehouse - _TC",
-			item_code = "Sub Contracted Raw Material 3", qty=200, basic_rate=100)
+		ste1 = make_stock_entry(target="_Test Warehouse - _TC",
+			item_code="Sub Contracted Raw Material 3", qty=300, basic_rate=100)
+		ste2 = make_stock_entry(target="_Test Warehouse - _TC",
+			item_code="Sub Contracted Raw Material 3", qty=200, basic_rate=100)
 
 		transferred_batch = {
-			ste1.items[0].batch_no : 300,
-			ste2.items[0].batch_no : 200
+			ste1.items[0].batch_no: 300,
+			ste2.items[0].batch_no: 200,
 		}
 
 		rm_items = [
-			{"item_code":item_code,"rm_item_code":"Sub Contracted Raw Material 3","item_name":"_Test Item",
-				"qty":300,"warehouse":"_Test Warehouse - _TC", "stock_uom":"Nos"},
-			{"item_code":item_code,"rm_item_code":"Sub Contracted Raw Material 3","item_name":"_Test Item",
-				"qty":200,"warehouse":"_Test Warehouse - _TC", "stock_uom":"Nos"}
+			{"item_code": item_code, "rm_item_code": "Sub Contracted Raw Material 3", "item_name": "_Test Item",
+				"qty": 300, "warehouse": "_Test Warehouse - _TC", "stock_uom": "Nos"},
+			{"item_code": item_code, "rm_item_code": "Sub Contracted Raw Material 3", "item_name": "_Test Item",
+				"qty": 200, "warehouse": "_Test Warehouse - _TC", "stock_uom": "Nos"},
 		]
 
 		rm_item_string = json.dumps(rm_items)
@@ -640,45 +653,48 @@ class TestPurchaseReceipt(unittest.TestCase):
 
 		update_backflush_based_on("BOM")
 
+
 def get_gl_entries(voucher_type, voucher_no):
 	return frappe.db.sql("""select account, debit, credit, cost_center
 		from `tabGL Entry` where voucher_type=%s and voucher_no=%s
 		order by account desc""", (voucher_type, voucher_no), as_dict=1)
 
+
 def get_taxes(**args):
 
 	args = frappe._dict(args)
 
-	return [{'account_head': '_Test Account Shipping Charges - TCP1',
-			'add_deduct_tax': 'Add',
-			'category': 'Valuation and Total',
-			'charge_type': 'Actual',
-			'cost_center': args.cost_center or 'Main - TCP1',
-			'description': 'Shipping Charges',
-			'doctype': 'Purchase Taxes and Charges',
-			'parentfield': 'taxes',
-			'rate': 100.0,
-			'tax_amount': 100.0},
-		{'account_head': '_Test Account VAT - TCP1',
-			'add_deduct_tax': 'Add',
-			'category': 'Total',
-			'charge_type': 'Actual',
-			'cost_center': args.cost_center or 'Main - TCP1',
-			'description': 'VAT',
-			'doctype': 'Purchase Taxes and Charges',
-			'parentfield': 'taxes',
-			'rate': 120.0,
-			'tax_amount': 120.0},
-		{'account_head': '_Test Account Customs Duty - TCP1',
-			'add_deduct_tax': 'Add',
-			'category': 'Valuation',
-			'charge_type': 'Actual',
-			'cost_center': args.cost_center or 'Main - TCP1',
-			'description': 'Customs Duty',
-			'doctype': 'Purchase Taxes and Charges',
-			'parentfield': 'taxes',
-			'rate': 150.0,
-			'tax_amount': 150.0}]
+	return [{"account_head": "_Test Account Shipping Charges - TCP1",
+			"add_deduct_tax": "Add",
+			"category": "Valuation and Total",
+			"charge_type": "Actual",
+			"cost_center": args.cost_center or "Main - TCP1",
+			"description": "Shipping Charges",
+			"doctype": "Purchase Taxes and Charges",
+			"parentfield": "taxes",
+			"rate": 100.0,
+			"tax_amount": 100.0},
+		{"account_head": "_Test Account VAT - TCP1",
+			"add_deduct_tax": "Add",
+			"category": "Total",
+			"charge_type": "Actual",
+			"cost_center": args.cost_center or "Main - TCP1",
+			"description": "VAT",
+			"doctype": "Purchase Taxes and Charges",
+			"parentfield": "taxes",
+			"rate": 120.0,
+			"tax_amount": 120.0},
+		{"account_head": "_Test Account Customs Duty - TCP1",
+			"add_deduct_tax": "Add",
+			"category": "Valuation",
+			"charge_type": "Actual",
+			"cost_center": args.cost_center or "Main - TCP1",
+			"description": "Customs Duty",
+			"doctype": "Purchase Taxes and Charges",
+			"parentfield": "taxes",
+			"rate": 150.0,
+			"tax_amount": 150.0}]
+
 
 def get_items(**args):
 	args = frappe._dict(args)
@@ -697,7 +713,7 @@ def get_items(**args):
 	"stock_uom": "_Test UOM",
 	"uom": "_Test UOM",
 	"warehouse": args.warehouse or "_Test Warehouse - _TC",
-	"cost_center": args.cost_center or "Main - _TC"
+	"cost_center": args.cost_center or "Main - _TC",
 	},
 	{
 	"base_amount": 250.0,
@@ -714,14 +730,15 @@ def get_items(**args):
 	"stock_uom": "_Test UOM",
 	"uom": "_Test UOM",
 	"warehouse": args.warehouse or "_Test Warehouse 1 - _TC",
-	"cost_center": args.cost_center or "Main - _TC"
+	"cost_center": args.cost_center or "Main - _TC",
 	}]
 
+
 def make_purchase_receipt(**args):
-	if not frappe.db.exists('Location', 'Test Location'):
+	if not frappe.db.exists("Location", "Test Location"):
 		frappe.get_doc({
-			'doctype': 'Location',
-			'location_name': 'Test Location'
+			"doctype": "Location",
+			"location_name": "Test Location",
 		}).insert()
 
 	frappe.db.set_single_value("Buying Settings", "allow_multiple_items", 1)
@@ -750,20 +767,19 @@ def make_purchase_receipt(**args):
 		"received_qty": received_qty,
 		"rejected_qty": rejected_qty,
 		"rejected_warehouse": args.rejected_warehouse or "_Test Rejected Warehouse - _TC" if rejected_qty != 0 else "",
-		"rate": args.rate if args.rate != None else 50,
+		"rate": args.rate if args.rate is not None else 50,
 		"conversion_factor": args.conversion_factor or 1.0,
 		"serial_no": args.serial_no,
 		"stock_uom": args.stock_uom or "_Test UOM",
 		"uom": uom,
-		"cost_center": args.cost_center or frappe.get_cached_value('Company',  pr.company,  'cost_center'),
-		"asset_location": args.location or "Test Location"
+		"cost_center": args.cost_center or frappe.get_cached_value("Company", pr.company, "cost_center"),
+		"asset_location": args.location or "Test Location",
 	})
 
 	if args.get_multiple_items:
 		pr.items = []
-		for item in get_items(warehouse= args.warehouse, cost_center = args.cost_center or frappe.get_cached_value('Company', pr.company, 'cost_center')):
+		for item in get_items(warehouse=args.warehouse, cost_center=args.cost_center or frappe.get_cached_value("Company", pr.company, "cost_center")):
 			pr.append("items", item)
-
 
 	if args.get_taxes_and_charges:
 		for tax in get_taxes():
@@ -775,33 +791,35 @@ def make_purchase_receipt(**args):
 			pr.submit()
 	return pr
 
+
 def create_subcontracted_item(**args):
 	from erpnext.manufacturing.doctype.production_plan.test_production_plan import make_bom
 
 	args = frappe._dict(args)
 
-	if not frappe.db.exists('Item', args.item_code):
+	if not frappe.db.exists("Item", args.item_code):
 		make_item(args.item_code, {
-			'is_stock_item': 1,
-			'is_sub_contracted_item': 1,
-			'has_batch_no': args.get("has_batch_no") or 0
+			"is_stock_item": 1,
+			"is_sub_contracted_item": 1,
+			"has_batch_no": args.get("has_batch_no") or 0,
 		})
 
 	if not args.raw_materials:
-		if not frappe.db.exists('Item', "Test Extra Item 1"):
+		if not frappe.db.exists("Item", "Test Extra Item 1"):
 			make_item("Test Extra Item 1", {
-				'is_stock_item': 1,
+				"is_stock_item": 1,
 			})
 
-		if not frappe.db.exists('Item', "Test Extra Item 2"):
+		if not frappe.db.exists("Item", "Test Extra Item 2"):
 			make_item("Test Extra Item 2", {
-				'is_stock_item': 1,
+				"is_stock_item": 1,
 			})
 
-		args.raw_materials = ['_Test FG Item', 'Test Extra Item 1']
+		args.raw_materials = ["_Test FG Item", "Test Extra Item 1"]
 
-	if not frappe.db.get_value('BOM', {'item': args.item_code}, 'name'):
-		make_bom(item = args.item_code, raw_materials = args.get("raw_materials"))
+	if not frappe.db.get_value("BOM", {"item": args.item_code}, "name"):
+		make_bom(item=args.item_code, raw_materials=args.get("raw_materials"))
+
 
 test_dependencies = ["BOM", "Item Price", "Location"]
-test_records = frappe.get_test_records('Purchase Receipt')
+test_records = frappe.get_test_records("Purchase Receipt")

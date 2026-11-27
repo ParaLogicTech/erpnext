@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -16,12 +15,12 @@ EARTH_RADIUS = 6378137
 
 
 class Location(NestedSet):
-	nsm_parent_field = 'parent_location'
+	nsm_parent_field = "parent_location"
 
 	def validate(self):
 		self.calculate_location_area()
 
-		if not self.is_new() and self.get('parent_location'):
+		if not self.is_new() and self.get("parent_location"):
 			self.update_ancestor_location_features()
 
 	def on_update(self):
@@ -45,7 +44,7 @@ class Location(NestedSet):
 		if not self.location:
 			return []
 
-		features = json.loads(self.location).get('features')
+		features = json.loads(self.location).get("features")
 
 		if not isinstance(features, list):
 			features = json.loads(features)
@@ -57,15 +56,15 @@ class Location(NestedSet):
 			self.location = '{"type":"FeatureCollection","features":[]}'
 
 		location = json.loads(self.location)
-		location['features'] = features
+		location["features"] = features
 
-		self.db_set('location', json.dumps(location), commit=True)
+		self.db_set("location", json.dumps(location), commit=True)
 
 	def update_ancestor_location_features(self):
 		self_features = set(self.add_child_property())
 
 		for ancestor in self.get_ancestors():
-			ancestor_doc = frappe.get_doc('Location', ancestor)
+			ancestor_doc = frappe.get_doc("Location", ancestor)
 			child_features, ancestor_features = ancestor_doc.feature_seperator(child_feature=self.name)
 
 			ancestor_features = list(set(ancestor_features))
@@ -87,25 +86,25 @@ class Location(NestedSet):
 				ancestor_features[index] = json.loads(feature)
 
 			ancestor_doc.set_location_features(features=ancestor_features)
-			ancestor_doc.db_set('area', ancestor_doc.area + self.area_difference, commit=True)
+			ancestor_doc.db_set("area", ancestor_doc.area + self.area_difference, commit=True)
 
 	def remove_ancestor_location_features(self):
 		for ancestor in self.get_ancestors():
-			ancestor_doc = frappe.get_doc('Location', ancestor)
-			child_features, ancestor_features = ancestor_doc.feature_seperator(child_feature=self.name)
+			ancestor_doc = frappe.get_doc("Location", ancestor)
+			_child_features, ancestor_features = ancestor_doc.feature_seperator(child_feature=self.name)
 
 			for index, feature in enumerate(ancestor_features):
 				ancestor_features[index] = json.loads(feature)
 
 			ancestor_doc.set_location_features(features=ancestor_features)
-			ancestor_doc.db_set('area', ancestor_doc.area - self.area, commit=True)
+			ancestor_doc.db_set("area", ancestor_doc.area - self.area, commit=True)
 
 	def add_child_property(self):
 		features = self.get_location_features()
-		filter_features = [feature for feature in features if not feature.get('properties').get('child_feature')]
+		filter_features = [feature for feature in features if not feature.get("properties").get("child_feature")]
 
 		for index, feature in enumerate(filter_features):
-			feature['properties'].update({'child_feature': True, 'feature_of': self.location_name})
+			feature["properties"].update({"child_feature": True, "feature_of": self.location_name})
 			filter_features[index] = json.dumps(filter_features[index])
 
 		return filter_features
@@ -115,7 +114,7 @@ class Location(NestedSet):
 		features = self.get_location_features()
 
 		for feature in features:
-			if feature.get('properties').get('feature_of') == child_feature:
+			if feature.get("properties").get("feature_of") == child_feature:
 				child_features.extend([json.dumps(feature)])
 			else:
 				non_child_features.extend([json.dumps(feature)])
@@ -139,12 +138,12 @@ def compute_area(features):
 	layer_area = 0.0
 
 	for feature in features:
-		feature_type = feature.get('geometry', {}).get('type')
+		feature_type = feature.get("geometry", {}).get("type")
 
-		if feature_type == 'Polygon':
-			layer_area += _polygon_area(coords=feature.get('geometry').get('coordinates'))
-		elif feature_type == 'Point' and feature.get('properties').get('point_type') == 'circle':
-			layer_area += math.pi * math.pow(feature.get('properties').get('radius'), 2)
+		if feature_type == "Polygon":
+			layer_area += _polygon_area(coords=feature.get("geometry").get("coordinates"))
+		elif feature_type == "Point" and feature.get("properties").get("point_type") == "circle":
+			layer_area += math.pi * math.pow(feature.get("properties").get("radius"), 2)
 
 	return layer_area
 
@@ -205,8 +204,9 @@ def get_children(doctype, parent=None, location=None, is_root=False):
 			ifnull(parent_location, "")={parent}
 		""".format(
 			doctype=doctype,
-			parent=frappe.db.escape(parent)
+			parent=frappe.db.escape(parent),
 		), as_dict=1)
+
 
 @frappe.whitelist()
 def add_node():
@@ -214,7 +214,7 @@ def add_node():
 	args = frappe.form_dict
 	args = make_tree_args(**args)
 
-	if args.parent_location == 'All Locations':
+	if args.parent_location == "All Locations":
 		args.parent_location = None
 
 	frappe.get_doc(args).insert()

@@ -2,12 +2,15 @@
 # License: GNU General Public License v3. See license.txt
 
 
-import frappe, unittest
+import unittest
+
+import frappe
 
 from erpnext.accounts.doctype.fiscal_year.fiscal_year import FiscalYearIncorrectDate
 
-test_records = frappe.get_test_records('Fiscal Year')
+test_records = frappe.get_test_records("Fiscal Year")
 test_ignore = ["Company"]
+
 
 class TestFiscalYear(unittest.TestCase):
 	def test_extra_year(self):
@@ -18,7 +21,7 @@ class TestFiscalYear(unittest.TestCase):
 			"doctype": "Fiscal Year",
 			"year": "_Test Fiscal Year 2000",
 			"year_end_date": "2002-12-31",
-			"year_start_date": "2000-04-01"
+			"year_start_date": "2000-04-01",
 		})
 
 		self.assertRaises(FiscalYearIncorrectDate, fy.insert)

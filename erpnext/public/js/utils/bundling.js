@@ -5,16 +5,16 @@ $.extend(erpnext.bundling, {
 	continue_icon: '<i class="bundle-icon octicon octicon-package" style="color: rgb(141, 153, 166); font-size: 18px;"></i>',
 	terminate_icon: '<i class="bundle-icon octicon octicon-package" style="color: rgb(255, 160, 10); font-size: 18px;"></i>',
 
-	setup_bundling: function (doctype) {
+	setup_bundling: function(doctype) {
 		frappe.ui.form.on(doctype, {
 			refresh: function(frm) {
 				erpnext.bundling.setup_bundle_buttons(frm);
 				erpnext.bundling.render_bundle_icons(frm);
 			},
 
-			onload_post_render: function (frm) {
-				frm.fields_dict.items.grid.wrapper.on('click', '.grid-row-check', () => erpnext.bundling.toggle_bundle_buttons(frm));
-			}
+			onload_post_render: function(frm) {
+				frm.fields_dict.items.grid.wrapper.on("click", ".grid-row-check", () => erpnext.bundling.toggle_bundle_buttons(frm));
+			},
 		});
 
 		frappe.ui.form.on(doctype + " Item", {
@@ -31,13 +31,13 @@ $.extend(erpnext.bundling, {
 				erpnext.bundling.validate_bundle_states(frm);
 				erpnext.bundling.render_bundle_icons(frm);
 				erpnext.bundling.toggle_bundle_buttons(frm);
-			}
+			},
 		});
 	},
 
-	items_move_arrangement: function (frm) {
+	items_move_arrangement: function(frm) {
 		let items = frm.doc.items;
-		for(let i=0; i < items.length; i++) {
+		for (let i = 0; i < items.length; i++) {
 			let item = items[i];
 			let item_prev = i > 0 ? items[i - 1] : null;
 			let item_prev_of_prev = i > 0 ? items[i - 2] : null;
@@ -47,7 +47,7 @@ $.extend(erpnext.bundling, {
 
 			if (item_prev && item_next && (item_prev.bundling_state == "Continue" && item.bundling_state == "Terminate" && item_next.bundling_state == "Continue")  ) {
 				is_continue = item_next_of_next && (item_next_of_next.bundling_state != "" && item_next_of_next.bundling_state != "Start" && item_next_of_next.bundling_state != "Continue");
-				if (is_continue){
+				if (is_continue) {
 					continue;
 				} else {
 					let temp_state = item.bundling_state;
@@ -107,27 +107,27 @@ $.extend(erpnext.bundling, {
 
 	setup_bundle_buttons: function(frm) {
 		frm.fields_dict.items.grid.add_custom_button(__("Unbundle"), () => erpnext.bundling.unbundle_selected(frm));
-		frm.fields_dict.items.grid.custom_buttons[__("Unbundle")].removeClass('btn-secondary');
-		frm.fields_dict.items.grid.custom_buttons[__("Unbundle")].addClass('hidden btn-warning');
+		frm.fields_dict.items.grid.custom_buttons[__("Unbundle")].removeClass("btn-secondary");
+		frm.fields_dict.items.grid.custom_buttons[__("Unbundle")].addClass("hidden btn-warning");
 
 		frm.fields_dict.items.grid.add_custom_button(__("Bundle"), () => erpnext.bundling.bundle_selected(frm));
-		frm.fields_dict.items.grid.custom_buttons[__("Bundle")].removeClass('btn-secondary');
-		frm.fields_dict.items.grid.custom_buttons[__("Bundle")].addClass('hidden btn-success');
+		frm.fields_dict.items.grid.custom_buttons[__("Bundle")].removeClass("btn-secondary");
+		frm.fields_dict.items.grid.custom_buttons[__("Bundle")].addClass("hidden btn-success");
 	},
 
-	toggle_bundle_buttons: function (frm) {
+	toggle_bundle_buttons: function(frm) {
 		var checked = frm.fields_dict.items.grid.grid_rows.filter(row => row.doc.__checked);
 
 		if (checked.length) {
-			frm.fields_dict.items.grid.custom_buttons[__("Unbundle")].removeClass('hidden');
+			frm.fields_dict.items.grid.custom_buttons[__("Unbundle")].removeClass("hidden");
 		} else {
-			frm.fields_dict.items.grid.custom_buttons[__("Unbundle")].addClass('hidden');
+			frm.fields_dict.items.grid.custom_buttons[__("Unbundle")].addClass("hidden");
 		}
 
 		if (checked.length > 1) {
-			frm.fields_dict.items.grid.custom_buttons[__("Bundle")].removeClass('hidden');
+			frm.fields_dict.items.grid.custom_buttons[__("Bundle")].removeClass("hidden");
 		} else {
-			frm.fields_dict.items.grid.custom_buttons[__("Bundle")].addClass('hidden');
+			frm.fields_dict.items.grid.custom_buttons[__("Bundle")].addClass("hidden");
 		}
 	},
 
@@ -149,43 +149,43 @@ $.extend(erpnext.bundling, {
 		return false;
 	},
 
-	render_bundle_icons: function (frm) {
-		$.each(frm.doc.items || [], function (i, item) {
+	render_bundle_icons: function(frm) {
+		$.each(frm.doc.items || [], function(i, item) {
 			let wrapper = $(frm.fields_dict.items.grid.grid_rows[i].wrapper);
 
 			if (item.bundling_state === "Start") {
-				if($(wrapper.find('.bundle-icon').length)) {
-					$(wrapper.find('.bundle-icon')[0]).remove();
+				if ($(wrapper.find(".bundle-icon").length)) {
+					$(wrapper.find(".bundle-icon")[0]).remove();
 				}
-				$(wrapper.find('.row-index')[0]).prepend(erpnext.bundling.start_icon);
+				$(wrapper.find(".row-index")[0]).prepend(erpnext.bundling.start_icon);
 			} else if (item.bundling_state === "Continue") {
-				if($(wrapper.find('.bundle-icon').length)) {
-					$(wrapper.find('.bundle-icon')[0]).remove();
+				if ($(wrapper.find(".bundle-icon").length)) {
+					$(wrapper.find(".bundle-icon")[0]).remove();
 				}
-				$(wrapper.find('.row-index')[0]).prepend(erpnext.bundling.continue_icon);
+				$(wrapper.find(".row-index")[0]).prepend(erpnext.bundling.continue_icon);
 			} else if (item.bundling_state === "Terminate") {
-				if($(wrapper.find('.bundle-icon').length)){
-					$(wrapper.find('.bundle-icon')[0]).remove();
+				if ($(wrapper.find(".bundle-icon").length)) {
+					$(wrapper.find(".bundle-icon")[0]).remove();
 				}
-				$(wrapper.find('.row-index')[0]).prepend(erpnext.bundling.terminate_icon);
+				$(wrapper.find(".row-index")[0]).prepend(erpnext.bundling.terminate_icon);
 			} else {
-				$(wrapper.find('.bundle-icon')[0]).remove();
+				$(wrapper.find(".bundle-icon")[0]).remove();
 			}
 		});
 	},
 
-	deselect_all: function (frm) {
-		$(frm.fields_dict.items.grid.wrapper).find('.grid-row-check:checked').prop('checked', '');
+	deselect_all: function(frm) {
+		$(frm.fields_dict.items.grid.wrapper).find(".grid-row-check:checked").prop("checked", "");
 
-		$.each(frm.doc.items || [], function (i, item) {
+		$.each(frm.doc.items || [], function(i, item) {
 			item.__checked = 0;
 		});
 
-		frm.refresh_field('items');
+		frm.refresh_field("items");
 		erpnext.bundling.toggle_bundle_buttons(frm);
 	},
 
-	set_bundle_states: function (frm, action, selected) {
+	set_bundle_states: function(frm, action, selected) {
 		if (!selected) {
 			selected = frm.fields_dict.items.grid.get_selected_children();
 		}
@@ -208,11 +208,11 @@ $.extend(erpnext.bundling, {
 		frm.dirty();
 	},
 
-	validate_bundle_states: function (frm) {
+	validate_bundle_states: function(frm) {
 		let items = frm.doc.items;
 		let bundle_start;
 		let bundles = [];
-		for(let i=0; i < items.length; i++) {
+		for (let i = 0; i < items.length; i++) {
 			let item = items[i];
 			let item_prev = i > 0 ? items[i - 1] : null;
 			let item_prev_of_prev = i > 0 ? items[i - 2] : null;
@@ -232,12 +232,12 @@ $.extend(erpnext.bundling, {
 					bundle_start = null;
 				}
 				else if ((!item_prev || item_prev.bundling_state !== "Start") && ["Terminate", "Continue"].includes(item.bundling_state)) {
-					item.bundling_state = ""
+					item.bundling_state = "";
 				}
 			}
 		}
 
-		$.each(bundles, function (bi, b) {
+		$.each(bundles, function(bi, b) {
 			let bundle_size = b.bundle_end - b.bundle_start + 1;
 			if (bundle_size <= 1) {
 				if (bundle_size === 1) {
@@ -250,5 +250,5 @@ $.extend(erpnext.bundling, {
 		});
 
 		return false;
-	}
+	},
 });

@@ -1,6 +1,5 @@
-import frappe
 import click
-
+import frappe
 from frappe.utils.fixtures import sync_fixtures
 
 

@@ -1,24 +1,24 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
-from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
-
+import unittest
 
 import frappe
-import unittest
+
+from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
+
 
 class TestFinanceBook(unittest.TestCase):
 	def create_finance_book(self):
 		if not frappe.db.exists("Finance Book", "_Test Finance Book"):
 			finance_book = frappe.get_doc({
 				"doctype": "Finance Book",
-				"finance_book_name": "_Test Finance Book"
+				"finance_book_name": "_Test Finance Book",
 			}).insert()
 		else:
 			finance_book = frappe.get_doc("Finance Book", "_Test Finance Book")
 
 		return finance_book
-	
+
 	def test_finance_book(self):
 		finance_book = self.create_finance_book()
 
@@ -28,7 +28,7 @@ class TestFinanceBook(unittest.TestCase):
 
 		jv.accounts[1].update({
 			"party_type": "Customer",
-			"party": "_Test Customer"
+			"party": "_Test Customer",
 		})
 
 		jv.finance_book = finance_book.finance_book_name

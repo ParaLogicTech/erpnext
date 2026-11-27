@@ -1,4 +1,4 @@
-frappe.listview_settings['Serial No'] = {
+frappe.listview_settings["Serial No"] = {
 	add_fields: ["item_code", "warehouse", "warranty_expiry_date", "delivery_document_type"],
 	get_indicator: (doc) => {
 		if (doc.delivery_document_type) {
@@ -10,5 +10,5 @@ frappe.listview_settings['Serial No'] = {
 		} else {
 			return [__("Active"), "blue", "delivery_document_type,is,not set"];
 		}
-	}
+	},
 };

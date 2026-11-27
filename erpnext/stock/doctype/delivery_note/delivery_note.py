@@ -3,21 +3,22 @@
 
 
 import frappe
-import erpnext
 from frappe import _
-from frappe.utils import cint, flt
-from erpnext.controllers.selling_controller import SellingController
-from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cint, flt
+
+import erpnext
+from erpnext.controllers.selling_controller import SellingController
 from erpnext.stock.doctype.bundled_item.bundled_item import (
+	is_product_bundle,
 	make_bundled_item_list,
 	validate_bundled_item_list,
-	is_product_bundle,
 )
+from erpnext.stock.doctype.serial_no.serial_no import get_delivery_note_serial_no
 
 form_grid_templates = {
-	"items": "templates/form_grid/item_grid.html"
+	"items": "templates/form_grid/item_grid.html",
 }
 
 
@@ -70,7 +71,7 @@ class DeliveryNote(SellingController):
 		self.validate_packed_qty()
 
 		# Check for Approving Authority
-		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype, self.company, self.base_grand_total, self)
+		frappe.get_doc("Authorization Control").validate_approving_authority(self.doctype, self.company, self.base_grand_total, self)
 
 		# update delivered qty in sales order
 		self.validate_previous_docstatus()
@@ -121,7 +122,7 @@ class DeliveryNote(SellingController):
 		item_meta = frappe.get_meta("Delivery Note Item")
 		print_hide_fields = {
 			"parent": ["grand_total", "rounded_total", "in_words", "currency", "total", "taxes"],
-			"items": ["rate", "amount", "discount_amount", "price_list_rate", "discount_percentage"]
+			"items": ["rate", "amount", "discount_amount", "price_list_rate", "discount_percentage"],
 		}
 
 		for key, fieldname in print_hide_fields.items():
@@ -182,7 +183,7 @@ class DeliveryNote(SellingController):
 		self.calculate_taxes_and_totals()
 
 	def validate_previous_docstatus(self):
-		for d in self.get('items'):
+		for d in self.get("items"):
 			if d.sales_order and frappe.db.get_value("Sales Order", d.sales_order, "docstatus", cache=1) != 1:
 				frappe.throw(_("Row #{0}: Sales Order {1} is not submitted").format(d.idx, d.sales_order))
 
@@ -283,8 +284,8 @@ class DeliveryNote(SellingController):
 		for d in self.get("items"):
 			# If Delivery Note is against Sales Invoice
 			if d.sales_invoice_item:
-				d.db_set('billed_qty', d.qty if self.docstatus == 1 else 0, update_modified=update_modified)
-				d.db_set('billed_amt', d.amount if self.docstatus == 1 else 0, update_modified=update_modified)
+				d.db_set("billed_qty", d.qty if self.docstatus == 1 else 0, update_modified=update_modified)
+				d.db_set("billed_amt", d.amount if self.docstatus == 1 else 0, update_modified=update_modified)
 			else:
 				# If Delivery Note is against Sales Order but not a return
 				if d.sales_order_item and not self.is_return:
@@ -315,31 +316,31 @@ class DeliveryNote(SellingController):
 			d.returned_qty = flt(delivery_return_qty_map.get(d.name))
 			if update:
 				d.db_set({
-					'returned_qty': d.returned_qty,
+					"returned_qty": d.returned_qty,
 				}, update_modified=update_modified)
 
 		# update percentage in parent
 		billable_rows = [d for d in self.items if not d.skip_sales_invoice]
 
-		self.per_returned = flt(self.calculate_status_percentage('returned_qty', 'qty', self.items))
-		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', billable_rows)
-		self.per_completed = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty', billable_rows)
+		self.per_returned = flt(self.calculate_status_percentage("returned_qty", "qty", self.items))
+		self.per_billed = self.calculate_status_percentage("billed_qty", "qty", billable_rows)
+		self.per_completed = self.calculate_status_percentage(["billed_qty", "returned_qty"], "qty", billable_rows)
 		if self.per_completed is None:
-			total_billed_qty = flt(sum([flt(d.billed_qty) for d in billable_rows]), self.precision('total_qty'))
+			total_billed_qty = flt(sum([flt(d.billed_qty) for d in billable_rows]), self.precision("total_qty"))
 			self.per_billed = 100 if total_billed_qty else 0
 			self.per_completed = 100 if total_billed_qty else 0
 
 		# update billing_status
-		self.billing_status = self.get_completion_status('per_completed', 'Bill',
+		self.billing_status = self.get_completion_status("per_completed", "Bill",
 			not_applicable=self.skip_sales_invoice or self.status == "Closed" or self.per_returned == 100 or self.is_return,
-			not_applicable_based_on='per_billed')
+			not_applicable_based_on="per_billed")
 
 		if update:
 			self.db_set({
-				'per_billed': self.per_billed,
-				'per_returned': self.per_returned,
-				'per_completed': self.per_completed,
-				'billing_status': self.billing_status,
+				"per_billed": self.per_billed,
+				"per_returned": self.per_returned,
+				"per_completed": self.per_completed,
+				"billing_status": self.billing_status,
 			}, update_modified=update_modified)
 
 	def set_proforma_status(self, update=False, update_modified=True):
@@ -349,7 +350,7 @@ class DeliveryNote(SellingController):
 			d.proforma_qty = flt(proforma_qty_map.get(d.name))
 			if update:
 				d.db_set({
-					'proforma_qty': d.proforma_qty,
+					"proforma_qty": d.proforma_qty,
 				}, update_modified=update_modified)
 
 	def set_installation_status(self, update=False, update_modified=True):
@@ -360,22 +361,22 @@ class DeliveryNote(SellingController):
 			d.installed_qty = flt(get_installed_qty_map.get(d.name))
 			if update:
 				d.db_set({
-					'installed_qty': d.installed_qty,
+					"installed_qty": d.installed_qty,
 				}, update_modified=update_modified)
 
 		# update percentage in parent
-		self.per_installed = self.calculate_status_percentage('installed_qty', 'qty', self.items)
+		self.per_installed = self.calculate_status_percentage("installed_qty", "qty", self.items)
 		if self.per_installed is None:
-			total_installed_qty = flt(sum([flt(d.installed_qty) for d in self.items]), self.precision('total_qty'))
+			total_installed_qty = flt(sum([flt(d.installed_qty) for d in self.items]), self.precision("total_qty"))
 			self.per_installed = 100 if total_installed_qty else 0
 
 		# update installation_status
-		self.installation_status = self.get_completion_status('per_installed', 'Installed', not_applicable=True)
+		self.installation_status = self.get_completion_status("per_installed", "Installed", not_applicable=True)
 
 		if update:
 			self.db_set({
-				'per_installed': self.per_installed,
-				'installation_status': self.installation_status,
+				"per_installed": self.per_installed,
+				"installation_status": self.installation_status,
 			}, update_modified=update_modified)
 
 	def get_delivery_return_qty_map(self):
@@ -439,25 +440,25 @@ class DeliveryNote(SellingController):
 		return installled_qty_map
 
 	def validate_returned_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty('returned_qty', 'qty', self.items,
+		self.validate_completed_qty("returned_qty", "qty", self.items,
 			allowance_type=None, from_doctype=from_doctype, row_names=row_names)
 
 	def validate_billed_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty(['billed_qty', 'returned_qty'], 'qty', self.items,
-			allowance_type=lambda row: None if row.unbilled_stock_account else 'billing',
+		self.validate_completed_qty(["billed_qty", "returned_qty"], "qty", self.items,
+			allowance_type=lambda row: None if row.unbilled_stock_account else "billing",
 			from_doctype=from_doctype, row_names=row_names)
 
 		if frappe.get_cached_value("Accounts Settings", None, "validate_over_billing_in_sales_invoice"):
-			self.validate_completed_qty('billed_amt', 'amount', self.items,
-				allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
+			self.validate_completed_qty("billed_amt", "amount", self.items,
+				allowance_type="billing", from_doctype=from_doctype, row_names=row_names)
 
 	def validate_proforma_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty(['proforma_qty', 'returned_qty'], 'qty', self.items,
-			allowance_type=lambda row: None if row.unbilled_stock_account else 'billing',
+		self.validate_completed_qty(["proforma_qty", "returned_qty"], "qty", self.items,
+			allowance_type=lambda row: None if row.unbilled_stock_account else "billing",
 			from_doctype=from_doctype, row_names=row_names)
 
 	def validate_installed_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty('installed_qty', 'qty', self.items,
+		self.validate_completed_qty("installed_qty", "qty", self.items,
 			allowance_type=None, from_doctype=from_doctype, row_names=row_names)
 
 	def update_status(self, status):
@@ -471,36 +472,36 @@ class DeliveryNote(SellingController):
 		clear_doctype_notifications(self)
 
 	def set_actual_qty(self):
-		for d in self.get('items'):
+		for d in self.get("items"):
 			if d.item_code and d.warehouse:
 				actual_qty = frappe.db.sql("""select actual_qty from `tabBin`
 					where item_code = %s and warehouse = %s""", (d.item_code, d.warehouse))
-				d.actual_qty = actual_qty and flt(actual_qty[0][0]) or 0
+				d.actual_qty = (actual_qty and flt(actual_qty[0][0])) or 0
 
 	def validate_order_required(self):
 		"""check in manage account if sales order required or not"""
 		if self.is_return:
 			return
 
-		so_required = frappe.get_cached_value("Selling Settings", None, 'so_required') == 'Yes'
-		sinv_required = frappe.get_cached_value("Selling Settings", None, 'dn_required') == 'Required after Sales Invoice'
-		if self.get('transaction_type'):
-			tt_so_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'so_required')
-			tt_dn_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'dn_required')
+		so_required = frappe.get_cached_value("Selling Settings", None, "so_required") == "Yes"
+		sinv_required = frappe.get_cached_value("Selling Settings", None, "dn_required") == "Required after Sales Invoice"
+		if self.get("transaction_type"):
+			tt_so_required = frappe.get_cached_value("Transaction Type", self.get("transaction_type"), "so_required")
+			tt_dn_required = frappe.get_cached_value("Transaction Type", self.get("transaction_type"), "dn_required")
 			if tt_so_required:
-				so_required = tt_so_required == 'Yes'
+				so_required = tt_so_required == "Yes"
 			if tt_dn_required:
-				sinv_required = tt_dn_required == 'Required after Sales Invoice'
+				sinv_required = tt_dn_required == "Required after Sales Invoice"
 
 		if so_required:
-			for d in self.get('items'):
+			for d in self.get("items"):
 				if not d.sales_order:
 					frappe.throw(_("Row #{0}: Sales Order is required for Item {1}").format(
 						d.idx, frappe.bold(d.item_code),
 					))
 
 		if sinv_required:
-			for d in self.get('items'):
+			for d in self.get("items"):
 				if not d.sales_invoice:
 					frappe.throw(_("Row #{0}: Sales Invoice is required for Item {1}").format(
 						d.idx, frappe.bold(d.item_code),
@@ -510,46 +511,46 @@ class DeliveryNote(SellingController):
 		super().validate_with_previous_doc({
 			"Sales Order": {
 				"ref_dn_field": "sales_order",
-				"compare_fields": [["customer", "="], ["company", "="], ["branch", "="], ["project", "="], ["currency", "="]]
+				"compare_fields": [["customer", "="], ["company", "="], ["branch", "="], ["project", "="], ["currency", "="]],
 			},
 			"Sales Order Item": {
 				"ref_dn_field": "sales_order_item",
 				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="]],
 				"is_child_table": True,
-				"allow_duplicate_prev_row_id": True
+				"allow_duplicate_prev_row_id": True,
 			},
 			"Sales Invoice": {
 				"ref_dn_field": "sales_invoice",
-				"compare_fields": [["customer", "="], ["company", "="], ["branch", "="], ["project", "="], ["currency", "="]]
+				"compare_fields": [["customer", "="], ["company", "="], ["branch", "="], ["project", "="], ["currency", "="]],
 			},
 			"Sales Invoice Item": {
 				"ref_dn_field": "sales_invoice_item",
 				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="], ["vehicle", "="]],
 				"is_child_table": True,
-				"allow_duplicate_prev_row_id": True
+				"allow_duplicate_prev_row_id": True,
 			},
 			"Delivery Note Item": {
 				"ref_dn_field": "delivery_note_item",
 				"compare_fields": [["item_code", "="]],
 				"is_child_table": True,
-				"allow_duplicate_prev_row_id": True
+				"allow_duplicate_prev_row_id": True,
 			},
 			"Quotation": {
 				"ref_dn_field": "quotation",
-				"compare_fields": [["company", "="], ["branch", "="]]
+				"compare_fields": [["company", "="], ["branch", "="]],
 			},
 			"Packing Slip Item": {
 				"ref_dn_field": "packing_slip_item",
 				"compare_fields": [["item_code", "="], ["uom", "="], ["conversion_factor", "="],
 					["batch_no", "="], ["serial_no", "="], ["net_weight_per_unit", "="]],
 				"is_child_table": True,
-				"allow_duplicate_prev_row_id": True
+				"allow_duplicate_prev_row_id": True,
 			},
 		})
 
 		self.validate_packing_slips()
 
-		if cint(frappe.get_cached_value('Selling Settings', None, 'maintain_same_sales_rate')) and not self.is_return:
+		if cint(frappe.get_cached_value("Selling Settings", None, "maintain_same_sales_rate")) and not self.is_return:
 			self.validate_rate_with_reference_doc([["Sales Order", "sales_order", "sales_order_item"],
 				["Sales Invoice", "sales_invoice", "sales_invoice_item"]])
 
@@ -558,7 +559,7 @@ class DeliveryNote(SellingController):
 
 		if self.customer != against_doc.customer:
 			frappe.throw(_("Customer must be same as {1} {2} ({3}").format(
-				return_against_label, against_doc.name, frappe.bold(against_doc.customer)
+				return_against_label, against_doc.name, frappe.bold(against_doc.customer),
 			))
 
 	def validate_warehouse(self):
@@ -567,11 +568,11 @@ class DeliveryNote(SellingController):
 
 	def update_current_stock(self):
 		if self.get("_action") and self._action != "update_after_submit":
-			for d in self.get('items'):
+			for d in self.get("items"):
 				d.actual_qty = frappe.db.get_value("Bin", {"item_code": d.item_code,
 					"warehouse": d.warehouse}, "actual_qty")
 
-			for d in self.get('bundled_items'):
+			for d in self.get("bundled_items"):
 				bin_qty = frappe.db.get_value("Bin", {"item_code": d.item_code,
 					"warehouse": d.warehouse}, ["actual_qty", "projected_qty"], as_dict=True)
 				if bin_qty:
@@ -584,7 +585,7 @@ class DeliveryNote(SellingController):
 		extra_amount = 0
 		validate_against_credit_limit = False
 		bypass_credit_limit_check_at_sales_order = cint(frappe.db.get_value("Customer Credit Limit",
-			filters={'parent': self.customer, 'parenttype': 'Customer', 'company': self.company},
+			filters={"parent": self.customer, "parenttype": "Customer", "company": self.company},
 			fieldname="bypass_credit_limit_check"))
 
 		if bypass_credit_limit_check_at_sales_order:
@@ -604,11 +605,11 @@ class DeliveryNote(SellingController):
 		"""
 			Validate that if packed qty exists, it should be equal to qty
 		"""
-		if not any([flt(d.get('packed_qty')) for d in self.get("items")]):
+		if not any([flt(d.get("packed_qty")) for d in self.get("items")]):
 			return
 		has_error = False
 		for d in self.get("items"):
-			if flt(d.get('qty')) != flt(d.get('packed_qty')):
+			if flt(d.get("qty")) != flt(d.get("packed_qty")):
 				frappe.msgprint(_("Packed quantity must equal quantity for Item {0} in row {1}").format(d.item_code, d.idx))
 				has_error = True
 		if has_error:
@@ -676,11 +677,12 @@ class DeliveryNote(SellingController):
 					if d.sales_order_item and d.sales_order_item in sales_order_items_indirectly_billed:
 						d.unbilled_stock_account = None
 
+
 def update_directly_billed_qty_for_dn(delivery_note, delivery_note_item, update_modified=True):
 	if isinstance(delivery_note, str):
 		is_delivery_return = frappe.db.get_value("Delivery Note", delivery_note, "is_return", cache=1)
 	else:
-		is_delivery_return = delivery_note.get('is_return')
+		is_delivery_return = delivery_note.get("is_return")
 
 	billed = frappe.db.sql("""
 		select i.qty, i.amount, inv.is_return, inv.update_stock, inv.reopen_order,
@@ -755,7 +757,7 @@ def update_indirectly_billed_qty_for_dn_against_so(sales_order_item, update_modi
 			billed_amt_against_so -= min(billed_amt_against_so, pending_amt_to_bill)
 
 		frappe.db.set_value("Delivery Note Item", dnd.name, {
-			"billed_qty": billed_qty_against_dn, "billed_amt": billed_amt_against_dn
+			"billed_qty": billed_qty_against_dn, "billed_amt": billed_amt_against_dn,
 		}, None, update_modified=update_modified)
 
 		updated_dn.append(dnd.parent)
@@ -781,15 +783,15 @@ def calculate_billed_qty_and_amount(billed_data, for_delivery_return=False, deli
 
 			depreciation_type = d.depreciation_type
 			if not depreciation_type or d.ignore_depreciation:
-				depreciation_type = 'No Depreciation'
+				depreciation_type = "No Depreciation"
 
 			depreciation_type_qty.setdefault(depreciation_type, 0)
 			depreciation_type_qty[depreciation_type] += d.qty
 
-			if depreciation_type != 'Depreciation Amount Only' and (not claim_customer or d.bill_to == claim_customer):
+			if depreciation_type != "Depreciation Amount Only" and (not claim_customer or d.bill_to == claim_customer):
 				billed_qty += d.qty
 
-	if 'No Depreciation' not in depreciation_type_qty:
+	if "No Depreciation" not in depreciation_type_qty:
 		depreciation_qty = flt(depreciation_type_qty.get("Depreciation Amount Only"), 6)
 		after_depreciation_qty = flt(depreciation_type_qty.get("After Depreciation Amount"), 6)
 		if not depreciation_qty or not after_depreciation_qty:
@@ -828,8 +830,8 @@ def make_sales_invoice(
 				"group_same_items",
 			],
 			"validation": {
-				"docstatus": ["=", 1]
-			}
+				"docstatus": ["=", 1],
+			},
 		},
 		"Delivery Note Item": get_item_mapper_for_invoice(
 			additional_item_condition=item_condition,
@@ -837,15 +839,15 @@ def make_sales_invoice(
 		),
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
-			"add_if_empty": True
+			"add_if_empty": True,
 		},
 		"Sales Team": {
 			"doctype": "Sales Team",
 			"field_map": {
-				"incentives": "incentives"
+				"incentives": "incentives",
 			},
-			"add_if_empty": True
-		}
+			"add_if_empty": True,
+		},
 	}
 
 	frappe.utils.call_hook_method("update_sales_invoice_from_delivery_note_mapper", mapping, "Sales Invoice")
@@ -889,7 +891,7 @@ def make_proforma_invoice(
 			"validation": {
 				"docstatus": ["=", 1],
 				"is_return": ["=", 0],
-			}
+			},
 		},
 		"Delivery Note Item": get_item_mapper_for_invoice(
 			target_doctype="Proforma Invoice Item",
@@ -898,15 +900,15 @@ def make_proforma_invoice(
 		),
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
-			"add_if_empty": True
+			"add_if_empty": True,
 		},
 		"Sales Team": {
 			"doctype": "Sales Team",
 			"field_map": {
-				"incentives": "incentives"
+				"incentives": "incentives",
 			},
-			"add_if_empty": True
-		}
+			"add_if_empty": True,
+		},
 	}
 
 	frappe.utils.call_hook_method("update_proforma_invoice_from_delivery_note_mapper", mapping, "Proforma Invoice")
@@ -937,11 +939,11 @@ def get_item_mapper_for_invoice(
 
 	def item_condition(source, source_parent, target_parent):
 		if not allow_duplicate:
-			if source.name in [d.delivery_note_item for d in target_parent.get('items') if d.delivery_note_item]:
+			if source.name in [d.delivery_note_item for d in target_parent.get("items") if d.delivery_note_item]:
 				return False
 
-		if cint(target_parent.get('claim_billing')):
-			target_bill_to = target_parent.get('bill_to') or target_parent.get('customer')
+		if cint(target_parent.get("claim_billing")):
+			target_bill_to = target_parent.get("bill_to") or target_parent.get("customer")
 			if target_bill_to:
 				if source.claim_customer != target_bill_to:
 					return False
@@ -952,7 +954,7 @@ def get_item_mapper_for_invoice(
 		if source.skip_sales_invoice:
 			return False
 
-		if source_parent.get('is_return'):
+		if source_parent.get("is_return"):
 			if get_pending_qty(source) > 0:
 				return False
 		else:
@@ -965,7 +967,7 @@ def get_item_mapper_for_invoice(
 		return True
 
 	def update_item(source, target, source_parent, target_parent):
-		target.project = source_parent.get('project')
+		target.project = source_parent.get("project")
 		target.qty = get_pending_qty(source)
 		target.delivered_qty = source.qty
 		target.depreciation_percentage = None
@@ -997,7 +999,7 @@ def get_item_mapper_for_invoice(
 			"batch_no": "batch_no",
 			"serial_no": "serial_no",
 			"vehicle": "vehicle",
-			"cost_center": "cost_center"
+			"cost_center": "cost_center",
 		},
 		"postprocess": update_item,
 		"condition": item_condition,
@@ -1029,17 +1031,17 @@ def make_delivery_trip(source_name, target_doc=None):
 		"Delivery Note": {
 			"doctype": "Delivery Trip",
 			"validation": {
-				"docstatus": ["=", 1]
-			}
+				"docstatus": ["=", 1],
+			},
 		},
 		"Delivery Note Item": {
 			"doctype": "Delivery Stop",
 			"field_map": {
-				"parent": "delivery_note"
+				"parent": "delivery_note",
 			},
 			"condition": lambda item, source, target: item.parent not in delivery_notes,
-			"postprocess": update_stop_details
-		}
+			"postprocess": update_stop_details,
+		},
 	}, target_doc)
 
 	return doclist
@@ -1051,12 +1053,12 @@ def make_installation_note(source_name, target_doc=None):
 		target.qty = flt(obj.qty) - flt(obj.installed_qty)
 		target.serial_no = obj.serial_no
 
-	doclist = get_mapped_doc("Delivery Note", source_name, 	{
+	doclist = get_mapped_doc("Delivery Note", source_name, {
 		"Delivery Note": {
 			"doctype": "Installation Note",
 			"validation": {
-				"docstatus": ["=", 1]
-			}
+				"docstatus": ["=", 1],
+			},
 		},
 		"Delivery Note Item": {
 			"doctype": "Installation Note Item",
@@ -1066,8 +1068,8 @@ def make_installation_note(source_name, target_doc=None):
 				"parenttype": "prevdoc_doctype",
 			},
 			"postprocess": update_item,
-			"condition": lambda doc, source, target: doc.installed_qty < doc.qty
-		}
+			"condition": lambda doc, source, target: doc.installed_qty < doc.qty,
+		},
 	}, target_doc)
 
 	return doclist

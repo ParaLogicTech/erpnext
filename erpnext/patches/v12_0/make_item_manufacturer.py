@@ -3,6 +3,7 @@
 
 import frappe
 
+
 def execute():
 	frappe.reload_doc("stock", "doctype", "item_manufacturer")
 
@@ -15,12 +16,12 @@ def execute():
 			d.manufacturer,
 			d.manufacturer_part_no,
 			d.creation,
-			d.owner
+			d.owner,
 		))
 
 	if item_manufacturer:
-		frappe.db.sql('''
+		frappe.db.sql("""
 			INSERT INTO `tabItem Manufacturer`
 			(`name`, `item_code`, `manufacturer`, `manufacturer_part_no`, `creation`, `owner`)
-			VALUES {}'''.format(', '.join(['%s'] * len(item_manufacturer))), tuple(item_manufacturer)
+			VALUES {}""".format(", ".join(["%s"] * len(item_manufacturer))), tuple(item_manufacturer),
 		)

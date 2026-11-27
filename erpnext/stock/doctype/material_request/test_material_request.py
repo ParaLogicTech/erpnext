@@ -4,11 +4,20 @@
 # ERPNext - web based ERP (http://erpnext.com)
 # For license information, please see license.txt
 
-import frappe, unittest, erpnext
+import unittest
+
+import frappe
 from frappe.utils import flt, today
-from erpnext.stock.doctype.material_request.material_request \
-	import raise_work_orders, make_stock_entry, make_purchase_order, make_supplier_quotation
+
+import erpnext
 from erpnext.stock.doctype.item.test_item import create_item
+from erpnext.stock.doctype.material_request.material_request import (
+	make_purchase_order,
+	make_stock_entry,
+	make_supplier_quotation,
+	raise_work_orders,
+)
+
 
 class TestMaterialRequest(unittest.TestCase):
 	def setUp(self):
@@ -39,7 +48,6 @@ class TestMaterialRequest(unittest.TestCase):
 		self.assertEqual(sq.doctype, "Supplier Quotation")
 		self.assertEqual(len(sq.get("items")), len(mr.get("items")))
 
-
 	def test_make_stock_entry(self):
 		mr = frappe.copy_doc(test_records[0]).insert()
 
@@ -53,7 +61,7 @@ class TestMaterialRequest(unittest.TestCase):
 		self.assertEqual(se.doctype, "Stock Entry")
 		self.assertEqual(len(se.get("items")), len(mr.get("items")))
 
-	def _insert_stock_entry(self, qty1, qty2, warehouse = None ):
+	def _insert_stock_entry(self, qty1, qty2, warehouse=None):
 		se = frappe.get_doc({
 			"company": "_Test Company",
 			"doctype": "Stock Entry",
@@ -72,7 +80,7 @@ class TestMaterialRequest(unittest.TestCase):
 					"stock_qty": qty1,
 					"uom": "_Test UOM 1",
 					"t_warehouse": warehouse or "_Test Warehouse 1 - _TC",
-					"cost_center": "_Test Cost Center - _TC"
+					"cost_center": "_Test Cost Center - _TC",
 				},
 				{
 					"conversion_factor": 1.0,
@@ -85,9 +93,9 @@ class TestMaterialRequest(unittest.TestCase):
 					"stock_qty": qty2,
 					"uom": "_Test UOM 1",
 					"t_warehouse": warehouse or "_Test Warehouse 1 - _TC",
-					"cost_center": "_Test Cost Center - _TC"
-				}
-			]
+					"cost_center": "_Test Cost Center - _TC",
+				},
+			],
 		})
 
 		se.set_stock_entry_type()
@@ -101,19 +109,19 @@ class TestMaterialRequest(unittest.TestCase):
 
 		mr.load_from_db()
 		mr.cancel()
-		self.assertRaises(frappe.ValidationError, mr.update_status, 'Stopped')
+		self.assertRaises(frappe.ValidationError, mr.update_status, "Stopped")
 
 	def test_mr_changes_from_stopped_to_pending_after_reopen(self):
 		mr = frappe.copy_doc(test_records[0])
 		mr.insert()
 		mr.submit()
-		self.assertEqual('Pending', mr.status)
+		self.assertEqual("Pending", mr.status)
 
-		mr.update_status('Stopped')
-		self.assertEqual('Stopped', mr.status)
+		mr.update_status("Stopped")
+		self.assertEqual("Stopped", mr.status)
 
-		mr.update_status('Submitted')
-		self.assertEqual('Pending', mr.status)
+		mr.update_status("Submitted")
+		self.assertEqual("Pending", mr.status)
 
 	def test_cannot_submit_cancelled_mr(self):
 		mr = frappe.copy_doc(test_records[0])
@@ -128,7 +136,7 @@ class TestMaterialRequest(unittest.TestCase):
 		mr.insert()
 		mr.submit()
 		mr.cancel()
-		self.assertEqual('Cancelled', mr.status)
+		self.assertEqual("Cancelled", mr.status)
 
 	def test_cannot_change_cancelled_mr(self):
 		mr = frappe.copy_doc(test_records[0])
@@ -137,12 +145,12 @@ class TestMaterialRequest(unittest.TestCase):
 		mr.load_from_db()
 		mr.cancel()
 
-		self.assertRaises(frappe.InvalidStatusError, mr.update_status, 'Draft')
-		self.assertRaises(frappe.InvalidStatusError, mr.update_status, 'Stopped')
-		self.assertRaises(frappe.InvalidStatusError, mr.update_status, 'Ordered')
-		self.assertRaises(frappe.InvalidStatusError, mr.update_status, 'Issued')
-		self.assertRaises(frappe.InvalidStatusError, mr.update_status, 'Transferred')
-		self.assertRaises(frappe.InvalidStatusError, mr.update_status, 'Pending')
+		self.assertRaises(frappe.InvalidStatusError, mr.update_status, "Draft")
+		self.assertRaises(frappe.InvalidStatusError, mr.update_status, "Stopped")
+		self.assertRaises(frappe.InvalidStatusError, mr.update_status, "Ordered")
+		self.assertRaises(frappe.InvalidStatusError, mr.update_status, "Issued")
+		self.assertRaises(frappe.InvalidStatusError, mr.update_status, "Transferred")
+		self.assertRaises(frappe.InvalidStatusError, mr.update_status, "Pending")
 
 	def test_cannot_submit_deleted_material_request(self):
 		mr = frappe.copy_doc(test_records[0])
@@ -164,9 +172,9 @@ class TestMaterialRequest(unittest.TestCase):
 		mr.submit()
 		mr.load_from_db()
 
-		mr.update_status('Stopped')
-		mr.update_status('Submitted')
-		self.assertEqual(mr.status, 'Pending')
+		mr.update_status("Stopped")
+		mr.update_status("Submitted")
+		self.assertEqual(mr.status, "Pending")
 
 	def test_pending_mr_changes_to_stopped_after_stop(self):
 		mr = frappe.copy_doc(test_records[0])
@@ -174,13 +182,13 @@ class TestMaterialRequest(unittest.TestCase):
 		mr.submit()
 		mr.load_from_db()
 
-		mr.update_status('Stopped')
-		self.assertEqual(mr.status, 'Stopped')
+		mr.update_status("Stopped")
+		self.assertEqual(mr.status, "Stopped")
 
 	def test_cannot_stop_unsubmitted_mr(self):
 		mr = frappe.copy_doc(test_records[0])
 		mr.insert()
-		self.assertRaises(frappe.InvalidStatusError, mr.update_status, 'Stopped')
+		self.assertRaises(frappe.InvalidStatusError, mr.update_status, "Stopped")
 
 	def test_completed_qty_for_purchase(self):
 		existing_requested_qty_item1 = self._get_requested_qty("_Test Item Home Desktop 100", "_Test Warehouse - _TC")
@@ -201,19 +209,18 @@ class TestMaterialRequest(unittest.TestCase):
 		po_doc.get("items")[0].schedule_date = "2013-07-09"
 		po_doc.get("items")[1].schedule_date = "2013-07-09"
 
-
 		# check for stopped status of Material Request
 		po = frappe.copy_doc(po_doc)
 		po.insert()
 		po.load_from_db()
-		mr.update_status('Stopped')
+		mr.update_status("Stopped")
 		self.assertRaises(frappe.InvalidStatusError, po.submit)
 		po.db_set("docstatus", 1)
 		self.assertRaises(frappe.InvalidStatusError, po.cancel)
 
 		# resubmit and check for per complete
 		mr.load_from_db()
-		mr.update_status('Submitted')
+		mr.update_status("Submitted")
 		po = frappe.copy_doc(po_doc)
 		po.insert()
 		po.submit()
@@ -276,13 +283,13 @@ class TestMaterialRequest(unittest.TestCase):
 			"qty": 27.0,
 			"stock_qty": 27.0,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
-			"basic_rate": 1.0
+			"basic_rate": 1.0,
 		})
 		se_doc.get("items")[1].update({
 			"qty": 1.5,
 			"stock_qty": 1.5,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
-			"basic_rate": 1.0
+			"basic_rate": 1.0,
 		})
 
 		# make available the qty in _Test Warehouse 1 before transfer
@@ -291,17 +298,17 @@ class TestMaterialRequest(unittest.TestCase):
 		# check for stopped status of Material Request
 		se = frappe.copy_doc(se_doc)
 		se.insert()
-		mr.update_status('Stopped')
+		mr.update_status("Stopped")
 		self.assertRaises(frappe.InvalidStatusError, se.submit)
 
-		mr.update_status('Submitted')
+		mr.update_status("Submitted")
 
 		se.flags.ignore_validate_update_after_submit = True
 		se.submit()
-		mr.update_status('Stopped')
+		mr.update_status("Stopped")
 		self.assertRaises(frappe.InvalidStatusError, se.cancel)
 
-		mr.update_status('Submitted')
+		mr.update_status("Submitted")
 		se = frappe.copy_doc(se_doc)
 		se.insert()
 		se.submit()
@@ -353,13 +360,13 @@ class TestMaterialRequest(unittest.TestCase):
 			"qty": 54.0,
 			"stock_qty": 54.0,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
-			"basic_rate": 1.0
+			"basic_rate": 1.0,
 		})
 		se_doc.get("items")[1].update({
 			"qty": 3.0,
 			"stock_qty": 3.0,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
-			"basic_rate": 1.0
+			"basic_rate": 1.0,
 		})
 
 		# make available the qty in _Test Warehouse 1 before transfer
@@ -369,11 +376,11 @@ class TestMaterialRequest(unittest.TestCase):
 		se = frappe.copy_doc(se_doc)
 		se.set_stock_entry_type()
 		se.insert()
-		mr.update_status('Stopped')
+		mr.update_status("Stopped")
 		self.assertRaises(frappe.InvalidStatusError, se.submit)
 		self.assertRaises(frappe.InvalidStatusError, se.cancel)
 
-		mr.update_status('Submitted')
+		mr.update_status("Submitted")
 		se = frappe.copy_doc(se_doc)
 		se.set_stock_entry_type()
 		se.insert()
@@ -423,13 +430,13 @@ class TestMaterialRequest(unittest.TestCase):
 			"stock_qty": 60.0,
 			"s_warehouse": "_Test Warehouse - _TC",
 			"t_warehouse": "_Test Warehouse 1 - _TC",
-			"basic_rate": 1.0
+			"basic_rate": 1.0,
 		})
 		se_doc.get("items")[1].update({
 			"qty": 3.0,
 			"stock_qty": 3.0,
 			"s_warehouse": "_Test Warehouse 1 - _TC",
-			"basic_rate": 1.0
+			"basic_rate": 1.0,
 		})
 
 		# check for stopped status of Material Request
@@ -479,7 +486,7 @@ class TestMaterialRequest(unittest.TestCase):
 		mr.material_request_type = "Material Issue"
 		mr.submit()
 
-		#testing bin value after material request is submitted
+		# testing bin value after material request is submitted
 		self.assertEqual(_get_requested_qty(), existing_requested_qty - 54.0)
 
 		# receive items to allow issue
@@ -498,7 +505,7 @@ class TestMaterialRequest(unittest.TestCase):
 		self.assertEqual(mr.get("items")[0].ordered_qty, 54.0)
 		self.assertEqual(mr.get("items")[1].ordered_qty, 3.0)
 
-		#testing bin requested qty after issuing stock against material request
+		# testing bin requested qty after issuing stock against material request
 		self.assertEqual(_get_requested_qty(), existing_requested_qty)
 
 	def test_material_request_type_manufacture(self):
@@ -532,12 +539,12 @@ class TestMaterialRequest(unittest.TestCase):
 		self.assertEqual(requested_qty, new_requested_qty)
 
 	def test_requested_qty_multi_uom(self):
-		existing_requested_qty = self._get_requested_qty('_Test FG Item', '_Test Warehouse - _TC')
+		existing_requested_qty = self._get_requested_qty("_Test FG Item", "_Test Warehouse - _TC")
 
-		mr = make_material_request(item_code='_Test FG Item', material_request_type='Manufacture',
+		mr = make_material_request(item_code="_Test FG Item", material_request_type="Manufacture",
 			uom="_Test UOM 1", conversion_factor=12)
-		
-		requested_qty = self._get_requested_qty('_Test FG Item', '_Test Warehouse - _TC')
+
+		requested_qty = self._get_requested_qty("_Test FG Item", "_Test Warehouse - _TC")
 
 		self.assertEqual(requested_qty, existing_requested_qty + 120)
 
@@ -547,37 +554,36 @@ class TestMaterialRequest(unittest.TestCase):
 		wo.wip_warehouse = "_Test Warehouse 1 - _TC"
 		wo.submit()
 
-		requested_qty = self._get_requested_qty('_Test FG Item', '_Test Warehouse - _TC')
+		requested_qty = self._get_requested_qty("_Test FG Item", "_Test Warehouse - _TC")
 		self.assertEqual(requested_qty, existing_requested_qty + 70)
 
 		wo.cancel()
 
-		requested_qty = self._get_requested_qty('_Test FG Item', '_Test Warehouse - _TC')
+		requested_qty = self._get_requested_qty("_Test FG Item", "_Test Warehouse - _TC")
 		self.assertEqual(requested_qty, existing_requested_qty + 120)
 
 		mr.reload()
 		mr.cancel()
-		requested_qty = self._get_requested_qty('_Test FG Item', '_Test Warehouse - _TC')
+		requested_qty = self._get_requested_qty("_Test FG Item", "_Test Warehouse - _TC")
 		self.assertEqual(requested_qty, existing_requested_qty)
-
 
 	def test_multi_uom_for_purchase(self):
 		mr = frappe.copy_doc(test_records[0])
-		mr.material_request_type = 'Purchase'
+		mr.material_request_type = "Purchase"
 		item = mr.items[0]
 		mr.schedule_date = today()
 
-		if not frappe.db.get_value('UOM Conversion Detail', {'parent': item.item_code, 'uom': 'Kg'}):
-			item_doc = frappe.get_doc('Item', item.item_code)
-			item_doc.append('uom_conversion_graph', {
-				'from_qty': 1,
-				'from_uom': 'Kg',
-				'to_qty': 5, # conversion factor
-				'to_uom': item_doc.stock_uom
+		if not frappe.db.get_value("UOM Conversion Detail", {"parent": item.item_code, "uom": "Kg"}):
+			item_doc = frappe.get_doc("Item", item.item_code)
+			item_doc.append("uom_conversion_graph", {
+				"from_qty": 1,
+				"from_uom": "Kg",
+				"to_qty": 5,  # conversion factor
+				"to_uom": item_doc.stock_uom,
 			})
 		item_doc.save(ignore_permissions=True)
 
-		item.uom = 'Kg'
+		item.uom = "Kg"
 		for item in mr.items:
 			item.schedule_date = mr.schedule_date
 
@@ -597,17 +603,17 @@ class TestMaterialRequest(unittest.TestCase):
 		self.assertEqual(po.doctype, "Purchase Order")
 		self.assertEqual(len(po.get("items")), len(mr.get("items")))
 
-		po.supplier = '_Test Supplier'
+		po.supplier = "_Test Supplier"
 		po.insert()
 		po.submit()
 		mr = frappe.get_doc("Material Request", mr.name)
 		self.assertEqual(mr.per_ordered, 100)
 
 	def test_customer_provided_parts_mr(self):
-		create_item('CUST-0987', is_customer_provided_item = 1, customer = '_Test Customer', is_purchase_item = 0)
+		create_item("CUST-0987", is_customer_provided_item=1, customer="_Test Customer", is_purchase_item=0)
 		existing_requested_qty = self._get_requested_qty("_Test Customer", "_Test Warehouse - _TC")
 
-		mr = make_material_request(item_code='CUST-0987', material_request_type='Customer Provided')
+		mr = make_material_request(item_code="CUST-0987", material_request_type="Customer Provided")
 		se = make_stock_entry(mr.name)
 		se.insert()
 		se.submit()
@@ -620,12 +626,13 @@ class TestMaterialRequest(unittest.TestCase):
 		self.assertEqual(mr.per_ordered, 100)
 		self.assertEqual(existing_requested_qty, current_requested_qty)
 
+
 def make_material_request(**args):
 	args = frappe._dict(args)
 	mr = frappe.new_doc("Material Request")
 	mr.material_request_type = args.material_request_type or "Purchase"
 	mr.company = args.company or "_Test Company"
-	mr.customer = args.customer or '_Test Customer'
+	mr.customer = args.customer or "_Test Customer"
 	mr.append("items", {
 		"item_code": args.item_code or "_Test Item",
 		"qty": args.qty or 10,
@@ -633,12 +640,13 @@ def make_material_request(**args):
 		"conversion_factor": args.conversion_factor or 1,
 		"schedule_date": args.schedule_date or today(),
 		"warehouse": args.warehouse or "_Test Warehouse - _TC",
-		"cost_center": args.cost_center or "_Test Cost Center - _TC"
+		"cost_center": args.cost_center or "_Test Cost Center - _TC",
 	})
 	mr.insert()
 	if not args.do_not_submit:
 		mr.submit()
 	return mr
 
+
 test_dependencies = ["Currency Exchange", "BOM"]
-test_records = frappe.get_test_records('Material Request')
+test_records = frappe.get_test_records("Material Request")

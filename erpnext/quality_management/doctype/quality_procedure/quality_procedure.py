@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe and contributors
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils.nestedset import NestedSet
 from frappe import _
+from frappe.utils.nestedset import NestedSet
+
 
 class QualityProcedure(NestedSet):
-	nsm_parent_field = 'parent_quality_procedure'
+	nsm_parent_field = "parent_quality_procedure"
 
 	def before_save(self):
 		self.check_for_incorrect_child()
@@ -17,7 +17,7 @@ class QualityProcedure(NestedSet):
 
 	def after_insert(self):
 		self.set_parent()
-		#if Child is Added through Tree View.
+		# if Child is Added through Tree View.
 		if self.parent_quality_procedure:
 			parent_quality_procedure = frappe.get_doc("Quality Procedure", self.parent_quality_procedure)
 			parent_quality_procedure.append("processes", {"procedure": self.name})
@@ -26,10 +26,12 @@ class QualityProcedure(NestedSet):
 	def on_trash(self):
 		if self.parent_quality_procedure:
 			doc = frappe.get_doc("Quality Procedure", self.parent_quality_procedure)
-			for process in doc.processes:
-				if process.procedure == self.name:
-					doc.processes.remove(process)
-					doc.save(ignore_permissions=True)
+			to_remove = [process for process in doc.processes if process.procedure == self.name]
+			for process in to_remove:
+				doc.processes.remove(process)
+
+			if to_remove:
+				doc.save(ignore_permissions=True)
 
 			flag_is_group = 0
 			doc.load_from_db()
@@ -57,6 +59,7 @@ class QualityProcedure(NestedSet):
 						title=_("Invalid Child Procedure"))
 				self.is_group = 1
 
+
 @frappe.whitelist()
 def get_children(doctype, parent=None, parent_quality_procedure=None, is_root=False):
 	if parent is None or parent == "All Quality Procedures":
@@ -71,9 +74,10 @@ def get_children(doctype, parent=None, parent_quality_procedure=None, is_root=Fa
 		where
 			ifnull(parent_quality_procedure, "")={parent}
 		""".format(
-			doctype = doctype,
-			parent=frappe.db.escape(parent)
+			doctype=doctype,
+			parent=frappe.db.escape(parent),
 		), as_dict=1)
+
 
 @frappe.whitelist()
 def add_node():
@@ -82,7 +86,7 @@ def add_node():
 	args = frappe.form_dict
 	args = make_tree_args(**args)
 
-	if args.parent_quality_procedure == 'All Quality Procedures':
+	if args.parent_quality_procedure == "All Quality Procedures":
 		args.parent_quality_procedure = None
 
 	frappe.get_doc(args).insert()

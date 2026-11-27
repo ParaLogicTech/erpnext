@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
-from erpnext.stock.get_item_details import get_default_warehouse
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
+from frappe.utils import flt, getdate
+
+from erpnext.stock.get_item_details import get_default_warehouse
 
 
 class BlanketOrder(Document):
@@ -16,7 +16,7 @@ class BlanketOrder(Document):
 
 	def validate_dates(self):
 		if getdate(self.from_date) > getdate(self.to_date):
-			frappe.throw(_("From date cannot be greater than To date")) 
+			frappe.throw(_("From date cannot be greater than To date"))
 
 	def update_ordered_qty(self):
 		ref_doctype = "Sales Order" if self.blanket_order_type == "Selling" else "Purchase Order"
@@ -33,6 +33,7 @@ class BlanketOrder(Document):
 		for d in self.items:
 			d.db_set("ordered_qty", item_ordered_qty.get(d.item_code, 0))
 
+
 @frappe.whitelist()
 def make_sales_order(source_name):
 	def update_item(source, target, source_parent, target_parent):
@@ -46,18 +47,19 @@ def make_sales_order(source_name):
 
 	target_doc = get_mapped_doc("Blanket Order", source_name, {
 		"Blanket Order": {
-			"doctype": "Sales Order"
+			"doctype": "Sales Order",
 		},
 		"Blanket Order Item": {
 			"doctype": "Sales Order Item",
 			"field_map": {
 				"rate": "blanket_order_rate",
-				"parent": "blanket_order"
+				"parent": "blanket_order",
 			},
-			"postprocess": update_item
-		}
+			"postprocess": update_item,
+		},
 	})
 	return target_doc
+
 
 @frappe.whitelist()
 def make_purchase_order(source_name):
@@ -69,19 +71,19 @@ def make_purchase_order(source_name):
 			target.item_name = item.get("item_name")
 			target.description = item.get("description")
 			target.uom = item.get("stock_uom")
-			target.warehouse = get_default_warehouse(item, {'company': source_parent.company}, True)
+			target.warehouse = get_default_warehouse(item, {"company": source_parent.company}, True)
 
 	target_doc = get_mapped_doc("Blanket Order", source_name, {
 		"Blanket Order": {
-			"doctype": "Purchase Order"
+			"doctype": "Purchase Order",
 		},
 		"Blanket Order Item": {
 			"doctype": "Purchase Order Item",
 			"field_map": {
 				"rate": "blanket_order_rate",
-				"parent": "blanket_order"
+				"parent": "blanket_order",
 			},
-			"postprocess": update_item
-		}
+			"postprocess": update_item,
+		},
 	})
 	return target_doc

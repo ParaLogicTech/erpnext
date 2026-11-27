@@ -1,19 +1,21 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
-from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
-from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
+
+import frappe
+
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import delete_accounting_dimension
+from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
+from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
+
 
 class TestAccountingDimension(unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 
 		if not frappe.db.exists("Accounting Dimension", {"document_type": "Department"}):
-			dimension = frappe.get_doc({
+			frappe.get_doc({
 				"doctype": "Accounting Dimension",
 				"document_type": "Department",
 			}).insert()
@@ -32,7 +34,7 @@ class TestAccountingDimension(unittest.TestCase):
 				"company": "_Test Company",
 				"reference_document": "Location",
 				"default_dimension": "Block 1",
-				"mandatory_for_bs": 1
+				"mandatory_for_bs": 1,
 			})
 
 			dimension1.insert()
@@ -55,7 +57,7 @@ class TestAccountingDimension(unittest.TestCase):
 			"expense_account": "Cost of Goods Sold - _TC",
 			"cost_center": "_Test Cost Center - _TC",
 			"department": "_Test Department - _TC",
-			"location": "Block 1"
+			"location": "Block 1",
 		})
 
 		si.save()
@@ -63,7 +65,7 @@ class TestAccountingDimension(unittest.TestCase):
 
 		gle = frappe.get_doc("GL Entry", {"voucher_no": si.name, "account": "Sales - _TC"})
 
-		self.assertEqual(gle.get('department'), "_Test Department - _TC")
+		self.assertEqual(gle.get("department"), "_Test Department - _TC")
 
 	def test_dimension_against_journal_entry(self):
 		je = make_journal_entry("Sales - _TC", "Sales Expenses - _TC", 500, save=False)
@@ -78,8 +80,8 @@ class TestAccountingDimension(unittest.TestCase):
 
 		gle = frappe.get_doc("GL Entry", {"voucher_no": je.name, "account": "Sales - _TC"})
 		gle1 = frappe.get_doc("GL Entry", {"voucher_no": je.name, "account": "Sales Expenses - _TC"})
-		self.assertEqual(gle.get('department'), "_Test Department - _TC")
-		self.assertEqual(gle1.get('department'), "_Test Department - _TC")
+		self.assertEqual(gle.get("department"), "_Test Department - _TC")
+		self.assertEqual(gle1.get("department"), "_Test Department - _TC")
 
 	def test_mandatory(self):
 		si = create_sales_invoice(do_not_save=1)
@@ -91,7 +93,7 @@ class TestAccountingDimension(unittest.TestCase):
 			"income_account": "Sales - _TC",
 			"expense_account": "Cost of Goods Sold - _TC",
 			"cost_center": "_Test Cost Center - _TC",
-			"location": ""
+			"location": "",
 		})
 
 		si.save()
@@ -109,5 +111,3 @@ def disable_dimension():
 	dimension2 = frappe.get_doc("Accounting Dimension", "Location")
 	dimension2.disabled = 1
 	dimension2.save()
-
-

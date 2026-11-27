@@ -8,15 +8,15 @@ frappe.views.calendar["Asset Maintenance Log"] = {
 		"id": "name",
 		"title": "task",
 		"allDay": "allDay",
-		"progress": "progress"
+		"progress": "progress",
 	},
 	filters: [
 		{
 			"fieldtype": "Link",
 			"fieldname": "asset_name",
 			"options": "Asset Maintenance",
-			"label": __("Asset Maintenance")
-		}
+			"label": __("Asset Maintenance"),
+		},
 	],
-	get_events_method: "frappe.desk.calendar.get_events"
+	get_events_method: "frappe.desk.calendar.get_events",
 };

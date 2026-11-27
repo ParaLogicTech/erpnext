@@ -1,24 +1,26 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
-import erpnext
 import unittest
-from frappe.utils import nowdate, add_days
+
+import frappe
+from frappe.utils import add_days, nowdate
+
+import erpnext
 from erpnext.hr.doctype.salary_structure.test_salary_structure import make_employee
+
 
 class TestLoan(unittest.TestCase):
 	def setUp(self):
 		create_loan_type("Personal Loan", 500000, 8.4)
 		self.applicant = make_employee("robert_loan@loan.com")
 		create_loan(self.applicant, "Personal Loan", 280000, "Repay Over Number of Periods", 20)
-	
+
 	def test_loan(self):
-		loan = frappe.get_doc("Loan", {"applicant":self.applicant})
-		self.assertEquals(loan.monthly_repayment_amount, 15052)
-		self.assertEquals(loan.total_interest_payable, 21034)
-		self.assertEquals(loan.total_payment, 301034)
+		loan = frappe.get_doc("Loan", {"applicant": self.applicant})
+		self.assertEqual(loan.monthly_repayment_amount, 15052)
+		self.assertEqual(loan.total_interest_payable, 21034)
+		self.assertEqual(loan.total_payment, 301034)
 
 		schedule = loan.repayment_schedule
 
@@ -33,9 +35,10 @@ class TestLoan(unittest.TestCase):
 		loan.monthly_repayment_amount = 14000
 		loan.save()
 
-		self.assertEquals(len(loan.repayment_schedule), 22)
-		self.assertEquals(loan.total_interest_payable, 22712)
-		self.assertEquals(loan.total_payment, 302712)
+		self.assertEqual(len(loan.repayment_schedule), 22)
+		self.assertEqual(loan.total_interest_payable, 22712)
+		self.assertEqual(loan.total_payment, 302712)
+
 
 def create_loan_type(loan_name, maximum_loan_amount, rate_of_interest):
 	if not frappe.db.exists("Loan Type", loan_name):
@@ -43,12 +46,13 @@ def create_loan_type(loan_name, maximum_loan_amount, rate_of_interest):
 			"doctype": "Loan Type",
 			"loan_name": loan_name,
 			"maximum_loan_amount": maximum_loan_amount,
-			"rate_of_interest": rate_of_interest
+			"rate_of_interest": rate_of_interest,
 		}).insert()
 
-def	create_loan(applicant, loan_type, loan_amount, repayment_method, repayment_periods):
+
+def create_loan(applicant, loan_type, loan_amount, repayment_method, repayment_periods):
 	create_loan_type(loan_type, 500000, 8.4)
-	if not frappe.db.get_value("Loan", {"applicant":applicant}):
+	if not frappe.db.get_value("Loan", {"applicant": applicant}):
 		loan = frappe.new_doc("Loan")
 		loan.update({
 				"applicant": applicant,
@@ -59,12 +63,12 @@ def	create_loan(applicant, loan_type, loan_amount, repayment_method, repayment_p
 				"disbursement_date": nowdate(),
 				"repayment_start_date": nowdate(),
 				"status": "Disbursed",
-				"mode_of_payment": frappe.db.get_value('Mode of Payment', {'type': 'Cash'}, 'name'),
-				"payment_account": frappe.db.get_value('Account', {'account_type': 'Cash', 'company': erpnext.get_default_company(),'is_group':0}, "name"),
-				"loan_account": frappe.db.get_value('Account', {'account_type': 'Cash', 'company': erpnext.get_default_company(),'is_group':0}, "name"),
-				"interest_income_account": frappe.db.get_value('Account', {'account_type': 'Cash', 'company': erpnext.get_default_company(),'is_group':0}, "name")
+				"mode_of_payment": frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name"),
+				"payment_account": frappe.db.get_value("Account", {"account_type": "Cash", "company": erpnext.get_default_company(), "is_group": 0}, "name"),
+				"loan_account": frappe.db.get_value("Account", {"account_type": "Cash", "company": erpnext.get_default_company(), "is_group": 0}, "name"),
+				"interest_income_account": frappe.db.get_value("Account", {"account_type": "Cash", "company": erpnext.get_default_company(), "is_group": 0}, "name"),
 			})
 		loan.insert()
 		return loan
 	else:
-		return frappe.get_doc("Loan", {"applicant":applicant})
+		return frappe.get_doc("Loan", {"applicant": applicant})

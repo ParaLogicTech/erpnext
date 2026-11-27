@@ -5,8 +5,9 @@
 
 import frappe
 import frappe.defaults
-from frappe.utils.nestedset import get_root_of
 from frappe.model.document import Document
+from frappe.utils.nestedset import get_root_of
+
 from erpnext.setup.doctype.default_price_list.default_price_list import validate_default_price_list_table
 
 
@@ -33,6 +34,6 @@ class SellingSettings(Document):
 
 	def set_default_customer_group_and_territory(self):
 		if not self.customer_group:
-			self.customer_group = get_root_of('Customer Group')
+			self.customer_group = get_root_of("Customer Group")
 		if not self.territory:
-			self.territory = get_root_of('Territory')
+			self.territory = get_root_of("Territory")

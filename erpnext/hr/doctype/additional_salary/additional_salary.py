@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-from frappe.model.document import Document
 from frappe import _
-from frappe.utils import getdate, date_diff
+from frappe.model.document import Document
+from frappe.utils import date_diff, getdate
+
 
 class AdditionalSalary(Document):
 	def before_insert(self):
@@ -20,7 +20,7 @@ class AdditionalSalary(Document):
 			frappe.throw(_("Amount should not be less than zero."))
 
 	def validate_dates(self):
-		date_of_joining, relieving_date = frappe.db.get_value("Employee", self.employee, ["date_of_joining", "relieving_date"])
+		date_of_joining, _relieving_date = frappe.db.get_value("Employee", self.employee, ["date_of_joining", "relieving_date"])
 		if not date_of_joining:
 			frappe.throw(_("Please set Date of Joining for {0}").format(frappe.get_desk_link("Employee", self.employee)))
 
@@ -39,6 +39,7 @@ class AdditionalSalary(Document):
 		no_of_days = date_diff(getdate(end_date), getdate(start_date)) + 1
 		return amount_per_day * no_of_days
 
+
 @frappe.whitelist()
 def get_additional_salary_component(employee, start_date, end_date, component_type):
 	additional_components = frappe.db.sql("""
@@ -51,27 +52,27 @@ def get_additional_salary_component(employee, start_date, end_date, component_ty
 		group by salary_component, overwrite_salary_structure_amount
 		order by salary_component, overwrite_salary_structure_amount
 	""", {
-		'employee': employee,
-		'from_date': start_date,
-		'to_date': end_date,
-		'component_type': "Earning" if component_type == "earnings" else "Deduction"
+		"employee": employee,
+		"from_date": start_date,
+		"to_date": end_date,
+		"component_type": "Earning" if component_type == "earnings" else "Deduction",
 	}, as_dict=1)
 
 	additional_components_list = []
-	component_fields = ["depends_on_payment_days", "salary_component_abbr", "is_tax_applicable", "variable_based_on_taxable_salary", 'type' , 'do_not_include_in_total']
+	component_fields = ["depends_on_payment_days", "salary_component_abbr", "is_tax_applicable", "variable_based_on_taxable_salary", "type", "do_not_include_in_total"]
 	for d in additional_components:
-		struct_row = frappe._dict({'salary_component': d.salary_component})
-		component = frappe.get_all("Salary Component", filters={'name': d.salary_component}, fields=component_fields)
+		struct_row = frappe._dict({"salary_component": d.salary_component})
+		component = frappe.get_all("Salary Component", filters={"name": d.salary_component}, fields=component_fields)
 		if component:
 			struct_row.update(component[0])
 
-		struct_row['deduct_full_tax_on_selected_payroll_date'] = d.deduct_full_tax_on_selected_payroll_date
-		struct_row['is_additional_component'] = 1
+		struct_row["deduct_full_tax_on_selected_payroll_date"] = d.deduct_full_tax_on_selected_payroll_date
+		struct_row["is_additional_component"] = 1
 
 		additional_components_list.append(frappe._dict({
-			'amount': d.amount,
-			'type': component[0].type,
-			'struct_row': struct_row,
-			'overwrite': d.overwrite_salary_structure_amount,
+			"amount": d.amount,
+			"type": component[0].type,
+			"struct_row": struct_row,
+			"overwrite": d.overwrite_salary_structure_amount,
 		}))
 	return additional_components_list

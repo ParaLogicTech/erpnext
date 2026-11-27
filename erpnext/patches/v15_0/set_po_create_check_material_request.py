@@ -1,5 +1,6 @@
 import frappe
 
+
 def execute():
 	# Set po_created = 1 where at least one active PO Item exists
 	frappe.db.sql("""

@@ -1,11 +1,12 @@
 # Copyright (c) 2026, ParaLogic and contributors
 # For license information, please see license.txt
 
+import datetime
+
 import frappe
 from frappe import _, scrub, unscrub
-from frappe.utils import cint, cstr, flt, getdate, add_days, combine_datetime
 from frappe.desk.query_report import group_report_data
-import datetime
+from frappe.utils import add_days, cint, combine_datetime, cstr, flt, getdate
 
 
 def execute(filters=None):
@@ -41,8 +42,8 @@ class ProductionRegister:
 			frappe.throw(_("Date Range is incorrect"))
 
 	def set_show_names(self):
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
-		self.show_customer_name = frappe.defaults.get_global_default('cust_master_name') == "Naming Series"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
+		self.show_customer_name = frappe.defaults.get_global_default("cust_master_name") == "Naming Series"
 
 	def set_fieldnames(self):
 		self.qty_fields = ["qty"]
@@ -131,7 +132,7 @@ class ProductionRegister:
 			conditions.append("wo.customer = %(customer)s")
 
 		if self.filters.production_item:
-			is_template = frappe.db.get_value("Item", self.filters.production_item, 'has_variants')
+			is_template = frappe.db.get_value("Item", self.filters.production_item, "has_variants")
 			if is_template:
 				conditions.append("im.variant_of = %(production_item)s")
 			else:
@@ -184,8 +185,8 @@ class ProductionRegister:
 	def get_grouped_data(self):
 		data = self.data
 
-		if self.filters.based_on == 'Operation Entry':
-			self.group_by = ['operation']
+		if self.filters.based_on == "Operation Entry":
+			self.group_by = ["operation"]
 		else:
 			self.group_by = [None]
 
@@ -220,31 +221,31 @@ class ProductionRegister:
 			totals.uom = list(uoms)[0]
 
 		if data:
-			if 'work_order' in grouped_by:
-				totals.customer = data[0].get('customer')
+			if "work_order" in grouped_by:
+				totals.customer = data[0].get("customer")
 
 		# set reference field
 		reference_field = group_field[0] if isinstance(group_field, (list, tuple)) else group_field
 		reference_dt = self.fieldname_to_doctype(reference_field)
 
-		totals['reference_type'] = reference_dt
+		totals["reference_type"] = reference_dt
 		if not group_field:
-			totals['reference'] = "'Total'"
+			totals["reference"] = "'Total'"
 		elif not reference_dt:
-			totals['reference'] = "'{0}'".format(grouped_by.get(reference_field))
+			totals["reference"] = "'{0}'".format(grouped_by.get(reference_field))
 		else:
-			totals['reference'] = grouped_by.get(reference_field)
+			totals["reference"] = grouped_by.get(reference_field)
 
 		if not group_field and self.group_by == [None]:
-			totals['reference'] = "'Total'"
+			totals["reference"] = "'Total'"
 
-		totals['disable_item_formatter'] = cint(self.show_item_name)
+		totals["disable_item_formatter"] = cint(self.show_item_name)
 
-		if totals.get('production_item'):
-			totals['item_name'] = data[0].item_name
+		if totals.get("production_item"):
+			totals["item_name"] = data[0].item_name
 
-		if totals.get('customer'):
-			totals['customer_name'] = data[0].customer_name
+		if totals.get("customer"):
+			totals["customer_name"] = data[0].customer_name
 
 		return totals
 
@@ -264,7 +265,7 @@ class ProductionRegister:
 
 		labels = [frappe.format(d) for d in dates]
 
-		if self.filters.based_on == 'Operation Entry':
+		if self.filters.based_on == "Operation Entry":
 			operation_totals = {}
 			for d in self.data:
 				if d.operation:
@@ -274,7 +275,7 @@ class ProductionRegister:
 			operation_datasets = {}
 			for operation, operation_total_dict in operation_totals.items():
 				operation_datasets.setdefault(operation, {
-					"name": operation, "values": []
+					"name": operation, "values": [],
 				})
 				for current_date in dates:
 					operation_datasets[operation]["values"].append(flt(operation_total_dict.get(current_date)))
@@ -296,9 +297,9 @@ class ProductionRegister:
 		self.chart_data = {
 			"data": {
 				"labels": labels,
-				'datasets': datasets
+				"datasets": datasets,
 			},
-			"colors": ['purple'],
+			"colors": ["purple"],
 			"type": "line",
 			"fieldtype": "Float",
 		}
@@ -311,20 +312,20 @@ class ProductionRegister:
 				"label": _("Date/Time"),
 				"fieldname": "posting_dt",
 				"fieldtype": "Datetime",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Item Code"),
 				"fieldname": "production_item",
 				"fieldtype": "Link",
 				"options": "Item",
-				"width": 100 if self.show_item_name else 150
+				"width": 100 if self.show_item_name else 150,
 			},
 			{
 				"label": _("Item Name"),
 				"fieldname": "item_name",
 				"fieldtype": "Data",
-				"width": 160
+				"width": 160,
 			},
 			{
 				"label": _("Qty"),
@@ -344,62 +345,62 @@ class ProductionRegister:
 				"fieldname": "operation",
 				"fieldtype": "Link",
 				"options": "Operation",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Workstation"),
 				"fieldname": "workstation",
 				"fieldtype": "Link",
 				"options": "Workstation",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Work Order"),
 				"fieldname": "work_order",
 				"fieldtype": "Link",
 				"options": "Work Order",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Job Card"),
 				"fieldname": "job_card",
 				"fieldtype": "Link",
 				"options": "Job Card",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Stock Entry"),
 				"fieldname": "stock_entry",
 				"fieldtype": "Link",
 				"options": "Stock Entry",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Sales Order"),
 				"fieldname": "sales_order",
 				"fieldtype": "Link",
 				"options": "Sales Order",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Material Request"),
 				"fieldname": "material_request",
 				"fieldtype": "Link",
 				"options": "Material Request",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Customer"),
 				"fieldname": "customer",
 				"fieldtype": "Link",
 				"options": "Customer",
-				"width": 80 if self.show_customer_name else 150
+				"width": 80 if self.show_customer_name else 150,
 			},
 			{
 				"label": _("Customer Name"),
 				"fieldname": "customer_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 		]
 
@@ -416,42 +417,42 @@ class ProductionRegister:
 				"fieldname": "reference",
 				"fieldtype": "Dynamic Link",
 				"options": "reference_type",
-				"width": 200
+				"width": 200,
 			})
 
 			if self.filters.totals_only:
 				# potential empty columns
 				exclude_columns = exclude_columns.union({
-					'posting_dt', 'customer', 'customer_name',
-					'work_order', 'stock_entry',
-					'job_card', 'workstation',
-					'sales_order', 'material_request',
-					'production_item', 'item_name',
+					"posting_dt", "customer", "customer_name",
+					"work_order", "stock_entry",
+					"job_card", "workstation",
+					"sales_order", "material_request",
+					"production_item", "item_name",
 				})
 
 				if "customer" in self.group_by:
-					exclude_columns.remove('customer')
-					exclude_columns.remove('customer_name')
+					exclude_columns.remove("customer")
+					exclude_columns.remove("customer_name")
 
 				if "production_item" in self.group_by:
-					exclude_columns.remove('production_item')
-					exclude_columns.remove('item_name')
+					exclude_columns.remove("production_item")
+					exclude_columns.remove("item_name")
 
 				if "sales_order" in self.group_by:
-					exclude_columns.remove('sales_order')
+					exclude_columns.remove("sales_order")
 				if "material_request" in self.group_by:
-					exclude_columns.remove('material_request')
+					exclude_columns.remove("material_request")
 				if "work_order" in self.group_by:
-					exclude_columns.remove('work_order')
+					exclude_columns.remove("work_order")
 				if "workstation" in self.group_by:
-					exclude_columns.remove('workstation')
+					exclude_columns.remove("workstation")
 
 		if not self.show_customer_name:
-			exclude_columns.add('customer_name')
+			exclude_columns.add("customer_name")
 
 		if not self.show_item_name:
-			exclude_columns.add('item_name')
+			exclude_columns.add("item_name")
 
-		columns = [c for c in columns if c['fieldname'] not in exclude_columns]
+		columns = [c for c in columns if c["fieldname"] not in exclude_columns]
 
 		self.columns = columns

@@ -38,14 +38,14 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 
 		this.frm.set_query("sales_order", () => {
 			return {
-				filters: {'docstatus': ['!=', 2]}
+				filters: {"docstatus": ["!=", 2]},
 			};
 		});
 
 		this.frm.set_query("insurance_company", () => {
 			return {
 				query: "erpnext.controllers.queries.customer_query",
-				filters: {is_insurance_company: 1}
+				filters: {is_insurance_company: 1},
 			};
 		});
 
@@ -72,7 +72,7 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 				frappe.route_options = {
 					serial_no: this.frm.doc.name,
 					from_date: frappe.defaults.get_user_default("year_start_date"),
-					to_date: frappe.defaults.get_user_default("year_end_date")
+					to_date: frappe.defaults.get_user_default("year_end_date"),
 				};
 				frappe.set_route("query-report", "Stock Ledger");
 			}, __("View"));
@@ -87,11 +87,11 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 	set_cant_change_read_only() {
 		const cant_change_fields = this.frm.doc.__onload?.cant_change_fields || {};
 		$.each(cant_change_fields, (fieldname, cant_change) => {
-			this.frm.set_df_property(fieldname, 'read_only', cant_change ? 1 : 0);
+			this.frm.set_df_property(fieldname, "read_only", cant_change ? 1 : 0);
 		});
 
 		const cant_change_customer = !!this.frm.doc.__onload?.cant_change_customer;
-		this.frm.set_df_property("customer", 'read_only', cant_change_customer ? 1 : 0);
+		this.frm.set_df_property("customer", "read_only", cant_change_customer ? 1 : 0);
 	}
 
 	item_code() {
@@ -130,12 +130,12 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 				args: {
 					item_code: me.frm.doc.item_code,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (!r.exc) {
-						me.frm.set_value('image', r.message);
+						me.frm.set_value("image", r.message);
 					}
-				}
-			})
+				},
+			});
 		}
 	}
 
@@ -147,16 +147,16 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 	}
 
 	chassis_no() {
-		erpnext.utils.format_vehicle_id(this.frm, 'chassis_no');
-		erpnext.utils.validate_duplicate_vehicle(this.frm.doc, 'chassis_no');
+		erpnext.utils.format_vehicle_id(this.frm, "chassis_no");
+		erpnext.utils.validate_duplicate_vehicle(this.frm.doc, "chassis_no");
 	}
 	engine_no() {
-		erpnext.utils.format_vehicle_id(this.frm, 'engine_no');
-		erpnext.utils.validate_duplicate_vehicle(this.frm.doc, 'engine_no');
+		erpnext.utils.format_vehicle_id(this.frm, "engine_no");
+		erpnext.utils.validate_duplicate_vehicle(this.frm.doc, "engine_no");
 	}
 	license_plate() {
-		erpnext.utils.format_vehicle_id(this.frm, 'license_plate');
-		erpnext.utils.validate_duplicate_vehicle(this.frm.doc, 'license_plate');
+		erpnext.utils.format_vehicle_id(this.frm, "license_plate");
+		erpnext.utils.validate_duplicate_vehicle(this.frm.doc, "license_plate");
 	}
 
 	plate_region() {
@@ -164,7 +164,7 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 			return erpnext.utils.get_license_plate_with_prefix(
 				this.frm.doc.plate_region,
 				this.frm.doc.license_plate,
-				(license_plate) => this.frm.set_value("license_plate", license_plate)
+				(license_plate) => this.frm.set_value("license_plate", license_plate),
 			);
 		}
 	}
@@ -179,7 +179,7 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 			previous_odometer: this.frm.doc.last_odometer,
 			callback: () => {
 				this.frm.reload_doc();
-			}
+			},
 		});
 	}
 
@@ -192,14 +192,14 @@ erpnext.VehicleController = class VehicleController extends frappe.ui.form.Contr
 			chassis_no: this.frm.doc.chassis_no,
 			callback: () => {
 				this.frm.reload_doc();
-			}
+			},
 		});
 	}
 
 	render_maintenance_schedules() {
 		if (this.frm.fields_dict.maintenance_schedule_html && !this.frm.doc.__islocal) {
 			var wrapper = this.frm.fields_dict.maintenance_schedule_html.wrapper;
-			$(wrapper).html(frappe.render_template("maintenance_schedule", { data: this.frm.doc}));
+			$(wrapper).html(frappe.render_template("maintenance_schedule", {data: this.frm.doc}));
 		}
 	}
 };

@@ -3,6 +3,7 @@
 
 import frappe
 
+
 def execute():
 	frappe.reload_doctype("Quotation")
 	frappe.db.sql(""" UPDATE `tabQuotation` set party_name = lead WHERE quotation_to = 'Lead' """)

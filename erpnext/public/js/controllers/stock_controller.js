@@ -21,30 +21,30 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 
 	setup_posting_date_time_check() {
 		// make posting date default and read only unless explictly checked
-		frappe.ui.form.on(this.frm.doctype, 'set_posting_date_and_time_read_only', function(frm) {
-			if(frm.doc.docstatus == 0 && frm.doc.set_posting_time) {
-				frm.set_df_property('posting_date', 'read_only', 0);
-				frm.set_df_property('posting_time', 'read_only', 0);
+		frappe.ui.form.on(this.frm.doctype, "set_posting_date_and_time_read_only", function(frm) {
+			if (frm.doc.docstatus == 0 && frm.doc.set_posting_time) {
+				frm.set_df_property("posting_date", "read_only", 0);
+				frm.set_df_property("posting_time", "read_only", 0);
 			} else {
-				frm.set_df_property('posting_date', 'read_only', 1);
-				frm.set_df_property('posting_time', 'read_only', 1);
+				frm.set_df_property("posting_date", "read_only", 1);
+				frm.set_df_property("posting_time", "read_only", 1);
 			}
-		})
-
-		frappe.ui.form.on(this.frm.doctype, 'set_posting_time', function(frm) {
-			frm.trigger('set_posting_date_and_time_read_only');
 		});
 
-		frappe.ui.form.on(this.frm.doctype, 'refresh', function(frm) {
+		frappe.ui.form.on(this.frm.doctype, "set_posting_time", function(frm) {
+			frm.trigger("set_posting_date_and_time_read_only");
+		});
+
+		frappe.ui.form.on(this.frm.doctype, "refresh", function(frm) {
 			// set default posting date / time
-			if(frm.doc.docstatus==0) {
-				if(!frm.doc.posting_date) {
-					frm.set_value('posting_date', frappe.datetime.nowdate());
+			if (frm.doc.docstatus == 0) {
+				if (!frm.doc.posting_date) {
+					frm.set_value("posting_date", frappe.datetime.nowdate());
 				}
-				if(!frm.doc.posting_time) {
-					frm.set_value('posting_time', frappe.datetime.now_time());
+				if (!frm.doc.posting_time) {
+					frm.set_value("posting_time", frappe.datetime.now_time());
 				}
-				frm.trigger('set_posting_date_and_time_read_only');
+				frm.trigger("set_posting_date_and_time_read_only");
 			}
 		});
 	}
@@ -60,11 +60,11 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 			method: "crm.crm.utils.get_primary_address",
 			args: {
 				doctype: "Warehouse",
-				name: warehouse
+				name: warehouse,
 			},
 			callback: (r) => {
 				this.frm.set_value(address_field, r.message);
-			}
+			},
 		});
 	}
 
@@ -76,7 +76,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					from_date: this.frm.doc.posting_date,
 					to_date: this.frm.doc.posting_date,
 					company: this.frm.doc.company,
-					group_by: ""
+					group_by: "",
 				};
 				frappe.set_route("query-report", "Stock Ledger");
 			}, __("View"));
@@ -85,13 +85,13 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 
 	add_general_ledger_report_button() {
 		if (this.frm.doc.docstatus === 1) {
-			this.frm.add_custom_button(__('Accounting Ledger'), () => {
+			this.frm.add_custom_button(__("Accounting Ledger"), () => {
 				frappe.route_options = {
 					voucher_no: this.frm.doc.name,
 					from_date: this.frm.doc.posting_date,
 					to_date: this.frm.doc.posting_date,
 					company: this.frm.doc.company,
-					merge_similar_entries: 0
+					merge_similar_entries: 0,
 				};
 				frappe.set_route("query-report", "General Ledger");
 			}, __("View"));
@@ -132,7 +132,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		var me = this;
 
 		var item_groups = [{
-			"item_group": null
+			"item_group": null,
 		}];
 
 		var dialog = new frappe.ui.Dialog({
@@ -142,22 +142,22 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					"fieldtype": "Link",
 					"label": __("Applies To Item Code"),
 					"fieldname": "applies_to_item",
-					"options":"Item",
+					"options": "Item",
 					"reqd": 1,
 					"default": me.frm.doc.applies_to_item,
 					onchange: () => {
-						let item_code = dialog.get_value('applies_to_item');
+						let item_code = dialog.get_value("applies_to_item");
 						if (item_code) {
-							frappe.db.get_value("Item", item_code, 'item_name', (r) => {
+							frappe.db.get_value("Item", item_code, "item_name", (r) => {
 								if (r) {
-									dialog.set_value('applies_to_item_name', r.item_name);
+									dialog.set_value("applies_to_item_name", r.item_name);
 								}
 							});
 						} else {
-							dialog.set_value('applies_to_item_name', "");
+							dialog.set_value("applies_to_item_name", "");
 						}
 					},
-					get_query: () => erpnext.queries.item({'has_applicable_items': 1, 'include_templates': 1})
+					get_query: () => erpnext.queries.item({"has_applicable_items": 1, "include_templates": 1}),
 				},
 				{
 					"fieldtype": "Data",
@@ -185,17 +185,17 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 							"reqd": 1,
 							"in_list_view": 1,
 							get_query: () => {
-								return { query: "erpnext.controllers.queries.applicable_item_group" }
-							}
+								return {query: "erpnext.controllers.queries.applicable_item_group"};
+							},
 						},
-					]
+					],
 				},
-			]
+			],
 		});
 
-		dialog.set_primary_action(__("Get Items"), function () {
+		dialog.set_primary_action(__("Get Items"), function() {
 			var args = dialog.get_values();
-			if (!args.applies_to_item){
+			if (!args.applies_to_item) {
 				return;
 			}
 
@@ -207,14 +207,14 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					target_doc: me.frm.doc,
 					items_type: items_type,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (!r.exc) {
 						dialog.hide();
 						frappe.model.sync(r.message);
 						me.frm.dirty();
 						me.frm.refresh_fields();
 					}
-				}
+				},
 			});
 		});
 
@@ -238,16 +238,16 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					"options": "Service Template",
 					"reqd": 1,
 					onchange: () => {
-						let service_template = dialog.get_value('service_template');
+						let service_template = dialog.get_value("service_template");
 						if (service_template) {
-							frappe.db.get_value("Service Template", service_template, 'service_template_name', (r) => {
+							frappe.db.get_value("Service Template", service_template, "service_template_name", (r) => {
 								if (r) {
-									dialog.set_value('service_template_name', r.service_template_name);
+									dialog.set_value("service_template_name", r.service_template_name);
 								}
 							});
 						}
 					},
-					get_query: () => erpnext.queries.service_template(dialog.get_value('applies_to_item')),
+					get_query: () => erpnext.queries.service_template(dialog.get_value("applies_to_item")),
 				},
 				{
 					"fieldtype": "Data",
@@ -259,18 +259,18 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					"fieldtype": "Link",
 					"label": __("Applies To Item Code"),
 					"fieldname": "applies_to_item",
-					"options":"Item",
+					"options": "Item",
 					"default": me.frm.doc.applies_to_item,
 					onchange: () => {
-						let item_code = dialog.get_value('applies_to_item');
+						let item_code = dialog.get_value("applies_to_item");
 						if (item_code) {
-							frappe.db.get_value("Item", item_code, 'item_name', (r) => {
+							frappe.db.get_value("Item", item_code, "item_name", (r) => {
 								if (r) {
-									dialog.set_value('applies_to_item_name', r.item_name);
+									dialog.set_value("applies_to_item_name", r.item_name);
 								}
 							});
 						} else {
-							dialog.set_value('applies_to_item_name', "");
+							dialog.set_value("applies_to_item_name", "");
 						}
 					},
 				},
@@ -288,15 +288,15 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					"options": "Customer",
 					"default": customer,
 					onchange: () => {
-						let customer = dialog.get_value('applies_to_customer');
+						let customer = dialog.get_value("applies_to_customer");
 						if (customer) {
-							frappe.db.get_value("Customer", customer, 'customer_name', (r) => {
+							frappe.db.get_value("Customer", customer, "customer_name", (r) => {
 								if (r) {
-									dialog.set_value('applies_to_customer_name', r.customer_name);
+									dialog.set_value("applies_to_customer_name", r.customer_name);
 								}
 							});
 						} else {
-							dialog.set_value('applies_to_customer_name', "");
+							dialog.set_value("applies_to_customer_name", "");
 						}
 					},
 				},
@@ -305,14 +305,14 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					"label": __("Applies To Customer Name"),
 					"fieldname": "applies_to_customer_name",
 					"read_only": 1,
-						"default": customer ? me.frm.doc.customer_name : "",
+					"default": customer ? me.frm.doc.customer_name : "",
 				},
-			]
+			],
 		});
 
-		dialog.set_primary_action(__("Get Items"), function () {
+		dialog.set_primary_action(__("Get Items"), function() {
 			var args = dialog.get_values();
-			if (!args.service_template){
+			if (!args.service_template) {
 				return;
 			}
 
@@ -325,14 +325,14 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					target_doc: me.frm.doc,
 					items_type: items_type,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (!r.exc) {
 						dialog.hide();
 						frappe.model.sync(r.message);
 						me.frm.dirty();
 						me.frm.refresh_fields();
 					}
-				}
+				},
 			});
 		});
 
@@ -375,12 +375,12 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 						frappe.model.sync(r.message);
 						this.frm.refresh_fields();
 					}
-				}
+				},
 			});
 		} else {
-			let columns = ['customer_name', 'total_stock_qty', 'packed_items', 'posting_date'];
+			let columns = ["customer_name", "total_stock_qty", "packed_items", "posting_date"];
 			if (target_doctype == "Packing Slip") {
-				columns.push('package_type');
+				columns.push("package_type");
 			}
 
 			erpnext.utils.map_current_doc({
@@ -390,53 +390,53 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 				target: this.frm,
 				setters: [
 					{
-						fieldname: 'customer',
-						label: __('Customer'),
-						fieldtype: 'Link',
-						options: 'Customer',
+						fieldname: "customer",
+						label: __("Customer"),
+						fieldtype: "Link",
+						options: "Customer",
 						default: this.frm.doc.customer || undefined,
 						depends_on: "eval:!doc.no_customer",
 						get_query: () => erpnext.queries.customer(),
 					},
 					{
-						fieldname: 'package_type',
-						label: __('Package Type'),
-						fieldtype: 'Link',
-						options: 'Package Type',
+						fieldname: "package_type",
+						label: __("Package Type"),
+						fieldtype: "Link",
+						options: "Package Type",
 					},
 					{
-						fieldname: 'warehouse',
-						label: __('Warehouse'),
-						fieldtype: 'Link',
-						options: 'Warehouse',
+						fieldname: "warehouse",
+						label: __("Warehouse"),
+						fieldtype: "Link",
+						options: "Warehouse",
 						default: this.frm.doc.set_warehouse || undefined,
 						get_query: () => erpnext.queries.warehouse(this.frm.doc),
 					},
 					{
-						fieldname: 'sales_order',
-						label: __('Sales Order'),
-						fieldtype: 'Link',
-						options: 'Sales Order',
+						fieldname: "sales_order",
+						label: __("Sales Order"),
+						fieldtype: "Link",
+						options: "Sales Order",
 						get_query: (doc) => {
 							return {
 								filters: {
 									customer: doc?.customer || undefined,
-									docstatus: 1
-								}
-							}
-						}
+									docstatus: 1,
+								},
+							};
+						},
 					},
 					{
-						fieldname: 'item_code',
-						label: __('Has Item'),
-						fieldtype: 'Link',
-						options: 'Item',
+						fieldname: "item_code",
+						label: __("Has Item"),
+						fieldtype: "Link",
+						options: "Item",
 						get_query: () => erpnext.queries.item(),
 					},
 					{
-						fieldname: 'no_customer',
-						label: __('Without Customer'),
-						fieldtype: 'Check',
+						fieldname: "no_customer",
+						label: __("Without Customer"),
+						fieldtype: "Check",
 					},
 				],
 				columns: columns,
@@ -454,7 +454,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 
 					return {
 						query: "erpnext.stock.doctype.packing_slip.packing_slip.get_packing_slips_to_be_delivered",
-						filters: filters
+						filters: filters,
 					};
 				},
 			});
@@ -476,7 +476,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 		const set_qty_to_pack = () => {
 			dialog_doc.qty_to_pack = flt(dialog_doc.qty_per_carton) * cint(dialog_doc.carton_qty);
 			dialog.refresh();
-		}
+		};
 
 		let dialog = new frappe.ui.Dialog({
 			title: __("Bulk Carton Packing"),
@@ -519,9 +519,9 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 									dialog_doc.qty_per_carton = flt(r.message.qty_per_carton);
 									set_qty_to_pack();
 								}
-							}
+							},
 						});
-					}
+					},
 				},
 				{
 					label: __("Qty Per Carton"),
@@ -572,7 +572,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 				return frappe.run_serially([
 					() => args.secondary_action(),
 					() => dialog.hide(),
-				])
+				]);
 			});
 		}
 
@@ -631,9 +631,9 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 									dialog_doc.carton_per_pallet = cint(r.message.carton_per_pallet);
 									dialog.refresh();
 								}
-							}
+							},
 						});
-					}
+					},
 				},
 				{
 					label: __("Pallet Type"),
@@ -659,7 +659,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 					() => args.callback?.(values),
 					() => dialog.hide(),
 				]);
-			}
+			},
 		});
 
 		dialog.show();
@@ -674,54 +674,54 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 			initial_page_length: 50,
 			setters: [
 				{
-					fieldname: 'package_type',
-					label: __('Package Type'),
-					fieldtype: 'Link',
-					options: 'Package Type',
+					fieldname: "package_type",
+					label: __("Package Type"),
+					fieldtype: "Link",
+					options: "Package Type",
 				},
 				{
-					fieldname: 'warehouse',
-					label: __('Warehouse'),
-					fieldtype: 'Link',
-					options: 'Warehouse',
+					fieldname: "warehouse",
+					label: __("Warehouse"),
+					fieldtype: "Link",
+					options: "Warehouse",
 					get_query: () => erpnext.queries.warehouse(this.frm.doc),
 				},
 				{
-					fieldname: 'customer',
-					label: __('Customer'),
-					fieldtype: 'Link',
-					options: 'Customer',
+					fieldname: "customer",
+					label: __("Customer"),
+					fieldtype: "Link",
+					options: "Customer",
 					depends_on: "eval:!doc.no_customer",
 					get_query: () => erpnext.queries.customer(),
 				},
 				{
-					fieldname: 'no_customer',
-					label: __('Without Customer'),
-					fieldtype: 'Check',
+					fieldname: "no_customer",
+					label: __("Without Customer"),
+					fieldtype: "Check",
 				},
 				{
-					fieldname: 'show_reassigned',
-					label: __('Show Reassigned Packages'),
-					fieldtype: 'Check',
+					fieldname: "show_reassigned",
+					label: __("Show Reassigned Packages"),
+					fieldtype: "Check",
 				},
 				{
-					fieldname: 'hide_invalid_qty',
-					label: __('Hide Invalid Qty Packages'),
-					fieldtype: 'Check',
+					fieldname: "hide_invalid_qty",
+					label: __("Hide Invalid Qty Packages"),
+					fieldtype: "Check",
 				},
 			],
-			columns: ['package_type', 'customer_name', 'packed_items', 'total_stock_qty', 'posting_date'],
+			columns: ["package_type", "customer_name", "packed_items", "total_stock_qty", "posting_date"],
 			get_query: () => {
 				return {
 					query: "erpnext.stock.doctype.packing_slip.packing_slip.get_packing_slips_for_reassignment",
 					filters: {
 						selected_items: selected_items,
-					}
+					},
 				};
 			},
 			action: (selections, args) => {
 				if (selections.length < 1) {
-					frappe.msgprint(__("Please select at least one {0}", [__("Packing Slip")]))
+					frappe.msgprint(__("Please select at least one {0}", [__("Packing Slip")]));
 					return;
 				}
 
@@ -748,7 +748,7 @@ erpnext.stock.StockController = class StockController extends frappe.ui.form.Con
 			freeze_message: __("Reassigning..."),
 			callback: () => {
 				this.frm.reload_doc();
-			}
+			},
 		});
 	}
 };

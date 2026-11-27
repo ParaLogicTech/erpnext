@@ -1,18 +1,20 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
 import json
-from frappe import _
-from frappe import utils
-from frappe.model.document import Document
-from frappe.utils import time_diff_in_hours, now_datetime, getdate, get_weekdays, add_to_date, get_time, get_datetime
 from datetime import datetime
-from frappe.model.mapper import get_mapped_doc
-from erpnext.support.doctype.service_level_agreement.service_level_agreement import get_active_service_level_agreement_for
-from frappe.email.inbox import link_communication_to_document
-from erpnext.accounts.party import _get_contact_details
 
+import frappe
+from frappe import _, utils
+from frappe.email.inbox import link_communication_to_document
+from frappe.model.document import Document
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import add_to_date, get_datetime, get_time, get_weekdays, getdate, now_datetime, time_diff_in_hours
+
+from erpnext.accounts.party import _get_contact_details
+from erpnext.support.doctype.service_level_agreement.service_level_agreement import (
+	get_active_service_level_agreement_for,
+)
 
 sender_field = "raised_by"
 
@@ -29,7 +31,7 @@ class Issue(Document):
 		if self.is_new() and self.via_customer_portal:
 			self.flags.create_communication = True
 
-		self.previous_status = frappe.db.get_value(self.doctype, self.name, 'status') if not self.is_new() else None
+		self.previous_status = frappe.db.get_value(self.doctype, self.name, "status") if not self.is_new() else None
 
 		self.set_missing_values()
 		self.change_service_level_agreement_and_priority()
@@ -69,8 +71,8 @@ class Issue(Document):
 				self.contact_person = frappe.db.get_value("Contact", {"email_id": email_id})
 
 				if self.contact_person:
-					contact = frappe.get_doc('Contact', self.contact_person)
-					self.customer = contact.get_link_for('Customer')
+					contact = frappe.get_doc("Contact", self.contact_person)
+					self.customer = contact.get_link_for("Customer")
 
 			if not self.company:
 				self.company = frappe.db.get_value("Lead", self.lead, "company") or \
@@ -105,10 +107,10 @@ class Issue(Document):
 		"""
 			Update Agreement Fulfilled status using Custom Scripts for Custom Issue Status
 		"""
-		if not self.first_responded_on: # first_responded_on set when first reply is sent to customer
+		if not self.first_responded_on:  # first_responded_on set when first reply is sent to customer
 			self.response_by_variance = round(time_diff_in_hours(self.response_by, now_datetime()), 2)
 
-		if not self.resolution_date: # resolution_date set when issue has been closed
+		if not self.resolution_date:  # resolution_date set when issue has been closed
 			self.resolution_by_variance = round(time_diff_in_hours(self.resolution_by, now_datetime()), 2)
 
 		self.agreement_fulfilled = "Fulfilled" if self.response_by_variance > 0 and self.resolution_by_variance > 0 else "Failed"
@@ -125,7 +127,7 @@ class Issue(Document):
 			"content": self.description,
 			"status": "Linked",
 			"reference_doctype": "Issue",
-			"reference_name": self.name
+			"reference_name": self.name,
 		})
 		communication.ignore_permissions = True
 		communication.ignore_mandatory = True
@@ -161,7 +163,7 @@ class Issue(Document):
 		communications = frappe.get_all("Communication",
 			filters={"reference_doctype": "Issue",
 				"reference_name": comm_to_split_from.reference_name,
-				"creation": ('>=', comm_to_split_from.creation)})
+				"creation": (">=", comm_to_split_from.creation)})
 
 		for communication in communications:
 			doc = frappe.get_doc("Communication", communication.name)
@@ -201,7 +203,7 @@ class Issue(Document):
 		priority = service_level_agreement.get_service_level_agreement_priority(self.priority)
 		priority.update({
 			"support_and_resolution": service_level_agreement.support_and_resolution,
-			"holiday_list": service_level_agreement.holiday_list
+			"holiday_list": service_level_agreement.holiday_list,
 		})
 
 		if not self.creation:
@@ -209,8 +211,8 @@ class Issue(Document):
 			self.service_level_agreement_creation = now_datetime()
 
 		start_date_time = get_datetime(self.service_level_agreement_creation)
-		self.response_by = get_expected_time_for(parameter='response', service_level=priority, start_date_time=start_date_time)
-		self.resolution_by = get_expected_time_for(parameter='resolution', service_level=priority, start_date_time=start_date_time)
+		self.response_by = get_expected_time_for(parameter="response", service_level=priority, start_date_time=start_date_time)
+		self.resolution_by = get_expected_time_for(parameter="resolution", service_level=priority, start_date_time=start_date_time)
 
 		self.response_by_variance = round(time_diff_in_hours(self.response_by, now_datetime()))
 		self.resolution_by_variance = round(time_diff_in_hours(self.resolution_by, now_datetime()))
@@ -254,29 +256,29 @@ def get_expected_time_for(parameter, service_level, start_date_time):
 	end_time = None
 
 	# lets assume response time is in days by default
-	if parameter == 'response':
+	if parameter == "response":
 		allotted_days = service_level.get("response_time")
 		time_period = service_level.get("response_time_period")
-	elif parameter == 'resolution':
+	elif parameter == "resolution":
 		allotted_days = service_level.get("resolution_time")
 		time_period = service_level.get("resolution_time_period")
 	else:
 		frappe.throw(_("{0} parameter is invalid".format(parameter)))
 
 	allotted_hours = 0
-	if time_period == 'Hour':
+	if time_period == "Hour":
 		allotted_hours = allotted_days
 		allotted_days = 0
-	elif time_period == 'Week':
+	elif time_period == "Week":
 		allotted_days *= 7
 
-	expected_time_is_set = 1 if allotted_days == 0 and time_period in ['Day', 'Week'] else 0
+	expected_time_is_set = 1 if allotted_days == 0 and time_period in ["Day", "Week"] else 0
 
 	support_days = {}
 	for service in service_level.get("support_and_resolution"):
 		support_days[service.workday] = frappe._dict({
-			'start_time': service.start_time,
-			'end_time': service.end_time,
+			"start_time": service.start_time,
+			"end_time": service.end_time,
 		})
 
 	holidays = get_holidays(service_level.get("holiday_list"))
@@ -293,8 +295,9 @@ def get_expected_time_for(parameter, service_level, start_date_time):
 			time_left_today = time_diff_in_hours(end_time, start_time)
 
 			# no time left for support today
-			if time_left_today < 0: pass
-			elif time_period == 'Hour':
+			if time_left_today < 0:
+				pass
+			elif time_period == "Hour":
 				if time_left_today >= allotted_hours:
 					expected_time = datetime.combine(getdate(current_date_time), get_time(start_time))
 					expected_time = add_to_date(expected_time, hours=allotted_hours)
@@ -308,7 +311,7 @@ def get_expected_time_for(parameter, service_level, start_date_time):
 		if not expected_time_is_set:
 			current_date_time = add_to_date(current_date_time, days=1)
 
-	if end_time and time_period != 'Hour':
+	if end_time and time_period != "Hour":
 		current_date_time = datetime.combine(getdate(current_date_time), get_time(end_time))
 	else:
 		current_date_time = expected_time
@@ -326,13 +329,13 @@ def set_service_level_agreement_variance(issue=None):
 	for issue in frappe.get_list("Issue", filters=filters):
 		doc = frappe.get_doc("Issue", issue.name)
 
-		if not doc.first_responded_on: # first_responded_on set when first reply is sent to customer
+		if not doc.first_responded_on:  # first_responded_on set when first reply is sent to customer
 			variance = round(time_diff_in_hours(doc.response_by, current_time), 2)
 			frappe.db.set_value(dt="Issue", dn=doc.name, field="response_by_variance", val=variance, update_modified=False)
 			if variance < 0:
 				frappe.db.set_value(dt="Issue", dn=doc.name, field="agreement_fulfilled", val="Failed", update_modified=False)
 
-		if not doc.resolution_date: # resolution_date set when issue has been closed
+		if not doc.resolution_date:  # resolution_date set when issue has been closed
 			variance = round(time_diff_in_hours(doc.resolution_by, current_time), 2)
 			frappe.db.set_value(dt="Issue", dn=doc.name, field="resolution_by_variance", val=variance, update_modified=False)
 			if variance < 0:
@@ -388,8 +391,8 @@ def is_holiday(date, holidays):
 def make_task(source_name, target_doc=None):
 	return get_mapped_doc("Issue", source_name, {
 		"Issue": {
-			"doctype": "Task"
-		}
+			"doctype": "Task",
+		},
 	}, target_doc)
 
 
@@ -403,7 +406,7 @@ def make_issue_from_communication(communication, ignore_communication_links=Fals
 		"subject": doc.subject,
 		"communication_medium": doc.communication_medium,
 		"raised_by": doc.sender or "",
-		"raised_by_phone": doc.phone_no or ""
+		"raised_by_phone": doc.phone_no or "",
 	}).insert(ignore_permissions=True)
 
 	link_communication_to_document(doc, "Issue", issue.name, ignore_communication_links)

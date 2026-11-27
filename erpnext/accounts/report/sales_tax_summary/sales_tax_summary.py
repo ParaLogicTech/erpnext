@@ -3,7 +3,8 @@
 
 import frappe
 from frappe import _, scrub
-from frappe.utils import getdate, nowdate, flt
+from frappe.utils import flt, getdate, nowdate
+
 
 class SalesInvoiceWiseTaxes:
 	def __init__(self, filters=None):
@@ -12,7 +13,7 @@ class SalesInvoiceWiseTaxes:
 		self.filters.to_date = getdate(self.filters.to_date or nowdate())
 
 		if not self.filters.get("company"):
-			self.filters["company"] = frappe.db.get_single_value('Global Defaults', 'default_company')
+			self.filters["company"] = frappe.db.get_single_value("Global Defaults", "default_company")
 
 	def run(self, args):
 		if self.filters.from_date > self.filters.to_date:
@@ -31,87 +32,87 @@ class SalesInvoiceWiseTaxes:
 				"label": _("Date"),
 				"fieldtype": "Date",
 				"fieldname": "posting_date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Sales Invoice"),
 				"fieldtype": "Link",
 				"fieldname": "invoice",
 				"options": "Sales Invoice",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Inv #"),
 				"fieldtype": "Int",
 				"fieldname": "stin",
-				"width": 60
+				"width": 60,
 			},
 			{
 				"label": _("Taxable Total"),
 				"fieldtype": "Currency",
 				"fieldname": "base_taxable_total",
 				"options": "Company:company:default_currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Net Total"),
 				"fieldtype": "Currency",
 				"fieldname": "base_net_total",
 				"options": "Company:company:default_currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Total Taxes"),
 				"fieldtype": "Currency",
 				"fieldname": "base_total_taxes_and_charges",
 				"options": "Company:company:default_currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Total After Taxes"),
 				"fieldtype": "Currency",
 				"fieldname": "base_total_after_taxes",
 				"options": "Company:company:default_currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Discount After Taxes"),
 				"fieldtype": "Currency",
 				"fieldname": "base_total_discount_after_taxes",
 				"options": "Company:company:default_currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Grand Total"),
 				"fieldtype": "Currency",
 				"fieldname": "base_grand_total",
 				"options": "Company:company:default_currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _(self.filters.party_type),
 				"fieldtype": "Link",
 				"fieldname": "party",
 				"options": self.filters.party_type,
-				"width": 80 if self.party_naming_by == "Naming Series" else 200
+				"width": 80 if self.party_naming_by == "Naming Series" else 200,
 			},
 			{
 				"label": _(self.filters.party_type + " Name"),
 				"fieldtype": "Data",
 				"fieldname": "party_name",
-				"width": 200
+				"width": 200,
 			},
 			{
 				"label": _("Tax ID"),
 				"fieldtype": "Data",
 				"fieldname": "tax_id",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("CNIC"),
 				"fieldtype": "Data",
 				"fieldname": "tax_cnic",
-				"width": 120
+				"width": 120,
 			},
 		]
 		for (description, rate) in self.tax_columns:
@@ -120,26 +121,26 @@ class SalesInvoiceWiseTaxes:
 				"fieldtype": "Currency",
 				"fieldname": get_tax_fieldname(description, rate),
 				"options": "Company:company:default_currency",
-				"width": 120
+				"width": 120,
 			})
 
 		if self.filters.detail_by == "Customer":
-			fieldnames = ['party', 'party_name', 'tax_id', 'tax_cnic', 'base_taxable_total', 'base_net_total']
+			fieldnames = ["party", "party_name", "tax_id", "tax_cnic", "base_taxable_total", "base_net_total"]
 			for (description, rate) in self.tax_columns:
 				fieldnames.append(get_tax_fieldname(description, rate))
-			fieldnames += ['base_total_taxes_and_charges', 'base_total_after_taxes', 'base_total_discount_after_taxes',
-				'base_grand_total']
+			fieldnames += ["base_total_taxes_and_charges", "base_total_after_taxes", "base_total_discount_after_taxes",
+				"base_grand_total"]
 		else:
-			fieldnames = ['posting_date', 'invoice', 'stin', 'base_taxable_total', 'base_net_total']
+			fieldnames = ["posting_date", "invoice", "stin", "base_taxable_total", "base_net_total"]
 			for (description, rate) in self.tax_columns:
 				fieldnames.append(get_tax_fieldname(description, rate))
-			fieldnames += ['base_total_taxes_and_charges', 'base_total_after_taxes', 'base_total_discount_after_taxes',
-				'base_grand_total', 'party', 'party_name', 'tax_id', 'tax_cnic']
+			fieldnames += ["base_total_taxes_and_charges", "base_total_after_taxes", "base_total_discount_after_taxes",
+				"base_grand_total", "party", "party_name", "tax_id", "tax_cnic"]
 
-		columns = [list(filter(lambda d: d['fieldname'] == f, all_columns))[0] for f in fieldnames]
+		columns = [list(filter(lambda d: d["fieldname"] == f, all_columns))[0] for f in fieldnames]
 
 		if self.party_naming_by != "Naming Series":
-			columns = list(filter(lambda d: d['fieldname'] != 'party_name', columns))
+			columns = list(filter(lambda d: d["fieldname"] != "party_name", columns))
 
 		return columns
 
@@ -167,7 +168,7 @@ class SalesInvoiceWiseTaxes:
 				from `tabSales Taxes and Charges`
 				where parent in ({0}) and abs(base_tax_amount_after_discount_amount) > 0
 				group by parent, description, rate
-			""".format(", ".join(['%s'] * len(invoice_names))), invoice_names, as_dict=1)
+			""".format(", ".join(["%s"] * len(invoice_names))), invoice_names, as_dict=1)
 		else:
 			taxes = []
 
@@ -189,9 +190,9 @@ class SalesInvoiceWiseTaxes:
 		# Customer aggregates
 		self.customer_aggregate = frappe._dict()
 		if self.filters.detail_by == "Customer":
-			party_fields = ['party', 'tax_id', 'tax_cnic']
-			aggregate_fields = ['base_taxable_total', 'base_net_total', 'base_grand_total',
-				'base_total_taxes_and_charges', 'base_total_after_taxes', 'base_total_discount_after_taxes']
+			party_fields = ["party", "tax_id", "tax_cnic"]
+			aggregate_fields = ["base_taxable_total", "base_net_total", "base_grand_total",
+				"base_total_taxes_and_charges", "base_total_after_taxes", "base_total_discount_after_taxes"]
 			for (description, rate) in self.tax_columns:
 				aggregate_fields.append(get_tax_fieldname(description, rate))
 
@@ -222,6 +223,7 @@ def get_tax_label(description, rate):
 		return "{0} ({1}%)".format(description, frappe.format(flt(rate)))
 	else:
 		return description
+
 
 def execute(filters=None):
 	args = {

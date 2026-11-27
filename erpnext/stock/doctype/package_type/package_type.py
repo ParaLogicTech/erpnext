@@ -3,10 +3,11 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt
 from frappe.model.document import Document
-from erpnext.utilities.transaction_base import validate_uom_is_integer, validate_uom_is_convertible
+from frappe.utils import flt
+
 from erpnext.setup.doctype.uom_conversion_factor.uom_conversion_factor import get_uom_conv_factor
+from erpnext.utilities.transaction_base import validate_uom_is_convertible, validate_uom_is_integer
 
 
 class PackageType(Document):
@@ -36,7 +37,7 @@ class PackageType(Document):
 	def validate_weights(self):
 		for d in self.get("packaging_items"):
 			if flt(d.tare_weight) < 0:
-				frappe.throw(_("Row #{0}: {1} cannot be negative").format(d.idx, d.meta.get_label('tare_weight')))
+				frappe.throw(_("Row #{0}: {1} cannot be negative").format(d.idx, d.meta.get_label("tare_weight")))
 
 		if flt(self.total_tare_weight) < 0:
 			frappe.throw(_("Total Tare Weight cannot be negative"))
@@ -45,17 +46,17 @@ class PackageType(Document):
 		self.total_tare_weight = 0
 
 		for item in self.get("packaging_items"):
-			self.round_floats_in(item, excluding=['tare_weight_per_unit'])
+			self.round_floats_in(item, excluding=["tare_weight_per_unit"])
 			item.stock_qty = flt(item.qty * item.conversion_factor, 6)
 			item.tare_weight = flt(item.tare_weight_per_unit * item.stock_qty, item.precision("tare_weight"))
 
 			self.total_tare_weight += item.tare_weight
 
-		self.round_floats_in(self, ['total_tare_weight'])
+		self.round_floats_in(self, ["total_tare_weight"])
 
 	def calculate_volume(self):
 		if self.volume_based_on == "Dimensions":
-			self.round_floats_in(self, ['length', 'width', 'height'])
+			self.round_floats_in(self, ["length", "width", "height"])
 			self.volume = flt(self.length * self.width * self.height, self.precision("volume"))
 		else:
 			self.length = 0

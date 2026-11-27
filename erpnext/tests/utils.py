@@ -4,10 +4,11 @@
 
 import frappe
 
+
 def create_test_contact_and_address():
-	frappe.db.sql('delete from tabContact')
-	frappe.db.sql('delete from tabAddress')
-	frappe.db.sql('delete from `tabDynamic Link`')
+	frappe.db.sql("delete from tabContact")
+	frappe.db.sql("delete from tabAddress")
+	frappe.db.sql("delete from `tabDynamic Link`")
 
 	frappe.get_doc({
 		"doctype": "Address",
@@ -20,20 +21,20 @@ def create_test_contact_and_address():
 		"links": [
 			{
 				"link_doctype": "Customer",
-				"link_name": "_Test Customer"
-			}
-		]
+				"link_name": "_Test Customer",
+			},
+		],
 	}).insert()
 
 	contact = frappe.get_doc({
-		"doctype": 'Contact',
+		"doctype": "Contact",
 		"first_name": "_Test Contact for _Test Customer",
 		"links": [
 			{
 				"link_doctype": "Customer",
-				"link_name": "_Test Customer"
-			}
-		]
+				"link_name": "_Test Customer",
+			},
+		],
 	})
 	contact.add_email("test_contact_customer@example.com", is_primary=True)
 	contact.add_phone("+91 0000000000", is_primary_phone=True)

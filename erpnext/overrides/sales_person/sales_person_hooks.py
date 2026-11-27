@@ -1,7 +1,8 @@
 import frappe
-from frappe	import _
-from frappe.utils import flt
 from crm.crm.doctype.sales_person.sales_person import SalesPerson
+from frappe import _
+from frappe.utils import flt
+
 from erpnext import get_default_currency
 from erpnext.selling.doctype.sales_commission_category.sales_commission_category import get_commission_rate
 
@@ -30,15 +31,15 @@ class SalesPersonERP(SalesPerson):
 	def validate_employee_id(self):
 		if self.employee:
 			sales_person = frappe.db.get_value("Sales Person", filters={
-				"employee": self.employee, "name": ["!=", self.name]
+				"employee": self.employee, "name": ["!=", self.name],
 			})
 			if sales_person:
 				frappe.throw(_("Another {0} exists linked to the same Employee {1}").format(
-					frappe.get_desk_link("Sales Person", sales_person), frappe.bold(self.employee)
+					frappe.get_desk_link("Sales Person", sales_person), frappe.bold(self.employee),
 				))
 
 	def validate_targets(self):
-		for d in self.get('targets'):
+		for d in self.get("targets"):
 			if not flt(d.target_qty) and not flt(d.target_alt_uom_qty) and not flt(d.target_amount):
 				frappe.throw(_("Row {0}: Either Target Stock Qty or Target Contents Qty or Target Amount is mandatory.")
 					.format(d.idx))
@@ -73,10 +74,10 @@ class SalesPersonERP(SalesPerson):
 			"allocated_amount": flt(allocated_amount[0][0]) if allocated_amount else 0,
 			"allocated_stock_qty": flt(allocated_qty[0][0]) if allocated_qty else 0,
 			"allocated_alt_uom_qty": flt(allocated_qty[0][1]) if allocated_qty else 0,
-			"currency": company_default_currency
+			"currency": company_default_currency,
 		}
 
-		self.set_onload('dashboard_info', info)
+		self.set_onload("dashboard_info", info)
 
 	@staticmethod
 	def get_timeline_data(name):
@@ -119,7 +120,7 @@ def get_sales_person_commission_details(sales_person=None):
 	out = frappe._dict()
 
 	if sales_person:
-		out.sales_commission_category = frappe.get_cached_value("Sales Person", sales_person, 'sales_commission_category')
+		out.sales_commission_category = frappe.get_cached_value("Sales Person", sales_person, "sales_commission_category")
 	else:
 		out.sales_commission_category = None
 
@@ -152,18 +153,18 @@ def get_employee_details(employee):
 
 def override_sales_person_dashboard(data):
 	if "non_standard_fieldnames" not in data:
-		data['non_standard_fieldnames'] = {}
+		data["non_standard_fieldnames"] = {}
 
 	data["non_standard_fieldnames"]["Customer"] = "account_manager"
 
 	data["transactions"].insert(0, {
 		"label": _("Sales"),
-		"items": ["Sales Order", "Delivery Note", "Sales Invoice"]
+		"items": ["Sales Order", "Delivery Note", "Sales Invoice"],
 	})
 
 	data["transactions"].append({
 		"label": _("Customers"),
-		"items": ["Customer"]
+		"items": ["Customer"],
 	})
 
 	return data

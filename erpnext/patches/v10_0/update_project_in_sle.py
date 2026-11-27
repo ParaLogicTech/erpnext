@@ -3,8 +3,9 @@
 
 import frappe
 
+
 def execute():
-	for doctype in ['Sales Invoice', 'Delivery Note', 'Stock Entry']:
+	for doctype in ["Sales Invoice", "Delivery Note", "Stock Entry"]:
 		frappe.db.sql(""" update
 				`tabStock Ledger Entry` sle, `tab{0}` parent_doc
 			set

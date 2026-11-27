@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe
 import json
+
+import frappe
 from frappe.utils import getdate
 from frappe.utils.dateutils import parse_date
+
 
 @frappe.whitelist()
 def upload_bank_statement():
@@ -16,11 +17,11 @@ def upload_bank_statement():
 		fcontent = frappe.local.uploaded_file
 		fname = frappe.local.uploaded_filename
 
-	if frappe.safe_encode(fname).lower().endswith("csv".encode('utf-8')):
+	if frappe.safe_encode(fname).lower().endswith(b"csv"):
 		from frappe.utils.csvutils import read_csv_content
 		rows = read_csv_content(fcontent, False)
 
-	elif frappe.safe_encode(fname).lower().endswith("xlsx".encode('utf-8')):
+	elif frappe.safe_encode(fname).lower().endswith(b"xlsx"):
 		from frappe.utils.xlsxutils import read_xlsx_file_from_attached_file
 		rows = read_xlsx_file_from_attached_file(fcontent=fcontent)
 
@@ -41,11 +42,11 @@ def create_bank_entries(columns, data, bank_account):
 			continue
 		fields = {}
 		for key, value in header_map.items():
-			fields.update({key: d[int(value)-1]})
+			fields.update({key: d[int(value) - 1]})
 
 		try:
 			bank_transaction = frappe.get_doc({
-				"doctype": "Bank Transaction"
+				"doctype": "Bank Transaction",
 			})
 			bank_transaction.update(fields)
 			bank_transaction.date = getdate(parse_date(bank_transaction.date))
@@ -59,6 +60,7 @@ def create_bank_entries(columns, data, bank_account):
 
 	return {"success": success, "errors": errors}
 
+
 def get_header_mapping(columns, bank_account):
 	mapping = get_bank_mapping(bank_account)
 
@@ -69,10 +71,11 @@ def get_header_mapping(columns, bank_account):
 
 	return header_map
 
+
 def get_bank_mapping(bank_account):
 	bank_name = frappe.db.get_value("Bank Account", bank_account, "bank")
 	bank = frappe.get_doc("Bank", bank_name)
 
-	mapping = {row.file_field:row.bank_transaction_field for row in bank.bank_transaction_mapping}
+	mapping = {row.file_field: row.bank_transaction_field for row in bank.bank_transaction_mapping}
 
 	return mapping

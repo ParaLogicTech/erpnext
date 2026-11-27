@@ -5,7 +5,7 @@
 frappe.query_reports["Profit and Loss Statement"] = $.extend({},
 	erpnext.financial_statements);
 
-erpnext.utils.add_dimensions('Profit and Loss Statement', 10);
+erpnext.utils.add_dimensions("Profit and Loss Statement", 10);
 
 frappe.query_reports["Profit and Loss Statement"]["filters"].push(
 	{
@@ -13,19 +13,19 @@ frappe.query_reports["Profit and Loss Statement"]["filters"].push(
 		"label": __("Project"),
 		"fieldtype": "MultiSelectList",
 		get_data: function(txt) {
-			return frappe.db.get_link_options('Project', txt);
-		}
+			return frappe.db.get_link_options("Project", txt);
+		},
 	},
 	{
 		"fieldname": "accumulated_values",
 		"label": __("Accumulated Values"),
-		"fieldtype": "Check"
+		"fieldtype": "Check",
 	},
 	{
 		"fieldname": "include_default_book_entries",
 		"label": __("Include Default Book Entries"),
 		"fieldtype": "Check",
-		"default": 1
+		"default": 1,
 	},
 	{
 		fieldname: "has_project",
@@ -34,4 +34,4 @@ frappe.query_reports["Profit and Loss Statement"]["filters"].push(
 	},
 );
 
-erpnext.utils.add_additional_gl_filters('Profit and Loss Statement');
+erpnext.utils.add_additional_gl_filters("Profit and Loss Statement");

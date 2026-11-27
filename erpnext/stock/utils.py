@@ -1,14 +1,19 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
-from frappe import _
-from frappe.utils import flt, cstr, nowdate, nowtime
 import json
 
+import frappe
+from frappe import _
+from frappe.utils import cstr, flt, nowdate, nowtime
 
-class InvalidWarehouseCompany(frappe.ValidationError): pass
-class InvalidWarehouseBranch(frappe.ValidationError): pass
+
+class InvalidWarehouseCompany(frappe.ValidationError):
+	pass
+
+
+class InvalidWarehouseBranch(frappe.ValidationError):
+	pass
 
 
 def get_stock_value_from_bin(warehouse=None, item_code=None):
@@ -22,12 +27,12 @@ def get_stock_value_from_bin(warehouse=None, item_code=None):
 						and w2.lft between w1.lft and w1.rgt
 						) """
 
-		values['warehouse'] = warehouse
+		values["warehouse"] = warehouse
 
 	if item_code:
 		conditions += " and `tabBin`.item_code = %(item_code)s"
 
-		values['item_code'] = item_code
+		values["item_code"] = item_code
 
 	query = """select sum(stock_value) from `tabBin`, `tabItem` where 1 = 1
 		and `tabItem`.name = `tabBin`.item_code and ifnull(`tabItem`.disabled, 0) = 0 %s""" % conditions
@@ -38,7 +43,8 @@ def get_stock_value_from_bin(warehouse=None, item_code=None):
 
 
 def get_stock_value_on(warehouse=None, posting_date=None, item_code=None):
-	if not posting_date: posting_date = nowdate()
+	if not posting_date:
+		posting_date = nowdate()
 
 	values, condition = [posting_date], ""
 
@@ -69,8 +75,8 @@ def get_stock_value_on(warehouse=None, posting_date=None, item_code=None):
 
 	sle_map = {}
 	for sle in stock_ledger_entries:
-		if not (sle.item_code, sle.warehouse) in sle_map:
-			sle_map[(sle.item_code, sle.warehouse)] = flt(sle.stock_value)
+		if (sle.item_code, sle.warehouse) not in sle_map:
+			sle_map[sle.item_code, sle.warehouse] = flt(sle.stock_value)
 
 	return sum(sle_map.values())
 
@@ -100,7 +106,7 @@ def get_stock_balance(
 		"warehouse": warehouse,
 		"posting_date": posting_date,
 		"posting_time": posting_time,
-		"batch_no": batch_no
+		"batch_no": batch_no,
 	}
 	last_entry = get_previous_sle(args)
 
@@ -192,7 +198,7 @@ def get_latest_stock_balance():
 
 def get_bin(item_code, warehouse):
 	bin = frappe.db.get_value("Bin", {
-		"item_code": item_code, "warehouse": warehouse
+		"item_code": item_code, "warehouse": warehouse,
 	}, for_update=True)
 
 	if not bin:
@@ -204,14 +210,14 @@ def get_bin(item_code, warehouse):
 		bin_obj.flags.ignore_permissions = 1
 		bin_obj.insert()
 	else:
-		bin_obj = frappe.get_doc('Bin', bin, for_update=True)
+		bin_obj = frappe.get_doc("Bin", bin, for_update=True)
 
 	bin_obj.flags.ignore_permissions = True
 	return bin_obj
 
 
 def update_bin(args, allow_negative_stock=False, via_landed_cost_voucher=False):
-	is_stock_item = frappe.db.get_value('Item', args.get("item_code"), 'is_stock_item', cache=1)
+	is_stock_item = frappe.db.get_value("Item", args.get("item_code"), "is_stock_item", cache=1)
 	if is_stock_item:
 		bin = get_bin(args.get("item_code"), args.get("warehouse"))
 		bin.update_stock(args, allow_negative_stock, via_landed_cost_voucher)
@@ -233,29 +239,29 @@ def get_incoming_rate(args, raise_error_if_no_rate=False):
 	else:
 		valuation_method, batch_wise_valuation = get_valuation_method(args.get("item_code"))
 		previous_sle = get_previous_sle(args)
-		if valuation_method == 'FIFO':
+		if valuation_method == "FIFO":
 			if previous_sle:
-				previous_stock_queue = json.loads(previous_sle.get('stock_queue', '[]') or '[]')
+				previous_stock_queue = json.loads(previous_sle.get("stock_queue", "[]") or "[]")
 				in_rate = get_fifo_rate(previous_stock_queue, args.get("qty") or 0) if previous_stock_queue else 0
-		elif valuation_method == 'Moving Average':
+		elif valuation_method == "Moving Average":
 			if batch_wise_valuation:
-				in_rate = previous_sle.get('batch_valuation_rate') or 0
+				in_rate = previous_sle.get("batch_valuation_rate") or 0
 			else:
-				in_rate = previous_sle.get('valuation_rate') or 0
+				in_rate = previous_sle.get("valuation_rate") or 0
 
 	if not in_rate:
-		voucher_no = args.get('voucher_no') or args.get('name')
+		voucher_no = args.get("voucher_no") or args.get("name")
 		in_rate = get_valuation_rate(
-			args.get('item_code'),
-			args.get('warehouse'),
-			voucher_type=args.get('voucher_type'),
+			args.get("item_code"),
+			args.get("warehouse"),
+			voucher_type=args.get("voucher_type"),
 			voucher_no=voucher_no,
-			batch_no=args.get('batch_no'),
-			allow_zero_rate=args.get('allow_zero_valuation'),
-			company=args.get('company'),
+			batch_no=args.get("batch_no"),
+			allow_zero_rate=args.get("allow_zero_valuation"),
+			company=args.get("company"),
 			raise_error_if_no_rate=raise_error_if_no_rate,
-			posting_date=args.get('posting_date'),
-			posting_time=args.get('posting_time'),
+			posting_date=args.get("posting_date"),
+			posting_time=args.get("posting_time"),
 		)
 
 	return in_rate
@@ -273,8 +279,8 @@ def get_avg_purchase_rate(serial_nos):
 def get_valuation_method(item_code):
 	def generator():
 		"""get valuation method from item or default"""
-		item_details = frappe.db.get_value('Item', item_code, [
-			'valuation_method', 'has_batch_no', 'has_serial_no'
+		item_details = frappe.db.get_value("Item", item_code, [
+			"valuation_method", "has_batch_no", "has_serial_no",
 		])
 		if not item_details:
 			frappe.throw(_("Item {0} does not exist").format(item_code))
@@ -319,10 +325,10 @@ def get_fifo_rate(previous_stock_queue, qty):
 		return outgoing_cost / available_qty_for_outgoing
 
 
-def get_valid_serial_nos(sr_nos, qty=0, item_code=''):
+def get_valid_serial_nos(sr_nos, qty=0, item_code=""):
 	"""split serial nos, validate and return list of valid serial nos"""
 	# TODO: remove duplicates in client side
-	serial_nos = cstr(sr_nos).strip().replace(',', '\n').split('\n')
+	serial_nos = cstr(sr_nos).strip().replace(",", "\n").split("\n")
 
 	valid_serial_nos = []
 	for val in serial_nos:
@@ -359,19 +365,19 @@ def is_group_warehouse(warehouse):
 
 
 def get_available_serial_nos(item_code, warehouse):
-	return frappe.get_all("Serial No", filters={'item_code': item_code,
-		'warehouse': warehouse, 'delivery_document_no': ''}) or []
+	return frappe.get_all("Serial No", filters={"item_code": item_code,
+		"warehouse": warehouse, "delivery_document_no": ""}) or []
 
 
 def format_item_name(doc):
-	if doc.get('item_name') and doc.get('item_name') != doc.get('item_code'):
-		if doc.get('hide_item_code'):
-			return doc.get('item_name')
+	if doc.get("item_name") and doc.get("item_name") != doc.get("item_code"):
+		if doc.get("hide_item_code"):
+			return doc.get("item_name")
 		else:
-			return "{0}: {1}".format(doc.get('item_code'), doc.get('item_name')) if doc.get('item_name')\
-				else doc.get('item_code')
+			return "{0}: {1}".format(doc.get("item_code"), doc.get("item_name")) if doc.get("item_name")\
+				else doc.get("item_code")
 	else:
-		return doc.get('item_code')
+		return doc.get("item_code")
 
 
 def update_included_uom_in_list_report(columns, result, include_uom, conversion_factors):
@@ -381,14 +387,14 @@ def update_included_uom_in_list_report(columns, result, include_uom, conversion_
 	convertible_cols = {}
 	for col_idx in reversed(range(0, len(columns))):
 		col = columns[col_idx]
-		if isinstance(col, dict) and col.get("convertible") in ['rate', 'qty']:
-			convertible_cols[col_idx] = col['convertible']
-			columns.insert(col_idx+1, col.copy())
-			columns[col_idx+1]['fieldname'] += "_alt"
-			if convertible_cols[col_idx] == 'rate':
-				columns[col_idx+1]['label'] += " (per {})".format(include_uom)
+		if isinstance(col, dict) and col.get("convertible") in ["rate", "qty"]:
+			convertible_cols[col_idx] = col["convertible"]
+			columns.insert(col_idx + 1, col.copy())
+			columns[col_idx + 1]["fieldname"] += "_alt"
+			if convertible_cols[col_idx] == "rate":
+				columns[col_idx + 1]["label"] += " (per {})".format(include_uom)
 			else:
-				columns[col_idx+1]['label'] += " ({})".format(include_uom)
+				columns[col_idx + 1]["label"] += " ({})".format(include_uom)
 
 	for row_idx, row in enumerate(result):
 		new_row = []
@@ -396,7 +402,7 @@ def update_included_uom_in_list_report(columns, result, include_uom, conversion_
 			new_row.append(d)
 			if col_idx in convertible_cols:
 				if conversion_factors[row_idx]:
-					if convertible_cols[col_idx] == 'rate':
+					if convertible_cols[col_idx] == "rate":
 						new_row.append(flt(d) * conversion_factors[row_idx])
 					else:
 						new_row.append(flt(d) / conversion_factors[row_idx])
@@ -413,19 +419,19 @@ def update_included_uom_in_dict_report(columns, result, include_uom, conversion_
 	convertible_cols = {}
 	for col_idx in reversed(range(0, len(columns))):
 		col = columns[col_idx]
-		if isinstance(col, dict) and col.get('fieldname') and col.get("convertible") in ['rate', 'qty']:
-			convertible_cols[col['fieldname']] = col['convertible']
-			columns.insert(col_idx+1, col.copy())
-			columns[col_idx+1]['fieldname'] += "_alt"
-			if convertible_cols[col['fieldname']] == 'rate':
-				columns[col_idx+1]['label'] += " (per {})".format(include_uom)
+		if isinstance(col, dict) and col.get("fieldname") and col.get("convertible") in ["rate", "qty"]:
+			convertible_cols[col["fieldname"]] = col["convertible"]
+			columns.insert(col_idx + 1, col.copy())
+			columns[col_idx + 1]["fieldname"] += "_alt"
+			if convertible_cols[col["fieldname"]] == "rate":
+				columns[col_idx + 1]["label"] += " (per {})".format(include_uom)
 			else:
-				columns[col_idx+1]['label'] += " ({})".format(include_uom)
+				columns[col_idx + 1]["label"] += " ({})".format(include_uom)
 
 	for row_idx, row in enumerate(result):
 		for fieldname, conversion_type in convertible_cols.items():
 			if conversion_factors[row_idx]:
-				if conversion_type == 'rate':
+				if conversion_type == "rate":
 					row[fieldname + "_alt"] = flt(row.get(fieldname)) * conversion_factors[row_idx]
 				else:
 					row[fieldname + "_alt"] = flt(row.get(fieldname)) / conversion_factors[row_idx]

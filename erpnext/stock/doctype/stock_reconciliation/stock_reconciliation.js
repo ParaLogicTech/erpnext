@@ -13,42 +13,42 @@ frappe.ui.form.on("Stock Reconciliation", {
 		frm.set_query("item_code", "items", function(doc, cdt, cdn) {
 			return {
 				query: "erpnext.controllers.queries.item_query",
-				filters:{
-					"is_stock_item": 1
-				}
-			}
+				filters: {
+					"is_stock_item": 1,
+				},
+			};
 		});
 
 		frm.set_query("batch_no", "items", function(doc, cdt, cdn) {
 			var item = frappe.get_doc(cdt, cdn);
 			let filters = {
-				'item_code': item.item_code,
-				'posting_date': doc.posting_date || frappe.datetime.nowdate(),
-				'posting_time': doc.posting_time,
-				'show_all': 1,
+				"item_code": item.item_code,
+				"posting_date": doc.posting_date || frappe.datetime.nowdate(),
+				"posting_time": doc.posting_time,
+				"show_all": 1,
 			};
 			if (item.warehouse) filters["warehouse"] = item.warehouse;
 			return {
-				query : "erpnext.controllers.queries.get_batch_no",
-				filters: filters
-			}
+				query: "erpnext.controllers.queries.get_batch_no",
+				filters: filters,
+			};
 		});
 
 		frm.set_query("default_warehouse", function(doc) {
 			return {
 				filters: {
 					"company": doc.company,
-					"is_group": cint(doc.group_warehouse)
-				}
-			}
+					"is_group": cint(doc.group_warehouse),
+				},
+			};
 		});
 
 		let batch_no_field = frm.get_docfield("items", "batch_no");
 		if (batch_no_field) {
 			batch_no_field.get_route_options_for_new_doc = function(row) {
 				return {
-					"item": row.doc.item_code
-				}
+					"item": row.doc.item_code,
+				};
 			};
 		}
 
@@ -65,7 +65,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 		erpnext.toggle_naming_series();
 		erpnext.hide_company();
 
-		if(frm.doc.company) {
+		if (frm.doc.company) {
 			frm.trigger("toggle_display_account_head");
 		}
 	},
@@ -74,13 +74,13 @@ frappe.ui.form.on("Stock Reconciliation", {
 		frm.set_value("default_warehouse", null);
 	},
 
-	reset_rate: function (frm) {
+	reset_rate: function(frm) {
 		frm.events.update_item_details(frm);
 	},
 
 	get_items: function(frm) {
 		frappe.call({
-			method:"erpnext.stock.doctype.stock_reconciliation.stock_reconciliation.get_items",
+			method: "erpnext.stock.doctype.stock_reconciliation.stock_reconciliation.get_items",
 			args: {
 				args: {
 					posting_date: frm.doc.posting_date,
@@ -94,16 +94,16 @@ frappe.ui.form.on("Stock Reconciliation", {
 					sort_by: frm.doc.sort_by,
 					positive_or_negative: frm.doc.positive_or_negative,
 					reset_rate: frm.doc.reset_rate,
-					loose_uom: frm.doc.loose_uom
-				}
+					loose_uom: frm.doc.loose_uom,
+				},
 			},
 			callback: function(r) {
 				frm.clear_table("items");
-				for(var i=0; i < r.message.length; i++) {
+				for (var i = 0; i < r.message.length; i++) {
 					var d = frm.add_child("items");
 					$.extend(d, r.message[i]);
-					if(!d.qty) d.qty = null;
-					if(!d.valuation_rate) d.valuation_rate = null;
+					if (!d.qty) d.qty = null;
+					if (!d.valuation_rate) d.valuation_rate = null;
 				}
 				frm.refresh_field("items");
 			},
@@ -114,7 +114,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 
 	get_item_details: function(frm, cdt, cdn) {
 		var d = frappe.model.get_doc(cdt, cdn);
-		if(d.item_code) {
+		if (d.item_code) {
 			frappe.call({
 				method: "erpnext.stock.doctype.stock_reconciliation.stock_reconciliation.get_item_details",
 				args: {
@@ -131,14 +131,14 @@ frappe.ui.form.on("Stock Reconciliation", {
 						reset_rate: frm.doc.reset_rate,
 						loose_uom: frm.doc.loose_uom,
 						default_warehouse: cint(frm.doc.group_warehouse) ? null : frm.doc.default_warehouse,
-					}
+					},
 				},
 				callback: function(r) {
 					if (r.message) {
 						Object.assign(d, r.message);
-						frm.refresh_field('items');
+						frm.refresh_field("items");
 					}
-				}
+				},
 			});
 		}
 	},
@@ -149,9 +149,9 @@ frappe.ui.form.on("Stock Reconciliation", {
 				method: "update_item_details",
 				doc: frm.doc,
 				freeze: true,
-				callback: function (r) {
+				callback: function(r) {
 					frm.refresh_fields();
-				}
+				},
 			});
 		}
 	},
@@ -161,12 +161,12 @@ frappe.ui.form.on("Stock Reconciliation", {
 		if (d.barcode) {
 			frappe.call({
 				method: "erpnext.stock.get_item_details.get_item_code",
-				args: {"barcode": d.barcode },
+				args: {"barcode": d.barcode},
 				callback: function(r) {
-					if (!r.exc){
+					if (!r.exc) {
 						frappe.model.set_value(cdt, cdn, "item_code", r.message);
 					}
-				}
+				},
 			});
 		}
 	},
@@ -185,7 +185,7 @@ frappe.ui.form.on("Stock Reconciliation", {
 		frm.trigger("toggle_display_account_head");
 	},
 	toggle_display_account_head: function(frm) {
-		frm.toggle_display(['expense_account', 'cost_center'],
+		frm.toggle_display(["expense_account", "cost_center"],
 			erpnext.is_perpetual_inventory_enabled(frm.doc.company));
 	},
 	purpose: function(frm) {
@@ -197,16 +197,16 @@ frappe.ui.form.on("Stock Reconciliation", {
 				method: "erpnext.stock.doctype.stock_reconciliation.stock_reconciliation.get_difference_account",
 				args: {
 					"purpose": frm.doc.purpose,
-					"company": frm.doc.company
+					"company": frm.doc.company,
 				},
 				callback: function(r) {
 					if (!r.exc) {
 						frm.set_value("expense_account", r.message);
 					}
-				}
+				},
 			});
 		}
-	}
+	},
 });
 
 frappe.ui.form.on("Stock Reconciliation Item", {
@@ -239,26 +239,26 @@ frappe.ui.form.on("Stock Reconciliation Item", {
 		var child = locals[cdt][cdn];
 
 		if (child.serial_no) {
-			const serial_nos = child.serial_no.trim().split('\n');
+			const serial_nos = child.serial_no.trim().split("\n");
 			frappe.model.set_value(cdt, cdn, "qty", serial_nos.length);
 		}
 	},
 
 	loose_uom: function(frm, cdt, cdn) {
 		var item = frappe.get_doc(cdt, cdn);
-		if(item.item_code && item.loose_uom) {
+		if (item.item_code && item.loose_uom) {
 			return frm.call({
 				method: "erpnext.stock.get_item_details.get_conversion_factor",
 				child: item,
 				args: {
 					item_code: item.item_code,
-					uom: item.loose_uom
+					uom: item.loose_uom,
 				},
 				callback: function(r) {
-					if(!r.exc) {
+					if (!r.exc) {
 						frm.cscript.conversion_factor(frm.doc, cdt, cdn);
 					}
-				}
+				},
 			});
 		}
 	},
@@ -278,25 +278,25 @@ erpnext.stock.StockReconciliation = class StockReconciliation extends erpnext.st
 			this.frm.add_fetch("company", "cost_center", "cost_center");
 		}
 		this.frm.fields_dict["expense_account"].get_query = function() {
-			if(erpnext.is_perpetual_inventory_enabled(me.frm.doc.company)) {
+			if (erpnext.is_perpetual_inventory_enabled(me.frm.doc.company)) {
 				return {
 					"filters": {
-						'company': me.frm.doc.company,
-						"is_group": 0
-					}
-				}
+						"company": me.frm.doc.company,
+						"is_group": 0,
+					},
+				};
 			}
-		}
+		};
 		this.frm.fields_dict["cost_center"].get_query = function() {
-			if(erpnext.is_perpetual_inventory_enabled(me.frm.doc.company)) {
+			if (erpnext.is_perpetual_inventory_enabled(me.frm.doc.company)) {
 				return {
 					"filters": {
-						'company': me.frm.doc.company,
-						"is_group": 0
-					}
-				}
+						"company": me.frm.doc.company,
+						"is_group": 0,
+					},
+				};
 			}
-		}
+		};
 	}
 
 	refresh() {

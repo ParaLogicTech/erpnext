@@ -1,8 +1,11 @@
-import frappe
 import unittest
-from frappe.utils import nowdate, add_months, getdate, add_days
+
+import frappe
+from frappe.utils import add_days, add_months, getdate, nowdate
+
+from erpnext.hr.doctype.leave_ledger_entry.leave_ledger_entry import expire_allocation, process_expired_allocation
 from erpnext.hr.doctype.leave_type.test_leave_type import create_leave_type
-from erpnext.hr.doctype.leave_ledger_entry.leave_ledger_entry import process_expired_allocation, expire_allocation
+
 
 class TestLeaveAllocation(unittest.TestCase):
 	def test_overlapping_allocation(self):
@@ -19,7 +22,7 @@ class TestLeaveAllocation(unittest.TestCase):
 				"from_date": getdate("2015-10-01"),
 				"to_date": getdate("2015-10-31"),
 				"new_leaves_allocated": 5,
-				"docstatus": 1
+				"docstatus": 1,
 			},
 			{
 				"doctype": "Leave Allocation",
@@ -29,8 +32,8 @@ class TestLeaveAllocation(unittest.TestCase):
 				"leave_type": "_Test Leave Type",
 				"from_date": getdate("2015-09-01"),
 				"to_date": getdate("2015-11-30"),
-				"new_leaves_allocated": 5
-			}
+				"new_leaves_allocated": 5,
+			},
 		]
 
 		frappe.get_doc(leaves[0]).save()
@@ -47,10 +50,10 @@ class TestLeaveAllocation(unittest.TestCase):
 			"leave_type": "_Test Leave Type",
 			"from_date": getdate("2015-09-30"),
 			"to_date": getdate("2015-09-1"),
-			"new_leaves_allocated": 5
+			"new_leaves_allocated": 5,
 		})
 
-		#invalid period
+		# invalid period
 		self.assertRaises(frappe.ValidationError, doc.save)
 
 	def test_allocated_leave_days_over_period(self):
@@ -63,9 +66,9 @@ class TestLeaveAllocation(unittest.TestCase):
 			"leave_type": "_Test Leave Type",
 			"from_date": getdate("2015-09-1"),
 			"to_date": getdate("2015-09-30"),
-			"new_leaves_allocated": 35
+			"new_leaves_allocated": 35,
 		})
-		#allocated leave more than period
+		# allocated leave more than period
 		self.assertRaises(frappe.ValidationError, doc.save)
 
 	def test_carry_forward_calculation(self):
@@ -91,7 +94,7 @@ class TestLeaveAllocation(unittest.TestCase):
 			carry_forward=1)
 		leave_allocation_1.submit()
 
-		self.assertEquals(leave_allocation_1.unused_leaves, 10)
+		self.assertEqual(leave_allocation_1.unused_leaves, 10)
 
 		leave_allocation_1.cancel()
 
@@ -103,7 +106,7 @@ class TestLeaveAllocation(unittest.TestCase):
 			new_leaves_allocated=25)
 		leave_allocation_2.submit()
 
-		self.assertEquals(leave_allocation_2.unused_leaves, 5)
+		self.assertEqual(leave_allocation_2.unused_leaves, 5)
 
 	def test_carry_forward_leaves_expiry(self):
 		frappe.db.sql("delete from `tabLeave Allocation`")
@@ -140,7 +143,7 @@ class TestLeaveAllocation(unittest.TestCase):
 			to_date=add_months(nowdate(), 12))
 		leave_allocation_1.submit()
 
-		self.assertEquals(leave_allocation_1.unused_leaves, leave_allocation.new_leaves_allocated)
+		self.assertEqual(leave_allocation_1.unused_leaves, leave_allocation.new_leaves_allocated)
 
 	def test_creation_of_leave_ledger_entry_on_submit(self):
 		frappe.db.sql("delete from `tabLeave Allocation`")
@@ -148,16 +151,17 @@ class TestLeaveAllocation(unittest.TestCase):
 		leave_allocation = create_leave_allocation()
 		leave_allocation.submit()
 
-		leave_ledger_entry = frappe.get_all('Leave Ledger Entry', fields='*', filters=dict(transaction_name=leave_allocation.name))
+		leave_ledger_entry = frappe.get_all("Leave Ledger Entry", fields="*", filters=dict(transaction_name=leave_allocation.name))
 
-		self.assertEquals(len(leave_ledger_entry), 1)
-		self.assertEquals(leave_ledger_entry[0].employee, leave_allocation.employee)
-		self.assertEquals(leave_ledger_entry[0].leave_type, leave_allocation.leave_type)
-		self.assertEquals(leave_ledger_entry[0].leaves, leave_allocation.new_leaves_allocated)
+		self.assertEqual(len(leave_ledger_entry), 1)
+		self.assertEqual(leave_ledger_entry[0].employee, leave_allocation.employee)
+		self.assertEqual(leave_ledger_entry[0].leave_type, leave_allocation.leave_type)
+		self.assertEqual(leave_ledger_entry[0].leaves, leave_allocation.new_leaves_allocated)
 
 		# check if leave ledger entry is deleted on cancellation
 		leave_allocation.cancel()
-		self.assertFalse(frappe.db.exists("Leave Ledger Entry", {'transaction_name':leave_allocation.name}))
+		self.assertFalse(frappe.db.exists("Leave Ledger Entry", {"transaction_name": leave_allocation.name}))
+
 
 def create_leave_allocation(**args):
 	args = frappe._dict(args)
@@ -172,8 +176,9 @@ def create_leave_allocation(**args):
 		"from_date": args.from_date or nowdate(),
 		"new_leaves_allocated": args.new_leaves_allocated or 15,
 		"carry_forward": args.carry_forward or 0,
-		"to_date": args.to_date or add_months(nowdate(), 12)
+		"to_date": args.to_date or add_months(nowdate(), 12),
 	})
 	return leave_allocation
+
 
 test_dependencies = ["Employee", "Leave Type"]

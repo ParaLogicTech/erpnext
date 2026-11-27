@@ -4,10 +4,12 @@
 import frappe
 from frappe import _
 
+
 def execute(filters=None):
 	columns = get_columns(filters.item)
 	data = get_data(filters.item)
 	return columns, data
+
 
 def get_data(item):
 	if not item:
@@ -21,7 +23,7 @@ def get_data(item):
 		frappe.msgprint(_("There isn't any item variant for the selected item"))
 		return []
 	else:
-		variants = ", ".join([frappe.db.escape(variant['name']) for variant in variant_results])
+		variants = ", ".join([frappe.db.escape(variant["name"]) for variant in variant_results])
 
 	order_count_map = get_open_sales_orders_map(variants)
 	stock_details_map = get_stock_details_map(variants)
@@ -34,7 +36,7 @@ def get_data(item):
 		where parent in ({variants}) group by attribute""".format(variants=variants))]
 
 	# Prepare dicts
-	variant_dicts = [{"variant_name": d['name']} for d in variant_results]
+	variant_dicts = [{"variant_name": d["name"]} for d in variant_results]
 	for item_dict in variant_dicts:
 		name = item_dict["variant_name"]
 
@@ -59,13 +61,14 @@ def get_data(item):
 
 	return item_dicts
 
+
 def get_columns(item):
 	columns = [{
 		"fieldname": "variant_name",
 		"label": "Variant",
 		"fieldtype": "Link",
 		"options": "Item",
-		"width": 200
+		"width": 200,
 	}]
 
 	item_doc = frappe.get_doc("Item", item)
@@ -75,10 +78,11 @@ def get_columns(item):
 
 	columns += [_("Avg. Buying Price List Rate") + ":Currency:110", _("Avg. Selling Price List Rate") + ":Currency:110",
 		_("Inventory") + ":Float:100", _("In Production") + ":Float:100",
-		_("Open Orders") + ":Float:100", _("Available Selling") + ":Float:100"
+		_("Open Orders") + ":Float:100", _("Available Selling") + ":Float:100",
 	]
 
 	return columns
+
 
 def get_open_sales_orders_map(variants):
 	open_sales_orders = frappe.db.sql("""
@@ -101,6 +105,7 @@ def get_open_sales_orders_map(variants):
 
 	return order_count_map
 
+
 def get_stock_details_map(variants):
 	stock_details = frappe.db.sql("""
 		select
@@ -120,12 +125,13 @@ def get_stock_details_map(variants):
 	for d in stock_details:
 		name = d["item_code"]
 		stock_details_map[name] = {
-			"Inventory" :d["actual_qty"],
-			"In Production" :d["planned_qty"],
-			"Available Selling" :d["projected_qty"]
+			"Inventory": d["actual_qty"],
+			"In Production": d["planned_qty"],
+			"Available Selling": d["projected_qty"],
 		}
 
 	return stock_details_map
+
 
 def get_buying_price_map(variants):
 	buying = frappe.db.sql("""
@@ -146,6 +152,7 @@ def get_buying_price_map(variants):
 
 	return buying_price_map
 
+
 def get_selling_price_map(variants):
 	selling = frappe.db.sql("""
 		select
@@ -164,6 +171,7 @@ def get_selling_price_map(variants):
 		selling_price_map[d["item_code"]] = d["avg_rate"]
 
 	return selling_price_map
+
 
 def get_attribute_values_map(variants):
 	list_attr = frappe.db.sql("""

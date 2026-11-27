@@ -25,21 +25,21 @@ frappe.query_reports["Production Register"] = {
 			fieldtype: "Select",
 			options: ["Manufacture Entry", "Operation Entry"],
 			default: "Manufacture Entry",
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "from_date",
 			label: __("From Date"),
 			fieldtype: "Date",
 			default: frappe.datetime.month_start(),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "to_date",
 			label: __("To Date"),
 			fieldtype: "Date",
 			default: frappe.datetime.month_end(),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "production_item",
@@ -50,8 +50,8 @@ frappe.query_reports["Production Register"] = {
 				return {
 					query: "erpnext.controllers.queries.item_query",
 					filters: {
-						'is_stock_item': 1
-					}
+						"is_stock_item": 1,
+					},
 				};
 			},
 		},
@@ -59,13 +59,13 @@ frappe.query_reports["Production Register"] = {
 			fieldname: "item_group",
 			label: __("Item Group"),
 			fieldtype: "Link",
-			options: "Item Group"
+			options: "Item Group",
 		},
 		{
 			fieldname: "brand",
 			label: __("Brand"),
 			fieldtype: "Link",
-			options: "Brand"
+			options: "Brand",
 		},
 		{
 			fieldname: "customer_provided_items",
@@ -75,7 +75,7 @@ frappe.query_reports["Production Register"] = {
 				"",
 				"Customer Provided Items Only",
 				"Exclude Customer Provided Items",
-			]
+			],
 		},
 		{
 			fieldname: "customer",
@@ -113,5 +113,5 @@ frappe.query_reports["Production Register"] = {
 			fieldtype: "Check",
 		},
 	],
-	initial_depth: 1
+	initial_depth: 1,
 };

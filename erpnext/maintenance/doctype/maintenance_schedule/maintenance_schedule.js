@@ -14,17 +14,17 @@ erpnext.maintenance.MaintenanceSchedule = class MaintenanceSchedule extends frap
 	}
 
 	set_dynamic_link() {
-		frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'customer', doctype: 'Customer'};
+		frappe.dynamic_link = {doc: this.frm.doc, fieldname: "customer", doctype: "Customer"};
 	}
 
 	setup_queries() {
-		this.frm.set_query('customer', erpnext.queries.customer);
-		this.frm.set_query('contact_person', erpnext.queries.contact_query);
+		this.frm.set_query("customer", erpnext.queries.customer);
+		this.frm.set_query("contact_person", erpnext.queries.contact_query);
 
 		this.frm.set_query("item_code", function() {
 			return {
 				query: "erpnext.controllers.queries.item_query",
-				filters: {'is_sales_item': 1}
+				filters: {"is_sales_item": 1},
 			};
 		});
 	}
@@ -36,13 +36,13 @@ erpnext.maintenance.MaintenanceSchedule = class MaintenanceSchedule extends frap
 			frappe.call({
 				method: "erpnext.stock.doctype.serial_no.serial_no.get_serial_no_item_customer",
 				args: {
-					serial_no: me.frm.doc.serial_no
+					serial_no: me.frm.doc.serial_no,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (r.message) {
 						me.frm.set_value(r.message);
 					}
-				}
+				},
 			});
 		}
 	}
@@ -63,7 +63,7 @@ erpnext.maintenance.MaintenanceSchedule = class MaintenanceSchedule extends frap
 			method: "erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule.make_maintenance_opportunity",
 			args: {
 				maintenance_schedule: doc.name,
-				row: cdn
+				row: cdn,
 			},
 			freeze: 1,
 			freeze_message: __("Creating Opportunity"),
@@ -72,9 +72,9 @@ erpnext.maintenance.MaintenanceSchedule = class MaintenanceSchedule extends frap
 					frappe.model.sync(r.message);
 					frappe.set_route("Form", r.message.doctype, r.message.name);
 				}
-			}
+			},
 		});
 	}
-}
+};
 
 extend_cscript(cur_frm.cscript, new erpnext.maintenance.MaintenanceSchedule({frm: cur_frm}));

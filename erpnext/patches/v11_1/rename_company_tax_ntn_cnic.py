@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.utils.rename_field import rename_field
 
+
 def execute():
-	rename_field('Company', 'tax_id', 'tax_strn')
-	rename_field('Company', 'tax_ntn_cnic', 'tax_id')
+	rename_field("Company", "tax_id", "tax_strn")
+	rename_field("Company", "tax_ntn_cnic", "tax_id")

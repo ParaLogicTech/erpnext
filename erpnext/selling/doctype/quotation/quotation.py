@@ -2,20 +2,21 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, nowdate, getdate, cint, add_days, date_diff, now_datetime, combine_datetime, get_time
 from frappe import _
-from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
-from erpnext.controllers.selling_controller import SellingController
 from frappe.core.doctype.notification_count.notification_count import (
 	get_all_notification_count,
 	get_notification_last_scheduled,
 	set_notification_last_scheduled,
 )
 from frappe.email.doctype.notification.notification import has_notification
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import add_days, cint, combine_datetime, date_diff, flt, get_time, getdate, now_datetime, nowdate
+
+from erpnext.controllers.selling_controller import SellingController
+from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
 
 form_grid_templates = {
-	"items": "templates/form_grid/item_grid.html"
+	"items": "templates/form_grid/item_grid.html",
 }
 
 
@@ -49,7 +50,7 @@ class Quotation(SellingController):
 		super().on_submit()
 
 		# Check for Approving Authority
-		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype,
+		frappe.get_doc("Authorization Control").validate_approving_authority(self.doctype,
 			self.company, self.base_grand_total, self)
 
 		# update enquiry status
@@ -77,11 +78,11 @@ class Quotation(SellingController):
 	def onload(self):
 		super().onload()
 		if self.quotation_to == "Customer":
-			self.set_onload('customer', self.party_name)
+			self.set_onload("customer", self.party_name)
 		elif self.quotation_to == "Lead":
-			self.set_onload('customer', get_customer_from_lead(self.party_name))
+			self.set_onload("customer", get_customer_from_lead(self.party_name))
 
-		self.set_onload('notification_count', get_all_notification_count(self.doctype, self.name))
+		self.set_onload("notification_count", get_all_notification_count(self.doctype, self.name))
 		self.set_can_notify_onload()
 		self.set_scheduled_reminder_onload()
 
@@ -121,7 +122,7 @@ class Quotation(SellingController):
 		for d in self.get("previous_orders"):
 			if d.previous_sales_order in visited:
 				frappe.throw(_("Row #{0}: Previous Sales Order {1} is entered twice").format(
-					d.idx, frappe.bold(d.previous_sales_order)
+					d.idx, frappe.bold(d.previous_sales_order),
 				))
 			else:
 				visited.add(d.previous_sales_order)
@@ -135,11 +136,11 @@ class Quotation(SellingController):
 
 			if so_details.docstatus != 1:
 				frappe.throw(_("Row #{0}: Previous Sales Order {1} is not submitted").format(
-					d.idx, frappe.bold(d.previous_sales_order)
+					d.idx, frappe.bold(d.previous_sales_order),
 				))
 			if so_details.status == "Closed":
 				frappe.throw(_("Row #{0}: Previous Sales Order {1} is Closed").format(
-					d.idx, frappe.bold(d.previous_sales_order)
+					d.idx, frappe.bold(d.previous_sales_order),
 				))
 			if self.currency and so_details.currency != self.currency:
 				frappe.throw(_("Row #{0}: Previous Sales Order {1} currency {2} does not match with this Quotation").format(
@@ -159,7 +160,7 @@ class Quotation(SellingController):
 			d.ordered_qty = flt(ordered_qty_map.get(d.name))
 			if update:
 				d.db_set({
-					'ordered_qty': d.ordered_qty,
+					"ordered_qty": d.ordered_qty,
 				}, update_modified=update_modified)
 
 	def get_ordered_qty_map(self):
@@ -238,7 +239,7 @@ class Quotation(SellingController):
 			doc.notify_update()
 
 	def update_opportunity(self):
-		if self.get('opportunity'):
+		if self.get("opportunity"):
 			opp = frappe.get_doc("Opportunity", self.opportunity)
 			opp.set_status(update=True)
 			opp.notify_update()
@@ -259,23 +260,23 @@ class Quotation(SellingController):
 		if is_lost:
 			self.set_status(update=True, status="Lost")
 			self.db_set({
-				'order_lost_reason': detailed_reason,
-				'lost_date': getdate(lost_date),
+				"order_lost_reason": detailed_reason,
+				"lost_date": getdate(lost_date),
 			})
 			self.lost_reasons = []
 			for reason in lost_reasons_list or []:
-				self.append('lost_reasons', reason)
+				self.append("lost_reasons", reason)
 		else:
 			self.set_status(update=True, status="Open")
 			self.db_set({
-				'order_lost_reason': None,
-				'lost_date': None,
+				"order_lost_reason": None,
+				"lost_date": None,
 			})
 			self.lost_reasons = []
 
 		self.update_child_table("lost_reasons")
 
-		if self.get('opportunity') and not self.flags.from_opportunity:
+		if self.get("opportunity") and not self.flags.from_opportunity:
 			opp = frappe.get_doc("Opportunity", self.opportunity)
 			opp.set_is_lost(is_lost, lost_reasons_list, detailed_reason, lost_date=lost_date)
 
@@ -284,15 +285,15 @@ class Quotation(SellingController):
 		self.notify_update()
 
 	def set_customer_name(self):
-		if self.party_name and self.quotation_to == 'Customer':
+		if self.party_name and self.quotation_to == "Customer":
 			self.customer_name = frappe.get_cached_value("Customer", self.party_name, "customer_name")
-		elif self.party_name and self.quotation_to == 'Lead':
+		elif self.party_name and self.quotation_to == "Lead":
 			lead_name, company_name = frappe.db.get_value("Lead", self.party_name, ["lead_name", "company_name"])
 			self.customer_name = company_name or lead_name
 
-	def print_other_charges(self,docname):
+	def print_other_charges(self, docname):
 		print_lst = []
-		for d in self.get('taxes'):
+		for d in self.get("taxes"):
 			lst1 = []
 			lst1.append(d.description)
 			lst1.append(d.total)
@@ -318,18 +319,18 @@ class Quotation(SellingController):
 
 	def set_can_notify_onload(self):
 		notification_keys = [
-			'Quotation Delivery',
-			'Quotation Reminder',
+			"Quotation Delivery",
+			"Quotation Reminder",
 		]
 
 		can_notify = frappe._dict()
 		for notification_key in notification_keys:
 			can_notify[notification_key] = self.validate_notification(notification_key, throw=False)
 
-		self.set_onload('can_notify', can_notify)
+		self.set_onload("can_notify", can_notify)
 
 	def set_scheduled_reminder_onload(self):
-		self.set_onload('scheduled_reminder', self.get_reminder_schedule())
+		self.set_onload("scheduled_reminder", self.get_reminder_schedule())
 
 	def get_reminder_schedule(self):
 		if self.docstatus != 1 or not self.submission_date or not automated_reminder_enabled():
@@ -356,7 +357,7 @@ class Quotation(SellingController):
 			if self.status != "Open":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Quotation status is not 'Open'").format(
-						notification_key
+						notification_key,
 					))
 				return False
 
@@ -368,7 +369,7 @@ class Quotation(SellingController):
 
 @frappe.whitelist()
 def make_sales_order(source_name, target_doc=None):
-	quotation = frappe.db.get_value("Quotation", source_name, ["transaction_date", "valid_till"], as_dict = 1)
+	quotation = frappe.db.get_value("Quotation", source_name, ["transaction_date", "valid_till"], as_dict=1)
 	if quotation.valid_till and (quotation.valid_till < quotation.transaction_date or quotation.valid_till < getdate(nowdate())):
 		frappe.throw(_("Validity period of this quotation has ended."))
 	return _make_sales_order(source_name, target_doc=target_doc)
@@ -389,7 +390,7 @@ def _make_sales_order(
 
 		if source.referral_sales_partner:
 			target.sales_partner = source.referral_sales_partner
-			target.commission_rate = frappe.get_value('Sales Partner', source.referral_sales_partner, 'commission_rate')
+			target.commission_rate = frappe.get_value("Sales Partner", source.referral_sales_partner, "commission_rate")
 
 		target.ignore_pricing_rule = 1
 		target.flags.ignore_permissions = ignore_permissions
@@ -399,10 +400,10 @@ def _make_sales_order(
 		"Quotation": {
 			"doctype": "Sales Order",
 			"validation": {
-				"docstatus": ["=", 1]
+				"docstatus": ["=", 1],
 			},
 			"field_map": {
-				"remarks": "remarks"
+				"remarks": "remarks",
 			},
 			"field_no_map": [
 				"group_same_items",
@@ -410,16 +411,16 @@ def _make_sales_order(
 		},
 		"Sales Taxes and Charges": {
 			"doctype": "Sales Taxes and Charges",
-			"add_if_empty": True
+			"add_if_empty": True,
 		},
 		"Sales Team": {
 			"doctype": "Sales Team",
-			"add_if_empty": True
+			"add_if_empty": True,
 		},
 		"Payment Schedule": {
 			"doctype": "Payment Schedule",
-			"add_if_empty": True
-		}
+			"add_if_empty": True,
+		},
 	}
 
 	if not skip_item_mapping:
@@ -479,7 +480,7 @@ def _make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 		target.run_method("postprocess_after_mapping")
 
 	def update_item(source, target, source_parent, target_parent):
-		target.project = source_parent.get('project')
+		target.project = source_parent.get("project")
 		target.cost_center = None
 		target.depreciation_percentage = None
 
@@ -490,15 +491,15 @@ def _make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 			"Quotation": {
 				"doctype": "Sales Invoice",
 				"validation": {
-					"docstatus": ["=", 1]
+					"docstatus": ["=", 1],
 				},
 				"field_no_map": [
 					"has_stin",
 					"group_same_items",
 				],
 				"field_map": {
-					"remarks": "remarks"
-				}
+					"remarks": "remarks",
+				},
 			},
 			"Quotation Item": {
 				"doctype": "Sales Invoice Item",
@@ -506,16 +507,16 @@ def _make_sales_invoice(source_name, target_doc=None, ignore_permissions=False):
 					"parent": "quotation",
 					"name": "quotation_item",
 				},
-				"postprocess": update_item
+				"postprocess": update_item,
 			},
 			"Sales Taxes and Charges": {
 				"doctype": "Sales Taxes and Charges",
-				"add_if_empty": True
+				"add_if_empty": True,
 			},
 			"Sales Team": {
 				"doctype": "Sales Team",
-				"add_if_empty": True
-			}
+				"add_if_empty": True,
+			},
 		}, target_doc, set_missing_values, ignore_permissions=ignore_permissions)
 
 	return doclist
@@ -547,12 +548,12 @@ def get_previous_order_details(sales_order):
 
 
 def get_customer_from_quotation(quotation):
-	if quotation and quotation.get('party_name'):
-		if quotation.get('quotation_to') == 'Lead':
+	if quotation and quotation.get("party_name"):
+		if quotation.get("quotation_to") == "Lead":
 			customer = get_customer_from_lead(quotation.get("party_name"), throw=True)
 			return frappe.get_cached_doc("Customer", customer)
 
-		elif quotation.get('quotation_to') == 'Customer':
+		elif quotation.get("quotation_to") == "Customer":
 			return frappe.get_cached_doc("Customer", quotation.get("party_name"))
 
 
@@ -632,8 +633,8 @@ def get_quotations_for_reminder_notification(reminder_date=None, quotations=None
 			and n.last_sent_dt is null
 			{quotations_condition}
 	""", {
-		'submission_date': submission_date,
-		'quotations': quotations,
+		"submission_date": submission_date,
+		"quotations": quotations,
 	})
 
 	return quotations_to_remind

@@ -1,11 +1,12 @@
 import frappe
-import erpnext
-from frappe import _
-from frappe.utils import strip_html
 from crm.crm.doctype.appointment.appointment import Appointment
+from frappe import _
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import strip_html
+
+import erpnext
 from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
-from frappe.model.mapper import get_mapped_doc
 
 
 class AppointmentERP(Appointment):
@@ -15,7 +16,7 @@ class AppointmentERP(Appointment):
 
 	def onload(self):
 		super().onload()
-		self.set_onload('customer', self.get_customer())
+		self.set_onload("customer", self.get_customer())
 
 	def before_print(self, print_settings=None):
 		self.company_address_doc = erpnext.get_company_address_doc(self)
@@ -46,12 +47,12 @@ class AppointmentERP(Appointment):
 
 		if so_details.docstatus != 1:
 			frappe.throw(_("{0} is not submitted").format(
-				frappe.get_desk_link("Sales Order", self.sales_order)
+				frappe.get_desk_link("Sales Order", self.sales_order),
 			))
 
 		if so_details.billing_status != "To Bill":
 			frappe.throw(_("{0} is not billable").format(
-				frappe.get_desk_link("Sales Order", self.sales_order)
+				frappe.get_desk_link("Sales Order", self.sales_order),
 			))
 
 		if self.company != so_details.company:
@@ -77,7 +78,7 @@ class AppointmentERP(Appointment):
 		project = self.get_linked_projects()
 		if project:
 			frappe.throw(_("Cannot cancel appointment because it is closed by {0}").format(
-				frappe.get_desk_link("Project", project)
+				frappe.get_desk_link("Project", project),
 			))
 
 	def set_applies_to_details(self):
@@ -85,7 +86,7 @@ class AppointmentERP(Appointment):
 		applies_to_details = get_applies_to_details(args, for_validate=True)
 
 		for k, v in applies_to_details.items():
-			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
+			if (self.meta.has_field(k) and not self.get(k)) or k in self.force_applies_to_fields:
 				self.set(k, v)
 
 	def set_service_template_details(self):
@@ -129,7 +130,7 @@ class AppointmentERP(Appointment):
 		return super().is_appointment_converted() or self.get_linked_projects()
 
 	def get_linked_projects(self):
-		return frappe.db.get_all("Project", {'appointment': self.name}, pluck="name")
+		return frappe.db.get_all("Project", {"appointment": self.name}, pluck="name")
 
 
 @frappe.whitelist()
@@ -138,9 +139,9 @@ def get_project(source_name, target_doc=None):
 		customer = source.get_customer(throw=True)
 		if customer:
 			target.customer = customer
-			target.contact_mobile = source.get('contact_mobile')
-			target.contact_mobile_2 = source.get('contact_mobile_2')
-			target.contact_phone = source.get('contact_phone')
+			target.contact_mobile = source.get("contact_mobile")
+			target.contact_mobile_2 = source.get("contact_mobile_2")
+			target.contact_phone = source.get("contact_phone")
 
 		if target.applies_to_item and frappe.get_cached_value("Item", target.applies_to_item, "has_variants"):
 			target.applies_to_item = None
@@ -162,7 +163,7 @@ def get_project(source_name, target_doc=None):
 				"opportunity": "opportunity",
 				"campaign": "campaign",
 				"sales_order": "sales_order",
-			}
+			},
 		},
 		"Appointment Service Template": {
 			"doctype": "Project Service Template",
@@ -193,7 +194,7 @@ def update_reschedule_mapper(mapper, target_doctype):
 def override_appointment_dashboard(data):
 	data["transactions"].append({
 		"label": _("Project"),
-		"items": ["Project"]
+		"items": ["Project"],
 	})
 
 	return data

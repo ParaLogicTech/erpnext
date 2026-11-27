@@ -6,7 +6,7 @@ def execute():
 		"/personal-details", "/project", "/rfq", "/supplier-quotations", "/purchase-orders", "/purchase-invoices",
 		"/quotations", "/orders", "/invoices", "/shipments", "/issues", "/addresses", "/timesheets", "/lab-test",
 		"/prescription", "/patient-appointments", "/fees", "/newsletters", "/admissions", "/certification",
-		"/material-requests", "/book_appointment"
+		"/material-requests", "/book_appointment",
 	]
 
 	doc = frappe.get_single("Portal Settings")

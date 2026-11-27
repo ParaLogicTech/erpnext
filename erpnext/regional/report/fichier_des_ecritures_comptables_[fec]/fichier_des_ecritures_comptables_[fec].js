@@ -9,7 +9,7 @@ frappe.query_reports["Fichier des Ecritures Comptables [FEC]"] = {
 			"fieldtype": "Link",
 			"options": "Company",
 			"default": frappe.defaults.get_user_default("Company"),
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
 			"fieldname": "fiscal_year",
@@ -17,8 +17,8 @@ frappe.query_reports["Fichier des Ecritures Comptables [FEC]"] = {
 			"fieldtype": "Link",
 			"options": "Fiscal Year",
 			"default": frappe.defaults.get_user_default("fiscal_year"),
-			"reqd": 1
-		}
+			"reqd": 1,
+		},
 	],
 	onload: function(query_report) {
 		query_report.page.add_inner_button(__("Export"), function() {
@@ -32,7 +32,7 @@ frappe.query_reports["Fichier des Ecritures Comptables [FEC]"] = {
 		query_report.export_report = function() {
 			fec_export(query_report);
 		};
-	}
+	},
 };
 
 let fec_export = function(query_report) {
@@ -46,7 +46,7 @@ let fec_export = function(query_report) {
 		} else {
 			frappe.db.get_value("Fiscal Year", fiscal_year, "year_end_date", (r) => {
 				const fy = r.year_end_date;
-				const title = company_data + "FEC" + moment(fy).format('YYYYMMDD');
+				const title = company_data + "FEC" + moment(fy).format("YYYYMMDD");
 				const column_row = query_report.columns.map(col => col.label);
 				const column_data = query_report.get_data_for_csv(false);
 				const result = [column_row].concat(column_data);
@@ -65,19 +65,19 @@ let downloadify = function(data, roles, title) {
 
 	const filename = title + ".txt";
 	let csv_data = to_tab_csv(data);
-	const a = document.createElement('a');
+	const a = document.createElement("a");
 
 	if ("download" in a) {
 		// Used Blob object, because it can handle large files
 		let blob_object = new Blob([csv_data], {
-			type: 'text/csv;charset=UTF-8'
+			type: "text/csv;charset=UTF-8",
 		});
 		a.href = URL.createObjectURL(blob_object);
 		a.download = filename;
 
 	} else {
 		// use old method
-		a.href = 'data:attachment/csv,' + encodeURIComponent(csv_data);
+		a.href = "data:attachment/csv," + encodeURIComponent(csv_data);
 		a.download = filename;
 		a.target = "_blank";
 	}

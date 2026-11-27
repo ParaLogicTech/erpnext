@@ -6,14 +6,14 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			fieldtype: "Link",
 			options: "Company",
 			default: frappe.defaults.get_user_default("Company"),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "report_date",
 			label: __("Report Date"),
 			fieldtype: "Date",
 			default: frappe.datetime.month_end(),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "format",
@@ -51,10 +51,10 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			options: "Account Group",
 			get_query: () => ({
 				filters: {
-					company: frappe.query_report.get_filter_value('company'),
+					company: frappe.query_report.get_filter_value("company"),
 					report_type: "Profit and Loss",
-				}
-			})
+				},
+			}),
 		},
 		{
 			fieldname: "cost_center",
@@ -62,7 +62,7 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 			fieldtype: "Link",
 			options: "Cost Center",
 			get_query: () => {
-				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+				return {filters: {company: frappe.query_report.get_filter_value("company")}};
 			},
 		},
 		{
@@ -89,4 +89,4 @@ frappe.query_reports["Summarized Profit and Loss"] = {
 	initial_depth: 0,
 };
 
-erpnext.utils.add_dimensions('Summarized Profit and Loss', 6);
+erpnext.utils.add_dimensions("Summarized Profit and Loss", 6);

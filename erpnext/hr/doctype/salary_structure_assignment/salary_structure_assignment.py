@@ -1,14 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import getdate
 from frappe.model.document import Document
+from frappe.utils import getdate
 
 
-class DuplicateAssignment(frappe.ValidationError): pass
+class DuplicateAssignment(frappe.ValidationError):
+	pass
 
 
 class SalaryStructureAssignment(Document):
@@ -48,8 +48,8 @@ def get_assigned_salary_structure(employee, on_date):
 		order by from_date desc
 		limit 1
 	""", {
-		'employee': employee,
-		'on_date': on_date,
+		"employee": employee,
+		"on_date": on_date,
 	})
 	return salary_structure[0][0] if salary_structure else None
 
@@ -66,8 +66,8 @@ def get_salary_structure_assignment(employee, salary_structure, on_date):
 		order by from_date desc
 		limit 1
 	""", {
-		'employee': employee,
-		'salary_structure': salary_structure,
-		'on_date': on_date,
+		"employee": employee,
+		"salary_structure": salary_structure,
+		"on_date": on_date,
 	})
 	return salary_structure[0][0] if salary_structure else None

@@ -1,5 +1,6 @@
 import frappe
 
+
 def execute():
 	if frappe.db.table_exists("Offer Letter") and not frappe.db.table_exists("Job Offer"):
 		frappe.rename_doc("DocType", "Offer Letter", "Job Offer", force=True)

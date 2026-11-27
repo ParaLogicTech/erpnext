@@ -1,14 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
+import click
 import frappe
 from frappe import _
-from frappe.utils import cstr
-from erpnext.manufacturing.doctype.bom.bom import get_boms_in_bottom_up_order
 from frappe.model.document import Document
-import click
-import json
+from frappe.utils import cstr
+
+from erpnext.manufacturing.doctype.bom.bom import get_boms_in_bottom_up_order
 
 
 class BOMUpdateTool(Document):
@@ -16,7 +17,7 @@ class BOMUpdateTool(Document):
 		self.validate_bom()
 
 		self.update_new_bom()
-		frappe.cache.delete_key('bom_children')
+		frappe.cache.delete_key("bom_children")
 
 		new_bom_doc = frappe.get_doc("BOM", self.new_bom)
 		new_bom_doc.update_parent_cost()
@@ -34,7 +35,7 @@ class BOMUpdateTool(Document):
 				parent_bom_doc.update_parent_cost()
 				parent_bom_doc.db_update()
 
-				if parent_bom_doc.meta.get('track_changes') and not parent_bom_doc.flags.ignore_version:
+				if parent_bom_doc.meta.get("track_changes") and not parent_bom_doc.flags.ignore_version:
 					parent_bom_doc.save_version()
 
 			except Exception:
@@ -65,7 +66,9 @@ class BOMUpdateTool(Document):
 			"current_bom": self.current_bom,
 		})
 
-	def get_parent_boms(self, bom, bom_list=[]):
+	def get_parent_boms(self, bom, bom_list=None):
+		bom_list = bom_list or []
+
 		data = frappe.db.sql("""
 			SELECT DISTINCT parent
 			FROM `tabBOM Item`

@@ -1,22 +1,29 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
-from frappe.utils import flt, cint, fmt_money
-from frappe import _
-from erpnext.accounts.utils import get_stock_and_account_balance
-from frappe.model.meta import get_field_precision
-from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
-from frappe.model.document import Document
 from collections import OrderedDict
 
+import frappe
+from frappe import _
+from frappe.model.document import Document
+from frappe.model.meta import get_field_precision
+from frappe.utils import cint, flt, fmt_money
 
-class StockAccountInvalidTransaction(frappe.ValidationError): pass
-class StockValueAndAccountBalanceOutOfSync(frappe.ValidationError): pass
+import erpnext
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
+from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
+from erpnext.accounts.utils import get_stock_and_account_balance
 
 
-def make_gl_entries(gl_map, cancel=False, adv_adj=False, merge_entries=True, update_outstanding='Yes', from_repost=False, ignore_mandatory_dimension=False):
+class StockAccountInvalidTransaction(frappe.ValidationError):
+	pass
+
+
+class StockValueAndAccountBalanceOutOfSync(frappe.ValidationError):
+	pass
+
+
+def make_gl_entries(gl_map, cancel=False, adv_adj=False, merge_entries=True, update_outstanding="Yes", from_repost=False, ignore_mandatory_dimension=False):
 	if gl_map:
 		if not cancel:
 			gl_map = process_gl_map(gl_map, merge_entries)
@@ -120,10 +127,10 @@ def merge_similar_entries(gl_map):
 
 def get_account_head_key_fields(dimensions=None):
 	account_head_fieldnames = [
-		'account', 'party_type', 'party',
-		'against_voucher_type', 'against_voucher',
-		'cost_center', 'project',
-		'remarks', 'reference_no', 'reference_date'
+		"account", "party_type", "party",
+		"against_voucher_type", "against_voucher",
+		"cost_center", "project",
+		"remarks", "reference_no", "reference_date",
 	]
 
 	account_head_key_fields = account_head_fieldnames
@@ -173,16 +180,16 @@ def validate_account_for_perpetual_inventory(gl_map):
 		account_list = [gl_entries.account for gl_entries in gl_map]
 
 		aii_accounts = [d.name for d in frappe.get_all("Account",
-			filters={'account_type': 'Stock', 'is_group': 0, 'company': gl_map[0].company})]
+			filters={"account_type": "Stock", "is_group": 0, "company": gl_map[0].company})]
 
 		for account in account_list:
 			if account not in aii_accounts:
 				continue
 
-			account_bal, stock_bal, warehouse_list = get_stock_and_account_balance(account,
+			account_bal, stock_bal, _warehouse_list = get_stock_and_account_balance(account,
 				gl_map[0].posting_date, gl_map[0].company)
 
-			if gl_map[0].voucher_type=="Journal Entry":
+			if gl_map[0].voucher_type == "Journal Entry":
 				# In case of Journal Entry, there are no corresponding SL entries,
 				# hence deducting currency amount
 				account_bal -= flt(gl_map[0].debit) - flt(gl_map[0].credit)
@@ -224,7 +231,7 @@ def validate_cwip_accounts(gl_map):
 	if gl_map[0].voucher_type != "Journal Entry":
 		return
 
-	cwip_enabled = any([cint(ac.enable_cwip_accounting) for ac in frappe.db.get_all("Asset Category","enable_cwip_accounting")])
+	cwip_enabled = any([cint(ac.enable_cwip_accounting) for ac in frappe.db.get_all("Asset Category", "enable_cwip_accounting")])
 	if cwip_enabled:
 		cwip_accounts = [d[0] for d in frappe.db.sql("""select name from tabAccount
 			where account_type = 'Capital Work in Progress' and is_group=0""")]
@@ -236,7 +243,7 @@ def validate_cwip_accounts(gl_map):
 
 
 def round_off_debit_credit(gl_map):
-	company_currency = frappe.get_cached_value('Company',  gl_map[0].company,  "default_currency")
+	company_currency = frappe.get_cached_value("Company", gl_map[0].company, "default_currency")
 	precision = get_field_precision(frappe.get_meta("GL Entry").get_field("debit"), currency=company_currency)
 
 	debit_credit_diff = 0.0
@@ -295,7 +302,7 @@ def make_round_off_gle(gl_map, debit_credit_diff, precision):
 		"party_type": None,
 		"party": None,
 		"against_voucher_type": None,
-		"against_voucher": None
+		"against_voucher": None,
 	})
 
 	if not round_off_account_exists:
@@ -303,7 +310,7 @@ def make_round_off_gle(gl_map, debit_credit_diff, precision):
 
 
 def get_round_off_account_and_cost_center(company):
-	round_off_account, round_off_cost_center = frappe.get_cached_value('Company',  company,
+	round_off_account, round_off_cost_center = frappe.get_cached_value("Company", company,
 		["round_off_account", "round_off_cost_center"]) or [None, None]
 	if not round_off_account:
 		frappe.throw(_("Please mention Round Off Account in Company"))
@@ -316,10 +323,10 @@ def get_round_off_account_and_cost_center(company):
 
 def delete_gl_entries(gl_entries=None, voucher_type=None, voucher_no=None, adv_adj=False, update_outstanding="Yes"):
 	from erpnext.accounts.doctype.gl_entry.gl_entry import (
-		validate_balance_type,
 		check_freezing_date,
-		validate_frozen_account,
+		validate_balance_type,
 		validate_closed_accounting_period,
+		validate_frozen_account,
 	)
 
 	if not gl_entries:
@@ -340,13 +347,13 @@ def delete_gl_entries(gl_entries=None, voucher_type=None, voucher_no=None, adv_a
 			gl_entries[0]["company"],
 			gl_entries[0]["posting_date"],
 			voucher_type or gl_entries[0]["voucher_type"],
-			adv_adj
+			adv_adj,
 		)
 		check_freezing_date(gl_entries[0]["posting_date"], adv_adj)
 
 	delete_voucher_gl_entries(
 		voucher_type or gl_entries[0]["voucher_type"],
-		voucher_no or gl_entries[0]["voucher_no"]
+		voucher_no or gl_entries[0]["voucher_no"],
 	)
 
 	reference_documents_for_update = set()

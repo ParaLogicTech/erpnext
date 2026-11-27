@@ -1,42 +1,47 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import json
+
 import frappe
+import frappe.share
 from frappe import _
 from frappe.desk.form.assign_to import clear, close_all_assignments
 from frappe.model import numeric_fieldtypes
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import (
 	add_days,
-	flt,
-	cstr,
 	cint,
+	clean_whitespace,
+	cstr,
 	date_diff,
+	flt,
+	get_datetime,
 	get_link_to_form,
 	get_url_to_form,
 	getdate,
-	today,
-	get_datetime,
 	now_datetime,
-	clean_whitespace,
+	today,
 )
-import frappe.share
 from frappe.utils.nestedset import NestedSet
-from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
-from erpnext.hr.doctype.employee.employee import get_employee_from_user
+
 from erpnext.controllers.checklist_editor import (
 	get_default_checklist_items,
 	set_missing_checklist,
-	validate_mandatory_checklist,
 	set_updated_checklist,
+	validate_mandatory_checklist,
 )
+from erpnext.hr.doctype.employee.employee import get_employee_from_user
 from erpnext.hr.doctype.holiday_list.holiday_list import adjust_date_for_holidays, get_default_holiday_list
+from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 
-import json
+
+class CircularReferenceError(frappe.ValidationError):
+	pass
 
 
-class CircularReferenceError(frappe.ValidationError): pass
-class EndDateCannotBeGreaterThanProjectEndDateError(frappe.ValidationError): pass
+class EndDateCannotBeGreaterThanProjectEndDateError(frappe.ValidationError):
+	pass
 
 
 task_status_color_map = {
@@ -44,12 +49,12 @@ task_status_color_map = {
 	"Working": "purple",
 	"On Hold": "red",
 	"Completed": "green",
-	"Cancelled": "light-gray"
+	"Cancelled": "light-gray",
 }
 
 
 class Task(NestedSet):
-	nsm_parent_field = 'parent_task'
+	nsm_parent_field = "parent_task"
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
@@ -57,7 +62,7 @@ class Task(NestedSet):
 		self.force_applies_to_fields = get_force_applies_to_fields(self.doctype)
 
 	def get_feed(self):
-		return '{0}: {1}'.format(_(self.status), self.subject)
+		return "{0}: {1}".format(_(self.status), self.subject)
 
 	def onload(self):
 		self.set_onload("action_conditions", self.get_action_conditions())
@@ -66,7 +71,7 @@ class Task(NestedSet):
 		self.set_onload("timelogs", timelogs)
 		self.set_timelogs_html_onload(timelogs)
 
-		self.set_onload('default_task_checklist_items', get_default_checklist_items('task_checklist', 'Task Type', self.task_type))
+		self.set_onload("default_task_checklist_items", get_default_checklist_items("task_checklist", "Task Type", self.task_type))
 		self.set_missing_checklist()
 
 	def validate(self):
@@ -180,7 +185,7 @@ class Task(NestedSet):
 		applies_to_details = get_applies_to_details(args, for_validate=True)
 
 		for k, v in applies_to_details.items():
-			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
+			if (self.meta.has_field(k) and not self.get(k)) or k in self.force_applies_to_fields:
 				self.set(k, v)
 
 	def set_assigned_to_details(self):
@@ -199,12 +204,12 @@ class Task(NestedSet):
 		if self.value_changed("project"):
 			if self.service_template_detail:
 				frappe.throw(_("Cannot change {0} for Service Template task").format(
-					frappe.bold(_("Project"))
+					frappe.bold(_("Project")),
 				))
 
 			if self.status != "Open":
 				frappe.throw(_("Cannot change {0} when status in {1}").format(
-					frappe.bold(_("Project")), frappe.bold(self.status)
+					frappe.bold(_("Project")), frappe.bold(self.status),
 				))
 
 		if self.value_changed("issue"):
@@ -220,7 +225,7 @@ class Task(NestedSet):
 			and self.value_changed("expected_time")
 		):
 			frappe.throw(_("Cannot change {0} because it is a system determined value").format(
-				frappe.bold(self.meta.get_label("expected_time"))
+				frappe.bold(self.meta.get_label("expected_time")),
 			))
 
 	def is_expected_time_restricted(self):
@@ -242,14 +247,14 @@ class Task(NestedSet):
 			ready_to_close = frappe.db.get_value("Project", self.project, "ready_to_close", cache=1)
 			if ready_to_close:
 				frappe.throw(_("Cannot change task status to {0} because {1} is Ready to Close").format(
-					frappe.bold(self.status), get_link_from_name("Project", self.project)
+					frappe.bold(self.status), get_link_from_name("Project", self.project),
 				))
 
 		if self.status == "Working" and self.value_changed("status"):
 			project_status = frappe.db.get_value("Project", self.project, "status", cache=1)
 			if project_status == "Draft":
 				frappe.throw(_("Cannot change task status to {0} because {1} is Draft").format(
-					frappe.bold(self.status), get_link_from_name("Project", self.project)
+					frappe.bold(self.status), get_link_from_name("Project", self.project),
 				))
 
 	def validate_project_status_before_insert(self):
@@ -266,7 +271,7 @@ class Task(NestedSet):
 		ready_to_close = frappe.db.get_value("Project", self.project, "ready_to_close", cache=1)
 		if ready_to_close:
 			frappe.throw(_("Cannot create Task against {0} because it is Ready to Close").format(
-				get_link_from_name("Project", self.project)
+				get_link_from_name("Project", self.project),
 			))
 
 	def validate_dates(self):
@@ -284,7 +289,7 @@ class Task(NestedSet):
 				frappe.throw(_("Expected Start Date cannot be before {0} {1} {2}").format(
 					self.project,
 					frappe.get_meta("Project").get_label("project_date"),
-					frappe.bold(frappe.utils.format_date(project_date))
+					frappe.bold(frappe.utils.format_date(project_date)),
 				))
 
 	def set_expected_dates(self, expected_days=1):
@@ -312,7 +317,7 @@ class Task(NestedSet):
 		costing_rate = flt(activity_cost.get("costing_rate"))
 		if not costing_rate:
 			frappe.throw(_("Cannot assign to {0} because Activity Cost is not assigned for this Employee yet").format(
-				frappe.get_desk_link("Employee", self.assigned_to)
+				frappe.get_desk_link("Employee", self.assigned_to),
 			))
 
 	def adjust_date_for_holidays(self, date):
@@ -343,7 +348,7 @@ class Task(NestedSet):
 		if flt(self.progress) < 0:
 			frappe.throw(_("Progress % cannot be negative"))
 
-		if self.status == 'Completed':
+		if self.status == "Completed":
 			self.progress = 100
 
 	def validate_status_depedency(self):
@@ -370,12 +375,12 @@ class Task(NestedSet):
 
 	def populate_depends_on(self):
 		if self.parent_task:
-			parent = frappe.get_doc('Task', self.parent_task)
-			if not self.name in [row.task for row in parent.depends_on]:
+			parent = frappe.get_doc("Task", self.parent_task)
+			if self.name not in [row.task for row in parent.depends_on]:
 				parent.append("depends_on", {
 					"doctype": "Task Depends On",
 					"task": self.name,
-					"subject": self.subject
+					"subject": self.subject,
 				})
 				parent.save()
 
@@ -395,7 +400,7 @@ class Task(NestedSet):
 		assigned_to_user = frappe.db.get_value("Employee", self.assigned_to, "user_id")
 		if assigned_to_user:
 			frappe.share.add_docshare(
-				self.doctype, self.name, assigned_to_user, flags={"ignore_share_permission": True}
+				self.doctype, self.name, assigned_to_user, flags={"ignore_share_permission": True},
 			)
 
 	def update_total_expense_claim(self):
@@ -445,7 +450,7 @@ class Task(NestedSet):
 		if self.flags.ignore_recursion_check:
 			return
 
-		check_list = [['task', 'parent'], ['parent', 'task']]
+		check_list = [["task", "parent"], ["parent", "task"]]
 		for d in check_list:
 			task_list, count = [self.name], 0
 			while len(task_list) > count:
@@ -473,7 +478,7 @@ class Task(NestedSet):
 					and parent.name in (
 						select parent from `tabTask Depends On` as child
 						where child.task = %(task)s and child.project = %(project)s)
-			""", {'project': self.project, 'task':self.name }, as_dict=1):
+			""", {"project": self.project, "task": self.name}, as_dict=1):
 				task = frappe.get_doc("Task", task_name.name)
 				if task.exp_start_date and task.exp_end_date and task.exp_start_date < getdate(end_date) and task.status == "Open":
 					task_duration = date_diff(task.exp_end_date, task.exp_start_date)
@@ -490,7 +495,7 @@ class Task(NestedSet):
 				self.is_overdue = 1
 
 		if update:
-			self.db_set('is_overdue', self.is_overdue, update_modified=update_modified)
+			self.db_set("is_overdue", self.is_overdue, update_modified=update_modified)
 
 	def get_action_conditions(self):
 		return get_task_action_conditions(self)
@@ -509,7 +514,7 @@ class Task(NestedSet):
 			"totals": get_timelog_totals(timelogs),
 		})
 
-		self.set_onload('timelogs_html', timelogs_html)
+		self.set_onload("timelogs_html", timelogs_html)
 
 	def get_timelogs(self, cache=False):
 		if self.is_new():
@@ -538,13 +543,13 @@ class Task(NestedSet):
 		return self._timelogs
 
 	def set_missing_checklist(self):
-		set_missing_checklist(self, 'task_checklist', 'Task Type', self.task_type)
+		set_missing_checklist(self, "task_checklist", "Task Type", self.task_type)
 
 	def validate_mandatory_checklist(self):
 		if self.status == "Completed":
 			validate_mandatory_checklist(
 				self.task_checklist,
-				_("The following checklist items are mandatory and must be checked before you can complete this task.")
+				_("The following checklist items are mandatory and must be checked before you can complete this task."),
 			)
 
 	def set_updated_checklist(self, task_checklist):
@@ -567,11 +572,11 @@ def get_project(doctype, txt, searchfield, start, page_len, filters):
 				%(mcond)s
 			order by name
 			limit %(start)s, %(page_len)s""" % {
-				'key': searchfield,
-				'txt': frappe.db.escape('%' + txt + '%'),
-				'mcond':get_match_cond(doctype),
-				'start': start,
-				'page_len': page_len
+				"key": searchfield,
+				"txt": frappe.db.escape("%" + txt + "%"),
+				"mcond": get_match_cond(doctype),
+				"start": start,
+				"page_len": page_len,
 			})
 
 
@@ -593,13 +598,13 @@ def make_timesheet(source_name, target_doc=None, ignore_permissions=False):
 			"hours": source.actual_time,
 			"completed": source.status == "Completed",
 			"project": source.project,
-			"task": source.name
+			"task": source.name,
 		})
 
 	doclist = get_mapped_doc("Task", source_name, {
 		"Task": {
-			"doctype": "Timesheet"
-		}
+			"doctype": "Timesheet",
+		},
 	}, target_doc, postprocess=set_missing_values, ignore_permissions=ignore_permissions)
 
 	return doclist
@@ -608,32 +613,32 @@ def make_timesheet(source_name, target_doc=None, ignore_permissions=False):
 @frappe.whitelist()
 def get_children(doctype, parent, task=None, project=None, status=None, is_root=False):
 
-	filters = [['docstatus', '<', '2']]
+	filters = [["docstatus", "<", "2"]]
 
 	if project:
-		filters.append(['project', '=', project])
+		filters.append(["project", "=", project])
 
 	if task:
-		filters.append(['parent_task', '=', task])
+		filters.append(["parent_task", "=", task])
 	elif parent and not is_root:
 		# via expand child
-		filters.append(['parent_task', '=', parent])
+		filters.append(["parent_task", "=", parent])
 	else:
-		filters.append(['ifnull(`parent_task`, "")', '=', ''])
+		filters.append(['ifnull(`parent_task`, "")', "=", ""])
 
 	if status:
 		if status == "Open":
-			filters.append(['status', 'not in', ['Completed', 'Cancelled']])
+			filters.append(["status", "not in", ["Completed", "Cancelled"]])
 		elif status == "Completed":
-			filters.append(['status', '=', 'Completed'])
+			filters.append(["status", "=", "Completed"])
 
 	tasks = frappe.get_list(doctype, fields=[
-		'name as value',
-		'subject as title',
-		'is_group as expandable',
-		'project',
-		'issue'
-	], filters=filters, order_by='name')
+		"name as value",
+		"subject as title",
+		"is_group as expandable",
+		"project",
+		"issue",
+	], filters=filters, order_by="name")
 
 	# return tasks
 	return tasks
@@ -644,11 +649,11 @@ def add_node():
 	from frappe.desk.treeview import make_tree_args
 	args = frappe.form_dict
 	args.update({
-		"name_field": "subject"
+		"name_field": "subject",
 	})
 	args = make_tree_args(**args)
 
-	if args.parent_task == 'All Tasks' or args.parent_task == args.project:
+	if args.parent_task == "All Tasks" or args.parent_task == args.project:
 		args.parent_task = None
 
 	frappe.get_doc(args).insert()
@@ -657,12 +662,13 @@ def add_node():
 @frappe.whitelist()
 def add_multiple_tasks(data, parent):
 	data = json.loads(data)
-	new_doc = {'doctype': 'Task', 'parent_task': parent if parent!="All Tasks" else ""}
-	new_doc['project'] = frappe.db.get_value('Task', {"name": parent}, 'project') or ""
+	new_doc = {"doctype": "Task", "parent_task": parent if parent != "All Tasks" else ""}
+	new_doc["project"] = frappe.db.get_value("Task", {"name": parent}, "project") or ""
 
 	for d in data:
-		if not d.get("subject"): continue
-		new_doc['subject'] = d.get("subject")
+		if not d.get("subject"):
+			continue
+		new_doc["subject"] = d.get("subject")
 		new_task = frappe.get_doc(new_doc)
 		new_task.insert()
 
@@ -683,7 +689,7 @@ def create_service_template_tasks(project, exp_start_date=None):
 		filters = {
 			"project": project_doc.name,
 			"service_template": service_template_row.service_template,
-			"service_template_detail": service_template_row.name
+			"service_template_detail": service_template_row.name,
 		}
 		if frappe.db.exists("Task", filters):
 			tasks_exists = True
@@ -724,21 +730,21 @@ def create_service_template_tasks(project, exp_start_date=None):
 		message = _("{0} Service Template tasks created against {1}<br><br><ul>{2}</ul>").format(
 			len(tasks_created),
 			get_link_from_name("Project", project_doc.name),
-			"".join([f"<li>{get_link(d)}</li>" for d in tasks_created])
+			"".join([f"<li>{get_link(d)}</li>" for d in tasks_created]),
 		)
 		frappe.msgprint(message, indicator="green")
 		return {"message": message}
 
 	elif tasks_exists:
 		message = _("Service Template tasks against {0} already created").format(
-			get_link_from_name("Project", project_doc.name)
+			get_link_from_name("Project", project_doc.name),
 		)
 		frappe.msgprint(message)
 		return {"message": message}
 
 	else:
 		message = _("There are no Service Templates with tasks in {0}").format(
-			get_link_from_name("Project", project_doc.name)
+			get_link_from_name("Project", project_doc.name),
 		)
 		frappe.msgprint(message)
 		return {"message": message}
@@ -867,7 +873,7 @@ def edit_task(
 	if task_doc.status == "Completed":
 		frappe.throw(_("Cannot edit {0} because its status is {1}").format(
 			get_link(task_doc),
-			frappe.bold(task_doc.status)
+			frappe.bold(task_doc.status),
 		))
 
 	check_project_not_ready_to_close(task_doc, _("edit"))
@@ -892,6 +898,7 @@ def edit_task(
 	frappe.msgprint(message, alert=True, indicator="green")
 
 	return {"message": message}
+
 
 def get_new_task(
 	subject,
@@ -942,7 +949,7 @@ def start_task(task):
 	if task_doc.status != "Open":
 		frappe.throw(_("Cannot start {0} because its status is {1}").format(
 			get_link(task_doc),
-			frappe.bold(task_doc.status)
+			frappe.bold(task_doc.status),
 		))
 
 	check_assigned_to_availability(task_doc.assigned_to, throw=True)
@@ -954,7 +961,7 @@ def start_task(task):
 	task_doc.save(ignore_permissions=True)
 
 	frappe.msgprint(_("{0} started").format(
-		get_link(task_doc)
+		get_link(task_doc),
 	), alert=True, indicator="green")
 
 
@@ -966,13 +973,13 @@ def pause_task(task):
 	if task_doc.status != "Working":
 		frappe.throw(_("Cannot pause {0} because its status is {1}").format(
 			get_link(task_doc),
-			frappe.bold(task_doc.status)
+			frappe.bold(task_doc.status),
 		))
 
 	_pause_task(task_doc, ignore_permissions=True)
 
 	frappe.msgprint(_("{0} paused").format(
-		get_link(task_doc)
+		get_link(task_doc),
 	), alert=True, indicator="green")
 
 
@@ -991,7 +998,7 @@ def resume_task(task):
 	if task_doc.status != "On Hold":
 		frappe.throw(_("Cannot resume {0} because its status is {1}").format(
 			get_link(task_doc),
-			frappe.bold(task_doc.status)
+			frappe.bold(task_doc.status),
 		))
 
 	check_assigned_to_availability(task_doc.assigned_to, throw=True)
@@ -1003,7 +1010,7 @@ def resume_task(task):
 	task_doc.save(ignore_permissions=True)
 
 	frappe.msgprint(_("{0} resumed").format(
-		get_link(task_doc)
+		get_link(task_doc),
 	), alert=True, indicator="green")
 
 
@@ -1015,7 +1022,7 @@ def complete_task(task):
 	if task_doc.status not in ("Working", "On Hold"):
 		frappe.throw(_("Cannot complete {0} because its status is {1}").format(
 			get_link(task_doc),
-			frappe.bold(task_doc.status)
+			frappe.bold(task_doc.status),
 		))
 
 	stop_timesheet_log(task_doc.name, task_doc.assigned_to, completed=1)
@@ -1024,7 +1031,7 @@ def complete_task(task):
 	task_doc.save(ignore_permissions=True)
 
 	frappe.msgprint(_("{0} completed").format(
-		get_link(task_doc)
+		get_link(task_doc),
 	), alert=True, indicator="green")
 
 
@@ -1036,7 +1043,7 @@ def cancel_task(task):
 	if task_doc.status != "Open":
 		frappe.throw(_("Cannot cancel {0} because its status is {1}").format(
 			get_link(task_doc),
-			frappe.bold(task_doc.status)
+			frappe.bold(task_doc.status),
 		))
 
 	task_doc.status = "Cancelled"
@@ -1056,7 +1063,7 @@ def reopen_task(task):
 	if task_doc.status not in ["Completed", "Cancelled"]:
 		frappe.throw(_("Cannot resume {0} because its status is {1}").format(
 			get_link(task_doc),
-			frappe.bold(task_doc.status)
+			frappe.bold(task_doc.status),
 		))
 
 	check_project_not_ready_to_close(task_doc, _("re-open"))
@@ -1069,7 +1076,7 @@ def reopen_task(task):
 	task_doc.save(ignore_permissions=True)
 
 	frappe.msgprint(_("{0} resumed").format(
-		get_link(task_doc)
+		get_link(task_doc),
 	), alert=True, indicator="green")
 
 
@@ -1126,7 +1133,7 @@ def update_task_remarks(task, remarks=None):
 	task_doc.save(ignore_permissions=True)
 
 	frappe.msgprint(_("{0} remarks updated").format(
-		get_link(task_doc)
+		get_link(task_doc),
 	), alert=True, indicator="green")
 
 
@@ -1143,7 +1150,7 @@ def update_task_checklist(task, task_checklist=None):
 	task_doc.save(ignore_permissions=True)
 
 	frappe.msgprint(_("{0} checklist updated").format(
-		get_link(task_doc)
+		get_link(task_doc),
 	), alert=True, indicator="green")
 
 
@@ -1278,7 +1285,7 @@ def check_task_assigned(task_doc, throw=False):
 	if throw:
 		frappe.throw(_("{0} is not set for {0}").format(
 			task_doc.meta.get_label("assigned_to"),
-			get_link(task_doc)
+			get_link(task_doc),
 		))
 
 	return False
@@ -1291,7 +1298,7 @@ def check_assigned_to_availability(employee, throw=False):
 			frappe.throw(_("{0} ({1}) is already working on {2}").format(
 				frappe.bold(frappe.get_cached_value("Employee", employee, "employee_name")),
 				employee,
-				get_link_from_name("Task", working_task)
+				get_link_from_name("Task", working_task),
 			))
 
 		return False
@@ -1309,7 +1316,7 @@ def check_project_not_ready_to_close(task_doc, action_label):
 		frappe.throw(_("Cannot {0} {1} because {2} is Ready to Close").format(
 			action_label,
 			get_link(task_doc),
-			get_link_from_name("Project", task_doc.project)
+			get_link_from_name("Project", task_doc.project),
 		))
 
 
@@ -1317,7 +1324,7 @@ def check_project_set_in_task(task_doc):
 	if not task_doc.project:
 		frappe.throw(_("{0} is not against any {1}").format(
 			get_link(task_doc),
-			_("Project")
+			_("Project"),
 		))
 
 
@@ -1438,12 +1445,12 @@ def get_employee_attendance(employee, date=None):
 		"employee": employee,
 		"attendance_date": date,
 		"status": ["in", ["Present", "Half Day"]],
-		"docstatus": 1
+		"docstatus": 1,
 	})
 
 
 def get_task_status_color(status):
-	return task_status_color_map.get(status, 'black')
+	return task_status_color_map.get(status, "black")
 
 
 def set_hrs_for_running_timelogs(timelogs):

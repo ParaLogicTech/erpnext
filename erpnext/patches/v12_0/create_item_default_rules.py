@@ -1,11 +1,12 @@
 import frappe
 from frappe import scrub
+
 from erpnext import get_default_company
 from erpnext.setup.doctype.item_default_rule.item_default_rule import get_filter_fields
 
 
 def execute():
-	frappe.reload_doc('setup', 'doctype', 'item_default_rule')
+	frappe.reload_doc("setup", "doctype", "item_default_rule")
 
 	rules = {}
 
@@ -15,7 +16,7 @@ def execute():
 		update_rule_value(rules, d.parenttype, d.parent, d)
 
 	# From Item Tax child table
-	item_taxes = frappe.get_all("Item Tax", fields="*", filters={"parenttype": ['in', ['Item', 'Item Group']]},
+	item_taxes = frappe.get_all("Item Tax", fields="*", filters={"parenttype": ["in", ["Item", "Item Group"]]},
 		order_by="idx")
 	for t in item_taxes:
 		add_rule_tax(rules, t.parenttype, t.parent, t)
@@ -46,17 +47,17 @@ def execute():
 		update_rule_value(rules, "Transaction Type", d.name, d)
 
 	# Remove rules with only one value: Income Account set as company default
-	default_income_account = frappe.db.get_value("Company", get_default_company(), 'default_income_account')
+	default_income_account = frappe.db.get_value("Company", get_default_company(), "default_income_account")
 	to_remove = []
 	for rule_name, rule_detail in rules.items():
 		remove = True
 		for k, v in rule_detail.items():
-			if k in get_filter_fields() or k == 'item_default_rule_name':
+			if k in get_filter_fields() or k == "item_default_rule_name":
 				continue
 			if k == "income_account" and v == default_income_account:
 				continue
-			if k == "show_item_code" and rule_detail.get('item_code') and not rule_detail.get('item_group') \
-					and not rule_detail.get('item_source') and not rule_detail.get('brand') and not rule_detail.get('transaction_type'):
+			if k == "show_item_code" and rule_detail.get("item_code") and not rule_detail.get("item_group") \
+					and not rule_detail.get("item_source") and not rule_detail.get("brand") and not rule_detail.get("transaction_type"):
 				continue
 
 			remove = False
@@ -100,14 +101,14 @@ def add_rule_tax(rules, dt, name, tax):
 		rule_name = get_rule_name(dt, name)
 		rule_template = get_rule_template(rule_name, dt, name)
 		rule_dict = rules.setdefault(rule_name, rule_template)
-		rule_tax_list = rule_dict.setdefault('taxes', [])
+		rule_tax_list = rule_dict.setdefault("taxes", [])
 
 		rule_tax_list.append(tax_detail)
 
 
 def get_rule_template(rule_name, dt, name):
 	rule_template = {
-		'item_default_rule_name': rule_name,
+		"item_default_rule_name": rule_name,
 	}
 	if not (dt == "Item Group" and name == "All Item Groups"):
 		filter_fieldname = "item_code" if dt == "Item" else scrub(dt)

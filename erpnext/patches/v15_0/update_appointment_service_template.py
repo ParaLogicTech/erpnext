@@ -10,7 +10,7 @@ def execute():
         fieldname = "project_template"
 
     appointments = frappe.get_all("Appointment", filters={
-        fieldname: ['is', 'set']
+        fieldname: ["is", "set"],
     }, fields=["name", f"{fieldname} as service_template", f"{fieldname}_name as service_template_name"])
 
     for appt in appointments:
@@ -21,7 +21,7 @@ def execute():
                 "service_template_name": appt.service_template_name,
                 "parent": appt.name,
                 "parenttype": "Appointment",
-                "parentfield": "service_templates"
+                "parentfield": "service_templates",
             })
             child.insert(ignore_permissions=True)
 

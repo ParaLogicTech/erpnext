@@ -2,11 +2,11 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
-from frappe.utils import flt, cint, cstr
 from frappe import _
-from frappe.model.mapper import get_mapped_doc
 from frappe.model.document import Document
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cint, cstr, flt
+
 
 class SalaryStructure(Document):
 	def validate(self):
@@ -86,14 +86,14 @@ class SalaryStructure(Document):
 		return employees
 
 	@frappe.whitelist()
-	def assign_salary_structure(self, company=None, grade=None, department=None, designation=None,employee=None,
+	def assign_salary_structure(self, company=None, grade=None, department=None, designation=None, employee=None,
 			from_date=None, base=None, variable=None, income_tax_slab=None):
-		employees = self.get_employees(company= company, grade= grade,department= department,designation= designation,name=employee)
+		employees = self.get_employees(company=company, grade=grade, department=department, designation=designation, name=employee)
 
 		if employees:
 			if len(employees) > 20:
 				frappe.enqueue(assign_salary_structure_for_employees, timeout=600,
-					employees=employees, salary_structure=self,from_date=from_date,
+					employees=employees, salary_structure=self, from_date=from_date,
 					base=base, variable=variable, income_tax_slab=income_tax_slab)
 			else:
 				assign_salary_structure_for_employees(employees, self, from_date=from_date,
@@ -102,20 +102,19 @@ class SalaryStructure(Document):
 			frappe.msgprint(_("No Employee Found"))
 
 
-
 def assign_salary_structure_for_employees(employees, salary_structure, from_date=None, base=None, variable=None, income_tax_slab=None):
 	salary_structures_assignments = []
 	existing_assignments_for = get_existing_assignments(employees, salary_structure, from_date)
-	count=0
+	count = 0
 	for employee in employees:
 		if employee in existing_assignments_for:
 			continue
-		count +=1
+		count += 1
 
 		salary_structures_assignment = create_salary_structures_assignment(employee,
 			salary_structure, from_date, base, variable, income_tax_slab)
 		salary_structures_assignments.append(salary_structures_assignment)
-		frappe.publish_progress(count*100/len(set(employees) - set(existing_assignments_for)), title = _("Assigning Structures..."))
+		frappe.publish_progress(count * 100 / len(set(employees) - set(existing_assignments_for)), title=_("Assigning Structures..."))
 
 	if salary_structures_assignments:
 		frappe.msgprint(_("Structures have been assigned successfully"))
@@ -130,7 +129,7 @@ def create_salary_structures_assignment(employee, salary_structure, from_date, b
 	assignment.base = base
 	assignment.variable = variable
 	assignment.income_tax_slab = income_tax_slab
-	assignment.save(ignore_permissions = True)
+	assignment.save(ignore_permissions=True)
 	assignment.submit()
 	return assignment.name
 
@@ -140,14 +139,15 @@ def get_existing_assignments(employees, salary_structure, from_date):
 		select distinct employee from `tabSalary Structure Assignment`
 		where salary_structure=%s and employee in (%s)
 		and from_date=%s  and company= %s and docstatus=1
-	""" % ('%s', ', '.join(['%s']*len(employees)),'%s', '%s'), [salary_structure.name] + employees+[from_date]+[salary_structure.company])
+	""" % ("%s", ", ".join(["%s"] * len(employees)), "%s", "%s"), [salary_structure.name] + employees + [from_date] + [salary_structure.company])
 	if salary_structures_assignments:
 		frappe.msgprint(_("Skipping Salary Structure Assignment for the following employees, as Salary Structure Assignment records already exists against them. {0}")
 			.format("\n".join(salary_structures_assignments)))
 	return salary_structures_assignments
 
+
 @frappe.whitelist()
-def make_salary_slip(source_name, target_doc = None, employee = None, as_print = False, print_format = None, for_preview=0, ignore_permissions=False):
+def make_salary_slip(source_name, target_doc=None, employee=None, as_print=False, print_format=None, for_preview=0, ignore_permissions=False):
 	def postprocess(source, target):
 		if employee:
 			employee_details = frappe.db.get_value("Employee", employee,
@@ -157,29 +157,29 @@ def make_salary_slip(source_name, target_doc = None, employee = None, as_print =
 			target.branch = employee_details.branch
 			target.designation = employee_details.designation
 			target.department = employee_details.department
-		target.run_method('process_salary_structure', for_preview=for_preview)
+		target.run_method("process_salary_structure", for_preview=for_preview)
 
 	doc = get_mapped_doc("Salary Structure", source_name, {
 		"Salary Structure": {
 			"doctype": "Salary Slip",
 			"field_map": {
 				"total_earning": "gross_pay",
-				"name": "salary_structure"
-			}
-		}
+				"name": "salary_structure",
+			},
+		},
 	}, target_doc, postprocess, ignore_child_tables=True, ignore_permissions=ignore_permissions)
 
 	if cint(as_print):
-		doc.name = 'Preview for {0}'.format(employee)
-		return frappe.get_print(doc.doctype, doc.name, doc = doc, print_format = print_format)
+		doc.name = "Preview for {0}".format(employee)
+		return frappe.get_print(doc.doctype, doc.name, doc=doc, print_format=print_format)
 	else:
 		return doc
 
 
 @frappe.whitelist()
 def get_employees(salary_structure):
-	employees = frappe.get_list('Salary Structure Assignment',
-		filters={'salary_structure': salary_structure, 'docstatus': 1}, fields=['employee'])
+	employees = frappe.get_list("Salary Structure Assignment",
+		filters={"salary_structure": salary_structure, "docstatus": 1}, fields=["employee"])
 
 	if not employees:
 		frappe.throw(_("There's no Employee with Salary Structure: {0}. \

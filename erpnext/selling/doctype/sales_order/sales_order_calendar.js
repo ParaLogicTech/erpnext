@@ -7,7 +7,7 @@ frappe.views.calendar["Sales Order"] = {
 		"end": "delivery_date",
 		"id": "name",
 		"title": "customer_name",
-		"allDay": "allDay"
+		"allDay": "allDay",
 	},
 	gantt: true,
 	filters: [
@@ -15,33 +15,33 @@ frappe.views.calendar["Sales Order"] = {
 			"fieldtype": "Link",
 			"fieldname": "customer",
 			"options": "Customer",
-			"label": __("Customer")
+			"label": __("Customer"),
 		},
 		{
 			"fieldtype": "Select",
 			"fieldname": "delivery_status",
 			"options": "\nNot Applicable\To Deliver\nDelivered",
-			"label": __("Delivery Status")
+			"label": __("Delivery Status"),
 		},
 		{
 			"fieldtype": "Select",
 			"fieldname": "billing_status",
 			"options": "Not Applicable\nTo Bill\nBilled",
-			"label": __("Billing Status")
+			"label": __("Billing Status"),
 		},
 	],
 	get_events_method: "erpnext.selling.doctype.sales_order.sales_order.get_events",
 	get_css_class: function(data) {
-		if (data.status=="Closed") {
+		if (data.status == "Closed") {
 			return "success";
-		} else if(data.delivery_status == "To Deliver") {
+		} else if (data.delivery_status == "To Deliver") {
 			if (data.per_delivered) {
 				return "warning";
 			} else {
-				return "danger"
+				return "danger";
 			}
 		} else if (data.delivery_status == "Delivered") {
 			return "success";
 		}
-	}
-}
+	},
+};

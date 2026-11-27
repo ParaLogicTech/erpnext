@@ -8,19 +8,19 @@ from frappe.utils import cint
 
 def boot_session(bootinfo):
 	"""boot session - send website info if guest"""
-	if frappe.session['user'] != 'Guest':
+	if frappe.session["user"] != "Guest":
 		update_page_info(bootinfo)
 
 		load_country_and_currency(bootinfo)
-		bootinfo.sysdefaults.territory = frappe.db.get_single_value('Selling Settings', 'territory')
-		bootinfo.sysdefaults.customer_group = frappe.db.get_single_value('Selling Settings','customer_group')
-		bootinfo.sysdefaults.allow_stale = cint(frappe.db.get_single_value('Accounts Settings', 'allow_stale'))
-		bootinfo.sysdefaults.quotation_valid_till = cint(frappe.db.get_single_value('Selling Settings', 'default_valid_till'))
+		bootinfo.sysdefaults.territory = frappe.db.get_single_value("Selling Settings", "territory")
+		bootinfo.sysdefaults.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group")
+		bootinfo.sysdefaults.allow_stale = cint(frappe.db.get_single_value("Accounts Settings", "allow_stale"))
+		bootinfo.sysdefaults.quotation_valid_till = cint(frappe.db.get_single_value("Selling Settings", "default_valid_till"))
 
 		# if no company, show a dialog box to create a new company
 		bootinfo.customer_count = frappe.db.sql("""SELECT count(*) FROM `tabCustomer`""")[0][0]
 		if not bootinfo.customer_count:
-			bootinfo.setup_complete = frappe.db.sql("SELECT `name` FROM `tabCompany` LIMIT 1") and 'Yes' or 'No'
+			bootinfo.setup_complete = (frappe.db.sql("SELECT `name` FROM `tabCompany` LIMIT 1") and "Yes") or "No"
 
 		bootinfo.docs += frappe.db.sql("""
 			select
@@ -84,38 +84,38 @@ def update_page_info(bootinfo):
 	bootinfo.page_info.update({
 		"Chart of Accounts": {
 			"title": "Chart of Accounts",
-			"route": "Tree/Account"
+			"route": "Tree/Account",
 		},
 		"Chart of Cost Centers": {
 			"title": "Chart of Cost Centers",
-			"route": "Tree/Cost Center"
+			"route": "Tree/Cost Center",
 		},
 		"Item Group Tree": {
 			"title": "Item Group Tree",
-			"route": "Tree/Item Group"
+			"route": "Tree/Item Group",
 		},
 		"Customer Group Tree": {
 			"title": "Customer Group Tree",
-			"route": "Tree/Customer Group"
+			"route": "Tree/Customer Group",
 		},
 		"Supplier Group Tree": {
 			"title": "Supplier Group Tree",
-			"route": "Tree/Supplier Group"
+			"route": "Tree/Supplier Group",
 		},
 		"Territory Tree": {
 			"title": "Territory Tree",
-			"route": "Tree/Territory"
+			"route": "Tree/Territory",
 		},
 		"Warehouse Tree": {
 			"title": "Warehouse Tree",
-			"route": "Tree/Warehouse"
+			"route": "Tree/Warehouse",
 		},
 		"Department Tree": {
 			"title": "Department Tree",
-			"route": "Tree/Department"
+			"route": "Tree/Department",
 		},
 		"Location Tree": {
 			"title": "Department Tree",
-			"route": "Tree/Location"
+			"route": "Tree/Location",
 		},
 	})

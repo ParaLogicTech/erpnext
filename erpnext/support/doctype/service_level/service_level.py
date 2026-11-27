@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
+
+from datetime import datetime
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from datetime import datetime
 from frappe.utils import get_weekdays
+
 
 class ServiceLevel(Document):
 
@@ -81,6 +82,7 @@ class ServiceLevel(Document):
 		if not len(set(support_days)) == len(support_days):
 			repeated_days = get_repeated(support_days)
 			frappe.throw(_("Workday {0} has been repeated.".format(repeated_days)))
+
 
 def get_repeated(values):
 	unique_list = []

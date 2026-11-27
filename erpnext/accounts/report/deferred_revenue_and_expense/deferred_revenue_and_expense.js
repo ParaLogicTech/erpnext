@@ -18,20 +18,20 @@ function get_filters() {
 			options: ["Fiscal Year"],
 			default: ["Fiscal Year"],
 			reqd: 1,
-			on_change: function () {
+			on_change: function() {
 				let filter_based_on = frappe.query_report.get_filter_value("filter_based_on");
 				frappe.query_report.toggle_filter_display(
 					"from_fiscal_year",
-					filter_based_on === "Date Range"
+					filter_based_on === "Date Range",
 				);
 				frappe.query_report.toggle_filter_display("to_fiscal_year", filter_based_on === "Date Range");
 				frappe.query_report.toggle_filter_display(
 					"period_start_date",
-					filter_based_on === "Fiscal Year"
+					filter_based_on === "Fiscal Year",
 				);
 				frappe.query_report.toggle_filter_display(
 					"period_end_date",
-					filter_based_on === "Fiscal Year"
+					filter_based_on === "Fiscal Year",
 				);
 
 				frappe.query_report.refresh();
@@ -72,10 +72,10 @@ function get_filters() {
 			label: __("Periodicity"),
 			fieldtype: "Select",
 			options: [
-				{ value: "Monthly", label: __("Monthly") },
-				{ value: "Quarterly", label: __("Quarterly") },
-				{ value: "Half-Yearly", label: __("Half-Yearly") },
-				{ value: "Yearly", label: __("Yearly") },
+				{value: "Monthly", label: __("Monthly")},
+				{value: "Quarterly", label: __("Quarterly")},
+				{value: "Half-Yearly", label: __("Half-Yearly")},
+				{value: "Yearly", label: __("Yearly")},
 			],
 			default: "Monthly",
 			reqd: 1,
@@ -85,12 +85,12 @@ function get_filters() {
 			label: __("Invoice Type"),
 			fieldtype: "Select",
 			options: [
-				{ value: "Revenue", label: __("Revenue") },
-				{ value: "Expense", label: __("Expense") },
+				{value: "Revenue", label: __("Revenue")},
+				{value: "Expense", label: __("Expense")},
 			],
 			default: "Revenue",
 			reqd: 1,
-		}
+		},
 	];
 
 	return filters;
@@ -98,13 +98,13 @@ function get_filters() {
 
 frappe.query_reports["Deferred Revenue and Expense"] = {
 	filters: get_filters(),
-	formatter: function (value, row, column, data, default_formatter) {
+	formatter: function(value, row, column, data, default_formatter) {
 		return default_formatter(value, row, column, data);
 	},
-	onload: function (report) {
+	onload: function(report) {
 		let fiscal_year = frappe.sys_defaults.fiscal_year;
 
-		frappe.model.with_doc("Fiscal Year", fiscal_year, function (r) {
+		frappe.model.with_doc("Fiscal Year", fiscal_year, function(r) {
 			var fy = frappe.model.get_doc("Fiscal Year", fiscal_year);
 			frappe.query_report.set_filter_value({
 				period_start_date: fy.year_start_date,

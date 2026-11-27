@@ -1,7 +1,8 @@
 # import frappe
-from frappe.utils import getdate
 from crm.crm.doctype.appointment_type.appointment_type import AppointmentType
-from erpnext.hr.doctype.holiday_list.holiday_list import get_default_holiday_list, is_holiday, get_holiday_dates_between
+from frappe.utils import getdate
+
+from erpnext.hr.doctype.holiday_list.holiday_list import get_default_holiday_list, get_holiday_dates_between, is_holiday
 
 
 class AppointmentTypeERP(AppointmentType):

@@ -7,7 +7,7 @@ const lc_details_group_by_options = [
 	{label: __("Group by ") + __("Item"), value: "Group by Item"},
 	{label: __("Group by ") + __("Item Group"), value: "Group by Item Group"},
 	{label: __("Group by ") + __("Brand"), value: "Group by Brand"},
-]
+];
 
 frappe.query_reports["Landed Cost Details"] = {
 	filters: [
@@ -17,7 +17,7 @@ frappe.query_reports["Landed Cost Details"] = {
 			fieldtype: "Link",
 			options: "Company",
 			default: frappe.defaults.get_user_default("Company"),
-			bold: 1
+			bold: 1,
 		},
 		{
 			fieldname: "qty_field",
@@ -25,21 +25,21 @@ frappe.query_reports["Landed Cost Details"] = {
 			fieldtype: "Select",
 			options: ["Stock Qty", "Contents Qty", "Transaction Qty"],
 			default: "Stock Qty",
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "from_date",
 			label: __("From Date"),
 			fieldtype: "Date",
 			default: frappe.datetime.add_months(frappe.datetime.get_today(), -1),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "to_date",
 			label: __("To Date"),
 			fieldtype: "Date",
 			default: frappe.datetime.get_today(),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "name",
@@ -50,27 +50,27 @@ frappe.query_reports["Landed Cost Details"] = {
 				return {
 					filters: {
 						docstatus: 1,
-					}
-				}
-			}
+					},
+				};
+			},
 		},
 		{
 			fieldname: "letter_of_credit",
 			label: __("Letter of Credit"),
 			fieldtype: "Link",
-			options: "Letter of Credit"
+			options: "Letter of Credit",
 		},
 		{
 			fieldname: "supplier",
 			label: __("Supplier"),
 			fieldtype: "Link",
-			options: "Supplier"
+			options: "Supplier",
 		},
 		{
 			fieldname: "supplier_group",
 			label: __("Supplier Group"),
 			fieldtype: "Link",
-			options: "Supplier Group"
+			options: "Supplier Group",
 		},
 		{
 			fieldname: "item_code",
@@ -80,27 +80,27 @@ frappe.query_reports["Landed Cost Details"] = {
 			get_query: function() {
 				return {
 					query: "erpnext.controllers.queries.item_query",
-					filters: {'include_disabled': 1}
-				}
+					filters: {"include_disabled": 1},
+				};
 			},
 		},
 		{
 			fieldname: "item_group",
 			label: __("Item Group"),
 			fieldtype: "Link",
-			options: "Item Group"
+			options: "Item Group",
 		},
 		{
 			fieldname: "brand",
 			label: __("Brand"),
 			fieldtype: "Link",
-			options: "Brand"
+			options: "Brand",
 		},
 		{
 			fieldname: "transaction_type",
 			label: __("Transaction Type"),
 			fieldtype: "Link",
-			options: "Transaction Type"
+			options: "Transaction Type",
 		},
 		{
 			fieldname: "warehouse",
@@ -109,8 +109,8 @@ frappe.query_reports["Landed Cost Details"] = {
 			options: "Warehouse",
 			get_query: function() {
 				return {
-					filters: {'company': frappe.query_report.get_filter_value("company")}
-				}
+					filters: {"company": frappe.query_report.get_filter_value("company")},
+				};
 			},
 		},
 		{
@@ -119,7 +119,7 @@ frappe.query_reports["Landed Cost Details"] = {
 			fieldtype: "Link",
 			options: "Cost Center",
 			get_query: () => {
-				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+				return {filters: {company: frappe.query_report.get_filter_value("company")}};
 			},
 		},
 		{
@@ -139,27 +139,27 @@ frappe.query_reports["Landed Cost Details"] = {
 			label: __("Group By Level 1"),
 			fieldtype: "Select",
 			options: lc_details_group_by_options,
-			default: ""
+			default: "",
 		},
 		{
 			fieldname: "group_by_2",
 			label: __("Group By Level 2"),
 			fieldtype: "Select",
 			options: lc_details_group_by_options,
-			default: ""
+			default: "",
 		},
 		{
 			fieldname: "group_by_3",
 			label: __("Group By Level 3"),
 			fieldtype: "Select",
 			options: lc_details_group_by_options,
-			default: ""
+			default: "",
 		},
 		{
 			fieldname: "group_same_items",
 			label: __("Group Same Items"),
 			fieldtype: "Check",
-			default: 1
+			default: 1,
 		},
 		{
 			fieldname: "totals_only",
@@ -171,36 +171,36 @@ frappe.query_reports["Landed Cost Details"] = {
 	formatter: function(value, row, column, data, default_formatter) {
 		let style = {};
 
-		if (['qty', 'net_amount', 'base_net_amount', 'taxes_in_valuation', 'taxes_not_in_valuation'].includes(column.fieldname)) {
+		if (["qty", "net_amount", "base_net_amount", "taxes_in_valuation", "taxes_not_in_valuation"].includes(column.fieldname)) {
 			if (flt(value) < 0) {
-				style['color'] = 'red';
+				style["color"] = "red";
 			}
 		}
 
-		if (['debit_note_amount'].includes(column.fieldname)) {
+		if (["debit_note_amount"].includes(column.fieldname)) {
 			if (flt(value)) {
-				style['color'] = 'var(--green-800)';
+				style["color"] = "var(--green-800)";
 			}
 		}
 
-		if (['taxes_not_in_valuation'].includes(column.fieldname)) {
+		if (["taxes_not_in_valuation"].includes(column.fieldname)) {
 			if (flt(value)) {
-				style['color'] = 'var(--blue-800)';
+				style["color"] = "var(--blue-800)";
 			}
 		}
 
-		if (['taxes_in_valuation'].includes(column.fieldname)) {
+		if (["taxes_in_valuation"].includes(column.fieldname)) {
 			if (flt(value)) {
-				style['color'] = 'var(--orange-800)';
+				style["color"] = "var(--orange-800)";
 			}
 		}
 
-		if (['total_landed_cost', 'landed_cost_rate'].includes(column.fieldname)) {
-			style['font-weight'] = 'bold';
+		if (["total_landed_cost", "landed_cost_rate"].includes(column.fieldname)) {
+			style["font-weight"] = "bold";
 		}
 
 		return default_formatter(value, row, column, data, {css: style});
 	},
 
-	initial_depth: 1
-}
+	initial_depth: 1,
+};

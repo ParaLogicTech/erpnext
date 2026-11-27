@@ -3,13 +3,16 @@
 
 import frappe
 from frappe import _
+
 from erpnext.accounts.utils import get_balance_on
+
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
 	columns = get_columns(filters)
 	data = get_data(filters)
 	return columns, data
+
 
 def get_columns(filters):
 	columns = [
@@ -18,7 +21,7 @@ def get_columns(filters):
 			"fieldtype": "Link",
 			"fieldname": "account",
 			"options": "Account",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Currency"),
@@ -26,18 +29,19 @@ def get_columns(filters):
 			"fieldname": "currency",
 			"options": "Currency",
 			"hidden": 1,
-			"width": 50
+			"width": 50,
 		},
 		{
 			"label": _("Balance"),
 			"fieldtype": "Currency",
 			"fieldname": "balance",
 			"options": "currency",
-			"width": 100
-		}
+			"width": 100,
+		},
 	]
 
 	return columns
+
 
 def get_conditions(filters):
 	conditions = {}
@@ -53,6 +57,7 @@ def get_conditions(filters):
 		conditions["root_type"] = filters.root_type
 
 	return conditions
+
 
 def get_data(filters):
 

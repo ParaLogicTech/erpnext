@@ -1,8 +1,6 @@
 // Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-/* global frappe, refresh_field */
-
 frappe.ui.form.on("Supplier Scorecard", {
 	refresh: function(frm) {
 		if (frm.doc.indicator_color !== "")	{
@@ -20,7 +18,7 @@ frappe.ui.form.on("Supplier Scorecard", {
 		frappe.call({
 			method: "erpnext.buying.doctype.supplier_scorecard_criteria.supplier_scorecard_criteria.get_criteria_list",
 			callback: function(r) {
-				frm.set_value('criteria', []);
+				frm.set_value("criteria", []);
 				for (var i = 0; i < r.message.length; i++)
 				{
 					var row = frm.add_child("criteria");
@@ -28,9 +26,9 @@ frappe.ui.form.on("Supplier Scorecard", {
 					frm.script_manager.trigger("criteria_name", row.doctype, row.name);
 				}
 				refresh_field("criteria");
-			}
+			},
 		});
-	}
+	},
 
 });
 
@@ -43,11 +41,11 @@ frappe.ui.form.on("Supplier Scorecard Scoring Standing", {
 				method: "erpnext.buying.doctype.supplier_scorecard_standing.supplier_scorecard_standing.get_scoring_standing",
 				child: d,
 				args: {
-					standing_name: d.standing_name
-				}
+					standing_name: d.standing_name,
+				},
 			});
 		}
-	}
+	},
 });
 
 frappe.ui.form.on("Supplier Scorecard Scoring Criteria", {
@@ -60,17 +58,17 @@ frappe.ui.form.on("Supplier Scorecard Scoring Criteria", {
 				args: {
 					fieldname: "weight",
 					doctype: "Supplier Scorecard Criteria",
-					filters: {name: d.criteria_name}
+					filters: {name: d.criteria_name},
 				},
 				callback: function(r) {
-					if(r.message){
+					if (r.message) {
 						d.weight = r.message.weight;
-						frm.refresh_field('criteria', 'weight');
+						frm.refresh_field("criteria", "weight");
 					}
-				}
+				},
 			});
 		}
-	}
+	},
 });
 
 var loadAllStandings = function(frm) {
@@ -79,7 +77,7 @@ var loadAllStandings = function(frm) {
 		callback: function(r) {
 			for (var j = 0; j < frm.doc.standings.length; j++)
 			{
-				if(!frm.doc.standings[j].hasOwnProperty("standing_name")) {
+				if (!Object.hasOwn(frm.doc.standings[j], "standing_name")) {
 					frm.get_field("standings").grid.grid_rows[j].remove();
 				}
 			}
@@ -90,8 +88,6 @@ var loadAllStandings = function(frm) {
 				frm.script_manager.trigger("standing_name", new_row.doctype, new_row.name);
 			}
 			refresh_field("standings");
-		}
+		},
 	});
 };
-
-

@@ -1,7 +1,7 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
-frappe.provide('erpnext.projects');
+frappe.provide("erpnext.projects");
 
 erpnext.projects.ProjectController = class ProjectController extends crm.QuickContacts {
 	setup() {
@@ -32,27 +32,27 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	setup_queries() {
 		let me = this;
 
-		me.frm.set_query('customer', 'erpnext.controllers.queries.customer_query');
-		me.frm.set_query('bill_to', 'erpnext.controllers.queries.customer_query');
+		me.frm.set_query("customer", "erpnext.controllers.queries.customer_query");
+		me.frm.set_query("bill_to", "erpnext.controllers.queries.customer_query");
 
-		me.frm.set_query('contact_person', (doc) => {
+		me.frm.set_query("contact_person", (doc) => {
 			me.set_dynamic_link();
 			return erpnext.queries.contact_query(doc);
 		});
-		me.frm.set_query('secondary_contact_person', (doc) => {
+		me.frm.set_query("secondary_contact_person", (doc) => {
 			me.set_dynamic_link();
 			return erpnext.queries.contact_query(doc);
 		});
-		me.frm.set_query('billing_contact_person', (doc) => {
+		me.frm.set_query("billing_contact_person", (doc) => {
 			me.set_dynamic_link("bill_to");
 			return erpnext.queries.contact_query(doc);
 		});
 
-		me.frm.set_query('customer_address', (doc) => {
+		me.frm.set_query("customer_address", (doc) => {
 			me.set_dynamic_link();
 			return erpnext.queries.address_query(doc);
 		});
-		me.frm.set_query('billing_address', (doc) => {
+		me.frm.set_query("billing_address", (doc) => {
 			me.set_dynamic_link("bill_to");
 			return erpnext.queries.address_query(doc);
 		});
@@ -61,15 +61,15 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			me.frm.set_query("insurance_company", function() {
 				return {
 					query: "erpnext.controllers.queries.customer_query",
-					filters: {is_insurance_company: 1}
+					filters: {is_insurance_company: 1},
 				};
 			});
 		}
 
 		// sales order
-		me.frm.set_query('sales_order', function () {
+		me.frm.set_query("sales_order", function() {
 			let filters = {
-				'project': ["in", me.frm.doc.__islocal ? [""] : [me.frm.doc.name, ""]]
+				"project": ["in", me.frm.doc.__islocal ? [""] : [me.frm.doc.name, ""]],
 			};
 
 			if (me.frm.doc.customer) {
@@ -77,18 +77,18 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			}
 
 			return {
-				filters: filters
+				filters: filters,
 			};
 		});
 
 		// depreciation item
-		me.frm.set_query('depreciation_item_code', 'non_standard_depreciation', () => erpnext.queries.item());
-		me.frm.set_query('underinsurance_item_code', 'non_standard_underinsurance', () => erpnext.queries.item());
+		me.frm.set_query("depreciation_item_code", "non_standard_depreciation", () => erpnext.queries.item());
+		me.frm.set_query("underinsurance_item_code", "non_standard_underinsurance", () => erpnext.queries.item());
 
 		me.frm.set_query("service_template", "service_templates",
 			() => erpnext.queries.service_template(me.frm.doc.applies_to_item));
 
-		me.frm.set_query('service_advisor', () => {
+		me.frm.set_query("service_advisor", () => {
 			let filters = {is_service_advisor: 1};
 			if (this.frm.doc.branch) {
 				filters["branch"] = ["in", [this.frm.doc.branch, ""]];
@@ -96,15 +96,15 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 			return {
 				filters: filters,
-			}
+			};
 		});
 
 		me.frm.set_query("cost_center", () => {
 			return {
 				filters: {
 					company: me.frm.doc.company,
-					is_group: 0
-				}
+					is_group: 0,
+				},
 			};
 		});
 
@@ -115,7 +115,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 	set_dynamic_link(customer_field) {
 		customer_field = customer_field || "customer";
-		frappe.dynamic_link = {doc: this.frm.doc, fieldname: customer_field, doctype: 'Customer'};
+		frappe.dynamic_link = {doc: this.frm.doc, fieldname: customer_field, doctype: "Customer"};
 	}
 
 	setup_route_options() {
@@ -123,18 +123,18 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 		let sales_order_field = me.frm.get_docfield("sales_order");
 		if (sales_order_field) {
-			sales_order_field.get_route_options_for_new_doc = function () {
+			sales_order_field.get_route_options_for_new_doc = function() {
 				if (me.frm.is_new()) return;
 				return {
 					"customer": me.frm.doc.customer,
-					"project": me.frm.doc.name
+					"project": me.frm.doc.name,
 				};
 			};
 		}
 	}
 
 	setup_naming_series() {
-		if (frappe.defaults.get_default("project_naming_by")!="Naming Series") {
+		if (frappe.defaults.get_default("project_naming_by") != "Naming Series") {
 			this.frm.toggle_display("naming_series", false);
 		} else {
 			erpnext.toggle_naming_series();
@@ -145,24 +145,24 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let me = this;
 
 		me.frm.custom_make_buttons = {
-			'Quotation': 'Quotation',
-			'Sales Order': 'Sales Order',
-			'Delivery Note': 'Delivery Note',
-			'Sales Invoice': 'Sales Invoice',
-			'Proforma Invoice': 'Proforma Invoice',
-			'Material Request': 'Consumables Request',
-			'Stock Entry': 'Consumables Issue',
-			'Payment Entry': 'Advance Payment',
-			'Payment Request': 'Advance Payment Request',
-			'Task': 'Create Custom Task',
+			"Quotation": "Quotation",
+			"Sales Order": "Sales Order",
+			"Delivery Note": "Delivery Note",
+			"Sales Invoice": "Sales Invoice",
+			"Proforma Invoice": "Proforma Invoice",
+			"Material Request": "Consumables Request",
+			"Stock Entry": "Consumables Issue",
+			"Payment Entry": "Advance Payment",
+			"Payment Request": "Advance Payment Request",
+			"Task": "Create Custom Task",
 		};
 
 		let make_method_doctypes = [
-			'Maintenance Visit', 'Warranty Claim', 'Quality Inspection', 'Timesheet',
+			"Maintenance Visit", "Warranty Claim", "Quality Inspection", "Timesheet",
 		];
 
 		me.frm.make_methods = {};
-		$.each(make_method_doctypes, function (i, dt) {
+		$.each(make_method_doctypes, function(i, dt) {
 			me.frm.make_methods[dt] = () => me.open_form(dt);
 		});
 	}
@@ -171,36 +171,36 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let me = this;
 
 		if (me.frm.doc.status == "Draft" && !this.frm.doc.__onload?.cant_change_fields?.["customer"]) {
-			me.frm.add_custom_button(__('Select Appointment'), () => {
+			me.frm.add_custom_button(__("Select Appointment"), () => {
 				me.select_appointment();
 			});
 		}
 
 		if (!me.frm.is_new()) {
 			// Set Status
-			if (!me.frm.doc.ready_to_close && !['Cancelled', 'Closed'].includes(me.frm.doc.status)) {
-				me.frm.add_custom_button(__('Ready To Close'), () => {
+			if (!me.frm.doc.ready_to_close && !["Cancelled", "Closed"].includes(me.frm.doc.status)) {
+				me.frm.add_custom_button(__("Ready To Close"), () => {
 					me.set_project_ready_to_close();
-				}, __('Status'));
+				}, __("Status"));
 			}
 
 			if (me.frm.doc.__onload && me.frm.doc.__onload.valid_manual_project_status_names) {
-				$.each(me.frm.doc.__onload.valid_manual_project_status_names || [], function (i, project_status) {
+				$.each(me.frm.doc.__onload.valid_manual_project_status_names || [], function(i, project_status) {
 					if (me.frm.doc.project_status != project_status) {
 						me.frm.add_custom_button(__(project_status), () => {
 							me.set_project_status(project_status);
-						}, __('Status'));
+						}, __("Status"));
 					}
 				});
 			}
 
 			if (
-				!['Open', 'Draft'].includes(me.frm.doc.status)
+				!["Open", "Draft"].includes(me.frm.doc.status)
 				|| (me.frm.doc.__onload && me.frm.doc.__onload.is_manual_project_status)
 			) {
-				me.frm.add_custom_button(__('Re-Open / Reset Status'), () => {
+				me.frm.add_custom_button(__("Re-Open / Reset Status"), () => {
 					me.reopen_project(false);
-				}, __('Status'));
+				}, __("Status"));
 			}
 
 			// Task Buttons
@@ -335,20 +335,20 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 		let status_items = [
 			{
-				contents: __('Tasks Status: {0}{1}', [me.frm.doc.tasks_status, task_count]),
-				indicator: tasks_status_color
+				contents: __("Tasks Status: {0}{1}", [me.frm.doc.tasks_status, task_count]),
+				indicator: tasks_status_color,
 			},
 			{
-				contents: __('Material Status: {0}', [me.frm.doc.delivery_status]),
-				indicator: delivery_status_color
+				contents: __("Material Status: {0}", [me.frm.doc.delivery_status]),
+				indicator: delivery_status_color,
 			},
 			{
-				contents: __('Procurement Status: {0}', [me.frm.doc.procurement_status]),
-				indicator: procurement_status_color
+				contents: __("Procurement Status: {0}", [me.frm.doc.procurement_status]),
+				indicator: procurement_status_color,
 			},
 			{
-				contents: __('Ready To Close: {0}', [me.frm.doc.ready_to_close ? __("Yes") : __("No")]),
-				indicator: me.frm.doc.ready_to_close ? 'green' : 'orange'
+				contents: __("Ready To Close: {0}", [me.frm.doc.ready_to_close ? __("Yes") : __("No")]),
+				indicator: me.frm.doc.ready_to_close ? "green" : "orange",
 			},
 		];
 
@@ -371,73 +371,73 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let billed_amount_color;
 		if (me.frm.doc.total_billed_amount) {
 			if (me.frm.doc.total_billed_amount < me.frm.doc.total_billable_amount) {
-				billed_amount_color = 'yellow';
+				billed_amount_color = "yellow";
 			} else if (me.frm.doc.total_billed_amount > me.frm.doc.total_billable_amount) {
-				billed_amount_color = 'purple';
+				billed_amount_color = "purple";
 			} else {
-				billed_amount_color = 'green';
+				billed_amount_color = "green";
 			}
 		} else {
 			if (me.frm.doc.total_billable_amount) {
-				billed_amount_color = 'orange';
+				billed_amount_color = "orange";
 			} else {
-				billed_amount_color = 'light-gray';
+				billed_amount_color = "light-gray";
 			}
 		}
 
 		let billing_items = [
 			{
-				contents: __('Billing Status: {0}', [me.frm.doc.billing_status]),
-				indicator: billing_status_color
+				contents: __("Billing Status: {0}", [me.frm.doc.billing_status]),
+				indicator: billing_status_color,
 			},
-		]
+		];
 
 		if (me.frm.fields_dict.total_billable_amount && me.frm.fields_dict.total_billable_amount.disp_status != "None") {
 			billing_items.push({
-				contents: __('Total Billable: {0}', [format_currency(me.frm.doc.total_billable_amount, company_currency)]),
-				indicator: total_billable_color
+				contents: __("Total Billable: {0}", [format_currency(me.frm.doc.total_billable_amount, company_currency)]),
+				indicator: total_billable_color,
 			});
 		}
 
 		if (me.frm.fields_dict.customer_billable_amount && me.frm.fields_dict.customer_billable_amount.disp_status != "None") {
 			billing_items.push({
-				contents: __('Customer Billable: {0}', [format_currency(me.frm.doc.customer_billable_amount, company_currency)]),
-				indicator: customer_billable_color
+				contents: __("Customer Billable: {0}", [format_currency(me.frm.doc.customer_billable_amount, company_currency)]),
+				indicator: customer_billable_color,
 			});
 		}
 
 		if (me.frm.fields_dict.advance_received_amount && me.frm.fields_dict.advance_received_amount.disp_status != "None") {
 			billing_items.push({
-				contents: __('Advance Received: {0}', [format_currency(me.frm.doc.advance_received_amount, company_currency)]),
+				contents: __("Advance Received: {0}", [format_currency(me.frm.doc.advance_received_amount, company_currency)]),
 				indicator: advance_received_color,
 			});
 		}
 
 		if (me.frm.fields_dict.total_billed_amount && me.frm.fields_dict.total_billed_amount.disp_status != "None") {
 			billing_items.push({
-				contents: __('Billed Amount: {0}', [format_currency(me.frm.doc.total_billed_amount, company_currency)]),
-				indicator: billed_amount_color
+				contents: __("Billed Amount: {0}", [format_currency(me.frm.doc.total_billed_amount, company_currency)]),
+				indicator: billed_amount_color,
 			});
 		}
 
 		if (me.frm.doc.total_discount_amount && me.frm.fields_dict.total_discount_amount && me.frm.fields_dict.total_discount_amount.disp_status != "None") {
 			billing_items.push({
-				contents: __('Discount Amount: {0}', [format_currency(me.frm.doc.total_discount_amount, company_currency)]),
-				indicator: "purple"
+				contents: __("Discount Amount: {0}", [format_currency(me.frm.doc.total_discount_amount, company_currency)]),
+				indicator: "purple",
 			});
 		}
 
 		// Notification Status for Ready for Collection
-		let ready_to_close_notification_count = frappe.get_notification_count(me.frm, 'Ready to Close');
+		let ready_to_close_notification_count = frappe.get_notification_count(me.frm, "Ready to Close");
 		let ready_to_close_notification_color = ready_to_close_notification_count ? "green" : "light-gray";
-		let ready_to_close_confirmation_status = frappe.get_notification_count_str(me.frm, 'Ready to Close');
+		let ready_to_close_confirmation_status = frappe.get_notification_count_str(me.frm, "Ready to Close");
 
 		let notification_items = [
 			{
-				contents: __('Ready to Close: {0}', [ready_to_close_confirmation_status]),
-				indicator: ready_to_close_notification_color
+				contents: __("Ready to Close: {0}", [ready_to_close_confirmation_status]),
+				indicator: ready_to_close_notification_color,
 			},
-		]
+		];
 
 
 		me.extend_dashboard_items(status_items, billing_items);
@@ -450,9 +450,9 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 	extend_dashboard_items(status_items, billing_items) { }
 
 	add_indicator_section(title, items) {
-		let items_html = '';
-		$.each(items || [], function (i, d) {
-			items_html += `<span class="indicator ${d.indicator}">${d.contents}</span>`
+		let items_html = "";
+		$.each(items || [], function(i, d) {
+			items_html += `<span class="indicator ${d.indicator}">${d.contents}</span>`;
 		});
 
 		let html = $(`<div class="flex-column col-sm-4 col-md-4">
@@ -462,13 +462,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 		html.appendTo(this.frm.dashboard.stats_area_row);
 
-		return html
+		return html;
 	}
 
 	set_cant_change_read_only() {
 		const cant_change_fields = (this.frm.doc.__onload && this.frm.doc.__onload.cant_change_fields) || {};
 		$.each(cant_change_fields, (fieldname, cant_change) => {
-			this.frm.set_df_property(fieldname, 'read_only', cant_change ? 1 : 0);
+			this.frm.set_df_property(fieldname, "read_only", cant_change ? 1 : 0);
 		});
 	}
 
@@ -476,8 +476,8 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let me = this;
 
 		me.frm.check_if_unsaved();
-		frappe.confirm(__('Set status as <b>{0}</b>?', [project_status]), () => {
-			frappe.xcall('erpnext.projects.doctype.project.project.set_project_status',
+		frappe.confirm(__("Set status as <b>{0}</b>?", [project_status]), () => {
+			frappe.xcall("erpnext.projects.doctype.project.project.set_project_status",
 				{project: me.frm.doc.name, project_status: project_status}).then(() => me.frm.reload_doc());
 		});
 	}
@@ -486,8 +486,8 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let me = this;
 
 		me.frm.check_if_unsaved();
-		frappe.confirm(__('Are you sure you want to mark this Project as <b>Ready To Close</b>?'), () => {
-			frappe.xcall('erpnext.projects.doctype.project.project.set_project_ready_to_close',
+		frappe.confirm(__("Are you sure you want to mark this Project as <b>Ready To Close</b>?"), () => {
+			frappe.xcall("erpnext.projects.doctype.project.project.set_project_ready_to_close",
 				{project: me.frm.doc.name}).then(() => me.frm.reload_doc());
 		});
 	}
@@ -496,8 +496,8 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let me = this;
 
 		me.frm.check_if_unsaved();
-		frappe.confirm(__('Are you sure you want to <b>Re-Open</b> this Project?'), () => {
-			frappe.xcall('erpnext.projects.doctype.project.project.reopen_project_status',
+		frappe.confirm(__("Are you sure you want to <b>Re-Open</b> this Project?"), () => {
+			frappe.xcall("erpnext.projects.doctype.project.project.reopen_project_status",
 				{project: me.frm.doc.name}).then(() => me.frm.reload_doc());
 		});
 	}
@@ -517,16 +517,16 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					company: me.frm.doc.company,
 					customer: me.frm.doc.customer,
 					bill_to: me.frm.doc.bill_to,
-				}
+				},
 			},
-			callback: function (r) {
+			callback: function(r) {
 				if (r.message && !r.exc) {
 					frappe.run_serially([
 						() => me.frm.set_value(r.message),
 						() => me.setup_contact_no_fields(r.message.contact_nos),
 					]);
 				}
-			}
+			},
 		});
 	}
 
@@ -545,15 +545,15 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					company: me.frm.doc.company,
 					customer: me.frm.doc.customer,
 					bill_to: me.frm.doc.bill_to,
-				}
+				},
 			},
-			callback: function (r) {
+			callback: function(r) {
 				if (r.message && !r.exc) {
 					frappe.run_serially([
 						() => me.frm.set_value(r.message),
 					]);
 				}
-			}
+			},
 		});
 	}
 
@@ -592,7 +592,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					if (r.message) {
 						frappe.model.set_value(row.doctype, row.name, r.message);
 					}
-				}
+				},
 			});
 		}
 	}
@@ -604,7 +604,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			applies_to_item: this.frm.doc.applies_to_item,
 			project: this.frm.is_new() ? null : this.frm.doc.name,
 			date: this.frm.doc.project_date,
-		}
+		};
 	}
 
 	before_service_templates_remove(doc, cdt, cdn) {
@@ -615,22 +615,22 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			frappe.throw(
 				__(
 					"Cannot remove Service Template <b>{0}</b>: {1} because it has transactions against it",
-					[row.service_template, row.service_template_name]
-				)
+					[row.service_template, row.service_template_name],
+				),
 			);
 		}
 	}
 
 	set_items_and_totals_html() {
-		this.frm.get_field("service_items_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.service_items_html || '');
-		this.frm.get_field("material_items_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.material_items_html || '');
-		this.frm.get_field("consumable_items_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.consumable_items_html || '');
-		this.frm.get_field("sales_summary_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.sales_summary_html || '');
+		this.frm.get_field("service_items_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.service_items_html || "");
+		this.frm.get_field("material_items_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.material_items_html || "");
+		this.frm.get_field("consumable_items_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.consumable_items_html || "");
+		this.frm.get_field("sales_summary_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.sales_summary_html || "");
 	}
 
 	set_task_and_timelogs_html() {
-		this.frm.get_field("tasks_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.tasks_html || '');
-		this.frm.get_field("timelogs_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.timelogs_html || '');
+		this.frm.get_field("tasks_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.tasks_html || "");
+		this.frm.get_field("timelogs_html").$wrapper.html(this.frm.doc.__onload && this.frm.doc.__onload.timelogs_html || "");
 	}
 
 	project_type() {
@@ -644,13 +644,13 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			return frappe.call({
 				method: "erpnext.projects.doctype.project_type.project_type.get_project_type_defaults",
 				args: {
-					project_type: me.frm.doc.project_type
+					project_type: me.frm.doc.project_type,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (!r.exc) {
 						return me.frm.set_value(r.message);
 					}
-				}
+				},
 			});
 		}
 	}
@@ -692,29 +692,29 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					only_select: 1,
 					get_query: () => {
 						let filters = {
-							'docstatus': 1,
-							'status': ['!=', 'Rescheduled']
+							"docstatus": 1,
+							"status": ["!=", "Rescheduled"],
 						};
-						if (dialog.get_value('scheduled_date')) {
-							filters['scheduled_date'] = dialog.get_value('scheduled_date');
+						if (dialog.get_value("scheduled_date")) {
+							filters["scheduled_date"] = dialog.get_value("scheduled_date");
 						}
-						if (dialog.get_value('customer')) {
-							filters['appointment_for'] = "Customer";
-							filters['party_name'] = dialog.get_value('customer');
+						if (dialog.get_value("customer")) {
+							filters["appointment_for"] = "Customer";
+							filters["party_name"] = dialog.get_value("customer");
 						}
 						return {
-							filters: filters
-						}
+							filters: filters,
+						};
 					},
 				},
-			]
+			],
 		});
 
-		dialog.set_primary_action(__("Select"), function () {
-			let appointment = dialog.get_value('appointment');
+		dialog.set_primary_action(__("Select"), function() {
+			let appointment = dialog.get_value("appointment");
 			me.get_appointment_details(appointment).then(() => {
 				dialog.hide();
-			})
+			});
 		});
 
 		dialog.show();
@@ -730,14 +730,14 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					source_name: appointment,
 					target_doc: me.frm.doc,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (!r.exc) {
 						frappe.model.sync(r.message);
 						me.frm.dirty();
 						me.get_all_contact_nos();
 						me.frm.refresh_fields();
 					}
-				}
+				},
 			});
 		} else {
 			me.frm.dirty();
@@ -766,10 +766,10 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		let me = this;
 
 		let item_table_fieldnames = {
-			'Maintenance Visit': 'purposes',
-			'Stock Entry': 'items',
-			'Delivery Note': 'items',
-			'Timesheet': 'time_logs',
+			"Maintenance Visit": "purposes",
+			"Stock Entry": "items",
+			"Delivery Note": "items",
+			"Timesheet": "time_logs",
 		};
 
 		let items_fieldname = item_table_fieldnames[doctype];
@@ -778,17 +778,17 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 			customer: me.frm.doc.customer,
 			party: me.frm.doc.customer,
 			party_name: me.frm.doc.customer,
-			quotation_to: 'Customer',
-			party_type: 'Customer',
+			quotation_to: "Customer",
+			party_type: "Customer",
 			project: me.frm.doc.name,
 			item_code: me.frm.doc.item_code,
 			serial_no: me.frm.doc.serial_no,
-			item_serial_no: me.frm.doc.serial_no
+			item_serial_no: me.frm.doc.serial_no,
 		}).then(r => {
 			if (items_fieldname) {
 				cur_frm.doc[items_fieldname] = [];
 				let child = cur_frm.add_child(items_fieldname, {
-					project: me.frm.doc.name
+					project: me.frm.doc.name,
 				});
 				cur_frm.refresh_field(items_fieldname);
 			}
@@ -801,19 +801,19 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 
 		let billable_customers = await this.get_billable_customers();
 		if (billable_customers.length <= 1) {
-            let bill_to = billable_customers.length ? billable_customers[0].customer : null;
+			let bill_to = billable_customers.length ? billable_customers[0].customer : null;
 			callback({
 				bill_to: bill_to,
 				bill_to_filter: null,
 			});
-			return
+			return;
 		}
 
 		let bill_to_options = billable_customers.map(d => {
 			return {
 				label: d.customer_name || d.customer,
 				value: d.customer,
-			}
+			};
 		});
 
 		let fields = [
@@ -862,7 +862,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 		return frappe.xcall(
 			"erpnext.projects.doctype.project.project_mappers.get_billable_customers",
 			{"project_name": this.frm.doc.name},
-		)
+		);
 	}
 
 	make_sales_invoice(args) {
@@ -874,12 +874,12 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"bill_to_filter": args.bill_to_filter,
 			},
 			freeze: 1,
-			callback: function (r) {
+			callback: function(r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	}
 
@@ -892,12 +892,12 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"bill_to_filter": args.bill_to_filter,
 			},
 			freeze: 1,
-			callback: function (r) {
+			callback: function(r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	}
 
@@ -910,12 +910,12 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"project_name": me.frm.doc.name,
 			},
 			freeze: 1,
-			callback: function (r) {
+			callback: function(r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	}
 
@@ -988,7 +988,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					{label: __("Service Items Only"), value: "service"},
 					{label: __("Material Items Only"), value: "stock"},
 				],
-				default: ""
+				default: "",
 			});
 		}
 
@@ -1073,7 +1073,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	}
 
@@ -1089,12 +1089,12 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"items_type": args.items_type,
 			},
 			freeze: 1,
-			callback: function (r) {
+			callback: function(r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	}
 
@@ -1111,7 +1111,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	}
 
@@ -1129,7 +1129,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	}
 
@@ -1159,7 +1159,7 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				if (r.message) {
 					this.frm.reload_doc();
 				}
-			}
+			},
 		});
 	}
 
@@ -1173,12 +1173,12 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 				"is_refund": cint(is_refund),
 			},
 			freeze: 1,
-			callback: function (r) {
+			callback: function(r) {
 				if (!r.exc) {
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	}
 
@@ -1196,8 +1196,8 @@ erpnext.projects.ProjectController = class ProjectController extends crm.QuickCo
 					frappe.model.sync(r.message);
 					frappe.set_route("Form", r.message.doctype, r.message.name);
 				}
-			}
-		})
+			},
+		});
 	}
 };
 

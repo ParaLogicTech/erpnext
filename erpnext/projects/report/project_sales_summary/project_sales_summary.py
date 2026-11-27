@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.utils import getdate
+
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 
 
@@ -140,23 +141,23 @@ class ProjectSalesSummaryReport:
 
 	def get_columns(self):
 		columns = [
-			{'label': _("Project"), 'fieldname': 'project', 'fieldtype': 'Link', 'options': 'Project', 'width': 100},
-			{'label': _("Date"), 'fieldname': 'project_date', 'fieldtype': 'Date', 'width': 80},
-			{'label': _("Project Type"), 'fieldname': 'project_type', 'fieldtype': 'Link', 'options': 'Project Type', 'width': 100},
-			{'label': _("Status"), 'fieldname': 'project_status', 'fieldtype': 'Data', 'width': 100},
+			{"label": _("Project"), "fieldname": "project", "fieldtype": "Link", "options": "Project", "width": 100},
+			{"label": _("Date"), "fieldname": "project_date", "fieldtype": "Date", "width": 80},
+			{"label": _("Project Type"), "fieldname": "project_type", "fieldtype": "Link", "options": "Project Type", "width": 100},
+			{"label": _("Status"), "fieldname": "project_status", "fieldtype": "Data", "width": 100},
 			{"label": _("Customer Comments"), "fieldname": "project_name", "fieldtype": "Data", "width": 150},
-			{'label': _("Customer"), 'fieldname': 'customer', 'fieldtype': 'Link', 'options': 'Customer', 'width': 80},
-			{'label': _("Customer Name"), 'fieldname': 'customer_name', 'fieldtype': 'Data', 'width': 150},
+			{"label": _("Customer"), "fieldname": "customer", "fieldtype": "Link", "options": "Customer", "width": 80},
+			{"label": _("Customer Name"), "fieldname": "customer_name", "fieldtype": "Data", "width": 150},
 
-			{'label': _("Total Sales"), 'fieldname': 'total_sales_amount', 'fieldtype': 'Currency', 'width': 110,
-				'options': 'Company:company:default_currency'},
-			{'label': _("Materials Total"), 'fieldname': 'material_sales_amount', 'fieldtype': 'Currency', 'width': 110,
-				'options': 'Company:company:default_currency'},
-			{'label': _("Services Total"), 'fieldname': 'service_sales_amount', 'fieldtype': 'Currency', 'width': 110,
-				'options': 'Company:company:default_currency'},
+			{"label": _("Total Sales"), "fieldname": "total_sales_amount", "fieldtype": "Currency", "width": 110,
+				"options": "Company:company:default_currency"},
+			{"label": _("Materials Total"), "fieldname": "material_sales_amount", "fieldtype": "Currency", "width": 110,
+				"options": "Company:company:default_currency"},
+			{"label": _("Services Total"), "fieldname": "service_sales_amount", "fieldtype": "Currency", "width": 110,
+				"options": "Company:company:default_currency"},
 
-			{'label': _("Item Code"), 'fieldname': 'applies_to_item', 'fieldtype': 'Link', 'options': 'Item', 'width': 120},
-			{'label': _("Item Name"), 'fieldname': 'applies_to_item_name', 'fieldtype': 'Data', 'width': 150},
+			{"label": _("Item Code"), "fieldname": "applies_to_item", "fieldtype": "Link", "options": "Item", "width": 120},
+			{"label": _("Item Name"), "fieldname": "applies_to_item_name", "fieldtype": "Data", "width": 150},
 		]
 
 		return columns

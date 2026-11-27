@@ -1,12 +1,14 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors and Contributors
 # See license.txt
 
-import frappe
 import unittest
 
-test_records = frappe.get_test_records('Item Attribute')
+import frappe
+
+test_records = frappe.get_test_records("Item Attribute")
 
 from erpnext.stock.doctype.item_attribute.item_attribute import ItemAttributeIncrementError
+
 
 class TestItemAttribute(unittest.TestCase):
 	def setUp(self):
@@ -20,11 +22,10 @@ class TestItemAttribute(unittest.TestCase):
 			"numeric_values": 1,
 			"from_range": 0.0,
 			"to_range": 100.0,
-			"increment": 0
+			"increment": 0,
 		})
 
 		self.assertRaises(ItemAttributeIncrementError, item_attribute.save)
 
 		item_attribute.increment = 0.5
 		item_attribute.save()
-

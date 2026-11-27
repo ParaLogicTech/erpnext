@@ -1,16 +1,18 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
-import erpnext
 from frappe import _, scrub
 from frappe.utils import flt, fmt_money
-from erpnext.controllers.accounts_controller import AccountsController, validate_conversion_rate
-from erpnext.accounts.general_ledger import make_gl_entries, delete_voucher_gl_entries
+
+import erpnext
 from erpnext.accounts.doctype.account.account import get_account_currency
-from erpnext.accounts.party import get_party_account, get_party_name, get_party_default_currency
+from erpnext.accounts.general_ledger import delete_voucher_gl_entries, make_gl_entries
+from erpnext.accounts.party import get_party_account, get_party_default_currency, get_party_name
+from erpnext.controllers.accounts_controller import AccountsController, validate_conversion_rate
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
-import json
 
 
 class LandedCostVoucher(AccountsController):
@@ -84,7 +86,7 @@ class LandedCostVoucher(AccountsController):
 
 	def set_party_account(self, force=False):
 		if not self.get("credit_to") or force:
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			billing_party_type, billing_party, _billing_party_name = self.get_billing_party()
 			self.credit_to = get_party_account(
 				billing_party_type,
 				billing_party,
@@ -121,14 +123,14 @@ class LandedCostVoucher(AccountsController):
 
 		self.set("purchase_receipts", [])
 		precs = frappe.get_all("Purchase Receipt", {
-			"company": self.company, "docstatus": 1, "is_return": 0, "letter_of_credit": self.party
+			"company": self.company, "docstatus": 1, "is_return": 0, "letter_of_credit": self.party,
 		})
 
 		for d in precs:
 			self.append("purchase_receipts", {"receipt_document_type": "Purchase Receipt", "receipt_document": d.name})
 
 		pinvs = frappe.get_all("Purchase Invoice", {
-			"company": self.company, "docstatus": 1, "is_return": 0, "update_stock": 1, "letter_of_credit": self.party
+			"company": self.company, "docstatus": 1, "is_return": 0, "update_stock": 1, "letter_of_credit": self.party,
 		})
 
 		for d in pinvs:
@@ -137,7 +139,7 @@ class LandedCostVoucher(AccountsController):
 		self.set_purchase_receipt_details()
 
 	def set_purchase_receipt_details(self):
-		for row in self.get('purchase_receipts'):
+		for row in self.get("purchase_receipts"):
 			if row.receipt_document_type and row.receipt_document:
 				details = get_receipt_details(row.receipt_document_type, row.receipt_document)
 				row.update(details)
@@ -160,17 +162,17 @@ class LandedCostVoucher(AccountsController):
 			item_groups += [d.name for d in child_item_groups]
 
 			filter_conditions.append("i.item_group in %(item_groups)s")
-			filter_values['item_groups'] = item_groups
+			filter_values["item_groups"] = item_groups
 
 		if self.get("brand"):
 			filter_conditions.append("i.brand = %(brand)s")
-			filter_values['brand'] = self.brand
+			filter_values["brand"] = self.brand
 
 		conditions = " and " + " and ".join(filter_conditions) if filter_conditions else ""
 
 		for pr in self.get("purchase_receipts"):
 			if pr.receipt_document_type and pr.receipt_document:
-				filter_values['receipt_document'] = pr.receipt_document
+				filter_values["receipt_document"] = pr.receipt_document
 
 				pr_items = frappe.db.sql("""
 					select
@@ -232,7 +234,7 @@ class LandedCostVoucher(AccountsController):
 			key = (d.receipt_document_type, d.receipt_document)
 			if key in seen_docs:
 				frappe.throw(_("Row #{0}: Duplicate Receipt Document found: {1} {2}").format(
-					d.idx, d.receipt_document_type, d.receipt_document
+					d.idx, d.receipt_document_type, d.receipt_document,
 				))
 			seen_docs.add(key)
 
@@ -351,9 +353,9 @@ class LandedCostVoucher(AccountsController):
 			validate_conversion_rate(self.currency, self.conversion_rate, self.meta.get_label("conversion_rate"), self.company)
 
 	def calculate_taxes_and_totals(self):
-		item_total_fields = ['qty', 'amount', 'net_weight']
+		item_total_fields = ["qty", "amount", "net_weight"]
 		for f in item_total_fields:
-			self.set('total_' + f, flt(sum([flt(d.get(f)) for d in self.get("items")]), self.precision('total_' + f)))
+			self.set("total_" + f, flt(sum([flt(d.get(f)) for d in self.get("items")]), self.precision("total_" + f)))
 
 		self.total_taxes_and_charges = 0
 		for d in self.taxes:
@@ -384,7 +386,7 @@ class LandedCostVoucher(AccountsController):
 
 	def distribute_applicable_charges_for_item(self):
 		totals = {}
-		item_total_fields = ['qty', 'amount', 'net_weight']
+		item_total_fields = ["qty", "amount", "net_weight"]
 		for f in item_total_fields:
 			totals[f] = flt(sum([flt(d.get(f)) for d in self.items]))
 
@@ -397,7 +399,7 @@ class LandedCostVoucher(AccountsController):
 			for tax in self.taxes:
 				item.item_tax_detail.setdefault(tax.name, 0)
 				distribution_based_on = scrub(tax.distribution_criteria)
-				if distribution_based_on == 'manual':
+				if distribution_based_on == "manual":
 					distribution_amount = flt(item_manual_distribution.get(tax.account_head))
 				else:
 					if not totals[distribution_based_on]:
@@ -413,7 +415,7 @@ class LandedCostVoucher(AccountsController):
 			item_tax_total = sum(item.item_tax_detail.values())
 			item.applicable_charges = item_tax_total
 			accumulated_taxes += item_tax_total
-			item.item_tax_detail = json.dumps(item.item_tax_detail, indent=None, separators=(',', ':'))
+			item.item_tax_detail = json.dumps(item.item_tax_detail, indent=None, separators=(",", ":"))
 
 		if accumulated_taxes != self.base_total_taxes_and_charges:
 			diff = self.base_total_taxes_and_charges - accumulated_taxes
@@ -471,8 +473,8 @@ class LandedCostVoucher(AccountsController):
 					"against": ", ".join(set([d.account_head for d in self.taxes])),
 					"party_type": self.party_type,
 					"party": self.party,
-					"remarks": "Note: {0}".format(self.remarks) if self.remarks else ""
-				}, self.party_account_currency)
+					"remarks": "Note: {0}".format(self.remarks) if self.remarks else "",
+				}, self.party_account_currency),
 			)
 
 		# expense entries
@@ -490,13 +492,13 @@ class LandedCostVoucher(AccountsController):
 				self.get_gl_dict({
 					"account": tax.account_head,
 					"debit": tax.base_amount,
-					"debit_in_account_currency": tax.base_amount \
+					"debit_in_account_currency": tax.base_amount
 						if account_currency == self.company_currency else tax.amount,
-					"against": self.get('party_name') or self.party,
+					"against": self.get("party_name") or self.party,
 					"cost_center": tax.cost_center or self.get("cost_center"),
 					"project": self.project,
-					"remarks": remarks
-				}, account_currency)
+					"remarks": remarks,
+				}, account_currency),
 			)
 
 		return gl_entry
@@ -513,30 +515,30 @@ class LandedCostVoucher(AccountsController):
 			self.db_set("outstanding_amount", self.outstanding_amount, update_modified=update_modified)
 
 	def validate_asset_qty_and_status(self):
-		for item in self.get('items'):
-			receipt_document = item.get('purchase_receipt') or item.get('purchase_invoice')
-			if item.get('is_fixed_asset') and receipt_document:
-				receipt_document_type = 'purchase_invoice' if item.purchase_invoice else 'purchase_receipt'
-				assets = frappe.db.get_all('Asset', filters={
+		for item in self.get("items"):
+			receipt_document = item.get("purchase_receipt") or item.get("purchase_invoice")
+			if item.get("is_fixed_asset") and receipt_document:
+				receipt_document_type = "purchase_invoice" if item.purchase_invoice else "purchase_receipt"
+				assets = frappe.db.get_all("Asset", filters={
 					receipt_document_type: item.receipt_document,
-					'item_code': item.item_code
-				}, fields=['name', 'docstatus'])
+					"item_code": item.item_code,
+				}, fields=["name", "docstatus"])
 
 				if not assets or len(assets) != item.qty:
-					frappe.throw(_('There are not enough asset created or linked to {0}. \
-						Please create or link {1} Assets with respective document.').format(receipt_document, item.qty))
+					frappe.throw(_("There are not enough asset created or linked to {0}. \
+						Please create or link {1} Assets with respective document.").format(receipt_document, item.qty))
 
 				for d in assets:
 					if d.docstatus == 1:
-						frappe.throw(_('{2} <b>{0}</b> has submitted Assets.\
-							Remove Item <b>{1}</b> from table to continue.').format(
+						frappe.throw(_("{2} <b>{0}</b> has submitted Assets.\
+							Remove Item <b>{1}</b> from table to continue.").format(
 								receipt_document, item.item_code, item.receipt_document_type))
 
 
 def get_purchase_landed_cost_gl_details(doc, item):
 	filters = {
 		"docstatus": 1,
-		"applicable_charges": ["!=", 0]
+		"applicable_charges": ["!=", 0],
 	}
 	if doc.doctype == "Purchase Receipt":
 		filters["purchase_receipt"] = doc.name
@@ -561,7 +563,7 @@ def get_purchase_landed_cost_gl_details(doc, item):
 			item_gl_details.amount = amount
 
 			lc_tax_details = frappe.db.get_value("Landed Cost Taxes and Charges", lc_tax_id,
-				('account_head', 'cost_center'), as_dict=1, cache=1)
+				("account_head", "cost_center"), as_dict=1, cache=1)
 			item_gl_details.update(lc_tax_details)
 
 			if not item_gl_details.cost_center:
@@ -579,7 +581,7 @@ def get_landed_cost_voucher(dt, dn):
 
 	lcv = frappe.new_doc("Landed Cost Voucher")
 	lcv.company = doc.company
-	lcv.project = doc.get('project')
+	lcv.project = doc.get("project")
 	lcv.append("purchase_receipts", {
 		"receipt_document_type": dt,
 		"receipt_document": dn,

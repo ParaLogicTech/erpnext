@@ -5,11 +5,12 @@ import frappe
 from frappe import _
 from frappe.utils import cint, cstr
 from frappe.utils.nestedset import NestedSet
+
 from erpnext.accounts.utils import validate_field_number
 
 
 class CostCenter(NestedSet):
-	nsm_parent_field = 'parent_cost_center'
+	nsm_parent_field = "parent_cost_center"
 
 	def autoname(self):
 		from erpnext.accounts.utils import get_autoname_with_number
@@ -87,8 +88,10 @@ class CostCenter(NestedSet):
 				self.cost_center_name = cost_center_name
 				self.db_set("cost_center_name", cost_center_name)
 
+
 def on_doctype_update():
 	frappe.db.add_index("Cost Center", ["lft", "rgt"])
+
 
 def get_name_with_number(new_account, account_number):
 	if account_number and not new_account[0].isdigit():

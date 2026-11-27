@@ -3,18 +3,21 @@
 
 
 import unittest
-import frappe
-from frappe.utils import cstr
-from frappe.test_runner import make_test_records
-from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
-from erpnext.manufacturing.doctype.bom_update_tool.bom_update_tool import update_cost
 
-test_records = frappe.get_test_records('BOM')
+import frappe
+from frappe.test_runner import make_test_records
+from frappe.utils import cstr
+
+from erpnext.manufacturing.doctype.bom_update_tool.bom_update_tool import update_cost
+from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
+
+test_records = frappe.get_test_records("BOM")
+
 
 class TestBOM(unittest.TestCase):
 	def setUp(self):
-		if not frappe.get_value('Item', '_Test Item'):
-			make_test_records('Item')
+		if not frappe.get_value("Item", "_Test Item"):
+			make_test_records("Item")
 
 	def test_get_items(self):
 		from erpnext.manufacturing.doctype.bom.bom import get_bom_items_as_dict
@@ -42,7 +45,7 @@ class TestBOM(unittest.TestCase):
 		def _get_default_bom_in_item():
 			return cstr(frappe.db.get_value("Item", "_Test FG Item 2", "default_bom"))
 
-		bom = frappe.get_doc("BOM", {"item":"_Test FG Item 2", "is_default": 1})
+		bom = frappe.get_doc("BOM", {"item": "_Test FG Item 2", "is_default": 1})
 		self.assertEqual(_get_default_bom_in_item(), bom.name)
 
 		bom.is_active = 0
@@ -50,7 +53,7 @@ class TestBOM(unittest.TestCase):
 		self.assertEqual(_get_default_bom_in_item(), "")
 
 		bom.is_active = 1
-		bom.is_default=1
+		bom.is_default = 1
 		bom.save()
 
 		self.assertTrue(_get_default_bom_in_item(), bom.name)
@@ -63,7 +66,7 @@ class TestBOM(unittest.TestCase):
 		rm_rate = rm_rate[0][0] if rm_rate else 0
 
 		# Reset item valuation rate
-		reset_item_valuation_rate(item_code='_Test Item 2', qty=200, rate=rm_rate + 10)
+		reset_item_valuation_rate(item_code="_Test Item 2", qty=200, rate=rm_rate + 10)
 
 		# update cost of all BOMs based on latest valuation rate
 		update_cost()
@@ -129,14 +132,16 @@ class TestBOM(unittest.TestCase):
 		bom.items[0].conversion_factor = 6
 		bom.insert()
 
-		reset_item_valuation_rate(item_code='_Test Item', qty=200, rate=200)
+		reset_item_valuation_rate(item_code="_Test Item", qty=200, rate=200)
 
 		bom.update_cost()
 
 		self.assertEqual(bom.items[0].rate, 20)
 
+
 def get_default_bom(item_code="_Test FG Item 2"):
 	return frappe.db.get_value("BOM", {"item": item_code, "is_active": 1, "is_default": 1})
+
 
 def reset_item_valuation_rate(item_code, warehouse_list=None, qty=None, rate=None):
 	if warehouse_list and isinstance(warehouse_list, str):

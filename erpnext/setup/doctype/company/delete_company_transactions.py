@@ -1,11 +1,12 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import functools
+
 import frappe
-from frappe.utils import cint
 from frappe import _
 from frappe.desk.notifications import clear_notifications
-import functools
+from frappe.utils import cint
 
 
 def get_excluded_doctypes():
@@ -32,7 +33,7 @@ def delete_company_transactions(company_name):
 	frappe.only_for("System Manager")
 	doc = frappe.get_doc("Company", company_name)
 
-	if frappe.session.user != doc.owner and frappe.session.user != 'Administrator':
+	if frappe.session.user != doc.owner and frappe.session.user != "Administrator":
 		frappe.throw(_("Transactions can only be deleted by the creator of the Company"),
 			frappe.PermissionError)
 
@@ -110,10 +111,10 @@ def delete_bins(company_name):
 
 def delete_communications(doctype, company_name, company_fieldname):
 
-	refrence_docs = frappe.get_all(doctype, filters={company_fieldname:company_name})
+	refrence_docs = frappe.get_all(doctype, filters={company_fieldname: company_name})
 	reference_doctype_names = [r.name for r in refrence_docs]
 
-	communications = frappe.get_all("Communication", filters={"reference_doctype":doctype,"reference_name":["in",reference_doctype_names]})
+	communications = frappe.get_all("Communication", filters={"reference_doctype": doctype, "reference_name": ["in", reference_doctype_names]})
 	communication_names = [c.name for c in communications]
 
 	frappe.delete_doc("Communication", communication_names, ignore_permissions=True)

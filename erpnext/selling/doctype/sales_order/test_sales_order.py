@@ -1,18 +1,24 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
-import frappe
 import json
-from frappe.utils import flt, add_days, nowdate
-import frappe.permissions
 import unittest
-from erpnext.selling.doctype.sales_order.sales_order import make_material_request, make_delivery_note, make_sales_invoice
-from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
-from erpnext.manufacturing.doctype.work_order.work_order import create_work_orders
-from erpnext.controllers.transaction_controller import update_child_items
-from erpnext.selling.doctype.sales_order.sales_order import make_raw_material_request
-from erpnext.selling.doctype.product_bundle.test_product_bundle import make_product_bundle
-from erpnext.stock.doctype.item.test_item import make_item
+
+import frappe
+import frappe.permissions
+from frappe.utils import add_days, flt, nowdate
+
 from erpnext.controllers.stock_controller import WarehouseRequired
+from erpnext.controllers.transaction_controller import update_child_items
+from erpnext.manufacturing.doctype.work_order.work_order import create_work_orders
+from erpnext.selling.doctype.product_bundle.test_product_bundle import make_product_bundle
+from erpnext.selling.doctype.sales_order.sales_order import (
+	make_delivery_note,
+	make_material_request,
+	make_raw_material_request,
+	make_sales_invoice,
+)
+from erpnext.stock.doctype.item.test_item import make_item
+from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 
 
 class TestSalesOrder(unittest.TestCase):
@@ -71,7 +77,7 @@ class TestSalesOrder(unittest.TestCase):
 		si1.update_billed_amount_in_sales_order = 1
 		si1.submit()
 		so.load_from_db()
-		self.assertEquals(so.per_billed, 0)
+		self.assertEqual(so.per_billed, 0)
 
 	def test_make_sales_invoice_with_terms(self):
 		so = make_sales_order(do_not_submit=True)
@@ -146,8 +152,8 @@ class TestSalesOrder(unittest.TestCase):
 		self.assertEqual(so.get("items")[0].delivered_qty, 9)
 
 		# Make return deliver note, sales invoice and check quantity
-		from erpnext.stock.doctype.delivery_note.test_delivery_note import create_delivery_note
 		from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
+		from erpnext.stock.doctype.delivery_note.test_delivery_note import create_delivery_note
 
 		dn1 = create_delivery_note(is_return=1, return_against=dn.name, qty=-3, do_not_submit=True)
 		dn1.items[0].sales_order = so.name
@@ -159,10 +165,8 @@ class TestSalesOrder(unittest.TestCase):
 		si1.items[0].sales_order_item = so.items[0].name
 		si1.submit()
 
-
 		so.load_from_db()
 		self.assertEqual(so.get("items")[0].delivered_qty, 5)
-
 
 	def test_reserved_qty_for_partial_delivery(self):
 		make_stock_entry(target="_Test Warehouse - _TC", qty=10, rate=100)
@@ -181,7 +185,7 @@ class TestSalesOrder(unittest.TestCase):
 
 		# unclose so
 		so.load_from_db()
-		so.update_status('Re-Opened')
+		so.update_status("Re-Opened")
 		self.assertEqual(get_reserved_qty(), existing_reserved_qty + 5)
 
 		dn.cancel()
@@ -195,7 +199,7 @@ class TestSalesOrder(unittest.TestCase):
 	def test_reserved_qty_for_over_delivery(self):
 		make_stock_entry(target="_Test Warehouse - _TC", qty=10, rate=100)
 		# set over-delivery allowance
-		frappe.db.set_value('Item', "_Test Item", 'over_delivery_receipt_allowance', 50)
+		frappe.db.set_value("Item", "_Test Item", "over_delivery_receipt_allowance", 50)
 
 		existing_reserved_qty = get_reserved_qty()
 
@@ -212,8 +216,8 @@ class TestSalesOrder(unittest.TestCase):
 		make_stock_entry(target="_Test Warehouse - _TC", qty=10, rate=100)
 
 		# set over-delivery allowance
-		frappe.db.set_value('Item', "_Test Item", 'over_delivery_receipt_allowance', 50)
-		frappe.db.set_value('Item', "_Test Item", 'over_billing_allowance', 20)
+		frappe.db.set_value("Item", "_Test Item", "over_delivery_receipt_allowance", 50)
+		frappe.db.set_value("Item", "_Test Item", "over_billing_allowance", 20)
 
 		existing_reserved_qty = get_reserved_qty()
 
@@ -267,7 +271,7 @@ class TestSalesOrder(unittest.TestCase):
 
 		# unclose so
 		so.load_from_db()
-		so.update_status('Draft')
+		so.update_status("Draft")
 
 		self.assertEqual(get_reserved_qty("_Test Item"), existing_reserved_qty_item1 + 25)
 		self.assertEqual(get_reserved_qty("_Test Item Home Desktop 100"),
@@ -285,7 +289,7 @@ class TestSalesOrder(unittest.TestCase):
 
 	def test_sales_order_on_hold(self):
 		so = make_sales_order(item_code="_Test Product Bundle Item")
-		so.db_set('Status', "On Hold")
+		so.db_set("Status", "On Hold")
 		si = make_sales_invoice(so.name)
 		self.assertRaises(frappe.ValidationError, create_dn_against_so, so.name)
 		self.assertRaises(frappe.ValidationError, si.submit)
@@ -295,7 +299,7 @@ class TestSalesOrder(unittest.TestCase):
 		make_stock_entry(item="_Test Item Home Desktop 100", target="_Test Warehouse - _TC", qty=10, rate=100)
 
 		# set over-delivery allowance
-		frappe.db.set_value('Item', "_Test Product Bundle Item", 'over_delivery_receipt_allowance', 50)
+		frappe.db.set_value("Item", "_Test Product Bundle Item", "over_delivery_receipt_allowance", 50)
 
 		existing_reserved_qty_item1 = get_reserved_qty("_Test Item")
 		existing_reserved_qty_item2 = get_reserved_qty("_Test Item Home Desktop 100")
@@ -318,104 +322,103 @@ class TestSalesOrder(unittest.TestCase):
 			existing_reserved_qty_item2 + 20)
 
 	def test_add_new_item_in_update_child_qty_rate(self):
-		so = make_sales_order(item_code= "_Test Item", qty=4)
+		so = make_sales_order(item_code="_Test Item", qty=4)
 		create_dn_against_so(so.name, 4)
 		make_sales_invoice(so.name)
 
 		first_item_of_so = so.get("items")[0]
 		trans_item = json.dumps([
-			{'item_code' : first_item_of_so.item_code, 'rate' : first_item_of_so.rate, \
-				'qty' : first_item_of_so.qty, 'docname': first_item_of_so.name},
-			{'item_code' : '_Test Item 2', 'rate' : 200, 'qty' : 7}
+			{"item_code": first_item_of_so.item_code, "rate": first_item_of_so.rate,
+				"qty": first_item_of_so.qty, "docname": first_item_of_so.name},
+			{"item_code": "_Test Item 2", "rate": 200, "qty": 7},
 		])
-		update_child_items('Sales Order', so.name, trans_item)
+		update_child_items("Sales Order", so.name, trans_item)
 
 		so.reload()
-		self.assertEqual(so.get("items")[-1].item_code, '_Test Item 2')
+		self.assertEqual(so.get("items")[-1].item_code, "_Test Item 2")
 		self.assertEqual(so.get("items")[-1].rate, 200)
 		self.assertEqual(so.get("items")[-1].qty, 7)
 		self.assertEqual(so.get("items")[-1].amount, 1400)
-		self.assertEqual(so.status, 'To Deliver and Bill')
+		self.assertEqual(so.status, "To Deliver and Bill")
 
 	def test_remove_item_in_update_child_qty_rate(self):
 		so = make_sales_order(**{
 			"item_list": [{
-				"item_code": '_Test Item',
+				"item_code": "_Test Item",
 				"qty": 5,
-				"rate":1000
-			}]
+				"rate": 1000,
+			}],
 		})
 		create_dn_against_so(so.name, 2)
 		make_sales_invoice(so.name)
 
 		# add an item so as to try removing items
 		trans_item = json.dumps([
-			{"item_code": '_Test Item', "qty": 5, "rate":1000, "docname": so.get("items")[0].name},
-			{"item_code": '_Test Item 2', "qty": 2, "rate":500}
+			{"item_code": "_Test Item", "qty": 5, "rate": 1000, "docname": so.get("items")[0].name},
+			{"item_code": "_Test Item 2", "qty": 2, "rate": 500},
 		])
-		update_child_items('Sales Order', so.name, trans_item)
+		update_child_items("Sales Order", so.name, trans_item)
 		so.reload()
 		self.assertEqual(len(so.get("items")), 2)
 
 		# check if delivered items can be removed
 		trans_item = json.dumps([{
-			"item_code": '_Test Item 2',
+			"item_code": "_Test Item 2",
 			"qty": 2,
-			"rate":500,
-			"docname": so.get("items")[1].name
+			"rate": 500,
+			"docname": so.get("items")[1].name,
 		}])
-		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
+		self.assertRaises(frappe.ValidationError, update_child_items, "Sales Order", so.name, trans_item)
 
-		#remove last added item
+		# remove last added item
 		trans_item = json.dumps([{
-			"item_code": '_Test Item',
+			"item_code": "_Test Item",
 			"qty": 5,
-			"rate":1000,
-			"docname": so.get("items")[0].name
+			"rate": 1000,
+			"docname": so.get("items")[0].name,
 		}])
-		update_child_items('Sales Order', so.name, trans_item)
+		update_child_items("Sales Order", so.name, trans_item)
 
 		so.reload()
 		self.assertEqual(len(so.get("items")), 1)
-		self.assertEqual(so.status, 'To Deliver and Bill')
-
+		self.assertEqual(so.status, "To Deliver and Bill")
 
 	def test_update_child_qty_rate(self):
-		so = make_sales_order(item_code= "_Test Item", qty=4)
+		so = make_sales_order(item_code="_Test Item", qty=4)
 		create_dn_against_so(so.name, 4)
 		make_sales_invoice(so.name)
 
 		existing_reserved_qty = get_reserved_qty()
 
-		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7, 'docname': so.items[0].name}])
-		update_child_items('Sales Order', so.name, trans_item, so.name)
+		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 200, "qty": 7, "docname": so.items[0].name}])
+		update_child_items("Sales Order", so.name, trans_item, so.name)
 
 		so.reload()
 		self.assertEqual(so.get("items")[0].rate, 200)
 		self.assertEqual(so.get("items")[0].qty, 7)
 		self.assertEqual(so.get("items")[0].amount, 1400)
-		self.assertEqual(so.status, 'To Deliver and Bill')
+		self.assertEqual(so.status, "To Deliver and Bill")
 
 		self.assertEqual(get_reserved_qty(), existing_reserved_qty + 3)
 
-		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 2, 'docname': so.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
+		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 200, "qty": 2, "docname": so.items[0].name}])
+		self.assertRaises(frappe.ValidationError, update_child_items, "Sales Order", so.name, trans_item)
 
 	def test_update_child_qty_rate_perm(self):
-		so = make_sales_order(item_code= "_Test Item", qty=4)
+		so = make_sales_order(item_code="_Test Item", qty=4)
 
-		user = 'test@example.com'
-		test_user = frappe.get_doc('User', user)
+		user = "test@example.com"
+		test_user = frappe.get_doc("User", user)
 		test_user.add_roles("Accounts User")
 		frappe.set_user(user)
 
 		# update qty
-		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 200, 'qty' : 7, 'docname': so.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
+		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 200, "qty": 7, "docname": so.items[0].name}])
+		self.assertRaises(frappe.ValidationError, update_child_items, "Sales Order", so.name, trans_item)
 
 		# add new item
-		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 100, 'qty' : 2}])
-		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
+		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 100, "qty": 2}])
+		self.assertRaises(frappe.ValidationError, update_child_items, "Sales Order", so.name, trans_item)
 		test_user.remove_roles("Accounts User")
 		frappe.set_user("Administrator")
 
@@ -424,22 +427,22 @@ class TestSalesOrder(unittest.TestCase):
 
 		frappe.set_user("Administrator")
 		workflow = make_sales_order_workflow()
-		so = make_sales_order(item_code= "_Test Item", qty=1, rate=150, do_not_submit=1)
-		apply_workflow(so, 'Approve')
+		so = make_sales_order(item_code="_Test Item", qty=1, rate=150, do_not_submit=1)
+		apply_workflow(so, "Approve")
 
 		frappe.set_user("Administrator")
-		user = 'test@example.com'
-		test_user = frappe.get_doc('User', user)
+		user = "test@example.com"
+		test_user = frappe.get_doc("User", user)
 		test_user.add_roles("Sales User", "Test Junior Approver")
 		frappe.set_user(user)
 
 		# user shouldn't be able to edit since grand_total will become > 200 if qty is doubled
-		trans_item = json.dumps([{'item_code' : '_Test Item', 'rate' : 150, 'qty' : 2, 'docname': so.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_items, 'Sales Order', so.name, trans_item)
+		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 150, "qty": 2, "docname": so.items[0].name}])
+		self.assertRaises(frappe.ValidationError, update_child_items, "Sales Order", so.name, trans_item)
 
 		frappe.set_user("Administrator")
-		user2 = 'test2@example.com'
-		test_user2 = frappe.get_doc('User', user2)
+		user2 = "test2@example.com"
+		test_user2 = frappe.get_doc("User", user2)
 		test_user2.add_roles("Sales User", "Test Approver")
 		frappe.set_user(user2)
 
@@ -466,10 +469,10 @@ class TestSalesOrder(unittest.TestCase):
 		make_item("_Packed Item", {"is_stock_item": 1})
 		make_product_bundle("_Product Bundle Item", ["_Packed Item"], 2)
 
-		so = make_sales_order(item_code = "_Test Item", warehouse=None)
+		so = make_sales_order(item_code="_Test Item", warehouse=None)
 
-		added_item = json.dumps([{"item_code" : "_Product Bundle Item", "rate" : 200, 'qty' : 2}])
-		update_child_items('Sales Order', so.name, added_item)
+		added_item = json.dumps([{"item_code": "_Product Bundle Item", "rate": 200, "qty": 2}])
+		update_child_items("Sales Order", so.name, added_item)
 
 		so.reload()
 		self.assertEqual(so.bundled_items[0].qty, 4)
@@ -521,7 +524,7 @@ class TestSalesOrder(unittest.TestCase):
 		make_product_bundle("_Test Service Product Bundle",
 			["_Test Service Product Bundle Item 1", "_Test Service Product Bundle Item 2"])
 
-		so = make_sales_order(item_code = "_Test Service Product Bundle", warehouse=None)
+		so = make_sales_order(item_code="_Test Service Product Bundle", warehouse=None)
 
 		self.assertTrue("_Test Service Product Bundle Item 1" in [d.item_code for d in so.bundled_items])
 		self.assertTrue("_Test Service Product Bundle Item 2" in [d.item_code for d in so.bundled_items])
@@ -534,11 +537,11 @@ class TestSalesOrder(unittest.TestCase):
 		make_product_bundle("_Test Mix Product Bundle",
 			["_Test Mix Product Bundle Item 1", "_Test Mix Product Bundle Item 2"])
 
-		self.assertRaises(WarehouseRequired, make_sales_order, item_code = "_Test Mix Product Bundle", warehouse="")
+		self.assertRaises(WarehouseRequired, make_sales_order, item_code="_Test Mix Product Bundle", warehouse="")
 
 	def test_drop_shipping(self):
-		from erpnext.selling.doctype.sales_order.sales_order import make_purchase_order
 		from erpnext.buying.doctype.purchase_order.purchase_order import update_status
+		from erpnext.selling.doctype.sales_order.sales_order import make_purchase_order
 
 		make_stock_entry(target="_Test Warehouse - _TC", qty=10, rate=100)
 		po_item = make_item("_Test Item for Drop Shipping", {"is_stock_item": 1, "delivered_by_supplier": 1})
@@ -552,21 +555,21 @@ class TestSalesOrder(unittest.TestCase):
 				"qty": 2,
 				"rate": 400,
 				"delivered_by_supplier": 1,
-				"supplier": '_Test Supplier'
+				"supplier": "_Test Supplier",
 			},
 			{
 				"item_code": dn_item.item_code,
 				"warehouse": "_Test Warehouse - _TC",
 				"qty": 2,
 				"rate": 300,
-				"conversion_factor": 1.0
-			}
+				"conversion_factor": 1.0,
+			},
 		]
 
-		if frappe.db.get_value("Item", "_Test Regular Item", "is_stock_item")==1:
+		if frappe.db.get_value("Item", "_Test Regular Item", "is_stock_item") == 1:
 			make_stock_entry(item="_Test Regular Item", target="_Test Warehouse - _TC", qty=10, rate=100)
 
-		#setuo existing qty from bin
+		# setuo existing qty from bin
 		bin = frappe.get_all("Bin", filters={"item_code": po_item.item_code, "warehouse": "_Test Warehouse - _TC"},
 			fields=["ordered_qty", "reserved_qty"])
 
@@ -578,11 +581,11 @@ class TestSalesOrder(unittest.TestCase):
 
 		existing_reserved_qty_for_dn_item = bin[0].reserved_qty if bin else 0.0
 
-		#create so, po and partial dn
+		# create so, po and partial dn
 		so = make_sales_order(item_list=so_items, do_not_submit=True)
 		so.submit()
 
-		po = make_purchase_order(so.name, '_Test Supplier', selected_items=[so_items[0]['item_code']])
+		po = make_purchase_order(so.name, "_Test Supplier", selected_items=[so_items[0]["item_code"]])
 		po.submit()
 
 		dn = create_dn_against_so(so.name, delivered_qty=1)
@@ -592,7 +595,7 @@ class TestSalesOrder(unittest.TestCase):
 		self.assertEqual(po.items[0].item_code, po_item.item_code)
 		self.assertEqual(dn.items[0].item_code, dn_item.item_code)
 
-		#test ordered_qty and reserved_qty
+		# test ordered_qty and reserved_qty
 		bin = frappe.get_all("Bin", filters={"item_code": po_item.item_code, "warehouse": "_Test Warehouse - _TC"},
 			fields=["ordered_qty", "reserved_qty"])
 
@@ -607,22 +610,22 @@ class TestSalesOrder(unittest.TestCase):
 
 		self.assertEqual(abs(flt(reserved_qty)), existing_reserved_qty_for_dn_item + 1)
 
-		#test po_item length
+		# test po_item length
 		self.assertEqual(len(po.items), 1)
 
-		#test per_delivered status
+		# test per_delivered status
 		update_status("Delivered", po.name)
 		self.assertEqual(flt(frappe.db.get_value("Sales Order", so.name, "per_delivered"), 2), 75.00)
 
-		#test reserved qty after complete delivery
+		# test reserved qty after complete delivery
 		dn = create_dn_against_so(so.name, delivered_qty=1)
 		reserved_qty = frappe.db.get_value("Bin",
 			{"item_code": dn_item.item_code, "warehouse": "_Test Warehouse - _TC"}, "reserved_qty")
 
 		self.assertEqual(abs(flt(reserved_qty)), existing_reserved_qty_for_dn_item)
 
-		#test after closing so
-		so.db_set('status', "Closed")
+		# test after closing so
+		so.db_set("status", "Closed")
 		so.update_reserved_qty()
 
 		bin = frappe.get_all("Bin", filters={"item_code": po_item.item_code, "warehouse": "_Test Warehouse - _TC"},
@@ -647,7 +650,7 @@ class TestSalesOrder(unittest.TestCase):
 
 		so = make_sales_order(item_code="_Test Item", qty=1)
 
-		self.assertEqual(get_reserved_qty(item_code="_Test Item", warehouse="_Test Warehouse - _TC"), existing_reserved_qty+1)
+		self.assertEqual(get_reserved_qty(item_code="_Test Item", warehouse="_Test Warehouse - _TC"), existing_reserved_qty + 1)
 
 		so.update_status("Closed")
 
@@ -656,47 +659,47 @@ class TestSalesOrder(unittest.TestCase):
 	def test_create_so_with_margin(self):
 		so = make_sales_order(item_code="_Test Item", qty=1, do_not_submit=True)
 		so.items[0].price_list_rate = price_list_rate = 100
-		so.items[0].margin_type = 'Percentage'
+		so.items[0].margin_type = "Percentage"
 		so.items[0].margin_rate_or_amount = 25
 		so.save()
 
 		new_so = frappe.copy_doc(so)
 		new_so.save(ignore_permissions=True)
 
-		self.assertEqual(new_so.get("items")[0].rate, flt((price_list_rate*25)/100 + price_list_rate))
+		self.assertEqual(new_so.get("items")[0].rate, flt((price_list_rate * 25) / 100 + price_list_rate))
 		new_so.items[0].margin_rate_or_amount = 25
 		new_so.payment_schedule = []
 		new_so.save()
 		new_so.submit()
 
-		self.assertEqual(new_so.get("items")[0].rate, flt((price_list_rate*25)/100 + price_list_rate))
+		self.assertEqual(new_so.get("items")[0].rate, flt((price_list_rate * 25) / 100 + price_list_rate))
 
 	def test_terms_auto_added(self):
 		so = make_sales_order(do_not_save=1)
 
-		self.assertFalse(so.get('payment_schedule'))
+		self.assertFalse(so.get("payment_schedule"))
 
 		so.insert()
 
-		self.assertTrue(so.get('payment_schedule'))
+		self.assertTrue(so.get("payment_schedule"))
 
 	def test_terms_not_copied(self):
 		so = make_sales_order()
-		self.assertTrue(so.get('payment_schedule'))
+		self.assertTrue(so.get("payment_schedule"))
 
 		si = make_sales_invoice(so.name)
-		self.assertFalse(si.get('payment_schedule'))
+		self.assertFalse(si.get("payment_schedule"))
 
 	def test_terms_copied(self):
 		so = make_sales_order(do_not_copy=1, do_not_save=1)
-		so.payment_terms_template = '_Test Payment Term Template'
+		so.payment_terms_template = "_Test Payment Term Template"
 		so.insert()
 		so.submit()
-		self.assertTrue(so.get('payment_schedule'))
+		self.assertTrue(so.get("payment_schedule"))
 
 		si = make_sales_invoice(so.name)
 		si.insert()
-		self.assertTrue(si.get('payment_schedule'))
+		self.assertTrue(si.get("payment_schedule"))
 
 	def test_make_work_order(self):
 		# Make a new Sales Order
@@ -704,18 +707,18 @@ class TestSalesOrder(unittest.TestCase):
 			"item_list": [{
 				"item_code": "_Test FG Item",
 				"qty": 10,
-				"rate":100
+				"rate": 100,
 			},
 			{
 				"item_code": "_Test FG Item",
 				"qty": 20,
-				"rate":200
-			}]
+				"rate": 200,
+			}],
 		})
 
 		# Raise Work Orders
-		po_items= []
-		so_item_name= {}
+		po_items = []
+		so_item_name = {}
 		for item in so.get_work_order_items():
 			po_items.append({
 				"warehouse": item.get("warehouse"),
@@ -723,15 +726,15 @@ class TestSalesOrder(unittest.TestCase):
 				"pending_qty": item.get("pending_qty"),
 				"sales_order_item": item.get("sales_order_item"),
 				"bom": item.get("bom"),
-				"description": item.get("description")
+				"description": item.get("description"),
 			})
-			so_item_name[item.get("sales_order_item")]= item.get("pending_qty")
-		create_work_orders(json.dumps({"items":po_items}), so.name, so.company)
+			so_item_name[item.get("sales_order_item")] = item.get("pending_qty")
+		create_work_orders(json.dumps({"items": po_items}), so.name, so.company)
 
 		# Check if Work Orders were raised
 		for item in so_item_name:
 			wo_qty = frappe.db.sql("select sum(qty) from `tabWork Order` where sales_order=%s and sales_order_item=%s", (so.name, item))
-			self.assertEquals(wo_qty[0][0], so_item_name.get(item))
+			self.assertEqual(wo_qty[0][0], so_item_name.get(item))
 
 	def test_serial_no_based_delivery(self):
 		frappe.set_value("Stock Settings", None, "automatically_set_serial_nos_based_on_fifo", 1)
@@ -743,8 +746,8 @@ class TestSalesOrder(unittest.TestCase):
 					"item_defaults": [
 						{
 							"default_warehouse": "_Test Warehouse - _TC",
-							"company": "_Test Company"
-						}]
+							"company": "_Test Company",
+						}],
 					})
 		frappe.db.sql("""delete from `tabSerial No` where item_code=%s""", (item.item_code))
 		make_item("_Test Item A", {"maintain_stock": 1,
@@ -752,32 +755,31 @@ class TestSalesOrder(unittest.TestCase):
 					"item_defaults": [
 						{
 							"default_warehouse": "_Test Warehouse - _TC",
-							"company": "_Test Company"
-						}]
+							"company": "_Test Company",
+						}],
 					})
 		make_item("_Test Item B", {"maintain_stock": 1,
 					"valuation_rate": 200,
 					"item_defaults": [
 						{
 							"default_warehouse": "_Test Warehouse - _TC",
-							"company": "_Test Company"
-						}]
+							"company": "_Test Company",
+						}],
 					})
 		from erpnext.manufacturing.doctype.production_plan.test_production_plan import make_bom
 		make_bom(item=item.item_code, rate=1000,
-			raw_materials = ['_Test Item A', '_Test Item B'])
+			raw_materials=["_Test Item A", "_Test Item B"])
 
 		so = make_sales_order(**{
 			"item_list": [{
 				"item_code": item.item_code,
 				"ensure_delivery_based_on_produced_serial_no": 1,
 				"qty": 1,
-				"rate":1000
-			}]
+				"rate": 1000,
+			}],
 		})
 		so.submit()
-		from erpnext.manufacturing.doctype.work_order.test_work_order import \
-			make_wo_order_test_record
+		from erpnext.manufacturing.doctype.work_order.test_work_order import make_wo_order_test_record
 		work_order = make_wo_order_test_record(item=item.item_code,
 			qty=1, do_not_save=True)
 		work_order.fg_warehouse = "_Test Warehouse - _TC"
@@ -785,8 +787,7 @@ class TestSalesOrder(unittest.TestCase):
 		work_order.submit()
 		make_stock_entry(item_code=item.item_code, target="_Test Warehouse - _TC", qty=1)
 		item_serial_no = frappe.get_doc("Serial No", {"item_code": item.item_code})
-		from erpnext.manufacturing.doctype.work_order.work_order import \
-			make_stock_entry as make_production_stock_entry
+		from erpnext.manufacturing.doctype.work_order.work_order import make_stock_entry as make_production_stock_entry
 		se = frappe.get_doc(make_production_stock_entry(work_order.name, "Manufacture", 1))
 		se.submit()
 		reserved_serial_no = se.get("items")[2].serial_no
@@ -799,7 +800,7 @@ class TestSalesOrder(unittest.TestCase):
 		item_line.serial_no = item_serial_no.name
 		self.assertRaises(frappe.ValidationError, dn.submit)
 		item_line = dn.get("items")[0]
-		item_line.serial_no =  reserved_serial_no
+		item_line.serial_no = reserved_serial_no
 		self.assertTrue(dn.submit)
 		dn.load_from_db()
 		dn.cancel()
@@ -819,8 +820,9 @@ class TestSalesOrder(unittest.TestCase):
 		si = make_sales_invoice(so.name)
 		si.update_stock = 0
 		si.submit()
-		from erpnext.accounts.doctype.sales_invoice.sales_invoice import \
-			make_delivery_note as make_delivery_note_from_invoice
+		from erpnext.accounts.doctype.sales_invoice.sales_invoice import (
+			make_delivery_note as make_delivery_note_from_invoice,
+		)
 		dn = make_delivery_note_from_invoice(si.name)
 		dn.save()
 		dn.submit()
@@ -851,7 +853,7 @@ class TestSalesOrder(unittest.TestCase):
 		pe.save(ignore_permissions=True)
 		pe.submit()
 
-		so_doc = frappe.get_doc('Sales Order', so.name)
+		so_doc = frappe.get_doc("Sales Order", so.name)
 
 		self.assertRaises(frappe.LinkExistsError, so_doc.cancel)
 
@@ -862,45 +864,45 @@ class TestSalesOrder(unittest.TestCase):
 			"item_defaults": [
 				{
 					"default_warehouse": "_Test Warehouse - _TC",
-					"company": "_Test Company"
-				}]
+					"company": "_Test Company",
+				}],
 			})
 		make_item("_Test Raw Item A", {"maintain_stock": 1,
 					"valuation_rate": 100,
 					"item_defaults": [
 						{
 							"default_warehouse": "_Test Warehouse - _TC",
-							"company": "_Test Company"
-						}]
+							"company": "_Test Company",
+						}],
 					})
 		make_item("_Test Raw Item B", {"maintain_stock": 1,
 					"valuation_rate": 200,
 					"item_defaults": [
 						{
 							"default_warehouse": "_Test Warehouse - _TC",
-							"company": "_Test Company"
-						}]
+							"company": "_Test Company",
+						}],
 					})
 		from erpnext.manufacturing.doctype.production_plan.test_production_plan import make_bom
 		make_bom(item=item.item_code, rate=1000,
-			raw_materials = ['_Test Raw Item A', '_Test Raw Item B'])
+			raw_materials=["_Test Raw Item A", "_Test Raw Item B"])
 
 		so = make_sales_order(**{
 			"item_list": [{
 				"item_code": item.item_code,
 				"qty": 1,
-				"rate":1000
-			}]
+				"rate": 1000,
+			}],
 		})
 		so.submit()
 		mr_dict = frappe._dict()
 		items = so.get_work_order_items(1)
-		mr_dict['items'] = items
-		mr_dict['include_exploded_items'] = 0
-		mr_dict['ignore_existing_ordered_qty'] = 1
+		mr_dict["items"] = items
+		mr_dict["include_exploded_items"] = 0
+		mr_dict["ignore_existing_ordered_qty"] = 1
 		make_raw_material_request(mr_dict, so.company, so.name)
 		mr = frappe.db.sql("""select name from `tabMaterial Request` ORDER BY creation DESC LIMIT 1""", as_dict=1)[0]
-		mr_doc = frappe.get_doc('Material Request',mr.get('name'))
+		mr_doc = frappe.get_doc("Material Request", mr.get("name"))
 		self.assertEqual(mr_doc.items[0].sales_order, so.name)
 
 	def test_alt_uom_qty(self):
@@ -909,14 +911,14 @@ class TestSalesOrder(unittest.TestCase):
 				{
 					"item_code": "_Test Item With Contents UOM",
 					"qty": 10,
-					"rate": 100
+					"rate": 100,
 				},
 				{
 					"item_code": "_Test Item",
 					"qty": 10,
-					"rate": 100
-				}
-			]
+					"rate": 100,
+				},
+			],
 		})
 
 		self.assertEqual(so.items[0].alt_uom, "_Test UOM 1")
@@ -929,13 +931,14 @@ class TestSalesOrder(unittest.TestCase):
 
 		self.assertEqual(so.total_alt_uom_qty, 60)
 
+
 def make_sales_order(**args):
 	so = frappe.new_doc("Sales Order")
 	args = frappe._dict(args)
 	if args.transaction_date:
 		so.transaction_date = args.transaction_date
 
-	so.set_warehouse = "" # no need to test set_warehouse permission since it only affects the client
+	so.set_warehouse = ""  # no need to test set_warehouse permission since it only affects the client
 	so.company = args.company or "_Test Company"
 	so.customer = args.customer or "_Test Customer"
 	so.currency = args.currency or "INR"
@@ -955,7 +958,7 @@ def make_sales_order(**args):
 			"warehouse": args.warehouse,
 			"qty": args.qty or 10,
 			"uom": args.uom or None,
-			"rate": args.rate or 100
+			"rate": args.rate or 100,
 		})
 
 	so.delivery_date = add_days(so.transaction_date, 10)
@@ -971,6 +974,7 @@ def make_sales_order(**args):
 
 	return so
 
+
 def create_dn_against_so(so, delivered_qty=0):
 	frappe.db.set_single_value("Stock Settings", "allow_negative_stock", 1)
 
@@ -980,23 +984,26 @@ def create_dn_against_so(so, delivered_qty=0):
 	dn.submit()
 	return dn
 
+
 def get_reserved_qty(item_code="_Test Item", warehouse="_Test Warehouse - _TC"):
 	return flt(frappe.db.get_value("Bin", {"item_code": item_code, "warehouse": warehouse},
 		"reserved_qty"))
 
+
 test_dependencies = ["Currency Exchange"]
 
+
 def make_sales_order_workflow():
-	if frappe.db.exists('Workflow', 'SO Test Workflow'):
+	if frappe.db.exists("Workflow", "SO Test Workflow"):
 		doc = frappe.get_doc("Workflow", "SO Test Workflow")
 		doc.set("is_active", 1)
 		doc.save()
 		return doc
 
-	frappe.get_doc(dict(doctype='Role', role_name='Test Junior Approver')).insert(ignore_if_duplicate=True)
-	frappe.get_doc(dict(doctype='Role', role_name='Test Approver')).insert(ignore_if_duplicate=True)
+	frappe.get_doc(dict(doctype="Role", role_name="Test Junior Approver")).insert(ignore_if_duplicate=True)
+	frappe.get_doc(dict(doctype="Role", role_name="Test Approver")).insert(ignore_if_duplicate=True)
 	frappe.db.commit()
-	frappe.cache.hdel('roles', frappe.session.user)
+	frappe.cache.hdel("roles", frappe.session.user)
 
 	workflow = frappe.get_doc({
 		"doctype": "Workflow",
@@ -1006,15 +1013,15 @@ def make_sales_order_workflow():
 		"is_active": 1,
 		"send_email_alert": 0,
 	})
-	workflow.append('states', dict( state = 'Pending', allow_edit = 'All' ))
-	workflow.append('states', dict( state = 'Approved', allow_edit = 'Test Approver', doc_status = 1 ))
-	workflow.append('transitions', dict(
-		state = 'Pending', action = 'Approve', next_state = 'Approved', allowed = 'Test Junior Approver', allow_self_approval = 1,
-		condition = 'doc.grand_total < 200'
+	workflow.append("states", dict(state="Pending", allow_edit="All"))
+	workflow.append("states", dict(state="Approved", allow_edit="Test Approver", doc_status=1))
+	workflow.append("transitions", dict(
+		state="Pending", action="Approve", next_state="Approved", allowed="Test Junior Approver", allow_self_approval=1,
+		condition="doc.grand_total < 200",
 	))
-	workflow.append('transitions', dict(
-		state = 'Pending', action = 'Approve', next_state = 'Approved', allowed = 'Test Approver', allow_self_approval = 1,
-		 condition = 'doc.grand_total > 200'
+	workflow.append("transitions", dict(
+		state="Pending", action="Approve", next_state="Approved", allowed="Test Approver", allow_self_approval=1,
+		 condition="doc.grand_total > 200",
 	))
 	workflow.insert(ignore_permissions=True)
 

@@ -6,12 +6,12 @@ frappe.views.calendar["Timesheet"] = {
 		"id": "name",
 		"allDay": "allDay",
 		"child_name": "name",
-		"title": "title"
+		"title": "title",
 	},
 	style_map: {
-		"0": "info", 
-		"1": "standard", 
-		"2": "danger"
+		"0": "info",
+		"1": "standard",
+		"2": "danger",
 	},
 	gantt: true,
 	filters: [
@@ -19,14 +19,14 @@ frappe.views.calendar["Timesheet"] = {
 			"fieldtype": "Link",
 			"fieldname": "project",
 			"options": "Project",
-			"label": __("Project")
+			"label": __("Project"),
 		},
 		{
 			"fieldtype": "Link",
 			"fieldname": "employee",
 			"options": "Employee",
-			"label": __("Employee")
-		}
+			"label": __("Employee"),
+		},
 	],
-	get_events_method: "erpnext.projects.doctype.timesheet.timesheet.get_events"
-}
+	get_events_method: "erpnext.projects.doctype.timesheet.timesheet.get_events",
+};

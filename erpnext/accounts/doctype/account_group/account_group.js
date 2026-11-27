@@ -1,4 +1,4 @@
-frappe.ui.form.on('Account Group', {
+frappe.ui.form.on("Account Group", {
 	setup(frm) {
 		// setup formatters for fieldtype
 		frappe.meta.docfield_map["Account Group Row"].row_type.formatter = (value) => {
@@ -16,36 +16,36 @@ frappe.ui.form.on('Account Group', {
 
 	refresh(frm) {
 		// Set filters for account selection
-		frm.set_query('account', 'rows', () => {
+		frm.set_query("account", "rows", () => {
 			let filters = {
 				company: frm.doc.company,
 				is_group: 0,
 			};
 
-            if (["Profit and Loss", "Balance Sheet"].includes(frm.doc.report_type)) {
+			if (["Profit and Loss", "Balance Sheet"].includes(frm.doc.report_type)) {
 				filters["report_type"] = frm.doc.report_type;
-            }
+			}
 
-			return { filters };
+			return {filters};
 		});
 
 		// Set filters for account group selection
-		frm.set_query('account_group', 'rows', () => {
-            let filters = {
-                company: frm.doc.company,
-            };
+		frm.set_query("account_group", "rows", () => {
+			let filters = {
+				company: frm.doc.company,
+			};
 
-            if (["Profit and Loss", "Balance Sheet"].includes(frm.doc.report_type)) {
+			if (["Profit and Loss", "Balance Sheet"].includes(frm.doc.report_type)) {
 				filters["report_type"] = frm.doc.report_type;
-            }
+			}
 
 			if (frm.doc.group_level == "Fixed Asset Root") {
 				filters["group_level"] = "Fixed Asset Category";
 			}
 
-            if (!frm.is_new()) {
-                filters["name"] = ['!=', frm.doc.name];
-            }
+			if (!frm.is_new()) {
+				filters["name"] = ["!=", frm.doc.name];
+			}
 
 			return {
 				query: "erpnext.accounts.doctype.account_group.account_group.account_group_query",

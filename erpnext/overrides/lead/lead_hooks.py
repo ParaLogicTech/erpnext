@@ -1,6 +1,6 @@
 import frappe
-from frappe import _
 from crm.crm.doctype.lead.lead import Lead
+from frappe import _
 from frappe.model.mapper import get_mapped_doc
 
 
@@ -9,7 +9,7 @@ class LeadERP(Lead):
 		frappe.db.sql("update `tabIssue` set `lead` = '' where `lead` = %s", self.name)
 
 	def update_customer_reference(self, customer, update_modified=True):
-		self.db_set('customer', customer)
+		self.db_set("customer", customer)
 
 		status = None
 		if customer:
@@ -34,7 +34,7 @@ class LeadERP(Lead):
 			"quotation_to": "Lead",
 			"party_name": self.name,
 			"docstatus": 1,
-			"status": ["!=", "Lost"]
+			"status": ["!=", "Lost"],
 		})
 
 		return quotation
@@ -53,7 +53,7 @@ class LeadERP(Lead):
 			"quotation_to": "Lead",
 			"party_name": self.name,
 			"docstatus": 1,
-			"status": "Lost"
+			"status": "Lost",
 		})
 
 		return quotation
@@ -98,8 +98,8 @@ def _make_customer(source_name, target_doc=None, ignore_permissions=False):
 			"field_map": {
 				"name": "lead_name",
 				"lead_name": "contact_first_name",
-			}
-		}
+			},
+		},
 	}, target_doc, set_missing_values, ignore_permissions=ignore_permissions)
 
 	return doclist
@@ -134,32 +134,32 @@ def make_quotation(source_name, target_doc=None):
 			"field_map": {
 				"name": "party_name",
 				"doctype": "quotation_to",
-			}
-		}
+			},
+		},
 	}, target_doc, set_missing_values)
 
 	return target_doc
 
 
 def add_sales_person_from_source(source, target):
-	if target.meta.has_field('sales_team') and source.get('sales_person') and not target.get('sales_team'):
-		target.append('sales_team', {
-			'sales_person': source.sales_person,
-			'allocated_percentage': 100,
+	if target.meta.has_field("sales_team") and source.get("sales_person") and not target.get("sales_team"):
+		target.append("sales_team", {
+			"sales_person": source.sales_person,
+			"allocated_percentage": 100,
 		})
 
-	if target.meta.has_field('sales_person') and source.get('sales_person') and not target.get('sales_person'):
+	if target.meta.has_field("sales_person") and source.get("sales_person") and not target.get("sales_person"):
 		target.sales_person = source.sales_person
 
 
 def override_lead_dashboard(data):
 	data.setdefault("non_standard_fieldnames", {}).update({
-		'Quotation': 'party_name',
+		"Quotation": "party_name",
 	})
 
 	data["transactions"].append({
 		"label": _("Quotation"),
-		"items": ["Quotation"]
+		"items": ["Quotation"],
 	})
 
 	return data

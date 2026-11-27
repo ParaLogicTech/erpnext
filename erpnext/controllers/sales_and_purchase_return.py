@@ -1,10 +1,12 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
-from frappe.utils import flt, cint, cstr, combine_datetime, format_datetime
 from frappe.model.meta import get_field_precision
+from frappe.utils import cint, combine_datetime, cstr, flt, format_datetime
+
+import erpnext
 
 
 class StockOverReturnError(frappe.ValidationError):
@@ -24,7 +26,7 @@ def validate_return_against(doc):
 	return_against_label = doc.meta.get_label("return_against")
 	if not frappe.db.exists(doc.doctype, doc.return_against):
 		frappe.throw(_("Invalid {0}: {1}").format(
-			return_against_label, doc.return_against
+			return_against_label, doc.return_against,
 		))
 
 	against_doc = frappe.get_doc(doc.doctype, doc.return_against)
@@ -34,13 +36,13 @@ def validate_return_against(doc):
 	ref_posting_datetime = combine_datetime(against_doc.posting_date, against_doc.get("posting_time") or "00:00:00")
 	if return_posting_datetime < ref_posting_datetime:
 		frappe.throw(_("Posting Date/Time cannot be before {0} {1} {0}").format(
-			return_against_label, against_doc.name, format_datetime(ref_posting_datetime)
+			return_against_label, against_doc.name, format_datetime(ref_posting_datetime),
 		))
 
 	# validate company
 	if doc.company != against_doc.company:
 		frappe.throw(_("Company must be same as {0} {1} ({2}").format(
-			return_against_label, against_doc.name, frappe.bold(against_doc.company)
+			return_against_label, against_doc.name, frappe.bold(against_doc.company),
 		))
 
 	# validate project
@@ -52,7 +54,7 @@ def validate_return_against(doc):
 	):
 		if doc.project != against_doc.project:
 			frappe.throw(_("{0} must be same as {1} {2} ({3})").format(
-				_("Project"), return_against_label, against_doc.name, frappe.bold(against_doc.project)
+				_("Project"), return_against_label, against_doc.name, frappe.bold(against_doc.project),
 			))
 
 	# validate transaction type
@@ -63,18 +65,18 @@ def validate_return_against(doc):
 		and cstr(doc.transaction_type) != cstr(against_doc.transaction_type)
 	):
 		frappe.throw(_("Transaction Type must be the same as {0} {1} ({2})").format(
-			return_against_label, against_doc.name, frappe.bold(against_doc.transaction_type)
+			return_against_label, against_doc.name, frappe.bold(against_doc.transaction_type),
 		))
 
 	# validate same currency and exchange rate
 	if flt(doc.currency) != flt(against_doc.currency):
 		frappe.throw(_("Currency must be same as {0} {1} ({2})").format(
-			return_against_label, against_doc.name, frappe.bold(against_doc.currency)
+			return_against_label, against_doc.name, frappe.bold(against_doc.currency),
 		))
 
 	if flt(doc.conversion_rate) != flt(against_doc.conversion_rate):
 		frappe.throw(_("Exchange Rate must be same as {0} {1} ({2})").format(
-			return_against_label, against_doc.name, frappe.bold(against_doc.conversion_rate)
+			return_against_label, against_doc.name, frappe.bold(against_doc.conversion_rate),
 		))
 
 	# doctype specific validations
@@ -87,30 +89,30 @@ def validate_returned_items(doc):
 	valid_items = frappe._dict()
 
 	select_fields = "item_code, qty, stock_qty, rate, parenttype, conversion_factor"
-	if doc.doctype != 'Purchase Invoice':
+	if doc.doctype != "Purchase Invoice":
 		select_fields += ",serial_no, batch_no"
 
-	if doc.doctype in ['Purchase Invoice', 'Purchase Receipt']:
+	if doc.doctype in ["Purchase Invoice", "Purchase Receipt"]:
 		select_fields += ",rejected_qty, received_qty"
 
 	previous_dt = None
 	previous_doc_fields = ""
 	previous_docs = []
 	previous_doc_item_codes = []
-	if doc.doctype == 'Sales Invoice':
+	if doc.doctype == "Sales Invoice":
 		previous_dt = "Delivery Note"
 		previous_doc_fields = ",delivery_note"
-	if doc.doctype == 'Purchase Invoice':
+	if doc.doctype == "Purchase Invoice":
 		previous_dt = "Purchase Receipt"
 		previous_doc_fields = ",purchase_receipt"
 
 	return_against_items = frappe.db.sql("""select {0}{1} from `tab{2} Item` where parent = %s"""
 		.format(select_fields, previous_doc_fields, doc.doctype), doc.return_against, as_dict=1)
 	for d in return_against_items:
-		if previous_dt == 'Delivery Note' and d.delivery_note:
+		if previous_dt == "Delivery Note" and d.delivery_note:
 			previous_docs.append(d.delivery_note)
 			previous_doc_item_codes.append(d.item_code)
-		elif previous_dt == 'Purchase Receipt' and d.purchase_receipt:
+		elif previous_dt == "Purchase Receipt" and d.purchase_receipt:
 			previous_docs.append(d.purchase_receipt)
 			previous_doc_item_codes.append(d.item_code)
 		else:
@@ -121,23 +123,23 @@ def validate_returned_items(doc):
 		previous_doc_item_codes = list(set(previous_doc_item_codes))
 		for previous_dn in previous_docs:
 			previous_doc_items = frappe.db.sql("""select {0} from `tab{1} Item` where parent = %s and item_code in ({2})"""
-				.format(select_fields, previous_dt, ", ".join(['%s']*len(previous_doc_item_codes))), [previous_dn] + previous_doc_item_codes, as_dict=1)
+				.format(select_fields, previous_dt, ", ".join(["%s"] * len(previous_doc_item_codes))), [previous_dn] + previous_doc_item_codes, as_dict=1)
 			for d in previous_doc_items:
 				valid_items = get_ref_item_dict(valid_items, d)
 
 	if doc.doctype in ("Delivery Note", "Sales Invoice"):
 		for d in frappe.db.sql("""select item_code, qty, serial_no, batch_no from `tabBundled Item`
-			where parent = %s""".format(doc.doctype), doc.return_against, as_dict=1):
+			where parent = %s""", doc.return_against, as_dict=1):
 				valid_items = get_ref_item_dict(valid_items, d)
 
 	already_returned_items = get_already_returned_items(doc)
 
 	# ( not mandatory when it is Purchase Invoice or a Sales Invoice without Update Stock )
-	warehouse_mandatory = not ((doc.doctype=="Purchase Invoice" or doc.doctype=="Sales Invoice") and not doc.update_stock)
+	warehouse_mandatory = not ((doc.doctype == "Purchase Invoice" or doc.doctype == "Sales Invoice") and not doc.update_stock)
 
 	items_returned = False
 	for d in doc.get("items"):
-		if flt(d.qty) > 0 or flt(d.get('received_qty')) > 0:
+		if flt(d.qty) > 0 or flt(d.get("received_qty")) > 0:
 			frappe.throw(_("Row #{0}: Item Qty must be negative for return").format(d.idx))
 
 		if d.item_code:
@@ -162,9 +164,9 @@ def validate_returned_items(doc):
 				ref = valid_items.get(d.item_code, frappe._dict())
 				validate_quantity(doc, d, ref, valid_items, already_returned_items)
 
-				'''if ref.rate and doc.doctype in ("Delivery Note", "Sales Invoice") and flt(d.rate) > ref.rate:
+				"""if ref.rate and doc.doctype in ("Delivery Note", "Sales Invoice") and flt(d.rate) > ref.rate:
 					frappe.throw(_("Row # {0}: Rate cannot be greater than the rate used in {1} {2}")
-						.format(d.idx, doc.doctype, doc.return_against))'''
+						.format(d.idx, doc.doctype, doc.return_against))"""
 
 				if ref.batch_no and d.batch_no not in ref.batch_no:
 					frappe.throw(_("Row # {0}: Batch No must be same as {1} {2}")
@@ -194,9 +196,9 @@ def validate_returned_items(doc):
 
 
 def validate_quantity(doc, args, ref, valid_items, already_returned_items):
-	fields = ['stock_qty']
-	if doc.doctype in ['Purchase Receipt', 'Purchase Invoice']:
-		fields.extend(['received_qty', 'rejected_qty'])
+	fields = ["stock_qty"]
+	if doc.doctype in ["Purchase Receipt", "Purchase Invoice"]:
+		fields.extend(["received_qty", "rejected_qty"])
 
 	already_returned_data = already_returned_items.get(args.item_code) or {}
 
@@ -207,7 +209,7 @@ def validate_quantity(doc, args, ref, valid_items, already_returned_items):
 	for column in fields:
 		returned_qty = flt(already_returned_data.get(column, 0)) if len(already_returned_data) > 0 else 0
 
-		if column == 'stock_qty':
+		if column == "stock_qty":
 			reference_qty = ref.get(column)
 			current_stock_qty = args.get(column)
 		else:
@@ -215,7 +217,7 @@ def validate_quantity(doc, args, ref, valid_items, already_returned_items):
 			current_stock_qty = args.get(column) * args.get("conversion_factor", 1.0)
 
 		max_returnable_qty = flt(reference_qty, stock_qty_precision) - returned_qty
-		label = column.replace('_', ' ').title()
+		label = column.replace("_", " ").title()
 
 		if reference_qty:
 			if flt(args.get(column)) > 0:
@@ -239,15 +241,15 @@ def get_ref_item_dict(valid_items, ref_item_row):
 		"received_qty": 0,
 		"serial_no": [],
 		"conversion_factor": ref_item_row.get("conversion_factor", 1),
-		"batch_no": []
+		"batch_no": [],
 	}))
 	item_dict = valid_items[ref_item_row.item_code]
 	item_dict["qty"] += ref_item_row.qty
-	item_dict["stock_qty"] += ref_item_row.get('stock_qty', 0)
+	item_dict["stock_qty"] += ref_item_row.get("stock_qty", 0)
 	if ref_item_row.get("rate", 0) > item_dict["rate"]:
 		item_dict["rate"] = ref_item_row.get("rate", 0)
 
-	if ref_item_row.parenttype in ['Purchase Invoice', 'Purchase Receipt']:
+	if ref_item_row.parenttype in ["Purchase Invoice", "Purchase Receipt"]:
 		item_dict["received_qty"] += ref_item_row.received_qty
 		item_dict["rejected_qty"] += ref_item_row.rejected_qty
 
@@ -261,9 +263,9 @@ def get_ref_item_dict(valid_items, ref_item_row):
 
 
 def get_already_returned_items(doc):
-	fields = ['qty', 'stock_qty', 'received_qty', 'rejected_qty']
-	column = 'child.item_code, sum(abs(child.qty)) as qty, sum(abs(child.stock_qty)) as stock_qty'
-	if doc.doctype in ['Purchase Invoice', 'Purchase Receipt']:
+	fields = ["qty", "stock_qty", "received_qty", "rejected_qty"]
+	column = "child.item_code, sum(abs(child.qty)) as qty, sum(abs(child.stock_qty)) as stock_qty"
+	if doc.doctype in ["Purchase Invoice", "Purchase Receipt"]:
 		column += """, sum(abs(child.rejected_qty) * child.conversion_factor) as rejected_qty,
 			sum(abs(child.received_qty) * child.conversion_factor) as received_qty"""
 
@@ -279,22 +281,22 @@ def get_already_returned_items(doc):
 
 	# Check previous or future document for returns
 	others_docs = None
-	if doc.doctype == 'Sales Invoice':
-		other_dt = 'Delivery Note'
+	if doc.doctype == "Sales Invoice":
+		other_dt = "Delivery Note"
 		others_docs = list(set([d.delivery_note for d in doc.items if d.delivery_note]))
-		other_dt_condition = 'and par.return_against in ({0})'.format(", ".join(['%s'] * len(others_docs)))
-	elif doc.doctype == 'Purchase Invoice':
-		other_dt = 'Purchase Receipt'
+		other_dt_condition = "and par.return_against in ({0})".format(", ".join(["%s"] * len(others_docs)))
+	elif doc.doctype == "Purchase Invoice":
+		other_dt = "Purchase Receipt"
 		others_docs = list(set([d.purchase_receipt for d in doc.items if d.purchase_receipt]))
-		other_dt_condition = 'and par.return_against in ({0})'.format(", ".join(['%s'] * len(others_docs)))
-	elif doc.doctype == 'Delivery Note':
-		other_dt = 'Sales Invoice'
+		other_dt_condition = "and par.return_against in ({0})".format(", ".join(["%s"] * len(others_docs)))
+	elif doc.doctype == "Delivery Note":
+		other_dt = "Sales Invoice"
 		others_docs = [doc.return_against]
-		other_dt_condition = 'and child.delivery_note = %s and par.update_stock = 1'
-	elif doc.doctype == 'Purchase Receipt':
-		other_dt = 'Purchase Invoice'
+		other_dt_condition = "and child.delivery_note = %s and par.update_stock = 1"
+	elif doc.doctype == "Purchase Receipt":
+		other_dt = "Purchase Invoice"
 		others_docs = [doc.return_against]
-		other_dt_condition = 'and child.purchase_receipt = %s and par.update_stock = 1'
+		other_dt_condition = "and child.purchase_receipt = %s and par.update_stock = 1"
 
 	other_dt_data = []
 	if others_docs:
@@ -341,7 +343,7 @@ def make_return_doc(doctype, source_name, target_doc=None):
 
 		# Return Options
 		if frappe.flags.args:
-			if doctype in ('Sales Invoice', 'Purchase Invoice') and frappe.flags.args.update_stock:
+			if doctype in ("Sales Invoice", "Purchase Invoice") and frappe.flags.args.update_stock:
 				doc.update_stock = cint(frappe.flags.args.update_stock == "Yes")
 			if frappe.flags.args.reopen_order:
 				doc.reopen_order = cint(frappe.flags.args.reopen_order == "Yes")
@@ -362,8 +364,8 @@ def make_return_doc(doctype, source_name, target_doc=None):
 				tax.tax_amount = -1 * tax.tax_amount
 
 		if doc.get("is_return"):
-			if doc.doctype == 'Sales Invoice':
-				doc.set('payments', [])
+			if doc.doctype == "Sales Invoice":
+				doc.set("payments", [])
 
 				change_adjusted = False
 				for data in source.payments:
@@ -372,15 +374,15 @@ def make_return_doc(doctype, source_name, target_doc=None):
 						paid_amount -= flt(source.change_amount)
 						change_adjusted = True
 
-					doc.append('payments', {
-						'mode_of_payment': data.mode_of_payment,
-						'type': data.type,
-						'amount': -1 * paid_amount,
+					doc.append("payments", {
+						"mode_of_payment": data.mode_of_payment,
+						"type": data.type,
+						"amount": -1 * paid_amount,
 					})
-			elif doc.doctype == 'Purchase Invoice':
+			elif doc.doctype == "Purchase Invoice":
 				doc.paid_amount = -1 * source.paid_amount
 				doc.base_paid_amount = -1 * source.base_paid_amount
-				doc.payment_terms_template = ''
+				doc.payment_terms_template = ""
 				doc.payment_schedule = []
 
 		if doc.get("is_return") and hasattr(doc, "bundled_items"):
@@ -398,7 +400,7 @@ def make_return_doc(doctype, source_name, target_doc=None):
 
 		if doctype == "Purchase Receipt":
 			target_doc.qty = -1 * flt(source_doc.qty - source_doc.billed_qty - source_doc.returned_qty,
-				target_doc.precision('qty'))
+				target_doc.precision("qty"))
 			target_doc.received_qty = target_doc.qty if target_doc.qty else -1 * source_doc.rejected_qty
 			target_doc.rejected_qty = -1 * source_doc.rejected_qty
 			target_doc.stock_qty = -1 * source_doc.stock_qty
@@ -479,18 +481,18 @@ def make_return_doc(doctype, source_name, target_doc=None):
 			"field_map": {
 				"serial_no": "serial_no",
 				"batch_no": "batch_no",
-				"vehicle": "vehicle"
+				"vehicle": "vehicle",
 			},
-			"postprocess": update_item
+			"postprocess": update_item,
 		},
 		"Payment Schedule": {
 			"doctype": "Payment Schedule",
-			"postprocess": update_terms
-		}
+			"postprocess": update_terms,
+		},
 	}
 
 	frappe.utils.call_hook_method("update_sales_purchase_return_mapper", mapper, doctype)
 
-	doclist = get_mapped_doc(doctype, source_name,	mapper, target_doc, set_missing_values)
+	doclist = get_mapped_doc(doctype, source_name, mapper, target_doc, set_missing_values)
 
 	return doclist

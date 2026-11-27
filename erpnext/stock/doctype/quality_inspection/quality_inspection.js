@@ -10,8 +10,8 @@ frappe.ui.form.on("Quality Inspection", {
 				method: "get_quality_inspection_template",
 				doc: frm.doc,
 				callback: function() {
-					refresh_field(['quality_inspection_template', 'readings']);
-				}
+					refresh_field(["quality_inspection_template", "readings"]);
+				},
 			});
 		}
 	},
@@ -22,17 +22,17 @@ frappe.ui.form.on("Quality Inspection", {
 				method: "get_item_specification_details",
 				doc: frm.doc,
 				callback: function() {
-					refresh_field('readings');
-				}
+					refresh_field("readings");
+				},
 			});
 		}
-	}
-})
+	},
+});
 
 // item code based on GRN/DN
-cur_frm.fields_dict['item_code'].get_query = function(doc, cdt, cdn) {
-	const doctype = (doc.reference_type == "Stock Entry") ?
-		"Stock Entry Detail" : doc.reference_type + " Item";
+cur_frm.fields_dict["item_code"].get_query = function(doc, cdt, cdn) {
+	const doctype = (doc.reference_type == "Stock Entry")
+		? "Stock Entry Detail" : doc.reference_type + " Item";
 
 	if (doc.reference_type && doc.reference_name) {
 		return {
@@ -40,31 +40,30 @@ cur_frm.fields_dict['item_code'].get_query = function(doc, cdt, cdn) {
 			filters: {
 				"from": doctype,
 				"parent": doc.reference_name,
-				"inspection_type": doc.inspection_type
-			}
+				"inspection_type": doc.inspection_type,
+			},
 		};
 	}
 },
 
 // Serial No based on item_code
-cur_frm.fields_dict['item_serial_no'].get_query = function(doc, cdt, cdn) {
+cur_frm.fields_dict["item_serial_no"].get_query = function(doc, cdt, cdn) {
 	var filters = {};
 	if (doc.item_code) {
 		filters = {
-			'item_code': doc.item_code
-		}
+			"item_code": doc.item_code,
+		};
 	}
-	return { filters: filters }
-}
+	return {filters: filters};
+};
 
 cur_frm.set_query("batch_no", function(doc) {
 	return {
 		filters: {
-			"item": doc.item_code
-		}
-	}
-})
+			"item": doc.item_code,
+		},
+	};
+});
 
-cur_frm.add_fetch('item_code', 'item_name', 'item_name');
-cur_frm.add_fetch('item_code', 'description', 'description');
-
+cur_frm.add_fetch("item_code", "item_name", "item_name");
+cur_frm.add_fetch("item_code", "description", "description");

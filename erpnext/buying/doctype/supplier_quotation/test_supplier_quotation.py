@@ -3,8 +3,10 @@
 
 
 import unittest
+
 import frappe
 import frappe.defaults
+
 
 class TestPurchaseOrder(unittest.TestCase):
 	def test_make_purchase_order(self):
@@ -30,4 +32,5 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		po.insert()
 
-test_records = frappe.get_test_records('Supplier Quotation')
+
+test_records = frappe.get_test_records("Supplier Quotation")

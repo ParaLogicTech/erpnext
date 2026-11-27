@@ -2,14 +2,15 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import flt, cint
 from frappe import _
+from frappe.utils import cint, flt
+
 from erpnext.stock.doctype.item.item import convert_item_uom_for
 
 
 def execute(filters=None):
 	filters = frappe._dict(filters)
-	filters.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+	filters.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 
 	data = get_bom_stock(filters)
 	columns = get_columns(filters)
@@ -83,6 +84,6 @@ def get_columns(filters):
 	]
 
 	if not filters.show_item_name:
-		columns = [c for c in columns if c.get('fieldname') != 'item_name']
+		columns = [c for c in columns if c.get("fieldname") != "item_name"]
 
 	return columns

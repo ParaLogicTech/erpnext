@@ -2,13 +2,16 @@
 # License: GNU General Public License v3. See license.txt
 
 
-import frappe, unittest
-from erpnext.accounts.party import get_due_date
-from erpnext.exceptions import PartyDisabled
+import unittest
+
+import frappe
 from frappe.test_runner import make_test_records
 
-test_dependencies = ['Payment Term', 'Payment Terms Template']
-test_records = frappe.get_test_records('Supplier')
+from erpnext.accounts.party import get_due_date
+from erpnext.exceptions import PartyDisabled
+
+test_dependencies = ["Payment Term", "Payment Terms Template"]
+test_records = frappe.get_test_records("Supplier")
 
 
 class TestSupplier(unittest.TestCase):
@@ -78,15 +81,15 @@ class TestSupplier(unittest.TestCase):
 
     def test_supplier_country(self):
         # Test that country field exists in Supplier DocType
-        supplier = frappe.get_doc('Supplier', '_Test Supplier with Country')
-        self.assertTrue('country' in supplier.as_dict())
+        supplier = frappe.get_doc("Supplier", "_Test Supplier with Country")
+        self.assertTrue("country" in supplier.as_dict())
 
         # Test if test supplier field record is 'Greece'
         self.assertEqual(supplier.country, "Greece")
 
         # Test update Supplier instance country value
-        supplier = frappe.get_doc('Supplier', '_Test Supplier')
-        supplier.country = 'Greece'
+        supplier = frappe.get_doc("Supplier", "_Test Supplier")
+        supplier.country = "Greece"
         supplier.save()
         self.assertEqual(supplier.country, "Greece")
 
@@ -100,17 +103,17 @@ class TestSupplier(unittest.TestCase):
         self.assertEqual(details.tax_category, "_Test Tax Category 1")
 
         address = frappe.get_doc(dict(
-            doctype='Address',
-            address_title='_Test Address With Tax Category',
-            tax_category='_Test Tax Category 2',
-            address_type='Billing',
-            address_line1='Station Road',
-            city='_Test City',
-            country='India',
+            doctype="Address",
+            address_title="_Test Address With Tax Category",
+            tax_category="_Test Tax Category 2",
+            address_type="Billing",
+            address_line1="Station Road",
+            city="_Test City",
+            country="India",
             links=[dict(
-                link_doctype='Supplier',
-                link_name='_Test Supplier With Tax Category'
-            )]
+                link_doctype="Supplier",
+                link_name="_Test Supplier With Tax Category",
+            )],
         )).insert()
 
         # Tax Category with Address

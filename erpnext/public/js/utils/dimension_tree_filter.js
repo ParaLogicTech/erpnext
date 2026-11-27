@@ -70,7 +70,7 @@ erpnext.accounts.dimensions = {
 			if (has_company && doc.company) {
 				filters.company = ["in", [doc.company, ""]];
 			}
-			return { filters: filters };
+			return {filters: filters};
 		};
 
 		if (parentfield) {

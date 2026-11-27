@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -6,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate
+
 from erpnext.hr.utils import update_employee
 
 
@@ -83,9 +83,9 @@ class EmployeeTransfer(Document):
 		employee.save(ignore_permissions=True)
 
 		if revert:
-			self.db_set('is_reverted', 1)
+			self.db_set("is_reverted", 1)
 		else:
-			self.db_set('is_applied', 1)
+			self.db_set("is_applied", 1)
 
 	def transfer_to_new_employee(self):
 		old_employee = frappe.get_doc("Employee", self.employee)
@@ -112,13 +112,13 @@ class EmployeeTransfer(Document):
 		old_employee.db_set("relieving_date", self.transfer_date)
 		old_employee.db_set("status", "Left")
 
-		self.db_set('is_applied', 1)
+		self.db_set("is_applied", 1)
 
 	def revert_transfer_to_new_employee(self):
 		employee = frappe.get_doc("Employee", self.employee)
 		if self.new_employee_id:
 			frappe.throw(_("Please delete the {0} to cancel this document").format(
-				frappe.get_desk_link("Employee", self.new_employee_id)
+				frappe.get_desk_link("Employee", self.new_employee_id),
 			))
 
 		employee.status = "Active"
@@ -129,7 +129,7 @@ class EmployeeTransfer(Document):
 
 		employee.save(ignore_permissions=True)
 
-		self.db_set('is_reverted', 1)
+		self.db_set("is_reverted", 1)
 
 	def validate_user_in_details(self):
 		for item in self.transfer_details:

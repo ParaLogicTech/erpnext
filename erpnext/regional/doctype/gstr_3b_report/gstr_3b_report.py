@@ -1,13 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
+
+import json
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
-import json
-from frappe.utils import flt, getdate, cstr
+from frappe.utils import cstr, flt, getdate
+
 from erpnext.regional.india import state_numbers
+
 
 class GSTR3BReport(Document):
 	def before_save(self):
@@ -24,46 +26,46 @@ class GSTR3BReport(Document):
 					{
 						"ty": "GST",
 						"intra": 0,
-						"inter": 0
+						"inter": 0,
 					},
 					{
 						"ty": "NONGST",
 						"inter": 0,
-						"intra": 0
-					}
-				]
+						"intra": 0,
+					},
+				],
 			},
 			"sup_details": {
 				"osup_zero": {
 					"csamt": 0,
 					"txval": 0,
-					"iamt": 0
+					"iamt": 0,
 				},
 				"osup_nil_exmp": {
-					"txval": 0
+					"txval": 0,
 				},
 				"osup_det": {
 					"samt": 0,
 					"csamt": 0,
 					"txval": 0,
 					"camt": 0,
-					"iamt": 0
+					"iamt": 0,
 				},
 				"isup_rev": {
 					"samt": 0,
 					"csamt": 0,
 					"txval": 0,
 					"camt": 0,
-					"iamt": 0
+					"iamt": 0,
 				},
 				"osup_nongst": {
 					"txval": 0,
-				}
+				},
 			},
 			"inter_sup": {
 				"unreg_details": [],
 				"comp_details": [],
-				"uin_details": []
+				"uin_details": [],
 			},
 			"itc_elg": {
 				"itc_avl": [
@@ -72,36 +74,36 @@ class GSTR3BReport(Document):
 						"samt": 0,
 						"ty": "IMPG",
 						"camt": 0,
-						"iamt": 0
+						"iamt": 0,
 					},
 					{
 						"csamt": 0,
 						"samt": 0,
 						"ty": "IMPS",
 						"camt": 0,
-						"iamt": 0
+						"iamt": 0,
 					},
 					{
 						"samt": 0,
 						"csamt": 0,
 						"ty": "ISRC",
 						"camt": 0,
-						"iamt": 0
+						"iamt": 0,
 					},
 					{
 						"ty": "ISD",
 						"iamt": 0,
 						"camt": 0,
 						"samt": 0,
-						"csamt": 0
+						"csamt": 0,
 					},
 					{
 						"samt": 0,
 						"csamt": 0,
 						"ty": "OTH",
 						"camt": 0,
-						"iamt": 0
-					}
+						"iamt": 0,
+					},
 				],
 				"itc_rev": [
 					{
@@ -109,21 +111,21 @@ class GSTR3BReport(Document):
 						"iamt": 0,
 						"camt": 0,
 						"samt": 0,
-						"csamt": 0
+						"csamt": 0,
 					},
 					{
 						"ty": "OTH",
 						"iamt": 0,
 						"camt": 0,
 						"samt": 0,
-						"csamt": 0
-					}
+						"csamt": 0,
+					},
 				],
 				"itc_net": {
 					"samt": 0,
 					"csamt": 0,
 					"camt": 0,
-					"iamt": 0
+					"iamt": 0,
 				},
 				"itc_inelg": [
 					{
@@ -131,17 +133,17 @@ class GSTR3BReport(Document):
 						"iamt": 0,
 						"camt": 0,
 						"samt": 0,
-						"csamt": 0
+						"csamt": 0,
 					},
 					{
 						"ty": "OTH",
 						"iamt": 0,
 						"camt": 0,
 						"samt": 0,
-						"csamt": 0
-					}
-				]
-			}
+						"csamt": 0,
+					},
+				],
+			},
 		}
 
 		self.gst_details = self.get_company_gst_details()
@@ -179,10 +181,10 @@ class GSTR3BReport(Document):
 	def set_itc_details(self, itc_details):
 
 		itc_type_map = {
-			'IMPG': 'Import Of Capital Goods',
-			'IMPS': 'Import Of Service',
-			'ISD': 'Input Service Distributor',
-			'OTH': 'All Other ITC'
+			"IMPG": "Import Of Capital Goods",
+			"IMPS": "Import Of Service",
+			"ISD": "Input Service Distributor",
+			"OTH": "All Other ITC",
 		}
 
 		net_itc = self.report_dict["itc_elg"]["itc_net"]
@@ -192,40 +194,40 @@ class GSTR3BReport(Document):
 			itc_type = itc_type_map.get(d["ty"])
 			gst_category = ["Registered Regular"]
 
-			if d["ty"] == 'ISRC':
+			if d["ty"] == "ISRC":
 				reverse_charge = "Y"
-				itc_type = 'All Other ITC'
-				gst_category = ['Unregistered', 'Overseas']
+				itc_type = "All Other ITC"
+				gst_category = ["Unregistered", "Overseas"]
 			else:
 				reverse_charge = "N"
 
 			for account_head in self.account_heads:
 				for category in gst_category:
-					for key in [['iamt', 'igst_account'], ['camt', 'cgst_account'], ['samt', 'sgst_account'], ['csamt', 'cess_account']]:
+					for key in [["iamt", "igst_account"], ["camt", "cgst_account"], ["samt", "sgst_account"], ["csamt", "cess_account"]]:
 						d[key[0]] += flt(itc_details.get((category, itc_type, reverse_charge, account_head.get(key[1])), {}).get("amount"), 2)
 
-			for key in ['iamt', 'camt', 'samt', 'csamt']:
+			for key in ["iamt", "camt", "samt", "csamt"]:
 				net_itc[key] += flt(d[key], 2)
 
 		for account_head in self.account_heads:
 			itc_inelg = self.report_dict["itc_elg"]["itc_inelg"][1]
-			for key in [['iamt', 'igst_account'], ['camt', 'cgst_account'], ['samt', 'sgst_account'], ['csamt', 'cess_account']]:
+			for key in [["iamt", "igst_account"], ["camt", "cgst_account"], ["samt", "sgst_account"], ["csamt", "cess_account"]]:
 				itc_inelg[key[0]] = flt(itc_details.get(("Ineligible", "N", account_head.get(key[1])), {}).get("amount"), 2)
 
 	def prepare_data(self, doctype, tax_details, supply_type, supply_category, gst_category_list, reverse_charge="N"):
 
 		account_map = {
-			'sgst_account': 'samt',
-			'cess_account': 'csamt',
-			'cgst_account': 'camt',
-			'igst_account': 'iamt'
+			"sgst_account": "samt",
+			"cess_account": "csamt",
+			"cgst_account": "camt",
+			"igst_account": "iamt",
 		}
 
 		txval = 0
 		total_taxable_value = self.get_total_taxable_value(doctype, reverse_charge)
 
 		for gst_category in gst_category_list:
-			txval += total_taxable_value.get(gst_category,0)
+			txval += total_taxable_value.get(gst_category, 0)
 			for account_head in self.account_heads:
 				for account_type, account_name in account_head.items():
 					if account_map.get(account_type) in self.report_dict.get(supply_type).get(supply_category):
@@ -236,7 +238,7 @@ class GSTR3BReport(Document):
 
 	def set_inter_state_supply(self, inter_state_supply):
 
-		osup_det = self.report_dict["sup_details"]["osup_det"]
+		self.report_dict["sup_details"]["osup_det"]
 
 		for key, value in inter_state_supply.items():
 			if key[0] == "Unregistered":
@@ -257,8 +259,8 @@ class GSTR3BReport(Document):
 			and year(posting_date) = %s and reverse_charge = %s
 			and company = %s and company_gstin = %s
 			group by gst_category
-			""" #nosec
-			.format(doctype = doctype), (self.month_no, self.year, reverse_charge, self.company, self.gst_details.get("gstin"))))
+			"""  # nosec
+			.format(doctype=doctype), (self.month_no, self.year, reverse_charge, self.company, self.gst_details.get("gstin"))))
 
 	def get_itc_details(self):
 		itc_amount = frappe.db.sql("""
@@ -274,8 +276,8 @@ class GSTR3BReport(Document):
 		itc_details = {}
 
 		for d in itc_amount:
-			itc_details.setdefault((d.gst_category, d.eligibility_for_itc, d.reverse_charge, d.account_head),{
-				"amount": d.tax_amount
+			itc_details.setdefault((d.gst_category, d.eligibility_for_itc, d.reverse_charge, d.account_head), {
+				"amount": d.tax_amount,
 			})
 
 		return itc_details
@@ -303,45 +305,45 @@ class GSTR3BReport(Document):
 
 		for d in inter_state_supply_tax:
 			inter_state_supply_tax_mapping.setdefault(cstr(d.name), {
-				'place_of_supply': d.place_of_supply,
-				'taxable_value': d.net_total,
-				'gst_category': d.gst_category,
-				'camt': 0.0,
-				'samt': 0.0,
-				'iamt': 0.0,
-				'csamt': 0.0
+				"place_of_supply": d.place_of_supply,
+				"taxable_value": d.net_total,
+				"gst_category": d.gst_category,
+				"camt": 0.0,
+				"samt": 0.0,
+				"iamt": 0.0,
+				"csamt": 0.0,
 			})
 
 			if d.account_head in [a.cgst_account for a in self.account_heads]:
-				inter_state_supply_tax_mapping[cstr(d.name)]['camt'] += d.tax_amount
+				inter_state_supply_tax_mapping[cstr(d.name)]["camt"] += d.tax_amount
 
 			if d.account_head in [a.sgst_account for a in self.account_heads]:
-				inter_state_supply_tax_mapping[cstr(d.name)]['samt'] += d.tax_amount
+				inter_state_supply_tax_mapping[cstr(d.name)]["samt"] += d.tax_amount
 
 			if d.account_head in [a.igst_account for a in self.account_heads]:
-				inter_state_supply_tax_mapping[cstr(d.name)]['iamt'] += d.tax_amount
+				inter_state_supply_tax_mapping[cstr(d.name)]["iamt"] += d.tax_amount
 
 			if d.account_head in [a.cess_account for a in self.account_heads]:
-				inter_state_supply_tax_mapping[cstr(d.name)]['csamt'] += d.tax_amount
+				inter_state_supply_tax_mapping[cstr(d.name)]["csamt"] += d.tax_amount
 
-		for key, value in inter_state_supply_tax_mapping.items():
-			if value.get('place_of_supply'):
+		for _key, value in inter_state_supply_tax_mapping.items():
+			if value.get("place_of_supply"):
 				osup_det = self.report_dict["sup_details"]["osup_det"]
-				osup_det["txval"] = flt(osup_det["txval"] + value['taxable_value'], 2)
-				osup_det["iamt"] = flt(osup_det["iamt"] + value['iamt'], 2)
-				osup_det["camt"] = flt(osup_det["camt"] + value['camt'], 2)
-				osup_det["samt"] = flt(osup_det["samt"] + value['samt'], 2)
-				osup_det["csamt"] = flt(osup_det["csamt"] + value['csamt'], 2)
+				osup_det["txval"] = flt(osup_det["txval"] + value["taxable_value"], 2)
+				osup_det["iamt"] = flt(osup_det["iamt"] + value["iamt"], 2)
+				osup_det["camt"] = flt(osup_det["camt"] + value["camt"], 2)
+				osup_det["samt"] = flt(osup_det["samt"] + value["samt"], 2)
+				osup_det["csamt"] = flt(osup_det["csamt"] + value["csamt"], 2)
 
-				if state_number != value.get('place_of_supply').split("-")[0]:
-					inter_state_supply_details.setdefault((value.get('gst_category'), value.get('place_of_supply')), {
+				if state_number != value.get("place_of_supply").split("-")[0]:
+					inter_state_supply_details.setdefault((value.get("gst_category"), value.get("place_of_supply")), {
 						"txval": 0.0,
-						"pos": value.get('place_of_supply').split("-")[0],
-						"iamt": 0.0
+						"pos": value.get("place_of_supply").split("-")[0],
+						"iamt": 0.0,
 					})
 
-					inter_state_supply_details[(value.get('gst_category'), value.get('place_of_supply'))]['txval'] += value['taxable_value']
-					inter_state_supply_details[(value.get('gst_category'), value.get('place_of_supply'))]['iamt'] += value['iamt']
+					inter_state_supply_details[value.get("gst_category"), value.get("place_of_supply")]["txval"] += value["taxable_value"]
+					inter_state_supply_details[value.get("gst_category"), value.get("place_of_supply")]["iamt"] += value["iamt"]
 
 		return inter_state_supply_details
 
@@ -357,12 +359,12 @@ class GSTR3BReport(Document):
 		inward_nil_exempt_details = {
 			"gst": {
 				"intra": 0.0,
-				"inter": 0.0
+				"inter": 0.0,
 			},
 			"non_gst": {
 				"intra": 0.0,
-				"inter": 0.0
-			}
+				"inter": 0.0,
+			},
 		}
 
 		for d in inward_nil_exempt:
@@ -381,9 +383,9 @@ class GSTR3BReport(Document):
 	def get_tax_amounts(self, doctype, reverse_charge="N"):
 
 		if doctype == "Sales Invoice":
-			tax_template = 'Sales Taxes and Charges'
+			tax_template = "Sales Taxes and Charges"
 		elif doctype == "Purchase Invoice":
-			tax_template = 'Purchase Taxes and Charges'
+			tax_template = "Purchase Taxes and Charges"
 
 		tax_amounts = frappe.db.sql("""
 			select s.gst_category, sum(t.tax_amount_after_discount_amount) as tax_amount, t.account_head
@@ -392,7 +394,7 @@ class GSTR3BReport(Document):
 			and month(s.posting_date) = %s and year(s.posting_date) = %s and s.company = %s
 			and s.company_gstin = %s
 			group by t.account_head, s.gst_category
-			""" #nosec
+			"""  # nosec
 			.format(doctype=doctype, template=tax_template),
 			(reverse_charge, self.month_no, self.year, self.company, self.gst_details.get("gstin")), as_dict=1)
 
@@ -400,19 +402,19 @@ class GSTR3BReport(Document):
 
 		for d in tax_amounts:
 			tax_details.setdefault(
-				(d.account_head,d.gst_category),{
+				(d.account_head, d.gst_category), {
 					"amount": d.get("tax_amount"),
-				}
+				},
 			)
 
 		return tax_details
 
 	def get_company_gst_details(self):
 
-		gst_details =  frappe.get_all("Address",
+		gst_details = frappe.get_all("Address",
 			fields=["gstin", "gst_state", "gst_state_number"],
 			filters={
-				"name":self.company_address
+				"name": self.company_address,
 			})
 
 		if gst_details:
@@ -422,10 +424,10 @@ class GSTR3BReport(Document):
 
 	def get_account_heads(self):
 
-		account_heads =  frappe.get_all("GST Account",
+		account_heads = frappe.get_all("GST Account",
 			fields=["cgst_account", "sgst_account", "igst_account", "cess_account"],
 			filters={
-				"company":self.company
+				"company": self.company,
 			})
 
 		if account_heads:
@@ -440,29 +442,31 @@ class GSTR3BReport(Document):
 		for doctype in ["Sales Invoice", "Purchase Invoice"]:
 
 			if doctype == "Sales Invoice":
-				party_type = 'Customer'
-				party = 'customer'
+				party_type = "Customer"
+				party = "customer"
 			else:
-				party_type = 'Supplier'
-				party = 'supplier'
+				party_type = "Supplier"
+				party = "supplier"
 
 			docnames = frappe.db.sql("""
 				select t1.name from `tab{doctype}` t1, `tab{party_type}` t2
 				where t1.docstatus = 1 and month(t1.posting_date) = %s and year(t1.posting_date) = %s
 				and t1.company = %s and t1.place_of_supply IS NULL and t1.{party} = t2.name and
 				t2.gst_category != 'Overseas'
-			""".format(doctype = doctype, party_type = party_type, party=party), (self.month_no, self.year, self.company), as_dict=1) #nosec
+			""".format(doctype=doctype, party_type=party_type, party=party), (self.month_no, self.year, self.company), as_dict=1)  # nosec
 
 			for d in docnames:
 				missing_field_invoices.append(d.name)
 
 		return ",".join(missing_field_invoices)
 
+
 def get_state_code(state):
 
 	state_code = state_numbers.get(state)
 
 	return state_code
+
 
 def get_period(month, year=None):
 
@@ -478,7 +482,7 @@ def get_period(month, year=None):
 		"September": 9,
 		"October": 10,
 		"November": 11,
-		"December": 12
+		"December": 12,
 	}.get(month)
 
 	if year:
@@ -490,13 +494,14 @@ def get_period(month, year=None):
 @frappe.whitelist()
 def view_report(name):
 
-	json_data = frappe.get_value("GSTR 3B Report", name, 'json_output')
+	json_data = frappe.get_value("GSTR 3B Report", name, "json_output")
 	return json.loads(json_data)
+
 
 @frappe.whitelist()
 def make_json(name):
 
-	json_data = frappe.get_value("GSTR 3B Report", name, 'json_output')
+	json_data = frappe.get_value("GSTR 3B Report", name, "json_output")
 	file_name = "GST3B.json"
 	frappe.local.response.filename = file_name
 	frappe.local.response.filecontent = json_data

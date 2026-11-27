@@ -1,4 +1,4 @@
-frappe.listview_settings['Payment Request'] = {
+frappe.listview_settings["Payment Request"] = {
 	add_fields: ["status"],
 	get_indicator: function(doc) {
 		if (["Requested", "Initiated", "Payment Ordered"].includes(doc.status)) {
@@ -10,5 +10,5 @@ frappe.listview_settings['Payment Request'] = {
 		} else if (doc.status == "Failed") {
 			return [__(doc.status), "orange", "status,=," + doc.status];
 		}
-	}
-}
+	},
+};

@@ -1,5 +1,6 @@
 import frappe
 from crm.crm.doctype.customer_feedback.customer_feedback import CustomerFeedback
+
 from erpnext.accounts.party import _get_contact_details
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
 
@@ -46,7 +47,7 @@ class CustomerFeedbackERP(CustomerFeedback):
 		applies_to_details = get_applies_to_details(args, for_validate=True)
 
 		for k, v in applies_to_details.items():
-			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
+			if (self.meta.has_field(k) and not self.get(k)) or k in self.force_applies_to_fields:
 				self.set(k, v)
 
 	@classmethod

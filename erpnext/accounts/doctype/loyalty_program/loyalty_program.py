@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import today, flt
+from frappe.utils import flt, today
+
 
 class LoyaltyProgram(Document):
 	pass
@@ -16,17 +15,17 @@ def get_loyalty_details(customer, loyalty_program, expiry_date=None, company=Non
 	if not expiry_date:
 		expiry_date = today()
 
-	condition = ''
+	condition = ""
 	if company:
 		condition = " and company=%s " % frappe.db.escape(company)
 	if not include_expired_entry:
 		condition += " and expiry_date>='%s' " % expiry_date
 
-	loyalty_point_details = frappe.db.sql('''select sum(loyalty_points) as loyalty_points,
+	loyalty_point_details = frappe.db.sql("""select sum(loyalty_points) as loyalty_points,
 		sum(purchase_amount) as total_spent from `tabLoyalty Point Entry`
 		where customer=%s and loyalty_program=%s and posting_date <= %s
 		{condition}
-		group by customer'''.format(condition=condition),
+		group by customer""".format(condition=condition),
 		(customer, loyalty_program, expiry_date), as_dict=1)
 
 	if loyalty_point_details:
@@ -34,23 +33,25 @@ def get_loyalty_details(customer, loyalty_program, expiry_date=None, company=Non
 	else:
 		return {"loyalty_points": 0, "total_spent": 0}
 
+
 @frappe.whitelist()
 def get_loyalty_program_details_with_points(customer, loyalty_program=None, expiry_date=None, company=None, silent=False, include_expired_entry=False, current_transaction_amount=0):
 	lp_details = get_loyalty_program_details(customer, loyalty_program, company=company, silent=silent)
 	loyalty_program_name = loyalty_program or lp_details.loyalty_program
-	if not loyalty_program_name: return
+	if not loyalty_program_name:
+		return
 
 	loyalty_program = frappe.get_doc("Loyalty Program", loyalty_program_name)
 	lp_details.update(get_loyalty_details(customer, loyalty_program.name, expiry_date, company, include_expired_entry))
 
-	# sort collection rule, first item on list will be lowest min_spent 
+	# sort collection rule, first item on list will be lowest min_spent
 	tier_spent_level = sorted(
 		[d.as_dict() for d in loyalty_program.collection_rules],
 		key=lambda rule: rule.min_spent, reverse=False,
 	)
 
 	# looping and apply tier from lowest min_spent
-	for i, d in enumerate(tier_spent_level):
+	for _i, d in enumerate(tier_spent_level):
 		# if cumulative spend more than min_spent then continue to next tier
 		if (lp_details.total_spent + current_transaction_amount) >= d.min_spent:
 			lp_details.tier_name = d.tier_name
@@ -59,6 +60,7 @@ def get_loyalty_program_details_with_points(customer, loyalty_program=None, expi
 			break
 
 	return lp_details
+
 
 @frappe.whitelist()
 def get_loyalty_program_details(customer, loyalty_program=None, expiry_date=None, company=None, silent=False, include_expired_entry=False):
@@ -79,6 +81,7 @@ def get_loyalty_program_details(customer, loyalty_program=None, expiry_date=None
 	lp_details.update({"loyalty_program": loyalty_program.name})
 	lp_details.update(loyalty_program.as_dict())
 	return lp_details
+
 
 @frappe.whitelist()
 def get_redeemption_factor(loyalty_program=None, customer=None):

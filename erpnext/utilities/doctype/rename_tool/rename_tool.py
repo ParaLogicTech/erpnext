@@ -31,7 +31,7 @@ class RenameTool(Document):
 def get_doctypes():
 	return frappe.db.sql_list(
 		"""select name from tabDocType
-		where allow_rename=1 and module!='Core' order by name"""
+		where allow_rename=1 and module!='Core' order by name""",
 	)
 
 

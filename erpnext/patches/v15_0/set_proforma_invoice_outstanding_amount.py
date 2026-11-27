@@ -1,4 +1,5 @@
 import frappe
+
 from erpnext.accounts.party import get_party_account
 
 
@@ -8,7 +9,7 @@ def execute():
 		doc = frappe.get_doc("Proforma Invoice", name)
 
 		if not doc.debit_to:
-			billing_party_type, billing_party, billing_party_name = doc.get_billing_party()
+			billing_party_type, billing_party, _billing_party_name = doc.get_billing_party()
 			account = get_party_account(billing_party_type, billing_party, doc.company, transaction_type=doc.transaction_type)
 			doc.db_set("debit_to", account, update_modified=False)
 		if not doc.party_account_currency:

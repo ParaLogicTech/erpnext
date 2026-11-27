@@ -5,8 +5,8 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint
 from frappe.model.document import Document
+from frappe.utils import cint
 from frappe.utils.html_utils import clean_html
 
 
@@ -47,18 +47,18 @@ class StockSettings(Document):
 	def make_property_setters(self):
 		# show/hide barcode field
 		for name in ["scan_barcode"]:
-			frappe.make_property_setter({'fieldname': name, 'property': 'hidden',
-				'value': 0 if self.show_barcode_field else 1})
+			frappe.make_property_setter({"fieldname": name, "property": "hidden",
+				"value": 0 if self.show_barcode_field else 1})
 
-		frappe.make_property_setter({'doctype': 'Item', 'fieldname': 'item_naming_by', 'property': 'default',
-			'value': self.item_naming_by})
+		frappe.make_property_setter({"doctype": "Item", "fieldname": "item_naming_by", "property": "default",
+			"value": self.item_naming_by})
 
 	def validate_warehouses(self):
 		warehouse_fields = ["default_warehouse", "sample_retention_warehouse"]
 		for field in warehouse_fields:
 			if frappe.db.get_value("Warehouse", self.get(field), "is_group"):
-				frappe.throw(_("Group Warehouses cannot be used in transactions. Please change the value of {0}") \
-					.format(frappe.bold(self.meta.get_field(field).label)), title =_("Incorrect Warehouse"))
+				frappe.throw(_("Group Warehouses cannot be used in transactions. Please change the value of {0}")
+					.format(frappe.bold(self.meta.get_field(field).label)), title=_("Incorrect Warehouse"))
 
 	def cant_change_valuation_method(self):
 		db_valuation_method = frappe.db.get_single_value("Stock Settings", "valuation_method")
@@ -76,38 +76,38 @@ class StockSettings(Document):
 
 	def validate_clean_description_html(self):
 		if int(self.clean_description_html or 0) \
-			and not int(self.db_get('clean_description_html') or 0):
+			and not int(self.db_get("clean_description_html") or 0):
 			# changed to text
-			frappe.enqueue('erpnext.stock.doctype.stock_settings.stock_settings.clean_all_descriptions', now=frappe.flags.in_test)
+			frappe.enqueue("erpnext.stock.doctype.stock_settings.stock_settings.clean_all_descriptions", now=frappe.flags.in_test)
 
 
 def clean_all_descriptions():
-	for item in frappe.get_all('Item', ['name', 'description']):
+	for item in frappe.get_all("Item", ["name", "description"]):
 		if item.description:
 			clean_description = clean_html(item.description)
 		if item.description != clean_description:
-			frappe.db.set_value('Item', item.name, 'description', clean_description)
+			frappe.db.set_value("Item", item.name, "description", clean_description)
 
 
 def make_bundling_fields():
 	from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 	df = {
-		'label': 'Bundling State',
-		'fieldname': 'bundling_state',
-		'fieldtype': 'Select',
-		'options': "\nStart\nContinue\nTerminate",
-		'hidden': 1,
-		'report_hide': 1,
-		'print_hide': 1,
-		'insert_after': 'item_code'
+		"label": "Bundling State",
+		"fieldname": "bundling_state",
+		"fieldtype": "Select",
+		"options": "\nStart\nContinue\nTerminate",
+		"hidden": 1,
+		"report_hide": 1,
+		"print_hide": 1,
+		"insert_after": "item_code",
 	}
 
 	custom_fields = {
-		'Quotation Item': [df],
-		'Sales Order Item': [df],
-		'Delivery Note Item': [df],
-		'Sales Invoice Item': [df],
+		"Quotation Item": [df],
+		"Sales Order Item": [df],
+		"Delivery Note Item": [df],
+		"Sales Invoice Item": [df],
 	}
 
 	create_custom_fields(custom_fields)

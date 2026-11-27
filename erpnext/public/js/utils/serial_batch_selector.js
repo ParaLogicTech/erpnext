@@ -12,7 +12,7 @@ frappe.provide("erpnext.stock");
 erpnext.stock.SerialBatchSelector = Class.extend({
 	init: function(frm, item, opts) {
 		if (!frm || !item) {
-			return
+			return;
 		}
 
 		opts = opts || {};
@@ -41,13 +41,13 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 			warehouse: this.item[this.warehouse_field],
 			batches: [],
 			serial_no: this.has_serial_no ? this.item.serial_no : null,
-		}
+		};
 
 		if (this.has_batch_no) {
 			this.doc.qty = frappe.utils.sum(
 				(this.frm.doc.items || [])
 					.filter(d => d.item_code == this.doc.item_code && d[this.warehouse_field] == this.doc.warehouse)
-					.map(d => d.qty)
+					.map(d => d.qty),
 			);
 		}
 
@@ -74,12 +74,12 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 			doc: this.doc,
 			on_hide: () => {
 				this.on_close && this.on_close(this, this.item);
-			}
+			},
 		});
 
-		this.dialog.set_primary_action(__('Select'), () => {
+		this.dialog.set_primary_action(__("Select"), () => {
 			this.values = this.dialog.get_values();
-			if(this.validate()) {
+			if (this.validate()) {
 				this.update_items();
 				this.dialog.hide();
 			}
@@ -92,7 +92,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 		this.dialog.show();
 	},
 
-	get_fields: function () {
+	get_fields: function() {
 		let fields = [
 			{
 				fieldname: "item_code",
@@ -102,7 +102,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 				reqd: 1,
 				read_only: 1,
 			},
-			{fieldtype:'Column Break'},
+			{fieldtype: "Column Break"},
 			{
 				fieldname: "warehouse",
 				fieldtype: "Link",
@@ -118,12 +118,12 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 						filters: [
 							["Bin", "item_code", "=", this.doc.item_code],
 							["Warehouse", "is_group", "=", 0],
-							["Warehouse", "company", "=", this.frm.doc.company]
-						]
-					}
-				}
+							["Warehouse", "company", "=", this.frm.doc.company],
+						],
+					};
+				},
 			},
-			{fieldtype:'Column Break'},
+			{fieldtype: "Column Break"},
 			{
 				fieldname: "qty",
 				fieldtype: "Float",
@@ -134,7 +134,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 				fieldname: "auto_fetch_button",
 				fieldtype: "Button",
 				hidden: 0,
-				label: __('Fetch Based On FIFO'),
+				label: __("Fetch Based On FIFO"),
 				click: () => {
 					let qty = flt(this.doc.qty);
 
@@ -153,7 +153,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 								if (r.message) {
 									this.set_batch_nos(r.message, true);
 								}
-							}
+							},
 						});
 					} else {
 						frappe.call({
@@ -163,7 +163,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 								item_code: this.doc.item_code,
 								warehouse: this.doc.warehouse,
 								batch_no: this.item.batch_no,
-								sales_order_item: this.item.sales_order_item
+								sales_order_item: this.item.sales_order_item,
 							},
 							callback: (r) => {
 								if (!r.exc) {
@@ -173,14 +173,14 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 										frappe.msgprint(__("Fetched only {0} serial numbers.", [serial_no_count]));
 									}
 
-									this.doc.serial_no = serial_nos.join('\n');
+									this.doc.serial_no = serial_nos.join("\n");
 									this.dialog.fields_dict.serial_no.refresh();
 								}
-							}
+							},
 						});
 					}
-				}
-			}
+				},
+			},
 		];
 
 		if (this.has_serial_no) {
@@ -196,8 +196,8 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 		let me = this;
 
 		return [
-			{fieldtype:'Section Break', label: __('Batches')},
-			{fieldname: 'batches', fieldtype: 'Table', label: __('Batch Nos'),
+			{fieldtype: "Section Break", label: __("Batches")},
+			{fieldname: "batches", fieldtype: "Table", label: __("Batch Nos"),
 				fields: [
 					{
 						fieldname: "batch_no",
@@ -234,7 +234,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 
 							if (me.doc[me.warehouse_field]) {
 								frappe.call({
-									method: 'erpnext.stock.doctype.batch.batch.get_batch_qty',
+									method: "erpnext.stock.doctype.batch.batch.get_batch_qty",
 									args: {
 										batch_no: row.batch_no,
 										warehouse: me.doc[me.warehouse_field],
@@ -243,26 +243,26 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 									callback: (r) => {
 										row.available_qty = flt(r.message) / (flt(me.item.conversion_factor) || 1);
 										me.dialog.fields_dict.batches.refresh();
-									}
+									},
 								});
 							} else {
 								control.set_value(null);
-								frappe.throw(__(`Please select Warehouse first to get available quantities`));
+								frappe.throw(__("Please select Warehouse first to get available quantities"));
 							}
-						}
+						},
 					},
 					{
 						fieldname: "available_qty",
 						fieldtype: "Float",
-						label: __('Available Qty'),
+						label: __("Available Qty"),
 						read_only: 1,
 						in_list_view: 1,
-						default: 0
+						default: 0,
 					},
 					{
-						fieldname: 'selected_qty',
-						fieldtype: 'Float',
-						label: __('Selected Qty'),
+						fieldname: "selected_qty",
+						fieldtype: "Float",
+						label: __("Selected Qty"),
 						in_list_view: 1,
 						reqd: 1,
 						default: 0,
@@ -279,11 +279,11 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 							if (flt(row.selected_qty) > flt(row.available_qty)) {
 								row.selected_qty = 0;
 								control.refresh();
-								frappe.throw(__(`Selected Qty cannot be greater than Available Qty`));
+								frappe.throw(__("Selected Qty cannot be greater than Available Qty"));
 							}
 
 							me.update_total_qty();
-						}
+						},
 					},
 				],
 				in_place_edit: true,
@@ -291,7 +291,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 				get_data: () => {
 					return this.doc.batches;
 				},
-			}
+			},
 		];
 	},
 
@@ -300,68 +300,68 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 		this.serial_list = [];
 
 		return [
-			{fieldtype: 'Section Break', label: __('Serial Numbers')},
+			{fieldtype: "Section Break", label: __("Serial Numbers")},
 			{
-				fieldname: 'serial_no_select',
-				fieldtype: 'Link',
-				options: 'Serial No',
-				label: __('Select to add Serial Number.'),
+				fieldname: "serial_no_select",
+				fieldtype: "Link",
+				options: "Serial No",
+				label: __("Select to add Serial Number."),
 				get_query: () => {
 					let serial_no_filters = {
 						item_code: this.doc.item_code,
-						delivery_document_no: ""
-					}
+						delivery_document_no: "",
+					};
 					if (this.item.batch_no) {
 						serial_no_filters["batch_no"] = this.item.batch_no;
 					}
 					if (this.doc.warehouse) {
-						serial_no_filters['warehouse'] = this.doc.warehouse;
+						serial_no_filters["warehouse"] = this.doc.warehouse;
 					}
 
 					return {
-						filters: serial_no_filters
+						filters: serial_no_filters,
 					};
 				},
 				onchange: function() {
 					let control = this;
 
-					let new_line = '\n';
-					if(!me.doc.serial_no) {
-						new_line = '';
+					let new_line = "\n";
+					if (!me.doc.serial_no) {
+						new_line = "";
 					} else {
-						me.serial_list = me.doc.serial_no.replace(/\n/g, ' ').match(/\S+/g) || [];
+						me.serial_list = me.doc.serial_no.replace(/\n/g, " ").match(/\S+/g) || [];
 					}
 
-					if(!me.serial_list.includes(me.doc.serial_no_select)) {
-						control.set_new_description('');
+					if (!me.serial_list.includes(me.doc.serial_no_select)) {
+						control.set_new_description("");
 
-						me.doc.serial_no = me.serial_list.join('\n') + new_line + me.doc.serial_no_select;
-						me.serial_list = me.doc.serial_no.replace(/\n/g, ' ').match(/\S+/g) || [];
+						me.doc.serial_no = me.serial_list.join("\n") + new_line + me.doc.serial_no_select;
+						me.serial_list = me.doc.serial_no.replace(/\n/g, " ").match(/\S+/g) || [];
 					} else {
-						control.set_new_description(me.doc.serial_no_select + ' is already selected.');
+						control.set_new_description(me.doc.serial_no_select + " is already selected.");
 					}
 
 					me.update_total_qty(me.serial_list.length);
 
 					me.doc.serial_no_select = null;
 					me.dialog.refresh();
-				}
+				},
 			},
-			{fieldtype: 'Column Break'},
+			{fieldtype: "Column Break"},
 			{
-				fieldname: 'serial_no',
-				fieldtype: 'Long Text',
-				label: __('Selected Serial Numbers'),
+				fieldname: "serial_no",
+				fieldtype: "Long Text",
+				label: __("Selected Serial Numbers"),
 				onchange: function() {
-					me.serial_list = me.doc.replace(/\n/g, ' ').match(/\S+/g) || [];
+					me.serial_list = me.doc.replace(/\n/g, " ").match(/\S+/g) || [];
 					me.update_total_qty(me.serial_list.length);
 					me.dialog.refresh();
-				}
-			}
+				},
+			},
 		];
 	},
 
-	load_all_batches: function (update_qty) {
+	load_all_batches: function(update_qty) {
 		if (!this.doc.item_code || !this.doc.warehouse) {
 			return;
 		}
@@ -379,7 +379,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 			callback: (r) => {
 				if (r.message) {
 					let batches = r.message;
-					let selected_qty_map = this.get_selected_qty_from_transaction()
+					let selected_qty_map = this.get_selected_qty_from_transaction();
 
 					for (let batch of batches) {
 						if (batch.batch_no) {
@@ -389,7 +389,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 
 					this.set_batch_nos(batches, update_qty);
 				}
-			}
+			},
 		});
 	},
 
@@ -400,7 +400,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 
 		if (this.has_serial_no) {
 			let serial_nos = this.values.serial_no || "";
-			if (!serial_nos || !serial_nos.replace(/\s/g, '').length) {
+			if (!serial_nos || !serial_nos.replace(/\s/g, "").length) {
 				frappe.throw(__("Please enter Serial Numbers for Item {0}", [this.values.item_code]));
 			}
 			return true;
@@ -424,7 +424,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 		this.doc.batches = batches;
 		this.dialog.fields_dict.batches.grid.df.data = batches;
 
-		$.each(this.doc.batches || [], function (i, row) {
+		$.each(this.doc.batches || [], function(i, row) {
 			row.name = "row " + (i + 1);
 			row.idx = i + 1;
 		});
@@ -437,7 +437,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 
 	update_items: function() {
 		if (this.has_serial_no) {
-			this.map_row_values(this.item, this.values, 'serial_no', 'qty');
+			this.map_row_values(this.item, this.values, "serial_no", "qty");
 		} else if (this.has_batch_no) {
 			for (let batch of this.doc.batches) {
 				if (!batch.batch_no) {
@@ -445,7 +445,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 				}
 
 				if (batch.selected_qty === 0) {
-					this.frm.doc.items = this.frm.doc.items.filter(d => d.batch_no != batch.batch_no || (d.batch_no === batch.batch_no && d.warehouse != this.doc.warehouse))
+					this.frm.doc.items = this.frm.doc.items.filter(d => d.batch_no != batch.batch_no || (d.batch_no === batch.batch_no && d.warehouse != this.doc.warehouse));
 				}
 
 				let items = this.frm.doc.items.filter(d => d.batch_no === batch.batch_no && d.warehouse === this.doc.warehouse);
@@ -455,12 +455,12 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 						item.qty = 0;
 					}
 
-					let item = frappe.model.copy_doc(this.item, true, this.frm.doc, 'items');
+					let item = frappe.model.copy_doc(this.item, true, this.frm.doc, "items");
 					item.batch_no = batch.batch_no;
 					item.qty = batch.selected_qty;
 					item.warehouse = this.doc.warehouse;
 				} else {
-					let item = frappe.model.copy_doc(this.item, true, this.frm.doc, 'items');
+					let item = frappe.model.copy_doc(this.item, true, this.frm.doc, "items");
 					item.batch_no = batch.batch_no;
 					item.qty = batch.selected_qty;
 					item.warehouse = this.doc.warehouse;
@@ -498,7 +498,7 @@ erpnext.stock.SerialBatchSelector = Class.extend({
 		this.dialog.fields_dict.qty.refresh();
 	},
 
-	get_selected_qty_from_transaction: function () {
+	get_selected_qty_from_transaction: function() {
 		let selected_qty = {};
 
 		for (let item of this.frm.doc.items || []) {

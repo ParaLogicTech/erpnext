@@ -2,10 +2,10 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
-from frappe.utils import cint, cstr, flt, nowdate, comma_and, date_diff
-from frappe import msgprint, _
+from frappe import _, msgprint
 from frappe.model.document import Document
+from frappe.utils import cint, comma_and, cstr, date_diff, flt, nowdate
+
 
 class LeaveControlPanel(Document):
 	def get_employees(self):
@@ -26,7 +26,7 @@ class LeaveControlPanel(Document):
 		for f in ["from_date", "to_date", "leave_type", "no_of_days"]:
 			if not self.get(f):
 				frappe.throw(_("{0} is required").format(self.meta.get_label(f)))
-		self.validate_from_to_dates('from_date', 'to_date')
+		self.validate_from_to_dates("from_date", "to_date")
 
 	def allocate_leave(self):
 		self.validate_values()
@@ -37,10 +37,10 @@ class LeaveControlPanel(Document):
 
 		for d in self.get_employees():
 			try:
-				la = frappe.new_doc('Leave Allocation')
+				la = frappe.new_doc("Leave Allocation")
 				la.set("__islocal", 1)
 				la.employee = cstr(d[0])
-				la.employee_name = frappe.db.get_value('Employee',cstr(d[0]),'employee_name')
+				la.employee_name = frappe.db.get_value("Employee", cstr(d[0]), "employee_name")
 				la.leave_type = self.leave_type
 				la.from_date = self.from_date
 				la.to_date = self.to_date
@@ -49,7 +49,7 @@ class LeaveControlPanel(Document):
 				la.docstatus = 1
 				la.save()
 				leave_allocated_for.append(d[0])
-			except:
+			except Exception:
 				pass
 		if leave_allocated_for:
 			msgprint(_("Leaves Allocated Successfully for {0}").format(comma_and(leave_allocated_for)))

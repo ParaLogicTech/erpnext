@@ -1,8 +1,8 @@
 // Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Routing', {
-	setup: function (frm) {
+frappe.ui.form.on("Routing", {
+	setup: function(frm) {
 		frm.set_query("workstation", "operations", (doc, cdt, cdn) => {
 			let row = frappe.get_doc(cdt, cdn);
 			return erpnext.queries.workstation(row.operation);
@@ -12,22 +12,22 @@ frappe.ui.form.on('Routing', {
 	calculate_operating_cost: function(frm, child) {
 		const operating_cost = flt(flt(child.hour_rate) * flt(child.time_in_mins) / 60, 2);
 		frappe.model.set_value(child.doctype, child.name, "operating_cost", operating_cost);
-	}
+	},
 });
 
-frappe.ui.form.on('BOM Operation', {
+frappe.ui.form.on("BOM Operation", {
 	operation: function(frm, cdt, cdn) {
 		const d = locals[cdt][cdn];
 
-		if(!d.operation) return;
+		if (!d.operation) return;
 
 		frappe.call({
 			"method": "frappe.client.get",
 			args: {
 				doctype: "Operation",
-				name: d.operation
+				name: d.operation,
 			},
-			callback: function (data) {
+			callback: function(data) {
 				if (data.message.description) {
 					frappe.model.set_value(d.doctype, d.name, "description", data.message.description);
 				}
@@ -37,7 +37,7 @@ frappe.ui.form.on('BOM Operation', {
 				}
 
 				frm.events.calculate_operating_cost(frm, d);
-			}
+			},
 		});
 	},
 
@@ -48,17 +48,17 @@ frappe.ui.form.on('BOM Operation', {
 			"method": "frappe.client.get",
 			args: {
 				doctype: "Workstation",
-				name: d.workstation
+				name: d.workstation,
 			},
-			callback: function (data) {
+			callback: function(data) {
 				frappe.model.set_value(d.doctype, d.name, "hour_rate", data.message.hour_rate);
 				frm.events.calculate_operating_cost(frm, d);
-			}
+			},
 		});
 	},
 
 	time_in_mins: function(frm, cdt, cdn) {
 		const d = locals[cdt][cdn];
 		frm.events.calculate_operating_cost(frm, d);
-	}
+	},
 });

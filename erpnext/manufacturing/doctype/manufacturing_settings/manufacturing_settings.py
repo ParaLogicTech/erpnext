@@ -2,9 +2,9 @@
 # For license information, please see license.txt
 
 import frappe
+from dateutil.relativedelta import relativedelta
 from frappe.model.document import Document
 from frappe.utils import cint
-from dateutil.relativedelta import relativedelta
 
 
 class ManufacturingSettings(Document):

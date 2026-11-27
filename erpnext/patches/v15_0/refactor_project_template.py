@@ -8,9 +8,9 @@ def execute():
 
 	template_items = {}
 	for d in all_items:
-		del d['parentfield']
-		del d['idx']
-		del d['name']
+		del d["parentfield"]
+		del d["idx"]
+		del d["name"]
 		template_items.setdefault(d.parent, []).append(d)
 
 	for template_name, items in template_items.items():

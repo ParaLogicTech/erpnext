@@ -3,8 +3,8 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint
 from frappe.model.document import Document
+from frappe.utils import cint
 
 
 class ProductBundle(Document):
@@ -43,7 +43,7 @@ class ProductBundle(Document):
 				item.item_group = None
 				if frappe.db.exists("Product Bundle", {"new_item_code": item.item_code}):
 					frappe.throw(_("Row #{0}: Child Item should not be a Product Bundle. Please remove Item {1} and save").format(
-						item.idx, frappe.bold(item.item_code)
+						item.idx, frappe.bold(item.item_code),
 					))
 					if not item.qty:
 						frappe.throw(_("Row #{0}: Quantity is required for type 'Item'").format(item.idx))

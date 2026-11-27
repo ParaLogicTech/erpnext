@@ -1,12 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
 
+import frappe
+
 test_dependencies = ["Customer", "Supplier"]
-from erpnext.accounts.doctype.opening_invoice_creation_tool.opening_invoice_creation_tool import get_temporary_opening_account
+from erpnext.accounts.doctype.opening_invoice_creation_tool.opening_invoice_creation_tool import (
+	get_temporary_opening_account,
+)
+
 
 class TestOpeningInvoiceCreationTool(unittest.TestCase):
 	def make_invoices(self, invoice_type="Sales"):
@@ -45,6 +48,7 @@ class TestOpeningInvoiceCreationTool(unittest.TestCase):
 		}
 		self.check_expected_values(invoices, expected_value, invoice_type="Purchase", )
 
+
 def get_opening_invoice_creation_dict(**args):
 	party = "Customer" if args.get("invoice_type", "Sales") == "Sales" else "Supplier"
 	company = args.get("company", "_Test Company")
@@ -60,7 +64,7 @@ def get_opening_invoice_creation_dict(**args):
 				"item_name": "Opening Item",
 				"due_date": "2016-09-10",
 				"posting_date": "2016-09-05",
-				"temporary_opening_account": get_temporary_opening_account(company)
+				"temporary_opening_account": get_temporary_opening_account(company),
 			},
 			{
 				"qty": 2.0,
@@ -69,9 +73,9 @@ def get_opening_invoice_creation_dict(**args):
 				"item_name": "Opening Item",
 				"due_date": "2016-09-10",
 				"posting_date": "2016-09-05",
-				"temporary_opening_account": get_temporary_opening_account(company)
-			}
-		]
+				"temporary_opening_account": get_temporary_opening_account(company),
+			},
+		],
 	})
 
 	invoice_dict.update(args)

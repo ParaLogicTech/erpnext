@@ -3,10 +3,11 @@
 
 import frappe
 from frappe import _, scrub, unscrub
-from frappe.utils import getdate, nowdate, flt, cint, date_diff, cstr
+from frappe.desk.query_report import group_report_data
+from frappe.utils import cint, cstr, date_diff, flt, getdate, nowdate
+
 from erpnext.accounts.report.customer_ledger_summary.customer_ledger_summary import get_adjustment_details
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
-from frappe.desk.query_report import group_report_data
 
 
 class SalesPersonCommissionSummary:
@@ -92,7 +93,7 @@ class SalesPersonCommissionSummary:
 
 	def process_data(self):
 		for d in self.data:
-			d.group = "'{0} | {1}'".format(d.sales_person, d.sales_commission_category or 'No Category')
+			d.group = "'{0} | {1}'".format(d.sales_person, d.sales_commission_category or "No Category")
 
 			d.invoice_portion = flt(d.base_net_amount) / flt(d.base_net_total) * 100 if d.base_net_total else 100
 			d.contribution_amount = flt(d.base_net_amount) * flt(d.allocated_percentage) / 100
@@ -112,7 +113,7 @@ class SalesPersonCommissionSummary:
 				d.age = date_diff(d.clearing_date, d.posting_date)
 
 			# Payment Deductions
-			voucher_tuple = ('Sales Invoice', d.name)
+			voucher_tuple = ("Sales Invoice", d.name)
 			adjustments_obj = self.adjustment_details.against_vouchers.get(voucher_tuple, {})
 
 			total_adjustment = sum([amount for amount in adjustments_obj.values()])
@@ -179,12 +180,12 @@ class SalesPersonCommissionSummary:
 						select voucher_type, voucher_no from `tabGL Entry` gle, `tabAccount` acc
 						where acc.name = gle.account and (acc.root_type in ('Income', 'Expense') or acc.account_type = 'Tax')
 					)
-			""", {'invoice_names': self.invoice_names}, as_dict=True)
+			""", {"invoice_names": self.invoice_names}, as_dict=True)
 
 		adjustment_voucher_entries = {}
 		for gle in gl_entries:
 			adjustment_voucher_entries.setdefault((gle.voucher_type, gle.voucher_no), [])
-			adjustment_voucher_entries[(gle.voucher_type, gle.voucher_no)].append(gle)
+			adjustment_voucher_entries[gle.voucher_type, gle.voucher_no].append(gle)
 
 		self.adjustment_details = get_adjustment_details(adjustment_voucher_entries, "credit")
 
@@ -192,24 +193,24 @@ class SalesPersonCommissionSummary:
 		conditions = []
 		having_condition = []
 
-		date_field = 'clearing_date' if self.filters.date_type == "Clearing Date" else 'inv.posting_date'
+		date_field = "clearing_date" if self.filters.date_type == "Clearing Date" else "inv.posting_date"
 		if self.filters.date_type == "Clearing Date":
 			date_conditions = having_condition
 		else:
 			date_conditions = conditions
 
-		if self.filters.get('from_date'):
+		if self.filters.get("from_date"):
 			date_conditions.append("{0} >= %(from_date)s".format(date_field))
-		if self.filters.get('to_date'):
+		if self.filters.get("to_date"):
 			date_conditions.append("{0} <= %(to_date)s".format(date_field))
 
-		if self.filters.get('company'):
+		if self.filters.get("company"):
 			conditions.append("inv.company = %(company)s")
 
-		if self.filters.get('customer'):
+		if self.filters.get("customer"):
 			conditions.append("inv.bill_to = %(customer)s")
 
-		if self.filters.get('territory'):
+		if self.filters.get("territory"):
 			conditions.append("inv.territory = %(territory)s")
 
 		if self.filters.get("sales_person"):
@@ -217,16 +218,16 @@ class SalesPersonCommissionSummary:
 			conditions.append("""sp.sales_person in (select name from `tabSales Person`
 					where lft>=%s and rgt<=%s and docstatus<2)""" % (lft, rgt))
 
-		if self.filters.get('exclude_unpaid_invoices'):
+		if self.filters.get("exclude_unpaid_invoices"):
 			conditions.append("inv.outstanding_amount <= 0")
 
-		if self.filters.get('name'):
+		if self.filters.get("name"):
 			conditions.append("inv.name = %(name)s")
 
-		if self.filters.get('transaction_type'):
+		if self.filters.get("transaction_type"):
 			conditions.append("inv.transaction_type = %(transaction_type)s")
 
-		if self.filters.get('sales_commission_category'):
+		if self.filters.get("sales_commission_category"):
 			conditions.append("IF(i.sales_commission_category IS NULL or i.sales_commission_category = '', sp.sales_commission_category, i.sales_commission_category) = %(sales_commission_category)s")
 
 		if self.filters.get("cost_center"):
@@ -267,7 +268,7 @@ class SalesPersonCommissionSummary:
 
 	def calculate_group_totals(self, data, group_field, group_value, grouped_by):
 		total_fields = [
-			'contribution_amount', 'deduction_on_contribution_amount', 'net_contribution_amount', 'commission_amount'
+			"contribution_amount", "deduction_on_contribution_amount", "net_contribution_amount", "commission_amount",
 		]
 
 		totals = frappe._dict()
@@ -287,13 +288,13 @@ class SalesPersonCommissionSummary:
 
 		# Set group values
 		if data:
-			if 'name' in grouped_by:
-				totals['posting_date'] = data[0].get('posting_date')
-				totals['customer'] = data[0].get('customer')
-				totals['sales_person'] = data[0].get('sales_person')
+			if "name" in grouped_by:
+				totals["posting_date"] = data[0].get("posting_date")
+				totals["customer"] = data[0].get("customer")
+				totals["sales_person"] = data[0].get("sales_person")
 
-			if group_field in ('name', 'customer'):
-				totals['customer_name'] = data[0].get("customer_name")
+			if group_field in ("name", "customer"):
+				totals["customer_name"] = data[0].get("customer_name")
 
 		# Set reference field
 		group_reference_doctypes = {
@@ -304,8 +305,8 @@ class SalesPersonCommissionSummary:
 
 		reference_field = group_field[0] if isinstance(group_field, (list, tuple)) else group_field
 		reference_dt = group_reference_doctypes.get(reference_field, unscrub(cstr(reference_field)))
-		totals['doc_type'] = reference_dt
-		totals['group'] = grouped_by.get(reference_field) if group_field else "'Total'"
+		totals["doc_type"] = reference_dt
+		totals["group"] = grouped_by.get(reference_field) if group_field else "'Total'"
 
 		return totals
 
@@ -318,7 +319,7 @@ class SalesPersonCommissionSummary:
 				"fieldtype": "Dynamic Link",
 				"fieldname": "group",
 				"options": "doc_type",
-				"width": 180
+				"width": 180,
 			})
 
 		columns += [
@@ -327,107 +328,107 @@ class SalesPersonCommissionSummary:
 				"fieldname": "sales_person",
 				"fieldtype": "Link",
 				"options": "Sales Person",
-				"width": 140
+				"width": 140,
 			},
 			{
 				"label": _("Territory"),
 				"options": "Territory",
 				"fieldname": "territory",
 				"fieldtype": "Link",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Category"),
 				"fieldname": "sales_commission_category",
 				"fieldtype": "Link",
 				"options": "Sales Commission Category",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Net Amount"),
 				"fieldname": "base_net_amount",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("% Contribution"),
 				"fieldname": "allocated_percentage",
 				"fieldtype": "Percent",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Contribution"),
 				"fieldname": "contribution_amount",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Penalty"),
 				"fieldname": "deduction_on_contribution_amount",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Net Contribution"),
 				"fieldname": "net_contribution_amount",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("% Commission"),
 				"fieldname": "commission_rate",
 				"fieldtype": "Percent",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("% Late Payment Deduction"),
 				"fieldname": "late_payment_deduction_percent",
 				"fieldtype": "Percent",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Commission Amount"),
 				"fieldname": "commission_amount",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Sales Invoice"),
 				"fieldname": "name",
 				"fieldtype": "Link",
 				"options": "Sales Invoice",
-				"width": 140
+				"width": 140,
 			},
 			{
 				"label": _("Customer"),
 				"fieldname": "customer",
 				"fieldtype": "Link",
 				"options": "Customer",
-				"width": 140
+				"width": 140,
 			},
 			{
 				"label": _("Invoice Date"),
 				"fieldname": "posting_date",
 				"fieldtype": "Date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Clearing Date"),
 				"fieldname": "clearing_date",
 				"fieldtype": "Date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Age"),
 				"fieldname": "age",
 				"fieldtype": "Int",
-				"width": 60
+				"width": 60,
 			},
 			{
 				"label": _("Grand Total"),
 				"fieldname": "base_grand_total",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Outstanding Amount"),
@@ -440,25 +441,25 @@ class SalesPersonCommissionSummary:
 				"label": _("Paid Amount"),
 				"fieldname": "paid_amount",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Total Deductions"),
 				"fieldname": "total_deductions",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Credit Note"),
 				"fieldname": "return_amount",
 				"fieldtype": "Currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Portion %"),
 				"fieldname": "invoice_portion",
 				"fieldtype": "Percent",
-				"width": 80
+				"width": 80,
 			},
 		]
 
@@ -470,7 +471,7 @@ class SalesPersonCommissionSummary:
 					"fieldtype": "Currency",
 					"options": "currency",
 					"width": 120,
-					"is_adjustment": 1
+					"is_adjustment": 1,
 				})
 		#
 		# if self.filters.exclude_unpaid_invoices:

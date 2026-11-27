@@ -1,9 +1,9 @@
 frappe.ui.form.on("Chart of Accounts Importer", {
-	onload: function (frm) {
+	onload: function(frm) {
 		frm.set_value("company", "");
 		frm.set_value("import_file", "");
 	},
-	refresh: function (frm) {
+	refresh: function(frm) {
 		// disable default save
 		frm.disable_save();
 
@@ -22,11 +22,11 @@ frappe.ui.form.on("Chart of Accounts Importer", {
 		frm.set_df_property(
 			"chart_preview",
 			"hidden",
-			$(frm.fields_dict["chart_tree"].wrapper).html() != "" ? 0 : 1
+			$(frm.fields_dict["chart_tree"].wrapper).html() != "" ? 0 : 1,
 		);
 	},
 
-	download_template: function (frm) {
+	download_template: function(frm) {
 		var d = new frappe.ui.Dialog({
 			title: __("Download Template"),
 			fields: [
@@ -51,14 +51,14 @@ frappe.ui.form.on("Chart of Accounts Importer", {
 								"template_type",
 								"description",
 								`The Sample Template contains all the required accounts pre filled in the  template.
-								You can add more accounts or change existing accounts in the template as per your choice.`
+								You can add more accounts or change existing accounts in the template as per your choice.`,
 							);
 						} else {
 							d.set_df_property(
 								"template_type",
 								"description",
 								`The Blank Template contains just the account type and root type required to build the Chart
-								of Accounts. Please enter the account names and add more rows as per your requirement.`
+								of Accounts. Please enter the account names and add more rows as per your requirement.`,
 							);
 						}
 					},
@@ -72,7 +72,7 @@ frappe.ui.form.on("Chart of Accounts Importer", {
 					default: frm.doc.company,
 				},
 			],
-			primary_action: function () {
+			primary_action: function() {
 				let data = d.get_values();
 
 				if (!data.template_type) {
@@ -85,7 +85,7 @@ frappe.ui.form.on("Chart of Accounts Importer", {
 						file_type: data.file_type,
 						template_type: data.template_type,
 						company: data.company,
-					}
+					},
 				);
 
 				d.hide();
@@ -95,14 +95,14 @@ frappe.ui.form.on("Chart of Accounts Importer", {
 		d.show();
 	},
 
-	import_file: function (frm) {
+	import_file: function(frm) {
 		if (!frm.doc.import_file) {
 			frm.page.set_indicator("");
 			$(frm.fields_dict["chart_tree"].wrapper).empty(); // empty wrapper on removing file
 		}
 	},
 
-	company: function (frm) {
+	company: function(frm) {
 		if (frm.doc.company) {
 			// validate that no Gl Entry record for the company exists.
 			frappe.call({
@@ -115,9 +115,9 @@ frappe.ui.form.on("Chart of Accounts Importer", {
 	},
 });
 
-var create_import_button = function (frm) {
+var create_import_button = function(frm) {
 	frm.page
-		.set_primary_action(__("Import"), function () {
+		.set_primary_action(__("Import"), function() {
 			return frappe.call({
 				method: "erpnext.accounts.doctype.chart_of_accounts_importer.chart_of_accounts_importer.import_coa",
 				args: {
@@ -126,7 +126,7 @@ var create_import_button = function (frm) {
 				},
 				freeze: true,
 				freeze_message: __("Creating Accounts..."),
-				callback: function (r) {
+				callback: function(r) {
 					if (!r.exc) {
 						clearInterval(frm.page["interval"]);
 						frm.page.set_indicator(__("Import Successful"), "blue");
@@ -138,9 +138,9 @@ var create_import_button = function (frm) {
 		.addClass("btn btn-primary");
 };
 
-var create_reset_button = function (frm) {
+var create_reset_button = function(frm) {
 	frm.page
-		.set_primary_action(__("Reset"), function () {
+		.set_primary_action(__("Reset"), function() {
 			frm.page.clear_primary_action();
 			delete frm.page["show_import_button"];
 			frm.reload_doc();
@@ -148,7 +148,7 @@ var create_reset_button = function (frm) {
 		.addClass("btn btn-primary");
 };
 
-var validate_coa = function (frm) {
+var validate_coa = function(frm) {
 	if (frm.doc.import_file) {
 		let parent = __("All Accounts");
 		return frappe.call({
@@ -160,7 +160,7 @@ var validate_coa = function (frm) {
 				file_type: frm.doc.file_type,
 				for_validate: 1,
 			},
-			callback: function (r) {
+			callback: function(r) {
 				if (r.message["show_import_button"]) {
 					frm.page["show_import_button"] = Boolean(r.message["show_import_button"]);
 				}
@@ -169,7 +169,7 @@ var validate_coa = function (frm) {
 	}
 };
 
-var generate_tree_preview = function (frm) {
+var generate_tree_preview = function(frm) {
 	let parent = __("All Accounts");
 	$(frm.fields_dict["chart_tree"].wrapper).empty(); // empty wrapper to load new data
 
@@ -185,7 +185,7 @@ var generate_tree_preview = function (frm) {
 			doctype: "Chart of Accounts Importer",
 			file_type: frm.doc.file_type,
 		},
-		onclick: function (node) {
+		onclick: function(node) {
 			parent = node.value;
 		},
 	});

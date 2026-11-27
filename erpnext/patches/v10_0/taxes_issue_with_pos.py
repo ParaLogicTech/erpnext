@@ -3,12 +3,13 @@
 
 import frappe
 
+
 def execute():
-	for d in frappe.get_all('Sales Invoice', fields=["name"],
-		filters = {'is_pos':1, 'docstatus': 1, 'creation': ('>', '2018-04-23')}):
-		doc = frappe.get_doc('Sales Invoice', d.name)
+	for d in frappe.get_all("Sales Invoice", fields=["name"],
+		filters={"is_pos": 1, "docstatus": 1, "creation": (">", "2018-04-23")}):
+		doc = frappe.get_doc("Sales Invoice", d.name)
 		if (not doc.taxes and doc.taxes_and_charges and doc.pos_profile and doc.outstanding_amount != 0 and
-			frappe.db.get_value('POS Profile', doc.pos_profile, 'taxes_and_charges', cache=True) == doc.taxes_and_charges):
+			frappe.db.get_value("POS Profile", doc.pos_profile, "taxes_and_charges", cache=True) == doc.taxes_and_charges):
 
 			doc.append_taxes_from_master()
 			doc.calculate_taxes_and_totals()
@@ -20,6 +21,7 @@ def execute():
 			delete_gle_for_voucher(doc.name)
 			doc.make_gl_entries(repost_future_gle=False)
 
+
 def delete_gle_for_voucher(voucher_no):
 	frappe.db.sql("""delete from `tabGL Entry` where voucher_no = %(voucher_no)s""",
-		{'voucher_no': voucher_no})
+		{"voucher_no": voucher_no})

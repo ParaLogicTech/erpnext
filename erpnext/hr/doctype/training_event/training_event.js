@@ -1,35 +1,35 @@
 // Copyright (c) 2016, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Training Event', {
+frappe.ui.form.on("Training Event", {
 	onload_post_render: function(frm) {
 		frm.get_field("employees").grid.set_multiple_add("employee");
 	},
-	refresh: function (frm) {
+	refresh: function(frm) {
 		if (frm.doc.__islocal || frm.doc.__unsaved || frm.doc.docstatus !== 1) {
 			return;
 		}
 
-		frm.add_custom_button(__("Training Result"), function () {
+		frm.add_custom_button(__("Training Result"), function() {
 			frappe.model.open_mapped_doc({
 				method: "erpnext.hr.doctype.training_event.training_event.make_training_result",
-				frm: frm
+				frm: frm,
 			});
 		});
 
-		frm.add_custom_button(__("Training Feedback"), function () {
+		frm.add_custom_button(__("Training Feedback"), function() {
 			frappe.model.open_mapped_doc({
 				method: "erpnext.hr.doctype.training_event.training_event.make_training_feedback",
-				frm: frm
+				frm: frm,
 			});
 		});
 	},
-	start_time: function (frm) {
+	start_time: function(frm) {
 		set_training_hours(frm);
 	},
-	end_time: function (frm) {
+	end_time: function(frm) {
 		set_training_hours(frm);
-	}
+	},
 });
 
 function set_training_hours(frm) {

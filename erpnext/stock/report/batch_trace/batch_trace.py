@@ -2,7 +2,8 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe	import _
+from frappe import _
+
 from erpnext.stock.report.stock_ledger.stock_ledger import get_item_details
 
 
@@ -13,7 +14,7 @@ def execute(filters=None):
 class StockTraceReport:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 		self.item_codes = set()
 
 	def run(self):
@@ -31,7 +32,7 @@ class StockTraceReport:
 
 	def get_batch_ledger_entries(self, batch_no, incoming_only=False):
 		sles = self._get_sles("sle.batch_no = %(batch_no)s", {
-			"batch_no": batch_no
+			"batch_no": batch_no,
 		})
 		self.get_dependent_sles(sles)
 

@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import cint, fmt_money, flt
 from frappe.model.document import Document
+from frappe.utils import cint, flt, fmt_money
+
 from erpnext.accounts.doctype.pricing_rule.pricing_rule import get_pricing_rule_for_item
 
 
@@ -15,7 +15,7 @@ class SubscriptionPlan(Document):
 
 	def validate_interval_count(self):
 		if self.billing_interval_count < 1:
-			frappe.throw(_('Billing Interval Count cannot be less than 1'))
+			frappe.throw(_("Billing Interval Count cannot be less than 1"))
 
 
 @frappe.whitelist()
@@ -58,7 +58,7 @@ def get_price(item_code, price_list, customer_group, company, qty=1):
 				"company": company,
 				"conversion_rate": 1,
 				"for_shopping_cart": True,
-				"currency": frappe.db.get_value("Price List", price_list, "currency")
+				"currency": frappe.db.get_value("Price List", price_list, "currency"),
 			}))
 
 			if pricing_rule:
@@ -72,8 +72,8 @@ def get_price(item_code, price_list, customer_group, company, qty=1):
 			if price_obj:
 				price_obj["formatted_price"] = fmt_money(price_obj["price_list_rate"], currency=price_obj["currency"])
 
-				price_obj["currency_symbol"] = not cint(frappe.db.get_default("hide_currency_symbol")) \
-					and (frappe.db.get_value("Currency", price_obj.currency, "symbol", cache=True) or price_obj.currency) \
+				price_obj["currency_symbol"] = (not cint(frappe.db.get_default("hide_currency_symbol"))
+					and (frappe.db.get_value("Currency", price_obj.currency, "symbol", cache=True) or price_obj.currency)) \
 					or ""
 
 				uom_conversion_factor = frappe.db.sql("""select	C.conversion_factor

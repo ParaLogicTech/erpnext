@@ -9,7 +9,7 @@ $.extend(erpnext.task_actions, {
 		);
 
 		let dialog = new frappe.ui.Dialog({
-			title: __('Create Task'),
+			title: __("Create Task"),
 			fields: fields,
 			size: "large",
 			primary_action: () => {
@@ -41,8 +41,8 @@ $.extend(erpnext.task_actions, {
 					frappe.set_route("Form", "Task", doc.name);
 				});
 			},
-			primary_action_label: __('Create'),
-			secondary_action_label: __('Edit Full Form'),
+			primary_action_label: __("Create"),
+			secondary_action_label: __("Edit Full Form"),
 		});
 		dialog.show();
 	},
@@ -68,11 +68,11 @@ $.extend(erpnext.task_actions, {
 			task_data,
 			project_data,
 			erpnext.task_actions.get_create_task_fields(project_data, task_data),
-			true
-		)
+			true,
+		);
 
 		let dialog = new frappe.ui.Dialog({
-			title: __('Edit Task'),
+			title: __("Edit Task"),
 			fields: fields,
 			primary_action: () => {
 				let values = dialog.get_values();
@@ -89,10 +89,10 @@ $.extend(erpnext.task_actions, {
 					callback: (r) => {
 						dialog.hide();
 						callback?.(r);
-					}
+					},
 				});
 			},
-			primary_action_label: __('Save')
+			primary_action_label: __("Save"),
 		});
 		dialog.show();
 	},
@@ -183,7 +183,7 @@ $.extend(erpnext.task_actions, {
 					freeze_message: __("Cancelling..."),
 				});
 			}, () => reject());
-		})
+		});
 	},
 
 	async get_dialog_fields(doctype, name, task_data, project_data, fields, project_non_mandatory) {
@@ -269,7 +269,7 @@ $.extend(erpnext.task_actions, {
 		additional_fields = additional_fields || [];
 		fields = fields.concat(additional_fields);
 
-		return fields
+		return fields;
 	},
 
 	get_create_task_fields(project_data, task_data) {
@@ -317,7 +317,7 @@ $.extend(erpnext.task_actions, {
 				"fieldtype": "Int",
 				"default": 1,
 			},
-		])
+		]);
 
 		let additional_fields_bottom = erpnext.task_actions.get_additional_create_task_fields_bottom?.(task_data) || [];
 		fields = fields.concat(additional_fields_bottom);
@@ -346,7 +346,7 @@ $.extend(erpnext.task_actions, {
 					read_only: 1,
 					reqd: 1,
 				},
-			])
+			]);
 		}
 
 		return fields;

@@ -1,14 +1,17 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe, erpnext
 import unittest
-from frappe.utils import today, add_months
+
+import frappe
+from frappe.utils import add_months, today
+
+import erpnext
 from erpnext.hr.doctype.employee.test_employee import make_employee
 from erpnext.hr.doctype.leave_application.leave_application import get_leave_balance_on
 
 test_dependencies = ["Employee", "Leave Type", "Leave Policy"]
+
 
 class TestLeavePeriod(unittest.TestCase):
 	def setUp(self):
@@ -22,8 +25,8 @@ class TestLeavePeriod(unittest.TestCase):
 			"doctype": "Leave Policy",
 			"leave_policy_details": [{
 				"leave_type": leave_type,
-				"annual_allocation": 20
-			}]
+				"annual_allocation": 20,
+			}],
 		}).insert()
 		leave_policy.submit()
 
@@ -33,7 +36,7 @@ class TestLeavePeriod(unittest.TestCase):
 		frappe.db.set_value("Employee", employee_doc_name, "leave_policy", leave_policy.name)
 
 		# clear the already allocated leave
-		frappe.db.sql('''delete from `tabLeave Allocation` where employee=%s''', "test_leave_period@employee.com")
+		frappe.db.sql("""delete from `tabLeave Allocation` where employee=%s""", "test_leave_period@employee.com")
 
 		# create the leave period
 		leave_period = create_leave_period(add_months(today(), -3), add_months(today(), 3))
@@ -42,12 +45,13 @@ class TestLeavePeriod(unittest.TestCase):
 		leave_period.grant_leave_allocation(employee=employee_doc_name)
 		self.assertEqual(get_leave_balance_on(employee_doc_name, leave_type, today()), 20)
 
+
 def create_leave_period(from_date, to_date, company=None):
-	leave_period = frappe.db.get_value('Leave Period',
+	leave_period = frappe.db.get_value("Leave Period",
 		dict(company=company or erpnext.get_default_company(),
 			from_date=from_date,
 			to_date=to_date,
-			is_active=1), 'name')
+			is_active=1), "name")
 	if leave_period:
 		return frappe.get_doc("Leave Period", leave_period)
 
@@ -56,6 +60,6 @@ def create_leave_period(from_date, to_date, company=None):
 		"company": company or erpnext.get_default_company(),
 		"from_date": from_date,
 		"to_date": to_date,
-		"is_active": 1
+		"is_active": 1,
 	}).insert()
 	return leave_period

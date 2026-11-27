@@ -1,6 +1,6 @@
-frappe.listview_settings['Asset'] = {
-	add_fields: ['status'],
-	get_indicator: function (doc) {
+frappe.listview_settings["Asset"] = {
+	add_fields: ["status"],
+	get_indicator: function(doc) {
 		if (doc.status === "Fully Depreciated") {
 			return [__("Fully Depreciated"), "green", "status,=,Fully Depreciated"];
 
@@ -33,21 +33,21 @@ frappe.listview_settings['Asset'] = {
 		}
 	},
 	onload: function(me) {
-		me.page.add_action_item('Make Asset Movement', function() {
+		me.page.add_action_item("Make Asset Movement", function() {
 			const assets = me.get_checked_items();
 			frappe.call({
 				method: "erpnext.assets.doctype.asset.asset.make_asset_movement",
 				freeze: true,
-				args:{
-					"assets": assets
+				args: {
+					"assets": assets,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (r.message) {
 						var doc = frappe.model.sync(r.message)[0];
 						frappe.set_route("Form", doc.doctype, doc.name);
 					}
-				}
+				},
 			});
 		});
 	},
-}
+};

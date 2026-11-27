@@ -4,5 +4,5 @@
 frappe.ui.form.on("Training Topic", {
 	refresh(frm) {
 
-	}
+	},
 });

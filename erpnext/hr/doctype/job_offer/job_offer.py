@@ -2,11 +2,12 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import cint
+from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe import _
+from frappe.utils import cint
 from frappe.utils.data import get_link_to_form
+
 
 class JobOffer(Document):
 	def onload(self):
@@ -22,7 +23,7 @@ class JobOffer(Document):
 		if staffing_plan and check_vacancies:
 			job_offers = self.get_job_offer(staffing_plan.from_date, staffing_plan.to_date)
 			if not staffing_plan.get("vacancies") or cint(staffing_plan.vacancies) - len(job_offers) <= 0:
-				error_variable = 'for ' + frappe.bold(self.designation)
+				error_variable = "for " + frappe.bold(self.designation)
 				if staffing_plan.get("parent"):
 					error_variable = frappe.bold(get_link_to_form("Staffing Plan", staffing_plan.parent))
 
@@ -32,16 +33,18 @@ class JobOffer(Document):
 		update_job_applicant(self.status, self.job_applicant)
 
 	def get_job_offer(self, from_date, to_date):
-		''' Returns job offer created during a time period '''
+		""" Returns job offer created during a time period """
 		return frappe.get_all("Job Offer", filters={
-				"offer_date": ['between', (from_date, to_date)],
+				"offer_date": ["between", (from_date, to_date)],
 				"designation": self.designation,
-				"company": self.company
-			}, fields=['name'])
+				"company": self.company,
+			}, fields=["name"])
+
 
 def update_job_applicant(status, job_applicant):
 	if status in ("Accepted", "Rejected"):
 		frappe.set_value("Job Applicant", job_applicant, "status", status)
+
 
 def get_staffing_plan_detail(designation, company, offer_date):
 	detail = frappe.db.sql("""
@@ -62,6 +65,7 @@ def get_staffing_plan_detail(designation, company, offer_date):
 
 	return frappe._dict(detail[0]) if (detail and detail[0].parent) else None
 
+
 @frappe.whitelist()
 def make_employee(source_name, target_doc=None):
 	def set_missing_values(source, target):
@@ -71,6 +75,6 @@ def make_employee(source_name, target_doc=None):
 				"doctype": "Employee",
 				"field_map": {
 					"applicant_name": "employee_name",
-				}}
+				}},
 		}, target_doc, set_missing_values)
 	return doc

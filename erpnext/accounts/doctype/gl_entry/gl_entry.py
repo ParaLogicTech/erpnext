@@ -1,14 +1,16 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
-from frappe.utils import flt, getdate, formatdate, cint
 from frappe.model.document import Document
 from frappe.model.meta import get_field_precision
-from erpnext.accounts.utils import get_account_currency, get_fiscal_year
-from erpnext.accounts.doctype.accounting_period.accounting_period import get_closed_accounting_period
+from frappe.utils import cint, flt, formatdate, getdate
+
+import erpnext
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_checks_for_pl_and_bs_accounts
+from erpnext.accounts.doctype.accounting_period.accounting_period import get_closed_accounting_period
+from erpnext.accounts.utils import get_account_currency, get_fiscal_year
 from erpnext.exceptions import InvalidAccountCurrency
 
 exclude_from_linked_with = True
@@ -54,7 +56,7 @@ class GLEntry(Document):
 		validate_balance_type(self.account, self.flags.adv_adj)
 
 	def check_mandatory(self):
-		mandatory = ['account', 'voucher_type', 'voucher_no', 'company']
+		mandatory = ["account", "voucher_type", "voucher_no", "company"]
 		for k in mandatory:
 			if not self.get(k):
 				frappe.throw(_("{0} is required").format(_(self.meta.get_label(k))))
@@ -77,7 +79,7 @@ class GLEntry(Document):
 				frappe.throw(_("{0} {1}: Party is required against Payable account {2}")
 					.format(self.voucher_type, self.voucher_no, self.account))
 
-		if self.party and account_type not in ('Receivable', 'Payable'):
+		if self.party and account_type not in ("Receivable", "Payable"):
 			frappe.throw(_("{0} {1}: Party cannot be set for Account {2} because it is neither a Receivable or Payable account")
 				.format(self.voucher_type, self.voucher_no, self.account))
 
@@ -89,14 +91,14 @@ class GLEntry(Document):
 	def validate_cost_center_for_pl_and_bs(self):
 		report_type = frappe.db.get_value("Account", self.account, "report_type", cache=1)
 
-		if not self.cost_center and self.voucher_type != 'Period Closing Voucher':
+		if not self.cost_center and self.voucher_type != "Period Closing Voucher":
 			if report_type == "Profit and Loss":
 				frappe.throw(_("{0} {1}: Cost Center is required for 'Profit and Loss' account {2}. Please set up a default Cost Center for the Company.").format(
-					self.voucher_type, self.voucher_no, self.account
+					self.voucher_type, self.voucher_no, self.account,
 				))
 			elif report_type == "Balance Sheet" and frappe.db.get_single_value("Accounts Settings", "cost_center_mandatory_in_entry_of_bs_account"):
 				frappe.throw(_("{0} {1}: Cost Center is required for 'Balance Sheet' account {2}. Please select Cost Center.").format(
-					self.voucher_type, self.voucher_no, self.account
+					self.voucher_type, self.voucher_no, self.account,
 				))
 
 	def validate_dimensions_for_pl_and_bs(self):
@@ -114,7 +116,7 @@ class GLEntry(Document):
 					and not dimension.disabled
 				):
 					frappe.throw(_("Accounting Dimension {0} is required for Account {1}.").format(
-						frappe.bold(dimension.label), frappe.bold(self.account)
+						frappe.bold(dimension.label), frappe.bold(self.account),
 					))
 
 				if (
@@ -125,7 +127,7 @@ class GLEntry(Document):
 				):
 					if not self.get(dimension.fieldname):
 						frappe.throw(_("Accounting Dimension {0} is required for 'Profit and Loss' Account {1}.").format(
-							frappe.bold(dimension.label), frappe.bold(self.account)
+							frappe.bold(dimension.label), frappe.bold(self.account),
 						))
 
 				if (
@@ -136,16 +138,16 @@ class GLEntry(Document):
 				):
 					if not self.get(dimension.fieldname):
 						frappe.throw(_("Accounting Dimension {0} is required for 'Balance Sheet' Account {1}.").format(
-							frappe.bold(dimension.label), frappe.bold(self.account)
+							frappe.bold(dimension.label), frappe.bold(self.account),
 						))
 
 	def check_pl_account(self):
 		report_type = frappe.db.get_value("Account", self.account, "report_type", cache=1)
 
 		if (
-			self.is_opening == 'Yes'
+			self.is_opening == "Yes"
 			and report_type == "Profit and Loss"
-			and self.voucher_type not in ('Purchase Invoice', 'Sales Invoice', 'Journal Entry')
+			and self.voucher_type not in ("Purchase Invoice", "Sales Invoice", "Journal Entry")
 		):
 			frappe.throw(_("{0} {1}: 'Profit and Loss' type account {2} not allowed in Opening Entry")
 				.format(self.voucher_type, self.voucher_no, self.account))
@@ -157,12 +159,12 @@ class GLEntry(Document):
 
 		if ret.is_group:
 			frappe.throw(_("{0} {1}: Account {2} is a Group Account and group accounts cannot be used in transactions").format(
-				self.voucher_type, self.voucher_no, self.account
+				self.voucher_type, self.voucher_no, self.account,
 			))
 
 		if ret.company != self.company:
 			frappe.throw(_("{0} {1}: Account {2} does not belong to Company {3}").format(
-				self.voucher_type, self.voucher_no, self.account, self.company
+				self.voucher_type, self.voucher_no, self.account, self.company,
 			))
 
 	def validate_cost_center(self):
@@ -176,7 +178,7 @@ class GLEntry(Document):
 			return self.cost_center_company[self.cost_center]
 
 		def _check_is_group():
-			return cint(frappe.get_cached_value('Cost Center', self.cost_center, 'is_group'))
+			return cint(frappe.get_cached_value("Cost Center", self.cost_center, "is_group"))
 
 		if self.cost_center and _get_cost_center_company() != self.company:
 			frappe.throw(_("{0} {1}: Cost Center {2} does not belong to Company {3}")
@@ -238,10 +240,10 @@ def check_freezing_date(posting_date, adv_adj=False):
 	if adv_adj:
 		return
 
-	acc_frozen_upto = frappe.db.get_single_value('Accounts Settings', 'acc_frozen_upto', cache=1)
+	acc_frozen_upto = frappe.db.get_single_value("Accounts Settings", "acc_frozen_upto", cache=1)
 	if acc_frozen_upto:
-		frozen_accounts_modifier = frappe.db.get_single_value('Accounts Settings', 'frozen_accounts_modifier', cache=1)
-		if getdate(posting_date) <= getdate(acc_frozen_upto) and not frozen_accounts_modifier in frappe.get_roles():
+		frozen_accounts_modifier = frappe.db.get_single_value("Accounts Settings", "frozen_accounts_modifier", cache=1)
+		if getdate(posting_date) <= getdate(acc_frozen_upto) and frozen_accounts_modifier not in frappe.get_roles():
 			frappe.throw(_("You are not authorized to add or update entries before {0}").format(formatdate(acc_frozen_upto)))
 
 
@@ -250,10 +252,10 @@ def validate_frozen_account(account, adv_adj=False):
 		return
 
 	frozen_account = frappe.db.get_value("Account", account, "freeze_account", cache=1)
-	if frozen_account != 'Yes':
+	if frozen_account != "Yes":
 		return
 
-	frozen_accounts_modifier = frappe.db.get_single_value('Accounts Settings', 'frozen_accounts_modifier', cache=1)
+	frozen_accounts_modifier = frappe.db.get_single_value("Accounts Settings", "frozen_accounts_modifier", cache=1)
 	if not frozen_accounts_modifier:
 		frappe.throw(_("Account {0} is frozen").format(account))
 	elif frozen_accounts_modifier not in frappe.get_roles():
@@ -267,7 +269,7 @@ def validate_closed_accounting_period(company, posting_date, voucher_type, adv_a
 	closed_accounting_period = get_closed_accounting_period(company, posting_date, voucher_type, cache=True)
 	if closed_accounting_period:
 		frappe.throw(_("You cannot create or cancel any accounting entries within in the closed Accounting Period {0}").format(
-			frappe.bold(closed_accounting_period)
+			frappe.bold(closed_accounting_period),
 		), ClosedAccountingPeriod)
 
 
@@ -284,8 +286,10 @@ def update_against_account(voucher_type, voucher_no):
 
 	accounts_debited, accounts_credited = [], []
 	for d in entries:
-		if flt(d.debit, precision) > 0: accounts_debited.append(d.party or d.account)
-		if flt(d.credit, precision) > 0: accounts_credited.append(d.party or d.account)
+		if flt(d.debit, precision) > 0:
+			accounts_debited.append(d.party or d.account)
+		if flt(d.credit, precision) > 0:
+			accounts_credited.append(d.party or d.account)
 
 	for d in entries:
 		if flt(d.debit, precision) > 0:
@@ -307,8 +311,10 @@ def validate_party_gle_currency(party_type, party, company, party_account_curren
 
 
 def remove_dimensions_not_allowed_for_bs_account(gle):
-	from erpnext.accounts.utils import get_allow_cost_center_in_entry_of_bs_account,\
-		get_allow_project_in_entry_of_bs_account
+	from erpnext.accounts.utils import (
+		get_allow_cost_center_in_entry_of_bs_account,
+		get_allow_project_in_entry_of_bs_account,
+	)
 
 	if gle.account and frappe.db.get_value("Account", gle.account, "report_type", cache=1) != "Profit and Loss":
 		if not get_allow_cost_center_in_entry_of_bs_account() and gle.cost_center:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -6,28 +5,31 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate
+
 from erpnext.accounts.utils import get_fiscal_year
+
 
 class TaxWithholdingCategory(Document):
 	pass
 
+
 def get_party_tax_withholding_details(ref_doc, tax_withholding_category=None):
 
-	pan_no = ''
+	pan_no = ""
 	suppliers = []
 
 	if not tax_withholding_category:
-		tax_withholding_category, pan_no = frappe.db.get_value('Supplier', ref_doc.supplier, ['tax_withholding_category', 'pan'])
+		tax_withholding_category, pan_no = frappe.db.get_value("Supplier", ref_doc.supplier, ["tax_withholding_category", "pan"])
 
 	if not tax_withholding_category:
 		return
 
 	if not pan_no:
-		pan_no = frappe.db.get_value('Supplier', ref_doc.supplier, 'pan')
+		pan_no = frappe.db.get_value("Supplier", ref_doc.supplier, "pan")
 
 	# Get others suppliers with the same PAN No
 	if pan_no:
-		suppliers = [d.name for d in  frappe.get_all('Supplier', fields=['name'], filters={'pan': pan_no})]
+		suppliers = [d.name for d in frappe.get_all("Supplier", fields=["name"], filters={"pan": pan_no})]
 
 	if not suppliers:
 		suppliers.append(ref_doc.supplier)
@@ -35,15 +37,16 @@ def get_party_tax_withholding_details(ref_doc, tax_withholding_category=None):
 	fy = get_fiscal_year(ref_doc.posting_date, company=ref_doc.company)
 	tax_details = get_tax_withholding_details(tax_withholding_category, fy[0], ref_doc.company)
 	if not tax_details:
-		frappe.throw(_('Please set associated account in Tax Withholding Category {0} against Company {1}')
+		frappe.throw(_("Please set associated account in Tax Withholding Category {0} against Company {1}")
 			.format(tax_withholding_category, ref_doc.company))
 
 	tds_amount = get_tds_amount(suppliers, ref_doc.net_total, ref_doc.company,
-		tax_details, fy,  ref_doc.posting_date, pan_no)
+		tax_details, fy, ref_doc.posting_date, pan_no)
 
 	tax_row = get_tax_row(tax_details, tds_amount)
 
 	return tax_row
+
 
 def get_tax_withholding_details(tax_withholding_category, fiscal_year, company):
 	tax_withholding = frappe.get_doc("Tax Withholding Category", tax_withholding_category)
@@ -57,8 +60,9 @@ def get_tax_withholding_details(tax_withholding_category, fiscal_year, company):
 				"rate": tax_rate_detail.tax_withholding_rate,
 				"threshold": tax_rate_detail.single_threshold,
 				"cumulative_threshold": tax_rate_detail.cumulative_threshold,
-				"description": tax_withholding.category_name if tax_withholding.category_name else tax_withholding_category
+				"description": tax_withholding.category_name if tax_withholding.category_name else tax_withholding_category,
 			})
+
 
 def get_tax_withholding_rates(tax_withholding, fiscal_year):
 	# returns the row that matches with the fiscal year from posting date
@@ -68,6 +72,7 @@ def get_tax_withholding_rates(tax_withholding, fiscal_year):
 
 	frappe.throw(_("No Tax Withholding data found for the current Fiscal Year."))
 
+
 def get_tax_row(tax_details, tds_amount):
 
 	return {
@@ -76,8 +81,9 @@ def get_tax_row(tax_details, tds_amount):
 		"charge_type": "Actual",
 		"account_head": tax_details.account_head,
 		"description": tax_details.description,
-		"tax_amount": tds_amount
+		"tax_amount": tds_amount,
 	}
+
 
 def get_tds_amount(suppliers, net_total, company, tax_details, fiscal_year_details, posting_date, pan_no=None):
 	fiscal_year, year_start_date, year_end_date = fiscal_year_details
@@ -90,15 +96,15 @@ def get_tds_amount(suppliers, net_total, company, tax_details, fiscal_year_detai
 
 		return amount * rate / 100
 
-	ldc_name = frappe.db.get_value('Lower Deduction Certificate',
+	ldc_name = frappe.db.get_value("Lower Deduction Certificate",
 		{
-			'pan_no': pan_no,
-			'fiscal_year': fiscal_year
-		}, 'name')
-	ldc = ''
+			"pan_no": pan_no,
+			"fiscal_year": fiscal_year,
+		}, "name")
+	ldc = ""
 
 	if ldc_name:
-		ldc = frappe.get_doc('Lower Deduction Certificate', ldc_name)
+		ldc = frappe.get_doc("Lower Deduction Certificate", ldc_name)
 
 	entries = frappe.db.sql("""
 			select voucher_no, credit
@@ -117,19 +123,19 @@ def get_tds_amount(suppliers, net_total, company, tax_details, fiscal_year_detai
 			SELECT sum(credit) FROM `tabGL Entry`
 			WHERE
 				account=%s and fiscal_year=%s and credit > 0
-				and voucher_no in ({0})""". format(','.join(['%s'] * len(tds_vouchers))),
+				and voucher_no in ({0})""". format(",".join(["%s"] * len(tds_vouchers))),
 				((tax_details.account_head, fiscal_year) + tuple(tds_vouchers)))
 
 		tds_deducted = tds_deducted[0][0] if tds_deducted and tds_deducted[0][0] else 0
 
 	if tds_deducted:
 		if ldc:
-			limit_consumed = frappe.db.get_value('Purchase Invoice',
+			limit_consumed = frappe.db.get_value("Purchase Invoice",
 				{
-					'supplier': ('in', suppliers),
-					'apply_tds': 1,
-					'docstatus': 1
-				}, 'sum(net_total)')
+					"supplier": ("in", suppliers),
+					"apply_tds": 1,
+					"docstatus": 1,
+				}, "sum(net_total)")
 
 		if ldc and is_valid_certificate(ldc.valid_from, ldc.valid_upto, posting_date, limit_consumed, net_total,
 			ldc.certificate_limit):
@@ -138,19 +144,19 @@ def get_tds_amount(suppliers, net_total, company, tax_details, fiscal_year_detai
 		else:
 			tds_amount = _get_tds(net_total, tax_details.rate)
 	else:
-		supplier_credit_amount = frappe.get_all('Purchase Invoice Item',
-			fields = ['sum(net_amount)'],
-			filters = {'parent': ('in', vouchers), 'docstatus': 1}, as_list=1)
+		supplier_credit_amount = frappe.get_all("Purchase Invoice Item",
+			fields=["sum(net_amount)"],
+			filters={"parent": ("in", vouchers), "docstatus": 1}, as_list=1)
 
 		supplier_credit_amount = (supplier_credit_amount[0][0]
 			if supplier_credit_amount and supplier_credit_amount[0][0] else 0)
 
-		jv_supplier_credit_amt = frappe.get_all('Journal Entry Account',
-			fields = ['sum(credit_in_account_currency)'],
-			filters = {
-				'parent': ('in', vouchers), 'docstatus': 1,
-				'party': ('in', suppliers),
-				'reference_type': ('not in', ['Purchase Invoice'])
+		jv_supplier_credit_amt = frappe.get_all("Journal Entry Account",
+			fields=["sum(credit_in_account_currency)"],
+			filters={
+				"parent": ("in", vouchers), "docstatus": 1,
+				"party": ("in", suppliers),
+				"reference_type": ("not in", ["Purchase Invoice"]),
 			}, as_list=1)
 
 		supplier_credit_amount += (jv_supplier_credit_amt[0][0]
@@ -161,8 +167,8 @@ def get_tds_amount(suppliers, net_total, company, tax_details, fiscal_year_detai
 		debit_note_amount = get_debit_note_amount(suppliers, year_start_date, year_end_date)
 		supplier_credit_amount -= debit_note_amount
 
-		if ((tax_details.get('threshold', 0) and supplier_credit_amount >= tax_details.threshold)
-			or (tax_details.get('cumulative_threshold', 0) and supplier_credit_amount >= tax_details.cumulative_threshold)):
+		if ((tax_details.get("threshold", 0) and supplier_credit_amount >= tax_details.threshold)
+			or (tax_details.get("cumulative_threshold", 0) and supplier_credit_amount >= tax_details.cumulative_threshold)):
 
 			if ldc and is_valid_certificate(ldc.valid_from, ldc.valid_upto, posting_date, tds_deducted, net_total,
 				ldc.certificate_limit):
@@ -173,6 +179,7 @@ def get_tds_amount(suppliers, net_total, company, tax_details, fiscal_year_detai
 
 	return tds_amount
 
+
 def get_advance_vouchers(suppliers, fiscal_year=None, company=None, from_date=None, to_date=None):
 	condition = "fiscal_year=%s" % fiscal_year
 
@@ -181,9 +188,9 @@ def get_advance_vouchers(suppliers, fiscal_year=None, company=None, from_date=No
 	if from_date and to_date:
 		condition += "and posting_date between %s and %s" % (from_date, to_date)
 
-	## Appending the same supplier again if length of suppliers list is 1
-	## since tuple of single element list contains None, For example ('Test Supplier 1', )
-	## and the below query fails
+	# Appending the same supplier again if length of suppliers list is 1
+	# since tuple of single element list contains None, For example ('Test Supplier 1', )
+	# and the below query fails
 	if len(suppliers) == 1:
 		suppliers.append(suppliers[0])
 
@@ -192,6 +199,7 @@ def get_advance_vouchers(suppliers, fiscal_year=None, company=None, from_date=No
 		from `tabGL Entry`
 		where party in %s and %s and debit > 0
 	""", (tuple(suppliers), condition)) or []
+
 
 def get_debit_note_amount(suppliers, year_start_date, year_end_date, company=None):
 	condition = "and 1=1"
@@ -208,14 +216,16 @@ def get_debit_note_amount(suppliers, year_start_date, year_end_date, company=Non
 			and posting_date between %s and %s %s
 	""", (tuple(suppliers), year_start_date, year_end_date, condition)))
 
+
 def get_ltds_amount(current_amount, deducted_amount, certificate_limit, rate, tax_details):
 	if current_amount < (certificate_limit - deducted_amount):
-		return current_amount * rate/100
+		return current_amount * rate / 100
 	else:
 		ltds_amount = (certificate_limit - deducted_amount)
 		tds_amount = current_amount - ltds_amount
 
-		return ltds_amount * rate/100 + tds_amount * tax_details.rate/100
+		return ltds_amount * rate / 100 + tds_amount * tax_details.rate / 100
+
 
 def is_valid_certificate(valid_from, valid_upto, posting_date, deducted_amount, current_amount, certificate_limit):
 	valid = False

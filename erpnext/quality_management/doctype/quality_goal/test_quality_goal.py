@@ -1,10 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
+
 from erpnext.quality_management.doctype.quality_procedure.test_quality_procedure import create_procedure
+
 
 class TestQualityGoal(unittest.TestCase):
 
@@ -14,7 +16,8 @@ class TestQualityGoal(unittest.TestCase):
 		test_create_goal = create_goal()
 		test_get_goal = get_goal()
 
-		self.assertEquals(test_create_goal, test_get_goal)
+		self.assertEqual(test_create_goal, test_get_goal)
+
 
 def create_goal():
 	goal = frappe.get_doc({
@@ -25,9 +28,9 @@ def create_goal():
 			{
 				"objective": "_Test Quality Objective",
 				"target": "4",
-				"uom": "_Test UOM"
-			}
-		]
+				"uom": "_Test UOM",
+			},
+		],
 	})
 	goal_exist = frappe.db.exists("Quality Goal", {"goal": goal.goal})
 	if not goal_exist:
@@ -36,9 +39,11 @@ def create_goal():
 	else:
 		return goal_exist
 
+
 def get_goal():
 	goal = frappe.db.exists("Quality Goal", "GOAL-_Test Quality Goal")
 	return goal
+
 
 def create_unit():
 	unit = frappe.get_doc({

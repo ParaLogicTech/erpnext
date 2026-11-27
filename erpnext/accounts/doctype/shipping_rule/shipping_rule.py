@@ -3,14 +3,25 @@
 
 # For license information, please see license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _, msgprint, throw
-from frappe.utils import flt, fmt_money
 from frappe.model.document import Document
+from frappe.utils import flt, fmt_money
 
-class OverlappingConditionError(frappe.ValidationError): pass
-class FromGreaterThanToError(frappe.ValidationError): pass
-class ManyBlankToValuesError(frappe.ValidationError): pass
+import erpnext
+
+
+class OverlappingConditionError(frappe.ValidationError):
+	pass
+
+
+class FromGreaterThanToError(frappe.ValidationError):
+	pass
+
+
+class ManyBlankToValuesError(frappe.ValidationError):
+	pass
+
 
 class ShippingRule(Document):
 	def validate(self):
@@ -39,7 +50,7 @@ class ShippingRule(Document):
 				ManyBlankToValuesError)
 
 	def apply(self, doc):
-		'''Apply shipping rule on given doc. Called from accounts controller'''
+		"""Apply shipping rule on given doc. Called from accounts controller"""
 
 		shipping_amount = 0.0
 		by_value = False
@@ -48,15 +59,15 @@ class ShippingRule(Document):
 			# validate country only if there is address
 			self.validate_countries(doc)
 
-		if self.calculate_based_on == 'Net Total':
+		if self.calculate_based_on == "Net Total":
 			value = doc.base_net_total
 			by_value = True
 
-		elif self.calculate_based_on == 'Net Weight':
+		elif self.calculate_based_on == "Net Weight":
 			value = doc.total_net_weight
 			by_value = True
 
-		elif self.calculate_based_on == 'Fixed':
+		elif self.calculate_based_on == "Fixed":
 			shipping_amount = self.shipping_amount
 
 		# shipping amount by value, apply conditions
@@ -79,27 +90,27 @@ class ShippingRule(Document):
 	def validate_countries(self, doc):
 		# validate applicable countries
 		if self.countries:
-			shipping_country = doc.get_shipping_address().get('country')
+			shipping_country = doc.get_shipping_address().get("country")
 			if not shipping_country:
-				frappe.throw(_('Shipping Address does not have country, which is required for this Shipping Rule'))
+				frappe.throw(_("Shipping Address does not have country, which is required for this Shipping Rule"))
 			if shipping_country not in [d.country for d in self.countries]:
-				frappe.throw(_('Shipping rule not applicable for country {0} in Shipping Address').format(shipping_country))
+				frappe.throw(_("Shipping rule not applicable for country {0} in Shipping Address").format(shipping_country))
 
 	def add_shipping_rule_to_tax_table(self, doc, shipping_amount):
 		shipping_charge = {
 			"charge_type": "Actual",
 			"account_head": self.account,
-			"cost_center": self.cost_center
+			"cost_center": self.cost_center,
 		}
 		if self.shipping_rule_type == "Selling":
 			# check if not applied on purchase
-			if not doc.meta.get_field('taxes').options == 'Sales Taxes and Charges':
-				frappe.throw(_('Shipping rule only applicable for Selling'))
+			if not doc.meta.get_field("taxes").options == "Sales Taxes and Charges":
+				frappe.throw(_("Shipping rule only applicable for Selling"))
 			shipping_charge["doctype"] = "Sales Taxes and Charges"
 		else:
 			# check if not applied on sales
-			if not doc.meta.get_field('taxes').options == 'Purchase Taxes and Charges':
-				frappe.throw(_('Shipping rule only applicable for Buying'))
+			if not doc.meta.get_field("taxes").options == "Purchase Taxes and Charges":
+				frappe.throw(_("Shipping rule only applicable for Buying"))
 
 			shipping_charge["doctype"] = "Purchase Taxes and Charges"
 			shipping_charge["category"] = "Valuation and Total"
@@ -135,7 +146,7 @@ class ShippingRule(Document):
 
 		overlaps = []
 		for i in range(0, len(self.conditions)):
-			for j in range(i+1, len(self.conditions)):
+			for j in range(i + 1, len(self.conditions)):
 				d1, d2 = self.conditions[i], self.conditions[j]
 				if d1.as_dict() != d2.as_dict():
 					# in our case, to_value can be zero, hence pass the from_value if so

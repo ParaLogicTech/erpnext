@@ -2,14 +2,15 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-import erpnext
 from frappe import _
 from frappe.utils import flt
-from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+
+import erpnext
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
 	get_dimension_with_children,
 )
+from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 
 
 def execute(filters=None):
@@ -47,32 +48,32 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 		if additional_query_columns:
 			for col in additional_query_columns:
 				row.update({
-					col: inv.get(col)
+					col: inv.get(col),
 				})
 
 		if inv.get("branch"):
 			filters["has_branch"] = True
 
 		row.update({
-			'invoice': inv.name,
-			'posting_date': inv.posting_date,
-			'customer': inv.bill_to,
-			'customer_name': inv.bill_to_name,
-			'customer_group': inv.get("customer_group"),
-			'company': inv.get("company"),
-			'branch': inv.get("branch"),
-			'territory': inv.get("territory"),
-			'tax_id': inv.get("tax_id"),
-			'receivable_account': inv.debit_to,
-			'project': inv.project,
-			'owner': inv.owner,
-			'remarks': inv.remarks,
-			'mode_of_payment': ", ".join(mode_of_payment_map.get(inv.name, [])),
-			'sales_order': ", ".join(sales_order_map.get(inv.name, [])),
-			'delivery_note': ", ".join(delivery_note_map.get(inv.name, [])),
-			'cost_center': ", ".join(cost_center_map.get(inv.name, [])) or inv.cost_center,
-			'warehouse': ", ".join(warehouse_map.get(inv.name, [])),
-			'currency': company_currency,
+			"invoice": inv.name,
+			"posting_date": inv.posting_date,
+			"customer": inv.bill_to,
+			"customer_name": inv.bill_to_name,
+			"customer_group": inv.get("customer_group"),
+			"company": inv.get("company"),
+			"branch": inv.get("branch"),
+			"territory": inv.get("territory"),
+			"tax_id": inv.get("tax_id"),
+			"receivable_account": inv.debit_to,
+			"project": inv.project,
+			"owner": inv.owner,
+			"remarks": inv.remarks,
+			"mode_of_payment": ", ".join(mode_of_payment_map.get(inv.name, [])),
+			"sales_order": ", ".join(sales_order_map.get(inv.name, [])),
+			"delivery_note": ", ".join(delivery_note_map.get(inv.name, [])),
+			"cost_center": ", ".join(cost_center_map.get(inv.name, [])) or inv.cost_center,
+			"warehouse": ", ".join(warehouse_map.get(inv.name, [])),
+			"currency": company_currency,
 		})
 
 		# map income values
@@ -85,11 +86,11 @@ def _execute(filters, additional_table_columns=None, additional_query_columns=No
 
 		# total tax, grand total, outstanding amount and rounded total
 		row.update({
-			'net_total': inv.base_net_total,
-			'tax_total': inv.base_total_taxes_and_charges,
-			'grand_total': inv.base_grand_total,
-			'rounded_total': inv.base_rounded_total,
-			'outstanding_amount': inv.outstanding_amount,
+			"net_total": inv.base_net_total,
+			"tax_total": inv.base_total_taxes_and_charges,
+			"grand_total": inv.base_grand_total,
+			"rounded_total": inv.base_rounded_total,
+			"outstanding_amount": inv.outstanding_amount,
 		})
 
 		data.append(row)
@@ -194,30 +195,30 @@ def get_invoice_accounts_data(invoice_list):
 def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_columns, filters):
 	columns = [
 		{
-			'label': _("Invoice"),
-			'fieldname': 'invoice',
-			'fieldtype': 'Link',
-			'options': 'Sales Invoice',
-			'width': 120
+			"label": _("Invoice"),
+			"fieldname": "invoice",
+			"fieldtype": "Link",
+			"options": "Sales Invoice",
+			"width": 120,
 		},
 		{
-			'label': _("Posting Date"),
-			'fieldname': 'posting_date',
-			'fieldtype': 'Date',
-			'width': 80
+			"label": _("Posting Date"),
+			"fieldname": "posting_date",
+			"fieldtype": "Date",
+			"width": 80,
 		},
 		{
-			'label': _("Customer"),
-			'fieldname': 'customer',
-			'fieldtype': 'Link',
-			'options': 'Customer',
-			'width': 100
+			"label": _("Customer"),
+			"fieldname": "customer",
+			"fieldtype": "Link",
+			"options": "Customer",
+			"width": 100,
 		},
 		{
-			'label': _("Customer Name"),
-			'fieldname': 'customer_name',
-			'fieldtype': 'Data',
-			'width': 150
+			"label": _("Customer Name"),
+			"fieldname": "customer_name",
+			"fieldtype": "Data",
+			"width": 150,
 		},
 	]
 
@@ -226,37 +227,37 @@ def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_
 
 	columns += [
 		{
-			'label': _("Branch"),
-			'fieldname': 'branch',
-			'fieldtype': 'Link',
-			'options': 'Branch',
-			'width': 100
+			"label": _("Branch"),
+			"fieldname": "branch",
+			"fieldtype": "Link",
+			"options": "Branch",
+			"width": 100,
 		},
 		{
-			'label': _("Cost Center"),
-			'fieldname': 'cost_center',
-			'fieldtype': 'Link',
-			'options': 'Cost Center',
-			'width': 100
+			"label": _("Cost Center"),
+			"fieldname": "cost_center",
+			"fieldtype": "Link",
+			"options": "Cost Center",
+			"width": 100,
 		},
 		{
-			'label': _("Project"),
-			'fieldname': 'project',
-			'fieldtype': 'Link',
-			'options': 'Project',
-			'width': 100
+			"label": _("Project"),
+			"fieldname": "project",
+			"fieldtype": "Link",
+			"options": "Project",
+			"width": 100,
 		},
 		{
-			'label': _("Owner"),
-			'fieldname': 'owner',
-			'fieldtype': 'Data',
-			'width': 150
+			"label": _("Owner"),
+			"fieldname": "owner",
+			"fieldtype": "Data",
+			"width": 150,
 		},
 		{
-			'label': _("Remarks"),
-			'fieldname': 'remarks',
-			'fieldtype': 'Data',
-			'width': 150
+			"label": _("Remarks"),
+			"fieldname": "remarks",
+			"fieldtype": "Data",
+			"width": 150,
 		},
 	]
 
@@ -265,8 +266,8 @@ def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_
 			"label": account,
 			"fieldname": frappe.scrub(account),
 			"fieldtype": "Currency",
-			"options": 'currency',
-			"width": 120
+			"options": "currency",
+			"width": 120,
 		})
 
 	for account in asset_accounts:
@@ -275,15 +276,15 @@ def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_
 				"label": account,
 				"fieldname": frappe.scrub(account),
 				"fieldtype": "Currency",
-				"options": 'currency',
-				"width": 120
+				"options": "currency",
+				"width": 120,
 			})
 
 	columns += [{
 		"label": _("Net Total"),
 		"fieldname": "net_total",
 		"fieldtype": "Currency",
-		"options": 'currency',
+		"options": "currency",
 		"width": 120,
 	}]
 
@@ -293,8 +294,8 @@ def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_
 				"label": account,
 				"fieldname": frappe.scrub(account),
 				"fieldtype": "Currency",
-				"options": 'currency',
-				"width": 120
+				"options": "currency",
+				"width": 120,
 			})
 
 	columns += [
@@ -302,83 +303,83 @@ def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_
 			"label": _("Tax Total"),
 			"fieldname": "tax_total",
 			"fieldtype": "Currency",
-			"options": 'currency',
-			"width": 120
+			"options": "currency",
+			"width": 120,
 		},
 		{
 			"label": _("Grand Total"),
 			"fieldname": "grand_total",
 			"fieldtype": "Currency",
-			"options": 'currency',
-			"width": 120
+			"options": "currency",
+			"width": 120,
 		},
 		{
 			"label": _("Rounded Total"),
 			"fieldname": "rounded_total",
 			"fieldtype": "Currency",
-			"options": 'currency',
-			"width": 120
+			"options": "currency",
+			"width": 120,
 		},
 		{
 			"label": _("Outstanding Amount"),
 			"fieldname": "outstanding_amount",
 			"fieldtype": "Currency",
-			"options": 'currency',
-			"width": 120
+			"options": "currency",
+			"width": 120,
 		},
 		{
-			'label': _("Sales Order"),
-			'fieldname': 'sales_order',
-			'fieldtype': 'Link',
-			'options': 'Sales Order',
-			'width': 100
+			"label": _("Sales Order"),
+			"fieldname": "sales_order",
+			"fieldtype": "Link",
+			"options": "Sales Order",
+			"width": 100,
 		},
 		{
-			'label': _("Delivery Note"),
-			'fieldname': 'delivery_note',
-			'fieldtype': 'Link',
-			'options': 'Delivery Note',
-			'width': 100
+			"label": _("Delivery Note"),
+			"fieldname": "delivery_note",
+			"fieldtype": "Link",
+			"options": "Delivery Note",
+			"width": 100,
 		},
 		{
-			'label': _("Warehouse"),
-			'fieldname': 'warehouse',
-			'fieldtype': 'Link',
-			'options': 'Warehouse',
-			'width': 100
+			"label": _("Warehouse"),
+			"fieldname": "warehouse",
+			"fieldtype": "Link",
+			"options": "Warehouse",
+			"width": 100,
 		},
 		{
-			'label': _("Mode of Payment"),
-			'fieldname': 'mode_of_payment',
-			'fieldtype': 'Data',
-			'width': 120
+			"label": _("Mode of Payment"),
+			"fieldname": "mode_of_payment",
+			"fieldtype": "Data",
+			"width": 120,
 		},
 		{
-			'label': _("Receivable Account"),
-			'fieldname': 'receivable_account',
-			'fieldtype': 'Link',
-			'options': 'Account',
-			'width': 130
+			"label": _("Receivable Account"),
+			"fieldname": "receivable_account",
+			"fieldtype": "Link",
+			"options": "Account",
+			"width": 130,
 		},
 		{
-			'label': _("Tax Id"),
-			'fieldname': 'tax_id',
-			'fieldtype': 'Data',
-			'width': 120
+			"label": _("Tax Id"),
+			"fieldname": "tax_id",
+			"fieldtype": "Data",
+			"width": 120,
 		},
 		{
-			'label': _("Customer Group"),
-			'fieldname': 'customer_group',
-			'fieldtype': 'Link',
-			'options': 'Customer Group',
-			'width': 120
+			"label": _("Customer Group"),
+			"fieldname": "customer_group",
+			"fieldtype": "Link",
+			"options": "Customer Group",
+			"width": 120,
 		},
 		{
-			'label': _("Territory"),
-			'fieldname': 'territory',
-			'fieldtype': 'Link',
-			'options': 'Territory',
-			'width': 80
+			"label": _("Territory"),
+			"fieldname": "territory",
+			"fieldtype": "Link",
+			"options": "Territory",
+			"width": 80,
 		},
 	]
 
@@ -390,7 +391,7 @@ def get_columns(income_accounts, asset_accounts, tax_accounts, additional_table_
 
 def get_invoices(filters, additional_query_columns):
 	if additional_query_columns:
-		additional_query_columns = ', ' + ', '.join(additional_query_columns)
+		additional_query_columns = ", " + ", ".join(additional_query_columns)
 	else:
 		additional_query_columns = ""
 
@@ -442,7 +443,7 @@ def get_conditions(filters):
 	accounting_dimensions = get_accounting_dimensions(as_list=False)
 	for dimension in accounting_dimensions:
 		if filters.get(dimension.fieldname):
-			if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
+			if frappe.get_cached_value("DocType", dimension.document_type, "is_tree"):
 				filters[dimension.fieldname] = get_dimension_with_children(dimension.document_type, filters.get(dimension.fieldname))
 				conditions += " and inv.{0} in %({0})s".format(dimension.fieldname)
 			else:

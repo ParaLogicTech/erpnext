@@ -4,10 +4,10 @@ from frappe import _
 
 def get_data():
 	return {
-		'fieldname': 'tax_withholding_category',
-		'transactions': [
+		"fieldname": "tax_withholding_category",
+		"transactions": [
 			{
-				'items': ['Supplier']
-			}
-		]
+				"items": ["Supplier"],
+			},
+		],
 	}

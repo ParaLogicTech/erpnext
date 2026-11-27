@@ -7,8 +7,8 @@ frappe.views.calendar["Training Event"] = {
 		"end": "end_time",
 		"id": "name",
 		"title": "event_name",
-		"allDay": "allDay"
+		"allDay": "allDay",
 	},
 	gantt: true,
 	get_events_method: "frappe.desk.calendar.get_events",
-}
+};

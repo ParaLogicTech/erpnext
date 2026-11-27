@@ -41,7 +41,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 		this.setup_warehouse_query();
 
 		this.frm.set_query("item", () => erpnext.queries.item({
-			name: ["!=", this.frm.doc.item]
+			name: ["!=", this.frm.doc.item],
 		}));
 
 		this.frm.set_query("uom", "items", (doc, cdt, cdn) => {
@@ -57,15 +57,15 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 					is_active: 1,
 					docstatus: 1,
 					company: this.frm.doc.company,
-				}
+				},
 			};
 		});
 
 		this.frm.set_query("project", () => {
-			return{
+			return {
 				filters: {
-					status: ['not in', ['Completed', 'Cancelled']]
-				}
+					status: ["not in", ["Completed", "Cancelled"]],
+				},
 			};
 		});
 
@@ -86,7 +86,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 			});
 			this.frm.add_custom_button(__("Browse BOM"), () => {
 				frappe.route_options = {
-					"bom": this.frm.doc.name
+					"bom": this.frm.doc.name,
 				};
 				frappe.set_route("Tree", "BOM");
 			});
@@ -103,7 +103,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 				}, __("Create"));
 			}
 
-			this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+			this.frm.page.set_inner_btn_group_as_primary(__("Create"));
 		}
 
 		const has_alternative_items = (this.frm.doc.items || []).some(d => d.has_alternative_item);
@@ -141,7 +141,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 							this.frm.set_value("carton_type", r.message.carton_type);
 						}
 					}
-				}
+				},
 			});
 		}
 	}
@@ -153,7 +153,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 	item_code(doc, cdt, cdn) {
 		let scrap_items = false;
 		let row = frappe.get_doc(cdt, cdn);
-		if (row.doctype == 'BOM Scrap Item') {
+		if (row.doctype == "BOM Scrap Item") {
 			scrap_items = true;
 		}
 
@@ -185,7 +185,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 	rate(doc, cdt, cdn) {
 		let row = frappe.get_doc(cdt, cdn);
 		let scrap_items = false;
-		if (cdt == 'BOM Scrap Item') {
+		if (cdt == "BOM Scrap Item") {
 			scrap_items = true;
 		}
 
@@ -198,7 +198,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 	}
 
 	conversion_rate() {
-		if(this.frm.doc.currency === this.get_company_currency()) {
+		if (this.frm.doc.currency === this.get_company_currency()) {
 			this.frm.set_value("conversion_rate", 1.0);
 		} else {
 			this.calculate_cost();
@@ -233,7 +233,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 
 	is_default() {
 		if (this.frm.doc.is_default) {
-			this.frm.set_value("is_active", 1)
+			this.frm.set_value("is_active", 1);
 		}
 	}
 
@@ -253,7 +253,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 					if (!r.exc) {
 						this.calculate_cost();
 					}
-				}
+				},
 			});
 		}
 	}
@@ -266,7 +266,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 
 	operation(doc, cdt, cdn) {
 		let row = frappe.get_doc(cdt, cdn);
-		if(!row.operation) {
+		if (!row.operation) {
 			return;
 		}
 
@@ -277,19 +277,19 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 				name: row.operation,
 			},
 			callback: (r) => {
-				if(r.message.description) {
+				if (r.message.description) {
 					frappe.model.set_value(row.doctype, row.name, "description", r.message.description);
 				}
-				if(r.message.workstation) {
+				if (r.message.workstation) {
 					frappe.model.set_value(row.doctype, row.name, "workstation", r.message.workstation);
 				}
-			}
+			},
 		});
 	}
 
 	workstation(doc, cdt, cdn) {
 		let row = frappe.get_doc(cdt, cdn);
-		if(!row.workstation) {
+		if (!row.workstation) {
 			return;
 		}
 
@@ -302,10 +302,10 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 			callback: (r) => {
 				frappe.model.set_value(row.doctype, row.name, "base_hour_rate", r.message.hour_rate);
 				frappe.model.set_value(row.doctype, row.name, "hour_rate",
-					flt(flt(r.message.hour_rate) / flt(frm.doc.conversion_rate)), 2);
+					flt(flt(r.message.hour_rate) / flt(this.frm.doc.conversion_rate)), 2);
 
 				this.calculate_cost();
-			}
+			},
 		});
 	}
 
@@ -325,7 +325,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 				method: "get_bom_material_detail",
 				args: {
 					item_code: row.item_code,
-					bom_no: row.bom_no != null ? row.bom_no: '',
+					bom_no: row.bom_no != null ? row.bom_no : "",
 					scrap_items: scrap_items,
 					qty: row.qty,
 					stock_qty: row.stock_qty,
@@ -340,7 +340,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 					$.extend(row, r.message);
 					this.calculate_cost();
 				},
-				freeze: true
+				freeze: true,
 			});
 		}
 	}
@@ -360,7 +360,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 						() => this.calculate_cost(),
 					]);
 				}
-			}
+			},
 		});
 	}
 
@@ -385,7 +385,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 			callback: () => {
 				this.frm.dirty();
 				this.calculate_cost();
-			}
+			},
 		});
 	}
 
@@ -406,7 +406,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 				} else if (this.frm.doc.docstatus == 1) {
 					this.frm.reload();
 				}
-			}
+			},
 		});
 	}
 
@@ -464,8 +464,8 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 			d.child_operating_cost = flt(d.child_unit_operating_cost) * flt(d.stock_qty);
 			d.base_child_operating_cost = d.child_operating_cost * flt(doc.conversion_rate);
 
-			doc.child_operating_cost += d.child_operating_cost
-			doc.base_child_operating_cost += d.base_child_operating_cost
+			doc.child_operating_cost += d.child_operating_cost;
+			doc.base_child_operating_cost += d.base_child_operating_cost;
 		}
 
 		doc.total_operating_cost = doc.operating_cost + doc.additional_operating_cost + doc.child_operating_cost;
@@ -544,11 +544,11 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 
 	make_work_order() {
 		const fields = [{
-			fieldtype: 'Float',
-			label: __('Qty To Produce'),
-			fieldname: 'qty',
+			fieldtype: "Float",
+			label: __("Qty To Produce"),
+			fieldname: "qty",
 			reqd: 1,
-			default: 1
+			default: 1,
 		}];
 
 		frappe.prompt(fields, data => {
@@ -562,11 +562,11 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 				},
 				freeze: true,
 				callback: (r) => {
-					if(r.message) {
+					if (r.message) {
 						var doc = frappe.model.sync(r.message)[0];
 						frappe.set_route("Form", doc.doctype, doc.name);
 					}
-				}
+				},
 			});
 		}, __("Enter Value"), __("Create"));
 	}
@@ -575,7 +575,7 @@ erpnext.bom.BomController = class BomController extends erpnext.TransactionContr
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.quality_inspection.quality_inspection.make_quality_inspection",
 			frm: this.frm,
-		})
+		});
 	}
 };
 

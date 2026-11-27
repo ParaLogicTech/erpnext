@@ -3,14 +3,14 @@ import frappe
 
 def get_data():
 	return {
-		'fieldname': 'vehicle',
-		'non_standard_fieldnames': {
-			'Maintenance Schedule': 'serial_no'
+		"fieldname": "vehicle",
+		"non_standard_fieldnames": {
+			"Maintenance Schedule": "serial_no",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'label': ['Reference'],
-				'items': ['Vehicle Log', 'Maintenance Schedule']
+				"label": ["Reference"],
+				"items": ["Vehicle Log", "Maintenance Schedule"],
 			},
-		]
+		],
 	}

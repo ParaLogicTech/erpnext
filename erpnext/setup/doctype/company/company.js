@@ -5,33 +5,33 @@ frappe.provide("erpnext.company");
 
 frappe.ui.form.on("Company", {
 	setup: function(frm) {
-		frm.set_query("hra_component", function(){
+		frm.set_query("hra_component", function() {
 			return {
-				filters: {"type": "Earning"}
-			}
+				filters: {"type": "Earning"},
+			};
 		});
 
 		frm.set_query("parent_company", function() {
 			return {
-				filters: {"is_group": 1}
-			}
+				filters: {"is_group": 1},
+			};
 		});
 
 		frm.set_query("default_selling_terms", function() {
-			return { filters: { selling: 1 } };
+			return {filters: {selling: 1}};
 		});
 
 		frm.set_query("default_buying_terms", function() {
-			return { filters: { buying: 1 } };
+			return {filters: {buying: 1}};
 		});
 	},
 
 	company_name: function(frm) {
-		if(frm.doc.__islocal) {
+		if (frm.doc.__islocal) {
 			// add missing " " arg in split method
 			let parts = frm.doc.company_name.split(" ");
-			let abbr = $.map(parts, function (p) {
-				return p? p.substr(0, 1) : null;
+			let abbr = $.map(parts, function(p) {
+				return p ? p.substr(0, 1) : null;
 			}).join("");
 			frm.set_value("abbr", abbr);
 		}
@@ -39,62 +39,62 @@ frappe.ui.form.on("Company", {
 
 	parent_company: function(frm) {
 		var bool = frm.doc.parent_company ? true : false;
-		frm.set_value('create_chart_of_accounts_based_on', bool ? "Existing Company" : "");
-		frm.set_value('existing_company', bool ? frm.doc.parent_company : "");
+		frm.set_value("create_chart_of_accounts_based_on", bool ? "Existing Company" : "");
+		frm.set_value("existing_company", bool ? frm.doc.parent_company : "");
 		disbale_coa_fields(frm, bool);
 	},
 
 	date_of_commencement: function(frm) {
-		if(frm.doc.date_of_commencement<frm.doc.date_of_incorporation)
+		if (frm.doc.date_of_commencement < frm.doc.date_of_incorporation)
 		{
 			frappe.throw(__("Date of Commencement should be greater than Date of Incorporation"));
 		}
-		if(!frm.doc.date_of_commencement){
-			frm.doc.date_of_incorporation = ""
+		if (!frm.doc.date_of_commencement) {
+			frm.doc.date_of_incorporation = "";
 		}
 	},
 
 	refresh: function(frm) {
 		erpnext.company.setup_queries(frm);
 
-		if(!frm.doc.__islocal) {
+		if (!frm.doc.__islocal) {
 			frm.doc.abbr && frm.set_df_property("abbr", "read_only", 1);
 			frm.set_df_property("parent_company", "read_only", 1);
 			disbale_coa_fields(frm);
 		}
 
-		frm.toggle_display('address_html', !frm.doc.__islocal);
-		if(!frm.doc.__islocal) {
+		frm.toggle_display("address_html", !frm.doc.__islocal);
+		if (!frm.doc.__islocal) {
 			frappe.contacts.render_address_and_contact(frm);
 
-			frappe.dynamic_link = {doc: frm.doc, fieldname: 'name', doctype: 'Company'}
+			frappe.dynamic_link = {doc: frm.doc, fieldname: "name", doctype: "Company"};
 
-			frm.toggle_enable("default_currency", (frm.doc.__onload &&
-				!frm.doc.__onload.transactions_exist));
+			frm.toggle_enable("default_currency", (frm.doc.__onload
+				&& !frm.doc.__onload.transactions_exist));
 
-			frm.add_custom_button(__('Create Tax Template'), function() {
+			frm.add_custom_button(__("Create Tax Template"), function() {
 				frm.trigger("make_default_tax_template");
 			});
 
-			frm.add_custom_button(__('Cost Centers'), function() {
-				frappe.set_route('Tree', 'Cost Center', {'company': frm.doc.name})
+			frm.add_custom_button(__("Cost Centers"), function() {
+				frappe.set_route("Tree", "Cost Center", {"company": frm.doc.name});
 			}, __("View"));
 
-			frm.add_custom_button(__('Chart of Accounts'), function() {
-				frappe.set_route('Tree', 'Account', {'company': frm.doc.name})
+			frm.add_custom_button(__("Chart of Accounts"), function() {
+				frappe.set_route("Tree", "Account", {"company": frm.doc.name});
 			}, __("View"));
 
-			frm.add_custom_button(__('Sales Tax Template'), function() {
-				frappe.set_route('List', 'Sales Taxes and Charges Template', {'company': frm.doc.name});
+			frm.add_custom_button(__("Sales Tax Template"), function() {
+				frappe.set_route("List", "Sales Taxes and Charges Template", {"company": frm.doc.name});
 			}, __("View"));
 
-			frm.add_custom_button(__('Purchase Tax Template'), function() {
-				frappe.set_route('List', 'Purchase Taxes and Charges Template', {'company': frm.doc.name});
+			frm.add_custom_button(__("Purchase Tax Template"), function() {
+				frappe.set_route("List", "Purchase Taxes and Charges Template", {"company": frm.doc.name});
 			}, __("View"));
 
-			frm.add_custom_button(__('Default Tax Template'), function() {
+			frm.add_custom_button(__("Default Tax Template"), function() {
 				frm.trigger("make_default_tax_template");
-			}, __('Create'));
+			}, __("Create"));
 		}
 
 		erpnext.company.set_chart_of_accounts_options(frm.doc);
@@ -108,12 +108,12 @@ frappe.ui.form.on("Company", {
 			freeze: true,
 			callback: function() {
 				frappe.msgprint(__("Default tax templates for sales and purchase are created."));
-			}
-		})
+			},
+		});
 	},
 
 	onload_post_render: function(frm) {
-		if(frm.get_field("delete_company_transactions").$input)
+		if (frm.get_field("delete_company_transactions").$input)
 			frm.get_field("delete_company_transactions").$input.removeClass("btn-default").addClass("btn-danger");
 	},
 
@@ -124,94 +124,94 @@ frappe.ui.form.on("Company", {
 	delete_company_transactions: function(frm) {
 		frappe.verify_password(function() {
 			var d = frappe.prompt({
-				fieldtype:"Data",
+				fieldtype: "Data",
 				fieldname: "company_name",
 				label: __("Please re-type company name to confirm"),
 				reqd: 1,
-				description: __("Please make sure you really want to delete all the transactions for this company. Your master data will remain as it is. This action cannot be undone.")
+				description: __("Please make sure you really want to delete all the transactions for this company. Your master data will remain as it is. This action cannot be undone."),
 			},
 			function(data) {
-				if(data.company_name !== frm.doc.name) {
+				if (data.company_name !== frm.doc.name) {
 					frappe.msgprint(__("Company name not same"));
 					return;
 				}
 				frappe.call({
 					method: "erpnext.setup.doctype.company.delete_company_transactions.delete_company_transactions",
 					args: {
-						company_name: data.company_name
+						company_name: data.company_name,
 					},
 					freeze: true,
 					callback: function(r, rt) {
-						if(!r.exc)
+						if (!r.exc)
 							frappe.msgprint(__("Successfully deleted all transactions related to this company!"));
 					},
 					onerror: function() {
 						frappe.msgprint(__("Wrong Password"));
-					}
+					},
 				});
 			},
-			__("Delete all the Transactions for this Company"), __("Delete")
+			__("Delete all the Transactions for this Company"), __("Delete"),
 			);
 			d.get_primary_btn().removeClass("btn-primary").addClass("btn-danger");
 		});
-	}
+	},
 });
 
 
 erpnext.company.set_chart_of_accounts_options = function(doc) {
 	var selected_value = doc.chart_of_accounts;
-	if(doc.country) {
+	if (doc.country) {
 		return frappe.call({
 			method: "erpnext.accounts.doctype.account.chart_of_accounts.chart_of_accounts.get_charts_for_country",
 			args: {
 				"country": doc.country,
-				"with_standard": true
+				"with_standard": true,
 			},
 			callback: function(r) {
-				if(!r.exc) {
+				if (!r.exc) {
 					set_field_options("chart_of_accounts", [""].concat(r.message).join("\n"));
-					if(in_list(r.message, selected_value))
+					if (in_list(r.message, selected_value))
 						cur_frm.set_value("chart_of_accounts", selected_value);
 				}
-			}
-		})
+			},
+		});
 	}
-}
+};
 
 cur_frm.cscript.change_abbr = function() {
 	var dialog = new frappe.ui.Dialog({
 		title: "Replace Abbr",
 		fields: [
 			{"fieldtype": "Data", "label": "New Abbreviation", "fieldname": "new_abbr",
-				"reqd": 1 },
+				"reqd": 1},
 			{"fieldtype": "Button", "label": "Update", "fieldname": "update"},
-		]
+		],
 	});
 
 	dialog.fields_dict.update.$input.click(function() {
 		var args = dialog.get_values();
-		if(!args) return;
+		if (!args) return;
 		frappe.show_alert(__("Update in progress. It might take a while."));
 		return frappe.call({
 			method: "erpnext.setup.doctype.company.company.enqueue_replace_abbr",
 			args: {
 				"company": cur_frm.doc.name,
 				"old": cur_frm.doc.abbr,
-				"new": args.new_abbr
+				"new": args.new_abbr,
 			},
 			callback: function(r) {
-				if(r.exc) {
+				if (r.exc) {
 					frappe.msgprint(__("There were errors."));
 					return;
 				}
 				dialog.hide();
 				cur_frm.refresh();
 			},
-			btn: this
-		})
+			btn: this,
+		});
 	});
 	dialog.show();
-}
+};
 
 erpnext.company.setup_queries = function(frm) {
 	$.each([
@@ -262,7 +262,7 @@ erpnext.company.setup_queries = function(frm) {
 		["default_warehouse_for_sales_return", {}],
 	], (i, v) => {
 		erpnext.company.set_custom_query(frm, v);
-	})
+	});
 
 	if (frm.doc.enable_perpetual_inventory) {
 		$.each([
@@ -281,14 +281,14 @@ erpnext.company.setup_queries = function(frm) {
 				"company": frm.doc.name,
 				"is_group": 0,
 				"account_type": "Tax",
-			}
-		}
+			},
+		};
 	});
 
 	let fc_party_account_fields = [
 		["receivable_accounts", "Receivable"],
 		["payable_accounts", "Payable"],
-	]
+	];
 	for (let [table_field, account_type] of fc_party_account_fields) {
 		frm.set_query("party_account", table_field, (doc, cdt, cdn) => {
 			let row = frappe.get_doc(cdt, cdn);
@@ -298,30 +298,30 @@ erpnext.company.setup_queries = function(frm) {
 					"is_group": 0,
 					"account_type": account_type,
 					"account_currency": row.account_currency,
-				}
-			}
+				},
+			};
 		});
 	}
-}
+};
 
 erpnext.company.set_custom_query = function(frm, v) {
 	frm.set_query(v[0], function() {
 		var filters = {
 			"company": frm.doc.name,
-			"is_group": 0
+			"is_group": 0,
 		};
 
 		for (var key in v[1]) {
 			filters[key] = v[1][key];
 		}
 		return {
-			filters: filters
-		}
+			filters: filters,
+		};
 	});
-}
+};
 
-var disbale_coa_fields = function(frm, bool=true) {
+var disbale_coa_fields = function(frm, bool = true) {
 	frm.set_df_property("create_chart_of_accounts_based_on", "read_only", bool);
 	frm.set_df_property("chart_of_accounts", "read_only", bool);
 	frm.set_df_property("existing_company", "read_only", bool);
-}
+};

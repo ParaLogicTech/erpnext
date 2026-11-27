@@ -1,8 +1,8 @@
 import frappe
 from frappe import _
-from frappe.utils import cstr
-from frappe.regional.regional import get_all_mobile_formats
 from frappe.desk.reportview import get_match_cond
+from frappe.regional.regional import get_all_mobile_formats
+from frappe.utils import cstr
 
 
 @frappe.whitelist()
@@ -108,7 +108,7 @@ def search_customer(
 			0 if data.disabled else 1,
 			no_of_matches,
 			1 if data.customer_type == "Individual" else 0,
-			-data.creation.timestamp()
+			-data.creation.timestamp(),
 		)
 
 	if mobile_nos and isinstance(mobile_nos, str):
@@ -131,7 +131,7 @@ def search_customer(
 
 	customer_type_condition = ""
 	if customer_type:
-		customer_type_condition = f"and customer_type = %(customer_type)s"
+		customer_type_condition = "and customer_type = %(customer_type)s"
 
 	mcond = ""
 	if not ignore_permissions:
@@ -182,7 +182,7 @@ def search_lead(
 		return (
 			status_priority,
 			no_of_matches,
-			-data.creation.timestamp()
+			-data.creation.timestamp(),
 		)
 
 	if mobile_nos and isinstance(mobile_nos, str):

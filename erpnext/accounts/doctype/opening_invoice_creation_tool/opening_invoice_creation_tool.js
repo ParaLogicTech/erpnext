@@ -1,29 +1,29 @@
 // Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Opening Invoice Creation Tool', {
+frappe.ui.form.on("Opening Invoice Creation Tool", {
 	setup: function(frm) {
-		frm.set_query('party_type', 'invoices', function(doc, cdt, cdn) {
+		frm.set_query("party_type", "invoices", function(doc, cdt, cdn) {
 			return {
 				filters: {
-					'name': ['in', 'Customer,Supplier']
-				}
+					"name": ["in", "Customer,Supplier"],
+				},
 			};
 		});
 
-		frm.set_query('cost_center', 'invoices', function(doc, cdt, cdn) {
+		frm.set_query("cost_center", "invoices", function(doc, cdt, cdn) {
 			return {
 				filters: {
-					'company': doc.company
-				}
+					"company": doc.company,
+				},
 			};
 		});
 
-		frm.set_query('cost_center', function(doc) {
+		frm.set_query("cost_center", function(doc) {
 			return {
 				filters: {
-					'company': doc.company
-				}
+					"company": doc.company,
+				},
 			};
 		});
 	},
@@ -36,7 +36,7 @@ frappe.ui.form.on('Opening Invoice Creation Tool', {
 		erpnext.hide_company(frm);
 		frm.disable_save();
 		frm.trigger("make_dashboard");
-		frm.page.set_primary_action(__('Create Invoices'), () => {
+		frm.page.set_primary_action(__("Create Invoices"), () => {
 			let btn_primary = frm.page.btn_primary.get(0);
 			return frm.call({
 				doc: frm.doc,
@@ -45,13 +45,13 @@ frappe.ui.form.on('Opening Invoice Creation Tool', {
 				method: "make_invoices",
 				freeze_message: __("Creating {0} Invoice", [frm.doc.invoice_type]),
 				callback: (r) => {
-					if(!r.exc){
+					if (!r.exc) {
 						frappe.msgprint(__("Opening {0} Invoice created", [frm.doc.invoice_type]));
 						frm.clear_table("invoices");
 						frm.refresh_fields();
 						frm.reload_doc();
 					}
-				}
+				},
 			});
 		});
 	},
@@ -60,22 +60,22 @@ frappe.ui.form.on('Opening Invoice Creation Tool', {
 		erpnext.accounts.dimensions.set_default_dimensions(frm);
 
 		frappe.call({
-			method: 'erpnext.accounts.doctype.opening_invoice_creation_tool.opening_invoice_creation_tool.get_temporary_opening_account',
+			method: "erpnext.accounts.doctype.opening_invoice_creation_tool.opening_invoice_creation_tool.get_temporary_opening_account",
 			args: {
-				company: frm.doc.company
+				company: frm.doc.company,
 			},
 			callback: (r) => {
 				if (r.message) {
 					frm.doc.__onload.temporary_opening_account = r.message;
-					frm.trigger('update_invoice_table');
+					frm.trigger("update_invoice_table");
 				}
-			}
-		})
+			},
+		});
 	},
 
 	invoice_type: function(frm) {
 		$.each(frm.doc.invoices, (idx, row) => {
-			row.party_type = frm.doc.invoice_type == "Sales"? "Customer": "Supplier";
+			row.party_type = frm.doc.invoice_type == "Sales" ? "Customer" : "Supplier";
 			row.party = "";
 		});
 		frm.refresh_fields();
@@ -84,19 +84,19 @@ frappe.ui.form.on('Opening Invoice Creation Tool', {
 	make_dashboard: function(frm) {
 		let max_count = frm.doc.__onload.max_count;
 		let opening_invoices_summary = frm.doc.__onload.opening_invoices_summary;
-		if(!$.isEmptyObject(opening_invoices_summary)) {
+		if (!$.isEmptyObject(opening_invoices_summary)) {
 			let section = frm.dashboard.add_section(
-				frappe.render_template('opening_invoice_creation_tool_dashboard', {
+				frappe.render_template("opening_invoice_creation_tool_dashboard", {
 					data: opening_invoices_summary,
-					max_count: max_count
-				})
+					max_count: max_count,
+				}),
 			);
 
-			section.on('click', '.invoice-link', function() {
-				let doctype = $(this).attr('data-type');
-				let company = $(this).attr('data-company');
-				frappe.set_route('List', doctype,
-					{'is_opening': 'Yes', 'company': company, 'docstatus': 1});
+			section.on("click", ".invoice-link", function() {
+				let doctype = $(this).attr("data-type");
+				let company = $(this).attr("data-company");
+				frappe.set_route("List", doctype,
+					{"is_opening": "Yes", "company": company, "docstatus": 1});
 			});
 			frm.dashboard.show();
 		}
@@ -108,17 +108,17 @@ frappe.ui.form.on('Opening Invoice Creation Tool', {
 				row.temporary_opening_account = frm.doc.__onload.temporary_opening_account;
 			}
 
-			if(!row.cost_center) {
+			if (!row.cost_center) {
 				row.cost_center = frm.doc.cost_center;
 			}
 
-			row.party_type = frm.doc.invoice_type == "Sales"? "Customer": "Supplier";
+			row.party_type = frm.doc.invoice_type == "Sales" ? "Customer" : "Supplier";
 		});
-	}
+	},
 });
 
-frappe.ui.form.on('Opening Invoice Creation Tool Item', {
+frappe.ui.form.on("Opening Invoice Creation Tool Item", {
 	invoices_add: (frm) => {
-		frm.trigger('update_invoice_table');
-	}
+		frm.trigger("update_invoice_table");
+	},
 });

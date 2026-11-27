@@ -3,15 +3,14 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, nowdate, add_days
 from frappe.model.mapper import get_mapped_doc
+from frappe.utils import add_days, flt, nowdate
 
-from erpnext.controllers.buying_controller import BuyingController
 from erpnext.buying.utils import validate_for_items
-
+from erpnext.controllers.buying_controller import BuyingController
 
 form_grid_templates = {
-	"items": "templates/form_grid/item_grid.html"
+	"items": "templates/form_grid/item_grid.html",
 }
 
 
@@ -49,8 +48,8 @@ class SupplierQuotation(BuyingController):
 			"Material Request Item": {
 				"ref_dn_field": "prevdoc_detail_docname",
 				"compare_fields": [["item_code", "="], ["uom", "="]],
-				"is_child_table": True
-			}
+				"is_child_table": True,
+			},
 		})
 
 	def update_rfq_supplier_status(self, include_me):
@@ -59,16 +58,15 @@ class SupplierQuotation(BuyingController):
 			if item.request_for_quotation:
 				rfq_list.add(item.request_for_quotation)
 		for rfq in rfq_list:
-			doc = frappe.get_doc('Request for Quotation', rfq)
-			doc_sup = frappe.get_all('Request for Quotation Supplier', filters=
-				{'parent': doc.name, 'supplier': self.supplier}, fields=['name', 'quote_status'])
+			doc = frappe.get_doc("Request for Quotation", rfq)
+			doc_sup = frappe.get_all("Request for Quotation Supplier", filters={"parent": doc.name, "supplier": self.supplier}, fields=["name", "quote_status"])
 
 			doc_sup = doc_sup[0] if doc_sup else None
 			if not doc_sup:
 				frappe.throw(_("Supplier {0} not found in {1}").format(self.supplier,
 					frappe.get_desk_link("Request for Quotation", doc.name)))
 
-			quote_status = _('Received')
+			quote_status = _("Received")
 			for item in doc.items:
 				sqi_count = frappe.db.sql("""
 					SELECT
@@ -81,18 +79,18 @@ class SupplierQuotation(BuyingController):
 						AND sq.name != %(me)s
 						AND sqi.request_for_quotation_item = %(rqi)s
 						AND sqi.parent = sq.name""",
-					{"supplier": self.supplier, "rqi": item.name, 'me': self.name}, as_dict=1)[0]
+					{"supplier": self.supplier, "rqi": item.name, "me": self.name}, as_dict=1)[0]
 				self_count = sum(my_item.request_for_quotation_item == item.name
 					for my_item in self.items) if include_me else 0
 				if (sqi_count.count + self_count) == 0:
-					quote_status = _('Pending')
-			if quote_status == _('Received') and doc_sup.quote_status == _('No Quote'):
+					quote_status = _("Pending")
+			if quote_status == _("Received") and doc_sup.quote_status == _("No Quote"):
 				frappe.msgprint(_("{0} indicates that {1} will not provide a quotation, but all items \
 					have been quoted. Updating the RFQ quote status.").format(doc.name, self.supplier))
-				frappe.db.set_value('Request for Quotation Supplier', doc_sup.name, 'quote_status', quote_status)
-				frappe.db.set_value('Request for Quotation Supplier', doc_sup.name, 'no_quote', 0)
-			elif doc_sup.quote_status != _('No Quote'):
-				frappe.db.set_value('Request for Quotation Supplier', doc_sup.name, 'quote_status', quote_status)
+				frappe.db.set_value("Request for Quotation Supplier", doc_sup.name, "quote_status", quote_status)
+				frappe.db.set_value("Request for Quotation Supplier", doc_sup.name, "no_quote", 0)
+			elif doc_sup.quote_status != _("No Quote"):
+				frappe.db.set_value("Request for Quotation Supplier", doc_sup.name, "quote_status", quote_status)
 
 
 @frappe.whitelist()
@@ -105,7 +103,7 @@ def make_purchase_order(source_name, target_doc=None):
 	def update_item(obj, target, source_parent, target_parent):
 		target.stock_qty = flt(obj.qty) * flt(obj.conversion_factor)
 
-	doclist = get_mapped_doc("Supplier Quotation", source_name,		{
+	doclist = get_mapped_doc("Supplier Quotation", source_name, {
 		"Supplier Quotation": {
 			"doctype": "Purchase Order",
 			"validation": {
@@ -113,7 +111,7 @@ def make_purchase_order(source_name, target_doc=None):
 			},
 			"field_map": {
 				"remarks": "remarks",
-			}
+			},
 		},
 		"Supplier Quotation Item": {
 			"doctype": "Purchase Order Item",
@@ -122,9 +120,9 @@ def make_purchase_order(source_name, target_doc=None):
 				["parent", "supplier_quotation"],
 				["material_request", "material_request"],
 				["material_request_item", "material_request_item"],
-				["sales_order", "sales_order"]
+				["sales_order", "sales_order"],
 			],
-			"postprocess": update_item
+			"postprocess": update_item,
 		},
 		"Purchase Taxes and Charges": {
 			"doctype": "Purchase Taxes and Charges",
@@ -142,13 +140,13 @@ def make_quotation(source_name, target_doc=None):
 			"field_map": {
 				"name": "supplier_quotation",
 				"remarks": "remarks",
-			}
+			},
 		},
 		"Supplier Quotation Item": {
 			"doctype": "Quotation Item",
 			"condition": lambda row, source, target: frappe.get_cached_value("Item", row.item_code, "is_sales_item"),
-			"add_if_empty": True
-		}
+			"add_if_empty": True,
+		},
 	}, target_doc)
 
 	return doclist

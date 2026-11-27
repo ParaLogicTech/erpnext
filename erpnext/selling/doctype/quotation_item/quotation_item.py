@@ -2,9 +2,10 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
 from frappe.model.document import Document
+
 from erpnext.controllers.print_settings import print_settings_for_item_table
+
 
 class QuotationItem(Document):
 	def __setup__(self):

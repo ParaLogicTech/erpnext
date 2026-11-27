@@ -9,5 +9,5 @@ def execute():
 	frappe.reload_doc("maintenance", "doctype", "maintenance_schedule")
 	frappe.reload_doc("maintenance", "doctype", "maintenance_schedule_detail")
 
-	trim_tables('Maintenance Schedule')
-	trim_tables('Maintenance Schedule Detail')
+	trim_tables("Maintenance Schedule")
+	trim_tables("Maintenance Schedule Detail")

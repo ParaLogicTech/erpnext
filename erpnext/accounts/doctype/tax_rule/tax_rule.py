@@ -1,19 +1,27 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
+
+import functools
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, getdate
 from frappe.utils.nestedset import get_root_of
+
 from erpnext.setup.doctype.customer_group.customer_group import get_parent_customer_groups
-import functools
 
 
-class IncorrectCustomerGroup(frappe.ValidationError): pass
-class IncorrectSupplierType(frappe.ValidationError): pass
-class ConflictingTaxRule(frappe.ValidationError): pass
+class IncorrectCustomerGroup(frappe.ValidationError):
+	pass
+
+
+class IncorrectSupplierType(frappe.ValidationError):
+	pass
+
+
+class ConflictingTaxRule(frappe.ValidationError):
+	pass
 
 
 class TaxRule(Document):
@@ -82,7 +90,7 @@ class TaxRule(Document):
 			"tax_cnic": self.tax_cnic,
 			"tax_strn": self.tax_strn,
 			"has_stin": self.has_stin,
-			"company": self.company
+			"company": self.company,
 		}
 
 		conds = ""
@@ -98,10 +106,10 @@ class TaxRule(Document):
 					('{from_date}' = from_date and '{to_date}' = to_date))""".format(from_date=self.from_date, to_date=self.to_date)
 
 		elif self.from_date and not self.to_date:
-			conds += """ and to_date > '{from_date}'""".format(from_date = self.from_date)
+			conds += """ and to_date > '{from_date}'""".format(from_date=self.from_date)
 
 		elif self.to_date and not self.from_date:
-			conds += """ and from_date < '{to_date}'""".format(to_date = self.to_date)
+			conds += """ and from_date < '{to_date}'""".format(to_date=self.to_date)
 
 		tax_rule = frappe.db.sql("""
 			select name, priority
@@ -122,18 +130,18 @@ def get_party_details(party, party_type, args=None):
 	billing_address, shipping_address = None, None
 
 	if args:
-		if args.get('billing_address'):
-			billing_address = frappe.get_doc('Address', args.get('billing_address'))
-		if args.get('shipping_address'):
-			shipping_address = frappe.get_doc('Address', args.get('shipping_address'))
+		if args.get("billing_address"):
+			billing_address = frappe.get_doc("Address", args.get("billing_address"))
+		if args.get("shipping_address"):
+			shipping_address = frappe.get_doc("Address", args.get("shipping_address"))
 
 	elif party_type and party:
 		billing_address_name = get_primary_address(party_type, party)
 		shipping_address_name = get_primary_address(party_type, party, shipping_address=True)
 		if billing_address_name:
-			billing_address = frappe.get_doc('Address', billing_address_name)
+			billing_address = frappe.get_doc("Address", billing_address_name)
 		if shipping_address_name:
-			shipping_address = frappe.get_doc('Address', shipping_address_name)
+			shipping_address = frappe.get_doc("Address", shipping_address_name)
 
 	if billing_address:
 		out["billing_city"] = billing_address.city
@@ -170,7 +178,7 @@ def get_tax_template(posting_date, args):
 	conditions = ["(from_date is null or from_date <= '{0}') and (to_date is null or to_date >= '{0}')".format(posting_date)]
 
 	for key, value in args.items():
-		if key == 'customer_group':
+		if key == "customer_group":
 			if not value:
 				value = get_root_of("Customer Group")
 			customer_group_condition = get_customer_group_condition(value)
@@ -182,7 +190,7 @@ def get_tax_template(posting_date, args):
 		select *
 		from `tabTax Rule`
 		where {0}
-	""".format(" and ".join(conditions)), as_dict = True)
+	""".format(" and ".join(conditions)), as_dict=True)
 
 	if not tax_rule:
 		return None
@@ -198,13 +206,13 @@ def get_tax_template(posting_date, args):
 		return int(a > b) - int(a < b)
 
 	rule = sorted(tax_rule, key=functools.cmp_to_key(
-		lambda b, a: cmp(a.no_of_keys_matched, b.no_of_keys_matched) or cmp(a.priority, b.priority)
+		lambda b, a: cmp(a.no_of_keys_matched, b.no_of_keys_matched) or cmp(a.priority, b.priority),
 	))[0]
 
 	tax_template = rule.sales_tax_template or rule.purchase_tax_template
 	doctype = "{0} Taxes and Charges Template".format(rule.tax_type)
 
-	if frappe.get_cached_value(doctype, tax_template, 'disabled') == 1:
+	if frappe.get_cached_value(doctype, tax_template, "disabled") == 1:
 		return None
 
 	return tax_template
@@ -214,6 +222,6 @@ def get_customer_group_condition(customer_group):
 	condition = ""
 	customer_groups = ["%s" % (frappe.db.escape(d.name)) for d in get_parent_customer_groups(customer_group)]
 	if customer_groups:
-		condition = ",".join(['%s'] * len(customer_groups)) % (tuple(customer_groups))
+		condition = ",".join(["%s"] * len(customer_groups)) % (tuple(customer_groups))
 
 	return condition

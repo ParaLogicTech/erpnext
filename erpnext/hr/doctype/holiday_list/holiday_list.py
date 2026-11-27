@@ -1,11 +1,12 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
 import json
-from frappe.utils import cint, getdate, formatdate, add_days
-from frappe import throw, _
+
+import frappe
+from frappe import _, throw
 from frappe.model.document import Document
+from frappe.utils import add_days, cint, formatdate, getdate
 
 
 class OverlapError(frappe.ValidationError):
@@ -23,7 +24,7 @@ class HolidayList(Document):
 		date_list = self.get_weekly_off_date_list(self.from_date, self.to_date)
 		last_idx = max([cint(d.idx) for d in self.get("holidays")] or [0,])
 		for i, d in enumerate(date_list):
-			ch = self.append('holidays', {})
+			ch = self.append("holidays", {})
 			ch.description = self.weekly_off
 			ch.holiday_date = d
 			ch.idx = last_idx + i + 1
@@ -43,9 +44,10 @@ class HolidayList(Document):
 	def get_weekly_off_date_list(self, start_date, end_date):
 		start_date, end_date = getdate(start_date), getdate(end_date)
 
-		from dateutil import relativedelta
-		from datetime import timedelta
 		import calendar
+		from datetime import timedelta
+
+		from dateutil import relativedelta
 
 		date_list = []
 		existing_date_list = []
@@ -62,7 +64,7 @@ class HolidayList(Document):
 		return date_list
 
 	def clear_table(self):
-		self.set('holidays', [])
+		self.set("holidays", [])
 
 
 @frappe.whitelist()
@@ -79,13 +81,13 @@ def get_events(start, end, filters=None):
 		filters = []
 
 	if start:
-		filters.append(['Holiday', 'holiday_date', '>', getdate(start)])
+		filters.append(["Holiday", "holiday_date", ">", getdate(start)])
 	if end:
-		filters.append(['Holiday', 'holiday_date', '<', getdate(end)])
+		filters.append(["Holiday", "holiday_date", "<", getdate(end)])
 
-	return frappe.get_list('Holiday List',
-		fields=['name', '`tabHoliday`.holiday_date', '`tabHoliday`.description', '`tabHoliday List`.color'],
-		filters = filters,
+	return frappe.get_list("Holiday List",
+		fields=["name", "`tabHoliday`.holiday_date", "`tabHoliday`.description", "`tabHoliday List`.color"],
+		filters=filters,
 		update={"allDay": 1})
 
 
@@ -93,7 +95,7 @@ def is_holiday(holiday_list, date=None):
 	"""Returns true if the given date is a holiday in the given holiday list
 	"""
 	def generator():
-		return frappe.db.get_value("Holiday", filters={"parent": holiday_list, "holiday_date": date}, fieldname='description')
+		return frappe.db.get_value("Holiday", filters={"parent": holiday_list, "holiday_date": date}, fieldname="description")
 
 	if not holiday_list:
 		return False
@@ -140,7 +142,7 @@ def adjust_date_for_holidays(date, holiday_list, backward=False):
 
 def get_default_holiday_list(company):
 	if company:
-		return frappe.get_cached_value('Company', company, "default_holiday_list")
+		return frappe.get_cached_value("Company", company, "default_holiday_list")
 
 	return None
 
@@ -156,7 +158,7 @@ def get_holiday_map_from_holiday_lists(holiday_lists, from_date=None, to_date=No
 
 	for holiday_list in holiday_lists:
 		if holiday_list:
-			args = {'holiday_list': holiday_list, 'from_date': from_date, 'to_date': to_date}
+			args = {"holiday_list": holiday_list, "from_date": from_date, "to_date": to_date}
 			holidays = frappe.db.sql_list("""
 				select holiday_date
 				from `tabHoliday`

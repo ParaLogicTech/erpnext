@@ -1,5 +1,5 @@
 frappe.ui.form.on("Appointment Type", {
-	refresh: function (frm) {
+	refresh: function(frm) {
 		erpnext.hide_company(frm);
-	}
+	},
 });

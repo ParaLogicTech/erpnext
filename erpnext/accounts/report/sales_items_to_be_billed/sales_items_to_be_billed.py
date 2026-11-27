@@ -13,7 +13,7 @@ def execute(filters=None):
 class ItemsToBeBilled:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or dict())
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 		self.show_party_name = False
 		self.has_branch = False
 		self.has_project = False
@@ -25,9 +25,9 @@ class ItemsToBeBilled:
 			frappe.throw(_("Date Range is incorrect"))
 
 		if self.filters.party_type == "Customer":
-			self.show_party_name = frappe.defaults.get_global_default('cust_master_name') == "Naming Series"
+			self.show_party_name = frappe.defaults.get_global_default("cust_master_name") == "Naming Series"
 		if self.filters.party_type == "Supplier":
-			self.show_party_name = frappe.defaults.get_global_default('supp_master_name') == "Naming Series"
+			self.show_party_name = frappe.defaults.get_global_default("supp_master_name") == "Naming Series"
 
 		self.order_doctype = "Sales Order" if self.filters.party_type == "Customer" else "Purchase Order"
 		self.delivery_doctype = "Delivery Note" if self.filters.party_type == "Customer" else "Purchase Receipt"
@@ -140,7 +140,7 @@ class ItemsToBeBilled:
 		qty_field_filters = {
 			"Stock Qty": "stock_qty",
 			"Contents Qty": "alt_uom_qty",
-			"Transaction Qty": "qty"
+			"Transaction Qty": "qty",
 		}
 		fields.qty = qty_field_filters.get(self.filters.qty_field) or "qty"
 
@@ -207,7 +207,7 @@ class ItemsToBeBilled:
 			conditions.append("im.item_source = %(item_source)s")
 
 		if self.filters.item_code:
-			if frappe.db.get_value("Item", self.filters.item_code, 'has_variants'):
+			if frappe.db.get_value("Item", self.filters.item_code, "has_variants"):
 				conditions.append("im.variant_of = %(item_code)s")
 			else:
 				conditions.append("i.item_code = %(item_code)s")
@@ -253,8 +253,8 @@ class ItemsToBeBilled:
 				d.billed_qty = d.billed_qty * d.conversion_factor
 				d.returned_qty = d.returned_qty * d.conversion_factor
 
-			d['rate'] = d['amount'] / d['qty'] if d['qty'] else d['rate']
-			d["remaining_qty"] = d["qty"] - d["billed_qty"] - d['returned_qty']
+			d["rate"] = d["amount"] / d["qty"] if d["qty"] else d["rate"]
+			d["remaining_qty"] = d["qty"] - d["billed_qty"] - d["returned_qty"]
 
 			d["remaining_amt"] = d["amount"] - d["billed_amt"]
 
@@ -279,159 +279,159 @@ class ItemsToBeBilled:
 				"label": _("Date"),
 				"fieldname": "transaction_date",
 				"fieldtype": "Date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Transaction Type"),
 				"fieldname": "doctype",
 				"fieldtype": "Data",
-				"width": 90 if self.filters.party_type == "Customer" else 110
+				"width": 90 if self.filters.party_type == "Customer" else 110,
 			},
 			{
 				"label": _("Transaction"),
 				"fieldname": "name",
 				"fieldtype": "Dynamic Link",
 				"options": "doctype",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Project"),
 				"fieldname": "project",
 				"fieldtype": "Link",
 				"options": "Project",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _(self.filters.party_type),
 				"fieldname": "party",
 				"fieldtype": "Link",
 				"options": self.filters.party_type,
-				"width": 80 if self.show_party_name else 150
+				"width": 80 if self.show_party_name else 150,
 			},
 			{
 				"label": _(self.filters.party_type) + " Name",
 				"fieldname": "party_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Item Code"),
 				"fieldname": "item_code",
 				"fieldtype": "Link",
 				"options": "Item",
-				"width": 100 if self.show_item_name else 150
+				"width": 100 if self.show_item_name else 150,
 			},
 			{
 				"label": _("Item Name"),
 				"fieldname": "item_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("UOM"),
 				"fieldtype": "Link",
 				"options": "UOM",
 				"fieldname": "uom",
-				"width": 50
+				"width": 50,
 			},
 			{
 				"label": _("Balance Qty"),
 				"fieldname": "remaining_qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Balance Amount"),
 				"fieldname": "remaining_amt",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Qty"),
 				"fieldname": "qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Billed Qty"),
 				"fieldname": "billed_qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Return Qty"),
 				"fieldname": "returned_qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Amount"),
 				"fieldname": "amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Billed Amount"),
 				"fieldname": "billed_amt",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Sales Person"),
 				"fieldtype": "Data",
 				"fieldname": "sales_person",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Delay Days"),
 				"fieldname": "delay_days",
 				"fieldtype": "Int",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Item Group"),
 				"fieldname": "item_group",
 				"fieldtype": "Link",
 				"options": "Item Group",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Brand"),
 				"fieldname": "brand",
 				"fieldtype": "Link",
 				"options": "Brand",
-				"width": 60
+				"width": 60,
 			},
 			{
 				"label": _("Branch"),
 				"fieldname": "branch",
 				"fieldtype": "Link",
 				"options": "Branch",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Warehouse"),
 				"fieldname": "warehouse",
 				"fieldtype": "Link",
 				"options": "Warehouse",
-				"width": 90
+				"width": 90,
 			},
 		]
 
 		if not self.show_item_name:
-			columns = [c for c in columns if c['fieldname'] != 'item_name']
+			columns = [c for c in columns if c["fieldname"] != "item_name"]
 		if not self.show_party_name:
-			columns = [c for c in columns if c['fieldname'] != 'party_name']
+			columns = [c for c in columns if c["fieldname"] != "party_name"]
 
 		if self.filters.party_type != "Customer":
-			columns = [c for c in columns if c['fieldname'] not in ('sales_person', 'territory')]
+			columns = [c for c in columns if c["fieldname"] not in ("sales_person", "territory")]
 
 		if not self.has_project:
-			columns = [c for c in columns if c['fieldname'] != 'project']
+			columns = [c for c in columns if c["fieldname"] != "project"]
 		if not self.has_branch:
-			columns = [c for c in columns if c['fieldname'] != 'branch']
+			columns = [c for c in columns if c["fieldname"] != "branch"]
 
 		return columns

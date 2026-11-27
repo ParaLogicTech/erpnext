@@ -1,15 +1,16 @@
 from frappe import _
 
+
 def get_data():
 	return {
-		'fieldname': 'payroll_entry',
-		'non_standard_fieldnames': {
-			'Journal Entry': 'reference_name',
-			'Payment Entry': 'reference_name',
+		"fieldname": "payroll_entry",
+		"non_standard_fieldnames": {
+			"Journal Entry": "reference_name",
+			"Payment Entry": "reference_name",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'items': ['Salary Slip', 'Journal Entry']
-			}
-		]
+				"items": ["Salary Slip", "Journal Entry"],
+			},
+		],
 	}

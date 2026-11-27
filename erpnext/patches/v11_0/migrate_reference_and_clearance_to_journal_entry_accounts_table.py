@@ -4,6 +4,7 @@
 import frappe
 from frappe.utils.global_search import rebuild_for_doctype
 
+
 def execute():
 	frappe.reload_doc("accounts", "doctype", "journal_entry")
 	frappe.reload_doc("accounts", "doctype", "journal_entry_account")

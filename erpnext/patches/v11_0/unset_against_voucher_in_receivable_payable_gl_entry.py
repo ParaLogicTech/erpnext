@@ -1,16 +1,17 @@
 import frappe
+
 import erpnext
 
 
 def execute():
 	doctypes = [
-		('Sales Invoice', 'Customer'),
-		('Purchase Invoice', 'Supplier'),
-		('Expense Claim', 'Employee')
+		("Sales Invoice", "Customer"),
+		("Purchase Invoice", "Supplier"),
+		("Expense Claim", "Employee"),
 	]
 
 	for dt, party_type in doctypes:
-		dr_or_cr = "debit - credit" if erpnext.get_party_account_type(party_type) == 'Receivable' else "credit - debit"
+		dr_or_cr = "debit - credit" if erpnext.get_party_account_type(party_type) == "Receivable" else "credit - debit"
 		frappe.db.sql("""
 			update `tabGL Entry`
 			set against_voucher = '', against_voucher_type = ''

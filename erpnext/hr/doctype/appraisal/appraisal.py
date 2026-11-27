@@ -2,13 +2,13 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
+from frappe import _
+from frappe.model.document import Document
+from frappe.model.mapper import get_mapped_doc
 from frappe.utils import flt, getdate
 
-from frappe import _
-from frappe.model.mapper import get_mapped_doc
-from frappe.model.document import Document
 from erpnext.hr.utils import set_employee_name
+
 
 class Appraisal(Document):
 	def validate(self):
@@ -36,13 +36,13 @@ class Appraisal(Document):
 			and (status='Submitted' or status='Completed')
 			and ((start_date>=%s and start_date<=%s)
 			or (end_date>=%s and end_date<=%s))""",
-			(self.employee,self.start_date,self.end_date,self.start_date,self.end_date))
+			(self.employee, self.start_date, self.end_date, self.start_date, self.end_date))
 		if chk:
 			frappe.throw(_("Appraisal {0} created for Employee {1} in the given date range").format(chk[0][0], self.employee_name))
 
 	def calculate_total(self):
-		total, total_w  = 0, 0
-		for d in self.get('goals'):
+		total, total_w = 0, 0
+		for d in self.get("goals"):
 			if d.score:
 				d.score_earned = flt(d.score) * flt(d.per_weightage) / 100
 				total = total + d.score_earned
@@ -58,10 +58,11 @@ class Appraisal(Document):
 		self.total_score = total
 
 	def on_submit(self):
-		self.db_set('status', 'Submitted')
+		self.db_set("status", "Submitted")
 
 	def on_cancel(self):
-		self.db_set('status', 'Cancelled')
+		self.db_set("status", "Cancelled")
+
 
 @frappe.whitelist()
 def fetch_appraisal_template(source_name, target_doc=None):
@@ -71,7 +72,7 @@ def fetch_appraisal_template(source_name, target_doc=None):
 		},
 		"Appraisal Template Goal": {
 			"doctype": "Appraisal Goal",
-		}
+		},
 	}, target_doc)
 
 	return target_doc

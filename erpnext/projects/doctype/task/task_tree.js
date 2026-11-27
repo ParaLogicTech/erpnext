@@ -1,6 +1,6 @@
 frappe.provide("frappe.treeview_settings");
 
-frappe.treeview_settings['Task'] = {
+frappe.treeview_settings["Task"] = {
 	get_tree_nodes: "erpnext.projects.doctype.task.task.get_children",
 	add_tree_node: "erpnext.projects.doctype.task.task.add_node",
 	filters: [
@@ -16,36 +16,36 @@ frappe.treeview_settings['Task'] = {
 			options: "Task",
 			label: __("Parent Task"),
 			get_query: function() {
-				var me = frappe.treeview_settings['Task'];
+				var me = frappe.treeview_settings["Task"];
 				var project = me.page.fields_dict.project.get_value();
-				var args = [["Task", 'is_group', '=', 1]];
-				if(project){
-					args.push(["Task", 'project', "=", project]);
+				var args = [["Task", "is_group", "=", 1]];
+				if (project) {
+					args.push(["Task", "project", "=", project]);
 				}
 				return {
-					filters: args
+					filters: args,
 				};
-			}
+			},
 		},
 		{
 			fieldname: "status",
 			fieldtype: "Select",
-			options: ['', 'Open', 'Completed'],
+			options: ["", "Open", "Completed"],
 			label: __("Status"),
-		}
+		},
 	],
 	breadcrumb: "Projects",
 	get_tree_root: false,
 	root_label: "All Tasks",
 	ignore_fields: ["parent_task"],
 	onload: function(me) {
-		frappe.treeview_settings['Task'].page = {};
-		$.extend(frappe.treeview_settings['Task'].page, me.page);
+		frappe.treeview_settings["Task"].page = {};
+		$.extend(frappe.treeview_settings["Task"].page, me.page);
 		me.make_tree();
 	},
 	toolbar: [
 		{
-			label:__("Add Multiple"),
+			label: __("Add Multiple"),
 			condition: function(node) {
 				return node.expandable;
 			},
@@ -61,12 +61,12 @@ frappe.treeview_settings['Task'] = {
 								return this.data;
 							},
 							fields: [{
-								fieldtype:'Data',
-								fieldname:"subject",
+								fieldtype: "Data",
+								fieldname: "subject",
 								in_list_view: 1,
 								reqd: 1,
-								label: __("Subject")
-							}]
+								label: __("Subject"),
+							}],
 						},
 					],
 					primary_action: function() {
@@ -75,15 +75,15 @@ frappe.treeview_settings['Task'] = {
 							method: "erpnext.projects.doctype.task.task.add_multiple_tasks",
 							args: {
 								data: dialog.get_values()["multiple_tasks"],
-								parent: node.data.value
+								parent: node.data.value,
 							},
-							callback: function() { }
+							callback: function() { },
 						});
 					},
-					primary_action_label: __('Create')
+					primary_action_label: __("Create"),
 				});
 				dialog.show();
-			}
+			},
 		},
 		{
 			label: __("List View"),
@@ -91,17 +91,17 @@ frappe.treeview_settings['Task'] = {
 				return node.expandable;
 			},
 			click: function(node) {
-				frappe.set_route('List', 'Task', 'List', {
-					parent_task: node.data.value
+				frappe.set_route("List", "Task", "List", {
+					parent_task: node.data.value,
 				});
-			}
-		}
+			},
+		},
 	],
 	extend_toolbar: true,
-	get_add_child_args: function (node) {
+	get_add_child_args: function(node) {
 		return {
 			project: node.data.project,
 			issue: node.data.issue,
-		}
-	}
+		};
+	},
 };

@@ -1,13 +1,21 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _, unscrub
-from frappe.utils import flt, getdate, formatdate, cstr
-from erpnext.accounts.report.financial_statements \
-	import filter_accounts, set_gl_entries_by_account, filter_out_zero_value_rows
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, \
-	get_dimension_with_children, get_all_dimension_fields
+from frappe.utils import cstr, flt, formatdate, getdate
+
+import erpnext
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_accounting_dimensions,
+	get_all_dimension_fields,
+	get_dimension_with_children,
+)
+from erpnext.accounts.report.financial_statements import (
+	filter_accounts,
+	filter_out_zero_value_rows,
+	set_gl_entries_by_account,
+)
 
 value_fields = ("opening_debit", "opening_credit", "debit", "credit", "closing_debit", "closing_credit")
 
@@ -52,13 +60,13 @@ def validate_filters(filters):
 		frappe.throw(_("From Date cannot be greater than To Date"))
 
 	if (filters.from_date < filters.year_start_date) or (filters.from_date > filters.year_end_date):
-		frappe.msgprint(_("From Date should be within the Fiscal Year. Assuming From Date = {0}")\
+		frappe.msgprint(_("From Date should be within the Fiscal Year. Assuming From Date = {0}")
 			.format(formatdate(filters.year_start_date)))
 
 		filters.from_date = filters.year_start_date
 
 	if (filters.to_date < filters.year_start_date) or (filters.to_date > filters.year_end_date):
-		frappe.msgprint(_("To Date should be within the Fiscal Year. Assuming To Date = {0}")\
+		frappe.msgprint(_("To Date should be within the Fiscal Year. Assuming To Date = {0}")
 			.format(formatdate(filters.year_end_date)))
 		filters.to_date = filters.year_end_date
 
@@ -133,7 +141,7 @@ def get_rootwise_opening_balances(filters, report_type, dimension_fields=None):
 		additional_conditions.append("voucher_type != 'Period Closing Voucher'")
 
 	if filters.cost_center:
-		lft, rgt = frappe.db.get_value('Cost Center', filters.cost_center, ['lft', 'rgt'])
+		lft, rgt = frappe.db.get_value("Cost Center", filters.cost_center, ["lft", "rgt"])
 		additional_conditions.append("""cost_center in (select name from `tabCost Center`
 			where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
@@ -156,13 +164,13 @@ def get_rootwise_opening_balances(filters, report_type, dimension_fields=None):
 		"year_start_date": filters.year_start_date,
 		"project": filters.project,
 		"finance_book": filters.finance_book,
-		"company_fb": frappe.db.get_value("Company", filters.company, 'default_finance_book')
+		"company_fb": frappe.db.get_value("Company", filters.company, "default_finance_book"),
 	}
 
 	if accounting_dimensions:
 		for dimension in accounting_dimensions:
 			if filters.get(dimension.fieldname):
-				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
+				if frappe.get_cached_value("DocType", dimension.document_type, "is_tree"):
 					filters[dimension.fieldname] = get_dimension_with_children(dimension.document_type,
 						filters.get(dimension.fieldname))
 					additional_conditions.append("{0} in %({0})s".format(dimension.fieldname))
@@ -170,10 +178,10 @@ def get_rootwise_opening_balances(filters, report_type, dimension_fields=None):
 					additional_conditions.append("{0} in (%({0})s)".format(dimension.fieldname))
 
 				query_filters.update({
-					dimension.fieldname: filters.get(dimension.fieldname)
+					dimension.fieldname: filters.get(dimension.fieldname),
 				})
 
-	hooks = frappe.get_hooks('set_gl_conditions')
+	hooks = frappe.get_hooks("set_gl_conditions")
 	for method in hooks:
 		frappe.get_attr(method)(filters, additional_conditions, alias="gle")
 
@@ -219,7 +227,7 @@ def get_rootwise_opening_balances(filters, report_type, dimension_fields=None):
 			dimension_opening.opening_debit += gle.opening_debit
 			dimension_opening.opening_credit += gle.opening_credit
 
-	hooks = frappe.get_hooks('get_opening_account_balances')
+	hooks = frappe.get_hooks("get_opening_account_balances")
 	for method in hooks:
 		hooked_opening_balances = frappe.get_attr(method)(filters)
 		if hooked_opening_balances is None:
@@ -231,9 +239,9 @@ def get_rootwise_opening_balances(filters, report_type, dimension_fields=None):
 			}))
 
 			if op.opening_balance >= 0:
-				account_opening['opening_debit'] += op.opening_balance
+				account_opening["opening_debit"] += op.opening_balance
 			else:
-				account_opening['opening_credit'] += -1 * op.opening_balance
+				account_opening["opening_credit"] += -1 * op.opening_balance
 
 			if dimension_fields:
 				dimension_key = get_dimension_key(op, dimension_fields)
@@ -245,9 +253,9 @@ def get_rootwise_opening_balances(filters, report_type, dimension_fields=None):
 				}))
 
 				if op.opening_balance >= 0:
-					dimension_opening['opening_debit'] += op.opening_balance
+					dimension_opening["opening_debit"] += op.opening_balance
 				else:
-					dimension_opening['opening_credit'] += -1 * op.opening_balance
+					dimension_opening["opening_credit"] += -1 * op.opening_balance
 
 	return opening_balances
 
@@ -259,7 +267,7 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, company_
 		"debit": 0.0,
 		"credit": 0.0,
 		"closing_debit": 0.0,
-		"closing_credit": 0.0
+		"closing_credit": 0.0,
 	})
 
 	total_row_init = frappe._dict({
@@ -275,7 +283,7 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, company_
 		"parent_account": None,
 		"indent": 0,
 		"has_value": True,
-		"currency": company_currency
+		"currency": company_currency,
 	})
 	dimension_totals = {}
 	grand_total_row = total_row_init.copy()
@@ -323,7 +331,7 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, company_
 		acc["closing_credit"] = acc["opening_credit"] + acc["credit"]
 		prepare_opening_closing(acc)
 
-		for dimension_key, dim in acc.get("dimensions", {}).items():
+		for _dimension_key, dim in acc.get("dimensions", {}).items():
 			dim["closing_debit"] = dim["opening_debit"] + dim["debit"]
 			dim["closing_credit"] = dim["opening_credit"] + dim["credit"]
 			prepare_opening_closing(dim)
@@ -363,7 +371,7 @@ def accumulate_values_into_parents(accounts, accounts_by_name):
 
 def set_zero_for_group_accounts(data, parent_children_map):
 	for d in data:
-		if d.get('account') and parent_children_map.get(d['account']):
+		if d.get("account") and parent_children_map.get(d["account"]):
 			for key in value_fields:
 				del d[key]
 
@@ -468,43 +476,43 @@ def get_columns(filters):
 			"label": _("Opening (Dr)"),
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"fieldname": "opening_credit",
 			"label": _("Opening (Cr)"),
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"fieldname": "debit",
 			"label": _("Debit"),
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"fieldname": "credit",
 			"label": _("Credit"),
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"fieldname": "closing_debit",
 			"label": _("Closing (Dr)"),
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"fieldname": "closing_credit",
 			"label": _("Closing (Cr)"),
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
-		}
+			"width": 120,
+		},
 	]
 
 	return columns
@@ -537,7 +545,7 @@ def get_dimension_dict(data, dimension_fields):
 
 
 def get_dimension_dict_from_key(dimension_key, dimension_fields):
-	return dict(zip(dimension_fields, dimension_key))
+	return dict(zip(dimension_fields, dimension_key, strict=False))
 
 
 def dimension_sorter(data, dimension_field):

@@ -3,17 +3,18 @@
 
 import frappe
 
+
 def execute():
-	'''
+	"""
 		default supplier was not set in the item defaults for multi company instance,
 			this patch will set the default supplier
 
-	'''
-	if not frappe.db.has_column('Item', 'default_supplier'):
+	"""
+	if not frappe.db.has_column("Item", "default_supplier"):
 		return
 
-	frappe.reload_doc('stock', 'doctype', 'item_default')
-	frappe.reload_doc('stock', 'doctype', 'item')
+	frappe.reload_doc("stock", "doctype", "item_default")
+	frappe.reload_doc("stock", "doctype", "item")
 
 	companies = frappe.get_all("Company")
 	if len(companies) > 1:

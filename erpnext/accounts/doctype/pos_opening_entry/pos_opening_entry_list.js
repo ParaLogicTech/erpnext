@@ -2,7 +2,7 @@
 // License: GNU General Public License v3. See license.txt
 
 frappe.listview_settings["POS Opening Entry"] = {
-	get_indicator: function (doc) {
+	get_indicator: function(doc) {
 		var status_color = {
 			Draft: "red",
 			Open: "orange",

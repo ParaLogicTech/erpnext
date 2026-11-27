@@ -3,11 +3,13 @@
 
 import frappe
 from frappe import _, scrub
-from frappe.utils import getdate, flt
-from erpnext.stock.report.stock_balance.stock_balance import (
-	get_items_for_stock_report, get_stock_ledger_entries_for_stock_report
-)
+from frappe.utils import flt, getdate
+
 from erpnext.accounts.utils import get_fiscal_year
+from erpnext.stock.report.stock_balance.stock_balance import (
+	get_items_for_stock_report,
+	get_stock_ledger_entries_for_stock_report,
+)
 
 
 def execute(filters=None):
@@ -26,38 +28,38 @@ def get_columns(filters):
 			"options": "Item",
 			"fieldname": "name",
 			"fieldtype": "Link",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Item Name"),
 			"fieldname": "item_name",
 			"fieldtype": "Data",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Item Group"),
 			"options": "Item Group",
 			"fieldname": "item_group",
 			"fieldtype": "Link",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"label": _("UOM"),
 			"fieldname": "uom",
 			"fieldtype": "Data",
-			"width": 50
+			"width": 50,
 		}]
 
 	ranges = get_period_date_ranges(filters)
 
-	for dummy, end_date in ranges:
+	for _dummy, end_date in ranges:
 		period = get_period(end_date, filters)
 
 		columns.append({
 			"label": _(period),
-			"fieldname":scrub(period),
+			"fieldname": scrub(period),
 			"fieldtype": "Float",
-			"width": 120
+			"width": 120,
 		})
 
 	return columns
@@ -71,11 +73,11 @@ def get_period_date_ranges(filters):
 			"Monthly": 1,
 			"Quarterly": 3,
 			"Half-Yearly": 6,
-			"Yearly": 12
+			"Yearly": 12,
 		}.get(filters.range, 1)
 
 		periodic_daterange = []
-		for dummy in range(1, 53, increment):
+		for _dummy in range(1, 53, increment):
 			if filters.range == "Weekly":
 				period_end_date = from_date + relativedelta(days=6)
 			else:
@@ -95,12 +97,12 @@ def get_period_date_ranges(filters):
 def get_period(posting_date, filters):
 	months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
-	if filters.range == 'Weekly':
+	if filters.range == "Weekly":
 		period = "Week " + str(posting_date.isocalendar().week) + " " + str(posting_date.isocalendar().year)
-	elif filters.range == 'Monthly':
+	elif filters.range == "Monthly":
 		period = str(months[posting_date.month - 1]) + " " + str(posting_date.year)
-	elif filters.range == 'Quarterly':
-		period = "Quarter " + str(((posting_date.month-1)//3)+1) +" " + str(posting_date.year)
+	elif filters.range == "Quarterly":
+		period = "Quarter " + str(((posting_date.month - 1) // 3) + 1) + " " + str(posting_date.year)
 	else:
 		year = get_fiscal_year(posting_date, company=filters.company)
 		period = str(year[2])
@@ -122,7 +124,7 @@ def get_periodic_data(sles, filters):
 		else:
 			qty_diff = d.actual_qty
 
-		if filters["value_quantity"] == 'Quantity':
+		if filters["value_quantity"] == "Quantity":
 			value = qty_diff
 		else:
 			value = d.stock_value_difference
@@ -144,7 +146,7 @@ def get_data(filters):
 	periodic_data = get_periodic_data(sles, filters)
 	ranges = get_period_date_ranges(filters)
 
-	for dummy, item_data in item_details.items():
+	for _dummy, item_data in item_details.items():
 		row = {
 			"name": item_data.name,
 			"item_name": item_data.item_name,
@@ -154,7 +156,7 @@ def get_data(filters):
 			"disable_item_formatter": 1,
 		}
 		total = 0
-		for dummy, end_date in ranges:
+		for _dummy, end_date in ranges:
 			period = get_period(end_date, filters)
 			amount = flt(periodic_data.get(item_data.name, {}).get(period))
 			row[scrub(period)] = amount
@@ -192,7 +194,7 @@ def get_chart_data(columns, filters):
 	chart = {
 		"data": {
 			"labels": labels,
-			"datasets": []
+			"datasets": [],
 		},
 		"type": "line",
 	}
@@ -203,7 +205,3 @@ def get_chart_data(columns, filters):
 		chart["fieldtype"] = "Float"
 
 	return chart
-
-
-
-

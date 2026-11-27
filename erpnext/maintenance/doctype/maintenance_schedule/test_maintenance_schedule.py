@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
-from frappe.utils.data import get_datetime, add_days
-
-import frappe
 import unittest
 
+import frappe
+from frappe.utils.data import add_days, get_datetime
+
 # test_records = frappe.get_test_records('Maintenance Schedule')
+
 
 class TestMaintenanceSchedule(unittest.TestCase):
 	def test_events_should_be_created_and_deleted(self):
@@ -21,12 +21,14 @@ class TestMaintenanceSchedule(unittest.TestCase):
 		events_after_cancel = get_events(ms)
 		self.assertTrue(len(events_after_cancel) == 0)
 
+
 def get_events(ms):
 	return frappe.get_all("Event Participants", filters={
 			"reference_doctype": ms.doctype,
 			"reference_docname": ms.name,
-			"parenttype": "Event"
+			"parenttype": "Event",
 		})
+
 
 def make_maintenance_schedule():
 	ms = frappe.new_doc("Maintenance Schedule")

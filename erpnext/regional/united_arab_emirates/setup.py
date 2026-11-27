@@ -102,7 +102,7 @@ def make_custom_fields():
 	)
 
 	custom_fields = {
-		'Customer': [
+		"Customer": [
 			dict(
 				fieldname="customer_name_in_arabic",
 				label="Customer Name in Arabic",
@@ -110,7 +110,7 @@ def make_custom_fields():
 				insert_after="customer_name",
 			),
 		],
-		'Supplier': [
+		"Supplier": [
 			dict(
 				fieldname="supplier_name_in_arabic",
 				label="Supplier Name in Arabic",
@@ -125,7 +125,7 @@ def make_custom_fields():
 				fieldtype="Select",
 				insert_after="state",
 				options="\nAbu Dhabi\nAjman\nDubai\nFujairah\nRas Al Khaimah\nSharjah\nUmm Al Quwain",
-			)
+			),
 		],
 		"Purchase Invoice": purchase_invoice_fields + invoice_fields,
 		"Purchase Order": purchase_invoice_fields + invoice_fields,
@@ -147,5 +147,5 @@ def add_custom_roles_for_reports():
 				doctype="Custom Role",
 				report="UAE VAT 201",
 				roles=[dict(role="Accounts User"), dict(role="Accounts Manager"), dict(role="Auditor")],
-			)
+			),
 		).insert()

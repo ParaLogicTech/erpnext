@@ -1,27 +1,27 @@
 // Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Subscription', {
+frappe.ui.form.on("Subscription", {
 	onload: function(frm) {
 		erpnext.accounts.dimensions.setup_dimension_filters(frm);
 	},
 
 	refresh: function(frm) {
-		if(!frm.is_new()){
-			if(frm.doc.status !== 'Cancelled'){
+		if (!frm.is_new()) {
+			if (frm.doc.status !== "Cancelled") {
 				frm.add_custom_button(
-					__('Cancel Subscription'),
-					() => frm.events.cancel_this_subscription(frm)
+					__("Cancel Subscription"),
+					() => frm.events.cancel_this_subscription(frm),
 				);
 				frm.add_custom_button(
-					__('Fetch Subscription Updates'),
-					() => frm.events.get_subscription_updates(frm)
+					__("Fetch Subscription Updates"),
+					() => frm.events.get_subscription_updates(frm),
 				);
 			}
-			else if(frm.doc.status === 'Cancelled'){
+			else if (frm.doc.status === "Cancelled") {
 				frm.add_custom_button(
-					__('Restart Subscription'),
-					() => frm.events.renew_this_subscription(frm)
+					__("Restart Subscription"),
+					() => frm.events.renew_this_subscription(frm),
 				);
 			}
 		}
@@ -30,38 +30,38 @@ frappe.ui.form.on('Subscription', {
 	cancel_this_subscription: function(frm) {
 		const doc = frm.doc;
 		frappe.confirm(
-			__('This action will stop future billing. Are you sure you want to cancel this subscription?'),
+			__("This action will stop future billing. Are you sure you want to cancel this subscription?"),
 			function() {
 				frappe.call({
 					method:
 					"erpnext.accounts.doctype.subscription.subscription.cancel_subscription",
 					args: {name: doc.name},
-					callback: function(data){
-						if(!data.exc){
+					callback: function(data) {
+						if (!data.exc) {
 							frm.reload_doc();
 						}
-					}
+					},
 				});
-			}
+			},
 		);
 	},
 
 	renew_this_subscription: function(frm) {
 		const doc = frm.doc;
 		frappe.confirm(
-			__('You will lose records of previously generated invoices. Are you sure you want to restart this subscription?'),
+			__("You will lose records of previously generated invoices. Are you sure you want to restart this subscription?"),
 			function() {
 				frappe.call({
 					method:
 					"erpnext.accounts.doctype.subscription.subscription.restart_subscription",
 					args: {name: doc.name},
-					callback: function(data){
-						if(!data.exc){
+					callback: function(data) {
+						if (!data.exc) {
 							frm.reload_doc();
 						}
-					}
+					},
 				});
-			}
+			},
 		);
 	},
 
@@ -72,11 +72,11 @@ frappe.ui.form.on('Subscription', {
 			"erpnext.accounts.doctype.subscription.subscription.get_subscription_updates",
 			args: {name: doc.name},
 			freeze: true,
-			callback: function(data){
-				if(!data.exc){
+			callback: function(data) {
+				if (!data.exc) {
 					frm.reload_doc();
 				}
-			}
+			},
 		});
-	}
+	},
 });

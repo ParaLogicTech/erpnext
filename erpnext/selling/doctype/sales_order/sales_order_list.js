@@ -1,9 +1,9 @@
-frappe.listview_settings['Sales Order'] = {
+frappe.listview_settings["Sales Order"] = {
 	add_fields: [
 		"name", "customer_name", "currency", "delivery_date",
-		"delivery_status", "billing_status", "status"
+		"delivery_status", "billing_status", "status",
 	],
-	get_indicator: function (doc) {
+	get_indicator: function(doc) {
 		// Closed
 		if (doc.status === "Closed") {
 			return [__("Closed"), "green", "status,=,Closed"];
@@ -48,5 +48,5 @@ frappe.listview_settings['Sales Order'] = {
 		listview.page.add_action_item(__("Re-Open"), function() {
 			listview.call_for_selected_items(method, {"status": "Submitted"});
 		});
-	}
+	},
 };

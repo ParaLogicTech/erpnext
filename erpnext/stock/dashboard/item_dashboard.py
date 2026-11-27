@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cstr
 from frappe.model.db_query import DatabaseQuery
+from frappe.utils import cstr, flt
 
 
 @frappe.whitelist()
@@ -10,23 +10,23 @@ def get_data(
 	warehouse=None,
 	item_group=None,
 	start=0,
-	sort_by='actual_qty',
-	sort_order='desc',
+	sort_by="actual_qty",
+	sort_order="desc",
 ):
 	"""Return data to render the item dashboard"""
 
-	sort_order = cstr(sort_order).lower() or 'desc'
-	if sort_order not in ('asc', 'desc'):
+	sort_order = cstr(sort_order).lower() or "desc"
+	if sort_order not in ("asc", "desc"):
 		frappe.throw(_("Invalid sort order: {0}").format(sort_order))
 
-	if sort_by not in frappe.get_meta('Bin').get_valid_columns():
+	if sort_by not in frappe.get_meta("Bin").get_valid_columns():
 		frappe.throw(_("Invalid sort field: {0}").format(sort_by))
 
 	filters = []
 	if item_code:
-		filters.append(['item_code', '=', item_code])
+		filters.append(["item_code", "=", item_code])
 	if warehouse:
-		filters.append(['warehouse', '=', warehouse])
+		filters.append(["warehouse", "=", warehouse])
 	if item_group:
 		lft, rgt = frappe.db.get_value("Item Group", item_group, ["lft", "rgt"])
 		items = frappe.db.sql_list("""
@@ -34,50 +34,50 @@ def get_data(
 			where exists(select name from `tabItem Group`
 				where name=i.item_group and lft >=%s and rgt<=%s)
 		""", (lft, rgt))
-		filters.append(['item_code', 'in', items])
+		filters.append(["item_code", "in", items])
 
 	try:
 		# check if user has any restrictions based on user permissions on warehouse
-		if DatabaseQuery('Warehouse', user=frappe.session.user).build_match_conditions():
-			filters.append(['warehouse', 'in', [w.name for w in frappe.get_list('Warehouse')]])
+		if DatabaseQuery("Warehouse", user=frappe.session.user).build_match_conditions():
+			filters.append(["warehouse", "in", [w.name for w in frappe.get_list("Warehouse")]])
 	except frappe.PermissionError:
 		# user does not have access on warehouse
 		return []
 
 	items = frappe.db.get_all(
-		'Bin',
+		"Bin",
 		fields=[
-			'item_code',
-			'warehouse',
-			'projected_qty',
-			'reserved_qty',
-			'reserved_qty_for_production',
-			'reserved_qty_for_sub_contract',
-			'actual_qty',
-			'valuation_rate',
+			"item_code",
+			"warehouse",
+			"projected_qty",
+			"reserved_qty",
+			"reserved_qty_for_production",
+			"reserved_qty_for_sub_contract",
+			"actual_qty",
+			"valuation_rate",
 		],
 		or_filters={
-			'projected_qty': ['!=', 0],
-			'reserved_qty': ['!=', 0],
-			'reserved_qty_for_production': ['!=', 0],
-			'reserved_qty_for_sub_contract': ['!=', 0],
-			'actual_qty': ['!=', 0],
+			"projected_qty": ["!=", 0],
+			"reserved_qty": ["!=", 0],
+			"reserved_qty_for_production": ["!=", 0],
+			"reserved_qty_for_sub_contract": ["!=", 0],
+			"actual_qty": ["!=", 0],
 		},
 		filters=filters,
-		order_by=sort_by + ' ' + sort_order,
+		order_by=sort_by + " " + sort_order,
 		limit_start=start,
-		limit_page_length='21',
+		limit_page_length="21",
 	)
 
 	for item in items:
 		item.update({
-			'item_name': frappe.get_cached_value("Item", item.item_code, 'item_name'),
-			'actual_qty': flt(item.actual_qty, 6),
-			'projected_qty': flt(item.projected_qty, 6),
-			'reserved_qty': flt(item.reserved_qty, 6),
-			'reserved_qty_for_production': flt(item.reserved_qty_for_production, 6),
-			'reserved_qty_for_sub_contract': flt(item.reserved_qty_for_sub_contract, 6),
-			'valuation_rate': flt(item.valuation_rate, 6),
+			"item_name": frappe.get_cached_value("Item", item.item_code, "item_name"),
+			"actual_qty": flt(item.actual_qty, 6),
+			"projected_qty": flt(item.projected_qty, 6),
+			"reserved_qty": flt(item.reserved_qty, 6),
+			"reserved_qty_for_production": flt(item.reserved_qty_for_production, 6),
+			"reserved_qty_for_sub_contract": flt(item.reserved_qty_for_sub_contract, 6),
+			"valuation_rate": flt(item.valuation_rate, 6),
 		})
 
 	return items

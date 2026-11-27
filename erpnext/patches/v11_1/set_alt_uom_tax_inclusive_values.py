@@ -2,7 +2,9 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from erpnext.accounts.doctype.account.account import update_account_number, get_account_autoname
+
+from erpnext.accounts.doctype.account.account import get_account_autoname, update_account_number
+
 
 def execute():
 	frappe.reload_doc("stock", "doctype", "delivery_note_item")
@@ -15,5 +17,5 @@ def execute():
 		for item in doc.items:
 			frappe.db.set_value(item.doctype, item.name, {
 				"tax_inclusive_amount": item.tax_inclusive_amount,
-				"alt_uom_tax_inclusive_rate": item.alt_uom_tax_inclusive_rate
+				"alt_uom_tax_inclusive_rate": item.alt_uom_tax_inclusive_rate,
 			}, None, update_modified=False)

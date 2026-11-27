@@ -4,14 +4,16 @@
 import frappe
 from frappe import _
 
+
 def execute(filters=None):
 	if filters.from_date >= filters.to_date:
 		frappe.msgprint(_("To Date must be greater than From Date"))
 
 	data = []
 	columns = get_columns()
-	get_data(data , filters)
+	get_data(data, filters)
 	return columns, data
+
 
 def get_columns():
 	return [
@@ -20,47 +22,48 @@ def get_columns():
 			"fieldtype": "Link",
 			"fieldname": "purchase_order",
 			"options": "Purchase Order",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Date"),
 			"fieldtype": "Date",
 			"fieldname": "date",
 			"hidden": 1,
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Supplier"),
 			"fieldtype": "Link",
 			"fieldname": "supplier",
 			"options": "Supplier",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Item Code"),
 			"fieldtype": "Data",
 			"fieldname": "rm_item_code",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Required Quantity"),
 			"fieldtype": "Float",
 			"fieldname": "r_qty",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Transferred Quantity"),
 			"fieldtype": "Float",
 			"fieldname": "t_qty",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Pending Quantity"),
 			"fieldtype": "Float",
 			"fieldname": "p_qty",
-			"width": 100
-		}
+			"width": 100,
+		},
 	]
+
 
 def get_data(data, filters):
 	po = get_po(filters)
@@ -74,19 +77,20 @@ def get_data(data, filters):
 				item.required_qty != po_transferred_qty_map.get(order.name).get(item.rm_item_code):
 				transferred_qty = po_transferred_qty_map.get(order.name).get(item.rm_item_code) \
 				if po_transferred_qty_map.get(order.name).get(item.rm_item_code) else 0
-				row ={
-					'purchase_order': item.parent,
-					'date': order.transaction_date,
-					'supplier': order.supplier,
-					'rm_item_code': item.rm_item_code,
-					'r_qty': item.required_qty,
-					't_qty':transferred_qty,
-					'p_qty':item.required_qty - transferred_qty
+				row = {
+					"purchase_order": item.parent,
+					"date": order.transaction_date,
+					"supplier": order.supplier,
+					"rm_item_code": item.rm_item_code,
+					"r_qty": item.required_qty,
+					"t_qty": transferred_qty,
+					"p_qty": item.required_qty - transferred_qty,
 				}
 
 				data.append(row)
 
-	return(data)
+	return (data)
+
 
 def get_po(filters):
 	record_filters = [
@@ -94,15 +98,15 @@ def get_po(filters):
 			["supplier", "=", filters.supplier],
 			["transaction_date", "<=", filters.to_date],
 			["transaction_date", ">=", filters.from_date],
-			["docstatus", "=", 1]
+			["docstatus", "=", 1],
 		]
 	return frappe.get_all("Purchase Order", filters=record_filters, fields=["name", "transaction_date", "supplier"])
+
 
 def get_transferred_quantity(po_name):
 	stock_entries = get_stock_entry(po_name)
 	stock_entries_detail = get_stock_entry_detail([v.name for v in stock_entries])
 	po_transferred_qty_map = {}
-
 
 	for entry in stock_entries:
 		for details in stock_entries_detail:
@@ -119,18 +123,20 @@ def get_transferred_quantity(po_name):
 
 def get_stock_entry(po):
 	return frappe.get_all("Stock Entry", filters=[
-			('purchase_order', 'IN', po),
-			('stock_entry_type', '=', 'Send to Subcontractor'),
-			('docstatus', '=', 1)
+			("purchase_order", "IN", po),
+			("stock_entry_type", "=", "Send to Subcontractor"),
+			("docstatus", "=", 1),
 	], fields=["name", "purchase_order"])
+
 
 def get_stock_entry_detail(se):
 	return frappe.get_all("Stock Entry Detail", filters=[
-			["parent", "in", se]
+			["parent", "in", se],
 		],
 		fields=["parent", "item_code", "qty"])
 
+
 def get_purchase_order_item_supplied(po):
 	return frappe.get_all("Purchase Order Item Supplied", filters=[
-			('parent', 'IN', po)
-	], fields=['parent', 'rm_item_code', 'required_qty'])
+			("parent", "IN", po),
+	], fields=["parent", "rm_item_code", "required_qty"])

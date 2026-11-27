@@ -1,12 +1,19 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors and Contributors
 # See license.txt
 
-import frappe
 import unittest
-from erpnext.manufacturing.doctype.workstation.workstation import check_if_within_operating_hours, NotInWorkingHoursError, WorkstationHolidayError
+
+import frappe
+
+from erpnext.manufacturing.doctype.workstation.workstation import (
+	NotInWorkingHoursError,
+	WorkstationHolidayError,
+	check_if_within_operating_hours,
+)
 
 test_dependencies = ["Warehouse"]
-test_records = frappe.get_test_records('Workstation')
+test_records = frappe.get_test_records("Workstation")
+
 
 class TestWorkstation(unittest.TestCase):
 
@@ -20,13 +27,14 @@ class TestWorkstation(unittest.TestCase):
 		self.assertRaises(WorkstationHolidayError, check_if_within_operating_hours,
 			"_Test Workstation 1", "Operation 1", "2013-02-01 10:00:00", "2013-02-02 20:00:00")
 
+
 def make_workstation(**args):
 	args = frappe._dict(args)
 
 	try:
 		doc = frappe.get_doc({
 			"doctype": "Workstation",
-			"workstation_name": args.workstation_name
+			"workstation_name": args.workstation_name,
 		})
 
 		doc.insert()

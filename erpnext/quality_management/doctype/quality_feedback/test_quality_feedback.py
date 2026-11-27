@@ -1,10 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
+
 from erpnext.quality_management.doctype.quality_feedback_template.test_quality_feedback_template import create_template
+
 
 class TestQualityFeedback(unittest.TestCase):
 
@@ -14,6 +16,7 @@ class TestQualityFeedback(unittest.TestCase):
 		test_get_feedback = get_feedback()
 
 		self.assertEqual(test_create_feedback, test_get_feedback)
+
 
 def create_feedback():
 	create_customer()
@@ -28,9 +31,9 @@ def create_feedback():
 			{
 				"parameter": "Test Parameter",
 				"rating": 3,
-				"feedback": "Test Feedback"
-			}
-		]
+				"feedback": "Test Feedback",
+			},
+		],
 	})
 
 	feedback_exists = frappe.db.exists("Quality Feedback", {"template": "TMPL-_Test Feedback Template"})
@@ -41,12 +44,14 @@ def create_feedback():
 	else:
 		return feedback_exists
 
+
 def get_feedback():
 	return frappe.db.exists("Quality Feedback", {"template": "TMPL-_Test Feedback Template"})
 
+
 def create_customer():
 	if not frappe.db.exists("Customer", {"customer_name": "Quality Feedback Customer"}):
-		customer = frappe.get_doc({
+		frappe.get_doc({
 				"doctype": "Customer",
-				"customer_name": "Quality Feedback Customer"
+				"customer_name": "Quality Feedback Customer",
 			}).insert(ignore_permissions=True)

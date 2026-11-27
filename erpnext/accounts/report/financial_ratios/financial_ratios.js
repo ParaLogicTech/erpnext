@@ -6,14 +6,14 @@ frappe.query_reports["Financial Ratios"] = {
 			fieldtype: "Link",
 			options: "Company",
 			default: frappe.defaults.get_user_default("Company"),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "report_date",
 			label: __("Report Date"),
 			fieldtype: "Date",
 			default: frappe.datetime.month_end(),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "account_group",
@@ -22,10 +22,10 @@ frappe.query_reports["Financial Ratios"] = {
 			options: "Account Group",
 			get_query: () => ({
 				filters: {
-					company: frappe.query_report.get_filter_value('company'),
+					company: frappe.query_report.get_filter_value("company"),
 					report_type: "Ratios",
-				}
-			})
+				},
+			}),
 		},
 		{
 			fieldname: "cost_center",
@@ -33,7 +33,7 @@ frappe.query_reports["Financial Ratios"] = {
 			fieldtype: "Link",
 			options: "Cost Center",
 			get_query: () => {
-				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+				return {filters: {company: frappe.query_report.get_filter_value("company")}};
 			},
 		},
 		{
@@ -55,4 +55,4 @@ frappe.query_reports["Financial Ratios"] = {
 	initial_depth: 0,
 };
 
-erpnext.utils.add_dimensions('Financial Ratios', 4);
+erpnext.utils.add_dimensions("Financial Ratios", 4);

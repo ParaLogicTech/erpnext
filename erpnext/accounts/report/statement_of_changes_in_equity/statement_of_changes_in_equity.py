@@ -38,7 +38,7 @@ class StatementOfChangesInEquity(SummarizedFinancialReport):
 		account_group = self.filters.account_group or self.get_root_account_group()
 		if not account_group:
 			frappe.throw(_("Please configure Root Level {0} Group or filter by Account Group").format(
-				self.get_report_type()
+				self.get_report_type(),
 			))
 
 		self.equity_columns = fetch_equity_columns(account_group)
@@ -48,7 +48,7 @@ class StatementOfChangesInEquity(SummarizedFinancialReport):
 		self.value_fields = frappe._dict()
 		for col in self.equity_columns + [OTHER_COLUMN]:
 			self.value_fields[col["fieldname"]] = frappe._dict(
-				{**col, "from_date": self.filters.from_date, "to_date": self.filters.to_date}
+				{**col, "from_date": self.filters.from_date, "to_date": self.filters.to_date},
 			)
 
 		self.account_map = {acc: col["fieldname"] for col in self.equity_columns for acc in col["accounts"]}
@@ -77,7 +77,7 @@ class StatementOfChangesInEquity(SummarizedFinancialReport):
 
 		conditions, values = get_gl_conditions(self.filters)
 		values.update(
-			{"accounts": list(all_accounts), "from_date": self.filters.from_date, "to_date": self.filters.to_date, "pcv": PCV}
+			{"accounts": list(all_accounts), "from_date": self.filters.from_date, "to_date": self.filters.to_date, "pcv": PCV},
 		)
 		rows = frappe.db.sql(
 			f"""
@@ -123,7 +123,7 @@ class StatementOfChangesInEquity(SummarizedFinancialReport):
 		columns = [{"label": _("Particulars"), "fieldname": "account_display", "fieldtype": "Data", "width": 280}]
 		for col in equity_columns:
 			columns.append(
-				{"label": _(col["label"]), "fieldname": f"{col['fieldname']}_display", "fieldtype": "Float", "width": 160}
+				{"label": _(col["label"]), "fieldname": f"{col['fieldname']}_display", "fieldtype": "Float", "width": 160},
 			)
 		columns.append({"label": _("Total equity"), "fieldname": "total_display", "fieldtype": "Float", "width": 170})
 		return columns
@@ -156,12 +156,12 @@ def get_profit_column(company, equity_columns):
 	"""Column that also carries profit not yet closed to equity: the one holding the P&L accounts
 	or the Period Closing Voucher's closing account."""
 	closing_account = frappe.db.get_value(
-		PCV, {"company": company, "docstatus": 1}, "closing_account_head", order_by="posting_date desc"
+		PCV, {"company": company, "docstatus": 1}, "closing_account_head", order_by="posting_date desc",
 	)
 	pl_accounts = set(
 		frappe.get_all(
-			"Account", filters={"company": company, "root_type": ("in", ["Income", "Expense"])}, pluck="name"
-		)
+			"Account", filters={"company": company, "root_type": ("in", ["Income", "Expense"])}, pluck="name",
+		),
 	)
 	for col in equity_columns:
 		if closing_account in col["accounts"] or pl_accounts.intersection(col["accounts"]):
@@ -210,7 +210,7 @@ def get_pl_net(filters, extra_condition, values):
 			where {conditions} and acc.root_type in ('Income', 'Expense') and {extra_condition}
 			""",
 			{**base_values, **values},
-		)[0][0]
+		)[0][0],
 	)
 
 
@@ -260,22 +260,22 @@ def get_movements(filters, account_map, profit_column):
 	# Unclosed P&L sits in the Income/Expense accounts, so it is added to the profit column
 	opening = get_equity_balances(filters, account_map, "gl.posting_date < %(from_date)s", before_from)
 	opening[profit_column] = opening.get(profit_column, 0) + get_pl_net(
-		filters, "gl.posting_date < %(from_date)s", before_from
+		filters, "gl.posting_date < %(from_date)s", before_from,
 	)
 
 	closing = get_equity_balances(filters, account_map, "gl.posting_date <= %(to_date)s", upto_to)
 	closing[profit_column] = closing.get(profit_column, 0) + get_pl_net(
-		filters, "gl.posting_date <= %(to_date)s", upto_to
+		filters, "gl.posting_date <= %(to_date)s", upto_to,
 	)
 
 	profit = {profit_column: get_pl_net(filters, f"{period} and gl.voucher_type != %(pcv)s", in_period)}
 
 	# Period Closing Voucher moves profit out of the P&L into its closing account
 	period_closing = get_equity_balances(
-		filters, account_map, f"{period} and gl.voucher_type = %(pcv)s", in_period
+		filters, account_map, f"{period} and gl.voucher_type = %(pcv)s", in_period,
 	)
 	period_closing[profit_column] = period_closing.get(profit_column, 0) + get_pl_net(
-		filters, f"{period} and gl.voucher_type = %(pcv)s", in_period
+		filters, f"{period} and gl.voucher_type = %(pcv)s", in_period,
 	)
 
 	# Dividends, reserve transfers and other movements are left to the Account Group's formulas,

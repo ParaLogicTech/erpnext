@@ -2,13 +2,16 @@
 # License: GNU General Public License v3. See license.txt
 
 
-import frappe, os, json
+import json
+import os
 
+import frappe
 from frappe import _
+from frappe.desk.doctype.global_search_settings.global_search_settings import update_global_search_doctypes
 from frappe.desk.page.setup_wizard.setup_wizard import make_records
 from frappe.utils import cstr, getdate
+
 from erpnext.accounts.doctype.account.account import RootNotEditable
-from frappe.desk.doctype.global_search_settings.global_search_settings import update_global_search_doctypes
 
 default_sales_partner_type = ["Channel Partner", "Distributor", "Dealer", "Agent",
 	"Retailer", "Implementation Partner", "Reseller"]
@@ -17,171 +20,171 @@ default_sales_partner_type = ["Channel Partner", "Distributor", "Dealer", "Agent
 def install(country=None):
 	records = [
 		# domains
-		{ 'doctype': 'Domain', 'domain': 'Distribution'},
-		{ 'doctype': 'Domain', 'domain': 'Manufacturing'},
-		{ 'doctype': 'Domain', 'domain': 'Retail'},
-		{ 'doctype': 'Domain', 'domain': 'Services'},
+		{"doctype": "Domain", "domain": "Distribution"},
+		{"doctype": "Domain", "domain": "Manufacturing"},
+		{"doctype": "Domain", "domain": "Retail"},
+		{"doctype": "Domain", "domain": "Services"},
 
 		# address template
-		{'doctype':"Address Template", "country": country},
+		{"doctype": "Address Template", "country": country},
 
 		# item group
-		{'doctype': 'Item Group', 'item_group_name': _('All Item Groups'),
-			'is_group': 1, 'parent_item_group': ''},
-		{'doctype': 'Item Group', 'item_group_name': _('Products'),
-			'is_group': 0, 'parent_item_group': _('All Item Groups') },
-		{'doctype': 'Item Group', 'item_group_name': _('Raw Material'),
-			'is_group': 0, 'parent_item_group': _('All Item Groups') },
-		{'doctype': 'Item Group', 'item_group_name': _('Services'),
-			'is_group': 0, 'parent_item_group': _('All Item Groups') },
-		{'doctype': 'Item Group', 'item_group_name': _('Sub Assemblies'),
-			'is_group': 0, 'parent_item_group': _('All Item Groups') },
-		{'doctype': 'Item Group', 'item_group_name': _('Consumable'),
-			'is_group': 0, 'parent_item_group': _('All Item Groups') },
+		{"doctype": "Item Group", "item_group_name": _("All Item Groups"),
+			"is_group": 1, "parent_item_group": ""},
+		{"doctype": "Item Group", "item_group_name": _("Products"),
+			"is_group": 0, "parent_item_group": _("All Item Groups")},
+		{"doctype": "Item Group", "item_group_name": _("Raw Material"),
+			"is_group": 0, "parent_item_group": _("All Item Groups")},
+		{"doctype": "Item Group", "item_group_name": _("Services"),
+			"is_group": 0, "parent_item_group": _("All Item Groups")},
+		{"doctype": "Item Group", "item_group_name": _("Sub Assemblies"),
+			"is_group": 0, "parent_item_group": _("All Item Groups")},
+		{"doctype": "Item Group", "item_group_name": _("Consumable"),
+			"is_group": 0, "parent_item_group": _("All Item Groups")},
 
 		# salary component
-		{'doctype': 'Salary Component', 'salary_component': _('Income Tax'), 'description': _('Income Tax'), 'type': 'Deduction'},
-		{'doctype': 'Salary Component', 'salary_component': _('Basic'), 'description': _('Basic'), 'type': 'Earning'},
-		{'doctype': 'Salary Component', 'salary_component': _('Arrear'), 'description': _('Arrear'), 'type': 'Earning'},
-		{'doctype': 'Salary Component', 'salary_component': _('Leave Encashment'), 'description': _('Leave Encashment'), 'type': 'Earning'},
+		{"doctype": "Salary Component", "salary_component": _("Income Tax"), "description": _("Income Tax"), "type": "Deduction"},
+		{"doctype": "Salary Component", "salary_component": _("Basic"), "description": _("Basic"), "type": "Earning"},
+		{"doctype": "Salary Component", "salary_component": _("Arrear"), "description": _("Arrear"), "type": "Earning"},
+		{"doctype": "Salary Component", "salary_component": _("Leave Encashment"), "description": _("Leave Encashment"), "type": "Earning"},
 
 
 		# expense claim type
-		{'doctype': 'Expense Claim Type', 'name': _('Calls'), 'expense_type': _('Calls')},
-		{'doctype': 'Expense Claim Type', 'name': _('Food'), 'expense_type': _('Food')},
-		{'doctype': 'Expense Claim Type', 'name': _('Medical'), 'expense_type': _('Medical')},
-		{'doctype': 'Expense Claim Type', 'name': _('Others'), 'expense_type': _('Others')},
-		{'doctype': 'Expense Claim Type', 'name': _('Travel'), 'expense_type': _('Travel')},
+		{"doctype": "Expense Claim Type", "name": _("Calls"), "expense_type": _("Calls")},
+		{"doctype": "Expense Claim Type", "name": _("Food"), "expense_type": _("Food")},
+		{"doctype": "Expense Claim Type", "name": _("Medical"), "expense_type": _("Medical")},
+		{"doctype": "Expense Claim Type", "name": _("Others"), "expense_type": _("Others")},
+		{"doctype": "Expense Claim Type", "name": _("Travel"), "expense_type": _("Travel")},
 
 		# leave type
-		{'doctype': 'Leave Type', 'leave_type_name': _('Casual Leave'), 'name': _('Casual Leave'),
-			'allow_encashment': 1, 'is_carry_forward': 1, 'max_continuous_days_allowed': '3', 'include_holiday': 1},
-		{'doctype': 'Leave Type', 'leave_type_name': _('Compensatory Off'), 'name': _('Compensatory Off'),
-			'allow_encashment': 0, 'is_carry_forward': 0, 'include_holiday': 1, 'is_compensatory':1 },
-		{'doctype': 'Leave Type', 'leave_type_name': _('Sick Leave'), 'name': _('Sick Leave'),
-			'allow_encashment': 0, 'is_carry_forward': 0, 'include_holiday': 1},
-		{'doctype': 'Leave Type', 'leave_type_name': _('Privilege Leave'), 'name': _('Privilege Leave'),
-			'allow_encashment': 0, 'is_carry_forward': 0, 'include_holiday': 1},
-		{'doctype': 'Leave Type', 'leave_type_name': _('Leave Without Pay'), 'name': _('Leave Without Pay'),
-			'allow_encashment': 0, 'is_carry_forward': 0, 'is_lwp':1, 'include_holiday': 1},
+		{"doctype": "Leave Type", "leave_type_name": _("Casual Leave"), "name": _("Casual Leave"),
+			"allow_encashment": 1, "is_carry_forward": 1, "max_continuous_days_allowed": "3", "include_holiday": 1},
+		{"doctype": "Leave Type", "leave_type_name": _("Compensatory Off"), "name": _("Compensatory Off"),
+			"allow_encashment": 0, "is_carry_forward": 0, "include_holiday": 1, "is_compensatory": 1},
+		{"doctype": "Leave Type", "leave_type_name": _("Sick Leave"), "name": _("Sick Leave"),
+			"allow_encashment": 0, "is_carry_forward": 0, "include_holiday": 1},
+		{"doctype": "Leave Type", "leave_type_name": _("Privilege Leave"), "name": _("Privilege Leave"),
+			"allow_encashment": 0, "is_carry_forward": 0, "include_holiday": 1},
+		{"doctype": "Leave Type", "leave_type_name": _("Leave Without Pay"), "name": _("Leave Without Pay"),
+			"allow_encashment": 0, "is_carry_forward": 0, "is_lwp": 1, "include_holiday": 1},
 
 		# Employment Type
-		{'doctype': 'Employment Type', 'employee_type_name': _('Full-time')},
-		{'doctype': 'Employment Type', 'employee_type_name': _('Part-time')},
-		{'doctype': 'Employment Type', 'employee_type_name': _('Probation')},
-		{'doctype': 'Employment Type', 'employee_type_name': _('Contract')},
-		{'doctype': 'Employment Type', 'employee_type_name': _('Commission')},
-		{'doctype': 'Employment Type', 'employee_type_name': _('Piecework')},
-		{'doctype': 'Employment Type', 'employee_type_name': _('Intern')},
-		{'doctype': 'Employment Type', 'employee_type_name': _('Apprentice')},
+		{"doctype": "Employment Type", "employee_type_name": _("Full-time")},
+		{"doctype": "Employment Type", "employee_type_name": _("Part-time")},
+		{"doctype": "Employment Type", "employee_type_name": _("Probation")},
+		{"doctype": "Employment Type", "employee_type_name": _("Contract")},
+		{"doctype": "Employment Type", "employee_type_name": _("Commission")},
+		{"doctype": "Employment Type", "employee_type_name": _("Piecework")},
+		{"doctype": "Employment Type", "employee_type_name": _("Intern")},
+		{"doctype": "Employment Type", "employee_type_name": _("Apprentice")},
 
 
 		# Stock Entry Type
-		{'doctype': 'Stock Entry Type', 'name': 'Material Issue', 'purpose': 'Material Issue'},
-		{'doctype': 'Stock Entry Type', 'name': 'Material Receipt', 'purpose': 'Material Receipt'},
-		{'doctype': 'Stock Entry Type', 'name': 'Material Transfer', 'purpose': 'Material Transfer'},
-		{'doctype': 'Stock Entry Type', 'name': 'Manufacture', 'purpose': 'Manufacture'},
-		{'doctype': 'Stock Entry Type', 'name': 'Repack', 'purpose': 'Repack'},
-		{'doctype': 'Stock Entry Type', 'name': 'Send to Subcontractor', 'purpose': 'Send to Subcontractor'},
-		{'doctype': 'Stock Entry Type', 'name': 'Material Transfer for Manufacture', 'purpose': 'Material Transfer for Manufacture'},
-		{'doctype': 'Stock Entry Type', 'name': 'Material Consumption for Manufacture', 'purpose': 'Material Consumption for Manufacture'},
-		{'doctype': 'Stock Entry Type', 'name': 'Send to Warehouse', 'purpose': 'Send to Warehouse'},
-		{'doctype': 'Stock Entry Type', 'name': 'Receive at Warehouse', 'purpose': 'Receive at Warehouse'},
+		{"doctype": "Stock Entry Type", "name": "Material Issue", "purpose": "Material Issue"},
+		{"doctype": "Stock Entry Type", "name": "Material Receipt", "purpose": "Material Receipt"},
+		{"doctype": "Stock Entry Type", "name": "Material Transfer", "purpose": "Material Transfer"},
+		{"doctype": "Stock Entry Type", "name": "Manufacture", "purpose": "Manufacture"},
+		{"doctype": "Stock Entry Type", "name": "Repack", "purpose": "Repack"},
+		{"doctype": "Stock Entry Type", "name": "Send to Subcontractor", "purpose": "Send to Subcontractor"},
+		{"doctype": "Stock Entry Type", "name": "Material Transfer for Manufacture", "purpose": "Material Transfer for Manufacture"},
+		{"doctype": "Stock Entry Type", "name": "Material Consumption for Manufacture", "purpose": "Material Consumption for Manufacture"},
+		{"doctype": "Stock Entry Type", "name": "Send to Warehouse", "purpose": "Send to Warehouse"},
+		{"doctype": "Stock Entry Type", "name": "Receive at Warehouse", "purpose": "Receive at Warehouse"},
 
 		# Designation
-		{'doctype': 'Designation', 'designation_name': _('CEO')},
-		{'doctype': 'Designation', 'designation_name': _('Manager')},
-		{'doctype': 'Designation', 'designation_name': _('Analyst')},
-		{'doctype': 'Designation', 'designation_name': _('Engineer')},
-		{'doctype': 'Designation', 'designation_name': _('Accountant')},
-		{'doctype': 'Designation', 'designation_name': _('Secretary')},
-		{'doctype': 'Designation', 'designation_name': _('Associate')},
-		{'doctype': 'Designation', 'designation_name': _('Administrative Officer')},
-		{'doctype': 'Designation', 'designation_name': _('Business Development Manager')},
-		{'doctype': 'Designation', 'designation_name': _('HR Manager')},
-		{'doctype': 'Designation', 'designation_name': _('Project Manager')},
-		{'doctype': 'Designation', 'designation_name': _('Head of Marketing and Sales')},
-		{'doctype': 'Designation', 'designation_name': _('Software Developer')},
-		{'doctype': 'Designation', 'designation_name': _('Designer')},
-		{'doctype': 'Designation', 'designation_name': _('Researcher')},
+		{"doctype": "Designation", "designation_name": _("CEO")},
+		{"doctype": "Designation", "designation_name": _("Manager")},
+		{"doctype": "Designation", "designation_name": _("Analyst")},
+		{"doctype": "Designation", "designation_name": _("Engineer")},
+		{"doctype": "Designation", "designation_name": _("Accountant")},
+		{"doctype": "Designation", "designation_name": _("Secretary")},
+		{"doctype": "Designation", "designation_name": _("Associate")},
+		{"doctype": "Designation", "designation_name": _("Administrative Officer")},
+		{"doctype": "Designation", "designation_name": _("Business Development Manager")},
+		{"doctype": "Designation", "designation_name": _("HR Manager")},
+		{"doctype": "Designation", "designation_name": _("Project Manager")},
+		{"doctype": "Designation", "designation_name": _("Head of Marketing and Sales")},
+		{"doctype": "Designation", "designation_name": _("Software Developer")},
+		{"doctype": "Designation", "designation_name": _("Designer")},
+		{"doctype": "Designation", "designation_name": _("Researcher")},
 
 		# customer group
-		{'doctype': 'Customer Group', 'customer_group_name': _('All Customer Groups'), 'is_group': 1, 'disable_selection': 1, 'name': _('All Customer Groups'), 'parent_customer_group': ''},
-		{'doctype': 'Customer Group', 'customer_group_name': _('Individual'), 'is_group': 0, 'parent_customer_group': _('All Customer Groups')},
-		{'doctype': 'Customer Group', 'customer_group_name': _('Commercial'), 'is_group': 0, 'parent_customer_group': _('All Customer Groups')},
-		{'doctype': 'Customer Group', 'customer_group_name': _('Non Profit'), 'is_group': 0, 'parent_customer_group': _('All Customer Groups')},
-		{'doctype': 'Customer Group', 'customer_group_name': _('Government'), 'is_group': 0, 'parent_customer_group': _('All Customer Groups')},
+		{"doctype": "Customer Group", "customer_group_name": _("All Customer Groups"), "is_group": 1, "disable_selection": 1, "name": _("All Customer Groups"), "parent_customer_group": ""},
+		{"doctype": "Customer Group", "customer_group_name": _("Individual"), "is_group": 0, "parent_customer_group": _("All Customer Groups")},
+		{"doctype": "Customer Group", "customer_group_name": _("Commercial"), "is_group": 0, "parent_customer_group": _("All Customer Groups")},
+		{"doctype": "Customer Group", "customer_group_name": _("Non Profit"), "is_group": 0, "parent_customer_group": _("All Customer Groups")},
+		{"doctype": "Customer Group", "customer_group_name": _("Government"), "is_group": 0, "parent_customer_group": _("All Customer Groups")},
 
 		# supplier group
-		{'doctype': 'Supplier Group', 'supplier_group_name': _('All Supplier Groups'), 'is_group': 1, 'name': _('All Supplier Groups'), 'parent_supplier_group': ''},
-		{'doctype': 'Supplier Group', 'supplier_group_name': _('Services'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
-		{'doctype': 'Supplier Group', 'supplier_group_name': _('Local'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
-		{'doctype': 'Supplier Group', 'supplier_group_name': _('Raw Material'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
-		{'doctype': 'Supplier Group', 'supplier_group_name': _('Electrical'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
-		{'doctype': 'Supplier Group', 'supplier_group_name': _('Hardware'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
-		{'doctype': 'Supplier Group', 'supplier_group_name': _('Pharmaceutical'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
-		{'doctype': 'Supplier Group', 'supplier_group_name': _('Distributor'), 'is_group': 0, 'parent_supplier_group': _('All Supplier Groups')},
+		{"doctype": "Supplier Group", "supplier_group_name": _("All Supplier Groups"), "is_group": 1, "name": _("All Supplier Groups"), "parent_supplier_group": ""},
+		{"doctype": "Supplier Group", "supplier_group_name": _("Services"), "is_group": 0, "parent_supplier_group": _("All Supplier Groups")},
+		{"doctype": "Supplier Group", "supplier_group_name": _("Local"), "is_group": 0, "parent_supplier_group": _("All Supplier Groups")},
+		{"doctype": "Supplier Group", "supplier_group_name": _("Raw Material"), "is_group": 0, "parent_supplier_group": _("All Supplier Groups")},
+		{"doctype": "Supplier Group", "supplier_group_name": _("Electrical"), "is_group": 0, "parent_supplier_group": _("All Supplier Groups")},
+		{"doctype": "Supplier Group", "supplier_group_name": _("Hardware"), "is_group": 0, "parent_supplier_group": _("All Supplier Groups")},
+		{"doctype": "Supplier Group", "supplier_group_name": _("Pharmaceutical"), "is_group": 0, "parent_supplier_group": _("All Supplier Groups")},
+		{"doctype": "Supplier Group", "supplier_group_name": _("Distributor"), "is_group": 0, "parent_supplier_group": _("All Supplier Groups")},
 
 		# Mode of Payment
-		{'doctype': 'Mode of Payment',
-			'mode_of_payment': 'Check' if country=="United States" else _('Cheque'),
-			'type': 'Bank'},
-		{'doctype': 'Mode of Payment', 'mode_of_payment': _('Cash'),
-			'type': 'Cash'},
-		{'doctype': 'Mode of Payment', 'mode_of_payment': _('Credit Card'),
-			'type': 'Card'},
-		{'doctype': 'Mode of Payment', 'mode_of_payment': _('Wire Transfer'),
-			'type': 'Bank'},
-		{'doctype': 'Mode of Payment', 'mode_of_payment': _('Bank Draft'),
-			'type': 'Bank'},
+		{"doctype": "Mode of Payment",
+			"mode_of_payment": "Check" if country == "United States" else _("Cheque"),
+			"type": "Bank"},
+		{"doctype": "Mode of Payment", "mode_of_payment": _("Cash"),
+			"type": "Cash"},
+		{"doctype": "Mode of Payment", "mode_of_payment": _("Credit Card"),
+			"type": "Card"},
+		{"doctype": "Mode of Payment", "mode_of_payment": _("Wire Transfer"),
+			"type": "Bank"},
+		{"doctype": "Mode of Payment", "mode_of_payment": _("Bank Draft"),
+			"type": "Bank"},
 
 		# Activity Type
-		{'doctype': 'Activity Type', 'activity_type': _('Planning')},
-		{'doctype': 'Activity Type', 'activity_type': _('Research')},
-		{'doctype': 'Activity Type', 'activity_type': _('Proposal Writing')},
-		{'doctype': 'Activity Type', 'activity_type': _('Execution')},
-		{'doctype': 'Activity Type', 'activity_type': _('Communication')},
+		{"doctype": "Activity Type", "activity_type": _("Planning")},
+		{"doctype": "Activity Type", "activity_type": _("Research")},
+		{"doctype": "Activity Type", "activity_type": _("Proposal Writing")},
+		{"doctype": "Activity Type", "activity_type": _("Execution")},
+		{"doctype": "Activity Type", "activity_type": _("Communication")},
 
-		{'doctype': "Item Attribute", "attribute_name": _("Size"), "item_attribute_values": [
+		{"doctype": "Item Attribute", "attribute_name": _("Size"), "item_attribute_values": [
 			{"attribute_value": _("Extra Small"), "abbr": "XS"},
 			{"attribute_value": _("Small"), "abbr": "S"},
 			{"attribute_value": _("Medium"), "abbr": "M"},
 			{"attribute_value": _("Large"), "abbr": "L"},
-			{"attribute_value": _("Extra Large"), "abbr": "XL"}
+			{"attribute_value": _("Extra Large"), "abbr": "XL"},
 		]},
 
-		{'doctype': "Item Attribute", "attribute_name": _("Colour"), "item_attribute_values": [
+		{"doctype": "Item Attribute", "attribute_name": _("Colour"), "item_attribute_values": [
 			{"attribute_value": _("Red"), "abbr": "RED"},
 			{"attribute_value": _("Green"), "abbr": "GRE"},
 			{"attribute_value": _("Blue"), "abbr": "BLU"},
 			{"attribute_value": _("Black"), "abbr": "BLA"},
-			{"attribute_value": _("White"), "abbr": "WHI"}
+			{"attribute_value": _("White"), "abbr": "WHI"},
 		]},
 
 		# Issue Priority
-		{'doctype': 'Issue Priority', 'name': _('Low')},
-		{'doctype': 'Issue Priority', 'name': _('Medium')},
-		{'doctype': 'Issue Priority', 'name': _('High')},
+		{"doctype": "Issue Priority", "name": _("Low")},
+		{"doctype": "Issue Priority", "name": _("Medium")},
+		{"doctype": "Issue Priority", "name": _("High")},
 
-		#Job Applicant Source
-		{'doctype': 'Job Applicant Source', 'source_name': _('Website Listing')},
-		{'doctype': 'Job Applicant Source', 'source_name': _('Walk In')},
-		{'doctype': 'Job Applicant Source', 'source_name': _('Employee Referral')},
-		{'doctype': 'Job Applicant Source', 'source_name': _('Campaign')},
+		# Job Applicant Source
+		{"doctype": "Job Applicant Source", "source_name": _("Website Listing")},
+		{"doctype": "Job Applicant Source", "source_name": _("Walk In")},
+		{"doctype": "Job Applicant Source", "source_name": _("Employee Referral")},
+		{"doctype": "Job Applicant Source", "source_name": _("Campaign")},
 
-		{'doctype': "Email Account", "email_id": "sales@example.com", "append_to": "Opportunity"},
-		{'doctype': "Email Account", "email_id": "support@example.com", "append_to": "Issue"},
-		{'doctype': "Email Account", "email_id": "jobs@example.com", "append_to": "Job Applicant"},
+		{"doctype": "Email Account", "email_id": "sales@example.com", "append_to": "Opportunity"},
+		{"doctype": "Email Account", "email_id": "support@example.com", "append_to": "Issue"},
+		{"doctype": "Email Account", "email_id": "jobs@example.com", "append_to": "Job Applicant"},
 
-		{'doctype': "Party Type", "party_type": "Customer", "account_type": "Receivable"},
-		{'doctype': "Party Type", "party_type": "Supplier", "account_type": "Payable"},
-		{'doctype': "Party Type", "party_type": "Letter of Credit", "account_type": "Payable"},
-		{'doctype': "Party Type", "party_type": "Employee", "account_type": "Payable"},
-		{'doctype': "Party Type", "party_type": "Shareholder", "account_type": "Payable"},
+		{"doctype": "Party Type", "party_type": "Customer", "account_type": "Receivable"},
+		{"doctype": "Party Type", "party_type": "Supplier", "account_type": "Payable"},
+		{"doctype": "Party Type", "party_type": "Letter of Credit", "account_type": "Payable"},
+		{"doctype": "Party Type", "party_type": "Employee", "account_type": "Payable"},
+		{"doctype": "Party Type", "party_type": "Shareholder", "account_type": "Payable"},
 
-		{'doctype': "Project Type", "project_type": "Internal"},
-		{'doctype': "Project Type", "project_type": "External"},
-		{'doctype': "Project Type", "project_type": "Other"},
+		{"doctype": "Project Type", "project_type": "Internal"},
+		{"doctype": "Project Type", "project_type": "External"},
+		{"doctype": "Project Type", "project_type": "Other"},
 
 		{"doctype": "Offer Term", "offer_term": _("Date of Joining")},
 		{"doctype": "Offer Term", "offer_term": _("Annual Salary")},
@@ -196,8 +199,8 @@ def install(country=None):
 		{"doctype": "Offer Term", "offer_term": _("Notice Period")},
 		{"doctype": "Offer Term", "offer_term": _("Incentives")},
 
-		{'doctype': "Print Heading", 'print_heading': _("Credit Note")},
-		{'doctype': "Print Heading", 'print_heading': _("Debit Note")},
+		{"doctype": "Print Heading", "print_heading": _("Credit Note")},
+		{"doctype": "Print Heading", "print_heading": _("Debit Note")},
 
 		# Share Management
 		{"doctype": "Share Type", "title": _("Equity")},
@@ -206,22 +209,22 @@ def install(country=None):
 
 	# records += [{"doctype":"Operation", "operation": d} for d in get_operations()]
 
-	records += [{'doctype': 'Sales Partner Type', 'sales_partner_type': _(d)} for d in default_sales_partner_type]
+	records += [{"doctype": "Sales Partner Type", "sales_partner_type": _(d)} for d in default_sales_partner_type]
 
 	base_path = frappe.get_app_path("erpnext", "hr", "doctype")
 	response = frappe.read_file(os.path.join(base_path, "leave_application/leave_application_email_template.html"))
 
-	records += [{'doctype': 'Email Template', 'name': _("Leave Approval Notification"), 'response': response,\
-		'subject': _("Leave Approval Notification"), 'owner': frappe.session.user}]
+	records += [{"doctype": "Email Template", "name": _("Leave Approval Notification"), "response": response,
+		"subject": _("Leave Approval Notification"), "owner": frappe.session.user}]
 
-	records += [{'doctype': 'Email Template', 'name': _("Leave Status Notification"), 'response': response,\
-		'subject': _("Leave Status Notification"), 'owner': frappe.session.user}]
+	records += [{"doctype": "Email Template", "name": _("Leave Status Notification"), "response": response,
+		"subject": _("Leave Status Notification"), "owner": frappe.session.user}]
 
 	base_path = frappe.get_app_path("erpnext", "stock", "doctype")
 	response = frappe.read_file(os.path.join(base_path, "delivery_trip/dispatch_notification_template.html"))
 
-	records += [{'doctype': 'Email Template', 'name': _("Dispatch Notification"), 'response': response,\
-		'subject': _("Your order is out for delivery!"), 'owner': frappe.session.user}]
+	records += [{"doctype": "Email Template", "name": _("Dispatch Notification"), "response": response,
+		"subject": _("Your order is out for delivery!"), "owner": frappe.session.user}]
 
 	# Records for the Supplier Scorecard
 	from erpnext.buying.doctype.supplier_scorecard.supplier_scorecard import make_default_records
@@ -251,7 +254,7 @@ def set_more_defaults():
 	add_uom_data()
 
 	# set no copy fields of an item doctype to item variant settings
-	doc = frappe.get_doc('Item Variant Settings')
+	doc = frappe.get_doc("Item Variant Settings")
 	doc.set_default_fields()
 	doc.save()
 
@@ -277,7 +280,7 @@ def add_uom_data():
 		if d.get("category"):
 			create_missing_uom_category(d.get("category"))
 
-		if frappe.db.exists('UOM', _(d.get("uom_name"))):
+		if frappe.db.exists("UOM", _(d.get("uom_name"))):
 			uom_doc = frappe.get_doc("UOM", _(d.get("uom_name")))
 		else:
 			uom_doc = frappe.new_doc("UOM")
@@ -287,7 +290,7 @@ def add_uom_data():
 			"name": _(d.get("uom_name")),
 			"category": _(d.get("category")),
 			"disabled": d.get("disabled"),
-			"must_be_whole_number": d.get("must_be_whole_number")
+			"must_be_whole_number": d.get("must_be_whole_number"),
 		})
 
 		uom_doc.save(ignore_permissions=True)
@@ -299,12 +302,12 @@ def add_uom_data():
 			create_missing_uom_category(d.get("category"))
 
 		if not frappe.db.exists("UOM Conversion Factor", {"from_uom": _(d.get("from_uom")), "to_uom": _(d.get("to_uom"))}):
-			uom_conversion = frappe.get_doc({
+			frappe.get_doc({
 				"doctype": "UOM Conversion Factor",
 				"category": _(d.get("category")),
 				"from_uom": _(d.get("from_uom")),
 				"to_uom": _(d.get("to_uom")),
-				"value": d.get("value")
+				"value": d.get("value"),
 			}).insert(ignore_permissions=True)
 
 
@@ -320,24 +323,24 @@ def install_company(args):
 	records = [
 		# Fiscal Year
 		{
-			'doctype': "Fiscal Year",
-			'year': get_fy_details(args.fy_start_date, args.fy_end_date),
-			'year_start_date': args.fy_start_date,
-			'year_end_date': args.fy_end_date
+			"doctype": "Fiscal Year",
+			"year": get_fy_details(args.fy_start_date, args.fy_end_date),
+			"year_start_date": args.fy_start_date,
+			"year_end_date": args.fy_end_date,
 		},
 
 		# Company
 		{
-			"doctype":"Company",
-			'company_name': args.company_name,
-			'enable_perpetual_inventory': 1,
-			'abbr': args.company_abbr,
-			'default_currency': args.currency,
-			'country': args.country,
-			'create_chart_of_accounts_based_on': 'Standard Template',
-			'chart_of_accounts': args.chart_of_accounts,
-			'domain': args.domain
-		}
+			"doctype": "Company",
+			"company_name": args.company_name,
+			"enable_perpetual_inventory": 1,
+			"abbr": args.company_abbr,
+			"default_currency": args.currency,
+			"country": args.country,
+			"create_chart_of_accounts_based_on": "Standard Template",
+			"chart_of_accounts": args.chart_of_accounts,
+			"domain": args.domain,
+		},
 	]
 
 	make_records(records)
@@ -346,20 +349,20 @@ def install_company(args):
 def install_post_company_fixtures(args=None):
 	records = [
 		# Department
-		{'doctype': 'Department', 'department_name': _('All Departments'), 'is_group': 1, 'parent_department': ''},
-		{'doctype': 'Department', 'department_name': _('Accounts'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Marketing'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Sales'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Purchase'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Operations'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Production'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Dispatch'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Customer Service'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Human Resources'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Management'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Quality Management'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Research & Development'), 'parent_department': _('All Departments'), 'company': args.company_name},
-		{'doctype': 'Department', 'department_name': _('Legal'), 'parent_department': _('All Departments'), 'company': args.company_name},
+		{"doctype": "Department", "department_name": _("All Departments"), "is_group": 1, "parent_department": ""},
+		{"doctype": "Department", "department_name": _("Accounts"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Marketing"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Sales"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Purchase"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Operations"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Production"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Dispatch"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Customer Service"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Human Resources"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Management"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Quality Management"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Research & Development"), "parent_department": _("All Departments"), "company": args.company_name},
+		{"doctype": "Department", "department_name": _("Legal"), "parent_department": _("All Departments"), "company": args.company_name},
 	]
 
 	make_records(records)
@@ -368,8 +371,8 @@ def install_post_company_fixtures(args=None):
 def install_defaults(args=None):
 	records = [
 		# Price Lists
-		{ "doctype": "Price List", "price_list_name": _("Standard Buying"), "enabled": 1, "buying": 1, "selling": 0, "currency": args.currency },
-		{ "doctype": "Price List", "price_list_name": _("Standard Selling"), "enabled": 1, "buying": 0, "selling": 1, "currency": args.currency },
+		{"doctype": "Price List", "price_list_name": _("Standard Buying"), "enabled": 1, "buying": 1, "selling": 0, "currency": args.currency},
+		{"doctype": "Price List", "price_list_name": _("Standard Selling"), "enabled": 1, "buying": 0, "selling": 1, "currency": args.currency},
 	]
 
 	make_records(records)
@@ -389,9 +392,9 @@ def install_defaults(args=None):
 	current_fiscal_year = frappe.get_all("Fiscal Year")[0]
 
 	global_defaults.update({
-		'current_fiscal_year': current_fiscal_year.name,
-		'default_currency': args.get('currency'),
-		'default_company':args.get('company_name')	,
+		"current_fiscal_year": current_fiscal_year.name,
+		"default_currency": args.get("currency"),
+		"default_company": args.get("company_name"),
 		"country": args.get("country"),
 	})
 
@@ -401,13 +404,13 @@ def install_defaults(args=None):
 	system_settings.email_footer_address = args.get("company_name")
 	system_settings.save()
 
-	domain_settings = frappe.get_single('Domain Settings')
-	domain_settings.set_active_domains(args.get('domains'))
+	domain_settings = frappe.get_single("Domain Settings")
+	domain_settings.set_active_domains(args.get("domains"))
 
 	stock_settings = frappe.get_doc("Stock Settings")
 	stock_settings.item_naming_by = "Item Code"
 	stock_settings.valuation_method = "FIFO"
-	stock_settings.default_warehouse = frappe.db.get_value('Warehouse', {'warehouse_name': _('Stores')})
+	stock_settings.default_warehouse = frappe.db.get_value("Warehouse", {"warehouse_name": _("Stores")})
 	stock_settings.stock_uom = _("Nos")
 	stock_settings.weight_uom = _("Kg")
 	stock_settings.auto_indent = 1
@@ -418,20 +421,20 @@ def install_defaults(args=None):
 
 	if args.bank_account:
 		company_name = args.company_name
-		bank_account_group =  frappe.db.get_value("Account",
+		bank_account_group = frappe.db.get_value("Account",
 			{"account_type": "Bank", "is_group": 1, "root_type": "Asset",
 				"company": company_name})
 		if bank_account_group:
 			bank_account = frappe.get_doc({
 				"doctype": "Account",
-				'account_name': args.bank_account,
-				'parent_account': bank_account_group,
-				'is_group':0,
-				'company': company_name,
+				"account_name": args.bank_account,
+				"parent_account": bank_account_group,
+				"is_group": 0,
+				"company": company_name,
 				"account_type": "Bank",
 			})
 			try:
-				doc = bank_account.insert()
+				bank_account.insert()
 
 				frappe.db.set_value("Company", args.company_name, "default_bank_account", bank_account.name, update_modified=False)
 
@@ -447,5 +450,5 @@ def get_fy_details(fy_start_date, fy_end_date):
 	if start_year == getdate(fy_end_date).year:
 		fy = cstr(start_year)
 	else:
-		fy = cstr(start_year) + '-' + cstr(start_year + 1)
+		fy = cstr(start_year) + "-" + cstr(start_year + 1)
 	return fy

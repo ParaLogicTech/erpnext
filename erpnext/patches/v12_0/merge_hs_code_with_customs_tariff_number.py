@@ -1,5 +1,6 @@
 import frappe
 
+
 def execute():
 	if not frappe.db.exists("DocType", "HS Code"):
 		return
@@ -9,7 +10,7 @@ def execute():
 
 	frappe.reload_doc("stock", "doctype", "customs_tariff_number")
 
-	hs_codes = frappe.get_all("HS Code", fields=['name', 'description'])
+	hs_codes = frappe.get_all("HS Code", fields=["name", "description"])
 	for d in hs_codes:
 		if not frappe.db.exists("Customs Tariff Number", d.name):
 			doc = frappe.new_doc("Customs Tariff Number")

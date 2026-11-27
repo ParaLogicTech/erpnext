@@ -1,12 +1,14 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, nowdate, flt, cint
-from erpnext import get_company_currency
 from frappe.model.meta import get_field_precision
-import json
+from frappe.utils import cint, flt, getdate, nowdate
+
+from erpnext import get_company_currency
 
 
 class FBRInvoiceWiseTaxes:
@@ -16,9 +18,9 @@ class FBRInvoiceWiseTaxes:
 		self.filters.to_date = getdate(self.filters.to_date or nowdate())
 
 		if not self.filters.get("company"):
-			self.filters["company"] = frappe.db.get_single_value('Global Defaults', 'default_company')
+			self.filters["company"] = frappe.db.get_single_value("Global Defaults", "default_company")
 
-		self.filters.service_tax_account = frappe.get_cached_value('Company', self.filters.company, "service_tax_account")
+		self.filters.service_tax_account = frappe.get_cached_value("Company", self.filters.company, "service_tax_account")
 
 		self.filters.tax_accounts = []
 		if self.filters.service_tax_account:
@@ -42,19 +44,19 @@ class FBRInvoiceWiseTaxes:
 				"fieldtype": "Int",
 				"fieldname": "sr_no",
 				"width": 40,
-				"hide_for_view": 1
+				"hide_for_view": 1,
 			},
 			{
 				"label": _("NTN"),
 				"fieldtype": "Data",
 				"fieldname": "tax_id",
-				"width": 75
+				"width": 75,
 			},
 			{
 				"label": _("CNIC"),
 				"fieldtype": "Data",
 				"fieldname": "tax_cnic",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Name of Buyer"),
@@ -62,33 +64,33 @@ class FBRInvoiceWiseTaxes:
 				"fieldname": "party",
 				"options": self.filters.party_type,
 				"width": 80 if self.party_naming_by == "Naming Series" else 200,
-				"hide_for_export": 1
+				"hide_for_export": 1,
 			},
 			{
 				"label": _("Name of Buyer"),
 				"fieldtype": "Data",
 				"fieldname": "party_name",
-				"width": 200
+				"width": 200,
 			},
 			{
 				"label": _("District of Buyer"),
 				"fieldtype": "Data",
 				"fieldname": "city",
 				"editable": 1,
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Buyer Type"),
 				"fieldtype": "Data",
 				"fieldname": "buyer_type",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Document Type"),
 				"fieldtype": "Data",
 				"fieldname": "document_type",
 				"width": 50,
-				"hide_for_view": 1
+				"hide_for_view": 1,
 			},
 			{
 				"label": _("Sales Invoice"),
@@ -96,65 +98,65 @@ class FBRInvoiceWiseTaxes:
 				"fieldname": "invoice",
 				"options": "Sales Invoice",
 				"width": 90,
-				"hide_for_export": 1
+				"hide_for_export": 1,
 			},
 			{
 				"label": _("Document Number"),
 				"fieldtype": "Int",
 				"fieldname": "stin",
-				"width": 60
+				"width": 60,
 			},
 			{
 				"label": _("Document Date"),
 				"fieldtype": "Data",
 				"fieldname": "posting_date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("HS Code"),
 				"fieldtype": "Data",
 				"fieldname": "hscode",
 				"width": 80,
-				"hide_for_view": 1
+				"hide_for_view": 1,
 			},
 			{
 				"label": _("Sale Type"),
 				"fieldtype": "Data",
 				"fieldname": "sale_type",
 				"width": 80,
-				"hide_for_view": 1
+				"hide_for_view": 1,
 			},
 			{
 				"label": _("Rate"),
 				"fieldtype": "Percent",
 				"fieldname": "rate",
-				"width": 50
+				"width": 50,
 			},
 			{
 				"label": _("Value of Sales Excluding Sales Tax"),
 				"fieldtype": "Currency",
 				"fieldname": "base_taxable_total",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Sales Tax Involved"),
 				"fieldtype": "Currency",
 				"fieldname": "service_tax",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("ST Withheld at Source"),
 				"fieldtype": "Data",
 				"fieldname": "withheld_amount",
 				"width": 80,
-				"hide_for_view": 1
+				"hide_for_view": 1,
 			},
 		]
 
 		if self.party_naming_by != "Naming Series" and not cint(self.filters.for_export):
-			columns = list(filter(lambda d: d['fieldname'] != 'party_name', columns))
+			columns = list(filter(lambda d: d["fieldname"] != "party_name", columns))
 
 		if cint(self.filters.for_export):
 			columns = list(filter(lambda d: not d.get("hide_for_export"), columns))
@@ -168,7 +170,7 @@ class FBRInvoiceWiseTaxes:
 		self.process_invoice_map()
 
 		for i, d in enumerate(self.invoices):
-			d.sr_no = i+1
+			d.sr_no = i + 1
 
 		return self.invoices
 
@@ -204,7 +206,7 @@ class FBRInvoiceWiseTaxes:
 			d.document_type = "SI"
 			# d.hscode = "98201000"
 			self.invoices_map[d.invoice] = frappe._dict({
-				'invoice': d, 'items': [], 'taxes': []
+				"invoice": d, "items": [], "taxes": [],
 			})
 
 		invoice_names = list(self.invoices_map.keys())
@@ -217,7 +219,7 @@ class FBRInvoiceWiseTaxes:
 			""", [invoice_names], as_dict=1)
 
 			for d in invoice_items:
-				self.invoices_map[d.invoice]['items'].append(d)
+				self.invoices_map[d.invoice]["items"].append(d)
 
 		if invoice_names and self.filters.tax_accounts:
 			taxes = frappe.db.sql("""
@@ -230,7 +232,7 @@ class FBRInvoiceWiseTaxes:
 			""", [invoice_names, self.filters.tax_accounts], as_dict=1)
 
 			for tax in taxes:
-				self.invoices_map[tax.invoice]['taxes'].append(tax)
+				self.invoices_map[tax.invoice]["taxes"].append(tax)
 
 	def process_invoice_map(self):
 		company_currency = get_company_currency(self.filters.company)
@@ -242,40 +244,40 @@ class FBRInvoiceWiseTaxes:
 			company_currency)
 
 		for inv_obj in self.invoices_map.values():
-			for item in inv_obj['items']:
-				item_tax_detail = json.loads(item.item_tax_detail or '{}')
+			for item in inv_obj["items"]:
+				item_tax_detail = json.loads(item.item_tax_detail or "{}")
 				has_tax = False
 
-				for tax in inv_obj['taxes']:
+				for tax in inv_obj["taxes"]:
 					tax_field = self.get_tax_field(tax.account_head)
 					if tax_field and item_tax_detail.get(tax.name):
 						has_tax = True
-						inv_obj['invoice'][tax_field] += flt(item_tax_detail.get(tax.name))
+						inv_obj["invoice"][tax_field] += flt(item_tax_detail.get(tax.name))
 
 				if has_tax:
-					inv_obj['invoice']['base_taxable_total'] += item.base_taxable_amount
+					inv_obj["invoice"]["base_taxable_total"] += item.base_taxable_amount
 
-			for tax in inv_obj['taxes']:
+			for tax in inv_obj["taxes"]:
 				tax_field = self.get_tax_field(tax.account_head)
 
 				if tax_field:
-					inv_obj['invoice'][tax_field] = flt(inv_obj['invoice'][tax_field], tax_precision)
-					inv_obj['invoice'][tax_field] = flt(inv_obj['invoice'][tax_field] * inv_obj['invoice'].conversion_rate,
+					inv_obj["invoice"][tax_field] = flt(inv_obj["invoice"][tax_field], tax_precision)
+					inv_obj["invoice"][tax_field] = flt(inv_obj["invoice"][tax_field] * inv_obj["invoice"].conversion_rate,
 						tax_precision)
 
-					inv_obj['invoice']['base_total_after_taxes'] += inv_obj['invoice'][tax_field]
+					inv_obj["invoice"]["base_total_after_taxes"] += inv_obj["invoice"][tax_field]
 
-			inv_obj['invoice']['rate'] = flt(inv_obj['invoice']['service_tax'] / inv_obj['invoice']['base_taxable_total'] * 100\
-				if inv_obj['invoice']['base_taxable_total'] else 0, 2)
+			inv_obj["invoice"]["rate"] = flt(inv_obj["invoice"]["service_tax"] / inv_obj["invoice"]["base_taxable_total"] * 100
+				if inv_obj["invoice"]["base_taxable_total"] else 0, 2)
 
-			inv_obj['invoice']['base_total_after_taxes'] += inv_obj['invoice']['base_taxable_total']
-			inv_obj['invoice']['base_taxable_total'] = flt(inv_obj['invoice']['base_taxable_total'], taxable_precision)
-			inv_obj['invoice']['base_total_after_taxes'] = flt(inv_obj['invoice']['base_total_after_taxes'], total_precision)
+			inv_obj["invoice"]["base_total_after_taxes"] += inv_obj["invoice"]["base_taxable_total"]
+			inv_obj["invoice"]["base_taxable_total"] = flt(inv_obj["invoice"]["base_taxable_total"], taxable_precision)
+			inv_obj["invoice"]["base_total_after_taxes"] = flt(inv_obj["invoice"]["base_total_after_taxes"], total_precision)
 
 	def get_tax_field(self, account_head):
-		tax_field = ''
+		tax_field = ""
 		if account_head == self.filters.service_tax_account:
-			tax_field = 'service_tax'
+			tax_field = "service_tax"
 
 		return tax_field
 

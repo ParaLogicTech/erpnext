@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 
+
 def get_context(context):
 	context.no_cache = 1
 	party = frappe.form_dict.party
@@ -11,12 +12,12 @@ def get_context(context):
 	except frappe.ValidationError:
 		context.invalid_gstin = 1
 
-	party_type = 'Customer'
-	party_name = frappe.db.get_value('Customer', party)
+	party_type = "Customer"
+	party_name = frappe.db.get_value("Customer", party)
 
 	if not party_name:
-		party_type = 'Supplier'
-		party_name = frappe.db.get_value('Supplier', party)
+		party_type = "Supplier"
+		party_name = frappe.db.get_value("Supplier", party)
 
 	if not party_name:
 		context.not_found = 1
@@ -29,10 +30,10 @@ def get_context(context):
 def update_gstin(context):
 	dirty = False
 	for key, value in frappe.form_dict.items():
-		if key != 'party':
-			address_name = frappe.get_value('Address', key)
+		if key != "party":
+			address_name = frappe.get_value("Address", key)
 			if address_name:
-				address = frappe.get_doc('Address', address_name)
+				address = frappe.get_doc("Address", address_name)
 				address.gstin = value.upper()
 				address.save(ignore_permissions=True)
 				dirty = True

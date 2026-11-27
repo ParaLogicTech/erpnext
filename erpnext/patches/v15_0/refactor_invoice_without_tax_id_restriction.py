@@ -4,7 +4,7 @@ from frappe.utils import cint
 
 def execute():
 	old = frappe.db.get_value("Singles", filters={
-		"doctype": "Accounts Settings", "field": "restrict_sales_tax_invoice_without_tax_id"
+		"doctype": "Accounts Settings", "field": "restrict_sales_tax_invoice_without_tax_id",
 	}, fieldname="value", order_by=None)
 
 	if cint(old):

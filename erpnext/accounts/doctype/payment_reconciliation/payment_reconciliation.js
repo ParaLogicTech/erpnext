@@ -173,9 +173,9 @@ erpnext.accounts.PaymentReconciliationController = class PaymentReconciliationCo
 						message: __("No Unreconciled Invoices and Payments found for this party and account"),
 					});
 				} else if (!this.frm.doc.invoices.length) {
-					frappe.throw({ message: __("No Outstanding Invoices found for this party") });
+					frappe.throw({message: __("No Outstanding Invoices found for this party")});
 				} else if (!this.frm.doc.payments.length) {
-					frappe.throw({ message: __("No Unreconciled Payments found for this party") });
+					frappe.throw({message: __("No Unreconciled Payments found for this party")});
 				}
 				this.frm.refresh();
 			},
@@ -290,13 +290,13 @@ erpnext.accounts.PaymentReconciliationController = class PaymentReconciliationCo
 							"Payment Reconciliation Allocation",
 							d.docname,
 							"difference_account",
-							d.difference_account
+							d.difference_account,
 						);
 						frappe.model.set_value(
 							"Payment Reconciliation Allocation",
 							d.docname,
 							"reconciliation_posting_date",
-							d.reconciliation_posting_date
+							d.reconciliation_posting_date,
 						);
 					});
 
@@ -387,9 +387,9 @@ erpnext.accounts.PaymentReconciliationController = class PaymentReconciliationCo
 					"difference_amount",
 					flt(r.message),
 				);
-			}
+			},
 		});
 	}
 };
 
-extend_cscript(cur_frm.cscript, new erpnext.accounts.PaymentReconciliationController({ frm: cur_frm }));
+extend_cscript(cur_frm.cscript, new erpnext.accounts.PaymentReconciliationController({frm: cur_frm}));

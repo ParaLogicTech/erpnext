@@ -8,7 +8,7 @@ frappe.query_reports["Stock Balance"] = {
 			label: __("Stock Qty or Contents Qty"),
 			fieldtype: "Select",
 			options: "Stock Qty\nContents Qty",
-			default: "Stock Qty"
+			default: "Stock Qty",
 		},
 		{
 			fieldname: "from_date",
@@ -22,7 +22,7 @@ frappe.query_reports["Stock Balance"] = {
 			label: __("To Date"),
 			fieldtype: "Date",
 			reqd: 1,
-			default: frappe.datetime.get_today()
+			default: frappe.datetime.get_today(),
 		},
 		{
 			fieldname: "item_code",
@@ -32,25 +32,25 @@ frappe.query_reports["Stock Balance"] = {
 			get_query: function() {
 				return {
 					query: "erpnext.controllers.queries.item_query",
-					filters: {"include_disabled": 1, "include_templates": 1}
+					filters: {"include_disabled": 1, "include_templates": 1},
 				};
 			},
 			on_change: function() {
-				var item_code = frappe.query_report.get_filter_value('item_code');
+				var item_code = frappe.query_report.get_filter_value("item_code");
 				if (!item_code) {
-					frappe.query_report.set_filter_value('item_name', "");
+					frappe.query_report.set_filter_value("item_name", "");
 				} else {
-					frappe.db.get_value("Item", item_code, 'item_name', function(value) {
-						frappe.query_report.set_filter_value('item_name', value['item_name']);
+					frappe.db.get_value("Item", item_code, "item_name", function(value) {
+						frappe.query_report.set_filter_value("item_name", value["item_name"]);
 					});
 				}
-			}
+			},
 		},
 		{
 			fieldname: "item_name",
 			label: __("Item Name"),
 			fieldtype: "Data",
-			hidden: 1
+			hidden: 1,
 		},
 		{
 			fieldname: "warehouse",
@@ -62,23 +62,23 @@ frappe.query_reports["Stock Balance"] = {
 				if (warehouse_type) {
 					return {
 						filters: {
-							"warehouse_type": warehouse_type
-						}
+							"warehouse_type": warehouse_type,
+						},
 					};
 				}
-			}
+			},
 		},
 		{
 			fieldname: "warehouse_type",
 			label: __("Warehouse Type"),
 			fieldtype: "Link",
-			options: "Warehouse Type"
+			options: "Warehouse Type",
 		},
 		{
 			fieldname: "batch_no",
 			label: __("Batch No"),
 			fieldtype: "Link",
-			options: "Batch"
+			options: "Batch",
 		},
 		// {
 		// 	fieldname: "packing_slip",
@@ -90,19 +90,19 @@ frappe.query_reports["Stock Balance"] = {
 			fieldname: "item_group",
 			label: __("Item Group"),
 			fieldtype: "Link",
-			options: "Item Group"
+			options: "Item Group",
 		},
 		{
 			fieldname: "brand",
 			label: __("Brand"),
 			fieldtype: "Link",
-			options: "Brand"
+			options: "Brand",
 		},
 		{
 			fieldname: "include_uom",
 			label: __("Include UOM"),
 			fieldtype: "Link",
-			options: "UOM"
+			options: "UOM",
 		},
 		{
 			fieldname: "customer_provided_items",
@@ -112,7 +112,7 @@ frappe.query_reports["Stock Balance"] = {
 				"",
 				"Customer Provided Items Only",
 				"Exclude Customer Provided Items",
-			]
+			],
 		},
 		{
 			fieldname: "customer",
@@ -144,17 +144,17 @@ frappe.query_reports["Stock Balance"] = {
 		{
 			fieldname: "show_returns_separately",
 			label: __("Show Returns Separately"),
-			fieldtype: "Check"
+			fieldtype: "Check",
 		},
 		{
 			fieldname: "show_projected_qty",
 			label: __("Show Projected Qty"),
-			fieldtype: "Check"
+			fieldtype: "Check",
 		},
 		{
 			fieldname: "show_stock_ageing_data",
 			label: __("Show Stock Ageing Data"),
-			fieldtype: "Check"
+			fieldtype: "Check",
 		},
 		{
 			fieldname: "show_amounts",
@@ -164,7 +164,7 @@ frappe.query_reports["Stock Balance"] = {
 		},
 	],
 
-	formatter: function (value, row, column, data, default_formatter) {
+	formatter: function(value, row, column, data, default_formatter) {
 		var style = {};
 
 		let incoming_fields = ["in_qty", "in_val", "ordered_qty", "purchase_qty", "purchase_val"];
@@ -172,34 +172,34 @@ frappe.query_reports["Stock Balance"] = {
 		let difference_fields = ["transferred_qty", "reconciled_qty"];
 
 		if (outgoing_fields.includes(column.fieldname) && flt(value) > 0) {
-			style['color'] = 'red';
+			style["color"] = "red";
 		} else if (incoming_fields.includes(column.fieldname) && flt(value) > 0) {
-			style['color'] = 'green';
+			style["color"] = "green";
 		} else if (difference_fields.includes(column.fieldname)) {
 			if (flt(value) > 0) {
-				style['color'] = 'green';
+				style["color"] = "green";
 			} else if (flt(value) < 0) {
-				style['color'] = 'red';
+				style["color"] = "red";
 			}
 		}
 
 		if (column.fieldname == "bal_qty") {
-			style['font-weight'] = 'bold';
+			style["font-weight"] = "bold";
 		}
 		if (["bal_qty", "bal_val"].includes(column.fieldname)) {
 			if (flt(value) > 0) {
-				style['color'] = '#004509';
+				style["color"] = "#004509";
 			} else if (value === 0) {
-				style['color'] = '#00009a';
+				style["color"] = "#00009a";
 			}
 		}
 
 		if (["bal_qty", "bal_val", "opening_qty", "opening_val"].includes(column.fieldname) && flt(value) < 0) {
-			style['background-color'] = 'pink';
+			style["background-color"] = "pink";
 		}
 
 		return default_formatter(value, row, column, data, {css: style});
-	}
+	},
 };
 
 erpnext.utils.add_additional_sle_filters("Stock Balance");

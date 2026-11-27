@@ -9,14 +9,14 @@ frappe.query_reports["Stock Ageing"] = {
 			fieldtype: "Link",
 			options: "Company",
 			default: frappe.defaults.get_user_default("Company"),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "to_date",
 			label: __("As On Date"),
 			fieldtype: "Date",
 			default: frappe.datetime.get_today(),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "ageing_range",
@@ -40,55 +40,55 @@ frappe.query_reports["Stock Ageing"] = {
 			get_query: function() {
 				return {
 					query: "erpnext.controllers.queries.item_query",
-					filters: {"include_disabled": 1, "include_templates": 1}
+					filters: {"include_disabled": 1, "include_templates": 1},
 				};
 			},
 			on_change: function() {
-				var item_code = frappe.query_report.get_filter_value('item_code');
+				var item_code = frappe.query_report.get_filter_value("item_code");
 				if (!item_code) {
-					frappe.query_report.set_filter_value('item_name', "");
+					frappe.query_report.set_filter_value("item_name", "");
 				} else {
-					frappe.db.get_value("Item", item_code, 'item_name', function(value) {
-						frappe.query_report.set_filter_value('item_name', value['item_name']);
+					frappe.db.get_value("Item", item_code, "item_name", function(value) {
+						frappe.query_report.set_filter_value("item_name", value["item_name"]);
 					});
 				}
-			}
+			},
 		},
 		{
 			fieldname: "item_name",
 			label: __("Item Name"),
 			fieldtype: "Data",
-			hidden: 1
+			hidden: 1,
 		},
 		{
 			fieldname: "warehouse",
 			label: __("Warehouse"),
 			fieldtype: "Link",
-			options: "Warehouse"
+			options: "Warehouse",
 		},
 		{
 			fieldname: "batch_no",
 			label: __("Batch No"),
 			fieldtype: "Link",
-			options: "Batch"
+			options: "Batch",
 		},
 		{
 			fieldname: "packing_slip",
 			label: __("Package"),
 			fieldtype: "Link",
-			options: "Packing Slip"
+			options: "Packing Slip",
 		},
 		{
 			fieldname: "item_group",
 			label: __("Item Group"),
 			fieldtype: "Link",
-			options: "Item Group"
+			options: "Item Group",
 		},
 		{
 			fieldname: "brand",
 			label: __("Brand"),
 			fieldtype: "Link",
-			options: "Brand"
+			options: "Brand",
 		},
 		{
 			fieldname: "customer_provided_items",
@@ -98,7 +98,7 @@ frappe.query_reports["Stock Ageing"] = {
 				"",
 				"Customer Provided Items Only",
 				"Exclude Customer Provided Items",
-			]
+			],
 		},
 		{
 			fieldname: "customer",
@@ -133,6 +133,6 @@ frappe.query_reports["Stock Ageing"] = {
 	//
 	// 	return default_formatter(value, row, column, data, {css: style});
 	// },
-}
+};
 
 erpnext.utils.add_additional_sle_filters("Stock Ageing");

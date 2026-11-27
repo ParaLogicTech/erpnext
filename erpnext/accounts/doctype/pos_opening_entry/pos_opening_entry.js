@@ -3,20 +3,20 @@
 
 frappe.ui.form.on("POS Opening Entry", {
 	setup(frm) {
-		frm.set_query("user", function (doc) {
+		frm.set_query("user", function(doc) {
 			return {
 				query: "erpnext.accounts.doctype.pos_profile.pos_profile.cashiers_query",
 			};
 		});
 
-		frm.set_query('pos_profile', function(doc) {
-			if(!doc.company) {
-				frappe.throw(__('Please set Company'));
+		frm.set_query("pos_profile", function(doc) {
+			if (!doc.company) {
+				frappe.throw(__("Please set Company"));
 			}
 
 			let filters = {
 				company: doc.company,
-			}
+			};
 			if (doc.user) {
 				filters["user"] = doc.user;
 			}
@@ -25,7 +25,7 @@ frappe.ui.form.on("POS Opening Entry", {
 			}
 
 			return {
-				query: 'erpnext.accounts.doctype.pos_profile.pos_profile.pos_profile_query',
+				query: "erpnext.accounts.doctype.pos_profile.pos_profile.pos_profile_query",
 				filters: filters,
 			};
 		});
@@ -84,7 +84,7 @@ frappe.ui.form.on("POS Opening Entry", {
 					if (r.message) {
 						frm.set_value("pos_profile", r.message);
 					}
-				}
+				},
 			});
 		}
 	},
@@ -104,7 +104,7 @@ frappe.ui.form.on("POS Opening Entry", {
 					if (r.message) {
 						frm.set_value(r.message);
 					}
-				}
+				},
 			});
 		}
 	},
@@ -116,7 +116,7 @@ frappe.ui.form.on("POS Opening Entry", {
 				if (r.message) {
 					frm.set_value("cash_denominations", r.message);
 				}
-			}
+			},
 		});
 	},
 

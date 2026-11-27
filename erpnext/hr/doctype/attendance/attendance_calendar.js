@@ -3,10 +3,10 @@
 frappe.views.calendar["Attendance"] = {
 	options: {
 		header: {
-			left: 'prev,next today',
-			center: 'title',
-			right: 'month'
-		}
+			left: "prev,next today",
+			center: "title",
+			right: "month",
+		},
 	},
-	get_events_method: "erpnext.hr.doctype.attendance.attendance.get_events"
+	get_events_method: "erpnext.hr.doctype.attendance.attendance.get_events",
 };

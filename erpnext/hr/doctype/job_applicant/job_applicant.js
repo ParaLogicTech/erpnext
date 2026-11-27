@@ -28,10 +28,10 @@ frappe.ui.form.on("Job Applicant", {
 		frm.set_query("job_title", function() {
 			return {
 				filters: {
-					'status': 'Open'
-				}
+					"status": "Open",
+				},
 			};
 		});
 
-	}
+	},
 });

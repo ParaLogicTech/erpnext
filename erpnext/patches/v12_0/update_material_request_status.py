@@ -1,5 +1,6 @@
 import frappe
-from erpnext.stock.stock_balance import update_bin_qty, get_indented_qty
+
+from erpnext.stock.stock_balance import get_indented_qty, update_bin_qty
 
 
 def execute():
@@ -16,7 +17,7 @@ def execute():
 
 	for entry in bin_details:
 		update_bin_qty(entry.get("item_code"), entry.get("warehouse"), {
-			"indented_qty": get_indented_qty(entry.get("item_code"), entry.get("warehouse"))
+			"indented_qty": get_indented_qty(entry.get("item_code"), entry.get("warehouse")),
 		})
 
 	mreqs = frappe.db.sql_list("""

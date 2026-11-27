@@ -1,17 +1,18 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
-import erpnext
-from frappe.utils import flt
 from frappe import _
 from frappe.model.document import Document
-from erpnext.setup.utils import get_exchange_rate
+from frappe.utils import flt
+
+import erpnext
 from erpnext import get_company_currency
-from erpnext.stock.get_item_details import get_item_tax_template_details
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_dimension_fields
-import json
+from erpnext.setup.utils import get_exchange_rate
+from erpnext.stock.get_item_details import get_item_tax_template_details
 
 
 class ExpenseEntry(Document):
@@ -47,13 +48,13 @@ class ExpenseEntry(Document):
 				)
 				if exp_entrty_with_duplicate:
 					frappe.throw(_("Row {0}: Bill No {1} for Supplier {2} already exists in {3}").format(
-						row.idx, bill_no, row.supplier, ", ".join(exp_entrty_with_duplicate)
+						row.idx, bill_no, row.supplier, ", ".join(exp_entrty_with_duplicate),
 					))
 
 	def validate_accounts(self):
-		if self.payable_account and frappe.get_cached_value("Account", self.payable_account, "account_type") != 'Payable':
+		if self.payable_account and frappe.get_cached_value("Account", self.payable_account, "account_type") != "Payable":
 			frappe.throw(_("Incorrect Account Type for Payable Account {0}").format(self.payable_account))
-		if self.paid_from_account and frappe.get_cached_value("Account", self.paid_from_account, "account_type") not in ['Bank', 'Cash', 'Equity']:
+		if self.paid_from_account and frappe.get_cached_value("Account", self.paid_from_account, "account_type") not in ["Bank", "Cash", "Equity"]:
 			frappe.throw(_("Incorrect Account Type for Paid From Account {0}").format(self.paid_from_account))
 
 		for row in self.accounts:
@@ -89,7 +90,7 @@ class ExpenseEntry(Document):
 				row.exchange_rate = get_exchange_rate(self.payable_account_currency, company_currency, row.bill_date or self.transaction_date)
 				if not row.exchange_rate:
 					frappe.throw(_("Could not find Exchange Rate from {0} to {1} on {2}").format(
-						self.payable_account_currency, company_currency, row.bill_date or self.transaction_date
+						self.payable_account_currency, company_currency, row.bill_date or self.transaction_date,
 					))
 
 	def set_missing_bill_no_date(self):
@@ -106,9 +107,9 @@ class ExpenseEntry(Document):
 				"transaction_date": row.bill_date or self.transaction_date,
 			}).get("item_tax_rate")
 
-			tax_map = json.loads(row.tax_rate or '{}')
+			tax_map = json.loads(row.tax_rate or "{}")
 			tax_amount = 0
-			for tax_account, tax_rate in tax_map.items():
+			for _tax_account, tax_rate in tax_map.items():
 				if tax_rate:
 					tax_amount += flt(row.total_amount) - flt(row.total_amount) / (1 + flt(tax_rate) / 100)
 
@@ -116,19 +117,19 @@ class ExpenseEntry(Document):
 
 	def calculate_totals(self):
 		for row in self.accounts:
-			row.total_amount = flt(row.total_amount, row.precision('total_amount'))
-			row.base_total_amount = flt(flt(row.total_amount) * flt(row.exchange_rate), row.precision('base_total_amount'))
+			row.total_amount = flt(row.total_amount, row.precision("total_amount"))
+			row.base_total_amount = flt(flt(row.total_amount) * flt(row.exchange_rate), row.precision("base_total_amount"))
 
-			row.tax_amount = flt(row.tax_amount, row.precision('tax_amount'))
-			row.base_tax_amount = flt(flt(row.tax_amount) * flt(row.exchange_rate), row.precision('base_tax_amount'))
+			row.tax_amount = flt(row.tax_amount, row.precision("tax_amount"))
+			row.base_tax_amount = flt(flt(row.tax_amount) * flt(row.exchange_rate), row.precision("base_tax_amount"))
 
-			row.expense_amount = flt(flt(row.total_amount) - flt(row.tax_amount), row.precision('expense_amount'))
-			row.base_expense_amount = flt(flt(row.base_total_amount) - flt(row.base_tax_amount), row.precision('base_expense_amount'))
+			row.expense_amount = flt(flt(row.total_amount) - flt(row.tax_amount), row.precision("expense_amount"))
+			row.base_expense_amount = flt(flt(row.base_total_amount) - flt(row.base_tax_amount), row.precision("base_expense_amount"))
 
 		total_fields = [
-			['total', 'total_amount'],
-			['total_tax_amount', 'tax_amount'],
-			['total_expense_amount', 'expense_amount'],
+			["total", "total_amount"],
+			["total_tax_amount", "tax_amount"],
+			["total_expense_amount", "expense_amount"],
 		]
 		for target_f, source_f in total_fields:
 			self.set(target_f, flt(sum([d.get(source_f) for d in self.accounts]), self.precision(target_f)))
@@ -202,7 +203,7 @@ class ExpenseEntry(Document):
 		for row in self.accounts:
 			if not row.supplier:
 				frappe.throw(_("Row #{0}: Supplier is mandatory for consolidated accrual Expense Entry").format(
-					row.idx
+					row.idx,
 				))
 
 			jv_rows = self.append_bill_journal_entry_rows(bill_jv, row)
@@ -267,7 +268,7 @@ class ExpenseEntry(Document):
 			"cheque_date": row.bill_date or self.transaction_date,
 
 			"multi_currency": multi_currency,
-			"user_remark": row.remarks
+			"user_remark": row.remarks,
 		})
 
 		if naming_series:
@@ -314,16 +315,16 @@ class ExpenseEntry(Document):
 		if not row.tax_amount:
 			return []
 
-		tax_map = json.loads(row.tax_rate or '{}')
+		tax_map = json.loads(row.tax_rate or "{}")
 		tax_map = {acc: rate for (acc, rate) in tax_map.items() if rate}
 		remaining_tax_amount = row.tax_amount
 
 		jv_rows = []
 		for i, (tax_account, tax_rate) in enumerate(tax_map.items()):
 			if i == len(tax_map) - 1:
-				tax_amount = flt(remaining_tax_amount, row.precision('tax_amount'))
+				tax_amount = flt(remaining_tax_amount, row.precision("tax_amount"))
 			else:
-				tax_amount = flt(flt(row.total_amount) - flt(row.total_amount) / (1 + flt(tax_rate) / 100), row.precision('tax_amount'))
+				tax_amount = flt(flt(row.total_amount) - flt(row.total_amount) / (1 + flt(tax_rate) / 100), row.precision("tax_amount"))
 
 			tax_account_currency = frappe.get_cached_value("Account", tax_account, "account_currency")
 			if tax_amount:
@@ -364,7 +365,7 @@ class ExpenseEntry(Document):
 			"debit": flt(row.base_total_amount),
 			"exchange_rate": row.exchange_rate,
 			"reference_type": "Journal Entry",
-			"reference_name": bill_jv.name
+			"reference_name": bill_jv.name,
 		}))
 
 	def append_payment_credit_entry(self, jv_doc, row):
@@ -443,7 +444,7 @@ class ExpenseEntry(Document):
 		parent_source = parent_source or frappe._dict()
 		row_source = row_source or frappe._dict()
 
-		if not hasattr(self, 'accounting_dimensions'):
+		if not hasattr(self, "accounting_dimensions"):
 			self.accounting_dimensions = get_all_dimension_fields()
 			self.accounting_dimensions = list(set(self.accounting_dimensions))
 
@@ -464,9 +465,9 @@ class ExpenseEntry(Document):
 	def cancel_journal_entries(self):
 		je_names = frappe.get_all(
 			"Journal Entry",
-			fields=['name', 'docstatus'],
+			fields=["name", "docstatus"],
 			filters={"expense_entry_name": self.name, "docstatus": 1},
-			pluck="name"
+			pluck="name",
 		)
 
 		cancel_later = []
@@ -486,9 +487,9 @@ class ExpenseEntry(Document):
 	def cancel_payment_entries(self):
 		pe_names = frappe.get_all(
 			"Payment Entry",
-			fields=['name', 'docstatus'],
+			fields=["name", "docstatus"],
 			filters={"expense_entry_name": self.name, "docstatus": 1},
-			pluck="name"
+			pluck="name",
 		)
 
 		for name in pe_names:
@@ -500,7 +501,7 @@ class ExpenseEntry(Document):
 def has_duplicate_bill_no(bill_no, supplier, exclude=None):
 	exclude_condition = ""
 	if exclude:
-		exclude_condition = "and name != %(exclude)s".format(exclude)
+		exclude_condition = "and name != %(exclude)s"
 
 	data = frappe.db.sql_list(f"""
 		select distinct expd.parent

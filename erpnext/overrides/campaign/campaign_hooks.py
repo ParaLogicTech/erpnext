@@ -1,7 +1,8 @@
+import re
+
 import frappe
 from frappe import _
 from frappe.utils import cint, cstr
-import re
 
 
 def validate_campaign_voucher_code(doc):
@@ -42,7 +43,7 @@ def validate_campaign_voucher_code(doc):
 def override_campaign_dashboard(data):
 	data["transactions"].append({
 		"label": _("Pricing Rule"),
-		"items": ["Pricing Rule"]
+		"items": ["Pricing Rule"],
 	})
 
 	return data
@@ -60,7 +61,7 @@ def check_duplicate_campaign_voucher_code(campaign, voucher_code, current_doctyp
 			frappe.throw(_("{0} Campaign Voucher Code {1} has already been used in {2}").format(
 				frappe.bold(campaign),
 				frappe.bold(voucher_code),
-				frappe.get_desk_link(doctype, duplicate[0]["name"])
+				frappe.get_desk_link(doctype, duplicate[0]["name"]),
 			))
 
 	def get_filters(doctype):

@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
+from frappe.contacts.address_and_contact import delete_contact_and_address, load_address_and_contact
 from frappe.model.document import Document
-from frappe.contacts.address_and_contact import load_address_and_contact, delete_contact_and_address
 
 
 class BankAccount(Document):
@@ -36,17 +35,17 @@ class BankAccount(Document):
 
 		if self.account and frappe.get_cached_value("Account", self.account, "company") != self.company:
 			frappe.throw(_("Bank GL Account {0} does not belong to Company {1}").format(
-				self.account, self.company
+				self.account, self.company,
 			))
 		if self.suspense_account and frappe.get_cached_value("Account", self.suspense_account, "company") != self.company:
 			frappe.throw(_("Suspense Account {0} does not belong to Company {1}").format(
-				self.suspense_account, self.company
+				self.suspense_account, self.company,
 			))
 
 	def validate_iban(self):
-		'''
+		"""
 		Algorithm: https://en.wikipedia.org/wiki/International_Bank_Account_Number#Validating_the_IBAN
-		'''
+		"""
 		# IBAN field is optional
 		if not self.iban:
 			return
@@ -56,7 +55,7 @@ class BankAccount(Document):
 			return str(9 + ord(c) - 64)
 
 		# remove whitespaces, upper case to get the right number from ord()
-		iban = ''.join(self.iban.split(' ')).upper()
+		iban = "".join(self.iban.split(" ")).upper()
 
 		# Move country code and checksum from the start to the end
 		flipped = iban[4:] + iban[:4]
@@ -65,12 +64,12 @@ class BankAccount(Document):
 		encoded = [encode_char(c) if ord(c) >= 65 and ord(c) <= 90 else c for c in flipped]
 
 		try:
-			to_check = int(''.join(encoded))
+			to_check = int("".join(encoded))
 		except ValueError:
-			frappe.throw(_('IBAN is not valid'))
+			frappe.throw(_("IBAN is not valid"))
 
 		if to_check % 97 != 1:
-			frappe.throw(_('IBAN is not valid'))
+			frappe.throw(_("IBAN is not valid"))
 
 
 @frappe.whitelist()
@@ -85,10 +84,10 @@ def make_bank_account(doctype, docname):
 
 @frappe.whitelist()
 def get_party_bank_account(party_type, party):
-	return frappe.db.get_value(party_type, party, 'default_bank_account')
+	return frappe.db.get_value(party_type, party, "default_bank_account")
 
 
 @frappe.whitelist()
 def get_bank_account_details(bank_account):
 	return frappe.db.get_value("Bank Account", bank_account,
-		['account', 'suspense_account', 'bank', 'bank_account_no'], as_dict=1)
+		["account", "suspense_account", "bank", "bank_account_no"], as_dict=1)

@@ -3,8 +3,9 @@
 
 import frappe
 
+
 def execute():
-	frappe.reload_doc('stock', 'doctype', 'item_price')
+	frappe.reload_doc("stock", "doctype", "item_price")
 
 	frappe.db.sql(""" update `tabItem Price`, `tabItem`
 		set

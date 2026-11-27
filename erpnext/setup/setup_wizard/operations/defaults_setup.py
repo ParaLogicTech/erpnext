@@ -5,15 +5,16 @@ import frappe
 from frappe import _
 from frappe.utils import cstr, getdate
 
+
 def set_default_settings(args):
 	# enable default currency
 	frappe.db.set_value("Currency", args.get("currency"), "enabled", 1)
 
 	global_defaults = frappe.get_doc("Global Defaults", "Global Defaults")
 	global_defaults.update({
-		'current_fiscal_year': get_fy_details(args.get('fy_start_date'), args.get('fy_end_date')),
-		'default_currency': args.get('currency'),
-		'default_company':args.get('company_name')	,
+		"current_fiscal_year": get_fy_details(args.get("fy_start_date"), args.get("fy_end_date")),
+		"default_currency": args.get("currency"),
+		"default_company": args.get("company_name"),
 		"country": args.get("country"),
 	})
 
@@ -23,13 +24,13 @@ def set_default_settings(args):
 	system_settings.email_footer_address = args.get("company_name")
 	system_settings.save()
 
-	domain_settings = frappe.get_single('Domain Settings')
-	domain_settings.set_active_domains(args.get('domains'))
+	domain_settings = frappe.get_single("Domain Settings")
+	domain_settings.set_active_domains(args.get("domains"))
 
 	stock_settings = frappe.get_doc("Stock Settings")
 	stock_settings.item_naming_by = "Item Code"
 	stock_settings.valuation_method = "FIFO"
-	stock_settings.default_warehouse = frappe.db.get_value('Warehouse', {'warehouse_name': _('Stores')})
+	stock_settings.default_warehouse = frappe.db.get_value("Warehouse", {"warehouse_name": _("Stores")})
 	stock_settings.stock_uom = _("Nos")
 	stock_settings.auto_indent = 1
 	stock_settings.automatically_set_serial_nos_based_on_fifo = 1
@@ -61,11 +62,13 @@ def set_default_settings(args):
 	hr_settings.leave_status_notification_template = _("Leave Status Notification")
 	hr_settings.save()
 
+
 def set_no_copy_fields_in_variant_settings():
 	# set no copy fields of an item doctype to item variant settings
-	doc = frappe.get_doc('Item Variant Settings')
+	doc = frappe.get_doc("Item Variant Settings")
 	doc.set_default_fields()
 	doc.save()
+
 
 def create_price_lists(args):
 	for pl_type, pl_name in (("Selling", _("Standard Selling")), ("Buying", _("Standard Buying"))):
@@ -75,11 +78,12 @@ def create_price_lists(args):
 			"enabled": 1,
 			"buying": 1 if pl_type == "Buying" else 0,
 			"selling": 1 if pl_type == "Selling" else 0,
-			"currency": args["currency"]
+			"currency": args["currency"],
 		}).insert()
 
+
 def create_employee_for_self(args):
-	if frappe.session.user == 'Administrator':
+	if frappe.session.user == "Administrator":
 		return
 
 	# create employee for self
@@ -88,10 +92,11 @@ def create_employee_for_self(args):
 		"employee_name": " ".join(filter(None, [args.get("first_name"), args.get("last_name")])),
 		"user_id": frappe.session.user,
 		"status": "Active",
-		"company": args.get("company_name")
+		"company": args.get("company_name"),
 	})
 	emp.flags.ignore_mandatory = True
-	emp.insert(ignore_permissions = True)
+	emp.insert(ignore_permissions=True)
+
 
 def create_territories():
 	"""create two default territories, one for home country and one named Rest of the World"""
@@ -105,17 +110,19 @@ def create_territories():
 				"doctype": "Territory",
 				"territory_name": name.replace("'", ""),
 				"parent_territory": root_territory,
-				"is_group": "No"
+				"is_group": "No",
 			}).insert()
+
 
 def create_feed_and_todo():
 	"""update Activity feed and create todo for creation of item, customer, vendor"""
 	return
+
 
 def get_fy_details(fy_start_date, fy_end_date):
 	start_year = getdate(fy_start_date).year
 	if start_year == getdate(fy_end_date).year:
 		fy = cstr(start_year)
 	else:
-		fy = cstr(start_year) + '-' + cstr(start_year + 1)
+		fy = cstr(start_year) + "-" + cstr(start_year + 1)
 	return fy

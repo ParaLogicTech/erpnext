@@ -2,16 +2,17 @@
 # For license information, please see license.txt
 
 import frappe
-import erpnext
 from frappe import _, scrub
-from frappe.utils import getdate, flt, cint, cstr
+from frappe.desk.query_report import group_report_data
+from frappe.utils import cint, cstr, flt, getdate
+
+import erpnext
 from erpnext import get_default_currency
 from erpnext.accounts.doctype.account.account import get_account_currency
-from erpnext.accounts.utils import get_currency_precision
-from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.report.accounts_receivable.accounts_receivable import get_ageing_data
 from erpnext.accounts.report.customer_ledger_summary.customer_ledger_summary import get_adjustment_details
-from frappe.desk.query_report import group_report_data
+from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+from erpnext.accounts.utils import get_currency_precision
 
 
 def execute(filters=None):
@@ -60,7 +61,7 @@ class PaymentAgeingReport:
 		if not self.filters.get("company"):
 			self.filters.company = erpnext.get_default_company()
 
-		if self.filters.get('cost_center'):
+		if self.filters.get("cost_center"):
 			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
 
 		if self.filters.get("project"):
@@ -70,38 +71,38 @@ class PaymentAgeingReport:
 		if self.filters.get("sales_person"):
 			sales_person = self.filters.sales_person
 			self.filters.sales_person = frappe.get_all("Sales Person", filters={
-				"name": ["descendants of", self.filters.sales_person]
+				"name": ["descendants of", self.filters.sales_person],
 			})
 			self.filters.sales_person = set([sales_person] + [d.name for d in self.filters.sales_person])
 
 	def validate_ageing_filter(self):
-		self.ageing_range = [cint(r.strip()) for r in self.filters.get('ageing_range', "").split(",") if r]
+		self.ageing_range = [cint(r.strip()) for r in self.filters.get("ageing_range", "").split(",") if r]
 		self.ageing_range = sorted(list(set(self.ageing_range)))
 		self.ageing_column_count = len(self.ageing_range) + 1
 
 	def set_show_names(self):
 		self.show_party_name = False
 		if self.filters.party_type == "Customer":
-			if frappe.defaults.get_global_default('cust_master_name') == "Naming Series":
+			if frappe.defaults.get_global_default("cust_master_name") == "Naming Series":
 				self.show_party_name = True
 
 		if self.filters.party_type == "Supplier":
-			if frappe.defaults.get_global_default('supp_master_name') == "Naming Series":
+			if frappe.defaults.get_global_default("supp_master_name") == "Naming Series":
 				self.show_party_name = True
 
 	def set_account_currency(self):
-		self.filters.company_currency = frappe.get_cached_value('Company', self.filters.company, "default_currency")\
+		self.filters.company_currency = frappe.get_cached_value("Company", self.filters.company, "default_currency")\
 			if self.filters.company else get_default_currency()
 		self.filters.account_currency = self.filters.company_currency
 
-		if self.filters.get("account") or self.filters.get('party'):
+		if self.filters.get("account") or self.filters.get("party"):
 			account_currency = None
 
 			if self.filters.get("account"):
 				account_currency = get_account_currency(self.filters.account)
 			elif self.filters.get("party"):
 				gle_currency = frappe.db.get_value("GL Entry", {
-					"party_type": self.filters.party_type, "party": self.filters.party, "company": self.filters.company
+					"party_type": self.filters.party_type, "party": self.filters.party, "company": self.filters.company,
 				}, "account_currency")
 
 				if gle_currency:
@@ -190,7 +191,7 @@ class PaymentAgeingReport:
 			conditions.append("(gle.against_voucher != '' and gle.against_voucher is not null)")
 		else:
 			conditions.append("((gle.against_voucher != '' and gle.against_voucher is not null) or (gle.{0} - gle.{1}) > 0)".format(
-				self.payment_dr_or_cr, self.invoice_dr_or_cr
+				self.payment_dr_or_cr, self.invoice_dr_or_cr,
 			))
 
 		if self.filters.company:
@@ -215,19 +216,19 @@ class PaymentAgeingReport:
 			if self.filters.get("customer_group"):
 				lft, rgt = frappe.db.get_value("Customer Group", self.filters.get("customer_group"), ["lft", "rgt"])
 				conditions.append("""cus.customer_group in (select name from `tabCustomer Group` where lft >= {0} and rgt <= {1})""".format(
-					lft, rgt
+					lft, rgt,
 				))
 
 			if self.filters.get("territory"):
 				lft, rgt = frappe.db.get_value("Territory", self.filters.get("territory"), ["lft", "rgt"])
 				conditions.append("""cus.territory in (select name from `tabTerritory` where lft >= {0} and rgt <= {1})""".format(
-					lft, rgt
+					lft, rgt,
 				))
 
 			if self.filters.get("account_manager"):
 				lft, rgt = frappe.db.get_value("Sales Person", self.filters.get("account_manager"), ["lft", "rgt"])
 				conditions.append("""cus.account_manager in (select name from `tabSales Person` where lft >= {0} and rgt <= {1})""".format(
-					lft, rgt
+					lft, rgt,
 				))
 
 		elif self.filters.party_type == "Supplier":
@@ -235,7 +236,7 @@ class PaymentAgeingReport:
 			if self.filters.get("supplier_group"):
 				lft, rgt = frappe.db.get_value("Supplier Group", self.filters.get("supplier_group"), ["lft", "rgt"])
 				conditions.append("""sup.supplier_group in (select name from `tabSupplier Group` where lft >= {0} and rgt <= {1})""".format(
-					lft, rgt
+					lft, rgt,
 				))
 
 		if self.filters.get("account"):
@@ -332,7 +333,7 @@ class PaymentAgeingReport:
 		adjustment_voucher_entries = {}
 		for gle in gl_entries:
 			adjustment_voucher_entries.setdefault((gle.voucher_type, gle.voucher_no), [])
-			adjustment_voucher_entries[(gle.voucher_type, gle.voucher_no)].append(gle)
+			adjustment_voucher_entries[gle.voucher_type, gle.voucher_no].append(gle)
 
 		self.adjustment_details = get_adjustment_details(
 			adjustment_voucher_entries,
@@ -429,8 +430,8 @@ class PaymentAgeingReport:
 	def get_grouped_data(self, columns, data):
 		level1 = self.filters.get("group_by", "").replace("Group by ", "")
 		level2 = self.filters.get("group_by_2", "").replace("Group by ", "")
-		level1_fieldname = "party" if level1 in ['Customer', 'Supplier'] else scrub(level1)
-		level2_fieldname = "party" if level2 in ['Customer', 'Supplier'] else scrub(level2)
+		level1_fieldname = "party" if level1 in ["Customer", "Supplier"] else scrub(level1)
+		level2_fieldname = "party" if level2 in ["Customer", "Supplier"] else scrub(level2)
 
 		group_by = [None]
 		group_by_labels = {}
@@ -444,8 +445,8 @@ class PaymentAgeingReport:
 		if len(group_by) <= 1:
 			return data
 
-		total_fields = [c['fieldname'] for c in columns
-			if c['fieldtype'] in ['Float', 'Currency', 'Int'] and c['fieldname'] != 'age']
+		total_fields = [c["fieldname"] for c in columns
+			if c["fieldtype"] in ["Float", "Currency", "Int"] and c["fieldname"] != "age"]
 
 		def postprocess_group(group_object, grouped_by):
 			# Copy grouped by into total row
@@ -453,15 +454,15 @@ class PaymentAgeingReport:
 				group_object.totals[f] = g
 
 			if not group_object.group_field:
-				group_object.totals['voucher_no'] = "'Total'"
+				group_object.totals["voucher_no"] = "'Total'"
 			else:
-				group_object.totals['voucher_no'] = "'{0}: {1}'".format(_(group_object.group_label), group_object.group_value or "None")
+				group_object.totals["voucher_no"] = "'{0}: {1}'".format(_(group_object.group_label), group_object.group_value or "None")
 
-			if group_object.group_field == 'party':
-				group_object.totals['party'] = group_object.group_value
-				group_object.totals['party_name'] = group_object.rows[0].get('party_name')
-				group_object.totals['currency'] = group_object.rows[0].get("currency")
-				group_object.totals['account_manager'] = group_object.rows[0].get("account_manager")
+			if group_object.group_field == "party":
+				group_object.totals["party"] = group_object.group_value
+				group_object.totals["party_name"] = group_object.rows[0].get("party_name")
+				group_object.totals["currency"] = group_object.rows[0].get("currency")
+				group_object.totals["account_manager"] = group_object.rows[0].get("account_manager")
 				group_object.totals["customer_group"] = group_object.rows[0].get("customer_group")
 				group_object.totals["territory"] = group_object.rows[0].get("customer_territory")
 
@@ -476,17 +477,17 @@ class PaymentAgeingReport:
 	def get_chart_data(self, data):
 		rows = []
 		for d in data:
-			rows.append({'values': [d["range{}".format(i+1)] for i in range(self.ageing_column_count)]})
+			rows.append({"values": [d["range{}".format(i + 1)] for i in range(self.ageing_column_count)]})
 
 		return {
 			"data": {
-				"labels": [col.get('label') for col in self.ageing_columns],
-				"datasets": rows
+				"labels": [col.get("label") for col in self.ageing_columns],
+				"datasets": rows,
 			},
-			"colors": ['light-blue', 'blue', 'purple', 'orange', 'red'],
-			"type": 'percentage',
+			"colors": ["light-blue", "blue", "purple", "orange", "red"],
+			"type": "percentage",
 			"fieldtype": "Currency",
-			"options": getattr(self, "account_currency", None)
+			"options": getattr(self, "account_currency", None),
 		}
 
 	def get_columns(self):
@@ -548,7 +549,7 @@ class PaymentAgeingReport:
 				"label": _(self.filters.party_type) + " Name",
 				"fieldname": "party_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Payment Amount"),
@@ -581,7 +582,7 @@ class PaymentAgeingReport:
 					"fieldtype": "Currency",
 					"options": "currency",
 					"width": 110,
-					"is_adjustment": 1
+					"is_adjustment": 1,
 				})
 
 		columns += [
@@ -622,7 +623,7 @@ class PaymentAgeingReport:
 				"label": _("Territory"),
 				"fieldtype": "Link",
 				"options": "Territory",
-				"width": 100
+				"width": 100,
 			},
 		]
 
@@ -654,7 +655,7 @@ class PaymentAgeingReport:
 				"fieldtype": "Link",
 				"options": "Branch",
 				"fieldname": "branch",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Project"),
@@ -668,14 +669,14 @@ class PaymentAgeingReport:
 				"label": _("Customer Group"),
 				"fieldtype": "Link",
 				"options": "Customer Group",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"fieldname": "supplier_group",
 				"label": _("Supplier Group"),
 				"fieldtype": "Link",
 				"options": "Supplier Group",
-				"width": 100
+				"width": 100,
 			},
 		]
 
@@ -717,11 +718,11 @@ class PaymentAgeingReport:
 		for i, upper_limit in enumerate(self.ageing_range):
 			ageing_columns.append({
 				"label": "{0}-{1}".format(lower_limit, upper_limit),
-				"fieldname": "range{}".format(i+1),
+				"fieldname": "range{}".format(i + 1),
 				"fieldtype": "Currency",
 				"options": "currency",
 				"ageing_column": 1,
-				"width": 100
+				"width": 100,
 			})
 			lower_limit = upper_limit + 1
 
@@ -731,6 +732,6 @@ class PaymentAgeingReport:
 			"fieldtype": "Currency",
 			"options": "currency",
 			"ageing_column": 1,
-			"width": 100
+			"width": 100,
 		})
 		return ageing_columns

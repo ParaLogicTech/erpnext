@@ -20,8 +20,9 @@ def get_columns():
 		_("Name") + ":Data:200",
 		_("Date") + ":Date:100",
 		_("Status") + ":Data:70",
-		_("Holiday") + ":Data:200"
+		_("Holiday") + ":Data:200",
 	]
+
 
 def get_employees(filters):
 	holiday_filter = [["holiday_date", ">=", filters.from_date], ["holiday_date", "<=", filters.to_date]]
@@ -38,7 +39,7 @@ def get_employees(filters):
 		holidays_list.append(holiday.holiday_date)
 		holiday_names[holiday.holiday_date] = holiday.description
 
-	if(holidays_list):
+	if (holidays_list):
 		cond = " docstatus = 1 and status in ('Present', 'Half Day') and attendance_date in %(holidays_list)s"
 
 		if filters.holiday_list:
@@ -47,9 +48,9 @@ def get_employees(filters):
 		employee_list = frappe.db.sql("""select
 				employee, employee_name, attendance_date, status
 			from tabAttendance
-			where %s"""% cond.format(', '.join(["%s"] * len(holidays_list))),
-				{'holidays_list':holidays_list,
-				 'holidays':filters.holiday_list}, as_list=True)
+			where %s""" % cond.format(", ".join(["%s"] * len(holidays_list))),
+				{"holidays_list": holidays_list,
+				 "holidays": filters.holiday_list}, as_list=True)
 
 		for employee_data in employee_list:
 			employee_data.append(holiday_names[employee_data[2]])

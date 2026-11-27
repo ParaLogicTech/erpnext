@@ -1,14 +1,16 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
-from frappe.utils import flt
 from frappe.model.document import Document
 from frappe.model.meta import get_field_precision
-from erpnext.setup.utils import get_exchange_rate
+from frappe.utils import flt
+
+import erpnext
 from erpnext.accounts.doctype.journal_entry.journal_entry import get_balance_on
+from erpnext.setup.utils import get_exchange_rate
+
 
 class ExchangeRateRevaluation(Document):
 	def validate(self):
@@ -51,7 +53,7 @@ class ExchangeRateRevaluation(Document):
 					"balance_in_account_currency": d.balance_in_account_currency,
 					"current_exchange_rate": current_exchange_rate,
 					"new_exchange_rate": new_exchange_rate,
-					"new_balance_in_base_currency": new_balance_in_base_currency
+					"new_balance_in_base_currency": new_balance_in_base_currency,
 				})
 
 		if not accounts:
@@ -70,7 +72,7 @@ class ExchangeRateRevaluation(Document):
 				and account_type != 'Stock'
 				and company=%s
 				and account_currency != %s
-			order by name""",(self.company, company_currency))
+			order by name""", (self.company, company_currency))
 
 		account_details = []
 		if accounts:
@@ -84,7 +86,7 @@ class ExchangeRateRevaluation(Document):
 				group by account, party_type, party
 				having sum(debit) != sum(credit)
 				order by account
-			""" % ', '.join(['%s']*len(accounts)), tuple(accounts), as_dict=1)
+			""" % ", ".join(["%s"] * len(accounts)), tuple(accounts), as_dict=1)
 
 		return account_details
 
@@ -100,14 +102,14 @@ class ExchangeRateRevaluation(Document):
 		if self.total_gain_loss == 0:
 			return
 
-		unrealized_exchange_gain_loss_account = frappe.get_cached_value('Company',  self.company,
+		unrealized_exchange_gain_loss_account = frappe.get_cached_value("Company", self.company,
 			"unrealized_exchange_gain_loss_account")
 		if not unrealized_exchange_gain_loss_account:
 			frappe.throw(_("Please set Unrealized Exchange Gain/Loss Account in Company {0}")
 				.format(self.company))
 
-		journal_entry = frappe.new_doc('Journal Entry')
-		journal_entry.voucher_type = 'Exchange Rate Revaluation'
+		journal_entry = frappe.new_doc("Journal Entry")
+		journal_entry.voucher_type = "Exchange Rate Revaluation"
 		journal_entry.company = self.company
 		journal_entry.posting_date = self.posting_date
 		journal_entry.multi_currency = 1
@@ -118,7 +120,7 @@ class ExchangeRateRevaluation(Document):
 				if d.get("balance_in_account_currency") > 0 else "credit_in_account_currency"
 
 			reverse_dr_or_cr = "debit_in_account_currency" \
-				if dr_or_cr=="credit_in_account_currency" else "credit_in_account_currency"
+				if dr_or_cr == "credit_in_account_currency" else "credit_in_account_currency"
 
 			journal_entry_accounts.append({
 				"account": d.get("account"),
@@ -127,7 +129,7 @@ class ExchangeRateRevaluation(Document):
 				"account_currency": d.get("account_currency"),
 				"balance": d.get("balance_in_account_currency"),
 				dr_or_cr: abs(d.get("balance_in_account_currency")),
-				"exchange_rate":d.get("new_exchange_rate"),
+				"exchange_rate": d.get("new_exchange_rate"),
 				"reference_type": "Exchange Rate Revaluation",
 				"reference_name": self.name,
 				})
@@ -140,7 +142,7 @@ class ExchangeRateRevaluation(Document):
 				reverse_dr_or_cr: abs(d.get("balance_in_account_currency")),
 				"exchange_rate": d.get("current_exchange_rate"),
 				"reference_type": "Exchange Rate Revaluation",
-				"reference_name": self.name
+				"reference_name": self.name,
 				})
 
 		journal_entry_accounts.append({
@@ -157,6 +159,7 @@ class ExchangeRateRevaluation(Document):
 		journal_entry.set_amounts_in_company_currency()
 		journal_entry.set_total_debit_credit()
 		return journal_entry.as_dict()
+
 
 @frappe.whitelist()
 def get_account_details(account, company, posting_date, party_type=None, party=None):
@@ -179,7 +182,7 @@ def get_account_details(account, company, posting_date, party_type=None, party=N
 			"balance_in_account_currency": balance_in_account_currency,
 			"current_exchange_rate": current_exchange_rate,
 			"new_exchange_rate": new_exchange_rate,
-			"new_balance_in_base_currency": new_balance_in_base_currency
+			"new_balance_in_base_currency": new_balance_in_base_currency,
 		}
 
 	return account_details

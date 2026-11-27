@@ -1,6 +1,5 @@
-import frappe
 import click
-
+import frappe
 
 fields_to_update = [
 	"total_billable_amount",

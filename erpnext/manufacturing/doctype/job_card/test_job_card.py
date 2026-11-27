@@ -1,26 +1,28 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 import unittest
+
 import frappe
 from frappe.utils import random_string
-from erpnext.manufacturing.doctype.workstation.test_workstation import make_workstation
-from erpnext.manufacturing.doctype.work_order.test_work_order import make_wo_order_test_record
+
 from erpnext.manufacturing.doctype.job_card.job_card import OperationMismatchError
+from erpnext.manufacturing.doctype.work_order.test_work_order import make_wo_order_test_record
+from erpnext.manufacturing.doctype.workstation.test_workstation import make_workstation
+
 
 class TestJobCard(unittest.TestCase):
 	def test_job_card(self):
-		data = frappe.get_cached_value('BOM',
-			{'docstatus': 1, 'with_operations': 1, 'company': '_Test Company'}, ['name', 'item'])
+		data = frappe.get_cached_value("BOM",
+			{"docstatus": 1, "with_operations": 1, "company": "_Test Company"}, ["name", "item"])
 
 		if data:
 			bom, bom_item = data
 
 			work_order = make_wo_order_test_record(item=bom_item, qty=1, bom_no=bom)
 
-			job_cards = frappe.get_all('Job Card',
-				filters = {'work_order': work_order.name}, fields = ["operation_id", "name"])
+			job_cards = frappe.get_all("Job Card",
+				filters={"work_order": work_order.name}, fields=["operation_id", "name"])
 
 			if job_cards:
 				job_card = job_cards[0]
@@ -31,17 +33,17 @@ class TestJobCard(unittest.TestCase):
 				self.assertRaises(OperationMismatchError, doc.save)
 
 	def test_job_card_with_different_work_station(self):
-		data = frappe.get_cached_value('BOM',
-			{'docstatus': 1, 'with_operations': 1, 'company': '_Test Company'}, ['name', 'item'])
+		data = frappe.get_cached_value("BOM",
+			{"docstatus": 1, "with_operations": 1, "company": "_Test Company"}, ["name", "item"])
 
 		if data:
 			bom, bom_item = data
 
 			work_order = make_wo_order_test_record(item=bom_item, qty=1, bom_no=bom)
 
-			job_card = frappe.get_all('Job Card',
-				filters = {'work_order': work_order.name},
-				fields = ["operation_id", "workstation", "name", "for_quantity"])[0]
+			job_card = frappe.get_all("Job Card",
+				filters={"work_order": work_order.name},
+				fields=["operation_id", "workstation", "name", "for_quantity"])[0]
 
 			if job_card:
 				workstation = frappe.db.get_value("Workstation",
@@ -56,7 +58,7 @@ class TestJobCard(unittest.TestCase):
 					"from_time": "2009-01-01 12:06:25",
 					"to_time": "2009-01-01 12:37:25",
 					"time_in_mins": "31.00002",
-					"completed_qty": job_card.for_quantity
+					"completed_qty": job_card.for_quantity,
 				})
 				doc.submit()
 

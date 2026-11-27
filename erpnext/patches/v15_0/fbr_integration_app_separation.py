@@ -1,6 +1,6 @@
 import frappe
 from frappe.installer import install_app
-from frappe.modules.patch_handler import get_patches_from_app, PatchType
+from frappe.modules.patch_handler import PatchType, get_patches_from_app
 
 
 def execute():

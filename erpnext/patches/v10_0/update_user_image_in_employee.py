@@ -3,8 +3,9 @@
 
 import frappe
 
+
 def execute():
-	frappe.reload_doc('hr', 'doctype', 'employee')
+	frappe.reload_doc("hr", "doctype", "employee")
 
 	frappe.db.sql("""
 		UPDATE

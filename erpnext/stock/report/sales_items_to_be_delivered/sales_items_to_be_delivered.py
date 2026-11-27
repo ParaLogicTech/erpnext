@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, getdate
+from frappe.utils import cint, flt, getdate
 
 
 def execute(filters=None):
@@ -13,7 +13,7 @@ def execute(filters=None):
 class OrderItemFulfilmentTracker:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or dict())
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 		self.show_party_name = False
 		self.has_branch = False
 		self.has_project = False
@@ -23,9 +23,9 @@ class OrderItemFulfilmentTracker:
 		self.filters.party_type = "Customer" if doctype == "Sales Order" else "Supplier"
 
 		if self.filters.party_type == "Customer":
-			self.show_party_name = frappe.defaults.get_global_default('cust_master_name') == "Naming Series"
+			self.show_party_name = frappe.defaults.get_global_default("cust_master_name") == "Naming Series"
 		if self.filters.party_type == "Supplier":
-			self.show_party_name = frappe.defaults.get_global_default('supp_master_name') == "Naming Series"
+			self.show_party_name = frappe.defaults.get_global_default("supp_master_name") == "Naming Series"
 
 		self.get_data()
 		self.prepare_data()
@@ -99,7 +99,7 @@ class OrderItemFulfilmentTracker:
 		filter_to_field = {
 			"Stock Qty": "stock_qty",
 			"Contents Qty": "alt_uom_qty",
-			"Transaction Qty": "qty"
+			"Transaction Qty": "qty",
 		}
 		return filter_to_field.get(self.filters.qty_field) or "stock_qty"
 
@@ -145,7 +145,7 @@ class OrderItemFulfilmentTracker:
 				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
 		if self.filters.item_code:
-			if frappe.db.get_value("Item", self.filters.item_code, 'has_variants'):
+			if frappe.db.get_value("Item", self.filters.item_code, "has_variants"):
 				conditions.append("im.variant_of = %(item_code)s")
 			else:
 				conditions.append("i.item_code = %(item_code)s")
@@ -198,7 +198,7 @@ class OrderItemFulfilmentTracker:
 				d.uom = d.stock_uom
 				d.completed_qty = d.completed_qty * d.conversion_factor
 
-			d['rate'] = d['amount'] / d['qty'] if d['qty'] else d['rate']
+			d["rate"] = d["amount"] / d["qty"] if d["qty"] else d["rate"]
 
 			d["remaining_qty"] = d["qty"] - d["completed_qty"]
 			d["actual_qty"] = flt(stock_qty_map.get((d.item_code, d.warehouse)))
@@ -239,144 +239,144 @@ class OrderItemFulfilmentTracker:
 				"label": _("Order Date"),
 				"fieldname": "transaction_date",
 				"fieldtype": "Date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _(self.filters.doctype),
 				"fieldname": "name",
 				"fieldtype": "Link",
 				"options": self.filters.doctype,
-				"width": 140
+				"width": 140,
 			},
 			{
 				"label": _(self.filters.party_type),
 				"fieldname": "party",
 				"fieldtype": "Link",
 				"options": self.filters.party_type,
-				"width": 80 if self.show_party_name else 150
+				"width": 80 if self.show_party_name else 150,
 			},
 			{
 				"label": _(self.filters.party_type) + " Name",
 				"fieldname": "party_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Item Code"),
 				"fieldname": "item_code",
 				"fieldtype": "Link",
 				"options": "Item",
-				"width": 100 if self.show_item_name else 150
+				"width": 100 if self.show_item_name else 150,
 			},
 			{
 				"label": _("Item Name"),
 				"fieldname": "item_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Branch"),
 				"fieldname": "branch",
 				"fieldtype": "Link",
 				"options": "Branch",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Warehouse"),
 				"fieldname": "warehouse",
 				"fieldtype": "Link",
 				"options": "Warehouse",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("UOM"),
 				"fieldtype": "Link",
 				"options": "UOM",
 				"fieldname": "uom",
-				"width": 50
+				"width": 50,
 			},
 			{
 				"label": _("Qty"),
 				"fieldname": "qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Delivered" if self.filters.doctype == "Sales Order" else "Received"),
 				"fieldname": "completed_qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Remaining"),
 				"fieldname": "remaining_qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("In Stock"),
 				"fieldname": "actual_qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Sales Person"),
 				"fieldtype": "Data",
 				"fieldname": "sales_person",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Scheduled Date"),
 				"fieldname": "schedule_date",
 				"fieldtype": "Date",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Delay Days"),
 				"fieldname": "delay_days",
 				"fieldtype": "Int",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Project"),
 				"fieldname": "project",
 				"fieldtype": "Link",
 				"options": "Project",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Status"),
 				"fieldname": "status",
 				"fieldtype": "Data",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Rate"),
 				"fieldname": "rate",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Amount"),
 				"fieldname": "amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Item Group"),
 				"fieldname": "item_group",
 				"fieldtype": "Link",
 				"options": "Item Group",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Brand"),
 				"fieldname": "brand",
 				"fieldtype": "Link",
 				"options": "Brand",
-				"width": 60
+				"width": 60,
 			},
 			{
 				"label": _("Territory"),
@@ -388,16 +388,16 @@ class OrderItemFulfilmentTracker:
 		]
 
 		if not self.show_item_name:
-			columns = [c for c in columns if c['fieldname'] != 'item_name']
+			columns = [c for c in columns if c["fieldname"] != "item_name"]
 		if not self.show_party_name:
-			columns = [c for c in columns if c['fieldname'] != 'party_name']
+			columns = [c for c in columns if c["fieldname"] != "party_name"]
 
 		if self.filters.party_type != "Customer":
-			columns = [c for c in columns if c['fieldname'] not in ('sales_person', 'territory')]
+			columns = [c for c in columns if c["fieldname"] not in ("sales_person", "territory")]
 
 		if not self.has_project:
-			columns = [c for c in columns if c['fieldname'] != 'project']
+			columns = [c for c in columns if c["fieldname"] != "project"]
 		if not self.has_branch:
-			columns = [c for c in columns if c['fieldname'] != 'branch']
+			columns = [c for c in columns if c["fieldname"] != "branch"]
 
 		return columns

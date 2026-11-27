@@ -1,19 +1,21 @@
 # Copyright (c) 2017, Velometro Mobility Inc and contributors
 # For license information, please see license.txt
 
-from frappe.utils import cint
 import frappe
+from frappe.utils import cint
+
 
 def execute(filters=None):
 	wo_list = get_work_orders()
 	data = get_item_list(wo_list, filters)
 	columns = get_columns()
 	return columns, data
-	
+
+
 def get_item_list(wo_list, filters):
 	out = []
-	
-	#Add a row for each item/qty
+
+	# Add a row for each item/qty
 	for wo_details in wo_list:
 		desc = frappe.db.get_value("BOM", wo_details.bom_no, "description")
 
@@ -63,86 +65,88 @@ def get_item_list(wo_list, filters):
 				"bom_no": wo_details.bom_no,
 				"qty": wo_details.qty,
 				"buildable_qty": buildable_qty,
-				"ready_to_build": build
+				"ready_to_build": build,
 			})
 
 			out.append(row)
 
 	return out
-	
+
+
 def get_work_orders():
-	out =  frappe.get_all("Work Order", filters={"docstatus": 1, "status": ( "!=","Completed")},
-		fields=["name","status", "bom_no", "qty", "produced_qty"], order_by='name')
+	out = frappe.get_all("Work Order", filters={"docstatus": 1, "status": ("!=", "Completed")},
+		fields=["name", "status", "bom_no", "qty", "produced_qty"], order_by="name")
 
 	return out
-	
+
+
 def get_columns():
 	columns = [{
 		"fieldname": "work_order",
 		"label": "Work Order",
 		"fieldtype": "Link",
 		"options": "Work Order",
-		"width": 110
+		"width": 110,
 	}, {
 		"fieldname": "bom_no",
 		"label": "BOM",
 		"fieldtype": "Link",
 		"options": "BOM",
-		"width": 120
+		"width": 120,
 	}, {
 		"fieldname": "description",
 		"label": "Description",
 		"fieldtype": "Data",
 		"options": "",
-		"width": 230
+		"width": 230,
 	}, {
 		"fieldname": "item_code",
 		"label": "Item Code",
 		"fieldtype": "Link",
 		"options": "Item",
-		"width": 110
-	},{
+		"width": 110,
+	}, {
 		"fieldname": "source_warehouse",
 		"label": "Source Warehouse",
 		"fieldtype": "Link",
 		"options": "Warehouse",
-		"width": 110
-	},{
+		"width": 110,
+	}, {
 		"fieldname": "qty",
 		"label": "Qty to Build",
 		"fieldtype": "Data",
 		"options": "",
-		"width": 110
+		"width": 110,
 	}, {
 		"fieldname": "status",
 		"label": "Status",
 		"fieldtype": "Data",
 		"options": "",
-		"width": 100
+		"width": 100,
 	}, {
 		"fieldname": "req_items",
 		"label": "# Req'd Items",
 		"fieldtype": "Data",
 		"options": "",
-		"width": 105
+		"width": 105,
 	}, {
 		"fieldname": "instock",
 		"label": "# In Stock",
 		"fieldtype": "Data",
 		"options": "",
-		"width": 105
+		"width": 105,
 	}, {
 		"fieldname": "buildable_qty",
 		"label": "Buildable Qty",
 		"fieldtype": "Data",
 		"options": "",
-		"width": 100
+		"width": 100,
 	}, {
 		"fieldname": "ready_to_build",
 		"label": "Build All?",
 		"fieldtype": "Data",
 		"options": "",
-		"width": 90
+		"width": 90,
 	}]
 
 	return columns

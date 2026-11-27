@@ -3,5 +3,6 @@
 
 import frappe
 
+
 def execute():
 	frappe.db.sql("delete from `tabDesktop Icon`")

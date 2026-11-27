@@ -8,7 +8,7 @@ frappe.views.calendar["Task"] = {
 		"id": "name",
 		"title": "subject",
 		"allDay": "allDay",
-		"progress": "progress"
+		"progress": "progress",
 	},
 	gantt: true,
 	filters: [
@@ -16,8 +16,8 @@ frappe.views.calendar["Task"] = {
 			"fieldtype": "Link",
 			"fieldname": "project",
 			"options": "Project",
-			"label": __("Project")
-		}
+			"label": __("Project"),
+		},
 	],
-	get_events_method: "frappe.desk.calendar.get_events"
-}
+	get_events_method: "frappe.desk.calendar.get_events",
+};

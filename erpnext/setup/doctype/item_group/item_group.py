@@ -7,15 +7,15 @@ from frappe.utils.nestedset import NestedSet
 
 
 class ItemGroup(NestedSet):
-	nsm_parent_field = 'parent_item_group'
+	nsm_parent_field = "parent_item_group"
 
 	def autoname(self):
 		self.name = self.item_group_name
 
 	def validate(self):
 		if not self.parent_item_group and not frappe.flags.in_test:
-			if frappe.db.exists("Item Group", _('All Item Groups')):
-				self.parent_item_group = _('All Item Groups')
+			if frappe.db.exists("Item Group", _("All Item Groups")):
+				self.parent_item_group = _("All Item Groups")
 
 	def on_update(self):
 		NestedSet.on_update(self)

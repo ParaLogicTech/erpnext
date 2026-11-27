@@ -1,13 +1,16 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+from collections import OrderedDict
+from typing import ClassVar
+
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, getdate, today, cstr, combine_datetime
-from erpnext.stock.utils import update_included_uom_in_dict_report, has_valuation_read_permission
-from erpnext.stock.get_item_details import get_item_group_customs_tariff_number
 from frappe.desk.reportview import build_match_conditions
-from collections import OrderedDict
+from frappe.utils import cint, combine_datetime, cstr, flt, getdate, today
+
+from erpnext.stock.get_item_details import get_item_group_customs_tariff_number
+from erpnext.stock.utils import has_valuation_read_permission, update_included_uom_in_dict_report
 
 
 def execute(filters=None):
@@ -15,7 +18,7 @@ def execute(filters=None):
 
 
 class StockBalanceReport:
-	qty_fields = [
+	qty_fields: ClassVar[list[str]] = [
 		"opening_qty",
 		"in_qty",
 		"out_qty",
@@ -31,7 +34,7 @@ class StockBalanceReport:
 		"ordered_qty",
 		"projected_qty",
 	]
-	value_fields = [
+	value_fields: ClassVar[list[str]] = [
 		"opening_val",
 		"in_val",
 		"out_val",
@@ -53,7 +56,7 @@ class StockBalanceReport:
 		self.filters.to_date = getdate(self.filters.to_date or today())
 
 		self.show_amounts = has_valuation_read_permission() and self.filters.show_amounts
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 		self.show_tariff_number = False
 
 		if self.filters.from_date > self.filters.to_date:
@@ -147,7 +150,7 @@ class StockBalanceReport:
 		if self.filters.get("include_uom"):
 			cf_field = ", ucd.conversion_factor"
 			cf_join = "left join `tabUOM Conversion Detail` ucd on ucd.parent = item.name and ucd.uom = {0}".format(
-				frappe.db.escape(self.filters.get("include_uom"))
+				frappe.db.escape(self.filters.get("include_uom")),
 			)
 
 		item_data = frappe.db.sql("""
@@ -176,7 +179,7 @@ class StockBalanceReport:
 			""", [self.items], as_dict=1)
 
 			for d in item_reorder_details:
-				self.item_reorder_map[(d.item_code, d.warehouse)] = d
+				self.item_reorder_map[d.item_code, d.warehouse] = d
 
 		return self.item_reorder_map
 
@@ -290,7 +293,7 @@ class StockBalanceReport:
 				if val and not self.is_package_included() and field != "val_rate":
 					is_empty_balance = False
 
-			if is_empty_balance and (not self.filters.get("show_zero_qty_rows") or item_details.get('disabled')):
+			if is_empty_balance and (not self.filters.get("show_zero_qty_rows") or item_details.get("disabled")):
 				to_remove.append(key)
 
 		for d in to_remove:
@@ -300,7 +303,7 @@ class StockBalanceReport:
 			not d[1].packing_slip,
 			cstr(d[1].packing_slip),
 			d[1].item_code,
-			cstr(d[1].warehouse)
+			cstr(d[1].warehouse),
 		))
 		self.stock_balance_map = OrderedDict(sorted_stock_balance)
 
@@ -387,7 +390,7 @@ class StockBalanceReport:
 					self.conversion_factors.append(flt(item_details.conversion_factor) * alt_uom_size)
 
 				if self.include_stock_ageing_data():
-					fifo_queue = self.fifo_queue_map.get(key, {}).get('fifo_queue')
+					fifo_queue = self.fifo_queue_map.get(key, {}).get("fifo_queue")
 					if fifo_queue:
 						ageing_details = get_ageing_details(fifo_queue, self.filters.to_date)
 						row.update(ageing_details)
@@ -402,7 +405,7 @@ class StockBalanceReport:
 	def get_balance_dict(self, key):
 		if key not in self.stock_balance_map:
 			balance_key_fields = self.get_balance_fields()
-			balance_key_dict = dict(zip(balance_key_fields, key))
+			balance_key_dict = dict(zip(balance_key_fields, key, strict=False))
 
 			empty_balance = {f: 0 for f in self.qty_fields + self.value_fields}
 			self.stock_balance_map[key] = frappe._dict(empty_balance)
@@ -414,14 +417,14 @@ class StockBalanceReport:
 		return get_key(d,
 			include_warehouse=self.is_warehouse_included(),
 			include_batch=self.is_batch_included(),
-			include_package=self.is_package_included()
+			include_package=self.is_package_included(),
 		)
 
 	def get_balance_fields(self):
 		return get_key_fields(
 			include_warehouse=self.is_warehouse_included(),
 			include_batch=self.is_batch_included(),
-			include_package=self.is_package_included()
+			include_package=self.is_package_included(),
 		)
 
 	def include_reorder_details(self):
@@ -431,7 +434,7 @@ class StockBalanceReport:
 		return self.filters.get("show_projected_qty") and not self.is_batch_included() and not self.is_package_included()
 
 	def include_stock_ageing_data(self):
-		return self.filters.get('show_stock_ageing_data')
+		return self.filters.get("show_stock_ageing_data")
 
 	def is_warehouse_included(self):
 		return is_warehouse_included(self.filters)
@@ -522,12 +525,12 @@ class StockBalanceReport:
 				"width": 80},
 			{"label": _("Company"), "fieldname": "company", "fieldtype": "Link", "options": "Company",
 				"width": 100},
-			{'label': _('Average Age'), 'fieldname': 'average_age', 'fieldtype': 'Float',
-				'width': 90, "is_ageing": True},
-			{'label': _('Earliest Age'), 'fieldname': 'earliest_age', 'fieldtype': 'Int',
-				'width': 80, "is_ageing": True},
-			{'label': _('Latest Age'), 'fieldname': 'latest_age', 'fieldtype': 'Int',
-				'width': 80, "is_ageing": True},
+			{"label": _("Average Age"), "fieldname": "average_age", "fieldtype": "Float",
+				"width": 90, "is_ageing": True},
+			{"label": _("Earliest Age"), "fieldname": "earliest_age", "fieldtype": "Int",
+				"width": 80, "is_ageing": True},
+			{"label": _("Latest Age"), "fieldname": "latest_age", "fieldtype": "Int",
+				"width": 80, "is_ageing": True},
 		]
 
 		if not self.is_warehouse_included():
@@ -570,7 +573,7 @@ def get_items_for_stock_report(filters):
 
 	conditions = []
 	if filters.get("item_code"):
-		is_template = frappe.db.get_value("Item", filters.get('item_code'), 'has_variants')
+		is_template = frappe.db.get_value("Item", filters.get("item_code"), "has_variants")
 		if is_template:
 			conditions.append("item.variant_of = %(item_code)s")
 		else:
@@ -592,7 +595,7 @@ def get_items_for_stock_report(filters):
 			elif filters.get("customer_provided_items") == "Exclude Customer Provided Items":
 				conditions.append("item.is_customer_provided_item = 0")
 
-	hooks = frappe.get_hooks('set_sle_item_conditions')
+	hooks = frappe.get_hooks("set_sle_item_conditions")
 	for method in hooks:
 		frappe.get_attr(method)(filters, conditions, alias="item")
 
@@ -611,7 +614,7 @@ def get_stock_ledger_entries_for_stock_report(filters, item_list=None):
 	item_conditions = ""
 	if item_list:
 		item_conditions = " and item_code in ({0})".format(
-			', '.join([frappe.db.escape(i, percent=False) for i in item_list]))
+			", ".join([frappe.db.escape(i, percent=False) for i in item_list]))
 
 	sle_conditions = get_sle_conditions(filters)
 

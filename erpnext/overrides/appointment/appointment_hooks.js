@@ -44,18 +44,18 @@ erpnext.AppointmentERP = class AppointmentERP extends crm.Appointment {
 			}
 
 			if (!customer) {
-				this.frm.add_custom_button(__('Customer'), () => {
+				this.frm.add_custom_button(__("Customer"), () => {
 					erpnext.utils.make_customer_from_lead(this.frm, this.frm.doc.party_name);
-				}, __('Create'));
+				}, __("Create"));
 			}
 
 			if (frappe.model.can_create("Project")) {
-				this.frm.add_custom_button(__('Project'), () => this.make_project(),
-					__('Create'));
+				this.frm.add_custom_button(__("Project"), () => this.make_project(),
+					__("Create"));
 			}
 
 			if (this.frm.page.get_inner_group_button(__("Create")).length) {
-				this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+				this.frm.page.set_inner_btn_group_as_primary(__("Create"));
 			}
 		}
 	}
@@ -64,7 +64,7 @@ erpnext.AppointmentERP = class AppointmentERP extends crm.Appointment {
 		this.frm.check_if_unsaved();
 		frappe.model.open_mapped_doc({
 			method: "erpnext.overrides.appointment.appointment_hooks.get_project",
-			frm: this.frm
+			frm: this.frm,
 		});
 	}
 
@@ -87,7 +87,7 @@ erpnext.AppointmentERP = class AppointmentERP extends crm.Appointment {
 					if (r.message) {
 						frappe.model.set_value(row.doctype, row.name, r.message);
 					}
-				}
+				},
 			});
 		}
 	}
@@ -97,12 +97,12 @@ erpnext.AppointmentERP = class AppointmentERP extends crm.Appointment {
 			customer: this.frm.doc.appointment_for == "Customer" ? this.frm.doc.party_name : null,
 			applies_to_item: this.frm.doc.applies_to_item,
 			date: this.frm.doc.scheduled_date,
-		}
+		};
 	}
 
 	add_service_template(service_template, check_duplicate) {
 		return erpnext.utils.add_service_template_row(this.frm, service_template, check_duplicate);
 	}
-}
+};
 
-extend_cscript(cur_frm.cscript, new erpnext.AppointmentERP({ frm: cur_frm }));
+extend_cscript(cur_frm.cscript, new erpnext.AppointmentERP({frm: cur_frm}));

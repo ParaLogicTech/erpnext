@@ -3,19 +3,19 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, nowdate, getdate
-from erpnext.controllers.buying_controller import BuyingController
-from erpnext.accounts.utils import get_account_currency
 from frappe.desk.notifications import clear_doctype_notifications
 from frappe.model.mapper import get_mapped_doc
-from erpnext.buying.utils import check_on_hold_or_closed_status
+from frappe.utils import cint, flt, getdate, nowdate
+
+from erpnext.accounts.utils import get_account_currency
 from erpnext.assets.doctype.asset.asset import get_asset_account, is_cwip_accounting_enabled
 from erpnext.assets.doctype.asset_category.asset_category import get_asset_category_account
+from erpnext.buying.utils import check_on_hold_or_closed_status
+from erpnext.controllers.buying_controller import BuyingController
 from erpnext.stock import get_warehouse_account_map
 
-
 form_grid_templates = {
-	"items": "templates/form_grid/item_grid.html"
+	"items": "templates/form_grid/item_grid.html",
 }
 
 
@@ -57,18 +57,18 @@ class PurchaseReceipt(BuyingController):
 
 	def on_submit(self):
 		if not self.is_return:
-			self.auto_create_batches('warehouse')
+			self.auto_create_batches("warehouse")
 
 		super().on_submit()
 
 		# Check for Approving Authority
-		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype, self.company, self.base_grand_total)
+		frappe.get_doc("Authorization Control").validate_approving_authority(self.doctype, self.company, self.base_grand_total)
 
 		self.validate_previous_docstatus()
 		self.update_previous_doc_status()
 		self.update_project_purchase_status()
 
-		if not self.get('is_return'):
+		if not self.get("is_return"):
 			self.update_last_purchase_rate()
 
 		from erpnext.accounts.doctype.sales_invoice.sales_invoice import update_linked_doc
@@ -100,7 +100,7 @@ class PurchaseReceipt(BuyingController):
 		self.update_previous_doc_status()
 		self.update_project_purchase_status()
 
-		if not self.get('is_return'):
+		if not self.get("is_return"):
 			self.update_last_purchase_rate()
 
 		# Updating stock ledger should always be called after updating prevdoc status,
@@ -187,31 +187,31 @@ class PurchaseReceipt(BuyingController):
 			d.returned_qty = flt(data.receipt_return_qty_map.get(d.name))
 			if update:
 				d.db_set({
-					'billed_qty': d.billed_qty,
-					'billed_amt': d.billed_amt,
-					'returned_qty': d.returned_qty,
+					"billed_qty": d.billed_qty,
+					"billed_amt": d.billed_amt,
+					"returned_qty": d.returned_qty,
 				}, update_modified=update_modified)
 
 		# update percentage in parent
-		self.per_returned = flt(self.calculate_status_percentage('returned_qty', 'qty', self.items))
-		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', self.items)
-		self.per_completed = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty', self.items)
+		self.per_returned = flt(self.calculate_status_percentage("returned_qty", "qty", self.items))
+		self.per_billed = self.calculate_status_percentage("billed_qty", "qty", self.items)
+		self.per_completed = self.calculate_status_percentage(["billed_qty", "returned_qty"], "qty", self.items)
 		if self.per_completed is None:
-			total_billed_qty = flt(sum([flt(d.billed_qty) for d in self.items]), self.precision('total_qty'))
+			total_billed_qty = flt(sum([flt(d.billed_qty) for d in self.items]), self.precision("total_qty"))
 			self.per_billed = 100 if total_billed_qty else 0
 			self.per_completed = 100 if total_billed_qty else 0
 
 		# update billing_status
-		self.billing_status = self.get_completion_status('per_completed', 'Bill',
+		self.billing_status = self.get_completion_status("per_completed", "Bill",
 			not_applicable=self.status == "Closed" or self.per_returned == 100 or self.is_return,
-			not_applicable_based_on='per_billed')
+			not_applicable_based_on="per_billed")
 
 		if update:
 			self.db_set({
-				'per_billed': self.per_billed,
-				'per_returned': self.per_returned,
-				'per_completed': self.per_completed,
-				'billing_status': self.billing_status,
+				"per_billed": self.per_billed,
+				"per_returned": self.per_returned,
+				"per_completed": self.per_completed,
+				"billing_status": self.billing_status,
 			}, update_modified=update_modified)
 
 	def get_billing_status_data(self):
@@ -251,16 +251,16 @@ class PurchaseReceipt(BuyingController):
 		return out
 
 	def validate_returned_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty('returned_qty', 'qty', self.items,
+		self.validate_completed_qty("returned_qty", "qty", self.items,
 			allowance_type=None, from_doctype=from_doctype, row_names=row_names)
 
 	def validate_billed_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty(['billed_qty', 'returned_qty'], 'qty', self.items,
-			allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
+		self.validate_completed_qty(["billed_qty", "returned_qty"], "qty", self.items,
+			allowance_type="billing", from_doctype=from_doctype, row_names=row_names)
 
 		if frappe.get_cached_value("Accounts Settings", None, "validate_over_billing_in_purchase_invoice"):
-			self.validate_completed_qty('billed_amt', 'amount', self.items,
-				allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
+			self.validate_completed_qty("billed_amt", "amount", self.items,
+				allowance_type="billing", from_doctype=from_doctype, row_names=row_names)
 
 	def update_status(self, status):
 		self.set_status(status=status)
@@ -271,7 +271,7 @@ class PurchaseReceipt(BuyingController):
 		clear_doctype_notifications(self)
 
 	def validate_previous_docstatus(self):
-		for d in self.get('items'):
+		for d in self.get("items"):
 			if d.purchase_order and frappe.db.get_value("Purchase Order", d.purchase_order, "docstatus", cache=1) != 1:
 				frappe.throw(_("Row #{0}: Purchase Order {1} is not submitted").format(d.idx, d.purchase_order))
 
@@ -282,26 +282,26 @@ class PurchaseReceipt(BuyingController):
 		super().validate_with_previous_doc({
 			"Purchase Order": {
 				"ref_dn_field": "purchase_order",
-				"compare_fields": [["supplier", "="], ["company", "="],	["currency", "="],
+				"compare_fields": [["supplier", "="], ["company", "="], ["currency", "="],
 					["supplier_warehouse", "="]],
 			},
 			"Purchase Order Item": {
 				"ref_dn_field": "purchase_order_item",
 				"compare_fields": [["project", "="], ["uom", "="], ["item_code", "="]],
 				"is_child_table": True,
-				"allow_duplicate_prev_row_id": True
+				"allow_duplicate_prev_row_id": True,
 			},
 			"Purchase Receipt Item": {
 				"ref_dn_field": "purchase_receipt_item",
 				"compare_fields": [["project", "="], ["item_code", "="]],
 				"is_child_table": True,
-				"allow_duplicate_prev_row_id": True
-			}
+				"allow_duplicate_prev_row_id": True,
+			},
 		})
 
 		self.validate_work_orders()
 
-		if cint(frappe.db.get_single_value('Buying Settings', 'maintain_same_rate')) and not self.is_return:
+		if cint(frappe.db.get_single_value("Buying Settings", "maintain_same_rate")) and not self.is_return:
 			self.validate_rate_with_reference_doc([["Purchase Order", "purchase_order", "purchase_order_item"]])
 
 	def validate_return_against(self, against_doc):
@@ -309,7 +309,7 @@ class PurchaseReceipt(BuyingController):
 
 		if self.supplier != against_doc.supplier:
 			frappe.throw(_("Supplier must be same as {1} {2} ({3}").format(
-				return_against_label, against_doc.name, frappe.bold(against_doc.supplier)
+				return_against_label, against_doc.name, frappe.bold(against_doc.supplier),
 			))
 
 	def check_next_docstatus(self):
@@ -321,38 +321,38 @@ class PurchaseReceipt(BuyingController):
 			frappe.throw(_("Purchase Invoice {0} is already submitted").format(self.submit_rv[0][0]))
 
 	def validate_cwip_accounts(self):
-		for item in self.get('items'):
+		for item in self.get("items"):
 			if item.is_fixed_asset and is_cwip_accounting_enabled(item.asset_category):
 				# check cwip accounts before making auto assets
 				# Improves UX by not giving messages of "Assets Created" before throwing error of not finding arbnb account
-				arbnb_account = self.get_company_default("asset_received_but_not_billed")
-				cwip_account = get_asset_account("capital_work_in_progress_account", asset_category = item.asset_category, \
-					company = self.company)
+				self.get_company_default("asset_received_but_not_billed")
+				get_asset_account("capital_work_in_progress_account", asset_category=item.asset_category,
+					company=self.company)
 				break
 
 	def validate_order_required(self):
 		if self.is_return:
 			return
 
-		po_required = frappe.get_cached_value("Buying Settings", None, 'po_required') == 'Yes'
-		if self.get('transaction_type'):
-			tt_po_required = frappe.get_cached_value('Transaction Type', self.get('transaction_type'), 'po_required')
+		po_required = frappe.get_cached_value("Buying Settings", None, "po_required") == "Yes"
+		if self.get("transaction_type"):
+			tt_po_required = frappe.get_cached_value("Transaction Type", self.get("transaction_type"), "po_required")
 			if tt_po_required:
-				po_required = tt_po_required == 'Yes'
+				po_required = tt_po_required == "Yes"
 
 		if po_required:
-			for d in self.get('items'):
+			for d in self.get("items"):
 				if not d.purchase_order:
 					frappe.throw(_("Purchase Order required for Item {0}").format(d.item_code))
 
 	# Check for Closed status
 	def check_on_hold_or_closed_status(self):
-		check_list =[]
-		for d in self.get('items'):
-			if (d.meta.get_field('purchase_order') and d.purchase_order
+		check_list = []
+		for d in self.get("items"):
+			if (d.meta.get_field("purchase_order") and d.purchase_order
 				and d.purchase_order not in check_list):
 				check_list.append(d.purchase_order)
-				check_on_hold_or_closed_status('Purchase Order', d.purchase_order, is_return=self.get('is_return'))
+				check_on_hold_or_closed_status("Purchase Order", d.purchase_order, is_return=self.get("is_return"))
 
 	def validate_warehouse(self):
 		self.validate_warehouse_mandatory()
@@ -395,7 +395,7 @@ class PurchaseReceipt(BuyingController):
 				"against": stock_rbnb,
 				"cost_center": d.cost_center or self.get("cost_center"),
 				"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
-				"debit": stock_value_diff
+				"debit": stock_value_diff,
 			}, warehouse_account[d.warehouse]["account_currency"], item=d))
 
 			# credit stock received but not billed
@@ -405,12 +405,14 @@ class PurchaseReceipt(BuyingController):
 					"against": warehouse_account[d.warehouse]["account"],
 					"cost_center": d.cost_center or self.get("cost_center"),
 					"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
-					"credit": flt(valuation_net_amount + valuation_item_tax_amount, d.precision('base_net_amount'))
+					"credit": flt(valuation_net_amount + valuation_item_tax_amount, d.precision("base_net_amount")),
 				}, stock_rbnb_currency, item=d))
 
 			# Amount added through landed-cost-voucher
 			if flt(d.landed_cost_voucher_amount):
-				from erpnext.stock.doctype.landed_cost_voucher.landed_cost_voucher import get_purchase_landed_cost_gl_details
+				from erpnext.stock.doctype.landed_cost_voucher.landed_cost_voucher import (
+					get_purchase_landed_cost_gl_details,
+				)
 				landed_cost_gl_details = get_purchase_landed_cost_gl_details(self, d)
 				for lc_gl_details in landed_cost_gl_details:
 					gl_entries.append(self.get_gl_dict({
@@ -419,7 +421,7 @@ class PurchaseReceipt(BuyingController):
 						"cost_center": lc_gl_details.cost_center or d.cost_center or self.get("cost_center"),
 						"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 						"credit": flt(lc_gl_details.amount),
-						"project": d.project
+						"project": d.project,
 					}, item=d))
 
 			# divisional loss adjustment
@@ -438,7 +440,7 @@ class PurchaseReceipt(BuyingController):
 					"cost_center": d.cost_center or self.get("cost_center"),
 					"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 					"debit": divisional_loss,
-					"project": d.project
+					"project": d.project,
 				}, loss_account_currency, item=d))
 
 		self.validate_warehouse_with_no_account(warehouse_with_no_account)
@@ -458,10 +460,10 @@ class PurchaseReceipt(BuyingController):
 	def add_asset_gl_entries(self, item, gl_entries):
 		arbnb_account = self.get_company_default("asset_received_but_not_billed")
 		# This returns category's cwip account if not then fallback to company's default cwip account
-		cwip_account = get_asset_account("capital_work_in_progress_account", asset_category = item.asset_category, \
-			company = self.company)
+		cwip_account = get_asset_account("capital_work_in_progress_account", asset_category=item.asset_category,
+			company=self.company)
 
-		asset_amount = flt(item.net_amount) + flt(item.item_tax_amount/self.conversion_rate)
+		asset_amount = flt(item.net_amount) + flt(item.item_tax_amount / self.conversion_rate)
 		base_asset_amount = flt(item.base_net_amount + item.item_tax_amount)
 
 		cwip_account_currency = get_account_currency(cwip_account)
@@ -473,7 +475,7 @@ class PurchaseReceipt(BuyingController):
 			"remarks": self.get("remarks") or _("Accounting Entry for Asset"),
 			"debit": base_asset_amount,
 			"debit_in_account_currency": (base_asset_amount
-				if cwip_account_currency == self.company_currency else asset_amount)
+				if cwip_account_currency == self.company_currency else asset_amount),
 		}, item=item))
 
 		asset_rbnb_currency = get_account_currency(arbnb_account)
@@ -485,13 +487,13 @@ class PurchaseReceipt(BuyingController):
 			"remarks": self.get("remarks") or _("Accounting Entry for Asset"),
 			"credit": base_asset_amount,
 			"credit_in_account_currency": (base_asset_amount
-				if asset_rbnb_currency == self.company_currency else asset_amount)
+				if asset_rbnb_currency == self.company_currency else asset_amount),
 		}, item=item))
 
 	def add_lcv_gl_entries(self, item, gl_entries):
 		expenses_included_in_asset_valuation = self.get_company_default("expenses_included_in_asset_valuation")
 		if not is_cwip_accounting_enabled(item.asset_category):
-			asset_account = get_asset_category_account(asset_category=item.asset_category, fieldname='fixed_asset_account',
+			asset_account = get_asset_category_account(asset_category=item.asset_category, fieldname="fixed_asset_account",
 				company=self.company)
 		else:
 			# This returns company's default cwip account
@@ -503,7 +505,7 @@ class PurchaseReceipt(BuyingController):
 			"cost_center": item.cost_center or self.get("cost_center"),
 			"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 			"credit": flt(item.landed_cost_voucher_amount),
-			"project": item.project
+			"project": item.project,
 		}, item=item))
 
 		gl_entries.append(self.get_gl_dict({
@@ -512,12 +514,12 @@ class PurchaseReceipt(BuyingController):
 			"cost_center": item.cost_center or self.get("cost_center"),
 			"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 			"debit": flt(item.landed_cost_voucher_amount),
-			"project": item.project
+			"project": item.project,
 		}, item=item))
 
 	def update_assets(self, item, valuation_rate):
-		assets = frappe.db.get_all('Asset',
-			filters={ 'purchase_receipt': self.name, 'item_code': item.item_code }
+		assets = frappe.db.get_all("Asset",
+			filters={"purchase_receipt": self.name, "item_code": item.item_code},
 		)
 
 		for asset in assets:
@@ -553,10 +555,10 @@ def make_purchase_invoice(source_name, target_doc=None):
 		return source_doc.qty - source_doc.billed_qty - source_doc.returned_qty
 
 	def item_condition(source, source_parent, target_parent):
-		if source.name in [d.purchase_receipt_item for d in target_parent.get('items') if d.purchase_receipt_item]:
+		if source.name in [d.purchase_receipt_item for d in target_parent.get("items") if d.purchase_receipt_item]:
 			return False
 
-		if source_parent.get('is_return'):
+		if source_parent.get("is_return"):
 			return get_pending_qty(source) <= 0
 		else:
 			return get_pending_qty(source) > 0
@@ -579,11 +581,11 @@ def make_purchase_invoice(source_name, target_doc=None):
 		"Purchase Receipt": {
 			"doctype": "Purchase Invoice",
 			"field_map": {
-				"supplier_warehouse":"supplier_warehouse",
+				"supplier_warehouse": "supplier_warehouse",
 				"is_return": "is_return",
 				"remarks": "remarks",
 				"bill_to": "bill_to",
-				"bill_date": "bill_date"
+				"bill_date": "bill_date",
 			},
 			"validation": {
 				"docstatus": ["=", 1],
@@ -609,8 +611,8 @@ def make_purchase_invoice(source_name, target_doc=None):
 		},
 		"Purchase Taxes and Charges": {
 			"doctype": "Purchase Taxes and Charges",
-			"add_if_empty": True
-		}
+			"add_if_empty": True,
+		},
 	}
 
 	frappe.utils.call_hook_method("update_purchase_invoice_from_purchase_receipt_mapper", mapper, "Purchase Invoice")
@@ -633,12 +635,12 @@ def update_purchase_receipt_status(docname, status):
 
 
 @frappe.whitelist()
-def make_stock_entry(source_name,target_doc=None):
+def make_stock_entry(source_name, target_doc=None):
 	def set_missing_values(source, target):
 		target.stock_entry_type = "Material Transfer"
 		target.purpose = "Material Transfer"
 
-	doclist = get_mapped_doc("Purchase Receipt", source_name,{
+	doclist = get_mapped_doc("Purchase Receipt", source_name, {
 		"Purchase Receipt": {
 			"doctype": "Stock Entry",
 		},
@@ -646,7 +648,7 @@ def make_stock_entry(source_name,target_doc=None):
 			"doctype": "Stock Entry Detail",
 			"field_map": {
 				"warehouse": "s_warehouse",
-				"parent": "reference_purchase_receipt"
+				"parent": "reference_purchase_receipt",
 			},
 		},
 	}, target_doc, set_missing_values)

@@ -1,22 +1,23 @@
 # Copyright (c) 2018, Frappe and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import frappe
 from frappe.model.rename_doc import rename_doc
 from frappe.model.utils.rename_field import rename_field
-import frappe
+
 
 def execute():
-	rename_doc('DocType', 'Production Order', 'Work Order', force=True)
-	frappe.reload_doc('manufacturing', 'doctype', 'work_order')
+	rename_doc("DocType", "Production Order", "Work Order", force=True)
+	frappe.reload_doc("manufacturing", "doctype", "work_order")
 
-	rename_doc('DocType', 'Production Order Item', 'Work Order Item', force=True)
-	frappe.reload_doc('manufacturing', 'doctype', 'work_order_item')
+	rename_doc("DocType", "Production Order Item", "Work Order Item", force=True)
+	frappe.reload_doc("manufacturing", "doctype", "work_order_item")
 
-	rename_doc('DocType', 'Production Order Operation', 'Work Order Operation', force=True)
-	frappe.reload_doc('manufacturing', 'doctype', 'work_order_operation')
+	rename_doc("DocType", "Production Order Operation", "Work Order Operation", force=True)
+	frappe.reload_doc("manufacturing", "doctype", "work_order_operation")
 
-	frappe.reload_doc('projects', 'doctype', 'timesheet')
-	frappe.reload_doc('stock', 'doctype', 'stock_entry')
+	frappe.reload_doc("projects", "doctype", "timesheet")
+	frappe.reload_doc("stock", "doctype", "stock_entry")
 	rename_field("Timesheet", "production_order", "work_order")
 	rename_field("Stock Entry", "production_order", "work_order")
 

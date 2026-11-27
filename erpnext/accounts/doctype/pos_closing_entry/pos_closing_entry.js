@@ -1,22 +1,22 @@
 // Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('POS Closing Entry', {
+frappe.ui.form.on("POS Closing Entry", {
 	setup(frm) {
-		frm.set_query("user", function (doc) {
+		frm.set_query("user", function(doc) {
 			return {
 				query: "erpnext.accounts.doctype.pos_profile.pos_profile.cashiers_query",
 			};
 		});
 
-		frm.set_query('pos_profile', function(doc) {
-			if(!doc.company) {
-				frappe.throw(__('Please set Company'));
+		frm.set_query("pos_profile", function(doc) {
+			if (!doc.company) {
+				frappe.throw(__("Please set Company"));
 			}
 
 			let filters = {
 				company: doc.company,
-			}
+			};
 			if (doc.user) {
 				filters["user"] = doc.user;
 			}
@@ -25,7 +25,7 @@ frappe.ui.form.on('POS Closing Entry', {
 			}
 
 			return {
-				query: 'erpnext.accounts.doctype.pos_profile.pos_profile.pos_profile_query',
+				query: "erpnext.accounts.doctype.pos_profile.pos_profile.pos_profile_query",
 				filters: filters,
 			};
 		});
@@ -102,7 +102,7 @@ frappe.ui.form.on('POS Closing Entry', {
 							frm.set_value("pos_profile", r.message);
 						}
 					}
-				}
+				},
 			});
 		}
 	},
@@ -125,7 +125,7 @@ frappe.ui.form.on('POS Closing Entry', {
 				freeze: 1,
 				callback: function(r) {
 					frm.refresh_fields();
-				}
+				},
 			});
 		}
 	},
@@ -153,7 +153,7 @@ frappe.ui.form.on('POS Closing Entry', {
 		frm.doc.total_difference = 0;
 
 		for (let d of frm.doc.payment_reconciliation || []) {
-			d.difference = flt(d.closing_amount) - flt(d.expected_amount)
+			d.difference = flt(d.closing_amount) - flt(d.expected_amount);
 
 			frm.doc.total_closing += flt(d.closing_amount);
 			frm.doc.total_difference += flt(d.difference);
@@ -168,12 +168,12 @@ frappe.ui.form.on('POS Closing Entry', {
 			args: {
 				"pos_closing_entry": frm.doc.name,
 			},
-			callback: function (r) {
+			callback: function(r) {
 				if (!r.exc) {
 					var doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	},
 
@@ -183,20 +183,20 @@ frappe.ui.form.on('POS Closing Entry', {
 			args: {
 				"pos_closing_entry": frm.doc.name,
 			},
-			callback: function (r) {
+			callback: function(r) {
 				if (!r.exc) {
 					var doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 	},
 });
 
-frappe.ui.form.on('POS Closing Entry Reconciliation', {
+frappe.ui.form.on("POS Closing Entry Reconciliation", {
 	closing_amount: function(frm) {
 		frm.events.calculate_totals(frm);
-	}
+	},
 });
 
 frappe.ui.form.on("POS Cash Denomination", {

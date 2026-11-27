@@ -2,7 +2,9 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
+
 from erpnext.accounts.report.accounts_receivable.accounts_receivable import ReceivablePayableReport
+
 
 def execute(filters=None):
 	args = {

@@ -9,12 +9,12 @@ app_color = "#e74c3c"
 app_email = "info@erpnext.com"
 app_license = "GNU General Public License (v3)"
 source_link = "https://github.com/frappe/erpnext"
-app_logo_url = '/assets/erpnext/images/erpnext-logo.svg'
+app_logo_url = "/assets/erpnext/images/erpnext-logo.svg"
 required_apps = [
 	"payments",
-	"ParaLogicTech/crm"
+	"ParaLogicTech/crm",
 ]
-develop_version = '15.x.x-develop'
+develop_version = "15.x.x-develop"
 
 app_include_js = "erpnext.bundle.js"
 app_include_css = "erpnext.bundle.css"
@@ -135,8 +135,8 @@ fixtures = [
 				"Customer Feedback-applies_to_serial_no",
 				"Customer Feedback-applies_to_item",
 				"Customer Feedback-applies_to_item_name",
-			]]
-		}
+			]],
+		},
 	},
 ]
 
@@ -154,16 +154,16 @@ notification_config = "erpnext.startup.notifications.get_notification_config"
 leaderboards = "erpnext.startup.leaderboard.get_leaderboards"
 
 treeviews = [
-	'Account',
-	'Cost Center',
-	'Warehouse',
-	'Item Group',
-	'Customer Group',
-	'Department',
-	'Quality Procedure',
-	'Location',
-	'Service Template Category',
-	'Supplier Group',
+	"Account",
+	"Cost Center",
+	"Warehouse",
+	"Item Group",
+	"Customer Group",
+	"Department",
+	"Quality Procedure",
+	"Location",
+	"Service Template Category",
+	"Supplier Group",
 ]
 
 email_append_to = ["Job Applicant", "Issue"]
@@ -171,15 +171,15 @@ email_append_to = ["Job Applicant", "Issue"]
 calendars = ["Task", "Work Order", "Leave Application", "Sales Order", "Holiday List"]
 
 domains = {
-	'Distribution': 'erpnext.domains.distribution',
-	'Manufacturing': 'erpnext.domains.manufacturing',
-	'Retail': 'erpnext.domains.retail',
-	'Services': 'erpnext.domains.services',
+	"Distribution": "erpnext.domains.distribution",
+	"Manufacturing": "erpnext.domains.manufacturing",
+	"Retail": "erpnext.domains.retail",
+	"Services": "erpnext.domains.services",
 }
 
 website_context = {
 	"favicon": 	"/assets/erpnext/images/erpnext-favicon.svg",
-	"splash_image": "/assets/erpnext/images/erpnext-logo.svg"
+	"splash_image": "/assets/erpnext/images/erpnext-logo.svg",
 }
 
 before_tests = "erpnext.setup.utils.before_tests"
@@ -192,25 +192,25 @@ doc_events = {
 	"User": {
 		"after_insert": "frappe.contacts.doctype.contact.contact.update_contact",
 		"validate": "erpnext.hr.doctype.employee.employee.validate_employee_role",
-		"on_update": ["erpnext.hr.doctype.employee.employee.update_user_permissions"]
+		"on_update": ["erpnext.hr.doctype.employee.employee.update_user_permissions"],
 	},
 	"Sales Invoice": {
 		"on_submit": ["erpnext.regional.create_transaction_log", "erpnext.regional.italy.utils.sales_invoice_on_submit"],
 		"on_cancel": "erpnext.regional.italy.utils.sales_invoice_on_cancel",
-		"on_trash": "erpnext.regional.check_deletion_permission"
+		"on_trash": "erpnext.regional.check_deletion_permission",
 	},
 	"Purchase Invoice": {
-		"validate": "erpnext.regional.india.utils.update_grand_total_for_rcm"
+		"validate": "erpnext.regional.india.utils.update_grand_total_for_rcm",
 	},
 	"Payment Entry": {
 		"on_submit": ["erpnext.regional.create_transaction_log"],
-		"on_trash": "erpnext.regional.check_deletion_permission"
+		"on_trash": "erpnext.regional.check_deletion_permission",
 	},
-	'Address': {
-		'validate': ['erpnext.regional.india.utils.validate_gstin_for_india', 'erpnext.regional.italy.utils.set_state_code', 'erpnext.regional.india.utils.update_gst_category']
+	"Address": {
+		"validate": ["erpnext.regional.india.utils.validate_gstin_for_india", "erpnext.regional.italy.utils.set_state_code", "erpnext.regional.india.utils.update_gst_category"],
 	},
-	('Sales Invoice', 'Sales Order', 'Delivery Note', 'Purchase Invoice', 'Purchase Order', 'Purchase Receipt'): {
-		'validate': ['erpnext.regional.india.utils.set_place_of_supply']
+	("Sales Invoice", "Sales Order", "Delivery Note", "Purchase Invoice", "Purchase Order", "Purchase Receipt"): {
+		"validate": ["erpnext.regional.india.utils.set_place_of_supply"],
 	},
 	"Contact": {
 		"on_trash": "erpnext.support.doctype.issue.issue.update_issue",
@@ -231,7 +231,7 @@ scheduler_events = {
 		],
 	},
 	"hourly": [
-		'erpnext.hr.doctype.daily_work_summary_group.daily_work_summary_group.trigger_emails',
+		"erpnext.hr.doctype.daily_work_summary_group.daily_work_summary_group.trigger_emails",
 		"erpnext.accounts.doctype.subscription.subscription.process_all",
 		"erpnext.hr.doctype.shift_type.shift_type.process_auto_attendance_for_all_shifts",
 		"erpnext.support.doctype.issue.issue.set_service_level_agreement_variance",
@@ -269,18 +269,18 @@ scheduler_events = {
 	"monthly_long": [
 		"erpnext.accounts.deferred_revenue.convert_deferred_revenue_to_income",
 		"erpnext.accounts.deferred_revenue.convert_deferred_expense_to_expense",
-		"erpnext.hr.utils.allocate_earned_leaves"
-	]
+		"erpnext.hr.utils.allocate_earned_leaves",
+	],
 }
 
 get_translated_dict = {
-	("doctype", "Global Defaults"): "frappe.geo.country_info.get_translated_dict"
+	("doctype", "Global Defaults"): "frappe.geo.country_info.get_translated_dict",
 }
 
-get_site_info = 'erpnext.utilities.get_site_info'
+get_site_info = "erpnext.utilities.get_site_info"
 
 get_customer_feedback_contact_details = [
-	"erpnext.overrides.customer_feedback.customer_feedback_hooks.get_customer_feedback_contact_details_hook"
+	"erpnext.overrides.customer_feedback.customer_feedback_hooks.get_customer_feedback_contact_details_hook",
 ]
 
 get_primary_contact = "erpnext.accounts.party.get_primary_contact_hook"
@@ -299,33 +299,33 @@ exchange_rate_providers = {
 }
 
 jinja = {
-	'methods': [
-		'erpnext.stock.utils.format_item_name',
-		'erpnext.get_default_company',
-		'erpnext.get_default_branch',
-		'erpnext.get_company_address_doc',
-		'erpnext.accounts.utils.format_account',
-		'erpnext.accounts.utils.format_cost_center',
-	]
+	"methods": [
+		"erpnext.stock.utils.format_item_name",
+		"erpnext.get_default_company",
+		"erpnext.get_default_branch",
+		"erpnext.get_company_address_doc",
+		"erpnext.accounts.utils.format_account",
+		"erpnext.accounts.utils.format_cost_center",
+	],
 }
 
 regional_overrides = {
-	'France': {
-		'erpnext.tests.test_regional.test_method': 'erpnext.regional.france.utils.test_method'
+	"France": {
+		"erpnext.tests.test_regional.test_method": "erpnext.regional.france.utils.test_method",
 	},
-	'India': {
-		'erpnext.tests.test_regional.test_method': 'erpnext.regional.india.utils.test_method',
-		'erpnext.controllers.taxes_and_totals.get_itemised_tax_breakup_header': 'erpnext.regional.india.utils.get_itemised_tax_breakup_header',
-		'erpnext.controllers.taxes_and_totals.get_itemised_tax_breakup_data': 'erpnext.regional.india.utils.get_itemised_tax_breakup_data',
-		'erpnext.accounts.party.get_regional_address_details': 'erpnext.regional.india.utils.get_regional_address_details',
-		'erpnext.hr.utils.calculate_annual_eligible_hra_exemption': 'erpnext.regional.india.utils.calculate_annual_eligible_hra_exemption',
-		'erpnext.hr.utils.calculate_hra_exemption_for_period': 'erpnext.regional.india.utils.calculate_hra_exemption_for_period',
-		'erpnext.accounts.doctype.purchase_invoice.purchase_invoice.make_regional_gl_entries': 'erpnext.regional.india.utils.make_regional_gl_entries'
+	"India": {
+		"erpnext.tests.test_regional.test_method": "erpnext.regional.india.utils.test_method",
+		"erpnext.controllers.taxes_and_totals.get_itemised_tax_breakup_header": "erpnext.regional.india.utils.get_itemised_tax_breakup_header",
+		"erpnext.controllers.taxes_and_totals.get_itemised_tax_breakup_data": "erpnext.regional.india.utils.get_itemised_tax_breakup_data",
+		"erpnext.accounts.party.get_regional_address_details": "erpnext.regional.india.utils.get_regional_address_details",
+		"erpnext.hr.utils.calculate_annual_eligible_hra_exemption": "erpnext.regional.india.utils.calculate_annual_eligible_hra_exemption",
+		"erpnext.hr.utils.calculate_hra_exemption_for_period": "erpnext.regional.india.utils.calculate_hra_exemption_for_period",
+		"erpnext.accounts.doctype.purchase_invoice.purchase_invoice.make_regional_gl_entries": "erpnext.regional.india.utils.make_regional_gl_entries",
 	},
-	'Italy': {
-		'erpnext.controllers.taxes_and_totals.update_itemised_tax_data': 'erpnext.regional.italy.utils.update_itemised_tax_data',
-		'erpnext.controllers.accounts_controller.validate_regional': 'erpnext.regional.italy.utils.sales_invoice_validate',
-	}
+	"Italy": {
+		"erpnext.controllers.taxes_and_totals.update_itemised_tax_data": "erpnext.regional.italy.utils.update_itemised_tax_data",
+		"erpnext.controllers.accounts_controller.validate_regional": "erpnext.regional.italy.utils.sales_invoice_validate",
+	},
 }
 
 advance_against_voucher_types = ["Sales Order", "Purchase Order", "Proforma Invoice", "Employee Advance"]
@@ -346,7 +346,7 @@ accounting_dimension_doctypes = [
 	"Journal Entry", "Journal Entry Account",
 	"Expense Entry", "Expense Entry Detail",
 	"Payment Entry", "Payment Entry Deduction", "Advance Taxes and Charges",
-	"Payment Request", 
+	"Payment Request",
 
 	"Stock Entry", "Stock Entry Detail",
 	"Packing Slip", "Packing Slip Item", "Packing Slip Packaging Material",
@@ -414,5 +414,5 @@ global_search_doctypes = {
 		{"doctype": "Maintenance Schedule", "index": 41},
 		{"doctype": "Maintenance Visit", "index": 42},
 		{"doctype": "Warranty Claim", "index": 43},
-	]
+	],
 }

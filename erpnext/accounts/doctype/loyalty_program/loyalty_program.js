@@ -1,14 +1,14 @@
 // Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Loyalty Program', {
+frappe.ui.form.on("Loyalty Program", {
 	setup: function(frm) {
-		var help_content =
-			`<table class="table table-bordered" style="background-color: #f9f9f9;">
+		var help_content
+			= `<table class="table table-bordered" style="background-color: #f9f9f9;">
 				<tr><td>
 					<h4>
 						<i class="fa fa-hand-right"></i>
-						${__('Notes')}
+						${__("Notes")}
 					</h4>
 					<ul>
 						<li>
@@ -42,17 +42,17 @@ frappe.ui.form.on('Loyalty Program', {
 			return {
 				filters: {
 					"root_type": "Expense",
-					'is_group': 0,
-					'company': doc.company
-				}
+					"is_group": 0,
+					"company": doc.company,
+				},
 			};
 		});
 
 		frm.set_query("cost_center", function() {
 			return {
 				filters: {
-					company: frm.doc.company
-				}
+					company: frm.doc.company,
+				},
 			};
 		});
 
@@ -63,5 +63,5 @@ frappe.ui.form.on('Loyalty Program', {
 		if (frm.doc.loyalty_program_type === "Single Tier Program" && frm.doc.collection_rules.length > 1) {
 			frappe.throw(__("Please select the Multiple Tier Program type for more than one collection rules."));
 		}
-	}
+	},
 });

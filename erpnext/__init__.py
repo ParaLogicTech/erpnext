@@ -1,25 +1,26 @@
-# -*- coding: utf-8 -*-
-import frappe
-from frappe.utils import cint
-from erpnext.hooks import regional_overrides
 import inspect
 import json
 
-__version__ = '15.0.0'
+import frappe
+from frappe.utils import cint
+
+from erpnext.hooks import regional_overrides
+
+__version__ = "15.0.0"
 
 
 def get_default_company(user=None):
-	'''Get default company for user'''
+	"""Get default company for user"""
 	from frappe.defaults import get_user_default_as_list
 
 	if not user:
 		user = frappe.session.user
 
-	companies = get_user_default_as_list('company', user)
+	companies = get_user_default_as_list("company", user)
 	if companies:
 		default_company = companies[0]
 	else:
-		default_company = frappe.db.get_single_value('Global Defaults', 'default_company')
+		default_company = frappe.db.get_single_value("Global Defaults", "default_company")
 
 	return default_company
 
@@ -76,10 +77,10 @@ def get_company_address(args):
 
 
 def get_default_currency():
-	'''Returns the currency of the default company'''
+	"""Returns the currency of the default company"""
 	company = get_default_company()
 	if company:
-		return frappe.get_cached_value('Company',  company,  'default_currency')
+		return frappe.get_cached_value("Company", company, "default_currency")
 
 
 def get_default_cost_center(company):
@@ -90,7 +91,7 @@ def get_default_cost_center(company):
 	if not frappe.flags.company_cost_center:
 		frappe.flags.company_cost_center = {}
 	if company not in frappe.flags.company_cost_center:
-		frappe.flags.company_cost_center[company] = frappe.get_cached_value("Company",  company,  "cost_center")
+		frappe.flags.company_cost_center[company] = frappe.get_cached_value("Company", company, "cost_center")
 	return frappe.flags.company_cost_center[company]
 
 
@@ -102,7 +103,7 @@ def get_company_currency(company):
 	if not frappe.flags.company_currency:
 		frappe.flags.company_currency = {}
 	if company not in frappe.flags.company_currency:
-		frappe.flags.company_currency[company] = frappe.get_cached_value("Company",  company,  "default_currency")
+		frappe.flags.company_currency[company] = frappe.get_cached_value("Company", company, "default_currency")
 	return frappe.flags.company_currency[company]
 
 
@@ -116,8 +117,8 @@ def set_perpetual_inventory(enable=1, company=None):
 
 
 def encode_company_abbr(name, company):
-	'''Returns name encoded with company abbreviation'''
-	company_abbr = frappe.get_cached_value('Company',  company,  "abbr")
+	"""Returns name encoded with company abbreviation"""
+	company_abbr = frappe.get_cached_value("Company", company, "abbr")
 	parts = name.rsplit(" - ", 1)
 
 	if parts[-1].lower() != company_abbr.lower():
@@ -130,12 +131,12 @@ def is_perpetual_inventory_enabled(company):
 	if not company:
 		company = "_Test Company" if frappe.flags.in_test else get_default_company()
 
-	if not hasattr(frappe.local, 'enable_perpetual_inventory'):
+	if not hasattr(frappe.local, "enable_perpetual_inventory"):
 		frappe.local.enable_perpetual_inventory = {}
 
-	if not company in frappe.local.enable_perpetual_inventory:
-		frappe.local.enable_perpetual_inventory[company] = frappe.get_cached_value('Company',
-			company,  "enable_perpetual_inventory") or 0
+	if company not in frappe.local.enable_perpetual_inventory:
+		frappe.local.enable_perpetual_inventory[company] = frappe.get_cached_value("Company",
+			company, "enable_perpetual_inventory") or 0
 
 	return frappe.local.enable_perpetual_inventory[company]
 
@@ -144,12 +145,12 @@ def get_default_finance_book(company=None):
 	if not company:
 		company = get_default_company()
 
-	if not hasattr(frappe.local, 'default_finance_book'):
+	if not hasattr(frappe.local, "default_finance_book"):
 		frappe.local.default_finance_book = {}
 
-	if not company in frappe.local.default_finance_book:
-		frappe.local.default_finance_book[company] = frappe.get_cached_value('Company',
-			company,  "default_finance_book")
+	if company not in frappe.local.default_finance_book:
+		frappe.local.default_finance_book[company] = frappe.get_cached_value("Company",
+			company, "default_finance_book")
 
 	return frappe.local.default_finance_book[company]
 
@@ -166,33 +167,32 @@ def get_party_account_type(party_type):
 
 
 def get_region(company=None):
-	'''Return the default country based on flag, company or global settings
+	"""Return the default country based on flag, company or global settings
 
 	You can also set global company flag in `frappe.flags.company`
-	'''
+	"""
 	if company or frappe.flags.company:
-		return frappe.get_cached_value('Company',
-			company or frappe.flags.company,  'country')
+		return frappe.get_cached_value("Company",
+			company or frappe.flags.company, "country")
 	elif frappe.flags.country:
 		return frappe.flags.country
 	else:
-		return frappe.get_system_settings('country')
+		return frappe.get_system_settings("country")
 
 
 def allow_regional(fn):
-	'''Decorator to make a function regionally overridable
+	"""Decorator to make a function regionally overridable
 
 	Example:
 	@erpnext.allow_regional
 	def myfunction():
-	  pass'''
+	  pass"""
 	def caller(*args, **kwargs):
 		region = get_region()
-		fn_name = inspect.getmodule(fn).__name__ + '.' + fn.__name__
+		fn_name = inspect.getmodule(fn).__name__ + "." + fn.__name__
 		if region in regional_overrides and fn_name in regional_overrides[region]:
 			return frappe.get_attr(regional_overrides[region][fn_name])(*args, **kwargs)
 		else:
 			return fn(*args, **kwargs)
 
 	return caller
-

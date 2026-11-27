@@ -1,5 +1,6 @@
 import frappe
 from frappe.utils import flt
+
 from erpnext.accounts.general_ledger import delete_voucher_gl_entries
 
 
@@ -9,7 +10,7 @@ def execute():
 
 	for name in pinvs:
 		doc = frappe.get_doc("Purchase Invoice", name)
-		party_type, party, party_name = doc.get_billing_party()
+		party_type, party, _party_name = doc.get_billing_party()
 
 		supplier_bal = frappe.db.sql("""
 			select sum(credit-debit)
@@ -21,10 +22,10 @@ def execute():
 
 		grand_total = doc.base_rounded_total or doc.base_grand_total
 		grand_total -= doc.base_write_off_amount
-		if doc.get('is_paid'):
+		if doc.get("is_paid"):
 			grand_total -= doc.base_paid_amount
 
-		grand_total = flt(grand_total, doc.precision('grand_total'))
+		grand_total = flt(grand_total, doc.precision("grand_total"))
 
 		if supplier_bal != grand_total:
 			print("REPOSTING {} (GLE {} / INV {})".format(doc.name, supplier_bal, grand_total))

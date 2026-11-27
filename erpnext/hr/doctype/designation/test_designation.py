@@ -3,7 +3,9 @@
 
 
 import frappe
+
 # test_records = frappe.get_test_records('Designation')
+
 
 def create_designation(**args):
     args = frappe._dict(args)
@@ -13,7 +15,7 @@ def create_designation(**args):
     designation = frappe.get_doc({
         "doctype": "Designation",
         "designation_name": args.designation_name or "_Test designation",
-        "description": args.description or "_Test description"
+        "description": args.description or "_Test description",
     })
     designation.save()
     return designation

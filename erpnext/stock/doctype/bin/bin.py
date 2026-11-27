@@ -2,15 +2,15 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.utils import flt, nowdate
 import frappe.defaults
 from frappe.model.document import Document
+from frappe.utils import flt, nowdate
 
 
 class Bin(Document):
 	def before_save(self):
 		if self.get("__islocal") or not self.stock_uom:
-			self.stock_uom = frappe.get_cached_value('Item', self.item_code, 'stock_uom')
+			self.stock_uom = frappe.get_cached_value("Item", self.item_code, "stock_uom")
 		self.set_projected_qty()
 
 	def update_stock(self, args, allow_negative_stock=False, via_landed_cost_voucher=False):
@@ -31,7 +31,7 @@ class Bin(Document):
 				"posting_time": args.get("posting_time"),
 				"creation": args.get("creation"),
 				"sle_id": args.get("sle_id"),
-				"voucher_no": args.get("voucher_no")
+				"voucher_no": args.get("voucher_no"),
 			}, allow_negative_stock=allow_negative_stock, via_landed_cost_voucher=via_landed_cost_voucher)
 
 	def set_projected_qty(self):
@@ -47,21 +47,21 @@ class Bin(Document):
 			order by timestamp(posting_date, posting_time) asc, creation asc
 			limit 1
 		""", (self.item_code, self.warehouse), as_dict=1)
-		return sle and sle[0] or None
+		return (sle and sle[0]) or None
 
 	def update_reserved_qty_for_production(self):
-		'''Update qty reserved for production from Production Item tables
-			in open work orders'''
+		"""Update qty reserved for production from Production Item tables
+			in open work orders"""
 		self.reserved_qty_for_production = get_reserved_qty_for_production(self.item_code, self.warehouse)
 
 		self.set_projected_qty()
 
-		self.db_set('reserved_qty_for_production', flt(self.reserved_qty_for_production))
-		self.db_set('projected_qty', self.projected_qty)
+		self.db_set("reserved_qty_for_production", flt(self.reserved_qty_for_production))
+		self.db_set("projected_qty", self.projected_qty)
 
 	def update_reserved_qty_for_sub_contracting(self):
-		#reserved qty
-		reserved_qty_for_sub_contract = frappe.db.sql('''
+		# reserved qty
+		reserved_qty_for_sub_contract = frappe.db.sql("""
 			select ifnull(sum(itemsup.required_qty), 0)
 			from `tabPurchase Order` po, `tabPurchase Order Item Supplied` itemsup
 			where
@@ -71,9 +71,9 @@ class Bin(Document):
 				and po.is_subcontracted = 1
 				and po.status != 'Closed'
 				and po.receipt_status = 'To Receive'
-				and itemsup.reserve_warehouse = %s''', (self.item_code, self.warehouse))[0][0]
+				and itemsup.reserve_warehouse = %s""", (self.item_code, self.warehouse))[0][0]
 
-		#Get Transferred Entries
+		# Get Transferred Entries
 		materials_transferred = frappe.db.sql("""
 			select
 				ifnull(sum(sed.stock_qty), 0)
@@ -90,16 +90,16 @@ class Bin(Document):
 				and po.is_subcontracted = 1
 				and po.status != 'Closed'
 				and po.receipt_status = 'To Receive'
-		""", {'item': self.item_code})[0][0]
+		""", {"item": self.item_code})[0][0]
 
 		if reserved_qty_for_sub_contract > materials_transferred:
 			reserved_qty_for_sub_contract = reserved_qty_for_sub_contract - materials_transferred
 		else:
 			reserved_qty_for_sub_contract = 0
 
-		self.db_set('reserved_qty_for_sub_contract', reserved_qty_for_sub_contract)
+		self.db_set("reserved_qty_for_sub_contract", reserved_qty_for_sub_contract)
 		self.set_projected_qty()
-		self.db_set('projected_qty', self.projected_qty)
+		self.db_set("projected_qty", self.projected_qty)
 
 
 def get_reserved_qty_for_production(item_code, warehouse, work_order=None):
@@ -107,7 +107,7 @@ def get_reserved_qty_for_production(item_code, warehouse, work_order=None):
 	if work_order:
 		work_order_condition = " and pro.name = %(work_order)s"
 
-	return flt(frappe.db.sql('''
+	return flt(frappe.db.sql("""
 		SELECT
 			IF(pro.skip_transfer = 1 or item.skip_transfer_for_manufacture = 1,
 				SUM((item.required_qty - item.consumed_qty) * item.conversion_factor),
@@ -125,8 +125,8 @@ def get_reserved_qty_for_production(item_code, warehouse, work_order=None):
 				or ((pro.skip_transfer = 1 or item.skip_transfer_for_manufacture = 1) and item.required_qty > item.consumed_qty)
 			)
 			{0}
-	'''.format(work_order_condition), {
-		'item_code': item_code, 'warehouse': warehouse, 'work_order': work_order
+	""".format(work_order_condition), {
+		"item_code": item_code, "warehouse": warehouse, "work_order": work_order,
 	})[0][0])
 
 

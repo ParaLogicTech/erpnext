@@ -2,7 +2,7 @@
 // License: GNU General Public License v3. See license.txt
 
 frappe.ui.form.on("Rename Tool", {
-	refresh: function (frm) {
+	refresh: function(frm) {
 		frm.disable_save();
 
 		frm.get_field("file_to_rename").df.options = {
@@ -13,7 +13,7 @@ frappe.ui.form.on("Rename Tool", {
 
 		frm.trigger("render_overview");
 
-		frm.page.set_primary_action(__("Rename"), function () {
+		frm.page.set_primary_action(__("Rename"), function() {
 			frappe.call({
 				method: "erpnext.utilities.doctype.rename_tool.rename_tool.upload",
 				args: {
@@ -21,7 +21,7 @@ frappe.ui.form.on("Rename Tool", {
 				},
 				freeze: true,
 				freeze_message: __("Scheduling..."),
-				callback: function () {
+				callback: function() {
 					frappe.msgprint({
 						message: __("Rename jobs for doctype {0} have been enqueued.", [
 							frm.doc.select_doctype,
@@ -34,7 +34,7 @@ frappe.ui.form.on("Rename Tool", {
 
 					frm.trigger("render_overview");
 				},
-				error: function (r) {
+				error: function(r) {
 					frappe.msgprint({
 						message: __("Rename jobs for doctype {0} have not been enqueued.", [
 							frm.doc.select_doctype,
@@ -48,9 +48,9 @@ frappe.ui.form.on("Rename Tool", {
 			});
 		});
 	},
-	render_overview: function (frm) {
+	render_overview: function(frm) {
 		frappe.db
-			.get_list("RQ Job", { filters: { status: ["in", ["started", "queued", "finished", "failed"]] } })
+			.get_list("RQ Job", {filters: {status: ["in", ["started", "queued", "finished", "failed"]]}})
 			.then((jobs) => {
 				let counts = {
 					started: 0,

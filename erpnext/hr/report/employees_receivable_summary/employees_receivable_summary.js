@@ -4,76 +4,76 @@
 frappe.query_reports["Employees Receivable Summary"] = {
 	"filters": [
 		{
-			"fieldname":"company",
+			"fieldname": "company",
 			"label": __("Company"),
 			"fieldtype": "Link",
 			"options": "Company",
-			"default": frappe.defaults.get_user_default("Company")
+			"default": frappe.defaults.get_user_default("Company"),
 		},
 		{
-			"fieldname":"ageing_based_on",
+			"fieldname": "ageing_based_on",
 			"label": __("Ageing Based On"),
 			"fieldtype": "Select",
-			"options": 'Posting Date\nDue Date',
-			"default": "Posting Date"
+			"options": "Posting Date\nDue Date",
+			"default": "Posting Date",
 		},
 		{
-			"fieldname":"report_date",
+			"fieldname": "report_date",
 			"label": __("Date"),
 			"fieldtype": "Date",
-			"default": frappe.datetime.get_today()
+			"default": frappe.datetime.get_today(),
 		},
 		{
-			"fieldname":"range1",
+			"fieldname": "range1",
 			"label": __("Ageing Range 1"),
 			"fieldtype": "Int",
 			"default": "30",
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
-			"fieldname":"range2",
+			"fieldname": "range2",
 			"label": __("Ageing Range 2"),
 			"fieldtype": "Int",
 			"default": "60",
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
-			"fieldname":"range3",
+			"fieldname": "range3",
 			"label": __("Ageing Range 3"),
 			"fieldtype": "Int",
 			"default": "90",
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
-			"fieldname":"range4",
+			"fieldname": "range4",
 			"label": __("Ageing Range 4"),
 			"fieldtype": "Int",
 			"default": "120",
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
-			"fieldname":"employee",
+			"fieldname": "employee",
 			"label": __("Employee"),
 			"fieldtype": "Link",
-			"options": "Employee"
+			"options": "Employee",
 		},
 		{
-			"fieldname":"department",
+			"fieldname": "department",
 			"label": __("Department"),
 			"fieldtype": "Link",
-			"options": "Department"
+			"options": "Department",
 		},
 		{
-			"fieldname":"designation",
+			"fieldname": "designation",
 			"label": __("Designation"),
 			"fieldtype": "Link",
-			"options": "Designation"
+			"options": "Designation",
 		},
 		{
-			"fieldname":"branch",
+			"fieldname": "branch",
 			"label": __("Branch"),
 			"fieldtype": "Link",
-			"options": "Branch"
+			"options": "Branch",
 		},
 		{
 			"fieldname": "account",
@@ -81,16 +81,16 @@ frappe.query_reports["Employees Receivable Summary"] = {
 			"fieldtype": "Link",
 			"options": "Account",
 			"get_query": function() {
-				var company = frappe.query_report.get_filter_value('company');
+				var company = frappe.query_report.get_filter_value("company");
 				return {
 					"doctype": "Account",
 					"filters": {
 						"company": company,
 						"account_type": ["in", ["Payable", "Receivable"]],
-						"is_group": 0
-					}
-				}
-			}
+						"is_group": 0,
+					},
+				};
+			},
 		},
 		{
 			"fieldname": "cost_center",
@@ -98,27 +98,27 @@ frappe.query_reports["Employees Receivable Summary"] = {
 			"fieldtype": "Link",
 			"options": "Cost Center",
 			get_query: () => {
-				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+				return {filters: {company: frappe.query_report.get_filter_value("company")}};
 			},
 		},
 		{
-			"fieldname":"project",
+			"fieldname": "project",
 			"label": __("Project"),
 			"fieldtype": "Link",
-			"options": "Project"
+			"options": "Project",
 		},
 		{
-			"fieldname":"finance_book",
+			"fieldname": "finance_book",
 			"label": __("Finance Book"),
 			"fieldtype": "Link",
-			"options": "Finance Book"
+			"options": "Finance Book",
 		},
 	],
 
 	onload: function(report) {
 		report.page.add_inner_button(__("Employees Receivable"), function() {
 			var filters = report.get_values();
-			frappe.set_route('query-report', 'Employees Receivable', {company: filters.company});
+			frappe.set_route("query-report", "Employees Receivable", {company: filters.company});
 		});
-	}
-}
+	},
+};
