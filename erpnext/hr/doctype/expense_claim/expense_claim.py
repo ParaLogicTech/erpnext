@@ -178,7 +178,7 @@ class ExpenseClaim(AccountsController):
 			if d.project:
 				projects.append(d.project)
 			if d.task:
-				tasks.append(d.tasks)
+				tasks.append(d.task)
 
 		projects = set(projects)
 		for project in projects:
@@ -413,8 +413,6 @@ def make_bank_entry(dt, dn):
 	je.append("accounts", {
 		"account": default_bank_cash_account.account,
 		"credit_in_account_currency": payable_amount,
-		"reference_type": "Expense Claim",
-		"reference_name": expense_claim.name,
 		"balance": default_bank_cash_account.balance,
 		"account_currency": default_bank_cash_account.account_currency,
 		"account_type": default_bank_cash_account.account_type,
