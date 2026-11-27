@@ -26,7 +26,6 @@ class StockSettings(Document):
 		global_default_fields = [
 			"item_naming_by",
 			"item_group",
-			"stock_uom",
 			"weight_uom",
 			"restrict_stock_valuation_to_role",
 			"allow_negative_stock",

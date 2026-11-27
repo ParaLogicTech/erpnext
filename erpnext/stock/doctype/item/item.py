@@ -89,6 +89,7 @@ class Item(Document):
 
 	def before_insert(self):
 		self.set_item_override_values()
+		self.set_default_stock_uom()
 		self.validate_customer_provided_part()
 
 	def after_insert(self):
@@ -742,6 +743,10 @@ class Item(Document):
 	def set_item_override_values(self):
 		override_values = get_item_override_values(self.as_dict())["values"]
 		self.update(override_values)
+
+	def set_default_stock_uom(self):
+		if not self.stock_uom:
+			self.stock_uom = frappe.db.get_single_value("Stock Settings", "stock_uom")
 
 	def validate_item_override_values(self):
 		get_item_override_values(self.as_dict(), validate=True)
