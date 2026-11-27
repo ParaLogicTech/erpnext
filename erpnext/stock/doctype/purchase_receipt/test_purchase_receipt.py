@@ -6,6 +6,7 @@ import unittest
 
 import frappe
 import frappe.defaults
+from frappe.tests.utils import change_settings
 from frappe.utils import cint, cstr, flt, random_string, today
 
 import erpnext
@@ -13,7 +14,7 @@ from erpnext import set_perpetual_inventory
 from erpnext.accounts.doctype.account.test_account import get_inventory_account
 from erpnext.stock.doctype.item.test_item import create_item, make_item
 from erpnext.stock.doctype.purchase_receipt.purchase_receipt import make_purchase_invoice
-from erpnext.stock.doctype.serial_no.serial_no import SerialNoDuplicateError
+from erpnext.tests.utils import assert_raises_and_rollback, set_return_against_row_references
 
 
 class TestPurchaseReceipt(unittest.TestCase):
@@ -76,8 +77,9 @@ class TestPurchaseReceipt(unittest.TestCase):
 		batch_no = pr.items[0].batch_no
 		pr.cancel()
 
+		# auto created batches are unlinked on cancel, not deleted
 		self.assertFalse(frappe.db.get_value("Batch", {"item": item.name, "reference_name": pr.name}))
-		self.assertFalse(frappe.db.get_all("Serial No", {"batch_no": batch_no}))
+		self.assertTrue(frappe.db.exists("Batch", batch_no))
 
 	def test_purchase_receipt_gl_entry(self):
 		pr = make_purchase_receipt(company="_Test Company with perpetual inventory", warehouse="Stores - TCP1", supplier_warehouse="Work in Progress - TCP1", get_multiple_items=True, get_taxes_and_charges=True)
@@ -90,19 +92,17 @@ class TestPurchaseReceipt(unittest.TestCase):
 		stock_in_hand_account = get_inventory_account(pr.company, pr.items[0].warehouse)
 		fixed_asset_account = get_inventory_account(pr.company, pr.items[1].warehouse)
 
+		# Stock Received But Not Billed is credited with the valuation taxes too, not the tax accounts
 		if stock_in_hand_account == fixed_asset_account:
 			expected_values = {
 				stock_in_hand_account: [750.0, 0.0],
-				"Stock Received But Not Billed - TCP1": [0.0, 500.0],
-				"_Test Account Shipping Charges - TCP1": [0.0, 100.0],
-				"_Test Account Customs Duty - TCP1": [0.0, 150.0],
+				"Stock Received But Not Billed - TCP1": [0.0, 750.0],
 			}
 		else:
 			expected_values = {
 				stock_in_hand_account: [375.0, 0.0],
 				fixed_asset_account: [375.0, 0.0],
-				"Stock Received But Not Billed - TCP1": [0.0, 500.0],
-				"_Test Account Shipping Charges - TCP1": [0.0, 250.0],
+				"Stock Received But Not Billed - TCP1": [0.0, 750.0],
 			}
 		for gle in gl_entries:
 			self.assertEqual(expected_values[gle.account][0], gle.debit)
@@ -315,13 +315,13 @@ class TestPurchaseReceipt(unittest.TestCase):
 		item_code = "_Test Purchase Return For Multi-UOM"
 		if not frappe.db.exists("Item", item_code):
 			item = make_item(item_code, {"stock_uom": "Box"})
-			row = item.append("uom_conversion_graph", {
+			item.append("uom_conversion_graph", {
 				"from_qty": 1,
 				"from_uom": "Unit",
 				"to_qty": 0.1,  # conversion factor
 				"to_uom": item.stock_uom,
 			})
-			row.db_update()
+			item.save()
 
 		pr = make_purchase_receipt(item_code=item_code, qty=1, uom="Box", conversion_factor=1.0)
 		return_pr = make_purchase_receipt(item_code=item_code, qty=-10, uom="Unit",
@@ -379,8 +379,9 @@ class TestPurchaseReceipt(unittest.TestCase):
 		self.assertEqual(pr1.per_billed, 100)
 		self.assertEqual(pr1.status, "Completed")
 
-		self.assertEqual(pr2.get("items")[0].billed_amt, 2000)
-		self.assertEqual(pr2.per_billed, 80)
+		# only invoices against the receipt's rows bill it, not the invoice made from the Purchase Order
+		self.assertEqual(pr2.get("items")[0].billed_amt, 0)
+		self.assertEqual(pr2.per_billed, 0)
 		self.assertEqual(pr2.status, "To Bill")
 
 	def test_serial_no_against_purchase_receipt(self):
@@ -413,7 +414,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		from erpnext.stock.doctype.delivery_note.test_delivery_note import create_delivery_note
 		from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
 
-		item_code = frappe.db.get_value("Item", {"has_serial_no": 1, "is_fixed_asset": 0, "has_batch_no": 0})
+		item_code = frappe.db.get_value("Item", {"has_serial_no": 1, "is_fixed_asset": 0, "has_batch_no": 0, "is_vehicle": 0})
 		if not item_code:
 			item = make_item("Test Serial Item 1", dict(has_serial_no=1, has_batch_no=0))
 			item_code = item.name
@@ -422,12 +423,12 @@ class TestPurchaseReceipt(unittest.TestCase):
 		make_purchase_receipt(item_code=item_code, qty=1, serial_no=serial_no)
 		create_delivery_note(item_code=item_code, qty=1, serial_no=serial_no)
 
-		pr = make_purchase_receipt(item_code=item_code, qty=1, serial_no=serial_no, do_not_submit=True)
-		self.assertRaises(SerialNoDuplicateError, pr.submit)
+		# a delivered Serial No can be received again, but not while it's in stock
+		make_purchase_receipt(item_code=item_code, qty=1, serial_no=serial_no)
 
 		se = make_stock_entry(item_code=item_code, target="_Test Warehouse - _TC", qty=1,
 			serial_no=serial_no, basic_rate=100, do_not_submit=True)
-		self.assertRaises(SerialNoDuplicateError, se.submit)
+		assert_raises_and_rollback(self, frappe.ValidationError, se.submit)
 
 	def test_auto_asset_creation(self):
 		asset_item = "Test Asset Item"
@@ -449,7 +450,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 						"company_name": "_Test Company",
 						"fixed_asset_account": "_Test Fixed Asset - _TC",
 						"accumulated_depreciation_account": "_Test Accumulated Depreciations - _TC",
-						"depreciation_expense_account": "_Test Depreciation - _TC",
+						"depreciation_expense_account": "_Test Depreciations - _TC",
 					}],
 				}).insert()
 
@@ -495,6 +496,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 
 		pr_return.submit()
 
+	@change_settings("Accounts Settings", {"allow_cost_center_in_entry_of_bs_account": 1})
 	def test_purchase_receipt_cost_center(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
 		cost_center = "_Test Cost Center for BS Account - TCP1"
@@ -524,6 +526,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		for _i, gle in enumerate(gl_entries):
 			self.assertEqual(expected_values[gle.account]["cost_center"], gle.cost_center)
 
+	@change_settings("Accounts Settings", {"allow_cost_center_in_entry_of_bs_account": 1})
 	def test_purchase_receipt_cost_center_with_balance_sheet_account(self):
 		if not frappe.db.exists("Location", "Test Location"):
 			frappe.get_doc({
@@ -730,8 +733,8 @@ def get_items(**args):
 	"rate": 50.0,
 	"received_qty": 5.0,
 	"rejected_qty": 0.0,
-	"stock_uom": "_Test UOM",
-	"uom": "_Test UOM",
+	"stock_uom": "_Test UOM 1",
+	"uom": "_Test UOM 1",
 	"warehouse": args.warehouse or "_Test Warehouse 1 - _TC",
 	"cost_center": args.cost_center or "Main - _TC",
 	}]
@@ -789,6 +792,9 @@ def make_purchase_receipt(**args):
 	if args.get_taxes_and_charges:
 		for tax in get_taxes():
 			pr.append("taxes", tax)
+
+	if args.return_against:
+		set_return_against_row_references(pr)
 
 	if not args.do_not_save:
 		pr.insert()

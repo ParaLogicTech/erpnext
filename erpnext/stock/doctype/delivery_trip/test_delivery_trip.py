@@ -4,22 +4,23 @@
 import unittest
 
 import frappe
-from frappe.utils import add_days, flt, now_datetime, nowdate
+from frappe.utils import add_days, now_datetime
 
 import erpnext
 from erpnext.stock.doctype.delivery_trip.delivery_trip import get_contact_and_address, notify_customers
+from erpnext.stock.doctype.item.test_item import make_item
 from erpnext.tests.utils import create_test_contact_and_address
 
 
 class TestDeliveryTrip(unittest.TestCase):
 	def setUp(self):
 		driver = create_driver()
-		create_vehicle()
+		vehicle = create_vehicle()
 		create_delivery_notification()
 		create_test_contact_and_address()
 		address = create_address(driver)
 
-		self.delivery_trip = create_delivery_trip(driver, address)
+		self.delivery_trip = create_delivery_trip(driver, address, vehicle)
 
 	def tearDown(self):
 		frappe.db.sql("delete from `tabDriver`")
@@ -152,23 +153,23 @@ def create_delivery_notification():
 
 
 def create_vehicle():
-	if not frappe.db.exists("Vehicle", "JB 007"):
-		vehicle = frappe.get_doc({
-			"doctype": "Vehicle",
-			"license_plate": "JB 007",
-			"make": "Maruti",
-			"model": "PCM",
-			"last_odometer": 5000,
-			"acquisition_date": nowdate(),
-			"location": "Mumbai",
-			"chassis_no": "1234ABCD",
-			"uom": "Litre",
-			"vehicle_value": flt(500000),
-		})
-		vehicle.insert()
+	vehicle = frappe.db.get_value("Vehicle", {"license_plate": "JB 007"})
+	if vehicle:
+		return vehicle
+
+	item = make_item("_Test Vehicle Item", {"is_vehicle": 1, "is_stock_item": 1})
+	vehicle = frappe.get_doc({
+		"doctype": "Vehicle",
+		"item_code": item.name,
+		"license_plate": "JB 007",
+		"chassis_no": "1234ABCD",
+		"company": erpnext.get_default_company(),
+	}).insert()
+
+	return vehicle.name
 
 
-def create_delivery_trip(driver, address, contact=None):
+def create_delivery_trip(driver, address, vehicle, contact=None):
 	if not contact:
 		contact = get_contact_and_address("_Test Customer")
 
@@ -178,7 +179,7 @@ def create_delivery_trip(driver, address, contact=None):
 		"departure_time": add_days(now_datetime(), 5),
 		"driver": driver.name,
 		"driver_address": address.name,
-		"vehicle": "JB 007",
+		"vehicle": vehicle,
 		"delivery_stops": [{
 			"customer": "_Test Customer",
 			"address": contact.shipping_address.parent,

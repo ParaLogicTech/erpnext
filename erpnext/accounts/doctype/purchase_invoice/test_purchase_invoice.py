@@ -22,6 +22,7 @@ from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import (
 )
 from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import test_records as pr_test_records
 from erpnext.stock.doctype.stock_entry.test_stock_entry import get_qty_after_transaction
+from erpnext.tests.utils import set_return_against_row_references
 
 test_dependencies = ["Item", "Cost Center", "Payment Term", "Payment Terms Template"]
 test_ignore = ["Serial No"]
@@ -1019,6 +1020,9 @@ def make_purchase_invoice(**args):
 		taxes = get_taxes()
 		for tax in taxes:
 			pi.append("taxes", tax)
+
+	if args.return_against:
+		set_return_against_row_references(pi)
 
 	if not args.do_not_save:
 		pi.insert()

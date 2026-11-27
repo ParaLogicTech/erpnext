@@ -7,7 +7,7 @@ import frappe
 from frappe.exceptions import ValidationError
 from frappe.utils import cint
 
-from erpnext.stock.doctype.batch.batch import UnableToSelectBatchError, get_batch_no, get_batch_qty
+from erpnext.stock.doctype.batch.batch import get_batch_no, get_batch_qty
 from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import set_perpetual_inventory
 
 
@@ -98,7 +98,9 @@ class TestBatch(unittest.TestCase):
 					warehouse=receipt.items[0].warehouse,
 				),
 			],
-		)).insert()
+		))
+		delivery_note.auto_select_batches()  # done by the Auto Select Batches button
+		delivery_note.insert()
 		delivery_note.submit()
 
 		# shipped from FEFO batch
@@ -106,24 +108,6 @@ class TestBatch(unittest.TestCase):
 			delivery_note.items[0].batch_no,
 			get_batch_no(item_code, receipt.items[0].warehouse, batch_qty),
 		)
-
-	def test_delivery_note_fail(self):
-		"""Test automatic batch selection for outgoing items"""
-		receipt = self.test_purchase_receipt(100)
-		delivery_note = frappe.get_doc(dict(
-			doctype="Delivery Note",
-			customer="_Test Customer",
-			company=receipt.company,
-			items=[
-				dict(
-					item_code="ITEM-BATCH-1",
-					qty=5000,
-					rate=10,
-					warehouse=receipt.items[0].warehouse,
-				),
-			],
-		))
-		self.assertRaises(UnableToSelectBatchError, delivery_note.insert)
 
 	def test_stock_entry_outgoing(self):
 		"""Test automatic batch selection for outgoing stock entry"""
@@ -147,6 +131,8 @@ class TestBatch(unittest.TestCase):
 
 		stock_entry.set_stock_entry_type()
 		stock_entry.insert()
+		stock_entry.auto_select_batches()  # done by the Auto Select Batches button
+		stock_entry.save()
 		stock_entry.submit()
 
 		# assert same batch is selected

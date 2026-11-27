@@ -16,6 +16,45 @@ from frappe.utils.nestedset import (
 test_records = frappe.get_test_records("Item Group")
 
 
+def _make_test_records(verbose=None):
+	from frappe.test_runner import make_test_objects
+
+	test_objects = make_test_objects("Item Group", test_records, verbose)
+
+	for record in test_records:
+		create_item_group_default_rules(record)
+
+	return test_objects
+
+
+def create_item_group_default_rules(record):
+	"""Item Groups keep their defaults and taxes in Item Default Rules in this fork"""
+	from erpnext.stock.doctype.item.test_item import get_item_tax_rows
+
+	defaults_by_company = {}
+	for item_group_default in record.get("item_group_defaults") or []:
+		defaults_by_company[item_group_default["company"]] = {
+			key: value for key, value in item_group_default.items() if key not in ("company", "doctype", "parentfield")
+		}
+
+	# the test Item Tax Templates belong to _Test Company
+	if record.get("taxes"):
+		defaults_by_company.setdefault("_Test Company", {})["taxes"] = get_item_tax_rows(record["taxes"])
+
+	for company, defaults in defaults_by_company.items():
+		rule_name = f"{record['item_group_name']} - {company}"
+		if frappe.db.exists("Item Default Rule", rule_name):
+			continue
+
+		frappe.get_doc({
+			"doctype": "Item Default Rule",
+			"item_default_rule_name": rule_name,
+			"item_group": record["item_group_name"],
+			"company": company,
+			**defaults,
+		}).insert()
+
+
 class TestItem(unittest.TestCase):
 	def test_basic_tree(self, records=None):
 		min_lft = 1

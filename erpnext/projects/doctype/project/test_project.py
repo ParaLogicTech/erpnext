@@ -14,8 +14,8 @@ class TestProject(unittest.TestCase):
 	pass
 
 
-def make_project(args):
-	args = frappe._dict(args)
+def make_project(project_details):
+	args = frappe._dict(project_details)
 
 	if frappe.db.exists("Project", args.project_name):
 		return frappe.get_doc("Project", args.project_name)

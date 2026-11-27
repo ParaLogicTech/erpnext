@@ -23,6 +23,7 @@ from erpnext.stock.doctype.item.test_item import create_item
 from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import make_purchase_receipt, set_perpetual_inventory
 from erpnext.stock.doctype.serial_no.serial_no import SerialNoWarehouseError
 from erpnext.stock.doctype.stock_entry.test_stock_entry import get_qty_after_transaction, make_stock_entry
+from erpnext.tests.utils import set_return_against_row_references
 
 
 class TestSalesInvoice(unittest.TestCase):
@@ -1203,7 +1204,8 @@ class TestSalesInvoice(unittest.TestCase):
 			{"voucher_type": "Sales Invoice", "voucher_no": si1.name},
 			["incoming_rate", "stock_value_difference"])
 
-		self.assertEqual(flt(incoming_rate, 3), abs(flt(outgoing_rate, 3)))
+		# outgoing_rate is worked out from the rounded stock value difference
+		self.assertAlmostEqual(incoming_rate, abs(outgoing_rate), delta=0.01)
 		stock_in_hand_account = get_inventory_account("_Test Company with perpetual inventory", si1.items[0].warehouse)
 
 		# Check gl entry
@@ -2058,6 +2060,9 @@ def create_sales_invoice(**args):
 		"cost_center": args.cost_center or "_Test Cost Center - _TC",
 		"serial_no": args.serial_no,
 	})
+
+	if args.return_against:
+		set_return_against_row_references(si)
 
 	if not args.do_not_save:
 		si.insert()

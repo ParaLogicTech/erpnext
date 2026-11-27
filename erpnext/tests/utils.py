@@ -41,3 +41,29 @@ def create_test_contact_and_address():
 	contact.add_email("test_contact_customer@example.com", is_primary=True)
 	contact.add_phone("+91 0000000000", is_primary_phone=True)
 	contact.insert()
+
+
+def set_return_against_row_references(doc):
+	"""Links each return row to the returned document's first row with the same item, as Make Return does"""
+	reference_field = frappe.scrub(doc.doctype) + "_item"
+	returned_rows = frappe.get_all(f"{doc.doctype} Item", filters={"parent": doc.return_against},
+		fields=["name", "item_code"], order_by="idx")
+
+	for d in doc.items:
+		if d.get(reference_field):
+			continue
+
+		for returned_row in returned_rows:
+			if returned_row.item_code == d.item_code:
+				d.set(reference_field, returned_row.name)
+				break
+
+
+def assert_raises_and_rollback(test_case, exception, method, *args, **kwargs):
+	"""assertRaises, then undo what the method wrote before raising, e.g. a submit that fails in a Stock Ledger Entry
+	after the document and earlier ledger entries were saved"""
+	frappe.db.savepoint("assert_raises")
+	try:
+		test_case.assertRaises(exception, method, *args, **kwargs)
+	finally:
+		frappe.db.rollback(save_point="assert_raises")

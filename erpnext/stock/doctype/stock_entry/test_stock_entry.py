@@ -6,6 +6,7 @@ import unittest
 import frappe
 import frappe.defaults
 from frappe.permissions import add_user_permission, remove_user_permission
+from frappe.tests.utils import change_settings
 from frappe.utils import flt, nowdate, nowtime
 
 from erpnext import set_perpetual_inventory
@@ -19,6 +20,7 @@ from erpnext.stock.doctype.stock_ledger_entry.stock_ledger_entry import StockFre
 from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import OpeningEntryAccountError
 from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
 from erpnext.stock.stock_ledger import get_previous_sle
+from erpnext.tests.utils import assert_raises_and_rollback
 
 
 def get_sle(**args):
@@ -509,7 +511,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].serial_no = "ABCD"
 		se.set_stock_entry_type()
 		se.insert()
-		self.assertRaises(SerialNoNotRequiredError, se.submit)
+		assert_raises_and_rollback(self, SerialNoNotRequiredError, se.submit)
 
 	def test_serial_no_reqd(self):
 		se = frappe.copy_doc(test_records[0])
@@ -518,7 +520,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].stock_qty = 2
 		se.set_stock_entry_type()
 		se.insert()
-		self.assertRaises(SerialNoRequiredError, se.submit)
+		assert_raises_and_rollback(self, SerialNoRequiredError, se.submit)
 
 	def test_serial_no_qty_more(self):
 		se = frappe.copy_doc(test_records[0])
@@ -528,7 +530,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].stock_qty = 2
 		se.set_stock_entry_type()
 		se.insert()
-		self.assertRaises(SerialNoQtyError, se.submit)
+		assert_raises_and_rollback(self, SerialNoQtyError, se.submit)
 
 	def test_serial_no_qty_less(self):
 		se = frappe.copy_doc(test_records[0])
@@ -538,7 +540,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].stock_qty = 2
 		se.set_stock_entry_type()
 		se.insert()
-		self.assertRaises(SerialNoQtyError, se.submit)
+		assert_raises_and_rollback(self, SerialNoQtyError, se.submit)
 
 	def test_serial_no_transfer_in(self):
 		se = frappe.copy_doc(test_records[0])
@@ -570,7 +572,7 @@ class TestStockEntry(unittest.TestCase):
 		se.set_stock_entry_type()
 		se.insert()
 
-		self.assertRaises(SerialNoNotExistsError, se.submit)
+		assert_raises_and_rollback(self, SerialNoNotExistsError, se.submit)
 
 	def test_serial_duplicate(self):
 		se, serial_nos = self.test_serial_by_series()
@@ -582,7 +584,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].stock_qty = 1
 		se.set_stock_entry_type()
 		se.insert()
-		self.assertRaises(SerialNoDuplicateError, se.submit)
+		assert_raises_and_rollback(self, SerialNoDuplicateError, se.submit)
 
 	def test_serial_by_series(self):
 		se = make_serialized_item()
@@ -609,7 +611,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].t_warehouse = "_Test Warehouse 1 - _TC"
 		se.set_stock_entry_type()
 		se.insert()
-		self.assertRaises(SerialNoItemError, se.submit)
+		assert_raises_and_rollback(self, SerialNoItemError, se.submit)
 
 	def test_serial_move(self):
 		se = make_serialized_item()
@@ -647,7 +649,7 @@ class TestStockEntry(unittest.TestCase):
 		se.get("items")[0].t_warehouse = "_Test Warehouse - _TC"
 		se.set_stock_entry_type()
 		se.insert()
-		self.assertRaises(SerialNoWarehouseError, se.submit)
+		assert_raises_and_rollback(self, SerialNoWarehouseError, se.submit)
 
 	def test_serial_cancel(self):
 		se, _serial_nos = self.test_serial_by_series()
@@ -689,18 +691,18 @@ class TestStockEntry(unittest.TestCase):
 
 		se.cancel()
 
+		# auto created batches are unlinked on cancel, not deleted, and the Serial No keeps its batch
 		batch_in_serial_no = frappe.db.get_value("Serial No", serial_no, "batch_no")
-		self.assertEqual(batch_in_serial_no, None)
+		self.assertEqual(batch_in_serial_no, batch_no)
 
 		self.assertEqual(frappe.db.get_value("Serial No", serial_no, "status"), "Inactive")
-		self.assertEqual(frappe.db.exists("Batch", batch_no), None)
+		self.assertTrue(frappe.db.exists("Batch", batch_no))
+		self.assertFalse(frappe.db.get_value("Batch", batch_no, "reference_name"))
 
 	def test_serial_batch_item_qty_deduction(self):
 		"""
 			Behaviour: Create 2 Stock Entries, both adding Serial Nos to same batch
-			Expected Result: 1) Cancelling first Stock Entry (origin transaction of created batch)
-				should throw a LinkExistsError
-				2) Cancelling second Stock Entry should make Serial Nos that are, linked to mentioned batch
+			Expected Result: Cancelling second Stock Entry should make Serial Nos that are, linked to mentioned batch
 				and in that transaction only, Inactive.
 		"""
 		from erpnext.stock.doctype.batch.batch import get_batch_qty
@@ -730,11 +732,6 @@ class TestStockEntry(unittest.TestCase):
 
 		batch_qty = get_batch_qty(batch_no, "_Test Warehouse - _TC", item.item_code)
 		self.assertEqual(batch_qty, 2)
-		frappe.db.commit()
-
-		# Cancelling Origin Document of Batch
-		self.assertRaises(frappe.LinkExistsError, se1.cancel)
-		frappe.db.rollback()
 
 		se2.cancel()
 
@@ -746,8 +743,8 @@ class TestStockEntry(unittest.TestCase):
 		self.assertEqual(frappe.db.get_value("Serial No", serial_no1, "batch_no"), batch_no)
 		self.assertEqual(frappe.db.get_value("Serial No", serial_no1, "status"), "Active")
 
-		# Check if Serial No from Stock Entry 2 is Unlinked and Inactive
-		self.assertEqual(frappe.db.get_value("Serial No", serial_no2, "batch_no"), None)
+		# Check if Serial No from Stock Entry 2 is Inactive, it keeps its batch
+		self.assertEqual(frappe.db.get_value("Serial No", serial_no2, "batch_no"), batch_no)
 		self.assertEqual(frappe.db.get_value("Serial No", serial_no2, "status"), "Inactive")
 
 	def test_warehouse_company_validation(self):
@@ -820,6 +817,7 @@ class TestStockEntry(unittest.TestCase):
 		self.assertRaises(StockFreezeError, se.submit)
 		frappe.db.set_single_value("Stock Settings", "stock_frozen_upto_days", 0)
 
+	@change_settings("Manufacturing Settings", {"backflush_raw_materials_based_on": "BOM"})
 	def test_work_order(self):
 		from erpnext.manufacturing.doctype.work_order.work_order import make_stock_entry as _make_stock_entry
 		bom_no, bom_operation_cost = frappe.db.get_value("BOM", {"item": "_Test FG Item 2",
@@ -974,6 +972,7 @@ class TestStockEntry(unittest.TestCase):
 		repack.insert()
 		self.assertRaises(frappe.ValidationError, repack.submit)
 
+	@change_settings("Manufacturing Settings", {"backflush_raw_materials_based_on": "BOM"})
 	def test_material_consumption(self):
 		from erpnext.manufacturing.doctype.work_order.work_order import make_stock_entry as _make_stock_entry
 		bom_no = frappe.db.get_value("BOM", {"item": "_Test FG Item 2",
@@ -1019,10 +1018,17 @@ class TestStockEntry(unittest.TestCase):
 		if not frappe.db.exists("Warehouse", warehouse):
 			create_warehouse("_Test Warehouse FG 1")
 
+		# Send to Warehouse moves stock into the company's transit warehouse
+		transit_warehouse = create_warehouse("_Test Transit Warehouse")
+		previous_transit_warehouse = frappe.db.get_value("Company", "_Test Company", "material_transfer_transit_warehouse")
+		frappe.db.set_value("Company", "_Test Company", "material_transfer_transit_warehouse", transit_warehouse)
+		self.addCleanup(frappe.db.set_value, "Company", "_Test Company", "material_transfer_transit_warehouse",
+			previous_transit_warehouse)
+
 		outward_entry = make_stock_entry(item_code="_Test Item",
 			purpose="Send to Warehouse",
 			source="_Test Warehouse - _TC",
-			target="_Test Warehouse 1 - _TC", qty=50, basic_rate=100)
+			target=transit_warehouse, qty=50, basic_rate=100)
 
 		inward_entry1 = make_stock_in_entry(outward_entry.name)
 		inward_entry1.items[0].t_warehouse = warehouse
@@ -1055,6 +1061,7 @@ class TestStockEntry(unittest.TestCase):
 		self.assertEqual(is_opening, "Yes")
 
 	def test_total_basic_amount_zero(self):
+		create_item("Basil Leaves")
 		se = frappe.get_doc({"doctype": "Stock Entry",
 		"purpose": "Material Receipt",
 		"stock_entry_type": "Material Receipt",
@@ -1149,10 +1156,10 @@ def get_multiple_items():
 				"basic_rate": 5000,
 				"item_code": "_Test Item Home Desktop 100",
 				"qty": 1,
-				"stock_uom": "_Test UOM",
+				"stock_uom": "_Test UOM 1",
 				"t_warehouse": "Stores - TCP1",
 				"stock_qty": 1,
-				"uom": "_Test UOM",
+				"uom": "_Test UOM 1",
 			},
 		]
 

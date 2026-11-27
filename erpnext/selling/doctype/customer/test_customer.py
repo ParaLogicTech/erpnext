@@ -66,33 +66,33 @@ class TestCustomer(unittest.TestCase):
 		details = get_party_details(party_type="Customer", party="_Test Customer With Tax Category", company="_Test Company")
 		self.assertEqual(details.get("tax_category"), "_Test Tax Category 1")
 
-		billing_address = frappe.get_doc(dict(
-			doctype="Address",
-			address_title="_Test Address With Tax Category",
-			tax_category="_Test Tax Category 2",
-			address_type="Billing",
-			address_line1="Station Road",
-			city="_Test City",
-			country="India",
-			links=[dict(
+		billing_address = frappe.get_doc({
+			"doctype": "Address",
+			"address_title": "_Test Address With Tax Category",
+			"tax_category": "_Test Tax Category 2",
+			"address_type": "Billing",
+			"address_line1": "Station Road",
+			"city": "_Test City",
+			"country": "India",
+			"links": [dict(
 				link_doctype="Customer",
 				link_name="_Test Customer With Tax Category",
 			)],
-		)).insert()
-		shipping_address = frappe.get_doc(dict(
-			doctype="Address",
-			address_title="_Test Address With Tax Category",
-			tax_category="_Test Tax Category 3",
-			address_type="Shipping",
-			is_shipping_address=1,
-			address_line1="Station Road",
-			city="_Test City",
-			country="India",
-			links=[dict(
+		}).insert()
+		shipping_address = frappe.get_doc({
+			"doctype": "Address",
+			"address_title": "_Test Address With Tax Category",
+			"tax_category": "_Test Tax Category 3",
+			"address_type": "Shipping",
+			"is_shipping_address": 1,
+			"address_line1": "Station Road",
+			"city": "_Test City",
+			"country": "India",
+			"links": [dict(
 				link_doctype="Customer",
 				link_name="_Test Customer With Tax Category",
 			)],
-		)).insert()
+		}).insert()
 
 		settings = frappe.get_single("Accounts Settings")
 		rollback_setting = settings.determine_address_tax_category_from

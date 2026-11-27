@@ -60,5 +60,19 @@
   "warehouse_name": "_Test Warehouse Group-C2",
   "is_group": 0,
   "parent_warehouse": "_Test Warehouse Group - _TC"
+ },
+ {
+  "company": "_Test Company with perpetual inventory",
+  "doctype": "Warehouse",
+  "warehouse_name": "Work In Progress",
+  "is_group": 0,
+  "parent_warehouse": "All Warehouses - TCP1"
+ },
+ {
+  "company": "_Test Company with perpetual inventory",
+  "doctype": "Warehouse",
+  "warehouse_name": "Finished Goods",
+  "is_group": 0,
+  "parent_warehouse": "All Warehouses - TCP1"
  }
 ]
