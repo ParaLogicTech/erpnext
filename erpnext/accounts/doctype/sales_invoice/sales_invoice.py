@@ -1881,23 +1881,6 @@ def get_intercompany_ref_doctype(doctype):
 
 
 @frappe.whitelist()
-def make_maintenance_schedule(source_name, target_doc=None):
-	doclist = get_mapped_doc("Sales Invoice", source_name, {
-		"Sales Invoice": {
-			"doctype": "Maintenance Schedule",
-			"validation": {
-				"docstatus": ["=", 1],
-			},
-		},
-		"Sales Invoice Item": {
-			"doctype": "Maintenance Schedule Item",
-		},
-	}, target_doc)
-
-	return doclist
-
-
-@frappe.whitelist()
 def make_delivery_note(source_name, target_doc=None):
 	def get_pending_qty(source):
 		return flt(source.qty) - flt(source.delivered_qty)
