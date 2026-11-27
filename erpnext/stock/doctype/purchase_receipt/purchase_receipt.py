@@ -367,7 +367,7 @@ class PurchaseReceipt(BuyingController):
 
 		self.make_supplied_items_gl_entry(gl_entries, sle_map, warehouse_account)
 		self.make_item_gl_entries(gl_entries, sle_map, warehouse_account)
-		self.make_asset_gl_entry(gl_entries)
+		self.get_asset_gl_entry(gl_entries)
 
 		return process_gl_map(gl_entries)
 
@@ -445,7 +445,7 @@ class PurchaseReceipt(BuyingController):
 
 		self.validate_warehouse_with_no_account(warehouse_with_no_account)
 
-	def make_asset_gl_entry(self, gl_entries):
+	def get_asset_gl_entry(self, gl_entries):
 		for item in self.get("items"):
 			if item.is_fixed_asset:
 				if is_cwip_accounting_enabled(item.asset_category):
