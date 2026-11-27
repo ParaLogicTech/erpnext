@@ -57,6 +57,8 @@ ignore = [
     "F722", # syntax error in forward type annotation
     "W191", # indentation contains tabs
     "RUF001", # string contains ambiguous unicode character
+    "RUF005", # collection literal concatenation: the fix puts multi-line lists on one line
+    "RUF015", # next(iter(x)) over list(x)[0]: raises StopIteration instead of IndexError on empty input
     "RUF067", # code in __init__.py: frappe apps keep module-level helpers there (preview rule)
     "RUF069", # float equality: changing these comparisons would change amounts and validations (preview rule)
     "UP030", # Use implicit references for positional format fields (translations)
