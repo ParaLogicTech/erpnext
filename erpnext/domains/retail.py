@@ -1,7 +1,7 @@
 
 data = {
-	'set_value': [
+	"set_value": [
 
 	],
-	'default_portal_role': 'Customer'
+	"default_portal_role": "Customer",
 }

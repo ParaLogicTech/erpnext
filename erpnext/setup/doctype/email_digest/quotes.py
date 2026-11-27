@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 import random
+
 
 def get_random_quote():
 	quotes = [
@@ -31,4 +31,3 @@ def get_random_quote():
 	]
 
 	return random.choice(quotes)
-

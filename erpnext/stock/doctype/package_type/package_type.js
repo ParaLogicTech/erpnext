@@ -4,7 +4,7 @@
 frappe.provide("erpnext.stock");
 
 erpnext.stock.PackageTypeController = class PackageTypeController extends erpnext.stock.PackingController {
-	item_table_fields = ['packaging_items']
+	item_table_fields = ["packaging_items"];
 
 	setup() {
 		this.setup_queries();
@@ -27,14 +27,14 @@ erpnext.stock.PackageTypeController = class PackageTypeController extends erpnex
 		this.frm.doc.total_tare_weight = 0;
 
 		for (let item of this.frm.doc.packaging_items || []) {
-			frappe.model.round_floats_in(item, null, ['tare_weight_per_unit']);
+			frappe.model.round_floats_in(item, null, ["tare_weight_per_unit"]);
 			item.stock_qty = flt(item.qty * item.conversion_factor, 6);
 			item.tare_weight = flt(item.tare_weight_per_unit * item.stock_qty, precision("tare_weight", item));
 
 			this.frm.doc.total_tare_weight += item.tare_weight;
 		}
 
-		frappe.model.round_floats_in(this.frm.doc, ['total_tare_weight']);
+		frappe.model.round_floats_in(this.frm.doc, ["total_tare_weight"]);
 
 		this.frm.refresh_fields();
 	}
@@ -54,7 +54,7 @@ erpnext.stock.PackageTypeController = class PackageTypeController extends erpnex
 
 	calculate_volume() {
 		if (this.frm.doc.volume_based_on == "Dimensions") {
-			frappe.model.round_floats_in(this.frm.doc, ['length', 'width', 'height']);
+			frappe.model.round_floats_in(this.frm.doc, ["length", "width", "height"]);
 			this.frm.doc.volume = flt(this.frm.doc.length * this.frm.doc.width * this.frm.doc.height,
 				precision("volume"));
 			this.frm.refresh_field("volume");

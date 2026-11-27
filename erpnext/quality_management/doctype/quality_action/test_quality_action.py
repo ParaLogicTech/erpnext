@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
+
+from erpnext.quality_management.doctype.quality_goal.test_quality_goal import create_goal, create_unit
 from erpnext.quality_management.doctype.quality_procedure.test_quality_procedure import create_procedure
-from erpnext.quality_management.doctype.quality_goal.test_quality_goal import create_unit
-from erpnext.quality_management.doctype.quality_goal.test_quality_goal import create_goal
 from erpnext.quality_management.doctype.quality_review.test_quality_review import create_review
+
 
 class TestQualityAction(unittest.TestCase):
 
@@ -19,7 +20,8 @@ class TestQualityAction(unittest.TestCase):
 		test_create_action = create_action()
 		test_get_action = get_action()
 
-		self.assertEquals(test_create_action, test_get_action)
+		self.assertEqual(test_create_action, test_get_action)
+
 
 def create_action():
 	review = frappe.db.exists("Quality Review", {"goal": "GOAL-_Test Quality Goal"})
@@ -30,7 +32,7 @@ def create_action():
 		"document_name": review,
 		"date": frappe.utils.nowdate(),
 		"goal": "GOAL-_Test Quality Goal",
-		"procedure": "PRC-_Test Quality Procedure"
+		"procedure": "PRC-_Test Quality Procedure",
 	})
 	action_exist = frappe.db.exists("Quality Action", {"review": review})
 
@@ -39,6 +41,7 @@ def create_action():
 		return action.name
 	else:
 		return action_exist
+
 
 def get_action():
 	review = frappe.db.exists("Quality Review", {"goal": "GOAL-_Test Quality Goal"})

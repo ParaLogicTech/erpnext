@@ -1,6 +1,7 @@
 import frappe
 from frappe.model.utils.rename_field import rename_field
 
+
 def execute():
 	frappe.db.sql("""
 		UPDATE `tabLeave Type`

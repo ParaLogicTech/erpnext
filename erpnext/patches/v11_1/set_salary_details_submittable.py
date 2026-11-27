@@ -1,5 +1,6 @@
 import frappe
 
+
 def execute():
 	frappe.db.sql("""
 		update `tabSalary Structure` ss, `tabSalary Detail` sd

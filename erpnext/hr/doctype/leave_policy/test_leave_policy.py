@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
+
 
 class TestLeavePolicy(unittest.TestCase):
 	def test_max_leave_allowed(self):
@@ -18,13 +19,14 @@ class TestLeavePolicy(unittest.TestCase):
 
 		self.assertRaises(frappe.ValidationError, leave_policy.insert)
 
+
 def create_leave_policy(**args):
-	''' Returns an object of leave policy '''
+	""" Returns an object of leave policy """
 	args = frappe._dict(args)
 	return frappe.get_doc({
 		"doctype": "Leave Policy",
 		"leave_policy_details": [{
 			"leave_type": args.leave_type or "_Test Leave Type",
-			"annual_allocation": args.annual_allocation or 10
-		}]
+			"annual_allocation": args.annual_allocation or 10,
+		}],
 	})

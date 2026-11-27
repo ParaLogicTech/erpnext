@@ -3,7 +3,7 @@ import frappe
 
 def execute():
 	stes = frappe.get_all("Stock Entry", filters={
-		"purpose": ["in", ["Material Transfer", "Send to Warehouse", "Receive at Warehouse"]]
+		"purpose": ["in", ["Material Transfer", "Send to Warehouse", "Receive at Warehouse"]],
 	}, pluck="name")
 
 	for name in stes:

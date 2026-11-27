@@ -8,34 +8,34 @@
 
 frappe.provide("erpnext.accounts.expense_entry");
 
-frappe.ui.form.on('Expense Entry', {
+frappe.ui.form.on("Expense Entry", {
 	setup: function(frm) {
 		frm.page.toggle_sidebar(false);
 
-		frm.set_query('payable_account', function() {
-			if(!frm.doc.company) {
+		frm.set_query("payable_account", function() {
+			if (!frm.doc.company) {
 				frappe.msgprint(__("Please select Company first"));
 			} else {
 				return {
 					filters: [
-						['Account', 'company', '=', frm.doc.company],
-						['Account', 'is_group', '=', 0],
-						['Account', 'account_type', '=', 'Payable']
-					]
+						["Account", "company", "=", frm.doc.company],
+						["Account", "is_group", "=", 0],
+						["Account", "account_type", "=", "Payable"],
+					],
 				};
 			}
 		});
 
-		frm.set_query('paid_from_account', function() {
-			if(!frm.doc.company) {
+		frm.set_query("paid_from_account", function() {
+			if (!frm.doc.company) {
 				frappe.msgprint(__("Please select Company first"));
 			} else {
 				return {
-					filters:[
-						['Account', 'company', '=', frm.doc.company],
-						['Account', 'is_group', '=', 0],
-						['Account', 'account_type', 'in', ['Bank', 'Cash', 'Equity']]
-					]
+					filters: [
+						["Account", "company", "=", frm.doc.company],
+						["Account", "is_group", "=", 0],
+						["Account", "account_type", "in", ["Bank", "Cash", "Equity"]],
+					],
 				};
 			}
 		});
@@ -44,8 +44,8 @@ frappe.ui.form.on('Expense Entry', {
 			return {
 				filters: {
 					company: frm.doc.company,
-					is_group: 0
-				}
+					is_group: 0,
+				},
 			};
 		});
 
@@ -53,8 +53,8 @@ frappe.ui.form.on('Expense Entry', {
 			return {
 				filters: {
 					company: frm.doc.company,
-					is_group: 0
-				}
+					is_group: 0,
+				},
 			};
 		});
 
@@ -62,26 +62,26 @@ frappe.ui.form.on('Expense Entry', {
 			return {
 				filters: {
 					company: frm.doc.company,
-					is_group: 0
-				}
+					is_group: 0,
+				},
 			};
 		});
 	},
 
-	refresh: function (frm) {
+	refresh: function(frm) {
 		erpnext.hide_company();
 	},
 
-	onload: function (frm) {
+	onload: function(frm) {
 		erpnext.accounts.dimensions.setup_dimension_filters(frm);
 	},
 
-	company: function (frm) {
+	company: function(frm) {
 		frm.events.get_other_company_accounts_and_cost_centers(frm);
 		erpnext.accounts.dimensions.set_default_dimensions(frm);
 	},
 
-	get_other_company_accounts_and_cost_centers: function (frm) {
+	get_other_company_accounts_and_cost_centers: function(frm) {
 		if (!frm.doc.company) {
 			return;
 		}
@@ -116,15 +116,15 @@ frappe.ui.form.on('Expense Entry', {
 				accounts: accounts,
 				cost_centers: cost_centers,
 			},
-			callback: function(r){
+			callback: function(r) {
 				if (r.message) {
 					frm.set_value("cost_center", r.message.cost_centers[frm.doc.cost_center] || r.message.default_cost_center);
 
 					if (frm.doc.paid_from_account && r.message.accounts[frm.doc.paid_from_account]) {
-						frm.set_value("paid_from_account", r.message.accounts[frm.doc.paid_from_account])
+						frm.set_value("paid_from_account", r.message.accounts[frm.doc.paid_from_account]);
 					}
 					if (frm.doc.payable_account && r.message.accounts[frm.doc.payable_account]) {
-						frm.set_value("payable_account", r.message.accounts[frm.doc.payable_account])
+						frm.set_value("payable_account", r.message.accounts[frm.doc.payable_account]);
 					}
 
 					frm.events.get_payable_account_currency(frm);
@@ -138,19 +138,19 @@ frappe.ui.form.on('Expense Entry', {
 						}
 					}
 				}
-			}
+			},
 		});
 	},
 
-	payable_account: function (frm) {
+	payable_account: function(frm) {
 		frm.events.get_payable_account_currency(frm);
 	},
 
-	paid_from_account: function (frm) {
+	paid_from_account: function(frm) {
 		frm.events.get_payable_account_currency(frm);
 	},
 
-	get_payable_account_currency: function (frm) {
+	get_payable_account_currency: function(frm) {
 		let account = frm.doc.payable_account || frm.doc.paid_from_account;
 		if (account) {
 			return frappe.call({
@@ -158,13 +158,13 @@ frappe.ui.form.on('Expense Entry', {
 				args: {
 					doctype: "Account",
 					name: account,
-					fieldname: "account_currency"
+					fieldname: "account_currency",
 				},
 				callback: (r) => {
 					if (r.message) {
 						frm.set_value("payable_account_currency", r.message.account_currency);
 					}
-				}
+				},
 			});
 		} else {
 			let company_currency = frappe.get_doc(":Company", frm.doc.company).default_currency;
@@ -172,17 +172,17 @@ frappe.ui.form.on('Expense Entry', {
 		}
 	},
 
-	payable_account_currency: function (frm) {
+	payable_account_currency: function(frm) {
 		var company_currency = frappe.get_doc(":Company", frm.doc.company).default_currency;
 		var bill_dates = [];
-		$.each(frm.doc.accounts || [], function (i, d) {
+		$.each(frm.doc.accounts || [], function(i, d) {
 			if (d.bill_date && !bill_dates.includes(d.bill_date)) {
 				bill_dates.push(d.bill_date || frm.doc.transaction_date);
 			}
 		});
 
 		if (company_currency == frm.doc.payable_account_currency) {
-			$.each(frm.doc.accounts || [], function (i, d) {
+			$.each(frm.doc.accounts || [], function(i, d) {
 				if (d.bill_date) {
 					d.exchange_rate = 1.0;
 				}
@@ -194,16 +194,16 @@ frappe.ui.form.on('Expense Entry', {
 				args: {
 					bill_dates: bill_dates,
 					from_currency: frm.doc.payable_account_currency,
-					to_currency: company_currency
+					to_currency: company_currency,
 				},
-				callback: function (r) {
-					$.each(frm.doc.accounts || [], function (i, d) {
+				callback: function(r) {
+					$.each(frm.doc.accounts || [], function(i, d) {
 						if (d.bill_date && r.message[d.bill_date]) {
 							d.exchange_rate = r.message[d.bill_date];
 						}
 					});
 					erpnext.accounts.expense_entry.calcualte_totals(frm);
-				}
+				},
 			});
 		}
 	},
@@ -232,7 +232,7 @@ frappe.ui.form.on('Expense Entry', {
 		}
 	},
 
-	get_supplier_details: function (supplier, callback) {
+	get_supplier_details: function(supplier, callback) {
 		if (!supplier) {
 			return;
 		}
@@ -240,15 +240,15 @@ frappe.ui.form.on('Expense Entry', {
 		return frappe.call({
 			method: "erpnext.accounts.doctype.expense_entry.expense_entry.get_supplier_details",
 			args: {
-				supplier: supplier
+				supplier: supplier,
 			},
-			callback: (r) => callback?.(r.message)
+			callback: (r) => callback?.(r.message),
 		});
 	},
 });
 
-frappe.ui.form.on('Expense Entry Detail', {
-	supplier: function (frm, cdt, cdn) {
+frappe.ui.form.on("Expense Entry Detail", {
+	supplier: function(frm, cdt, cdn) {
 		let row = frappe.get_doc(cdt, cdn);
 
 		if (row.supplier) {
@@ -259,15 +259,15 @@ frappe.ui.form.on('Expense Entry Detail', {
 				if (details.expense_account && !row.expense_account) {
 					frappe.model.set_value(cdt, cdn, "expense_account", details.expense_account);
 				}
-			})
+			});
 		}
 	},
 
-	bill_date: function (frm, cdt, cdn) {
+	bill_date: function(frm, cdt, cdn) {
 		erpnext.accounts.expense_entry.set_exchange_rate(frm, cdt, cdn);
 	},
 
-	total_amount: function (frm, cdt, cdn) {
+	total_amount: function(frm, cdt, cdn) {
 		var row = frappe.get_doc(cdt, cdn);
 		if (row.item_tax_template) {
 			erpnext.accounts.expense_entry.calculate_tax_amount(frm, cdt, cdn);
@@ -276,7 +276,7 @@ frappe.ui.form.on('Expense Entry Detail', {
 		}
 	},
 
-	tax_amount: function (frm, cdt, cdn) {
+	tax_amount: function(frm, cdt, cdn) {
 		var row = frappe.get_doc(cdt, cdn);
 		if (!row.item_tax_template) {
 			row.tax_amount = 0;
@@ -284,15 +284,15 @@ frappe.ui.form.on('Expense Entry Detail', {
 		erpnext.accounts.expense_entry.calcualte_totals(frm);
 	},
 
-	item_tax_template: function (frm, cdt, cdn) {
+	item_tax_template: function(frm, cdt, cdn) {
 		erpnext.accounts.expense_entry.get_tax_rate(frm, cdt, cdn);
 	},
 
-	tax_rate: function (frm, cdt, cdn) {
+	tax_rate: function(frm, cdt, cdn) {
 		erpnext.accounts.expense_entry.calculate_tax_amount(frm, cdt, cdn);
 	},
 
-	exchange_rate: function (frm, cdt, cdn) {
+	exchange_rate: function(frm, cdt, cdn) {
 		var company_currency = frappe.get_doc(":Company", frm.doc.company).default_currency;
 		var row = frappe.get_doc(cdt, cdn);
 		if (frm.doc.payable_account_currency == company_currency) {
@@ -300,25 +300,25 @@ frappe.ui.form.on('Expense Entry Detail', {
 		}
 
 		erpnext.accounts.expense_entry.calcualte_totals(frm);
-	}
+	},
 });
 
 $.extend(erpnext.accounts.expense_entry, {
 	calcualte_totals: function(frm) {
-		$.each(frm.doc.accounts || [], function (i, d) {
-			d.expense_amount = flt(flt(d.total_amount) - flt(d.tax_amount), precision('expense_amount', d));
+		$.each(frm.doc.accounts || [], function(i, d) {
+			d.expense_amount = flt(flt(d.total_amount) - flt(d.tax_amount), precision("expense_amount", d));
 
-			d.base_total_amount = flt(flt(d.total_amount) * flt(d.exchange_rate), precision('base_total_amount', d));
-			d.base_tax_amount = flt(flt(d.tax_amount) * flt(d.exchange_rate), precision('base_tax_amount', d));
-			d.base_expense_amount = flt(flt(d.base_total_amount) - flt(d.base_tax_amount), precision('base_expense_amount', d));
+			d.base_total_amount = flt(flt(d.total_amount) * flt(d.exchange_rate), precision("base_total_amount", d));
+			d.base_tax_amount = flt(flt(d.tax_amount) * flt(d.exchange_rate), precision("base_tax_amount", d));
+			d.base_expense_amount = flt(flt(d.base_total_amount) - flt(d.base_tax_amount), precision("base_expense_amount", d));
 		});
 
 		var total_fields = [
-			['total', 'total_amount'],
-			['total_tax_amount', 'tax_amount'],
-			['total_expense_amount', 'expense_amount'],
-		]
-		$.each(total_fields, function (i, f) {
+			["total", "total_amount"],
+			["total_tax_amount", "tax_amount"],
+			["total_expense_amount", "expense_amount"],
+		];
+		$.each(total_fields, function(i, f) {
 			frm.doc[f[0]] = flt(frappe.utils.sum(frm.doc.accounts.map(d => flt(d[f[1]]))), precision(f[0]));
 			frm.doc["base_" + f[0]] = flt(frappe.utils.sum(frm.doc.accounts.map(d => flt(d["base_" + f[1]]))), precision("base_" + f[0]));
 		});
@@ -329,16 +329,16 @@ $.extend(erpnext.accounts.expense_entry, {
 	calculate_tax_amount: function(frm, cdt, cdn) {
 		var row = frappe.get_doc(cdt, cdn);
 
-		var tax_map = JSON.parse(row.tax_rate || '{}');
+		var tax_map = JSON.parse(row.tax_rate || "{}");
 		var tax_amount = 0;
-		$.each(tax_map, function (tax_type, tax_rate) {
+		$.each(tax_map, function(tax_type, tax_rate) {
 			if (tax_rate) {
 				tax_amount += flt(row.total_amount) - flt(row.total_amount) / (1 + flt(tax_rate) / 100);
 			}
 		});
 
 		tax_amount = flt(tax_amount, precision("tax_amount", row));
-		frappe.model.set_value(cdt, cdn, 'tax_amount', tax_amount);
+		frappe.model.set_value(cdt, cdn, "tax_amount", tax_amount);
 	},
 
 	set_exchange_rate: function(frm, cdt, cdn) {
@@ -346,7 +346,7 @@ $.extend(erpnext.accounts.expense_entry, {
 		let row = frappe.get_doc(cdt, cdn);
 
 		if (frm.doc.payable_account_currency === company_currency) {
-			frappe.model.set_value(cdt, cdn, 'exchange_rate', 1);
+			frappe.model.set_value(cdt, cdn, "exchange_rate", 1);
 		} else if (row.bill_date) {
 			return erpnext.utils.get_exchange_rate({
 				transaction_date: row.bill_date || frm.doc.transaction_date,
@@ -354,7 +354,7 @@ $.extend(erpnext.accounts.expense_entry, {
 				to_currency: company_currency,
 				callback: (exchange_rate) => {
 					frappe.model.set_value(cdt, cdn, "exchange_rate", flt(exchange_rate));
-				}
+				},
 			});
 		}
 	},
@@ -370,16 +370,16 @@ $.extend(erpnext.accounts.expense_entry, {
 					args: {
 						company: frm.doc.company,
 						transaction_date: row.bill_date || frm.doc.transaction_date,
+					},
+				},
+				callback: function(r) {
+					if (r.message) {
+						frappe.model.set_value(cdt, cdn, "tax_rate", r.message.item_tax_rate);
 					}
 				},
-				callback: function (r) {
-					if (r.message) {
-						frappe.model.set_value(cdt, cdn, 'tax_rate', r.message.item_tax_rate);
-					}
-				}
 			});
 		} else {
-			frappe.model.set_value(cdt, cdn, 'tax_rate', '{}');
+			frappe.model.set_value(cdt, cdn, "tax_rate", "{}");
 		}
 	},
 });

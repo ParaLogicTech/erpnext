@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint
 from frappe.model.document import Document
+from frappe.utils import cint, flt
 
 
 class SalesCommissionCategory(Document):

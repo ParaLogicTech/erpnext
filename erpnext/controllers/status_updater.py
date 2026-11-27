@@ -2,9 +2,9 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.utils import flt, comma_or
-from frappe.utils.status_updater import StatusUpdater
 from frappe import _
+from frappe.utils import comma_or, flt
+from frappe.utils.status_updater import StatusUpdater
 
 
 def validate_status(status, options):
@@ -33,15 +33,15 @@ class StatusUpdaterERP(StatusUpdater):
 			allowance_field = "over_delivery_receipt_allowance"
 
 		if item_code:
-			allowance = flt(frappe.get_cached_value('Item', item_code, allowance_field))
+			allowance = flt(frappe.get_cached_value("Item", item_code, allowance_field))
 
 		if not allowance:
 			if allowance_type == "billing":
-				allowance = flt(frappe.get_cached_value('Accounts Settings', None, 'over_billing_allowance'))
+				allowance = flt(frappe.get_cached_value("Accounts Settings", None, "over_billing_allowance"))
 			elif allowance_type == "production":
-				allowance = flt(frappe.get_cached_value('Manufacturing Settings', None, 'overproduction_percentage_for_work_order'))
+				allowance = flt(frappe.get_cached_value("Manufacturing Settings", None, "overproduction_percentage_for_work_order"))
 			else:
-				allowance = flt(frappe.get_cached_value('Stock Settings', None, 'over_delivery_receipt_allowance'))
+				allowance = flt(frappe.get_cached_value("Stock Settings", None, "over_delivery_receipt_allowance"))
 
 		return allowance
 

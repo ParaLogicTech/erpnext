@@ -2,32 +2,33 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-import erpnext
 from frappe import _
+from frappe.contacts.address_and_contact import load_address_and_contact
 from frappe.utils import cint
 from frappe.utils.nestedset import NestedSet
+
+import erpnext
 from erpnext.stock import get_warehouse_account
-from frappe.contacts.address_and_contact import load_address_and_contact
 
 
 class Warehouse(NestedSet):
-	nsm_parent_field = 'parent_warehouse'
+	nsm_parent_field = "parent_warehouse"
 
 	def autoname(self):
 		if self.company:
-			suffix = " - " + frappe.get_cached_value('Company',  self.company,  "abbr")
+			suffix = " - " + frappe.get_cached_value("Company", self.company, "abbr")
 			if not self.warehouse_name.endswith(suffix):
 				self.name = self.warehouse_name + suffix
 		else:
 			self.name = self.warehouse_name
 
 	def onload(self):
-		'''load account name for General Ledger Report'''
+		"""load account name for General Ledger Report"""
 		if self.company and cint(frappe.db.get_value("Company", self.company, "enable_perpetual_inventory")):
 			account = self.account or get_warehouse_account(self)
 
 			if account:
-				self.set_onload('account', account)
+				self.set_onload("account", account)
 		load_address_and_contact(self)
 
 	def on_update(self):
@@ -41,11 +42,11 @@ class Warehouse(NestedSet):
 		bins = frappe.db.sql("select * from `tabBin` where warehouse = %s",
 			self.name, as_dict=1)
 		for d in bins:
-			if d['actual_qty'] or d['reserved_qty'] or d['ordered_qty'] or \
-					d['indented_qty'] or d['projected_qty'] or d['planned_qty']:
-				frappe.throw(_("Warehouse {0} can not be deleted as quantity exists for Item {1}").format(self.name, d['item_code']))
+			if d["actual_qty"] or d["reserved_qty"] or d["ordered_qty"] or \
+					d["indented_qty"] or d["projected_qty"] or d["planned_qty"]:
+				frappe.throw(_("Warehouse {0} can not be deleted as quantity exists for Item {1}").format(self.name, d["item_code"]))
 			else:
-				frappe.db.sql("delete from `tabBin` where name = %s", d['name'])
+				frappe.db.sql("delete from `tabBin` where name = %s", d["name"])
 
 		if self.check_if_sle_exists():
 			frappe.throw(_("Warehouse can not be deleted as stock ledger entry exists for this warehouse."))
@@ -88,7 +89,7 @@ class Warehouse(NestedSet):
 			self.recalculate_bin_qty(new_name)
 
 	def get_new_warehouse_name_without_abbr(self, name):
-		company_abbr = frappe.get_cached_value('Company',  self.company,  "abbr")
+		company_abbr = frappe.get_cached_value("Company", self.company, "abbr")
 		parts = name.rsplit(" - ", 1)
 
 		if parts[-1].lower() == company_abbr.lower():
@@ -149,20 +150,20 @@ def get_children(doctype, parent=None, company=None, is_root=False):
 	if is_root:
 		parent = ""
 
-	fields = ['name as value', 'is_group as expandable']
+	fields = ["name as value", "is_group as expandable"]
 	filters = [
-		['docstatus', '<', '2'],
-		['ifnull(`parent_warehouse`, "")', '=', parent],
-		['company', 'in', (company, None,'')]
+		["docstatus", "<", "2"],
+		['ifnull(`parent_warehouse`, "")', "=", parent],
+		["company", "in", (company, None, "")],
 	]
 
-	warehouses = frappe.get_list(doctype, fields=fields, filters=filters, order_by='name')
+	warehouses = frappe.get_list(doctype, fields=fields, filters=filters, order_by="name")
 
 	# return warehouses
 	for wh in warehouses:
 		wh["balance"] = get_stock_value_from_bin(warehouse=wh.value)
 		if company:
-			wh["company_currency"] = frappe.db.get_value('Company', company, 'default_currency')
+			wh["company_currency"] = frappe.db.get_value("Company", company, "default_currency")
 	return warehouses
 
 
@@ -195,21 +196,21 @@ def get_child_warehouses(warehouse):
 
 def get_warehouses_based_on_account(account, company=None):
 	warehouses = []
-	for d in frappe.get_all("Warehouse", fields = ["name", "is_group"], filters={"account": account}):
+	for d in frappe.get_all("Warehouse", fields=["name", "is_group"], filters={"account": account}):
 		if d.is_group:
 			warehouses.extend(get_child_warehouses(d.name))
 		else:
 			warehouses.append(d.name)
 
 	if not company:
-		company = frappe.db.get_value("Account", account, 'company')
+		company = frappe.db.get_value("Account", account, "company")
 
 	if (
 		not warehouses
 		and company
 		and frappe.get_cached_value("Company", company, "default_inventory_account") == account
 	):
-		warehouses = [d.name for d in frappe.get_all("Warehouse", filters={'is_group': 0})]
+		warehouses = [d.name for d in frappe.get_all("Warehouse", filters={"is_group": 0})]
 
 	if not warehouses:
 		frappe.throw(_("Warehouse not found against the account {0}").format(account))
@@ -248,5 +249,5 @@ def check_warehouse_transaction_permission(warehouse, user=None):
 		return
 
 	frappe.throw(_("User {0} is not allowed to transact with Warehouse {1}").format(
-		frappe.bold(user), frappe.bold(warehouse)
+		frappe.bold(user), frappe.bold(warehouse),
 	))

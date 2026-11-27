@@ -1,14 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import date_diff, getdate, rounded, add_days, cstr, cint, flt
 from frappe.model.document import Document
+from frappe.utils import add_days, cint, cstr, date_diff, flt, getdate, rounded
+
 from erpnext.hr.doctype.payroll_period.payroll_period import get_payroll_period_days, get_period_factor
 from erpnext.hr.doctype.salary_structure_assignment.salary_structure_assignment import get_assigned_salary_structure
-from erpnext.hr.utils import get_sal_slip_total_benefit_given, get_holidays_for_employee, get_previous_claimed_amount
+from erpnext.hr.utils import get_holidays_for_employee, get_previous_claimed_amount, get_sal_slip_total_benefit_given
+
 
 class EmployeeBenefitApplication(Document):
 	def validate(self):
@@ -28,8 +29,8 @@ class EmployeeBenefitApplication(Document):
 			for benefit in self.employee_benefits:
 				if benefit.pay_against_benefit_claim == 1:
 					payroll_period = frappe.get_doc("Payroll Period", self.payroll_period)
-					benefit_claimed = get_previous_claimed_amount(self.employee, payroll_period, component = benefit.earning_component)
-					benefit_given = get_sal_slip_total_benefit_given(self.employee, payroll_period, component = benefit.earning_component)
+					benefit_claimed = get_previous_claimed_amount(self.employee, payroll_period, component=benefit.earning_component)
+					benefit_given = get_sal_slip_total_benefit_given(self.employee, payroll_period, component=benefit.earning_component)
 					benefit_claim_remining = benefit_claimed - benefit_given
 					if benefit_claimed > 0 and benefit_claim_remining > benefit.amount:
 						frappe.throw(_("An amount of {0} already claimed for the component {1},\
@@ -58,7 +59,7 @@ class EmployeeBenefitApplication(Document):
 						else:
 							non_pro_rata_amount += max_benefit_amount
 
-			if pro_rata_amount == 0  and non_pro_rata_amount == 0:
+			if pro_rata_amount == 0 and non_pro_rata_amount == 0:
 				frappe.throw(_("Please add the remaining benefits {0} to any of the existing component").format(self.remaining_benefit))
 			elif non_pro_rata_amount > 0 and non_pro_rata_amount < rounded(self.remaining_benefit):
 				frappe.throw(_("You can claim only an amount of {0}, the rest amount {1} should be in the application \
@@ -91,13 +92,14 @@ class EmployeeBenefitApplication(Document):
 		application = frappe.db.exists(
 			"Employee Benefit Application",
 			{
-				'employee': self.employee,
-				'payroll_period': self.payroll_period,
-				'docstatus': 1
-			}
+				"employee": self.employee,
+				"payroll_period": self.payroll_period,
+				"docstatus": 1,
+			},
 		)
 		if application:
 			frappe.throw(_("Employee {0} already submited an apllication {1} for the payroll period {2}").format(self.employee, application, self.payroll_period))
+
 
 @frappe.whitelist()
 def get_max_benefits(employee, on_date):
@@ -107,6 +109,7 @@ def get_max_benefits(employee, on_date):
 		if max_benefits > 0:
 			return max_benefits
 	return False
+
 
 @frappe.whitelist()
 def get_max_benefits_remaining(employee, on_date, payroll_period):
@@ -146,6 +149,7 @@ def get_max_benefits_remaining(employee, on_date, payroll_period):
 			return max_benefits - prev_sal_slip_flexi_total
 	return max_benefits
 
+
 def calculate_lwp(employee, start_date, holidays, working_days):
 	lwp = 0
 	holidays = "','".join(holidays)
@@ -163,8 +167,9 @@ def calculate_lwp(employee, start_date, holidays, working_days):
 			END
 			""".format(holidays), {"employee": employee, "dt": dt})
 		if leave:
-			lwp = cint(leave[0][1]) and (lwp + 0.5) or (lwp + 1)
+			lwp = (cint(leave[0][1]) and (lwp + 0.5)) or (lwp + 1)
 	return lwp
+
 
 def get_benefit_component_amount(employee, start_date, end_date, salary_component, sal_struct, payroll_frequency, payroll_period):
 	if not payroll_period:
@@ -181,8 +186,8 @@ def get_benefit_component_amount(employee, start_date, end_date, salary_componen
 			and employee=%(employee)s
 			and docstatus = 1
 	""", {
-		'employee': employee,
-		'payroll_period': payroll_period.name
+		"employee": employee,
+		"payroll_period": payroll_period.name,
 	})
 
 	current_benefit_amount = 0.0
@@ -204,6 +209,7 @@ def get_benefit_component_amount(employee, start_date, end_date, salary_componen
 		current_benefit_amount = benefit_amount / total_sub_periods
 
 	return current_benefit_amount
+
 
 def get_benefit_amount_based_on_pro_rata(sal_struct, component_max_benefit):
 	max_benefits_total = 0
@@ -228,7 +234,7 @@ def get_earning_components(doctype, txt, searchfield, start, page_len, filters):
 	if len(filters) < 2:
 		return {}
 
-	salary_structure = get_assigned_salary_structure(filters['employee'], filters['date'])
+	salary_structure = get_assigned_salary_structure(filters["employee"], filters["date"])
 
 	if salary_structure:
 		return frappe.db.sql("""
@@ -239,4 +245,4 @@ def get_earning_components(doctype, txt, searchfield, start, page_len, filters):
 		""", salary_structure)
 	else:
 		frappe.throw(_("Salary Structure not found for employee {0} and date {1}")
-			.format(filters['employee'], filters['date']))
+			.format(filters["employee"], filters["date"]))

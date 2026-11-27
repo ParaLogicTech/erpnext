@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import cstr
 from frappe.model.document import Document
+from frappe.utils import cstr
 from frappe.utils.safe_exec import safe_exec
 
 
@@ -18,14 +17,14 @@ class ProjectStatus(Document):
 
 
 def clear_project_status_cache():
-	frappe.cache.delete_value('project_status_names')
+	frappe.cache.delete_value("project_status_names")
 
 
 def get_project_status_names():
 	def generator():
-		return [d.name for d in frappe.get_all('Project Status', filters={'disabled': 0}, order_by="sorting_index, name")]
+		return [d.name for d in frappe.get_all("Project Status", filters={"disabled": 0}, order_by="sorting_index, name")]
 
-	return frappe.cache.get_value('project_status_names', generator)
+	return frappe.cache.get_value("project_status_names", generator)
 
 
 def get_project_status_docs():
@@ -132,7 +131,7 @@ def set_manual_project_status(project, project_status):
 		frappe.throw(_("Not allowed to manually set Status as {0}").format(frappe.bold(project_status)))
 
 	# run validation script first (for specific error messages)
-	execute_project_status_validation(project_status_doc, project, 'on_set_validation')
+	execute_project_status_validation(project_status_doc, project, "on_set_validation")
 
 	# then evaluate condition
 	if not evaluate_project_status_condition(project_status_doc.condition, project):
@@ -146,7 +145,7 @@ def validate_project_status_for_transaction(project, transaction):
 	if project.project_status and transaction and project.project_status in get_project_status_names():
 		project_status_doc = frappe.get_cached_doc("Project Status", project.project_status)
 		execute_project_status_validation(project_status_doc, project, "transaction_validation",
-			context={'transaction': transaction})
+			context={"transaction": transaction})
 
 
 def evaluate_project_status_condition(condition, project):

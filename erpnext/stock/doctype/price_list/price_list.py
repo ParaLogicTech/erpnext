@@ -2,10 +2,10 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe import _
-from frappe.utils import cint
-from frappe.model.document import Document
 import frappe.defaults
+from frappe import _
+from frappe.model.document import Document
+from frappe.utils import cint
 
 
 class PriceList(Document):

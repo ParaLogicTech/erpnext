@@ -1,8 +1,9 @@
 import frappe
 
+
 def execute():
-	frappe.reload_doc('hr', 'doctype', 'salary_detail')
-	frappe.reload_doc('hr', 'doctype', 'salary_component')
+	frappe.reload_doc("hr", "doctype", "salary_detail")
+	frappe.reload_doc("hr", "doctype", "salary_component")
 
 	frappe.db.sql("update `tabSalary Component` set is_tax_applicable=1 where type='Earning'")
 

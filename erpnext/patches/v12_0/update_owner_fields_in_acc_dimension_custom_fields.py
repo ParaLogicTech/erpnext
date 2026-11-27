@@ -1,5 +1,7 @@
 import frappe
+
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_doctypes_with_dimensions
+
 
 def execute():
 	accounting_dimensions = frappe.db.sql("""select fieldname from
@@ -12,5 +14,5 @@ def execute():
 			UPDATE `tabCustom Field`
 			SET owner = 'Administrator'
 			WHERE fieldname = %s
-			AND dt IN (%s)""" %			#nosec
-			('%s', ', '.join(['%s']* len(doclist))), tuple([dimension.fieldname] + doclist))
+			AND dt IN (%s)""" %			# nosec
+			("%s", ", ".join(["%s"] * len(doclist))), tuple([dimension.fieldname] + doclist))

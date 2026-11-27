@@ -1,9 +1,11 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
 import unittest
+
+import frappe
 from frappe.utils import nowdate
+
 from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import (
 	get_unreconciled_journal_entries,
 	get_unreconciled_payment_entries,
@@ -19,7 +21,7 @@ class TestPaymentReconciliation(unittest.TestCase):
 			"customer_name": frappe.generate_hash(length=10),
 			"customer_group": "_Test Customer Group",
 			"customer_type": "Individual",
-			"territory": "_Test Territory"
+			"territory": "_Test Territory",
 		}).insert()
 		# self.supplier = frappe.get_doc({
 		# 	"doctype": "Supplier",
@@ -38,8 +40,8 @@ class TestPaymentReconciliation(unittest.TestCase):
 		jv_half_returned = make_payment_jv(self.customer, 200)
 		_jv_return = make_payment_jv(self.customer, 0, jv_half_returned.doctype, jv_half_returned.name, -100)
 
-		_jv_receivable = make_payment_jv(self.customer, -100)
-		jv_half_allocated = make_payment_jv(self.customer, 100, _jv_receivable.doctype, _jv_receivable.name, 100)
+		jv_receivable_ = make_payment_jv(self.customer, -100)
+		jv_half_allocated = make_payment_jv(self.customer, 100, jv_receivable_.doctype, jv_receivable_.name, 100)
 
 		so = make_sales_order(self.customer)
 		jv_against_so = make_payment_jv(self.customer, 100, so.doctype, so.name, 100)
@@ -74,17 +76,17 @@ class TestPaymentReconciliation(unittest.TestCase):
 
 		# Full allocation
 		lst = [frappe._dict({
-			'voucher_type': jv_simple.doctype,
-			'voucher_no': jv_simple.name,
-			'voucher_detail_no': None,
-			'against_voucher_type': jv_receivable.doctype,
-			'against_voucher': jv_receivable.name,
-			'account': "_Test Receivable - _TC",
-			'party_type': "Customer",
-			'party': self.customer.name,
-			'dr_or_cr': "credit_in_account_currency",
-			'unreconciled_amount': 100,
-			'allocated_amount': 100
+			"voucher_type": jv_simple.doctype,
+			"voucher_no": jv_simple.name,
+			"voucher_detail_no": None,
+			"against_voucher_type": jv_receivable.doctype,
+			"against_voucher": jv_receivable.name,
+			"account": "_Test Receivable - _TC",
+			"party_type": "Customer",
+			"party": self.customer.name,
+			"dr_or_cr": "credit_in_account_currency",
+			"unreconciled_amount": 100,
+			"allocated_amount": 100,
 		})]
 		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
@@ -95,17 +97,17 @@ class TestPaymentReconciliation(unittest.TestCase):
 
 		# Multiple row partial allocation
 		lst = [frappe._dict({
-			'voucher_type': jv_multiple_rows.doctype,
-			'voucher_no': jv_multiple_rows.name,
-			'voucher_detail_no': None,
-			'against_voucher_type': jv_receivable.doctype,
-			'against_voucher': jv_receivable.name,
-			'account': "_Test Receivable - _TC",
-			'party_type': "Customer",
-			'party': self.customer.name,
-			'dr_or_cr': "credit_in_account_currency",
-			'unreconciled_amount': 300,
-			'allocated_amount': 230
+			"voucher_type": jv_multiple_rows.doctype,
+			"voucher_no": jv_multiple_rows.name,
+			"voucher_detail_no": None,
+			"against_voucher_type": jv_receivable.doctype,
+			"against_voucher": jv_receivable.name,
+			"account": "_Test Receivable - _TC",
+			"party_type": "Customer",
+			"party": self.customer.name,
+			"dr_or_cr": "credit_in_account_currency",
+			"unreconciled_amount": 300,
+			"allocated_amount": 230,
 		})]
 		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
@@ -126,49 +128,49 @@ class TestPaymentReconciliation(unittest.TestCase):
 
 		# Attempt to over allocate a partially returned/knocked-off jv
 		lst = [frappe._dict({
-			'voucher_type': jv_half_returned.doctype,
-			'voucher_no': jv_half_returned.name,
-			'voucher_detail_no': None,
-			'against_voucher_type': jv_receivable.doctype,
-			'against_voucher': jv_receivable.name,
-			'account': "_Test Receivable - _TC",
-			'party_type': "Customer",
-			'party': self.customer.name,
-			'dr_or_cr': "credit_in_account_currency",
-			'unreconciled_amount': 200,
-			'allocated_amount': 200
+			"voucher_type": jv_half_returned.doctype,
+			"voucher_no": jv_half_returned.name,
+			"voucher_detail_no": None,
+			"against_voucher_type": jv_receivable.doctype,
+			"against_voucher": jv_receivable.name,
+			"account": "_Test Receivable - _TC",
+			"party_type": "Customer",
+			"party": self.customer.name,
+			"dr_or_cr": "credit_in_account_currency",
+			"unreconciled_amount": 200,
+			"allocated_amount": 200,
 		})]
 		self.assertRaises(frappe.ValidationError, reconcile_payments_against_invoices, lst)
 
 		# Attempt to over allocate a partially allocated jv
 		lst = [frappe._dict({
-			'voucher_type': jv_half_allocated.doctype,
-			'voucher_no': jv_half_allocated.name,
-			'voucher_detail_no': None,
-			'against_voucher_type': jv_receivable.doctype,
-			'against_voucher': jv_receivable.name,
-			'account': "_Test Receivable - _TC",
-			'party_type': "Customer",
-			'party': self.customer.name,
-			'dr_or_cr': "credit_in_account_currency",
-			'unreconciled_amount': 200,
-			'allocated_amount': 200
+			"voucher_type": jv_half_allocated.doctype,
+			"voucher_no": jv_half_allocated.name,
+			"voucher_detail_no": None,
+			"against_voucher_type": jv_receivable.doctype,
+			"against_voucher": jv_receivable.name,
+			"account": "_Test Receivable - _TC",
+			"party_type": "Customer",
+			"party": self.customer.name,
+			"dr_or_cr": "credit_in_account_currency",
+			"unreconciled_amount": 200,
+			"allocated_amount": 200,
 		})]
 		self.assertRaises(frappe.ValidationError, reconcile_payments_against_invoices, lst)
 
 		# Sales Order advance reallocation
 		lst = [frappe._dict({
-			'voucher_type': jv_against_so.doctype,
-			'voucher_no': jv_against_so.name,
-			'voucher_detail_no': jv_against_so.accounts[2].name,
-			'against_voucher_type': jv_receivable.doctype,
-			'against_voucher': jv_receivable.name,
-			'account': "_Test Receivable - _TC",
-			'party_type': "Customer",
-			'party': self.customer.name,
-			'dr_or_cr': "credit_in_account_currency",
-			'unreconciled_amount': 100,
-			'allocated_amount': 100
+			"voucher_type": jv_against_so.doctype,
+			"voucher_no": jv_against_so.name,
+			"voucher_detail_no": jv_against_so.accounts[2].name,
+			"against_voucher_type": jv_receivable.doctype,
+			"against_voucher": jv_receivable.name,
+			"account": "_Test Receivable - _TC",
+			"party_type": "Customer",
+			"party": self.customer.name,
+			"dr_or_cr": "credit_in_account_currency",
+			"unreconciled_amount": 100,
+			"allocated_amount": 100,
 		})]
 		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
@@ -202,12 +204,12 @@ class TestPaymentReconciliation(unittest.TestCase):
 			order_doctype="Sales Order", against_all_orders=True))
 
 		# Test records
-		_jv_receivable = make_payment_jv(self.customer, -100)
+		jv_receivable_ = make_payment_jv(self.customer, -100)
 
 		so = make_sales_order(self.customer)
 		pe_against_so = make_payment_entry(self.customer, 100, so.doctype, so.name, 100)
 		pe_unallocated = make_payment_entry(self.customer, 100)
-		pe_half_allocated = make_payment_entry(self.customer, 100, _jv_receivable.doctype, _jv_receivable.name, 100)
+		pe_half_allocated = make_payment_entry(self.customer, 100, jv_receivable_.doctype, jv_receivable_.name, 100)
 
 		# Test get_advance_payment_entries
 		advances = get_unreconciled_payment_entries(self.customer.doctype, self.customer.name, "_Test Receivable - _TC",
@@ -233,17 +235,17 @@ class TestPaymentReconciliation(unittest.TestCase):
 
 		# Full allocation
 		lst = [frappe._dict({
-			'voucher_type': pe_unallocated.doctype,
-			'voucher_no': pe_unallocated.name,
-			'voucher_detail_no': None,
-			'against_voucher_type': jv_receivable.doctype,
-			'against_voucher': jv_receivable.name,
-			'account': "_Test Receivable - _TC",
-			'party_type': "Customer",
-			'party': self.customer.name,
-			'dr_or_cr': "credit_in_account_currency",
-			'unreconciled_amount': 100,
-			'allocated_amount': 100
+			"voucher_type": pe_unallocated.doctype,
+			"voucher_no": pe_unallocated.name,
+			"voucher_detail_no": None,
+			"against_voucher_type": jv_receivable.doctype,
+			"against_voucher": jv_receivable.name,
+			"account": "_Test Receivable - _TC",
+			"party_type": "Customer",
+			"party": self.customer.name,
+			"dr_or_cr": "credit_in_account_currency",
+			"unreconciled_amount": 100,
+			"allocated_amount": 100,
 		})]
 		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
@@ -255,33 +257,33 @@ class TestPaymentReconciliation(unittest.TestCase):
 
 		# Attempt to over allocate a partially allocated pe
 		lst = [frappe._dict({
-			'voucher_type': pe_half_allocated.doctype,
-			'voucher_no': pe_half_allocated.name,
-			'voucher_detail_no': None,
-			'against_voucher_type': jv_receivable.doctype,
-			'against_voucher': jv_receivable.name,
-			'account': "_Test Receivable - _TC",
-			'party_type': "Customer",
-			'party': self.customer.name,
-			'dr_or_cr': "credit_in_account_currency",
-			'unreconciled_amount': 200,
-			'allocated_amount': 200
+			"voucher_type": pe_half_allocated.doctype,
+			"voucher_no": pe_half_allocated.name,
+			"voucher_detail_no": None,
+			"against_voucher_type": jv_receivable.doctype,
+			"against_voucher": jv_receivable.name,
+			"account": "_Test Receivable - _TC",
+			"party_type": "Customer",
+			"party": self.customer.name,
+			"dr_or_cr": "credit_in_account_currency",
+			"unreconciled_amount": 200,
+			"allocated_amount": 200,
 		})]
 		self.assertRaises(frappe.ValidationError, reconcile_payments_against_invoices, lst)
 
 		# Sales Order advance reallocation
 		lst = [frappe._dict({
-			'voucher_type': pe_against_so.doctype,
-			'voucher_no': pe_against_so.name,
-			'voucher_detail_no': pe_against_so.references[0].name,
-			'against_voucher_type': jv_receivable.doctype,
-			'against_voucher': jv_receivable.name,
-			'account': "_Test Receivable - _TC",
-			'party_type': "Customer",
-			'party': self.customer.name,
-			'dr_or_cr': "credit_in_account_currency",
-			'unreconciled_amount': 100,
-			'allocated_amount': 100
+			"voucher_type": pe_against_so.doctype,
+			"voucher_no": pe_against_so.name,
+			"voucher_detail_no": pe_against_so.references[0].name,
+			"against_voucher_type": jv_receivable.doctype,
+			"against_voucher": jv_receivable.name,
+			"account": "_Test Receivable - _TC",
+			"party_type": "Customer",
+			"party": self.customer.name,
+			"dr_or_cr": "credit_in_account_currency",
+			"unreconciled_amount": 100,
+			"allocated_amount": 100,
 		})]
 		reconcile_payments_against_invoices(lst)
 		self.assertEqual(get_balance_on_voucher(jv_receivable.doctype, jv_receivable.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
@@ -326,9 +328,9 @@ def make_payment_entry(party, unallocated_amount, against_dt=None, against_dn=No
 		doc.paid_amount = doc.received_amount = unallocated_amount + against_amount
 		doc.unallocated_amount = unallocated_amount + against_amount
 		doc.append("references", {
-			'reference_doctype': against_dt,
-			'reference_name': against_dn,
-			'allocated_amount': against_amount
+			"reference_doctype": against_dt,
+			"reference_name": against_dn,
+			"allocated_amount": against_amount,
 		})
 	else:
 		doc.paid_amount = doc.received_amount = unallocated_amount
@@ -367,7 +369,7 @@ def make_payment_jv(party, unallocated_amount, against_dt=None, against_dn=None,
 		else:
 			jv.accounts[1].credit_in_account_currency = unallocated_amount / unallocated_rows
 
-		for i in range(unallocated_rows-1):
+		for _i in range(unallocated_rows - 1):
 			jv.append("accounts", jv.accounts[1].as_dict())
 
 	if against_dt and against_dn and against_amount:
@@ -390,7 +392,7 @@ def make_payment_jv(party, unallocated_amount, against_dt=None, against_dn=None,
 
 
 def make_sales_order(party):
-	so = frappe.get_doc(frappe.get_test_records('Sales Order')[0])
+	so = frappe.get_doc(frappe.get_test_records("Sales Order")[0])
 	so.customer = party.name
 	so.insert()
 	so.submit()

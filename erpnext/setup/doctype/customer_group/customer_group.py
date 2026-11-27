@@ -7,7 +7,7 @@ from frappe.utils.nestedset import NestedSet, get_root_of
 
 
 class CustomerGroup(NestedSet):
-	nsm_parent_field = 'parent_customer_group'
+	nsm_parent_field = "parent_customer_group"
 
 	def validate(self):
 		if not self.parent_customer_group:
@@ -22,7 +22,7 @@ class CustomerGroup(NestedSet):
 
 
 def get_parent_customer_groups(customer_group):
-	lft, rgt = frappe.db.get_value("Customer Group", customer_group, ['lft', 'rgt'])
+	lft, rgt = frappe.db.get_value("Customer Group", customer_group, ["lft", "rgt"])
 
 	return frappe.db.sql("""
 		select name

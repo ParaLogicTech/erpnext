@@ -25,10 +25,10 @@ def execute():
 	"""))
 
 	for parent, qty in bom.items():
-		frappe.db.set_value('BOM', parent, 'total_raw_material_qty', qty, update_modified=False)
+		frappe.db.set_value("BOM", parent, "total_raw_material_qty", qty, update_modified=False)
 
 	for parent, qty in mreq.items():
-		frappe.db.set_value('Material Request', parent, 'total_qty', qty, update_modified=False)
+		frappe.db.set_value("Material Request", parent, "total_qty", qty, update_modified=False)
 
 	for parent, qty in wo.items():
-		frappe.db.set_value('Work Order', parent, 'total_raw_material_qty', qty, update_modified=False)
+		frappe.db.set_value("Work Order", parent, "total_raw_material_qty", qty, update_modified=False)

@@ -3,10 +3,11 @@
 
 import frappe
 
+
 def execute():
-	frappe.reload_doc('setup', 'doctype', 'global_defaults', force=True)
-	frappe.reload_doc('stock', 'doctype', 'delivery_trip')
-	frappe.reload_doc('stock', 'doctype', 'delivery_stop', force=True)
+	frappe.reload_doc("setup", "doctype", "global_defaults", force=True)
+	frappe.reload_doc("stock", "doctype", "delivery_trip")
+	frappe.reload_doc("stock", "doctype", "delivery_stop", force=True)
 
 	for trip in frappe.get_all("Delivery Trip"):
 		trip_doc = frappe.get_doc("Delivery Trip", trip.name)
@@ -14,7 +15,7 @@ def execute():
 		status = {
 			0: "Draft",
 			1: "Scheduled",
-			2: "Cancelled"
+			2: "Cancelled",
 		}[trip_doc.docstatus]
 
 		if trip_doc.docstatus == 1:

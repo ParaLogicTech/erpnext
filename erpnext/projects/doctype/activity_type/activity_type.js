@@ -4,5 +4,5 @@ frappe.ui.form.on("Activity Type", {
 			frappe.route_options = {"activity_type": frm.doc.name};
 			frappe.set_route("List", "Activity Cost");
 		});
-	}
+	},
 });

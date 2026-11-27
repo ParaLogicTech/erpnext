@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
+
 
 class TestQualityFeedbackTemplate(unittest.TestCase):
 
@@ -13,15 +14,16 @@ class TestQualityFeedbackTemplate(unittest.TestCase):
 
 		self.assertEqual(test_create_template, test_get_template)
 
+
 def create_template():
 	template = frappe.get_doc({
 		"doctype": "Quality Feedback Template",
 		"template": "_Test Feedback Template",
 		"parameters": [
 			{
-				"parameter": "Test Parameter"
-			}
-		]
+				"parameter": "Test Parameter",
+			},
+		],
 	})
 
 	template_exists = frappe.db.exists("Quality Feedback Template", {"template": "_Test Feedback Template"})
@@ -31,6 +33,7 @@ def create_template():
 		return template.name
 	else:
 		return template_exists
+
 
 def get_template():
 	return frappe.db.exists("Quality Feedback Template", {"template": "_Test Feedback Template"})

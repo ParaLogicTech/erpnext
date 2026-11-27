@@ -1,33 +1,32 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
-frappe.provide('erpnext');
+frappe.provide("erpnext");
 
 // add toolbar icon
-$(document).bind('toolbar_setup', function() {
+$(document).bind("toolbar_setup", function() {
 	frappe.app.name = "ERPNext";
 
 	frappe.help_feedback_link = '<p><a class="text-muted" \
-		href="https://discuss.erpnext.com">Feedback</a></p>'
+		href="https://discuss.erpnext.com">Feedback</a></p>';
 
-	$('[data-link="docs"]').attr("href", "https://erpnext.com/docs")
-	$('[data-link="issues"]').attr("href", "https://github.com/frappe/erpnext/issues")
+	$('[data-link="docs"]').attr("href", "https://erpnext.com/docs");
+	$('[data-link="issues"]').attr("href", "https://github.com/frappe/erpnext/issues");
 
 
 	// default documentation goes to erpnext
 	// $('[data-link-type="documentation"]').attr('data-path', '/erpnext/manual/index');
 
 	// additional help links for erpnext
-	var $help_menu = $('.dropdown-help ul .documentation-links');
+	var $help_menu = $(".dropdown-help ul .documentation-links");
 	$('<li><a data-link-type="forum" href="https://erpnext.com/docs/user/manual" \
-		target="_blank">'+__('Documentation')+'</a></li>').insertBefore($help_menu);
+		target="_blank">' + __("Documentation") + "</a></li>").insertBefore($help_menu);
 	$('<li><a data-link-type="forum" href="https://discuss.erpnext.com" \
-		target="_blank">'+__('User Forum')+'</a></li>').insertBefore($help_menu);
+		target="_blank">' + __("User Forum") + "</a></li>").insertBefore($help_menu);
 	$('<li><a href="https://github.com/frappe/erpnext/issues" \
-		target="_blank">'+__('Report an Issue')+'</a></li>').insertBefore($help_menu);
+		target="_blank">' + __("Report an Issue") + "</a></li>").insertBefore($help_menu);
 
 });
-
 
 
 // doctypes created via tree
@@ -49,13 +48,13 @@ $.extend(frappe.breadcrumbs.preferred, {
 	"Territory": "Selling",
 	"Sales Person": "Selling",
 	"Sales Partner": "Selling",
-	"Brand": "Stock"
+	"Brand": "Stock",
 });
 
 $.extend(frappe.breadcrumbs.module_map, {
-	'ERPNext Integrations': 'Integrations',
-	'Geo': 'Settings',
-	'Portal': 'Website',
-	'Utilities': 'Settings',
-	'Contacts': 'CRM'
+	"ERPNext Integrations": "Integrations",
+	"Geo": "Settings",
+	"Portal": "Website",
+	"Utilities": "Settings",
+	"Contacts": "CRM",
 });

@@ -5,13 +5,13 @@ import frappe
 
 
 def execute():
-	if not frappe.db.table_exists('Daily Work Summary Group'):
+	if not frappe.db.table_exists("Daily Work Summary Group"):
 		frappe.reload_doc("hr", "doctype", "daily_work_summary_group")
 		frappe.reload_doc("hr", "doctype", "daily_work_summary_group_user")
 
 		# check if Daily Work Summary Settings Company table exists
 		try:
-			frappe.db.sql('DESC `tabDaily Work Summary Settings Company`')
+			frappe.db.sql("DESC `tabDaily Work Summary Settings Company`")
 		except Exception:
 			return
 
@@ -21,7 +21,7 @@ def execute():
 			for d in previous_setting["companies"]:
 				users = frappe.get_list("Employee", dict(
 					company=d.company, user_id=("!=", " ")), "user_id as user")
-				if(len(users)):
+				if (len(users)):
 					# create new group entry for each company entry
 					new_group = frappe.get_doc(dict(doctype="Daily Work Summary Group",
 						name="Daily Work Summary for " + d.company,
@@ -31,7 +31,7 @@ def execute():
 						message=previous_setting["message"]))
 					new_group.flags.ignore_permissions = True
 					new_group.flags.ignore_validate = True
-					new_group.insert(ignore_if_duplicate = True)
+					new_group.insert(ignore_if_duplicate=True)
 
 	frappe.delete_doc("DocType", "Daily Work Summary Settings")
 	frappe.delete_doc("DocType", "Daily Work Summary Settings Company")
@@ -45,6 +45,7 @@ def get_previous_setting():
 		obj[field] = value
 	obj["companies"] = get_setting_companies()
 	return obj
+
 
 def get_setting_companies():
 	return frappe.db.sql("select * from `tabDaily Work Summary Settings Company`", as_dict=True)

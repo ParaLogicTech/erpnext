@@ -4,13 +4,16 @@
 import frappe
 from frappe import _
 
+
 def execute(filters=None):
-	if not filters: filters = {}
+	if not filters:
+		filters = {}
 	validate_filters(filters)
 	columns = get_columns()
 	stock = get_total_stock(filters)
 
 	return columns, stock
+
 
 def get_columns():
 	columns = [
@@ -22,6 +25,7 @@ def get_columns():
 	]
 
 	return columns
+
 
 def get_total_stock(filters):
 	conditions = ""
@@ -52,8 +56,9 @@ def get_total_stock(filters):
 			WHERE
 				actual_qty != 0 %s""" % (columns, conditions))
 
+
 def validate_filters(filters):
-	if filters.get("group_by") == 'Company' and \
+	if filters.get("group_by") == "Company" and \
 		filters.get("company"):
 
 		frappe.throw(_("Please set Company filter blank if Group By is 'Company'"))

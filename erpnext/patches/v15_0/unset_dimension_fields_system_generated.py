@@ -1,5 +1,9 @@
 import frappe
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_doctypes_with_dimensions, get_accounting_dimensions
+
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_accounting_dimensions,
+	get_doctypes_with_dimensions,
+)
 
 
 def execute():

@@ -8,11 +8,11 @@ erpnext.hr.EmployeeController = class EmployeeController extends frappe.ui.form.
 		this.frm.fields_dict.user_id.get_query = function(doc, cdt, cdn) {
 			return {
 				query: "frappe.core.doctype.user.user.user_query",
-				filters: {ignore_user_type: 1}
-			}
-		}
+				filters: {ignore_user_type: 1},
+			};
+		};
 		this.frm.fields_dict.reports_to.get_query = function(doc, cdt, cdn) {
-			return { query: "erpnext.controllers.queries.employee_query"} }
+			return {query: "erpnext.controllers.queries.employee_query"}; };
 	}
 
 	refresh() {
@@ -30,52 +30,52 @@ erpnext.hr.EmployeeController = class EmployeeController extends frappe.ui.form.
 		var me = this;
 
 		if (!me.frm.doc.__islocal) {
-			me.frm.add_custom_button(__('Salary Register'), function () {
-				frappe.set_route('query-report', 'Salary Register', {
+			me.frm.add_custom_button(__("Salary Register"), function() {
+				frappe.set_route("query-report", "Salary Register", {
 					employee: me.frm.doc.name,
 					from_date: frappe.defaults.get_user_default("year_start_date"),
 					to_date: frappe.defaults.get_user_default("year_end_date"),
 				});
 			}, __("View"));
 
-			me.frm.add_custom_button(__('Attendance Sheet'), function () {
-				frappe.set_route('query-report', 'Employee Attendance Sheet', {
+			me.frm.add_custom_button(__("Attendance Sheet"), function() {
+				frappe.set_route("query-report", "Employee Attendance Sheet", {
 					employee: me.frm.doc.name,
 				});
 			}, __("View"));
 
-			me.frm.add_custom_button(__('Checkin Sheet'), function () {
-				frappe.set_route('query-report', 'Employee Checkin Sheet', {
+			me.frm.add_custom_button(__("Checkin Sheet"), function() {
+				frappe.set_route("query-report", "Employee Checkin Sheet", {
 					employee: me.frm.doc.name,
 				});
 			}, __("View"));
 
-			me.frm.add_custom_button(__('Leave Balance'), function () {
-				frappe.set_route('query-report', 'Employee Leave Balance', {
+			me.frm.add_custom_button(__("Leave Balance"), function() {
+				frappe.set_route("query-report", "Employee Leave Balance", {
 					employee: me.frm.doc.name,
 				});
 			}, __("View"));
 
-			me.frm.add_custom_button(__('Leave Balance Summary'), function () {
-				frappe.set_route('query-report', 'Employee Leave Balance Summary', {
+			me.frm.add_custom_button(__("Leave Balance Summary"), function() {
+				frappe.set_route("query-report", "Employee Leave Balance Summary", {
 					employee: me.frm.doc.name,
 				});
 			}, __("View"));
 
-			me.frm.add_custom_button(__('Accounting Ledger'), function () {
-				frappe.set_route('query-report', 'General Ledger', {
-					party_type: 'Employee',
+			me.frm.add_custom_button(__("Accounting Ledger"), function() {
+				frappe.set_route("query-report", "General Ledger", {
+					party_type: "Employee",
 					party: me.frm.doc.name,
 					from_date: frappe.defaults.get_user_default("year_start_date"),
-					to_date: frappe.defaults.get_user_default("year_end_date")
+					to_date: frappe.defaults.get_user_default("year_end_date"),
 				});
 			}, __("View"));
 
-			me.frm.add_custom_button(__('Accounting Ledger Summary'), function () {
-				frappe.set_route('query-report', 'Employee Ledger Summary', {
+			me.frm.add_custom_button(__("Accounting Ledger Summary"), function() {
+				frappe.set_route("query-report", "Employee Ledger Summary", {
 					party: me.frm.doc.name,
 					from_date: frappe.defaults.get_user_default("year_start_date"),
-					to_date: frappe.defaults.get_user_default("year_end_date")
+					to_date: frappe.defaults.get_user_default("year_end_date"),
 				});
 			}, __("View"));
 		}
@@ -84,68 +84,68 @@ erpnext.hr.EmployeeController = class EmployeeController extends frappe.ui.form.
 	date_of_birth() {
 		return cur_frm.call({
 			method: "get_retirement_date",
-			args: {date_of_birth: this.frm.doc.date_of_birth}
+			args: {date_of_birth: this.frm.doc.date_of_birth},
 		});
 	}
 
 	salutation() {
-		if(this.frm.doc.salutation) {
+		if (this.frm.doc.salutation) {
 			this.frm.set_value("gender", {
 				"Mr": "Male",
-				"Ms": "Female"
+				"Ms": "Female",
 			}[this.frm.doc.salutation]);
 		}
 	}
 };
 
-frappe.ui.form.on('Employee',{
+frappe.ui.form.on("Employee", {
 	setup: function(frm) {
 		frm.set_query("leave_policy", function() {
 			return {
 				"filters": {
-					"docstatus": 1
-				}
+					"docstatus": 1,
+				},
 			};
 		});
 	},
-	onload:function(frm) {
+	onload: function(frm) {
 		frm.set_query("department", function() {
 			return {
 				"filters": {
 					"company": frm.doc.company,
-				}
+				},
 			};
 		});
 	},
-	prefered_contact_email:function(frm){		
-		frm.events.update_contact(frm)		
+	prefered_contact_email: function(frm) {
+		frm.events.update_contact(frm);
 	},
-	personal_email:function(frm){
-		frm.events.update_contact(frm)
+	personal_email: function(frm) {
+		frm.events.update_contact(frm);
 	},
-	company_email:function(frm){
-		frm.events.update_contact(frm)
+	company_email: function(frm) {
+		frm.events.update_contact(frm);
 	},
-	user_id:function(frm){
-		frm.events.update_contact(frm)
+	user_id: function(frm) {
+		frm.events.update_contact(frm);
 	},
-	update_contact:function(frm){
-		var prefered_email_fieldname = frappe.model.scrub(frm.doc.prefered_contact_email) || 'user_id';
+	update_contact: function(frm) {
+		var prefered_email_fieldname = frappe.model.scrub(frm.doc.prefered_contact_email) || "user_id";
 		frm.set_value("prefered_email",
-			frm.fields_dict[prefered_email_fieldname].value)
+			frm.fields_dict[prefered_email_fieldname].value);
 	},
 	create_user: function(frm) {
 		if (!frm.doc.prefered_email)
 		{
-			frappe.throw(__("Please enter Preferred Contact Email"))
+			frappe.throw(__("Please enter Preferred Contact Email"));
 		}
 		frappe.call({
 			method: "erpnext.hr.doctype.employee.employee.create_user",
-			args: { employee: frm.doc.name, email: frm.doc.prefered_email },
+			args: {employee: frm.doc.name, email: frm.doc.prefered_email},
 			callback: function(r)
 			{
-				frm.set_value("user_id", r.message)
-			}
+				frm.set_value("user_id", r.message);
+			},
 		});
 	},
 	tax_id: function(frm) {
@@ -154,7 +154,7 @@ frappe.ui.form.on('Employee',{
 	tax_cnic: function(frm) {
 		frappe.regional.format_cnic(frm, "tax_cnic");
 	},
-	cell_number: function (frm) {
+	cell_number: function(frm) {
 		frappe.regional.format_mobile_no(frm, "cell_number");
 	},
 });

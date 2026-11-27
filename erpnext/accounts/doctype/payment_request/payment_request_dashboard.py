@@ -3,18 +3,18 @@ from frappe import _
 
 def get_data():
 	return {
-		'fieldname': 'payment_request',
-		'non_standard_fieldnames': {
-			'Integration Request': 'reference_docname',
+		"fieldname": "payment_request",
+		"non_standard_fieldnames": {
+			"Integration Request": "reference_docname",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'label': _('Payment'),
-				'items': ['Payment Entry', 'Payment Order']
+				"label": _("Payment"),
+				"items": ["Payment Entry", "Payment Order"],
 			},
 			{
-				'label': _('Payment Gateway'),
-				'items': ['Integration Request']
+				"label": _("Payment Gateway"),
+				"items": ["Integration Request"],
 			},
-		]
+		],
 	}

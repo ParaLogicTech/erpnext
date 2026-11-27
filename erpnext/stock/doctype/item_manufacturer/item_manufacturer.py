@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -6,6 +5,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+
 
 class ItemManufacturer(Document):
 	def validate(self):
@@ -18,9 +18,9 @@ class ItemManufacturer(Document):
 	def validate_duplicate_entry(self):
 		if self.is_new():
 			filters = {
-				'item_code': self.item_code,
-				'manufacturer': self.manufacturer,
-				'manufacturer_part_no': self.manufacturer_part_no
+				"item_code": self.item_code,
+				"manufacturer": self.manufacturer,
+				"manufacturer_part_no": self.manufacturer_part_no,
 			}
 
 			if frappe.db.exists("Item Manufacturer", filters):
@@ -40,7 +40,7 @@ class ItemManufacturer(Document):
 				frappe.db.set_value("Item", item.name,
 					{
 						"default_item_manufacturer": None,
-						"default_manufacturer_part_no": None
+						"default_manufacturer_part_no": None,
 					})
 
 		elif self.is_default:
@@ -58,10 +58,11 @@ class ItemManufacturer(Document):
 			frappe.db.set_value("Item", item.name,
 					{
 						"default_item_manufacturer": manufacturer,
-						"default_manufacturer_part_no": manufacturer_part_no
+						"default_manufacturer_part_no": manufacturer_part_no,
 					})
+
 
 @frappe.whitelist()
 def get_item_manufacturer_part_no(item_code, manufacturer):
 	return frappe.db.get_value("Item Manufacturer",
-		{'item_code': item_code, 'manufacturer': manufacturer}, 'manufacturer_part_no')
+		{"item_code": item_code, "manufacturer": manufacturer}, "manufacturer_part_no")

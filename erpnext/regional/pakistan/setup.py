@@ -19,5 +19,5 @@ def add_custom_roles_for_reports():
 					doctype="Custom Role",
 					report=report,
 					roles=[dict(role="Accounts User"), dict(role="Accounts Manager"), dict(role="Auditor")],
-				)
+				),
 			).insert()

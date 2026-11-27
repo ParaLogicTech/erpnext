@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, nowdate, flt, cint
+from frappe.utils import cint, flt, getdate, nowdate
 
 
 class FBRInvoiceWiseTaxes:
@@ -13,14 +13,14 @@ class FBRInvoiceWiseTaxes:
 		self.filters.to_date = getdate(self.filters.to_date or nowdate())
 
 		if not self.filters.get("company"):
-			self.filters["company"] = frappe.db.get_single_value('Global Defaults', 'default_company')
+			self.filters["company"] = frappe.db.get_single_value("Global Defaults", "default_company")
 
 	def run(self, args):
 		if self.filters.from_date > self.filters.to_date:
 			frappe.throw(_("From Date must be before To Date"))
 
 		self.filters.advance_tax_accounts = frappe.get_all("Advance Tax Account", filters={
-			"parenttype": "Company", "parent": self.filters.company
+			"parenttype": "Company", "parent": self.filters.company,
 		}, fields=["account_head"])
 		self.filters.advance_tax_accounts = [d.account_head for d in self.filters.advance_tax_accounts]
 
@@ -40,44 +40,44 @@ class FBRInvoiceWiseTaxes:
 				"label": _("Payment Section"),
 				"fieldtype": "Data",
 				"fieldname": "payment_section",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("TaxPayer_NTN"),
 				"fieldtype": "Data",
 				"fieldname": "tax_id",
-				"width": 70
+				"width": 70,
 			},
 			{
 				"label": _("TaxPayer_CNIC"),
 				"fieldtype": "Data",
 				"fieldname": "tax_cnic",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("TaxPayer_Name"),
 				"fieldtype": "Link",
 				"fieldname": "party",
 				"options": self.filters.party_type,
-				"width": 200
+				"width": 200,
 			},
 			{
 				"label": _("TaxPayer_Name"),
 				"fieldtype": "Data",
 				"fieldname": "party_name",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("TaxPayer_City"),
 				"fieldtype": "Data",
 				"fieldname": "city",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("TaxPayer_Address"),
 				"fieldtype": "Data",
 				"fieldname": "address",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("TaxPayer_Status"),
@@ -96,14 +96,14 @@ class FBRInvoiceWiseTaxes:
 				"fieldtype": "Currency",
 				"fieldname": "taxable_amount",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Tax_Amount"),
 				"fieldtype": "Currency",
 				"fieldname": "tax_amount",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 		]
 
@@ -112,11 +112,11 @@ class FBRInvoiceWiseTaxes:
 				"label": _("Average Rate"),
 				"fieldtype": "Float",
 				"fieldname": "rate",
-				"width": 100
+				"width": 100,
 			})
 
 		if self.party_naming_by != "Naming Series":
-			columns = list(filter(lambda d: d['fieldname'] != 'party_name', columns))
+			columns = list(filter(lambda d: d["fieldname"] != "party_name", columns))
 
 		return columns
 
@@ -178,7 +178,7 @@ class FBRInvoiceWiseTaxes:
 				tax.taxable_amount = tax.base_net_total
 
 			row = customer_rows.setdefault(tax.party, frappe._dict({
-				"party": tax.party, "taxable_amount": 0, "tax_amount": 0, "rate": 0, "rate_count": 0
+				"party": tax.party, "taxable_amount": 0, "tax_amount": 0, "rate": 0, "rate_count": 0,
 			}))
 			row.taxable_amount += flt(tax.taxable_amount)
 			row.tax_amount += flt(tax.tax_amount)
@@ -192,13 +192,13 @@ class FBRInvoiceWiseTaxes:
 
 			if d.rate_count:
 				d.rate /= d.rate_count
-				del d['rate_count']
+				del d["rate_count"]
 
 				d.business_name = d.party
 
 		result = sorted(customer_rows.values(), key=lambda d: d.party)
 		for i, d in enumerate(result):
-			d.sr_no = i+1
+			d.sr_no = i + 1
 
 		return result
 
@@ -214,7 +214,7 @@ class FBRInvoiceWiseTaxes:
 			left join `tabDynamic Link` l on l.parenttype='Address' and l.link_doctype='Customer' and l.link_name=c.name
 			left join `tabAddress` addr on addr.name = l.parent and addr.address_type = 'Billing'
 			where c.name in ({0})
-		""".format(", ".join(['%s'] * len(customers))), customers, as_dict=1)
+		""".format(", ".join(["%s"] * len(customers))), customers, as_dict=1)
 
 		customer_details = {}
 		for d in data:

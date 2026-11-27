@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-from frappe.model.document import Document
 from frappe import _
+from frappe.model.document import Document
+
 
 class ChequePrintTemplate(Document):
 	pass
+
 
 @frappe.whitelist()
 def create_or_update_cheque_print_format(template_name):
@@ -18,7 +19,7 @@ def create_or_update_cheque_print_format(template_name):
 			"standard": "No",
 			"custom_format": 1,
 			"print_format_type": "Jinja",
-			"name": template_name
+			"name": template_name,
 		})
 	else:
 		cheque_print = frappe.get_doc("Print Format", template_name)
@@ -68,8 +69,8 @@ def create_or_update_cheque_print_format(template_name):
 			{{doc.company}}
 		</span>
 	</div>
-</div>"""%{
-		"starting_position_from_top_edge": doc.starting_position_from_top_edge \
+</div>""" % {
+		"starting_position_from_top_edge": doc.starting_position_from_top_edge
 			if doc.cheque_size == "A4" else 0.0,
 		"cheque_width": doc.cheque_width, "cheque_height": doc.cheque_height,
 		"acc_pay_dist_from_top_edge": doc.acc_pay_dist_from_top_edge,
@@ -88,7 +89,7 @@ def create_or_update_cheque_print_format(template_name):
 		"amt_in_figures_from_top_edge": doc.amt_in_figures_from_top_edge,
 		"amt_in_figures_from_left_edge": doc.amt_in_figures_from_left_edge,
 		"signatory_from_top_edge": doc.signatory_from_top_edge,
-		"signatory_from_left_edge": doc.signatory_from_left_edge
+		"signatory_from_left_edge": doc.signatory_from_left_edge,
 	}
 
 	cheque_print.save(ignore_permissions=True)

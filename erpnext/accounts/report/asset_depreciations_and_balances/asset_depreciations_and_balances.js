@@ -29,26 +29,26 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			fieldname: "asset_category_group",
 			label: __("Asset Category Group"),
 			fieldtype: "MultiSelectList",
-			options:"Account Group",
-			get_data: function (txt) {
+			options: "Account Group",
+			get_data: function(txt) {
 				return frappe.db.get_link_options("Account Group", txt, {
-					"group_level": "Fixed Asset Category"
-				})
-			}
+					"group_level": "Fixed Asset Category",
+				});
+			},
 		},
 		{
 			fieldname: "cost_center",
 			label: __("Cost Center"),
 			fieldtype: "Link",
-			options:"Cost Center",
+			options: "Cost Center",
 			reqd: 0,
 		},
 		{
 			fieldname: "document_status",
 			label: __("Asset Document Status"),
 			fieldtype: "Select",
-			options:["", "Submit", "Cancel", "Draft"],
-			default:"Submit",
+			options: ["", "Submit", "Cancel", "Draft"],
+			default: "Submit",
 			reqd: 0,
 		},
 		{
@@ -56,7 +56,7 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			label: __("Group By"),
 			fieldtype: "Select",
 			options: ["Asset Category Group", "Asset Category", "Asset"],
-			default: "Asset Category Group"
+			default: "Asset Category Group",
 		},
 		{
 			fieldname: "asset",
@@ -70,16 +70,16 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 			label: __("Asset Category"),
 			fieldtype: "MultiSelectList",
 			options: "Asset Category",
-			get_data: function (txt) {
+			get_data: function(txt) {
 				return frappe.db.get_link_options("Asset Category", txt);
-			}
+			},
 		},
 		{
 			fieldname: "finance_book",
 			label: __("Finance Book"),
 			fieldtype: "Link",
 			options: "Finance Book",
-			hidden:1
+			hidden: 1,
 		},
 		{
 			fieldname: "status",
@@ -96,8 +96,8 @@ frappe.query_reports["Asset Depreciations and Balances"] = {
 				"In Maintenance",
 				"Out of Order",
 				"Issue",
-				"Receipt"
-			]
-		}
-	]
+				"Receipt",
+			],
+		},
+	],
 };

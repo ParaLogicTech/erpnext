@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import flt
 from frappe.model.document import Document
+from frappe.utils import flt
+
 from erpnext.stock.doctype.item.item import convert_item_uom_for
 
 
@@ -18,7 +18,7 @@ class ItemAlternative(Document):
 	def validate_alternative_item_allowed(self):
 		if (
 			self.item_code
-			and not frappe.db.get_value('Item', self.item_code, 'allow_alternative_item')
+			and not frappe.db.get_value("Item", self.item_code, "allow_alternative_item")
 		):
 			frappe.throw(_("Not allowed to set alternative item for the item {0}").format(self.item_code))
 
@@ -38,12 +38,12 @@ class ItemAlternative(Document):
 				frappe.msgprint(_("The value of {0} differs between Items {1} and {2}").format(
 				frappe.bold(item_meta.get_label(field)),
 					frappe.bold(self.alternative_item_code),
-					frappe.bold(self.item_code)
+					frappe.bold(self.item_code),
 				), alert=alert, raise_exception=raise_exception)
 
 	def validate_duplicate(self):
 		duplicate = frappe.db.get_value("Item Alternative", {
-			'item_code': self.item_code, 'alternative_item_code': self.alternative_item_code, 'name': ('!=', self.name)
+			"item_code": self.item_code, "alternative_item_code": self.alternative_item_code, "name": ("!=", self.name),
 		})
 		if duplicate:
 			frappe.throw(_("Already record exists for the item {0}".format(self.item_code)))
@@ -102,7 +102,7 @@ def has_alternative_item(item_code):
 	return bool(
 		item_code
 		and frappe.get_cached_value("Item", item_code, "allow_alternative_item")
-		and bool(get_alternative_items(item_code))
+		and bool(get_alternative_items(item_code)),
 	)
 
 

@@ -5,7 +5,7 @@ frappe.query_reports["BOM Stock Report"] = {
 			"label": __("BOM"),
 			"fieldtype": "Link",
 			"options": "BOM",
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
 			"fieldname": "warehouse",
@@ -17,12 +17,12 @@ frappe.query_reports["BOM Stock Report"] = {
 			"fieldname": "qty_to_produce",
 			"label": __("Quantity to Produce"),
 			"fieldtype": "Float",
-			"default": 1
-		 },
+			"default": 1,
+		},
 		{
 			"fieldname": "show_exploded_view",
 			"label": __("Show Exploded View"),
-			"fieldtype": "Check"
+			"fieldtype": "Check",
 		},
 	],
 	formatter: function(value, row, column, data, default_formatter) {
@@ -30,12 +30,12 @@ frappe.query_reports["BOM Stock Report"] = {
 
 		if (["item_code", "producible_qty"].includes(column.fieldname)) {
 			if (flt(data["producible_qty"]) > 0) {
-				style['color'] = 'green';
+				style["color"] = "green";
 			} else {
-				style['color'] = 'red';
+				style["color"] = "red";
 			}
 		}
 
 		return default_formatter(value, row, column, data, {css: style});
-	}
-}
+	},
+};

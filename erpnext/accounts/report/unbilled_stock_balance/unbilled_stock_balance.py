@@ -26,7 +26,7 @@ class UnbilledStockBalance:
 
 		if self.filters.from_date > self.filters.to_date:
 			frappe.throw(_("From Date must be before To Date"))
-	
+
 	def set_default_unbilled_stock_account(self):
 		self.all_unbilled_stock_accounts = set()
 		default_stock_delivered_but_not_billed = frappe.db.get_value("Company", self.filters.company, "stock_delivered_but_not_billed")
@@ -82,7 +82,7 @@ class UnbilledStockBalance:
 		self.journal_entry_data = []
 		je_conditions = self.get_conditions("tje")
 		je_conditions_str = "and {0}".format(" and ".join(je_conditions)) if je_conditions else ""
-		
+
 		if self.all_unbilled_stock_accounts:
 			self.journal_entry_data = frappe.db.sql(
 				f"""
@@ -104,7 +104,7 @@ class UnbilledStockBalance:
 				order by tje.posting_date, tje.name
 			""", {
 					**self.filters,
-					"accounts": self.all_unbilled_stock_accounts
+					"accounts": self.all_unbilled_stock_accounts,
 				}, as_dict=1)
 
 		self.all_delivery_notes = set()
@@ -201,7 +201,7 @@ class UnbilledStockBalance:
 				row_obj = row_map[key] = self.get_row_template(sid)
 
 			row_obj.billed_value += flt(sid.billed_stock_value)
-		
+
 		# Journal Entry
 		for je in self.journal_entry_data:
 			key = (je.journal_entry, je.unbilled_stock_account)

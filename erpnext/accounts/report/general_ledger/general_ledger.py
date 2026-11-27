@@ -3,16 +3,17 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, cstr, flt
+from frappe.desk.query_report import group_report_data
+from frappe.utils import cstr, flt, getdate
+
 from erpnext import get_default_company
-from erpnext.accounts.report.utils import get_currency, convert_to_presentation_currency
-from erpnext.accounts.utils import get_account_currency, get_additional_sales_invoice_no_fields
-from erpnext.accounts.party import set_party_name_in_list
 from erpnext.accounts.doctype.account.account import get_accounts_with_children
-from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.doctype.account_group.account_group import get_accounts_in_account_group
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
-from frappe.desk.query_report import group_report_data
+from erpnext.accounts.party import set_party_name_in_list
+from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+from erpnext.accounts.report.utils import convert_to_presentation_currency, get_currency
+from erpnext.accounts.utils import get_account_currency, get_additional_sales_invoice_no_fields
 
 
 def execute(filters=None):
@@ -72,7 +73,7 @@ def validate_filters(filters, account_details):
 	# if filters.get('cost_center'):
 	# 	filters.cost_center = frappe.parse_json(filters.get('cost_center'))
 
-	if filters.get('party'):
+	if filters.get("party"):
 		# filters.party = frappe.parse_json(filters.get("party"))
 		if isinstance(filters.party, str):
 			filters.party = [filters.party]
@@ -82,14 +83,14 @@ def validate_filters(filters, account_details):
 
 def validate_party(filters):
 	party_type, party = filters.get("party_type"), filters.get("party")
-	filters['party_list'] = []
+	filters["party_list"] = []
 
 	if party:
 		if not party_type:
 			frappe.throw(_("To filter based on Party, select Party Type first"))
 		else:
 			for d in party:
-				filters['party_list'].append((party_type, d))
+				filters["party_list"].append((party_type, d))
 				if not frappe.db.exists(party_type, d):
 					frappe.throw(_("Invalid {0}: {1}").format(party_type, d))
 
@@ -122,8 +123,8 @@ def set_account_currency(filters):
 	if not company:
 		frappe.throw(_("Company is mandatory"))
 
-	filters["company_currency"] = frappe.get_cached_value('Company', company,  "default_currency")
-	if filters.get("account_list") or (filters.get('party_list') and len(filters.party_list) == 1):
+	filters["company_currency"] = frappe.get_cached_value("Company", company, "default_currency")
+	if filters.get("account_list") or (filters.get("party_list") and len(filters.party_list) == 1):
 		account_currency = None
 
 		if filters.get("account_list"):
@@ -143,15 +144,15 @@ def set_account_currency(filters):
 		elif filters.get("party_type") and filters.get("party") and filters.get("company"):
 			gle_currency = frappe.db.get_value(
 				"GL Entry", {
-					"party_type": filters.party_type, "party": filters.party[0], "company": filters.company
+					"party_type": filters.party_type, "party": filters.party[0], "company": filters.company,
 				},
-				"account_currency"
+				"account_currency",
 			)
 
 			if gle_currency:
 				account_currency = gle_currency
 			else:
-				account_currency = (None if not frappe.get_meta(filters.party_type).has_field('default_currency') else
+				account_currency = (None if not frappe.get_meta(filters.party_type).has_field("default_currency") else
 					frappe.db.get_value(filters.party_type, filters.party[0], "default_currency"))
 
 		filters["account_currency"] = account_currency or filters.company_currency
@@ -168,21 +169,21 @@ def get_result(filters, account_details, accounting_dimensions):
 	supplier_invoice_no_map = get_supplier_invoice_nos(voucher_nos)
 	invoice_details = get_invoice_details(filters, voucher_nos)
 
-	if not filters.get('merge_similar_entries'):
+	if not filters.get("merge_similar_entries"):
 		if supplier_invoice_no_map:
 			for gle in gl_entries:
-				gle['against_bill_no'] = supplier_invoice_no_map.get((gle.get('against_voucher_type'), gle.get('against_voucher')), '')
+				gle["against_bill_no"] = supplier_invoice_no_map.get((gle.get("against_voucher_type"), gle.get("against_voucher")), "")
 
-	if filters.get('merge_similar_entries'):
+	if filters.get("merge_similar_entries"):
 		gl_entries = merge_similar_entries(filters, gl_entries, supplier_invoice_no_map)
 
 	set_party_name_in_list(gl_entries)
 	for gle in gl_entries:
-		gle['disable_party_name_formatter'] = 1
-		if gle.get('party') or gle.get('party_type'):
-			filters['show_party'] = True
-		if gle.get('party') and gle.get('party_name') and gle.get('party') != gle.get('party_name'):
-			filters['show_party_name'] = True
+		gle["disable_party_name_formatter"] = 1
+		if gle.get("party") or gle.get("party_type"):
+			filters["show_party"] = True
+		if gle.get("party") and gle.get("party_name") and gle.get("party") != gle.get("party_name"):
+			filters["show_party_name"] = True
 
 		if gle.voucher_type == "Sales Invoice":
 			for f in filters.additional_sales_invoice_no_fields:
@@ -197,30 +198,30 @@ def get_result(filters, account_details, accounting_dimensions):
 	group_by = []
 
 	if (
-		not (filters.get('group_by') == "Group by Sales Person" and filters.get("sales_person"))
-		and not (filters.get('group_by') == "Group by Account Manager" and filters.get("account_manager"))
-		and not (filters.get('group_by') == "Group by Party" and len(filters.get("party_list")) == 1)
-		and not (filters.get('group_by') == "Group by Account" and len(filters.get("account_list")) == 1)
+		not (filters.get("group_by") == "Group by Sales Person" and filters.get("sales_person"))
+		and not (filters.get("group_by") == "Group by Account Manager" and filters.get("account_manager"))
+		and not (filters.get("group_by") == "Group by Party" and len(filters.get("party_list")) == 1)
+		and not (filters.get("group_by") == "Group by Account" and len(filters.get("account_list")) == 1)
 	):
 		group_by.append(None)
 
-	if filters.get('group_by') == "Group by Party":
-		group_by.append(('party_type', 'party'))
-	elif filters.get('group_by') == "Group by Account":
-		group_by.append('account')
-	elif filters.get('group_by') == "Group by Voucher":
-		group_by.append(('voucher_type', 'voucher_no'))
-	elif filters.get('group_by') == "Group by Sales Person":
-		group_by.append('sales_person')
-		group_by.append(('party_type', 'party'))
-	elif filters.get('group_by') == "Group by Account Manager":
-		group_by.append('account_manager')
-		group_by.append(('party_type', 'party'))
+	if filters.get("group_by") == "Group by Party":
+		group_by.append(("party_type", "party"))
+	elif filters.get("group_by") == "Group by Account":
+		group_by.append("account")
+	elif filters.get("group_by") == "Group by Voucher":
+		group_by.append(("voucher_type", "voucher_no"))
+	elif filters.get("group_by") == "Group by Sales Person":
+		group_by.append("sales_person")
+		group_by.append(("party_type", "party"))
+	elif filters.get("group_by") == "Group by Account Manager":
+		group_by.append("account_manager")
+		group_by.append(("party_type", "party"))
 
 	result = group_report_data(gl_entries, group_by,
 		calculate_totals=lambda rows, group_field, group_value, grouped_by:
 			calculate_opening_closing(filters, rows, group_field, group_value, grouped_by),
-		postprocess_group=lambda group_object, grouped_by: postprocess_group(filters, group_object, grouped_by)
+		postprocess_group=lambda group_object, grouped_by: postprocess_group(filters, group_object, grouped_by),
 	)
 
 	return result
@@ -266,7 +267,7 @@ def get_gl_entries(filters, accounting_dimensions):
 		order by {order_by}
 	""", filters, as_dict=1)
 
-	if filters.get('presentation_currency'):
+	if filters.get("presentation_currency"):
 		return convert_to_presentation_currency(gl_entries, currency_map)
 	else:
 		return gl_entries
@@ -348,7 +349,7 @@ def get_conditions(filters, accounting_dimensions):
 		conditions.append("gle.against_voucher = %(against_voucher)s")
 
 	if filters.get("reference_no"):
-		filters['_reference_no'] = '%%{0}%%'.format(filters.get("reference_no"))
+		filters["_reference_no"] = "%%{0}%%".format(filters.get("reference_no"))
 		conditions.append("gle.reference_no like %(_reference_no)s")
 
 	if filters.get("group_by") == "Group by Party" and not filters.get("party_type"):
@@ -370,7 +371,7 @@ def get_conditions(filters, accounting_dimensions):
 		conditions.append("(gle.posting_date <= %(to_date)s or gle.is_opening = 'Yes')")
 	else:
 		conditions.append("gle.posting_date between %(from_date)s and %(to_date)s")
-		if not filters.get('show_opening_entries'):
+		if not filters.get("show_opening_entries"):
 			conditions.append("gle.is_opening != 'Yes'")
 
 	if filters.get("project"):
@@ -411,7 +412,7 @@ def get_conditions(filters, accounting_dimensions):
 			if filters.get(dimension.fieldname):
 				conditions.append("gle.{0} in (%({0})s)".format(dimension.fieldname))
 
-	hooks = frappe.get_hooks('set_gl_conditions')
+	hooks = frappe.get_hooks("set_gl_conditions")
 	for method in hooks:
 		frappe.get_attr(method)(filters, conditions, alias="gle")
 
@@ -431,15 +432,15 @@ def calculate_opening_closing(filters, gl_entries, group_field, group_value, gro
 	from_date, to_date = getdate(filters.from_date), getdate(filters.to_date)
 	for gle in gl_entries:
 		if gle.posting_date < from_date or (cstr(gle.is_opening) == "Yes" and not filters.get("show_opening_entries")):
-			update_totals_for('opening', gle)
-			update_totals_for('closing', gle)
+			update_totals_for("opening", gle)
+			update_totals_for("closing", gle)
 
 			# Mark to remove if outside date range for postprocess
 			gle.to_remove = True
 
 		elif gle.posting_date <= to_date:
-			update_totals_for('total', gle)
-			update_totals_for('closing', gle)
+			update_totals_for("total", gle)
+			update_totals_for("closing", gle)
 
 	return totals
 
@@ -450,24 +451,24 @@ def postprocess_group(filters, group_object, grouped_by):
 
 	if group_object.rows:
 		# Set Party Details in Total Row if grouped by Party
-		if 'party' in grouped_by:
+		if "party" in grouped_by:
 			if group_object.rows[0].party_type == "Customer" and not group_object.account_manager:
-				customer = frappe.get_cached_doc("Customer", grouped_by['party'])
+				customer = frappe.get_cached_doc("Customer", grouped_by["party"])
 				group_object.account_manager = customer.account_manager
 
-			for k in ['opening', 'closing']:
+			for k in ["opening", "closing"]:
 				group_object.totals[k].party_type = group_object.rows[0].party_type
-				group_object.totals[k].party = grouped_by['party']
-				group_object.totals[k].party_name = group_object.rows[0].get('party_name')
+				group_object.totals[k].party = grouped_by["party"]
+				group_object.totals[k].party_name = group_object.rows[0].get("party_name")
 
-			group_object.party_name = group_object.rows[0].get('party_name')
+			group_object.party_name = group_object.rows[0].get("party_name")
 
 		# Set Sales Person Total Row Details if grouped by Sales Person
-		if 'sales_person' in grouped_by:
-			for k in ['opening', 'closing']:
+		if "sales_person" in grouped_by:
+			for k in ["opening", "closing"]:
 				group_object.totals[k].sales_person = group_object.sales_person
-		if 'account_manager' in grouped_by:
-			for k in ['opening', 'closing']:
+		if "account_manager" in grouped_by:
+			for k in ["opening", "closing"]:
 				group_object.totals[k].account_manager = group_object.account_manager
 
 		# Filter out rows outside date range
@@ -475,7 +476,7 @@ def postprocess_group(filters, group_object, grouped_by):
 		no_transactions_within_date = True if len(group_object.rows) == 0 else False
 
 		# Add Opening Row
-		if 'voucher_no' not in grouped_by and 'sales_person' not in grouped_by:
+		if "voucher_no" not in grouped_by and "sales_person" not in grouped_by:
 			group_object.rows.insert(0, group_object.totals.opening)
 
 		# Add Total Row
@@ -483,10 +484,10 @@ def postprocess_group(filters, group_object, grouped_by):
 			group_object.rows.append(group_object.totals.total)
 
 		# Add Closing Row
-		if 'voucher_no' not in grouped_by and 'sales_person' not in grouped_by:
+		if "voucher_no" not in grouped_by and "sales_person" not in grouped_by:
 			group_object.rows.append(group_object.totals.closing)
 
-		balance, balance_in_account_currency = 0, 0
+		balance, _balance_in_account_currency = 0, 0
 
 		# Set Running Balances
 		precision = frappe.get_precision("GL Entry", "debit") + 1
@@ -495,11 +496,11 @@ def postprocess_group(filters, group_object, grouped_by):
 			if not d.posting_date:
 				balance = 0
 
-			balance = get_balance(d, balance, 'debit', 'credit')
-			d['balance'] = flt(balance, precision)
+			balance = get_balance(d, balance, "debit", "credit")
+			d["balance"] = flt(balance, precision)
 
-			d['account_currency'] = filters.account_currency
-			d['currency'] = filters.presentation_currency or filters.company_currency
+			d["account_currency"] = filters.account_currency
+			d["currency"] = filters.presentation_currency or filters.company_currency
 
 		# Adjust opening row
 		if no_opening_total_general_ledger:
@@ -512,14 +513,14 @@ def postprocess_group(filters, group_object, grouped_by):
 			group_object.totals.closing.credit = group_object.totals.total.credit
 
 		# Remove party group with 0 opening and 0 closing balance without transactions
-		if 'party' in grouped_by\
+		if "party" in grouped_by\
 				and not group_object.totals.opening.balance\
 				and not group_object.totals.closing.balance\
 				and no_transactions_within_date:
 			group_object.rows = None
 
 	# Do not show totals as they have already been added as rows
-	del group_object['totals']
+	del group_object["totals"]
 
 
 def get_balance(row, balance, debit_field, credit_field):
@@ -536,13 +537,13 @@ def get_totals_dict():
 			debit_in_account_currency=0.0,
 			credit_in_account_currency=0.0,
 			_isGroupTotal=True,
-			_bold=True
+			_bold=True,
 		)
 	return frappe._dict(
-		opening=_get_debit_credit_dict(_('Opening')),
-		total=_get_debit_credit_dict(_('Total')),
-		closing=_get_debit_credit_dict(_('Closing')),
-		_isGroupTotal=True
+		opening=_get_debit_credit_dict(_("Opening")),
+		total=_get_debit_credit_dict(_("Total")),
+		closing=_get_debit_credit_dict(_("Closing")),
+		_isGroupTotal=True,
 	)
 
 
@@ -560,7 +561,7 @@ def get_supplier_invoice_nos(voucher_nos):
 		""", [names], as_dict=1)
 
 		for d in data:
-			inv_details[(doctype, d.name)] = d.bill_no
+			inv_details[doctype, d.name] = d.bill_no
 
 	return inv_details
 
@@ -597,7 +598,7 @@ def get_invoice_details(filters, voucher_nos):
 				continue
 
 			items_data = frappe.db.sql(f"""
-				select 
+				select
 					i.parent,
 					i.item_code,
 					i.item_name,
@@ -624,24 +625,24 @@ def get_columns(filters, accounting_dimensions):
 			"label": _("Posting Date"),
 			"fieldname": "posting_date",
 			"fieldtype": "Date",
-			"width": 80
+			"width": 80,
 		},
 		{
 			"label": _("Voucher Type"),
 			"fieldname": "voucher_type",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"label": _("Voucher No"),
 			"fieldname": "voucher_no",
 			"fieldtype": "Dynamic Link",
 			"options": "voucher_type",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Ref No"),
 			"fieldname": "reference_no",
-			"width": 70
+			"width": 70,
 		},
 		{
 			"label": _("Account"),
@@ -649,11 +650,11 @@ def get_columns(filters, accounting_dimensions):
 			"fieldtype": "Link",
 			"options": "Account",
 			"width": 150,
-			"hide_if_filtered": 1
+			"hide_if_filtered": 1,
 		},
 	]
 
-	if filters.get('group_by') == "Group by Sales Person":
+	if filters.get("group_by") == "Group by Sales Person":
 		columns.append({
 			"label": _("Sales Person"),
 			"fieldname": "sales_person",
@@ -661,7 +662,7 @@ def get_columns(filters, accounting_dimensions):
 			"fieldtype": "Link",
 			"options": "Sales Person",
 		})
-	if filters.get('group_by') == "Group by Account Manager":
+	if filters.get("group_by") == "Group by Account Manager":
 		columns.append({
 			"label": _("Account Manager"),
 			"fieldname": "account_manager",
@@ -670,25 +671,25 @@ def get_columns(filters, accounting_dimensions):
 			"options": "Sales Person",
 		})
 
-	if filters.get('show_party'):
+	if filters.get("show_party"):
 		columns += [
 			{
 				"label": _("Party Type"),
 				"fieldname": "party_type",
 				"width": 70,
-				"hide_if_filtered": 1
+				"hide_if_filtered": 1,
 			},
 			{
 				"label": _("Party"),
 				"fieldname": "party",
-				"width": 80 if filters.get('show_party_name') else 150,
+				"width": 80 if filters.get("show_party_name") else 150,
 				"fieldtype": "Dynamic Link",
 				"options": "party_type",
-				"hide_if_filtered": 1
+				"hide_if_filtered": 1,
 			},
 		]
 
-	if filters.get('show_party_name'):
+	if filters.get("show_party_name"):
 		columns.append({
 			"label": _("Party Name"),
 			"fieldname": "party_name",
@@ -702,58 +703,58 @@ def get_columns(filters, accounting_dimensions):
 			"fieldname": "debit",
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Credit ({0})".format(filters.ledger_currency)),
 			"fieldname": "credit",
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Balance ({0})".format(filters.ledger_currency)),
 			"fieldname": "balance",
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"label": _("Remarks"),
 			"fieldname": "remarks",
-			"width": 200
+			"width": 200,
 		},
 		{
 			"label": _("Against Account"),
 			"fieldname": "against",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"label": _("Against Voucher Type"),
 			"fieldname": "against_voucher_type",
 			"width": 120,
-			"hide_if_merge_similar": 1
+			"hide_if_merge_similar": 1,
 		},
 		{
 			"label": _("Against Voucher"),
 			"fieldname": "against_voucher",
 			"fieldtype": "Dynamic Link",
 			"options": "against_voucher_type",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Cost Center"),
 			"options": "Cost Center",
 			"fieldname": "cost_center",
 			"width": 100,
-			"hide_if_filtered": 1
+			"hide_if_filtered": 1,
 		},
 		{
 			"label": _("Project"),
 			"options": "Project",
 			"fieldname": "project",
 			"width": 100,
-			"hide_if_filtered": 1
+			"hide_if_filtered": 1,
 		},
 	]
 
@@ -763,7 +764,7 @@ def get_columns(filters, accounting_dimensions):
 				"label": _(dimension.label),
 				"fieldname": dimension.fieldname,
 				"fieldtype": "Link",
-				"options": dimension.document_type
+				"options": dimension.document_type,
 			})
 
 	columns += [
@@ -771,18 +772,18 @@ def get_columns(filters, accounting_dimensions):
 			"label": _("Ref Date"),
 			"fieldname": "reference_date",
 			"fieldtype": "Date",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Against Bill No"),
 			"fieldname": "against_bill_no",
 			"fieldtype": "Data",
 			"width": 100,
-			"hide_if_merge_similar": 1
+			"hide_if_merge_similar": 1,
 		},
 	]
 
-	if filters.get('merge_similar_entries'):
-		columns = [col for col in columns if not col.get('hide_if_merge_similar')]
+	if filters.get("merge_similar_entries"):
+		columns = [col for col in columns if not col.get("hide_if_merge_similar")]
 
 	return columns

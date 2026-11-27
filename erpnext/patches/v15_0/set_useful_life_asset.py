@@ -1,6 +1,7 @@
 
 import frappe
 
+
 def execute():
 	frappe.reload_doc("assets", "doctype", "asset")
 	frappe.db.sql("""

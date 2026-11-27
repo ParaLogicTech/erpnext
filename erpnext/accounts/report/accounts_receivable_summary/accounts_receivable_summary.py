@@ -5,6 +5,7 @@ from copy import deepcopy
 import frappe
 from frappe import _
 from frappe.utils import flt
+
 from erpnext.accounts.report.accounts_receivable.accounts_receivable import ReceivablePayableReport
 
 
@@ -25,8 +26,8 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 				"label": _(self.filters.party_type),
 				"fieldtype": "Link",
 				"options": self.filters.party_type,
-				"width": 80 if self.party_naming_by == "Naming Series" else 200
-			}
+				"width": 80 if self.party_naming_by == "Naming Series" else 200,
+			},
 		]
 
 		if self.party_naming_by == "Naming Series":
@@ -35,8 +36,8 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 					"fieldname": "party_name",
 					"label": _(self.filters.party_type + " Name"),
 					"fieldtype": "Data",
-					"width": 200
-				}
+					"width": 200,
+				},
 			)
 
 		invoiced_label = "Invoiced Amount"
@@ -56,15 +57,15 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 				"fieldname": "invoiced_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 130
+				"width": 130,
 			},
 			{
 				"label": _(paid_label),
 				"fieldname": "paid_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 140
-			}
+				"width": 140,
+			},
 		]
 
 		if self.filters.party_type != "Employee":
@@ -73,7 +74,7 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 				"fieldname": "advance_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 140
+				"width": 140,
 			})
 
 		columns += [
@@ -82,15 +83,15 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 				"fieldname": "return_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 130
+				"width": 130,
 			},
 			{
 				"label": _("Outstanding Amount"),
 				"fieldname": "outstanding_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 130
-			}
+				"width": 130,
+			},
 		]
 
 		self.ageing_columns = self.get_ageing_columns()
@@ -148,7 +149,7 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 			"label": _("Currency"),
 			"fieldtype": "Link",
 			"options": "Currency",
-			"width": 70
+			"width": 70,
 		})
 
 		return columns
@@ -171,7 +172,7 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 			row["outstanding_amount"] = party_dict.outstanding_amount
 
 			for i in range(self.ageing_column_count):
-				row["range{0}".format(i+1)] = party_dict.get("range{0}".format(i+1))
+				row["range{0}".format(i + 1)] = party_dict.get("range{0}".format(i + 1))
 
 			if self.filters.party_type == "Customer":
 				row["territory"] = self.get_territory(party)
@@ -198,10 +199,10 @@ class AccountsReceivableSummary(ReceivablePayableReport):
 			"paid_amount": 0,
 			"return_amount": 0,
 			"outstanding_amount": 0,
-			"sales_person": set()
+			"sales_person": set(),
 		})
 		for r in range(self.ageing_column_count):
-			template['range{0}'.format(r+1)] = 0
+			template["range{0}".format(r + 1)] = 0
 
 		for d in self.get_voucherwise_data():
 			if d.party not in party_total:

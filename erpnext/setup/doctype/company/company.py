@@ -1,19 +1,20 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import json
+import os
+
 import frappe
+import frappe.defaults
 from frappe import _
-from frappe.utils import cint, today, formatdate, get_timestamp
 from frappe.cache_manager import clear_defaults_cache
 from frappe.contacts.address_and_contact import load_address_and_contact
+from frappe.utils import cint, formatdate, get_timestamp, today
 from frappe.utils.nestedset import NestedSet
-import frappe.defaults
-import os
-import json
 
 
 class Company(NestedSet):
-	nsm_parent_field = 'parent_company'
+	nsm_parent_field = "parent_company"
 
 	def onload(self):
 		load_address_and_contact(self, "company")
@@ -60,15 +61,15 @@ class Company(NestedSet):
 		existing_company = frappe.db.get_value("Company", {"abbr": self.abbr, "name": ["!=", self.name]})
 		if existing_company:
 			frappe.throw(_("Abbreviation {0} is already used by Company {1}").format(
-				frappe.bold(self.abbr), frappe.get_desk_link("Company", existing_company)
+				frappe.bold(self.abbr), frappe.get_desk_link("Company", existing_company),
 			))
 
 	@frappe.whitelist()
 	def create_default_tax_template(self):
 		from erpnext.setup.setup_wizard.operations.taxes_setup import create_sales_tax
 		create_sales_tax({
-			'country': self.country,
-			'company_name': self.name
+			"country": self.country,
+			"company_name": self.name,
 		})
 
 	def validate_default_accounts(self):
@@ -139,7 +140,7 @@ class Company(NestedSet):
 				except frappe.ValidationError as e:
 					frappe.clear_last_message()
 					frappe.throw(_("{0} {1}: {2}").format(
-						_(df.label), frappe.bold(account), e
+						_(df.label), frappe.bold(account), e,
 					))
 
 	def validate_default_warehouses(self):
@@ -191,7 +192,7 @@ class Company(NestedSet):
 
 		if not frappe.db.exists("Department", {"company": self.name}):
 			from erpnext.setup.setup_wizard.operations.install_fixtures import install_post_company_fixtures
-			install_post_company_fixtures(frappe._dict({'company_name': self.name}))
+			install_post_company_fixtures(frappe._dict({"company_name": self.name}))
 
 		if not frappe.db.exists("Cost Center", {"company": self.name, "is_group": 0}):
 			self.create_default_cost_center()
@@ -204,7 +205,7 @@ class Company(NestedSet):
 		if self.default_currency:
 			frappe.db.set_value("Currency", self.default_currency, "enabled", 1)
 
-		if hasattr(frappe.local, 'enable_perpetual_inventory') and \
+		if hasattr(frappe.local, "enable_perpetual_inventory") and \
 			self.name in frappe.local.enable_perpetual_inventory:
 			frappe.local.enable_perpetual_inventory[self.name] = self.enable_perpetual_inventory
 
@@ -217,11 +218,11 @@ class Company(NestedSet):
 		]:
 			if not frappe.db.exists("Warehouse", "{0} - {1}".format(wh_detail["warehouse_name"], self.abbr)):
 				warehouse = frappe.get_doc({
-					"doctype":"Warehouse",
+					"doctype": "Warehouse",
 					"warehouse_name": wh_detail["warehouse_name"],
 					"is_group": wh_detail["is_group"],
 					"company": self.name,
-					"parent_warehouse": "{0} - {1}".format(_("All Warehouses"), self.abbr) if not wh_detail["is_group"] else ""
+					"parent_warehouse": "{0} - {1}".format(_("All Warehouses"), self.abbr) if not wh_detail["is_group"] else "",
 				})
 				warehouse.flags.ignore_permissions = True
 				warehouse.flags.ignore_mandatory = True
@@ -248,7 +249,7 @@ class Company(NestedSet):
 		if not self.get("__islocal"):
 			if cint(self.enable_perpetual_inventory) == 1 and not self.default_inventory_account:
 				frappe.msgprint(_("Set default inventory account for perpetual inventory"),
-					alert=True, indicator='orange')
+					alert=True, indicator="orange")
 
 	def check_country_change(self):
 		frappe.flags.country_change = False
@@ -256,7 +257,7 @@ class Company(NestedSet):
 			frappe.flags.country_change = True
 
 	def set_chart_of_accounts(self):
-		''' If parent company is set, chart of accounts will be based on that company '''
+		""" If parent company is set, chart of accounts will be based on that company """
 		if self.parent_company:
 			self.create_chart_of_accounts_based_on = "Existing Company"
 			self.existing_company = self.parent_company
@@ -273,7 +274,7 @@ class Company(NestedSet):
 			"depreciation_expense_account": "Depreciation",
 			"capital_work_in_progress_account": "Capital Work in Progress",
 			"asset_received_but_not_billed": "Asset Received But Not Billed",
-			"expenses_included_in_asset_valuation": "Expenses Included In Asset Valuation"
+			"expenses_included_in_asset_valuation": "Expenses Included In Asset Valuation",
 		}
 
 		if self.enable_perpetual_inventory:
@@ -282,7 +283,7 @@ class Company(NestedSet):
 				"default_inventory_account": "Stock",
 				"stock_adjustment_account": "Stock Adjustment",
 				"expenses_included_in_valuation": "Expenses Included In Valuation",
-				"default_expense_account": "Cost of Goods Sold"
+				"default_expense_account": "Cost of Goods Sold",
 			})
 
 		for default_account in default_accounts_map:
@@ -290,11 +291,11 @@ class Company(NestedSet):
 
 		if not self.default_income_account:
 			income_account = frappe.db.get_value("Account", {
-				"account_name": _("Sales"), "company": self.name, "is_group": 0
+				"account_name": _("Sales"), "company": self.name, "is_group": 0,
 			})
 			if not income_account:
 				income_account = frappe.db.get_value("Account", {
-					"account_name": _("Sales Account"), "company": self.name, "is_group": 0
+					"account_name": _("Sales Account"), "company": self.name, "is_group": 0,
 				})
 			if income_account:
 				self.db_set("default_income_account", income_account)
@@ -331,28 +332,28 @@ class Company(NestedSet):
 
 		if not self.default_letter_of_credit_account:
 			default_letter_of_credit_account = frappe.db.get_value("Account", {
-				"account_name": _("Letters of Credit"), "company": self.name, "is_group": 0
+				"account_name": _("Letters of Credit"), "company": self.name, "is_group": 0,
 			})
 			if default_letter_of_credit_account:
 				self.db_set("default_letter_of_credit_account", default_letter_of_credit_account)
 
 		if not self.default_employee_advance_account:
 			employe_advance_account = frappe.db.get_value("Account", {
-				"account_name": _("Employee Advances"), "company": self.name, "is_group": 0
+				"account_name": _("Employee Advances"), "company": self.name, "is_group": 0,
 			})
 
 			self.db_set("default_employee_advance_account", employe_advance_account)
 
 		if not self.temporary_opening_account:
 			temporary_opening_account = frappe.db.get_value("Account", {
-				"account_name": _("Temporary Opening"), "company": self.name, "is_group": 0
+				"account_name": _("Temporary Opening"), "company": self.name, "is_group": 0,
 			})
 			if temporary_opening_account:
 				self.db_set("temporary_opening_account", temporary_opening_account)
 
 		if not self.write_off_account:
 			write_off_acct = frappe.db.get_value("Account", {
-				"account_name": _("Write Off"), "company": self.name, "is_group": 0
+				"account_name": _("Write Off"), "company": self.name, "is_group": 0,
 			})
 			if write_off_acct:
 				self.db_set("write_off_account", write_off_acct)
@@ -374,38 +375,38 @@ class Company(NestedSet):
 			return
 
 		account = frappe.db.get_value("Account", {
-			"account_type": account_type, "is_group": 0, "company": self.name
+			"account_type": account_type, "is_group": 0, "company": self.name,
 		})
 		if account:
 			self.db_set(fieldname, account)
 
 	def set_mode_of_payment_account(self):
-		cash_mop = frappe.db.get_value('Mode of Payment', {'type': 'Cash'}, 'name')
+		cash_mop = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name")
 		if (
 			cash_mop
 			and self.default_cash_account
-			and not frappe.db.get_value('Mode of Payment Account', {'company': self.name, 'parent': cash_mop})
+			and not frappe.db.get_value("Mode of Payment Account", {"company": self.name, "parent": cash_mop})
 		):
-			mode_of_payment = frappe.get_doc('Mode of Payment', cash_mop)
-			mode_of_payment.append('accounts', {
-				'company': self.name,
-				'default_account': self.default_cash_account,
+			mode_of_payment = frappe.get_doc("Mode of Payment", cash_mop)
+			mode_of_payment.append("accounts", {
+				"company": self.name,
+				"default_account": self.default_cash_account,
 			})
 			mode_of_payment.save(ignore_permissions=True)
 
 	def create_default_cost_center(self):
 		cc_list = [
 			{
-				'cost_center_name': self.name,
-				'company': self.name,
-				'is_group': 1,
-				'parent_cost_center': None
+				"cost_center_name": self.name,
+				"company": self.name,
+				"is_group": 1,
+				"parent_cost_center": None,
 			},
 			{
-				'cost_center_name': _('Main'),
-				'company': self.name,
-				'is_group': 0,
-				'parent_cost_center': self.name + ' - ' + self.abbr
+				"cost_center_name": _("Main"),
+				"company": self.name,
+				"is_group": 0,
+				"parent_cost_center": self.name + " - " + self.abbr,
 			},
 		]
 		for cc in cc_list:
@@ -433,7 +434,7 @@ class Company(NestedSet):
 		clear_defaults_cache()
 
 	def abbreviate(self):
-		self.abbr = ''.join([c[0].upper() for c in self.company_name.split()])
+		self.abbr = "".join([c[0].upper() for c in self.company_name.split()])
 
 	def on_trash(self):
 		"""
@@ -492,7 +493,7 @@ class Company(NestedSet):
 			frappe.db.sql("delete from tabBOM where company=%s", self.name)
 			for dt in ("BOM Operation", "BOM Item", "BOM Scrap Item", "BOM Explosion Item", "BOM Additional Cost"):
 				frappe.db.sql("delete from `tab%s` where parent in (%s)"""
-					% (dt, ', '.join(['%s']*len(boms))), tuple(boms))
+					% (dt, ", ".join(["%s"] * len(boms))), tuple(boms))
 
 		frappe.db.sql("delete from tabEmployee where company=%s", self.name)
 		frappe.db.sql("delete from tabDepartment where company=%s", self.name)
@@ -507,7 +508,7 @@ def enqueue_replace_abbr(company, old, new):
 	frappe.only_for("System Manager")
 
 	kwargs = dict(company=company, old=old, new=new, queue="long")
-	frappe.enqueue('erpnext.setup.doctype.company.company.replace_abbr', **kwargs)
+	frappe.enqueue("erpnext.setup.doctype.company.company.replace_abbr", **kwargs)
 
 
 def replace_abbr(company, old, new):
@@ -526,7 +527,7 @@ def replace_abbr(company, old, new):
 
 	def _rename_records(dt):
 		# rename is expensive so let's be economical with memory usage
-		doc = (d for d in frappe.db.sql("select name from `tab%s` where company=%s" % (dt, '%s'), company))
+		doc = (d for d in frappe.db.sql("select name from `tab%s` where company=%s" % (dt, "%s"), company))
 		for d in doc:
 			_rename_record(d)
 
@@ -542,7 +543,7 @@ def replace_abbr(company, old, new):
 
 
 def get_name_with_abbr(name, company):
-	company_abbr = frappe.get_cached_value('Company',  company,  "abbr")
+	company_abbr = frappe.get_cached_value("Company", company, "abbr")
 	parts = name.split(" - ")
 
 	if parts[-1].lower() != company_abbr.lower():
@@ -556,7 +557,7 @@ def install_country_fixtures(company, country=None):
 	if not country:
 		country = company_doc.country
 
-	path = frappe.get_app_path('erpnext', 'regional', frappe.scrub(country))
+	path = frappe.get_app_path("erpnext", "regional", frappe.scrub(country))
 	if os.path.exists(path.encode("utf-8")):
 		try:
 			module_name = "erpnext.regional.{0}.setup.setup".format(frappe.scrub(country))
@@ -564,14 +565,14 @@ def install_country_fixtures(company, country=None):
 		except Exception:
 			frappe.log_error(title="Failed to setup country defaults")
 			frappe.throw(_("Failed to setup defaults for country {0}").format(
-				frappe.bold(company_doc.country)
+				frappe.bold(company_doc.country),
 			))
 
 
 def update_company_current_month_sales(company):
 	current_month_year = formatdate(today(), "MM-yyyy")
 
-	results = frappe.db.sql('''
+	results = frappe.db.sql("""
 		SELECT
 			SUM(base_grand_total) AS total,
 			DATE_FORMAT(`posting_date`, '%m-%Y') AS month_year
@@ -583,18 +584,19 @@ def update_company_current_month_sales(company):
 			AND company = {company}
 		GROUP BY
 			month_year
-	'''.format(current_month_year=current_month_year, company=frappe.db.escape(company)),
-		as_dict = True)
+	""".format(current_month_year=current_month_year, company=frappe.db.escape(company)),
+		as_dict=True)
 
-	monthly_total = results[0]['total'] if len(results) > 0 else 0
+	monthly_total = results[0]["total"] if len(results) > 0 else 0
 
 	frappe.db.set_value("Company", company, "total_monthly_sales", monthly_total)
 
 
 def update_company_monthly_sales(company):
-	'''Cache past year monthly sales of every company based on sales invoices'''
-	from frappe.utils.goal import get_monthly_results
+	"""Cache past year monthly sales of every company based on sales invoices"""
 	import json
+
+	from frappe.utils.goal import get_monthly_results
 	filter_str = "company = {0} and status != 'Draft' and docstatus=1".format(frappe.db.escape(company))
 	month_to_value_dict = get_monthly_results("Sales Invoice", "base_grand_total",
 		"posting_date", filter_str, "sum")
@@ -611,7 +613,7 @@ def update_transactions_annual_history(company, commit=False):
 
 
 def cache_companies_monthly_sales_history():
-	companies = [d['name'] for d in frappe.get_list("Company")]
+	companies = [d["name"] for d in frappe.get_list("Company")]
 	for company in companies:
 		update_company_monthly_sales(company)
 		update_transactions_annual_history(company)
@@ -620,7 +622,7 @@ def cache_companies_monthly_sales_history():
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, company=None, is_root=False):
-	if parent == None or parent == "All Companies":
+	if parent is None or parent == "All Companies":
 		parent = ""
 
 	return frappe.db.sql("""
@@ -632,8 +634,8 @@ def get_children(doctype, parent=None, company=None, is_root=False):
 		where
 			ifnull(parent_company, "")={parent}
 		""".format(
-			doctype = doctype,
-			parent=frappe.db.escape(parent)
+			doctype=doctype,
+			parent=frappe.db.escape(parent),
 		), as_dict=1)
 
 
@@ -643,7 +645,7 @@ def add_node():
 	args = frappe.form_dict
 	args = make_tree_args(**args)
 
-	if args.parent_company == 'All Companies':
+	if args.parent_company == "All Companies":
 		args.parent_company = None
 
 	frappe.get_doc(args).insert()
@@ -652,7 +654,7 @@ def add_node():
 def get_all_transactions_annual_history(company):
 	out = {}
 
-	items = frappe.db.sql('''
+	items = frappe.db.sql("""
 		select transaction_date, count(*) as count
 
 		from (
@@ -692,31 +694,30 @@ def get_all_transactions_annual_history(company):
 
 		group by
 			transaction_date
-			''', (company), as_dict=True)
+			""", (company), as_dict=True)
 
 	for d in items:
 		timestamp = get_timestamp(d["transaction_date"])
-		out.update({ timestamp: d["count"] })
+		out.update({timestamp: d["count"]})
 
 	return out
 
 
 def get_timeline_data(doctype, name):
-	'''returns timeline data based on linked records in dashboard'''
-	out = {}
+	"""returns timeline data based on linked records in dashboard"""
 	date_to_value_dict = {}
 
-	history = frappe.get_cached_value('Company',  name,  "transactions_annual_history")
+	history = frappe.get_cached_value("Company", name, "transactions_annual_history")
 
 	try:
-		date_to_value_dict = json.loads(history) if history and '{' in history else None
+		date_to_value_dict = json.loads(history) if history and "{" in history else None
 	except ValueError:
 		date_to_value_dict = None
 
 	if date_to_value_dict is None:
 		update_transactions_annual_history(name, True)
-		history = frappe.get_cached_value('Company',  name,  "transactions_annual_history")
-		return json.loads(history) if history and '{' in history else {}
+		history = frappe.get_cached_value("Company", name, "transactions_annual_history")
+		return json.loads(history) if history and "{" in history else {}
 
 	return date_to_value_dict
 

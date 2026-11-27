@@ -1,11 +1,16 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import datetime
+
 import frappe
 from frappe import _
-from frappe.utils import today, getdate, format_datetime, add_years
-from erpnext.selling.doctype.customer.customer import automated_customer_birthday_enabled, get_customer_birthday_scheduled_time
-import datetime
+from frappe.utils import add_years, format_datetime, getdate, today
+
+from erpnext.selling.doctype.customer.customer import (
+	automated_customer_birthday_enabled,
+	get_customer_birthday_scheduled_time,
+)
 
 
 def execute(filters=None):
@@ -91,48 +96,48 @@ def get_columns():
 			"label": _("Customer"),
 			"fieldtype": "Link",
 			"options": "Customer",
-			"width": "100"
+			"width": "100",
 		},
 		{
 			"fieldname": "customer_name",
 			"label": _("Customer Name"),
 			"fieldtype": "Data",
-			"width": "150"
+			"width": "150",
 		},
 		{
 			"fieldname": "customer_type",
 			"label": _("Type"),
 			"fieldtype": "Data",
-			"width": "100"
+			"width": "100",
 		},
 		{
 			"fieldname": "customer_group",
 			"label": _("Customer Group"),
 			"fieldtype": "Data",
-			"width": "150"
+			"width": "150",
 		},
 		{
 			"fieldname": "territory",
 			"label": _("Territory"),
 			"fieldtype": "Data",
-			"width": "100"
+			"width": "100",
 		},
 		{
 			"fieldname": "date_of_birth",
 			"label": _("Date of Birth"),
 			"fieldtype": "Date",
-			"width": "150"
+			"width": "150",
 		},
 		{
 			"fieldname": "contact_no",
 			"label": _("Contact No"),
 			"fieldtype": "Data",
-			"width": "100"
+			"width": "100",
 		},
 		{
 			"fieldname": "notification",
 			"label": _("Notification"),
 			"fieldtype": "Data",
-			"width": "200"
+			"width": "200",
 		},
 	]

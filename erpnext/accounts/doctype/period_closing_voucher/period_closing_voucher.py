@@ -2,12 +2,15 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.utils import flt
 from frappe import _
+from frappe.utils import flt
+
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_accounting_dimensions,
+	get_dimension_filters,
+)
 from erpnext.accounts.utils import get_account_currency
 from erpnext.controllers.accounts_controller import AccountsController
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (get_accounting_dimensions,
-	get_dimension_filters)
 
 
 class PeriodClosingVoucher(AccountsController):
@@ -19,7 +22,7 @@ class PeriodClosingVoucher(AccountsController):
 		self.make_gl_entries()
 
 	def submit(self):
-		accounting_dimensions, default_dimensions = self.get_accounting_dimensions()
+		accounting_dimensions, _default_dimensions = self.get_accounting_dimensions()
 		dimension_fields = self.get_dimension_fields(accounting_dimensions)
 		pl_account = self.get_pl_balances(dimension_fields)
 
@@ -27,9 +30,9 @@ class PeriodClosingVoucher(AccountsController):
 			frappe.msgprint(_(
 				"The task has been enqueued as a background job. "
 				"In case there is any issue on processing in background, "
-				"the system will add a comment about the error on this Period Closing Voucher and revert to the Draft stage"
+				"the system will add a comment about the error on this Period Closing Voucher and revert to the Draft stage",
 			))
-			self.queue_action('_submit', timeout=21600)
+			self.queue_action("_submit", timeout=21600)
 		else:
 			self._submit()
 
@@ -47,7 +50,7 @@ class PeriodClosingVoucher(AccountsController):
 				.format(self.closing_account_head))
 
 		account_currency = get_account_currency(self.closing_account_head)
-		company_currency = frappe.get_cached_value('Company',  self.company,  "default_currency")
+		company_currency = frappe.get_cached_value("Company", self.company, "default_currency")
 		if account_currency != company_currency:
 			frappe.throw(_("Currency of the Closing Account must be {0}").format(company_currency))
 
@@ -81,14 +84,14 @@ class PeriodClosingVoucher(AccountsController):
 					"account": acc.account,
 					"cost_center": acc.cost_center,
 					"account_currency": acc.account_currency,
-					"debit_in_account_currency": abs(flt(acc.balance_in_account_currency)) \
+					"debit_in_account_currency": abs(flt(acc.balance_in_account_currency))
 						if flt(acc.balance_in_account_currency) < 0 else 0,
-					"debit": abs(flt(acc.balance_in_company_currency)) \
+					"debit": abs(flt(acc.balance_in_company_currency))
 						if flt(acc.balance_in_company_currency) < 0 else 0,
-					"credit_in_account_currency": abs(flt(acc.balance_in_account_currency)) \
+					"credit_in_account_currency": abs(flt(acc.balance_in_account_currency))
 						if flt(acc.balance_in_account_currency) > 0 else 0,
-					"credit": abs(flt(acc.balance_in_company_currency)) \
-						if flt(acc.balance_in_company_currency) > 0 else 0
+					"credit": abs(flt(acc.balance_in_company_currency))
+						if flt(acc.balance_in_company_currency) > 0 else 0,
 				}, item=acc))
 
 				net_pl_balance += flt(acc.balance_in_company_currency)
@@ -101,12 +104,12 @@ class PeriodClosingVoucher(AccountsController):
 				"debit": abs(net_pl_balance) if net_pl_balance > 0 else 0,
 				"credit_in_account_currency": abs(net_pl_balance) if net_pl_balance < 0 else 0,
 				"credit": abs(net_pl_balance) if net_pl_balance < 0 else 0,
-				"cost_center": cost_center
+				"cost_center": cost_center,
 			})
 
 			for dimension in accounting_dimensions:
 				gl_entry.update({
-					dimension: default_dimensions.get(self.company, {}).get(dimension)
+					dimension: default_dimensions.get(self.company, {}).get(dimension),
 				})
 
 			gl_entries.append(gl_entry)
@@ -117,13 +120,13 @@ class PeriodClosingVoucher(AccountsController):
 	def get_accounting_dimensions(self):
 		accounting_dimensions = get_accounting_dimensions(as_list=False)
 		accounting_dimensions = [d.fieldname for d in accounting_dimensions if not d.disable_pcv]
-		dimension_filters, default_dimensions = get_dimension_filters()
+		_dimension_filters, default_dimensions = get_dimension_filters()
 		return accounting_dimensions, default_dimensions
 
 	def get_dimension_fields(self, accounting_dimensions):
-		dimension_fields = ['t1.cost_center']
+		dimension_fields = ["t1.cost_center"]
 		for dimension in accounting_dimensions:
-			dimension_fields.append('t1.{0}'.format(dimension))
+			dimension_fields.append("t1.{0}".format(dimension))
 
 		return dimension_fields
 
@@ -141,5 +144,5 @@ class PeriodClosingVoucher(AccountsController):
 			and t2.docstatus < 2 and t2.company = %s
 			and t1.posting_date between %s and %s
 			group by t1.account, {dimension_fields}
-		""".format(dimension_fields=', '.join(dimension_fields)),
+		""".format(dimension_fields=", ".join(dimension_fields)),
 			(self.company, self.get("year_start_date"), self.posting_date), as_dict=1)

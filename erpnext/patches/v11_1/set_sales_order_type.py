@@ -1,11 +1,14 @@
-import frappe, os
+import os
+
+import frappe
 from frappe import _
+
 
 def execute():
 	frappe.reload_doc("stock", "doctype", "delivery_note")
 	frappe.reload_doc("accounts", "doctype", "sales_invoice")
 
-	for dt in ['Delivery Note', 'Sales Invoice']:
+	for dt in ["Delivery Note", "Sales Invoice"]:
 		frappe.db.sql("""
 			update `tab{dt}` t
 			left join `tabOrder Type` ot on ot.name = t.order_type_name

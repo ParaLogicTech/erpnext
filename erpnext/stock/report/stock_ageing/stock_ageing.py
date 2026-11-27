@@ -3,12 +3,19 @@
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, today, date_diff, flt, cint, cstr
-from erpnext.stock.utils import has_valuation_read_permission
+from frappe.utils import cint, cstr, date_diff, flt, getdate, today
+
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
-from erpnext.stock.report.stock_balance.stock_balance import get_items_for_stock_report,\
-	get_stock_ledger_entries_for_stock_report, is_warehouse_included, is_batch_included, is_package_included,\
-	get_key, get_key_fields
+from erpnext.stock.report.stock_balance.stock_balance import (
+	get_items_for_stock_report,
+	get_key,
+	get_key_fields,
+	get_stock_ledger_entries_for_stock_report,
+	is_batch_included,
+	is_package_included,
+	is_warehouse_included,
+)
+from erpnext.stock.utils import has_valuation_read_permission
 
 
 def execute(filters=None):
@@ -21,7 +28,7 @@ class StockAgeingReport:
 		self.filters.to_date = getdate(self.filters.to_date or today())
 
 		self.show_amounts = has_valuation_read_permission()
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 
 	def run(self):
 		self.validate_filters()
@@ -52,7 +59,7 @@ class StockAgeingReport:
 		self.validate_ageing_filter()
 
 	def validate_ageing_filter(self):
-		self.ageing_range = [cint(r.strip()) for r in self.filters.get('ageing_range', "").split(",") if r]
+		self.ageing_range = [cint(r.strip()) for r in self.filters.get("ageing_range", "").split(",") if r]
 		self.ageing_range = sorted(list(set(self.ageing_range)))
 		self.ageing_column_count = len(self.ageing_range) + 1
 
@@ -102,8 +109,8 @@ class StockAgeingReport:
 		if not self.is_package_included():
 			return self.packing_slip_map
 
-		packing_slips = list(set([d['details'].get("packing_slip") for d in self.fifo_queue_map.values()\
-			if d['details'].get("packing_slip")]))
+		packing_slips = list(set([d["details"].get("packing_slip") for d in self.fifo_queue_map.values()
+			if d["details"].get("packing_slip")]))
 
 		packing_slip_data = []
 		if packing_slips:
@@ -131,7 +138,7 @@ class StockAgeingReport:
 	def get_rows(self):
 		self.rows = []
 
-		for key, fifo_dict in self.fifo_queue_map.items():
+		for _key, fifo_dict in self.fifo_queue_map.items():
 			if self.should_filter_row(fifo_dict):
 				continue
 
@@ -177,7 +184,7 @@ class StockAgeingReport:
 			not d.packing_slip,
 			cstr(d.packing_slip),
 			d.item_code,
-			cstr(d.warehouse)
+			cstr(d.warehouse),
 		))
 
 		return self.rows
@@ -262,7 +269,7 @@ class StockAgeingReport:
 			self.columns = [c for c in self.columns if c.get("fieldname") not in ("packing_slip", "package_type")]
 
 		if not self.show_item_name:
-			self.columns = [c for c in self.columns if c.get('fieldname') != 'item_name']
+			self.columns = [c for c in self.columns if c.get("fieldname") != "item_name"]
 		if not self.show_amounts:
 			self.columns = [c for c in self.columns if not c.get("is_value")]
 
@@ -279,7 +286,7 @@ class StockAgeingReport:
 				"options": "currency",
 				"ageing_column": 1,
 				"is_value": 1,
-				"width": 90
+				"width": 90,
 			})
 			lower_limit = upper_limit + 1
 
@@ -290,7 +297,7 @@ class StockAgeingReport:
 			"options": "currency",
 			"ageing_column": 1,
 			"is_value": 1,
-			"width": 90
+			"width": 90,
 		})
 		return ageing_columns
 
@@ -323,8 +330,6 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 
 			# Serialized Outgoing
 			else:
-				# One pass over the queue: it can hold every serial no in stock. Slice assignment keeps the
-				# list object, which is fifo_dict["fifo_queue"].
 				outgoing_serial_nos = set(serial_no_list)
 				fifo_queue[:] = [serial_batch for serial_batch in fifo_queue if serial_batch[0] not in outgoing_serial_nos]
 
@@ -334,9 +339,9 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 			if sle.actual_qty > 0:
 				new_batches = []
 				if transferred_item_details.get((sle.voucher_no, sle.voucher_detail_no, sle.item_code)):
-					for batch in transferred_item_details[(sle.voucher_no, sle.voucher_detail_no, sle.item_code)]:
+					for batch in transferred_item_details[sle.voucher_no, sle.voucher_detail_no, sle.item_code]:
 						new_batches.append(batch)
-					del transferred_item_details[(sle.voucher_no, sle.voucher_detail_no, sle.item_code)]
+					del transferred_item_details[sle.voucher_no, sle.voucher_detail_no, sle.item_code]
 				else:
 					new_batches.append([sle.actual_qty, sle.posting_date, sle.incoming_rate])
 
@@ -364,7 +369,7 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 							fifo_dict["previous_batch"][0] = 0
 							if sle.is_transfer:
 								transferred_item_details.setdefault((sle.voucher_no, sle.voucher_detail_no, sle.item_code), []).append(
-									removed_batch
+									removed_batch,
 								)
 					else:
 						# all from current batch
@@ -376,7 +381,7 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 
 						if sle.is_transfer:
 							transferred_item_details.setdefault((sle.voucher_no, sle.voucher_detail_no, sle.item_code), []).append(
-								[qty_to_pop, batch[1], batch[2]]
+								[qty_to_pop, batch[1], batch[2]],
 							)
 
 						qty_to_pop = 0
@@ -394,12 +399,13 @@ def get_fifo_queue(sles, include_warehouse, include_batch, include_package):
 			fifo_dict["average_rate"] = flt(fifo_dict["total_value"] / fifo_dict["total_qty"], 9)
 
 	# sort and filter
-	sort_key = lambda x: x[1]
+	def sort_key(x):
+		return x[1]
 	for key in fifo_queue_map:
-		fifo_queue_map[key]['total_qty'] = flt(fifo_queue_map[key]['total_qty'], 9)
-		fifo_queue_map[key]['total_value'] = flt(fifo_queue_map[key]['total_value'], 9)
+		fifo_queue_map[key]["total_qty"] = flt(fifo_queue_map[key]["total_qty"], 9)
+		fifo_queue_map[key]["total_value"] = flt(fifo_queue_map[key]["total_value"], 9)
 
-		fifo_queue_map[key]['fifo_queue'] = sorted(filter(sort_key, fifo_queue_map[key]['fifo_queue']), key=sort_key)
+		fifo_queue_map[key]["fifo_queue"] = sorted(filter(sort_key, fifo_queue_map[key]["fifo_queue"]), key=sort_key)
 
 	return fifo_queue_map
 
@@ -408,12 +414,12 @@ def get_fifo_dict(sle, fifo_queue_map, include_warehouse, include_batch, include
 	key = get_key(sle,
 		include_warehouse=include_warehouse,
 		include_batch=include_batch,
-		include_package=include_package
+		include_package=include_package,
 	)
 
 	if key not in fifo_queue_map:
 		key_fields = get_key_fields(include_warehouse=include_warehouse, include_batch=include_batch, include_package=include_package)
-		key_dict = frappe._dict(zip(key_fields, key))
+		key_dict = frappe._dict(zip(key_fields, key, strict=False))
 
 		fifo_queue_map[key] = frappe._dict({
 			"details": key_dict, "fifo_queue": [], "previous_batch": None,
@@ -428,7 +434,7 @@ def get_ageing_details(fifo_queue, to_date):
 	return frappe._dict({
 		"average_age": get_average_age(fifo_queue, to_date),
 		"earliest_age": date_diff(to_date, fifo_queue[0][1]) if fifo_queue else None,
-		"latest_age": date_diff(to_date, fifo_queue[-1][1]) if fifo_queue else None
+		"latest_age": date_diff(to_date, fifo_queue[-1][1]) if fifo_queue else None,
 	})
 
 
@@ -439,7 +445,7 @@ def get_average_age(fifo_queue, to_date):
 	for batch in fifo_queue:
 		batch_age = date_diff(to_date, batch[1])
 
-		if type(batch[0]) in ['int', 'float']:
+		if type(batch[0]) in ["int", "float"]:
 			age_qty += batch_age * batch[0]
 			total_qty += batch[0]
 		else:

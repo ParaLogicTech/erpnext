@@ -1,4 +1,4 @@
-frappe.listview_settings['Service Warranty'] = {
+frappe.listview_settings["Service Warranty"] = {
 	add_fields: ["status"],
 	get_indicator: (doc) => {
 		if (doc.status == "Active") {
@@ -6,5 +6,5 @@ frappe.listview_settings['Service Warranty'] = {
 		} else if (doc.status == "Expired") {
 			return [__("Expired"), "gray", "status,=,Expired"];
 		}
-	}
+	},
 };

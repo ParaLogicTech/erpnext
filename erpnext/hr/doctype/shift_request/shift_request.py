@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -7,7 +6,10 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import formatdate, getdate
 
-class OverlapError(frappe.ValidationError): pass
+
+class OverlapError(frappe.ValidationError):
+	pass
+
 
 class ShiftRequest(Document):
 	def validate(self):
@@ -34,10 +36,10 @@ class ShiftRequest(Document):
 			frappe.msgprint(_("Shift Assignment: {0} created for Employee: {1}").format(frappe.bold(assignment_doc.name), frappe.bold(self.employee)))
 
 	def on_cancel(self):
-		shift_assignment_list = frappe.get_list("Shift Assignment", {'employee': self.employee, 'shift_request': self.name})
+		shift_assignment_list = frappe.get_list("Shift Assignment", {"employee": self.employee, "shift_request": self.name})
 		if shift_assignment_list:
 			for shift in shift_assignment_list:
-				shift_assignment_doc = frappe.get_doc("Shift Assignment", shift['name'])
+				shift_assignment_doc = frappe.get_doc("Shift Assignment", shift["name"])
 				shift_assignment_doc.cancel()
 
 	def validate_default_shift(self):
@@ -76,15 +78,15 @@ class ShiftRequest(Document):
 					"shift_type": self.shift_type,
 					"from_date": self.from_date,
 					"to_date": self.to_date,
-					"name": self.name
+					"name": self.name,
 				}, as_dict=1)
 
 			for date_overlap in d:
-				if date_overlap ['name']:
+				if date_overlap["name"]:
 					self.throw_overlap_error(date_overlap)
 
 	def throw_overlap_error(self, d):
 		msg = _("Employee {0} has already applied for {1} between {2} and {3} : ").format(self.employee,
-			d['shift_type'], formatdate(d['from_date']), formatdate(d['to_date'])) \
+			d["shift_type"], formatdate(d["from_date"]), formatdate(d["to_date"])) \
 			+ frappe.utils.get_link_to_form("Shift Request", d["name"])
 		frappe.throw(msg, OverlapError)

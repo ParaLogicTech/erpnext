@@ -1,16 +1,18 @@
 # Copyright (c) 2025, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate
 from frappe.model.document import Document
-from erpnext.accounts.utils import get_balance_on
+from frappe.utils import flt, getdate
+
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_all_dimension_fields,
 	get_document_dimensions,
 )
-import json
+from erpnext.accounts.utils import get_balance_on
 
 
 class BankDepositTool(Document):
@@ -76,13 +78,13 @@ class BankDepositTool(Document):
 
 			if bank_account.company != self.company:
 				frappe.throw(_("Bank Account {0} does not belong to Company {1}").format(
-					self.bank_account, self.company
+					self.bank_account, self.company,
 				))
 
 			self.deposit_to_account = bank_account.suspense_account or bank_account.account
 			if not self.deposit_to_account:
 				frappe.throw(_("{0} does not have a GL Account configured").format(
-					frappe.get_desk_link("Bank Account", self.bank_account)
+					frappe.get_desk_link("Bank Account", self.bank_account),
 				))
 
 		if not self.deposit_to_account:
@@ -114,12 +116,12 @@ class BankDepositTool(Document):
 			if adjustment_account.account_type in ("Receivable", "Payable"):
 				if not d.supplier:
 					frappe.throw(_("Row #{0}: Supplier is mandatory for {1} Adjustment Account").format(
-						d.idx, adjustment_account.account_type
+						d.idx, adjustment_account.account_type,
 					))
 			else:
 				if d.supplier:
 					frappe.throw(_("Row #{0}: Supplier can only be selected for Payable or Receivable Adjustment Account").format(
-						d.idx
+						d.idx,
 					))
 
 			if self.undeposited_account:
@@ -296,14 +298,14 @@ class BankDepositTool(Document):
 		voucher_detail_nos = []
 		for si in pos_sales_invoices:
 			if si.voucher_detail_dn:
-				si_map[(si.voucher_no, si.voucher_detail_dn)] = si
+				si_map[si.voucher_no, si.voucher_detail_dn] = si
 				voucher_nos.add(si.voucher_no)
 				voucher_detail_nos.append(si.voucher_detail_dn)
 
 		pos_closing_map = self.get_pos_closing_entries("Sales Invoice", voucher_nos, voucher_detail_nos)
 		for (voucher_no, voucher_detail_no), pce in pos_closing_map.items():
 			if si_map.get((voucher_no, voucher_detail_no)):
-				si_map[(voucher_no, voucher_detail_no)].pos_closing_entry = pce
+				si_map[voucher_no, voucher_detail_no].pos_closing_entry = pce
 
 		return pos_sales_invoices
 
@@ -332,7 +334,7 @@ class BankDepositTool(Document):
 			limit = "limit %(limit)s" if self.limit else ""
 
 		journal_entries = frappe.db.sql(f"""
-			select 
+			select
 				'Journal Entry' as voucher_type,
 				je.name as voucher_no,
 				'Journal Entry Account' as voucher_detail_dt,
@@ -458,7 +460,7 @@ class BankDepositTool(Document):
 		out = {}
 		for d in closing_data:
 			if voucher_detail_nos:
-				out[(d.document_name, d.document_detail_no)] = d.pos_closing_entry
+				out[d.document_name, d.document_detail_no] = d.pos_closing_entry
 			else:
 				out[d.document_name] = d.pos_closing_entry
 
@@ -472,7 +474,7 @@ class BankDepositTool(Document):
 		je.submit()
 
 		frappe.msgprint(_("Deposit Entry {0} submitted successfully").format(
-			frappe.bold(je.name)
+			frappe.bold(je.name),
 		), alert=True)
 
 		self.get_undeposited_entries()
@@ -525,12 +527,12 @@ class BankDepositTool(Document):
 		docstatus = frappe.db.get_value(row.get("voucher_type"), row.get("voucher_no"), "docstatus", for_update=True)
 		if docstatus != 1:
 			frappe.throw(_("Row #{0}: {1} is not submitted").format(
-				row.get("idx"), frappe.get_desk_link(row.voucher_type, row.voucher_no)
+				row.get("idx"), frappe.get_desk_link(row.voucher_type, row.voucher_no),
 			))
 
 		if row.reference_date and getdate(self.deposit_date) < getdate(row.reference_date):
 			frappe.throw(_("Row #{0}: Deposit Date {1} cannot be before Reference/Cheque Date {2}").format(
-				row.idx, frappe.bold(self.get_formatted("deposit_date")), frappe.bold(row.get_formatted("reference_date"))
+				row.idx, frappe.bold(self.get_formatted("deposit_date")), frappe.bold(row.get_formatted("reference_date")),
 			))
 
 	def make_journal_entry(self, selected_entries):
@@ -560,7 +562,7 @@ class BankDepositTool(Document):
 
 		# selected payment entries
 		for d in selected_entries:
-			amount = flt(d.get('amount'))
+			amount = flt(d.get("amount"))
 
 			debit_row = None
 			if not batch_deposit:
@@ -568,8 +570,8 @@ class BankDepositTool(Document):
 					"account": self.deposit_to_account,
 					"debit_in_account_currency": abs(amount) if amount > 0 else 0,
 					"credit_in_account_currency": abs(amount) if amount < 0 else 0,
-					"cheque_no": d.get('reference_no'),
-					"cheque_date": d.get('reference_date'),
+					"cheque_no": d.get("reference_no"),
+					"cheque_date": d.get("reference_date"),
 					"deposit_against_type": d.voucher_type,
 					"deposit_against": d.voucher_no,
 					"deposit_against_detail_no": d.voucher_detail_dn,
@@ -579,8 +581,8 @@ class BankDepositTool(Document):
 				"account": self.undeposited_account,
 				"debit_in_account_currency": abs(amount) if amount < 0 else 0,
 				"credit_in_account_currency": abs(amount) if amount > 0 else 0,
-				"cheque_no": d.get('reference_no'),
-				"cheque_date": d.get('reference_date'),
+				"cheque_no": d.get("reference_no"),
+				"cheque_date": d.get("reference_date"),
 				"deposit_date": self.deposit_date,
 				"deposit_against_type": d.voucher_type,
 				"deposit_against": d.voucher_no,
@@ -596,7 +598,7 @@ class BankDepositTool(Document):
 			if d.pos_closing_entry:
 				against = {
 					"reference_type": "POS Closing Entry",
-					"reference_name": d.pos_closing_entry
+					"reference_name": d.pos_closing_entry,
 				}
 				credit_row.update(against)
 				if debit_row:
@@ -606,15 +608,15 @@ class BankDepositTool(Document):
 
 		# adjustment entries
 		for d in self.adjustment_entries:
-			amount = flt(d.get('adjustment_amount'))
+			amount = flt(d.get("adjustment_amount"))
 			row_dimensions = self.get_accounting_dimensions(d)
 
 			# expense row
 			je.append("accounts", {
-				"account": d.get('account'),
-				"party_type": "Supplier" if d.get('supplier') else None,
-				"party": d.get('supplier'),
-				"cost_center": d.get('cost_center'),
+				"account": d.get("account"),
+				"party_type": "Supplier" if d.get("supplier") else None,
+				"party": d.get("supplier"),
+				"cost_center": d.get("cost_center"),
 				"debit_in_account_currency": abs(amount) if amount > 0 else 0,
 				"credit_in_account_currency": abs(amount) if amount < 0 else 0,
 				**row_dimensions,
@@ -624,7 +626,7 @@ class BankDepositTool(Document):
 			if not batch_deposit:
 				je.append("accounts", {
 					"account": self.deposit_to_account,
-					"cost_center": d.get('cost_center'),
+					"cost_center": d.get("cost_center"),
 					"debit_in_account_currency": abs(amount) if amount < 0 else 0,
 					"credit_in_account_currency": abs(amount) if amount > 0 else 0,
 					**row_dimensions,
@@ -637,15 +639,15 @@ class BankDepositTool(Document):
 
 		dimensions = self.get_accounting_dimensions(self)
 
-		voucher_type = entry.get('voucher_type')
-		voucher_no = entry.get('voucher_no')
-		voucher_detail_dn = entry.get('voucher_detail_dn')
+		voucher_type = entry.get("voucher_type")
+		voucher_no = entry.get("voucher_no")
+		voucher_detail_dn = entry.get("voucher_detail_dn")
 
 		if voucher_type and voucher_no:
 			dimensions.update(get_document_dimensions(voucher_type, voucher_no, with_remarks=True))
 
-			if voucher_detail_dn and entry.get('voucher_detail_dt'):
-				child_dimensions = get_document_dimensions(entry.get('voucher_detail_dt'), voucher_detail_dn, with_remarks=True)
+			if voucher_detail_dn and entry.get("voucher_detail_dt"):
+				child_dimensions = get_document_dimensions(entry.get("voucher_detail_dt"), voucher_detail_dn, with_remarks=True)
 				dimensions.update(child_dimensions)
 
 		return dimensions

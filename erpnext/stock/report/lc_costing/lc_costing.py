@@ -9,7 +9,7 @@ from frappe.utils import cint, getdate
 class LCCostingReport:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 
 	def run(self):
 		self.get_data()
@@ -39,7 +39,7 @@ class LCCostingReport:
 	def get_price_list_details(self):
 		self.filters.price_list_currency = None
 		if self.filters.reference_price_list:
-			self.filters.price_list_currency = frappe.db.get_value("Price List", self.filters.reference_price_list, 'currency')
+			self.filters.price_list_currency = frappe.db.get_value("Price List", self.filters.reference_price_list, "currency")
 
 	def process_data(self):
 		for d in self.data:

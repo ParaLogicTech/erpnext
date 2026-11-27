@@ -1,8 +1,8 @@
 // Copyright (c) 2018, Frappe and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Quality Review', {
-	onload: function(frm){
+frappe.ui.form.on("Quality Review", {
+	onload: function(frm) {
 		frm.set_value("date", frappe.datetime.get_today());
 	},
 	goal: function(frm) {
@@ -10,9 +10,9 @@ frappe.ui.form.on('Quality Review', {
 			"method": "frappe.client.get",
 			args: {
 				doctype: "Quality Goal",
-				name: frm.doc.goal
+				name: frm.doc.goal,
 			},
-			callback: function(data){
+			callback: function(data) {
 				frm.fields_dict.reviews.grid.remove_all();
 				let objectives = data.message.objectives;
 				for (var i in objectives) {
@@ -22,7 +22,7 @@ frappe.ui.form.on('Quality Review', {
 					frm.fields_dict.reviews.get_value()[i].uom = objectives[i].uom;
 				}
 				frm.refresh();
-			}
+			},
 		});
 	},
 });

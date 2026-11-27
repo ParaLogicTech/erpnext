@@ -1,11 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
-from frappe.utils import getdate, add_days
+
+import frappe
+from frappe.utils import add_days, getdate
+
 from erpnext.hr.doctype.salary_structure.test_salary_structure import make_employee
+
 
 class TestEmployeePromotion(unittest.TestCase):
 	def setUp(self):
@@ -16,14 +18,14 @@ class TestEmployeePromotion(unittest.TestCase):
 		promotion_obj = frappe.get_doc({
 			"doctype": "Employee Promotion",
 			"employee": self.employee,
-			"promotion_details" :[
+			"promotion_details": [
 				{
 				"property": "Designation",
 				"current": "Software Developer",
 				"new": "Project Manager",
-				"fieldname": "designation"
-				}
-			]
+				"fieldname": "designation",
+				},
+			],
 		})
 		promotion_obj.promotion_date = add_days(getdate(), 1)
 		promotion_obj.save()

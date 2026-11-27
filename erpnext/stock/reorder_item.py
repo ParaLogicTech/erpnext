@@ -1,11 +1,14 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
-import erpnext
 import json
-from frappe.utils import flt, nowdate, add_days, cint
+
+import frappe
 from frappe import _
+from frappe.utils import add_days, cint, flt, nowdate
+
+import erpnext
+
 
 def reorder_item():
 	""" Reorder item if stock reaches reorder level"""
@@ -13,8 +16,9 @@ def reorder_item():
 	if not (frappe.db.a_row_exists("Company") and frappe.db.a_row_exists("Fiscal Year")):
 		return
 
-	if cint(frappe.db.get_value('Stock Settings', None, 'auto_indent')):
+	if cint(frappe.db.get_value("Stock Settings", None, "auto_indent")):
 		return _reorder_item()
+
 
 def _reorder_item():
 	material_requests = {"Purchase": {}, "Transfer": {}, "Material Issue": {}, "Manufacture": {}}
@@ -62,7 +66,7 @@ def _reorder_item():
 			material_requests[material_request_type].setdefault(company, []).append({
 				"item_code": item_code,
 				"warehouse": warehouse,
-				"reorder_qty": reorder_qty
+				"reorder_qty": reorder_qty,
 			})
 
 	for item_code in items_to_consider:
@@ -79,12 +83,13 @@ def _reorder_item():
 	if material_requests:
 		return create_material_request(material_requests)
 
+
 def get_item_warehouse_projected_qty(items_to_consider):
 	item_warehouse_projected_qty = {}
 
 	for item_code, warehouse, projected_qty in frappe.db.sql("""select item_code, warehouse, projected_qty
 		from tabBin where item_code in ({0})
-			and (warehouse != "" and warehouse is not null)"""\
+			and (warehouse != "" and warehouse is not null)"""
 		.format(", ".join(["%s"] * len(items_to_consider))), items_to_consider):
 
 		if item_code not in item_warehouse_projected_qty:
@@ -103,6 +108,7 @@ def get_item_warehouse_projected_qty(items_to_consider):
 			warehouse_doc = frappe.get_doc("Warehouse", warehouse_doc.parent_warehouse)
 
 	return item_warehouse_projected_qty
+
 
 def create_material_request(material_requests):
 	"""	Create indent on reaching reorder level	"""
@@ -129,7 +135,7 @@ def create_material_request(material_requests):
 				mr.update({
 					"company": company,
 					"transaction_date": nowdate(),
-					"material_request_type": "Material Transfer" if request_type=="Transfer" else request_type
+					"material_request_type": "Material Transfer" if request_type == "Transfer" else request_type,
 				})
 
 				for d in items:
@@ -138,16 +144,16 @@ def create_material_request(material_requests):
 					uom = item.stock_uom
 					conversion_factor = 1.0
 
-					if request_type == 'Purchase':
+					if request_type == "Purchase":
 						uom = item.purchase_uom or item.stock_uom
 						if uom != item.stock_uom:
 							conversion_factor = frappe.db.get_value("UOM Conversion Detail",
-								{'parent': item.name, 'uom': uom}, 'conversion_factor') or 1.0
+								{"parent": item.name, "uom": uom}, "conversion_factor") or 1.0
 
 					mr.append("items", {
 						"doctype": "Material Request Item",
 						"item_code": d.item_code,
-						"schedule_date": add_days(nowdate(),cint(item.lead_time_days)),
+						"schedule_date": add_days(nowdate(), cint(item.lead_time_days)),
 						"qty": d.reorder_qty / conversion_factor,
 						"uom": uom,
 						"stock_uom": item.stock_uom,
@@ -165,21 +171,22 @@ def create_material_request(material_requests):
 				mr.submit()
 				mr_list.append(mr)
 
-			except:
+			except Exception:
 				_log_exception()
 
 	if mr_list:
 		if getattr(frappe.local, "reorder_email_notify", None) is None:
-			frappe.local.reorder_email_notify = cint(frappe.db.get_value('Stock Settings', None,
-				'reorder_email_notify'))
+			frappe.local.reorder_email_notify = cint(frappe.db.get_value("Stock Settings", None,
+				"reorder_email_notify"))
 
-		if(frappe.local.reorder_email_notify):
+		if (frappe.local.reorder_email_notify):
 			send_email_notification(mr_list)
 
 	if exceptions_list:
 		notify_errors(exceptions_list)
 
 	return mr_list
+
 
 def send_email_notification(mr_list):
 	""" Notify user about auto creation of indent"""
@@ -191,11 +198,12 @@ def send_email_notification(mr_list):
 		and p.name not in ('Administrator', 'All', 'Guest')""")
 
 	msg = frappe.render_template("templates/emails/reorder_item.html", {
-		"mr_list": mr_list
+		"mr_list": mr_list,
 	})
 
 	frappe.sendmail(recipients=email_list,
-		subject=_('Auto Material Requests Generated'), message = msg)
+		subject=_("Auto Material Requests Generated"), message=msg)
+
 
 def notify_errors(exceptions_list):
 	subject = _("[Important] [ERPNext] Auto Reorder Errors")

@@ -3,23 +3,22 @@
 
 
 import frappe
-from frappe import session, _
-from frappe.utils import today, now_datetime
-
-
+from frappe import _, session
+from frappe.utils import now_datetime, today
 
 from erpnext.utilities.transaction_base import TransactionBase
+
 
 class WarrantyClaim(TransactionBase):
 	def get_feed(self):
 		return _("{0}: From {1}").format(self.status, self.customer_name)
 
 	def validate(self):
-		if session['user'] != 'Guest' and not self.customer:
+		if session["user"] != "Guest" and not self.customer:
 			frappe.throw(_("Customer is required"))
 
-		if self.status=="Closed" and not self.resolution_date and \
-			frappe.db.get_value("Warranty Claim", self.name, "status")!="Closed":
+		if self.status == "Closed" and not self.resolution_date and \
+			frappe.db.get_value("Warranty Claim", self.name, "status") != "Closed":
 			self.resolution_date = now_datetime()
 
 	def on_cancel(self):
@@ -28,13 +27,14 @@ class WarrantyClaim(TransactionBase):
 			where t2.parent = t1.name and t2.prevdoc_docname = %s and	t1.docstatus!=2""",
 			(self.name))
 		if lst:
-			lst1 = ','.join([x[0] for x in lst])
+			lst1 = ",".join([x[0] for x in lst])
 			frappe.throw(_("Cancel Maintenance Visit {0} before cancelling this Warranty Claim").format(lst1))
 		else:
-			self.db_set('status', 'Cancelled')
+			self.db_set("status", "Cancelled")
 
 	def on_update(self):
 		pass
+
 
 @frappe.whitelist()
 def make_maintenance_visit(source_name, target_doc=None):
@@ -53,15 +53,15 @@ def make_maintenance_visit(source_name, target_doc=None):
 		target_doc = get_mapped_doc("Warranty Claim", source_name, {
 			"Warranty Claim": {
 				"doctype": "Maintenance Visit",
-				"field_map": {}
-			}
+				"field_map": {},
+			},
 		}, target_doc)
 
 		source_doc = frappe.get_doc("Warranty Claim", source_name)
 
 		table_map = {
 			"doctype": "Maintenance Visit Purpose",
-			"postprocess": _update_links
+			"postprocess": _update_links,
 		}
 		map_child_doc(source_doc, target_doc, table_map, source_doc)
 

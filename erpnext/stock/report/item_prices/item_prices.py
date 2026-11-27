@@ -1,18 +1,20 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import json
+
 import frappe
+from crm.crm.doctype.territory.territory import get_territory_subtree
 from frappe import _, scrub
-from frappe.utils import flt, nowdate, getdate, cstr, cint
+from frappe.desk.reportview import build_match_conditions
+from frappe.model.meta import get_field_precision
+from frappe.utils import cint, cstr, flt, getdate, nowdate
+
+from erpnext.setup.doctype.customer_group.customer_group import get_customer_group_subtree
+from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
+from erpnext.stock.doctype.item.item import convert_item_uom_for
 from erpnext.stock.report.stock_ledger.stock_ledger import get_item_group_condition
 from erpnext.stock.utils import has_valuation_read_permission
-from erpnext.stock.doctype.item.item import convert_item_uom_for
-from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
-from erpnext.setup.doctype.customer_group.customer_group import get_customer_group_subtree
-from crm.crm.doctype.territory.territory import get_territory_subtree
-from frappe.model.meta import get_field_precision
-from frappe.desk.reportview import build_match_conditions
-import json
 
 
 def execute(filters=None):
@@ -70,21 +72,21 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 
 		default_uom = d.purchase_uom if filters.buying_selling == "Buying" else d.sales_uom
 		if filters.uom:
-			d['uom'] = filters.uom
+			d["uom"] = filters.uom
 		elif filters.default_uom == "Stock UOM":
-			d['uom'] = d.stock_uom
+			d["uom"] = d.stock_uom
 		elif filters.default_uom == "Contents UOM":
-			d['uom'] = d.alt_uom or default_uom
+			d["uom"] = d.alt_uom or default_uom
 		else:
-			d['uom'] = default_uom
+			d["uom"] = default_uom
 
-		if not d.get('uom'):
-			d['uom'] = d.stock_uom
+		if not d.get("uom"):
+			d["uom"] = d.stock_uom
 
-		d['print_in_price_list'] = cint(not d['hide_in_price_list'])
-		del d['hide_in_price_list']
+		d["print_in_price_list"] = cint(not d["hide_in_price_list"])
+		del d["hide_in_price_list"]
 
-		d['alt_uom_size'] = convert_item_uom_for(d.alt_uom_size, d.item_code, d.uom, d.stock_uom)
+		d["alt_uom_size"] = convert_item_uom_for(d.alt_uom_size, d.item_code, d.uom, d.stock_uom)
 		items_map[d.item_code] = d
 
 	bom_data = []
@@ -108,7 +110,7 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 		for d in item_prices:
 			if d.item_code in items_map:
 				d.price_list_rate = convert_item_uom_for(d.price_list_rate, d.item_code,
-					from_uom=d.uom or items_map[d.item_code]['stock_uom'], to_uom=items_map[d.item_code]['uom'],
+					from_uom=d.uom or items_map[d.item_code]["stock_uom"], to_uom=items_map[d.item_code]["uom"],
 					null_if_not_convertible=True, is_rate=True)
 
 	item_price_map = {}
@@ -137,7 +139,7 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 	for d in previous_item_prices:
 		if d.item_code in item_price_map and d.price_list in item_price_map[d.item_code] and d.price_list_rate is not None:
 			price = item_price_map[d.item_code][d.price_list]
-			if 'previous_price' not in price and d.valid_from < price.valid_from:
+			if "previous_price" not in price and d.valid_from < price.valid_from:
 				price.previous_price = d.price_list_rate
 
 	for item_code, d in items_map.items():
@@ -213,7 +215,7 @@ def get_item_price_data(filters, ignore_permissions=False, additional_conditions
 	if filters.filter_items_without_price:
 		to_remove = []
 		for item_code, d in items_map.items():
-			if not d.get('print_rate'):
+			if not d.get("print_rate"):
 				to_remove.append(item_code)
 		for item_code in to_remove:
 			del items_map[item_code]
@@ -225,8 +227,8 @@ def get_price_lists(filters, ignore_permissions=False):
 	def get_additional_price_lists():
 		res = []
 		for i in range(1):
-			if filters.get('price_list_' + str(i+1)):
-				res.append(filters.get('price_list_' + str(i+1)))
+			if filters.get("price_list_" + str(i + 1)):
+				res.append(filters.get("price_list_" + str(i + 1)))
 		return res
 
 	def add_to_price_lists(price_list):
@@ -264,7 +266,7 @@ def get_price_lists(filters, ignore_permissions=False):
 	add_to_price_lists(filters.standard_price_list)
 
 	if filters.customer:
-		customer_price_list = frappe.db.get_value("Customer", filters.customer, 'default_price_list')
+		customer_price_list = frappe.db.get_value("Customer", filters.customer, "default_price_list")
 		if customer_price_list:
 			filters.selected_price_list = customer_price_list
 
@@ -298,7 +300,7 @@ def get_items(filters, additional_conditions):
 
 def get_current_item_prices(filters, price_lists, additional_conditions):
 	item_conditions = get_item_conditions(filters, for_item_dt=True, additional_conditions=additional_conditions)
-	price_lists_cond = " and p.price_list in ({0})".format(", ".join([frappe.db.escape(d) for d in price_lists or ['']]))
+	price_lists_cond = " and p.price_list in ({0})".format(", ".join([frappe.db.escape(d) for d in price_lists or [""]]))
 
 	return frappe.db.sql("""
 		select p.name, p.price_list, p.item_code, p.price_list_rate, p.currency, p.uom,
@@ -323,7 +325,7 @@ def get_previous_item_prices(filters, price_lists, additional_conditions):
 		return []
 
 	item_conditions = get_item_conditions(filters, for_item_dt=True, additional_conditions=additional_conditions)
-	price_lists_cond = " and p.price_list in ({0})".format(", ".join([frappe.db.escape(d) for d in price_lists or ['']]))
+	price_lists_cond = " and p.price_list in ({0})".format(", ".join([frappe.db.escape(d) for d in price_lists or [""]]))
 
 	return frappe.db.sql("""
 		select p.price_list, p.item_code, p.price_list_rate, ifnull(p.valid_from, '2000-01-01') as valid_from, p.uom
@@ -341,7 +343,7 @@ def get_pricing_rule_map(filters):
 		"brands": {},
 	})
 
-	if filters.get('customer'):
+	if filters.get("customer"):
 		customer_details = frappe.db.get_value("Customer", filters.customer,
 			["customer_group", "territory"], as_dict=True) or frappe._dict()
 	else:
@@ -388,20 +390,20 @@ def get_pricing_rule_map(filters):
 				continue
 
 		if d.apply_on == "Item Code":
-			pricing_rule_map['items'].setdefault(d.item_code, {}).setdefault(cstr(d.for_price_list), []).append(d)
+			pricing_rule_map["items"].setdefault(d.item_code, {}).setdefault(cstr(d.for_price_list), []).append(d)
 		elif d.apply_on == "Brand":
-			pricing_rule_map['brands'].setdefault(d.brand, {}).setdefault(cstr(d.for_price_list), []).append(d)
+			pricing_rule_map["brands"].setdefault(d.brand, {}).setdefault(cstr(d.for_price_list), []).append(d)
 		elif d.apply_on == "Item Group":
 			item_groups = get_item_group_subtree(d.item_group, cache=True)
 			for item_group in item_groups:
-				pricing_rule_map['item_groups'].setdefault(item_group, {}).setdefault(cstr(d.for_price_list), []).append(d)
+				pricing_rule_map["item_groups"].setdefault(item_group, {}).setdefault(cstr(d.for_price_list), []).append(d)
 
-	for key, entity_dict in pricing_rule_map.items():
-		for entity, price_list_dict in entity_dict.items():
-			for price_list, pricing_rules in price_list_dict.items():
+	for _key, entity_dict in pricing_rule_map.items():
+		for _entity, price_list_dict in entity_dict.items():
+			for _price_list, pricing_rules in price_list_dict.items():
 				pricing_rules.sort(key=lambda d: (
 					d.priority,
-					3 if d.applicable_for == 'Customer' else (2 if d.applicable_for == 'Customer Group' else (1 if d.applicable_for == 'Territory' else 0)),
+					3 if d.applicable_for == "Customer" else (2 if d.applicable_for == "Customer Group" else (1 if d.applicable_for == "Territory" else 0)),
 					d.valid_from,
 				), reverse=True)
 
@@ -459,7 +461,7 @@ def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
 		pricing_rule.min_qty
 		or pricing_rule.max_qty
 		or pricing_rule.min_amt
-		or pricing_rule.max_amt
+		or pricing_rule.max_amt,
 	)
 
 	if pricing_rule.price_or_product_discount == "Price":
@@ -469,7 +471,7 @@ def apply_pricing_rule_to_price_list(row, price_list, pricing_rule):
 
 
 def apply_price_discount_rule(row, price_list, pricing_rule):
-	price_precision = get_field_precision(frappe.get_meta("Item Price").get_field('price_list_rate'))
+	price_precision = get_field_precision(frappe.get_meta("Item Price").get_field("price_list_rate"))
 	suffix = scrub(price_list)
 
 	price_list_rate = flt(row.get(f"rate_{suffix}"))
@@ -578,7 +580,7 @@ def get_item_conditions(filters, for_item_dt, additional_conditions=None):
 	conditions = []
 
 	if filters.get("item_code"):
-		is_template = frappe.db.get_value("Item", filters.get('item_code'), 'has_variants')
+		is_template = frappe.db.get_value("Item", filters.get("item_code"), "has_variants")
 		item_variant_of_field = "variant_of" if for_item_dt else "item_code"
 		item_code_field = "name" if for_item_dt else "item_code"
 
@@ -613,13 +615,13 @@ def get_item_conditions(filters, for_item_dt, additional_conditions=None):
 
 
 def get_columns(filters, price_lists):
-	show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+	show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 
 	columns = [
 		{
 			"fieldname": "item_code", "label": _("Item Code"), "fieldtype": "Link", "options": "Item",
 			"width": 100 if show_item_name else 200,
-			"price_list_note": frappe.db.get_single_value("Price List Settings", "price_list_note")
+			"price_list_note": frappe.db.get_single_value("Price List Settings", "price_list_note"),
 		},
 		{"fieldname": "item_name", "label": _("Item Name"), "fieldtype": "Data", "width": 150},
 		{"fieldname": "print_in_price_list", "label": _("Print"), "fieldtype": "Check", "width": 50, "editable": 1},
@@ -643,7 +645,7 @@ def get_columns(filters, price_lists):
 	if filters.standard_price_list:
 		if filters.show_valid_from:
 			columns.append({
-				"fieldname": "standard_rate_valid_from", "label": _("Valid From Std Rate"), "fieldtype": "Date", "width": 80
+				"fieldname": "standard_rate_valid_from", "label": _("Valid From Std Rate"), "fieldtype": "Date", "width": 80,
 			})
 
 		columns += [
@@ -657,7 +659,7 @@ def get_columns(filters, price_lists):
 		if price_list != filters.standard_price_list:
 			if filters.show_valid_from:
 				columns.append({
-					"fieldname": "valid_from_" + scrub(price_list), "label": _("Valid From {0}".format(price_list)), "fieldtype": "Date", "width": 80
+					"fieldname": "valid_from_" + scrub(price_list), "label": _("Valid From {0}".format(price_list)), "fieldtype": "Date", "width": 80,
 				})
 
 			columns.append({
@@ -668,7 +670,7 @@ def get_columns(filters, price_lists):
 				"editable": 1,
 				"price_list": price_list,
 				"options": "currency_" + scrub(price_list),
-				"force_currency_symbol": 1
+				"force_currency_symbol": 1,
 			})
 
 	if filters.standard_price_list and filters.price_list_1:
@@ -681,13 +683,13 @@ def get_columns(filters, price_lists):
 
 	show_amounts = has_valuation_read_permission()
 	if not show_amounts:
-		columns = list(filter(lambda d: not d.get('restricted'), columns))
-		'''for c in columns:
+		columns = list(filter(lambda d: not d.get("restricted"), columns))
+		"""for c in columns:
 			if c.get('editable'):
-				del c['editable']'''
+				del c['editable']"""
 
 	if not show_item_name:
-		columns = [c for c in columns if c.get('fieldname') != 'item_name']
+		columns = [c for c in columns if c.get("fieldname") != "item_name"]
 
 	return columns
 
@@ -702,8 +704,8 @@ def set_multiple_item_pl_rate(effective_date, price_list, items):
 		items = json.loads(items)
 
 	for item in items:
-		_set_item_pl_rate(effective_date, item.get('item_code'), price_list,
-			item.get('price_list_rate'), item.get('uom'), item.get('conversion_factor'))
+		_set_item_pl_rate(effective_date, item.get("item_code"), price_list,
+			item.get("price_list_rate"), item.get("uom"), item.get("conversion_factor"))
 
 
 @frappe.whitelist()
@@ -723,7 +725,7 @@ def set_item_pl_rate(
 		if isinstance(filters, str):
 			filters = json.loads(filters)
 
-		filters['item_code'] = item_code
+		filters["item_code"] = item_code
 		return execute(filters)
 
 
@@ -739,6 +741,7 @@ def _set_item_pl_rate(
 	ignore_permissions=False,
 ):
 	from frappe.model.utils import get_fetch_values
+
 	from erpnext.stock.get_item_details import get_item_price
 
 	if not item_code or not price_list:
@@ -789,7 +792,7 @@ def _set_item_pl_rate(
 
 	# Check if price has changed or not
 	if current_effective_item_price:
-		price_precision = get_field_precision(frappe.get_meta("Item Price").get_field('price_list_rate'))
+		price_precision = get_field_precision(frappe.get_meta("Item Price").get_field("price_list_rate"))
 
 		converted_rate = convert_item_uom_for(
 			price_list_rate,
@@ -808,7 +811,7 @@ def _set_item_pl_rate(
 			return
 
 	# Get future price
-	item_price_args['period'] = 'future'
+	item_price_args["period"] = "future"
 	future_item_price = get_item_price(item_price_args, item_code)
 
 	# Update or add item price
@@ -831,8 +834,8 @@ def _set_item_pl_rate(
 		doc.price_list_rate = flt(price_list_rate)
 		doc.customer = customer
 		doc.supplier = supplier
-		doc.update(get_fetch_values("Item Price", 'item_code', item_code))
-		doc.update(get_fetch_values("Item Price", 'price_list', price_list))
+		doc.update(get_fetch_values("Item Price", "item_code", item_code))
+		doc.update(get_fetch_values("Item Price", "price_list", price_list))
 
 	doc.valid_from = effective_date
 	if future_item_price:
@@ -854,5 +857,5 @@ def _set_item_pl_rate(
 	frappe.msgprint(
 		_("Price updated for Item {0} in Price List {1}").format(item_code, price_list),
 		alert=True,
-		indicator='green',
+		indicator="green",
 	)

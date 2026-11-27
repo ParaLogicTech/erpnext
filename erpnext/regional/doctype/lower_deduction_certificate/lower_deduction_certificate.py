@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import getdate
 from frappe.model.document import Document
+from frappe.utils import getdate
+
 from erpnext.accounts.utils import get_fiscal_year
+
 
 class LowerDeductionCertificate(Document):
 	def validate(self):
@@ -15,11 +16,10 @@ class LowerDeductionCertificate(Document):
 
 		fiscal_year = get_fiscal_year(fiscal_year=self.fiscal_year, as_dict=True)
 
-		if not (fiscal_year.year_start_date <= getdate(self.valid_from) \
+		if not (fiscal_year.year_start_date <= getdate(self.valid_from)
 			<= fiscal_year.year_end_date):
 			frappe.throw(_("Valid From date not in Fiscal Year {0}").format(frappe.bold(self.fiscal_year)))
 
-		if not (fiscal_year.year_start_date <= getdate(self.valid_upto) \
+		if not (fiscal_year.year_start_date <= getdate(self.valid_upto)
 			<= fiscal_year.year_end_date):
 			frappe.throw(_("Valid Upto date not in Fiscal Year {0}").format(frappe.bold(self.fiscal_year)))
-

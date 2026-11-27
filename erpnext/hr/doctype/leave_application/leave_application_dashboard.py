@@ -4,12 +4,12 @@ from frappe import _
 
 def get_data():
 	return {
-		'fieldname': 'leave_application',
-		'transactions': [
+		"fieldname": "leave_application",
+		"transactions": [
 			{
-				'label': _('Attendance'),
-				'items': ['Attendance']
-			}
+				"label": _("Attendance"),
+				"items": ["Attendance"],
+			},
 		],
 		# 'reports': [
 		# 	{

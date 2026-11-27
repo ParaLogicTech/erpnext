@@ -1,7 +1,9 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and Contributors and contributors
 # For license information, please see license.txt
 
-import frappe, json
+import json
+
+import frappe
 
 
 def execute(filters=None):
@@ -9,7 +11,7 @@ def execute(filters=None):
 	parents = {
 		"Product Bundle Item": "Product Bundle",
 		"BOM Explosion Item": "BOM",
-		"BOM Item": "BOM"
+		"BOM Item": "BOM",
 	}
 
 	for doctype in ("Product Bundle Item",
@@ -33,11 +35,11 @@ def execute(filters=None):
 		"label": "BOM",
 		"width": 200,
 		"fieldtype": "Dynamic Link",
-		"options": "doctype"
+		"options": "doctype",
 	},
 	{
 		"fieldname": "doctype",
 		"label": "Type",
 		"width": 200,
-		"fieldtype": "Data"
+		"fieldtype": "Data",
 	}], data

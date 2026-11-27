@@ -41,16 +41,16 @@ def set_missing_checklist(doc, parentfield, default_checklist_dt, default_checkl
 		checklist = get_default_checklist_items(parentfield, default_checklist_dt, default_checklist_dn)
 		for d in checklist:
 			doc.append(parentfield, {
-				'checklist_item': d.checklist_item,
-				'is_check_mandatory': cint(d.is_check_mandatory),
-				'checklist_item_checked': 0
+				"checklist_item": d.checklist_item,
+				"is_check_mandatory": cint(d.is_check_mandatory),
+				"checklist_item_checked": 0,
 			})
 
 
 def set_updated_checklist_from_default_checklist(doc, parentfield, default_checklist_dt, default_checklist_dn=None):
 	def add_row(row, is_custom=0):
 		if isinstance(row, str):
-			row = frappe._dict({'checklist_item': d})
+			row = frappe._dict({"checklist_item": d})
 
 		if row.checklist_item in existing_items:
 			new_row = existing_items[row.checklist_item]
@@ -59,14 +59,14 @@ def set_updated_checklist_from_default_checklist(doc, parentfield, default_check
 			doc.get(parentfield).append(new_row)
 		else:
 			doc.append(parentfield, {
-				'checklist_item': row.checklist_item,
-				'is_check_mandatory': row.is_check_mandatory,
-				'checklist_item_checked': 0,
-				'is_custom_checklist_item': cint(is_custom)
+				"checklist_item": row.checklist_item,
+				"is_check_mandatory": row.is_check_mandatory,
+				"checklist_item_checked": 0,
+				"is_custom_checklist_item": cint(is_custom),
 			})
 
-	checked_items = [d.checklist_item for d in doc.get(parentfield) if d.get('checklist_item_checked')]
-	custom_items = [d for d in doc.get(parentfield) if d.get('is_custom_checklist_item')]
+	checked_items = [d.checklist_item for d in doc.get(parentfield) if d.get("checklist_item_checked")]
+	custom_items = [d for d in doc.get(parentfield) if d.get("is_custom_checklist_item")]
 	existing_items = {d.checklist_item: d for d in doc.get(parentfield)}
 
 	updated_checklist = get_default_checklist_items(parentfield, default_checklist_dt, default_checklist_dn)
@@ -110,10 +110,10 @@ def set_updated_checklist(doc, parentfield, updated_checklist):
 			continue
 
 		doc.append(parentfield, {
-			'checklist_item': d.get("checklist_item"),
-			'is_check_mandatory': 0,
-			'checklist_item_checked': cint(d.get("checklist_item_checked")),
-			'is_custom_checklist_item': 1,
+			"checklist_item": d.get("checklist_item"),
+			"is_check_mandatory": 0,
+			"checklist_item_checked": cint(d.get("checklist_item_checked")),
+			"is_custom_checklist_item": 1,
 		})
 
 		existing_items.add(d.get("checklist_item"))

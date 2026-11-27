@@ -2,7 +2,9 @@
 # For license information, please see license.txt
 
 from frappe import _
+
 from erpnext.stock.report.delayed_item_report.delayed_item_report import DelayedItemReport
+
 
 def execute(filters=None):
 	columns, data = [], []
@@ -10,6 +12,7 @@ def execute(filters=None):
 	columns, data = DelayedOrderReport(filters).run()
 
 	return columns, data
+
 
 class DelayedOrderReport(DelayedItemReport):
 	def run(self):
@@ -35,55 +38,55 @@ class DelayedOrderReport(DelayedItemReport):
 			"fieldname": "name",
 			"fieldtype": "Link",
 			"options": based_on,
-			"width": 100
-		},{
+			"width": 100,
+		}, {
 			"label": _("Customer"),
 			"fieldname": "customer",
 			"fieldtype": "Link",
 			"options": "Customer",
-			"width": 200
+			"width": 200,
 		},
 		{
 			"label": _("Shipping Address"),
 			"fieldname": "shipping_address_name",
 			"fieldtype": "Link",
 			"options": "Address",
-			"width": 140
+			"width": 140,
 		},
 		{
 			"label": _("Expected Delivery Date"),
 			"fieldname": "delivery_date",
 			"fieldtype": "Date",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Actual Delivery Date"),
 			"fieldname": "posting_date",
 			"fieldtype": "Date",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Amount"),
 			"fieldname": "grand_total",
 			"fieldtype": "Currency",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Delayed Days"),
 			"fieldname": "delayed_days",
 			"fieldtype": "Int",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Sales Order"),
 			"fieldname": "sales_order",
 			"fieldtype": "Link",
 			"options": "Sales Order",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Customer PO"),
 			"fieldname": "po_no",
 			"fieldtype": "Data",
-			"width": 110
+			"width": 110,
 		}]

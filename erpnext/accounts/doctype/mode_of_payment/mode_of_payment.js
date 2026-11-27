@@ -9,12 +9,12 @@ frappe.ui.form.on("Mode of Payment", {
 				let row = frappe.get_doc(cdt, cdn);
 				return {
 					filters: [
-						['Account', 'account_type', 'in', ['Bank', 'Cash']],
-						['Account', 'is_group', '=', 0],
-						['Account', 'company', '=', row.company],
-					]
-				}
+						["Account", "account_type", "in", ["Bank", "Cash"]],
+						["Account", "is_group", "=", 0],
+						["Account", "company", "=", row.company],
+					],
+				};
 			});
 		}
-	}
+	},
 });

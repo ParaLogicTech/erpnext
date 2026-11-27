@@ -1,12 +1,13 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import json
+
 import frappe
 from frappe import _, throw
-import json
 from frappe.model.document import Document
-from frappe.utils.jinja import validate_template
 from frappe.utils import cint
+from frappe.utils.jinja import validate_template
 
 
 class TermsandConditions(Document):
@@ -26,7 +27,7 @@ def get_terms_and_conditions(template_name, doc):
 
 	controller = frappe.get_doc(doc)
 	context = doc
-	context['doc'] = controller
+	context["doc"] = controller
 
 	if terms_and_conditions.terms:
 		return frappe.render_template(terms_and_conditions.terms, context)

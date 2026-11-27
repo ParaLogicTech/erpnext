@@ -1,7 +1,8 @@
 import frappe
-from erpnext import get_default_company
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
 from frappe.utils.fixtures import sync_fixtures
+
+from erpnext import get_default_company
 
 
 def execute():

@@ -1,36 +1,40 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2024, ParaLogic and contributors
 # For license information, please see license.txt
 
+from typing import ClassVar
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, nowdate, cstr, cint
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname
-from erpnext.vehicles.utils import format_vehicle_id
-from erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule import get_maintenance_schedule_from_serial_no
+from frappe.utils import cint, cstr, getdate, nowdate
+
+from erpnext.maintenance.doctype.maintenance_schedule.maintenance_schedule import (
+	get_maintenance_schedule_from_serial_no,
+)
 from erpnext.vehicles.doctype.vehicle_log.vehicle_log import get_vehicle_odometer
+from erpnext.vehicles.utils import format_vehicle_id
 
 
 class Vehicle(Document):
-	_copy_fields = [
-		'company',
-		'warehouse', 'sales_order',
-		'customer', 'customer_name',
-		'is_reserved', 'reserved_customer', 'reserved_customer_name',
-		'supplier', 'supplier_name',
-		'purchase_document_type', 'purchase_document_no', 'purchase_date', 'purchase_time', 'purchase_rate',
-		'delivery_document_type', 'delivery_document_no', 'delivery_date', 'delivery_time', 'sales_invoice',
-		'warranty_status',
+	_copy_fields: ClassVar[list[str]] = [
+		"company",
+		"warehouse", "sales_order",
+		"customer", "customer_name",
+		"is_reserved", "reserved_customer", "reserved_customer_name",
+		"supplier", "supplier_name",
+		"purchase_document_type", "purchase_document_no", "purchase_date", "purchase_time", "purchase_rate",
+		"delivery_document_type", "delivery_document_no", "delivery_date", "delivery_time", "sales_invoice",
+		"warranty_status",
 	]
 
-	_sync_fields = [
-		'item_code',
-		'customer', 'customer_name',
-		'is_reserved', 'reserved_customer', 'reserved_customer_name',
-		'vehicle_owner', 'vehicle_owner_name',
-		'sales_order', 'delivery_date',
-		'warranty_expiry_date',
+	_sync_fields: ClassVar[list[str]] = [
+		"item_code",
+		"customer", "customer_name",
+		"is_reserved", "reserved_customer", "reserved_customer_name",
+		"vehicle_owner", "vehicle_owner_name",
+		"sales_order", "delivery_date",
+		"warranty_expiry_date",
 	]
 
 	def __init__(self, *args, **kwargs):
@@ -48,12 +52,12 @@ class Vehicle(Document):
 
 	def onload(self):
 		self.copy_image_from_item()
-		self.set_onload('stock_exists', self.stock_ledger_created())
-		self.set_onload('cant_change_fields', self.get_cant_change_fields())
-		self.set_onload('cant_change_customer', self.cant_change_customer())
+		self.set_onload("stock_exists", self.stock_ledger_created())
+		self.set_onload("cant_change_fields", self.get_cant_change_fields())
+		self.set_onload("cant_change_customer", self.cant_change_customer())
 
 		if not self.is_new():
-			self.set_onload('maintenance_schedule_data', get_maintenance_schedule_from_serial_no(serial_no=self.name))
+			self.set_onload("maintenance_schedule_data", get_maintenance_schedule_from_serial_no(serial_no=self.name))
 
 	def validate(self):
 		self.validate_item()
@@ -80,7 +84,7 @@ class Vehicle(Document):
 
 	def copy_image_from_item(self):
 		if not self.image:
-			self.image = frappe.get_cached_value('Item', self.item_code, 'image')
+			self.image = frappe.get_cached_value("Item", self.item_code, "image")
 
 	def validate_item(self):
 		item = frappe.get_cached_doc("Item", self.item_code)
@@ -107,9 +111,9 @@ class Vehicle(Document):
 
 	def validate_duplicate_vehicle(self):
 		exclude = None if self.is_new() else self.name
-		validate_duplicate_vehicle('chassis_no', self.chassis_no, exclude=exclude, throw=True)
-		validate_duplicate_vehicle('engine_no', self.engine_no, exclude=exclude, throw=True)
-		validate_duplicate_vehicle('license_plate', self.license_plate, exclude=exclude, throw=True)
+		validate_duplicate_vehicle("chassis_no", self.chassis_no, exclude=exclude, throw=True)
+		validate_duplicate_vehicle("engine_no", self.engine_no, exclude=exclude, throw=True)
+		validate_duplicate_vehicle("license_plate", self.license_plate, exclude=exclude, throw=True)
 
 	def sync_with_serial_no(self, serial_no_doc=None):
 		if not serial_no_doc:
@@ -147,7 +151,7 @@ class Vehicle(Document):
 	def create_vehicle_serial_no(self):
 		if self.flags.from_serial_no:
 			serial_no_doc = frappe.get_cached_doc("Serial No", self.flags.from_serial_no)
-			serial_no_doc.db_set('vehicle', self.name)
+			serial_no_doc.db_set("vehicle", self.name)
 		else:
 			if not frappe.db.exists("Serial No", self.name):
 				serial_no_doc = frappe.new_doc("Serial No")
@@ -192,14 +196,14 @@ class Vehicle(Document):
 	def get_cant_change_fields(self):
 		ledger_or_invoice_exists = self.stock_ledger_created()
 		return frappe._dict({
-			'brand': ledger_or_invoice_exists,
-			'item_code': ledger_or_invoice_exists,
-			'variant_of': ledger_or_invoice_exists,
-			'chassis_no': ledger_or_invoice_exists,
+			"brand": ledger_or_invoice_exists,
+			"item_code": ledger_or_invoice_exists,
+			"variant_of": ledger_or_invoice_exists,
+			"chassis_no": ledger_or_invoice_exists,
 		})
 
 	def stock_ledger_created(self):
-		if not hasattr(self, '_stock_ledger_created'):
+		if not hasattr(self, "_stock_ledger_created"):
 			self._stock_ledger_created = len(frappe.db.sql("""
 				select name
 				from `tabStock Ledger Entry`
@@ -222,7 +226,7 @@ def split_vehicle_items_by_qty(doc):
 			qty = cint(d.qty)
 			d.qty = 1
 
-			for i in range(qty - 1):
+			for _i in range(qty - 1):
 				new_rows.append(frappe.copy_doc(d))
 
 	doc.items = new_rows
@@ -243,20 +247,20 @@ def validate_duplicate_vehicle(fieldname, value, exclude=None, throw=False):
 
 	filters = {fieldname: value}
 	if exclude:
-		filters['name'] = ['!=', exclude]
+		filters["name"] = ["!=", exclude]
 
 	duplicates = frappe.db.get_all("Vehicle", filters=filters)
 	duplicate_names = [d.name for d in duplicates]
 	if duplicates:
 		frappe.msgprint(_("{0} {1} is already set in Vehicle: {2}").format(label, frappe.bold(value),
 			", ".join([frappe.utils.get_link_to_form("Vehicle", name) for name in duplicate_names])),
-			raise_exception=throw, indicator='red' if throw else 'orange')
+			raise_exception=throw, indicator="red" if throw else "orange")
 
 
 @frappe.whitelist()
 def warn_vehicle_reserved(vehicle, customer=None, throw=False):
 	vehicle_details = frappe.db.get_value("Vehicle", vehicle,
-		['is_reserved', 'reserved_customer', 'reserved_customer_name'], as_dict=1)
+		["is_reserved", "reserved_customer", "reserved_customer_name"], as_dict=1)
 
 	if not vehicle_details:
 		return
@@ -276,7 +280,7 @@ def warn_vehicle_reserved(vehicle, customer=None, throw=False):
 @frappe.whitelist()
 def warn_vehicle_reserved_by_sales_person(vehicle, sales_person=None, throw=False):
 	vehicle_details = frappe.db.get_value("Vehicle", vehicle,
-		['is_reserved', 'reserved_sales_person'], as_dict=1)
+		["is_reserved", "reserved_sales_person"], as_dict=1)
 
 	if not vehicle_details or not vehicle_details.is_reserved:
 		return
@@ -284,7 +288,7 @@ def warn_vehicle_reserved_by_sales_person(vehicle, sales_person=None, throw=Fals
 	if vehicle_details.reserved_sales_person and vehicle_details.reserved_sales_person != sales_person:
 		frappe.msgprint(_("Vehicle {0} is reserved by Sales Person {1}").format(
 			frappe.get_desk_link("Vehicle", vehicle),
-			frappe.bold(vehicle_details.reserved_sales_person)
+			frappe.bold(vehicle_details.reserved_sales_person),
 		), title="Reserved", indicator="red" if throw else "orange", raise_exception=throw)
 
 
@@ -300,7 +304,7 @@ def get_vehicle_make_model(item_code):
 		return out
 
 	details = frappe.get_cached_value("Item", item_code, [
-		"item_name", "variant_of", "brand"
+		"item_name", "variant_of", "brand",
 	], as_dict=1)
 	if details:
 		details.variant_of = details.variant_of or item_code
@@ -315,13 +319,13 @@ def get_vehicle_image(vehicle=None, item_code=None):
 	image = None
 
 	if vehicle:
-		vehicle_details = frappe.db.get_value("Vehicle", vehicle, ['item_code', 'image'], as_dict=1)
+		vehicle_details = frappe.db.get_value("Vehicle", vehicle, ["item_code", "image"], as_dict=1)
 		if vehicle_details:
 			item_code = vehicle_details.item_code
 			image = vehicle_details.image
 
 	if not image and item_code:
-		image = frappe.get_cached_value("Item", item_code, 'image')
+		image = frappe.get_cached_value("Item", item_code, "image")
 
 	return image
 

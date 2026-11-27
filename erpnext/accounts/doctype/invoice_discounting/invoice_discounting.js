@@ -1,14 +1,14 @@
 // Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Invoice Discounting', {
+frappe.ui.form.on("Invoice Discounting", {
 	setup: (frm) => {
 		frm.set_query("sales_invoice", "invoices", (doc) => {
 			return {
 				"filters": {
 					"docstatus": 1,
 					"company": doc.company,
-					"outstanding_amount": [">", 0]
+					"outstanding_amount": [">", 0],
 				},
 			};
 		});
@@ -26,22 +26,22 @@ frappe.ui.form.on('Invoice Discounting', {
 	filter_accounts: (fieldname, frm, addl_filters) => {
 		let filters = [
 			["company", "=", frm.doc.company],
-			["is_group", "=", 0]
+			["is_group", "=", 0],
 		];
-		if(addl_filters){
-			filters = $.merge(filters , addl_filters);
+		if (addl_filters) {
+			filters = $.merge(filters, addl_filters);
 		}
 
-		frm.set_query(fieldname, () => { return { "filters": filters }; });
+		frm.set_query(fieldname, () => { return {"filters": filters}; });
 	},
 
-	refresh_filters: (frm) =>{
+	refresh_filters: (frm) => {
 		let invoice_accounts = Object.keys(frm.doc.invoices).map(function(key) {
 			return frm.doc.invoices[key].debit_to;
 		});
 		let filters = [
 			["account_type", "=", "Receivable"],
-			["name", "not in", invoice_accounts]
+			["name", "not in", invoice_accounts],
 		];
 		frm.events.filter_accounts("accounts_receivable_credit", frm, filters);
 		frm.events.filter_accounts("accounts_receivable_discounted", frm, filters);
@@ -52,19 +52,19 @@ frappe.ui.form.on('Invoice Discounting', {
 		frm.events.add_general_ledger_report_button(frm);
 
 		if (frm.doc.docstatus === 0) {
-			frm.add_custom_button(__('Get Invoices'), function() {
+			frm.add_custom_button(__("Get Invoices"), function() {
 				frm.events.get_invoices(frm);
 			});
 		}
 
 		if (frm.doc.docstatus === 1 && frm.doc.status !== "Settled") {
 			if (frm.doc.status == "Sanctioned") {
-				frm.add_custom_button(__('Disburse Loan'), function() {
+				frm.add_custom_button(__("Disburse Loan"), function() {
 					frm.events.create_disbursement_entry(frm);
 				}).addClass("btn-primary");
 			}
 			if (frm.doc.status == "Disbursed") {
-				frm.add_custom_button(__('Close Loan'), function() {
+				frm.add_custom_button(__("Close Loan"), function() {
 					frm.events.close_loan(frm);
 				}).addClass("btn-primary");
 			}
@@ -99,23 +99,23 @@ frappe.ui.form.on('Invoice Discounting', {
 	},
 	get_invoices: (frm) => {
 		var d = new frappe.ui.Dialog({
-			title: __('Get Invoices based on Filters'),
+			title: __("Get Invoices based on Filters"),
 			fields: [
 				{
 					"label": "Customer",
 					"fieldname": "customer",
 					"fieldtype": "Link",
-					"options": "Customer"
+					"options": "Customer",
 				},
 				{
 					"label": "From Date",
 					"fieldname": "from_date",
-					"fieldtype": "Date"
+					"fieldtype": "Date",
 				},
 				{
 					"label": "To Date",
 					"fieldname": "to_date",
-					"fieldtype": "Date"
+					"fieldtype": "Date",
 				},
 				{
 					"fieldname": "col_break",
@@ -124,13 +124,13 @@ frappe.ui.form.on('Invoice Discounting', {
 				{
 					"label": "Min Amount",
 					"fieldname": "min_amount",
-					"fieldtype": "Currency"
+					"fieldtype": "Currency",
 				},
 				{
 					"label": "Max Amount",
 					"fieldname": "max_amount",
-					"fieldtype": "Currency"
-				}
+					"fieldtype": "Currency",
+				},
 			],
 			primary_action: function() {
 				var data = d.get_values();
@@ -138,10 +138,10 @@ frappe.ui.form.on('Invoice Discounting', {
 				frappe.call({
 					method: "erpnext.accounts.doctype.invoice_discounting.invoice_discounting.get_invoices",
 					args: {
-						filters: data
+						filters: data,
 					},
 					callback: function(r) {
-						if(!r.exc) {
+						if (!r.exc) {
 							d.hide();
 							$.each(r.message, function(i, v) {
 								frm.doc.invoices = frm.doc.invoices.filter(row => row.sales_invoice);
@@ -151,59 +151,59 @@ frappe.ui.form.on('Invoice Discounting', {
 							});
 							refresh_field("invoices");
 						}
-					}
+					},
 				});
 			},
-			primary_action_label: __('Get Invocies')
+			primary_action_label: __("Get Invocies"),
 		});
 		d.show();
 	},
 
 	create_disbursement_entry: (frm) => {
 		frappe.call({
-			method:"create_disbursement_entry",
+			method: "create_disbursement_entry",
 			doc: frm.doc,
 			callback: function(r) {
-				if(!r.exc){
+				if (!r.exc) {
 					var doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 
 	},
 
 	close_loan: (frm) => {
 		frappe.call({
-			method:"close_loan",
+			method: "close_loan",
 			doc: frm.doc,
 			callback: function(r) {
-				if(!r.exc){
+				if (!r.exc) {
 					var doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
 				}
-			}
+			},
 		});
 
 	},
 
 	add_general_ledger_report_button: (frm) => {
-		if(frm.doc.docstatus===1) {
-			cur_frm.add_custom_button(__('Accounting Ledger'), function() {
+		if (frm.doc.docstatus === 1) {
+			cur_frm.add_custom_button(__("Accounting Ledger"), function() {
 				frappe.route_options = {
 					voucher_no: frm.doc.name,
 					from_date: frm.doc.posting_date,
 					to_date: frm.doc.posting_date,
 					company: frm.doc.company,
-					group_by: "Group by Voucher"
+					group_by: "Group by Voucher",
 				};
 				frappe.set_route("query-report", "General Ledger");
 			}, __("View"));
 		}
-	}
+	},
 });
 
-frappe.ui.form.on('Discounted Invoice', {
+frappe.ui.form.on("Discounted Invoice", {
 	sales_invoice: (frm) => {
 		frm.events.calculate_total_amount(frm);
 		frm.events.refresh_filters(frm);
@@ -211,5 +211,5 @@ frappe.ui.form.on('Discounted Invoice', {
 	invoices_remove: (frm) => {
 		frm.events.calculate_total_amount(frm);
 		frm.events.refresh_filters(frm);
-	}
+	},
 });

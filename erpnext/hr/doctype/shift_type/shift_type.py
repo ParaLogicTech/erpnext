@@ -1,18 +1,22 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
+
+import datetime
+from collections import OrderedDict
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, getdate, get_datetime, date_diff, add_days, to_timedelta, flt
-from erpnext.hr.doctype.shift_assignment.shift_assignment import get_actual_start_end_datetime_of_shift, get_employee_shift
-from erpnext.hr.doctype.employee_checkin.employee_checkin import mark_attendance_and_link_log, calculate_working_hours
+from frappe.utils import add_days, cint, date_diff, flt, get_datetime, getdate, to_timedelta
+
 from erpnext.hr.doctype.attendance.attendance import get_marked_attendance_dates_between, mark_absent
 from erpnext.hr.doctype.employee.employee import get_holiday_list_for_employee
-from erpnext.hr.doctype.holiday_list.holiday_list import is_holiday, get_holiday_dates_between
-from collections import OrderedDict
-import datetime
+from erpnext.hr.doctype.employee_checkin.employee_checkin import calculate_working_hours, mark_attendance_and_link_log
+from erpnext.hr.doctype.holiday_list.holiday_list import get_holiday_dates_between, is_holiday
+from erpnext.hr.doctype.shift_assignment.shift_assignment import (
+	get_actual_start_end_datetime_of_shift,
+	get_employee_shift,
+)
 
 
 class ShiftType(Document):
@@ -44,7 +48,7 @@ class ShiftType(Document):
 			frappe.msgprint(_("Cannot Process Auto Attendance because <b>'Last Sync of Checkin'</b> is not set"))
 			return
 
-		self.queue_action('process_auto_attendance', timeout=600)
+		self.queue_action("process_auto_attendance", timeout=600)
 		frappe.msgprint(_("Auto Attendance Marking Started"), alert=True)
 
 	def process_auto_attendance(self):
@@ -56,15 +60,15 @@ class ShiftType(Document):
 		update_shift_in_logs(self.process_attendance_after, self.last_sync_of_checkin, publish_progress=True)
 
 		filters = {
-			'skip_auto_attendance': '0',
-			'attendance': ('is', 'not set'),
-			'time': ('>=', self.process_attendance_after),
-			'shift_actual_end': ('<', self.last_sync_of_checkin),
-			'shift': self.name,
-			'employee': ('is', 'set')
+			"skip_auto_attendance": "0",
+			"attendance": ("is", "not set"),
+			"time": (">=", self.process_attendance_after),
+			"shift_actual_end": ("<", self.last_sync_of_checkin),
+			"shift": self.name,
+			"employee": ("is", "set"),
 		}
 
-		logs = frappe.get_all('Employee Checkin', fields="*", filters=filters, order_by="employee, time")
+		logs = frappe.get_all("Employee Checkin", fields="*", filters=filters, order_by="employee, time")
 		grouped_logs = OrderedDict()
 		for d in logs:
 			key = (d.employee, d.shift_start)
@@ -78,7 +82,7 @@ class ShiftType(Document):
 		total_tasks = len(grouped_logs) + len(assigned_employees)
 		completed_tasks = 0
 
-		for (employee, shift_start), single_shift_logs in grouped_logs.items():
+		for (_employee, shift_start), single_shift_logs in grouped_logs.items():
 			attendance_status, working_hours, late_entry, early_exit = self.get_attendance(single_shift_logs)
 			mark_attendance_and_link_log(
 				single_shift_logs,
@@ -107,7 +111,7 @@ class ShiftType(Document):
 			1. These logs belong to a single shift, single employee.
 			2. Logs are in chronological order
 		"""
-		status = 'Present'
+		status = "Present"
 		late_entry = early_exit = False
 		total_working_hours, in_time, out_time = calculate_working_hours(logs, self.determine_check_in_and_check_out, self.working_hours_calculation_based_on)
 
@@ -133,28 +137,28 @@ class ShiftType(Document):
 			# Half Day if Late Minutes
 			if cint(self.half_day_if_late_minutes) and in_time and not missing_checkin_no_half_day\
 					and in_time > logs[0].shift_start + datetime.timedelta(minutes=cint(self.half_day_if_late_minutes)):
-				status = 'Half Day'
+				status = "Half Day"
 
 			# Half Day if Early Exit Minutes
 			if cint(self.half_day_if_exit_minutes) and out_time\
 					and out_time < logs[0].shift_end - datetime.timedelta(minutes=cint(self.half_day_if_exit_minutes)):
 				if cint(self.half_day_if_monthly_early_exit_count) > 0:
 					if self.is_half_day_on_multiple_early_exit_applicable(employee, logs[0].shift_start):
-						status = 'Half Day'
+						status = "Half Day"
 				else:
-					status = 'Half Day'
+					status = "Half Day"
 
 			# Half Day / Absent if working hours less than
 			if not ignore_working_hour_threshold:
 				if self.working_hours_threshold_for_half_day\
 						and total_working_hours < self.working_hours_threshold_for_half_day\
 						and not missing_checkin_no_half_day:
-					status = 'Half Day'
+					status = "Half Day"
 
 				if self.working_hours_threshold_for_absent\
 						and total_working_hours < self.working_hours_threshold_for_absent\
 						and not missing_checkin_no_absent:
-					status = 'Absent'
+					status = "Absent"
 
 		return status, total_working_hours, late_entry, early_exit
 
@@ -198,7 +202,7 @@ class ShiftType(Document):
 		start_date = max(getdate(self.process_attendance_after), date_of_joining)
 		actual_shift_datetime = get_actual_start_end_datetime_of_shift(employee, get_datetime(self.last_sync_of_checkin), True)
 		last_shift_time = actual_shift_datetime[0] if actual_shift_datetime[0] else get_datetime(self.last_sync_of_checkin)
-		prev_shift = get_employee_shift(employee, last_shift_time.date() - datetime.timedelta(days=1), True, 'reverse')
+		prev_shift = get_employee_shift(employee, last_shift_time.date() - datetime.timedelta(days=1), True, "reverse")
 		if prev_shift:
 			end_date = min(prev_shift.start_datetime.date(), relieving_date) if relieving_date else prev_shift.start_datetime.date()
 		else:
@@ -215,7 +219,7 @@ class ShiftType(Document):
 	def get_assigned_employees(self, from_date=None, consider_default_shift=False):
 		args = {
 			"shift_type": self.name,
-			"from_date": from_date
+			"from_date": from_date,
 		}
 		assignment_date_condition = ""
 		if from_date:
@@ -254,9 +258,9 @@ class ShiftType(Document):
 
 
 def process_auto_attendance_for_all_shifts():
-	shift_list = frappe.get_all('Shift Type', 'name', {'enable_auto_attendance': 1}, as_list=True)
+	shift_list = frappe.get_all("Shift Type", "name", {"enable_auto_attendance": 1}, as_list=True)
 	for shift in shift_list:
-		doc = frappe.get_doc('Shift Type', shift[0])
+		doc = frappe.get_doc("Shift Type", shift[0])
 		doc.process_auto_attendance()
 
 
@@ -265,10 +269,10 @@ def update_shift_in_logs(process_attendance_after=None, last_sync_of_checkin=Non
 	frappe.has_permission("Shift Type", "write", throw=True)
 
 	filters = {
-		'skip_auto_attendance': '0',
-		'attendance': ('is', 'not set'),
-		'shift': ('is', 'set'),
-		'employee': ('is', 'set'),
+		"skip_auto_attendance": "0",
+		"attendance": ("is", "not set"),
+		"shift": ("is", "set"),
+		"employee": ("is", "set"),
 	}
 
 	if not process_attendance_after:
@@ -276,11 +280,11 @@ def update_shift_in_logs(process_attendance_after=None, last_sync_of_checkin=Non
 		process_attendance_after = process_attendance_after[0][0] if process_attendance_after else None
 
 	if process_attendance_after:
-		filters['time'] = ('>=', process_attendance_after)
+		filters["time"] = (">=", process_attendance_after)
 	if last_sync_of_checkin:
-		filters['shift_actual_end'] = ('<', last_sync_of_checkin)
+		filters["shift_actual_end"] = ("<", last_sync_of_checkin)
 
-	logs = frappe.get_all('Employee Checkin', fields="name", filters=filters)
+	logs = frappe.get_all("Employee Checkin", fields="name", filters=filters)
 
 	total_tasks = len(logs)
 	completed_tasks = 0

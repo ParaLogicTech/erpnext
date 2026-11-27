@@ -10,17 +10,17 @@ frappe.query_reports["Statement of Changes in Equity"] = {
 			"fieldtype": "Link",
 			"options": "Company",
 			"default": frappe.defaults.get_user_default("Company"),
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
 			"fieldname": "report_date",
 			"label": __("Report Date"),
 			"fieldtype": "Date",
 			"default": frappe.datetime.month_end(),
-			"reqd": 1
-		}
+			"reqd": 1,
+		},
 	],
-	formatter: function (value, row, column, data, default_formatter) {
+	formatter: function(value, row, column, data, default_formatter) {
 		return erpnext.financial_statements.summarized_statement_formatter(value, row, column, data, default_formatter);
-	}
+	},
 };

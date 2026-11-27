@@ -2,20 +2,24 @@
 # License: GNU General Public License v3. See license.txt
 
 
-from decimal import Decimal
 import json
 import re
 import traceback
 import zipfile
-import frappe, erpnext
-from frappe import _
-from frappe.model.document import Document
-from frappe.custom.doctype.custom_field.custom_field import create_custom_field
-from frappe.utils.data import format_datetime
-from bs4 import BeautifulSoup as bs
-from frappe.utils import cint, flt, today, nowdate, add_days, get_files_path, get_datetime_str
+from decimal import Decimal
+
 import dateutil
+import frappe
+from bs4 import BeautifulSoup as bs
+from frappe import _
+from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+from frappe.model.document import Document
+from frappe.utils import add_days, cint, flt, get_datetime_str, get_files_path, nowdate, today
+from frappe.utils.data import format_datetime
 from frappe.utils.file_manager import save_file
+
+import erpnext
+
 
 class ImportSupplierInvoice(Document):
 	def validate(self):
@@ -27,7 +31,7 @@ class ImportSupplierInvoice(Document):
 			self.name = "Import Invoice on " + format_datetime(self.creation)
 
 	def import_xml_data(self):
-		import_file = frappe.get_doc("File", {"file_url": self.zip_file})
+		frappe.get_doc("File", {"file_url": self.zip_file})
 		self.publish("File Import", _("Processing XML Files"), 1, 3)
 
 		self.file_count = 0
@@ -60,10 +64,10 @@ class ImportSupplierInvoice(Document):
 				"bill_no": line.Numero.text,
 				"total_discount": 0,
 				"items": [],
-				"buying_price_list": self.default_buying_price_list
+				"buying_price_list": self.default_buying_price_list,
 			}
 
-			if not invoices_args.get("bill_no", ''):
+			if not invoices_args.get("bill_no"):
 				frappe.throw(_("Numero has not set in the XML file"))
 
 			supp_dict = get_supplier_details(file_content)
@@ -73,21 +77,21 @@ class ImportSupplierInvoice(Document):
 			invoices_args["terms"] = get_payment_terms_from_file(file_content)
 
 			supplier_name = create_supplier(self.supplier_group, supp_dict)
-			address = create_address(supplier_name, supp_dict)
+			create_address(supplier_name, supp_dict)
 			pi_name = create_purchase_invoice(supplier_name, file_name, invoices_args, self.name)
 
 			self.file_count += 1
 			if pi_name:
 				self.purchase_invoices_count += 1
-				file_save = save_file(file_name, encoded_content, "Purchase Invoice",
+				save_file(file_name, encoded_content, "Purchase Invoice",
 					pi_name, folder=None, decode=False, is_private=0, df=None)
 
 	def prepare_items_for_invoice(self, file_content, invoices_args):
 		qty = 1
-		rate, tax_rate = [0 ,0]
+		rate, tax_rate = [0, 0]
 		uom = self.default_uom
 
-		#read file for item information
+		# read file for item information
 		for line in file_content.find_all("DettaglioLinee"):
 			if line.find("PrezzoUnitario") and line.find("PrezzoTotale"):
 				rate = flt(line.PrezzoUnitario.text) or 0
@@ -105,10 +109,10 @@ class ImportSupplierInvoice(Document):
 				if line.find("AliquotaIVA"):
 					tax_rate = flt(line.AliquotaIVA.text)
 
-				line_str = re.sub('[^A-Za-z0-9]+', '-', line.Descrizione.text)
+				line_str = re.sub(r"[^A-Za-z0-9]+", "-", line.Descrizione.text)
 				item_name = line_str[0:140]
 
-				invoices_args['items'].append({
+				invoices_args["items"].append({
 					"item_code": self.item_code,
 					"item_name": item_name,
 					"description": line_str,
@@ -116,7 +120,7 @@ class ImportSupplierInvoice(Document):
 					"uom": uom,
 					"rate": abs(rate),
 					"conversion_factor": 1.0,
-					"tax_rate": tax_rate
+					"tax_rate": tax_rate,
 				})
 
 				for disc_line in line.find_all("ScontoMaggiorazione"):
@@ -131,8 +135,9 @@ class ImportSupplierInvoice(Document):
 	def publish(self, title, message, count, total):
 		frappe.publish_realtime("import_invoice_update", {"title": title, "message": message, "count": count, "total": total})
 
+
 def get_file_content(file_name, zip_file_object):
-	content = ''
+	content = ""
 	encoded_content = zip_file_object.read(file_name)
 
 	try:
@@ -145,36 +150,38 @@ def get_file_content(file_name, zip_file_object):
 
 	return content
 
+
 def get_supplier_details(file_content):
 	supplier_info = {}
 	for line in file_content.find_all("CedentePrestatore"):
-		supplier_info['tax_id'] = line.DatiAnagrafici.IdPaese.text + line.DatiAnagrafici.IdCodice.text
+		supplier_info["tax_id"] = line.DatiAnagrafici.IdPaese.text + line.DatiAnagrafici.IdCodice.text
 		if line.find("CodiceFiscale"):
-			supplier_info['fiscal_code'] = line.DatiAnagrafici.CodiceFiscale.text
+			supplier_info["fiscal_code"] = line.DatiAnagrafici.CodiceFiscale.text
 
 		if line.find("RegimeFiscale"):
-			supplier_info['fiscal_regime'] = line.DatiAnagrafici.RegimeFiscale.text
+			supplier_info["fiscal_regime"] = line.DatiAnagrafici.RegimeFiscale.text
 
 		if line.find("Denominazione"):
-			supplier_info['supplier'] = line.DatiAnagrafici.Anagrafica.Denominazione.text
+			supplier_info["supplier"] = line.DatiAnagrafici.Anagrafica.Denominazione.text
 
 		if line.find("Nome"):
-			supplier_info['supplier'] = (line.DatiAnagrafici.Anagrafica.Nome.text
+			supplier_info["supplier"] = (line.DatiAnagrafici.Anagrafica.Nome.text
 				+ " " + line.DatiAnagrafici.Anagrafica.Cognome.text)
 
-		supplier_info['address_line1'] = line.Sede.Indirizzo.text
-		supplier_info['city'] = line.Sede.Comune.text
+		supplier_info["address_line1"] = line.Sede.Indirizzo.text
+		supplier_info["city"] = line.Sede.Comune.text
 		if line.find("Provincia"):
-			supplier_info['province'] = line.Sede.Provincia.text
+			supplier_info["province"] = line.Sede.Provincia.text
 
-		supplier_info['pin_code'] = line.Sede.CAP.text
-		supplier_info['country'] = get_country(line.Sede.Nazione.text)
+		supplier_info["pin_code"] = line.Sede.CAP.text
+		supplier_info["country"] = get_country(line.Sede.Nazione.text)
 
 		return supplier_info
 
+
 def get_taxes_from_file(file_content, tax_account):
 	taxes = []
-	#read file for taxes information
+	# read file for taxes information
 	for line in file_content.find_all("DatiRiepilogo"):
 		if line.find("AliquotaIVA"):
 			if line.find("EsigibilitaIVA"):
@@ -186,20 +193,21 @@ def get_taxes_from_file(file_content, tax_account):
 				"account_head": tax_account,
 				"tax_rate": flt(line.AliquotaIVA.text) or 0,
 				"description": descr,
-				"tax_amount": flt(line.Imposta.text) if len(line.find("Imposta"))!=0 else 0
+				"tax_amount": flt(line.Imposta.text) if len(line.find("Imposta")) != 0 else 0,
 			})
 
 	return taxes
 
+
 def get_payment_terms_from_file(file_content):
 	terms = []
-	#Get mode of payment dict from setup
-	mop_options = frappe.get_meta('Mode of Payment').fields[4].options
-	mop_str = re.sub('\n', ',', mop_options)
+	# Get mode of payment dict from setup
+	mop_options = frappe.get_meta("Mode of Payment").fields[4].options
+	mop_str = mop_options.replace("\n", ",")
 	mop_dict = dict(item.split("-") for item in mop_str.split(","))
-	#read file for payment information
+	# read file for payment information
 	for line in file_content.find_all("DettaglioPagamento"):
-		mop_code = line.ModalitaPagamento.text + '-' + mop_dict.get(line.ModalitaPagamento.text)
+		mop_code = line.ModalitaPagamento.text + "-" + mop_dict.get(line.ModalitaPagamento.text)
 		if line.find("DataScadenzaPagamento"):
 			due_date = dateutil.parser.parse(line.DataScadenzaPagamento.text).strftime("%Y-%m-%d")
 		else:
@@ -208,17 +216,19 @@ def get_payment_terms_from_file(file_content):
 			"mode_of_payment_code": mop_code,
 			"bank_account_iban": line.IBAN.text if line.find("IBAN") else "",
 			"due_date": due_date,
-			"payment_amount": line.ImportoPagamento.text
+			"payment_amount": line.ImportoPagamento.text,
 		})
 
 	return terms
 
+
 def get_destination_code_from_file(file_content):
-	destination_code = ''
+	destination_code = ""
 	for line in file_content.find_all("DatiTrasmissione"):
 		destination_code = line.CodiceDestinatario.text
 
 	return destination_code
+
 
 def create_supplier(supplier_group, args):
 	args = frappe._dict(args)
@@ -235,15 +245,15 @@ def create_supplier(supplier_group, args):
 		filters = [
 				["Dynamic Link", "link_doctype", "=", "Supplier"],
 				["Dynamic Link", "link_name", "=", args.existing_supplier_name],
-				["Dynamic Link", "parenttype", "=", "Contact"]
+				["Dynamic Link", "parenttype", "=", "Contact"],
 			]
 
 		if not frappe.get_list("Contact", filters):
 			new_contact = frappe.new_doc("Contact")
 			new_contact.first_name = args.supplier
-			new_contact.append('links', {
+			new_contact.append("links", {
 				"link_doctype": "Supplier",
-				"link_name": existing_supplier_name
+				"link_name": existing_supplier_name,
 			})
 			new_contact.insert(ignore_mandatory=True)
 
@@ -260,14 +270,15 @@ def create_supplier(supplier_group, args):
 
 		new_contact = frappe.new_doc("Contact")
 		new_contact.first_name = args.supplier
-		new_contact.append('links', {
+		new_contact.append("links", {
 			"link_doctype": "Supplier",
-			"link_name": new_supplier.name
+			"link_name": new_supplier.name,
 		})
 
 		new_contact.insert(ignore_mandatory=True)
 
 		return new_supplier.name
+
 
 def create_address(supplier_name, args):
 	args = frappe._dict(args)
@@ -275,7 +286,7 @@ def create_address(supplier_name, args):
 	filters = [
 			["Dynamic Link", "link_doctype", "=", "Supplier"],
 			["Dynamic Link", "link_name", "=", supplier_name],
-			["Dynamic Link", "parenttype", "=", "Address"]
+			["Dynamic Link", "parenttype", "=", "Address"],
 		]
 
 	existing_address = frappe.get_list("Address", filters)
@@ -301,13 +312,14 @@ def create_address(supplier_name, args):
 
 		new_address_doc.append("links", {
 			"link_doctype": "Supplier",
-			"link_name": supplier_name
+			"link_name": supplier_name,
 		})
 		new_address_doc.address_type = "Billing"
 		new_address_doc.insert(ignore_mandatory=True)
 		return new_address_doc.name
 	else:
 		return None
+
 
 def create_purchase_invoice(supplier_name, file_name, args, name):
 	args = frappe._dict(args)
@@ -326,19 +338,19 @@ def create_purchase_invoice(supplier_name, file_name, args, name):
 		"document_type": args.document_type,
 		"disable_rounded_total": 1,
 		"items": args["items"],
-		"taxes": args["taxes"]
+		"taxes": args["taxes"],
 	})
 
 	try:
 		pi.set_missing_values()
 		pi.insert(ignore_mandatory=True)
 
-		#if discount exists in file, apply any discount on grand total
+		# if discount exists in file, apply any discount on grand total
 		if args.total_discount > 0:
 			pi.apply_discount_on = "Grand Total"
 			pi.discount_amount = args.total_discount
 			pi.save()
-		#adjust payment amount to match with grand total calculated
+		# adjust payment amount to match with grand total calculated
 		calc_total = 0
 		adj = 0
 		for term in args.terms:
@@ -347,10 +359,10 @@ def create_purchase_invoice(supplier_name, file_name, args, name):
 			adj = calc_total - flt(pi.grand_total)
 		pi.payment_schedule = []
 		for term in args.terms:
-			pi.append('payment_schedule',{"mode_of_payment_code": term["mode_of_payment_code"],
+			pi.append("payment_schedule", {"mode_of_payment_code": term["mode_of_payment_code"],
 			"bank_account_iban": term["bank_account_iban"],
 			"due_date": term["due_date"],
-			"payment_amount": flt(term["payment_amount"]) - adj })
+			"payment_amount": flt(term["payment_amount"]) - adj})
 			adj = 0
 		pi.imported_grand_total = calc_total
 		pi.save()
@@ -361,6 +373,7 @@ def create_purchase_invoice(supplier_name, file_name, args, name):
 			title="Create Purchase Invoice: " + args.get("bill_no") + "File Name: " + file_name)
 		return None
 
+
 def get_country(code):
 	existing_country_name = frappe.db.get_value("Country",
 			filters={"code": code}, fieldname="name")
@@ -368,6 +381,7 @@ def get_country(code):
 		return existing_country_name
 	else:
 		frappe.throw(_("Country Code in File does not match with country code set up in the system"))
+
 
 def create_uom(uom):
 	existing_uom = frappe.db.get_value("UOM",
@@ -379,6 +393,7 @@ def create_uom(uom):
 		new_uom.uom_name = uom
 		new_uom.save()
 		return new_uom.uom_name
+
 
 def get_full_path(file_name):
 	"""Returns file path from given file name"""

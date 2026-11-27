@@ -2,10 +2,12 @@
 # License: GNU General Public License v3. See license.txt
 
 import unittest
+
 import frappe
-from erpnext.stock import get_warehouse_account, get_company_default_inventory_account
-from erpnext.accounts.doctype.account.account import update_account_number
-from erpnext.accounts.doctype.account.account import merge_account
+
+from erpnext.accounts.doctype.account.account import merge_account, update_account_number
+from erpnext.stock import get_company_default_inventory_account, get_warehouse_account
+
 
 class TestAccount(unittest.TestCase):
 	def test_rename_account(self):
@@ -88,13 +90,13 @@ class TestAccount(unittest.TestCase):
 		doc = frappe.get_doc("Account", "Current Assets - _TC")
 
 		# Raise error as is_group property doesn't match
-		self.assertRaises(frappe.ValidationError, merge_account, "Current Assets - _TC",\
+		self.assertRaises(frappe.ValidationError, merge_account, "Current Assets - _TC",
 			"Accumulated Depreciation - _TC", doc.is_group, doc.root_type, doc.company)
 
 		doc = frappe.get_doc("Account", "Capital Stock - _TC")
 
 		# Raise error as root_type property doesn't match
-		self.assertRaises(frappe.ValidationError, merge_account, "Capital Stock - _TC",\
+		self.assertRaises(frappe.ValidationError, merge_account, "Capital Stock - _TC",
 			"Softwares - _TC", doc.is_group, doc.root_type, doc.company)
 
 	def test_account_sync(self):
@@ -105,10 +107,11 @@ class TestAccount(unittest.TestCase):
 		acc.company = "_Test Company 3"
 		acc.insert()
 
-		acc_tc_4 = frappe.db.get_value('Account', {'account_name': "Test Sync Account", "company": "_Test Company 4"})
-		acc_tc_5 = frappe.db.get_value('Account', {'account_name': "Test Sync Account", "company": "_Test Company 5"})
+		acc_tc_4 = frappe.db.get_value("Account", {"account_name": "Test Sync Account", "company": "_Test Company 4"})
+		acc_tc_5 = frappe.db.get_value("Account", {"account_name": "Test Sync Account", "company": "_Test Company 5"})
 		self.assertEqual(acc_tc_4, "Test Sync Account - _TC4")
 		self.assertEqual(acc_tc_5, "Test Sync Account - _TC5")
+
 
 def _make_test_records(verbose):
 	from frappe.test_runner import make_test_objects
@@ -157,7 +160,7 @@ def _make_test_records(verbose):
 		["_Test Receivable", "Current Assets", 0, "Receivable", None],
 		["_Test Payable", "Current Liabilities", 0, "Payable", None],
 		["_Test Receivable USD", "Current Assets", 0, "Receivable", "USD"],
-		["_Test Payable USD", "Current Liabilities", 0, "Payable", "USD"]
+		["_Test Payable USD", "Current Liabilities", 0, "Payable", "USD"],
 	]
 
 	for company, abbr in [["_Test Company", "_TC"], ["_Test Company 1", "_TC1"], ["_Test Company with perpetual inventory", "TCP1"]]:
@@ -168,10 +171,11 @@ def _make_test_records(verbose):
 				"company": company,
 				"is_group": is_group,
 				"account_type": account_type,
-				"account_currency": currency
+				"account_currency": currency,
 			} for account_name, parent_account, is_group, account_type, currency in accounts])
 
 	return test_objects
+
 
 def get_inventory_account(company, warehouse=None):
 	account = None
@@ -182,17 +186,18 @@ def get_inventory_account(company, warehouse=None):
 
 	return account
 
+
 def create_account(**kwargs):
 	account = frappe.db.get_value("Account", filters={"account_name": kwargs.get("account_name"), "company": kwargs.get("company")})
 	if account:
 		return account
 	else:
 		account = frappe.get_doc(dict(
-			doctype = "Account",
-			account_name = kwargs.get('account_name'),
-			account_type = kwargs.get('account_type'),
-			parent_account = kwargs.get('parent_account'),
-			company = kwargs.get('company')
+			doctype="Account",
+			account_name=kwargs.get("account_name"),
+			account_type=kwargs.get("account_type"),
+			parent_account=kwargs.get("parent_account"),
+			company=kwargs.get("company"),
 		))
 
 		account.save()

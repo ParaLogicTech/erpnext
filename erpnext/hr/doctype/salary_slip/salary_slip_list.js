@@ -1,3 +1,3 @@
-frappe.listview_settings['Salary Slip'] = {
+frappe.listview_settings["Salary Slip"] = {
 	add_fields: ["employee", "employee_name"],
 };

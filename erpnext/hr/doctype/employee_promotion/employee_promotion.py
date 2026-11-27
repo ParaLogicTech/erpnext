@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -6,7 +5,9 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate
+
 from erpnext.hr.utils import update_employee
+
 
 class EmployeePromotion(Document):
 	def validate(self):

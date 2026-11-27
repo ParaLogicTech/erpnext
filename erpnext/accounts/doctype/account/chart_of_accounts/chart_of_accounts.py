@@ -11,7 +11,7 @@ from unidecode import unidecode
 
 
 def create_charts(
-	company, chart_template=None, existing_company=None, custom_chart=None, from_coa_importer=None
+	company, chart_template=None, existing_company=None, custom_chart=None, from_coa_importer=None,
 ):
 	chart = custom_chart or get_chart(chart_template, existing_company)
 	if chart:
@@ -34,7 +34,7 @@ def create_charts(
 
 					account_number = cstr(child.get("account_number")).strip()
 					account_name, account_name_in_db = add_suffix_if_duplicate(
-						account_name, account_number, accounts
+						account_name, account_number, accounts,
 					)
 
 					is_group = identify_is_group(child)
@@ -56,7 +56,7 @@ def create_charts(
 							"account_currency": child.get("account_currency")
 							or frappe.db.get_value("Company", company, "default_currency"),
 							"tax_rate": child.get("tax_rate"),
-						}
+						},
 					)
 
 					if root_account or frappe.local.flags.allow_unverified_charts:
@@ -105,8 +105,8 @@ def identify_is_group(child):
 				"tax_rate",
 				"account_number",
 				"account_currency",
-			]
-		)
+			],
+		),
 	):
 		is_group = 1
 	else:
@@ -141,7 +141,7 @@ def get_chart(chart_template, existing_company=None):
 			for fname in os.listdir(path):
 				fname = frappe.as_unicode(fname)
 				if fname.endswith(".json"):
-					with open(os.path.join(path, fname), "r") as f:
+					with open(os.path.join(path, fname)) as f:
 						chart = f.read()
 						if chart and json.loads(chart).get("name") == chart_template:
 							return json.loads(chart).get("tree")
@@ -173,7 +173,7 @@ def get_charts_for_country(country, with_standard=False):
 			for fname in os.listdir(path):
 				fname = frappe.as_unicode(fname)
 				if (fname.startswith(country_code) or fname.startswith(country)) and fname.endswith(".json"):
-					with open(os.path.join(path, fname), "r") as f:
+					with open(os.path.join(path, fname)) as f:
 						_get_chart_name(f.read())
 
 	# if more than one charts, returned then add the standard

@@ -16,7 +16,7 @@ frappe.ui.form.on("Naming Series", {
 			callback: function(r) {
 				frm.set_df_property("select_doc_for_series", "options", r.message.transactions);
 				frm.set_df_property("prefix", "options", r.message.prefixes);
-			}
+			},
 		});
 	},
 
@@ -28,16 +28,16 @@ frappe.ui.form.on("Naming Series", {
 			freeze: 1,
 			callback: function(r) {
 				frm.set_value("set_options", r.message);
-				if(r.message && r.message.split('\n')[0]=='')
-					frm.set_value('user_must_always_select', 1);
+				if (r.message && r.message.split("\n")[0] == "")
+					frm.set_value("user_must_always_select", 1);
 				frm.refresh();
-			}
+			},
 		});
 	},
 
 	prefix: function(frm) {
 		frm.doc.new_prefix = "";
-		frm.refresh_field('new_prefix');
+		frm.refresh_field("new_prefix");
 		frm.events.get_current(frm);
 	},
 
@@ -52,7 +52,7 @@ frappe.ui.form.on("Naming Series", {
 			freeze: 1,
 			callback: function(r) {
 				frm.refresh_field("current_value");
-			}
+			},
 		});
 	},
 
@@ -63,7 +63,7 @@ frappe.ui.form.on("Naming Series", {
 			freeze: 1,
 			callback: function(r) {
 				frm.events.get_doc_and_prefix(frm);
-			}
+			},
 		});
 	},
 
@@ -78,7 +78,7 @@ frappe.ui.form.on("Naming Series", {
 				} else {
 					frm.events.get_doc_and_prefix(frm);
 				}
-			}
+			},
 		});
-	}
+	},
 });

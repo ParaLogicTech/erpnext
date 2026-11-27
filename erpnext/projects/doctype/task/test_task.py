@@ -1,10 +1,12 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
-import frappe
 import unittest
-from frappe.utils import getdate, nowdate, add_days
+
+import frappe
+from frappe.utils import add_days, getdate, nowdate
 
 from erpnext.projects.doctype.task.task import CircularReferenceError
+
 
 class TestTask(unittest.TestCase):
 	def test_circular_reference(self):
@@ -14,7 +16,7 @@ class TestTask(unittest.TestCase):
 
 		task1.reload()
 		task1.append("depends_on", {
-			"task": task3.name
+			"task": task3.name,
 		})
 
 		self.assertRaises(CircularReferenceError, task1.save)
@@ -25,7 +27,7 @@ class TestTask(unittest.TestCase):
 		task4 = create_task("_Test Task 4", nowdate(), add_days(nowdate(), 15), task1.name)
 
 		task3.append("depends_on", {
-			"task": task4.name
+			"task": task4.name,
 		})
 
 	def test_reschedule_dependent_task(self):
@@ -40,7 +42,7 @@ class TestTask(unittest.TestCase):
 		task3.save()
 
 		task1.update({
-			"exp_end_date": add_days(nowdate(), 20)
+			"exp_end_date": add_days(nowdate(), 20),
 		})
 		task1.save()
 
@@ -66,7 +68,7 @@ class TestTask(unittest.TestCase):
 				"assign_to": "test@example.com",
 				"doctype": task.doctype,
 				"name": task.name,
-				"description": "Close this task"
+				"description": "Close this task",
 			})
 
 		def get_owner_and_status():
@@ -96,9 +98,10 @@ class TestTask(unittest.TestCase):
 
 		self.assertEqual(frappe.db.get_value("Task", task.name, "status"), "Overdue")
 
+
 def create_task(subject, start=None, end=None, depends_on=None, project=None, save=True):
 	if not frappe.db.exists("Task", subject):
-		task = frappe.new_doc('Task')
+		task = frappe.new_doc("Task")
 		task.status = "Open"
 		task.subject = subject
 		task.exp_start_date = start or nowdate()
@@ -111,7 +114,7 @@ def create_task(subject, start=None, end=None, depends_on=None, project=None, sa
 
 	if depends_on:
 		task.append("depends_on", {
-			"task": depends_on
+			"task": depends_on,
 		})
 		if save:
 			task.save()

@@ -4,7 +4,7 @@ import frappe
 def execute():
 	frappe.reload_doc("hr", "doctype", "salary_slip_loan")
 
-	loans = frappe.db.get_all("Loan", {'docstatus': ['>', 0]})
+	loans = frappe.db.get_all("Loan", {"docstatus": [">", 0]})
 	for d in loans:
 		doc = frappe.get_doc("Loan", d.name)
 		doc.update_total_amount_paid(update_modified=False)
@@ -22,8 +22,8 @@ def execute():
 		if len(loan_details) == 1:
 			loan_details = loan_details[0]
 			frappe.db.set_value("Salary Slip Loan", ssl.salary_slip_loan, {
-				'loan_repayment_detail': loan_details.loan_repayment_detail,
-				'loan_repayment_date': loan_details.payment_date,
+				"loan_repayment_detail": loan_details.loan_repayment_detail,
+				"loan_repayment_date": loan_details.payment_date,
 			}, None, update_modified=False)
 
 

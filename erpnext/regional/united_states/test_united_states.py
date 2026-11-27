@@ -1,7 +1,8 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
-import frappe
 import unittest
+
+import frappe
 
 
 class TestUnitedStates(unittest.TestCase):
@@ -17,5 +18,5 @@ class TestUnitedStates(unittest.TestCase):
             doc.irs_1099 = 1
             doc.save()
             frappe.db.commit()
-            supplier = frappe.get_doc('Supplier', "_US 1099 Test Supplier")
+            supplier = frappe.get_doc("Supplier", "_US 1099 Test Supplier")
             self.assertEqual(supplier.irs_1099, 1)

@@ -1,6 +1,8 @@
 import frappe
-from frappe.utils import getdate, flt
+from frappe.utils import flt, getdate
+
 from erpnext.setup.utils import get_exchange_rate
+
 
 def execute():
 	frappe.reload_doc("manufacturing", "doctype", "bom")

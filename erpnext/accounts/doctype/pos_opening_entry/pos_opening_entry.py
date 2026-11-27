@@ -1,11 +1,13 @@
 # Copyright (c) 2020, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import datetime
+
 import frappe
 from frappe import _
-from frappe.utils import cint, getdate, get_datetime, get_time, flt
+from frappe.utils import cint, flt, get_datetime, get_time, getdate
+
 from erpnext.controllers.status_updater import StatusUpdaterERP
-import datetime
 
 
 class POSOpeningEntry(StatusUpdaterERP):
@@ -64,11 +66,11 @@ class POSOpeningEntry(StatusUpdaterERP):
 			filters["name"] = ["!=", self.name]
 
 		existing = frappe.db.get_value("POS Opening Entry", filters=filters, fieldname=[
-			"name", "pos_profile"
+			"name", "pos_profile",
 		], as_dict=1)
 		if existing:
 			frappe.throw(_("A POS Opening Entry is already Open for Cashier {0} and POS Profile {1}, please create POS Closing Entry first").format(
-				frappe.bold(self.user), frappe.bold(existing.pos_profile)
+				frappe.bold(self.user), frappe.bold(existing.pos_profile),
 			))
 
 	def calculate_cash_denominations(self):
@@ -83,7 +85,7 @@ class POSOpeningEntry(StatusUpdaterERP):
 			if d.type == "Cash" and self.total_cash:
 				if flt(d.opening_amount) != flt(self.total_cash):
 					frappe.throw(_("Row #{0}: Mode of Payment {1} should match Total Cash {2}").format(
-						d.idx, d.mode_of_payment, self.get_formatted("total_cash")
+						d.idx, d.mode_of_payment, self.get_formatted("total_cash"),
 					))
 
 	def set_status(self, update=False, status=None, update_modified=True):
@@ -94,9 +96,9 @@ class POSOpeningEntry(StatusUpdaterERP):
 		elif self.docstatus == 1:
 			pos_closing = frappe.db.get_value(
 				"POS Closing Entry",
-				filters={"pos_opening_entry": self.name, "docstatus": ['>', 0]},
+				filters={"pos_opening_entry": self.name, "docstatus": [">", 0]},
 				fieldname=["name", "period_end_date", "period_end_time"],
-				as_dict=True
+				as_dict=True,
 			)
 			self.status = "Closed" if pos_closing else "Open"
 

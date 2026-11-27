@@ -4,8 +4,8 @@ erpnext.LeadControllerERP = class LeadControllerERP extends crm.LeadController {
 	setup() {
 		super.setup();
 		Object.assign(this.frm.custom_make_buttons, {
-			'Customer': 'Customer',
-			'Quotation': 'Quotation',
+			"Customer": "Customer",
+			"Quotation": "Quotation",
 		});
 	}
 
@@ -13,10 +13,10 @@ erpnext.LeadControllerERP = class LeadControllerERP extends crm.LeadController {
 		if (!this.frm.doc.__islocal) {
 			if (!this.frm.doc.customer) {
 				this.frm.add_custom_button(__("Customer"), () => this.make_or_set_customer(),
-					__('Create'));
+					__("Create"));
 
 				this.frm.add_custom_button(__("Quotation"), () => this.make_quotation(),
-					__('Create'));
+					__("Create"));
 			} else {
 				this.frm.add_custom_button(__("Customer"), () => this.make_or_set_customer(),
 					__("Change"));
@@ -33,9 +33,9 @@ erpnext.LeadControllerERP = class LeadControllerERP extends crm.LeadController {
 	make_quotation() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.overrides.lead.lead_hooks.make_quotation",
-			frm: this.frm
-		})
+			frm: this.frm,
+		});
 	}
-}
+};
 
-extend_cscript(cur_frm.cscript, new erpnext.LeadControllerERP({ frm: cur_frm }));
+extend_cscript(cur_frm.cscript, new erpnext.LeadControllerERP({frm: cur_frm}));

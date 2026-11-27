@@ -6,9 +6,9 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 		erpnext.setup_applies_to_fields(this.frm);
 
 		Object.assign(this.frm.custom_make_buttons, {
-			'Customer': 'Customer',
-			'Quotation': 'Quotation',
-			'Supplier Quotation': 'Supplier Quotation',
+			"Customer": "Customer",
+			"Quotation": "Quotation",
+			"Supplier Quotation": "Supplier Quotation",
 		});
 	}
 
@@ -24,7 +24,7 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 	setup_queries() {
 		super.setup_queries();
 
-		this.frm.set_query('party_name', () => {
+		this.frm.set_query("party_name", () => {
 			if (this.frm.doc.appointment_for === "Customer") {
 				return erpnext.queries.customer();
 			} else if (this.frm.doc.appointment_for === "Lead") {
@@ -35,7 +35,7 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 		this.frm.set_query("item_code", "items", () => {
 			return {
 				query: "erpnext.controllers.queries.item_query",
-				filters: {'is_sales_item': 1}
+				filters: {"is_sales_item": 1},
 			};
 		});
 
@@ -54,16 +54,16 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 
 		if (!this.frm.doc.__islocal && this.frm.doc.status !== "Lost") {
 			if (!this.frm.doc.__onload.customer) {
-				this.frm.add_custom_button(__('Customer'), () => this.create_customer(),
-					__('Create'));
+				this.frm.add_custom_button(__("Customer"), () => this.create_customer(),
+					__("Create"));
 			}
 
-			this.frm.add_custom_button(__('Quotation'), () => this.create_quotation(),
-				__('Create'));
+			this.frm.add_custom_button(__("Quotation"), () => this.create_quotation(),
+				__("Create"));
 
 			if (this.frm.doc.items && this.frm.doc.items.length) {
-				this.frm.add_custom_button(__('Supplier Quotation'), () => this.make_supplier_quotation(),
-					__('Create'));
+				this.frm.add_custom_button(__("Supplier Quotation"), () => this.make_supplier_quotation(),
+					__("Create"));
 			}
 		}
 	}
@@ -75,15 +75,15 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 			return frappe.call({
 				method: "erpnext.overrides.opportunity.opportunity_hooks.get_item_details",
 				args: {
-					"item_code": d.item_code
+					"item_code": d.item_code,
 				},
 				callback: (r) => {
-					if(r.message) {
+					if (r.message) {
 						$.each(r.message, (k, v) => {
 							frappe.model.set_value(cdt, cdn, k, v);
 						});
 					}
-				}
+				},
 			});
 		}
 	}
@@ -107,7 +107,7 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 					if (r.message) {
 						frappe.model.set_value(row.doctype, row.name, r.message);
 					}
-				}
+				},
 			});
 		}
 	}
@@ -117,7 +117,7 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 			customer: this.frm.doc.opportunity_from == "Customer" ? this.frm.doc.party_name : null,
 			applies_to_item: this.frm.doc.applies_to_item,
 			date: this.frm.doc.transaction_date,
-		}
+		};
 	}
 
 	add_service_template(service_template, check_duplicate) {
@@ -131,16 +131,16 @@ erpnext.OpportunityERP = class OpportunityERP extends crm.Opportunity {
 	create_quotation() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.overrides.opportunity.opportunity_hooks.make_quotation",
-			frm: this.frm
+			frm: this.frm,
 		});
 	}
 
 	make_supplier_quotation() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.overrides.opportunity.opportunity_hooks.make_supplier_quotation",
-			frm: this.frm
+			frm: this.frm,
 		});
 	}
-}
+};
 
-extend_cscript(cur_frm.cscript, new erpnext.OpportunityERP({ frm: cur_frm }));
+extend_cscript(cur_frm.cscript, new erpnext.OpportunityERP({frm: cur_frm}));

@@ -2,15 +2,14 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-
-from frappe.utils import cstr, cint
-from frappe import msgprint, throw, _
-
-from frappe.model.document import Document
+from frappe import _, msgprint, throw
 from frappe.core.doctype.doctype.doctype import validate_series
+from frappe.model.document import Document
+from frappe.utils import cint, cstr
 
 
-class NamingSeriesNotSetError(frappe.ValidationError): pass
+class NamingSeriesNotSetError(frappe.ValidationError):
+	pass
 
 
 class NamingSeries(Document):
@@ -20,12 +19,12 @@ class NamingSeries(Document):
 				from `tabDocField` df where fieldname='naming_series'""")
 			+ frappe.db.sql_list("""select dt from `tabCustom Field`
 				where fieldname='naming_series'""")))
-		
+
 		prefixes = frappe.db.sql_list("""select name from `tabSeries`""")
 
 		return {
-			"transactions": "\n".join([''] + sorted(doctypes)),
-			"prefixes": prefixes
+			"transactions": "\n".join([""] + sorted(doctypes)),
+			"prefixes": prefixes,
 		}
 
 	def scrub_options_list(self, ol):
@@ -43,7 +42,7 @@ class NamingSeries(Document):
 		self.set_series_for(self.select_doc_for_series, series_list)
 
 		# create series
-		map(self.insert_series, [d.split('.')[0] for d in series_list if d.strip()])
+		map(self.insert_series, [d.split(".")[0] for d in series_list if d.strip()])
 
 		msgprint(_("Series Updated"))
 
@@ -57,34 +56,35 @@ class NamingSeries(Document):
 		options = self.scrub_options_list(ol)
 
 		# validate names
-		for i in options: self.validate_series_name(i)
+		for i in options:
+			self.validate_series_name(i)
 
 		if options and self.user_must_always_select:
-			options = [''] + options
+			options = [""] + options
 
-		default = options[0] if options else ''
+		default = options[0] if options else ""
 
 		# update in property setter
-		prop_dict = {'options': "\n".join(options), 'default': default}
+		prop_dict = {"options": "\n".join(options), "default": default}
 
 		for prop in prop_dict:
 			ps_exists = frappe.db.get_value("Property Setter",
-				{"field_name": 'naming_series', 'doc_type': doctype, 'property': prop})
+				{"field_name": "naming_series", "doc_type": doctype, "property": prop})
 
 			if ps_exists:
-				ps = frappe.get_doc('Property Setter', ps_exists)
+				ps = frappe.get_doc("Property Setter", ps_exists)
 				ps.value = prop_dict[prop]
 				ps.save()
 			else:
 				ps = frappe.get_doc({
-					'doctype': 'Property Setter',
-					'doctype_or_field': 'DocField',
-					'doc_type': doctype,
-					'field_name': 'naming_series',
-					'property': prop,
-					'value': prop_dict[prop],
-					'property_type': 'Text',
-					'__islocal': 1
+					"doctype": "Property Setter",
+					"doctype_or_field": "DocField",
+					"doc_type": doctype,
+					"field_name": "naming_series",
+					"property": prop,
+					"value": prop_dict[prop],
+					"property_type": "Text",
+					"__islocal": 1,
 				})
 				ps.save()
 
@@ -101,7 +101,7 @@ class NamingSeries(Document):
 			+ frappe.db.sql_list("""select dt.name
 				from `tabCustom Field` df, `tabDocType` dt
 				where dt.name = df.dt and df.fieldname='naming_series' and dt.name != %s""",
-				self.select_doc_for_series)
+				self.select_doc_for_series),
 			))
 		sr = [[frappe.get_meta(p).get_field("naming_series").options, p] for p in parent]
 		dt = frappe.get_doc("DocType", self.select_doc_for_series)
@@ -110,13 +110,13 @@ class NamingSeries(Document):
 			validate_series(dt, "naming_series:" + series)
 			for i in sr:
 				if i[0]:
-					existing_series = [d.split('.')[0] for d in i[0].split("\n")]
+					existing_series = [d.split(".")[0] for d in i[0].split("\n")]
 					if series.split(".")[0] in existing_series:
-						frappe.throw(_("Series {0} already used in {1}").format(series,i[1]))
+						frappe.throw(_("Series {0} already used in {1}").format(series, i[1]))
 
 	def validate_series_name(self, n):
 		import re
-		if not re.match("^[\w\- /.#{}]*$", n, re.UNICODE):
+		if not re.match(r"^[\w\- /.#{}]*$", n, re.UNICODE):
 			throw(_('Special Characters except "-", "#", ".", "/", "{" and "}" not allowed in naming series'))
 
 	@frappe.whitelist()
@@ -135,7 +135,7 @@ class NamingSeries(Document):
 		prefix = self.get_prefix()
 		if prefix:
 			self.current_value = frappe.db.get_value("Series",
-				prefix, "current", order_by = "name")
+				prefix, "current", order_by="name")
 			self.last_current_value = self.current_value
 		else:
 			self.current_value = 0
@@ -143,7 +143,7 @@ class NamingSeries(Document):
 
 	def insert_series(self, series):
 		"""insert series if missing"""
-		if frappe.db.get_value('Series', series, 'name', order_by="name") == None:
+		if frappe.db.get_value("Series", series, "name", order_by="name") is None:
 			frappe.db.sql("insert into tabSeries (name, current) values (%s, 0)", (series))
 
 	@frappe.whitelist()
@@ -172,7 +172,7 @@ def set_by_naming_series(doctype, fieldname, naming_series, hide_name_field=True
 
 	if naming_series:
 		meta = frappe.get_meta(doctype)
-		if meta.get_field('naming_series') and not meta.get_field('naming_series').default:
+		if meta.get_field("naming_series") and not meta.get_field("naming_series").default:
 			make_property_setter(doctype, "naming_series", "hidden", 0, "Check")
 
 		make_property_setter(doctype, "naming_series", "reqd", 1, "Check")

@@ -1,11 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe, math, json
-import erpnext
+import json
+import math
+
+import frappe
 from frappe import _
-from frappe.utils import flt, rounded, add_months, nowdate, getdate
+from frappe.utils import add_months, flt, getdate, nowdate, rounded
+
+import erpnext
 from erpnext.controllers.accounts_controller import AccountsController
 
 
@@ -20,7 +23,7 @@ class Loan(AccountsController):
 		self.set_status()
 
 	def on_cancel(self):
-		self.db_set('status', 'Cancelled')
+		self.db_set("status", "Cancelled")
 
 	def before_update_after_submit(self):
 		self.validate_cannot_change_schedule()
@@ -50,7 +53,7 @@ class Loan(AccountsController):
 		payment_date = self.repayment_start_date
 		balance_amount = self.loan_amount
 		while balance_amount > 0:
-			interest_amount = rounded(balance_amount * flt(self.rate_of_interest) / (12*100))
+			interest_amount = rounded(balance_amount * flt(self.rate_of_interest) / (12 * 100))
 			principal_amount = self.monthly_repayment_amount - interest_amount
 			balance_amount = rounded(balance_amount + interest_amount - self.monthly_repayment_amount)
 
@@ -64,7 +67,7 @@ class Loan(AccountsController):
 				"principal_amount": principal_amount,
 				"interest_amount": interest_amount,
 				"total_payment": total_payment,
-				"balance_loan_amount": balance_amount
+				"balance_loan_amount": balance_amount,
 			})
 			next_payment_date = add_months(payment_date, 1)
 			payment_date = next_payment_date
@@ -107,7 +110,7 @@ class Loan(AccountsController):
 				"name": d.name,
 				"parent": self.name,
 				"parenttype": self.doctype,
-			}, fieldname=['paid', 'payment_date', 'principal_amount'], as_dict=1)
+			}, fieldname=["paid", "payment_date", "principal_amount"], as_dict=1)
 
 			row_changed = False
 
@@ -129,14 +132,14 @@ class Loan(AccountsController):
 			frappe.throw(_("Cannot change repayment schedule for loan with interest"))
 
 	def validate_repayment_schedule_amount(self):
-		loan_amount_df = self.meta.get_field('loan_amount')
+		loan_amount_df = self.meta.get_field("loan_amount")
 
 		total_principal_amount = sum([d.principal_amount for d in self.repayment_schedule])
-		if flt(total_principal_amount, self.precision('loan_amount')) != flt(self.loan_amount, self.precision('loan_amount')):
+		if flt(total_principal_amount, self.precision("loan_amount")) != flt(self.loan_amount, self.precision("loan_amount")):
 			frappe.throw(_("Total Repayment Schedule Principal Amount {0} does not match Loan Amount {1}")
 				.format(
 					frappe.bold(frappe.format(total_principal_amount, df=loan_amount_df, doc=self)),
-					frappe.bold(frappe.format(self.loan_amount, df=loan_amount_df, doc=self))
+					frappe.bold(frappe.format(self.loan_amount, df=loan_amount_df, doc=self)),
 				))
 
 	def calculate_totals(self):
@@ -181,7 +184,7 @@ class Loan(AccountsController):
 		if update:
 			self.db_set({
 				"status": self.status,
-				"disbursement_date": self.disbursement_date
+				"disbursement_date": self.disbursement_date,
 			}, update_modified=update_modified)
 
 	def validate_disbursement_date(self):
@@ -200,10 +203,10 @@ class Loan(AccountsController):
 		""", (self.loan_account, self.name), as_dict=1)[0]
 
 	def make_jv_entry(self):
-		self.check_permission('write')
-		journal_entry = frappe.new_doc('Journal Entry')
-		journal_entry.voucher_type = 'Bank Entry'
-		journal_entry.user_remark = _('Against Loan: {0}').format(self.name)
+		self.check_permission("write")
+		journal_entry = frappe.new_doc("Journal Entry")
+		journal_entry.voucher_type = "Bank Entry"
+		journal_entry.user_remark = _("Against Loan: {0}").format(self.name)
 		journal_entry.company = self.company
 		journal_entry.posting_date = nowdate()
 
@@ -240,9 +243,9 @@ def validate_repayment_method(repayment_method, loan_amount, monthly_repayment_a
 
 def get_monthly_repayment_amount(repayment_method, loan_amount, rate_of_interest, repayment_periods):
 	if rate_of_interest:
-		monthly_interest_rate = flt(rate_of_interest) / (12 *100)
+		monthly_interest_rate = flt(rate_of_interest) / (12 * 100)
 		monthly_repayment_amount = math.ceil((loan_amount * monthly_interest_rate *
-			(1 + monthly_interest_rate)**repayment_periods) \
+			(1 + monthly_interest_rate)**repayment_periods)
 			/ ((1 + monthly_interest_rate)**repayment_periods - 1))
 	else:
 		monthly_repayment_amount = math.ceil(flt(loan_amount) / repayment_periods)
@@ -257,7 +260,7 @@ def get_loan_application(loan_application):
 
 
 @frappe.whitelist()
-def make_repayment_entry(payment_rows, loan, company, loan_account, applicant_type, applicant, \
+def make_repayment_entry(payment_rows, loan, company, loan_account, applicant_type, applicant,
 	payment_account=None, interest_income_account=None):
 
 	if isinstance(payment_rows, str):
@@ -277,9 +280,9 @@ def make_repayment_entry(payment_rows, loan, company, loan_account, applicant_ty
 		principal_amount += d["principal_amount"]
 		interest_amount += d["interest_amount"]
 
-	journal_entry = frappe.new_doc('Journal Entry')
-	journal_entry.voucher_type = 'Bank Entry'
-	journal_entry.user_remark = _('Against Loan: {0}').format(loan)
+	journal_entry = frappe.new_doc("Journal Entry")
+	journal_entry.voucher_type = "Bank Entry"
+	journal_entry.user_remark = _("Against Loan: {0}").format(loan)
 	journal_entry.company = company
 	journal_entry.posting_date = nowdate()
 	journal_entry.paid_loan = json.dumps(row_name)
@@ -314,10 +317,10 @@ def make_repayment_entry(payment_rows, loan, company, loan_account, applicant_ty
 
 
 @frappe.whitelist()
-def make_jv_entry(loan, company, loan_account, applicant_type, applicant, loan_amount,payment_account=None):
-	journal_entry = frappe.new_doc('Journal Entry')
-	journal_entry.voucher_type = 'Bank Entry'
-	journal_entry.user_remark = _('Against Loan: {0}').format(loan)
+def make_jv_entry(loan, company, loan_account, applicant_type, applicant, loan_amount, payment_account=None):
+	journal_entry = frappe.new_doc("Journal Entry")
+	journal_entry.voucher_type = "Bank Entry"
+	journal_entry.user_remark = _("Against Loan: {0}").format(loan)
 	journal_entry.company = company
 	journal_entry.posting_date = nowdate()
 	account_amt_list = []

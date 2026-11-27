@@ -3,8 +3,8 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, add_days, getdate
-from frappe.utils import get_datetime_str
+from frappe.utils import add_days, cint, flt, get_datetime_str, getdate
+
 from erpnext import get_default_company
 
 
@@ -30,21 +30,21 @@ def before_tests():
 	from frappe.desk.page.setup_wizard.setup_wizard import setup_complete
 	if not frappe.get_list("Company"):
 		setup_complete({
-			"currency"			:"USD",
-			"full_name"			:"Test User",
-			"company_name"		:"Wind Power LLC",
-			"timezone"			:"America/New_York",
-			"company_abbr"		:"WP",
-			"industry"			:"Manufacturing",
-			"country"			:"United States",
-			"fy_start_date"		:"2011-01-01",
-			"fy_end_date"		:"2011-12-31",
-			"language"			:"english",
-			"company_tagline"	:"Testing",
-			"email"				:"test@erpnext.com",
-			"password"			:"test",
-			"chart_of_accounts" : "Standard",
-			"domains"			: ["Manufacturing"],
+			"currency": "USD",
+			"full_name": "Test User",
+			"company_name": "Wind Power LLC",
+			"timezone": "America/New_York",
+			"company_abbr": "WP",
+			"industry": "Manufacturing",
+			"country": "United States",
+			"fy_start_date": "2011-01-01",
+			"fy_end_date": "2011-12-31",
+			"language": "english",
+			"company_tagline": "Testing",
+			"email": "test@erpnext.com",
+			"password": "test",
+			"chart_of_accounts": "Standard",
+			"domains": ["Manufacturing"],
 		})
 
 	frappe.db.sql("delete from `tabLeave Allocation`")
@@ -111,7 +111,7 @@ def get_exchange_rate_from_currency_exchange(
 	filters = [
 		["date", "<=", get_datetime_str(transaction_date)],
 		["from_currency", "=", from_currency],
-		["to_currency", "=", to_currency]
+		["to_currency", "=", to_currency],
 	]
 
 	if args == "for_buying":
@@ -129,7 +129,7 @@ def get_exchange_rate_from_currency_exchange(
 		fields=["exchange_rate"],
 		filters=filters,
 		order_by="date desc",
-		limit=1
+		limit=1,
 	)
 	if entries:
 		return flt(entries[0].exchange_rate)
@@ -172,7 +172,7 @@ def get_exchange_rate_from_provider(
 	except Exception:
 		frappe.log_error(title=f"Get Exchange Rate from {provider}")
 		frappe.msgprint(_("Unable to find exchange rate for {0} to {1} for key date {2}. Please enter exchange rate manually").format(
-			from_currency, to_currency, transaction_date
+			from_currency, to_currency, transaction_date,
 		))
 
 	if flt(exchange_rate) > 0:
@@ -194,9 +194,9 @@ def enable_all_roles_and_domains():
 		return
 
 	from frappe.desk.page.setup_wizard.setup_wizard import add_all_roles_to
-	frappe.get_single('Domain Settings').set_active_domains(\
+	frappe.get_single("Domain Settings").set_active_domains(
 		[d.name for d in domains])
-	add_all_roles_to('Administrator')
+	add_all_roles_to("Administrator")
 
 
 def insert_record(records):
@@ -207,7 +207,7 @@ def insert_record(records):
 			doc.insert(ignore_permissions=True)
 		except frappe.DuplicateEntryError as e:
 			# pass DuplicateEntryError and continue
-			if e.args and e.args[0]==doc.doctype and e.args[1]==doc.name:
+			if e.args and e.args[0] == doc.doctype and e.args[1] == doc.name:
 				# make sure DuplicateEntryError is for the exact same doc and not a related doc
 				pass
 			else:

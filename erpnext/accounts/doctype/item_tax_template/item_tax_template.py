@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-from frappe.model.document import Document
 from frappe import _
+from frappe.model.document import Document
 from frappe.utils import cstr
 
 
@@ -15,12 +14,12 @@ class ItemTaxTemplate(Document):
 	def validate_tax_accounts(self):
 		"""Check whether Tax Rate is not entered twice for same Tax Type"""
 		check_list = []
-		for d in self.get('taxes'):
+		for d in self.get("taxes"):
 			if not d.tax_type:
 				continue
 
 			account_type = frappe.db.get_value("Account", d.tax_type, "account_type")
-			if account_type not in ['Tax', 'Chargeable', 'Income Account', 'Expense Account', 'Expenses Included In Valuation']:
+			if account_type not in ["Tax", "Chargeable", "Income Account", "Expense Account", "Expenses Included In Valuation"]:
 				frappe.throw(_("Item Tax Row {0} must have account of type Tax or Income or Expense or Chargeable").format(
 					d.idx))
 

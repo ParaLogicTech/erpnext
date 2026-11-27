@@ -5,7 +5,7 @@ frappe.provide("erpnext");
 erpnext.setup_applies_to_fields_hooks = [];
 erpnext.update_applies_to_details_args_hooks = [];
 
-erpnext.setup_applies_to_fields = function (frm) {
+erpnext.setup_applies_to_fields = function(frm) {
 	frappe.ui.form.on(frm.doctype, {
 		applies_to_item: function(frm) {
 			frm.events.get_applies_to_details(frm);
@@ -39,7 +39,7 @@ erpnext.setup_applies_to_fields = function (frm) {
 			return frappe.call({
 				method: "erpnext.stock.get_item_details.get_applies_to_details",
 				args: {
-					args: args
+					args: args,
 				},
 				callback: (r) => {
 					return frappe.run_serially([
@@ -53,33 +53,33 @@ erpnext.setup_applies_to_fields = function (frm) {
 				},
 				error: () => {
 					frm._in_get_applies_to_details = false;
-				}
-			})
+				},
+			});
 		},
 	});
 
 	for (let func of erpnext.setup_applies_to_fields_hooks || []) {
 		func(frm);
 	}
-}
+};
 
-erpnext.setup_applies_to_listview_filters = function (listview) {
+erpnext.setup_applies_to_listview_filters = function(listview) {
 	if (listview.page.fields_dict.applies_to_variant_of) {
 		listview.page.fields_dict.applies_to_variant_of.get_query = () => {
 			return erpnext.queries.item({"has_variants": 1, "include_disabled": 1});
-		}
+		};
 	}
 
 	if (listview.page.fields_dict.applies_to_item) {
 		listview.page.fields_dict.applies_to_item.get_query = () => {
 			let filters = {"include_disabled": 1};
 
-			let variant_of = listview.page.fields_dict.applies_to_variant_of?.get_value('applies_to_variant_of');
+			let variant_of = listview.page.fields_dict.applies_to_variant_of?.get_value("applies_to_variant_of");
 			if (variant_of) {
-				filters['variant_of'] = variant_of;
+				filters["variant_of"] = variant_of;
 			}
 
 			return erpnext.queries.item(filters);
-		}
+		};
 	}
-}
+};

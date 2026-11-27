@@ -1,21 +1,25 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, unittest
+import unittest
+
+import frappe
 import frappe.defaults
-from frappe.utils import flt, nowdate, nowtime
-from erpnext.stock.doctype.serial_no.serial_no import *
-from erpnext import set_perpetual_inventory
-from erpnext.stock.doctype.stock_ledger_entry.stock_ledger_entry import StockFreezeError
-from erpnext.stock.stock_ledger import get_previous_sle
 from frappe.permissions import add_user_permission, remove_user_permission
-from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
-from erpnext.stock.doctype.item.test_item import set_item_variant_settings, make_item_variant, create_item
-from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
+from frappe.utils import flt, nowdate, nowtime
+
+from erpnext import set_perpetual_inventory
 from erpnext.accounts.doctype.account.test_account import get_inventory_account
-from erpnext.stock.doctype.stock_entry.stock_entry import move_sample_to_retention_warehouse, make_stock_in_entry
-from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import OpeningEntryAccountError
+from erpnext.stock.doctype.item.test_item import create_item, make_item_variant, set_item_variant_settings
+from erpnext.stock.doctype.serial_no.serial_no import *
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+from erpnext.stock.doctype.stock_entry.stock_entry import make_stock_in_entry, move_sample_to_retention_warehouse
+from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
+from erpnext.stock.doctype.stock_ledger_entry.stock_ledger_entry import StockFreezeError
+from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import OpeningEntryAccountError
+from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
+from erpnext.stock.stock_ledger import get_previous_sle
+
 
 def get_sle(**args):
 	condition, values = "", []
@@ -25,8 +29,9 @@ def get_sle(**args):
 		values.append(value)
 
 	return frappe.db.sql("""select * from `tabStock Ledger Entry` %s
-		order by timestamp(posting_date, posting_time) desc, creation desc limit 1"""% condition,
+		order by timestamp(posting_date, posting_time) desc, creation desc limit 1""" % condition,
 		values, as_dict=1)
+
 
 class TestStockEntry(unittest.TestCase):
 	def tearDown(self):
@@ -42,32 +47,32 @@ class TestStockEntry(unittest.TestCase):
 			qty=0, rate=100)
 
 		make_stock_entry(item_code=item_code, target=warehouse, qty=1, basic_rate=10)
-		sle = get_sle(item_code = item_code, warehouse = warehouse)[0]
+		sle = get_sle(item_code=item_code, warehouse=warehouse)[0]
 
 		self.assertEqual([[1, 10]], frappe.safe_eval(sle.stock_queue))
 
 		# negative qty
 		make_stock_entry(item_code=item_code, source=warehouse, qty=2, basic_rate=10)
-		sle = get_sle(item_code = item_code, warehouse = warehouse)[0]
+		sle = get_sle(item_code=item_code, warehouse=warehouse)[0]
 
 		self.assertEqual([[-1, 10]], frappe.safe_eval(sle.stock_queue))
 
 		# further negative
 		make_stock_entry(item_code=item_code, source=warehouse, qty=1)
-		sle = get_sle(item_code = item_code, warehouse = warehouse)[0]
+		sle = get_sle(item_code=item_code, warehouse=warehouse)[0]
 
 		self.assertEqual([[-2, 10]], frappe.safe_eval(sle.stock_queue))
 
 		# move stock to positive
 		make_stock_entry(item_code=item_code, target=warehouse, qty=3, basic_rate=20)
-		sle = get_sle(item_code = item_code, warehouse = warehouse)[0]
+		sle = get_sle(item_code=item_code, warehouse=warehouse)[0]
 		self.assertEqual([[1, 20]], frappe.safe_eval(sle.stock_queue))
 
 		# incoming entry with diff rate
 		make_stock_entry(item_code=item_code, target=warehouse, qty=1, basic_rate=30)
-		sle = get_sle(item_code = item_code, warehouse = warehouse)[0]
+		sle = get_sle(item_code=item_code, warehouse=warehouse)[0]
 
-		self.assertEqual([[1, 20],[1, 30]], frappe.safe_eval(sle.stock_queue))
+		self.assertEqual([[1, 20], [1, 30]], frappe.safe_eval(sle.stock_queue))
 
 		frappe.db.set_default("allow_negative_stock", 0)
 
@@ -75,7 +80,7 @@ class TestStockEntry(unittest.TestCase):
 		item_code = "_Test Batch Wise Valuation Item"
 		warehouse = "_Test Warehouse - _TC"
 
-		for d in frappe.get_all("Stock Entry", filters={'item_code': item_code, 'docstatus': 1}):
+		for d in frappe.get_all("Stock Entry", filters={"item_code": item_code, "docstatus": 1}):
 			frappe.get_doc("Stock Entry", d.name).cancel()
 
 		def assert_sle(sle, values):
@@ -90,27 +95,27 @@ class TestStockEntry(unittest.TestCase):
 		batch1 = in1_1.items[0].batch_no
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch1,
 			voucher_type=in1_1.doctype, voucher_no=in1_1.name)[0], {
-			'stock_value_difference': 1000, 'batch_stock_value': 1000, 'stock_value': 1000,
-			'batch_valuation_rate': 100, 'valuation_rate': 100,
-			'batch_qty_after_transaction': 10, 'qty_after_transaction': 10
+			"stock_value_difference": 1000, "batch_stock_value": 1000, "stock_value": 1000,
+			"batch_valuation_rate": 100, "valuation_rate": 100,
+			"batch_qty_after_transaction": 10, "qty_after_transaction": 10,
 		})
 
 		in1_2 = make_stock_entry(item_code=item_code, target=warehouse, qty=10, basic_rate=80)
 		batch2 = in1_2.items[0].batch_no
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch2,
 			voucher_type=in1_2.doctype, voucher_no=in1_2.name)[0], {
-			'stock_value_difference': 800, 'batch_stock_value': 800, 'stock_value': 1800,
-			'batch_valuation_rate': 80, 'valuation_rate': 90,
-			'batch_qty_after_transaction': 10, 'qty_after_transaction': 20
+			"stock_value_difference": 800, "batch_stock_value": 800, "stock_value": 1800,
+			"batch_valuation_rate": 80, "valuation_rate": 90,
+			"batch_qty_after_transaction": 10, "qty_after_transaction": 20,
 		})
 
 		in1_3 = make_stock_entry(item_code=item_code, target=warehouse, qty=10, basic_rate=120)
 		batch3 = in1_3.items[0].batch_no
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch3,
 			voucher_type=in1_3.doctype, voucher_no=in1_3.name)[0], {
-			'stock_value_difference': 1200, 'batch_stock_value': 1200, 'stock_value': 3000,
-			'batch_valuation_rate': 120, 'valuation_rate': 100,
-			'batch_qty_after_transaction': 10, 'qty_after_transaction': 30
+			"stock_value_difference": 1200, "batch_stock_value": 1200, "stock_value": 3000,
+			"batch_valuation_rate": 120, "valuation_rate": 100,
+			"batch_qty_after_transaction": 10, "qty_after_transaction": 30,
 		})
 
 		# Out 1
@@ -118,50 +123,50 @@ class TestStockEntry(unittest.TestCase):
 		out1_2 = make_stock_entry(item_code=item_code, source=warehouse, batch_no=batch2, qty=5)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch2,
 			voucher_type=out1_2.doctype, voucher_no=out1_2.name)[0], {
-			'stock_value_difference': -400, 'batch_stock_value': 400, 'stock_value': 2600,
-			'batch_valuation_rate': 80, 'valuation_rate': 104,
-			'batch_qty_after_transaction': 5, 'qty_after_transaction': 25
+			"stock_value_difference": -400, "batch_stock_value": 400, "stock_value": 2600,
+			"batch_valuation_rate": 80, "valuation_rate": 104,
+			"batch_qty_after_transaction": 5, "qty_after_transaction": 25,
 		})
 
 		out1_1 = make_stock_entry(item_code=item_code, source=warehouse, batch_no=batch1, qty=5)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch1,
 			voucher_type=out1_1.doctype, voucher_no=out1_1.name)[0], {
-			'stock_value_difference': -500, 'batch_stock_value': 500, 'stock_value': 2100,
-			'batch_valuation_rate': 100, 'valuation_rate': 105,
-			'batch_qty_after_transaction': 5, 'qty_after_transaction': 20
+			"stock_value_difference": -500, "batch_stock_value": 500, "stock_value": 2100,
+			"batch_valuation_rate": 100, "valuation_rate": 105,
+			"batch_qty_after_transaction": 5, "qty_after_transaction": 20,
 		})
 
 		out1_3 = make_stock_entry(item_code=item_code, source=warehouse, batch_no=batch3, qty=5)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch3,
 			voucher_type=out1_3.doctype, voucher_no=out1_3.name)[0], {
-			'stock_value_difference': -600, 'batch_stock_value': 600, 'stock_value': 1500,
-			'batch_valuation_rate': 120, 'valuation_rate': 100,
-			'batch_qty_after_transaction': 5, 'qty_after_transaction': 15
+			"stock_value_difference": -600, "batch_stock_value": 600, "stock_value": 1500,
+			"batch_valuation_rate": 120, "valuation_rate": 100,
+			"batch_qty_after_transaction": 5, "qty_after_transaction": 15,
 		})
 
 		# In 2
 		in2_1 = make_stock_entry(item_code=item_code, target=warehouse, qty=5, batch_no=batch1, basic_rate=200)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch1,
 			voucher_type=in2_1.doctype, voucher_no=in2_1.name)[0], {
-			'stock_value_difference': 1000, 'batch_stock_value': 1500, 'stock_value': 2500,
-			'batch_valuation_rate': 150, 'valuation_rate': 125,
-			'batch_qty_after_transaction': 10, 'qty_after_transaction': 20
+			"stock_value_difference": 1000, "batch_stock_value": 1500, "stock_value": 2500,
+			"batch_valuation_rate": 150, "valuation_rate": 125,
+			"batch_qty_after_transaction": 10, "qty_after_transaction": 20,
 		})
 
 		in2_2 = make_stock_entry(item_code=item_code, target=warehouse, qty=5, batch_no=batch2, basic_rate=160)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch2,
 			voucher_type=in2_2.doctype, voucher_no=in2_2.name)[0], {
-			'stock_value_difference': 800, 'batch_stock_value': 1200, 'stock_value': 3300,
-			'batch_valuation_rate': 120, 'valuation_rate': 132,
-			'batch_qty_after_transaction': 10, 'qty_after_transaction': 25
+			"stock_value_difference": 800, "batch_stock_value": 1200, "stock_value": 3300,
+			"batch_valuation_rate": 120, "valuation_rate": 132,
+			"batch_qty_after_transaction": 10, "qty_after_transaction": 25,
 		})
 
 		in2_3 = make_stock_entry(item_code=item_code, target=warehouse, qty=5, batch_no=batch3, basic_rate=240)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch3,
 			voucher_type=in2_3.doctype, voucher_no=in2_3.name)[0], {
-			'stock_value_difference': 1200, 'batch_stock_value': 1800, 'stock_value': 4500,
-			'batch_valuation_rate': 180, 'valuation_rate': 150,
-			'batch_qty_after_transaction': 10, 'qty_after_transaction': 30
+			"stock_value_difference": 1200, "batch_stock_value": 1800, "stock_value": 4500,
+			"batch_valuation_rate": 180, "valuation_rate": 150,
+			"batch_qty_after_transaction": 10, "qty_after_transaction": 30,
 		})
 
 		# Out 2
@@ -173,74 +178,73 @@ class TestStockEntry(unittest.TestCase):
 			posting_date=posting_date, posting_time=posting_time, edit_posting_time=1)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch1,
 			voucher_type=out2_1.doctype, voucher_no=out2_1.name)[0], {
-			'stock_value_difference': -1500, 'batch_stock_value': 0, 'stock_value': 3000,
-			'batch_valuation_rate': 150, 'valuation_rate': 150,
-			'batch_qty_after_transaction': 0, 'qty_after_transaction': 20
+			"stock_value_difference": -1500, "batch_stock_value": 0, "stock_value": 3000,
+			"batch_valuation_rate": 150, "valuation_rate": 150,
+			"batch_qty_after_transaction": 0, "qty_after_transaction": 20,
 		})
 
 		out2_2 = make_stock_entry(item_code=item_code, source=warehouse, batch_no=batch2, qty=10,
 			posting_date=posting_date, posting_time=posting_time, edit_posting_time=1)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch2,
 			voucher_type=out2_2.doctype, voucher_no=out2_2.name)[0], {
-			'stock_value_difference': -1200, 'batch_stock_value': 0, 'stock_value': 1800,
-			'batch_valuation_rate': 120, 'valuation_rate': 180,
-			'batch_qty_after_transaction': 0, 'qty_after_transaction': 10
+			"stock_value_difference": -1200, "batch_stock_value": 0, "stock_value": 1800,
+			"batch_valuation_rate": 120, "valuation_rate": 180,
+			"batch_qty_after_transaction": 0, "qty_after_transaction": 10,
 		})
 
 		out2_3 = make_stock_entry(item_code=item_code, source=warehouse, batch_no=batch3, qty=10,
 			posting_date=posting_date, posting_time=posting_time, edit_posting_time=1)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch3,
 			voucher_type=out2_3.doctype, voucher_no=out2_3.name)[0], {
-			'stock_value_difference': -1800, 'batch_stock_value': 0, 'stock_value': 0,
-			'batch_valuation_rate': 180, 'valuation_rate': 180,
-			'batch_qty_after_transaction': 0, 'qty_after_transaction': 0
+			"stock_value_difference": -1800, "batch_stock_value": 0, "stock_value": 0,
+			"batch_valuation_rate": 180, "valuation_rate": 180,
+			"batch_qty_after_transaction": 0, "qty_after_transaction": 0,
 		})
 
 		# In 3 (backdated)
 		in3_1 = make_stock_entry(item_code=item_code, target=warehouse, qty=2, batch_no=batch1, basic_rate=100)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch1,
 			voucher_type=in3_1.doctype, voucher_no=in3_1.name)[0], {
-			'stock_value_difference': 200, 'batch_stock_value': 1700, 'stock_value': 4700,
-			'batch_valuation_rate': 141.666667, 'valuation_rate': 146.875,
-			'batch_qty_after_transaction': 12, 'qty_after_transaction': 32
+			"stock_value_difference": 200, "batch_stock_value": 1700, "stock_value": 4700,
+			"batch_valuation_rate": 141.666667, "valuation_rate": 146.875,
+			"batch_qty_after_transaction": 12, "qty_after_transaction": 32,
 		})
 
 		in3_2 = make_stock_entry(item_code=item_code, target=warehouse, qty=2, batch_no=batch2, basic_rate=80)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch2,
 			voucher_type=in3_2.doctype, voucher_no=in3_2.name)[0], {
-			'stock_value_difference': 160, 'batch_stock_value': 1360, 'stock_value': 4860,
-			'batch_valuation_rate': 113.333333, 'valuation_rate': 142.941176,
-			'batch_qty_after_transaction': 12, 'qty_after_transaction': 34
+			"stock_value_difference": 160, "batch_stock_value": 1360, "stock_value": 4860,
+			"batch_valuation_rate": 113.333333, "valuation_rate": 142.941176,
+			"batch_qty_after_transaction": 12, "qty_after_transaction": 34,
 		})
 
 		in3_3 = make_stock_entry(item_code=item_code, target=warehouse, qty=2, batch_no=batch3, basic_rate=120)
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch3,
 			voucher_type=in3_3.doctype, voucher_no=in3_3.name)[0], {
-			'stock_value_difference': 240, 'batch_stock_value': 2040, 'stock_value': 5100,
-			'batch_valuation_rate': 170, 'valuation_rate': 141.666667,
-			'batch_qty_after_transaction': 12, 'qty_after_transaction': 36
+			"stock_value_difference": 240, "batch_stock_value": 2040, "stock_value": 5100,
+			"batch_valuation_rate": 170, "valuation_rate": 141.666667,
+			"batch_qty_after_transaction": 12, "qty_after_transaction": 36,
 		})
 
 		# Validate reposted SLEs for Out 2
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch1,
 			voucher_type=out2_1.doctype, voucher_no=out2_1.name)[0], {
-			'stock_value_difference': -1416.67, 'batch_stock_value': 283.33, 'stock_value': 3683.33,
-			'batch_valuation_rate': 141.666667, 'valuation_rate': 141.666667,
-			'batch_qty_after_transaction': 2, 'qty_after_transaction': 26
+			"stock_value_difference": -1416.67, "batch_stock_value": 283.33, "stock_value": 3683.33,
+			"batch_valuation_rate": 141.666667, "valuation_rate": 141.666667,
+			"batch_qty_after_transaction": 2, "qty_after_transaction": 26,
 		})
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch2,
 			voucher_type=out2_2.doctype, voucher_no=out2_2.name)[0], {
-			'stock_value_difference': -1133.33, 'batch_stock_value': 226.67, 'stock_value': 2550,
-			'batch_valuation_rate': 113.333333, 'valuation_rate': 159.374792,
-			'batch_qty_after_transaction': 2, 'qty_after_transaction': 16
+			"stock_value_difference": -1133.33, "batch_stock_value": 226.67, "stock_value": 2550,
+			"batch_valuation_rate": 113.333333, "valuation_rate": 159.374792,
+			"batch_qty_after_transaction": 2, "qty_after_transaction": 16,
 		})
 		assert_sle(get_sle(item_code=item_code, warehouse=warehouse, batch_no=batch3,
 			voucher_type=out2_3.doctype, voucher_no=out2_3.name)[0], {
-			'stock_value_difference': -1700, 'batch_stock_value': 340, 'stock_value': 850,
-			'batch_valuation_rate': 170, 'valuation_rate': 141.666667,
-			'batch_qty_after_transaction': 2, 'qty_after_transaction': 6
+			"stock_value_difference": -1700, "batch_stock_value": 340, "stock_value": 850,
+			"batch_valuation_rate": 170, "valuation_rate": 141.666667,
+			"batch_qty_after_transaction": 2, "qty_after_transaction": 6,
 		})
-
 
 	def test_auto_material_request(self):
 		make_item_variant()
@@ -248,17 +252,17 @@ class TestStockEntry(unittest.TestCase):
 		self._test_auto_material_request("_Test Item", material_request_type="Transfer")
 
 	def test_auto_material_request_for_variant(self):
-		fields = [{'field_name': 'reorder_levels'}]
+		fields = [{"field_name": "reorder_levels"}]
 		set_item_variant_settings(fields)
 		make_item_variant()
 		template = frappe.get_doc("Item", "_Test Variant Item")
 
 		if not template.reorder_levels:
-			template.append('reorder_levels', {
+			template.append("reorder_levels", {
 				"material_request_type": "Purchase",
 				"warehouse": "_Test Warehouse - _TC",
 				"warehouse_reorder_level": 20,
-				"warehouse_reorder_qty": 20
+				"warehouse_reorder_qty": 20,
 			})
 
 		template.save()
@@ -275,7 +279,7 @@ class TestStockEntry(unittest.TestCase):
 
 		# stock entry reqd for auto-reorder
 		create_stock_reconciliation(item_code=item_code, warehouse=warehouse,
-			qty = actual_qty + abs(projected_qty) + 10, rate=100)
+			qty=actual_qty + abs(projected_qty) + 10, rate=100)
 
 		projected_qty = frappe.db.get_value("Bin", {"item_code": item_code,
 			"warehouse": warehouse}, "projected_qty") or 0
@@ -301,9 +305,9 @@ class TestStockEntry(unittest.TestCase):
 		self.assertTrue(item_code in items)
 
 	def test_material_receipt_gl_entry(self):
-		company = frappe.db.get_value('Warehouse', 'Stores - TCP1', 'company')
+		company = frappe.db.get_value("Warehouse", "Stores - TCP1", "company")
 
-		mr = make_stock_entry(item_code="_Test Item", target="Stores - TCP1", company= company,
+		mr = make_stock_entry(item_code="_Test Item", target="Stores - TCP1", company=company,
 			qty=50, basic_rate=100, expense_account="Stock Adjustment - TCP1")
 
 		stock_in_hand_account = get_inventory_account(mr.company, mr.get("items")[0].t_warehouse)
@@ -313,8 +317,8 @@ class TestStockEntry(unittest.TestCase):
 		self.check_gl_entries("Stock Entry", mr.name,
 			sorted([
 				[stock_in_hand_account, 5000.0, 0.0],
-				["Stock Adjustment - TCP1", 0.0, 5000.0]
-			])
+				["Stock Adjustment - TCP1", 0.0, 5000.0],
+			]),
 		)
 
 		mr.cancel()
@@ -326,8 +330,8 @@ class TestStockEntry(unittest.TestCase):
 			where voucher_type='Stock Entry' and voucher_no=%s""", mr.name))
 
 	def test_material_issue_gl_entry(self):
-		company = frappe.db.get_value('Warehouse', 'Stores - TCP1', 'company')
-		make_stock_entry(item_code="_Test Item", target="Stores - TCP1", company= company,
+		company = frappe.db.get_value("Warehouse", "Stores - TCP1", "company")
+		make_stock_entry(item_code="_Test Item", target="Stores - TCP1", company=company,
 			qty=50, basic_rate=100, expense_account="Stock Adjustment - TCP1")
 
 		mi = make_stock_entry(item_code="_Test Item", source="Stores - TCP1", company=company,
@@ -343,8 +347,8 @@ class TestStockEntry(unittest.TestCase):
 		self.check_gl_entries("Stock Entry", mi.name,
 			sorted([
 				[stock_in_hand_account, 0.0, stock_value_diff],
-				["Stock Adjustment - TCP1", stock_value_diff, 0.0]
-			])
+				["Stock Adjustment - TCP1", stock_value_diff, 0.0],
+			]),
 		)
 		mi.cancel()
 
@@ -355,7 +359,7 @@ class TestStockEntry(unittest.TestCase):
 			where voucher_type='Stock Entry' and voucher_no=%s""", mi.name))
 
 	def test_material_transfer_gl_entry(self):
-		company = frappe.db.get_value('Warehouse', 'Stores - TCP1', 'company')
+		frappe.db.get_value("Warehouse", "Stores - TCP1", "company")
 
 		create_stock_reconciliation(qty=100, rate=100)
 
@@ -382,7 +386,7 @@ class TestStockEntry(unittest.TestCase):
 				sorted([
 					[stock_in_hand_account, 0.0, stock_value_diff],
 					[fixed_asset_account, stock_value_diff, 0.0],
-				])
+				]),
 			)
 
 		mtn.cancel()
@@ -393,7 +397,7 @@ class TestStockEntry(unittest.TestCase):
 			where voucher_type='Stock Entry' and voucher_no=%s""", mtn.name))
 
 	def test_repack_no_change_in_valuation(self):
-		company = frappe.db.get_value('Warehouse', '_Test Warehouse - _TC', 'company')
+		company = frappe.db.get_value("Warehouse", "_Test Warehouse - _TC", "company")
 		set_perpetual_inventory(0, company)
 
 		make_stock_entry(item_code="_Test Item", target="_Test Warehouse - _TC", qty=50, basic_rate=100)
@@ -419,13 +423,12 @@ class TestStockEntry(unittest.TestCase):
 		set_perpetual_inventory(0, repack.company)
 
 	def test_repack_with_additional_costs(self):
-		company = frappe.db.get_value('Warehouse', 'Stores - TCP1', 'company')
+		company = frappe.db.get_value("Warehouse", "Stores - TCP1", "company")
 
-		make_stock_entry(item_code="_Test Item", target="Stores - TCP1", company= company,
+		make_stock_entry(item_code="_Test Item", target="Stores - TCP1", company=company,
 			qty=50, basic_rate=100, expense_account="Stock Adjustment - TCP1")
 
-
-		repack = make_stock_entry(company = company, purpose="Repack", do_not_save=True)
+		repack = make_stock_entry(company=company, purpose="Repack", do_not_save=True)
 		repack.posting_date = nowdate()
 		repack.posting_time = nowtime()
 
@@ -440,12 +443,12 @@ class TestStockEntry(unittest.TestCase):
 			{
 				"expense_account": expenses_included_in_valuation,
 				"description": "Actual Operating Cost",
-				"amount": 1000
+				"amount": 1000,
 			},
 			{
 				"expense_account": expenses_included_in_valuation,
 				"description": "Additional Operating Cost",
-				"amount": 200
+				"amount": 200,
 			},
 		])
 
@@ -467,8 +470,8 @@ class TestStockEntry(unittest.TestCase):
 		self.check_gl_entries("Stock Entry", repack.name,
 			sorted([
 				[stock_in_hand_account, 1200, 0.0],
-				["Expenses Included In Valuation - TCP1", 0.0, 1200.0]
-			])
+				["Expenses Included In Valuation - TCP1", 0.0, 1200.0],
+			]),
 		)
 
 	def check_stock_ledger_entries(self, voucher_type, voucher_no, expected_sle):
@@ -482,10 +485,10 @@ class TestStockEntry(unittest.TestCase):
 		self.assertTrue(sle)
 		sle.sort(key=lambda x: x[1])
 
-		for i, sle in enumerate(sle):
-			self.assertEqual(expected_sle[i][0], sle[0])
-			self.assertEqual(expected_sle[i][1], sle[1])
-			self.assertEqual(expected_sle[i][2], sle[2])
+		for i, sle_row in enumerate(sle):
+			self.assertEqual(expected_sle[i][0], sle_row[0])
+			self.assertEqual(expected_sle[i][1], sle_row[1])
+			self.assertEqual(expected_sle[i][2], sle_row[2])
 
 	def check_gl_entries(self, voucher_type, voucher_no, expected_gl_entries):
 		expected_gl_entries.sort(key=lambda x: x[0])
@@ -593,7 +596,7 @@ class TestStockEntry(unittest.TestCase):
 
 	def test_serial_item_error(self):
 		se, serial_nos = self.test_serial_by_series()
-		if not frappe.db.exists('Serial No', 'ABCD'):
+		if not frappe.db.exists("Serial No", "ABCD"):
 			make_serialized_item("_Test Serialized Item", "ABCD\nEFGH")
 
 		se = frappe.copy_doc(test_records[0])
@@ -647,7 +650,7 @@ class TestStockEntry(unittest.TestCase):
 		self.assertRaises(SerialNoWarehouseError, se.submit)
 
 	def test_serial_cancel(self):
-		se, serial_nos = self.test_serial_by_series()
+		se, _serial_nos = self.test_serial_by_series()
 		se.cancel()
 
 		serial_no = get_serial_nos(se.get("items")[0].serial_no)[0]
@@ -662,7 +665,7 @@ class TestStockEntry(unittest.TestCase):
 		"""
 		from erpnext.stock.doctype.batch.batch import get_batch_qty
 
-		item = frappe.db.exists("Item", {'item_name': 'Batched and Serialised Item'})
+		item = frappe.db.exists("Item", {"item_name": "Batched and Serialised Item"})
 		if not item:
 			item = create_item("Batched and Serialised Item")
 			item.has_batch_no = 1
@@ -672,7 +675,7 @@ class TestStockEntry(unittest.TestCase):
 			item.serial_no_series = "S-.####"
 			item.save()
 		else:
-			item = frappe.get_doc("Item", {'item_name': 'Batched and Serialised Item'})
+			item = frappe.get_doc("Item", {"item_name": "Batched and Serialised Item"})
 
 		se = make_stock_entry(item_code=item.item_code, target="_Test Warehouse - _TC", qty=1, basic_rate=100)
 		batch_no = se.items[0].batch_no
@@ -702,7 +705,7 @@ class TestStockEntry(unittest.TestCase):
 		"""
 		from erpnext.stock.doctype.batch.batch import get_batch_qty
 
-		item = frappe.db.exists("Item", {'item_name': 'Batched and Serialised Item'})
+		item = frappe.db.exists("Item", {"item_name": "Batched and Serialised Item"})
 		if not item:
 			item = create_item("Batched and Serialised Item")
 			item.has_batch_no = 1
@@ -712,7 +715,7 @@ class TestStockEntry(unittest.TestCase):
 			item.serial_no_series = "S-.####"
 			item.save()
 		else:
-			item = frappe.get_doc("Item", {'item_name': 'Batched and Serialised Item'})
+			item = frappe.get_doc("Item", {"item_name": "Batched and Serialised Item"})
 
 		se1 = make_stock_entry(item_code=item.item_code, target="_Test Warehouse - _TC", qty=1, basic_rate=100)
 		batch_no = se1.items[0].batch_no
@@ -748,7 +751,7 @@ class TestStockEntry(unittest.TestCase):
 		self.assertEqual(frappe.db.get_value("Serial No", serial_no2, "status"), "Inactive")
 
 	def test_warehouse_company_validation(self):
-		company = frappe.db.get_value('Warehouse', '_Test Warehouse 2 - _TC1', 'company')
+		company = frappe.db.get_value("Warehouse", "_Test Warehouse 2 - _TC1", "company")
 		set_perpetual_inventory(0, company)
 		frappe.get_doc("User", "test2@example.com")\
 			.add_roles("Sales User", "Sales Manager", "Stock User", "Stock Manager")
@@ -756,7 +759,7 @@ class TestStockEntry(unittest.TestCase):
 
 		from erpnext.stock.utils import InvalidWarehouseCompany
 		st1 = frappe.copy_doc(test_records[0])
-		st1.get("items")[0].t_warehouse="_Test Warehouse 2 - _TC1"
+		st1.get("items")[0].t_warehouse = "_Test Warehouse 2 - _TC1"
 		st1.set_stock_entry_type()
 		st1.insert()
 		self.assertRaises(InvalidWarehouseCompany, st1.submit)
@@ -777,7 +780,7 @@ class TestStockEntry(unittest.TestCase):
 		st1.company = "_Test Company 1"
 		set_perpetual_inventory(0, st1.company)
 		frappe.set_user("test@example.com")
-		st1.get("items")[0].t_warehouse="_Test Warehouse 2 - _TC1"
+		st1.get("items")[0].t_warehouse = "_Test Warehouse 2 - _TC1"
 		self.assertRaises(frappe.PermissionError, st1.insert)
 
 		test_user.add_roles("System Manager")
@@ -785,7 +788,7 @@ class TestStockEntry(unittest.TestCase):
 		frappe.set_user("test2@example.com")
 		st1 = frappe.copy_doc(test_records[0])
 		st1.company = "_Test Company 1"
-		st1.get("items")[0].t_warehouse="_Test Warehouse 2 - _TC1"
+		st1.get("items")[0].t_warehouse = "_Test Warehouse 2 - _TC1"
 		st1.get("items")[0].expense_account = "Stock Adjustment - _TC1"
 		st1.get("items")[0].cost_center = "Main - _TC1"
 		st1.set_stock_entry_type()
@@ -798,14 +801,14 @@ class TestStockEntry(unittest.TestCase):
 		remove_user_permission("Company", "_Test Company 1", "test2@example.com")
 
 	def test_freeze_stocks(self):
-		frappe.db.set_single_value('Stock Settings','stock_auth_role', '')
+		frappe.db.set_single_value("Stock Settings", "stock_auth_role", "")
 
 		# test freeze_stocks_upto
 		frappe.db.set_single_value("Stock Settings", "stock_frozen_upto", add_days(nowdate(), 5))
 		se = frappe.copy_doc(test_records[0]).insert()
 		self.assertRaises(StockFreezeError, se.submit)
 
-		frappe.db.set_single_value("Stock Settings", "stock_frozen_upto", '')
+		frappe.db.set_single_value("Stock Settings", "stock_frozen_upto", "")
 
 		# test freeze_stocks_upto_days
 		frappe.db.set_single_value("Stock Settings", "stock_frozen_upto_days", 7)
@@ -818,8 +821,7 @@ class TestStockEntry(unittest.TestCase):
 		frappe.db.set_single_value("Stock Settings", "stock_frozen_upto_days", 0)
 
 	def test_work_order(self):
-		from erpnext.manufacturing.doctype.work_order.work_order \
-			import make_stock_entry as _make_stock_entry
+		from erpnext.manufacturing.doctype.work_order.work_order import make_stock_entry as _make_stock_entry
 		bom_no, bom_operation_cost = frappe.db.get_value("BOM", {"item": "_Test FG Item 2",
 			"is_default": 1, "docstatus": 1}, ["name", "operating_cost"])
 
@@ -832,7 +834,7 @@ class TestStockEntry(unittest.TestCase):
 			"qty": 1.0,
 			"stock_uom": "_Test UOM",
 			"wip_warehouse": "_Test Warehouse - _TC",
-			"additional_operating_cost": 1000
+			"additional_operating_cost": 1000,
 		})
 		work_order.insert()
 		work_order.submit()
@@ -846,10 +848,9 @@ class TestStockEntry(unittest.TestCase):
 		for d in stock_entry.get("items"):
 			if d.item_code != "_Test FG Item 2":
 				rm_cost += flt(d.amount)
-		fg_cost = list(filter(lambda x: x.item_code=="_Test FG Item 2", stock_entry.get("items")))[0].amount
+		fg_cost = list(filter(lambda x: x.item_code == "_Test FG Item 2", stock_entry.get("items")))[0].amount
 		self.assertEqual(fg_cost,
 			flt(rm_cost + bom_operation_cost + work_order.additional_operating_cost, 2))
-
 
 	def test_variant_work_order(self):
 		bom_no = frappe.db.get_value("BOM", {"item": "_Test Variant Item",
@@ -864,7 +865,7 @@ class TestStockEntry(unittest.TestCase):
 			"qty": 1.0,
 			"stock_uom": "_Test UOM",
 			"wip_warehouse": "_Test Warehouse - _TC",
-			"skip_transfer": 1
+			"skip_transfer": 1,
 		})
 		work_order.insert()
 		work_order.submit()
@@ -890,21 +891,21 @@ class TestStockEntry(unittest.TestCase):
 			"expense_account": "Stock Adjustment - _TC",
 			"conversion_factor": 1.0,
 			"cost_center": "_Test Cost Center - _TC",
-			"serial_no": serial_nos
+			"serial_no": serial_nos,
 		})
 
 		s2.submit()
 		s2.cancel()
 
 	def test_retain_sample(self):
-		from erpnext.stock.doctype.warehouse.test_warehouse import create_warehouse
 		from erpnext.stock.doctype.batch.batch import get_batch_qty
+		from erpnext.stock.doctype.warehouse.test_warehouse import create_warehouse
 
 		create_warehouse("Test Warehouse for Sample Retention")
 		frappe.db.set_single_value("Stock Settings", "sample_retention_warehouse", "Test Warehouse for Sample Retention - _TC")
 
 		test_item_code = "Retain Sample Item"
-		if not frappe.db.exists('Item', test_item_code):
+		if not frappe.db.exists("Item", test_item_code):
 			item = frappe.new_doc("Item")
 			item.item_code = test_item_code
 			item.item_name = "Retain Sample Item"
@@ -926,7 +927,7 @@ class TestStockEntry(unittest.TestCase):
 			"qty": 40,
 			"basic_rate": 12,
 			"cost_center": "_Test Cost Center - _TC",
-			"sample_quantity": 4
+			"sample_quantity": 4,
 		})
 		receipt_entry.set_stock_entry_type()
 		receipt_entry.insert()
@@ -943,7 +944,7 @@ class TestStockEntry(unittest.TestCase):
 			"qty": 4,
 			"basic_rate": 12,
 			"cost_center": "_Test Cost Center - _TC",
-			"batch_no": receipt_entry.get("items")[0].batch_no
+			"batch_no": receipt_entry.get("items")[0].batch_no,
 		})
 		retention_entry.set_stock_entry_type()
 		retention_entry.insert()
@@ -957,7 +958,7 @@ class TestStockEntry(unittest.TestCase):
 
 	def test_quality_check(self):
 		item_code = "_Test Item For QC"
-		if not frappe.db.exists('Item', item_code):
+		if not frappe.db.exists("Item", item_code):
 			create_item(item_code)
 
 		repack = frappe.copy_doc(test_records[3])
@@ -974,8 +975,7 @@ class TestStockEntry(unittest.TestCase):
 		self.assertRaises(frappe.ValidationError, repack.submit)
 
 	def test_material_consumption(self):
-		from erpnext.manufacturing.doctype.work_order.work_order \
-			import make_stock_entry as _make_stock_entry
+		from erpnext.manufacturing.doctype.work_order.work_order import make_stock_entry as _make_stock_entry
 		bom_no = frappe.db.get_value("BOM", {"item": "_Test FG Item 2",
 			"is_default": 1, "docstatus": 1})
 
@@ -988,7 +988,7 @@ class TestStockEntry(unittest.TestCase):
 			"qty": 4.0,
 			"stock_uom": "_Test UOM",
 			"wip_warehouse": "_Test Warehouse - _TC",
-			"additional_operating_cost": 1000
+			"additional_operating_cost": 1000,
 		})
 		work_order.insert()
 		work_order.submit()
@@ -997,18 +997,18 @@ class TestStockEntry(unittest.TestCase):
 		make_stock_entry(item_code="_Test Item 2", target="_Test Warehouse - _TC", qty=50, basic_rate=20)
 
 		item_quantity = {
-			'_Test Item': 10.0,
-			'_Test Item 2': 12.0,
-			'_Test Serialized Item With Series': 6.0
+			"_Test Item": 10.0,
+			"_Test Item 2": 12.0,
+			"_Test Serialized Item With Series": 6.0,
 		}
 
 		stock_entry = frappe.get_doc(_make_stock_entry(work_order.name, "Material Consumption for Manufacture", 2))
-		for d in stock_entry.get('items'):
+		for d in stock_entry.get("items"):
 			self.assertEqual(item_quantity.get(d.item_code), d.qty)
 
 	def test_customer_provided_parts_se(self):
-		create_item('CUST-0987', is_customer_provided_item = 1, customer = '_Test Customer', is_purchase_item = 0)
-		se = make_stock_entry(item_code='CUST-0987', purpose = 'Material Receipt', qty=4, to_warehouse = "_Test Warehouse - _TC")
+		create_item("CUST-0987", is_customer_provided_item=1, customer="_Test Customer", is_purchase_item=0)
+		se = make_stock_entry(item_code="CUST-0987", purpose="Material Receipt", qty=4, to_warehouse="_Test Warehouse - _TC")
 		self.assertEqual(se.get("items")[0].allow_zero_valuation_rate, 1)
 		self.assertEqual(se.get("items")[0].amount, 0)
 
@@ -1016,7 +1016,7 @@ class TestStockEntry(unittest.TestCase):
 		from erpnext.stock.doctype.warehouse.test_warehouse import create_warehouse
 		warehouse = "_Test Warehouse FG 1 - _TC"
 
-		if not frappe.db.exists('Warehouse', warehouse):
+		if not frappe.db.exists("Warehouse", warehouse):
 			create_warehouse("_Test Warehouse FG 1")
 
 		outward_entry = make_stock_entry(item_code="_Test Item",
@@ -1029,7 +1029,7 @@ class TestStockEntry(unittest.TestCase):
 		inward_entry1.items[0].qty = 25
 		inward_entry1.submit()
 
-		doc = frappe.get_doc('Stock Entry', outward_entry.name)
+		doc = frappe.get_doc("Stock Entry", outward_entry.name)
 		self.assertEqual(doc.per_transferred, 50)
 
 		inward_entry2 = make_stock_in_entry(outward_entry.name)
@@ -1037,11 +1037,11 @@ class TestStockEntry(unittest.TestCase):
 		inward_entry2.items[0].qty = 25
 		inward_entry2.submit()
 
-		doc = frappe.get_doc('Stock Entry', outward_entry.name)
+		doc = frappe.get_doc("Stock Entry", outward_entry.name)
 		self.assertEqual(doc.per_transferred, 100)
 
 	def test_gle_for_opening_stock_entry(self):
-		mr = make_stock_entry(item_code="_Test Item", target="Stores - TCP1", company="_Test Company with perpetual inventory",qty=50, basic_rate=100, expense_account="Stock Adjustment - TCP1", is_opening="Yes", do_not_save=True)
+		mr = make_stock_entry(item_code="_Test Item", target="Stores - TCP1", company="_Test Company with perpetual inventory", qty=50, basic_rate=100, expense_account="Stock Adjustment - TCP1", is_opening="Yes", do_not_save=True)
 
 		self.assertRaises(OpeningEntryAccountError, mr.save)
 
@@ -1055,38 +1055,38 @@ class TestStockEntry(unittest.TestCase):
 		self.assertEqual(is_opening, "Yes")
 
 	def test_total_basic_amount_zero(self):
-		se = frappe.get_doc({"doctype":"Stock Entry",
-		"purpose":"Material Receipt",
-		"stock_entry_type":"Material Receipt",
+		se = frappe.get_doc({"doctype": "Stock Entry",
+		"purpose": "Material Receipt",
+		"stock_entry_type": "Material Receipt",
 		"posting_date": nowdate(),
-		"company":"_Test Company with perpetual inventory",
-		"items":[
+		"company": "_Test Company with perpetual inventory",
+		"items": [
 			{
-				"item_code":"Basil Leaves",
-				"description":"Basil Leaves",
+				"item_code": "Basil Leaves",
+				"description": "Basil Leaves",
 				"qty": 1,
 				"basic_rate": 0,
-				"uom":"Nos",
+				"uom": "Nos",
 				"t_warehouse": "Stores - TCP1",
 				"allow_zero_valuation_rate": 1,
-				"cost_center": "Main - TCP1"
+				"cost_center": "Main - TCP1",
 			 },
 			 {
-				"item_code":"Basil Leaves",
-				"description":"Basil Leaves",
+				"item_code": "Basil Leaves",
+				"description": "Basil Leaves",
 				"qty": 2,
 				"basic_rate": 0,
-				"uom":"Nos",
+				"uom": "Nos",
 				"t_warehouse": "Stores - TCP1",
 				"allow_zero_valuation_rate": 1,
-				"cost_center": "Main - TCP1"
+				"cost_center": "Main - TCP1",
 			 },
 			 ],
-		"additional_costs":[
-			{"expense_account":"Miscellaneous Expenses - TCP1",
-			"amount":100,
-			"description": "miscellanous"}
-			]
+		"additional_costs": [
+			{"expense_account": "Miscellaneous Expenses - TCP1",
+			"amount": 100,
+			"description": "miscellanous"},
+			],
 		})
 		se.insert()
 		se.submit()
@@ -1094,9 +1094,10 @@ class TestStockEntry(unittest.TestCase):
 		self.check_gl_entries("Stock Entry", se.name,
 			sorted([
 				["Stock Adjustment - TCP1", 100.0, 0.0],
-				["Miscellaneous Expenses - TCP1", 0.0, 100.0]
-			])
+				["Miscellaneous Expenses - TCP1", 0.0, 100.0],
+			]),
 		)
+
 
 def make_serialized_item(item_code=None, serial_no=None, target_warehouse=None):
 	se = frappe.copy_doc(test_records[0])
@@ -1113,15 +1114,17 @@ def make_serialized_item(item_code=None, serial_no=None, target_warehouse=None):
 	se.submit()
 	return se
 
+
 def get_qty_after_transaction(**args):
 	args = frappe._dict(args)
 	last_sle = get_previous_sle({
 		"item_code": args.item_code or "_Test Item",
 		"warehouse": args.warehouse or "_Test Warehouse - _TC",
 		"posting_date": args.posting_date or nowdate(),
-		"posting_time": args.posting_time or nowtime()
+		"posting_time": args.posting_time or nowtime(),
 	})
 	return flt(last_sle.get("qty_after_transaction"))
+
 
 def get_multiple_items():
 	return [
@@ -1136,7 +1139,7 @@ def get_multiple_items():
 				"s_warehouse": "Stores - TCP1",
 				"stock_uom": "_Test UOM",
 				"stock_qty": 50.0,
-				"uom": "_Test UOM"
+				"uom": "_Test UOM",
 			},
 			{
 				"conversion_factor": 1.0,
@@ -1149,8 +1152,9 @@ def get_multiple_items():
 				"stock_uom": "_Test UOM",
 				"t_warehouse": "Stores - TCP1",
 				"stock_qty": 1,
-				"uom": "_Test UOM"
-			}
+				"uom": "_Test UOM",
+			},
 		]
 
-test_records = frappe.get_test_records('Stock Entry')
+
+test_records = frappe.get_test_records("Stock Entry")

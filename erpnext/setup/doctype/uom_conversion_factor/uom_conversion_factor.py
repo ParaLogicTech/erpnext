@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+from collections import defaultdict
+
 import frappe
 from frappe import _
-from frappe.utils import flt, cstr
 from frappe.model.document import Document
-from collections import defaultdict
+from frappe.utils import cstr, flt
 
 
 class UOMConversionFactor(Document):
@@ -20,8 +20,8 @@ class UOMConversionFactor(Document):
 class UOMConversionGraph:
 	def __init__(self, copy_from=None):
 		if copy_from:
-			self.graph = copy_from['graph']
-			self.uoms = copy_from['uoms']
+			self.graph = copy_from["graph"]
+			self.uoms = copy_from["uoms"]
 		else:
 			self.graph = defaultdict(list)
 			self.uoms = []
@@ -32,7 +32,7 @@ class UOMConversionGraph:
 			frappe.throw(_("{0} -> {1}: Conversion Factor cannot be 0").format(from_uom, to_uom))
 
 		self._add_edge(from_uom, to_uom, conversion_factor)
-		self._add_edge(to_uom, from_uom, 1/conversion_factor)
+		self._add_edge(to_uom, from_uom, 1 / conversion_factor)
 
 		if from_uom not in self.uoms:
 			self.uoms.append(from_uom)
@@ -71,7 +71,7 @@ class UOMConversionGraph:
 		return conversion_factor
 
 	def validate_multiple_conversions(self, from_uom, to_uom, weights, paths, for_uoms=None, raise_exception=False):
-		precision = frappe.get_precision('UOM Conversion Factor', 'value')
+		precision = frappe.get_precision("UOM Conversion Factor", "value")
 
 		if isinstance(for_uoms, str):
 			for_uoms = [for_uoms]
@@ -88,7 +88,7 @@ class UOMConversionGraph:
 			warn = False if isinstance(for_uoms, list) else True
 
 			path_list = []
-			for cf, path in zip(all_conversion_factors, all_paths):
+			for cf, path in zip(all_conversion_factors, all_paths, strict=False):
 				if not warn and isinstance(for_uoms, list):
 					for for_uom in for_uoms:
 						if for_uom in path:
@@ -138,15 +138,15 @@ def get_conversion_map():
 	def generator():
 		return make_conversion_map()
 
-	return frappe.cache.get_value('uom_conversion_factor_map', generator)
+	return frappe.cache.get_value("uom_conversion_factor_map", generator)
 
 
 def clear_conversion_factor_cache():
-	frappe.cache.delete_value('uom_conversion_factor_map')
+	frappe.cache.delete_value("uom_conversion_factor_map")
 
 
 def make_conversion_map(validate_not_convertible=False, validate_multiple_conversion=False, raise_exception=False):
-	precision = frappe.get_precision('UOM Conversion Factor', 'value')
+	precision = frappe.get_precision("UOM Conversion Factor", "value")
 	conversion_map = {}
 
 	graph = make_conversion_graph()
@@ -177,7 +177,7 @@ def make_conversion_map(validate_not_convertible=False, validate_multiple_conver
 
 
 def make_conversion_graph():
-	conversions = frappe.get_all("UOM Conversion Factor", fields=['from_uom', 'to_uom', 'value'])
+	conversions = frappe.get_all("UOM Conversion Factor", fields=["from_uom", "to_uom", "value"])
 
 	graph = UOMConversionGraph()
 	for c in conversions:
@@ -198,6 +198,6 @@ def get_uom_conv_factor(from_uom, to_uom):
 	if not conversion_factor:
 		conversion_factor = flt(conversion_map.get(to_uom, {}).get(from_uom))
 		if conversion_factor:
-			conversion_factor = 1/conversion_factor
+			conversion_factor = 1 / conversion_factor
 
 	return flt(conversion_factor, 9)

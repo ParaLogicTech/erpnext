@@ -17,5 +17,5 @@ frappe.ui.form.on(cur_frm.doctype, {
 		else {
 			frm.set_value("applicant_name", null);
 		}
-	}
+	},
 });

@@ -4,19 +4,21 @@
 # ERPNext - web based ERP (http://erpnext.com)
 # For license information, please see license.txt
 
-import frappe, unittest
+import unittest
 
-from erpnext.stock.doctype.stock_entry.test_stock_entry import make_serialized_item
-from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import make_purchase_receipt
+import frappe
+
 from erpnext.stock.doctype.delivery_note.test_delivery_note import create_delivery_note
+from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import make_purchase_receipt, set_perpetual_inventory
 from erpnext.stock.doctype.serial_no.serial_no import get_serial_nos
+from erpnext.stock.doctype.stock_entry.test_stock_entry import make_serialized_item
 from erpnext.stock.doctype.warehouse.test_warehouse import create_warehouse
-from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import set_perpetual_inventory
 
 test_dependencies = ["Item"]
-test_records = frappe.get_test_records('Serial No')
+test_records = frappe.get_test_records("Serial No")
 
 from erpnext.stock.doctype.serial_no.serial_no import *
+
 
 class TestSerialNo(unittest.TestCase):
 	def test_cannot_create_direct(self):

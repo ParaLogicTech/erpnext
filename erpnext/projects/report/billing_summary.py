@@ -4,7 +4,8 @@
 
 import frappe
 from frappe import _
-from frappe.utils import time_diff_in_hours, flt
+from frappe.utils import flt, time_diff_in_hours
+
 
 def get_columns():
 	return [
@@ -13,45 +14,46 @@ def get_columns():
 			"fieldtype": "Link",
 			"fieldname": "employee",
 			"options": "Employee",
-			"width": 300
+			"width": 300,
 		},
 		{
 			"label": _("Employee Name"),
 			"fieldtype": "data",
 			"fieldname": "employee_name",
 			"hidden": 1,
-			"width": 200
+			"width": 200,
 		},
 		{
 			"label": _("Timesheet"),
 			"fieldtype": "Link",
 			"fieldname": "timesheet",
 			"options": "Timesheet",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Working Hours"),
 			"fieldtype": "Float",
 			"fieldname": "total_hours",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Billable Hours"),
 			"fieldtype": "Float",
 			"fieldname": "total_billable_hours",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Billing Amount"),
 			"fieldtype": "Currency",
 			"fieldname": "amount",
-			"width": 150
-		}
+			"width": 150,
+		},
 	]
+
 
 def get_data(filters):
 	data = []
-	if(filters.from_date > filters.to_date):
+	if (filters.from_date > filters.to_date):
 		frappe.msgprint(_(" From Date can not be greater than To Date"))
 		return data
 
@@ -92,16 +94,17 @@ def get_data(filters):
 				"timesheet": ts,
 				"total_billable_hours": total_billing_hours,
 				"total_hours": total_hours,
-				"amount": total_amount
+				"amount": total_amount,
 			})
 
 	return data
+
 
 def get_timesheets(filters):
 	record_filters = [
 			["start_date", "<=", filters.to_date],
 			["end_date", ">=", filters.from_date],
-			["docstatus", "=", 1]
+			["docstatus", "=", 1],
 		]
 
 	if "employee" in filters:
@@ -114,9 +117,10 @@ def get_timesheets(filters):
 
 	return timesheet_map
 
+
 def get_timesheet_details(filters, timesheet_list):
 	timesheet_details_filter = {
-		"parent": ["in", timesheet_list]
+		"parent": ["in", timesheet_list],
 	}
 
 	if "project" in filters:
@@ -124,8 +128,8 @@ def get_timesheet_details(filters, timesheet_list):
 
 	timesheet_details = frappe.get_all(
 		"Timesheet Detail",
-		filters = timesheet_details_filter,
-		fields=["from_time", "to_time", "hours", "billable", "billing_hours", "billing_rate", "parent"]
+		filters=timesheet_details_filter,
+		fields=["from_time", "to_time", "hours", "billable", "billing_hours", "billing_rate", "parent"],
 	)
 
 	timesheet_details_map = frappe._dict()
@@ -133,6 +137,7 @@ def get_timesheet_details(filters, timesheet_list):
 		timesheet_details_map.setdefault(d.parent, []).append(d)
 
 	return timesheet_details_map
+
 
 def get_billable_and_total_duration(activity, start_time, end_time):
 	activity_duration = time_diff_in_hours(end_time, start_time)

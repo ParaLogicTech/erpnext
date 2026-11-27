@@ -6,7 +6,7 @@ frappe.provide("erpnext.projects");
 erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 	setup() {
 		frappe.require("/assets/erpnext/js/projects/timer.js");
-		this.frm.ignore_doctypes_on_cancel_all = ['Sales Invoice'];
+		this.frm.ignore_doctypes_on_cancel_all = ["Sales Invoice"];
 		this.setup_queries();
 	}
 
@@ -29,33 +29,33 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 		me.frm.set_query("employee", function() {
 			return {
 				filters: {
-					status: 'Active',
-				}
-			}
+					status: "Active",
+				},
+			};
 		});
 
 		me.frm.set_query("task", "time_logs", function(frm, cdt, cdn) {
 			let row = frappe.get_doc(cdt, cdn);
 
-			let filters = {status: ['!=', 'Cancelled']}
+			let filters = {status: ["!=", "Cancelled"]};
 			if (row.project) {
 				filters.project = row.project;
 			}
 
 			return {
-				filters: filters
-			}
+				filters: filters,
+			};
 		});
 
 		me.frm.set_query("project", "time_logs", function() {
-			let filters = {company: me.frm.doc.company}
+			let filters = {company: me.frm.doc.company};
 			if (me.frm.doc.customer) {
 				filters.customer = me.frm.doc.customer;
 			}
 
 			return {
-				filters: filters
-			}
+				filters: filters,
+			};
 		});
 	}
 
@@ -63,14 +63,14 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 		let me = this;
 		if (me.frm.doc.docstatus == 1) {
 			if (me.frm.doc.total_billable_hours && me.frm.doc.total_billable_hours > me.frm.doc.total_billed_hours) {
-				me.frm.add_custom_button(__('Create Sales Invoice'), () => me.make_invoice());
+				me.frm.add_custom_button(__("Create Sales Invoice"), () => me.make_invoice());
 			}
 		}
 
 		if (!me.frm.is_new() && me.frm.doc.docstatus == 0) {
 			let button = (me.frm.doc.time_logs || []).some(
-				d => d.from_time <= frappe.datetime.now_datetime() && !d.completed
-			) ? 'Resume Timer' : 'Start Timer';
+				d => d.from_time <= frappe.datetime.now_datetime() && !d.completed,
+			) ? "Resume Timer" : "Start Timer";
 
 			me.frm.add_custom_button(__(button), () => me.setup_timer()).addClass("btn-primary");
 		}
@@ -81,7 +81,7 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 		let flag = true;
 		$.each(me.frm.doc.time_logs || [], function(i, row) {
 			// Fetch the row for which from_time is not present
-			if (flag && row.activity_type && !row.from_time){
+			if (flag && row.activity_type && !row.from_time) {
 				erpnext.timesheet.timer(me.frm, row);
 				row.from_time = frappe.datetime.now_datetime();
 				me.frm.refresh_fields("time_logs");
@@ -90,7 +90,7 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 			}
 			// Fetch the row for timer where activity is not completed and from_time is before now_time
 			if (flag && row.from_time <= frappe.datetime.now_datetime() && !row.completed) {
-				let timestamp = moment(frappe.datetime.now_datetime()).diff(moment(row.from_time),"seconds");
+				let timestamp = moment(frappe.datetime.now_datetime()).diff(moment(row.from_time), "seconds");
 				erpnext.timesheet.timer(me.frm, row, timestamp);
 				flag = false;
 			}
@@ -121,15 +121,15 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 			method: "erpnext.projects.doctype.timesheet.timesheet.get_activity_cost",
 			args: {
 				employee: me.frm.doc.employee,
-				activity_type: row.activity_type
+				activity_type: row.activity_type,
 			},
-			callback: function(r){
-				if(r.message){
-					frappe.model.set_value(cdt, cdn, 'billing_rate', r.message['billing_rate']);
-					frappe.model.set_value(cdt, cdn, 'costing_rate', r.message['costing_rate']);
+			callback: function(r) {
+				if (r.message) {
+					frappe.model.set_value(cdt, cdn, "billing_rate", r.message["billing_rate"]);
+					frappe.model.set_value(cdt, cdn, "costing_rate", r.message["costing_rate"]);
 					me.calculate_totals();
 				}
-			}
+			},
 		});
 	}
 
@@ -196,7 +196,7 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 				d.billing_hours = 0.0;
 				d.billing_rate = 0.0;
 			}
-		})
+		});
 		this.frm.debounced_refresh_fields();
 	}
 
@@ -204,12 +204,12 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 		let me = this;
 		let row = frappe.get_doc(cdt, cdn);
 
-		if(!row.from_time) {
+		if (!row.from_time) {
 			frappe.model.set_value(cdt, cdn, "from_time", frappe.datetime.get_datetime_as_string());
 		}
 
 		let d = moment(row.from_time);
-		if(row.hours) {
+		if (row.hours) {
 			d.add(row.hours, "hours");
 			me.frm._setting_hours = true;
 			frappe.model.set_value(cdt, cdn, "to_time", d.format(frappe.defaultDatetimeFormat)).then(() => {
@@ -226,7 +226,7 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 			"fieldtype": "Link",
 			"label": __("Item Code"),
 			"fieldname": "item_code",
-			"options": "Item"
+			"options": "Item",
 		}];
 
 		if (!me.frm.doc.customer) {
@@ -234,7 +234,7 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 				"fieldtype": "Link",
 				"label": __("Customer"),
 				"fieldname": "customer",
-				"options": "Customer"
+				"options": "Customer",
 			});
 		}
 
@@ -248,18 +248,18 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 					args: {
 						"source_name": me.frm.doc.name,
 						"item_code": data.item_code,
-						"customer": data.customer || me.frm.doc.customer
+						"customer": data.customer || me.frm.doc.customer,
 					},
 					freeze: true,
 					callback: function(r) {
-						if(!r.exc) {
+						if (!r.exc) {
 							frappe.model.sync(r.message);
 							frappe.set_route("Form", r.message.doctype, r.message.name);
 						}
-					}
+					},
 				});
 				dialog.hide();
-			}
+			},
 		});
 		dialog.show();
 	}
@@ -267,9 +267,9 @@ erpnext.projects.Timesheet = class Timesheet extends frappe.ui.form.Controller {
 	make_salary_slip() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.projects.doctype.timesheet.timesheet.make_salary_slip",
-			frm: this.frm
+			frm: this.frm,
 		});
 	}
-}
+};
 
 extend_cscript(cur_frm.cscript, new erpnext.projects.Timesheet({frm: cur_frm}));

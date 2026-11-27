@@ -1,5 +1,6 @@
 import frappe
 
+
 def execute():
 	frappe.reload_doc("accounts", "doctype", "transaction_type")
 	frappe.reload_doc("accounts", "doctype", "transaction_type_document_type")
@@ -18,13 +19,13 @@ def execute():
 		if cost_center_company:
 			doc = frappe.get_doc("Transaction Type", d.name)
 
-			existing = doc.get('accounts', filters={'company': cost_center_company})
+			existing = doc.get("accounts", filters={"company": cost_center_company})
 			if existing:
 				existing[0].cost_center = d.default_cost_center
 			else:
-				doc.append('accounts', {
-					'company': cost_center_company,
-					'cost_center': d.default_cost_center
+				doc.append("accounts", {
+					"company": cost_center_company,
+					"cost_center": d.default_cost_center,
 				})
 
 			doc.save()

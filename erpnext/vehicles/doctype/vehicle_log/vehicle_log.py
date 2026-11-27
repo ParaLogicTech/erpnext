@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2024, ParaLogic and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import cint, getdate, formatdate
 from frappe.model.document import Document
+from frappe.utils import cint, formatdate, getdate
 
 
 class VehicleLog(Document):
@@ -43,14 +42,14 @@ class VehicleLog(Document):
 		# if current odometer reading is less than previous odometer, allow if previous odometer is on same date
 		if cint(self.odometer) < cint(self.last_odometer):
 			if previous_odometer_log and previous_odometer_log.date == getdate(self.date):
-				previous_odometer_log = get_last_odometer_log(self.vehicle, self.date, date_operator='<')
+				previous_odometer_log = get_last_odometer_log(self.vehicle, self.date, date_operator="<")
 				self.last_odometer = cint(previous_odometer_log.odometer) if previous_odometer_log else 0
 
 		if cint(self.odometer) < cint(self.last_odometer):
 			frappe.throw(_("Current Odometer Reading {0} km on {1} cannot be less than Previous Odometer Reading {2} km{3}")
-				.format(frappe.bold(self.get_formatted('odometer')),
+				.format(frappe.bold(self.get_formatted("odometer")),
 				formatdate(self.date),
-				frappe.bold(self.get_formatted('last_odometer')),
+				frappe.bold(self.get_formatted("last_odometer")),
 				" on {0}".format(formatdate(previous_odometer_log.date)) if previous_odometer_log else ""))
 
 	def validate_reference(self):
@@ -59,7 +58,7 @@ class VehicleLog(Document):
 			self.reference_name = None
 
 		if not self.reference_name and self.project:
-			self.reference_type = 'Project'
+			self.reference_type = "Project"
 			self.reference_name = self.project
 
 		if not self.customer:
@@ -154,30 +153,30 @@ def get_project_odometer(project, vehicle):
 		last_odometer = 0
 
 	return frappe._dict({
-		'vehicle_first_odometer': first_odometer,
-		'vehicle_last_odometer': last_odometer,
+		"vehicle_first_odometer": first_odometer,
+		"vehicle_last_odometer": last_odometer,
 	})
 
 
-def get_last_odometer_log(vehicle, date=None, project=None, ascending=False, date_operator='<='):
+def get_last_odometer_log(vehicle, date=None, project=None, ascending=False, date_operator="<="):
 	if not vehicle:
 		frappe.throw(_("Vehicle not provided"))
 
 	filters = {
 		"vehicle": vehicle,
 		"docstatus": 1,
-		"odometer": ['>', 0]
+		"odometer": [">", 0],
 	}
 
 	if project:
-		filters['project'] = project
+		filters["project"] = project
 	if date:
-		filters['date'] = [date_operator, getdate(date)]
+		filters["date"] = [date_operator, getdate(date)]
 
 	asc_or_desc = "asc" if ascending else "desc"
 	order_by = "date {0}, odometer {0}".format(asc_or_desc)
 
-	odometer_log = frappe.get_all("Vehicle Log", filters=filters, fields=['odometer', 'date'], order_by=order_by,
+	odometer_log = frappe.get_all("Vehicle Log", filters=filters, fields=["odometer", "date"], order_by=order_by,
 		limit_page_length=1)
 	return odometer_log[0] if odometer_log else None
 
@@ -211,12 +210,12 @@ def get_last_customer_log(vehicle, purchase_date=None):
 		return None
 
 	# If the latest log unsets the customer, unset customer
-	if latest_log.get('unset_customer'):
+	if latest_log.get("unset_customer"):
 		latest_log.update({
-			'customer': None,
-			'customer_name': None,
-			'vehicle_owner': None,
-			'vehicle_owner_name': None,
+			"customer": None,
+			"customer_name": None,
+			"vehicle_owner": None,
+			"vehicle_owner_name": None,
 		})
 
 	return latest_log

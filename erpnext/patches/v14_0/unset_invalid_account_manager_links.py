@@ -8,9 +8,9 @@ def execute():
 	"""Unset any invalid account_manager links in Customer doctype that don't reference a valid Sales Person"""
 
 	# Get all customers that have an account_manager set
-	customers = frappe.get_all("Customer", 
+	customers = frappe.get_all("Customer",
 		filters={"account_manager": ["is", "set"]},
-		fields=["name", "account_manager"]
+		fields=["name", "account_manager"],
 	)
 
 	# Get all valid sales persons
@@ -23,5 +23,5 @@ def execute():
 
 			# Log the change
 			frappe.logger().warn(
-				f"Unset invalid account_manager '{customer.account_manager}' in Customer '{customer.name}'"
+				f"Unset invalid account_manager '{customer.account_manager}' in Customer '{customer.name}'",
 			)

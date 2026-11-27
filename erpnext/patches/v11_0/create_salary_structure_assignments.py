@@ -1,19 +1,22 @@
 # Copyright (c) 2017, Frappe and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
 from datetime import datetime
+
+import frappe
 from frappe.utils import getdate
+
 from erpnext.hr.doctype.salary_structure_assignment.salary_structure_assignment import DuplicateAssignment
 
+
 def execute():
-	frappe.reload_doc('hr', 'doctype', 'salary_structure')
+	frappe.reload_doc("hr", "doctype", "salary_structure")
 	frappe.reload_doc("hr", "doctype", "salary_structure_assignment")
 	frappe.db.sql("""
 		delete from `tabSalary Structure Assignment`
 		where salary_structure in (select name from `tabSalary Structure` where is_active='No' or docstatus!=1)
 	""")
-	if frappe.db.table_exists('Salary Structure Employee'):
+	if frappe.db.table_exists("Salary Structure Employee"):
 		ss_details = frappe.db.sql("""
 			select sse.employee, sse.employee_name, sse.from_date, sse.to_date,
 				sse.base, sse.variable, sse.parent as salary_structure, ss.company

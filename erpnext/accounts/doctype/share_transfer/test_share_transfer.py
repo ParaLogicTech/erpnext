@@ -1,12 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
+
 from erpnext.accounts.doctype.share_transfer.share_transfer import ShareDontExists
 
 test_dependencies = ["Share Type", "Shareholder"]
+
 
 class TestShareTransfer(unittest.TestCase):
 	def setUp(self):
@@ -25,7 +27,7 @@ class TestShareTransfer(unittest.TestCase):
 				"rate": 10,
 				"company": "_Test Company",
 				"asset_account": "Cash - _TC",
-				"equity_or_liability_account": "Creditors - _TC"
+				"equity_or_liability_account": "Creditors - _TC",
 			},
 			{
 				"doctype": "Share Transfer",
@@ -39,7 +41,7 @@ class TestShareTransfer(unittest.TestCase):
 				"no_of_shares": 100,
 				"rate": 15,
 				"company": "_Test Company",
-				"equity_or_liability_account": "Creditors - _TC"
+				"equity_or_liability_account": "Creditors - _TC",
 			},
 			{
 				"doctype": "Share Transfer",
@@ -53,7 +55,7 @@ class TestShareTransfer(unittest.TestCase):
 				"no_of_shares": 300,
 				"rate": 20,
 				"company": "_Test Company",
-				"equity_or_liability_account": "Creditors - _TC"
+				"equity_or_liability_account": "Creditors - _TC",
 			},
 			{
 				"doctype": "Share Transfer",
@@ -67,7 +69,7 @@ class TestShareTransfer(unittest.TestCase):
 				"no_of_shares": 200,
 				"rate": 15,
 				"company": "_Test Company",
-				"equity_or_liability_account": "Creditors - _TC"
+				"equity_or_liability_account": "Creditors - _TC",
 			},
 			{
 				"doctype": "Share Transfer",
@@ -81,8 +83,8 @@ class TestShareTransfer(unittest.TestCase):
 				"rate": 25,
 				"company": "_Test Company",
 				"asset_account": "Cash - _TC",
-				"equity_or_liability_account": "Creditors - _TC"
-			}
+				"equity_or_liability_account": "Creditors - _TC",
+			},
 		]
 		for d in share_transfers:
 			st = frappe.get_doc(d)
@@ -101,7 +103,7 @@ class TestShareTransfer(unittest.TestCase):
 			"no_of_shares": 100,
 			"rate": 15,
 			"company": "_Test Company",
-			"equity_or_liability_account": "Creditors - _TC"
+			"equity_or_liability_account": "Creditors - _TC",
 		})
 		self.assertRaises(ShareDontExists, doc.insert)
 
@@ -117,6 +119,6 @@ class TestShareTransfer(unittest.TestCase):
 			"rate": 15,
 			"company": "_Test Company",
 			"asset_account": "Cash - _TC",
-			"equity_or_liability_account": "Creditors - _TC"
+			"equity_or_liability_account": "Creditors - _TC",
 		})
 		self.assertRaises(ShareDontExists, doc.insert)

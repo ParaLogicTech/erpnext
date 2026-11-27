@@ -1,18 +1,22 @@
 import frappe
-import erpnext
 from frappe import _, scrub, unscrub
-from frappe.utils import flt, cint, cstr, getdate, get_first_day, get_year_start, add_years, get_year_ending
+from frappe.utils import add_years, cint, cstr, flt, get_first_day, get_year_ending, get_year_start, getdate
+
+import erpnext
 from erpnext import get_default_company
 from erpnext.accounts.doctype.account_group.account_group import get_account_group_doc, get_accounts_in_account_group
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_accounting_dimensions,
-	get_dimension_with_children, get_all_dimension_fields,
+	get_all_dimension_fields,
+	get_dimension_with_children,
 )
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.report.trial_balance.trial_balance import (
-	get_dimension_key as get_dimension_combination_key,
-	get_dimension_dict_from_key,
 	dimension_sorter,
+	get_dimension_dict_from_key,
+)
+from erpnext.accounts.report.trial_balance.trial_balance import (
+	get_dimension_key as get_dimension_combination_key,
 )
 
 
@@ -62,14 +66,14 @@ class SummarizedFinancialReport:
 				frappe.throw(_("Invalid Dimension Field {0}").format(f))
 
 	def get_data(self):
-		self.current_account_group = self.filters.get('account_group')
+		self.current_account_group = self.filters.get("account_group")
 		is_root = False
 		if not self.current_account_group:
 			is_root = True
 			self.current_account_group = self.get_root_account_group()
 			if not self.current_account_group:
 				frappe.throw(_("Please configure Root Level {0} Group or filter by Account Group").format(
-					self.get_report_type()
+					self.get_report_type(),
 				))
 
 		rows = self.get_account_group_rows(self.current_account_group)
@@ -77,7 +81,7 @@ class SummarizedFinancialReport:
 		if not is_root:
 			totals = {k: 0 for k in self.value_fieldnames}
 			for row in rows:
-				if row.get('row_type') in ['Account', 'Account Group'] and not row.get('is_child'):
+				if row.get("row_type") in ["Account", "Account Group"] and not row.get("is_child"):
 					for f in totals:
 						totals[f] += flt(row.get(f))
 
@@ -85,10 +89,10 @@ class SummarizedFinancialReport:
 				totals[f"{f}_display"] = totals[f]
 
 			rows.append(frappe._dict({
-				'row_type': 'Total',
-				'account_display': 'Total',
-				'is_bold': 1,
-				**totals
+				"row_type": "Total",
+				"account_display": "Total",
+				"is_bold": 1,
+				**totals,
 			}))
 
 		return rows
@@ -97,7 +101,7 @@ class SummarizedFinancialReport:
 		return frappe.db.get_value(
 			"Account Group",
 			{
-				"company": self.filters.get('company'),
+				"company": self.filters.get("company"),
 				"group_level": "Report Root",
 				"report_type": self.get_report_type(),
 			},
@@ -301,7 +305,7 @@ class SummarizedFinancialReport:
 		included_totals = []
 		included_categories = set()
 
-		for line in options.split('\n'):
+		for line in options.split("\n"):
 			group_code = line.strip()
 			if not group_code:
 				continue
@@ -324,7 +328,7 @@ class SummarizedFinancialReport:
 					included_categories.add(totals_obj["root_type"])
 			else:
 				frappe.msgprint(_("Invalid Section Total reference to {0} in Section {1}").format(
-					frappe.bold(group_code), frappe.bold(row.section_name)
+					frappe.bold(group_code), frappe.bold(row.section_name),
 				), indicator="orange")
 
 		section_totals = {key: 0 for key in self.value_fieldnames}
@@ -377,7 +381,7 @@ class SummarizedFinancialReport:
 					values[f] = frappe.safe_eval(d.expression, eval_globals, eval_locals=variable_context)
 				except Exception as e:
 					frappe.msgprint(_("Error evaluating variable {0}: {1}".format(
-						frappe.bold(d.variable_name), repr(e)
+						frappe.bold(d.variable_name), repr(e),
 					)), indicator="orange")
 
 			variable_values[d.variable_name] = values
@@ -433,7 +437,7 @@ class SummarizedFinancialReport:
 				formula_values[f] = frappe.safe_eval(row.options, eval_globals, eval_locals=formula_context)
 			except Exception as e:
 				frappe.msgprint(_("Error evaluating formula {0} on Row #{1}: {2}".format(
-					frappe.bold(row.section_name), row.idx, repr(e)
+					frappe.bold(row.section_name), row.idx, repr(e),
 				)), indicator="orange")
 
 		return formula_values
@@ -700,7 +704,7 @@ class SummarizedFinancialReport:
 			if group_by_dimensions:
 				account_dimension_group = account_dimension_totals.setdefault(gle.account, {})
 				dimension_group = account_dimension_group.setdefault(
-					get_dimension_combination_key(gle, group_by_dimensions), template.copy()
+					get_dimension_combination_key(gle, group_by_dimensions), template.copy(),
 				)
 				_accumulate(gle, dimension_group, fieldname)
 
@@ -874,7 +878,7 @@ class SummarizedFinancialReport:
 
 		for dimension in accounting_dimensions:
 			if self.filters.get(dimension.fieldname):
-				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
+				if frappe.get_cached_value("DocType", dimension.document_type, "is_tree"):
 					args[dimension.fieldname] = get_dimension_with_children(dimension.document_type, self.filters.get(dimension.fieldname))
 					dimension_conditions.append("{0} in %({0})s".format(dimension.fieldname))
 				else:

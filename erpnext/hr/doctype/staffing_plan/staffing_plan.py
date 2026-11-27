@@ -1,15 +1,20 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-from frappe.model.document import Document
 from frappe import _
-from frappe.utils import getdate, nowdate, cint, flt
+from frappe.model.document import Document
+from frappe.utils import cint, flt, getdate, nowdate
 from frappe.utils.nestedset import get_descendants_of
 
-class SubsidiaryCompanyError(frappe.ValidationError): pass
-class ParentCompanyError(frappe.ValidationError): pass
+
+class SubsidiaryCompanyError(frappe.ValidationError):
+	pass
+
+
+class ParentCompanyError(frappe.ValidationError):
+	pass
+
 
 class StaffingPlan(Document):
 	def validate(self):
@@ -32,11 +37,11 @@ class StaffingPlan(Document):
 		self.total_estimated_budget = 0
 
 		for detail in self.get("staffing_details"):
-			#Set readonly fields
+			# Set readonly fields
 			self.set_number_of_positions(detail)
 			designation_counts = get_designation_counts(detail.designation, self.company)
-			detail.current_count = designation_counts['employee_count']
-			detail.current_openings = designation_counts['job_openings']
+			detail.current_count = designation_counts["employee_count"]
+			detail.current_openings = designation_counts["job_openings"]
 
 			if detail.number_of_positions > 0:
 				if detail.vacancies > 0 and detail.estimated_cost_per_position:
@@ -55,18 +60,18 @@ class StaffingPlan(Document):
 			where spd.designation=%s and sp.docstatus=1
 			and sp.to_date >= %s and sp.from_date <= %s and sp.company = %s
 		""", (staffing_plan_detail.designation, self.from_date, self.to_date, self.company))
-		if overlap and overlap [0][0]:
+		if overlap and overlap[0][0]:
 			frappe.throw(_("Staffing Plan {0} already exist for designation {1}"
 				.format(overlap[0][0], staffing_plan_detail.designation)))
 
 	def validate_with_parent_plan(self, staffing_plan_detail):
-		if not frappe.get_cached_value('Company',  self.company,  "parent_company"):
-			return # No parent, nothing to validate
+		if not frappe.get_cached_value("Company", self.company, "parent_company"):
+			return  # No parent, nothing to validate
 
 		# Get staffing plan applicable for the company (Parent Company)
 		parent_plan_details = get_active_staffing_plan_details(self.company, staffing_plan_detail.designation, self.from_date, self.to_date)
 		if not parent_plan_details:
-			return #no staffing plan for any parent Company in hierarchy
+			return  # no staffing plan for any parent Company in hierarchy
 
 		# Fetch parent company which owns the staffing plan. NOTE: Parent could be higher up in the hierarchy
 		parent_company = frappe.db.get_value("Staffing Plan", parent_plan_details[0].name, "company")
@@ -81,19 +86,19 @@ class StaffingPlan(Document):
 					parent_plan_details[0].name,
 					parent_company)), ParentCompanyError)
 
-		#Get vacanices already planned for all companies down the hierarchy of Parent Company
-		lft, rgt = frappe.get_cached_value('Company',  parent_company,  ["lft", "rgt"])
+		# Get vacanices already planned for all companies down the hierarchy of Parent Company
+		lft, rgt = frappe.get_cached_value("Company", parent_company, ["lft", "rgt"])
 		all_sibling_details = frappe.db.sql("""select sum(spd.vacancies) as vacancies,
 			sum(spd.total_estimated_cost) as total_estimated_cost
 			from `tabStaffing Plan Detail` spd join `tabStaffing Plan` sp on spd.parent=sp.name
 			where spd.designation=%s and sp.docstatus=1
 			and sp.to_date >= %s and sp.from_date <=%s
 			and sp.company in (select name from tabCompany where lft > %s and rgt < %s)
-		""", (staffing_plan_detail.designation, self.from_date, self.to_date, lft, rgt), as_dict = 1)[0]
+		""", (staffing_plan_detail.designation, self.from_date, self.to_date, lft, rgt), as_dict=1)[0]
 
-		if (cint(parent_plan_details[0].vacancies) < \
+		if (cint(parent_plan_details[0].vacancies) <
 			(cint(staffing_plan_detail.vacancies) + cint(all_sibling_details.vacancies))) or \
-			(flt(parent_plan_details[0].total_estimated_cost) < \
+			(flt(parent_plan_details[0].total_estimated_cost) <
 			(flt(staffing_plan_detail.total_estimated_cost) + flt(all_sibling_details.total_estimated_cost))):
 			frappe.throw(_("{0} vacancies and {1} budget for {2} already planned for subsidiary companies of {3}. \
 				You can only plan for upto {4} vacancies and and budget {5} as per staffing plan {6} for parent company {3}."
@@ -106,17 +111,17 @@ class StaffingPlan(Document):
 					parent_plan_details[0].name)))
 
 	def validate_with_subsidiary_plans(self, staffing_plan_detail):
-		#Valdate this plan with all child company plan
+		# Valdate this plan with all child company plan
 		children_details = frappe.db.sql("""select sum(spd.vacancies) as vacancies,
 			sum(spd.total_estimated_cost) as total_estimated_cost
 			from `tabStaffing Plan Detail` spd join `tabStaffing Plan` sp on spd.parent=sp.name
 			where spd.designation=%s and sp.docstatus=1
 			and sp.to_date >= %s and sp.from_date <=%s
 			and sp.company in (select name from tabCompany where parent_company = %s)
-		""", (staffing_plan_detail.designation, self.from_date, self.to_date, self.company), as_dict = 1)[0]
+		""", (staffing_plan_detail.designation, self.from_date, self.to_date, self.company), as_dict=1)[0]
 
-		if children_details and \
-			cint(staffing_plan_detail.vacancies) < cint(children_details.vacancies) or \
+		if (children_details and
+			cint(staffing_plan_detail.vacancies) < cint(children_details.vacancies)) or \
 			flt(staffing_plan_detail.total_estimated_cost) < flt(children_details.total_estimated_cost):
 			frappe.throw(_("Subsidiary companies have already planned for {1} vacancies at a budget of {2}. \
 				Staffing Plan for {0} should allocate more vacancies and budget for {3} than planned for its subsidiary companies"
@@ -125,30 +130,32 @@ class StaffingPlan(Document):
 					children_details.total_estimated_cost,
 					frappe.bold(staffing_plan_detail.designation))), SubsidiaryCompanyError)
 
+
 @frappe.whitelist()
 def get_designation_counts(designation, company):
 	if not designation:
 		return False
 
 	employee_counts = {}
-	company_set = get_descendants_of('Company', company)
+	company_set = get_descendants_of("Company", company)
 	company_set.append(company)
 
 	employee_counts["employee_count"] = frappe.db.get_value("Employee",
 		filters={
-			'designation': designation,
-			'status': 'Active',
-			'company': ('in', company_set)
-		}, fieldname=['count(name)'])
+			"designation": designation,
+			"status": "Active",
+			"company": ("in", company_set),
+		}, fieldname=["count(name)"])
 
-	employee_counts['job_openings'] = frappe.db.get_value("Job Opening",
+	employee_counts["job_openings"] = frappe.db.get_value("Job Opening",
 		filters={
-			'designation': designation,
-			'status': 'Open',
-			'company': ('in', company_set)
-		}, fieldname=['count(name)'])
+			"designation": designation,
+			"status": "Open",
+			"company": ("in", company_set),
+		}, fieldname=["count(name)"])
 
 	return employee_counts
+
 
 @frappe.whitelist()
 def get_active_staffing_plan_details(company: str, designation: str, from_date: str | None = None, to_date: str | None = None):
@@ -162,10 +169,10 @@ def get_active_staffing_plan_details(company: str, designation: str, from_date: 
 		select sp.name, spd.vacancies, spd.total_estimated_cost
 		from `tabStaffing Plan Detail` spd join `tabStaffing Plan` sp on spd.parent=sp.name
 		where company=%s and spd.designation=%s and sp.docstatus=1
-		and to_date >= %s and from_date <= %s """, (company, designation, from_date, to_date), as_dict = 1)
+		and to_date >= %s and from_date <= %s """, (company, designation, from_date, to_date), as_dict=1)
 
 	if not staffing_plan:
-		parent_company = frappe.get_cached_value('Company',  company,  "parent_company")
+		parent_company = frappe.get_cached_value("Company", company, "parent_company")
 		if parent_company:
 			staffing_plan = get_active_staffing_plan_details(parent_company,
 				designation, from_date, to_date)

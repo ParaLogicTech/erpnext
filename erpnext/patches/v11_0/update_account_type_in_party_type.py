@@ -5,13 +5,13 @@ import frappe
 
 
 def execute():
-	frappe.reload_doc('setup', 'doctype', 'party_type')
+	frappe.reload_doc("setup", "doctype", "party_type")
 	party_types = {
-		'Customer': 'Receivable',
-		'Supplier': 'Payable',
-		'Employee': 'Payable',
-		'Shareholder': 'Payable',
+		"Customer": "Receivable",
+		"Supplier": "Payable",
+		"Employee": "Payable",
+		"Shareholder": "Payable",
 	}
 
 	for party_type, account_type in party_types.items():
-		frappe.db.set_value('Party Type', party_type, 'account_type', account_type)
+		frappe.db.set_value("Party Type", party_type, "account_type", account_type)

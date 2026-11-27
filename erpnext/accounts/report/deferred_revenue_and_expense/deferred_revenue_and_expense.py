@@ -89,7 +89,7 @@ class Deferred_Item:
 		)
 
 		prorate = date_diff(self.service_end_date, self.service_start_date) / date_diff(
-			get_last_day(self.service_end_date), get_first_day(self.service_start_date)
+			get_last_day(self.service_end_date), get_first_day(self.service_start_date),
 		)
 
 		actual_months = rounded(total_months * prorate, 1)
@@ -102,7 +102,7 @@ class Deferred_Item:
 
 		if get_first_day(start_date) != start_date or get_last_day(end_date) != end_date:
 			partial_month = flt(date_diff(end_date, start_date)) / flt(
-				date_diff(get_last_day(end_date), get_first_day(start_date))
+				date_diff(get_last_day(end_date), get_first_day(start_date)),
 			)
 			base_amount *= rounded(partial_month, 1)
 
@@ -126,7 +126,7 @@ class Deferred_Item:
 		return - frappe._dict() of a dummy gle entry
 		"""
 		entry = frappe._dict(
-			{"name": name, "gle_posting_date": date, "debit": 0, "credit": 0, "posted": "not"}
+			{"name": name, "gle_posting_date": date, "debit": 0, "credit": 0, "posted": "not"},
 		)
 		if self.type == "Deferred Sale Item":
 			entry.debit = amount
@@ -253,7 +253,7 @@ class Deferred_Revenue_and_Expense_Report:
 					"periodicity": "Monthly",
 					"type": "Revenue",
 					"with_upcoming_postings": True,
-				}
+				},
 			)
 		else:
 			self.filters = frappe._dict(filters)
@@ -301,7 +301,7 @@ class Deferred_Revenue_and_Expense_Report:
 			.left_join(gle)
 			.on(
 				(inv_item.name == gle.voucher_detail_no)
-				& (deferred_account_field == gle.account)
+				& (deferred_account_field == gle.account),
 			)
 			.select(
 				inv.name.as_("doc"),
@@ -330,7 +330,7 @@ class Deferred_Revenue_and_Expense_Report:
 						(inv_item.service_start_date >= self.period_list[0].from_date)
 						& (inv_item.service_start_date <= self.period_list[-1].to_date)
 					)
-				)
+				),
 			)
 			.groupby(inv.name, inv_item.name, gle.posting_date)
 			.orderby(gle.posting_date)
@@ -341,8 +341,8 @@ class Deferred_Revenue_and_Expense_Report:
 		for inv in uniq_invoice:
 			self.deferred_invoices.append(
 				Deferred_Invoice(
-					inv, [x for x in self.invoices if x.doc == inv], self.filters, self.period_list
-				)
+					inv, [x for x in self.invoices if x.doc == inv], self.filters, self.period_list,
+				),
 			)
 
 	def estimate_future(self):
@@ -377,7 +377,7 @@ class Deferred_Revenue_and_Expense_Report:
 					"fieldname": period.key,
 					"fieldtype": "Currency",
 					"read_only": 1,
-				}
+				},
 			)
 		return columns
 
@@ -414,7 +414,7 @@ class Deferred_Revenue_and_Expense_Report:
 						"name": _("Actual Posting"),
 						"chartType": "bar",
 						"values": [x.actual for x in self.period_total],
-					}
+					},
 				],
 			},
 			"type": "axis-mixed",
@@ -425,7 +425,7 @@ class Deferred_Revenue_and_Expense_Report:
 
 		if self.filters.with_upcoming_postings:
 			chart["data"]["datasets"].append(
-				{"name": _("Expected"), "chartType": "line", "values": [x.total for x in self.period_total]}
+				{"name": _("Expected"), "chartType": "line", "values": [x.total for x in self.period_total]},
 			)
 
 		return chart

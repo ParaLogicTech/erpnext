@@ -1,9 +1,13 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, unittest
+import unittest
+
+import frappe
 from frappe.model.naming import parse_naming_series
+
 from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
+
 
 class TestGLEntry(unittest.TestCase):
 	def test_round_off_entry(self):

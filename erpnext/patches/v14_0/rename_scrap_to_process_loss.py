@@ -1,6 +1,6 @@
 import frappe
-from frappe.utils import cint
 from frappe.model.utils.rename_field import rename_field
+from frappe.utils import cint
 
 
 def execute():

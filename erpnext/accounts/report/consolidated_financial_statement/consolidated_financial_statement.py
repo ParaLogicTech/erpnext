@@ -1,40 +1,52 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
-from frappe.utils import flt, cint
-from erpnext.accounts.report.utils import get_currency, convert_to_presentation_currency
+from frappe.utils import cint, flt
+
+import erpnext
+from erpnext.accounts.report.balance_sheet.balance_sheet import (
+	check_opening_balance,
+	get_chart_data,
+	get_provisional_profit_loss,
+)
+from erpnext.accounts.report.cash_flow.cash_flow import (
+	add_total_row_account,
+	get_account_type_based_gl_data,
+	get_cash_flow_accounts,
+)
 from erpnext.accounts.report.financial_statements import get_fiscal_year_data, sort_accounts
-from erpnext.accounts.report.balance_sheet.balance_sheet import (get_provisional_profit_loss,
-	check_opening_balance, get_chart_data)
-from erpnext.accounts.report.profit_and_loss_statement.profit_and_loss_statement import (get_net_profit_loss,
-	get_chart_data as get_pl_chart_data)
-from erpnext.accounts.report.cash_flow.cash_flow import (get_cash_flow_accounts, get_account_type_based_gl_data,
-	add_total_row_account)
+from erpnext.accounts.report.profit_and_loss_statement.profit_and_loss_statement import (
+	get_chart_data as get_pl_chart_data,
+)
+from erpnext.accounts.report.profit_and_loss_statement.profit_and_loss_statement import get_net_profit_loss
+from erpnext.accounts.report.utils import convert_to_presentation_currency, get_currency
+
 
 def execute(filters=None):
 	columns, data, message, chart = [], [], [], []
 
-	if not filters.get('company'):
+	if not filters.get("company"):
 		return columns, data, message, chart
 
-	fiscal_year = get_fiscal_year_data(filters.get('from_fiscal_year'), filters.get('to_fiscal_year'))
+	fiscal_year = get_fiscal_year_data(filters.get("from_fiscal_year"), filters.get("to_fiscal_year"))
 	companies_column, companies = get_companies(filters)
 	columns = get_columns(companies_column)
 
-	if filters.get('report') == "Balance Sheet":
+	if filters.get("report") == "Balance Sheet":
 		data, message, chart = get_balance_sheet_data(fiscal_year, companies, columns, filters)
-	elif filters.get('report') == "Profit and Loss Statement":
+	elif filters.get("report") == "Profit and Loss Statement":
 		data, message, chart = get_profit_loss_data(fiscal_year, companies, columns, filters)
 	else:
-		if cint(frappe.db.get_single_value('Accounts Settings', 'use_custom_cash_flow')):
+		if cint(frappe.db.get_single_value("Accounts Settings", "use_custom_cash_flow")):
 			from erpnext.accounts.report.cash_flow.custom_cash_flow import execute as execute_custom
 			return execute_custom(filters=filters)
 
 		data = get_cash_flow_data(fiscal_year, companies, filters)
 
 	return columns, data, message, chart
+
 
 def get_balance_sheet_data(fiscal_year, companies, columns, filters):
 	asset = get_data(companies, "Asset", "Debit", fiscal_year, filters=filters)
@@ -50,23 +62,23 @@ def get_balance_sheet_data(fiscal_year, companies, columns, filters):
 
 	company_currency = get_company_currency(filters)
 	provisional_profit_loss, total_credit = get_provisional_profit_loss(asset, liability, equity,
-		companies, filters.get('company'), company_currency, True)
+		companies, filters.get("company"), company_currency, True)
 
 	message, opening_balance = check_opening_balance(asset, liability, equity)
 
-	if opening_balance and round(opening_balance,2) !=0:
-		unclosed ={
+	if opening_balance and round(opening_balance, 2) != 0:
+		unclosed = {
 			"account_name": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
 			"account": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
 			"warn_if_negative": True,
-			"currency": company_currency
+			"currency": company_currency,
 		}
 		for company in companies:
 			unclosed[company] = opening_balance
 			if provisional_profit_loss:
 				provisional_profit_loss[company] = provisional_profit_loss[company] - opening_balance
 
-		unclosed["total"]=opening_balance
+		unclosed["total"] = opening_balance
 		data.append(unclosed)
 
 	if provisional_profit_loss:
@@ -77,6 +89,7 @@ def get_balance_sheet_data(fiscal_year, companies, columns, filters):
 	chart = get_chart_data(filters, columns, asset, liability, equity)
 
 	return data, message, chart
+
 
 def get_profit_loss_data(fiscal_year, companies, columns, filters):
 	income, expense, net_profit_loss = get_income_expense_data(companies, fiscal_year, filters)
@@ -91,6 +104,7 @@ def get_profit_loss_data(fiscal_year, companies, columns, filters):
 
 	return data, None, chart
 
+
 def get_income_expense_data(companies, fiscal_year, filters):
 	company_currency = get_company_currency(filters)
 	income = get_data(companies, "Income", "Credit", fiscal_year, filters, True)
@@ -101,10 +115,11 @@ def get_income_expense_data(companies, fiscal_year, filters):
 
 	return income, expense, net_profit_loss
 
+
 def get_cash_flow_data(fiscal_year, companies, filters):
 	cash_flow_accounts = get_cash_flow_accounts()
 
-	income, expense, net_profit_loss = get_income_expense_data(companies, fiscal_year, filters)
+	_income, _expense, net_profit_loss = get_income_expense_data(companies, fiscal_year, filters)
 
 	data = []
 	company_currency = get_company_currency(filters)
@@ -112,10 +127,10 @@ def get_cash_flow_data(fiscal_year, companies, filters):
 	for cash_flow_account in cash_flow_accounts:
 		section_data = []
 		data.append({
-			"account_name": cash_flow_account['section_header'],
+			"account_name": cash_flow_account["section_header"],
 			"parent_account": None,
 			"indent": 0.0,
-			"account": cash_flow_account['section_header']
+			"account": cash_flow_account["section_header"],
 		})
 
 		if len(data) == 1:
@@ -123,29 +138,30 @@ def get_cash_flow_data(fiscal_year, companies, filters):
 			if net_profit_loss:
 				net_profit_loss.update({
 					"indent": 1,
-					"parent_account": cash_flow_accounts[0]['section_header']
+					"parent_account": cash_flow_accounts[0]["section_header"],
 				})
 				data.append(net_profit_loss)
 				section_data.append(net_profit_loss)
 
-		for account in cash_flow_account['account_types']:
-			account_data = get_account_type_based_data(account['account_type'], companies, fiscal_year, filters)
+		for account in cash_flow_account["account_types"]:
+			account_data = get_account_type_based_data(account["account_type"], companies, fiscal_year, filters)
 			account_data.update({
-				"account_name": account['label'],
-				"account": account['label'],
+				"account_name": account["label"],
+				"account": account["label"],
 				"indent": 1,
-				"parent_account": cash_flow_account['section_header'],
-				"currency": company_currency
+				"parent_account": cash_flow_account["section_header"],
+				"currency": company_currency,
 			})
 			data.append(account_data)
 			section_data.append(account_data)
 
-		add_total_row_account(data, section_data, cash_flow_account['section_footer'],
+		add_total_row_account(data, section_data, cash_flow_account["section_footer"],
 			companies, company_currency, True)
 
 	add_total_row_account(data, data, _("Net Change in Cash"), companies, company_currency, True)
 
 	return data
+
 
 def get_account_type_based_data(account_type, companies, fiscal_year, filters):
 	data = {}
@@ -163,13 +179,14 @@ def get_account_type_based_data(account_type, companies, fiscal_year, filters):
 	data["total"] = total
 	return data
 
+
 def get_columns(companies):
 	columns = [{
 		"fieldname": "account",
 		"label": _("Account"),
 		"fieldtype": "Link",
 		"options": "Account",
-		"width": 300
+		"width": 300,
 	}]
 
 	columns.append({
@@ -177,7 +194,7 @@ def get_columns(companies):
 		"label": _("Currency"),
 		"fieldtype": "Link",
 		"options": "Currency",
-		"hidden": 1
+		"hidden": 1,
 	})
 
 	for company in companies:
@@ -186,16 +203,18 @@ def get_columns(companies):
 			"label": company,
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 150
+			"width": 150,
 		})
 
 	return columns
+
 
 def get_data(companies, root_type, balance_must_be, fiscal_year, filters=None, ignore_closing_entries=False):
 	accounts, accounts_by_name = get_account_heads(root_type,
 		companies, filters)
 
-	if not accounts: return []
+	if not accounts:
+		return []
 
 	company_currency = get_company_currency(filters)
 
@@ -216,9 +235,11 @@ def get_data(companies, root_type, balance_must_be, fiscal_year, filters=None, i
 
 	return out
 
+
 def get_company_currency(filters=None):
-	return (filters.get('presentation_currency')
-		or frappe.get_cached_value('Company',  filters.company,  "default_currency"))
+	return (filters.get("presentation_currency")
+		or frappe.get_cached_value("Company", filters.company, "default_currency"))
+
 
 def calculate_values(accounts_by_name, gl_entries_by_account, companies, fiscal_year, filters):
 	for entries in gl_entries_by_account.values():
@@ -228,18 +249,19 @@ def calculate_values(accounts_by_name, gl_entries_by_account, companies, fiscal_
 			if d:
 				for company in companies:
 					# check if posting date is within the period
-					if (entry.company == company or (filters.get('accumulated_in_group_company'))
-						and entry.company in companies.get(company)):
+					if (entry.company == company or ((filters.get("accumulated_in_group_company"))
+						and entry.company in companies.get(company))):
 						d[company] = d.get(company, 0.0) + flt(entry.debit) - flt(entry.credit)
 
 				if entry.posting_date < fiscal_year.year_start_date:
 					d["opening_balance"] = d.get("opening_balance", 0.0) + flt(entry.debit) - flt(entry.credit)
 
+
 def accumulate_values_into_parents(accounts, accounts_by_name, companies):
 	"""accumulate children's values in parent accounts"""
 	for d in reversed(accounts):
 		if d.parent_account:
-			account = d.parent_account.split('-')[0].strip()
+			account = d.parent_account.split("-")[0].strip()
 			if not accounts_by_name.get(account):
 				continue
 
@@ -250,20 +272,22 @@ def accumulate_values_into_parents(accounts, accounts_by_name, companies):
 			accounts_by_name[account]["opening_balance"] = \
 				accounts_by_name[account].get("opening_balance", 0.0) + d.get("opening_balance", 0.0)
 
+
 def get_account_heads(root_type, companies, filters):
 	accounts = get_accounts(root_type, filters)
 
 	if not accounts:
 		return None, None
 
-	accounts, accounts_by_name, parent_children_map = filter_accounts(accounts)
+	accounts, accounts_by_name, _parent_children_map = filter_accounts(accounts)
 
 	return accounts, accounts_by_name
 
+
 def get_companies(filters):
 	companies = {}
-	all_companies = get_subsidiary_companies(filters.get('company'))
-	companies.setdefault(filters.get('company'), all_companies)
+	all_companies = get_subsidiary_companies(filters.get("company"))
+	companies.setdefault(filters.get("company"), all_companies)
 
 	for d in all_companies:
 		if d not in companies:
@@ -272,19 +296,22 @@ def get_companies(filters):
 
 	return all_companies, companies
 
+
 def get_subsidiary_companies(company):
-	lft, rgt = frappe.get_cached_value('Company',
-		company,  ["lft", "rgt"])
+	lft, rgt = frappe.get_cached_value("Company",
+		company, ["lft", "rgt"])
 
 	return frappe.db.sql_list("""select name from `tabCompany`
 		where lft >= {0} and rgt <= {1} order by lft, rgt""".format(lft, rgt))
+
 
 def get_accounts(root_type, filters):
 	return frappe.db.sql(""" select name, is_group, company,
 			parent_account, lft, rgt, root_type, report_type, account_name, account_number
 		from
 			`tabAccount` where company = %s and root_type = %s
-		""" , (filters.get('company'), root_type), as_dict=1)
+		""", (filters.get("company"), root_type), as_dict=1)
+
 
 def prepare_data(accounts, fiscal_year, balance_must_be, companies, company_currency):
 	data = []
@@ -303,7 +330,7 @@ def prepare_data(accounts, fiscal_year, balance_must_be, companies, company_curr
 			"year_start_date": year_start_date,
 			"year_end_date": year_end_date,
 			"currency": company_currency,
-			"opening_balance": d.get("opening_balance", 0.0) * (1 if balance_must_be == "Debit" else -1)
+			"opening_balance": d.get("opening_balance", 0.0) * (1 if balance_must_be == "Debit" else -1),
 		})
 		for company in companies:
 			if d.get(company) and balance_must_be == "Credit":
@@ -323,12 +350,13 @@ def prepare_data(accounts, fiscal_year, balance_must_be, companies, company_curr
 
 	return data
 
+
 def set_gl_entries_by_account(from_date, to_date, root_lft, root_rgt, filters, gl_entries_by_account,
 	accounts_by_name, ignore_closing_entries=False):
 	"""Returns a dict like { "account": [gl entries], ... }"""
 
-	company_lft, company_rgt = frappe.get_cached_value('Company',
-		filters.get('company'),  ["lft", "rgt"])
+	company_lft, company_rgt = frappe.get_cached_value("Company",
+		filters.get("company"), ["lft", "rgt"])
 
 	additional_conditions = get_additional_conditions(from_date, ignore_closing_entries, filters)
 	companies = frappe.db.sql(""" select name, default_currency from `tabCompany`
@@ -338,8 +366,8 @@ def set_gl_entries_by_account(from_date, to_date, root_lft, root_rgt, filters, g
 		}, as_dict=1)
 
 	currency_info = frappe._dict({
-		'report_date': to_date,
-		'presentation_currency': filters.get('presentation_currency')
+		"report_date": to_date,
+		"presentation_currency": filters.get("presentation_currency"),
 	})
 
 	for d in companies:
@@ -356,13 +384,13 @@ def set_gl_entries_by_account(from_date, to_date, root_lft, root_rgt, filters, g
 				"rgt": root_rgt,
 				"company": d.name,
 				"finance_book": filters.get("finance_book"),
-				"company_fb": frappe.db.get_value("Company", d.name, 'default_finance_book')
+				"company_fb": frappe.db.get_value("Company", d.name, "default_finance_book"),
 			},
 			as_dict=True)
 
-		if filters and filters.get('presentation_currency') != d.default_currency:
-			currency_info['company'] = d.name
-			currency_info['company_currency'] = d.default_currency
+		if filters and filters.get("presentation_currency") != d.default_currency:
+			currency_info["company"] = d.name
+			currency_info["company_currency"] = d.default_currency
 			convert_to_presentation_currency(gl_entries, currency_info)
 
 		for entry in gl_entries:
@@ -372,10 +400,12 @@ def set_gl_entries_by_account(from_date, to_date, root_lft, root_rgt, filters, g
 
 	return gl_entries_by_account
 
+
 def validate_entries(key, entry, accounts_by_name):
 	if key not in accounts_by_name:
 		field = "Account number" if entry.account_number else "Account name"
 		frappe.throw(_("{0} {1} is not present in the parent company").format(field, key))
+
 
 def get_additional_conditions(from_date, ignore_closing_entries, filters):
 	additional_conditions = []
@@ -393,11 +423,12 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 
 	return " and {}".format(" and ".join(additional_conditions)) if additional_conditions else ""
 
+
 def add_total_row(out, root_type, balance_must_be, companies, company_currency):
 	total_row = {
 		"account_name": "'" + _("Total {0} ({1})").format(_(root_type), _(balance_must_be)) + "'",
 		"account": "'" + _("Total {0} ({1})").format(_(root_type), _(balance_must_be)) + "'",
-		"currency": company_currency
+		"currency": company_currency,
 	}
 
 	for row in out:
@@ -417,6 +448,7 @@ def add_total_row(out, root_type, balance_must_be, companies, company_currency):
 		# blank row after Total
 		out.append({})
 
+
 def filter_accounts(accounts, depth=10):
 	parent_children_map = {}
 	accounts_by_name = {}
@@ -430,7 +462,7 @@ def filter_accounts(accounts, depth=10):
 	def add_to_list(parent, level):
 		if level < depth:
 			children = parent_children_map.get(parent) or []
-			sort_accounts(children, is_root=True if parent==None else False)
+			sort_accounts(children, is_root=True if parent is None else False)
 
 			for child in children:
 				child.indent = level

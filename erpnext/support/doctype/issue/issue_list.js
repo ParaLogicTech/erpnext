@@ -1,9 +1,9 @@
-frappe.listview_settings['Issue'] = {
+frappe.listview_settings["Issue"] = {
 	colwidths: {"subject": 6},
-	add_fields: ['priority', 'status'],
+	add_fields: ["priority", "status"],
 	onload: function(listview) {
 		frappe.route_options = {
-			"status": ["!=", "Closed"]
+			"status": ["!=", "Closed"],
 		};
 
 		var method = "erpnext.support.doctype.issue.issue.set_multiple_status";
@@ -19,7 +19,7 @@ frappe.listview_settings['Issue'] = {
 	get_indicator: function(doc) {
 		let priority_text = doc.priority ? " (" + __(doc.priority) + ")" : "";
 
-		if (doc.status === 'Open') {
+		if (doc.status === "Open") {
 			let color;
 			if (["High", "Urgent"].includes(doc.priority)) {
 				color = "red";
@@ -29,17 +29,17 @@ frappe.listview_settings['Issue'] = {
 				color = "orange";
 			}
 
-			return [__(doc.status) + priority_text, color, `status,=,Open`];
-		} else if (doc.status === 'In Progress') {
+			return [__(doc.status) + priority_text, color, "status,=,Open"];
+		} else if (doc.status === "In Progress") {
 			return [__(doc.status) + priority_text, "purple", "status,=," + doc.status];
-		} else if (doc.status === 'To Update') {
+		} else if (doc.status === "To Update") {
 			return [__(doc.status) + priority_text, "light-blue", "status,=," + doc.status];
-		} else if (doc.status === 'Closed') {
+		} else if (doc.status === "Closed") {
 			return [__(doc.status) + priority_text, "green", "status,=," + doc.status];
-		} else if (doc.status === 'Replied') {
+		} else if (doc.status === "Replied") {
 			return [__(doc.status) + priority_text, "blue", "status,=," + doc.status];
 		} else {
 			return [__(doc.status) + priority_text, "grey", "status,=," + doc.status];
 		}
-	}
-}
+	},
+};

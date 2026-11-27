@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -7,9 +6,10 @@ import datetime
 
 import frappe
 from frappe import _
-from erpnext.accounts.party import render_address
 from frappe.model.document import Document
 from frappe.utils import cint, get_datetime, get_link_to_form
+
+from erpnext.accounts.party import render_address
 
 
 class DeliveryTrip(Document):
@@ -44,7 +44,7 @@ class DeliveryTrip(Document):
 		status = {
 			0: "Draft",
 			1: "Scheduled",
-			2: "Cancelled"
+			2: "Cancelled",
 		}[self.docstatus]
 
 		if self.docstatus == 1:
@@ -73,7 +73,7 @@ class DeliveryTrip(Document):
 			"driver_name": self.driver_name,
 			"vehicle_no": self.vehicle,
 			"lr_no": self.name,
-			"lr_date": self.departure_time
+			"lr_date": self.departure_time,
 		}
 
 		for delivery_note in delivery_notes:
@@ -232,7 +232,7 @@ class DeliveryTrip(Document):
 			"origin": route[0],
 			"destination": route[-1],
 			"waypoints": route[1: -1],
-			"optimize_waypoints": optimize
+			"optimize_waypoints": optimize,
 		}
 
 		try:
@@ -241,7 +241,6 @@ class DeliveryTrip(Document):
 			frappe.throw(_(str(e)))
 
 		return directions[0] if directions else False
-
 
 
 @frappe.whitelist()
@@ -311,7 +310,7 @@ def get_contact_display(contact):
 		"first_name": contact_info.first_name,
 		"last_name": contact_info.last_name or "",
 		"phone": contact_info.phone or "",
-		"mobile_no": contact_info.mobile_no or ""
+		"mobile_no": contact_info.mobile_no or "",
 	}
 
 	return contact_info.html
@@ -331,10 +330,10 @@ def sanitize_address(address):
 	if not address:
 		return
 
-	address = address.split('<br>')
+	address = address.split("<br>")
 
 	# Only get the first 3 blocks of the address
-	return ', '.join(address[:3])
+	return ", ".join(address[:3])
 
 
 @frappe.whitelist()

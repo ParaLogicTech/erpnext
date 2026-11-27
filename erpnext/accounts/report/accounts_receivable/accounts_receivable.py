@@ -2,17 +2,18 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-import erpnext
 from frappe import _, scrub
-from frappe.utils import getdate, flt, cint, formatdate, cstr
 from frappe.desk.query_report import group_report_data
+from frappe.utils import cint, cstr, flt, formatdate, getdate
+
+import erpnext
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.utils import (
-	get_currency_precision,
+	get_additional_sales_invoice_no_fields,
 	get_advance_against_voucher_types,
-	get_additional_sales_invoice_no_fields
+	get_currency_precision,
 )
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
 
 
 class ReceivablePayableReport:
@@ -41,7 +42,7 @@ class ReceivablePayableReport:
 		return columns, grouped_data, None, chart
 
 	def validate_filters(self, args):
-		self.filters.party_type = args.get('party_type')
+		self.filters.party_type = args.get("party_type")
 		self.party_naming_by = frappe.db.get_single_value(args.get("naming_by")[0], args.get("naming_by")[1])
 		self.show_party_name = self.party_naming_by in ("Naming Series", "Employee Number")
 
@@ -52,10 +53,10 @@ class ReceivablePayableReport:
 
 		if not self.filters.get("company"):
 			self.filters.company = erpnext.get_default_company()
-		self.company_currency = frappe.get_cached_value('Company', self.filters.company, "default_currency")
+		self.company_currency = frappe.get_cached_value("Company", self.filters.company, "default_currency")
 		self.account_currency = self.company_currency
 
-		if self.filters.get('cost_center'):
+		if self.filters.get("cost_center"):
 			self.filters.cost_center = get_cost_centers_with_children(self.filters.get("cost_center"))
 
 		if self.filters.get("project"):
@@ -65,7 +66,7 @@ class ReceivablePayableReport:
 		if self.filters.get("sales_person"):
 			sales_person = self.filters.sales_person
 			self.filters.sales_person = frappe.get_all("Sales Person", filters={
-				"name": ["descendants of", self.filters.sales_person]
+				"name": ["descendants of", self.filters.sales_person],
 			})
 			self.filters.sales_person = set([sales_person] + [d.name for d in self.filters.sales_person])
 
@@ -79,7 +80,7 @@ class ReceivablePayableReport:
 			self.additional_sales_invoice_no_fields = get_additional_sales_invoice_no_fields()
 
 	def validate_ageing_filter(self):
-		self.ageing_range = [cint(r.strip()) for r in self.filters.get('ageing_range', "").split(",") if r]
+		self.ageing_range = [cint(r.strip()) for r in self.filters.get("ageing_range", "").split(",") if r]
 		self.ageing_range = sorted(list(set(self.ageing_range)))
 		self.ageing_column_count = len(self.ageing_range) + 1
 
@@ -122,7 +123,7 @@ class ReceivablePayableReport:
 				):
 					vouchers_visited.add(("Employee Advance", gle.against_voucher))
 					gle.outstanding_amount, gle.return_amount, gle.payment_amount = self.get_employee_advance_outstanding(
-						gle, self.filters.report_date
+						gle, self.filters.report_date,
 					)
 
 					if abs(gle.outstanding_amount) >= 0.1 / 10 ** self.currency_precision:
@@ -268,7 +269,7 @@ class ReceivablePayableReport:
 						and name=tabSupplier.supplier_group))""".format(lft, rgt))
 
 		elif self.filters.party_type == "Employee":
-			account_type = ['in', ['Payable', 'Receivable']]
+			account_type = ["in", ["Payable", "Receivable"]]
 			if self.filters.get("department"):
 				lft, rgt = frappe.db.get_value("Department",
 					self.filters.get("department"), ["lft", "rgt"])
@@ -290,7 +291,7 @@ class ReceivablePayableReport:
 		else:
 			accounts = [d.name for d in frappe.get_all("Account",
 			filters={"account_type": account_type, "company": self.filters.company})]
-		conditions.append("gle.account in (%s)" % ','.join(['%s'] *len(accounts)))
+		conditions.append("gle.account in (%s)" % ",".join(["%s"] * len(accounts)))
 		values += accounts
 
 		return " and ".join(conditions), values
@@ -318,9 +319,9 @@ class ReceivablePayableReport:
 
 		if self.use_account_currency():
 			amount_field = ("jea.debit_in_account_currency"
-				if erpnext.get_party_account_type(self.filters.party_type) == 'Payable' else "jea.credit_in_account_currency")
+				if erpnext.get_party_account_type(self.filters.party_type) == "Payable" else "jea.credit_in_account_currency")
 		else:
-			amount_field = "jea.debit" if erpnext.get_party_account_type(self.filters.party_type) == 'Payable' else "jea.credit"
+			amount_field = "jea.debit" if erpnext.get_party_account_type(self.filters.party_type) == "Payable" else "jea.credit"
 
 		pdc_via_je = frappe.db.sql("""
 			select
@@ -360,7 +361,7 @@ class ReceivablePayableReport:
 			data = frappe.db.sql("""
 				select parenttype, parent, sales_person
 				from `tabSales Team`
-				where parent in %s and docstatus = 1 
+				where parent in %s and docstatus = 1
 			""", [self.voucher_nos_till_date], as_dict=1)
 
 			for d in data:
@@ -382,7 +383,7 @@ class ReceivablePayableReport:
 				""", [invoices], as_dict=1)
 
 				for d in data:
-					self.projects_map[(invoice_doctype, d.name)] = d.project
+					self.projects_map[invoice_doctype, d.name] = d.project
 
 		return self.projects_map
 
@@ -421,7 +422,7 @@ class ReceivablePayableReport:
 					where docstatus = 1 and name in %s
 				""", [invoices], as_dict=1)
 				for d in data:
-					self.voucher_details[("Sales Invoice", d.name)] = d
+					self.voucher_details["Sales Invoice", d.name] = d
 
 		if self.filters.party_type == "Supplier":
 			invoices = {gle.voucher_no for gle in gles_to_add if gle.voucher_type == "Purchase Invoice"}
@@ -434,7 +435,7 @@ class ReceivablePayableReport:
 					where docstatus = 1 and name in %s
 				""", [invoices], as_dict=1)
 				for d in data:
-					self.voucher_details[("Purchase Invoice", d.name)] = d
+					self.voucher_details["Purchase Invoice", d.name] = d
 
 			if lcvs:
 				data = frappe.db.sql("""
@@ -443,7 +444,7 @@ class ReceivablePayableReport:
 					where docstatus = 1 and name in %s
 				""", [lcvs], as_dict=1)
 				for d in data:
-					self.voucher_details[("Landed Cost Voucher", d.name)] = d
+					self.voucher_details["Landed Cost Voucher", d.name] = d
 
 		journal_entries = {gle.voucher_no for gle in gles_to_add if gle.voucher_type == "Journal Entry"}
 		if journal_entries:
@@ -454,7 +455,7 @@ class ReceivablePayableReport:
 				""", [journal_entries], as_dict=1)
 
 			for d in data:
-				self.voucher_details[("Journal Entry", d.name)] = d
+				self.voucher_details["Journal Entry", d.name] = d
 
 		return self.voucher_details
 
@@ -577,14 +578,14 @@ class ReceivablePayableReport:
 			return True
 
 	def get_item_filtered_invoices(self):
-		if not self.filters.get('has_item') or self.filters.get("party_type") not in ['Customer', 'Supplier']:
+		if not self.filters.get("has_item") or self.filters.get("party_type") not in ["Customer", "Supplier"]:
 			return []
 
-		if not hasattr(self, 'item_filtered_invoices'):
+		if not hasattr(self, "item_filtered_invoices"):
 			item_doctype = self.get_invoice_doctype()
 			self.item_filtered_invoices = set(frappe.db.sql_list("""
 				select distinct parent from `tab{dt} Item` where item_code = %s
-			""".format(dt=item_doctype), self.filters.get('has_item')))
+			""".format(dt=item_doctype), self.filters.get("has_item")))
 
 		return self.item_filtered_invoices
 
@@ -627,7 +628,7 @@ class ReceivablePayableReport:
 
 		gle.outstanding_amount = flt(
 			gle.invoiced_amount - gle.paid_amount - gle.return_amount,
-			self.currency_precision
+			self.currency_precision,
 		)
 
 		gle.invoiced_amount = flt(gle.invoiced_amount, self.currency_precision)
@@ -688,7 +689,7 @@ class ReceivablePayableReport:
 
 			row["sales_person"] = ", ".join(
 				self.get_sales_persons(gle.voucher_type, gle.voucher_no)
-				or self.get_sales_persons(gle.against_voucher_type, gle.against_voucher)
+				or self.get_sales_persons(gle.against_voucher_type, gle.against_voucher),
 			)
 
 		if self.filters.get("party_type") == "Supplier":
@@ -713,7 +714,7 @@ class ReceivablePayableReport:
 
 		row["age"], ageing_data = get_ageing_data(self.ageing_range, self.age_as_on, entry_date, gle.outstanding_amount)
 		for i, age_range_value in enumerate(ageing_data):
-			row["range{0}".format(i+1)] = age_range_value
+			row["range{0}".format(i + 1)] = age_range_value
 
 		# issue 6371-Ageing buckets should not have amounts if due date is not reached
 		if (
@@ -721,14 +722,14 @@ class ReceivablePayableReport:
 			and getdate(row.due_date or gle.posting_date) > getdate(self.filters.report_date)
 		):
 			for i in range(self.ageing_column_count):
-				row["range{}".format(i+1)] = 0
+				row["range{}".format(i + 1)] = 0
 
 		if (
 			self.filters.ageing_based_on == "Supplier Invoice Date"
 			and getdate(row.bill_date or gle.posting_date) > getdate(self.filters.report_date)
 		):
 			for i in range(self.ageing_column_count):
-				row["range{}".format(i+1)] = 0
+				row["range{}".format(i + 1)] = 0
 
 		# PDC
 		pdc_list = self.pdc_details.get((gle.voucher_no, gle.party), [])
@@ -769,8 +770,8 @@ class ReceivablePayableReport:
 	def get_grouped_data(self, columns, data):
 		level1 = self.filters.get("group_by", "").replace("Group by ", "")
 		level2 = self.filters.get("group_by_2", "").replace("Group by ", "")
-		level1_fieldname = "party" if level1 in ['Customer', 'Supplier', 'Employee'] else scrub(level1)
-		level2_fieldname = "party" if level2 in ['Customer', 'Supplier', 'Employee'] else scrub(level2)
+		level1_fieldname = "party" if level1 in ["Customer", "Supplier", "Employee"] else scrub(level1)
+		level2_fieldname = "party" if level2 in ["Customer", "Supplier", "Employee"] else scrub(level2)
 
 		group_by = [None]
 		group_by_labels = {}
@@ -784,8 +785,8 @@ class ReceivablePayableReport:
 		if len(group_by) <= 1:
 			return self.group_aggregate_age(data, columns)
 
-		total_fields = [c['fieldname'] for c in columns
-			if c['fieldtype'] in ['Float', 'Currency', 'Int'] and c['fieldname'] not in ('age', 'cumulative_outstanding')]
+		total_fields = [c["fieldname"] for c in columns
+			if c["fieldtype"] in ["Float", "Currency", "Int"] and c["fieldname"] not in ("age", "cumulative_outstanding")]
 
 		def postprocess_group(group_object, grouped_by):
 			# Copy grouped by into total row
@@ -793,16 +794,16 @@ class ReceivablePayableReport:
 				group_object.totals[f] = g
 
 			if not group_object.group_field:
-				group_object.totals['party'] = "'Total'"
-			elif group_object.group_field == 'party':
-				group_object.totals['party'] = group_object.group_value
-				group_object.totals['party_name'] = group_object.rows[0].get('party_name')
+				group_object.totals["party"] = "'Total'"
+			elif group_object.group_field == "party":
+				group_object.totals["party"] = group_object.group_value
+				group_object.totals["party_name"] = group_object.rows[0].get("party_name")
 			else:
-				group_object.totals['party'] = "'{0}: {1}'".format(_(group_object.group_label), group_object.group_value or "None")
+				group_object.totals["party"] = "'{0}: {1}'".format(_(group_object.group_label), group_object.group_value or "None")
 
-			if group_object.group_field == 'party':
-				group_object.totals['currency'] = group_object.rows[0].get("currency")
-				group_object.totals['account_manager'] = self.get_account_manager(group_object.group_value)
+			if group_object.group_field == "party":
+				group_object.totals["currency"] = group_object.rows[0].get("currency")
+				group_object.totals["account_manager"] = self.get_account_manager(group_object.group_value)
 				group_object.totals["customer_group"] = self.get_customer_group(group_object.group_value)
 				group_object.totals["territory"] = self.get_territory(group_object.group_value)
 				group_object.totals["contact"] = self.get_contact_person(group_object.group_value)
@@ -854,8 +855,8 @@ class ReceivablePayableReport:
 		if not below_limit and not above_limit:
 			return data
 
-		total_fields = [c['fieldname'] for c in columns
-			if c['fieldtype'] in ['Float', 'Currency', 'Int'] and c['fieldname'] != 'age']
+		total_fields = [c["fieldname"] for c in columns
+			if c["fieldtype"] in ["Float", "Currency", "Int"] and c["fieldname"] != "age"]
 
 		below_limit_total = group_report_data(below_limit, None, total_fields=total_fields, totals_only=True)
 		below_limit_total = below_limit_total[0] if below_limit_total else {}
@@ -869,17 +870,17 @@ class ReceivablePayableReport:
 			within_limit_total.update(grouped_by)
 			above_limit_total.update(grouped_by)
 
-		below_limit_total['party'] = _("'Before {0} Total'").format(formatdate(self.filters.from_date))
-		above_limit_total['party'] = _("'After {0} Total'").format(formatdate(self.filters.to_date))
+		below_limit_total["party"] = _("'Before {0} Total'").format(formatdate(self.filters.from_date))
+		above_limit_total["party"] = _("'After {0} Total'").format(formatdate(self.filters.to_date))
 
-		within_limit_total['_excludeFromTotal'] = True
-		within_limit_total['_bold'] = True
+		within_limit_total["_excludeFromTotal"] = True
+		within_limit_total["_bold"] = True
 		if self.filters.from_date and self.filters.to_date:
-			within_limit_total['party'] = _("'Total Between {0} and {1}'").format(formatdate(self.filters.from_date), formatdate(self.filters.to_date))
+			within_limit_total["party"] = _("'Total Between {0} and {1}'").format(formatdate(self.filters.from_date), formatdate(self.filters.to_date))
 		elif self.filters.from_date:
-			within_limit_total['party'] = _("'Total of {0} and Above'").format(formatdate(self.filters.from_date))
+			within_limit_total["party"] = _("'Total of {0} and Above'").format(formatdate(self.filters.from_date))
 		elif self.filters.to_date:
-			within_limit_total['party'] = _("'Total of {0} and Below'").format(formatdate(self.filters.to_date))
+			within_limit_total["party"] = _("'Total of {0} and Below'").format(formatdate(self.filters.to_date))
 
 		out = []
 		if self.filters.to_date:
@@ -903,21 +904,21 @@ class ReceivablePayableReport:
 	def get_chart_data(self, data):
 		rows = []
 		for d in data:
-			rows.append({'values': [d["range{}".format(i+1)] for i in range(self.ageing_column_count)]})
+			rows.append({"values": [d["range{}".format(i + 1)] for i in range(self.ageing_column_count)]})
 
 		return {
 			"data": {
-				"labels": [col.get('label') for col in self.ageing_columns],
-				"datasets": rows
+				"labels": [col.get("label") for col in self.ageing_columns],
+				"datasets": rows,
 			},
-			"colors": ['light-blue', 'blue', 'purple', 'orange', 'red'],
-			"type": 'percentage',
+			"colors": ["light-blue", "blue", "purple", "orange", "red"],
+			"type": "percentage",
 			"fieldtype": "Currency",
-			"options": getattr(self, "account_currency", None)
+			"options": getattr(self, "account_currency", None),
 		}
 
 	def get_invoice_doctype(self):
-		if self.filters.get("party_type") in ['Customer', 'Supplier']:
+		if self.filters.get("party_type") in ["Customer", "Supplier"]:
 			return "Sales Invoice" if self.filters.get("party_type") == "Customer" else "Purchase Invoice"
 
 	def get_party_name(self, party):
@@ -972,7 +973,7 @@ class ReceivablePayableReport:
 				"label": _("Date"),
 				"fieldtype": "Date",
 				"fieldname": "posting_date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _(self.filters.get("party_type")),
@@ -980,8 +981,8 @@ class ReceivablePayableReport:
 				"fieldname": "party",
 				"filter_fieldname": scrub(self.filters.get("party_type")),
 				"options": self.filters.get("party_type"),
-				"width": party_column_width if not has_grouping else 300
-			}
+				"width": party_column_width if not has_grouping else 300,
+			},
 		]
 
 		if has_grouping:
@@ -992,7 +993,7 @@ class ReceivablePayableReport:
 				"label": _(self.filters.get("party_type") + " Name"),
 				"fieldtype": "Data",
 				"fieldname": "party_name",
-				"width": 180
+				"width": 180,
 			})
 
 		columns += [
@@ -1000,7 +1001,7 @@ class ReceivablePayableReport:
 				"label": _("Voucher Type"),
 				"fieldtype": "Data",
 				"fieldname": "voucher_type",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Voucher No"),
@@ -1018,7 +1019,7 @@ class ReceivablePayableReport:
 					"label": _(label),
 					"fieldname": field,
 					"fieldtype": "Data",
-					"width": 100
+					"width": 100,
 				})
 
 		if self.filters.get("party_type") != "Employee":
@@ -1035,14 +1036,14 @@ class ReceivablePayableReport:
 					"label": _("Bill No"),
 					"fieldtype": "Data",
 					"fieldname": "bill_no",
-					"width": 80
+					"width": 80,
 				},
 				{
 					"label": _("Bill Date"),
 					"fieldtype": "Date",
 					"fieldname": "bill_date",
 					"width": 80,
-				}
+				},
 			]
 
 		invoiced_label = "Invoiced Amount"
@@ -1062,36 +1063,36 @@ class ReceivablePayableReport:
 				"fieldname": "invoiced_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _(paid_label),
 				"fieldname": "paid_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _(return_label),
 				"fieldname": "return_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Outstanding Amount"),
 				"fieldname": "outstanding_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Cumulative Outstanding"),
 				"fieldname": "cumulative_outstanding",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
-			}
+				"width": 120,
+			},
 		]
 
 		columns.append({
@@ -1107,7 +1108,7 @@ class ReceivablePayableReport:
 				"fieldtype": "Link",
 				"fieldname": "account",
 				"options": "Account",
-				"width": 150
+				"width": 150,
 			})
 
 		if self.has_cost_center:
@@ -1117,7 +1118,7 @@ class ReceivablePayableReport:
 				"fieldname": "cost_center",
 				"options": "Cost Center",
 				"width": 80,
-				"hide_if_filtered": 1
+				"hide_if_filtered": 1,
 			})
 
 		if self.has_branch:
@@ -1126,7 +1127,7 @@ class ReceivablePayableReport:
 				"fieldtype": "Link",
 				"options": "Branch",
 				"fieldname": "branch",
-				"width": 80
+				"width": 80,
 			})
 
 		if self.has_project:
@@ -1136,14 +1137,14 @@ class ReceivablePayableReport:
 				"fieldname": "project",
 				"options": "Project",
 				"width": 85,
-				"hide_if_filtered": 1
+				"hide_if_filtered": 1,
 			})
 
 		columns.append({
 			"fieldname": "remarks",
 			"label": _("Remarks"),
 			"fieldtype": "Data",
-			"width": 200
+			"width": 200,
 		})
 
 		self.ageing_columns = self.get_ageing_columns()
@@ -1162,25 +1163,25 @@ class ReceivablePayableReport:
 				"fieldname": "pdc/lc_ref",
 				"label": _("PDC/LC Ref"),
 				"fieldtype": "Data",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"fieldname": "pdc/lc_amount",
 				"label": _("PDC/LC Amount"),
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 130
+				"width": 130,
 			},
 			{
 				"fieldname": "remaining_balance",
 				"label": _("Remaining Balance"),
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 130
-			}
+				"width": 130,
+			},
 		]
 
-		if self.filters.get('party_type') == 'Customer':
+		if self.filters.get("party_type") == "Customer":
 			columns += [
 				{
 					"label": _("PO #"),
@@ -1193,7 +1194,7 @@ class ReceivablePayableReport:
 					"label": _("Delivery Note"),
 					"fieldtype": "Link",
 					"options": "Delivery Note",
-					"width": 100
+					"width": 100,
 				},
 				{
 					"label": _("Sales Person"),
@@ -1220,22 +1221,22 @@ class ReceivablePayableReport:
 					"label": _("Territory"),
 					"fieldtype": "Link",
 					"options": "Territory",
-					"width": 100
+					"width": 100,
 				},
 				{
 					"fieldname": "customer_group",
 					"label": _("Customer Group"),
 					"fieldtype": "Link",
 					"options": "Customer Group",
-					"width": 100
+					"width": 100,
 				},
 				{
 					"label": _("Contact Person"),
 					"fieldtype": "Link",
 					"fieldname": "contact",
 					"options": "Contact",
-					"width": 100
-				}
+					"width": 100,
+				},
 			]
 		if self.filters.get("party_type") == "Supplier":
 			columns += [
@@ -1244,8 +1245,8 @@ class ReceivablePayableReport:
 					"label": _("Supplier Group"),
 					"fieldtype": "Link",
 					"options": "Supplier Group",
-					"width": 120
-				}
+					"width": 120,
+				},
 			]
 
 		return columns
@@ -1256,11 +1257,11 @@ class ReceivablePayableReport:
 		for i, upper_limit in enumerate(self.ageing_range):
 			ageing_columns.append({
 				"label": "{0}-{1}".format(lower_limit, upper_limit),
-				"fieldname": "range{}".format(i+1),
+				"fieldname": "range{}".format(i + 1),
 				"fieldtype": "Currency",
 				"options": "currency",
 				"ageing_column": 1,
-				"width": 110
+				"width": 110,
 			})
 			lower_limit = upper_limit + 1
 
@@ -1270,7 +1271,7 @@ class ReceivablePayableReport:
 			"fieldtype": "Currency",
 			"options": "currency",
 			"ageing_column": 1,
-			"width": 100
+			"width": 100,
 		})
 		return ageing_columns
 

@@ -3,10 +3,12 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, getdate
+from frappe.utils import cint, flt, getdate
+
 
 def execute(filters=None):
-	if not filters: filters = {}
+	if not filters:
+		filters = {}
 
 	float_precision = cint(frappe.db.get_default("float_precision")) or 3
 
@@ -21,11 +23,11 @@ def execute(filters=None):
 				qty_dict = iwb_map[item][wh][batch]
 
 				data.append([item, item_map[item]["item_name"], item_map[item]["description"], wh, batch,
-					frappe.db.get_value('Batch', batch, 'expiry_date'), qty_dict.expiry_status
+					frappe.db.get_value("Batch", batch, "expiry_date"), qty_dict.expiry_status,
 				])
-			
 
 	return columns, data
+
 
 def get_columns(filters):
 	"""return columns based on filters"""
@@ -35,6 +37,7 @@ def get_columns(filters):
 	[_("Expiry (In Days)") + ":Int:120"]
 
 	return columns
+
 
 def get_conditions(filters):
 	conditions = ""
@@ -48,6 +51,7 @@ def get_conditions(filters):
 
 	return conditions
 
+
 def get_stock_ledger_entries(filters):
 	conditions = get_conditions(filters)
 	return frappe.db.sql("""select item_code, batch_no, warehouse,
@@ -56,12 +60,13 @@ def get_stock_ledger_entries(filters):
 		where docstatus < 2 and ifnull(batch_no, '') != '' %s order by item_code, warehouse""" %
 		conditions, as_dict=1)
 
+
 def get_item_warehouse_batch_map(filters, float_precision):
 	sle = get_stock_ledger_entries(filters)
 	iwb_map = {}
 
-	from_date = getdate(filters["from_date"])
-	to_date = getdate(filters["to_date"])
+	getdate(filters["from_date"])
+	getdate(filters["to_date"])
 
 	for d in sle:
 		iwb_map.setdefault(d.item_code, {}).setdefault(d.warehouse, {})\
@@ -69,8 +74,8 @@ def get_item_warehouse_batch_map(filters, float_precision):
 				"expires_on": None, "expiry_status": None}))
 
 		qty_dict = iwb_map[d.item_code][d.warehouse][d.batch_no]
-		
-		expiry_date_unicode = frappe.db.get_value('Batch', d.batch_no, 'expiry_date')
+
+		expiry_date_unicode = frappe.db.get_value("Batch", d.batch_no, "expiry_date")
 		qty_dict.expires_on = expiry_date_unicode
 
 		exp_date = frappe.utils.data.getdate(expiry_date_unicode)
@@ -84,6 +89,7 @@ def get_item_warehouse_batch_map(filters, float_precision):
 			qty_dict.expiry_status = 0
 
 	return iwb_map
+
 
 def get_item_details(filters):
 	item_map = {}

@@ -1,11 +1,14 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import unittest
+
 import frappe
 import frappe.defaults
-import unittest
-from erpnext.selling.report.sales_analytics.sales_analytics import execute
+
 from erpnext.selling.doctype.sales_order.test_sales_order import make_sales_order
+from erpnext.selling.report.sales_analytics.sales_analytics import execute
+
 
 class TestAnalytics(unittest.TestCase):
 	def test_sales_analytics(self):
@@ -19,16 +22,15 @@ class TestAnalytics(unittest.TestCase):
 		self.compare_result_for_customer_group()
 		self.compare_result_for_customer_based_on_quantity()
 
-
 	def compare_result_for_customer(self):
 		filters = {
-			'doctype': 'Sales Order',
-			'range': 'Monthly',
-			'from_date': '2017-04-01',
-			'to_date': '2018-03-31',
-			'tree_type': 'Customer',
-			'company': '_Test Company 2',
-			'value_field': 'Net Amount'
+			"doctype": "Sales Order",
+			"range": "Monthly",
+			"from_date": "2017-04-01",
+			"to_date": "2018-03-31",
+			"tree_type": "Customer",
+			"company": "_Test Company 2",
+			"value_field": "Net Amount",
 		}
 
 		report = execute(filters)
@@ -48,7 +50,7 @@ class TestAnalytics(unittest.TestCase):
 				"jan_2018": 0.0,
 				"feb_2018": 2000.0,
 				"mar_2018": 0.0,
-				"total": 7500.0
+				"total": 7500.0,
 			},
 			{
 				"entity": "_Test Customer 1",
@@ -66,7 +68,7 @@ class TestAnalytics(unittest.TestCase):
 				"feb_2018": 2000.0,
 				"mar_2018": 0.0,
 				"total": 2000.0,
-				"indent": 1
+				"indent": 1,
 			},
 			{
 				"entity": "_Test Customer 2",
@@ -84,7 +86,7 @@ class TestAnalytics(unittest.TestCase):
 				"feb_2018": 0.0,
 				"mar_2018": 0.0,
 				"total": 2500.0,
-				"indent": 1
+				"indent": 1,
 			},
 			{
 				"entity": "_Test Customer 3",
@@ -102,21 +104,21 @@ class TestAnalytics(unittest.TestCase):
 				"feb_2018": 0.0,
 				"mar_2018": 0.0,
 				"total": 3000.0,
-				"indent": 1
-			}
+				"indent": 1,
+			},
 		]
-		result = sorted(report[1], key=lambda k: k['entity'])
+		result = sorted(report[1], key=lambda k: k["entity"])
 		self.assertEqual(expected_data, result)
 
 	def compare_result_for_customer_group(self):
 		filters = {
-			'doctype': 'Sales Order',
-			'range': 'Monthly',
-			'from_date': '2017-04-01',
-			'to_date': '2018-03-31',
-			'tree_type': 'Customer Group',
-			'company': '_Test Company 2',
-			'value_field': 'Net Amount'
+			"doctype": "Sales Order",
+			"range": "Monthly",
+			"from_date": "2017-04-01",
+			"to_date": "2018-03-31",
+			"tree_type": "Customer Group",
+			"company": "_Test Company 2",
+			"value_field": "Net Amount",
 		}
 
 		report = execute(filters)
@@ -136,19 +138,19 @@ class TestAnalytics(unittest.TestCase):
 			"jan_2018": 0.0,
 			"feb_2018": 2000.0,
 			"mar_2018": 0.0,
-			"total":7500.0
+			"total": 7500.0,
 		}
 		self.assertEqual(expected_first_row, report[1][0])
 
 	def compare_result_for_customer_based_on_quantity(self):
 		filters = {
-			'doctype': 'Sales Order',
-			'range': 'Monthly',
-			'from_date': '2017-04-01',
-			'to_date': '2018-03-31',
-			'tree_type': 'Customer',
-			'company': '_Test Company 2',
-			'value_field': 'Stock Qty'
+			"doctype": "Sales Order",
+			"range": "Monthly",
+			"from_date": "2017-04-01",
+			"to_date": "2018-03-31",
+			"tree_type": "Customer",
+			"company": "_Test Company 2",
+			"value_field": "Stock Qty",
 		}
 
 		report = execute(filters)
@@ -168,7 +170,7 @@ class TestAnalytics(unittest.TestCase):
 				"jan_2018": 0.0,
 				"feb_2018": 20.0,
 				"mar_2018": 0.0,
-				"total": 75.0
+				"total": 75.0,
 			},
 			{
 				"entity": "_Test Customer 1",
@@ -186,7 +188,7 @@ class TestAnalytics(unittest.TestCase):
 				"feb_2018": 20.0,
 				"mar_2018": 0.0,
 				"total": 20.0,
-				"indent": 1
+				"indent": 1,
 			},
 			{
 				"entity": "_Test Customer 2",
@@ -204,7 +206,7 @@ class TestAnalytics(unittest.TestCase):
 				"feb_2018": 0.0,
 				"mar_2018": 0.0,
 				"total": 25.0,
-				"indent": 1
+				"indent": 1,
 			},
 			{
 				"entity": "_Test Customer 3",
@@ -222,47 +224,48 @@ class TestAnalytics(unittest.TestCase):
 				"feb_2018": 0.0,
 				"mar_2018": 0.0,
 				"total": 30.0,
-				"indent": 1
-			}
+				"indent": 1,
+			},
 		]
-		result = sorted(report[1], key=lambda k: k['entity'])
+		result = sorted(report[1], key=lambda k: k["entity"])
 		self.assertEqual(expected_data, result)
+
 
 def create_sales_orders():
 	frappe.set_user("Administrator")
 
 	make_sales_order(company="_Test Company 2", qty=10,
-		customer = "_Test Customer 1",
-		transaction_date = '2018-02-10',
-		warehouse = 'Finished Goods - _TC2',
-		currency = 'EUR')
+		customer="_Test Customer 1",
+		transaction_date="2018-02-10",
+		warehouse="Finished Goods - _TC2",
+		currency="EUR")
 
 	make_sales_order(company="_Test Company 2",
-		qty=10, customer = "_Test Customer 1",
-		transaction_date = '2018-02-15',
-		warehouse = 'Finished Goods - _TC2',
-		currency = 'EUR')
-
-	make_sales_order(company = "_Test Company 2",
-		qty=10, customer = "_Test Customer 2",
-		transaction_date = '2017-10-10',
-		warehouse='Finished Goods - _TC2',
-		currency = 'EUR')
+		qty=10, customer="_Test Customer 1",
+		transaction_date="2018-02-15",
+		warehouse="Finished Goods - _TC2",
+		currency="EUR")
 
 	make_sales_order(company="_Test Company 2",
-		qty=15, customer = "_Test Customer 2",
-		transaction_date='2017-09-23',
-		warehouse='Finished Goods - _TC2',
-		currency = 'EUR')
+		qty=10, customer="_Test Customer 2",
+		transaction_date="2017-10-10",
+		warehouse="Finished Goods - _TC2",
+		currency="EUR")
 
 	make_sales_order(company="_Test Company 2",
-		qty=20, customer = "_Test Customer 3",
-		transaction_date='2017-06-15',
-		warehouse='Finished Goods - _TC2',
-		currency = 'EUR')
+		qty=15, customer="_Test Customer 2",
+		transaction_date="2017-09-23",
+		warehouse="Finished Goods - _TC2",
+		currency="EUR")
 
 	make_sales_order(company="_Test Company 2",
-		qty=10, customer = "_Test Customer 3",
-		transaction_date='2017-07-10',
-		warehouse='Finished Goods - _TC2',
-		currency = 'EUR')
+		qty=20, customer="_Test Customer 3",
+		transaction_date="2017-06-15",
+		warehouse="Finished Goods - _TC2",
+		currency="EUR")
+
+	make_sales_order(company="_Test Company 2",
+		qty=10, customer="_Test Customer 3",
+		transaction_date="2017-07-10",
+		warehouse="Finished Goods - _TC2",
+		currency="EUR")

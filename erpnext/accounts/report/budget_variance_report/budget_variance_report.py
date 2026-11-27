@@ -1,10 +1,11 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import datetime
+
 import frappe
 from frappe import _
 from frappe.utils import flt, formatdate, getdate
-import datetime
 
 
 def execute(filters=None):
@@ -58,7 +59,7 @@ def get_columns(filters):
 	columns = [
 		_(filters.get("budget_against"))
 		+ ":Link/%s:150" % (filters.get("budget_against")),
-		_("Account") + ":Link/Account:150"
+		_("Account") + ":Link/Account:150",
 	]
 
 	group_months = False if filters["period"] == "Monthly" else True
@@ -71,7 +72,7 @@ def get_columns(filters):
 				labels = [
 					_("Budget") + " " + str(year[0]),
 					_("Actual ") + " " + str(year[0]),
-					_("Variance ") + " " + str(year[0])
+					_("Variance ") + " " + str(year[0]),
 				]
 				for label in labels:
 					columns.append(label + ":Float:150")
@@ -79,7 +80,7 @@ def get_columns(filters):
 				for label in [
 					_("Budget") + " (%s)" + " " + str(year[0]),
 					_("Actual") + " (%s)" + " " + str(year[0]),
-					_("Variance") + " (%s)" + " " + str(year[0])
+					_("Variance") + " (%s)" + " " + str(year[0]),
 				]:
 					if group_months:
 						label = label % (
@@ -96,7 +97,7 @@ def get_columns(filters):
 		return columns + [
 			_("Total Budget") + ":Float:150",
 			_("Total Actual") + ":Float:150",
-			_("Total Variance") + ":Float:150"
+			_("Total Variance") + ":Float:150",
 		]
 	else:
 		return columns
@@ -168,7 +169,7 @@ def get_dimension_target_details(filters):
 				filters.budget_against,
 				filters.company,
 			]
-			+ filters.get("budget_against_filter")
+			+ filters.get("budget_against_filter"),
 		), as_dict=True)
 
 
@@ -192,10 +193,11 @@ def get_target_distribution_details(filters):
 		""",
 		(filters.from_fiscal_year, filters.to_fiscal_year), as_dict=1):
 		target_details.setdefault(d.name, {}).setdefault(
-			d.month, flt(d.percentage_allocation)
+			d.month, flt(d.percentage_allocation),
 		)
 
 	return target_details
+
 
 # Get actual details from gl entry
 def get_actual_details(name, filters):
@@ -250,6 +252,7 @@ def get_actual_details(name, filters):
 
 	return cc_actual_details
 
+
 def get_dimension_account_month_map(filters):
 	dimension_target_details = get_dimension_target_details(filters)
 	tdd = get_target_distribution_details(filters)
@@ -262,9 +265,9 @@ def get_dimension_account_month_map(filters):
 		for month_id in range(1, 13):
 			month = datetime.date(2013, month_id, 1).strftime("%B")
 			cam_map.setdefault(ccd.budget_against, {}).setdefault(
-				ccd.account, {}
+				ccd.account, {},
 			).setdefault(ccd.fiscal_year, {}).setdefault(
-				month, frappe._dict({"target": 0.0, "actual": 0.0})
+				month, frappe._dict({"target": 0.0, "actual": 0.0}),
 			)
 
 			tav_dict = cam_map[ccd.budget_against][ccd.account][ccd.fiscal_year][month]
@@ -296,7 +299,7 @@ def get_fiscal_years(filters):
 		""",
 		{
 			"from_fiscal_year": filters["from_fiscal_year"],
-			"to_fiscal_year": filters["to_fiscal_year"]
+			"to_fiscal_year": filters["to_fiscal_year"],
 		})
 
 	return fiscal_year
@@ -314,11 +317,11 @@ def get_period_date_ranges(period, fiscal_year=None, year_start_date=None):
 		"Monthly": 1,
 		"Quarterly": 3,
 		"Half-Yearly": 6,
-		"Yearly": 12
+		"Yearly": 12,
 	}.get(period)
 
 	period_date_ranges = []
-	for i in range(1, 13, increment):
+	for _i in range(1, 13, increment):
 		period_end_date = getdate(year_start_date) + relativedelta(months=increment, days=-1)
 		if period_end_date > getdate(year_end_date):
 			period_end_date = year_end_date

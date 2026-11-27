@@ -5,6 +5,7 @@ import frappe
 from frappe import scrub
 from frappe.model.utils.rename_field import rename_field
 
+
 def execute():
 	for doctype in ("Salary Component", "Salary Detail"):
 		if "depends_on_lwp" in frappe.db.get_table_columns(doctype):

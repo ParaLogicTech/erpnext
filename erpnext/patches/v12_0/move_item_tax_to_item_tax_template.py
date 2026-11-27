@@ -1,6 +1,8 @@
-import frappe
 import json
+
+import frappe
 from frappe.model.naming import make_autoname
+
 
 def execute():
 	if "tax_type" not in frappe.db.get_table_columns("Item Tax"):
@@ -57,8 +59,8 @@ def execute():
 				d.db_insert()
 
 	doctypes = [
-		'Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice',
-		'Supplier Quotation', 'Purchase Order', 'Purchase Receipt', 'Purchase Invoice'
+		"Quotation", "Sales Order", "Delivery Note", "Sales Invoice",
+		"Supplier Quotation", "Purchase Order", "Purchase Receipt", "Purchase Invoice",
 	]
 
 	for dt in doctypes:
@@ -77,6 +79,7 @@ def execute():
 	settings.determine_address_tax_category_from = "Billing Address"
 	settings.save()
 
+
 def get_item_tax_template(item_tax_templates, item_tax_map, item_code, parenttype=None, parent=None):
 	# search for previously created item tax template by comparing tax maps
 	for template, item_tax_template_map in item_tax_templates.items():
@@ -88,10 +91,10 @@ def get_item_tax_template(item_tax_templates, item_tax_map, item_code, parenttyp
 	item_tax_template.title = make_autoname("Item Tax Template-.####")
 
 	for tax_type, tax_rate in item_tax_map.items():
-		account_details = frappe.db.get_value("Account", tax_type, ['name', 'account_type'], as_dict=1)
+		account_details = frappe.db.get_value("Account", tax_type, ["name", "account_type"], as_dict=1)
 		if account_details:
-			if account_details.account_type not in ('Tax', 'Chargeable', 'Income Account', 'Expense Account', 'Expenses Included In Valuation'):
-				frappe.db.set_value('Account', account_details.name, 'account_type', 'Chargeable')
+			if account_details.account_type not in ("Tax", "Chargeable", "Income Account", "Expense Account", "Expenses Included In Valuation"):
+				frappe.db.set_value("Account", account_details.name, "account_type", "Chargeable")
 		else:
 			parts = tax_type.strip().split(" - ")
 			account_name = " - ".join(parts[:-1])
@@ -108,7 +111,7 @@ def get_item_tax_template(item_tax_templates, item_tax_map, item_code, parenttyp
 					"account_name": account_name,
 					"company": company,
 					"account_type": "Tax",
-					"parent_account": parent_account
+					"parent_account": parent_account,
 				}
 				tax_type = frappe.db.get_value("Account", filters)
 				if not tax_type:
@@ -125,14 +128,15 @@ def get_item_tax_template(item_tax_templates, item_tax_map, item_code, parenttyp
 		item_tax_template.save()
 		return item_tax_template.name
 
+
 def get_company(company_abbr, parenttype=None, parent=None):
 	if parenttype and parent:
-		company = frappe.get_cached_value(parenttype, parent, 'company')
+		company = frappe.get_cached_value(parenttype, parent, "company")
 	else:
 		company = frappe.db.get_value("Company", filters={"abbr": company_abbr})
 
 	if not company:
-		companies = frappe.get_all('Company')
+		companies = frappe.get_all("Company")
 		if len(companies) == 1:
 			company = companies[0].name
 

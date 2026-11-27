@@ -1,21 +1,26 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
-from frappe.utils import flt, getdate, cstr
-from erpnext.accounts.report.financial_statements \
-	import filter_accounts, set_gl_entries_by_account, filter_out_zero_value_rows
+from frappe.utils import cstr, flt, getdate
+
+import erpnext
+from erpnext.accounts.report.financial_statements import (
+	filter_accounts,
+	filter_out_zero_value_rows,
+	get_period_list,
+	set_gl_entries_by_account,
+)
 from erpnext.accounts.report.trial_balance.trial_balance import (
-	validate_filters,
-	get_opening_balances,
+	dimension_sorter,
+	get_dimension_column_details,
+	get_dimension_dict,
 	get_dimension_dict_from_key,
 	get_dimension_key,
-	dimension_sorter,
-	get_dimension_dict,
-	get_dimension_column_details,
+	get_opening_balances,
+	validate_filters,
 )
-from erpnext.accounts.report.financial_statements import get_period_list
 
 
 def execute(filters=None):
@@ -107,7 +112,7 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, company_
 		"parent_account": None,
 		"indent": 0,
 		"has_value": True,
-		"currency": company_currency
+		"currency": company_currency,
 	})
 	for period in period_list:
 		total_row_init[period.key] = 0
@@ -161,7 +166,7 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, company_
 		# calculate closing
 		acc["closing_balance"] = acc["opening_balance"] + acc["debit"] - acc["credit"]
 
-		for dimension_key, dim in acc.get("dimensions", {}).items():
+		for _dimension_key, dim in acc.get("dimensions", {}).items():
 			dim["closing_balance"] = dim["opening_balance"] + dim["debit"] - dim["credit"]
 
 		# accumulate total rows
@@ -199,7 +204,7 @@ def accumulate_values_into_parents(accounts, accounts_by_name, period_list):
 
 def set_zero_for_group_accounts(data, parent_children_map, period_list):
 	for d in data:
-		if d.get('account') and parent_children_map.get(d['account']):
+		if d.get("account") and parent_children_map.get(d["account"]):
 			for key in get_value_fields(period_list):
 				del d[key]
 
@@ -308,7 +313,7 @@ def get_columns(filters, period_list):
 			"label": _("Opening Balance"),
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
+			"width": 120,
 		},
 	]
 
@@ -318,7 +323,7 @@ def get_columns(filters, period_list):
 			"label": period.label,
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 110
+			"width": 110,
 		})
 
 	columns += [
@@ -327,14 +332,14 @@ def get_columns(filters, period_list):
 			"label": _("Closing Balance"),
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 120
+			"width": 120,
 		},
 		{
 			"fieldname": "currency",
 			"label": _("Currency"),
 			"fieldtype": "Link",
 			"options": "Currency",
-			"hidden": 1
+			"hidden": 1,
 		},
 	]
 

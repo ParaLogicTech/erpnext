@@ -13,10 +13,10 @@ def setup(company=None, patch=True):
 
 def make_custom_fields():
 	custom_fields = {
-		'Supplier': [
-			dict(fieldname='irs_1099', fieldtype='Check', insert_after='tax_id',
-				label='Is IRS 1099 reporting required for supplier?')
-		]
+		"Supplier": [
+			dict(fieldname="irs_1099", fieldtype="Check", insert_after="tax_id",
+				label="Is IRS 1099 reporting required for supplier?"),
+		],
 	}
 	create_custom_fields(custom_fields)
 
@@ -34,8 +34,8 @@ def update_address_template():
 		{% if country != "United States" %}{{ country|upper }}{% endif -%}
 		"""
 
-	address_template = frappe.db.get_value('Address Template', 'United States')
+	address_template = frappe.db.get_value("Address Template", "United States")
 	if address_template:
-		frappe.db.set_value('Address Template', 'United States', 'template', html)
+		frappe.db.set_value("Address Template", "United States", "template", html)
 	else:
-		frappe.get_doc(dict(doctype='Address Template', country='United States', template=html)).insert()
+		frappe.get_doc(dict(doctype="Address Template", country="United States", template=html)).insert()

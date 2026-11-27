@@ -3,8 +3,8 @@ import frappe
 
 def execute():
 	all_dts = [
-		'Quotation', 'Sales Order', 'Delivery Note', 'Sales Invoice',
-		'Supplier Quotation', 'Purchase Order', 'Purchase Receipt', 'Purchase Invoice'
+		"Quotation", "Sales Order", "Delivery Note", "Sales Invoice",
+		"Supplier Quotation", "Purchase Order", "Purchase Receipt", "Purchase Invoice",
 	]
 
 	# Sales Orders

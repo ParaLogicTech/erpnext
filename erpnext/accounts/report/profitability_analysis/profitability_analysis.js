@@ -9,7 +9,7 @@ frappe.query_reports["Profitability Analysis"] = {
 			"fieldtype": "Link",
 			"options": "Company",
 			"default": frappe.defaults.get_user_default("Company"),
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
 			"fieldname": "based_on",
@@ -17,7 +17,7 @@ frappe.query_reports["Profitability Analysis"] = {
 			"fieldtype": "Select",
 			"options": ["Cost Center", "Project"],
 			"default": "Cost Center",
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
 			"fieldname": "fiscal_year",
@@ -35,10 +35,10 @@ frappe.query_reports["Profitability Analysis"] = {
 					var fy = frappe.model.get_doc("Fiscal Year", fiscal_year);
 					frappe.query_report.set_filter_value({
 						from_date: fy.year_start_date,
-						to_date: fy.year_end_date
+						to_date: fy.year_end_date,
 					});
 				});
-			}
+			},
 		},
 		{
 			"fieldname": "from_date",
@@ -55,21 +55,21 @@ frappe.query_reports["Profitability Analysis"] = {
 		{
 			"fieldname": "show_zero_values",
 			"label": __("Show zero values"),
-			"fieldtype": "Check"
-		}
+			"fieldtype": "Check",
+		},
 	],
 	"formatter": function(value, row, column, data, default_formatter) {
-		if (column.fieldname=="account") {
+		if (column.fieldname == "account") {
 			value = data.account_name;
 
-			column.link_onclick =
-				"frappe.query_reports['Profitability Analysis'].open_profit_and_loss_statement(" + JSON.stringify(data) + ")";
+			column.link_onclick
+				= "frappe.query_reports['Profitability Analysis'].open_profit_and_loss_statement(" + JSON.stringify(data) + ")";
 			column.is_tree = true;
 		}
 
 		value = default_formatter(value, row, column, data);
 
-		if (!data.parent_account && data.based_on != 'project') {
+		if (!data.parent_account && data.based_on != "project") {
 			value = $(`<span>${value}</span>`);
 			var $value = $(value).css("font-weight", "bold");
 			if (data.warn_if_negative && data[column.fieldname] < 0) {
@@ -85,15 +85,15 @@ frappe.query_reports["Profitability Analysis"] = {
 		if (!data.account) return;
 
 		frappe.route_options = {
-			"company": frappe.query_report.get_filter_value('company'),
+			"company": frappe.query_report.get_filter_value("company"),
 			"from_fiscal_year": data.fiscal_year,
-			"to_fiscal_year": data.fiscal_year
+			"to_fiscal_year": data.fiscal_year,
 		};
 
-		if(data.based_on == 'cost_center'){
-			frappe.route_options["cost_center"] = data.account
+		if (data.based_on == "cost_center") {
+			frappe.route_options["cost_center"] = data.account;
 		} else {
-			frappe.route_options["project"] = data.account
+			frappe.route_options["project"] = data.account;
 		}
 
 		frappe.set_route("query-report", "Profit and Loss Statement");
@@ -101,8 +101,8 @@ frappe.query_reports["Profitability Analysis"] = {
 	"tree": true,
 	"name_field": "account",
 	"parent_field": "parent_account",
-	"initial_depth": 3
-}
+	"initial_depth": 3,
+};
 
 erpnext.dimension_filters.forEach((dimension) => {
 	frappe.query_reports["Profitability Analysis"].filters[1].options.push(dimension["document_type"]);

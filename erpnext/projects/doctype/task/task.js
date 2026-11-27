@@ -8,15 +8,15 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 		erpnext.setup_applies_to_fields(this.frm);
 
 		this.frm.custom_make_buttons = {
-			'Task': 'Create Child Task',
+			"Task": "Create Child Task",
 		};
 
 		this.frm.make_methods = {
-			'Timesheet': () => frappe.model.open_mapped_doc({
-				method: 'erpnext.projects.doctype.task.task.make_timesheet',
-				frm: this.frm
-			})
-		}
+			"Timesheet": () => frappe.model.open_mapped_doc({
+				method: "erpnext.projects.doctype.task.task.make_timesheet",
+				frm: this.frm,
+			}),
+		};
 
 		this.setup_queries();
 	}
@@ -31,13 +31,13 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 	setup_queries() {
 		this.frm.set_query("task", "depends_on", () => {
 			let filters = {
-				name: ["!=", this.frm.doc.name]
+				name: ["!=", this.frm.doc.name],
 			};
 			if (this.frm.doc.project) {
 				filters["project"] = this.frm.doc.project;
 			}
 			return {
-				filters: filters
+				filters: filters,
 			};
 		});
 
@@ -45,14 +45,14 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 			let filters = {};
 
 			if (this.frm.doc.project) {
-				filters.project = this.frm.doc.project
+				filters.project = this.frm.doc.project;
 			} else if (this.frm.doc.issue) {
-				filters.issue = this.frm.doc.issue
+				filters.issue = this.frm.doc.issue;
 			}
-			filters['is_group'] = 1;
+			filters["is_group"] = 1;
 
 			return {
-				filters: filters
+				filters: filters,
 			};
 		});
 
@@ -60,8 +60,8 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 			return {
 				filters: {
 					company: this.frm.doc.company,
-					is_group: 0
-				}
+					is_group: 0,
+				},
 			};
 		});
 
@@ -72,10 +72,10 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 		this.setup_action_buttons();
 
 		if (this.frm.doc.is_group) {
-			this.frm.add_custom_button(__('Children Task List'), () => {
-				frappe.set_route('List', 'Task', 'List', {parent_task: this.frm.doc.name});
+			this.frm.add_custom_button(__("Children Task List"), () => {
+				frappe.set_route("List", "Task", "List", {parent_task: this.frm.doc.name});
 			});
-			this.frm.add_custom_button(__('Create Child Task'), () => {
+			this.frm.add_custom_button(__("Create Child Task"), () => {
 				frappe.new_doc("Task", {
 					parent_task: this.frm.doc.name,
 					project: this.frm.doc.project,
@@ -144,7 +144,7 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 			this.frm.dashboard.add_section(
 				this.frm.doc.__onload.timelogs_html,
 				__("Timelogs"),
-				"timelogs-table-section"
+				"timelogs-table-section",
 			);
 			this.frm.dashboard.show();
 		}
@@ -158,33 +158,33 @@ erpnext.projects.TaskController = class TaskController extends frappe.ui.form.Co
 		return frappe.call({
 			method: "erpnext.projects.doctype.task.task.check_if_child_exists",
 			args: {
-				name: this.frm.doc.name
+				name: this.frm.doc.name,
 			},
 			callback: (r) => {
 				if (r.message.length > 0) {
 					frappe.msgprint(__(`Cannot convert it to non-group. The following child Tasks exist: ${r.message.join(", ")}.`));
 					this.frm.reload_doc();
 				}
-			}
-		})
+			},
+		});
 	}
 
 	task_type() {
-		this.make_task_checklist(true)
+		this.make_task_checklist(true);
 	}
 
-	make_task_checklist(force_reload=false) {
+	make_task_checklist(force_reload = false) {
 		this.frm.task_checklist_editor = erpnext.make_checklist(this.frm,
-			'task_checklist',
+			"task_checklist",
 			this.frm.fields_dict.task_checklist_html.wrapper,
 			this.frm.doc.__onload?.default_task_checklist_items,
 			0,
 			this.frm.doc.task_type ? __(this.frm.doc.task_type + " Checklist") : __("Task Checklist"),
-			'Task Type',
+			"Task Type",
 			this.frm.doc.task_type,
-			force_reload
+			force_reload,
 		);
 	}
-}
+};
 
-extend_cscript(cur_frm.cscript, new erpnext.projects.TaskController({ frm: cur_frm }));
+extend_cscript(cur_frm.cscript, new erpnext.projects.TaskController({frm: cur_frm}));

@@ -3,10 +3,11 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, add_days
 from frappe.model.document import Document
-from erpnext.accounts.utils import get_balance_on
+from frappe.utils import add_days, flt, getdate
+
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_document_dimensions
+from erpnext.accounts.utils import get_balance_on
 
 
 class BankReconciliation(Document):
@@ -54,7 +55,7 @@ class BankReconciliation(Document):
 		self.suspense_account = bank_account.suspense_account
 		if not self.account:
 			frappe.throw(_("{0} does not have a GL Account configured").format(
-				frappe.get_desk_link("Bank Account", self.bank_account)
+				frappe.get_desk_link("Bank Account", self.bank_account),
 			))
 
 		self._validate_mandatory()
@@ -65,16 +66,16 @@ class BankReconciliation(Document):
 		self.set_summary_values()
 
 		entries = self.get_entries()
-		self.set('payment_entries', [])
+		self.set("payment_entries", [])
 		for row in entries:
-			row.amount = flt(row.get('debit', 0)) - flt(row.get('credit', 0))
+			row.amount = flt(row.get("debit", 0)) - flt(row.get("credit", 0))
 
 			if not row.party_type and not row.party:
 				row.party_type = row.deposit_against_party_type
 				row.party = row.deposit_against_party
 				row.party_name = row.deposit_against_party_name
 
-			self.append('payment_entries', row)
+			self.append("payment_entries", row)
 
 	def set_summary_values(self):
 		self.opening_balance = get_opening_balance(self.bank_account, self.from_date)
@@ -87,7 +88,7 @@ class BankReconciliation(Document):
 		self.cleared_incoming_hidden = 0
 		self.cleared_outgoing_hidden = 0
 		for d in cleared_entries:
-			amount = flt(d.get('debit', 0)) - flt(d.get('credit', 0))
+			amount = flt(d.get("debit", 0)) - flt(d.get("credit", 0))
 			if amount > 0:
 				self.cleared_incoming_hidden += amount
 			else:
@@ -165,7 +166,7 @@ class BankReconciliation(Document):
 		exclude_reconciliation_jv_condition = "and je.voucher_type != 'Bank Clearance Entry'" if exclude_reconciliation_jv else ""
 
 		journal_entries = frappe.db.sql(f"""
-			select 
+			select
 				'Journal Entry' as voucher_type,
 				je.name as voucher_no,
 				'Journal Entry Account' as voucher_detail_dt,
@@ -195,7 +196,7 @@ class BankReconciliation(Document):
 				{clearance_condition.format('jea.')}
 			order by je.posting_date, je.creation
 		""", {
-			"account": account, "from": self.from_date, "to": self.to_date
+			"account": account, "from": self.from_date, "to": self.to_date,
 		}, as_dict=1)
 
 		# Set original document info (deposited against)
@@ -266,7 +267,7 @@ class BankReconciliation(Document):
 				{clearance_condition.format('')}
 			order by posting_date, creation
 		""", {
-			"account": account, "from": self.from_date, "to": self.to_date
+			"account": account, "from": self.from_date, "to": self.to_date,
 		}, as_dict=1)
 
 	def get_pos_sales_invoices(self, account, clearance_condition, date_condition=""):
@@ -297,7 +298,7 @@ class BankReconciliation(Document):
 				{clearance_condition.format('sip.')}
 			order by si.posting_date, si.creation
 		""", {
-			"account": account, "from": self.from_date, "to": self.to_date
+			"account": account, "from": self.from_date, "to": self.to_date,
 		}, as_dict=1)
 
 	def get_paid_purchase_invoices(self, account, clearance_condition, date_condition=""):
@@ -323,7 +324,7 @@ class BankReconciliation(Document):
 				{clearance_condition.format('pi.')}
 			order by pi.posting_date, pi.creation
 		""", {
-			"account": account, "from": self.from_date, "to": self.to_date
+			"account": account, "from": self.from_date, "to": self.to_date,
 		}, as_dict=1)
 
 	@frappe.whitelist()
@@ -334,7 +335,7 @@ class BankReconciliation(Document):
 			frappe.throw(_("No Payment Entries to update"))
 
 		clearance_updated = False
-		for d in self.get('payment_entries'):
+		for d in self.get("payment_entries"):
 			self.validate_payment_row(d)
 			if d.clearance_date or self.allow_corrections:
 				if self.update_row_clearance_date(d):
@@ -357,7 +358,7 @@ class BankReconciliation(Document):
 		docstatus = frappe.db.get_value(row.voucher_type, row.voucher_no, "docstatus", for_update=True)
 		if docstatus != 1:
 			frappe.throw(_("Row #{0}: {1} is not submitted").format(
-				row.idx, frappe.get_desk_link(row.voucher_type, row.voucher_no)
+				row.idx, frappe.get_desk_link(row.voucher_type, row.voucher_no),
 			))
 
 		row.clearance_date = getdate(row.clearance_date) if row.clearance_date else None
@@ -365,31 +366,31 @@ class BankReconciliation(Document):
 		if row.clearance_date:
 			if row.clearance_date > getdate():
 				frappe.throw(_("Row #{0}: Clearance Date {1} cannot be in the future").format(
-					row.idx, frappe.bold(row.get_formatted("clearance_date"))
+					row.idx, frappe.bold(row.get_formatted("clearance_date")),
 				))
 
 			if row.clearance_date > getdate(self.to_date) and not self.allow_corrections:
 				frappe.throw(_(
 					"Row #{0}: Clearance Date {1} is greater than the 'Closing Date'. "
-					"To set Clearance Date after Closing Date please check mark 'Allow Corrections' then confirm."
+					"To set Clearance Date after Closing Date please check mark 'Allow Corrections' then confirm.",
 				).format(
-					row.idx, frappe.bold(row.get_formatted("clearance_date"))
+					row.idx, frappe.bold(row.get_formatted("clearance_date")),
 				))
 
 			if row.clearance_date < getdate(self.from_date) and not self.allow_corrections:
 				frappe.throw(_(
 					"Row #{0}: Clearance Date {1} is less than the 'Opening Date'. "
-					"To set Clearance Date before Opening Date please check mark 'Allow Corrections' then confirm."
+					"To set Clearance Date before Opening Date please check mark 'Allow Corrections' then confirm.",
 				).format(
-					row.idx, frappe.bold(row.get_formatted("clearance_date"))
+					row.idx, frappe.bold(row.get_formatted("clearance_date")),
 				))
 
 		if row.voucher_detail_dn:
 			row.previous_clearance_date = frappe.db.get_value(row.voucher_detail_dt, row.voucher_detail_dn,
-				'clearance_date', for_update=True)
+				"clearance_date", for_update=True)
 		else:
 			row.previous_clearance_date = frappe.db.get_value(row.voucher_type, row.voucher_no,
-				'clearance_date', for_update=True)
+				"clearance_date", for_update=True)
 		row.previous_clearance_date = getdate(row.previous_clearance_date) if row.previous_clearance_date else None
 
 		if (
@@ -399,12 +400,12 @@ class BankReconciliation(Document):
 			and row.previous_clearance_date != row.clearance_date
 		):
 			frappe.throw(_("Row #{0}: {1} is already cleared").format(
-				row.idx, frappe.get_desk_link(row.voucher_type, row.voucher_no)
+				row.idx, frappe.get_desk_link(row.voucher_type, row.voucher_no),
 			))
 
 		if row.clearance_date and row.cheque_date and row.clearance_date < getdate(row.cheque_date):
 			frappe.throw(_("Row #{0}: Clearance Date {1} cannot be before Reference/Cheque Date {2}").format(
-				row.idx, frappe.bold(row.get_formatted("clearance_date")), frappe.bold(row.get_formatted("cheque_date"))
+				row.idx, frappe.bold(row.get_formatted("clearance_date")), frappe.bold(row.get_formatted("cheque_date")),
 			))
 
 	def update_row_clearance_date(self, row):
@@ -412,10 +413,10 @@ class BankReconciliation(Document):
 			return False
 
 		if row.voucher_detail_dn:
-			frappe.db.set_value(row.voucher_detail_dt, row.voucher_detail_dn, 'clearance_date', row.clearance_date,
+			frappe.db.set_value(row.voucher_detail_dt, row.voucher_detail_dn, "clearance_date", row.clearance_date,
 				notify=True)
 		else:
-			frappe.db.set_value(row.voucher_type, row.voucher_no, 'clearance_date', row.clearance_date,
+			frappe.db.set_value(row.voucher_type, row.voucher_no, "clearance_date", row.clearance_date,
 				notify=True)
 
 		frappe.get_doc({
@@ -425,7 +426,7 @@ class BankReconciliation(Document):
 			"reference_doctype": row.voucher_type,
 			"reference_name": row.voucher_no,
 			"content": _("Set Clearance Date to {0}".format(
-				frappe.utils.formatdate(row.clearance_date) if row.clearance_date else "None"
+				frappe.utils.formatdate(row.clearance_date) if row.clearance_date else "None",
 			)),
 		}).insert(ignore_permissions=True)
 
@@ -437,7 +438,7 @@ class BankReconciliation(Document):
 
 		to_clear_map = {}
 		to_reverse_map = {}
-		for d in self.get('payment_entries'):
+		for d in self.get("payment_entries"):
 			if d.clearance_date != d.previous_clearance_date:
 				if d.clearance_date:
 					to_clear_map.setdefault(d.clearance_date, []).append(d)
@@ -464,12 +465,12 @@ class BankReconciliation(Document):
 
 		if reversal_jvs:
 			frappe.msgprint(_("Clearing Reversal Journal Entries created:<br>{0}").format(
-				", ".join([frappe.utils.get_link_to_form("Journal Entry", name) for name in reversal_jvs])
+				", ".join([frappe.utils.get_link_to_form("Journal Entry", name) for name in reversal_jvs]),
 			))
 
 		if clearance_jvs:
 			frappe.msgprint(_("Bank Clearing Journal Entries created:<br>{0}").format(
-				", ".join([frappe.utils.get_link_to_form("Journal Entry", name) for name in clearance_jvs])
+				", ".join([frappe.utils.get_link_to_form("Journal Entry", name) for name in clearance_jvs]),
 			))
 
 	def make_clearance_journal_entry(self, clearance_date, rows, is_reversal=False):
@@ -500,7 +501,7 @@ class BankReconciliation(Document):
 				"clear_against": d.voucher_no,
 				"clear_against_detail_type": d.voucher_detail_dt,
 				"clear_against_detail_name": d.voucher_detail_dn,
-				"is_reversal": is_reversal
+				"is_reversal": is_reversal,
 			})
 
 			suspense_row = je.append("accounts", {
@@ -514,7 +515,7 @@ class BankReconciliation(Document):
 				"clear_against": d.voucher_no,
 				"clear_against_detail_type": d.voucher_detail_dt,
 				"clear_against_detail_name": d.voucher_detail_dn,
-				"is_reversal": is_reversal
+				"is_reversal": is_reversal,
 			})
 
 			additional_values = self.get_row_additional_values(d)

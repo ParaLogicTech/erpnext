@@ -5,6 +5,7 @@
 
 import frappe
 from frappe.model.document import Document
+
 from erpnext.setup.doctype.default_price_list.default_price_list import validate_default_price_list_table
 
 

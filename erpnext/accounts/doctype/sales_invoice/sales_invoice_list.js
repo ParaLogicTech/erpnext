@@ -2,11 +2,11 @@
 // License: GNU General Public License v3. See license.txt
 
 // render
-frappe.listview_settings['Sales Invoice'] = {
+frappe.listview_settings["Sales Invoice"] = {
 	add_fields: [
 		"customer", "customer_name",
 		"base_grand_total", "outstanding_amount", "currency",
-		"due_date", "company", "is_return"
+		"due_date", "company", "is_return",
 	],
 
 	get_indicator: function(doc) {
@@ -19,12 +19,12 @@ frappe.listview_settings['Sales Invoice'] = {
 			"Overdue": "red",
 			"To Deliver": "red",
 		};
-		return [__(doc.status), status_color[doc.status], "status,=,"+doc.status];
+		return [__(doc.status), status_color[doc.status], "status,=," + doc.status];
 	},
 
 	right_column: "grand_total",
 
-	onload: function (listview) {
+	onload: function(listview) {
 		erpnext.setup_applies_to_listview_filters(listview);
 	},
 };

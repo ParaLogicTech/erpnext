@@ -1,17 +1,19 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, cstr, getdate
 from frappe.model.utils import get_fetch_values
-from erpnext.stock.get_item_details import get_conversion_factor, get_default_supplier, get_default_warehouse
-from erpnext.buying.utils import validate_for_items
-from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
+from frappe.utils import cint, cstr, flt, getdate
+
 from erpnext.accounts.doctype.budget.budget import validate_expense_against_budget
-from erpnext.controllers.transaction_controller import TransactionController
 from erpnext.accounts.party import get_party_account
-import json
+from erpnext.buying.utils import validate_for_items
+from erpnext.controllers.transaction_controller import TransactionController
+from erpnext.stock.doctype.stock_entry.stock_entry import get_used_alternative_items
+from erpnext.stock.get_item_details import get_conversion_factor, get_default_supplier, get_default_warehouse
 
 
 class BuyingController(TransactionController):
@@ -25,7 +27,7 @@ class BuyingController(TransactionController):
 
 			self.print_templates = {
 				"total": "templates/print_formats/includes/total.html",
-				"taxes": "templates/print_formats/includes/taxes.html"
+				"taxes": "templates/print_formats/includes/taxes.html",
 			}
 
 	def get_feed(self):
@@ -80,7 +82,7 @@ class BuyingController(TransactionController):
 		pass
 
 	def on_submit(self):
-		if self.get('is_return'):
+		if self.get("is_return"):
 			return
 
 		if self.doctype == "Purchase Order":
@@ -91,16 +93,16 @@ class BuyingController(TransactionController):
 			if frappe.get_cached_value("Buying Settings", None, "update_prices_on_submission_of_purchase_invoice"):
 				self.auto_update_item_prices()
 
-		if self.doctype in ['Purchase Receipt', 'Purchase Invoice']:
-			field = 'purchase_invoice' if self.doctype == 'Purchase Invoice' else 'purchase_receipt'
+		if self.doctype in ["Purchase Receipt", "Purchase Invoice"]:
+			field = "purchase_invoice" if self.doctype == "Purchase Invoice" else "purchase_receipt"
 
 			self.process_fixed_asset()
 			self.update_fixed_asset(field)
 
 	def on_cancel(self):
-		if not self.get('is_return'):
-			if self.doctype in ['Purchase Receipt', 'Purchase Invoice']:
-				field = 'purchase_invoice' if self.doctype == 'Purchase Invoice' else 'purchase_receipt'
+		if not self.get("is_return"):
+			if self.doctype in ["Purchase Receipt", "Purchase Invoice"]:
+				field = "purchase_invoice" if self.doctype == "Purchase Invoice" else "purchase_receipt"
 
 				self.delete_linked_asset()
 				self.update_fixed_asset(field, delete_asset=True)
@@ -137,7 +139,7 @@ class BuyingController(TransactionController):
 
 	def set_party_account(self, force=False):
 		if self.meta.has_field("credit_to") and (not self.get("credit_to") or force):
-			billing_party_type, billing_party, billing_party_name = self.get_billing_party()
+			billing_party_type, billing_party, _billing_party_name = self.get_billing_party()
 			self.credit_to = get_party_account(
 				billing_party_type,
 				billing_party,
@@ -216,21 +218,21 @@ class BuyingController(TransactionController):
 
 			if tax_for_valuation:
 				for d in tax_for_valuation:
-					d.category = 'Total'
+					d.category = "Total"
 				frappe.msgprint(_('Tax Category has been changed to "Total" because all the Items are non-stock items'))
 
 	def validate_asset_return(self):
-		if self.doctype not in ['Purchase Receipt', 'Purchase Invoice'] or not self.is_return:
+		if self.doctype not in ["Purchase Receipt", "Purchase Invoice"] or not self.is_return:
 			return
 
-		purchase_doc_field = 'purchase_receipt' if self.doctype == 'Purchase Receipt' else 'purchase_invoice'
+		purchase_doc_field = "purchase_receipt" if self.doctype == "Purchase Receipt" else "purchase_invoice"
 		not_cancelled_asset = []
 		if self.return_against:
 			not_cancelled_asset = [
 				d.name
 				for d in frappe.db.get_all("Asset", {purchase_doc_field: self.return_against, "docstatus": 1})
 			]
-			
+
 		if self.is_return and len(not_cancelled_asset):
 			frappe.throw(_("{} has submitted assets linked to it. You need to cancel the assets to create purchase return.".format(self.return_against)),
 				title=_("Not Allowed"))
@@ -238,12 +240,12 @@ class BuyingController(TransactionController):
 	def validate_transaction_type(self):
 		super().validate_transaction_type()
 
-		if self.get('transaction_type'):
-			if not frappe.get_cached_value("Transaction Type", self.transaction_type, 'buying'):
+		if self.get("transaction_type"):
+			if not frappe.get_cached_value("Transaction Type", self.transaction_type, "buying"):
 				frappe.throw(_("Transaction Type {0} is not allowed for purchase transactions").format(frappe.bold(self.transaction_type)))
 
 	def get_asset_items(self):
-		if self.doctype not in ['Purchase Order', 'Purchase Invoice', 'Purchase Receipt']:
+		if self.doctype not in ["Purchase Order", "Purchase Invoice", "Purchase Receipt"]:
 			return []
 
 		return [d.item_code for d in self.items if d.is_fixed_asset]
@@ -289,7 +291,7 @@ class BuyingController(TransactionController):
 		total_non_stock_asset_valuation_tax = 0
 		for item in self.get(parentfield):
 			if item.qty and item.item_code not in stock_and_asset_items:
-				item_tax_detail = json.loads(item.item_tax_detail or '{}')
+				item_tax_detail = json.loads(item.item_tax_detail or "{}")
 				for tax in valuation_taxes:
 					tax_amount = flt(item_tax_detail.get(tax.name)) * self.conversion_rate
 					total_non_stock_asset_valuation_tax += tax_amount
@@ -303,7 +305,7 @@ class BuyingController(TransactionController):
 					else flt(item.qty) / stock_and_asset_items_qty
 
 				item.item_tax_amount = total_non_stock_asset_valuation_tax * item_proportion
-				item_tax_detail = json.loads(item.item_tax_detail or '{}')
+				item_tax_detail = json.loads(item.item_tax_detail or "{}")
 				for tax in valuation_taxes:
 					tax_amount = flt(item_tax_detail.get(tax.name)) * self.conversion_rate
 					item.item_tax_amount += tax_amount
@@ -314,7 +316,7 @@ class BuyingController(TransactionController):
 					item.item_tax_amount = flt(item.item_tax_amount, self.precision("item_tax_amount", item))
 					valuation_amount_adjustment -= item.item_tax_amount
 
-				if flt(item.conversion_factor)==0.0:
+				if flt(item.conversion_factor) == 0.0:
 					item.conversion_factor = get_conversion_factor(item.item_code, item.uom).get("conversion_factor") or 1.0
 
 				qty_in_stock_uom = flt(item.qty * item.conversion_factor)
@@ -391,7 +393,7 @@ class BuyingController(TransactionController):
 			for item in self.get("items"):
 				if item in self.subcontracted_items and not item.bom:
 					frappe.throw(_("Row #{0}: Please select BOM for subcontracted Item {0}").format(
-						item.idx, frappe.bold(item.item_code)
+						item.idx, frappe.bold(item.item_code),
 					))
 
 		else:
@@ -405,8 +407,8 @@ class BuyingController(TransactionController):
 				"backflush_raw_materials_of_subcontract_based_on")
 
 			if (
-				self.doctype in ('Purchase Receipt', 'Purchase Invoice')
-				and backflush_raw_materials_based_on != 'BOM'
+				self.doctype in ("Purchase Receipt", "Purchase Invoice")
+				and backflush_raw_materials_based_on != "BOM"
 				and any(d for d in self.get("items") if d.get("purchase_order"))
 			):
 				self.update_raw_materials_supplied_based_on_transfer()
@@ -425,12 +427,12 @@ class BuyingController(TransactionController):
 				item.rm_supp_cost = 0.0
 
 		if not self.get("is_subcontracted") and self.get("supplied_items"):
-			self.set('supplied_items', [])
+			self.set("supplied_items", [])
 
 	def update_raw_materials_supplied_based_on_transfer(self):
-		self.set('supplied_items', [])
+		self.set("supplied_items", [])
 
-		for fg_row in self.get('items'):
+		for fg_row in self.get("items"):
 			# reset raw_material cost
 			fg_row.rm_supp_cost = 0
 
@@ -444,7 +446,7 @@ class BuyingController(TransactionController):
 				d.pending_qty = d.transferred_qty
 
 				pending_item_dict = pending_materials.setdefault(d.rm_item_code, frappe._dict({
-					"total_transferred_qty": 0, "total_pending_qty": 0, "batch_map": {}
+					"total_transferred_qty": 0, "total_pending_qty": 0, "batch_map": {},
 				}))
 
 				pending_item_dict.total_transferred_qty += d.transferred_qty
@@ -506,7 +508,7 @@ class BuyingController(TransactionController):
 
 		ordered_lines = frappe.get_all("Purchase Order Item",
 			filters={"item_code": row.item_code, "parent": row.purchase_order},
-			fields=["name", "qty", "received_qty"]
+			fields=["name", "qty", "received_qty"],
 		)
 		po_item = [d for d in ordered_lines if d.name == row.purchase_order_item][0]
 
@@ -583,7 +585,7 @@ class BuyingController(TransactionController):
 		return backflushed_materials_data
 
 	def append_raw_material_to_be_backflushed(self, fg_item_doc, raw_material_data, qty):
-		rm = self.append('supplied_items', {})
+		rm = self.append("supplied_items", {})
 		rm.update(raw_material_data)
 
 		if not rm.main_item_code:
@@ -594,7 +596,7 @@ class BuyingController(TransactionController):
 		rm.required_qty = qty
 		rm.consumed_qty = qty
 
-		if not raw_material_data.get('non_stock_item'):
+		if not raw_material_data.get("non_stock_item"):
 			from erpnext.stock.utils import get_incoming_rate
 			rm.rate = get_incoming_rate({
 				"item_code": raw_material_data.rm_item_code,
@@ -603,7 +605,7 @@ class BuyingController(TransactionController):
 				"posting_date": self.posting_date,
 				"posting_time": self.posting_time,
 				"qty": -1 * qty,
-				"serial_no": rm.serial_no
+				"serial_no": rm.serial_no,
 			})
 
 		rm.amount = qty * flt(rm.rate)
@@ -613,15 +615,15 @@ class BuyingController(TransactionController):
 		from erpnext.manufacturing.doctype.bom.bom import get_bom_items_as_dict
 
 		explode_items = 1
-		if item.meta.has_field('include_exploded_items'):
-			explode_items = item.get('include_exploded_items')
+		if item.meta.has_field("include_exploded_items"):
+			explode_items = item.get("include_exploded_items")
 
-		received_qty = flt(item.stock_qty) + flt(item.get('rejected_qty')) * flt(item.conversion_factor)
+		received_qty = flt(item.stock_qty) + flt(item.get("rejected_qty")) * flt(item.conversion_factor)
 		bom_items = get_bom_items_as_dict(item.bom, self.company, qty=received_qty, fetch_exploded=explode_items,
 			fetch_qty_in_stock_uom=True)
 
 		used_alternative_items = []
-		if self.doctype == 'Purchase Receipt' and item.purchase_order:
+		if self.doctype == "Purchase Receipt" and item.purchase_order:
 			used_alternative_items = get_used_alternative_items(purchase_order=item.purchase_order)
 
 		raw_materials_cost = 0
@@ -642,7 +644,7 @@ class BuyingController(TransactionController):
 					reserve_warehouse = None
 
 			conversion_factor = item.conversion_factor
-			if self.doctype == 'Purchase Receipt' and item.purchase_order and bom_item.item_code in used_alternative_items:
+			if self.doctype == "Purchase Receipt" and item.purchase_order and bom_item.item_code in used_alternative_items:
 				alternative_item_data = used_alternative_items.get(bom_item.item_code)
 				bom_item.item_code = alternative_item_data.item_code
 				bom_item.item_name = alternative_item_data.item_name
@@ -690,7 +692,7 @@ class BuyingController(TransactionController):
 					"posting_date": self.posting_date,
 					"posting_time": self.posting_time,
 					"qty": -1 * rm.required_qty,
-					"serial_no": rm.serial_no
+					"serial_no": rm.serial_no,
 				})
 			else:
 				rm.rate = bom_item.rate
@@ -728,14 +730,14 @@ class BuyingController(TransactionController):
 				has_supplied_items = any(rm for rm in self.get("supplied_items") if rm.reference_name == main.name)
 				if not has_supplied_items:
 					frappe.throw(_("Row #{0}: Item {1} does not have any unconsumed supplied materials").format(
-						main.idx, frappe.bold(main.item_code)
+						main.idx, frappe.bold(main.item_code),
 					))
 
 		for rm in self.get("supplied_items"):
 			has_valid_reference = any(main for main in self.get("items") if main.name == rm.reference_name)
 			if not has_valid_reference:
 				frappe.throw(_("Row #{0}: Raw Material Supplied Item {1} has an invalid reference to subcontracted item").format(
-					rm.idx, frappe.bold(main.item_code)
+					rm.idx, frappe.bold(main.item_code),
 				))
 
 	@property
@@ -744,9 +746,9 @@ class BuyingController(TransactionController):
 			self._subcontracted_items = []
 			item_codes = list(set(item.item_code for item in self.get("items")))
 			if item_codes:
-				items = frappe.get_all('Item', filters={
-					'name': ['in', item_codes],
-					'is_sub_contracted_item': 1
+				items = frappe.get_all("Item", filters={
+					"name": ["in", item_codes],
+					"is_sub_contracted_item": 1,
 				})
 				self._subcontracted_items = [item.name for item in items]
 
@@ -774,7 +776,7 @@ class BuyingController(TransactionController):
 				"against": warehouse_account[main.warehouse]["account"],
 				"cost_center": main.cost_center or self.get("cost_center"),
 				"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
-				"credit": -1 * stock_value_diff
+				"credit": -1 * stock_value_diff,
 			}, warehouse_account[self.supplier_warehouse]["account_currency"], item=main))
 
 			if not main.get("rm_supp_stock_value_diff"):
@@ -792,7 +794,7 @@ class BuyingController(TransactionController):
 		work_order_details = {}
 		for name in work_orders:
 			wo = frappe.db.get_value("Work Order", name, [
-				"name", "company", "docstatus", "status", "production_item", "fg_warehouse"
+				"name", "company", "docstatus", "status", "production_item", "fg_warehouse",
 			], as_dict=1)
 			if not wo:
 				frappe.throw(_("Work Order {0} does not exist").format(name))
@@ -807,27 +809,27 @@ class BuyingController(TransactionController):
 
 			if wo.docstatus != 1:
 				frappe.throw(_("Row #{0}: {1} is not submitted").format(
-					d.idx, frappe.get_desk_link("Work Order", wo.name)
+					d.idx, frappe.get_desk_link("Work Order", wo.name),
 				))
 
 			if self.doctype == "Purchase Order" and wo.status == "Stopped":
 				frappe.throw(_("Row #{0}: {1} is {2}").format(
-					d.idx, frappe.get_desk_link("Work Order", wo.name)), wo.status
+					d.idx, frappe.get_desk_link("Work Order", wo.name)), wo.status,
 				)
 
 			if self.company != wo.company:
 				frappe.throw(_("Row #{0}: Company does not match in {1}. Company should be {2}").format(
-					d.idx, frappe.get_desk_link("Work Order", wo.name), frappe.bold(wo.company)
+					d.idx, frappe.get_desk_link("Work Order", wo.name), frappe.bold(wo.company),
 				))
 
 			if d.item_code != wo.production_item:
 				frappe.throw(_("Row #{0}: Production Item does not match in {1}. Item Code should be {2}").format(
-					d.idx, frappe.get_desk_link("Work Order", wo.name), frappe.bold(wo.production_item)
+					d.idx, frappe.get_desk_link("Work Order", wo.name), frappe.bold(wo.production_item),
 				))
 
 			if self.doctype == "Purchase Order" and d.warehouse != wo.fg_warehouse:
 				frappe.throw(_("Row #{0}: Finished Goods Warehouse does not match in {1}. Warehouse should be {2}").format(
-					d.idx, frappe.get_desk_link("Work Order", wo.name), frappe.bold(wo.fg_warehouse)
+					d.idx, frappe.get_desk_link("Work Order", wo.name), frappe.bold(wo.fg_warehouse),
 				))
 
 	def get_stock_value_difference_map(self):
@@ -840,7 +842,7 @@ class BuyingController(TransactionController):
 
 		sle_map = {}
 		for d in sle_data:
-			sle_map[(d.voucher_detail_no, d.item_code)] = d.stock_value_difference
+			sle_map[d.voucher_detail_no, d.item_code] = d.stock_value_difference
 
 		return sle_map
 
@@ -885,8 +887,8 @@ class BuyingController(TransactionController):
 		item_row = item_row.as_dict()
 		for fieldname in field_list:
 			if flt(item_row[fieldname]) < 0:
-				frappe.throw(_("Row #{0}: {1} can not be negative for item {2}".format(item_row['idx'],
-					frappe.get_meta(item_row.doctype).get_label(fieldname), item_row['item_code'])))
+				frappe.throw(_("Row #{0}: {1} can not be negative for item {2}".format(item_row["idx"],
+					frappe.get_meta(item_row.doctype).get_label(fieldname), item_row["item_code"])))
 
 	def check_for_on_hold_or_closed_status(self, ref_doctype, ref_fieldname):
 		for d in self.get("items"):
@@ -910,7 +912,7 @@ class BuyingController(TransactionController):
 	def make_sl_entries_for_stock_items(self, sl_entries):
 		stock_items = self.get_stock_items()
 
-		for d in self.get('items'):
+		for d in self.get("items"):
 			if d.item_code not in stock_items or not d.warehouse:
 				continue
 
@@ -920,42 +922,42 @@ class BuyingController(TransactionController):
 			if accepted_qty:
 				accepted_sle = self.get_sl_entries(d, {
 					"actual_qty": flt(accepted_qty),
-					"serial_no": cstr(d.serial_no).strip()
+					"serial_no": cstr(d.serial_no).strip(),
 				})
 
 				# Purchase return outgoing rate
 				if self.is_return:
 					accepted_sle.update({
-						"outgoing_rate": flt(d.valuation_rate, 9)
+						"outgoing_rate": flt(d.valuation_rate, 9),
 					})
 
 					# Purchase return dependency
 					if self.docstatus == 1:
-						purchase_receipt = self.return_against if self.doctype == "Purchase Receipt" else d.get('purchase_receipt')
-						if d.get('purchase_receipt_item') and purchase_receipt:
+						purchase_receipt = self.return_against if self.doctype == "Purchase Receipt" else d.get("purchase_receipt")
+						if d.get("purchase_receipt_item") and purchase_receipt:
 							accepted_sle.dependencies = [{
 								"dependent_voucher_type": "Purchase Receipt",
 								"dependent_voucher_no": purchase_receipt,
 								"dependent_voucher_detail_no": d.purchase_receipt_item,
-								"dependency_type": "Rate"
+								"dependency_type": "Rate",
 							}]
 						elif (
 							self.doctype == "Purchase Invoice"
-							and d.get('purchase_invoice_item')
-							and self.get('return_against')
-							and frappe.db.get_value("Purchase Invoice", self.return_against, 'update_stock', cache=1)
+							and d.get("purchase_invoice_item")
+							and self.get("return_against")
+							and frappe.db.get_value("Purchase Invoice", self.return_against, "update_stock", cache=1)
 						):
 							accepted_sle.dependencies = [{
 								"dependent_voucher_type": "Purchase Invoice",
 								"dependent_voucher_no": self.return_against,
 								"dependent_voucher_detail_no": d.purchase_invoice_item,
-								"dependency_type": "Rate"
+								"dependency_type": "Rate",
 							}]
 
 				# Purchase receipt incoming rate
 				else:
 					accepted_sle.update({
-						"incoming_rate": flt(d.valuation_rate, 9)
+						"incoming_rate": flt(d.valuation_rate, 9),
 					})
 
 					# supplied raw materials dependency
@@ -980,33 +982,33 @@ class BuyingController(TransactionController):
 					"warehouse": d.rejected_warehouse,
 					"actual_qty": rejected_qty,
 					"serial_no": cstr(d.rejected_serial_no).strip(),
-					"incoming_rate": 0.0
+					"incoming_rate": 0.0,
 				})
 				if self.is_return:
 					rejected_sle.update({
-						"outgoing_rate": 0.0
+						"outgoing_rate": 0.0,
 					})
 
 				sl_entries.append(rejected_sle)
 
 	def make_sl_entries_for_supplied_items(self, sl_entries):
-		if hasattr(self, 'supplied_items'):
-			for d in self.get('supplied_items'):
+		if hasattr(self, "supplied_items"):
+			for d in self.get("supplied_items"):
 				# negative quantity is passed, as raw material qty has to be decreased
 				# when PR is submitted and it has to be increased when PR is cancelled
 				incoming_rate = 0
 				if self.is_return and self.return_against and self.docstatus == 1:
 					incoming_rate = self.get_incoming_rate_for_sales_return(
 						item_code=d.rm_item_code,
-						warehouse=self.supplier_warehouse, batch_no=d.get('batch_no'),
-						against_document_type=self.doctype, against_document=self.return_against
+						warehouse=self.supplier_warehouse, batch_no=d.get("batch_no"),
+						against_document_type=self.doctype, against_document=self.return_against,
 					)
 
 				sl_entries.append(self.get_sl_entries(d, {
 					"item_code": d.rm_item_code,
 					"warehouse": self.supplier_warehouse,
 					"actual_qty": -1 * flt(d.consumed_qty),
-					"incoming_rate": incoming_rate
+					"incoming_rate": incoming_rate,
 				}))
 
 	def update_ordered_and_reserved_qty(self):
@@ -1055,18 +1057,18 @@ class BuyingController(TransactionController):
 
 	def validate_budget(self):
 		if self.docstatus == 1:
-			for data in self.get('items'):
+			for data in self.get("items"):
 				args = data.as_dict()
 				args.update({
-					'doctype': self.doctype,
-					'company': self.company,
-					'posting_date': self.schedule_date if self.doctype == 'Material Request' else self.transaction_date
+					"doctype": self.doctype,
+					"company": self.company,
+					"posting_date": self.schedule_date if self.doctype == "Material Request" else self.transaction_date,
 				})
 
 				validate_expense_against_budget(args)
 
 	def process_fixed_asset(self):
-		if self.doctype == 'Purchase Invoice' and not self.update_stock:
+		if self.doctype == "Purchase Invoice" and not self.update_stock:
 			return
 
 		asset_items = self.get_asset_items()
@@ -1084,31 +1086,31 @@ class BuyingController(TransactionController):
 				if not d.asset_location:
 					frappe.throw(
 						_("Please set the asset location for item {} at row {}.").format(
-							d.item_code, d.idx
+							d.item_code, d.idx,
 						),
 						title=_("Missing Asset Location"),
 					)
 
-				if item_data.get('auto_create_assets'):
+				if item_data.get("auto_create_assets"):
 					# If asset has to be auto created
 					# Check for asset naming series
-					if item_data.get('asset_naming_series'):
+					if item_data.get("asset_naming_series"):
 						created_assets = []
 
-						for qty in range(cint(d.qty)):
+						for _qty in range(cint(d.qty)):
 							asset = self.make_asset(d)
 							created_assets.append(asset)
 
 						if len(created_assets) > 5:
 							# dont show asset form links if more than 5 assets are created
-							messages.append(_('{} Assets created for {}').format(len(created_assets), frappe.bold(d.item_code)))
+							messages.append(_("{} Assets created for {}").format(len(created_assets), frappe.bold(d.item_code)))
 						else:
-							assets_link = list(map(lambda d: frappe.utils.get_link_to_form('Asset', d), created_assets))
-							assets_link = frappe.bold(','.join(assets_link))
+							assets_link = list(map(lambda d: frappe.utils.get_link_to_form("Asset", d), created_assets))
+							assets_link = frappe.bold(",".join(assets_link))
 
-							is_plural = 's' if len(created_assets) != 1 else ''
+							is_plural = "s" if len(created_assets) != 1 else ""
 							messages.append(
-								_('Asset{} {assets_link} created for {}').format(is_plural, frappe.bold(d.item_code), assets_link=assets_link)
+								_("Asset{} {assets_link} created for {}").format(is_plural, frappe.bold(d.item_code), assets_link=assets_link),
 							)
 					else:
 						frappe.throw(_("Row {}: Asset Naming Series is mandatory for the auto creation for item {}")
@@ -1124,28 +1126,28 @@ class BuyingController(TransactionController):
 		if not row.asset_location:
 			frappe.throw(_("Row {0}: Enter location for the asset item {1}").format(row.idx, row.item_code))
 
-		item_data = frappe.db.get_value('Item',
-			row.item_code, ['asset_naming_series', 'asset_category'], as_dict=1)
+		item_data = frappe.db.get_value("Item",
+			row.item_code, ["asset_naming_series", "asset_category"], as_dict=1)
 
 		purchase_amount = flt(row.base_rate + row.item_tax_amount)
 
 		asset = frappe.get_doc({
-			'doctype': 'Asset',
-			'item_code': row.item_code,
-			'asset_name': row.item_name,
-			'item_detail':row.name,
-			'naming_series': item_data.get('asset_naming_series') or 'AST',
-			'asset_category': item_data.get('asset_category'),
-			'location': row.asset_location,
-			'company': self.company,
-			'supplier': self.supplier,
-			'purchase_date': self.posting_date,
-			'calculate_depreciation': 1,
-			'purchase_receipt_amount': purchase_amount,
-			'gross_purchase_amount': purchase_amount,
-			'purchase_receipt': self.name if self.doctype == 'Purchase Receipt' else None,
-			'purchase_invoice': self.name if self.doctype == 'Purchase Invoice' else None,
-			'cost_center': row.get("cost_center") or self.get("cost_center")
+			"doctype": "Asset",
+			"item_code": row.item_code,
+			"asset_name": row.item_name,
+			"item_detail": row.name,
+			"naming_series": item_data.get("asset_naming_series") or "AST",
+			"asset_category": item_data.get("asset_category"),
+			"location": row.asset_location,
+			"company": self.company,
+			"supplier": self.supplier,
+			"purchase_date": self.posting_date,
+			"calculate_depreciation": 1,
+			"purchase_receipt_amount": purchase_amount,
+			"gross_purchase_amount": purchase_amount,
+			"purchase_receipt": self.name if self.doctype == "Purchase Receipt" else None,
+			"purchase_invoice": self.name if self.doctype == "Purchase Invoice" else None,
+			"cost_center": row.get("cost_center") or self.get("cost_center"),
 		})
 		asset.set_accounting_dimensions(row, self)
 
@@ -1156,14 +1158,14 @@ class BuyingController(TransactionController):
 
 		return asset.name
 
-	def update_fixed_asset(self, field, delete_asset = False):
+	def update_fixed_asset(self, field, delete_asset=False):
 		for d in self.get("items"):
 			if d.is_fixed_asset:
-				is_auto_create_enabled = frappe.db.get_value('Item', d.item_code, 'auto_create_assets')
-				assets = frappe.db.get_all('Asset', filters={ field : self.name, 'item_code' : d.item_code })
+				is_auto_create_enabled = frappe.db.get_value("Item", d.item_code, "auto_create_assets")
+				assets = frappe.db.get_all("Asset", filters={field: self.name, "item_code": d.item_code})
 
 				for asset in assets:
-					asset = frappe.get_doc('Asset', asset.name)
+					asset = frappe.get_doc("Asset", asset.name)
 					if delete_asset and is_auto_create_enabled:
 						# need to delete movements to delete assets otherwise throws link exists error
 						movements = frappe.db.sql(
@@ -1171,7 +1173,7 @@ class BuyingController(TransactionController):
 							FROM `tabAsset Movement` asm, `tabAsset Movement Item` asm_item
 							WHERE asm_item.parent=asm.name and asm_item.asset=%s""", asset.name, as_dict=1)
 						for movement in movements:
-							frappe.delete_doc('Asset Movement', movement.name, force=1)
+							frappe.delete_doc("Asset Movement", movement.name, force=1)
 						frappe.delete_doc("Asset", asset.name, force=1)
 						continue
 
@@ -1184,8 +1186,8 @@ class BuyingController(TransactionController):
 							asset.set(field, None)
 							asset.supplier = None
 						if asset.docstatus == 1 and delete_asset:
-							frappe.throw(_('Cannot cancel this document as it is linked with submitted asset {0}.\
-								Please cancel the it to continue.').format(frappe.utils.get_link_to_form('Asset', asset.name)))
+							frappe.throw(_("Cannot cancel this document as it is linked with submitted asset {0}.\
+								Please cancel the it to continue.").format(frappe.utils.get_link_to_form("Asset", asset.name)))
 
 					asset.flags.ignore_validate_update_after_submit = True
 					asset.flags.ignore_mandatory = True
@@ -1195,7 +1197,7 @@ class BuyingController(TransactionController):
 					asset.save()
 
 	def delete_linked_asset(self):
-		if self.doctype == 'Purchase Invoice' and not self.get('update_stock'):
+		if self.doctype == "Purchase Invoice" and not self.get("update_stock"):
 			return
 
 		frappe.db.sql("delete from `tabAsset Movement` where reference_name=%s", self.name)
@@ -1209,7 +1211,7 @@ class BuyingController(TransactionController):
 			self.schedule_date = min(schedule_dates)
 
 		if self.schedule_date:
-			for d in self.get('items'):
+			for d in self.get("items"):
 				if not d.schedule_date:
 					d.schedule_date = self.schedule_date
 
@@ -1242,8 +1244,8 @@ class BuyingController(TransactionController):
 
 def get_asset_item_details(asset_items):
 	asset_items_data = {}
-	for d in frappe.get_all('Item', fields = ["name", "auto_create_assets", "asset_naming_series"],
-		filters = {'name': ('in', asset_items)}):
+	for d in frappe.get_all("Item", fields=["name", "auto_create_assets", "asset_naming_series"],
+		filters={"name": ("in", asset_items)}):
 		asset_items_data.setdefault(d.name, d)
 
 	return asset_items_data
@@ -1296,7 +1298,7 @@ def get_price_from_last_purchase(
 		details.update({
 			"price_list_rate": flt(details.base_price_list_rate) * conversion_factor / exchange_rate,
 			"rate": flt(details.base_rate) * conversion_factor / exchange_rate,
-			"last_purchase_rate": flt(details.base_net_rate) * conversion_factor / exchange_rate
+			"last_purchase_rate": flt(details.base_net_rate) * conversion_factor / exchange_rate,
 		})
 
 	return details
@@ -1328,7 +1330,7 @@ def get_last_purchase_details(item_code, warehouse=None, exclude=None, transacti
 			i.base_price_list_rate, i.discount_percentage,
 			i.base_rate, i.base_net_rate
 		from `tabPurchase Order Item` i
-		inner join `tabPurchase Order` p on p.name = i.parent 
+		inner join `tabPurchase Order` p on p.name = i.parent
 		where p.docstatus = 1 and i.item_code = %s and i.base_net_amount != 0 and i.received_qty = 0 and i.billed_qty = 0
 			{warehouse_condition} {transaction_date_condition} {exclude_condition}
 		order by p.transaction_date desc, p.creation desc
@@ -1343,7 +1345,7 @@ def get_last_purchase_details(item_code, warehouse=None, exclude=None, transacti
 			i.base_price_list_rate, i.discount_percentage,
 			i.base_rate, i.base_net_rate
 		from `tabPurchase Receipt Item` i
-		inner join `tabPurchase Receipt` p on p.name = i.parent 
+		inner join `tabPurchase Receipt` p on p.name = i.parent
 		where p.docstatus = 1 and p.is_return = 0 and i.item_code = %s and i.base_net_amount != 0 and i.billed_qty = 0
 			{warehouse_condition} {posting_date_condition} {exclude_condition}
 		order by p.posting_date desc, p.posting_time desc, p.creation desc
@@ -1358,7 +1360,7 @@ def get_last_purchase_details(item_code, warehouse=None, exclude=None, transacti
 			i.base_price_list_rate, i.discount_percentage,
 			i.base_rate, i.base_net_rate
 		from `tabPurchase Invoice Item` i
-		inner join `tabPurchase Invoice` p on p.name = i.parent 
+		inner join `tabPurchase Invoice` p on p.name = i.parent
 		where p.docstatus = 1 and p.is_return = 0 and i.item_code = %s and i.base_net_amount != 0
 			{warehouse_condition} {posting_date_condition} {exclude_condition}
 		order by p.posting_date desc, p.posting_time desc, p.creation desc
@@ -1366,9 +1368,9 @@ def get_last_purchase_details(item_code, warehouse=None, exclude=None, transacti
 	""", item_code, as_dict=1)
 	last_purchase_invoice = last_purchase_invoice[0] if last_purchase_invoice else None
 
-	purchase_order_date = getdate(last_purchase_order and last_purchase_order.transaction_date or "1900-01-01")
-	purchase_receipt_date = getdate(last_purchase_receipt and last_purchase_receipt.posting_date or "1900-01-01")
-	purchase_invoice_date = getdate(last_purchase_invoice and last_purchase_invoice.posting_date or "1900-01-01")
+	purchase_order_date = getdate((last_purchase_order and last_purchase_order.transaction_date) or "1900-01-01")
+	purchase_receipt_date = getdate((last_purchase_receipt and last_purchase_receipt.posting_date) or "1900-01-01")
+	purchase_invoice_date = getdate((last_purchase_invoice and last_purchase_invoice.posting_date) or "1900-01-01")
 
 	if last_purchase_order and (purchase_order_date >= purchase_receipt_date and purchase_order_date >= purchase_invoice_date):
 		# use purchase order
@@ -1391,7 +1393,7 @@ def get_last_purchase_details(item_code, warehouse=None, exclude=None, transacti
 		"base_rate": flt(last_purchase.base_rate) / conversion_factor,
 		"base_net_rate": flt(last_purchase.base_net_rate) / conversion_factor,
 		"discount_percentage": flt(last_purchase.discount_percentage),
-		"last_purchase_date": last_purchase_date
+		"last_purchase_date": last_purchase_date,
 	})
 
 	return out

@@ -1,14 +1,16 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
 from frappe.utils import nowdate
+
+from erpnext.accounts.doctype.budget.budget import BudgetError, get_actual_expense
+from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
 from erpnext.accounts.utils import get_fiscal_year
 from erpnext.buying.doctype.purchase_order.test_purchase_order import create_purchase_order
-from erpnext.accounts.doctype.budget.budget import get_actual_expense, BudgetError
-from erpnext.accounts.doctype.journal_entry.test_journal_entry import make_journal_entry
+
 
 class TestBudget(unittest.TestCase):
 	def test_monthly_budget_crossed_ignore(self):
@@ -51,13 +53,13 @@ class TestBudget(unittest.TestCase):
 
 		self.assertRaises(BudgetError, jv.submit)
 
-		frappe.db.set_value('Company', budget.company, 'exception_budget_approver_role', 'Accounts User')
+		frappe.db.set_value("Company", budget.company, "exception_budget_approver_role", "Accounts User")
 
 		jv.submit()
-		self.assertEqual(frappe.db.get_value('Journal Entry', jv.name, 'docstatus'), 1)
+		self.assertEqual(frappe.db.get_value("Journal Entry", jv.name, "docstatus"), 1)
 		jv.cancel()
 
-		frappe.db.set_value('Company', budget.company, 'exception_budget_approver_role', '')
+		frappe.db.set_value("Company", budget.company, "exception_budget_approver_role", "")
 
 		budget.load_from_db()
 		budget.cancel()
@@ -77,15 +79,15 @@ class TestBudget(unittest.TestCase):
 			"transaction_date": nowdate(),
 			"company": budget.company,
 			"items": [{
-				'item_code': '_Test Item',
-				'qty': 1,
-				'uom': "_Test UOM",
-				'warehouse': '_Test Warehouse - _TC',
-				'schedule_date': nowdate(),
-				'rate': 100000,
-				'expense_account': '_Test Account Cost for Goods Sold - _TC',
-				'cost_center': '_Test Cost Center - _TC'
-			}]
+				"item_code": "_Test Item",
+				"qty": 1,
+				"uom": "_Test UOM",
+				"warehouse": "_Test Warehouse - _TC",
+				"schedule_date": nowdate(),
+				"rate": 100000,
+				"expense_account": "_Test Account Cost for Goods Sold - _TC",
+				"cost_center": "_Test Cost Center - _TC",
+			}],
 		})
 
 		mr.set_missing_values()
@@ -219,11 +221,11 @@ class TestBudget(unittest.TestCase):
 
 		if not frappe.db.exists("Cost Center", cost_center):
 			frappe.get_doc({
-				'doctype': 'Cost Center',
-				'cost_center_name': '_Test Cost Center 3',
-				'parent_cost_center': "_Test Company - _TC",
-				'company': '_Test Company',
-				'is_group': 0
+				"doctype": "Cost Center",
+				"cost_center_name": "_Test Cost Center 3",
+				"parent_cost_center": "_Test Company - _TC",
+				"company": "_Test Company",
+				"is_group": 0,
 			}).insert(ignore_permissions=True)
 
 		budget = make_budget(budget_against="Cost Center", cost_center=cost_center)
@@ -267,17 +269,18 @@ def set_total_expense_zero(posting_date, budget_against_field=None, budget_again
 			make_journal_entry("_Test Account Cost for Goods Sold - _TC",
 			"_Test Bank - _TC", -existing_expense, "_Test Cost Center - _TC", submit=True, project="_Test Project", posting_date="2013-02-28")
 
+
 def make_budget(**args):
 	args = frappe._dict(args)
 
-	budget_against=args.budget_against
-	cost_center=args.cost_center
+	budget_against = args.budget_against
+	cost_center = args.cost_center
 
 	if budget_against == "Project":
-		budget_list = frappe.get_all("Budget", fields=["name"], filters = {"name": ("like", "_Test Project/_Test Fiscal Year 2013%")})
+		budget_list = frappe.get_all("Budget", fields=["name"], filters={"name": ("like", "_Test Project/_Test Fiscal Year 2013%")})
 	else:
 		cost_center_name = "{0}%".format(cost_center or "_Test Cost Center - _TC/_Test Fiscal Year 2013")
-		budget_list = frappe.get_all("Budget", fields=["name"], filters = {"name": ("like", cost_center_name)})
+		budget_list = frappe.get_all("Budget", fields=["name"], filters={"name": ("like", cost_center_name)})
 	for d in budget_list:
 		frappe.db.sql("delete from `tabBudget` where name = %(name)s", d)
 		frappe.db.sql("delete from `tabBudget Account` where parent = %(name)s", d)
@@ -287,8 +290,7 @@ def make_budget(**args):
 	if budget_against == "Project":
 		budget.project = "_Test Project"
 	else:
-		budget.cost_center =cost_center or "_Test Cost Center - _TC"
-
+		budget.cost_center = cost_center or "_Test Cost Center - _TC"
 
 	budget.fiscal_year = "_Test Fiscal Year 2013"
 	budget.monthly_distribution = "_Test Distribution"
@@ -299,18 +301,18 @@ def make_budget(**args):
 	budget.budget_against = budget_against
 	budget.append("accounts", {
 		"account": "_Test Account Cost for Goods Sold - _TC",
-		"budget_amount": 100000
+		"budget_amount": 100000,
 	})
 
 	if args.applicable_on_material_request:
 		budget.applicable_on_material_request = 1
-		budget.action_if_annual_budget_exceeded_on_mr = args.action_if_annual_budget_exceeded_on_mr or 'Warn'
-		budget.action_if_accumulated_monthly_budget_exceeded_on_mr = args.action_if_accumulated_monthly_budget_exceeded_on_mr or 'Warn'
+		budget.action_if_annual_budget_exceeded_on_mr = args.action_if_annual_budget_exceeded_on_mr or "Warn"
+		budget.action_if_accumulated_monthly_budget_exceeded_on_mr = args.action_if_accumulated_monthly_budget_exceeded_on_mr or "Warn"
 
 	if args.applicable_on_purchase_order:
 		budget.applicable_on_purchase_order = 1
-		budget.action_if_annual_budget_exceeded_on_po = args.action_if_annual_budget_exceeded_on_po or 'Warn'
-		budget.action_if_accumulated_monthly_budget_exceeded_on_po = args.action_if_accumulated_monthly_budget_exceeded_on_po or 'Warn'
+		budget.action_if_annual_budget_exceeded_on_po = args.action_if_annual_budget_exceeded_on_po or "Warn"
+		budget.action_if_accumulated_monthly_budget_exceeded_on_po = args.action_if_accumulated_monthly_budget_exceeded_on_po or "Warn"
 
 	budget.insert()
 	budget.submit()

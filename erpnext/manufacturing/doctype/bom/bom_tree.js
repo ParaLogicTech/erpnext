@@ -1,12 +1,12 @@
 frappe.treeview_settings["BOM"] = {
-	get_tree_nodes: 'erpnext.manufacturing.doctype.bom.bom.get_children',
+	get_tree_nodes: "erpnext.manufacturing.doctype.bom.bom.get_children",
 	filters: [
 		{
 			fieldname: "bom",
-			fieldtype:"Link",
+			fieldtype: "Link",
 			options: "BOM",
 			label: __("BOM"),
-		}
+		},
 	],
 	title: "BOM",
 	breadcrumb: "Manufacturing",
@@ -16,7 +16,7 @@ frappe.treeview_settings["BOM"] = {
 	show_expand_all: false,
 
 	get_label: function(node) {
-		if(node.data.qty) {
+		if (node.data.qty) {
 			return `${node.data.item_name} (${node.data.item_code}) - ${node.data.qty} ${node.data.uom}`;
 		} else {
 			return node.data.item_code || node.data.value;
@@ -25,12 +25,12 @@ frappe.treeview_settings["BOM"] = {
 
 	onload: function(me) {
 		let label = frappe.get_route()[0] + "/" + frappe.get_route()[1];
-		if(frappe.pages[label]) {
+		if (frappe.pages[label]) {
 			delete frappe.pages[label];
 		}
 
 		let filter = me.opts.filters[0];
-		if(frappe.route_options && frappe.route_options[filter.fieldname]) {
+		if (frappe.route_options && frappe.route_options[filter.fieldname]) {
 			var val = frappe.route_options[filter.fieldname];
 			delete frappe.route_options[filter.fieldname];
 			filter.default = "";
@@ -43,28 +43,28 @@ frappe.treeview_settings["BOM"] = {
 
 	toolbar: [
 		{
-			toggle_btn: true
+			toggle_btn: true,
 		},
 		{
-			label:__("Edit"),
+			label: __("Edit"),
 			condition: function(node) {
 				return node.expandable;
 			},
 			click: function(node) {
 				frappe.set_route("Form", "BOM", node.data.value);
-			}
-		}
+			},
+		},
 	],
 
 	menu_items: [
 		{
 			label: __("New BOM"),
 			action: function() {
-				frappe.new_doc("BOM", true)
+				frappe.new_doc("BOM", true);
 			},
-			condition: 'frappe.boot.user.can_create.indexOf("BOM") !== -1'
-		}
+			condition: 'frappe.boot.user.can_create.indexOf("BOM") !== -1',
+		},
 	],
 
-	view_template: 'bom_item_preview'
-}
+	view_template: "bom_item_preview",
+};

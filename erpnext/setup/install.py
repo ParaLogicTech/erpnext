@@ -3,12 +3,14 @@
 
 
 import frappe
-from erpnext.accounts.doctype.cash_flow_mapper.default_cash_flow_mapper import DEFAULT_MAPPERS
-from .default_success_action import get_default_success_action
 from frappe import _
-from frappe.desk.page.setup_wizard.setup_wizard import add_all_roles_to
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
+from frappe.desk.page.setup_wizard.setup_wizard import add_all_roles_to
+
+from erpnext.accounts.doctype.cash_flow_mapper.default_cash_flow_mapper import DEFAULT_MAPPERS
 from erpnext.setup.default_energy_point_rules import get_default_energy_point_rules
+
+from .default_success_action import get_default_success_action
 
 
 def after_install():
@@ -25,7 +27,7 @@ def after_install():
 
 
 def check_setup_wizard_not_completed():
-	if frappe.db.get_default('desktop:home_page') == 'desktop':
+	if frappe.db.get_default("desktop:home_page") == "desktop":
 		print()
 		print("ERPNext can only be installed on a fresh site where the setup wizard is not completed")
 		print("You can reinstall this site (after saving your data) using: bench --site [sitename] reinstall")
@@ -34,8 +36,8 @@ def check_setup_wizard_not_completed():
 
 
 def set_single_defaults():
-	for dt in ('Accounts Settings', 'Print Settings', 'HR Settings', 'Buying Settings',
-		'Selling Settings', 'Stock Settings'):
+	for dt in ("Accounts Settings", "Print Settings", "HR Settings", "Buying Settings",
+		"Selling Settings", "Stock Settings"):
 		default_values = frappe.db.sql("""select fieldname, `default` from `tabDocField`
 			where parent=%s""", dt)
 		if default_values:
@@ -53,51 +55,55 @@ def set_single_defaults():
 
 
 def create_compact_item_print_custom_field():
-	create_custom_field('Print Settings', {
-		'label': _('Compact Item Print'),
-		'fieldname': 'compact_item_print',
-		'fieldtype': 'Check',
-		'default': 1,
-		'insert_after': 'with_letterhead'
+	create_custom_field("Print Settings", {
+		"label": _("Compact Item Print"),
+		"fieldname": "compact_item_print",
+		"fieldtype": "Check",
+		"default": 1,
+		"insert_after": "with_letterhead",
 	})
 
 
 def create_print_zero_amount_taxes_custom_field():
-	create_custom_field('Print Settings', {
-		'label': _('Print taxes with zero amount'),
-		'fieldname': 'print_taxes_with_zero_amount',
-		'fieldtype': 'Check',
-		'default': 0,
-		'insert_after': 'allow_print_for_cancelled'
+	create_custom_field("Print Settings", {
+		"label": _("Print taxes with zero amount"),
+		"fieldname": "print_taxes_with_zero_amount",
+		"fieldtype": "Check",
+		"default": 0,
+		"insert_after": "allow_print_for_cancelled",
 	})
 
 
 def create_default_cash_flow_mapper_templates():
 	for mapper in DEFAULT_MAPPERS:
-		if not frappe.db.exists('Cash Flow Mapper', mapper['section_name']):
+		if not frappe.db.exists("Cash Flow Mapper", mapper["section_name"]):
 			doc = frappe.get_doc(mapper)
 			doc.insert(ignore_permissions=True)
 
+
 def create_default_success_action():
 	for success_action in get_default_success_action():
-		if not frappe.db.exists('Success Action', success_action.get("ref_doctype")):
+		if not frappe.db.exists("Success Action", success_action.get("ref_doctype")):
 			doc = frappe.get_doc(success_action)
 			doc.insert(ignore_permissions=True)
+
 
 def create_default_energy_point_rules():
 
 	for rule in get_default_energy_point_rules():
 		# check if any rule for ref. doctype exists
-		rule_exists = frappe.db.exists('Energy Point Rule', {
-			'reference_doctype': rule.get('reference_doctype')
+		rule_exists = frappe.db.exists("Energy Point Rule", {
+			"reference_doctype": rule.get("reference_doctype"),
 		})
-		if rule_exists: continue
+		if rule_exists:
+			continue
 		doc = frappe.get_doc(rule)
 		doc.insert(ignore_permissions=True)
+
 
 def add_company_to_session_defaults():
 	settings = frappe.get_single("Session Default Settings")
 	settings.append("session_defaults", {
-		"ref_doctype": "Company"
+		"ref_doctype": "Company",
 	})
 	settings.save()

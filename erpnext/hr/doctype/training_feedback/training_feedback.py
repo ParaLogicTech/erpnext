@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-from frappe.model.document import Document
 from frappe import _
+from frappe.model.document import Document
+
 
 class TrainingFeedback(Document):
 	def validate(self):
 		training_event = frappe.get_doc("Training Event", self.training_event)
 		if training_event.docstatus != 1:
-			frappe.throw(_('{0} must be submitted').format(_('Training Event')))
+			frappe.throw(_("{0} must be submitted").format(_("Training Event")))
 
 		self.set_employee_email()
 
@@ -19,7 +19,7 @@ class TrainingFeedback(Document):
 		event_status = None
 		for e in training_event.employees:
 			if e.employee == self.employee:
-				event_status = 'Feedback Submitted'
+				event_status = "Feedback Submitted"
 				break
 
 		if event_status:
@@ -45,7 +45,7 @@ class TrainingFeedback(Document):
 			return
 
 		prefered_email, company_email, personal_email = frappe.db.get_value(
-			"Employee", self.employee, ["prefered_email", "company_email", "personal_email"]
+			"Employee", self.employee, ["prefered_email", "company_email", "personal_email"],
 		)
 		self.employee_email = prefered_email or company_email or personal_email
 
@@ -60,4 +60,3 @@ def trigger_training_feedback_notification(training_feedback):
 		frappe.msgprint(_("Training Feedback notification triggered"))
 	else:
 		frappe.msgprint(_("No notifications configured"))
-

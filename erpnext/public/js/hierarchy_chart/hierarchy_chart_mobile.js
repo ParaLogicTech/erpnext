@@ -90,7 +90,7 @@ erpnext.HierarchyChartMobile = class {
 					if (me.$sibling_group) me.$sibling_group.remove();
 
 					// setup sibling group wrapper
-					me.$sibling_group = $(`<div class="sibling-group mt-4 mb-4"></div>`);
+					me.$sibling_group = $("<div class=\"sibling-group mt-4 mb-4\"></div>");
 					me.page.main.append(me.$sibling_group);
 
 					me.setup_hierarchy();
@@ -100,7 +100,7 @@ erpnext.HierarchyChartMobile = class {
 		});
 
 		company.refresh();
-		$(`[data-fieldname="company"]`).trigger("change");
+		$("[data-fieldname=\"company\"]").trigger("change");
 	}
 
 	make_svg_markers() {
@@ -129,7 +129,7 @@ erpnext.HierarchyChartMobile = class {
 	}
 
 	setup_hierarchy() {
-		$(`#connectors`).empty();
+		$("#connectors").empty();
 		if (this.$hierarchy) this.$hierarchy.remove();
 
 		if (this.$sibling_group) this.$sibling_group.empty();
@@ -210,7 +210,7 @@ erpnext.HierarchyChartMobile = class {
 			// add a collapsed level to show the collapsed parent
 			// and a button beside it to move to that level
 			let node_parent = node.$link.parent();
-			node_parent.prepend(`<div class="collapsed-level d-flex flex-row"></div>`);
+			node_parent.prepend("<div class=\"collapsed-level d-flex flex-row\"></div>");
 
 			node_parent.find(".collapsed-level").append(node.$link);
 
@@ -326,22 +326,22 @@ erpnext.HierarchyChartMobile = class {
 			y: child_node.offsetTop + child_node.offsetHeight / 2,
 		};
 
-		let connector =
-			"M" +
-			pos_parent_bottom.x +
-			"," +
-			pos_parent_bottom.y +
-			" " +
-			"L" +
-			pos_parent_bottom.x +
-			"," +
-			(pos_child_left.y - 10) +
-			" " +
-			"a10,10 1 0 0 10,10 " +
-			"L" +
-			pos_child_left.x +
-			"," +
-			pos_child_left.y;
+		let connector
+			= "M"
+			+ pos_parent_bottom.x
+			+ ","
+			+ pos_parent_bottom.y
+			+ " "
+			+ "L"
+			+ pos_parent_bottom.x
+			+ ","
+			+ (pos_child_left.y - 10)
+			+ " "
+			+ "a10,10 1 0 0 10,10 "
+			+ "L"
+			+ pos_child_left.x
+			+ ","
+			+ pos_child_left.y;
 
 		return connector;
 	}
@@ -357,16 +357,16 @@ erpnext.HierarchyChartMobile = class {
 			y: child_node.offsetTop,
 		};
 
-		let connector =
-			"M" +
-			pos_parent_bottom.x +
-			"," +
-			pos_parent_bottom.y +
-			" " +
-			"L" +
-			pos_child_top.x +
-			"," +
-			pos_child_top.y;
+		let connector
+			= "M"
+			+ pos_parent_bottom.x
+			+ ","
+			+ pos_parent_bottom.y
+			+ " "
+			+ "L"
+			+ pos_child_top.x
+			+ ","
+			+ pos_child_top.y;
 
 		return connector;
 	}
@@ -398,13 +398,13 @@ erpnext.HierarchyChartMobile = class {
 		let me = this;
 		let node_element = $(`[id="${node.id}"]`);
 
-		node_element.click(function () {
+		node_element.click(function() {
 			let el = null;
 
 			if (node.is_root) {
 				el = $(this).detach();
 				me.$hierarchy.empty();
-				$(`#connectors`).empty();
+				$("#connectors").empty();
 				me.add_node_to_hierarchy(el, node);
 			} else if (node_element.is(":visible") && node_element.hasClass("active-path")) {
 				me.remove_levels_after_node(node);
@@ -423,7 +423,7 @@ erpnext.HierarchyChartMobile = class {
 		let node_element = $(`[id="${node.id}"]`);
 		let me = this;
 
-		node_element.find(".btn-edit-node").click(function () {
+		node_element.find(".btn-edit-node").click(function() {
 			frappe.set_route("Form", me.doctype, node.id);
 		});
 	}
@@ -431,7 +431,7 @@ erpnext.HierarchyChartMobile = class {
 	setup_node_group_action() {
 		let me = this;
 
-		$(".node-group").on("click", function () {
+		$(".node-group").on("click", function() {
 			let parent = $(this).attr("data-parent");
 			if (parent == "") {
 				me.setup_hierarchy();
@@ -443,7 +443,7 @@ erpnext.HierarchyChartMobile = class {
 	}
 
 	add_node_to_hierarchy(node_element, node) {
-		this.$hierarchy.append(`<li class="level"></li>`);
+		this.$hierarchy.append("<li class=\"level\"></li>");
 		node_element.removeClass("active-child active-path");
 		this.$hierarchy.find(".level:last").append(node_element);
 
@@ -476,8 +476,8 @@ erpnext.HierarchyChartMobile = class {
 		}
 
 		if (html) {
-			const $node_group =
-				$(`<div class="node-group card cursor-pointer" data-parent=${parent}>
+			const $node_group
+				= $(`<div class="node-group card cursor-pointer" data-parent=${parent}>
 					<div class="avatar-group right overlap">
 						${html}
 					</div>
@@ -525,7 +525,7 @@ erpnext.HierarchyChartMobile = class {
 			<li class="level"></li>
 		`);
 		this.$hierarchy.find(".level").append(el);
-		$(`#connectors`).empty();
+		$("#connectors").empty();
 		this.expand_node(node_object);
 	}
 

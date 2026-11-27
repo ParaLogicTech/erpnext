@@ -2,8 +2,9 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.utils import cstr, getdate
 from frappe import _
+from frappe.utils import cstr, getdate
+
 from erpnext.stock.utils import get_valid_serial_nos
 from erpnext.utilities.transaction_base import TransactionBase
 
@@ -19,14 +20,14 @@ class InstallationNote(TransactionBase):
 	def on_submit(self):
 		self.validate_serial_no()
 		self.update_previous_doc_status()
-		self.db_set('status', 'Submitted')
+		self.db_set("status", "Submitted")
 
 	def on_cancel(self):
 		self.update_previous_doc_status()
-		self.db_set('status', 'Cancelled')
+		self.db_set("status", "Cancelled")
 
 	def on_update(self):
-		self.db_set('status', 'Draft')
+		self.db_set("status", "Draft")
 
 	def update_previous_doc_status(self):
 		delivery_notes = set()
@@ -68,7 +69,7 @@ class InstallationNote(TransactionBase):
 
 	def validate_serial_no(self):
 		prevdoc_s_no, sr_list = [], []
-		for d in self.get('items'):
+		for d in self.get("items"):
 			self.is_serial_no_added(d.item_code, d.serial_no)
 			if d.serial_no:
 				sr_list = get_valid_serial_nos(d.serial_no, d.qty, d.item_code)
@@ -79,12 +80,12 @@ class InstallationNote(TransactionBase):
 					self.is_serial_no_match(sr_list, prevdoc_s_no, d.prevdoc_docname)
 
 	def validate_installation_date(self):
-		for d in self.get('items'):
+		for d in self.get("items"):
 			if d.prevdoc_docname:
 				d_date = frappe.db.get_value("Delivery Note", d.prevdoc_docname, "posting_date")
 				if d_date > getdate(self.inst_date):
 					frappe.throw(_("Installation date cannot be before delivery date for Item {0}").format(d.item_code))
 
 	def check_item_table(self):
-		if not(self.get('items')):
+		if not (self.get("items")):
 			frappe.throw(_("Please pull items from Delivery Note"))

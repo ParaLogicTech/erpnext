@@ -1,4 +1,4 @@
-frappe.listview_settings['Work Order'] = {
+frappe.listview_settings["Work Order"] = {
 	add_fields: [
 		"status", "docstatus", "production_status", "per_produced", "per_completed",
 		"skip_transfer", "transfer_material_against",
@@ -11,7 +11,7 @@ frappe.listview_settings['Work Order'] = {
 	],
 
 	get_indicator: function(doc) {
-		if (doc.status==="Submitted") {
+		if (doc.status === "Submitted") {
 			return [__("Not Started"), "orange", "status,=,Submitted"];
 		} else {
 			return [__(doc.status), {
@@ -21,7 +21,7 @@ frappe.listview_settings['Work Order'] = {
 				"In Process": "yellow",
 				"To Pack": "blue",
 				"Completed": "green",
-				"Cancelled": "light-gray"
+				"Cancelled": "light-gray",
 			}[doc.status], "status,=," + doc.status];
 		}
 	},
@@ -39,9 +39,9 @@ frappe.listview_settings['Work Order'] = {
 		},
 		get_label(doc) {
 			if (erpnext.manufacturing.can_finish_work_order(doc)) {
-				return __('Finish');
+				return __("Finish");
 			} else if (erpnext.manufacturing.can_start_work_order(doc)) {
-				return __('Start');
+				return __("Start");
 			}
 		},
 		get_class(doc) {
@@ -69,6 +69,6 @@ frappe.listview_settings['Work Order'] = {
 					}
 				});
 			}
-		}
+		},
 	},
 };

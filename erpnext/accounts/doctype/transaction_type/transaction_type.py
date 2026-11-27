@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import cint
 from frappe.model.document import Document
+from frappe.utils import cint
+
 from erpnext.accounts.party import validate_party_accounts
-import json
 
 
 class TransactionType(Document):
@@ -37,10 +38,10 @@ def get_transaction_type_details(args, items):
 
 	party_type = party = account_field = None
 
-	if frappe.get_meta(args.doctype).has_field('debit_to'):
-		account_field = 'debit_to'
-	elif frappe.get_meta(args.doctype).has_field('credit_to'):
-		account_field = 'credit_to'
+	if frappe.get_meta(args.doctype).has_field("debit_to"):
+		account_field = "debit_to"
+	elif frappe.get_meta(args.doctype).has_field("credit_to"):
+		account_field = "credit_to"
 
 	if args.letter_of_credit:
 		party_type = "Letter of Credit"
@@ -54,7 +55,7 @@ def get_transaction_type_details(args, items):
 
 	out = frappe._dict({
 		"items": get_item_defaults_info(args, items),
-		"doc": frappe._dict()
+		"doc": frappe._dict(),
 	})
 
 	if args.transaction_type_name:

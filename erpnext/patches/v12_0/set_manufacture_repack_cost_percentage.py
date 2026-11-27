@@ -18,6 +18,6 @@ def execute():
 
 		for d in doc.items:
 			if d.cost_percentage:
-				d.db_set('cost_percentage', d.cost_percentage)
+				d.db_set("cost_percentage", d.cost_percentage)
 
 		doc.clear_cache()

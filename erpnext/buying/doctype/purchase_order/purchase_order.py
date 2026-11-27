@@ -1,23 +1,27 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
-from frappe import _
-from frappe.utils import cstr, flt, cint
-from frappe.model.mapper import get_mapped_doc
-from erpnext.controllers.buying_controller import BuyingController
-from erpnext.stock.stock_balance import update_bin_qty, get_ordered_qty
-from frappe.desk.notifications import clear_doctype_notifications
-from erpnext.buying.utils import validate_for_items, check_on_hold_or_closed_status
-from erpnext.stock.utils import get_bin
-from erpnext.accounts.party import get_party_account_currency
-from erpnext.accounts.doctype.sales_invoice.sales_invoice import validate_inter_company_party, update_linked_doc,\
-	unlink_inter_company_doc
 import json
 
+import frappe
+from frappe import _
+from frappe.desk.notifications import clear_doctype_notifications
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cint, cstr, flt
+
+from erpnext.accounts.doctype.sales_invoice.sales_invoice import (
+	unlink_inter_company_doc,
+	update_linked_doc,
+	validate_inter_company_party,
+)
+from erpnext.accounts.party import get_party_account_currency
+from erpnext.buying.utils import check_on_hold_or_closed_status, validate_for_items
+from erpnext.controllers.buying_controller import BuyingController
+from erpnext.stock.stock_balance import get_ordered_qty, update_bin_qty
+from erpnext.stock.utils import get_bin
 
 form_grid_templates = {
-	"items": "templates/form_grid/item_grid.html"
+	"items": "templates/form_grid/item_grid.html",
 }
 
 
@@ -80,7 +84,7 @@ class PurchaseOrder(BuyingController):
 		if self.is_subcontracted:
 			self.update_reserved_qty_for_subcontract()
 
-		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype,
+		frappe.get_doc("Authorization Control").validate_approving_authority(self.doctype,
 			self.company, self.base_grand_total)
 
 		self.update_blanket_order()
@@ -114,7 +118,7 @@ class PurchaseOrder(BuyingController):
 
 	def on_update(self):
 		self.update_material_request_po_created()
-	
+
 	def after_delete(self):
 		self.update_material_request_po_created()
 
@@ -216,11 +220,11 @@ class PurchaseOrder(BuyingController):
 		from erpnext.accounts.utils import get_balance_on_voucher
 
 		if self.docstatus != 0:
-			party_type, party, party_name = self.get_billing_party()
+			party_type, party, _party_name = self.get_billing_party()
 			self.advance_paid = get_balance_on_voucher(self.doctype, self.name, party_type, party,
 				account=None, company=self.company,
 				dr_or_cr="debit_in_account_currency - credit_in_account_currency",
-				include_original_references=True
+				include_original_references=True,
 			)
 		else:
 			self.advance_paid = 0
@@ -238,7 +242,7 @@ class PurchaseOrder(BuyingController):
 				"ref_dn_field": "supplier_quotation_item",
 				"compare_fields": [["project", "="], ["item_code", "="],
 					["uom", "="], ["conversion_factor", "="]],
-				"is_child_table": True
+				"is_child_table": True,
 			},
 			"Material Request": {
 				"ref_dn_field": "material_request",
@@ -247,13 +251,13 @@ class PurchaseOrder(BuyingController):
 			"Material Request Item": {
 				"ref_dn_field": "material_request_item",
 				"compare_fields": [["item_code", "="]],
-				"is_child_table": True
-			}
+				"is_child_table": True,
+			},
 		})
 
 		self.validate_work_orders()
 
-		if cint(frappe.get_cached_value('Buying Settings', None, 'maintain_same_rate')):
+		if cint(frappe.get_cached_value("Buying Settings", None, "maintain_same_rate")):
 			self.validate_rate_with_reference_doc([["Supplier Quotation", "supplier_quotation", "supplier_quotation_item"]])
 
 	def set_receipt_status(self, update=False, update_modified=True):
@@ -266,23 +270,23 @@ class PurchaseOrder(BuyingController):
 
 			if update:
 				d.db_set({
-					'received_qty': d.received_qty,
-					'total_returned_qty': d.total_returned_qty,
+					"received_qty": d.received_qty,
+					"total_returned_qty": d.total_returned_qty,
 				}, update_modified=update_modified)
 
 		# update percentage in parent
-		self.per_received = self.calculate_status_percentage('received_qty', 'qty', data.receivable_rows)
+		self.per_received = self.calculate_status_percentage("received_qty", "qty", data.receivable_rows)
 		if self.per_received is None:
-			self.per_received = flt(self.calculate_status_percentage('received_qty', 'qty', self.items))
+			self.per_received = flt(self.calculate_status_percentage("received_qty", "qty", self.items))
 
 		# update delivery_status
-		self.receipt_status = self.get_completion_status('per_received', 'Receive',
+		self.receipt_status = self.get_completion_status("per_received", "Receive",
 			not_applicable=self.status == "Closed")
 
 		if update:
 			self.db_set({
-				'per_received': self.per_received,
-				'receipt_status': self.receipt_status,
+				"per_received": self.per_received,
+				"receipt_status": self.receipt_status,
 			}, update_modified=update_modified)
 
 	def set_billing_status(self, update=False, update_modified=True):
@@ -295,34 +299,34 @@ class PurchaseOrder(BuyingController):
 			d.returned_qty = flt(data.receipt_return_qty_map.get(d.name))
 			if update:
 				d.db_set({
-					'billed_qty': d.billed_qty,
-					'billed_amt': d.billed_amt,
-					'returned_qty': d.returned_qty,
+					"billed_qty": d.billed_qty,
+					"billed_amt": d.billed_amt,
+					"returned_qty": d.returned_qty,
 				}, update_modified=update_modified)
 
 		# update percentage in parent
-		self.per_returned = flt(self.calculate_status_percentage('returned_qty', 'qty', self.items))
-		self.per_billed = self.calculate_status_percentage('billed_qty', 'qty', self.items)
-		self.per_completed = self.calculate_status_percentage(['billed_qty', 'returned_qty'], 'qty', self.items)
+		self.per_returned = flt(self.calculate_status_percentage("returned_qty", "qty", self.items))
+		self.per_billed = self.calculate_status_percentage("billed_qty", "qty", self.items)
+		self.per_completed = self.calculate_status_percentage(["billed_qty", "returned_qty"], "qty", self.items)
 		if self.per_completed is None:
-			total_billed_qty = flt(sum([flt(d.billed_qty) for d in self.items]), self.precision('total_qty'))
+			total_billed_qty = flt(sum([flt(d.billed_qty) for d in self.items]), self.precision("total_qty"))
 			self.per_billed = 100 if total_billed_qty else 0
 			self.per_completed = 100 if total_billed_qty else 0
 
 		receipts_not_billable = self.receipt_status == "Received" and not data.has_unbilled_receipt
 		unreceivable_rows_billed = all(d.billed_qty >= d.qty for d in data.unreceivable_rows)
 		not_billable = receipts_not_billable and unreceivable_rows_billed
-		self.billing_status = self.get_completion_status('per_completed', 'Bill',
+		self.billing_status = self.get_completion_status("per_completed", "Bill",
 			not_applicable=self.status == "Closed" or self.per_returned == 100 or (not_billable and not self.per_billed),
-			not_applicable_based_on='per_billed',
+			not_applicable_based_on="per_billed",
 			within_allowance=self.per_billed and not_billable)
 
 		if update:
 			self.db_set({
-				'per_billed': self.per_billed,
-				'per_returned': self.per_returned,
-				'per_completed': self.per_completed,
-				'billing_status': self.billing_status,
+				"per_billed": self.per_billed,
+				"per_returned": self.per_returned,
+				"per_completed": self.per_completed,
+				"billing_status": self.billing_status,
 			}, update_modified=update_modified)
 
 	def get_receipt_status_data(self):
@@ -450,16 +454,16 @@ class PurchaseOrder(BuyingController):
 		return out
 
 	def validate_received_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty('received_qty', 'qty', self.items,
-			allowance_type='qty', from_doctype=from_doctype, row_names=row_names)
+		self.validate_completed_qty("received_qty", "qty", self.items,
+			allowance_type="qty", from_doctype=from_doctype, row_names=row_names)
 
 	def validate_billed_qty(self, from_doctype=None, row_names=None):
-		self.validate_completed_qty(['billed_qty', 'returned_qty'], 'qty', self.items,
-			allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
+		self.validate_completed_qty(["billed_qty", "returned_qty"], "qty", self.items,
+			allowance_type="billing", from_doctype=from_doctype, row_names=row_names)
 
 		if frappe.get_cached_value("Accounts Settings", None, "validate_over_billing_in_sales_invoice"):
-			self.validate_completed_qty('billed_amt', 'amount', self.items,
-				allowance_type='billing', from_doctype=from_doctype, row_names=row_names)
+			self.validate_completed_qty("billed_amt", "amount", self.items,
+				allowance_type="billing", from_doctype=from_doctype, row_names=row_names)
 
 	def set_raw_materials_supplied_qty(self, update=False, update_modified=True):
 		supplied_qty_map = self.get_raw_materials_supplied_qty_map()
@@ -495,7 +499,7 @@ class PurchaseOrder(BuyingController):
 				""", (self.name, subcontract_item_codes), as_dict=1)
 
 				for d in supplied_qty_data:
-					supplied_qty_map[(d.rm_item_code, d.main_item_code)] = d.supplied_qty
+					supplied_qty_map[d.rm_item_code, d.main_item_code] = d.supplied_qty
 
 		return supplied_qty_map
 
@@ -536,7 +540,7 @@ class PurchaseOrder(BuyingController):
 				""", (self.name, subcontract_item_codes), as_dict=1)
 
 				for d in packed_qty_data:
-					packed_qty_map[(d.rm_item_code, d.main_item_code)] = d.packed_qty
+					packed_qty_map[d.rm_item_code, d.main_item_code] = d.packed_qty
 
 		return packed_qty_map
 
@@ -555,18 +559,18 @@ class PurchaseOrder(BuyingController):
 			so.notify_update()
 
 	def validate_supplier(self):
-		prevent_po = frappe.get_cached_value("Supplier", self.supplier, 'prevent_pos')
+		prevent_po = frappe.get_cached_value("Supplier", self.supplier, "prevent_pos")
 		if prevent_po:
-			standing = frappe.get_cached_value("Supplier Scorecard", self.supplier, 'status')
+			standing = frappe.get_cached_value("Supplier Scorecard", self.supplier, "status")
 			if standing:
 				frappe.throw(_("Purchase Orders are not allowed for {0} due to a scorecard standing of {1}.")
 					.format(self.supplier, standing))
 
-		warn_po = frappe.get_cached_value("Supplier", self.supplier, 'warn_pos')
+		warn_po = frappe.get_cached_value("Supplier", self.supplier, "warn_pos")
 		if warn_po:
-			standing = frappe.get_cached_value("Supplier Scorecard", self.supplier, 'status')
+			standing = frappe.get_cached_value("Supplier Scorecard", self.supplier, "status")
 			frappe.msgprint(_("{0} currently has a {1} Supplier Scorecard standing, and Purchase Orders to this supplier should be issued with caution.")
-				.format(self.supplier, standing), title=_("Caution"), indicator='orange')
+				.format(self.supplier, standing), title=_("Caution"), indicator="orange")
 
 	def validate_minimum_order_qty(self):
 		if not self.get("items"):
@@ -596,11 +600,11 @@ class PurchaseOrder(BuyingController):
 			for supplied_item in self.get("supplied_items"):
 				if not supplied_item.reserve_warehouse:
 					frappe.throw(_("Row #{0}: Reserve Warehouse is mandatory for Material Item {0} in Raw Materials supplied").format(
-						supplied_item.idx, frappe.bold(supplied_item.rm_item_code)
+						supplied_item.idx, frappe.bold(supplied_item.rm_item_code),
 					))
 
 	def get_schedule_dates(self):
-		for d in self.get('items'):
+		for d in self.get("items"):
 			if d.material_request_item and not d.schedule_date:
 				d.schedule_date = frappe.db.get_value("Material Request Item",
 						d.material_request_item, "schedule_date")
@@ -620,7 +624,7 @@ class PurchaseOrder(BuyingController):
 				uom=d.uom,
 				conversion_factor=d.get("conversion_factor"),
 				exchange_rate=self.get("conversion_rate"),
-				exclude=self.name
+				exclude=self.name,
 			)
 
 			if last_purchase_details:
@@ -637,10 +641,10 @@ class PurchaseOrder(BuyingController):
 	# Check for Closed status
 	def check_on_hold_or_closed_status(self):
 		check_list = []
-		for d in self.get('items'):
-			if d.meta.get_field('material_request') and d.material_request and d.material_request not in check_list:
+		for d in self.get("items"):
+			if d.meta.get_field("material_request") and d.material_request and d.material_request not in check_list:
 				check_list.append(d.material_request)
-				check_on_hold_or_closed_status('Material Request', d.material_request)
+				check_on_hold_or_closed_status("Material Request", d.material_request)
 
 	def update_requested_qty(self):
 		material_request_map = {}
@@ -672,7 +676,7 @@ class PurchaseOrder(BuyingController):
 
 		for item_code, warehouse in item_wh_list:
 			update_bin_qty(item_code, warehouse, {
-				"ordered_qty": get_ordered_qty(item_code, warehouse)
+				"ordered_qty": get_ordered_qty(item_code, warehouse),
 			})
 
 	def check_modified_date(self):
@@ -714,7 +718,7 @@ def close_or_unclose_purchase_orders(names, status):
 		po.check_permission("submit")
 		if po.docstatus == 1:
 			if status == "Closed":
-				if po.status not in ("Cancelled", "Closed") and (po.receipt_status == 'To Receive' or po.billing_status == 'To Bill'):
+				if po.status not in ("Cancelled", "Closed") and (po.receipt_status == "To Receive" or po.billing_status == "To Bill"):
 					po.run_method("update_status", status)
 			else:
 				if po.status == "Closed":
@@ -744,7 +748,7 @@ def make_purchase_receipt(source_name, target_doc=None, warehouse=None):
 		return flt(source.qty) - flt(source.received_qty)
 
 	def item_condition(source, source_parent, target_parent):
-		if source.name in [d.purchase_order_item for d in target_parent.get('items') if d.purchase_order_item]:
+		if source.name in [d.purchase_order_item for d in target_parent.get("items") if d.purchase_order_item]:
 			return False
 
 		if source.delivered_by_supplier:
@@ -764,11 +768,11 @@ def make_purchase_receipt(source_name, target_doc=None, warehouse=None):
 			"doctype": "Purchase Receipt",
 			"field_map": {
 				"supplier_warehouse": "supplier_warehouse",
-				"remarks": "remarks"
+				"remarks": "remarks",
 			},
 			"validation": {
 				"docstatus": ["=", 1],
-			}
+			},
 		},
 		"Purchase Order Item": {
 			"doctype": "Purchase Receipt Item",
@@ -785,14 +789,14 @@ def make_purchase_receipt(source_name, target_doc=None, warehouse=None):
 		},
 		"Purchase Taxes and Charges": {
 			"doctype": "Purchase Taxes and Charges",
-			"add_if_empty": True
+			"add_if_empty": True,
 		},
 		"postprocess": postprocess,
 	}
 
 	frappe.utils.call_hook_method("update_purchase_receipt_from_purchase_order_mapper", mapper, "Purchase Receipt")
 
-	doc = get_mapped_doc("Purchase Order", source_name,	mapper, target_doc)
+	doc = get_mapped_doc("Purchase Order", source_name, mapper, target_doc)
 
 	return doc
 
@@ -806,11 +810,11 @@ def make_purchase_invoice(source_name, target_doc=None):
 def make_purchase_invoice_from_portal(purchase_order_name):
 	doc = get_mapped_purchase_invoice(purchase_order_name, ignore_permissions=True)
 	if doc.contact_email != frappe.session.user:
-		frappe.throw(_('Not Permitted'), frappe.PermissionError)
+		frappe.throw(_("Not Permitted"), frappe.PermissionError)
 	doc.save()
 	frappe.db.commit()
-	frappe.response['type'] = 'redirect'
-	frappe.response.location = '/purchase-invoices/' + doc.name
+	frappe.response["type"] = "redirect"
+	frappe.response.location = "/purchase-invoices/" + doc.name
 
 
 def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions=False):
@@ -827,7 +831,7 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 			return max(to_bill_qty, 0)
 
 	def item_condition(source, source_parent, target_parent):
-		if source.name in [d.purchase_order_item for d in target_parent.get('items') if d.purchase_order_item and not d.purchase_receipt_item]:
+		if source.name in [d.purchase_order_item for d in target_parent.get("items") if d.purchase_order_item and not d.purchase_receipt_item]:
 			return False
 
 		return get_pending_qty(source)
@@ -847,12 +851,12 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 			"doctype": "Purchase Invoice",
 			"field_map": {
 				"party_account_currency": "party_account_currency",
-				"supplier_warehouse":"supplier_warehouse",
+				"supplier_warehouse": "supplier_warehouse",
 				"remarks": "remarks",
 			},
 			"validation": {
 				"docstatus": ["=", 1],
-			}
+			},
 		},
 		"Purchase Order Item": {
 			"doctype": "Purchase Invoice Item",
@@ -868,7 +872,7 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 		},
 		"Purchase Taxes and Charges": {
 			"doctype": "Purchase Taxes and Charges",
-			"add_if_empty": True
+			"add_if_empty": True,
 		},
 		"postprocess": postprocess,
 	}
@@ -876,12 +880,12 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 	if frappe.get_single("Accounts Settings").automatically_fetch_payment_terms == 1:
 		mapper["Payment Schedule"] = {
 			"doctype": "Payment Schedule",
-			"add_if_empty": True
+			"add_if_empty": True,
 		}
 
 	frappe.utils.call_hook_method("update_purchase_invoice_from_purchase_order_mapper", mapper, "Purchase Invoice")
 
-	doc = get_mapped_doc("Purchase Order", source_name,	mapper,
+	doc = get_mapped_doc("Purchase Order", source_name, mapper,
 		target_doc, ignore_permissions=ignore_permissions)
 
 	return doc
@@ -948,7 +952,7 @@ def make_rm_stock_entry(purchase_order, packing_slips=None):
 					"purchase_order_item": d.name,
 					"qty": flt(d.required_qty) - flt(d.supplied_qty),
 					"uom": d.stock_uom,
-				}
+				},
 			})
 
 	ste.run_method("postprocess_after_mapping")

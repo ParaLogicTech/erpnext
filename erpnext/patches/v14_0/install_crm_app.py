@@ -1,6 +1,9 @@
 import frappe
+from frappe.core.doctype.installed_applications.installed_applications import (
+	get_installed_app_order,
+	update_installed_apps_order,
+)
 from frappe.installer import install_app
-from frappe.core.doctype.installed_applications.installed_applications import get_installed_app_order, update_installed_apps_order
 
 
 def execute():

@@ -1,8 +1,9 @@
 import frappe
 
+
 def execute():
-	frappe.reload_doc('assets', 'doctype', 'asset')
-	frappe.reload_doc('assets', 'doctype', 'depreciation_schedule')
+	frappe.reload_doc("assets", "doctype", "asset")
+	frappe.reload_doc("assets", "doctype", "depreciation_schedule")
 
 	frappe.db.sql("""
 		update tabAsset a

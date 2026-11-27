@@ -3,8 +3,8 @@
 
 
 import frappe
-test_records = frappe.get_test_records('Cost Center')
 
+test_records = frappe.get_test_records("Cost Center")
 
 
 def create_cost_center(**args):
@@ -20,6 +20,3 @@ def create_cost_center(**args):
 			cc.is_group = args.is_group or 0
 			cc.parent_cost_center = args.parent_cost_center or "_Test Company - _TC"
 			cc.insert()
-
-
-

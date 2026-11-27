@@ -1,12 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
 from frappe.utils import add_months, today
+
 from erpnext import get_company_currency
-from .blanket_order import make_sales_order, make_purchase_order
+
+from .blanket_order import make_purchase_order, make_sales_order
+
 
 class TestBlanketOrder(unittest.TestCase):
 	def test_sales_order_creation(self):
@@ -30,8 +33,7 @@ class TestBlanketOrder(unittest.TestCase):
 		# test the quantity
 		so1 = make_sales_order(bo.name)
 		so1.currency = get_company_currency(so1.company)
-		self.assertEqual(so1.items[0].qty, (bo.items[0].qty-bo.items[0].ordered_qty))
-
+		self.assertEqual(so1.items[0].qty, (bo.items[0].qty - bo.items[0].ordered_qty))
 
 	def test_purchase_order_creation(self):
 		bo = make_blanket_order(blanket_order_type="Purchasing")
@@ -54,8 +56,7 @@ class TestBlanketOrder(unittest.TestCase):
 		# test the quantity
 		po1 = make_sales_order(bo.name)
 		po1.currency = get_company_currency(po1.company)
-		self.assertEqual(po1.items[0].qty, (bo.items[0].qty-bo.items[0].ordered_qty))
-
+		self.assertEqual(po1.items[0].qty, (bo.items[0].qty - bo.items[0].ordered_qty))
 
 
 def make_blanket_order(**args):
@@ -75,9 +76,9 @@ def make_blanket_order(**args):
 	bo.append("items", {
 		"item_code": args.item_code or "_Test Item",
 		"qty": args.quantity or 1000,
-		"rate": args.rate or 100
+		"rate": args.rate or 100,
 	})
-	
+
 	bo.insert()
 	bo.submit()
 	return bo

@@ -2,14 +2,19 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.model.document import Document
 from frappe import _
+from frappe.model.document import Document
 
-from erpnext.controllers.item_variant import (validate_is_incremental,
-	validate_item_attribute_value, InvalidItemAttributeValueError)
+from erpnext.controllers.item_variant import (
+	InvalidItemAttributeValueError,
+	validate_is_incremental,
+	validate_item_attribute_value,
+)
 
 
-class ItemAttributeIncrementError(frappe.ValidationError): pass
+class ItemAttributeIncrementError(frappe.ValidationError):
+	pass
+
 
 class ItemAttribute(Document):
 	def __setup__(self):
@@ -24,12 +29,12 @@ class ItemAttribute(Document):
 		self.validate_exising_items()
 
 	def validate_exising_items(self):
-		'''Validate that if there are existing items with attributes, they are valid'''
+		"""Validate that if there are existing items with attributes, they are valid"""
 		attributes_list = [d.attribute_value for d in self.item_attribute_values]
 
-		for item in frappe.db.sql('''select i.name, iva.attribute_value as value
+		for item in frappe.db.sql("""select i.name, iva.attribute_value as value
 			from `tabItem Variant Attribute` iva, `tabItem` i where iva.attribute = %s
-			and iva.parent = i.name and i.has_variants = 0''', self.name, as_dict=1):
+			and iva.parent = i.name and i.has_variants = 0""", self.name, as_dict=1):
 			if self.numeric_values:
 				validate_is_incremental(self, self.name, item.value, item.name)
 			else:

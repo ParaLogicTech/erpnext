@@ -1,32 +1,32 @@
 // Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Payment Order', {
+frappe.ui.form.on("Payment Order", {
 	setup: function(frm) {
 		frm.set_query("company_bank_account", function() {
 			return {
 				filters: {
-					"is_company_account":1
-				}
-			}
+					"is_company_account": 1,
+				},
+			};
 		});
 	},
 	refresh: function(frm) {
 		if (frm.doc.docstatus == 0) {
-			frm.add_custom_button(__('Payment Request'), function() {
+			frm.add_custom_button(__("Payment Request"), function() {
 				frm.trigger("get_from_payment_request");
 			}, __("Get Payments from"));
 
-			frm.add_custom_button(__('Payment Entry'), function() {
+			frm.add_custom_button(__("Payment Entry"), function() {
 				frm.trigger("get_from_payment_entry");
 			}, __("Get Payments from"));
 
-			frm.trigger('remove_button');
+			frm.trigger("remove_button");
 		}
 
 		// payment Entry
-		if (frm.doc.docstatus===1 && frm.doc.payment_order_type==='Payment Request') {
-			frm.add_custom_button(__('Create Payment Entries'), function() {
+		if (frm.doc.docstatus === 1 && frm.doc.payment_order_type === "Payment Request") {
+			frm.add_custom_button(__("Create Payment Entries"), function() {
 				frm.trigger("make_payment_records");
 			});
 		}
@@ -46,7 +46,7 @@ frappe.ui.form.on('Payment Order', {
 
 		if (frm.doc.references.length > 0 && frm.doc.payment_order_type) {
 			label = label.reduce(x => {
-				x!= frm.doc.payment_order_type;
+				x != frm.doc.payment_order_type;
 				return x;
 			});
 			frm.remove_custom_button(label, "Get from");
@@ -61,7 +61,7 @@ frappe.ui.form.on('Payment Order', {
 			target: frm,
 			date_field: "posting_date",
 			setters: {
-				party: frm.doc.supplier || ""
+				party: frm.doc.supplier || "",
 			},
 			get_query_filters: {
 				bank: frm.doc.bank,
@@ -69,8 +69,8 @@ frappe.ui.form.on('Payment Order', {
 				payment_type: ["!=", "Receive"],
 				bank_account: frm.doc.company_bank_account,
 				paid_from: frm.doc.account,
-				payment_order_status: ["=", "Initiated"]
-			}
+				payment_order_status: ["=", "Initiated"],
+			},
 		});
 	},
 
@@ -81,58 +81,58 @@ frappe.ui.form.on('Payment Order', {
 			source_doctype: "Payment Request",
 			target: frm,
 			setters: {
-				party: frm.doc.supplier || ""
+				party: frm.doc.supplier || "",
 			},
 			get_query_filters: {
 				bank: frm.doc.bank,
 				docstatus: 1,
 				status: ["=", "Initiated"],
-			}
+			},
 		});
 	},
 
-	make_payment_records: function(frm){
+	make_payment_records: function(frm) {
 		var dialog = new frappe.ui.Dialog({
 			title: __("For Supplier"),
 			fields: [
-				{"fieldtype": "Link", "label": __("Supplier"), "fieldname": "supplier", "options":"Supplier",
-					"get_query": function () {
+				{"fieldtype": "Link", "label": __("Supplier"), "fieldname": "supplier", "options": "Supplier",
+					"get_query": function() {
 						return {
-							query:"erpnext.accounts.doctype.payment_order.payment_order.get_supplier_query",
-							filters: {'parent': frm.doc.name}
-						}
-					}, "reqd": 1
+							query: "erpnext.accounts.doctype.payment_order.payment_order.get_supplier_query",
+							filters: {"parent": frm.doc.name},
+						};
+					}, "reqd": 1,
 				},
 
-				{"fieldtype": "Link", "label": __("Mode of Payment"), "fieldname": "mode_of_payment", "options":"Mode of Payment",
-					"get_query": function () {
+				{"fieldtype": "Link", "label": __("Mode of Payment"), "fieldname": "mode_of_payment", "options": "Mode of Payment",
+					"get_query": function() {
 						return {
-							query:"erpnext.accounts.doctype.payment_order.payment_order.get_mop_query",
-							filters: {'parent': frm.doc.name}
-						}
-					}
-				}
-			]
+							query: "erpnext.accounts.doctype.payment_order.payment_order.get_mop_query",
+							filters: {"parent": frm.doc.name},
+						};
+					},
+				},
+			],
 		});
 
 		dialog.set_primary_action(__("Submit"), function() {
 			var args = dialog.get_values();
-			if(!args) return;
+			if (!args) return;
 
 			return frappe.call({
 				method: "erpnext.accounts.doctype.payment_order.payment_order.make_payment_records",
 				args: {
 					"name": frm.doc.name,
 					"supplier": args.supplier,
-					"mode_of_payment": args.mode_of_payment
+					"mode_of_payment": args.mode_of_payment,
 				},
 				freeze: true,
 				callback: function(r) {
 					dialog.hide();
 					frm.refresh();
-				}
-			})
-		})
+				},
+			});
+		});
 
 		dialog.show();
 	},

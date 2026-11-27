@@ -2,9 +2,9 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe import msgprint, _
-from frappe.utils import getdate
+from frappe import _, msgprint
 from frappe.model.document import Document
+from frappe.utils import getdate
 
 
 class POSProfile(Document):
@@ -34,7 +34,7 @@ class POSProfile(Document):
 		accounts = {
 			"Account": [self.income_account, self.expense_account],
 			"Cost Center": [self.cost_center],
-			"Warehouse": [self.warehouse]
+			"Warehouse": [self.warehouse],
 		}
 
 		for link_dt, dn_list in accounts.items():
@@ -55,17 +55,17 @@ class POSProfile(Document):
 def pos_profile_query(doctype, txt, searchfield, start, page_len, filters):
 	filters = filters or {}
 
-	user = filters.get('user') or frappe.session['user']
-	company = filters.get('company') or frappe.defaults.get_user_default('company')
-	branch = filters.get('branch') or frappe.defaults.get_user_default('branch')
+	user = filters.get("user") or frappe.session["user"]
+	company = filters.get("company") or frappe.defaults.get_user_default("company")
+	branch = filters.get("branch") or frappe.defaults.get_user_default("branch")
 
 	args = {
-		'user': user,
-		'start': start,
-		'company': company,
-		'branch': branch,
-		'page_len': page_len,
-		'txt': '%%%s%%' % txt
+		"user": user,
+		"start": start,
+		"company": company,
+		"branch": branch,
+		"page_len": page_len,
+		"txt": "%%%s%%" % txt,
 	}
 
 	pos_profile = []
@@ -148,7 +148,7 @@ def get_pos_profile(company, branch=None, user=None):
 				AND pf.disabled = 0
 				{branch_condition}
 		""", {
-			'user': user, 'company': company, 'branch': branch,
+			"user": user, "company": company, "branch": branch,
 		})
 		pos_profile = pos_profile[0] if pos_profile else None
 
@@ -159,7 +159,7 @@ def get_pos_profile(company, branch=None, user=None):
 			FROM `tabPOS Profile` pf
 			WHERE pf.company = %(company)s AND pf.branch = %(branch)s AND pf.disabled = 0
 		""", {
-			'company': company, 'branch': branch,
+			"company": company, "branch": branch,
 		})
 		pos_profile = pos_profile[0] if len(pos_profile) == 1 else None
 
@@ -170,7 +170,7 @@ def get_pos_profile(company, branch=None, user=None):
 			FROM `tabPOS Profile` pf
 			WHERE pf.company = %(company)s AND ifnull(pf.branch, '') = '' AND pf.disabled = 0
 		""", {
-			'company': company
+			"company": company,
 		})
 		pos_profile = pos_profile[0] if len(pos_profile) == 1 else None
 
@@ -188,7 +188,7 @@ def cashiers_query(doctype, txt, searchfield, start, page_len, filters):
 	if not cashiers:
 		return []
 
-	filters['name'] = ['in', cashiers]
+	filters["name"] = ["in", cashiers]
 
 	return user_query(doctype, txt, searchfield, start, page_len, filters)
 
@@ -201,8 +201,8 @@ def get_cashiers(pos_profile=None):
 	cashiers = frappe.get_all(
 		"POS Profile User",
 		filters=cashier_filters,
-		fields='distinct user as user',
-		pluck='user'
+		fields="distinct user as user",
+		pluck="user",
 	)
 
 	return cashiers
@@ -253,10 +253,10 @@ def check_is_pos_open(user, pos_profile, posting_date, throw=False):
 def pos_opening_mandatory_message(pos_profile, cashier=None):
 	message = _("POS Opening Entry is mandatory for POS Profile {0}{1}").format(
 		frappe.bold(pos_profile),
-		_(", Cashier {0}").format(frappe.bold(cashier)) if cashier else ""
+		_(", Cashier {0}").format(frappe.bold(cashier)) if cashier else "",
 	)
 	message += "<br><br>" + "<a href='/app/pos-opening-entry/new-pos-opening-entry' target='_blank'>{0}</a>".format(
-		_("Please create POS Opening Entry")
+		_("Please create POS Opening Entry"),
 	)
 	return message
 

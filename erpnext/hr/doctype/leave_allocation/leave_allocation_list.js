@@ -2,9 +2,9 @@
 // License: GNU General Public License v3. See license.txt
 
 // render
-frappe.listview_settings['Leave Allocation'] = {
+frappe.listview_settings["Leave Allocation"] = {
 	get_indicator: function(doc) {
-		if(doc.status==="Expired") {
+		if (doc.status === "Expired") {
 			return [__("Expired"), "grey", "expired, =, 1"];
 		}
 	},

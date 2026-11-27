@@ -6,7 +6,7 @@ def execute():
 	frappe.reload_doctype("Purchase Receipt Item")
 
 	inter_company_precs = frappe.get_all("Purchase Receipt", filters={
-		"inter_company_reference": ['is', 'set']
+		"inter_company_reference": ["is", "set"],
 	})
 	inter_company_precs = [d.name for d in inter_company_precs]
 

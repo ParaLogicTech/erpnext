@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 
 import frappe
-from frappe.model.document import Document
-from frappe.utils import flt, cint, getdate, add_days, get_last_day, add_months
 from frappe import _
+from frappe.model.document import Document
+from frappe.utils import add_days, add_months, cint, flt, get_last_day, getdate
 
 
 class PaymentTermsTemplate(Document):
@@ -21,13 +20,13 @@ class PaymentTermsTemplate(Document):
 		if len(payment_amount_types) == 1 and payment_amount_types[0] == "Percentage":
 			total_portion = 0
 			for term in self.terms:
-				total_portion += flt(term.get('invoice_portion', 0))
+				total_portion += flt(term.get("invoice_portion", 0))
 
 			if flt(total_portion, 2) != 100.00:
-				frappe.throw(_('Combined invoice portion must equal 100%'))
+				frappe.throw(_("Combined invoice portion must equal 100%"))
 
-		if 'Amount' in payment_amount_types:
-			if 'Percentage' in payment_amount_types:
+		if "Amount" in payment_amount_types:
+			if "Percentage" in payment_amount_types:
 				frappe.throw(_("Payment Amount Type 'Percentage' cannot be selected if 'Amount' is selected"))
 
 			for i, term in enumerate(self.terms):
@@ -38,14 +37,14 @@ class PaymentTermsTemplate(Document):
 	def validate_credit_days(self):
 		for term in self.terms:
 			if cint(term.credit_days) < 0:
-				frappe.throw(_('Credit Days cannot be a negative number'))
+				frappe.throw(_("Credit Days cannot be a negative number"))
 
 	def check_duplicate_terms(self):
 		terms = []
 		for term in self.terms:
 			term_info = (term.credit_days, term.credit_months, term.due_date_based_on)
 			if term_info in terms:
-				frappe.throw(_('The Payment Term at row {0} is possibly a duplicate.').format(term.idx))
+				frappe.throw(_("The Payment Term at row {0} is possibly a duplicate.").format(term.idx))
 			else:
 				terms.append(term_info)
 
@@ -111,7 +110,7 @@ def get_payment_term_details(term, posting_date=None, grand_total=None, bill_dat
 def get_due_date_from_template(terms_template, posting_date=None, bill_date=None, delivery_date=None):
 	due_date = None
 
-	template = frappe.get_cached_doc('Payment Terms Template', terms_template)
+	template = frappe.get_cached_doc("Payment Terms Template", terms_template)
 	for term in template.terms:
 		term_due_date = get_payment_term_due_date(term, posting_date=posting_date,
 			bill_date=bill_date, delivery_date=delivery_date)

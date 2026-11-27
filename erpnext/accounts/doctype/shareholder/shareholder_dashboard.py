@@ -4,13 +4,13 @@ from frappe import _
 
 def get_data():
 	return {
-		'fieldname': 'shareholder',
-		'non_standard_fieldnames': {
-			'Share Transfer': 'to_shareholder'
+		"fieldname": "shareholder",
+		"non_standard_fieldnames": {
+			"Share Transfer": "to_shareholder",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'items': ['Share Transfer']
-			}
-		]
+				"items": ["Share Transfer"],
+			},
+		],
 	}

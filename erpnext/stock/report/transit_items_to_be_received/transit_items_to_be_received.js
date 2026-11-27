@@ -9,7 +9,7 @@ frappe.query_reports["Transit Items To Be Received"] = {
 			fieldtype: "Link",
 			options: "Company",
 			default: frappe.defaults.get_user_default("Company"),
-			bold: 1
+			bold: 1,
 		},
 		{
 			fieldname: "qty_field",
@@ -17,7 +17,7 @@ frappe.query_reports["Transit Items To Be Received"] = {
 			fieldtype: "Select",
 			options: ["Stock Qty", "Contents Qty", "Transaction Qty"],
 			default: "Stock Qty",
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "from_warehouse",
@@ -26,8 +26,8 @@ frappe.query_reports["Transit Items To Be Received"] = {
 			options: "Warehouse",
 			get_query: function() {
 				return {
-					filters: {'company': frappe.query_report.get_filter_value("company")}
-				}
+					filters: {"company": frappe.query_report.get_filter_value("company")},
+				};
 			},
 		},
 		{
@@ -37,15 +37,15 @@ frappe.query_reports["Transit Items To Be Received"] = {
 			options: "Warehouse",
 			get_query: function() {
 				return {
-					filters: {'company': frappe.query_report.get_filter_value("company")}
-				}
+					filters: {"company": frappe.query_report.get_filter_value("company")},
+				};
 			},
 		},
 		{
 			fieldname: "branch",
 			label: __("Branch"),
 			fieldtype: "Link",
-			options: "Branch"
+			options: "Branch",
 		},
 		{
 			fieldname: "item_code",
@@ -55,21 +55,21 @@ frappe.query_reports["Transit Items To Be Received"] = {
 			get_query: function() {
 				return {
 					query: "erpnext.controllers.queries.item_query",
-					filters: {'include_disabled': 1,'include_templates':1}
-				}
+					filters: {"include_disabled": 1, "include_templates": 1},
+				};
 			},
 		},
 		{
 			fieldname: "item_group",
 			label: __("Item Group"),
 			fieldtype: "Link",
-			options: "Item Group"
+			options: "Item Group",
 		},
 		{
 			fieldname: "brand",
 			label: __("Brand"),
 			fieldtype: "Link",
-			options: "Brand"
+			options: "Brand",
 		},
 		{
 			fieldname: "project",
@@ -82,18 +82,18 @@ frappe.query_reports["Transit Items To Be Received"] = {
 		let style = {};
 
 		if (column.fieldname == "remaining_qty") {
-			style['font-weight'] = 'bold';
+			style["font-weight"] = "bold";
 		}
 
 		if (column.fieldname == "transferred_qty") {
 			if (flt(value)) {
-				style['color'] = 'blue';
+				style["color"] = "blue";
 			}
 		}
 
 		if (column.fieldname == "delay_days") {
 			if (flt(value) > 0) {
-				style['color'] = 'red';
+				style["color"] = "red";
 			}
 		}
 

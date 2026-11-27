@@ -1,11 +1,12 @@
 from frappe import _
 
+
 def get_data():
 	return {
-		'fieldname': 'pick_list',
-		'transactions': [
+		"fieldname": "pick_list",
+		"transactions": [
 			{
-				'items': ['Stock Entry', 'Delivery Note']
+				"items": ["Stock Entry", "Delivery Note"],
 			},
-		]
+		],
 	}

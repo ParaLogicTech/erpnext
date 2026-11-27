@@ -1,19 +1,20 @@
 from frappe import _
 
+
 def get_data():
-     return {
-        'fieldname': 'leave_allocation',
-        'transactions': [
-            {
-                'items': ['Compensatory Leave Request']
-            },
-            {
-                'items': ['Leave Encashment']
-            }
-        ],
-        'reports': [
+	return {
+		"fieldname": "leave_allocation",
+		"transactions": [
 			{
-				'items': ['Employee Leave Balance']
-			}
-		]
-    }
+				"items": ["Compensatory Leave Request"],
+			},
+			{
+				"items": ["Leave Encashment"],
+			},
+		],
+		"reports": [
+			{
+				"items": ["Employee Leave Balance"],
+			},
+		],
+	}

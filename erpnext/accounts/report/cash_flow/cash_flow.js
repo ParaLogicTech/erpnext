@@ -4,7 +4,7 @@
 frappe.query_reports["Cash Flow"] = $.extend({},
 	erpnext.financial_statements);
 
-erpnext.utils.add_dimensions('Cash Flow', 10);
+erpnext.utils.add_dimensions("Cash Flow", 10);
 
 // The last item in the array is the definition for Presentation Currency
 // filter. It won't be used in cash flow for now so we pop it. Please take
@@ -16,12 +16,12 @@ frappe.query_reports["Cash Flow"]["filters"].push(
 	{
 		"fieldname": "accumulated_values",
 		"label": __("Accumulated Values"),
-		"fieldtype": "Check"
+		"fieldtype": "Check",
 	},
 	{
 		"fieldname": "include_default_book_entries",
 		"label": __("Include Default Book Entries"),
 		"fieldtype": "Check",
-		"default": 1
-	}
+		"default": 1,
+	},
 );

@@ -2,10 +2,10 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Vehicle Log", {
-	vehicle: function (frm) {
+	vehicle: function(frm) {
 		frm.events.get_last_odometer(frm);
 	},
-	date: function (frm) {
+	date: function(frm) {
 		frm.events.get_last_odometer(frm);
 	},
 
@@ -15,13 +15,13 @@ frappe.ui.form.on("Vehicle Log", {
 				method: "erpnext.vehicles.doctype.vehicle_log.vehicle_log.get_vehicle_odometer",
 				args: {
 					vehicle: frm.doc.vehicle,
-					date: frm.doc.date
+					date: frm.doc.date,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (!r.exc) {
 						frm.set_value("last_odometer", cint(r.message));
 					}
-				}
+				},
 			});
 		}
 	},

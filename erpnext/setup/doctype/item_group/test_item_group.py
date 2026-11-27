@@ -2,11 +2,19 @@
 # License: GNU General Public License v3. See license.txt
 
 import unittest
-import frappe
-from frappe.utils.nestedset import NestedSetRecursionError, NestedSetMultipleRootsError, \
-	NestedSetChildExistsError, NestedSetInvalidMergeError, rebuild_tree, get_ancestors_of
 
-test_records = frappe.get_test_records('Item Group')
+import frappe
+from frappe.utils.nestedset import (
+	NestedSetChildExistsError,
+	NestedSetInvalidMergeError,
+	NestedSetMultipleRootsError,
+	NestedSetRecursionError,
+	get_ancestors_of,
+	rebuild_tree,
+)
+
+test_records = frappe.get_test_records("Item Group")
+
 
 class TestItem(unittest.TestCase):
 	def test_basic_tree(self, records=None):
@@ -48,7 +56,7 @@ class TestItem(unittest.TestCase):
 			children = []
 			for ig in item_groups:
 				children += frappe.db.sql_list("""select name from `tabItem Group`
-				where ifnull(parent_item_group, '')=%s""", ig or '')
+				where ifnull(parent_item_group, '')=%s""", ig or "")
 
 			if len(children):
 				return get_no_of_children(children, no_of_children + len(children))
@@ -142,11 +150,11 @@ class TestItem(unittest.TestCase):
 	def test_delete_leaf(self):
 		# for checking later
 		parent_item_group = frappe.db.get_value("Item Group", "_Test Item Group B - 3", "parent_item_group")
-		rgt = frappe.db.get_value("Item Group", parent_item_group, "rgt")
+		frappe.db.get_value("Item Group", parent_item_group, "rgt")
 
 		ancestors = get_ancestors_of("Item Group", "_Test Item Group B - 3")
 		ancestors = frappe.db.sql("""select name, rgt from `tabItem Group`
-			where name in ({})""".format(", ".join(["%s"]*len(ancestors))), tuple(ancestors), as_dict=True)
+			where name in ({})""".format(", ".join(["%s"] * len(ancestors))), tuple(ancestors), as_dict=True)
 
 		frappe.delete_doc("Item Group", "_Test Item Group B - 3")
 		records_to_test = test_records[2:]
@@ -155,7 +163,7 @@ class TestItem(unittest.TestCase):
 
 		# rgt of each ancestor would reduce by 2
 		for item_group in ancestors:
-			new_lft, new_rgt = frappe.db.get_value("Item Group", item_group.name, ["lft", "rgt"])
+			_new_lft, new_rgt = frappe.db.get_value("Item Group", item_group.name, ["lft", "rgt"])
 			self.assertEqual(new_rgt, item_group.rgt - 2)
 
 		# insert it back

@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
+
 
 class TestShiftType(unittest.TestCase):
 	def test_make_shift_type(self):
@@ -13,7 +14,6 @@ class TestShiftType(unittest.TestCase):
 			"doctype": "Shift Type",
 			"name": "Day Shift",
 			"start_time": "9:00:00",
-			"end_time": "18:00:00"
+			"end_time": "18:00:00",
 		})
 		shift_type.insert()
- 

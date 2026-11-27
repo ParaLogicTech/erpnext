@@ -10,5 +10,5 @@ def execute():
 		holidays = doc.get_holidays_for_employee(doc.start_date, doc.end_date)
 		leave_count = doc.get_leave_count(holidays, cint(doc.total_working_days), doc.joining_date, doc.relieving_date)
 		if leave_count.leave_with_pay:
-			doc.db_set('leave_with_pay', leave_count.leave_with_pay)
+			doc.db_set("leave_with_pay", leave_count.leave_with_pay)
 		doc.clear_cache()

@@ -1,6 +1,7 @@
 import frappe
 from frappe.model.utils.rename_field import rename_field
 
+
 def execute():
 	# Move Landed Cost Taxes and Charges in Stock Entry to Stock Entry Taxes and Charges
 	frappe.db.sql("""
@@ -11,9 +12,9 @@ def execute():
 	frappe.db.sql("delete from `tabLanded Cost Taxes and Charges` where parenttype='Stock Entry'")
 
 	# Rename LCV fields
-	frappe.reload_doc('stock', 'doctype', 'landed_cost_voucher', force=1)
-	frappe.reload_doc('stock', 'doctype', 'landed_cost_taxes_and_charges', force=1)
-	frappe.reload_doc('stock', 'doctype', 'landed_cost_item', force=1)
+	frappe.reload_doc("stock", "doctype", "landed_cost_voucher", force=1)
+	frappe.reload_doc("stock", "doctype", "landed_cost_taxes_and_charges", force=1)
+	frappe.reload_doc("stock", "doctype", "landed_cost_item", force=1)
 
 	# Landed Cost Taxes and Charges table description to remarks
 	rename_field("Landed Cost Taxes and Charges", "description", "remarks")
@@ -64,7 +65,7 @@ def execute():
 				where name = %s
 			""".format(  # nosec
 				po_detail_field="purchase_order_item" if d.receipt_document_type == "Purchase Receipt" else "po_detail",
-				dt=d.receipt_document_type
+				dt=d.receipt_document_type,
 			), d.purchase_receipt_item, as_dict=1)
 
 		if pr_item:

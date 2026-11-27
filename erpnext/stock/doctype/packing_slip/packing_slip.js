@@ -1,15 +1,15 @@
 frappe.provide("erpnext.stock");
 
 erpnext.stock.PackingSlipController = class PackingSlipController extends erpnext.stock.PackingController {
-	item_table_fields = ['items', 'packaging_items']
-	calculate_total_hooks = []
+	item_table_fields = ["items", "packaging_items"];
+	calculate_total_hooks = [];
 
 	setup() {
 		this.frm.custom_make_buttons = {
-			'Delivery Note': __('Delivery Note'),
-			'Sales Invoice': __('Sales Invoice'),
-			'Stock Entry': __('Stock Entry'),
-		}
+			"Delivery Note": __("Delivery Note"),
+			"Sales Invoice": __("Sales Invoice"),
+			"Stock Entry": __("Stock Entry"),
+		};
 
 		this.setup_posting_date_time_check();
 		this.setup_queries();
@@ -63,11 +63,11 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 					item_code: item.item_code,
 					warehouse: item.source_warehouse,
 					posting_date: me.frm.doc.posting_date || frappe.datetime.nowdate(),
-				}
+				};
 
 				return {
-					query : "erpnext.controllers.queries.get_batch_no",
-					filters: filters
+					query: "erpnext.controllers.queries.get_batch_no",
+					filters: filters,
 				};
 			}
 		};
@@ -90,8 +90,8 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 				return {
 					filters: {
 						"company": doc.company,
-						"is_group": 0
-					}
+						"is_group": 0,
+					},
 				};
 			});
 		}
@@ -102,11 +102,11 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		this.add_general_ledger_report_button();
 
 		if (this.frm.doc.docstatus == 0) {
-			this.frm.add_custom_button(__('Sales Order'), () => {
+			this.frm.add_custom_button(__("Sales Order"), () => {
 				this.get_items_from_sales_order();
 			}, __("Get Items From"));
 
-			this.frm.add_custom_button(__('Packing Slip'), () => {
+			this.frm.add_custom_button(__("Packing Slip"), () => {
 				this.get_items_from_packing_slip("Packing Slip");
 			}, __("Get Items From"));
 		}
@@ -114,29 +114,29 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		if (this.frm.doc.docstatus == 1 && ["In Stock", "Rejected"].includes(this.frm.doc.status)) {
 			if (this.frm.doc.status == "In Stock" && !this.frm.doc.purchase_order) {
 				if (this.frm.doc.can_reassign) {
-					this.frm.add_custom_button(__('Reassign Sales Order'), () => this.select_sales_order_for_reassignment(),
-						__('Reassign'));
+					this.frm.add_custom_button(__("Reassign Sales Order"), () => this.select_sales_order_for_reassignment(),
+						__("Reassign"));
 
 					let has_sales_orders = new Set((this.frm.doc.items || []).filter(d => d.sales_order).map(d => d.sales_order));
 					if (has_sales_orders.size) {
-						this.frm.add_custom_button(__('Unassign Sales Order'), () => this.confirm_unassign_sales_order(),
-							__('Reassign'));
+						this.frm.add_custom_button(__("Unassign Sales Order"), () => this.confirm_unassign_sales_order(),
+							__("Reassign"));
 					}
 				}
 
-				this.frm.add_custom_button(__('Delivery Note'), () => this.make_delivery_note(), __('Create'));
-				this.frm.add_custom_button(__('Sales Invoice'), () => this.make_sales_invoice(), __('Create'));
+				this.frm.add_custom_button(__("Delivery Note"), () => this.make_delivery_note(), __("Create"));
+				this.frm.add_custom_button(__("Sales Invoice"), () => this.make_sales_invoice(), __("Create"));
 			}
 
-			this.frm.add_custom_button(__('Stock Entry'), () => this.make_stock_entry(), __('Create'));
-			this.frm.add_custom_button(__('Unpack'), () => this.make_unpack_packing_slip(), __('Create'));
+			this.frm.add_custom_button(__("Stock Entry"), () => this.make_stock_entry(), __("Create"));
+			this.frm.add_custom_button(__("Unpack"), () => this.make_unpack_packing_slip(), __("Create"));
 
 			if (this.frm.page.get_inner_group_button(__("Create")).length) {
-				this.frm.page.set_inner_btn_group_as_primary(__('Create'));
+				this.frm.page.set_inner_btn_group_as_primary(__("Create"));
 			}
 		}
 
-		erpnext.utils.setup_remove_zero_qty_rows(this.frm, ['qty', 'rejected_qty']);
+		erpnext.utils.setup_remove_zero_qty_rows(this.frm, ["qty", "rejected_qty"]);
 	}
 
 	company() {
@@ -201,7 +201,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 			} else {
 				row_weight_change = flt(
 					weight_change * flt(row.gross_weight) / items_gross_weight,
-					precision("gross_weight", row)
+					precision("gross_weight", row),
 				);
 			}
 
@@ -224,7 +224,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		for (const field of this.item_table_fields) {
 			for (let item of this.frm.doc[field] || []) {
 				frappe.model.round_floats_in(item, null,
-					['net_weight_per_unit', 'tare_weight_per_unit', 'gross_weight_per_unit']);
+					["net_weight_per_unit", "tare_weight_per_unit", "gross_weight_per_unit"]);
 
 				if (this.frm.doc.is_unpack || item.source_packing_slip) {
 					item.rejected_qty = 0;
@@ -276,7 +276,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		}
 
 		frappe.model.round_floats_in(this.frm.doc, [
-			'total_qty', 'total_stock_qty', 'total_rejected_qty', 'total_stock_rejected_qty', 'total_net_weight', 'total_tare_weight',
+			"total_qty", "total_stock_qty", "total_rejected_qty", "total_stock_rejected_qty", "total_net_weight", "total_tare_weight",
 		]);
 		this.frm.doc.total_gross_weight = flt(this.frm.doc.total_net_weight + this.frm.doc.total_tare_weight,
 			precision("total_gross_weight"));
@@ -306,9 +306,9 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 						doctype: me.frm.doc.doctype,
 						name: me.frm.doc.name,
 						default_source_warehouse: me.frm.doc.default_source_warehouse,
-					}
+					},
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (r.message && !r.exc) {
 						return frappe.run_serially([
 							() => {
@@ -324,23 +324,23 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 									}
 								}
 								me.calculate_totals();
-							}
+							},
 						]);
 					}
-				}
+				},
 			});
 		}
 	}
 
 	auto_select_batches() {
 		return this.frm.call({
-			method: 'auto_select_batches',
+			method: "auto_select_batches",
 			doc: this.frm.doc,
 			freeze: 1,
 			callback: () => {
 				this.frm.refresh_fields();
 				this.frm.dirty();
-			}
+			},
 		});
 	}
 
@@ -394,7 +394,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 				customer: this.frm.doc.customer || undefined,
 				project: this.frm.doc.project || undefined,
 			},
-			columns: ['customer_name', 'project'],
+			columns: ["customer_name", "project"],
 			get_query_filters: {
 				docstatus: 1,
 				status: ["not in", ["Closed", "On Hold"]],
@@ -402,7 +402,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 				packing_status: "To Pack",
 				skip_delivery_note: 0,
 				company: this.frm.doc.company,
-			}
+			},
 		});
 	}
 
@@ -410,21 +410,21 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.packing_slip.packing_slip.make_delivery_note",
 			frm: this.frm,
-		})
+		});
 	}
 
 	make_sales_invoice() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.packing_slip.packing_slip.make_sales_invoice",
 			frm: this.frm,
-		})
+		});
 	}
 
 	make_unpack_packing_slip() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.stock.doctype.packing_slip.packing_slip.make_unpack_packing_slip",
 			frm: this.frm,
-		})
+		});
 	}
 
 	make_stock_entry() {
@@ -446,7 +446,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 				callback: function(r) {
 					let doclist = frappe.model.sync(r.message);
 					frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-				}
+				},
 			});
 		} else {
 			return frappe.model.open_mapped_doc({
@@ -465,7 +465,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 					from_date: me.frm.doc.posting_date,
 					to_date: frappe.datetime.get_today(),
 					company: me.frm.doc.company,
-					group_by: ""
+					group_by: "",
 				};
 				frappe.set_route("query-report", "Stock Ledger");
 			}, __("View"));
@@ -480,48 +480,48 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 			primary_action_label: __("Reassign"),
 			setters: [
 				{
-					fieldtype: 'Link',
-					label: __('Customer'),
-					options: 'Customer',
-					fieldname: 'customer',
+					fieldtype: "Link",
+					label: __("Customer"),
+					options: "Customer",
+					fieldname: "customer",
 				},
 				{
-					fieldtype: 'Link',
-					label: __('Project'),
-					options: 'Project',
-					fieldname: 'project',
+					fieldtype: "Link",
+					label: __("Project"),
+					options: "Project",
+					fieldname: "project",
 					default: this.frm.doc.project || undefined,
 				},
 				{
-					fieldtype: 'Link',
-					label: __('Branch'),
-					options: 'Branch',
-					fieldname: 'branch',
+					fieldtype: "Link",
+					label: __("Branch"),
+					options: "Branch",
+					fieldname: "branch",
 					default: this.frm.doc.branch || undefined,
 				},
 				{
-					fieldtype: 'DateRange',
-					label: __('Date Range'),
-					fieldname: 'transaction_date',
+					fieldtype: "DateRange",
+					label: __("Date Range"),
+					fieldname: "transaction_date",
 				},
 				{
-					fieldname: 'hide_invalid_qty',
-					label: __('Hide Invalid Qty Orders'),
-					fieldtype: 'Check',
+					fieldname: "hide_invalid_qty",
+					label: __("Hide Invalid Qty Orders"),
+					fieldtype: "Check",
 				},
 			],
-			columns: ['customer_name', 'transaction_date', 'project'],
+			columns: ["customer_name", "transaction_date", "project"],
 			get_query: () => {
 				return {
 					query: "erpnext.stock.doctype.packing_slip.packing_slip.get_sales_orders_for_reassignment",
 					filters: {
 						packing_slip: this.frm.doc.name,
-					}
+					},
 				};
 			},
 			action: (selections, args) => {
 				if (selections.length != 1) {
-					frappe.msgprint(__("Please select one {0}", [__("Sales Order")]))
+					frappe.msgprint(__("Please select one {0}", [__("Sales Order")]));
 					return;
 				}
 
@@ -548,7 +548,7 @@ erpnext.stock.PackingSlipController = class PackingSlipController extends erpnex
 			freeze_message: __("Reassigning..."),
 			callback: (r) => {
 				this.frm.reload_doc();
-			}
+			},
 		});
 	}
 };

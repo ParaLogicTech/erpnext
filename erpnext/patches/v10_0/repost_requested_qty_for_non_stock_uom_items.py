@@ -3,10 +3,11 @@
 
 import frappe
 
-def execute():
-	from erpnext.stock.stock_balance import update_bin_qty, get_indented_qty
 
-	count=0
+def execute():
+	from erpnext.stock.stock_balance import get_indented_qty, update_bin_qty
+
+	count = 0
 	for item_code, warehouse in frappe.db.sql("""select distinct item_code, warehouse
 		from `tabMaterial Request Item` where docstatus = 1 and stock_uom<>uom"""):
 			try:
@@ -16,5 +17,5 @@ def execute():
 				})
 				if count % 200 == 0:
 					frappe.db.commit()
-			except:
+			except Exception:
 				frappe.db.rollback()

@@ -3,8 +3,9 @@
 
 import frappe
 from frappe import _, scrub, unscrub
-from frappe.utils import getdate, nowdate, flt, cint, cstr
 from frappe.desk.query_report import group_report_data
+from frappe.utils import cint, cstr, flt, getdate, nowdate
+
 from erpnext import get_default_currency
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.utils import get_additional_sales_invoice_no_fields
@@ -79,21 +80,21 @@ class SalesPurchaseDetailsReport:
 			frappe.throw(_("Party Type not defined for {0}").format(self.filters.doctype))
 
 	def set_company_currency(self):
-		if self.filters.get('company'):
-			self.company_currency = frappe.get_cached_value('Company', self.filters.get("company"), "default_currency")
+		if self.filters.get("company"):
+			self.company_currency = frappe.get_cached_value("Company", self.filters.get("company"), "default_currency")
 		else:
 			self.company_currency = get_default_currency()
 
 	def set_show_names(self):
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 
 		self.show_party_name = False
 		if self.filters.party_type == "Customer":
-			if frappe.defaults.get_global_default('cust_master_name') == "Naming Series":
+			if frappe.defaults.get_global_default("cust_master_name") == "Naming Series":
 				self.show_party_name = True
 
 		if self.filters.party_type == "Supplier":
-			if frappe.defaults.get_global_default('supp_master_name') == "Naming Series":
+			if frappe.defaults.get_global_default("supp_master_name") == "Naming Series":
 				self.show_party_name = True
 
 	def set_fieldnames(self):
@@ -109,7 +110,7 @@ class SalesPurchaseDetailsReport:
 		filter_to_qty_field = {
 			"Stock Qty": "stock_qty",
 			"Contents Qty": "alt_uom_qty",
-			"Transaction Qty": "qty"
+			"Transaction Qty": "qty",
 		}
 		self.select_qty_field = filter_to_qty_field.get(self.filters.qty_field) or "stock_qty"
 
@@ -121,22 +122,22 @@ class SalesPurchaseDetailsReport:
 		if not self.filters.qty_only:
 			if cint(self.filters.show_basic_values):
 				if cint(self.filters.show_discount_values):
-					self.amount_fields += ['base_amount_before_discount', 'base_total_discount']
+					self.amount_fields += ["base_amount_before_discount", "base_total_discount"]
 					self.rate_fields += [
-						('discount_percentage', 'base_total_discount', 'base_amount_before_discount', 100),
-						('base_price_list_rate', 'base_amount_before_discount')
+						("discount_percentage", "base_total_discount", "base_amount_before_discount", 100),
+						("base_price_list_rate", "base_amount_before_discount"),
 					]
-				self.amount_fields += ['base_amount']
-				self.rate_fields += [('base_rate', 'base_amount')]
+				self.amount_fields += ["base_amount"]
+				self.rate_fields += [("base_rate", "base_amount")]
 
 			if cint(self.filters.show_tax_exclusive_values):
 				if cint(self.filters.show_discount_values):
-					self.amount_fields += ['base_tax_exclusive_amount_before_discount', 'base_tax_exclusive_total_discount']
-				self.amount_fields += ['base_tax_exclusive_amount']
-				self.rate_fields += [('base_tax_exclusive_rate', 'base_tax_exclusive_amount')]
+					self.amount_fields += ["base_tax_exclusive_amount_before_discount", "base_tax_exclusive_total_discount"]
+				self.amount_fields += ["base_tax_exclusive_amount"]
+				self.rate_fields += [("base_tax_exclusive_rate", "base_tax_exclusive_amount")]
 
-			self.amount_fields += ['base_net_amount']
-			self.rate_fields += [('base_net_rate', 'base_net_amount')]
+			self.amount_fields += ["base_net_amount"]
+			self.rate_fields += [("base_net_rate", "base_net_amount")]
 
 	def get_entries(self):
 		select_fields, joins = self.get_select_fields_and_joins()
@@ -217,9 +218,9 @@ class SalesPurchaseDetailsReport:
 			select_fields.append("s.branch as parent_branch")
 
 		# Purchase Bill No
-		if self.doc_meta.has_field('bill_no'):
+		if self.doc_meta.has_field("bill_no"):
 			select_fields.append("s.bill_no")
-		if self.doc_meta.has_field('bill_date'):
+		if self.doc_meta.has_field("bill_date"):
 			select_fields.append("s.bill_date")
 
 		# Packing Slip
@@ -276,17 +277,17 @@ class SalesPurchaseDetailsReport:
 			conditions.append("s.letter_of_credit = %(letter_of_credit)s")
 
 		if self.filters.get("item_code"):
-			is_template = frappe.db.get_value("Item", self.filters.get('item_code'), 'has_variants')
+			is_template = frappe.db.get_value("Item", self.filters.get("item_code"), "has_variants")
 			if is_template:
 				conditions.append("im.variant_of = %(item_code)s")
 			else:
 				conditions.append("im.name = %(item_code)s")
 
 		if self.filters.get("applies_to_item"):
-			is_template = frappe.db.get_value("Item", self.filters.get('applies_to_item'), 'has_variants')
+			is_template = frappe.db.get_value("Item", self.filters.get("applies_to_item"), "has_variants")
 			if is_template:
 				self.filters.applies_to_items = [self.filters.applies_to_item]
-				self.filters.applies_to_items += [d.name for d in frappe.get_all("Item", {'variant_of': self.filters.applies_to_item})]
+				self.filters.applies_to_items += [d.name for d in frappe.get_all("Item", {"variant_of": self.filters.applies_to_item})]
 				conditions.append("s.applies_to_item in %(applies_to_items)s")
 			else:
 				conditions.append("s.applies_to_item = %(applies_to_item)s")
@@ -404,17 +405,17 @@ class SalesPurchaseDetailsReport:
 			})
 
 			if "Group by Item" in (self.filters.group_by_1, self.filters.group_by_2, self.filters.group_by_3):
-				d['reference_type'] = self.filters.doctype
-				d['reference'] = d.get("parent")
+				d["reference_type"] = self.filters.doctype
+				d["reference"] = d.get("parent")
 
 			if d.get("account_manager"):
 				self.filters.has_account_manager = True
 
 			# Add tax fields
-			for f, tax in zip(self.tax_amount_fields, self.tax_account_heads):
+			for f, tax in zip(self.tax_amount_fields, self.tax_account_heads, strict=False):
 				tax_amount = self.itemised_tax.get(d.name, {}).get(tax, {}).get("tax_amount", 0.0)
 				d[f] = flt(tax_amount)
-			for f, tax in zip(self.tax_rate_fields, self.tax_account_heads):
+			for f, tax in zip(self.tax_rate_fields, self.tax_account_heads, strict=False):
 				tax_rate = self.itemised_tax.get(d.name, {}).get(tax, {}).get("tax_rate", 0.0)
 				d[f] = flt(tax_rate)
 
@@ -463,7 +464,7 @@ class SalesPurchaseDetailsReport:
 				data,
 				("item_code", "item_name", "uom", "parent"),
 				calculate_totals=self.calculate_group_totals,
-				totals_only=True
+				totals_only=True,
 			)
 
 		if len(self.group_by) <= 1:
@@ -473,19 +474,19 @@ class SalesPurchaseDetailsReport:
 			data,
 			self.group_by,
 			calculate_totals=self.calculate_group_totals,
-			totals_only=self.filters.totals_only
+			totals_only=self.filters.totals_only,
 		)
 
 	def calculate_group_totals(self, data, group_field, group_value, grouped_by):
 		total_fields = self.qty_fields + self.amount_fields + self.tax_amount_fields + self.additional_amount_fields
 		if self.filters.sales_person:
-			total_fields.append('actual_net_amount')
+			total_fields.append("actual_net_amount")
 
 		averageif_fields = self.tax_rate_fields
 
 		totals = frappe._dict({
 			"disable_item_formatter": cint(self.show_item_name),
-			"disable_party_name_formatter": cint(self.show_party_name)
+			"disable_party_name_formatter": cint(self.show_party_name),
 		})
 
 		# Copy grouped by into total row
@@ -519,56 +520,56 @@ class SalesPurchaseDetailsReport:
 					if f not in totals:
 						totals[f] = v
 
-			if 'parent' in grouped_by:
+			if "parent" in grouped_by:
 				fields_to_copy = [
-					'date', 'party', 'party_name', 'letter_of_credit',
-					'sales_person', 'account_manager', 'territory',
-					'bill_no', 'bill_date', 'branch',
+					"date", "party", "party_name", "letter_of_credit",
+					"sales_person", "account_manager", "territory",
+					"bill_no", "bill_date", "branch",
 				]
 				for f in fields_to_copy:
 					if f in data[0]:
 						totals[f] = data[0][f]
 
-				projects = set([d.get('project') for d in data if d.get('project')])
-				totals['project'] = ", ".join(projects)
+				projects = set([d.get("project") for d in data if d.get("project")])
+				totals["project"] = ", ".join(projects)
 
-			if 'item_code' in grouped_by:
-				totals['item_name'] = data[0].get('item_name')
-				totals['group_doctype'] = "Item Group"
-				totals['group'] = data[0].get('item_group')
-				totals['brand'] = data[0].get('brand')
+			if "item_code" in grouped_by:
+				totals["item_name"] = data[0].get("item_name")
+				totals["group_doctype"] = "Item Group"
+				totals["group"] = data[0].get("item_group")
+				totals["brand"] = data[0].get("brand")
 
-			if group_field in ('applies_to_item', 'applies_to_variant_of'):
-				totals['item_name'] = frappe.db.get_value("Item", group_value, 'item_name', cache=1) if group_value else None
-				totals['group_doctype'] = "Item Group"
-				totals['group'] = frappe.db.get_value("Item", group_value, 'item_group', cache=1) if group_value else None
-				totals['brand'] = frappe.db.get_value("Item", group_value, 'brand', cache=1) if group_value else None
+			if group_field in ("applies_to_item", "applies_to_variant_of"):
+				totals["item_name"] = frappe.db.get_value("Item", group_value, "item_name", cache=1) if group_value else None
+				totals["group_doctype"] = "Item Group"
+				totals["group"] = frappe.db.get_value("Item", group_value, "item_group", cache=1) if group_value else None
+				totals["brand"] = frappe.db.get_value("Item", group_value, "brand", cache=1) if group_value else None
 
-			if group_field == 'party':
-				totals['group_doctype'] = data[0].get("party_group_dt")
-				totals['group'] = data[0].get("party_group")
-				totals['party_name'] = data[0].get("party_name")
-				totals['party_type'] = self.filters.party_type
+			if group_field == "party":
+				totals["group_doctype"] = data[0].get("party_group_dt")
+				totals["group"] = data[0].get("party_group")
+				totals["party_name"] = data[0].get("party_name")
+				totals["party_type"] = self.filters.party_type
 
-			if 'party' in grouped_by:
-				totals['account_manager'] = data[0].get('account_manager')
+			if "party" in grouped_by:
+				totals["account_manager"] = data[0].get("account_manager")
 
 		# Set reference field
 		if group_field == ("item_code", "item_name", "uom", "parent") and data:
-			totals['reference_type'] = data[0].get('reference_type')
-			totals['reference'] = data[0].get('reference')
+			totals["reference_type"] = data[0].get("reference_type")
+			totals["reference"] = data[0].get("reference")
 		else:
 			reference_field = group_field[0] if isinstance(group_field, (list, tuple)) else group_field
 			reference_dt = self.fieldname_to_doctype(reference_field)
-			totals['reference_type'] = reference_dt
-			totals['reference'] = grouped_by.get(reference_field) if group_field else "Total"
+			totals["reference_type"] = reference_dt
+			totals["reference"] = grouped_by.get(reference_field) if group_field else "Total"
 
 			if not group_field and self.group_by == [None]:
-				totals['parent'] = "'Total'"
+				totals["parent"] = "'Total'"
 
 		# Calculate sales person contribution percentage
-		if totals.get('actual_net_amount'):
-			totals['allocated_percentage'] = totals['base_net_amount'] / totals['actual_net_amount'] * 100
+		if totals.get("actual_net_amount"):
+			totals["allocated_percentage"] = totals["base_net_amount"] / totals["actual_net_amount"] * 100
 
 		self.postprocess_row(totals)
 		return totals
@@ -580,7 +581,7 @@ class SalesPurchaseDetailsReport:
 			"item_code": "Item",
 			"applies_to_item": "Item",
 			"applies_to_variant_of": "Item",
-			"party_group": "Customer Group" if self.filters.party_type == "Customer" else "Supplier Group"
+			"party_group": "Customer Group" if self.filters.party_type == "Customer" else "Supplier Group",
 		}
 
 		return group_reference_doctypes.get(fieldname, unscrub(cstr(fieldname)))
@@ -625,8 +626,8 @@ class SalesPurchaseDetailsReport:
 			fields = self.qty_fields.copy()
 
 			if not self.filters.qty_only:
-				row['actual_net_amount'] = row["base_net_amount"]
-				fields += ['total_tax_amount', 'grand_total'] + self.amount_fields + self.tax_amount_fields + self.additional_amount_fields
+				row["actual_net_amount"] = row["base_net_amount"]
+				fields += ["total_tax_amount", "grand_total"] + self.amount_fields + self.tax_amount_fields + self.additional_amount_fields
 
 			for f in fields:
 				row[f] *= row.allocated_percentage / 100
@@ -652,14 +653,14 @@ class SalesPurchaseDetailsReport:
 				"label": _("Date"),
 				"fieldname": "date",
 				"fieldtype": "Date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _(self.filters.doctype),
 				"fieldname": "parent",
 				"fieldtype": "Link",
 				"options": self.filters.doctype,
-				"width": 100
+				"width": 100,
 			},
 		]
 
@@ -670,7 +671,7 @@ class SalesPurchaseDetailsReport:
 					"label": _(label),
 					"fieldname": field,
 					"fieldtype": "Data",
-					"width": 100
+					"width": 100,
 				})
 
 		columns += [
@@ -678,72 +679,72 @@ class SalesPurchaseDetailsReport:
 				"label": _("Bill No"),
 				"fieldname": "bill_no",
 				"fieldtype": "Data",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Bill Date"),
 				"fieldname": "bill_date",
 				"fieldtype": "Date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _(self.filters.party_type),
 				"fieldname": "party",
 				"fieldtype": "Link",
 				"options": self.filters.party_type,
-				"width": 80 if self.show_party_name else 150
+				"width": 80 if self.show_party_name else 150,
 			},
 			{
 				"label": _(self.filters.party_type) + " Name",
 				"fieldname": "party_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Letter of Credit"),
 				"fieldname": "letter_of_credit",
 				"fieldtype": "Link",
 				"options": "Letter of Credit",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Item Code"),
 				"fieldname": "item_code",
 				"fieldtype": "Link",
 				"options": "Item",
-				"width": 100 if self.show_item_name else 150
+				"width": 100 if self.show_item_name else 150,
 			},
 			{
 				"label": _("Item Name"),
 				"fieldname": "item_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("% Contribution"),
 				"fieldname": "allocated_percentage",
 				"fieldtype": "Percent",
-				"width": 60
+				"width": 60,
 			},
 			{
 				"label": _("Qty"),
 				"fieldname": "qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("UOM"),
 				"fieldname": "uom",
 				"fieldtype": "Link",
 				"options": "UOM",
-				"width": 50
+				"width": 50,
 			},
 		]
 
 		value_columns = self.get_value_columns()
 		included_amount_fields = self.amount_fields + [d[0] for d in self.rate_fields]
 		for c in value_columns:
-			if c['fieldname'] in included_amount_fields:
+			if c["fieldname"] in included_amount_fields:
 				columns.append(c)
 
 		if not self.filters.qty_only and not self.filters.hide_grand_total:
@@ -753,14 +754,14 @@ class SalesPurchaseDetailsReport:
 					"fieldname": "total_tax_amount",
 					"fieldtype": "Currency",
 					"options": "Company:company:default_currency",
-					"width": 110
+					"width": 110,
 				},
 				{
 					"label": _("Grand Total"),
 					"fieldname": "grand_total",
 					"fieldtype": "Currency",
 					"options": "Company:company:default_currency",
-					"width": 110
+					"width": 110,
 				},
 			]
 
@@ -774,120 +775,120 @@ class SalesPurchaseDetailsReport:
 				"fieldname": "packing_slip",
 				"fieldtype": "Link",
 				"options": "Packing Slip",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Sales Person"),
 				"fieldname": "sales_person",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Branch"),
 				"fieldname": "branch",
 				"fieldtype": "Link",
 				"options": "Branch",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Project"),
 				"fieldname": "project",
 				"fieldtype": "Link",
 				"options": "Project",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Territory"),
 				"fieldname": "territory",
 				"fieldtype": "Link",
 				"options": "Territory",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Account Manager"),
 				"fieldname": "account_manager",
 				"fieldtype": "Link",
 				"options": "Sales Person",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Cost Center"),
 				"fieldname": "cost_center",
 				"fieldtype": "Link",
 				"options": "Cost Center",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Group"),
 				"fieldname": "group",
 				"fieldtype": "Dynamic Link",
 				"options": "group_doctype",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Brand"),
 				"fieldname": "brand",
 				"fieldtype": "Link",
 				"options": "Brand",
-				"width": 100
+				"width": 100,
 			},
 		]
 
 		if len(self.group_by) <= 1:
-			columns = [c for c in columns if c.get('fieldname') not in ('reference_type', 'reference')]
+			columns = [c for c in columns if c.get("fieldname") not in ("reference_type", "reference")]
 
 		if not self.show_item_name:
-			columns = [c for c in columns if c.get('fieldname') != 'item_name']
+			columns = [c for c in columns if c.get("fieldname") != "item_name"]
 		if not self.show_party_name:
-			columns = [c for c in columns if c.get('fieldname') != 'party_name']
+			columns = [c for c in columns if c.get("fieldname") != "party_name"]
 
 		if not self.doc_meta.has_field("bill_no"):
-			columns = [c for c in columns if c.get('fieldname') != 'bill_no']
+			columns = [c for c in columns if c.get("fieldname") != "bill_no"]
 		if not self.doc_meta.has_field("bill_date"):
-			columns = [c for c in columns if c.get('fieldname') != 'bill_date']
+			columns = [c for c in columns if c.get("fieldname") != "bill_date"]
 
 		if not self.item_meta.has_field("cost_center") and not self.doc_meta.has_field("cost_center"):
-			columns = [c for c in columns if c.get('fieldname') != 'cost_center']
+			columns = [c for c in columns if c.get("fieldname") != "cost_center"]
 
 		if not self.filters.has_project:
-			columns = [c for c in columns if c.get('fieldname') != 'project']
+			columns = [c for c in columns if c.get("fieldname") != "project"]
 
 		if self.filters.party_type != "Customer":
-			columns = [c for c in columns if c.get('fieldname') not in ('sales_person', 'territory')]
+			columns = [c for c in columns if c.get("fieldname") not in ("sales_person", "territory")]
 
 		if not self.filters.sales_person:
-			columns = [c for c in columns if c.get('fieldname') != 'allocated_percentage']
+			columns = [c for c in columns if c.get("fieldname") != "allocated_percentage"]
 
 		if not self.filters.show_packing_slip:
-			columns = [c for c in columns if c.get('fieldname') != 'packing_slip']
+			columns = [c for c in columns if c.get("fieldname") != "packing_slip"]
 
 		if not self.filters.has_branch:
-			columns = [c for c in columns if c.get('fieldname') != 'branch']
+			columns = [c for c in columns if c.get("fieldname") != "branch"]
 
 		if not self.filters.has_account_manager:
-			columns = [c for c in columns if c.get('fieldname') != 'account_manager']
+			columns = [c for c in columns if c.get("fieldname") != "account_manager"]
 
 		if not self.filters.has_letter_of_credit:
-			columns = [c for c in columns if c.get('fieldname') != 'letter_of_credit']
+			columns = [c for c in columns if c.get("fieldname") != "letter_of_credit"]
 
 		if self.filters.totals_only:
 			if "item_code" not in self.group_by:
-				columns = [c for c in columns if c.get('fieldname') not in ('item_code', 'item_name')]
+				columns = [c for c in columns if c.get("fieldname") not in ("item_code", "item_name")]
 
 			if "party" not in self.group_by and "parent" not in self.group_by:
-				columns = [c for c in columns if c.get('fieldname') not in ('party', 'party_name')]
+				columns = [c for c in columns if c.get("fieldname") not in ("party", "party_name")]
 
 			if "parent" not in self.group_by:
-				columns = [c for c in columns if c.get('fieldname') not in (
-					'parent', 'date', 'sales_person', 'territory',
+				columns = [c for c in columns if c.get("fieldname") not in (
+					"parent", "date", "sales_person", "territory",
 				)]
 
 			if "project" not in self.group_by:
-				columns = [c for c in columns if c.get('fieldname') != "project"]
+				columns = [c for c in columns if c.get("fieldname") != "project"]
 			if "cost_center" not in self.group_by:
-				columns = [c for c in columns if c.get('fieldname') != "cost_center"]
+				columns = [c for c in columns if c.get("fieldname") != "cost_center"]
 			if "branch" not in self.group_by:
-				columns = [c for c in columns if c.get('fieldname') != "branch"]
+				columns = [c for c in columns if c.get("fieldname") != "branch"]
 
 		return columns
 
@@ -898,90 +899,90 @@ class SalesPurchaseDetailsReport:
 				"fieldname": "base_price_list_rate",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Amount Before Discount"),
 				"fieldname": "base_amount_before_discount",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Total Discount"),
 				"fieldname": "base_total_discount",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Discount (%)"),
 				"fieldname": "discount_percentage",
 				"fieldtype": "Percent",
-				"width": 60
+				"width": 60,
 			},
 			{
 				"label": _("Rate"),
 				"fieldname": "base_rate",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Amount"),
 				"fieldname": "base_amount",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Rate Before Discount (Tax Exclusive)"),
 				"fieldname": "base_tax_exclusive_price_list_rate",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Amount Before Discount (Tax Exclusive)"),
 				"fieldname": "base_tax_exclusive_amount_before_discount",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Total Discount (Tax Exclusive)"),
 				"fieldname": "base_tax_exclusive_total_discount",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Rate (Tax Exclusive)"),
 				"fieldname": "base_tax_exclusive_rate",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Amount (Tax Exclusive)"),
 				"fieldname": "base_tax_exclusive_amount",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Net Rate"),
 				"fieldname": "base_net_rate",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Net Amount"),
 				"fieldname": "base_net_amount",
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 		]
 
@@ -995,14 +996,14 @@ class SalesPurchaseDetailsReport:
 					"label": _(tax_description) + " (%)",
 					"fieldname": rate_field,
 					"fieldtype": "Percent",
-					"width": 60
+					"width": 60,
 				},
 				{
 					"label": _(tax_description),
 					"fieldname": amount_field,
 					"fieldtype": "Currency",
 					"options": "Company:company:default_currency",
-					"width": 110
+					"width": 110,
 				},
 			]
 

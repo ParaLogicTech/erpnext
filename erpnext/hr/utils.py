@@ -1,25 +1,30 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe, erpnext
+import frappe
 from frappe import _
-from frappe.utils import formatdate, format_datetime, getdate, get_datetime, nowdate, flt, cstr
-from frappe.model.document import Document
 from frappe.desk.form import assign_to
+from frappe.model.document import Document
+from frappe.utils import cstr, flt, format_datetime, formatdate, get_datetime, getdate, nowdate
+
+import erpnext
 from erpnext.hr.doctype.employee.employee import get_holiday_list_for_employee
 
-class DuplicateDeclarationError(frappe.ValidationError): pass
+
+class DuplicateDeclarationError(frappe.ValidationError):
+	pass
+
 
 class EmployeeBoardingController(Document):
-	'''
+	"""
 		Create the project and the task for the boarding process
 		Assign to the concerned person and roles as per the onboarding/separation template
-	'''
+	"""
 	def validate(self):
 		# remove the task if linked before submitting the form
 		if self.amended_from:
 			for activity in self.activities:
-				activity.task = ''
+				activity.task = ""
 
 	def on_submit(self):
 		# create the project for the given employee onboarding
@@ -33,7 +38,7 @@ class EmployeeBoardingController(Document):
 				"project_name": project_name,
 				"expected_start_date": self.date_of_joining if self.doctype == "Employee Onboarding" else self.resignation_letter_date,
 				"department": self.department,
-				"company": self.company
+				"company": self.company,
 			}).insert(ignore_permissions=True)
 		self.db_set("project", project.name)
 		self.db_set("boarding_status", "Pending")
@@ -53,13 +58,13 @@ class EmployeeBoardingController(Document):
 					"description": activity.description,
 					"department": self.department,
 					"company": self.company,
-					"task_weight": activity.task_weight
+					"task_weight": activity.task_weight,
 				}).insert(ignore_permissions=True)
 			activity.db_set("task", task.name)
 			users = [activity.user] if activity.user else []
 			if activity.role:
-				user_list = frappe.db.sql_list('''select distinct(parent) from `tabHas Role`
-					where parenttype='User' and role=%s''', activity.role)
+				user_list = frappe.db.sql_list("""select distinct(parent) from `tabHas Role`
+					where parenttype='User' and role=%s""", activity.role)
 				users = users + user_list
 
 				if "Administrator" in users:
@@ -72,11 +77,11 @@ class EmployeeBoardingController(Document):
 	def assign_task_to_users(self, task, users):
 		for user in users:
 			args = {
-				'assign_to' 	:	user,
-				'doctype'		:	task.doctype,
-				'name'			:	task.name,
-				'description'	:	task.description or task.subject,
-				'notify':	self.notify_users_by_email
+				"assign_to":	user,
+				"doctype":	task.doctype,
+				"name":	task.name,
+				"description":	task.description or task.subject,
+				"notify":	self.notify_users_by_email,
 			}
 			assign_to.add(args)
 
@@ -85,7 +90,7 @@ class EmployeeBoardingController(Document):
 		for task in frappe.get_all("Task", filters={"project": self.project}):
 			frappe.delete_doc("Task", task.name, force=1)
 		frappe.delete_doc("Project", self.project, force=1)
-		self.db_set('project', '')
+		self.db_set("project", "")
 		for activity in self.activities:
 			activity.db_set("task", "")
 
@@ -95,22 +100,25 @@ def get_onboarding_details(parent, parenttype):
 	return frappe.get_all("Employee Boarding Activity",
 		fields=["activity_name", "role", "user", "required_for_employee_creation", "description", "task_weight"],
 		filters={"parent": parent, "parenttype": parenttype},
-		order_by= "idx")
+		order_by="idx")
+
 
 @frappe.whitelist()
 def get_boarding_status(project):
-	status = 'Pending'
+	status = "Pending"
 	if project:
-		doc = frappe.get_doc('Project', project)
+		doc = frappe.get_doc("Project", project)
 		if flt(doc.percent_complete) > 0.0 and flt(doc.percent_complete) < 100.0:
-			status = 'In Process'
+			status = "In Process"
 		elif flt(doc.percent_complete) == 100.0:
-			status = 'Completed'
+			status = "Completed"
 		return status
+
 
 def set_employee_name(doc):
 	if doc.employee and not doc.employee_name:
 		doc.employee_name = frappe.db.get_value("Employee", doc.employee, "employee_name")
+
 
 def update_employee(employee, details, date=None, cancel=False):
 	internal_work_history = {}
@@ -119,7 +127,7 @@ def update_employee(employee, details, date=None, cancel=False):
 		new_data = item.new if not cancel else item.current
 		if fieldtype == "Date" and new_data:
 			new_data = getdate(new_data)
-		elif fieldtype =="Datetime" and new_data:
+		elif fieldtype == "Datetime" and new_data:
 			new_data = get_datetime(new_data)
 		setattr(employee, item.fieldname, new_data)
 		if item.fieldname in ["department", "designation", "branch"]:
@@ -172,13 +180,14 @@ def get_employee_field_property(employee, fieldname):
 		elif field.fieldtype == "Datetime":
 			value = format_datetime(value)
 		return {
-			"value" : value,
-			"datatype" : field.fieldtype,
-			"label" : field.label,
-			"options" : options
+			"value": value,
+			"datatype": field.fieldtype,
+			"label": field.label,
+			"options": options,
 		}
 	else:
 		return False
+
 
 def validate_dates(doc, from_date, to_date, allow_future_date=False):
 	date_of_joining, relieving_date = frappe.db.get_value("Employee", doc.employee, ["date_of_joining", "relieving_date"])
@@ -191,7 +200,8 @@ def validate_dates(doc, from_date, to_date, allow_future_date=False):
 	elif relieving_date and getdate(to_date) > getdate(relieving_date):
 		frappe.throw(_("To date can not greater than employee's relieving date"))
 
-def validate_overlap(doc, from_date, to_date, company = None):
+
+def validate_overlap(doc, from_date, to_date, company=None):
 	query = """
 		select name
 		from `tab{0}`
@@ -201,15 +211,15 @@ def validate_overlap(doc, from_date, to_date, company = None):
 
 	if not doc.name:
 		# hack! if name is null, it could cause problems with !=
-		doc.name = "New "+doc.doctype
+		doc.name = "New " + doc.doctype
 
-	overlap_doc = frappe.db.sql(query.format(doc.doctype),{
+	overlap_doc = frappe.db.sql(query.format(doc.doctype), {
 			"employee": doc.get("employee"),
 			"from_date": from_date,
 			"to_date": to_date,
 			"name": doc.name,
-			"company": company
-		}, as_dict = 1)
+			"company": company,
+		}, as_dict=1)
 
 	if overlap_doc:
 		if doc.get("employee"):
@@ -217,6 +227,7 @@ def validate_overlap(doc, from_date, to_date, company = None):
 		if company:
 			exists_for = company
 		throw_overlap_error(doc, exists_for, overlap_doc[0].name, from_date, to_date)
+
 
 def get_doc_condition(doctype):
 	if doctype == "Compensatory Leave Request":
@@ -234,12 +245,14 @@ def get_doc_condition(doctype):
 		or to_date between %(from_date)s and %(to_date)s \
 		or (from_date < %(from_date)s and to_date > %(to_date)s))"
 
+
 def throw_overlap_error(doc, exists_for, overlap_doc, from_date, to_date):
 	msg = _("{0} exists between {1} and {2} (").format(doc.doctype,
 		formatdate(from_date), formatdate(to_date)) \
 		+ frappe.get_desk_link(doc.doctype, overlap_doc) \
 		+ _(") for {0}").format(exists_for)
 	frappe.throw(msg)
+
 
 def get_employee_leave_policy(employee):
 	leave_policy = frappe.get_cached_value("Employee", employee, "leave_policy")
@@ -256,16 +269,18 @@ def get_employee_leave_policy(employee):
 	if leave_policy:
 		return frappe.get_cached_doc("Leave Policy", leave_policy)
 
+
 def validate_duplicate_exemption_for_payroll_period(doctype, docname, payroll_period, employee):
 	existing_record = frappe.db.exists(doctype, {
 		"payroll_period": payroll_period,
 		"employee": employee,
-		'docstatus': ['<', 2],
-		'name': ['!=', docname]
+		"docstatus": ["<", 2],
+		"name": ["!=", docname],
 	})
 	if existing_record:
 		frappe.throw(_("{0} already exists for employee {1} and period {2}")
 			.format(doctype, employee, payroll_period), DuplicateDeclarationError)
+
 
 def validate_tax_declaration(declarations):
 	subcategories = []
@@ -273,6 +288,7 @@ def validate_tax_declaration(declarations):
 		if d.exemption_sub_category in subcategories:
 			frappe.throw(_("More than one selection for {0} not allowed").format(d.exemption_sub_category))
 		subcategories.append(d.exemption_sub_category)
+
 
 def get_total_exemption_amount(declarations):
 	exemptions = frappe._dict()
@@ -294,6 +310,7 @@ def get_total_exemption_amount(declarations):
 	total_exemption_amount = sum([flt(d.total_exemption_amount) for d in exemptions.values()])
 	return total_exemption_amount
 
+
 def get_leave_period(from_date, to_date, company):
 	leave_period = frappe.db.sql("""
 		select name, from_date, to_date
@@ -305,7 +322,7 @@ def get_leave_period(from_date, to_date, company):
 	""", {
 		"from_date": from_date,
 		"to_date": to_date,
-		"company": company
+		"company": company,
 	}, as_dict=1)
 
 	if leave_period:
@@ -313,10 +330,10 @@ def get_leave_period(from_date, to_date, company):
 
 
 def allocate_earned_leaves():
-	'''Allocate earned leaves to Employees'''
+	"""Allocate earned leaves to Employees"""
 	e_leave_types = frappe.get_all("Leave Type",
 		fields=["name", "max_leaves_allowed", "earned_leave_frequency", "rounding"],
-		filters={'is_earned_leave' : 1})
+		filters={"is_earned_leave": 1})
 	today = getdate()
 	divide_by_frequency = {"Yearly": 1, "Half-Yearly": 6, "Quarterly": 4, "Monthly": 12}
 
@@ -331,9 +348,9 @@ def allocate_earned_leaves():
 				if not check_frequency_hit(allocation.from_date, today, e_leave_type.earned_leave_frequency):
 					continue
 			annual_allocation = frappe.db.get_value("Leave Policy Detail", filters={
-				'parent': leave_policy.name,
-				'leave_type': e_leave_type.name
-			}, fieldname=['annual_allocation'])
+				"parent": leave_policy.name,
+				"leave_type": e_leave_type.name,
+			}, fieldname=["annual_allocation"])
 			if annual_allocation:
 				earned_leaves = flt(annual_allocation) / divide_by_frequency[e_leave_type.earned_leave_frequency]
 				if e_leave_type.rounding == "0.5":
@@ -341,7 +358,7 @@ def allocate_earned_leaves():
 				else:
 					earned_leaves = round(earned_leaves)
 
-				allocation = frappe.get_doc('Leave Allocation', allocation.name)
+				allocation = frappe.get_doc("Leave Allocation", allocation.name)
 				new_allocation = flt(allocation.total_leaves_allocated) + flt(earned_leaves)
 
 				if new_allocation > e_leave_type.max_leaves_allowed and e_leave_type.max_leaves_allowed > 0:
@@ -352,15 +369,17 @@ def allocate_earned_leaves():
 				allocation.db_set("total_leaves_allocated", new_allocation, update_modified=False)
 				create_additional_leave_ledger_entry(allocation, earned_leaves, today)
 
+
 def create_additional_leave_ledger_entry(allocation, leaves, date):
-	''' Create leave ledger entry for leave types '''
+	""" Create leave ledger entry for leave types """
 	allocation.new_leaves_allocated = leaves
 	allocation.from_date = date
 	allocation.unused_leaves = 0
 	allocation.create_leave_ledger_entry()
 
+
 def check_frequency_hit(from_date, to_date, frequency):
-	'''Return True if current date matches frequency'''
+	"""Return True if current date matches frequency"""
 	from_dt = get_datetime(from_date)
 	to_dt = get_datetime(to_date)
 	from dateutil import relativedelta
@@ -377,16 +396,18 @@ def check_frequency_hit(from_date, to_date, frequency):
 			return True
 	return False
 
+
 def get_salary_assignment(employee, date):
 	assignment = frappe.db.sql("""
 		select * from `tabSalary Structure Assignment`
 		where employee=%(employee)s
 		and docstatus = 1
 		and %(on_date)s >= from_date order by from_date desc limit 1""", {
-			'employee': employee,
-			'on_date': date,
+			"employee": employee,
+			"on_date": date,
 		}, as_dict=1)
 	return assignment[0] if assignment else None
+
 
 def get_sal_slip_total_benefit_given(employee, payroll_period, component=False):
 	total_given_benefit_amount = 0
@@ -406,27 +427,28 @@ def get_sal_slip_total_benefit_given(employee, payroll_period, component=False):
 		query += "and sd.salary_component = %(component)s"
 
 	sum_of_given_benefit = frappe.db.sql(query, {
-		'employee': employee,
-		'start_date': payroll_period.start_date,
-		'end_date': payroll_period.end_date,
-		'component': component
+		"employee": employee,
+		"start_date": payroll_period.start_date,
+		"end_date": payroll_period.end_date,
+		"component": component,
 	}, as_dict=True)
 
 	if sum_of_given_benefit and flt(sum_of_given_benefit[0].total_amount) > 0:
 		total_given_benefit_amount = sum_of_given_benefit[0].total_amount
 	return total_given_benefit_amount
 
+
 def get_holidays_for_employee(employee, start_date, end_date):
 	holiday_list = get_holiday_list_for_employee(employee)
 
-	holidays = frappe.db.sql_list('''select holiday_date from `tabHoliday`
+	holidays = frappe.db.sql_list("""select holiday_date from `tabHoliday`
 		where
 			parent=%(holiday_list)s
 			and holiday_date >= %(start_date)s
-			and holiday_date <= %(end_date)s''', {
+			and holiday_date <= %(end_date)s""", {
 				"holiday_list": holiday_list,
 				"start_date": start_date,
-				"end_date": end_date
+				"end_date": end_date,
 			})
 
 	holidays = [cstr(i) for i in holidays]
@@ -452,11 +474,13 @@ def calculate_annual_eligible_hra_exemption(doc):
 	# Indian HRA Exemption Calculation
 	return {}
 
+
 @erpnext.allow_regional
 def calculate_hra_exemption_for_period(doc):
 	# Don't delete this method, used for localization
 	# Indian HRA Exemption Calculation
 	return {}
+
 
 def get_previous_claimed_amount(employee, payroll_period, non_pro_rata=False, component=False):
 	total_claimed_amount = 0
@@ -473,14 +497,15 @@ def get_previous_claimed_amount(employee, payroll_period, non_pro_rata=False, co
 		query += "and earning_component = %(component)s"
 
 	sum_of_claimed_amount = frappe.db.sql(query, {
-		'employee': employee,
-		'start_date': payroll_period.start_date,
-		'end_date': payroll_period.end_date,
-		'component': component
+		"employee": employee,
+		"start_date": payroll_period.start_date,
+		"end_date": payroll_period.end_date,
+		"component": component,
 	}, as_dict=True)
 	if sum_of_claimed_amount and flt(sum_of_claimed_amount[0].total_amount) > 0:
 		total_claimed_amount = sum_of_claimed_amount[0].total_amount
 	return total_claimed_amount
+
 
 @frappe.whitelist()
 def get_all_nodes(method, company):
@@ -498,7 +523,7 @@ def get_all_nodes(method, company):
 		data = method(root.id, company)
 		result.append(dict(parent=root.id, parent_name=root.name, data=data))
 		nodes_to_expand.extend(
-			[{"id": d.get("id"), "name": d.get("name")} for d in data if d.get("expandable")]
+			[{"id": d.get("id"), "name": d.get("name")} for d in data if d.get("expandable")],
 		)
 
 	while nodes_to_expand:

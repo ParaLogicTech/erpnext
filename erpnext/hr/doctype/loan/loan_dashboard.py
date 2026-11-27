@@ -1,24 +1,25 @@
 from frappe import _
 
+
 def get_data():
 	return {
-		'fieldname': 'loan',
-		'non_standard_fieldnames': {
-			'Journal Entry': 'reference_name',
-			'Loan Application': 'applicant'
+		"fieldname": "loan",
+		"non_standard_fieldnames": {
+			"Journal Entry": "reference_name",
+			"Loan Application": "applicant",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'label': _('Applicant'),
-				'items': ['Loan Application']
+				"label": _("Applicant"),
+				"items": ["Loan Application"],
 			},
 			{
-				'label': _('Account'),
-				'items': ['Journal Entry']
+				"label": _("Account"),
+				"items": ["Journal Entry"],
 			},
 			{
-				'label': _('Employee'),
-				'items': ['Salary Slip']
-			}
-		]
+				"label": _("Employee"),
+				"items": ["Salary Slip"],
+			},
+		],
 	}

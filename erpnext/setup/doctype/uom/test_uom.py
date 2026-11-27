@@ -3,4 +3,5 @@
 
 
 import frappe
-test_records = frappe.get_test_records('UOM')
+
+test_records = frappe.get_test_records("UOM")

@@ -1,14 +1,15 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import datetime
+import json
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname, revert_series_if_last
-from frappe.utils import flt, cint, get_link_to_form, cstr, round_down, getdate
+from frappe.utils import cint, cstr, flt, get_link_to_form, getdate, round_down
 from frappe.utils.data import add_days
-import json
-import datetime
 
 
 class UnableToSelectBatchError(frappe.ValidationError):
@@ -27,12 +28,12 @@ class Batch(Document):
 				else:
 					self.batch_id = generate_batch_no_hash()
 			else:
-				frappe.throw(_('Batch ID is mandatory'), frappe.MandatoryError)
+				frappe.throw(_("Batch ID is mandatory"), frappe.MandatoryError)
 
 		self.name = self.batch_id
 
 	def onload(self):
-		self.image = frappe.db.get_value('Item', self.item, 'image')
+		self.image = frappe.db.get_value("Item", self.item, "image")
 
 	def after_delete(self):
 		series = get_batch_naming_series(self.item)
@@ -47,12 +48,12 @@ class Batch(Document):
 			frappe.throw(_("The selected item cannot have Batch"))
 
 	def before_save(self):
-		has_expiry_date, shelf_life_in_days = frappe.db.get_value('Item', self.item, ['has_expiry_date', 'shelf_life_in_days'])
+		has_expiry_date, shelf_life_in_days = frappe.db.get_value("Item", self.item, ["has_expiry_date", "shelf_life_in_days"])
 		if not self.expiry_date and has_expiry_date and shelf_life_in_days:
 			self.expiry_date = add_days(self.manufacturing_date, shelf_life_in_days)
 
 		if has_expiry_date and not self.expiry_date:
-			frappe.throw(msg=_("Please set {0} for Batched Item {1}, which is used to set {2} on Submit.") \
+			frappe.throw(msg=_("Please set {0} for Batched Item {1}, which is used to set {2} on Submit.")
 				.format(frappe.bold("Shelf Life in Days"),
 					get_link_to_form("Item", self.item),
 					frappe.bold("Batch Expiry Date")),
@@ -95,8 +96,8 @@ def format_batch_series(prefix):
 	if not prefix:
 		return ""
 
-	if not prefix.find('#'):
-		prefix = prefix + '.#####'
+	if not prefix.find("#"):
+		prefix = prefix + ".#####"
 
 	return prefix
 
@@ -105,14 +106,14 @@ def generate_batch_no_hash():
 	hash_name = None
 	while not hash_name:
 		hash_name = frappe.generate_hash(length=7).upper()
-		if frappe.db.exists('Batch', hash_name):
+		if frappe.db.exists("Batch", hash_name):
 			hash_name = None
 
 	return hash_name
 
 
 def batches_use_naming_series():
-	use_naming_series = cint(frappe.db.get_single_value('Stock Settings', 'use_naming_series'))
+	use_naming_series = cint(frappe.db.get_single_value("Stock Settings", "use_naming_series"))
 	return bool(use_naming_series)
 
 
@@ -174,7 +175,7 @@ def get_batch_qty_on(batch_no, warehouse, posting_date, posting_time):
 def get_batches_by_oldest(item_code, warehouse):
 	"""Returns the oldest batch and qty for the given item_code and warehouse"""
 	batches = get_batch_qty(item_code=item_code, warehouse=warehouse)
-	batches_dates = [[batch, frappe.get_value('Batch', batch.batch_no, 'expiry_date')] for batch in batches]
+	batches_dates = [[batch, frappe.get_value("Batch", batch.batch_no, "expiry_date")] for batch in batches]
 	batches_dates.sort(key=lambda tup: tup[1])
 	return batches_dates
 
@@ -182,32 +183,32 @@ def get_batches_by_oldest(item_code, warehouse):
 @frappe.whitelist()
 def split_batch(batch_no, item_code, warehouse, qty, new_batch_id=None):
 	"""Split the batch into a new batch"""
-	batch = frappe.get_doc(dict(doctype='Batch', item=item_code, batch_id=new_batch_id)).insert()
+	batch = frappe.get_doc(dict(doctype="Batch", item=item_code, batch_id=new_batch_id)).insert()
 
-	company = frappe.db.get_value('Stock Ledger Entry', dict(
+	company = frappe.db.get_value("Stock Ledger Entry", dict(
 			item_code=item_code,
 			batch_no=batch_no,
-			warehouse=warehouse
-		), ['company'])
+			warehouse=warehouse,
+		), ["company"])
 
 	stock_entry = frappe.get_doc(dict(
-		doctype='Stock Entry',
-		purpose='Repack',
+		doctype="Stock Entry",
+		purpose="Repack",
 		company=company,
 		items=[
 			dict(
 				item_code=item_code,
 				qty=float(qty or 0),
 				s_warehouse=warehouse,
-				batch_no=batch_no
+				batch_no=batch_no,
 			),
 			dict(
 				item_code=item_code,
 				qty=float(qty or 0),
 				t_warehouse=warehouse,
-				batch_no=batch.name
+				batch_no=batch.name,
 			),
-		]
+		],
 	))
 	stock_entry.set_stock_entry_type()
 	stock_entry.insert()
@@ -219,8 +220,8 @@ def split_batch(batch_no, item_code, warehouse, qty, new_batch_id=None):
 def set_batch_nos(doc, warehouse_field, throw=False):
 	"""Automatically select `batch_no` for outgoing items in item table"""
 	for d in doc.items:
-		qty = d.get('stock_qty') or d.get('transfer_qty') or d.get('qty') or 0
-		has_batch_no = frappe.db.get_value('Item', d.item_code, 'has_batch_no')
+		qty = d.get("stock_qty") or d.get("transfer_qty") or d.get("qty") or 0
+		has_batch_no = frappe.db.get_value("Item", d.item_code, "has_batch_no")
 		warehouse = d.get(warehouse_field, None)
 		if has_batch_no and warehouse and qty > 0:
 			if not d.batch_no:
@@ -263,7 +264,7 @@ def auto_select_and_split_batches(doc, warehouse_field, additional_group_fields=
 
 		key = get_key(d)
 		group_qty_map.setdefault(key, 0)
-		group_qty_map[key] += flt(d.get('qty'))
+		group_qty_map[key] += flt(d.get("qty"))
 
 	# no lines valid for batch no selection
 	if not group_qty_map:
@@ -298,15 +299,15 @@ def auto_select_and_split_batches(doc, warehouse_field, additional_group_fields=
 
 		warehouse = d.get(warehouse_field)
 		batches = get_sufficient_batch_or_fifo(d.item_code, warehouse, flt(d.qty), flt(d.conversion_factor),
-			batches_used=batches_used, include_empty_batch=True, precision=d.precision('qty'))
+			batches_used=batches_used, include_empty_batch=True, precision=d.precision("qty"))
 
 		batch_lines = [d]
-		for i in range(1, len(batches)):
+		for _i in range(1, len(batches)):
 			new_row = frappe.copy_doc(d)
 			batch_lines.append(new_row)
 			updated_rows.append(new_row)
 
-		for batch_row, batch in zip(batch_lines, batches):
+		for batch_row, batch in zip(batch_lines, batches, strict=False):
 			batch_row.qty = batch.selected_qty
 			batch_row.batch_no = batch.batch_no
 
@@ -335,7 +336,7 @@ def get_batch_no(item_code, warehouse, qty=1, throw=False, sales_order_item=None
 			break
 
 	if not batch_no:
-		batch_no=""
+		batch_no = ""
 		return batch_no
 
 	return batch_no
@@ -381,9 +382,9 @@ def get_sufficient_batch_or_fifo(item_code, warehouse, qty=1.0, conversion_facto
 
 		selected_stock_qty = selected_qty * conversion_factor
 		selected_batches.append(frappe._dict({
-			'batch_no': batch.name,
-			'available_qty': batch.qty / conversion_factor,
-			'selected_qty': selected_qty
+			"batch_no": batch.name,
+			"available_qty": batch.qty / conversion_factor,
+			"selected_qty": selected_qty,
 		}))
 
 		if isinstance(batches_used, dict):
@@ -395,17 +396,17 @@ def get_sufficient_batch_or_fifo(item_code, warehouse, qty=1.0, conversion_facto
 	if remaining_stock_qty > 0:
 		if cint(include_empty_batch):
 			selected_batches.append(frappe._dict({
-				'batch_no': None,
-				'available_qty': 0,
-				'selected_qty': remaining_stock_qty / conversion_factor
+				"batch_no": None,
+				"available_qty": 0,
+				"selected_qty": remaining_stock_qty / conversion_factor,
 			}))
 
 		total_selected_qty = stock_qty - remaining_stock_qty
 		frappe.msgprint(_("Only {0} {1} of {2} found in {3}").format(
 			frappe.format(total_selected_qty, df={"fieldtype": "Float", "precision": 6}),
 			frappe.get_cached_value("Item", item_code, "stock_uom"),
-			frappe.get_desk_link('Item', item_code),
-			frappe.get_desk_link('Warehouse', warehouse)
+			frappe.get_desk_link("Item", item_code),
+			frappe.get_desk_link("Warehouse", warehouse),
 		))
 
 	return selected_batches
@@ -442,10 +443,10 @@ def get_batches(item_code, warehouse, posting_date=None, posting_time=None, qty_
 			date_cond += " and sle.posting_date <= %(posting_date)s"
 
 	args = {
-		'item_code': item_code,
-		'warehouse': warehouse,
-		'posting_date': posting_date,
-		'posting_time': posting_time
+		"item_code": item_code,
+		"warehouse": warehouse,
+		"posting_date": posting_date,
+		"posting_time": posting_time,
 	}
 
 	batches = frappe.db.sql("""
@@ -482,7 +483,7 @@ def validate_serial_no_with_batch(serial_nos, item_code):
 		frappe.throw(_("The serial no {0} does not belong to item {1}")
 			.format(get_link_to_form("Serial No", serial_nos[0]), get_link_to_form("Item", item_code)))
 
-	serial_no_link = ','.join([get_link_to_form("Serial No", sn) for sn in serial_nos])
+	serial_no_link = ",".join([get_link_to_form("Serial No", sn) for sn in serial_nos])
 
 	message = "Serial Nos" if len(serial_nos) > 1 else "Serial No"
 	frappe.throw(_("There is no batch found against the {0}: {1}")
@@ -499,7 +500,7 @@ def validate_batch_no(batch_no, item_code, transaction_date=None):
 
 	if batch_details.item != item_code:
 		frappe.throw(_("{0} is not a valid Batch No for Item {1}").format(
-			frappe.bold(batch_no), frappe.bold(item_code)
+			frappe.bold(batch_no), frappe.bold(item_code),
 		))
 
 	if batch_details.disabled:

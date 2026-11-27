@@ -3,9 +3,10 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt
 from frappe.model.document import Document
-from erpnext.controllers.transaction_controller import validate_taxes_and_charges, validate_inclusive_tax
+from frappe.utils import flt
+
+from erpnext.controllers.transaction_controller import validate_inclusive_tax, validate_taxes_and_charges
 
 
 class SalesTaxesandChargesTemplate(Document):
@@ -14,13 +15,13 @@ class SalesTaxesandChargesTemplate(Document):
 
 	def autoname(self):
 		if self.company and self.title:
-			abbr = frappe.get_cached_value('Company',  self.company,  'abbr')
-			self.name = '{0} - {1}'.format(self.title, abbr)
+			abbr = frappe.get_cached_value("Company", self.company, "abbr")
+			self.name = "{0} - {1}".format(self.title, abbr)
 
 	def set_missing_values(self):
 		for data in self.taxes:
-			if data.charge_type == 'On Net Total' and flt(data.rate) == 0.0:
-				data.rate = frappe.db.get_value('Account', data.account_head, 'tax_rate')
+			if data.charge_type == "On Net Total" and flt(data.rate) == 0.0:
+				data.rate = frappe.db.get_value("Account", data.account_head, "tax_rate")
 
 
 def valdiate_taxes_and_charges_template(doc):

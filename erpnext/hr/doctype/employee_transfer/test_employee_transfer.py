@@ -1,11 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
-from frappe.utils import getdate, add_days
+
+import frappe
+from frappe.utils import add_days, getdate
+
 from erpnext.hr.doctype.employee.test_employee import make_employee
+
 
 class TestEmployeeTransfer(unittest.TestCase):
 	def setUp(self):
@@ -16,15 +18,15 @@ class TestEmployeeTransfer(unittest.TestCase):
 	def test_submit_before_transfer_date(self):
 		transfer_obj = frappe.get_doc({
 			"doctype": "Employee Transfer",
-			"employee": frappe.get_value("Employee", {"user_id":"employee2@transfers.com"}, "name"),
-			"transfer_details" :[
+			"employee": frappe.get_value("Employee", {"user_id": "employee2@transfers.com"}, "name"),
+			"transfer_details": [
 				{
 				"property": "Designation",
 				"current": "Software Developer",
 				"new": "Project Manager",
-				"fieldname": "designation"
-				}
-			]
+				"fieldname": "designation",
+				},
+			],
 		})
 		transfer_obj.transfer_date = add_days(getdate(), 1)
 		transfer_obj.save()
@@ -37,17 +39,17 @@ class TestEmployeeTransfer(unittest.TestCase):
 	def test_new_employee_creation(self):
 		transfer = frappe.get_doc({
 			"doctype": "Employee Transfer",
-			"employee": frappe.get_value("Employee", {"user_id":"employee3@transfers.com"}, "name"),
+			"employee": frappe.get_value("Employee", {"user_id": "employee3@transfers.com"}, "name"),
 			"create_new_employee_id": 1,
 			"transfer_date": getdate(),
-			"transfer_details" :[
+			"transfer_details": [
 				{
 				"property": "Designation",
 				"current": "Software Developer",
 				"new": "Project Manager",
-				"fieldname": "designation"
-				}
-			]
+				"fieldname": "designation",
+				},
+			],
 		}).insert()
 		transfer.submit()
 		self.assertTrue(transfer.new_employee_id)

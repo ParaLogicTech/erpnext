@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import cint, clean_whitespace, cstr
 from frappe.model.document import Document
+from frappe.utils import cint, clean_whitespace, cstr
+
 from erpnext.utilities.transaction_base import validate_uom_is_convertible
-import json
 
 
 class ServiceTemplate(Document):
@@ -87,8 +88,8 @@ class ServiceTemplate(Document):
 				frappe.throw(_("Please set Warranty Validity"))
 
 	def filter_applicable_item(self, pt_item, applies_to_item=None, applies_to_customer=None):
-		from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
 		from erpnext.setup.doctype.customer_group.customer_group import get_customer_group_subtree
+		from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
 
 		applies_to_item_doc = frappe.get_cached_doc("Item", applies_to_item) if applies_to_item else frappe._dict()
 		applies_to_customer_doc = frappe.get_cached_doc("Customer", applies_to_customer) if applies_to_customer else frappe._dict()
@@ -164,15 +165,15 @@ def add_service_template_items(
 
 	if not service_template_detail and service_template:
 		service_template_detail = frappe._dict({
-			'service_template': service_template,
-			'service_template_name': service_template_doc.service_template_name,
+			"service_template": service_template,
+			"service_template_name": service_template_doc.service_template_name,
 		})
 
-	if not target_doc.meta.has_field('items'):
+	if not target_doc.meta.has_field("items"):
 		frappe.throw(_("Target document does not have items table"))
 
 	# remove first empty row
-	if target_doc.get('items') and not target_doc.items[0].item_code and not target_doc.items[0].item_name:
+	if target_doc.get("items") and not target_doc.items[0].item_code and not target_doc.items[0].item_name:
 		target_doc.remove(target_doc.items[0])
 
 	consumable_items = cint(target_doc.doctype in ("Material Request", "Stock Entry"))
@@ -270,8 +271,8 @@ def get_service_template_tasks(
 
 	if not service_template_detail and service_template:
 		service_template_detail = frappe._dict({
-			'service_template': service_template,
-			'service_template_name': service_template_doc.service_template_name,
+			"service_template": service_template,
+			"service_template_name": service_template_doc.service_template_name,
 		})
 
 	for template_task_row in service_template_doc.tasks:
@@ -309,16 +310,16 @@ def get_service_template_tasks(
 @frappe.whitelist()
 def guess_service_template(service_template_category, applies_to_item):
 	service_template = frappe.db.get_value("Service Template", {
-		'service_template_category': service_template_category,
-		'applies_to_item': applies_to_item
+		"service_template_category": service_template_category,
+		"applies_to_item": applies_to_item,
 	})
 
 	if not service_template:
 		applies_to_variant_of = frappe.get_cached_value("Item", applies_to_item, "variant_of")
 		if applies_to_variant_of:
 			service_template = frappe.db.get_value("Service Template", {
-				'service_template_category': service_template_category,
-				'applies_to_item': applies_to_variant_of
+				"service_template_category": service_template_category,
+				"applies_to_item": applies_to_variant_of,
 			})
 
 	return service_template

@@ -8,7 +8,7 @@ frappe.ui.form.on("Product Bundle", {
 				is_stock_item: 0,
 				is_fixed_asset: 0,
 				has_product_bundle: 0,
-			})
+			});
 		});
 
 		frm.set_query("item_code", "items", () => {
@@ -17,5 +17,5 @@ frappe.ui.form.on("Product Bundle", {
 				is_vehicle: 0,
 			});
 		});
-	}
+	},
 });

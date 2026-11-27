@@ -3,21 +3,21 @@
 
 frappe.provide("erpnext.share_transfer");
 
-frappe.ui.form.on('Share Transfer', {
+frappe.ui.form.on("Share Transfer", {
 	refresh: function(frm) {
 		// Don't show Parties which are a Company
-		let shareholders = ['from_shareholder', 'to_shareholder'];
+		let shareholders = ["from_shareholder", "to_shareholder"];
 		shareholders.forEach((shareholder) => {
 			frm.fields_dict[shareholder].get_query = function() {
 				return {
 					filters: [
-						["Shareholder", "is_company", "=", 0]
-					]
+						["Shareholder", "is_company", "=", 0],
+					],
 				};
 			};
 		});
 		if (frm.doc.docstatus == 1 && frm.doc.equity_or_liability_account && frm.doc.asset_account) {
-			frm.add_custom_button(__('Create Journal Entry'), function () {
+			frm.add_custom_button(__("Create Journal Entry"), function() {
 				erpnext.share_transfer.make_jv(frm);
 			});
 		}
@@ -25,12 +25,12 @@ frappe.ui.form.on('Share Transfer', {
 		frm.toggle_reqd("asset_account", frm.doc.transfer_type != "Transfer");
 	},
 	no_of_shares: (frm) => {
-		if (frm.doc.rate != undefined || frm.doc.rate != null){
+		if (frm.doc.rate != undefined || frm.doc.rate != null) {
 			erpnext.share_transfer.update_amount(frm);
 		}
 	},
 	rate: (frm) => {
-		if (frm.doc.no_of_shares != undefined || frm.doc.no_of_shares != null){
+		if (frm.doc.no_of_shares != undefined || frm.doc.no_of_shares != null) {
 			erpnext.share_transfer.update_amount(frm);
 		}
 	},
@@ -40,21 +40,21 @@ frappe.ui.form.on('Share Transfer', {
 			frm.set_query("equity_or_liability_account", function() {
 				return {
 					filters: {
-						"is_group":0,
-						"root_type": ["in",["Equity","Liability"]],
+						"is_group": 0,
+						"root_type": ["in", ["Equity", "Liability"]],
 						"company": frm.doc.company,
-						"account_currency": currency
-					}
+						"account_currency": currency,
+					},
 				};
 			});
 			frm.set_query("asset_account", function() {
 				return {
 					filters: {
-						"is_group":0,
-						"root_type":"Asset",
+						"is_group": 0,
+						"root_type": "Asset",
 						"company": frm.doc.company,
-						"account_currency": currency
-					}
+						"account_currency": currency,
+					},
 				};
 			});
 		}
@@ -62,7 +62,7 @@ frappe.ui.form.on('Share Transfer', {
 
 	transfer_type: function(frm) {
 		frm.toggle_reqd("asset_account", frm.doc.transfer_type != "Transfer");
-	}
+	},
 });
 
 erpnext.share_transfer.update_amount = function(frm) {
@@ -70,7 +70,7 @@ erpnext.share_transfer.update_amount = function(frm) {
 	frm.refresh_field("amount");
 };
 
-erpnext.share_transfer.make_jv = function (frm) {
+erpnext.share_transfer.make_jv = function(frm) {
 	var account, payment_account, credit_applicant_type, credit_applicant,
 		debit_applicant_type, debit_applicant;
 
@@ -107,12 +107,12 @@ erpnext.share_transfer.make_jv = function (frm) {
 			"credit_applicant_type": credit_applicant_type,
 			"credit_applicant": credit_applicant,
 			"debit_applicant_type": debit_applicant_type,
-			"debit_applicant": debit_applicant
+			"debit_applicant": debit_applicant,
 		},
 		method: "erpnext.accounts.doctype.share_transfer.share_transfer.make_jv_entry",
-		callback: function (r) {
+		callback: function(r) {
 			var doc = frappe.model.sync(r.message)[0];
 			frappe.set_route("Form", doc.doctype, doc.name);
-		}
+		},
 	});
 };

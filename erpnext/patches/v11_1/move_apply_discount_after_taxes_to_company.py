@@ -1,5 +1,8 @@
-import frappe, os
+import os
+
+import frappe
 from frappe import _
+
 
 def execute():
 	selling = frappe.db.get_single_value("Selling Settings", "apply_discount_after_taxes")

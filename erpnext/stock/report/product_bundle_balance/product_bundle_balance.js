@@ -4,7 +4,7 @@
 frappe.query_reports["Product Bundle Balance"] = {
 	"filters": [
 		{
-			"fieldname":"date",
+			"fieldname": "date",
 			"label": __("Date"),
 			"fieldtype": "Date",
 			"width": "80",
@@ -20,29 +20,29 @@ frappe.query_reports["Product Bundle Balance"] = {
 			"get_query": function() {
 				return {
 					query: "erpnext.controllers.queries.item_query",
-					filters: {"is_stock_item": 0}
+					filters: {"is_stock_item": 0},
 				};
-			}
+			},
 		},
 		{
 			"fieldname": "item_group",
 			"label": __("Item Group"),
 			"fieldtype": "Link",
 			"width": "80",
-			"options": "Item Group"
+			"options": "Item Group",
 		},
 		{
-			"fieldname":"brand",
+			"fieldname": "brand",
 			"label": __("Brand"),
 			"fieldtype": "Link",
-			"options": "Brand"
+			"options": "Brand",
 		},
 		{
 			"fieldname": "warehouse",
 			"label": __("Warehouse"),
 			"fieldtype": "Link",
 			"width": "80",
-			"options": "Warehouse"
+			"options": "Warehouse",
 		},
 	],
 	"initial_depth": 0,
@@ -54,5 +54,5 @@ frappe.query_reports["Product Bundle Balance"] = {
 			value = $value.wrap("<p></p>").parent().html();
 		}
 		return value;
-	}
+	},
 };

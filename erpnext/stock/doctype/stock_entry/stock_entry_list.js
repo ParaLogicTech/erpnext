@@ -1,9 +1,9 @@
-frappe.listview_settings['Stock Entry'] = {
+frappe.listview_settings["Stock Entry"] = {
 	add_fields: ["purpose", "transfer_status"],
-	get_indicator: function (doc) {
-		if (doc.purpose == 'Send to Warehouse' && doc.transfer_status == "In Transit") {
+	get_indicator: function(doc) {
+		if (doc.purpose == "Send to Warehouse" && doc.transfer_status == "In Transit") {
 			return [__("In Transit"), "orange", "transfer_status,=,In Transit"];
-		} else if (doc.purpose == 'Send to Warehouse' && doc.transfer_status === "Transferred") {
+		} else if (doc.purpose == "Send to Warehouse" && doc.transfer_status === "Transferred") {
 			return [__("Transferred"), "green", "transfer_status,=,Transferred"];
 		} else if (doc.purpose == "Material Issue") {
 			return [__("Issued"), "blue"];

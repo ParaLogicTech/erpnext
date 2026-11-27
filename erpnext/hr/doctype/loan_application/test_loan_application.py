@@ -1,10 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
+
 from erpnext.hr.doctype.salary_structure.test_salary_structure import make_employee
+
 
 class TestLoanApplication(unittest.TestCase):
 	def setUp(self):
@@ -18,11 +20,11 @@ class TestLoanApplication(unittest.TestCase):
 				"doctype": "Loan Type",
 				"loan_name": "Home Loan",
 				"maximum_loan_amount": 500000,
-				"rate_of_interest": 9.2
+				"rate_of_interest": 9.2,
 			}).insert()
 
 	def create_loan_application(self):
-		if not frappe.db.get_value("Loan Application", {"applicant":self.applicant}, "name"):
+		if not frappe.db.get_value("Loan Application", {"applicant": self.applicant}, "name"):
 			loan_application = frappe.new_doc("Loan Application")
 			loan_application.update({
 				"applicant": self.applicant,
@@ -30,13 +32,12 @@ class TestLoanApplication(unittest.TestCase):
 				"rate_of_interest": 9.2,
 				"loan_amount": 250000,
 				"repayment_method": "Repay Over Number of Periods",
-				"repayment_periods": 18
+				"repayment_periods": 18,
 			})
 			loan_application.insert()
 
-
 	def test_loan_totals(self):
-		loan_application = frappe.get_doc("Loan Application", {"applicant":self.applicant})
+		loan_application = frappe.get_doc("Loan Application", {"applicant": self.applicant})
 
 		self.assertEqual(loan_application.total_payable_interest, 18599)
 		self.assertEqual(loan_application.total_payable_amount, 268599)

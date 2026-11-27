@@ -1,10 +1,11 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
-from frappe.utils import flt, cstr, cint
-from frappe import _
 import json
+
+import frappe
+from frappe import _
+from frappe.utils import cint, cstr, flt
 
 
 def validate_for_items(doc):
@@ -20,12 +21,12 @@ def validate_for_items(doc):
 				continue
 			frappe.throw(_("Please enter quantity for Item {0}").format(d.item_code))
 
-		if not d.get('purchase_order') and not d.get('purchase_receipt'):
+		if not d.get("purchase_order") and not d.get("purchase_receipt"):
 			validate_end_of_life(d.item_code)
 
 		# validate stock item
-		is_stock_item = frappe.get_cached_value("Item", d.item_code, 'is_stock_item')
-		if doc.doctype not in ['Quotation', 'Supplier Quotation']:
+		is_stock_item = frappe.get_cached_value("Item", d.item_code, "is_stock_item")
+		if doc.doctype not in ["Quotation", "Supplier Quotation"]:
 			if is_stock_item and d.qty and not d.warehouse and not d.get("delivered_by_supplier"):
 				frappe.throw(_("Warehouse is mandatory for stock Item {0} in row {1}").format(d.item_code, d.idx))
 

@@ -5,19 +5,19 @@
 frappe.provide("erpnext.queries");
 $.extend(erpnext.queries, {
 	user: function() {
-		return { query: "frappe.core.doctype.user.user.user_query" };
+		return {query: "frappe.core.doctype.user.user.user_query"};
 	},
 
 	customer: function() {
-		return { query: "erpnext.controllers.queries.customer_query" };
+		return {query: "erpnext.controllers.queries.customer_query"};
 	},
 
 	supplier: function() {
-		return { query: "erpnext.controllers.queries.supplier_query" };
+		return {query: "erpnext.controllers.queries.supplier_query"};
 	},
 
 	item: function(filters) {
-		let args = { query: "erpnext.controllers.queries.item_query" };
+		let args = {query: "erpnext.controllers.queries.item_query"};
 		if (filters) {
 			args["filters"] = filters;
 		}
@@ -26,7 +26,7 @@ $.extend(erpnext.queries, {
 
 	subcontracted_item: function(purchase_order, filters) {
 		if (!filters) {
-			filters = {}
+			filters = {};
 		}
 		if (purchase_order) {
 			filters["purchase_order"] = purchase_order;
@@ -34,33 +34,33 @@ $.extend(erpnext.queries, {
 
 		return {
 			query: "erpnext.controllers.queries.subcontracted_item_query",
-			filters: filters
+			filters: filters,
 		};
 	},
 
 	item_uom: function(item_code) {
 		return {
-			query : "erpnext.controllers.queries.item_uom_query",
+			query: "erpnext.controllers.queries.item_uom_query",
 			filters: {
-				item_code: item_code
-			}
-		}
+				item_code: item_code,
+			},
+		};
 	},
 
 	bom: function() {
-		return { query: "erpnext.controllers.queries.bom" };
+		return {query: "erpnext.controllers.queries.bom"};
 	},
 
 	task: function() {
-		return { query: "erpnext.projects.utils.query_task" };
+		return {query: "erpnext.projects.utils.query_task"};
 	},
 
 	customer_filter: function(doc) {
-		if(!doc.customer) {
+		if (!doc.customer) {
 			frappe.throw(__("Please set {0}", [__(frappe.meta.get_label(doc.doctype, "customer", doc.name))]));
 		}
 
-		return { filters: { customer: doc.customer } };
+		return {filters: {customer: doc.customer}};
 	},
 
 	contact_query: function(doc) {
@@ -73,60 +73,60 @@ $.extend(erpnext.queries, {
 
 	company_address_query: function(doc) {
 		return {
-			query: 'frappe.contacts.doctype.address.address.address_query',
+			query: "frappe.contacts.doctype.address.address.address_query",
 			filters: {
-				link_doctype: 'Company',
-				link_name: doc.company || ''
-			}
+				link_doctype: "Company",
+				link_name: doc.company || "",
+			},
 		};
 	},
 
 	supplier_filter: function(doc) {
-		if(!doc.supplier) {
+		if (!doc.supplier) {
 			frappe.throw(__("Please set {0}", [__(frappe.meta.get_label(doc.doctype, "supplier", doc.name))]));
 		}
 
-		return { filters: { supplier: doc.supplier } };
+		return {filters: {supplier: doc.supplier}};
 	},
 
 	lead_filter: function(doc) {
-		if(!doc.lead) {
+		if (!doc.lead) {
 			frappe.throw(__("Please specify a {0}",
 				[__(frappe.meta.get_label(doc.doctype, "lead", doc.name))]));
 		}
 
-		return { filters: { lead: doc.lead } };
+		return {filters: {lead: doc.lead}};
 	},
 
 	not_a_group_filter: function() {
-		return { filters: { is_group: 0 } };
+		return {filters: {is_group: 0}};
 	},
 
 	employee: function() {
-		return { query: "erpnext.controllers.queries.employee_query" }
+		return {query: "erpnext.controllers.queries.employee_query"};
 	},
 
-	vehicle_brand: function (filters) {
-		let args = { query: "erpnext.controllers.queries.vehicle_brand_query" };
-		if(filters) args["filters"] = filters;
+	vehicle_brand: function(filters) {
+		let args = {query: "erpnext.controllers.queries.vehicle_brand_query"};
+		if (filters) args["filters"] = filters;
 		return args;
 	},
 
-	vehicle_color: function (filters) {
-		let args = { query: "erpnext.controllers.queries.vehicle_color_query" };
-		if(filters) args["filters"] = filters;
+	vehicle_color: function(filters) {
+		let args = {query: "erpnext.controllers.queries.vehicle_color_query"};
+		if (filters) args["filters"] = filters;
 		return args;
 	},
 
-	vehicle_interior: function (filters) {
-		let args = { query: "erpnext.controllers.queries.vehicle_interior_query" };
-		if(filters) args["filters"] = filters;
+	vehicle_interior: function(filters) {
+		let args = {query: "erpnext.controllers.queries.vehicle_interior_query"};
+		if (filters) args["filters"] = filters;
 		return args;
 	},
 
 	warehouse: function(doc, get_warehouse_filters) {
 		let filters = [
-			["Warehouse", "is_group", "=",0]
+			["Warehouse", "is_group", "=", 0],
 		];
 
 		if (doc.company) {
@@ -142,17 +142,17 @@ $.extend(erpnext.queries, {
 			get_warehouse_filters(filters);
 		}
 		return {
-			filters: filters
-		}
+			filters: filters,
+		};
 	},
 
-	service_template: function (applies_to_item, filters) {
+	service_template: function(applies_to_item, filters) {
 		if (!filters) {
 			filters = {};
 		}
 
 		if (applies_to_item) {
-			filters['applies_to_item'] = applies_to_item;
+			filters["applies_to_item"] = applies_to_item;
 		}
 
 		return {
@@ -161,11 +161,11 @@ $.extend(erpnext.queries, {
 		};
 	},
 
-	workstation: function (operation) {
+	workstation: function(operation) {
 		return {
 			query: "erpnext.controllers.queries.workstation_query",
 			filters: {
-				operation: operation
+				operation: operation,
 			},
 		};
 	},
@@ -203,7 +203,7 @@ erpnext.queries.setup_queries = function(frm, options, query_fn, do_not_override
 	$.each(frappe.meta.get_docfields(frm.doc.doctype, frm.doc.name, {"fieldtype": "Table"}), function(i, df) {
 		set_query(df.options, df.fieldname);
 	});
-}
+};
 
 /* 	if item code is selected in child table
 	then list down warehouses with its quantity
@@ -225,4 +225,4 @@ erpnext.queries.setup_warehouse_qty_query = function(frm, warehouse_field, items
 
 		return warehouse_query;
 	});
-}
+};

@@ -2,7 +2,7 @@ import frappe
 
 
 def execute():
-	for doctype in ['Item', 'BOM Item', 'Work Order Item', 'BOM Explosion Item']:
+	for doctype in ["Item", "BOM Item", "Work Order Item", "BOM Explosion Item"]:
 		frappe.reload_doctype(doctype)
 
 		frappe.db.sql(f"""

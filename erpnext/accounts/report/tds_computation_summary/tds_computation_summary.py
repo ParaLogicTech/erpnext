@@ -1,22 +1,27 @@
 import frappe
 from frappe import _
 from frappe.utils import flt
+
+from erpnext.accounts.doctype.tax_withholding_category.tax_withholding_category import (
+	get_advance_vouchers,
+	get_debit_note_amount,
+)
 from erpnext.accounts.utils import get_fiscal_year
-from erpnext.accounts.doctype.tax_withholding_category.tax_withholding_category \
-	import get_advance_vouchers, get_debit_note_amount
+
 
 def execute(filters=None):
 	validate_filters(filters)
 
-	filters.naming_series = frappe.db.get_single_value('Buying Settings', 'supp_master_name')
+	filters.naming_series = frappe.db.get_single_value("Buying Settings", "supp_master_name")
 
 	columns = get_columns(filters)
 	res = get_result(filters)
 
 	return columns, res
 
+
 def validate_filters(filters):
-	''' Validate if dates are properly set and lie in the same fiscal year'''
+	""" Validate if dates are properly set and lie in the same fiscal year"""
 	if filters.from_date > filters.to_date:
 		frappe.throw(_("From Date must be before To Date"))
 
@@ -27,17 +32,18 @@ def validate_filters(filters):
 
 	filters["fiscal_year"] = from_year
 
+
 def get_result(filters):
 	# if no supplier selected, fetch data for all tds applicable supplier
 	# else fetch relevant data for selected supplier
 	pan = "pan" if frappe.db.has_column("Supplier", "pan") else "tax_id"
-	fields = ["name", pan+" as pan", "tax_withholding_category", "supplier_type", "supplier_name"]
+	fields = ["name", pan + " as pan", "tax_withholding_category", "supplier_type", "supplier_name"]
 
 	if filters.supplier:
-		filters.supplier = frappe.db.get_list('Supplier',
+		filters.supplier = frappe.db.get_list("Supplier",
 			{"name": filters.supplier}, fields)
 	else:
-		filters.supplier = frappe.db.get_list('Supplier',
+		filters.supplier = frappe.db.get_list("Supplier",
 			{"tax_withholding_category": ["!=", ""]}, fields)
 
 	out = []
@@ -59,7 +65,7 @@ def get_result(filters):
 		if total_invoiced_amount or tds_deducted:
 			row = [supplier.pan, supplier.name]
 
-			if filters.naming_series == 'Naming Series':
+			if filters.naming_series == "Naming Series":
 				row.append(supplier.supplier_name)
 
 			row.extend([tds.name, supplier.supplier_type, rate, total_invoiced_amount, tds_deducted])
@@ -67,8 +73,9 @@ def get_result(filters):
 
 	return out
 
+
 def get_invoice_and_tds_amount(supplier, account, company, from_date, to_date):
-	''' calculate total invoice amount and total tds deducted for given supplier  '''
+	""" calculate total invoice amount and total tds deducted for given supplier  """
 
 	entries = frappe.db.sql("""
 		select voucher_no, credit
@@ -90,7 +97,7 @@ def get_invoice_and_tds_amount(supplier, account, company, from_date, to_date):
 			from `tabGL Entry`
 			where account=%s and posting_date between %s and %s
 				and company=%s and credit > 0 and voucher_no in ({0})
-		""".format(', '.join(["'%s'" % d for d in vouchers])),
+		""".format(", ".join(["'%s'" % d for d in vouchers])),
 			(account, from_date, to_date, company))[0][0])
 
 	debit_note_amount = get_debit_note_amount([supplier], from_date, to_date, company=company)
@@ -99,28 +106,29 @@ def get_invoice_and_tds_amount(supplier, account, company, from_date, to_date):
 
 	return total_invoiced_amount, tds_deducted
 
+
 def get_columns(filters):
 	columns = [
 		{
 			"label": _("PAN"),
 			"fieldname": "pan",
 			"fieldtype": "Data",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Supplier"),
 			"options": "Supplier",
 			"fieldname": "supplier",
 			"fieldtype": "Link",
-			"width": 180
+			"width": 180,
 		}]
 
-	if filters.naming_series == 'Naming Series':
+	if filters.naming_series == "Naming Series":
 		columns.append({
 			"label": _("Supplier Name"),
 			"fieldname": "supplier_name",
 			"fieldtype": "Data",
-			"width": 180
+			"width": 180,
 		})
 
 	columns.extend([
@@ -129,32 +137,32 @@ def get_columns(filters):
 			"options": "Tax Withholding Category",
 			"fieldname": "section_code",
 			"fieldtype": "Link",
-			"width": 180
+			"width": 180,
 		},
 		{
 			"label": _("Entity Type"),
 			"fieldname": "entity_type",
 			"fieldtype": "Data",
-			"width": 180
+			"width": 180,
 		},
 		{
 			"label": _("TDS Rate %"),
 			"fieldname": "tds_rate",
 			"fieldtype": "Float",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Total Amount Credited"),
 			"fieldname": "total_amount_credited",
 			"fieldtype": "Float",
-			"width": 90
+			"width": 90,
 		},
 		{
 			"label": _("Amount of TDS Deducted"),
 			"fieldname": "tds_deducted",
 			"fieldtype": "Float",
-			"width": 90
-		}
+			"width": 90,
+		},
 	])
 
 	return columns

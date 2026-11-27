@@ -1,7 +1,8 @@
 import frappe
 from frappe import _
-from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
 from frappe.utils import format_date
+
+from erpnext.accounts.report.summarized_financial_statements import SummarizedFinancialReport
 
 
 def execute(filters=None):

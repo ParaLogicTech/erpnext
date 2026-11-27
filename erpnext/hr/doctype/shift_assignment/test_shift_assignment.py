@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
-from frappe.utils import nowdate, add_days
+
+import frappe
+from frappe.utils import add_days, nowdate
 
 test_dependencies = ["Shift Type"]
+
 
 class TestShiftAssignment(unittest.TestCase):
 
@@ -19,7 +20,7 @@ class TestShiftAssignment(unittest.TestCase):
 			"shift_type": "Day Shift",
 			"company": "_Test Company",
 			"employee": "_T-Employee-00001",
-			"start_date": nowdate()
+			"start_date": nowdate(),
 		}).insert()
 		shift_assignment.submit()
 
@@ -34,7 +35,7 @@ class TestShiftAssignment(unittest.TestCase):
 			"company": "_Test Company",
 			"employee": "_T-Employee-00001",
 			"start_date": nowdate(),
-			"status": 'Active'
+			"status": "Active",
 		}).insert()
 		shift_assignment_1.submit()
 
@@ -45,7 +46,7 @@ class TestShiftAssignment(unittest.TestCase):
 			"shift_type": "Day Shift",
 			"company": "_Test Company",
 			"employee": "_T-Employee-00001",
-			"start_date": add_days(nowdate(), 2)
+			"start_date": add_days(nowdate(), 2),
 		})
 
 		self.assertRaises(frappe.ValidationError, shift_assignment.save)
@@ -60,10 +61,9 @@ class TestShiftAssignment(unittest.TestCase):
 				"employee": "_T-Employee-00001",
 				"start_date": nowdate(),
 				"end_date": add_days(nowdate(), 30),
-				"status": 'Active'
+				"status": "Active",
 			}).insert()
 			shift_assignment_1.submit()
-
 
 			# it should not allowed within period of any shift.
 			shift_assignment_3 = frappe.get_doc({
@@ -71,9 +71,9 @@ class TestShiftAssignment(unittest.TestCase):
 				"shift_type": "Day Shift",
 				"company": "_Test Company",
 				"employee": "_T-Employee-00001",
-				"start_date":add_days(nowdate(), 10),
+				"start_date": add_days(nowdate(), 10),
 				"end_date": add_days(nowdate(), 35),
-				"status": 'Active'
+				"status": "Active",
 			})
 
 			self.assertRaises(frappe.ValidationError, shift_assignment_3.save)

@@ -21,7 +21,7 @@ class AdvanceTaxesandCharges(Document):
 		base_tax_amount: DF.Currency
 		base_total: DF.Currency
 		charge_type: DF.Literal[
-			"", "Actual", "On Paid Amount", "On Previous Row Amount", "On Previous Row Total"
+			"", "Actual", "On Paid Amount", "On Previous Row Amount", "On Previous Row Total",
 		]
 		cost_center: DF.Link | None
 		currency: DF.Link | None

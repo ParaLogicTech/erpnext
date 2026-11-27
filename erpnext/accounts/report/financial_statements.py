@@ -1,20 +1,21 @@
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import re
 import functools
 import math
+import re
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, add_months, add_days, formatdate, cstr, cint
-from erpnext.accounts.report.utils import get_currency, convert_to_presentation_currency
-from erpnext.accounts.utils import get_fiscal_year
+from frappe.utils import add_days, add_months, cint, cstr, flt, formatdate, getdate
 
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions,\
-	get_dimension_with_children
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
+	get_accounting_dimensions,
+	get_dimension_with_children,
+)
+from erpnext.accounts.report.utils import convert_to_presentation_currency, get_currency
+from erpnext.accounts.utils import get_fiscal_year
 
 
 def get_period_list(
@@ -34,7 +35,7 @@ def get_period_list(
 		"Yearly": 12,
 		"Half-Yearly": 6,
 		"Quarterly": 3,
-		"Monthly": 1
+		"Monthly": 1,
 	}[periodicity]
 
 	period_list = []
@@ -50,9 +51,9 @@ def get_period_list(
 
 	months = get_months(start_date, end_date)
 
-	for i in range(cint(math.ceil(months / months_to_add))):
+	for _i in range(cint(math.ceil(months / months_to_add))):
 		period = frappe._dict({
-			"from_date": start_date
+			"from_date": start_date,
 		})
 
 		to_date = add_months(start_date, months_to_add)
@@ -94,7 +95,7 @@ def get_period_list(
 			"key": key.replace(" ", "_").replace("-", "_"),
 			"label": label,
 			"year_start_date": year_start_date,
-			"year_end_date": year_end_date
+			"year_end_date": year_end_date,
 		})
 
 	return period_list
@@ -105,13 +106,13 @@ def get_fiscal_year_data(from_fiscal_year, to_fiscal_year):
 		select min(year_start_date) as year_start_date, max(year_end_date) as year_end_date
 		from `tabFiscal Year`
 		where name between %(from_fiscal_year)s and %(to_fiscal_year)s
-	""", {'from_fiscal_year': from_fiscal_year, 'to_fiscal_year': to_fiscal_year}, as_dict=1)
+	""", {"from_fiscal_year": from_fiscal_year, "to_fiscal_year": to_fiscal_year}, as_dict=1)
 
 	return fiscal_year[0] if fiscal_year else {}
 
 
 def validate_fiscal_year(fiscal_year, from_fiscal_year, to_fiscal_year):
-	if not fiscal_year.get('year_start_date') and not fiscal_year.get('year_end_date'):
+	if not fiscal_year.get("year_start_date") and not fiscal_year.get("year_end_date"):
 		frappe.throw(_("End Year cannot be before Start Year"))
 
 
@@ -157,7 +158,7 @@ def get_data(company, root_type, balance_must_be, period_list, filters=None,
 			period_list[-1]["to_date"],
 			root.lft, root.rgt, filters,
 			gl_entries_by_account,
-			ignore_closing_entries=ignore_closing_entries
+			ignore_closing_entries=ignore_closing_entries,
 		)
 
 	calculate_values(accounts_by_name, gl_entries_by_account, period_list, accumulated_values,
@@ -176,7 +177,7 @@ def get_appropriate_currency(company, filters=None):
 	if filters and filters.get("presentation_currency"):
 		return filters["presentation_currency"]
 	else:
-		return frappe.get_cached_value('Company',  company,  "default_currency")
+		return frappe.get_cached_value("Company", company, "default_currency")
 
 
 def calculate_values(accounts_by_name, gl_entries_by_account, period_list, accumulated_values,
@@ -187,7 +188,7 @@ def calculate_values(accounts_by_name, gl_entries_by_account, period_list, accum
 			if not d:
 				frappe.msgprint(
 					_("Could not retrieve information for {0}.".format(entry.account)), title="Error",
-					raise_exception=1
+					raise_exception=1,
 				)
 
 			for period in period_list:
@@ -201,7 +202,7 @@ def calculate_values(accounts_by_name, gl_entries_by_account, period_list, accum
 			if entry.posting_date < period_list[0].year_start_date:
 				d["opening_balance"] = d.get("opening_balance", 0.0) + flt(entry.debit) - flt(entry.credit)
 
-	hooks = frappe.get_hooks('get_opening_account_balances')
+	hooks = frappe.get_hooks("get_opening_account_balances")
 	if hooks:
 		for method in hooks:
 			opening_balances = frappe.get_attr(method)(filters)
@@ -250,7 +251,7 @@ def prepare_data(accounts, balance_must_be, period_list, company_currency):
 			"account_number": d.account_number,
 			"account_name": d.account_name,
 			"account_display": f"{d.account_number} - {d.account_name}" if d.account_number else d.account_name,
-			"parent_account": d.parent_account if d.parent_account else '',
+			"parent_account": d.parent_account if d.parent_account else "",
 			"indent": flt(d.indent),
 			"year_start_date": year_start_date,
 			"year_end_date": year_end_date,
@@ -258,7 +259,7 @@ def prepare_data(accounts, balance_must_be, period_list, company_currency):
 			"include_in_gross": d.include_in_gross,
 			"account_type": d.account_type,
 			"is_group": d.is_group,
-			"opening_balance": d.get("opening_balance", 0.0) * (1 if balance_must_be=="Debit" else -1),
+			"opening_balance": d.get("opening_balance", 0.0) * (1 if balance_must_be == "Debit" else -1),
 		})
 		for period in period_list:
 			if d.get(period.key) and balance_must_be == "Credit":
@@ -300,7 +301,7 @@ def add_total_row(out, root_type, balance_must_be, period_list, company_currency
 	total_row = {
 		"account_name": _("Total {0} ({1})").format(_(root_type), _(balance_must_be)),
 		"account_display": _("Total {0} ({1})").format(_(root_type), _(balance_must_be)),
-		"currency": company_currency
+		"currency": company_currency,
 	}
 
 	for row in out:
@@ -343,7 +344,7 @@ def filter_accounts(accounts, depth=10):
 	def add_to_list(parent, level):
 		if level < depth:
 			children = parent_children_map.get(parent) or []
-			sort_accounts(children, is_root=True if parent==None else False)
+			sort_accounts(children, is_root=True if parent is None else False)
 
 			for child in children:
 				child.indent = level
@@ -359,7 +360,7 @@ def sort_accounts(accounts, is_root=False, key="name"):
 	"""Sort root types as Asset, Liability, Equity, Income, Expense"""
 
 	def compare_accounts(a, b):
-		if re.split('\W+', a[key])[0].isdigit():
+		if re.split(r"\W+", a[key])[0].isdigit():
 			# if chart of accounts is numbered, then sort by number
 			return int(a[key] > b[key]) - int(a[key] < b[key])
 		elif is_root:
@@ -376,7 +377,7 @@ def sort_accounts(accounts, is_root=False, key="name"):
 			return int(a[key] > b[key]) - int(a[key] < b[key])
 		return 1
 
-	accounts.sort(key = functools.cmp_to_key(compare_accounts))
+	accounts.sort(key=functools.cmp_to_key(compare_accounts))
 
 
 def set_gl_entries_by_account(
@@ -388,7 +389,7 @@ def set_gl_entries_by_account(
 	filters,
 	gl_entries_by_account,
 	ignore_closing_entries=False,
-	dimension_fields=None
+	dimension_fields=None,
 ):
 	"""Returns a dict like { "account": [gl entries], ... }"""
 
@@ -415,17 +416,17 @@ def set_gl_entries_by_account(
 			"company": company,
 			"from_date": from_date,
 			"to_date": to_date,
-			"finance_book": cstr(filters.get("finance_book"))
+			"finance_book": cstr(filters.get("finance_book")),
 		}
 
 		if filters.get("include_default_book_entries"):
 			gl_filters["company_fb"] = frappe.db.get_value("Company",
-				company, 'default_finance_book')
+				company, "default_finance_book")
 
 		for key, value in filters.items():
 			if value:
 				gl_filters.update({
-					key: value
+					key: value,
 				})
 
 		gl_entries = frappe.db.sql(f"""
@@ -435,9 +436,9 @@ def set_gl_entries_by_account(
 				and posting_date <= %(to_date)s
 				{additional_conditions}
 			order by account, posting_date
-		""", gl_filters, as_dict=True)  #nosec
+		""", gl_filters, as_dict=True)  # nosec
 
-		if filters and filters.get('presentation_currency'):
+		if filters and filters.get("presentation_currency"):
 			convert_to_presentation_currency(gl_entries, get_currency(filters))
 
 		for entry in gl_entries:
@@ -478,14 +479,14 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 	if accounting_dimensions:
 		for dimension in accounting_dimensions:
 			if filters.get(dimension.fieldname):
-				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
+				if frappe.get_cached_value("DocType", dimension.document_type, "is_tree"):
 					filters[dimension.fieldname] = get_dimension_with_children(dimension.document_type,
 						filters.get(dimension.fieldname))
 					additional_conditions.append("{0} in %({0})s".format(dimension.fieldname))
 				else:
 					additional_conditions.append("{0} in (%({0})s)".format(dimension.fieldname))
 
-	hooks = frappe.get_hooks('set_gl_conditions')
+	hooks = frappe.get_hooks("set_gl_conditions")
 	for method in hooks:
 		frappe.get_attr(method)(filters, additional_conditions, alias="`tabGL Entry`")
 
@@ -514,7 +515,7 @@ def get_columns(periodicity, period_list, accumulated_values=1, company=None):
 		"label": _("Account"),
 		"fieldtype": "Data",
 		"options": "Account",
-		"width": 300
+		"width": 300,
 	}]
 
 	if periodicity != "Yearly":
@@ -523,7 +524,7 @@ def get_columns(periodicity, period_list, accumulated_values=1, company=None):
 				"fieldname": "total",
 				"label": _("Total"),
 				"fieldtype": "Currency",
-				"width": 150
+				"width": 150,
 			})
 
 	for period in period_list:
@@ -532,7 +533,7 @@ def get_columns(periodicity, period_list, accumulated_values=1, company=None):
 			"label": period.label,
 			"fieldtype": "Currency",
 			"options": "currency",
-			"width": 150
+			"width": 150,
 		})
 
 	return columns

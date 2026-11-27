@@ -1,5 +1,6 @@
 import frappe
 
+
 def execute():
 	frappe.reload_doc("projects", "doctype", "project")
 
@@ -7,4 +8,3 @@ def execute():
 	for d in projects:
 		doc = frappe.get_doc("Project", d.name)
 		doc.set_tasks_status(update=True, update_modified=False)
-

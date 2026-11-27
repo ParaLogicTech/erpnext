@@ -2,7 +2,7 @@ import frappe
 
 
 def execute():
-	country = frappe.get_system_settings('country')
+	country = frappe.get_system_settings("country")
 	if country != "Pakistan":
 		return
 

@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, getdate
+from frappe.utils import cint, flt, getdate
 
 
 def execute(filters=None):
@@ -10,7 +10,7 @@ def execute(filters=None):
 class GoodsInTransitTracker:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or dict())
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 		self.has_branch = False
 		self.has_project = False
 
@@ -68,7 +68,7 @@ class GoodsInTransitTracker:
 			conditions.append("o.branch = %(branch)s")
 
 		if self.filters.item_code:
-			if frappe.db.get_value("Item", self.filters.item_code, 'has_variants'):
+			if frappe.db.get_value("Item", self.filters.item_code, "has_variants"):
 				conditions.append("im.variant_of = %(item_code)s")
 			else:
 				conditions.append("i.item_code = %(item_code)s")
@@ -134,7 +134,7 @@ class GoodsInTransitTracker:
 		filter_to_field = {
 			"Stock Qty": "stock_qty",
 			"Contents Qty": "alt_uom_qty",
-			"Transaction Qty": "qty"
+			"Transaction Qty": "qty",
 		}
 		return filter_to_field.get(self.filters.qty_field) or "stock_qty"
 
@@ -144,109 +144,109 @@ class GoodsInTransitTracker:
 				"label": _("Out Date"),
 				"fieldname": "posting_date",
 				"fieldtype": "Date",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Outgoing Entry"),
 				"fieldname": "stock_entry",
 				"fieldtype": "Link",
 				"options": "Stock Entry",
-				"width": 140
+				"width": 140,
 			},
 			{
 				"label": _("Item Code"),
 				"fieldname": "item_code",
 				"fieldtype": "Link",
 				"options": "Item",
-				"width": 100 if self.show_item_name else 150
+				"width": 100 if self.show_item_name else 150,
 			},
 			{
 				"label": _("Item Name"),
 				"fieldname": "item_name",
 				"fieldtype": "Data",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("From Warehouse"),
 				"fieldname": "from_warehouse",
 				"fieldtype": "Link",
 				"options": "Warehouse",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("To Warehouse"),
 				"fieldname": "to_warehouse",
 				"fieldtype": "Link",
 				"options": "Warehouse",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("UOM"),
 				"fieldtype": "Link",
 				"options": "UOM",
 				"fieldname": "uom",
-				"width": 50
+				"width": 50,
 			},
 			{
 				"label": _("Sent"),
 				"fieldname": "qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Received"),
 				"fieldname": "transferred_qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("In Transit"),
 				"fieldname": "remaining_qty",
 				"fieldtype": "Float",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Delay Days"),
 				"fieldname": "delay_days",
 				"fieldtype": "Int",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Project"),
 				"fieldname": "project",
 				"fieldtype": "Link",
 				"options": "Project",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Branch"),
 				"fieldname": "branch",
 				"fieldtype": "Link",
 				"options": "Branch",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Item Group"),
 				"fieldname": "item_group",
 				"fieldtype": "Link",
 				"options": "Item Group",
-				"width": 90
+				"width": 90,
 			},
 			{
 				"label": _("Brand"),
 				"fieldname": "brand",
 				"fieldtype": "Link",
 				"options": "Brand",
-				"width": 60
+				"width": 60,
 			},
 		]
 
 		if not self.show_item_name:
-			columns = [c for c in columns if c['fieldname'] != 'item_name']
+			columns = [c for c in columns if c["fieldname"] != "item_name"]
 
 		if not self.has_project:
-			columns = [c for c in columns if c['fieldname'] != 'project']
+			columns = [c for c in columns if c["fieldname"] != "project"]
 		if not self.has_branch:
-			columns = [c for c in columns if c['fieldname'] != 'branch']
+			columns = [c for c in columns if c["fieldname"] != "branch"]
 
 		return columns

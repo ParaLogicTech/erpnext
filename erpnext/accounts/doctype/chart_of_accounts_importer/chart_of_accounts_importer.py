@@ -39,7 +39,7 @@ def validate_columns(data):
 	if no_of_columns != 8:
 		frappe.throw(
 			_(
-				"Columns are not according to template. Please compare the uploaded file with standard template"
+				"Columns are not according to template. Please compare the uploaded file with standard template",
 			),
 			title=(_("Wrong Template")),
 		)
@@ -50,21 +50,21 @@ def validate_company(company):
 	frappe.has_permission("Chart of Accounts Importer", throw=True)
 
 	parent_company, allow_account_creation_against_child_company = frappe.get_cached_value(
-		"Company", company, ["parent_company", "allow_account_creation_against_child_company"]
+		"Company", company, ["parent_company", "allow_account_creation_against_child_company"],
 	)
 
 	if parent_company and (not allow_account_creation_against_child_company):
 		msg = _("{} is a child company.").format(frappe.bold(company)) + " "
 		msg += _("Please import accounts against parent company or enable {} in company master.").format(
-			frappe.bold(_("Allow Account Creation Against Child Company"))
+			frappe.bold(_("Allow Account Creation Against Child Company")),
 		)
 		frappe.throw(msg, title=_("Wrong Company"))
 
 	if frappe.db.get_all("GL Entry", {"company": company}, "name", limit=1):
 		frappe.throw(
 			_(
-				"Transactions against the Company already exist! Chart of Accounts can only be imported for a Company with no transactions."
-			)
+				"Transactions against the Company already exist! Chart of Accounts can only be imported for a Company with no transactions.",
+			),
 		)
 
 	validate_user_perms(company)
@@ -113,8 +113,8 @@ def get_file(file_name):
 	if extension not in ("csv", "xlsx", "xls"):
 		frappe.throw(
 			_(
-				"Only CSV and Excel files can be used to for importing data. Please check the file format you are trying to upload"
-			)
+				"Only CSV and Excel files can be used to for importing data. Please check the file format you are trying to upload",
+			),
 		)
 
 	return file_doc, extension
@@ -187,7 +187,7 @@ def get_coa(doctype, parent, is_root=False, file_name=None, for_validate=0):
 	if not for_validate:
 		forest = build_forest(data)
 		accounts = build_tree_from_json(
-			"", chart_data=forest, from_coa_importer=True
+			"", chart_data=forest, from_coa_importer=True,
 		)  # returns a list of dict in a tree render-able form
 
 		# filter out to show data for the selected node only
@@ -239,8 +239,8 @@ def build_forest(data):
 				if not parent_account_list and parent_account:
 					frappe.throw(
 						_("The parent account {0} does not exists in the uploaded template").format(
-							frappe.bold(parent_account)
-						)
+							frappe.bold(parent_account),
+						),
 					)
 				return [child, *parent_account_list]
 
@@ -252,9 +252,9 @@ def build_forest(data):
 	for i in data:
 		(
 			account_name,
-			parent_account,
+			_parent_account,
 			account_number,
-			parent_account_number,
+			_parent_account_number,
 			is_group,
 			account_type,
 			root_type,
@@ -292,7 +292,7 @@ def build_forest(data):
 	for path in paths:
 		for n, account_name in enumerate(path):
 			set_nested(
-				out, path[: n + 1], charts_map[account_name]
+				out, path[: n + 1], charts_map[account_name],
 			)  # setting the value of nested dictionary.
 
 	return out
@@ -356,7 +356,7 @@ def get_template(template_type, company):
 
 		for account_type in get_mandatory_account_types():
 			writer.writerow(
-				["", "", "", "", 0, account_type.get("account_type"), account_type.get("root_type")]
+				["", "", "", "", 0, account_type.get("account_type"), account_type.get("root_type")],
 			)
 	else:
 		writer = get_sample_template(writer, company)
@@ -386,7 +386,7 @@ def validate_accounts(file_doc, extension):
 		accounts_dict.setdefault(account["account_name"], account)
 		if "parent_account" not in account:
 			msg = _(
-				"Please make sure the file you are using has 'Parent Account' column present in the header."
+				"Please make sure the file you are using has 'Parent Account' column present in the header.",
 			)
 			msg += "<br><br>"
 			msg += _("Alternatively, you can download the template and fill your data in.")
@@ -406,13 +406,13 @@ def validate_root(accounts):
 	for account in roots:
 		if not account.get("root_type") and account.get("account_name"):
 			error_messages.append(
-				_("Please enter Root Type for account- {0}").format(account.get("account_name"))
+				_("Please enter Root Type for account- {0}").format(account.get("account_name")),
 			)
 		elif account.get("root_type") not in get_root_types() and account.get("account_name"):
 			error_messages.append(
 				_("Root Type for {0} must be one of the Asset, Liability, Income, Expense and Equity").format(
-					account.get("account_name")
-				)
+					account.get("account_name"),
+				),
 			)
 
 	validate_missing_roots(roots)
@@ -489,8 +489,8 @@ def validate_user_perms(company):
 		if not frappe.get_cached_doc("Account", d.name).has_permission():
 			frappe.throw(
 				_(
-					"Accounts cannot be removed, as user doesn't have access to all the accounts of {0}."
-				).format(frappe.bold(company))
+					"Accounts cannot be removed, as user doesn't have access to all the accounts of {0}.",
+				).format(frappe.bold(company)),
 			)
 
 
@@ -501,16 +501,16 @@ def set_default_accounts(company):
 	company.update(
 		{
 			"default_receivable_account": frappe.db.get_value(
-				"Account", {"company": company.name, "account_type": "Receivable", "is_group": 0}
+				"Account", {"company": company.name, "account_type": "Receivable", "is_group": 0},
 			),
 			"default_payable_account": frappe.db.get_value(
-				"Account", {"company": company.name, "account_type": "Payable", "is_group": 0}
+				"Account", {"company": company.name, "account_type": "Payable", "is_group": 0},
 			),
 			"default_provisional_account": frappe.db.get_value(
 				"Account",
 				{"company": company.name, "account_type": "Service Received But Not Billed", "is_group": 0},
 			),
-		}
+		},
 	)
 
 	company.save()

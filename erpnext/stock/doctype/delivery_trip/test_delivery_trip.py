@@ -1,14 +1,14 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2017, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 import unittest
 
-import erpnext
 import frappe
+from frappe.utils import add_days, flt, now_datetime, nowdate
+
+import erpnext
 from erpnext.stock.doctype.delivery_trip.delivery_trip import get_contact_and_address, notify_customers
 from erpnext.tests.utils import create_test_contact_and_address
-from frappe.utils import add_days, flt, now_datetime, nowdate
 
 
 class TestDeliveryTrip(unittest.TestCase):
@@ -95,6 +95,7 @@ class TestDeliveryTrip(unittest.TestCase):
 		self.delivery_trip.save()
 		self.assertEqual(self.delivery_trip.status, "Completed")
 
+
 def create_address(driver):
 	if not frappe.db.exists("Address", {"address_title": "_Test Address for Driver"}):
 		address = frappe.get_doc({
@@ -105,12 +106,12 @@ def create_address(driver):
 			"city": "_Test City",
 			"state": "Test State",
 			"country": "India",
-			"links":[
+			"links": [
 				{
 					"link_doctype": "Driver",
-					"link_name": driver.name
-				}
-			]
+					"link_name": driver.name,
+				},
+			],
 		}).insert(ignore_permissions=True)
 
 		frappe.db.set_value("Driver", driver.name, "address", address.name)
@@ -118,6 +119,7 @@ def create_address(driver):
 		return address
 
 	return frappe.get_doc("Address", {"address_title": "_Test Address for Driver"})
+
 
 def create_driver():
 	if not frappe.db.exists("Driver", {"full_name": "Newton Scmander"}):
@@ -132,19 +134,20 @@ def create_driver():
 
 	return frappe.get_doc("Driver", {"full_name": "Newton Scmander"})
 
+
 def create_delivery_notification():
 	if not frappe.db.exists("Email Template", "Delivery Notification"):
 		dispatch_template = frappe.get_doc({
-			'doctype': 'Email Template',
-			'name': 'Delivery Notification',
-			'response': 'Test Delivery Trip',
-			'subject': 'Test Subject',
-			'owner': frappe.session.user
+			"doctype": "Email Template",
+			"name": "Delivery Notification",
+			"response": "Test Delivery Trip",
+			"subject": "Test Subject",
+			"owner": frappe.session.user,
 		})
 		dispatch_template.insert()
 
 	delivery_settings = frappe.get_single("Delivery Settings")
-	delivery_settings.dispatch_template = 'Delivery Notification'
+	delivery_settings.dispatch_template = "Delivery Notification"
 	delivery_settings.save()
 
 
@@ -160,7 +163,7 @@ def create_vehicle():
 			"location": "Mumbai",
 			"chassis_no": "1234ABCD",
 			"uom": "Litre",
-			"vehicle_value": flt(500000)
+			"vehicle_value": flt(500000),
 		})
 		vehicle.insert()
 
@@ -179,13 +182,13 @@ def create_delivery_trip(driver, address, contact=None):
 		"delivery_stops": [{
 			"customer": "_Test Customer",
 			"address": contact.shipping_address.parent,
-			"contact": contact.contact_person.parent
+			"contact": contact.contact_person.parent,
 		},
 		{
 			"customer": "_Test Customer",
 			"address": contact.shipping_address.parent,
-			"contact": contact.contact_person.parent
-		}]
+			"contact": contact.contact_person.parent,
+		}],
 	}).insert(ignore_permissions=True)
 
 	return delivery_trip

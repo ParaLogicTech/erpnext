@@ -4,9 +4,10 @@
 import frappe
 import frappe.share
 from frappe import _
-from frappe.utils import cstr, now_datetime, cint, flt, get_time, get_link_to_form, date_diff, add_days, getdate
-from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import get_terms_and_conditions
+from frappe.utils import add_days, cint, cstr, date_diff, flt, get_link_to_form, get_time, getdate, now_datetime
+
 from erpnext.controllers.status_updater import StatusUpdaterERP
+from erpnext.setup.doctype.terms_and_conditions.terms_and_conditions import get_terms_and_conditions
 
 
 class UOMMustBeIntegerError(frappe.ValidationError):
@@ -19,7 +20,7 @@ class TransactionBase(StatusUpdaterERP):
 		if frappe.flags.in_import and self.posting_date:
 			self.set_posting_time = 1
 
-		if not getattr(self, 'set_posting_time', None) and not self.get('amended_from'):
+		if not getattr(self, "set_posting_time", None) and not self.get("amended_from"):
 			now = now_datetime()
 			self.posting_date = getdate(now)
 			self.posting_time = get_time(now)
@@ -27,7 +28,7 @@ class TransactionBase(StatusUpdaterERP):
 			try:
 				get_time(self.posting_time)
 			except ValueError:
-				frappe.throw(_('Invalid Posting Time'))
+				frappe.throw(_("Invalid Posting Time"))
 
 	def add_calendar_event(self, opts, force=False):
 		if cstr(self.contact_by) != cstr(self._prev.contact_by) or \
@@ -61,13 +62,13 @@ class TransactionBase(StatusUpdaterERP):
 				"description": opts.description,
 				"starts_on":  self.contact_date,
 				"ends_on": opts.ends_on,
-				"event_type": "Private"
+				"event_type": "Private",
 			})
 
-			event.append('event_participants', {
+			event.append("event_participants", {
 				"reference_doctype": self.doctype,
-				"reference_docname": self.name
-				}
+				"reference_docname": self.name,
+				},
 			)
 
 			event.insert(ignore_permissions=True)
@@ -88,7 +89,7 @@ class TransactionBase(StatusUpdaterERP):
 		)
 
 	def validate_with_previous_doc(self, ref, table_doctype=None):
-		self.exclude_fields = ["conversion_factor", "uom"] if self.get('is_return') else []
+		self.exclude_fields = ["conversion_factor", "uom"] if self.get("is_return") else []
 
 		for prev_doctype, validator in ref.items():
 			prev_is_child = validator.get("is_child_table")
@@ -156,9 +157,9 @@ class TransactionBase(StatusUpdaterERP):
 
 			if values:
 				ret = {
-					for_doctype : {
-						"filters": [[for_doctype, "name", "in", values]]
-					}
+					for_doctype: {
+						"filters": [[for_doctype, "name", "in", values]],
+					},
 				}
 			else:
 				ret = None
@@ -264,5 +265,5 @@ def validate_uom_is_convertible(doc, items_table_field="items", item_code_field=
 
 		if not is_item_uom_convertible(item_code, uom):
 			frappe.throw(_("Row #{0}: {1} cannot be converted to UOM {2}. Please select a valid UOM or add a UOM Conversion Factor in the Item").format(
-				row.idx, frappe.get_desk_link("Item", item_code), frappe.bold(uom)
+				row.idx, frappe.get_desk_link("Item", item_code), frappe.bold(uom),
 			))

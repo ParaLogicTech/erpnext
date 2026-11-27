@@ -1,19 +1,20 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
-from erpnext.selling.doctype.sales_order.test_sales_order import make_sales_order
+
+import frappe
+
 from erpnext.accounts.doctype.payment_request.payment_request import make_payment_request
 from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
+from erpnext.selling.doctype.sales_order.test_sales_order import make_sales_order
 from erpnext.setup.utils import get_exchange_rate
 
 test_dependencies = ["Currency Exchange", "Journal Entry", "Contact", "Address"]
 
 payment_gateway = {
 	"doctype": "Payment Gateway",
-	"gateway": "_Test Gateway"
+	"gateway": "_Test Gateway",
 }
 
 payment_method = [
@@ -22,15 +23,16 @@ payment_method = [
 		"is_default": 1,
 		"payment_gateway": "_Test Gateway",
 		"payment_account": "_Test Bank - _TC",
-		"currency": "INR"
+		"currency": "INR",
 	},
 	{
 		"doctype": "Payment Gateway Account",
 		"payment_gateway": "_Test Gateway",
 		"payment_account": "_Test Bank USD - _TC",
-		"currency": "USD"
-	}
+		"currency": "USD",
+	},
 ]
+
 
 class TestPaymentRequest(unittest.TestCase):
 	def setUp(self):
@@ -85,7 +87,7 @@ class TestPaymentRequest(unittest.TestCase):
 		expected_gle = dict((d[0], d) for d in [
 			["_Test Receivable USD - _TC", 0, 5000, si_usd.name],
 			[pr.payment_account, 6290.0, 0, None],
-			["_Test Exchange Gain/Loss - _TC", 0, 1290, None]
+			["_Test Exchange Gain/Loss - _TC", 0, 1290, None],
 		])
 
 		gl_entries = frappe.db.sql("""select account, debit, credit, against_voucher
@@ -94,7 +96,7 @@ class TestPaymentRequest(unittest.TestCase):
 
 		self.assertTrue(gl_entries)
 
-		for i, gle in enumerate(gl_entries):
+		for _i, gle in enumerate(gl_entries):
 			self.assertEqual(expected_gle[gle.account][0], gle.account)
 			self.assertEqual(expected_gle[gle.account][1], gle.debit)
 			self.assertEqual(expected_gle[gle.account][2], gle.credit)
@@ -110,12 +112,12 @@ class TestPaymentRequest(unittest.TestCase):
 		pe = pr.create_payment_entry()
 		pr.load_from_db()
 
-		self.assertEqual(pr.status, 'Paid')
+		self.assertEqual(pr.status, "Paid")
 
 		pe.cancel()
 		pr.load_from_db()
 
-		self.assertEqual(pr.status, 'Requested')
+		self.assertEqual(pr.status, "Requested")
 
 	def test_multiple_payment_entries_against_sales_order(self):
 		# Make Sales Order, grand_total = 1000

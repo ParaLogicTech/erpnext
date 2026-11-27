@@ -2,10 +2,11 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
-from frappe.utils import flt, cstr, nowdate, nowtime
-from erpnext.stock.utils import update_bin
-from erpnext.stock.stock_ledger import update_entries_after
+from frappe.utils import cstr, flt, nowdate, nowtime
+
 from erpnext.controllers.stock_controller import update_gl_entries_after
+from erpnext.stock.stock_ledger import update_entries_after
+from erpnext.stock.utils import update_bin
 
 
 def repost(only_actual=False, allow_negative_stock=False, allow_zero_rate=False, only_bin=False, posting_date=None, posting_time=None):
@@ -28,12 +29,12 @@ def repost(only_actual=False, allow_negative_stock=False, allow_zero_rate=False,
 
 	count = len(item_warehouses)
 	for i, d in enumerate(item_warehouses):
-		print("{0}/{1}: Reposting SLE for {2}".format(i+1, count, d))
+		print("{0}/{1}: Reposting SLE for {2}".format(i + 1, count, d))
 		try:
 			repost_stock(d[0], d[1], allow_zero_rate, only_actual, only_bin, allow_negative_stock,
 				posting_date=posting_date, posting_time=posting_time)
 			frappe.db.commit()
-		except:
+		except Exception:
 			print("ERROR on {0}".format(d))
 			frappe.db.rollback()
 
@@ -54,11 +55,11 @@ def repost_stock(item_code, warehouse, allow_zero_rate=False,
 			"reserved_qty": get_reserved_qty(item_code, warehouse),
 			"indented_qty": get_indented_qty(item_code, warehouse),
 			"ordered_qty": get_ordered_qty(item_code, warehouse),
-			"planned_qty": get_planned_qty(item_code, warehouse)
+			"planned_qty": get_planned_qty(item_code, warehouse),
 		}
 		if only_bin:
 			qty_dict.update({
-				"actual_qty": get_balance_qty_from_sle(item_code, warehouse)
+				"actual_qty": get_balance_qty_from_sle(item_code, warehouse),
 			})
 
 		update_bin_qty(item_code, warehouse, qty_dict)
@@ -202,10 +203,12 @@ def update_bin_qty(item_code, warehouse, qty_dict=None):
 
 def set_stock_balance_as_per_serial_no(item_code=None, posting_date=None, posting_time=None,
 	 	fiscal_year=None):
-	if not posting_date: posting_date = nowdate()
-	if not posting_time: posting_time = nowtime()
+	if not posting_date:
+		posting_date = nowdate()
+	if not posting_time:
+		posting_time = nowtime()
 
-	condition = " and item.name='%s'" % item_code.replace("'", "\'") if item_code else ""
+	condition = " and item.name='%s'" % item_code.replace("'", "'") if item_code else ""
 
 	bin = frappe.db.sql("""select bin.item_code, bin.warehouse, bin.actual_qty, item.stock_uom
 		from `tabBin` bin, tabItem item
@@ -223,22 +226,22 @@ def set_stock_balance_as_per_serial_no(item_code=None, posting_date=None, postin
 			order by posting_date desc limit 1""", (d[0], d[1]))
 
 		sle_dict = {
-			'doctype'					: 'Stock Ledger Entry',
-			'item_code'					: d[0],
-			'warehouse'					: d[1],
-			'transaction_date'	 		: nowdate(),
-			'posting_date'				: posting_date,
-			'posting_time'			 	: posting_time,
-			'voucher_type'			 	: 'Stock Reconciliation (Manual)',
-			'voucher_no'				: '',
-			'voucher_detail_no'			: '',
-			'actual_qty'				: flt(serial_nos[0][0]) - flt(d[2]),
-			'stock_uom'					: d[3],
-			'incoming_rate'				: sle and flt(serial_nos[0][0]) > flt(d[2]) and flt(sle[0][0]) or 0,
-			'company'					: sle and cstr(sle[0][1]) or 0,
-			'is_cancelled'			 	: 'No',
-			'batch_no'					: '',
-			'serial_no'					: ''
+			"doctype": "Stock Ledger Entry",
+			"item_code": d[0],
+			"warehouse": d[1],
+			"transaction_date": nowdate(),
+			"posting_date": posting_date,
+			"posting_time": posting_time,
+			"voucher_type": "Stock Reconciliation (Manual)",
+			"voucher_no": "",
+			"voucher_detail_no": "",
+			"actual_qty": flt(serial_nos[0][0]) - flt(d[2]),
+			"stock_uom": d[3],
+			"incoming_rate": (sle and flt(serial_nos[0][0]) > flt(d[2]) and flt(sle[0][0])) or 0,
+			"company": (sle and cstr(sle[0][1])) or 0,
+			"is_cancelled": "No",
+			"batch_no": "",
+			"serial_no": "",
 		}
 
 		sle_doc = frappe.get_doc(sle_dict)
@@ -249,7 +252,7 @@ def set_stock_balance_as_per_serial_no(item_code=None, posting_date=None, postin
 		args = sle_dict.copy()
 		args.update({
 			"sle_id": sle_doc.name,
-			"is_amended": 'No'
+			"is_amended": "No",
 		})
 
 		update_bin(args)
@@ -257,7 +260,7 @@ def set_stock_balance_as_per_serial_no(item_code=None, posting_date=None, postin
 			"item_code": d[0],
 			"warehouse": d[1],
 			"posting_date": posting_date,
-			"posting_time": posting_time
+			"posting_time": posting_time,
 		})
 
 
@@ -273,7 +276,7 @@ def reset_serial_no_status_and_warehouse(serial_nos=None):
 
 				sr.via_stock_ledger = True
 				sr.save()
-			except:
+			except Exception:
 				pass
 
 
@@ -291,8 +294,12 @@ def repost_gle_for_stock_transactions(posting_date=None, posting_time=None, for_
 
 
 def repost_stock_mismatch_gle(company=None, from_date=None, to_date=None, auto_commit=False):
+	from erpnext.controllers.stock_controller import (
+		delete_voucher_gl_entries,
+		get_sales_invoices_with_unbilled_stock,
+		update_gl_entries_for_stock_voucher,
+	)
 	from erpnext.stock.report.stock_and_account_value_comparison.stock_and_account_value_comparison import get_data
-	from erpnext.controllers.stock_controller import get_sales_invoices_with_unbilled_stock, update_gl_entries_for_stock_voucher, delete_voucher_gl_entries
 
 	mismatch_data = get_data({"company": company, "from_date": from_date, "to_date": to_date})
 	stock_vouchers = [(d.voucher_type, d.voucher_no) for d in mismatch_data]
@@ -319,8 +326,8 @@ def repost_stock_mismatch_gle(company=None, from_date=None, to_date=None, auto_c
 
 def repost_all_stock_vouchers():
 	import datetime
-	import os
 	import json
+	import os
 
 	frappe.flags.ignored_closed_or_disabled = 1
 	frappe.flags.do_not_update_reserved_qty = 1
@@ -372,7 +379,7 @@ def repost_all_stock_vouchers():
 		frappe.db.commit()
 	else:
 		print("Checkpoint found")
-		with open(filename, "r") as f:
+		with open(filename) as f:
 			vouchers = json.loads(f.read())
 
 	start_time = datetime.datetime.now()

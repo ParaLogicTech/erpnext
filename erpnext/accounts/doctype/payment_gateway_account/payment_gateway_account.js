@@ -1,7 +1,7 @@
 // Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
-frappe.ui.form.on('Payment Gateway Account', {
+frappe.ui.form.on("Payment Gateway Account", {
 	setup(frm) {
 		frm.events.setup_queries(frm);
 	},
@@ -13,8 +13,8 @@ frappe.ui.form.on('Payment Gateway Account', {
 					company: frm.doc.company,
 					account_currency: frm.doc.currency,
 					is_group: 0,
-				}
+				},
 			};
 		});
-	}
+	},
 });

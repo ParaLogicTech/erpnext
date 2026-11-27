@@ -1,6 +1,6 @@
-frappe.listview_settings['Transporter'] = {
+frappe.listview_settings["Transporter"] = {
 	add_fields: ["status"],
-	get_indicator: function (doc) {
+	get_indicator: function(doc) {
 		if (doc.status === "Enabled") {
 			return [__(doc.status), "blue", "status,=," + doc.status];
 		} else if (doc.status === "Disabled") {

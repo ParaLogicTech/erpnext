@@ -4,30 +4,30 @@ from frappe import _
 
 def get_data():
 	return {
-		'heatmap': True,
-		'heatmap_message': _('This is based on transactions against this Supplier. See timeline below for details'),
-		'fieldname': 'supplier',
-		'non_standard_fieldnames': {
-			'Payment Entry': 'party',
-			'Journal Entry': 'party',
-			'Bank Account': 'party'
+		"heatmap": True,
+		"heatmap_message": _("This is based on transactions against this Supplier. See timeline below for details"),
+		"fieldname": "supplier",
+		"non_standard_fieldnames": {
+			"Payment Entry": "party",
+			"Journal Entry": "party",
+			"Bank Account": "party",
 		},
-		'transactions': [
+		"transactions": [
 			{
-				'label': _('Procurement'),
-				'items': ['Request for Quotation', 'Supplier Quotation']
+				"label": _("Procurement"),
+				"items": ["Request for Quotation", "Supplier Quotation"],
 			},
 			{
-				'label': _('Orders'),
-				'items': ['Purchase Order', 'Purchase Receipt', 'Purchase Invoice']
+				"label": _("Orders"),
+				"items": ["Purchase Order", "Purchase Receipt", "Purchase Invoice"],
 			},
 			{
-				'label': _('Payments and Vouchers'),
-				'items': ['Payment Entry', 'Journal Entry', 'Bank Account']
+				"label": _("Payments and Vouchers"),
+				"items": ["Payment Entry", "Journal Entry", "Bank Account"],
 			},
 			{
-				'label': _('Pricing'),
-				'items': ['Pricing Rule']
-			}
-		]
+				"label": _("Pricing"),
+				"items": ["Pricing Rule"],
+			},
+		],
 	}

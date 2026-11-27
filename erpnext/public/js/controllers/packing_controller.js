@@ -27,13 +27,13 @@ erpnext.stock.PackingController = class PackingController extends erpnext.stock.
 						default_source_warehouse: me.frm.doc.default_source_warehouse,
 						default_rejected_warehouse: me.frm.doc.default_rejected_warehouse,
 						purchase_order: me.frm.doc.purchase_order,
-					}
+					},
 				},
 				callback: function(r) {
 					if (!r.exc) {
 						me.calculate_totals();
 					}
-				}
+				},
 			});
 		}
 	}
@@ -68,13 +68,13 @@ erpnext.stock.PackingController = class PackingController extends erpnext.stock.
 				child: item,
 				args: {
 					item_code: item.item_code,
-					uom: item.uom
+					uom: item.uom,
 				},
 				callback: function(r) {
 					if (!r.exc) {
 						me.conversion_factor(me.frm.doc, cdt, cdn);
 					}
-				}
+				},
 			});
 		}
 	}
@@ -152,7 +152,7 @@ erpnext.stock.PackingController = class PackingController extends erpnext.stock.
 						}
 						me.calculate_totals();
 					}
-				}
+				},
 			});
 		}
 	}

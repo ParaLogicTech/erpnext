@@ -1,11 +1,12 @@
 import frappe
 from frappe.utils import add_days, getdate, today
 
+
 def execute():
-    if frappe.db.exists('DocType', 'Email Campaign'):
-        email_campaign = frappe.get_all('Email Campaign')
+    if frappe.db.exists("DocType", "Email Campaign"):
+        email_campaign = frappe.get_all("Email Campaign")
         for campaign in email_campaign:
-            doc = frappe.get_doc("Email Campaign",campaign["name"])
+            doc = frappe.get_doc("Email Campaign", campaign["name"])
             send_after_days = []
 
             camp = frappe.get_doc("Campaign", doc.campaign_name)

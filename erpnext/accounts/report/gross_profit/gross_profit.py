@@ -3,8 +3,9 @@
 
 import frappe
 from frappe import _, scrub, unscrub
-from frappe.utils import flt, cstr, getdate, nowdate, cint
 from frappe.desk.query_report import group_report_data
+from frappe.utils import cint, cstr, flt, getdate, nowdate
+
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 
 
@@ -23,7 +24,7 @@ class GrossProfitGenerator:
 		self.has_batch_no = False
 		self.has_branch = False
 
-		self.show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+		self.show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 
 		self.doc_meta = frappe.get_meta("Sales Invoice")
 		self.item_meta = frappe.get_meta("Sales Invoice Item")
@@ -83,11 +84,11 @@ class GrossProfitGenerator:
 	def prepare_data(self):
 		for d in self.data:
 			if "Group by Item" in [self.filters.group_by_1, self.filters.group_by_2, self.filters.group_by_3]:
-				d['doc_type'] = "Sales Invoice"
-				d['reference'] = d.parent
+				d["doc_type"] = "Sales Invoice"
+				d["reference"] = d.parent
 			else:
-				d['doc_type'] = "Item"
-				d['reference'] = d.item_code
+				d["doc_type"] = "Item"
+				d["reference"] = d.item_code
 
 			d["disable_item_formatter"] = cint(self.show_item_name)
 
@@ -163,8 +164,8 @@ class GrossProfitGenerator:
 
 	def calculate_group_totals(self, data, group_field, group_value, grouped_by):
 		total_fields = [
-			'qty', 'stock_qty', 'cogs_qty',
-			'cogs', 'base_net_amount',
+			"qty", "stock_qty", "cogs_qty",
+			"cogs", "base_net_amount",
 		]
 
 		totals = frappe._dict()
@@ -184,26 +185,26 @@ class GrossProfitGenerator:
 
 		# Set group values
 		if data:
-			if 'parent' in grouped_by:
-				totals['posting_date'] = data[0].get('posting_date')
-				totals['customer'] = data[0].get('customer')
-				totals['sales_person'] = data[0].get('sales_person')
+			if "parent" in grouped_by:
+				totals["posting_date"] = data[0].get("posting_date")
+				totals["customer"] = data[0].get("customer")
+				totals["sales_person"] = data[0].get("sales_person")
 
-			if 'item_code' in grouped_by:
-				totals['item_name'] = data[0].get('item_name')
-				totals['item_group'] = data[0].get('item_group')
-				totals['brand'] = data[0].get('brand')
-				totals['disable_item_formatter'] = cint(self.show_item_name)
+			if "item_code" in grouped_by:
+				totals["item_name"] = data[0].get("item_name")
+				totals["item_group"] = data[0].get("item_group")
+				totals["brand"] = data[0].get("brand")
+				totals["disable_item_formatter"] = cint(self.show_item_name)
 
-			if group_field in ('applies_to_item', 'applies_to_variant_of'):
-				totals['item_name'] = frappe.db.get_value("Item", group_value, 'item_name', cache=1) if group_value else None
-				totals['item_group'] = frappe.db.get_value("Item", group_value, 'item_group', cache=1) if group_value else None
-				totals['brand'] = frappe.db.get_value("Item", group_value, 'brand', cache=1) if group_value else None
-				totals['disable_item_formatter'] = cint(self.show_item_name)
+			if group_field in ("applies_to_item", "applies_to_variant_of"):
+				totals["item_name"] = frappe.db.get_value("Item", group_value, "item_name", cache=1) if group_value else None
+				totals["item_group"] = frappe.db.get_value("Item", group_value, "item_group", cache=1) if group_value else None
+				totals["brand"] = frappe.db.get_value("Item", group_value, "brand", cache=1) if group_value else None
+				totals["disable_item_formatter"] = cint(self.show_item_name)
 
-			if group_field in ('party', 'parent'):
-				totals['customer_name'] = data[0].get("customer_name")
-				totals['customer_group'] = data[0].get("customer_group")
+			if group_field in ("party", "parent"):
+				totals["customer_name"] = data[0].get("customer_name")
+				totals["customer_group"] = data[0].get("customer_group")
 
 		# Set reference field
 		group_reference_doctypes = {
@@ -216,11 +217,11 @@ class GrossProfitGenerator:
 
 		reference_field = group_field[0] if isinstance(group_field, (list, tuple)) else group_field
 		reference_dt = group_reference_doctypes.get(reference_field, unscrub(cstr(reference_field)))
-		totals['doc_type'] = reference_dt
-		totals['reference'] = grouped_by.get(reference_field) if group_field else "'Total'"
+		totals["doc_type"] = reference_dt
+		totals["reference"] = grouped_by.get(reference_field) if group_field else "'Total'"
 
 		if not group_field and self.group_by == [None]:
-			totals['voucher_no'] = "'Total'"
+			totals["voucher_no"] = "'Total'"
 
 		self.postprocess_row(totals)
 		totals.cogs_per_unit = totals.cogs / totals.cogs_qty if totals.cogs_qty else 0
@@ -262,24 +263,24 @@ class GrossProfitGenerator:
 					where lft>=%s and rgt<=%s)""" % (lft, rgt))
 
 		if self.filters.get("item_code"):
-			is_template = frappe.db.get_value("Item", self.filters.get('item_code'), 'has_variants')
+			is_template = frappe.db.get_value("Item", self.filters.get("item_code"), "has_variants")
 			if is_template:
 				conditions.append("i.variant_of=%(item_code)s")
 			else:
 				conditions.append("i.name = %(item_code)s")
 
 		if self.filters.get("applies_to_item"):
-			is_template = frappe.db.get_value("Item", self.filters.get('applies_to_item'), 'has_variants')
+			is_template = frappe.db.get_value("Item", self.filters.get("applies_to_item"), "has_variants")
 			if is_template:
 				self.filters.applies_to_items = [self.filters.applies_to_item]
-				self.filters.applies_to_items += [d.name for d in frappe.get_all("Item", {'variant_of': self.filters.applies_to_item})]
+				self.filters.applies_to_items += [d.name for d in frappe.get_all("Item", {"variant_of": self.filters.applies_to_item})]
 				conditions.append("si.applies_to_item in %(applies_to_items)s")
 			else:
 				conditions.append("si.applies_to_item = %(applies_to_item)s")
 
 		if self.filters.get("item_group"):
 			lft, rgt = frappe.db.get_value("Item Group", self.filters.item_group, ["lft", "rgt"])
-			conditions.append("""i.item_group in (select name from `tabItem Group` 
+			conditions.append("""i.item_group in (select name from `tabItem Group`
 					where lft>=%s and rgt<=%s)""" % (lft, rgt))
 
 		if self.filters.get("brand"):
@@ -331,7 +332,7 @@ class GrossProfitGenerator:
 		group_list = [self.filters.group_by_1, self.filters.group_by_2, self.filters.group_by_3]
 
 		show_party_name = False
-		if frappe.defaults.get_global_default('cust_master_name') == "Naming Series":
+		if frappe.defaults.get_global_default("cust_master_name") == "Naming Series":
 			show_party_name = True
 
 		customer_field = {
@@ -339,26 +340,26 @@ class GrossProfitGenerator:
 			"fieldtype": "Link",
 			"fieldname": "customer",
 			"options": "Customer",
-			"width": 80 if show_party_name else 180
+			"width": 80 if show_party_name else 180,
 		}
 		customer_name_field = {
 			"label": _("Customer Name"),
 			"fieldtype": "Data",
 			"fieldname": "customer_name",
-			"width": 180
+			"width": 180,
 		}
 		item_code_field = {
 			"label": _("Item Code"),
 			"fieldtype": "Link",
 			"fieldname": "item_code",
 			"options": "Item",
-			"width": 100 if self.show_item_name else 150
+			"width": 100 if self.show_item_name else 150,
 		}
 		item_name_field = {
 			"label": _("Item Name"),
 			"fieldtype": "Data",
 			"fieldname": "item_name",
-			"width": 150
+			"width": 150,
 		}
 
 		if len(self.group_by) > 1:
@@ -368,13 +369,13 @@ class GrossProfitGenerator:
 					"fieldtype": "Dynamic Link",
 					"fieldname": "reference",
 					"options": "doc_type",
-					"width": 180
+					"width": 180,
 				},
 				{
 					"label": _("Type"),
 					"fieldtype": "Data",
 					"fieldname": "doc_type",
-					"width": 100
+					"width": 100,
 				},
 			]
 
@@ -386,7 +387,7 @@ class GrossProfitGenerator:
 					"label": _("Date"),
 					"fieldtype": "Date",
 					"fieldname": "posting_date",
-					"width": 80
+					"width": 80,
 				},
 			]
 
@@ -400,7 +401,7 @@ class GrossProfitGenerator:
 					"fieldtype": "Link",
 					"fieldname": "parent",
 					"options": "Sales Invoice",
-					"width": 100
+					"width": 100,
 				})
 		else:
 			columns += [
@@ -408,14 +409,14 @@ class GrossProfitGenerator:
 					"label": _("Date"),
 					"fieldtype": "Date",
 					"fieldname": "posting_date",
-					"width": 80
+					"width": 80,
 				},
 				{
 					"label": _("Sales Invoice"),
 					"fieldtype": "Link",
 					"fieldname": "parent",
 					"options": "Sales Invoice",
-					"width": 100
+					"width": 100,
 				},
 				customer_field,
 				customer_name_field,
@@ -428,115 +429,115 @@ class GrossProfitGenerator:
 				"label": _("Qty"),
 				"fieldtype": "Float",
 				"fieldname": "cogs_qty",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("UOM"),
 				"fieldtype": "Link",
 				"options": "UOM",
 				"fieldname": "uom",
-				"width": 50
+				"width": 50,
 			},
 			{
 				"label": _("Split %"),
 				"fieldtype": "Percent",
 				"fieldname": "split_percentage",
-				"width": 60
+				"width": 60,
 			},
 			{
 				"label": _("Revenue/Unit"),
 				"fieldtype": "Currency",
 				"fieldname": "revenue_per_unit",
 				"options": "Company:company:default_currency",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Cost/Unit"),
 				"fieldtype": "Currency",
 				"fieldname": "cogs_per_unit",
 				"options": "Company:company:default_currency",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Revenue"),
 				"fieldtype": "Currency",
 				"fieldname": "revenue",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Total Cost"),
 				"fieldtype": "Currency",
 				"fieldname": "cogs",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Gross Profit"),
 				"fieldtype": "Currency",
 				"fieldname": "gross_profit",
 				"options": "Company:company:default_currency",
-				"width": 110
+				"width": 110,
 			},
 			{
 				"label": _("Profit/Unit"),
 				"fieldtype": "Currency",
 				"fieldname": "gross_profit_per_unit",
 				"options": "Company:company:default_currency",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Margin %"),
 				"fieldtype": "Percent",
 				"fieldname": "profit_margin",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Markup %"),
 				"fieldtype": "Percent",
 				"fieldname": "profit_markup",
-				"width": 80
+				"width": 80,
 			},
 			{
 				"label": _("Sales Person"),
 				"fieldtype": "Data",
 				"fieldname": "sales_person",
-				"width": 150
+				"width": 150,
 			},
 			{
 				"label": _("Branch"),
 				"fieldtype": "Link",
 				"fieldname": "branch",
 				"options": "Branch",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Project"),
 				"fieldtype": "Link",
 				"fieldname": "project",
 				"options": "Project",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Warehouse"),
 				"fieldtype": "Link",
 				"fieldname": "warehouse",
 				"options": "Warehouse",
-				"width": 100
+				"width": 100,
 			},
 			{
 				"label": _("Batch No"),
 				"fieldtype": "Link",
 				"fieldname": "batch_no",
 				"options": "Batch",
-				"width": 140
+				"width": 140,
 			},
 			{
 				"label": _("Cost Center"),
 				"fieldtype": "Link",
 				"fieldname": "cost_center",
 				"options": "Cost Center",
-				"width": 100
+				"width": 100,
 			},
 		]
 		if self.filters.sales_person:
@@ -544,27 +545,23 @@ class GrossProfitGenerator:
 				"label": _("% Contribution"),
 				"fieldtype": "Percent",
 				"fieldname": "allocated_percentage",
-				"width": 60
+				"width": 60,
 			})
 
 		if not self.show_item_name:
-			columns = [c for c in columns if c.get('fieldname') != 'item_name']
+			columns = [c for c in columns if c.get("fieldname") != "item_name"]
 		if not show_party_name:
-			columns = [c for c in columns if c.get('fieldname') != 'customer_name']
+			columns = [c for c in columns if c.get("fieldname") != "customer_name"]
 		if not self.has_split_billing:
-			columns = [c for c in columns if c.get('fieldname') != 'split_percentage']
+			columns = [c for c in columns if c.get("fieldname") != "split_percentage"]
 		if not self.has_branch:
-			columns = [c for c in columns if c.get('fieldname') != 'branch']
+			columns = [c for c in columns if c.get("fieldname") != "branch"]
 		if not self.has_project:
-			columns = [c for c in columns if c.get('fieldname') != 'project']
+			columns = [c for c in columns if c.get("fieldname") != "project"]
 		if not self.has_batch_no:
-			columns = [c for c in columns if c.get('fieldname') != 'batch_no']
+			columns = [c for c in columns if c.get("fieldname") != "batch_no"]
 
 		return columns
-
-
-
-
 
 
 def update_item_valuation_rates(items, doc=None, get_last_purchase_rate=False):
@@ -612,46 +609,46 @@ def get_item_incoming_rate_data(args, get_last_purchase_rate=False):
 
 	source_map = {}
 
-	item_codes = list(set([d.get('item_code') for d in args if d.get('item_code')]))
+	item_codes = list(set([d.get("item_code") for d in args if d.get("item_code")]))
 	stock_item_codes = get_stock_items(item_codes)
 
 	for i, d in enumerate(args):
-		if not d.get('item_code'):
+		if not d.get("item_code"):
 			continue
 
-		parent_doctype = d.get('dt') or d.get('parenttype') or d.get('doctype')
-		row_name = d.get('child_docname') or d.get('name')
-		docstatus = d.get('doc_status') or d.get('docstatus')
+		parent_doctype = d.get("dt") or d.get("parenttype") or d.get("doctype")
+		row_name = d.get("child_docname") or d.get("name")
+		docstatus = d.get("doc_status") or d.get("docstatus")
 
-		if d.get('item_code') in stock_item_codes and parent_doctype in ('Sales Invoice', 'Delivery Note'):
+		if d.get("item_code") in stock_item_codes and parent_doctype in ("Sales Invoice", "Delivery Note"):
 			if parent_doctype == "Sales Invoice":
 				if d.get("update_stock"):
 					if docstatus == 0:
 						source_map[i] = (None, None)
 					else:
 						voucher_detail_no = (parent_doctype, row_name)
-						source_map[i] = ('sle_outgoing_rate', voucher_detail_no)
+						source_map[i] = ("sle_outgoing_rate", voucher_detail_no)
 				elif d.get("delivery_note_item"):
 					if not d.get("is_return") or d.get("reopen_order"):
-						voucher_detail_no = ('Delivery Note', d.get('delivery_note_item'))
-						source_map[i] = ('sle_outgoing_rate', voucher_detail_no)
+						voucher_detail_no = ("Delivery Note", d.get("delivery_note_item"))
+						source_map[i] = ("sle_outgoing_rate", voucher_detail_no)
 
 			elif parent_doctype == "Delivery Note":
 				if docstatus == 0:
 					source_map[i] = (None, None)
 				else:
 					voucher_detail_no = (parent_doctype, row_name)
-					source_map[i] = ('sle_outgoing_rate', voucher_detail_no)
+					source_map[i] = ("sle_outgoing_rate", voucher_detail_no)
 
 			else:
 				source_map[i] = (None, None)
 
 		elif get_last_purchase_rate:
-			transaction_date = getdate(d.get('transaction_date') or d.get('posting_date') or d.get('date'))
-			source_map[i] = ('item_last_purchase_rate', (d.get('item_code'), transaction_date))
+			transaction_date = getdate(d.get("transaction_date") or d.get("posting_date") or d.get("date"))
+			source_map[i] = ("item_last_purchase_rate", (d.get("item_code"), transaction_date))
 
-	last_purchase_rate_item_dates = list(set([key for obj, key in source_map.values() if obj == 'item_last_purchase_rate']))
-	voucher_detail_nos = [key for obj, key in source_map.values() if obj == 'sle_outgoing_rate']
+	last_purchase_rate_item_dates = list(set([key for obj, key in source_map.values() if obj == "item_last_purchase_rate"]))
+	voucher_detail_nos = [key for obj, key in source_map.values() if obj == "sle_outgoing_rate"]
 
 	out = frappe._dict()
 	out.sle_outgoing_rate = get_sle_outgoing_rate(voucher_detail_nos)
@@ -668,7 +665,7 @@ def get_item_last_purchase_rate(args):
 
 	for item_code, t_date in args:
 		get_last_purchase_detail = get_last_purchase_details(item_code, transaction_date=t_date)
-		out[(item_code, t_date)] = get_last_purchase_detail['base_net_rate'] if get_last_purchase_detail else 0
+		out[item_code, t_date] = get_last_purchase_detail["base_net_rate"] if get_last_purchase_detail else 0
 
 	return out
 
@@ -703,7 +700,7 @@ def get_sle_outgoing_rate(voucher_detail_nos):
 		else:
 			outgoing_rate = 0
 
-		out[(d.voucher_type, d.voucher_detail_no)] = outgoing_rate
+		out[d.voucher_type, d.voucher_detail_no] = outgoing_rate
 
 	return out
 

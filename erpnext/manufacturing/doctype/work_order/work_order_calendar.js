@@ -2,7 +2,7 @@
 // For license information, please see license.txt
 
 frappe.views.calendar["Work Order"] = {
-	fields:  ["planned_start_date", "planned_end_date", "status", "completed_qty", "qty", "name", "name"],
+	fields: ["planned_start_date", "planned_end_date", "status", "completed_qty", "qty", "name", "name"],
 	field_map: {
 		"start": "planned_start_date",
 		"end": "planned_end_date",
@@ -12,13 +12,13 @@ frappe.views.calendar["Work Order"] = {
 		"allDay": "allDay",
 		"progress": function(data) {
 			return flt(data.completed_qty) / data.qty * 100;
-		}
+		},
 	},
 	gantt: true,
 	get_css_class: function(data) {
-		if(data.status==="Completed") {
+		if (data.status === "Completed") {
 			return "success";
-		} else if(data.status==="In Process") {
+		} else if (data.status === "In Process") {
 			return "warning";
 		} else {
 			return "danger";
@@ -29,20 +29,20 @@ frappe.views.calendar["Work Order"] = {
 			"fieldtype": "Link",
 			"fieldname": "sales_order",
 			"options": "Sales Order",
-			"label": __("Sales Order")
+			"label": __("Sales Order"),
 		},
 		{
 			"fieldtype": "Link",
 			"fieldname": "production_item",
 			"options": "Item",
-			"label": __("Production Item")
+			"label": __("Production Item"),
 		},
 		{
 			"fieldtype": "Link",
 			"fieldname": "wip_warehouse",
 			"options": "Warehouse",
-			"label": __("WIP Warehouse")
-		}
+			"label": __("WIP Warehouse"),
+		},
 	],
-	get_events_method: "frappe.desk.calendar.get_events"
-}
+	get_events_method: "frappe.desk.calendar.get_events",
+};

@@ -1,7 +1,7 @@
-frappe.provide('frappe.ui.form');
+frappe.provide("frappe.ui.form");
 
 frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends frappe.ui.form.QuickEntryForm {
-	skip_redirect_on_error = true
+	skip_redirect_on_error = true;
 
 	render_dialog() {
 		let additional_fields = this.get_customer_fields();
@@ -16,7 +16,7 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 		let me = this;
 
 		if (me.dialog.fields_dict["customer_group"]) {
-			me.dialog.fields_dict["customer_group"].df.get_query = {'disable_selection': 0};
+			me.dialog.fields_dict["customer_group"].df.get_query = {"disable_selection": 0};
 
 			me.dialog.fields_dict["customer_group"].df.onchange = () => {
 				erpnext.utils.set_customer_overrides(me.dialog);
@@ -25,59 +25,59 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 
 		if (me.dialog.fields_dict["tax_id"]) {
 			me.dialog.fields_dict["tax_id"].df.onchange = () => {
-				var value = me.dialog.get_value('tax_id');
+				var value = me.dialog.get_value("tax_id");
 				value = frappe.regional.get_formatted_tax_id(value);
 				me.dialog.doc.tax_id = value;
-				me.dialog.get_field('tax_id').refresh();
+				me.dialog.get_field("tax_id").refresh();
 				frappe.regional.validate_duplicate_tax_id(me.dialog.doc, "tax_id");
 			};
 		}
 
 		if (me.dialog.fields_dict["tax_cnic"]) {
 			me.dialog.fields_dict["tax_cnic"].df.onchange = () => {
-				var value = me.dialog.get_value('tax_cnic');
+				var value = me.dialog.get_value("tax_cnic");
 				value = frappe.regional.get_formatted_cnic(value);
 				me.dialog.doc.tax_cnic = value;
-				me.dialog.get_field('tax_cnic').refresh();
+				me.dialog.get_field("tax_cnic").refresh();
 				frappe.regional.validate_duplicate_tax_id(me.dialog.doc, "tax_cnic");
 			};
 		}
 
 		if (me.dialog.fields_dict["tax_strn"]) {
 			me.dialog.fields_dict["tax_strn"].df.onchange = () => {
-				var value = me.dialog.get_value('tax_strn');
+				var value = me.dialog.get_value("tax_strn");
 				value = frappe.regional.get_formatted_strn(value);
 				me.dialog.doc.tax_strn = value;
-				me.dialog.get_field('tax_strn').refresh();
+				me.dialog.get_field("tax_strn").refresh();
 				frappe.regional.validate_duplicate_tax_id(me.dialog.doc, "tax_strn");
 			};
 		}
 
 		if (me.dialog.fields_dict["mobile_no"]) {
 			me.dialog.fields_dict["mobile_no"].df.onchange = () => {
-				var value = me.dialog.get_value('mobile_no');
-				value = frappe.regional.get_formatted_mobile_no(value)
+				var value = me.dialog.get_value("mobile_no");
+				value = frappe.regional.get_formatted_mobile_no(value);
 				me.dialog.doc.mobile_no = value;
-				me.dialog.get_field('mobile_no').refresh();
+				me.dialog.get_field("mobile_no").refresh();
 				frappe.regional.validate_duplicate_mobile_no(me.dialog.doc, "mobile_no");
 			};
 		}
 
 		if (me.dialog.fields_dict["mobile_no_2"]) {
 			me.dialog.fields_dict["mobile_no_2"].df.onchange = () => {
-				var value = me.dialog.get_value('mobile_no_2');
+				var value = me.dialog.get_value("mobile_no_2");
 				value = frappe.regional.get_formatted_mobile_no(value);
 				me.dialog.doc.mobile_no_2 = value;
-				me.dialog.get_field('mobile_no_2').refresh();
+				me.dialog.get_field("mobile_no_2").refresh();
 			};
 		}
 
 		if (me.dialog.fields_dict["email_id"]) {
 			me.dialog.fields_dict["email_id"].df.onchange = () => {
-				var value = me.dialog.get_value('email_id');
+				var value = me.dialog.get_value("email_id");
 				value = strip(value);
 				me.dialog.doc.email_id = value;
-				me.dialog.get_field('email_id').refresh();
+				me.dialog.get_field("email_id").refresh();
 				frappe.regional.validate_duplicate_email(me.dialog.doc, "email_id");
 			};
 		}
@@ -88,7 +88,7 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 			{
 				fieldtype: "Section Break",
 				label: __("Primary Contact Person"),
-				depends_on: "eval:doc.customer_type == 'Company'"
+				depends_on: "eval:doc.customer_type == 'Company'",
 			},
 			{
 				label: __("Salutation"),
@@ -97,7 +97,7 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 				options: "Salutation",
 			},
 			{
-				fieldtype: "Column Break"
+				fieldtype: "Column Break",
 			},
 			{
 				label: __("First Name"),
@@ -105,7 +105,7 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 				fieldtype: "Data",
 			},
 			{
-				fieldtype: "Column Break"
+				fieldtype: "Column Break",
 			},
 			{
 				label: __("Last Name"),
@@ -119,31 +119,31 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 			{
 				label: __("Mobile No (Primary)"),
 				fieldname: "mobile_no",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
-				fieldtype: "Column Break"
+				fieldtype: "Column Break",
 			},
 			{
 				label: __("Mobile No (Secondary"),
 				fieldname: "mobile_no_2",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
-				fieldtype: "Column Break"
+				fieldtype: "Column Break",
 			},
 			{
 				label: __("Landline No"),
 				fieldname: "phone_no",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
-				fieldtype: "Column Break"
+				fieldtype: "Column Break",
 			},
 			{
 				label: __("Email Id"),
 				fieldname: "email_id",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
 				fieldtype: "Section Break",
@@ -152,42 +152,42 @@ frappe.ui.form.CustomerQuickEntryForm = class CustomerQuickEntryForm extends fra
 			{
 				label: __("Address Line 1"),
 				fieldname: "address_line1",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
 				label: __("Address Line 2"),
 				fieldname: "address_line2",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
 				label: __("ZIP Code"),
 				fieldname: "pincode",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
-				fieldtype: "Column Break"
+				fieldtype: "Column Break",
 			},
 			{
 				label: __("City"),
 				fieldname: "city",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
 				label: __("State"),
 				fieldname: "state",
-				fieldtype: "Data"
+				fieldtype: "Data",
 			},
 			{
 				label: __("Country"),
 				fieldname: "country",
 				fieldtype: "Link",
-				options: "Country"
+				options: "Country",
 			},
 			{
 				label: __("Customer POS Id"),
 				fieldname: "customer_pos_id",
 				fieldtype: "Data",
-				hidden: 1
+				hidden: 1,
 			}];
 	}
 };

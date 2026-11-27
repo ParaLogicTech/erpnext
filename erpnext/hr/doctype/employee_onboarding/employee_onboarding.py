@@ -1,13 +1,16 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from erpnext.hr.utils import EmployeeBoardingController
 from frappe.model.mapper import get_mapped_doc
 
-class IncompleteTaskError(frappe.ValidationError): pass
+from erpnext.hr.utils import EmployeeBoardingController
+
+
+class IncompleteTaskError(frappe.ValidationError):
+	pass
+
 
 class EmployeeOnboarding(EmployeeBoardingController):
 	def validate(self):
@@ -34,10 +37,12 @@ class EmployeeOnboarding(EmployeeBoardingController):
 	def on_cancel(self):
 		super().on_cancel()
 
+
 @frappe.whitelist()
 def make_employee(source_name, target_doc=None):
 	doc = frappe.get_doc("Employee Onboarding", source_name)
 	doc.validate_employee_creation()
+
 	def set_missing_values(source, target):
 		target.personal_email = frappe.db.get_value("Job Applicant", source.job_applicant, "email_id")
 		target.status = "Active"
@@ -47,7 +52,6 @@ def make_employee(source_name, target_doc=None):
 				"field_map": {
 					"first_name": "employee_name",
 					"employee_grade": "grade",
-				}}
+				}},
 		}, target_doc, set_missing_values)
 	return doc
-

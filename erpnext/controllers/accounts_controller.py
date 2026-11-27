@@ -1,40 +1,42 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import json
+from collections import OrderedDict
+
 import frappe
-import erpnext
 from frappe import _, scrub
 from frappe.utils import (
-	today,
-	flt,
-	formatdate,
+	cint,
+	clean_whitespace,
 	cstr,
 	date_diff,
+	flt,
+	formatdate,
 	getdate,
 	nowdate,
-	clean_whitespace,
-	cint,
+	today,
 )
-from erpnext.accounts.utils import get_fiscal_years, validate_fiscal_year, get_account_currency
-from erpnext.utilities.transaction_base import TransactionBase
-from erpnext.accounts.party import get_party_account_currency, validate_party_frozen_disabled, get_party_account
-from erpnext.exceptions import InvalidCurrency
+
+import erpnext
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
-from erpnext.accounts.doctype.payment_terms_template.payment_terms_template import (
-	get_payment_term_due_date,
-	get_payment_terms,
-	get_due_date_from_template,
-)
 from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import (
+	calculate_difference_amount,
+	get_unreconciled_dr_cr_notes,
 	get_unreconciled_journal_entries,
 	get_unreconciled_payment_entries,
-	get_unreconciled_dr_cr_notes,
 	reconcile_payments_against_invoices,
 	unlink_voucher_from_payments,
-	calculate_difference_amount,
 )
-from collections import OrderedDict
-import json
+from erpnext.accounts.doctype.payment_terms_template.payment_terms_template import (
+	get_due_date_from_template,
+	get_payment_term_due_date,
+	get_payment_terms,
+)
+from erpnext.accounts.party import get_party_account, get_party_account_currency, validate_party_frozen_disabled
+from erpnext.accounts.utils import get_account_currency, get_fiscal_years, validate_fiscal_year
+from erpnext.exceptions import InvalidCurrency
+from erpnext.utilities.transaction_base import TransactionBase
 
 
 class AccountsController(TransactionBase):
@@ -47,11 +49,11 @@ class AccountsController(TransactionBase):
 
 	@property
 	def company_abbr(self):
-		return frappe.get_cached_value('Company',  self.get("company"),  "abbr")
+		return frappe.get_cached_value("Company", self.get("company"), "abbr")
 
 	def onload(self):
 		self.set_onload("make_payment_via_journal_entry",
-			frappe.db.get_single_value('Accounts Settings', 'make_payment_via_journal_entry'))
+			frappe.db.get_single_value("Accounts Settings", "make_payment_via_journal_entry"))
 
 		if self.docstatus == 0:
 			self.set_missing_values(for_validate=True)
@@ -59,7 +61,7 @@ class AccountsController(TransactionBase):
 	def before_print(self, print_settings=None):
 		self.set_company_address_doc_before_print()
 
-		if self.doctype in ['Journal Entry', 'Payment Entry']:
+		if self.doctype in ["Journal Entry", "Payment Entry"]:
 			self.get_gl_entries_for_print()
 			self.get_party_to_party_name_dict()
 
@@ -98,19 +100,19 @@ class AccountsController(TransactionBase):
 
 	def clean_remarks(self):
 		fields = [
-			'remarks', 'remark', 'user_remark', 'user_remarks',
-			'cheque_no', 'reference_no',
-			'po_no', 'supplier_delivery_note', 'lr_no'
+			"remarks", "remark", "user_remark", "user_remarks",
+			"cheque_no", "reference_no",
+			"po_no", "supplier_delivery_note", "lr_no",
 		]
 		for f in fields:
 			if self.meta.has_field(f):
 				self.set(f, clean_whitespace(self.get(f)))
 
 	def validate_party(self):
-		party_type, party, party_name = self.get_party()
+		party_type, party, _party_name = self.get_party()
 		validate_party_frozen_disabled(party_type, party)
 
-		billing_party_type, billing_party, party_name = self.get_billing_party()
+		billing_party_type, billing_party, _party_name = self.get_billing_party()
 		if (billing_party_type, billing_party) != (party_type, party):
 			validate_party_frozen_disabled(billing_party_type, billing_party)
 
@@ -137,7 +139,7 @@ class AccountsController(TransactionBase):
 			if party_account:
 				self.party_account_currency = frappe.get_cached_value("Account", party_account, "account_currency")
 			else:
-				party_type, party, party_name = self.get_billing_party()
+				party_type, party, _party_name = self.get_billing_party()
 				self.party_account_currency = get_party_account_currency(
 					party_type,
 					party,
@@ -152,7 +154,7 @@ class AccountsController(TransactionBase):
 	def get_party_account_for_payment(self, fallback_default_account=True):
 		party_account = self.get_party_account()
 		if not party_account and fallback_default_account:
-			party_type, party, party_name = self.get_billing_party()
+			party_type, party, _party_name = self.get_billing_party()
 			party_account = get_party_account(
 				party_type,
 				party,
@@ -178,19 +180,19 @@ class AccountsController(TransactionBase):
 
 		supplier_doc = frappe.get_cached_doc("Supplier", supplier)
 		if supplier_doc.on_hold and (
-			(not is_payment and supplier_doc.hold_type in ['All', 'Invoices'])
-			or (is_payment and supplier_doc.hold_type in ['All', 'Payments'])
+			(not is_payment and supplier_doc.hold_type in ["All", "Invoices"])
+			or (is_payment and supplier_doc.hold_type in ["All", "Payments"])
 		):
 			if not supplier_doc.release_date or getdate(nowdate()) <= getdate(supplier_doc.release_date):
 				frappe.throw(_("{0} is blocked so this transaction cannot proceed").format(
-					frappe.get_desk_link("Supplier", supplier)
+					frappe.get_desk_link("Supplier", supplier),
 				))
 
 	def validate_currency(self):
 		if not self.get("currency"):
 			return
 
-		party_type, party, party_name = self.get_billing_party()
+		party_type, party, _party_name = self.get_billing_party()
 		party_account = self.get_party_account()
 
 		party_account_currency = None
@@ -213,7 +215,7 @@ class AccountsController(TransactionBase):
 			and self.currency != party_account_currency
 		):
 			frappe.throw(_("Accounting Entry for {0}: {1} can only be made in currency: {2}").format(
-				party_type, party, party_account_currency
+				party_type, party, party_account_currency,
 			), InvalidCurrency)
 
 	def validate_payment_schedule(self):
@@ -253,7 +255,7 @@ class AccountsController(TransactionBase):
 					"due_date": due_date,
 					"invoice_portion": 100,
 					"payment_amount": payable_amount,
-					"payment_amount_type": "Percentage"
+					"payment_amount_type": "Percentage",
 				})
 		else:
 			for d in self.get("payment_schedule"):
@@ -266,14 +268,14 @@ class AccountsController(TransactionBase):
 
 		for d in self.get("payment_schedule"):
 			if d.payment_amount_type == "Remaining Amount":
-				d.payment_amount = flt(remaining_amount, d.precision('payment_amount'))
+				d.payment_amount = flt(remaining_amount, d.precision("payment_amount"))
 			elif d.payment_amount_type == "Amount":
 				term_payment_amount = frappe.get_cached_value("Payment Term", d.payment_term, "payment_amount")\
 					if d.payment_term else 0
 				payment_amount = flt(term_payment_amount or d.payment_amount)
-				d.payment_amount = flt(min(payment_amount, payable_amount), d.precision('payment_amount'))
+				d.payment_amount = flt(min(payment_amount, payable_amount), d.precision("payment_amount"))
 			else:
-				d.payment_amount = flt(payable_amount * flt(d.invoice_portion) / 100, d.precision('payment_amount'))
+				d.payment_amount = flt(payable_amount * flt(d.invoice_portion) / 100, d.precision("payment_amount"))
 
 			remaining_amount -= d.payment_amount
 
@@ -295,9 +297,9 @@ class AccountsController(TransactionBase):
 			dates.append(d.due_date)
 
 		if li:
-			duplicates = '<br>' + '<br>'.join(li)
+			duplicates = "<br>" + "<br>".join(li)
 			frappe.msgprint(_("Payment Schedule rows with duplicate Due Dates found: {0}").format(duplicates),
-				alert=True, indicator='orange')
+				alert=True, indicator="orange")
 
 	def validate_payment_schedule_amount(self):
 		if self.get("is_pos") or self.get("is_return"):
@@ -335,7 +337,7 @@ class AccountsController(TransactionBase):
 			self.due_date = max(due_dates)
 
 	def validate_due_date(self, exclude_bill_date=False):
-		if self.get('is_pos'):
+		if self.get("is_pos"):
 			return
 		if not self.meta.has_field("due_date"):
 			return
@@ -359,17 +361,17 @@ class AccountsController(TransactionBase):
 				is_credit_controller = frappe.db.get_single_value("Accounts Settings", "credit_controller") in frappe.get_roles()
 				if is_credit_controller:
 					frappe.msgprint(_("Note: Due Date exceeds allowed customer credit days by {0} day(s)").format(
-						date_diff(self.due_date, default_due_date)
+						date_diff(self.due_date, default_due_date),
 					))
 				else:
 					frappe.throw(_("Due Date cannot be after {0} for Payment Terms Template {1}").format(
-						formatdate(default_due_date), self.payment_terms_template
+						formatdate(default_due_date), self.payment_terms_template,
 					))
 
 	def get_gl_dict(self, args, account_currency=None, item=None):
 		"""this method populates the common properties of a gl entry record"""
 
-		posting_date = args.get('posting_date') or self.get('posting_date')
+		posting_date = args.get("posting_date") or self.get("posting_date")
 		fiscal_years = get_fiscal_years(posting_date, company=self.company)
 		if len(fiscal_years) > 1:
 			frappe.throw(_("Multiple fiscal years exist for the date {0}. Please set company in Fiscal Year").format(
@@ -378,23 +380,23 @@ class AccountsController(TransactionBase):
 			fiscal_year = fiscal_years[0][0]
 
 		gl_dict = frappe._dict({
-			'company': self.company,
-			'posting_date': posting_date,
-			'fiscal_year': fiscal_year,
-			'voucher_type': self.doctype,
-			'voucher_no': self.name,
-			'remarks': self.get("remarks") or self.get("remark"),
-			'debit': 0,
-			'credit': 0,
-			'debit_in_account_currency': 0,
-			'credit_in_account_currency': 0,
-			'is_opening': self.get("is_opening") or "No",
-			'party_type': None,
-			'party': None,
-			'project': item and item.get("project") or self.get("project"),
-			'cost_center': item and item.get("cost_center") or self.get("cost_center"),
-			'reference_no': self.get("reference_no") or self.get("cheque_no") or self.get("bill_no"),
-			'reference_date': self.get("reference_date") or self.get("cheque_date") or self.get("bill_date")
+			"company": self.company,
+			"posting_date": posting_date,
+			"fiscal_year": fiscal_year,
+			"voucher_type": self.doctype,
+			"voucher_no": self.name,
+			"remarks": self.get("remarks") or self.get("remark"),
+			"debit": 0,
+			"credit": 0,
+			"debit_in_account_currency": 0,
+			"credit_in_account_currency": 0,
+			"is_opening": self.get("is_opening") or "No",
+			"party_type": None,
+			"party": None,
+			"project": (item and item.get("project")) or self.get("project"),
+			"cost_center": (item and item.get("cost_center")) or self.get("cost_center"),
+			"reference_no": self.get("reference_no") or self.get("cheque_no") or self.get("bill_no"),
+			"reference_date": self.get("reference_date") or self.get("cheque_date") or self.get("bill_date"),
 		})
 
 		accounting_dimensions = get_accounting_dimensions(as_list=False)
@@ -405,8 +407,8 @@ class AccountsController(TransactionBase):
 			if item and item.get(dimension.fieldname):
 				dimension_dict[dimension.fieldname] = item.get(dimension.fieldname)
 
-			if not args.get(dimension.fieldname) and args.get('party') and args.get('party_type') == dimension.document_type:
-				dimension_dict[dimension.fieldname] = args.get('party')
+			if not args.get(dimension.fieldname) and args.get("party") and args.get("party_type") == dimension.document_type:
+				dimension_dict[dimension.fieldname] = args.get("party")
 
 		gl_dict.update(dimension_dict)
 		gl_dict.update(args)
@@ -427,7 +429,7 @@ class AccountsController(TransactionBase):
 
 		if account_currency not in valid_currency:
 			frappe.throw(_("Account {0} is invalid. Account Currency must be {1}").format(
-				account, _(" or ").join(valid_currency)
+				account, _(" or ").join(valid_currency),
 			))
 
 	def unlink_payments_on_invoice_cancel(self):
@@ -435,7 +437,7 @@ class AccountsController(TransactionBase):
 			unlink_voucher_from_payments(self.doctype, self.name, True)
 
 	def unlink_payments_on_order_cancel(self):
-		if frappe.db.get_single_value('Accounts Settings', 'unlink_advance_payment_on_cancelation_of_order'):
+		if frappe.db.get_single_value("Accounts Settings", "unlink_advance_payment_on_cancelation_of_order"):
 			unlink_voucher_from_payments(self.doctype, self.name, True)
 
 	@frappe.whitelist()
@@ -463,7 +465,7 @@ class AccountsController(TransactionBase):
 				"remarks": d.remarks,
 				"advance_amount": flt(d.amount),
 				"paid_amount": flt(d.total_paid_amount) or flt(d.amount),
-				"exchange_rate": flt(d.exchange_rate) or 1
+				"exchange_rate": flt(d.exchange_rate) or 1,
 			})
 
 			remaining_amount = flt(grand_total) - total_advance_allocated
@@ -476,7 +478,7 @@ class AccountsController(TransactionBase):
 				row.advance_total = advance_total
 				row.advance_tax = flt(row.advance_total - row.advance_amount, self.precision("total_advance"))
 
-			allocated_amount = flt(min(remaining_amount, advance_total), self.precision('total_advance'))
+			allocated_amount = flt(min(remaining_amount, advance_total), self.precision("total_advance"))
 			row.allocated_amount = allocated_amount
 
 			total_advance_allocated += flt(allocated_amount)
@@ -551,7 +553,7 @@ class AccountsController(TransactionBase):
 
 	def get_advance_entries(self, include_unallocated=True, against_project=None):
 		party_account = self.get_party_account()
-		party_type, party, party_name = self.get_billing_party()
+		party_type, party, _party_name = self.get_billing_party()
 		order_list = self.get_orders_for_advance_entries()
 
 		if not party_account or not party_type or not party:
@@ -600,22 +602,22 @@ class AccountsController(TransactionBase):
 		if self.party_account_currency == self.currency:
 			invoice_total = flt(
 				grand_total - flt(self.get("write_off_amount")) - flt(self.get("prepaid_deferred_revenue")),
-				self.precision("grand_total")
+				self.precision("grand_total"),
 			)
 		else:
 			base_write_off_amount = flt(
 				flt(self.get("write_off_amount")) * self.conversion_rate,
-				self.precision("base_write_off_amount")
+				self.precision("base_write_off_amount"),
 			)
 			invoice_total = flt(
 				(grand_total * self.conversion_rate) - base_write_off_amount - flt(self.get("prepaid_deferred_revenue")),
-				self.precision("grand_total")
+				self.precision("grand_total"),
 			)
 
 		if invoice_total > 0 and self.total_advance > invoice_total:
 			frappe.throw(_("Total Advance amount cannot be greater than {0} {1}").format(
 				self.party_account_currency,
-				frappe.format(invoice_total, df=self.meta.get_field("total_advance"), doc=self)
+				frappe.format(invoice_total, df=self.meta.get_field("total_advance"), doc=self),
 			))
 
 	def check_advance_payment_against_order(self):
@@ -628,7 +630,7 @@ class AccountsController(TransactionBase):
 
 		advance_entries = self.get_advance_entries(
 			include_unallocated=True if self.get("project") else False,
-			against_project=self.get("project")
+			against_project=self.get("project"),
 		)
 		if advance_entries:
 			advance_entries_against_si = [d.reference_name for d in self.get("advances")]
@@ -654,7 +656,7 @@ class AccountsController(TransactionBase):
 				3. submit advance voucher
 		"""
 
-		party_type, party, party_name = self.get_billing_party()
+		party_type, party, _party_name = self.get_billing_party()
 		party_account = self.get_party_account()
 		account_currency = get_account_currency(party_account)
 		if not party_type or not party or not party_account:
@@ -667,7 +669,7 @@ class AccountsController(TransactionBase):
 		invoice_amounts = {
 			"grand_total": flt(payment_reference_details.get("total_amount")),
 			"exchange_rate": flt(payment_reference_details.get("exchange_rate")) or 1,
-			"outstanding_amount": flt(payment_reference_details.get("outstanding_amount"))
+			"outstanding_amount": flt(payment_reference_details.get("outstanding_amount")),
 		}
 
 		reconciliation_list = []
@@ -744,13 +746,13 @@ class AccountsController(TransactionBase):
 			gles = frappe.get_all(
 				"GL Entry",
 				filters={
-					"voucher_type": self.doctype, "voucher_no": self.name
+					"voucher_type": self.doctype, "voucher_no": self.name,
 				},
 				fields=[
-					'account', 'remarks', 'party_type', 'party', 'debit', 'credit',
-					'against_voucher', 'against_voucher_type', 'reference_no', 'reference_date'
+					"account", "remarks", "party_type", "party", "debit", "credit",
+					"against_voucher", "against_voucher_type", "reference_no", "reference_date",
 				] + dimension_fields,
-				order_by="creation"
+				order_by="creation",
 			)
 		else:
 			gles = self.get_gl_entries()
@@ -769,7 +771,7 @@ class AccountsController(TransactionBase):
 				"remarks": cstr(gle.remarks),
 				"reference_no": cstr(gle.reference_no),
 				"reference_date": cstr(gle.reference_date),
-				"sum": 0, "against_voucher_set": set(), "against_voucher": []
+				"sum": 0, "against_voucher_set": set(), "against_voucher": [],
 			}))
 			for f in dimension_fields:
 				group[f] = cstr(gle.get(f))
@@ -783,8 +785,8 @@ class AccountsController(TransactionBase):
 
 			for against_voucher_type, against_voucher in d.against_voucher_set:
 				bill_no = None
-				if against_voucher_type in ['Journal Entry', 'Purchase Invoice']:
-					bill_no = frappe.db.get_value(against_voucher_type, against_voucher, 'bill_no')
+				if against_voucher_type in ["Journal Entry", "Purchase Invoice"]:
+					bill_no = frappe.db.get_value(against_voucher_type, against_voucher, "bill_no")
 
 				if bill_no:
 					d.against_voucher.append(bill_no)
@@ -800,11 +802,11 @@ class AccountsController(TransactionBase):
 	def get_party_to_party_name_dict(self):
 		self.party_to_party_name = {}
 		if self.doctype == "Payment Entry":
-			self.party_to_party_name[(self.party_type, self.party)] = self.party_name
+			self.party_to_party_name[self.party_type, self.party] = self.party_name
 		if self.doctype == "Journal Entry":
 			for d in self.accounts:
 				if d.party_type and d.party and d.party_name:
-					self.party_to_party_name[(d.party_type, d.party)] = d.party_name
+					self.party_to_party_name[d.party_type, d.party] = d.party_name
 
 	def validate_deferred_start_and_end_date(self):
 		if self.get("is_return"):
@@ -873,7 +875,7 @@ def can_unlink_advances_from_doctype(doctype, validate_permissions=False):
 
 	if validate_permissions:
 		allow_unlink_setting = cint(
-			frappe.db.get_single_value("Accounts Settings", "unlink_advance_on_cancellation_of_payment")
+			frappe.db.get_single_value("Accounts Settings", "unlink_advance_on_cancellation_of_payment"),
 		)
 		allow_unlink_role = frappe.db.get_single_value("Accounts Settings", "restrict_unlink_payments_to_role")
 		has_unlink_role_permission = not allow_unlink_role or allow_unlink_role in frappe.get_roles()
@@ -886,7 +888,7 @@ def can_unlink_advances_from_doctype(doctype, validate_permissions=False):
 def validate_conversion_rate(currency, conversion_rate, conversion_rate_label, company):
 	"""common validation for currency and price list currency"""
 
-	company_currency = frappe.get_cached_value('Company',  company,  "default_currency")
+	company_currency = frappe.get_cached_value("Company", company, "default_currency")
 
 	if not conversion_rate:
 		frappe.throw(_("{0} is mandatory. Maybe Currency Exchange record is not created for {1} to {2}.").format(
@@ -914,11 +916,11 @@ def get_supplier_block_status(party_name):
 	Returns a dict containing the values of `on_hold`, `release_date` and `hold_type` of
 	a `Supplier`
 	"""
-	supplier = frappe.get_doc('Supplier', party_name)
+	supplier = frappe.get_doc("Supplier", party_name)
 	info = {
-		'on_hold': supplier.on_hold,
-		'release_date': supplier.release_date,
-		'hold_type': supplier.hold_type
+		"on_hold": supplier.on_hold,
+		"release_date": supplier.release_date,
+		"hold_type": supplier.hold_type,
 	}
 	return info
 

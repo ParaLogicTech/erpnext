@@ -3,25 +3,26 @@
 
 import frappe
 
+
 def execute(filters=None):
 	columns = [
 		{
-			'fieldname': 'creation_date',
-			'label': 'Date',
-			'fieldtype': 'Date'
+			"fieldname": "creation_date",
+			"label": "Date",
+			"fieldtype": "Date",
 		},
 		{
-			'fieldname': 'mins',
-			'fieldtype': 'Float',
-			'label': 'Mins to First Response'
+			"fieldname": "mins",
+			"fieldtype": "Float",
+			"label": "Mins to First Response",
 		},
 	]
 
-	data = frappe.db.sql('''select date(creation) as creation_date,
+	data = frappe.db.sql("""select date(creation) as creation_date,
 		avg(mins_to_first_response) as mins
 		from tabIssue
 			where date(creation) between %s and %s
 			and mins_to_first_response > 0
-		group by creation_date order by creation_date desc''', (filters.from_date, filters.to_date))
+		group by creation_date order by creation_date desc""", (filters.from_date, filters.to_date))
 
 	return columns, data

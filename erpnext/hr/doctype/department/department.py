@@ -3,11 +3,12 @@
 
 import frappe
 from frappe.utils.nestedset import NestedSet, get_root_of
+
 from erpnext.utilities.transaction_base import delete_events
 
 
 class Department(NestedSet):
-	nsm_parent_field = 'parent_department'
+	nsm_parent_field = "parent_department"
 
 	def autoname(self):
 		root = get_root_of("Department")
@@ -24,12 +25,12 @@ class Department(NestedSet):
 
 	def before_rename(self, old, new, merge=False):
 		# renaming consistency with abbreviation
-		abbr = frappe.get_cached_value('Company',  self.company,  'abbr')
+		abbr = frappe.get_cached_value("Company", self.company, "abbr")
 
-		if not abbr in new:
+		if abbr not in new:
 			new = get_abbreviated_name(new, self.company)
 
-		without_abbr = new[:-3-len(abbr)] if new.endswith(" - {0}".format(abbr)) else new
+		without_abbr = new[:-3 - len(abbr)] if new.endswith(" - {0}".format(abbr)) else new
 		frappe.db.set_value("Department", old, "department_name", without_abbr)
 
 		return new
@@ -47,14 +48,14 @@ def on_doctype_update():
 
 
 def get_abbreviated_name(name, company):
-	abbr = frappe.get_cached_value('Company',  company,  'abbr')
-	new_name = '{0} - {1}'.format(name, abbr)
+	abbr = frappe.get_cached_value("Company", company, "abbr")
+	new_name = "{0} - {1}".format(name, abbr)
 	return new_name
 
 
 @frappe.whitelist()
 def get_children(doctype, parent=None, company=None, is_root=False):
-	condition = ''
+	condition = ""
 	var_dict = {
 		"name": get_root_of("Department"),
 		"parent": parent,

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 # ERPNext - web based ERP (http://erpnext.com)
 # Copyright (C) 2012 Frappe Technologies Pvt Ltd
@@ -22,5 +21,5 @@
 product_name = "ERPNext"
 user_defaults = {
 	"Company": "company",
-	"Territory": "territory"
+	"Territory": "territory",
 }

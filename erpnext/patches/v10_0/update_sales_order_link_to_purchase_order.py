@@ -2,10 +2,11 @@
 
 import frappe
 
+
 def execute():
 	frappe.reload_doc("buying", "doctype", "supplier_quotation_item")
 
-	for doctype in ['Purchase Order','Supplier Quotation']:
+	for doctype in ["Purchase Order", "Supplier Quotation"]:
 		frappe.db.sql("""
 			Update
 				`tab{doctype} Item`, `tabMaterial Request Item`

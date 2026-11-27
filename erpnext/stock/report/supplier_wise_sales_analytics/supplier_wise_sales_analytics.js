@@ -4,25 +4,25 @@
 frappe.query_reports["Supplier-Wise Sales Analytics"] = {
 	"filters": [
 		{
-			"fieldname":"supplier",
+			"fieldname": "supplier",
 			"label": __("Supplier"),
 			"fieldtype": "Link",
 			"options": "Supplier",
-			"width": "80"
+			"width": "80",
 		},
 		{
-			"fieldname":"from_date",
+			"fieldname": "from_date",
 			"label": __("From Date"),
 			"fieldtype": "Date",
 			"width": "80",
-			"default": frappe.datetime.month_start()
+			"default": frappe.datetime.month_start(),
 		},
 		{
-			"fieldname":"to_date",
+			"fieldname": "to_date",
 			"label": __("To Date"),
 			"fieldtype": "Date",
 			"width": "80",
-			"default": frappe.datetime.month_end()
+			"default": frappe.datetime.month_end(),
 		},
-	]
-}
+	],
+};

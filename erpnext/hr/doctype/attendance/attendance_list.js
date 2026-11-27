@@ -1,4 +1,4 @@
-frappe.listview_settings['Attendance'] = {
+frappe.listview_settings["Attendance"] = {
 	add_fields: ["status", "attendance_date"],
 	get_indicator: function(doc) {
 		if (doc.status == "Present") {
@@ -12,5 +12,5 @@ frappe.listview_settings['Attendance'] = {
 		} else {
 			return [__(doc.status), "grey", "status,=," + doc.status];
 		}
-	}
+	},
 };

@@ -10,8 +10,8 @@ frappe.query_reports["Quoted Item Comparison"] = {
 			fieldname: "supplier_quotation",
 			default: "",
 			get_query: () => {
-				return { filters: { "docstatus": ["<", 2] } }
-			}
+				return {filters: {"docstatus": ["<", 2]}};
+			},
 		},
 		{
 			reqd: 1,
@@ -21,23 +21,23 @@ frappe.query_reports["Quoted Item Comparison"] = {
 			fieldname: "item",
 			fieldtype: "Link",
 			get_query: () => {
-				let quote = frappe.query_report.get_filter_value('supplier_quotation');
+				let quote = frappe.query_report.get_filter_value("supplier_quotation");
 				if (quote != "") {
 					return {
 						query: "erpnext.stock.doctype.quality_inspection.quality_inspection.item_query",
 						filters: {
 							"from": "Supplier Quotation Item",
-							"parent": quote
-						}
-					}
+							"parent": quote,
+						},
+					};
 				}
 				else {
 					return {
-						filters: { "disabled": 0 }
-					}
+						filters: {"disabled": 0},
+					};
 				}
-			}
-		}
+			},
+		},
 	],
 	onload: (report) => {
 		// Create a button for setting the default supplier
@@ -46,43 +46,43 @@ frappe.query_reports["Quoted Item Comparison"] = {
 
 			//Always make a new one so that the latest values get updated
 			reporter.make_default_supplier_dialog(report);
-		}, 'Tools');
+		}, "Tools");
 
 	},
 	make_default_supplier_dialog: (report) => {
 		// Get the name of the item to change
-		if(!report.data) return;
+		if (!report.data) return;
 
 		let filters = report.get_values();
 		let item_code = filters.item;
 
 		// Get a list of the suppliers (with a blank as well) for the user to select
-		let suppliers = $.map(report.data, (row, idx)=>{ return row.supplier_name })
+		let suppliers = $.map(report.data, (row, idx) => { return row.supplier_name; });
 
 		// Create a dialog window for the user to pick their supplier
 		let dialog = new frappe.ui.Dialog({
-			title: __('Select Default Supplier'),
+			title: __("Select Default Supplier"),
 			fields: [
 				{
 					reqd: 1,
-					label: 'Supplier',
-					fieldtype: 'Link',
-					options: 'Supplier',
-					fieldname: 'supplier',
+					label: "Supplier",
+					fieldtype: "Link",
+					options: "Supplier",
+					fieldname: "supplier",
 					get_query: () => {
 						return {
 							filters: {
-								'name': ['in', suppliers]
-							}
-						}
-					}
-				}
-			]
+								"name": ["in", suppliers],
+							},
+						};
+					},
+				},
+			],
 		});
 
 		dialog.set_primary_action("Set Default Supplier", () => {
 			let values = dialog.get_values();
-			if(values) {
+			if (values) {
 				// Set the default_supplier field of the appropriate Item to the selected supplier
 				frappe.call({
 					method: "frappe.client.set_value",
@@ -96,12 +96,10 @@ frappe.query_reports["Quoted Item Comparison"] = {
 					callback: (r) => {
 						frappe.msgprint(__("Successfully Set Supplier"));
 						dialog.hide();
-					}
+					},
 				});
 			}
 		});
 		dialog.show();
-	}
-}
-
-
+	},
+};

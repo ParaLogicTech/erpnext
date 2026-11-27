@@ -9,7 +9,7 @@ frappe.query_reports["Account Group Mapping"] = {
 			fieldtype: "Link",
 			options: "Company",
 			default: frappe.defaults.get_user_default("Company"),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "report_type",
@@ -18,14 +18,14 @@ frappe.query_reports["Account Group Mapping"] = {
 			options: ["Profit and Loss", "Balance Sheet"],
 			default: "Profit and Loss",
 			description: __("Filter by Report Type for Account Groups and Accounts"),
-			reqd: 1
+			reqd: 1,
 		},
 		{
 			fieldname: "root_type",
 			label: __("Root Type"),
 			fieldtype: "Select",
 			options: ["", "Income", "Expense", "Asset", "Liability", "Equity"],
-			description: __("Filter by Root Type for Accounts only")
+			description: __("Filter by Root Type for Accounts only"),
 		},
 		{
 			fieldname: "from_date",
@@ -46,7 +46,7 @@ frappe.query_reports["Account Group Mapping"] = {
 		},
 	],
 
-	onChange: function (new_value, column, data) {
+	onChange: function(new_value, column, data) {
 		const old_value = data[column.fieldname];
 
 		frappe.call({
@@ -54,11 +54,11 @@ frappe.query_reports["Account Group Mapping"] = {
 			args: {
 				account: data.account,
 				old_group: old_value,
-				new_group: new_value
+				new_group: new_value,
 			},
-			callback: function () {
+			callback: function() {
 				frappe.query_report.refresh();
-			}
+			},
 		});
 	},
 };

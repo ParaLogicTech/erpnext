@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import strip_html, cstr, cint
 from frappe.model.document import Document
-import json
+from frappe.utils import cint, cstr, strip_html
 
 
 class ItemApplicableItem(Document):
@@ -24,11 +24,11 @@ def add_applicable_items(target_doc, applies_to_item, item_groups=None, items_ty
 	if not item_groups:
 		item_groups = []
 
-	if not target_doc.meta.has_field('items'):
+	if not target_doc.meta.has_field("items"):
 		frappe.throw(_("Target document does not have items table"))
 
 	# remove first empty row
-	if target_doc.get('items') and not target_doc.items[0].item_code and not target_doc.items[0].item_name:
+	if target_doc.get("items") and not target_doc.items[0].item_code and not target_doc.items[0].item_name:
 		target_doc.remove(target_doc.items[0])
 
 	applicable_items = get_applicable_items(applies_to_item, item_groups, items_type=items_type)
@@ -89,27 +89,27 @@ def append_applicable_items(target_doc, applicable_items, check_duplicate=False,
 				continue
 
 			# add item
-			trn_item = target_doc.append('items', frappe.new_doc(target_doc.meta.get_options("items")))
+			trn_item = target_doc.append("items", frappe.new_doc(target_doc.meta.get_options("items")))
 			trn_item.item_code = applicable_item.applicable_item_code
 			trn_item.qty = applicable_item.applicable_qty
 			trn_item.uom = applicable_item.applicable_uom
 
 			if service_template_detail:
-				if trn_item.meta.has_field('service_template'):
-					trn_item.service_template = service_template_detail.get('service_template')
-				if trn_item.meta.has_field('service_template_detail'):
-					trn_item.service_template_detail = service_template_detail.get('name')
+				if trn_item.meta.has_field("service_template"):
+					trn_item.service_template = service_template_detail.get("service_template")
+				if trn_item.meta.has_field("service_template_detail"):
+					trn_item.service_template_detail = service_template_detail.get("name")
 
-				if applicable_item.get('use_template_name') and service_template_detail.get('service_template_name'):
-					trn_item.item_name = service_template_detail.get('service_template_name')
+				if applicable_item.get("use_template_name") and service_template_detail.get("service_template_name"):
+					trn_item.item_name = service_template_detail.get("service_template_name")
 
-				if applicable_item.get('use_template_description') and strip_html(cstr(service_template_detail.get('description'))).strip():
+				if applicable_item.get("use_template_description") and strip_html(cstr(service_template_detail.get("description"))).strip():
 					trn_item.description = service_template_detail.description
 
 
 def filter_applicable_item(applicable_item, item_groups, items_type=None):
 	# filter out inactive applicable item
-	if applicable_item.get('inactive'):
+	if applicable_item.get("inactive"):
 		return True
 
 	applicable_item_doc = frappe.get_cached_doc("Item", applicable_item.applicable_item_code)

@@ -1,12 +1,13 @@
 from frappe import _
 
+
 def get_data():
 	return {
-		'fieldname': 'promotional_scheme',
-		'transactions': [
+		"fieldname": "promotional_scheme",
+		"transactions": [
 			{
-				'label': _('Reference'),
-				'items': ['Pricing Rule']
-			}
-		]
+				"label": _("Reference"),
+				"items": ["Pricing Rule"],
+			},
+		],
 	}

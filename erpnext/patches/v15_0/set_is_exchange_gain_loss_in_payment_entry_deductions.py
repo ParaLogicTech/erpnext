@@ -18,5 +18,5 @@ def execute():
 		payment_entry,
 	).on(payment_entry.name == payment_entry_deduction.parent).where(
 		(payment_entry.paid_to_account_currency != payment_entry.paid_from_account_currency)
-		& (payment_entry_deduction.account.isin(default_exchange_gain_loss_accounts))
+		& (payment_entry_deduction.account.isin(default_exchange_gain_loss_accounts)),
 	).run()

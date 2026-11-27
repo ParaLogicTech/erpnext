@@ -9,7 +9,7 @@ frappe.query_reports["Trial Balance"] = {
 			"fieldtype": "Link",
 			"options": "Company",
 			"default": frappe.defaults.get_user_default("Company"),
-			"reqd": 1
+			"reqd": 1,
 		},
 		{
 			"fieldname": "fiscal_year",
@@ -27,10 +27,10 @@ frappe.query_reports["Trial Balance"] = {
 					var fy = frappe.model.get_doc("Fiscal Year", fiscal_year);
 					frappe.query_report.set_filter_value({
 						from_date: fy.year_start_date,
-						to_date: fy.year_end_date
+						to_date: fy.year_end_date,
 					});
 				});
-			}
+			},
 		},
 		{
 			"fieldname": "from_date",
@@ -58,14 +58,14 @@ frappe.query_reports["Trial Balance"] = {
 			"fieldtype": "Link",
 			"options": "Cost Center",
 			get_query: () => {
-				return { filters: { company: frappe.query_report.get_filter_value("company") } };
+				return {filters: {company: frappe.query_report.get_filter_value("company")}};
 			},
 		},
 		{
 			"fieldname": "project",
 			"label": __("Project"),
 			"fieldtype": "Link",
-			"options": "Project"
+			"options": "Project",
 		},
 		{
 			"fieldname": "finance_book",
@@ -77,23 +77,23 @@ frappe.query_reports["Trial Balance"] = {
 			"fieldname": "with_period_closing_entry",
 			"label": __("Period Closing Entry"),
 			"fieldtype": "Check",
-			"default": 1
+			"default": 1,
 		},
 		{
 			"fieldname": "show_zero_values",
 			"label": __("Show zero values"),
-			"fieldtype": "Check"
+			"fieldtype": "Check",
 		},
 		{
 			"fieldname": "show_unclosed_fy_pl_balances",
 			"label": __("Show unclosed fiscal year's P&L balances"),
-			"fieldtype": "Check"
+			"fieldtype": "Check",
 		},
 		{
 			"fieldname": "include_default_book_entries",
 			"label": __("Include Default Book Entries"),
 			"fieldtype": "Check",
-			"default": 1
+			"default": 1,
 		},
 		{
 			"fieldname": "show_tree",
@@ -105,7 +105,7 @@ frappe.query_reports["Trial Balance"] = {
 	"tree": true,
 	"name_field": "account",
 	"parent_field": "parent_account",
-}
+};
 
-erpnext.utils.add_dimensions('Trial Balance', 6);
-erpnext.utils.add_additional_gl_filters('Trial Balance');
+erpnext.utils.add_dimensions("Trial Balance", 6);
+erpnext.utils.add_additional_gl_filters("Trial Balance");

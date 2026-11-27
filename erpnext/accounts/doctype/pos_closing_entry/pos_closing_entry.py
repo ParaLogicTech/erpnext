@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-import erpnext
 from frappe import _
-from frappe.utils import flt, getdate, get_datetime, get_time, cint, cstr
 from frappe.model.document import Document
-from erpnext.accounts.doctype.pos_opening_entry.pos_opening_entry import get_pos_opening_entry
+from frappe.utils import cint, cstr, flt, get_datetime, get_time, getdate
+
+import erpnext
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_document_dimensions
 from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
+from erpnext.accounts.doctype.pos_opening_entry.pos_opening_entry import get_pos_opening_entry
 
 
 class POSClosingEntry(Document):
@@ -52,13 +52,13 @@ class POSClosingEntry(Document):
 
 			if d.expected_amount and not d.closing_amount:
 				frappe.throw(_("Row #{0}: Please set Closing Amount for Mode of Payment {1}").format(
-					d.idx, frappe.bold(d.mode_of_payment)
+					d.idx, frappe.bold(d.mode_of_payment),
 				))
 
 			if d.type == "Cash" and self.total_cash:
 				if flt(d.closing_amount) != flt(self.total_cash):
 					frappe.throw(_("Row #{0}: Mode of Payment {1} should match Total Cash {2}").format(
-						d.idx, d.mode_of_payment, self.get_formatted("total_cash")
+						d.idx, d.mode_of_payment, self.get_formatted("total_cash"),
 					))
 
 	@frappe.whitelist()
@@ -227,7 +227,7 @@ class POSClosingEntry(Document):
 	def set_payment_details(self, payment_details):
 		self.payment_details = []
 		for d in payment_details:
-			self.append('payment_details', d)
+			self.append("payment_details", d)
 
 	def set_summary_values(self, invoices):
 		self.total_invoices = len(invoices)
@@ -245,7 +245,7 @@ class POSClosingEntry(Document):
 			if row:
 				row = row[0]
 			else:
-				row = self.append('payment_reconciliation', {
+				row = self.append("payment_reconciliation", {
 					"mode_of_payment": mode_of_payment,
 					"type": frappe.get_cached_value("Mode of Payment", mode_of_payment, "type"),
 				})
@@ -254,7 +254,7 @@ class POSClosingEntry(Document):
 
 		# Calculate Previous Values
 		user_closing_amounts = {}
-		for row in self.get('payment_reconciliation'):
+		for row in self.get("payment_reconciliation"):
 			if row.mode_of_payment:
 				user_closing_amounts.setdefault(row.mode_of_payment, 0)
 				user_closing_amounts[row.mode_of_payment] += flt(row.closing_amount)
@@ -282,7 +282,7 @@ class POSClosingEntry(Document):
 			row.closing_amount = closing_amount
 
 		# Expected Amount
-		for row in self.get('payment_reconciliation'):
+		for row in self.get("payment_reconciliation"):
 			row.expected_amount = flt(row.opening_amount) + flt(row.collected_amount)
 
 	def sort_modes_of_payment(self):
@@ -302,9 +302,9 @@ class POSClosingEntry(Document):
 		self.payment_details = sorted(self.payment_details, key=lambda d: get_mode_index(d.mode_of_payment))
 
 		for i, d in enumerate(self.payment_reconciliation):
-			d.idx = i+1
+			d.idx = i + 1
 		for i, d in enumerate(self.payment_details):
-			d.idx = i+1
+			d.idx = i + 1
 
 	def set_accounts(self):
 		self.head_cashier_account = frappe.get_cached_value("POS Profile", self.pos_profile, "head_cashier_account")
@@ -324,22 +324,22 @@ class POSClosingEntry(Document):
 	def set_taxes(self, taxes):
 		self.taxes = []
 		for tax in taxes:
-			self.append('taxes', {
-				'account_head': tax['account_head'],
-				'rate': tax['rate'],
-				'amount': tax['amount']
+			self.append("taxes", {
+				"account_head": tax["account_head"],
+				"rate": tax["rate"],
+				"amount": tax["amount"],
 			})
 
 	def validate_duplicate(self):
-		user = frappe.get_all('POS Closing Entry',
+		user = frappe.get_all("POS Closing Entry",
 			filters={
-				'user': self.user,
-				'docstatus': 1
+				"user": self.user,
+				"docstatus": 1,
 			},
 			or_filters={
-				'period_start_date': ('between', [self.period_start_date, self.period_end_date]),
-				'period_end_date': ('between', [self.period_start_date, self.period_end_date])
-			}
+				"period_start_date": ("between", [self.period_start_date, self.period_end_date]),
+				"period_end_date": ("between", [self.period_start_date, self.period_end_date]),
+			},
 		)
 
 		if user:
@@ -434,7 +434,7 @@ def get_pos_payment_details(invoices, payment_entries):
 		d.type = frappe.get_cached_value("Mode of Payment", d.mode_of_payment, "type")
 
 		payment_summary.setdefault(d.mode_of_payment, frappe._dict({
-			"mode_of_payment": d.mode_of_payment, "qty": 0, "collected_amount": 0
+			"mode_of_payment": d.mode_of_payment, "qty": 0, "collected_amount": 0,
 		}))
 		payment_summary[d.mode_of_payment].collected_amount += d.paid_amount
 		payment_summary[d.mode_of_payment].qty += 1
@@ -500,7 +500,7 @@ def get_tax_details(invoices, payment_entries):
 
 	out = []
 	for (account_head, tax_rate), tax_amount in tax_breakup.items():
-		out.append(frappe._dict({'account_head': account_head, "rate": tax_rate, 'amount': tax_amount}))
+		out.append(frappe._dict({"account_head": account_head, "rate": tax_rate, "amount": tax_amount}))
 
 	out = sorted(out, key=lambda d: flt(d.rate), reverse=1)
 	return out
@@ -546,7 +546,7 @@ def make_journal_entry(pce, is_deposit=False):
 	je.branch = pce.branch
 	je.voucher_type = "Deposit Entry" if is_deposit else "Journal Entry"
 	je.user_remark = _("POS Closing Transfer Entry for Cashier {0} POS Profile {1}").format(
-		pce.user_name or pce.user, pce.pos_profile
+		pce.user_name or pce.user, pce.pos_profile,
 	)
 	if pos_profile.cost_center:
 		je.cost_center = pos_profile.cost_center
@@ -616,7 +616,7 @@ def append_credit_accounts(pce, je, override_account=None):
 			"reference_name": pce.name,
 			"credit_in_account_currency": abs(group.paid_amount) if group.paid_amount > 0 else 0,
 			"debit_in_account_currency": abs(group.paid_amount) if group.paid_amount < 0 else 0,
-			"user_remark": _("Till Balance Transfer")
+			"user_remark": _("Till Balance Transfer"),
 		})
 		row.update(group.dimensions)
 

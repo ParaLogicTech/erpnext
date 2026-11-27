@@ -1,5 +1,7 @@
 import frappe
+
 from erpnext.controllers.taxes_and_totals import get_itemised_tax_breakup_html
+
 
 def execute():
 	company = frappe.db.sql_list("select name from tabCompany where country = 'India'")
@@ -23,7 +25,7 @@ def execute():
 				and ifnull(dt_item.gst_hsn_code, '') = ''
 				and ifnull(dt_item.item_code, '') != ''
 				and dt.company in ({company})
-		""".format(dt=dt, date_field=date_field, company=", ".join(['%s']*len(company))), tuple(company), as_dict=1)
+		""".format(dt=dt, date_field=date_field, company=", ".join(["%s"] * len(company))), tuple(company), as_dict=1)
 
 		if not transactions:
 			continue
@@ -34,7 +36,7 @@ def execute():
 			update `tab{dt} Item` dt_item
 			set dt_item.gst_hsn_code = (select gst_hsn_code from tabItem where name=dt_item.item_code)
 			where dt_item.name in ({rows_name})
-		""".format(dt=dt, rows_name=", ".join(['%s']*len(transaction_rows_name))), tuple(transaction_rows_name))
+		""".format(dt=dt, rows_name=", ".join(["%s"] * len(transaction_rows_name))), tuple(transaction_rows_name))
 
 		parent = set([d.name for d in transactions])
 		for t in list(parent):

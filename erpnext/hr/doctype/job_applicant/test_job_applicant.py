@@ -1,14 +1,16 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
 
 # test_records = frappe.get_test_records('Job Applicant')
 
+
 class TestJobApplicant(unittest.TestCase):
 	pass
+
 
 def create_job_applicant(**args):
 	args = frappe._dict(args)
@@ -16,7 +18,7 @@ def create_job_applicant(**args):
 		"doctype": "Job Applicant",
 		"applicant_name": args.applicant_name or "_Test Applicant",
 		"email_id": args.email_id or "test_applicant@example.com",
-		"status": args.status or "Open"
+		"status": args.status or "Open",
 	})
 	job_applicant.save()
 	return job_applicant

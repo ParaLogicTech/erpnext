@@ -1,6 +1,7 @@
 import frappe
 from frappe.utils import flt
 
+
 def execute():
 	frappe.reload_doc("stock", "doctype", "item")
 	frappe.reload_doc("stock", "doctype", "uom_conversion_detail")
@@ -18,13 +19,13 @@ def execute():
 					"from_qty": flt(d.conversion_factor, doc.precision("to_qty", "uom_conversion_graph")),
 					"from_uom": doc.stock_uom,
 					"to_qty": 1.0,
-					"to_uom": d.uom
+					"to_uom": d.uom,
 				})
 			else:
 				conv = doc.append("uom_conversion_graph", {
 					"from_qty": 1.0,
 					"from_uom": doc.stock_uom,
-					"to_qty": flt(1/flt(d.conversion_factor), doc.precision("to_qty", "uom_conversion_graph")),
-					"to_uom": d.uom
+					"to_qty": flt(1 / flt(d.conversion_factor), doc.precision("to_qty", "uom_conversion_graph")),
+					"to_uom": d.uom,
 				})
 			conv.db_insert()

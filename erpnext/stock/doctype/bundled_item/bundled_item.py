@@ -3,13 +3,15 @@
 
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import flt
 from frappe.model.document import Document
-from erpnext.stock.get_item_details import get_item_details, get_default_warehouse
+from frappe.utils import flt
+
 from erpnext.setup.doctype.item_group.item_group import get_item_group_subtree
-import json
+from erpnext.stock.get_item_details import get_default_warehouse, get_item_details
 
 
 class BundledItem(Document):
@@ -56,7 +58,7 @@ def update_child_item_row(doc, bundle_row, parent_row, previous_detail_docname=N
 		break
 
 	if not child_row:
-		child_row = doc.append('bundled_items')
+		child_row = doc.append("bundled_items")
 		set_child_row_balance_qty(doc, bundle_row, child_row)
 
 	update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_detail_docname=previous_detail_docname)
@@ -79,7 +81,7 @@ def update_child_item_group_row(doc, bundle_row, parent_row):
 		break
 
 	if not child_row:
-		child_row = doc.append('bundled_items')
+		child_row = doc.append("bundled_items")
 
 	update_packing_list_item(doc, bundle_row, parent_row, child_row)
 
@@ -160,7 +162,7 @@ def update_packing_list_item(doc, bundle_row, parent_row, child_row, previous_de
 	child_row.actual_qty = flt(bin_details.get("actual_qty"))
 	child_row.projected_qty = flt(bin_details.get("projected_qty"))
 
-	if doc.doctype == "Delivery Note" or (doc.doctype == "Sales Invoice" and doc.update_stock) and doc.docstatus == 1:
+	if doc.doctype == "Delivery Note" or ((doc.doctype == "Sales Invoice" and doc.update_stock) and doc.docstatus == 1):
 		child_row.delivered_qty = child_row.qty
 
 	child_row.flags.is_updated = True
@@ -245,7 +247,7 @@ def get_items_from_product_bundle(args):
 		if item.item_code:
 			args.update({
 				"item_code": item.item_code,
-				"qty": flt(args["quantity"]) * flt(item.qty)
+				"qty": flt(args["quantity"]) * flt(item.qty),
 			})
 			items.append(get_item_details(args))
 
@@ -267,7 +269,7 @@ def validate_bundled_items_for_parent_row(doc, parent_row):
 	for child_row in child_rows:
 		if not child_row.item_code and doc.docstatus == 1:
 			frappe.throw(_("Bundled Item Row #{0}: Please select Bundled Item for Parent Item {1} for Item Group {2}").format(
-				child_row.idx, frappe.bold(parent_row.item_code), frappe.bold(child_row.item_group)
+				child_row.idx, frappe.bold(parent_row.item_code), frappe.bold(child_row.item_group),
 			))
 
 		if child_row.type == "Item Group" and child_row.item_code and child_row.item_group:
@@ -275,19 +277,19 @@ def validate_bundled_items_for_parent_row(doc, parent_row):
 			child_item_group = frappe.get_cached_value("Item", child_row.item_code, "item_group")
 			if child_item_group not in allowed_item_groups:
 				frappe.throw(_("Bundled Item Row #{0}: Bundled Item {1} does not belong to Item Group {2}").format(
-					child_row.idx, frappe.bold(child_row.item_code), frappe.bold(child_row.item_group)
+					child_row.idx, frappe.bold(child_row.item_code), frappe.bold(child_row.item_group),
 				))
 
 		if child_row.allow_edit_qty and child_row.item_code:
 			if doc.get("is_return"):
 				if flt(child_row.qty) > 0:
 					frappe.throw(_("Bundled Item Row #{0}: Bundled Item {1} Qty must be negative for return").format(
-						child_row.idx, frappe.bold(child_row.item_code)
+						child_row.idx, frappe.bold(child_row.item_code),
 					))
 			else:
 				if flt(child_row.qty) < 0:
 					frappe.throw(_("Bundled Item Row #{0}: Bundled Item {1} Qty can not be negative").format(
-						child_row.idx, frappe.bold(child_row.item_code)
+						child_row.idx, frappe.bold(child_row.item_code),
 					))
 
 

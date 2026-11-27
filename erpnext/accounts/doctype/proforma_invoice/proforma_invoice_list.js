@@ -2,7 +2,7 @@
 // License: GNU General Public License v3. See license.txt
 
 // render
-frappe.listview_settings['Proforma Invoice'] = {
+frappe.listview_settings["Proforma Invoice"] = {
 	add_fields: ["status"],
 
 	get_indicator: function(doc) {
@@ -11,12 +11,12 @@ frappe.listview_settings['Proforma Invoice'] = {
 			"Billed": "green",
 			"Closed": "blue",
 		};
-		return [__(doc.status), status_color[doc.status], "status,=,"+doc.status];
+		return [__(doc.status), status_color[doc.status], "status,=," + doc.status];
 	},
 
 	right_column: "grand_total",
 
-	onload: function (listview) {
+	onload: function(listview) {
 		erpnext.setup_applies_to_listview_filters(listview);
 	},
 };

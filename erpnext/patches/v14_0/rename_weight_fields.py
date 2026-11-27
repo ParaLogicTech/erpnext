@@ -36,7 +36,7 @@ def execute():
 				print("{0}: Renaming Field {1} -> {2}".format(dt, old_field, new_field))
 				rename_field(dt, old_field, new_field)
 			else:
-				print("{0}: Old Field {1} not found".format(dt, old_field, new_field))
+				print("{0}: Old Field {1} not found".format(dt, old_field, ))
 
 	frappe.db.sql("""
 		update `tabLanded Cost Taxes and Charges`

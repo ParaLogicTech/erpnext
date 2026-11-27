@@ -3,16 +3,17 @@
 
 import frappe
 from frappe import _, scrub
-from frappe.utils import flt, cint
 from frappe.desk.query_report import group_report_data
-from erpnext.stock.utils import update_included_uom_in_dict_report
 from frappe.desk.reportview import build_match_conditions
+from frappe.utils import cint, flt
+
 from erpnext.stock.report.stock_balance.stock_balance import get_items_for_stock_report
+from erpnext.stock.utils import update_included_uom_in_dict_report
 
 
 def execute(filters=None):
 	filters = frappe._dict(filters or {})
-	show_item_name = frappe.defaults.get_global_default('item_naming_by') != "Item Name"
+	show_item_name = frappe.defaults.get_global_default("item_naming_by") != "Item Name"
 
 	items = get_items_for_stock_report(filters)
 	bin_list = get_bin_list(filters, items)
@@ -62,7 +63,7 @@ def execute(filters=None):
 			"projected_qty": bin.projected_qty * alt_uom_size,
 			"re_order_level": re_order_level * alt_uom_size,
 			"re_order_qty": re_order_qty * alt_uom_size,
-			"shortage_qty": shortage_qty * alt_uom_size
+			"shortage_qty": shortage_qty * alt_uom_size,
 		})
 
 		if include_uom:
@@ -94,25 +95,25 @@ def get_grouped_data(columns, data, filters, item_map):
 	if not group_by:
 		return data
 
-	total_fields = [c['fieldname'] for c in columns if c['fieldtype'] in ['Float', 'Currency', 'Int']]
+	total_fields = [c["fieldname"] for c in columns if c["fieldtype"] in ["Float", "Currency", "Int"]]
 
 	def postprocess_group(group_object, grouped_by):
 		if not group_object.group_field:
-			group_object.totals['item_code'] = "'Total'"
-		elif group_object.group_field == 'item_code':
-			group_object.totals['item_code'] = group_object.group_value
+			group_object.totals["item_code"] = "'Total'"
+		elif group_object.group_field == "item_code":
+			group_object.totals["item_code"] = group_object.group_value
 
-			copy_fields = ['item_name', 'item_group', 'brand', 'uom', 'disable_item_formatter']
+			copy_fields = ["item_name", "item_group", "brand", "uom", "disable_item_formatter"]
 			for f in copy_fields:
 				group_object.totals[f] = group_object.rows[0][f]
 		else:
-			group_object.totals['item_code'] = "'{0}: {1}'".format(group_object.group_label, group_object.group_value or "None")
+			group_object.totals["item_code"] = "'{0}: {1}'".format(group_object.group_label, group_object.group_value or "None")
 
 	return group_report_data(data, group_by, total_fields=total_fields, postprocess_group=postprocess_group)
 
 
 def get_columns(filters, show_item_name=True):
-	item_col_width = 150 if filters.get('group_by_1') or filters.get('group_by_2') else 100
+	item_col_width = 150 if filters.get("group_by_1") or filters.get("group_by_2") else 100
 
 	columns = [
 		{"label": _("Item Code"), "fieldname": "item_code", "fieldtype": "Link", "options": "Item", "width": item_col_width if show_item_name else 250},
@@ -137,7 +138,7 @@ def get_columns(filters, show_item_name=True):
 	]
 
 	if not show_item_name:
-		columns = [c for c in columns if c.get('fieldname') != 'item_name']
+		columns = [c for c in columns if c.get("fieldname") != "item_name"]
 
 	return columns
 
@@ -157,7 +158,7 @@ def get_bin_list(filters, items):
 		if warehouse_details:
 			conditions.append("exists (select name from `tabWarehouse` wh \
 				where wh.lft >= {0} and wh.rgt <= {1} and tabBin.warehouse = wh.name)".format(
-				warehouse_details.lft, warehouse_details.rgt)
+				warehouse_details.lft, warehouse_details.rgt),
 			)
 
 	match_conditions = build_match_conditions("Bin")
@@ -199,13 +200,13 @@ def get_item_map(bin_list, items, include_uom):
 		{cf_join}
 		where item.name in %(item_codes)s
 	""".format(cf_field=cf_field, cf_join=cf_join), {
-		"item_codes": items, "include_uom": include_uom
+		"item_codes": items, "include_uom": include_uom,
 	}, as_dict=True)
 
 	item_reorder_data = frappe.db.sql("""
 		select item_re.*
 		from `tabItem Reorder` item_re
-		inner join `tabItem` item on item_re.parent = item.name and item_re.parenttype = 'Item' 
+		inner join `tabItem` item on item_re.parent = item.name and item_re.parenttype = 'Item'
 		where item_re.parent in %s
 	""", [items], as_dict=1)
 

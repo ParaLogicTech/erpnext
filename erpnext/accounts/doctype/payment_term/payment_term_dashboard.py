@@ -4,18 +4,18 @@ from frappe import _
 
 def get_data():
 	return {
-		'fieldname': 'payment_term',
-		'transactions': [
+		"fieldname": "payment_term",
+		"transactions": [
 			{
-				'label': _('Sales'),
-				'items': ['Sales Invoice', 'Sales Order', 'Quotation']
+				"label": _("Sales"),
+				"items": ["Sales Invoice", "Sales Order", "Quotation"],
 			},
 			{
-				'label': _('Purchase'),
-				'items': ['Purchase Invoice', 'Purchase Order']
+				"label": _("Purchase"),
+				"items": ["Purchase Invoice", "Purchase Order"],
 			},
 			{
-				'items': ['Payment Terms Template']
-			}
-		]
+				"items": ["Payment Terms Template"],
+			},
+		],
 	}

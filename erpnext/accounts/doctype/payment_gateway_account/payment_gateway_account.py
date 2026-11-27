@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
@@ -25,12 +24,12 @@ class PaymentGatewayAccount(Document):
 
 		if company != self.company:
 			frappe.throw(_("Payment Account {0} does not belong to Company {1}").format(
-				self.payment_account, self.company
+				self.payment_account, self.company,
 			))
 
 		if account_currency != self.currency:
 			frappe.throw(_("Payment Account {0} should be of Currency {1}").format(
-				self.payment_account, self.currency
+				self.payment_account, self.currency,
 			))
 
 		if is_group:

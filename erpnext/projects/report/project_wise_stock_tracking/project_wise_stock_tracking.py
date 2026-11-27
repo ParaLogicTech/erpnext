@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 
+
 def execute(filters=None):
 	columns = get_columns()
 	proj_details = get_project_details()
@@ -21,6 +22,7 @@ def execute(filters=None):
 
 	return columns, data
 
+
 def get_columns():
 	return [_("Project Id") + ":Link/Project:140", _("Cost of Purchased Items") + ":Currency:160",
 		_("Cost of Issued Items") + ":Currency:160", _("Cost of Delivered Items") + ":Currency:160",
@@ -28,9 +30,11 @@ def get_columns():
 		_("Customer") + ":Link/Customer:140", _("Project Value") + ":Currency:120",
 		_("Project Start Date") + ":Date:120", _("Completion Date") + ":Date:120"]
 
+
 def get_project_details():
 	return frappe.db.sql(""" select name, project_name, status, company, customer, estimated_costing,
 		expected_start_date, expected_end_date from tabProject where docstatus < 2""", as_dict=1)
+
 
 def get_purchased_items_cost():
 	pr_items = frappe.db.sql("""select project, sum(base_net_amount) as amount
@@ -42,6 +46,7 @@ def get_purchased_items_cost():
 		pr_item_map.setdefault(item.project, item.amount)
 
 	return pr_item_map
+
 
 def get_issued_items_cost():
 	se_items = frappe.db.sql("""select se.project, sum(se_item.amount) as amount
@@ -55,6 +60,7 @@ def get_issued_items_cost():
 
 	return se_item_map
 
+
 def get_delivered_items_cost():
 	dn_items = frappe.db.sql("""select dn.project, sum(dn_item.base_net_amount) as amount
 		from `tabDelivery Note` dn, `tabDelivery Note Item` dn_item
@@ -66,7 +72,6 @@ def get_delivered_items_cost():
 		where si.name = si_item.parent and si.docstatus = 1 and si.update_stock = 1
 		and si.is_pos = 1 and ifnull(si.project, '') != ''
 		group by si.project""", as_dict=1)
-
 
 	dn_item_map = {}
 	for item in dn_items:

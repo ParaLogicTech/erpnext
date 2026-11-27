@@ -2,8 +2,8 @@
 # For license information, please see license.txt
 
 import frappe
-from frappe.utils import formatdate
 from frappe import _, get_all
+from frappe.utils import formatdate
 
 
 def execute(filters=None):
@@ -13,53 +13,53 @@ def execute(filters=None):
 			"fieldtype": "Link",
 			"fieldname": "payroll_no",
 			"options": "Payroll Entry",
-			"width": 150
+			"width": 150,
 		},
 		{
 			"label": _("Debit A/C Number"),
 			"fieldtype": "Int",
 			"fieldname": "debit_account",
 			"hidden": 1,
-			"width": 200
+			"width": 200,
 		},
 		{
 			"label": _("Payment Date"),
 			"fieldtype": "Data",
 			"fieldname": "payment_date",
-			"width": 100
+			"width": 100,
 		},
 		{
 			"label": _("Employee Name"),
 			"fieldtype": "Link",
 			"fieldname": "employee_name",
 			"options": "Employee",
-			"width": 200
+			"width": 200,
 		},
 		{
 			"label": _("Bank Name"),
 			"fieldtype": "Data",
 			"fieldname": "bank_name",
-			"width": 50
+			"width": 50,
 		},
 		{
 			"label": _("Employee A/C Number"),
 			"fieldtype": "Int",
 			"fieldname": "employee_account_no",
-			"width": 50
+			"width": 50,
 		},
 		{
 			"label": _("Currency"),
 			"fieldtype": "Data",
 			"fieldname": "currency",
-			"width": 50
+			"width": 50,
 		},
 		{
 			"label": _("Net Salary Amount"),
 			"fieldtype": "Currency",
 			"options": "currency",
 			"fieldname": "amount",
-			"width": 100
-		}
+			"width": 100,
+		},
 	]
 	data = []
 
@@ -72,11 +72,11 @@ def execute(filters=None):
 			row = {
 				"payroll_no": salary.payroll_entry,
 				"debit_account": salary.debit_acc_no,
-				"payment_date": frappe.utils.formatdate(salary.modified.strftime('%Y-%m-%d')),
+				"payment_date": frappe.utils.formatdate(salary.modified.strftime("%Y-%m-%d")),
 				"bank_name": salary.bank_name,
 				"employee_account_no": salary.bank_account_no,
-				"employee_name": salary.employee+": " + salary.employee_name,
-				"currency": frappe.get_cached_value('Company', filters.company, 'default_currency'),
+				"employee_name": salary.employee + ": " + salary.employee_name,
+				"currency": frappe.get_cached_value("Company", filters.company, "default_currency"),
 				"amount": salary.net_pay,
 			}
 			data.append(row)
@@ -90,15 +90,15 @@ def get_bank_accounts():
 
 def get_payroll_entries(accounts, filters):
 	payroll_filter = [
-		('payment_account', 'IN', accounts),
-		('number_of_employees', '>', 0),
-		('Company', '=', filters.company)
+		("payment_account", "IN", accounts),
+		("number_of_employees", ">", 0),
+		("Company", "=", filters.company),
 	]
 	if filters.to_date:
-		payroll_filter.append(('posting_date', '<', filters.to_date))
+		payroll_filter.append(("posting_date", "<", filters.to_date))
 
 	if filters.from_date:
-		payroll_filter.append(('posting_date', '>', filters.from_date))
+		payroll_filter.append(("posting_date", ">", filters.from_date))
 
 	entries = get_all("Payroll Entry", payroll_filter, ["name", "payment_account"])
 
@@ -108,9 +108,9 @@ def get_payroll_entries(accounts, filters):
 
 
 def get_salary_slips(payroll_entries):
-	payroll  = [d.name for d in payroll_entries]
-	salary_slips = get_all("Salary Slip", filters = [("payroll_entry", "IN", payroll)],
-		fields = ["modified", "net_pay", "bank_name", "bank_account_no", "payroll_entry", "employee", "employee_name", "status"]
+	payroll = [d.name for d in payroll_entries]
+	salary_slips = get_all("Salary Slip", filters=[("payroll_entry", "IN", payroll)],
+		fields=["modified", "net_pay", "bank_name", "bank_account_no", "payroll_entry", "employee", "employee_name", "status"],
 	)
 
 	payroll_entry_map = {}
@@ -119,7 +119,7 @@ def get_salary_slips(payroll_entries):
 
 	# appending company debit accounts
 	for slip in salary_slips:
-		slip["debit_acc_no"] = payroll_entry_map[slip.payroll_entry]['company_account']
+		slip["debit_acc_no"] = payroll_entry_map[slip.payroll_entry]["company_account"]
 
 	return salary_slips
 
@@ -131,6 +131,6 @@ def set_company_account(payment_accounts, payroll_entries):
 		company_accounts_map[acc.account] = acc
 
 	for entry in payroll_entries:
-		entry["company_account"] = company_accounts_map[entry.payment_account]['bank_account_no']
+		entry["company_account"] = company_accounts_map[entry.payment_account]["bank_account_no"]
 
 	return payroll_entries

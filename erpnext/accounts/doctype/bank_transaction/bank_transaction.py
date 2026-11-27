@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2019, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe
-from erpnext.controllers.status_updater import StatusUpdaterERP
-from frappe.utils import flt
 from functools import reduce
+
+import frappe
 from frappe import _
+from frappe.utils import flt
+
+from erpnext.controllers.status_updater import StatusUpdaterERP
 
 
 class BankTransaction(StatusUpdaterERP):
@@ -14,7 +15,7 @@ class BankTransaction(StatusUpdaterERP):
 		super().__init__(*args, **kwargs)
 		self.status_map = [
 			["Unreconciled", "eval:self.docstatus == 1 and self.unallocated_amount>0"],
-			["Reconciled", "eval:self.docstatus == 1 and self.unallocated_amount<=0"]
+			["Reconciled", "eval:self.docstatus == 1 and self.unallocated_amount<=0"],
 		]
 
 	def after_insert(self):
@@ -55,7 +56,7 @@ class BankTransaction(StatusUpdaterERP):
 			paid_amount = get_paid_amount(payment_entry, self.currency)
 
 			if paid_amount and allocated_amount:
-				if  flt(allocated_amount[0]["allocated_amount"]) > flt(paid_amount):
+				if flt(allocated_amount[0]["allocated_amount"]) > flt(paid_amount):
 					frappe.throw(_("The total allocated amount ({0}) is greated than the paid amount ({1}).".format(flt(allocated_amount[0]["allocated_amount"]), flt(paid_amount))))
 				else:
 					if payment_entry.payment_document in ["Payment Entry", "Journal Entry", "Purchase Invoice", "Expense Claim"]:
@@ -70,6 +71,7 @@ class BankTransaction(StatusUpdaterERP):
 	def clear_sales_invoice(self, payment_entry):
 		frappe.db.set_value("Sales Invoice Payment", dict(parenttype=payment_entry.payment_document,
 			parent=payment_entry.payment_entry), "clearance_date", self.date)
+
 
 def get_total_allocated_amount(payment_entry):
 	return frappe.db.sql("""
@@ -87,11 +89,12 @@ def get_total_allocated_amount(payment_entry):
 		AND
 			bt.docstatus = 1""", (payment_entry.payment_document, payment_entry.payment_entry), as_dict=True)
 
+
 def get_paid_amount(payment_entry, currency):
 	if payment_entry.payment_document in ["Payment Entry", "Sales Invoice", "Purchase Invoice"]:
 
 		paid_amount_field = "paid_amount"
-		if payment_entry.payment_document == 'Payment Entry':
+		if payment_entry.payment_document == "Payment Entry":
 			doc = frappe.get_doc("Payment Entry", payment_entry.payment_entry)
 			paid_amount_field = ("base_paid_amount"
 				if doc.paid_to_account_currency == currency else "paid_amount")
@@ -107,6 +110,7 @@ def get_paid_amount(payment_entry, currency):
 
 	else:
 		frappe.throw(_("Please reconcile {0}: {1} manually").format(payment_entry.payment_document, payment_entry.payment_entry))
+
 
 @frappe.whitelist()
 def unclear_reference_payment(doctype, docname):

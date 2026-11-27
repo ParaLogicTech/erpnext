@@ -4,24 +4,24 @@
 frappe.query_reports["Employees working on a holiday"] = {
 	"filters": [
 		{
-			"fieldname":"from_date",
+			"fieldname": "from_date",
 			"label": __("From Date"),
 			"fieldtype": "Date",
 			"reqd": 1,
-			"default": frappe.datetime.year_start()
+			"default": frappe.datetime.year_start(),
 		},
 		{
-			"fieldname":"to_date",
+			"fieldname": "to_date",
 			"label": __("To Date"),
 			"fieldtype": "Date",
 			"reqd": 1,
-			"default": frappe.datetime.year_end()
+			"default": frappe.datetime.year_end(),
 		},
 		{
-			"fieldname":"holiday_list",
+			"fieldname": "holiday_list",
 			"label": __("Holiday List"),
 			"fieldtype": "Link",
-			"options": "Holiday List"
-		}
-	]
-}
+			"options": "Holiday List",
+		},
+	],
+};

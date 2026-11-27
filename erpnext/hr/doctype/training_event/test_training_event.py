@@ -1,11 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
-import frappe
 import unittest
-from frappe.utils import today, add_days
+
+import frappe
+from frappe.utils import add_days, today
+
 from erpnext.hr.doctype.salary_structure.test_salary_structure import make_employee
+
 
 class TestTrainingEvent(unittest.TestCase):
 	def setUp(self):
@@ -23,19 +25,21 @@ class TestTrainingEvent(unittest.TestCase):
 				"start_time": add_days(today(), 5),
 				"end_time": add_days(today(), 6),
 				"introduction": "Welcome to the Basic Training Event",
-				"employees": get_attendees(self.employee, self.employee2)
+				"employees": get_attendees(self.employee, self.employee2),
 			}).insert()
+
 
 def create_training_program(training_program):
 	if not frappe.db.get_value("Training Program", training_program):
 		frappe.get_doc({
 			"doctype": "Training Program",
 			"training_program": training_program,
-			"description": training_program
+			"description": training_program,
 		}).insert()
+
 
 def get_attendees(employee, employee2):
 	return [
 		{"employee": employee},
-		{"employee": employee2}
+		{"employee": employee2},
 	]

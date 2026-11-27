@@ -1,5 +1,5 @@
-var globalOnload = frappe.listview_settings['Sales Invoice'].onload;
-frappe.listview_settings['Sales Invoice'].onload = function (doclist) {
+var globalOnload = frappe.listview_settings["Sales Invoice"].onload;
+frappe.listview_settings["Sales Invoice"].onload = function(doclist) {
 
 	// Provision in case onload event is added to sales_invoice.js in future
 	if (globalOnload) {
@@ -17,23 +17,23 @@ frappe.listview_settings['Sales Invoice'].onload = function (doclist) {
 		}
 
 		frappe.call({
-			method: 'erpnext.regional.india.utils.generate_ewb_json',
+			method: "erpnext.regional.india.utils.generate_ewb_json",
 			args: {
-				'dt': doclist.doctype,
-				'dn': docnames
+				"dt": doclist.doctype,
+				"dn": docnames,
 			},
 			callback: function(r) {
 				if (r.message) {
 					const args = {
-						cmd: 'erpnext.regional.india.utils.download_ewb_json',
+						cmd: "erpnext.regional.india.utils.download_ewb_json",
 						data: r.message,
-						docname: docnames
+						docname: docnames,
 					};
 					open_url_post(frappe.request.url, args);
 				}
-			}
+			},
 		});
 	};
 
-	doclist.page.add_actions_menu_item(__('Generate e-Way Bill JSON'), action, false);
+	doclist.page.add_actions_menu_item(__("Generate e-Way Bill JSON"), action, false);
 };

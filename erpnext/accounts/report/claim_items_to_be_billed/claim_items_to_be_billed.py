@@ -1,11 +1,13 @@
 # Copyright (c) 2013, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, cstr, cint
+from frappe.utils import cint, cstr, getdate
+
 from erpnext.accounts.report.sales_items_to_be_billed.sales_items_to_be_billed import ItemsToBeBilled
-import json
 
 
 class ClaimItemsToBeBilled(ItemsToBeBilled):
@@ -78,7 +80,7 @@ class ClaimItemsToBeBilled(ItemsToBeBilled):
 				"fieldname": "project_type",
 				"fieldtype": "Link",
 				"options": "Project Type",
-				"width": 120
+				"width": 120,
 			},
 		]
 
@@ -89,7 +91,7 @@ class ClaimItemsToBeBilled(ItemsToBeBilled):
 					"label": _("Denied"),
 					"fieldname": "warranty_claim_denied",
 					"fieldtype": "Check",
-					"width": 55
+					"width": 55,
 				},
 			]
 
@@ -114,11 +116,11 @@ def make_claim_sales_invoice(data, customer):
 	if isinstance(data, str):
 		data = json.loads(data)
 
-	sales_orders = [d.get('name') for d in data if d.get('doctype') == "Sales Order" and d.get('claim_customer') == customer]
-	sales_order_rows = [d.get('row_name') for d in data if d.get('doctype') == "Sales Order" and d.get('claim_customer') == customer]
+	sales_orders = [d.get("name") for d in data if d.get("doctype") == "Sales Order" and d.get("claim_customer") == customer]
+	sales_order_rows = [d.get("row_name") for d in data if d.get("doctype") == "Sales Order" and d.get("claim_customer") == customer]
 
-	delivery_notes = [d.get('name') for d in data if d.get('doctype') == "Delivery Note" and d.get('claim_customer') == customer]
-	delivery_note_rows = [d.get('row_name') for d in data if d.get('doctype') == "Delivery Note" and d.get('claim_customer') == customer]
+	delivery_notes = [d.get("name") for d in data if d.get("doctype") == "Delivery Note" and d.get("claim_customer") == customer]
+	delivery_note_rows = [d.get("row_name") for d in data if d.get("doctype") == "Delivery Note" and d.get("claim_customer") == customer]
 
 	if not sales_orders and not delivery_notes:
 		frappe.throw(_("No unbilled Sales Orders or Delivery Notes in report against Claim {0}")
@@ -132,11 +134,11 @@ def make_claim_sales_invoice(data, customer):
 
 	frappe.flags.selected_children = {}
 
-	frappe.flags.selected_children['items'] = delivery_note_rows
+	frappe.flags.selected_children["items"] = delivery_note_rows
 	for name in delivery_notes:
 		target_doc = invoice_from_delivery_note(name, target_doc, only_items=True, skip_postprocess=True)
 
-	frappe.flags.selected_children['items'] = sales_order_rows
+	frappe.flags.selected_children["items"] = sales_order_rows
 	for name in sales_orders:
 		target_doc = invoice_from_sales_order(name, target_doc, only_items=True, skip_postprocess=True)
 

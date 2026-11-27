@@ -1,6 +1,6 @@
-frappe.listview_settings['Quotation'] = {
+frappe.listview_settings["Quotation"] = {
 	add_fields: ["customer_name", "base_grand_total", "status",
-		"company", "currency", 'valid_till'],
+		"company", "currency", "valid_till"],
 
 	onload: function(listview) {
 		erpnext.setup_applies_to_listview_filters(listview);
@@ -10,23 +10,23 @@ frappe.listview_settings['Quotation'] = {
 				return {
 					"filters": {
 						"name": ["in", ["Customer", "Lead"]],
-					}
+					},
 				};
 			};
 		}
 	},
 
 	get_indicator: function(doc) {
-		if(doc.status==="Open") {
+		if (doc.status === "Open") {
 			return [__("Open"), "orange", "status,=,Open"];
-		} else if(doc.status==="Ordered") {
+		} else if (doc.status === "Ordered") {
 			return [__("Ordered"), "green", "status,=,Ordered"];
-		} else if(doc.status==="Approved") {
+		} else if (doc.status === "Approved") {
 			return [__("Approved"), "green", "status,=,Approved"];
-		} else if(doc.status==="Lost") {
+		} else if (doc.status === "Lost") {
 			return [__("Lost"), "grey", "status,=,Lost"];
-		} else if(doc.status==="Expired") {
+		} else if (doc.status === "Expired") {
 			return [__("Expired"), "light-gray", "status,=,Expired"];
 		}
-	}
+	},
 };

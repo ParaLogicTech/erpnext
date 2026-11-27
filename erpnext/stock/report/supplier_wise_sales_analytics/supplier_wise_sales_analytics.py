@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+
 def execute(filters=None):
 	columns = get_columns(filters)
 	consumed_details = get_consumed_details(filters)
@@ -22,7 +23,7 @@ def execute(filters=None):
 					if cd.voucher_type in ["Delivery Note", "Sales Invoice"]:
 						delivered_qty += abs(flt(cd.actual_qty))
 						delivered_amount += abs(flt(cd.stock_value_difference))
-					elif cd.voucher_type!="Delivery Note":
+					elif cd.voucher_type != "Delivery Note":
 						consumed_qty += abs(flt(cd.actual_qty))
 						consumed_amount += abs(flt(cd.stock_value_difference))
 
@@ -30,12 +31,13 @@ def execute(filters=None):
 				total_qty += delivered_qty + consumed_qty
 				total_amount += delivered_amount + consumed_amount
 
-				row = [cd.item_code, cd.item_name, cd.description, cd.stock_uom, \
-					consumed_qty, consumed_amount, delivered_qty, delivered_amount, \
-					total_qty, total_amount, ','.join(list(set(suppliers)))]
+				row = [cd.item_code, cd.item_name, cd.description, cd.stock_uom,
+					consumed_qty, consumed_amount, delivered_qty, delivered_amount,
+					total_qty, total_amount, ",".join(list(set(suppliers)))]
 				data.append(row)
 
 	return columns, data
+
 
 def get_columns(filters):
 	"""return columns based on filters"""
@@ -49,15 +51,17 @@ def get_columns(filters):
 
 	return columns
 
+
 def get_conditions(filters):
 	conditions = ""
 	values = []
 
-	if filters.get('from_date') and filters.get('to_date'):
+	if filters.get("from_date") and filters.get("to_date"):
 		conditions = "and sle.posting_date>=%s and sle.posting_date<=%s"
-		values = [filters.get('from_date'), filters.get('to_date')]
+		values = [filters.get("from_date"), filters.get("to_date")]
 
 	return conditions, values
+
 
 def get_consumed_details(filters):
 	conditions, values = get_conditions(filters)
@@ -72,9 +76,10 @@ def get_consumed_details(filters):
 
 	return consumed_details
 
+
 def get_suppliers_details(filters):
 	item_supplier_map = {}
-	supplier = filters.get('supplier')
+	supplier = filters.get("supplier")
 
 	for d in frappe.db.sql("""select pr.supplier, pri.item_code from
 		`tabPurchase Receipt` pr, `tabPurchase Receipt Item` pri
@@ -101,6 +106,7 @@ def get_suppliers_details(filters):
 			del item_supplier_map[item_code]
 
 	return item_supplier_map
+
 
 def get_material_transfer_vouchers():
 	return frappe.db.sql_list("""select name from `tabStock Entry` where

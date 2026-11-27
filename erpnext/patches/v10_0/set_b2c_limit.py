@@ -3,6 +3,7 @@
 
 import frappe
 
+
 def execute():
 	frappe.reload_doc("regional", "doctype", "gst_settings")
 	frappe.reload_doc("accounts", "doctype", "gst_account")

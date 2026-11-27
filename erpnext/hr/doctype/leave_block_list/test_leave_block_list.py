@@ -1,11 +1,13 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
 import unittest
 
+import frappe
 from frappe.utils import getdate
+
 from erpnext.hr.doctype.leave_block_list.leave_block_list import get_applicable_block_dates
+
 
 class TestLeaveBlockList(unittest.TestCase):
 	def tearDown(self):
@@ -31,6 +33,7 @@ class TestLeaveBlockList(unittest.TestCase):
 		self.assertTrue(getdate("2013-01-02") in
 			[d.block_date for d in get_applicable_block_dates("2013-01-01", "2013-01-03", all_lists=True)])
 
+
 test_dependencies = ["Employee"]
 
-test_records = frappe.get_test_records('Leave Block List')
+test_records = frappe.get_test_records("Leave Block List")

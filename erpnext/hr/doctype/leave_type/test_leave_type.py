@@ -4,7 +4,8 @@
 import frappe
 from frappe import _
 
-test_records = frappe.get_test_records('Leave Type')
+test_records = frappe.get_test_records("Leave Type")
+
 
 def create_leave_type(**args):
     args = frappe._dict(args)
@@ -20,6 +21,6 @@ def create_leave_type(**args):
         "is_carry_forward": args.is_carry_forward or 0,
         "expire_carry_forwarded_leaves_after_days": args.expire_carry_forwarded_leaves_after_days or 0,
         "encashment_threshold_days": args.encashment_threshold_days or 5,
-        "earning_component": "Leave Encashment"
+        "earning_component": "Leave Encashment",
     })
     return leave_type

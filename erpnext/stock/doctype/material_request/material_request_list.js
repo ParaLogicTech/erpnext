@@ -1,4 +1,4 @@
-frappe.listview_settings['Material Request'] = {
+frappe.listview_settings["Material Request"] = {
 	add_fields: ["material_request_type", "status", "per_ordered", "per_received"],
 
 	get_indicator: function(doc) {
@@ -9,7 +9,7 @@ frappe.listview_settings['Material Request'] = {
 			"Partially Received": "yellow",
 			"Ordered": "blue",
 			"Partially Ordered": "yellow",
-		}
+		};
 
 		return [__(doc.status), color_map[doc.status] || "gray", "status,=," + doc.status];
 	},

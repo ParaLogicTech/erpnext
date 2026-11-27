@@ -1,9 +1,10 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import frappe
-from frappe.utils import flt, add_days, nowdate, add_months, getdate
 import unittest
+
+import frappe
+from frappe.utils import add_days, add_months, flt, getdate, nowdate
 
 test_dependencies = ["Product Bundle"]
 
@@ -11,7 +12,7 @@ test_dependencies = ["Product Bundle"]
 class TestQuotation(unittest.TestCase):
 	def test_make_quotation_without_terms(self):
 		quotation = make_quotation(do_not_save=1)
-		self.assertFalse(quotation.get('payment_schedule'))
+		self.assertFalse(quotation.get("payment_schedule"))
 
 		quotation.insert()
 
@@ -28,7 +29,7 @@ class TestQuotation(unittest.TestCase):
 
 		sales_order = make_sales_order(quotation.name)
 
-		self.assertTrue(sales_order.get('payment_schedule'))
+		self.assertTrue(sales_order.get("payment_schedule"))
 
 	def test_make_sales_order_with_different_currency(self):
 		from erpnext.selling.doctype.quotation.quotation import make_sales_order
@@ -47,7 +48,7 @@ class TestQuotation(unittest.TestCase):
 		sales_order.transaction_date = nowdate()
 		sales_order.insert()
 
-		self.assertEquals(sales_order.currency, "USD")
+		self.assertEqual(sales_order.currency, "USD")
 		self.assertNotEqual(sales_order.currency, quotation.currency)
 
 	def test_make_sales_order(self):
@@ -81,7 +82,7 @@ class TestQuotation(unittest.TestCase):
 		quotation.transaction_date = nowdate()
 		quotation.valid_till = add_months(quotation.transaction_date, 1)
 		quotation.update(
-			{"payment_terms_template": "_Test Payment Term Template"}
+			{"payment_terms_template": "_Test Payment Term Template"},
 		)
 		quotation.insert()
 
@@ -111,7 +112,7 @@ class TestQuotation(unittest.TestCase):
 		self.assertEqual(sales_order.payment_schedule[0].due_date, getdate(quotation.transaction_date))
 		self.assertEqual(sales_order.payment_schedule[1].payment_amount, 8906.00)
 		self.assertEqual(
-			sales_order.payment_schedule[1].due_date, getdate(add_days(quotation.transaction_date, 30))
+			sales_order.payment_schedule[1].due_date, getdate(add_days(quotation.transaction_date, 30)),
 		)
 
 	def test_valid_till(self):
@@ -128,14 +129,13 @@ class TestQuotation(unittest.TestCase):
 
 	def test_create_quotation_with_margin(self):
 		from erpnext.selling.doctype.quotation.quotation import make_sales_order
-		from erpnext.selling.doctype.sales_order.sales_order \
-			import make_delivery_note, make_sales_invoice
+		from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note, make_sales_invoice
 
-		rate_with_margin = flt((1500*18.75)/100 + 1500)
+		rate_with_margin = flt((1500 * 18.75) / 100 + 1500)
 
-		test_records[0]['items'][0]['price_list_rate'] = 1500
-		test_records[0]['items'][0]['margin_type'] = 'Percentage'
-		test_records[0]['items'][0]['margin_rate_or_amount'] = 18.75
+		test_records[0]["items"][0]["price_list_rate"] = 1500
+		test_records[0]["items"][0]["margin_type"] = "Percentage"
+		test_records[0]["items"][0]["margin_rate_or_amount"] = 18.75
 
 		quotation = frappe.copy_doc(test_records[0])
 		quotation.transaction_date = nowdate()
@@ -181,8 +181,8 @@ class TestQuotation(unittest.TestCase):
 				"qty": 2,
 				"rate": 400,
 				"delivered_by_supplier": 1,
-				"supplier": '_Test Supplier'
-			}
+				"supplier": "_Test Supplier",
+			},
 		]
 
 		qo_item2 = [
@@ -191,8 +191,8 @@ class TestQuotation(unittest.TestCase):
 				"warehouse": "_Test Warehouse - _TC",
 				"qty": 2,
 				"rate": 300,
-				"conversion_factor": 1.0
-			}
+				"conversion_factor": 1.0,
+			},
 		]
 
 		first_qo = make_quotation(item_list=qo_item1, do_not_submit=True)
@@ -206,10 +206,10 @@ class TestQuotation(unittest.TestCase):
 		quotation_item = [
 			{
 				"item_code": "_Test Item",
-				"warehouse":"",
+				"warehouse": "",
 				"qty": 1,
-				"rate": 500
-			}
+				"rate": 500,
+			},
 		]
 
 		yesterday = add_days(nowdate(), -1)
@@ -222,24 +222,25 @@ class TestQuotation(unittest.TestCase):
 		self.assertEqual(expired_quotation.status, "Expired")
 
 
-test_records = frappe.get_test_records('Quotation')
+test_records = frappe.get_test_records("Quotation")
+
 
 def get_quotation_dict(party_name=None, item_code=None):
 	if not party_name:
-		party_name = '_Test Customer'
+		party_name = "_Test Customer"
 	if not item_code:
-		item_code = '_Test Item'
+		item_code = "_Test Item"
 
 	return {
-		'doctype': 'Quotation',
-		'party_name': party_name,
-		'items': [
+		"doctype": "Quotation",
+		"party_name": party_name,
+		"items": [
 			{
-				'item_code': item_code,
-				'qty': 1,
-				'rate': 100
-			}
-		]
+				"item_code": item_code,
+				"qty": 1,
+				"rate": 100,
+			},
+		],
 	}
 
 
@@ -268,7 +269,7 @@ def make_quotation(**args):
 			"warehouse": args.warehouse,
 			"qty": args.qty or 10,
 			"uom": args.uom or None,
-			"rate": args.rate or 100
+			"rate": args.rate or 100,
 		})
 
 	qo.delivery_date = add_days(qo.transaction_date, 10)
@@ -279,5 +280,3 @@ def make_quotation(**args):
 			qo.submit()
 
 	return qo
-
-

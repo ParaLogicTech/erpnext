@@ -1,17 +1,17 @@
 // Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Bank', {
+frappe.ui.form.on("Bank", {
 	onload: function(frm) {
 		add_fields_to_mapping_table(frm);
 	},
 	refresh: function(frm) {
 		add_fields_to_mapping_table(frm);
-	}
+	},
 });
 
 
-let add_fields_to_mapping_table = function (frm) {
+let add_fields_to_mapping_table = function(frm) {
 	let options = [];
 
 	frappe.model.with_doctype("Bank Transaction", function() {

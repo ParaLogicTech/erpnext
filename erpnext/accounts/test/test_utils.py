@@ -1,4 +1,5 @@
 import unittest
+
 from crm.crm.utils import get_shipping_address
 from frappe.test_runner import make_test_objects
 
@@ -7,15 +8,15 @@ class TestUtils(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
-		make_test_objects('Address', ADDRESS_RECORDS)
+		make_test_objects("Address", ADDRESS_RECORDS)
 
 	def test_get_party_shipping_address(self):
-		address = get_shipping_address('Customer', '_Test Customer 1')
-		self.assertEqual(address, '_Test Billing Address 2 Title-Billing')
+		address = get_shipping_address("Customer", "_Test Customer 1")
+		self.assertEqual(address, "_Test Billing Address 2 Title-Billing")
 
 	def test_get_party_shipping_address2(self):
-		address = get_shipping_address('Customer', '_Test Customer 2')
-		self.assertEqual(address, '_Test Shipping Address 2 Title-Shipping')
+		address = get_shipping_address("Customer", "_Test Customer 2")
+		self.assertEqual(address, "_Test Shipping Address 2 Title-Shipping")
 
 
 ADDRESS_RECORDS = [
@@ -30,9 +31,9 @@ ADDRESS_RECORDS = [
 			{
 				"link_doctype": "Customer",
 				"link_name": "_Test Customer 2",
-				"doctype": "Dynamic Link"
-			}
-		]
+				"doctype": "Dynamic Link",
+			},
+		],
 	},
 	{
 		"doctype": "Address",
@@ -45,9 +46,9 @@ ADDRESS_RECORDS = [
 			{
 				"link_doctype": "Customer",
 				"link_name": "_Test Customer 2",
-				"doctype": "Dynamic Link"
-			}
-		]
+				"doctype": "Dynamic Link",
+			},
+		],
 	},
 	{
 		"doctype": "Address",
@@ -61,9 +62,9 @@ ADDRESS_RECORDS = [
 			{
 				"link_doctype": "Customer",
 				"link_name": "_Test Customer 2",
-				"doctype": "Dynamic Link"
-			}
-		]
+				"doctype": "Dynamic Link",
+			},
+		],
 	},
 	{
 		"doctype": "Address",
@@ -77,8 +78,8 @@ ADDRESS_RECORDS = [
 			{
 				"link_doctype": "Customer",
 				"link_name": "_Test Customer 1",
-				"doctype": "Dynamic Link"
-			}
-		]
-	}
+				"doctype": "Dynamic Link",
+			},
+		],
+	},
 ]

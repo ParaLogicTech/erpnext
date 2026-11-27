@@ -1,10 +1,12 @@
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
-import frappe
-from frappe.utils import format_datetime
-from frappe import _
 import re
+
+import frappe
+from frappe import _
+from frappe.utils import format_datetime
+
 
 def execute(filters=None):
 	account_details = {}
@@ -23,16 +25,16 @@ def execute(filters=None):
 
 
 def validate_filters(filters, account_details):
-	if not filters.get('company'):
-		frappe.throw(_('{0} is mandatory').format(_('Company')))
+	if not filters.get("company"):
+		frappe.throw(_("{0} is mandatory").format(_("Company")))
 
-	if not filters.get('fiscal_year'):
-		frappe.throw(_('{0} is mandatory').format(_('Fiscal Year')))
+	if not filters.get("fiscal_year"):
+		frappe.throw(_("{0} is mandatory").format(_("Fiscal Year")))
 
 
 def set_account_currency(filters):
 
-	filters["company_currency"] = frappe.get_cached_value('Company',  filters.company,  "default_currency")
+	filters["company_currency"] = frappe.get_cached_value("Company", filters.company, "default_currency")
 
 	return filters
 
@@ -47,7 +49,7 @@ def get_columns(filters):
 		"EcritureLib" + "::90", "Debit" + "::90", "Credit" + "::90",
 		"EcritureLet" + "::90", "DateLet" +
 		"::90", "ValidDate" + "::90",
-		"Montantdevise" + "::90", "Idevise" + "::90"
+		"Montantdevise" + "::90", "Idevise" + "::90",
 	]
 
 	return columns
@@ -92,7 +94,7 @@ def get_gl_entries(filters):
 			left join `tabEmployee` emp on gl.party = emp.name
 		where gl.company=%(company)s and gl.fiscal_year=%(fiscal_year)s
 		{group_by_condition}
-		order by GlPostDate, voucher_no"""\
+		order by GlPostDate, voucher_no"""
 		.format(group_by_condition=group_by_condition), filters, as_dict=1)
 
 	return gl_entries
@@ -101,23 +103,23 @@ def get_gl_entries(filters):
 def get_result_as_list(data, filters):
 	result = []
 
-	company_currency = frappe.get_cached_value('Company',  filters.company,  "default_currency")
+	company_currency = frappe.get_cached_value("Company", filters.company, "default_currency")
 	accounts = frappe.get_all("Account", filters={"Company": filters.company}, fields=["name", "account_number"])
 
 	for d in data:
 
-		JournalCode = re.split("-|/|[0-9]", d.get("voucher_no"))[0]
+		JournalCode = re.split(r"-|/|[0-9]", d.get("voucher_no"))[0]
 
 		if d.get("voucher_no").startswith("{0}-".format(JournalCode)) or d.get("voucher_no").startswith("{0}/".format(JournalCode)):
-			EcritureNum = re.split("-|/", d.get("voucher_no"))[1]
+			EcritureNum = re.split(r"-|/", d.get("voucher_no"))[1]
 		else:
-			EcritureNum = re.search("{0}(\d+)".format(JournalCode), d.get("voucher_no"), re.IGNORECASE).group(1)
+			EcritureNum = re.search(r"{0}(\d+)".format(JournalCode), d.get("voucher_no"), re.IGNORECASE).group(1)
 
 		EcritureDate = format_datetime(d.get("GlPostDate"), "yyyyMMdd")
 
 		account_number = [account.account_number for account in accounts if account.name == d.get("account")]
 		if account_number[0] is not None:
-			CompteNum =  account_number[0]
+			CompteNum = account_number[0]
 		else:
 			frappe.throw(_("Account number for account {0} is not available.<br> Please setup your Chart of Accounts correctly.").format(d.get("account")))
 
@@ -157,16 +159,16 @@ def get_result_as_list(data, filters):
 
 		PieceDate = format_datetime(d.get("GlPostDate"), "yyyyMMdd")
 
-		debit = '{:.2f}'.format(d.get("debit")).replace(".", ",")
+		debit = "{:.2f}".format(d.get("debit")).replace(".", ",")
 
-		credit = '{:.2f}'.format(d.get("credit")).replace(".", ",")
+		credit = "{:.2f}".format(d.get("credit")).replace(".", ",")
 
 		Idevise = d.get("account_currency")
 
 		if Idevise != company_currency:
-			Montantdevise = '{:.2f}'.format(d.get("debitCurr")).replace(".", ",") if d.get("debitCurr") != 0 else '{:.2f}'.format(d.get("creditCurr")).replace(".", ",")
+			Montantdevise = "{:.2f}".format(d.get("debitCurr")).replace(".", ",") if d.get("debitCurr") != 0 else "{:.2f}".format(d.get("creditCurr")).replace(".", ",")
 		else:
-			Montantdevise = '{:.2f}'.format(d.get("debit")).replace(".", ",") if d.get("debit") != 0 else '{:.2f}'.format(d.get("credit")).replace(".", ",")
+			Montantdevise = "{:.2f}".format(d.get("debit")).replace(".", ",") if d.get("debit") != 0 else "{:.2f}".format(d.get("credit")).replace(".", ",")
 
 		row = [JournalCode, d.get("voucher_type"), EcritureNum, EcritureDate, CompteNum, d.get("account"), CompAuxNum, CompAuxLib,
 			   PieceRef, PieceDate, EcritureLib, debit, credit, "", "", ValidDate, Montantdevise, Idevise]

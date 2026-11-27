@@ -1,24 +1,24 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
-import erpnext
 from frappe import _
-from erpnext.controllers.accounts_controller import AccountsController
-from frappe.utils import flt, getdate, cint, validate_email_address, combine_datetime, now_datetime
 from frappe.core.doctype.notification_count.notification_count import get_all_notification_count
-from erpnext.accounts.party import get_party_bank_account, get_party_name
-from erpnext.accounts.doctype.payment_entry.payment_entry import get_company_defaults
-from erpnext.accounts.utils import get_advance_against_voucher_types
 from frappe.regional.regional import validate_mobile_no
-from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
-from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
+from frappe.utils import cint, combine_datetime, flt, getdate, now_datetime, validate_email_address
+from payments.utils import get_payment_gateway_controller
+
+import erpnext
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_all_dimension_fields,
 	get_checks_for_pl_and_bs_accounts,
 )
-from payments.utils import get_payment_gateway_controller
+from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
+from erpnext.accounts.doctype.payment_entry.payment_entry import get_company_defaults
+from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
+from erpnext.accounts.party import get_party_bank_account, get_party_name
+from erpnext.accounts.utils import get_advance_against_voucher_types
+from erpnext.controllers.accounts_controller import AccountsController
 
 
 class PaymentRequest(AccountsController):
@@ -33,7 +33,7 @@ class PaymentRequest(AccountsController):
 
 	def onload(self):
 		super().onload()
-		self.set_onload('notification_count', get_all_notification_count(self.doctype, self.name))
+		self.set_onload("notification_count", get_all_notification_count(self.doctype, self.name))
 
 	def before_validate(self):
 		self.set_cashier(force=True)
@@ -99,7 +99,7 @@ class PaymentRequest(AccountsController):
 			self.db_set("payment_entry_creation_error", str(e))
 			self.add_comment(
 				"Comment",
-				_("Automated Payment Entry creation failed after Payment Gateway's payment was authorized") + "<br><br>" + str(e)
+				_("Automated Payment Entry creation failed after Payment Gateway's payment was authorized") + "<br><br>" + str(e),
 			)
 			self.set_status(update=True)
 			self.notify_update()
@@ -147,7 +147,7 @@ class PaymentRequest(AccountsController):
 						self.status = "Requested"
 				elif self.payment_request_type == "Outward":
 					payment_order = frappe.db.get_value("Payment Order Reference", {
-						"payment_request": self.name, "docstatus": 1
+						"payment_request": self.name, "docstatus": 1,
 					})
 					if payment_order:
 						self.status = "Payment Ordered"
@@ -187,7 +187,7 @@ class PaymentRequest(AccountsController):
 
 			reference_doc.validate_for_transaction(self)
 		else:
-			party_type, party, party_name = self.get_reference_document_party(reference_doc)
+			party_type, party, _party_name = self.get_reference_document_party(reference_doc)
 			if self.party_type != party_type or self.party != party:
 				frappe.throw(_("{0} {1} in Payment Request does not match with {2} {3} in Reference Document").format(
 					self.party_type,
@@ -388,7 +388,7 @@ class PaymentRequest(AccountsController):
 			):
 				if not self.get(dimension.fieldname):
 					frappe.throw(_("Accounting Dimension {0} is mandatory").format(
-						frappe.bold(dimension.label)
+						frappe.bold(dimension.label),
 					))
 
 	def get_reference_document(self, reload=False):
@@ -422,7 +422,7 @@ class PaymentRequest(AccountsController):
 	def payment_gateway_validation(self):
 		try:
 			controller = get_payment_gateway_controller(self.payment_gateway)
-			if hasattr(controller, 'on_payment_request_submission'):
+			if hasattr(controller, "on_payment_request_submission"):
 				return controller.on_payment_request_submission(self)
 			else:
 				return True
@@ -433,7 +433,7 @@ class PaymentRequest(AccountsController):
 		controller = get_payment_gateway_controller(self.payment_gateway)
 		controller.validate_transaction_currency(self.currency)
 
-		if hasattr(controller, 'validate_minimum_transaction_amount'):
+		if hasattr(controller, "validate_minimum_transaction_amount"):
 			controller.validate_minimum_transaction_amount(self.currency, self.grand_total)
 
 		return controller.get_payment_url(**{
@@ -592,27 +592,27 @@ class PaymentRequest(AccountsController):
 				filters={
 					"reference_doctype": self.reference_doctype,
 					"reference_name": self.reference_name,
-					"docstatus": ["<", 2]
+					"docstatus": ["<", 2],
 				},
 				fields=["parent"],
-				limit=1
+				limit=1,
 			)
 			if pref:
-				frappe.throw(_("Payment Entry is already submitted"), title=_('Error'))
+				frappe.throw(_("Payment Entry is already submitted"), title=_("Error"))
 
 	def validate_notification(self, notification_key=None, child_doctype=None, child_name=None, throw=False):
 		if notification_key in ("Payment Link", "Payment Received"):
 			if self.docstatus != 1:
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Payment Request is not submitted").format(
-						notification_key
+						notification_key,
 					))
 				return False
 
 			if self.payment_request_type != "Inward":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Payment Request Type is not 'Inward'").format(
-						notification_key
+						notification_key,
 					))
 				return False
 
@@ -620,7 +620,7 @@ class PaymentRequest(AccountsController):
 			if self.mute_notification:
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because notifications are muted for this Payment Request").format(
-						notification_key
+						notification_key,
 					))
 
 			if not self.payment_url:
@@ -631,7 +631,7 @@ class PaymentRequest(AccountsController):
 			if self.status == "Paid":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because reference document is already paid").format(
-						notification_key
+						notification_key,
 					))
 				return False
 
@@ -639,7 +639,7 @@ class PaymentRequest(AccountsController):
 			if self.status != "Paid":
 				if throw:
 					frappe.throw(_("Cannot send {0} notification because Payment Request is not fully paid").format(
-						notification_key
+						notification_key,
 					))
 				return False
 
@@ -677,7 +677,7 @@ class PaymentRequest(AccountsController):
 					"doctype": self.reference_doctype,
 					"name": self.reference_name,
 					"print_letterhead": with_letterhead,
-				}
+				},
 			]
 
 	def get_payment_request_paid_amount(self):
@@ -862,7 +862,7 @@ def make_payment_request(**args):
 		party_type = args.get("party_type")
 		party = args.get("party")
 	else:
-		party_type, party, party_name = PaymentRequest.get_reference_document_party(reference_doc)
+		party_type, party, _party_name = PaymentRequest.get_reference_document_party(reference_doc)
 
 	payment_gateway_account = None
 	if company and payment_request_type == "Inward":
@@ -899,7 +899,7 @@ def make_payment_request(**args):
 def get_payment_gateway_account(company, currency, payment_gateway=None):
 	filters = {
 		"company": company,
-		"currency": currency
+		"currency": currency,
 	}
 
 	if payment_gateway:
@@ -919,8 +919,8 @@ def get_payment_gateway_account_details(payment_gateway_account):
 	if doc.payment_gateway:
 		try:
 			controller = get_payment_gateway_controller(doc.payment_gateway)
-			expiry_date_allowed = cint(getattr(controller, 'supports_expiry_date', False))
-			expiry_time_allowed = cint(getattr(controller, 'supports_expiry_time', False))
+			expiry_date_allowed = cint(getattr(controller, "supports_expiry_date", False))
+			expiry_time_allowed = cint(getattr(controller, "supports_expiry_time", False))
 		except Exception:
 			pass
 
@@ -967,21 +967,21 @@ def make_payment_order(source_name, target_doc=None):
 
 	def set_missing_values(source, target):
 		target.payment_order_type = "Payment Request"
-		target.append('references', {
-			'reference_doctype': source.reference_doctype,
-			'reference_name': source.reference_name,
-			'amount': source.grand_total,
-			'supplier': source.party,
-			'payment_request': source_name,
-			'mode_of_payment': source.mode_of_payment,
-			'bank_account': source.bank_account,
-			'account': source.account
+		target.append("references", {
+			"reference_doctype": source.reference_doctype,
+			"reference_name": source.reference_name,
+			"amount": source.grand_total,
+			"supplier": source.party,
+			"payment_request": source_name,
+			"mode_of_payment": source.mode_of_payment,
+			"bank_account": source.bank_account,
+			"account": source.account,
 		})
 
-	doclist = get_mapped_doc("Payment Request", source_name,	{
+	doclist = get_mapped_doc("Payment Request", source_name, {
 		"Payment Request": {
 			"doctype": "Payment Order",
-		}
+		},
 	}, target_doc, set_missing_values)
 
 	return doclist

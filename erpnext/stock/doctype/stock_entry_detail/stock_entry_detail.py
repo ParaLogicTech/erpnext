@@ -2,8 +2,8 @@
 # License: GNU General Public License v3. See license.txt
 
 # import frappe
-from frappe.utils import cint
 from frappe.model.document import Document
+from frappe.utils import cint
 
 
 class StockEntryDetail(Document):

@@ -1,6 +1,7 @@
 import frappe
-from erpnext.stock.get_item_details import get_sales_commission_category
+
 from erpnext.selling.doctype.sales_commission_category.sales_commission_category import get_commission_rate
+from erpnext.stock.get_item_details import get_sales_commission_category
 
 
 def execute():
@@ -12,12 +13,12 @@ def execute():
 		doc = frappe.get_doc("Sales Invoice", d.name)
 		for d in doc.items:
 			if d.item_code:
-				d.sales_commission_category = get_sales_commission_category(d.item_code, {'company': doc.company})
+				d.sales_commission_category = get_sales_commission_category(d.item_code, {"company": doc.company})
 				d.commission_rate = get_commission_rate(d.sales_commission_category)
 
 				d.db_set({
-					'sales_commission_category': d.sales_commission_category,
-					'commission_rate': d.commission_rate,
+					"sales_commission_category": d.sales_commission_category,
+					"commission_rate": d.commission_rate,
 				}, update_modified=False)
 
 		doc.clear_cache()

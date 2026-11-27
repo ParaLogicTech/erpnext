@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe import _
-from frappe.utils import date_diff, getdate, formatdate, cint, month_diff, flt
 from frappe.model.document import Document
+from frappe.utils import cint, date_diff, flt, formatdate, getdate, month_diff
+
 from erpnext.hr.utils import get_holidays_for_employee
+
 
 class PayrollPeriod(Document):
 	def validate(self):
@@ -28,14 +29,14 @@ class PayrollPeriod(Document):
 			"""
 		if not self.name:
 			# hack! if name is null, it could cause problems with !=
-			self.name = "New "+self.doctype
+			self.name = "New " + self.doctype
 
-		overlap_doc = frappe.db.sql(query.format(self.doctype),{
+		overlap_doc = frappe.db.sql(query.format(self.doctype), {
 				"start_date": self.start_date,
 				"end_date": self.end_date,
 				"name": self.name,
-				"company": self.company
-			}, as_dict = 1)
+				"company": self.company,
+			}, as_dict=1)
 
 		if overlap_doc:
 			msg = _("A {0} exists between {1} and {2} (").format(self.doctype,
@@ -43,6 +44,7 @@ class PayrollPeriod(Document):
 				+ frappe.utils.get_link_to_form(self.doctype, overlap_doc[0].name) \
 				+ _(") for {0}").format(self.company)
 			frappe.throw(msg)
+
 
 def get_payroll_period_days(start_date, end_date, employee, company=None):
 	if not company:
@@ -55,9 +57,9 @@ def get_payroll_period_days(start_date, end_date, employee, company=None):
 			and %(start_date)s between start_date and end_date
 			and %(end_date)s between start_date and end_date
 	""", {
-		'company': company,
-		'start_date': start_date,
-		'end_date': end_date
+		"company": company,
+		"start_date": start_date,
+		"end_date": end_date,
 	})
 
 	if len(payroll_period) > 0:
@@ -69,6 +71,7 @@ def get_payroll_period_days(start_date, end_date, employee, company=None):
 		return payroll_period[0][0], working_days, actual_no_of_days
 	return False, False, False
 
+
 def get_payroll_period(from_date, to_date, company):
 	payroll_period = frappe.db.sql("""
 		select name, start_date, end_date
@@ -77,6 +80,7 @@ def get_payroll_period(from_date, to_date, company):
 	""", (from_date, to_date, company), as_dict=1)
 
 	return payroll_period[0] if payroll_period else None
+
 
 def get_period_factor(employee, start_date, end_date, payroll_frequency, payroll_period, depends_on_payment_days=0):
 	# TODO if both deduct checked update the factor to make tax consistent
@@ -90,7 +94,7 @@ def get_period_factor(employee, start_date, end_date, payroll_frequency, payroll
 
 	total_sub_periods, remaining_sub_periods = 0.0, 0.0
 
-	if payroll_frequency ==  "Monthly" and not depends_on_payment_days:
+	if payroll_frequency == "Monthly" and not depends_on_payment_days:
 		total_sub_periods = month_diff(payroll_period.end_date, payroll_period.start_date)
 		remaining_sub_periods = month_diff(period_end, start_date)
 	else:

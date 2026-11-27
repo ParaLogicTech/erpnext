@@ -4,11 +4,13 @@
 import frappe
 from frappe import _
 
+
 def execute(filters=None):
-	if not filters: filters = {}
+	if not filters:
+		filters = {}
 
 	if not filters["company"]:
-		frappe.throw(_('{0} is mandatory').format(_('Company')))
+		frappe.throw(_("{0} is mandatory").format(_("Company")))
 
 	columns = get_columns()
 	employees = get_employees(filters)
@@ -17,24 +19,29 @@ def execute(filters=None):
 	if departments_result:
 		for department in departments_result:
 			departments.append(department)
-	chart = get_chart_data(departments,employees)
+	chart = get_chart_data(departments, employees)
 	return columns, employees, None, chart
+
 
 def get_columns():
 	return [
-		_("Employee") + ":Link/Employee:120", _("Name") + ":Data:200", _("Date of Birth")+ ":Date:100",
+		_("Employee") + ":Link/Employee:120", _("Name") + ":Data:200", _("Date of Birth") + ":Date:100",
 		_("Branch") + ":Link/Branch:120", _("Department") + ":Link/Department:120",
-		_("Designation") + ":Link/Designation:120", _("Gender") + "::60", _("Company") + ":Link/Company:120"
+		_("Designation") + ":Link/Designation:120", _("Gender") + "::60", _("Company") + ":Link/Company:120",
 	]
+
 
 def get_conditions(filters):
 	conditions = ""
-	if filters.get("department"): conditions += " and department = '%s'" % \
+	if filters.get("department"):
+		conditions += " and department = '%s'" % \
 		filters["department"].replace("'", "\\'")
-	
-	if filters.get("company"): conditions += " and company = '%s'" % \
+
+	if filters.get("company"):
+		conditions += " and company = '%s'" % \
 		filters["company"].replace("'", "\\'")
 	return conditions
+
 
 def get_employees(filters):
 	conditions = get_conditions(filters)
@@ -42,10 +49,12 @@ def get_employees(filters):
 	branch, department, designation,
 	gender, company from `tabEmployee` where status = 'Active' %s""" % conditions, as_list=1)
 
+
 def get_department(filters):
 	return frappe.db.sql("""select name from `tabDepartment` where company = %s""", (filters["company"]), as_list=1)
-	
-def get_chart_data(departments,employees):
+
+
+def get_chart_data(departments, employees):
 	if not departments:
 		departments = []
 	datasets = []
@@ -53,14 +62,13 @@ def get_chart_data(departments,employees):
 		if department:
 			total_employee = frappe.db.sql("""select count(*) from \
 				`tabEmployee` where \
-				department = %s""" ,(department[0]), as_list=1)
+				department = %s""", (department[0]), as_list=1)
 			datasets.append(total_employee[0][0])
 	chart = {
 		"data": {
-			'labels': departments,
-			'datasets': [{'name': 'Employees','values': datasets}]
-		}
+			"labels": departments,
+			"datasets": [{"name": "Employees", "values": datasets}],
+		},
 	}
 	chart["type"] = "bar"
 	return chart
-

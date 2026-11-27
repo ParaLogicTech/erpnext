@@ -6,8 +6,8 @@ def execute():
 	frappe.reload_doc("projects", "doctype", "project")
 	frappe.reload_doc("projects", "doctype", "project_status")
 
-	if frappe.db.has_column("Project", 'is_released'):
-		rename_field("Project", 'is_released', 'ready_to_close')
+	if frappe.db.has_column("Project", "is_released"):
+		rename_field("Project", "is_released", "ready_to_close")
 
 	# STATUS Released -> To Close
 	frappe.db.sql("""

@@ -2,7 +2,9 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
+
 from erpnext.stock.utils import get_bin
+
 
 def execute():
 	frappe.reload_doc("stock", "doctype", "bin")
@@ -15,7 +17,7 @@ def execute():
 		try:
 			bin_doc = get_bin(d[0], d[1])
 			bin_doc.update_reserved_qty_for_sub_contracting()
-		except:
+		except Exception:
 			pass
 
 	for d in frappe.db.sql("""select distinct item_code, source_warehouse
@@ -26,5 +28,5 @@ def execute():
 		try:
 			bin_doc = get_bin(d[0], d[1])
 			bin_doc.update_reserved_qty_for_production()
-		except:
+		except Exception:
 			pass

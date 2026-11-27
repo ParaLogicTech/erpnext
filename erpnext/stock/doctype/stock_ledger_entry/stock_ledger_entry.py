@@ -2,16 +2,19 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+from datetime import date
+
 import frappe
 from frappe import _
-from frappe.utils import getdate, add_days, formatdate, today
 from frappe.model.document import Document
-from datetime import date
-from erpnext.controllers.item_variant import ItemTemplateCannotHaveStock
+from frappe.utils import add_days, formatdate, getdate, today
+
 from erpnext.accounts.utils import get_fiscal_year
+from erpnext.controllers.item_variant import ItemTemplateCannotHaveStock
 
 
-class StockFreezeError(frappe.ValidationError): pass
+class StockFreezeError(frappe.ValidationError):
+	pass
 
 
 exclude_from_linked_with = True
@@ -54,7 +57,7 @@ class StockLedgerEntry(Document):
 			validate_serial_no_ledger(self.serial_no, self.item_code, self.voucher_type, self.voucher_no, self.company)
 
 	def validate_mandatory(self):
-		mandatory = ['warehouse','posting_date','voucher_type','voucher_no','company']
+		mandatory = ["warehouse", "posting_date", "voucher_type", "voucher_no", "company"]
 		for k in mandatory:
 			if not self.get(k):
 				frappe.throw(_("{0} is required").format(self.meta.get_label(k)))
@@ -64,7 +67,7 @@ class StockLedgerEntry(Document):
 
 	def validate_date(self):
 		if not self.get("via_landed_cost_voucher") and getdate(self.posting_date) > getdate(today()) and self.is_cancelled == "No":
-			frappe.throw(_("Stock cannot be created for a future date {0}").format(self.get_formatted('posting_date')))
+			frappe.throw(_("Stock cannot be created for a future date {0}").format(self.get_formatted("posting_date")))
 
 	def validate_item(self):
 		item_det = frappe.db.sql("""select name, item_name, has_batch_no, docstatus,
@@ -88,7 +91,7 @@ class StockLedgerEntry(Document):
 					frappe.throw(_("Batch number is mandatory for Item {0}").format(frappe.bold(batch_item)))
 				elif not frappe.db.get_value("Batch", {"item": self.item_code, "name": self.batch_no}):
 					frappe.throw(_("{0} is not a valid Batch Number for Item {1}").format(
-						self.batch_no, frappe.bold(batch_item)
+						self.batch_no, frappe.bold(batch_item),
 					))
 
 			elif not item_det.has_batch_no and self.batch_no:
@@ -143,17 +146,17 @@ class StockLedgerEntry(Document):
 			frappe.throw(_("Invalid reference in Stock Ledger Entry Dependency"))
 
 	def check_stock_frozen_date(self):
-		stock_frozen_upto = frappe.get_cached_value('Stock Settings', None, 'stock_frozen_upto') or ''
+		stock_frozen_upto = frappe.get_cached_value("Stock Settings", None, "stock_frozen_upto") or ""
 		if stock_frozen_upto:
-			stock_auth_role = frappe.get_cached_value('Stock Settings', None,'stock_auth_role')
-			if getdate(self.posting_date) <= getdate(stock_frozen_upto) and not stock_auth_role in frappe.get_roles():
+			stock_auth_role = frappe.get_cached_value("Stock Settings", None, "stock_auth_role")
+			if getdate(self.posting_date) <= getdate(stock_frozen_upto) and stock_auth_role not in frappe.get_roles():
 				frappe.throw(_("Stock transactions before {0} are frozen").format(formatdate(stock_frozen_upto)), StockFreezeError)
 
-		stock_frozen_upto_days = int(frappe.get_cached_value('Stock Settings', None, 'stock_frozen_upto_days') or 0)
+		stock_frozen_upto_days = int(frappe.get_cached_value("Stock Settings", None, "stock_frozen_upto_days") or 0)
 		if stock_frozen_upto_days:
-			stock_auth_role = frappe.get_cached_value('Stock Settings', None,'stock_auth_role')
+			stock_auth_role = frappe.get_cached_value("Stock Settings", None, "stock_auth_role")
 			older_than_x_days_ago = (add_days(getdate(self.posting_date), stock_frozen_upto_days) <= date.today())
-			if older_than_x_days_ago and not stock_auth_role in frappe.get_roles():
+			if older_than_x_days_ago and stock_auth_role not in frappe.get_roles():
 				frappe.throw(_("Not allowed to update stock transactions older than {0}").format(stock_frozen_upto_days), StockFreezeError)
 
 	def check_warehouse_transaction_permission(self):
@@ -162,8 +165,8 @@ class StockLedgerEntry(Document):
 			check_warehouse_transaction_permission(self.warehouse)
 
 	def scrub_posting_time(self):
-		if not self.posting_time or self.posting_time == '00:0':
-			self.posting_time = '00:00'
+		if not self.posting_time or self.posting_time == "00:0":
+			self.posting_time = "00:00"
 
 	def validate_batch(self):
 		if self.batch_no and self.voucher_type != "Stock Entry":
@@ -190,7 +193,7 @@ class StockLedgerEntry(Document):
 
 		self.serial_numbers = []
 		for serial_no in serial_nos:
-			self.append('serial_numbers', {'serial_no': serial_no})
+			self.append("serial_numbers", {"serial_no": serial_no})
 
 
 def on_doctype_update():

@@ -28,7 +28,7 @@ def execute():
 	if projects:
 		print("Setting Sold Time")
 		for i, name in enumerate(projects):
-			print(f"{i+1}/{len(projects)}: {name}")
+			print(f"{i + 1}/{len(projects)}: {name}")
 			doc = frappe.get_doc("Project", name)
 			doc.set_sales_amount()
 			doc.db_set("sold_time", doc.sold_time, update_modified=False)

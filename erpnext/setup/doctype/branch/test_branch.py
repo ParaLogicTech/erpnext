@@ -3,4 +3,5 @@
 
 
 import frappe
-test_records = frappe.get_test_records('Branch')
+
+test_records = frappe.get_test_records("Branch")

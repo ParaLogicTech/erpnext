@@ -1,4 +1,3 @@
-# coding=utf-8
 
 fiscal_regimes = [
     "RF01-Ordinario",
@@ -18,7 +17,7 @@ fiscal_regimes = [
     "RF16-IVA per cassa P.A. (art.6, c.5, DPR 633/72)",
     "RF17-IVA per cassa (art. 32-bis, DL 83/2012)",
     "RF18-Altro",
-    "RF19-Regime forfettario (art.1, c.54-89, L. 190/2014)"
+    "RF19-Regime forfettario (art.1, c.54-89, L. 190/2014)",
 ]
 
 tax_exemption_reasons = [
@@ -28,7 +27,7 @@ tax_exemption_reasons = [
     "N4-Esenti",
     "N5-Regime del margine / IVA non esposta in fattura",
     "N6-Inversione Contabile",
-    "N7-IVA assolta in altro stato UE"
+    "N7-IVA assolta in altro stato UE",
 ]
 
 mode_of_payment_codes = [
@@ -53,27 +52,27 @@ mode_of_payment_codes = [
     "MP19-SEPA Direct Debit",
     "MP20-SEPA Direct Debit CORE",
     "MP21-SEPA Direct Debit B2B",
-    "MP22-Trattenuta su somme già riscosse"
+    "MP22-Trattenuta su somme già riscosse",
 ]
 
 vat_collectability_options = [
     "I-Immediata",
     "D-Differita",
-    "S-Scissione dei Pagamenti"
+    "S-Scissione dei Pagamenti",
 ]
 
-state_codes = {'Siracusa': 'SR', 'Bologna': 'BO', 'Grosseto': 'GR', 'Caserta': 'CE', 'Alessandria': 'AL', 'Ancona': 'AN', 'Pavia': 'PV',
- 'Benevento or Beneventum': 'BN', 'Modena': 'MO', 'Lodi': 'LO', 'Novara': 'NO', 'Avellino': 'AV', 'Verona': 'VR', 'Forli-Cesena': 'FC',
- 'Caltanissetta': 'CL', 'Brescia': 'BS', 'Rieti': 'RI', 'Treviso': 'TV', 'Ogliastra': 'OG', 'Olbia-Tempio': 'OT', 'Bergamo': 'BG',
- 'Napoli': 'NA', 'Campobasso': 'CB', 'Fermo': 'FM', 'Roma': 'RM', 'Lucca': 'LU', 'Rovigo': 'RO', 'Piacenza': 'PC', 'Monza and Brianza': 'MB',
- 'La Spezia': 'SP', 'Pescara': 'PE', 'Vercelli': 'VC', 'Enna': 'EN', 'Nuoro': 'NU', 'Medio Campidano': 'MD', 'Trieste': 'TS', 'Aosta': 'AO',
- 'Firenze': 'FI', 'Trapani': 'TP', 'Messina': 'ME', 'Teramo': 'TE', 'Udine': 'UD', 'Verbano-Cusio-Ossola': 'VB', 'Padua': 'PD',
- 'Reggio Emilia': 'RE', 'Frosinone': 'FR', 'Taranto': 'TA', 'Catanzaro': 'CZ', 'Belluno': 'BL', 'Pordenone': 'PN', 'Viterbo': 'VT',
- 'Gorizia': 'GO', 'Vatican City': 'SCV', 'Ferrara': 'FE', 'Chieti': 'CH', 'Crotone': 'KR', 'Foggia': 'FG', 'Perugia': 'PG', 'Bari': 'BA',
- 'Massa-Carrara': 'MS', 'Pisa': 'PI', 'Latina': 'LT', 'Salerno': 'SA', 'Turin': 'TO', 'Lecco': 'LC', 'Lecce': 'LE', 'Pistoia': 'PT', 'Como': 'CO',
- 'Barletta-Andria-Trani': 'BT', 'Mantua': 'MN', 'Ragusa': 'RG', 'Macerata': 'MC', 'Imperia': 'IM', 'Palermo': 'PA', 'Matera': 'MT', "L'Aquila": 'AQ',
- 'Milano': 'MI', 'Catania': 'CT', 'Pesaro e Urbino': 'PU', 'Potenza': 'PZ', 'Republic of San Marino': 'RSM', 'Genoa': 'GE', 'Brindisi': 'BR',
- 'Cagliari': 'CA', 'Siena': 'SI', 'Vibo Valentia': 'VV', 'Reggio Calabria': 'RC', 'Ascoli Piceno': 'AP', 'Carbonia-Iglesias': 'CI', 'Oristano': 'OR',
- 'Asti': 'AT', 'Ravenna': 'RA', 'Vicenza': 'VI', 'Savona': 'SV', 'Biella': 'BI', 'Rimini': 'RN', 'Agrigento': 'AG', 'Prato': 'PO', 'Cuneo': 'CN',
- 'Cosenza': 'CS', 'Livorno or Leghorn': 'LI', 'Sondrio': 'SO', 'Cremona': 'CR', 'Isernia': 'IS', 'Trento': 'TN', 'Terni': 'TR', 'Bolzano/Bozen': 'BZ',
- 'Parma': 'PR', 'Varese': 'VA', 'Venezia': 'VE', 'Sassari': 'SS', 'Arezzo': 'AR'}
+state_codes = {"Siracusa": "SR", "Bologna": "BO", "Grosseto": "GR", "Caserta": "CE", "Alessandria": "AL", "Ancona": "AN", "Pavia": "PV",
+ "Benevento or Beneventum": "BN", "Modena": "MO", "Lodi": "LO", "Novara": "NO", "Avellino": "AV", "Verona": "VR", "Forli-Cesena": "FC",
+ "Caltanissetta": "CL", "Brescia": "BS", "Rieti": "RI", "Treviso": "TV", "Ogliastra": "OG", "Olbia-Tempio": "OT", "Bergamo": "BG",
+ "Napoli": "NA", "Campobasso": "CB", "Fermo": "FM", "Roma": "RM", "Lucca": "LU", "Rovigo": "RO", "Piacenza": "PC", "Monza and Brianza": "MB",
+ "La Spezia": "SP", "Pescara": "PE", "Vercelli": "VC", "Enna": "EN", "Nuoro": "NU", "Medio Campidano": "MD", "Trieste": "TS", "Aosta": "AO",
+ "Firenze": "FI", "Trapani": "TP", "Messina": "ME", "Teramo": "TE", "Udine": "UD", "Verbano-Cusio-Ossola": "VB", "Padua": "PD",
+ "Reggio Emilia": "RE", "Frosinone": "FR", "Taranto": "TA", "Catanzaro": "CZ", "Belluno": "BL", "Pordenone": "PN", "Viterbo": "VT",
+ "Gorizia": "GO", "Vatican City": "SCV", "Ferrara": "FE", "Chieti": "CH", "Crotone": "KR", "Foggia": "FG", "Perugia": "PG", "Bari": "BA",
+ "Massa-Carrara": "MS", "Pisa": "PI", "Latina": "LT", "Salerno": "SA", "Turin": "TO", "Lecco": "LC", "Lecce": "LE", "Pistoia": "PT", "Como": "CO",
+ "Barletta-Andria-Trani": "BT", "Mantua": "MN", "Ragusa": "RG", "Macerata": "MC", "Imperia": "IM", "Palermo": "PA", "Matera": "MT", "L'Aquila": "AQ",
+ "Milano": "MI", "Catania": "CT", "Pesaro e Urbino": "PU", "Potenza": "PZ", "Republic of San Marino": "RSM", "Genoa": "GE", "Brindisi": "BR",
+ "Cagliari": "CA", "Siena": "SI", "Vibo Valentia": "VV", "Reggio Calabria": "RC", "Ascoli Piceno": "AP", "Carbonia-Iglesias": "CI", "Oristano": "OR",
+ "Asti": "AT", "Ravenna": "RA", "Vicenza": "VI", "Savona": "SV", "Biella": "BI", "Rimini": "RN", "Agrigento": "AG", "Prato": "PO", "Cuneo": "CN",
+ "Cosenza": "CS", "Livorno or Leghorn": "LI", "Sondrio": "SO", "Cremona": "CR", "Isernia": "IS", "Trento": "TN", "Terni": "TR", "Bolzano/Bozen": "BZ",
+ "Parma": "PR", "Varese": "VA", "Venezia": "VE", "Sassari": "SS", "Arezzo": "AR"}

@@ -4,19 +4,21 @@
 import frappe
 from frappe import _
 from frappe.utils import flt
-from erpnext.accounts.report.financial_statements import (get_period_list, get_columns, get_data)
+
+from erpnext.accounts.report.financial_statements import get_columns, get_data, get_period_list
+
 
 def execute(filters=None):
 	period_list = get_period_list(filters.from_fiscal_year, filters.to_fiscal_year,
 		filters.periodicity, filters.accumulated_values, filters.company)
 
-	income = get_data(filters.company, "Income", "Credit", period_list, filters = filters,
+	income = get_data(filters.company, "Income", "Credit", period_list, filters=filters,
 		accumulated_values=filters.accumulated_values,
-		ignore_closing_entries=True, ignore_accumulated_values_for_fy= True)
+		ignore_closing_entries=True, ignore_accumulated_values_for_fy=True)
 
 	expense = get_data(filters.company, "Expense", "Debit", period_list, filters=filters,
 		accumulated_values=filters.accumulated_values,
-		ignore_closing_entries=True, ignore_accumulated_values_for_fy= True)
+		ignore_closing_entries=True, ignore_accumulated_values_for_fy=True)
 
 	net_profit_loss = get_net_profit_loss(income, expense, period_list, filters.company, filters.presentation_currency)
 
@@ -32,13 +34,14 @@ def execute(filters=None):
 
 	return columns, data, None, chart
 
+
 def get_net_profit_loss(income, expense, period_list, company, currency=None, consolidated=False):
 	total = 0
 	net_profit_loss = {
 		"account_name": _("Profit for the year"),
 		"account_display": _("Profit for the year"),
 		"warn_if_negative": True,
-		"currency": currency or frappe.get_cached_value('Company',  company,  "default_currency")
+		"currency": currency or frappe.get_cached_value("Company", company, "default_currency"),
 	}
 
 	has_value = False
@@ -51,13 +54,14 @@ def get_net_profit_loss(income, expense, period_list, company, currency=None, co
 		net_profit_loss[key] = total_income - total_expense
 
 		if net_profit_loss[key]:
-			has_value=True
+			has_value = True
 
 		total += flt(net_profit_loss[key])
 		net_profit_loss["total"] = total
 
 	if has_value:
 		return net_profit_loss
+
 
 def get_chart_data(filters, columns, income, expense, net_profit_loss):
 	labels = [d.get("label") for d in columns[2:]]
@@ -74,18 +78,18 @@ def get_chart_data(filters, columns, income, expense, net_profit_loss):
 
 	datasets = []
 	if income_data:
-		datasets.append({'name': _('Income'), 'values': income_data})
+		datasets.append({"name": _("Income"), "values": income_data})
 	if expense_data:
-		datasets.append({'name': _('Expense'), 'values': expense_data})
+		datasets.append({"name": _("Expense"), "values": expense_data})
 	if net_profit:
-		datasets.append({'name': _('Net Profit/Loss'), 'values': net_profit})
+		datasets.append({"name": _("Net Profit/Loss"), "values": net_profit})
 
 	chart = {
 		"data": {
-			'labels': labels,
-			'datasets': datasets
+			"labels": labels,
+			"datasets": datasets,
 		},
-		"colors": ["blue", "orange", "green"]
+		"colors": ["blue", "orange", "green"],
 	}
 
 	if not filters.accumulated_values:

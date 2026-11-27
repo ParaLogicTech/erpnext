@@ -1,22 +1,24 @@
+import json
+import random
 import unittest
-import frappe
 
-import random, json
+import frappe
 import frappe.utils
-from frappe.utils import nowdate, add_months
 from frappe.model import mapper
 from frappe.test_runner import make_test_records
+from frappe.utils import add_months, nowdate
+
 
 class TestMapper(unittest.TestCase):
 	def test_map_docs(self):
-		'''Test mapping of multiple source docs on a single target doc'''
+		"""Test mapping of multiple source docs on a single target doc"""
 
 		make_test_records("Item")
-		items = ['_Test Item', '_Test Item 2', '_Test FG Item']
+		items = ["_Test Item", "_Test Item 2", "_Test FG Item"]
 
 		# Make source docs (quotations) and a target doc (sales order)
-		qtn1, item_list_1 = self.make_quotation(items, '_Test Customer')
-		qtn2, item_list_2 = self.make_quotation(items, '_Test Customer')
+		qtn1, item_list_1 = self.make_quotation(items, "_Test Customer")
+		qtn2, item_list_2 = self.make_quotation(items, "_Test Customer")
 		so, item_list_3 = self.make_sales_order()
 
 		# Map source docs to target with corresponding mapper method
@@ -28,7 +30,6 @@ class TestMapper(unittest.TestCase):
 		self.assertEqual(set([d for d in src_items]),
 			set([d.item_code for d in updated_so.items]))
 
-
 	def make_quotation(self, item_list, customer):
 
 		qtn = frappe.get_doc({
@@ -36,8 +37,8 @@ class TestMapper(unittest.TestCase):
 			"quotation_to": "Customer",
 			"party_name": customer,
 			"order_type": "Sales",
-			"transaction_date" : nowdate(),
-			"valid_till" : add_months(nowdate(), 1)
+			"transaction_date": nowdate(),
+			"valid_till": add_months(nowdate(), 1),
 		})
 		for item in item_list:
 			qtn.append("items", {"qty": "2", "item_code": item})
@@ -59,8 +60,8 @@ class TestMapper(unittest.TestCase):
 			"warehouse": "_Test Warehouse - _TC",
 			"stock_uom": "_Test UOM",
 			"conversion_factor": 1.0,
-			"uom": "_Test UOM"
+			"uom": "_Test UOM",
 		})
-		so = frappe.get_doc(frappe.get_test_records('Sales Order')[0])
+		so = frappe.get_doc(frappe.get_test_records("Sales Order")[0])
 		so.insert(ignore_permissions=True)
 		return so, [item.item_code]

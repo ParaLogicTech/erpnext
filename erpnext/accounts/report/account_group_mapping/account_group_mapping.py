@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.utils import flt
+
 from erpnext import get_default_company
 
 
@@ -38,7 +39,7 @@ class AccountGroupMappingReport:
 			"Account Group",
 			filters={"company": self.filters.company, "report_type": self.filters.report_type},
 			fields=["name", "report_type", "root_type"],
-			order_by="name"
+			order_by="name",
 		)
 
 	def get_account_group_mapping(self, account_group_names):
@@ -50,9 +51,9 @@ class AccountGroupMappingReport:
 				"Account Group Row",
 				filters={
 					"parent": ["in", account_group_names],
-					"row_type": "Account"
+					"row_type": "Account",
 				},
-				fields=["account", "parent"]
+				fields=["account", "parent"],
 			)
 
 		for d in rows:
@@ -90,7 +91,7 @@ class AccountGroupMappingReport:
 				})
 
 			for i in range(1, self.max_groups + 1):
-				row[f"account_group_{i}"] = mapped_groups[i-1] if i-1 < len(mapped_groups) else None
+				row[f"account_group_{i}"] = mapped_groups[i - 1] if i - 1 < len(mapped_groups) else None
 
 			data.append(row)
 
@@ -122,7 +123,7 @@ class AccountGroupMappingReport:
 			return {}
 
 		conditions = [
-			"account in %(accounts)s"
+			"account in %(accounts)s",
 		]
 		if self.filters.from_date:
 			conditions.append("posting_date >= %(from_date)s")
@@ -169,7 +170,7 @@ class AccountGroupMappingReport:
 					"filters": {
 						"company": self.filters.company,
 						"report_type": self.filters.report_type,
-					}
+					},
 				},
 				"width": 200,
 				"editable": 1,
@@ -224,6 +225,6 @@ def update_account_group_mapping(account, old_group, new_group):
 		if not any(r.row_type == "Account" and r.account == account for r in new_group_doc.rows):
 			new_group_doc.append("rows", {
 				"row_type": "Account",
-				"account": account
+				"account": account,
 			})
 			new_group_doc.save()

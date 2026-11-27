@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2018, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
+import unittest
+
+import frappe
+
 from erpnext.hr.doctype.employee_group.test_employee_group import make_employee_group
 from erpnext.support.doctype.issue_priority.test_issue_priority import make_priorities
 
-import frappe
-import unittest
 
 class TestServiceLevel(unittest.TestCase):
 
@@ -59,7 +60,7 @@ def create_service_level(service_level, holiday_list, employee_group, response_t
 				"response_time_period": "Hour",
 				"resolution_time": resolution_time,
 				"resolution_time_period": "Hour",
-			}
+			},
 		],
 		"support_and_resolution": [
 			{
@@ -96,8 +97,8 @@ def create_service_level(service_level, holiday_list, employee_group, response_t
 				"workday": "Sunday",
 				"start_time": "10:00:00",
 				"end_time": "18:00:00",
-			}
-		]
+			},
+		],
 	})
 
 	sl_exists = frappe.db.exists("Service Level", {"service_level": service_level})
@@ -108,13 +109,15 @@ def create_service_level(service_level, holiday_list, employee_group, response_t
 	else:
 		return frappe.get_doc("Service Level", {"service_level": service_level})
 
+
 def get_service_level(service_level):
 	return frappe.get_doc("Service Level", service_level)
+
 
 def make_holiday_list():
 	holiday_list = frappe.db.exists("Holiday List", "__Test Holiday List")
 	if not holiday_list:
-		now = frappe.utils.now_datetime()
+		frappe.utils.now_datetime()
 		holiday_list = frappe.get_doc({
 			"doctype": "Holiday List",
 			"holiday_list_name": "__Test Holiday List",
@@ -123,18 +126,19 @@ def make_holiday_list():
 			"holidays": [
 				{
 					"description": "Test Holiday 1",
-					"holiday_date": "2019-03-05"
+					"holiday_date": "2019-03-05",
 				},
 				{
 					"description": "Test Holiday 2",
-					"holiday_date": "2019-03-07"
+					"holiday_date": "2019-03-07",
 				},
 				{
 					"description": "Test Holiday 3",
-					"holiday_date": "2019-02-11"
+					"holiday_date": "2019-02-11",
 				},
-			]
+			],
 		}).insert()
+
 
 def create_service_level_for_sla():
 	employee_group = make_employee_group()

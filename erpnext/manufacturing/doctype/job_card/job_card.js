@@ -26,7 +26,7 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 	setup_queries() {
 		this.frm.set_query("work_order", () => {
 			return {
-				filters: {docstatus: 1}
+				filters: {docstatus: 1},
 			};
 		});
 
@@ -34,8 +34,8 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 			return {
 				query: "erpnext.manufacturing.doctype.job_card.job_card.get_operations",
 				filters: {
-					"work_order": this.frm.doc.work_order
-				}
+					"work_order": this.frm.doc.work_order,
+				},
 			};
 		});
 
@@ -45,7 +45,7 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 	}
 
 	setup_buttons() {
-		if(!this.frm.doc.__islocal && this.frm.doc.items && this.frm.doc.items.length) {
+		if (!this.frm.doc.__islocal && this.frm.doc.items && this.frm.doc.items.length) {
 			if (
 				this.frm.doc.material_transfer_required
 				&& flt(this.frm.doc.transferred_qty) < flt(this.frm.doc.for_quantity)
@@ -71,8 +71,8 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 			&& (completed_qty < this.frm.doc.for_quantity || !this.frm.doc.for_quantity)
 		) {
 			if (this.frm.doc.work_order) {
-				frappe.db.get_value('Work Order', this.frm.doc.work_order, ['skip_transfer', 'status'], (result) => {
-					if (result.skip_transfer === 1 || result.status == 'In Process' || this.frm.doc.transferred_qty > 0 || !this.frm.doc.items.length) {
+				frappe.db.get_value("Work Order", this.frm.doc.work_order, ["skip_transfer", "status"], (result) => {
+					if (result.skip_transfer === 1 || result.status == "In Process" || this.frm.doc.transferred_qty > 0 || !this.frm.doc.items.length) {
 						this.prepare_timer_buttons();
 					}
 				});
@@ -96,11 +96,11 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 			child: this.frm.doc,
 			args: {
 				"work_order": this.frm.doc.work_order,
-				"operation": this.frm.doc.operation
+				"operation": this.frm.doc.operation,
 			},
 			callback: () => {
 				this.frm.refresh_fields();
-			}
+			},
 		});
 	}
 
@@ -117,7 +117,7 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 				method: "erpnext.manufacturing.doctype.job_card.job_card.get_operation_details",
 				args: {
 					"work_order": this.frm.doc.work_order,
-					"operation": this.frm.doc.operation
+					"operation": this.frm.doc.operation,
 				},
 				callback: (r) => {
 					if (r.message) {
@@ -141,8 +141,8 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 
 						this.toggle_operation_number();
 					}
-				}
-			})
+				},
+			});
 		} else {
 			this.frm.set_value("operation_id", null);
 			this.toggle_operation_number();
@@ -171,7 +171,7 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 				doc: this.frm.doc,
 				callback: () => {
 					this.frm.refresh_field("items");
-				}
+				},
 			});
 		} else {
 			this.frm.clear_table("items");
@@ -193,7 +193,7 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 			this.frm.add_custom_button(__("Start"), () => {
 				if (!this.frm.doc.employee) {
 					frappe.prompt(
-						{fieldtype: 'Link', label: __('Employee'), options: "Employee", fieldname: 'employee'},
+						{fieldtype: "Link", label: __("Employee"), options: "Employee", fieldname: "employee"},
 						(d) => {
 							if (d.employee) {
 								this.frm.set_value("employee", d.employee);
@@ -202,7 +202,7 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 							}
 						},
 						__("Enter Value"),
-						__("Start")
+						__("Start"),
 					);
 				} else {
 					this.start_job();
@@ -225,10 +225,10 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 				this.hide_timer();
 
 				if (this.frm.doc.for_quantity) {
-					frappe.prompt({fieldtype: 'Float', label: __('Completed Quantity'),
-						fieldname: 'qty', reqd: 1, default: this.frm.doc.for_quantity}, data => {
-							this.complete_job(completed_time, data.qty);
-						}, __("Enter Value"), __("Complete"));
+					frappe.prompt({fieldtype: "Float", label: __("Completed Quantity"),
+						fieldname: "qty", reqd: 1, default: this.frm.doc.for_quantity}, data => {
+						this.complete_job(completed_time, data.qty);
+					}, __("Enter Value"), __("Complete"));
 				} else {
 					this.complete_job(completed_time, 0);
 				}
@@ -237,14 +237,14 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 	}
 
 	start_job() {
-		let row = frappe.model.add_child(this.frm.doc, 'Job Card Time Log', 'time_logs');
+		let row = frappe.model.add_child(this.frm.doc, "Job Card Time Log", "time_logs");
 		row.from_time = frappe.datetime.now_datetime();
-		this.frm.set_value('job_started', 1);
-		this.frm.set_value('started_time' , row.from_time);
+		this.frm.set_value("job_started", 1);
+		this.frm.set_value("started_time", row.from_time);
 		this.frm.set_value("status", "Work In Progress");
 
 		if (!frappe.flags.resume_job) {
-			this.frm.set_value('current_time' , 0);
+			this.frm.set_value("current_time", 0);
 		}
 
 		this.frm.save();
@@ -256,13 +256,13 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 				d.to_time = completed_time || frappe.datetime.now_datetime();
 				d.completed_qty = completed_qty || 0;
 
-				if(frappe.flags.pause_job) {
-					let currentIncrement = moment(d.to_time).diff(moment(d.from_time),"seconds") || 0;
-					this.frm.set_value('current_time' , currentIncrement + (this.frm.doc.current_time || 0));
+				if (frappe.flags.pause_job) {
+					let currentIncrement = moment(d.to_time).diff(moment(d.from_time), "seconds") || 0;
+					this.frm.set_value("current_time", currentIncrement + (this.frm.doc.current_time || 0));
 				} else {
-					this.frm.set_value('started_time' , '');
-					this.frm.set_value('job_started', 0);
-					this.frm.set_value('current_time' , 0);
+					this.frm.set_value("started_time", "");
+					this.frm.set_value("job_started", 0);
+					this.frm.set_value("current_time", 0);
 				}
 
 				this.frm.save();
@@ -271,13 +271,13 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 	}
 
 	reset_timer() {
-		this.frm.set_value('started_time' , '');
-		this.frm.set_value('job_started', 0);
-		this.frm.set_value('current_time' , 0);
+		this.frm.set_value("started_time", "");
+		this.frm.set_value("job_started", 0);
+		this.frm.set_value("current_time", 0);
 	}
 
 	make_dashboard() {
-		if(this.frm.doc.__islocal) {
+		if (this.frm.doc.__islocal) {
 			return;
 		}
 
@@ -336,8 +336,8 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 	}
 
 	to_time() {
-		this.frm.set_value('job_started', 0);
-		this.frm.set_value('started_time', '');
+		this.frm.set_value("job_started", 0);
+		this.frm.set_value("started_time", "");
 	}
 
 	set_total_completed_qty() {
@@ -355,7 +355,7 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 		frappe.model.open_mapped_doc({
 			method: "erpnext.manufacturing.doctype.job_card.job_card.make_material_request",
 			frm: this.frm,
-			run_link_triggers: true
+			run_link_triggers: true,
 		});
 	}
 
@@ -363,9 +363,9 @@ erpnext.manufacturing.JobCard = class JobCard extends frappe.ui.form.Controller 
 		frappe.model.open_mapped_doc({
 			method: "erpnext.manufacturing.doctype.job_card.job_card.make_material_transfer",
 			frm: this.frm,
-			run_link_triggers: true
+			run_link_triggers: true,
 		});
 	}
-}
+};
 
 extend_cscript(cur_frm.cscript, new erpnext.manufacturing.JobCard({frm: cur_frm}));

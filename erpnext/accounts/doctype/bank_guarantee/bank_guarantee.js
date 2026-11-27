@@ -1,34 +1,34 @@
 // Copyright (c) 2016, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-cur_frm.add_fetch('bank_account','account','account');
-cur_frm.add_fetch('bank_account','bank_account_no','bank_account_no');
-cur_frm.add_fetch('bank_account','iban','iban');
-cur_frm.add_fetch('bank_account','branch_code','branch_code');
-cur_frm.add_fetch('bank_account','swift_number','swift_number');
+cur_frm.add_fetch("bank_account", "account", "account");
+cur_frm.add_fetch("bank_account", "bank_account_no", "bank_account_no");
+cur_frm.add_fetch("bank_account", "iban", "iban");
+cur_frm.add_fetch("bank_account", "branch_code", "branch_code");
+cur_frm.add_fetch("bank_account", "swift_number", "swift_number");
 
-frappe.ui.form.on('Bank Guarantee', {
+frappe.ui.form.on("Bank Guarantee", {
 	setup: function(frm) {
 		frm.set_query("bank", function() {
 			return {
 				filters: {
-					company: frm.doc.company
-				}
+					company: frm.doc.company,
+				},
 			};
 		});
 		frm.set_query("bank_account", function() {
 			return {
 				filters: {
 					company: frm.doc.company,
-					bank: frm.doc.bank
-				}
-			}
+					bank: frm.doc.bank,
+				},
+			};
 		});
 		frm.set_query("project", function() {
 			return {
 				filters: {
-					customer: frm.doc.customer
-				}
+					customer: frm.doc.customer,
+				},
 			};
 		});
 	},
@@ -56,7 +56,7 @@ frappe.ui.form.on('Bank Guarantee', {
 				args: {
 					"column_list": fields_to_fetch,
 					"doctype": frm.doc.reference_doctype,
-					"docname": frm.doc.reference_docname
+					"docname": frm.doc.reference_docname,
 				},
 				callback: function(r) {
 					if (r.message) {
@@ -64,7 +64,7 @@ frappe.ui.form.on('Bank Guarantee', {
 						if (r.message.project) frm.set_value("project", r.message.project);
 						if (r.message.grand_total) frm.set_value("amount", r.message.grand_total);
 					}
-				}
+				},
 			});
 
 		}
@@ -77,5 +77,5 @@ frappe.ui.form.on('Bank Guarantee', {
 	validity: function(frm) {
 		var end_date = frappe.datetime.add_days(cur_frm.doc.start_date, cur_frm.doc.validity - 1);
 		cur_frm.set_value("end_date", end_date);
-	}
+	},
 });

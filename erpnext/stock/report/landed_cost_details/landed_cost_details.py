@@ -1,11 +1,13 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _, scrub
-from frappe.utils import flt, cstr
+from frappe.utils import cstr, flt
+
 from erpnext.selling.report.sales_details.sales_details import SalesPurchaseDetailsReport, get_itemised_taxes
-import json
 
 
 def execute(filters=None):
@@ -109,7 +111,7 @@ class LandedCostDetailsReport(SalesPurchaseDetailsReport):
 
 		lcv_tax_row_data = []
 		if lcv_names:
-			lcv_tax_row_data = frappe.db.sql(f"""
+			lcv_tax_row_data = frappe.db.sql("""
 				select lct.name, lct.account_head, acc.account_name
 				from `tabLanded Cost Taxes and Charges` lct
 				left join `tabAccount` acc on acc.name = lct.account_head
@@ -150,7 +152,7 @@ class LandedCostDetailsReport(SalesPurchaseDetailsReport):
 			pinv_i.taxes_not_in_valuation = 0
 
 			item_taxes = self.itemised_tax.get(pinv_i.name, {})
-			for (tax, include_in_valuation), tax_obj in item_taxes.items():
+			for (_tax, include_in_valuation), tax_obj in item_taxes.items():
 				tax_amount = tax_obj.get("tax_amount", 0.0)
 				if include_in_valuation:
 					pinv_i.taxes_in_valuation += flt(tax_amount)
@@ -163,7 +165,7 @@ class LandedCostDetailsReport(SalesPurchaseDetailsReport):
 				prec_lcv_items = self.lcv_by_prec_item.get(pinv_i.purchase_receipt_item, [])
 
 			for lcv_i in pinv_lcv_items + prec_lcv_items:
-				for f, tax in zip(self.lcv_amount_fields, self.lcv_account_heads):
+				for f, tax in zip(self.lcv_amount_fields, self.lcv_account_heads, strict=False):
 					lcv_amount = lcv_i["item_tax_map"].get(tax, {}).get("tax_amount", 0.0)
 					pinv_i.setdefault(f, 0.0)
 					pinv_i[f] += flt(lcv_amount)
@@ -232,7 +234,7 @@ class LandedCostDetailsReport(SalesPurchaseDetailsReport):
 				"fieldname": amount_field,
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 130
+				"width": 130,
 			})
 
 		for lcv_account_head in self.lcv_account_heads:
@@ -242,7 +244,7 @@ class LandedCostDetailsReport(SalesPurchaseDetailsReport):
 				"fieldname": amount_field,
 				"fieldtype": "Currency",
 				"options": "Company:company:default_currency",
-				"width": 130
+				"width": 130,
 			})
 
 		return tax_columns

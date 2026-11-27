@@ -6,7 +6,7 @@ def execute():
 	frappe.delete_doc_if_exists("Print Format", "Simplified Tax Invoice")
 	frappe.delete_doc_if_exists("Print Format", "Tax Invoice")
 
-	country = frappe.get_system_settings('country')
+	country = frappe.get_system_settings("country")
 	if country != "United Arab Emirates":
 		return
 

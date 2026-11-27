@@ -1,4 +1,4 @@
-frappe.provide('frappe.dashboards.chart_sources');
+frappe.provide("frappe.dashboards.chart_sources");
 
 frappe.dashboards.chart_sources["Account Balance Timeline"] = {
 	method: "erpnext.accounts.dashboard_chart_source.account_balance_timeline.account_balance_timeline.get",
@@ -29,14 +29,14 @@ frappe.dashboards.chart_sources["Account Balance Timeline"] = {
 		{
 			fieldname: "root_type",
 			label: __("Root Type"),
-			fieldtype: 'MultiSelect',
+			fieldtype: "MultiSelect",
 			options: [
-				'Asset',
-				'Liability',
-				'Equity',
-				'Income',
-				'Expense',
-			]
+				"Asset",
+				"Liability",
+				"Equity",
+				"Income",
+				"Expense",
+			],
 		},
 		{
 			fieldname: "group_by",
@@ -50,5 +50,5 @@ frappe.dashboards.chart_sources["Account Balance Timeline"] = {
 			fieldtype: "Check",
 			depends_on: "eval:doc.group_by == 'Root Type'",
 		},
-	]
+	],
 };

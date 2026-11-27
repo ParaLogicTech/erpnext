@@ -3,10 +3,11 @@
 
 import frappe
 from frappe import _, scrub
-from frappe.utils import getdate, flt, add_to_date, add_days
+from frappe.utils import add_days, add_to_date, flt, getdate
+
+from erpnext import get_default_currency
 from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
 from erpnext.accounts.utils import get_fiscal_year
-from erpnext import get_default_currency
 
 
 def execute(filters=None):
@@ -16,13 +17,13 @@ def execute(filters=None):
 class Analytics:
 	def __init__(self, filters=None):
 		self.filters = frappe._dict(filters or {})
-		self.date_field = 'transaction_date' \
-			if self.filters.doctype in ['Sales Order', 'Purchase Order'] else 'posting_date'
+		self.date_field = "transaction_date" \
+			if self.filters.doctype in ["Sales Order", "Purchase Order"] else "posting_date"
 		self.months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 		self.get_period_date_ranges()
 		self.entity_names = {}
 
-		self.filters.party_type = "Customer" if self.filters.doctype in ['Sales Order', 'Delivery Note', 'Sales Invoice']\
+		self.filters.party_type = "Customer" if self.filters.doctype in ["Sales Order", "Delivery Note", "Sales Invoice"]\
 			else "Supplier"
 
 		self.doc_meta = frappe.get_meta(self.filters.doctype)
@@ -40,15 +41,15 @@ class Analytics:
 			"options": self.get_group_by_doctype(),
 			"fieldname": "entity",
 			"fieldtype": "Link",
-			"width": 140
+			"width": 140,
 		}]
 
 		show_name = False
 		if self.filters.tree_type == "Customer":
-			if frappe.defaults.get_global_default('cust_master_name') == "Naming Series":
+			if frappe.defaults.get_global_default("cust_master_name") == "Naming Series":
 				show_name = True
 		if self.filters.tree_type == "Supplier":
-			if frappe.defaults.get_global_default('supp_master_name') == "Naming Series":
+			if frappe.defaults.get_global_default("supp_master_name") == "Naming Series":
 				show_name = True
 		if self.filters.tree_type == "Item":
 			show_name = True
@@ -58,7 +59,7 @@ class Analytics:
 				"label": _(self.filters.tree_type + " Name"),
 				"fieldname": "entity_name",
 				"fieldtype": "Data",
-				"width": 180
+				"width": 180,
 			})
 
 		fieldtype = self.get_value_fieldtype()
@@ -67,7 +68,7 @@ class Analytics:
 			"label": _("Total"),
 			"fieldname": "total",
 			"fieldtype": fieldtype,
-			"width": 120
+			"width": 120,
 		})
 
 		for end_date in self.periodic_daterange:
@@ -77,7 +78,7 @@ class Analytics:
 				"fieldname": scrub(period),
 				"fieldtype": fieldtype,
 				"period_column": True,
-				"width": 120
+				"width": 120,
 			})
 
 	def get_group_by_doctype(self):
@@ -87,28 +88,28 @@ class Analytics:
 			return self.filters.tree_type
 
 	def get_data(self):
-		if self.filters.get('company'):
-			self.company_currency = frappe.get_cached_value('Company', self.filters.get("company"), "default_currency")
+		if self.filters.get("company"):
+			self.company_currency = frappe.get_cached_value("Company", self.filters.get("company"), "default_currency")
 		else:
 			self.company_currency = get_default_currency()
 
-		if self.filters.tree_type == 'Customer':
+		if self.filters.tree_type == "Customer":
 			self.get_entries("s.customer", "s.customer_name")
 			self.get_rows()
 
-		elif self.filters.tree_type == 'Supplier':
+		elif self.filters.tree_type == "Supplier":
 			self.get_entries("s.supplier", "s.supplier_name")
 			self.get_rows()
 
-		elif self.filters.tree_type == 'Item':
+		elif self.filters.tree_type == "Item":
 			self.get_entries("i.item_code", "im.item_name")
 			self.get_rows()
 
-		elif self.filters.tree_type == 'Brand':
+		elif self.filters.tree_type == "Brand":
 			self.get_entries("im.brand")
 			self.get_rows()
 
-		elif self.filters.tree_type == 'Branch':
+		elif self.filters.tree_type == "Branch":
 			entity_field = None
 			if self.item_meta.has_field("branch") and self.doc_meta.has_field("branch"):
 				entity_field = "IF(i.branch IS NULL or i.branch = '', s.branch, i.branch)"
@@ -123,18 +124,18 @@ class Analytics:
 			self.get_entries(entity_field)
 			self.get_rows()
 
-		elif self.filters.tree_type == 'Account Manager':
+		elif self.filters.tree_type == "Account Manager":
 			self.get_entries("cus.account_manager")
 			self.get_rows()
 
 		elif self.filters.tree_type in ["Customer Group", "Supplier Group", "Territory", "Item Group", "Sales Person"]:
-			if self.filters.tree_type == 'Customer Group':
+			if self.filters.tree_type == "Customer Group":
 				entity_field = "cus.customer_group"
-			elif self.filters.tree_type == 'Supplier Group':
+			elif self.filters.tree_type == "Supplier Group":
 				entity_field = "sup.supplier_group"
-			elif self.filters.tree_type == 'Territory':
+			elif self.filters.tree_type == "Territory":
 				entity_field = "s.territory"
-			elif self.filters.tree_type == 'Item Group':
+			elif self.filters.tree_type == "Item Group":
 				entity_field = "im.item_group"
 			else:
 				entity_field = "sp.sales_person"
@@ -153,7 +154,7 @@ class Analytics:
 		elif self.filters.party_type == "Supplier":
 			party_join = "inner join `tabSupplier` sup on sup.name = s.supplier"
 
-		is_opening_condition = "and s.is_opening != 'Yes'" if self.filters.doctype in ['Sales Invoice', 'Purchase Invoice']\
+		is_opening_condition = "and s.is_opening != 'Yes'" if self.filters.doctype in ["Sales Invoice", "Purchase Invoice"]\
 			else ""
 
 		entity_name_field = "{0} as entity_name, ".format(entity_name_field) if entity_name_field else ""
@@ -185,7 +186,7 @@ class Analytics:
 			sales_team_join=sales_team_join,
 			party_join=party_join,
 			is_opening_condition=is_opening_condition,
-			filter_conditions=self.get_conditions()
+			filter_conditions=self.get_conditions(),
 		), self.filters, as_dict=1)
 
 		if entity_name_field:
@@ -198,7 +199,7 @@ class Analytics:
 			"Amount": "base_amount",
 			"Stock Qty": "stock_qty",
 			"Contents Qty": "alt_uom_qty",
-			"Transaction Qty": "qty"
+			"Transaction Qty": "qty",
 		}
 		return filter_to_field.get(self.filters.value_field, "base_net_amount")
 
@@ -208,7 +209,7 @@ class Analytics:
 			"Amount": "Currency",
 			"Stock Qty": "Float",
 			"Contents Qty": "Float",
-			"Transaction Qty": "Float"
+			"Transaction Qty": "Float",
 		}
 		return filter_to_field.get(self.filters.value_field, "Currency")
 
@@ -240,17 +241,17 @@ class Analytics:
 				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
 		if self.filters.get("item_code"):
-			is_template = frappe.db.get_value("Item", self.filters.get('item_code'), 'has_variants')
+			is_template = frappe.db.get_value("Item", self.filters.get("item_code"), "has_variants")
 			if is_template:
 				conditions.append("im.variant_of = %(item_code)s")
 			else:
 				conditions.append("im.name = %(item_code)s")
 
 		if self.filters.get("applies_to_item"):
-			is_template = frappe.db.get_value("Item", self.filters.get('applies_to_item'), 'has_variants')
+			is_template = frappe.db.get_value("Item", self.filters.get("applies_to_item"), "has_variants")
 			if is_template:
 				self.filters.applies_to_items = [self.filters.applies_to_item]
-				self.filters.applies_to_items += [d.name for d in frappe.get_all("Item", {'variant_of': self.filters.applies_to_item})]
+				self.filters.applies_to_items += [d.name for d in frappe.get_all("Item", {"variant_of": self.filters.applies_to_item})]
 				conditions.append("s.applies_to_item in %(applies_to_items)s")
 			else:
 				conditions.append("s.applies_to_item = %(applies_to_item)s")
@@ -323,7 +324,7 @@ class Analytics:
 			conditions.append("""i.warehouse in (select name from `tabWarehouse`
 				where lft >= {0} and rgt <= {1})""".format(lft, rgt))
 
-		hooks = frappe.get_hooks('set_sales_analytics_conditions')
+		hooks = frappe.get_hooks("set_sales_analytics_conditions")
 		for method in hooks:
 			frappe.get_attr(method)(self.filters, conditions, alias="s")
 
@@ -340,7 +341,7 @@ class Analytics:
 			row = {
 				"entity": entity,
 				"entity_name": self.entity_names.get(entity),
-				"indent": 1
+				"indent": 1,
 			}
 			total = 0
 			for end_date in self.periodic_daterange:
@@ -367,7 +368,7 @@ class Analytics:
 		for d in reversed(self.group_entries):
 			row = {
 				"entity": d.name,
-				"indent": self.depth_map.get(d.name)
+				"indent": self.depth_map.get(d.name),
 			}
 			total = 0
 			for end_date in self.periodic_daterange:
@@ -391,14 +392,14 @@ class Analytics:
 			self.entity_periodic_data[d.entity][period] += flt(d.value_field)
 
 			if self.filters.tree_type == "Item":
-				self.entity_periodic_data[d.entity]['stock_uom'] = d.stock_uom
+				self.entity_periodic_data[d.entity]["stock_uom"] = d.stock_uom
 
 	def get_period(self, posting_date):
-		if self.filters.range == 'Weekly':
+		if self.filters.range == "Weekly":
 			period = "Week " + str(posting_date.isocalendar().week) + " " + str(posting_date.isocalendar().year)
-		elif self.filters.range == 'Monthly':
+		elif self.filters.range == "Monthly":
 			period = str(self.months[posting_date.month - 1]) + " " + str(posting_date.year)
-		elif self.filters.range == 'Quarterly':
+		elif self.filters.range == "Quarterly":
 			period = "Quarter " + str(((posting_date.month - 1) // 3) + 1) + " " + str(posting_date.year)
 		else:
 			year = get_fiscal_year(posting_date, company=self.filters.company)
@@ -406,17 +407,17 @@ class Analytics:
 		return period
 
 	def get_period_date_ranges(self):
-		from dateutil.relativedelta import relativedelta, MO
+		from dateutil.relativedelta import MO, relativedelta
 		from_date, to_date = getdate(self.filters.from_date), getdate(self.filters.to_date)
 
 		increment = {
 			"Monthly": 1,
 			"Quarterly": 3,
 			"Half-Yearly": 6,
-			"Yearly": 12
+			"Yearly": 12,
 		}.get(self.filters.range, 1)
 
-		if self.filters.range in ['Monthly', 'Quarterly']:
+		if self.filters.range in ["Monthly", "Quarterly"]:
 			from_date = from_date.replace(day=1)
 		elif self.filters.range == "Yearly":
 			from_date = get_fiscal_year(from_date)[1]
@@ -424,7 +425,7 @@ class Analytics:
 			from_date = from_date + relativedelta(from_date, weekday=MO(-1))
 
 		self.periodic_daterange = []
-		for dummy in range(1, 53):
+		for _dummy in range(1, 53):
 			if self.filters.range == "Weekly":
 				period_end_date = add_days(from_date, 6)
 			else:
@@ -441,15 +442,15 @@ class Analytics:
 
 	def get_groups(self):
 		if self.filters.tree_type == "Territory":
-			parent = 'parent_territory'
+			parent = "parent_territory"
 		if self.filters.tree_type == "Customer Group":
-			parent = 'parent_customer_group'
+			parent = "parent_customer_group"
 		if self.filters.tree_type == "Item Group":
-			parent = 'parent_item_group'
+			parent = "parent_item_group"
 		if self.filters.tree_type == "Supplier Group":
-			parent = 'parent_supplier_group'
+			parent = "parent_supplier_group"
 		if self.filters.tree_type in ("Sales Person", "Account Manager"):
-			parent = 'parent_sales_person'
+			parent = "parent_sales_person"
 
 		self.depth_map = frappe._dict()
 
@@ -467,12 +468,12 @@ class Analytics:
 		labels = [d.get("label") for d in self.columns if d.get("period_column")]
 		self.chart = {
 			"data": {
-				'labels': labels,
-				'datasets': []
+				"labels": labels,
+				"datasets": [],
 			},
 			"type": "line",
-			"fieldtype": self.get_value_fieldtype()
+			"fieldtype": self.get_value_fieldtype(),
 		}
 
 		if self.chart.get("fieldtype") == "Currency":
-			self.chart['options'] = self.company_currency
+			self.chart["options"] = self.company_currency

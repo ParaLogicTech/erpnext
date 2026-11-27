@@ -2,15 +2,17 @@
 # For license information, please see license.txt
 
 import frappe
-import erpnext
 from frappe import _, scrub
-from frappe.utils import flt, getdate, cstr, now_datetime, cint, fmt_money
 from frappe.model.document import Document
+from frappe.utils import cint, cstr, flt, fmt_money, getdate, now_datetime
+
+import erpnext
 from erpnext.accounts.doctype.account.account import get_account_currency
-from erpnext.accounts.utils import (
-	get_advance_against_voucher_types, get_held_invoices,
-)
 from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_all_dimension_fields
+from erpnext.accounts.utils import (
+	get_advance_against_voucher_types,
+	get_held_invoices,
+)
 
 
 class PaymentReconciliation(Document):
@@ -52,21 +54,21 @@ class PaymentReconciliation(Document):
 		self.validate_mandatory_fields()
 
 		unreconciled_payment_entries = self.get_unreconciled_payment_entries()
-		self.set('payments', [])
+		self.set("payments", [])
 		for d in unreconciled_payment_entries:
-			self.append('payments', d)
+			self.append("payments", d)
 
 		outstanding_invoices = self.get_outstanding_invoices()
-		self.set('invoices', [])
+		self.set("invoices", [])
 		for d in outstanding_invoices:
-			inv = self.append('invoices')
-			inv.invoice_type = d.get('voucher_type')
-			inv.invoice_number = d.get('voucher_no')
-			inv.invoice_date = d.get('posting_date')
-			inv.amount = flt(d.get('invoice_amount'))
-			inv.outstanding_amount = d.get('outstanding_amount')
-			inv.currency = d.get('currency')
-			inv.exchange_rate = d.get('exchange_rate')
+			inv = self.append("invoices")
+			inv.invoice_type = d.get("voucher_type")
+			inv.invoice_number = d.get("voucher_no")
+			inv.invoice_date = d.get("posting_date")
+			inv.amount = flt(d.get("invoice_amount"))
+			inv.outstanding_amount = d.get("outstanding_amount")
+			inv.currency = d.get("currency")
+			inv.exchange_rate = d.get("exchange_rate")
 
 	@frappe.whitelist()
 	def allocate_entries(self, args):
@@ -145,7 +147,7 @@ class PaymentReconciliation(Document):
 					frappe.bold(frappe.format(invoice_total_allocated, df=df, doc=row)),
 					frappe.bold(frappe.format(invoice_total_outstanding, df=df, doc=row)),
 					row.invoice_type,
-					row.invoice_number
+					row.invoice_number,
 				))
 
 			if payment_total_allocated > payment_total_unreconciled:
@@ -292,7 +294,7 @@ class PaymentReconciliation(Document):
 			"currency": inv.get("currency"),
 			"exchange_rate": flt(inv.get("exchange_rate")) or 1,
 			"payment_exchange_rate": flt(pay.get("exchange_rate")) or 1,
-			"reconciliation_posting_date": min(getdate(pay.get("posting_date")), getdate(inv.get("posting_date")))
+			"reconciliation_posting_date": min(getdate(pay.get("posting_date")), getdate(inv.get("posting_date"))),
 		})
 
 	def reconcile_allocations(self):
@@ -402,7 +404,7 @@ def get_outstanding_invoices(
 	filters.update({
 		"party_type": party_type,
 		"party": party,
-		"account": account
+		"account": account,
 	})
 
 	filter_conditions = []
@@ -491,7 +493,7 @@ def get_outstanding_invoices(
 	""", {
 		"party_type": party_type,
 		"party": party,
-		"account": account
+		"account": account,
 	}, as_dict=True)
 
 	payment_against_map = frappe._dict()
@@ -556,7 +558,7 @@ def get_outstanding_invoices(
 
 	outstanding_invoices = sorted(
 		outstanding_invoices,
-		key=lambda k: (k["outstanding_amount"] > 0, k["due_date"] or getdate())
+		key=lambda k: (k["outstanding_amount"] > 0, k["due_date"] or getdate()),
 	)
 	return outstanding_invoices
 
@@ -911,7 +913,7 @@ def get_unreconciled_dr_cr_notes(
 		for order_field, order_names in valid_order_map.items():
 			order_conditions.append("ch.`{0}` in ({1})".format(
 				order_field,
-				", ".join(frappe.db.escape(name) for name in order_names)
+				", ".join(frappe.db.escape(name) for name in order_names),
 			))
 		against_order_condition = f"""exists(select ch.name from `tab{item_doctype}` ch
 			where ch.parent = inv.name and ({' or '.join(order_conditions)})
@@ -999,7 +1001,7 @@ def reconcile_payments_against_invoices(reconciliation_list):
 			jv_name = create_payment_reconciliation_journal_entry(args, doc, allocate_payment=True)
 			reconcilation_jv_names.append(jv_name)
 
-	for (voucher_type, voucher_no), doc in reconciled_payment_docs.items():
+	for (voucher_type, _voucher_no), doc in reconciled_payment_docs.items():
 		if voucher_type in ("Payment Entry", "Journal Entry"):
 			repost_reconciled_payment_voucher(doc)
 
@@ -1081,7 +1083,7 @@ def validate_reconciliation_args(args):
 
 def get_default_exchange_gain_loss_account(company):
 	return frappe.get_cached_value(
-		"Company", company, "exchange_gain_loss_account"
+		"Company", company, "exchange_gain_loss_account",
 	)
 
 
@@ -1137,7 +1139,7 @@ def check_if_unreconciled_entry_modified(args):
 			""", args)
 
 	elif args.voucher_type == "Payment Entry":
-		party_account_field = ("paid_from" if erpnext.get_party_account_type(args.party_type) == 'Receivable' else "paid_to")
+		party_account_field = ("paid_from" if erpnext.get_party_account_type(args.party_type) == "Receivable" else "paid_to")
 
 		if args.voucher_detail_no:
 			args["advance_against_voucher_types"] = get_advance_against_voucher_types()
@@ -1194,9 +1196,9 @@ def check_if_unreconciled_entry_modified(args):
 
 	if not match:
 		frappe.throw(_(
-			"{0} {1} was modified during payment / advance reconcilation. Please load unreconciled entries / advances again"
+			"{0} {1} was modified during payment / advance reconcilation. Please load unreconciled entries / advances again",
 		).format(
-			args.voucher_type, args.voucher_no
+			args.voucher_type, args.voucher_no,
 		))
 
 
@@ -1222,9 +1224,9 @@ def reconcile_reference_in_journal_entry(args, jv_doc):
 	else:
 		for row in jv_doc.accounts:
 			if (
-				row.party_type == args['party_type']
-				and row.party == args['party']
-				and row.account == args['account']
+				row.party_type == args["party_type"]
+				and row.party == args["party"]
+				and row.account == args["account"]
 				and not row.reference_type
 				and not row.reference_name
 			):
@@ -1238,7 +1240,7 @@ def reconcile_reference_in_journal_entry(args, jv_doc):
 
 		amt_allocatable = flt(
 			min(diff, args["allocated_amount"] - amt_allocated),
-			jv_detail.precision("debit")
+			jv_detail.precision("debit"),
 		)
 		original_dr_or_cr = diff
 		original_reference_type = jv_detail.reference_type
@@ -1266,7 +1268,7 @@ def reconcile_reference_in_journal_entry(args, jv_doc):
 					row.idx += 1
 			ch.idx = new_idx
 
-			ch.account = args['account']
+			ch.account = args["account"]
 			ch.account_type = jvd.account_type
 			ch.account_currency = jvd.account_currency
 			ch.exchange_rate = jvd.exchange_rate
@@ -1297,7 +1299,7 @@ def reconcile_reference_in_journal_entry(args, jv_doc):
 			ch.docstatus = 1
 
 		amt_allocated += amt_allocatable
-		if abs(amt_allocated - args["allocated_amount"]) < (1.0 / (10 ** (jv_detail.precision(args['dr_or_cr'])))):
+		if abs(amt_allocated - args["allocated_amount"]) < (1.0 / (10 ** (jv_detail.precision(args["dr_or_cr"])))):
 			break
 
 
@@ -1324,7 +1326,7 @@ def reconcile_reference_in_payment_entry(args, payment_entry):
 
 		reference_details.update({
 			"original_reference_doctype": existing_row.original_reference_doctype,
-			"original_reference_name": existing_row.original_reference_name
+			"original_reference_name": existing_row.original_reference_name,
 		})
 
 		existing_row.update(reference_details)
@@ -1549,7 +1551,7 @@ def unlink_voucher_from_payment_entry(ref_type, ref_no):
 				pref.db_set({
 					"reference_doctype": pref.reference_doctype,
 					"reference_name": pref.reference_name,
-					"allocated_amount": pref.allocated_amount
+					"allocated_amount": pref.allocated_amount,
 				})
 
 			pe_doc.set_total_allocated_amount()

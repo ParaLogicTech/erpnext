@@ -5,14 +5,14 @@ def execute():
 	doctypes = ["Sales Invoice"]
 
 	for doctype in doctypes:
-		total_stock_qty = frappe.db.sql('''
+		total_stock_qty = frappe.db.sql("""
 			SELECT
 				parent, SUM(stock_qty) as qty
 			FROM
 				`tab{0} Item`
 			where parenttype = '{0}'
 			GROUP BY parent
-		'''.format(doctype), as_dict = True)
+		""".format(doctype), as_dict=True)
 
 		batch_size = 100000
 		for i in range(0, len(total_stock_qty), batch_size):

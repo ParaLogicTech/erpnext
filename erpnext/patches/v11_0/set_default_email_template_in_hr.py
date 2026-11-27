@@ -1,5 +1,6 @@
-from frappe import _
 import frappe
+from frappe import _
+
 
 def execute():
 	hr_settings = frappe.get_single("HR Settings")

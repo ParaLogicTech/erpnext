@@ -3,6 +3,7 @@
 
 import frappe
 
+
 def execute():
 	frappe.reload_doctype("Sales Order")
 	frappe.reload_doctype("Sales Order Item")
@@ -18,8 +19,8 @@ def execute():
 	frappe.reload_doctype("Purchase Invoice")
 	frappe.reload_doctype("Purchase Invoice Item")
 
-	for dt, detail_field in [('Delivery Note', 'dn_detail'), ('Purchase Receipt', 'pr_detail')]:
-		returns = frappe.get_all("Delivery Note", filters={"is_return": 1}, fields=['name', 'return_against'])
+	for dt, detail_field in [("Delivery Note", "dn_detail"), ("Purchase Receipt", "pr_detail")]:
+		returns = frappe.get_all("Delivery Note", filters={"is_return": 1}, fields=["name", "return_against"])
 		for return_doc in returns:
 			source_details = frappe.db.sql("""
 				select name, item_code, qty

@@ -3,11 +3,12 @@
 
 import frappe
 
-def execute():
-	frappe.reload_doc('buying', 'doctype', 'buying_settings')
-	frappe.db.set_single_value('Buying Settings', 'backflush_raw_materials_of_subcontract_based_on', 'BOM')
 
-	frappe.reload_doc('stock', 'doctype', 'stock_entry_detail')
+def execute():
+	frappe.reload_doc("buying", "doctype", "buying_settings")
+	frappe.db.set_single_value("Buying Settings", "backflush_raw_materials_of_subcontract_based_on", "BOM")
+
+	frappe.reload_doc("stock", "doctype", "stock_entry_detail")
 	frappe.db.sql(""" update `tabStock Entry Detail` as sed,
 		`tabStock Entry` as se, `tabPurchase Order Item Supplied` as pois
 		set

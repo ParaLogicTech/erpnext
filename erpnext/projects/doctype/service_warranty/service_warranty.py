@@ -2,12 +2,13 @@
 # For license information, please see license.txt
 
 import frappe
+from dateutil import relativedelta
 from frappe import _
 from frappe.utils import cint, flt, getdate
+
+from erpnext.controllers.accounts_controller import AccountsController
 from erpnext.projects.doctype.project.project import get_project_details
 from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
-from erpnext.controllers.accounts_controller import AccountsController
-from dateutil import relativedelta
 
 
 class ServiceWarranty(AccountsController):
@@ -60,7 +61,7 @@ class ServiceWarranty(AccountsController):
 		applies_to_details = get_applies_to_details(args, for_validate=True)
 
 		for k, v in applies_to_details.items():
-			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
+			if (self.meta.has_field(k) and not self.get(k)) or k in self.force_applies_to_fields:
 				self.set(k, v)
 
 	def set_service_template_details(self):
@@ -93,7 +94,7 @@ class ServiceWarranty(AccountsController):
 		includes_service_warranty = frappe.get_cached_value("Service Template", self.service_template, "includes_service_warranty")
 		if not includes_service_warranty:
 			frappe.throw(_("{0} does not include Service Warranty").format(
-				frappe.get_desk_link("Service Template", self.service_template)
+				frappe.get_desk_link("Service Template", self.service_template),
 			))
 
 	def validate_project(self):
@@ -101,7 +102,7 @@ class ServiceWarranty(AccountsController):
 		template_rows = [d for d in project.service_templates if d.service_template == self.service_template]
 		if not template_rows:
 			frappe.throw(_("{0} does not include Service Template {1}").format(
-				frappe.get_desk_link("Project", self.project), frappe.bold(self.service_template)
+				frappe.get_desk_link("Project", self.project), frappe.bold(self.service_template),
 			))
 
 		if len(template_rows) == 1:
@@ -110,7 +111,7 @@ class ServiceWarranty(AccountsController):
 
 		if self.valid_from and getdate(self.valid_from) < getdate(project.project_date):
 			frappe.throw(_("From Date cannot be before {0} {1}").format(
-				frappe.get_meta("Project").get_label("project_date"), frappe.bold(project.get_formatted("project_date"))
+				frappe.get_meta("Project").get_label("project_date"), frappe.bold(project.get_formatted("project_date")),
 			))
 
 	def validte_duplicate(self):
@@ -132,7 +133,7 @@ class ServiceWarranty(AccountsController):
 			frappe.throw(_("Service Warranty for {0} Service Template {1} already created: {2}").format(
 				frappe.get_desk_link("Project", self.project),
 				frappe.bold(self.service_template),
-				frappe.get_desk_link("Service Warranty", duplicate)
+				frappe.get_desk_link("Service Warranty", duplicate),
 			))
 
 	def set_date(self):
@@ -146,7 +147,7 @@ class ServiceWarranty(AccountsController):
 		self.valid_upto = valid_from + relativedelta.relativedelta(months=cint(self.warranty_validity), days=-1)
 
 	def set_terms(self):
-		if self.get('tc_name'):
+		if self.get("tc_name"):
 			self.set_terms_and_conditions()
 		else:
 			self.terms = None
@@ -176,8 +177,8 @@ class ServiceWarranty(AccountsController):
 			"debit": provision_amount,
 			"debit_in_account_currency": provision_amount,
 			"remarks": _("Warranty Provision Entry"),
-			"cost_center": self.get('cost_center'),
-			"project": self.get('project'),
+			"cost_center": self.get("cost_center"),
+			"project": self.get("project"),
 		}))
 
 		gl_map.append(self.get_gl_dict({
@@ -186,8 +187,8 @@ class ServiceWarranty(AccountsController):
 			"credit": provision_amount,
 			"credit_in_account_currency": provision_amount,
 			"remarks": _("Warranty Provision Entry"),
-			"cost_center": self.get('cost_center'),
-			"project": self.get('project'),
+			"cost_center": self.get("cost_center"),
+			"project": self.get("project"),
 		}))
 
 		return gl_map

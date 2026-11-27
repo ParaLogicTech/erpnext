@@ -1,6 +1,8 @@
+import json
+
 import frappe
 from frappe import _
-import json
+
 from erpnext.setup.setup_wizard.operations.install_fixtures import create_missing_uom_category
 
 
@@ -16,5 +18,5 @@ def execute():
 
 			frappe.db.set_value("UOM", uom_name, {
 				"category": _(d.get("category")),
-				"disabled": d.get("disabled")
+				"disabled": d.get("disabled"),
 			}, None)

@@ -7,7 +7,7 @@ def execute():
 	frappe.reload_doctype("Stock Reconciliation Item")
 
 	frappe.db.sql("""
-		update  `tabStock Ledger Entry` sle 
+		update  `tabStock Ledger Entry` sle
 		set sle.reset_rate = 1
 		where voucher_type = 'Stock Reconciliation'
 	""")

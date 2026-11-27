@@ -75,7 +75,7 @@ def make_company(company_name, abbr):
 				"default_currency": "AED",
 				"country": "United Arab Emirates",
 				"create_chart_of_accounts_based_on": "Standard Template",
-			}
+			},
 		)
 		company.insert()
 	else:
@@ -107,7 +107,7 @@ def set_vat_accounts():
 				"company": "_Test Company UAE VAT",
 				"uae_vat_accounts": uae_vat_accounts,
 				"doctype": "UAE VAT Settings",
-			}
+			},
 		).insert()
 
 
@@ -118,7 +118,7 @@ def make_customer():
 				"doctype": "Customer",
 				"customer_name": "_Test UAE Customer",
 				"customer_type": "Company",
-			}
+			},
 		)
 		customer.insert()
 
@@ -131,7 +131,7 @@ def make_supplier():
 				"supplier_name": "_Test UAE Supplier",
 				"supplier_type": "Individual",
 				"doctype": "Supplier",
-			}
+			},
 		).insert()
 
 
@@ -165,7 +165,7 @@ def make_item(item_code, properties=None):
 			"item_name": item_code,
 			"description": item_code,
 			"item_group": "Products",
-		}
+		},
 	)
 
 	if properties:

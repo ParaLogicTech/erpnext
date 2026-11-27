@@ -1,22 +1,26 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
-import unittest
-import frappe
 import json
+import unittest
 
-from frappe.test_runner import make_test_objects
-from erpnext.controllers.item_variant import (create_variant, ItemVariantExistsError,
-	InvalidItemAttributeValueError, get_variant)
-from erpnext.stock.doctype.item.item import StockExistsForTemplate, InvalidBarcode
-from erpnext.stock.doctype.item.item import get_uom_conv_factor
+import frappe
 from frappe.model.rename_doc import rename_doc
+from frappe.test_runner import make_test_objects
+
+from erpnext.controllers.item_variant import (
+	InvalidItemAttributeValueError,
+	ItemVariantExistsError,
+	create_variant,
+	get_variant,
+)
+from erpnext.stock.doctype.item.item import InvalidBarcode, StockExistsForTemplate, get_uom_conv_factor
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 from erpnext.stock.get_item_details import get_item_details
 
-
 test_ignore = ["BOM"]
 test_dependencies = ["Warehouse", "Item Group", "Item Tax Template", "Brand"]
+
 
 def make_item(item_code, properties=None):
 	if frappe.db.exists("Item", item_code):
@@ -27,7 +31,7 @@ def make_item(item_code, properties=None):
 		"item_code": item_code,
 		"item_name": item_code,
 		"description": item_code,
-		"item_group": "Products"
+		"item_group": "Products",
 	})
 
 	if properties:
@@ -40,6 +44,7 @@ def make_item(item_code, properties=None):
 	item.insert()
 
 	return item
+
 
 class TestItem(unittest.TestCase):
 	def setUp(self):
@@ -79,7 +84,7 @@ class TestItem(unittest.TestCase):
 			"conversion_factor": 1.0,
 			"alt_uom": None,
 			"alt_uom_size": 1,
-			"alt_uom_qty": 1
+			"alt_uom_qty": 1,
 		}
 
 		make_test_objects("Item Price")
@@ -97,7 +102,7 @@ class TestItem(unittest.TestCase):
 			"customer": "_Test Customer",
 			"conversion_factor": 1,
 			"price_list_uom_dependant": 1,
-			"ignore_pricing_rule": 1
+			"ignore_pricing_rule": 1,
 		})
 
 		for key, value in to_check.items():
@@ -141,13 +146,13 @@ class TestItem(unittest.TestCase):
 			"_Test Account Excise Duty @ 15": {"_Test Account Excise Duty - _TC": 15},
 			"_Test Account Excise Duty @ 20": {"_Test Account Excise Duty - _TC": 20},
 			"_Test Item Tax Template 1": {"_Test Account Excise Duty - _TC": 5, "_Test Account Education Cess - _TC": 10,
-				"_Test Account S&H Education Cess - _TC": 15}
+				"_Test Account S&H Education Cess - _TC": 15},
 		}
 
 		for data in expected_item_tax_template:
 			details = get_item_details({
-				"item_code": data['item_code'],
-				"tax_category": data['tax_category'],
+				"item_code": data["item_code"],
+				"tax_category": data["tax_category"],
 				"company": "_Test Company",
 				"price_list": "_Test Price List",
 				"currency": "_Test Currency",
@@ -159,10 +164,10 @@ class TestItem(unittest.TestCase):
 				"customer": "_Test Customer",
 				"conversion_factor": 1,
 				"price_list_uom_dependant": 1,
-				"ignore_pricing_rule": 1
+				"ignore_pricing_rule": 1,
 			})
 
-			self.assertEqual(details.item_tax_template, data['item_tax_template'])
+			self.assertEqual(details.item_tax_template, data["item_tax_template"])
 			self.assertEqual(json.loads(details.item_tax_rate), expected_item_tax_map[details.item_tax_template])
 
 	def test_item_defaults(self):
@@ -175,7 +180,7 @@ class TestItem(unittest.TestCase):
 				"default_warehouse": "_Test Warehouse 2 - _TC",  # no override
 				"expense_account": "_Test Account Stock Expenses - _TC",  # override brand default
 				"buying_cost_center": "_Test Write Off Cost Center - _TC",  # override item group default
-			}]
+			}],
 		})
 
 		sales_item_check = {
@@ -204,7 +209,7 @@ class TestItem(unittest.TestCase):
 			"warehouse": "_Test Warehouse 2 - _TC",  # from item
 			"expense_account": "_Test Account Stock Expenses - _TC",  # from item
 			"income_account": "_Test Account Sales - _TC",  # from brand
-			"cost_center": "_Test Write Off Cost Center - _TC"  # from item
+			"cost_center": "_Test Write Off Cost Center - _TC",  # from item
 		}
 		purchase_item_details = get_item_details({
 			"item_code": "Test Item With Defaults",
@@ -226,7 +231,7 @@ class TestItem(unittest.TestCase):
 			"qty": 1.0,
 			"alt_uom": "_Test UOM 1",
 			"alt_uom_size": 5,
-			"alt_uom_qty": 5
+			"alt_uom_qty": 5,
 		}
 
 		details = get_item_details({
@@ -242,7 +247,7 @@ class TestItem(unittest.TestCase):
 			"customer": "_Test Customer",
 			"conversion_factor": 1,
 			"price_list_uom_dependant": 1,
-			"ignore_pricing_rule": 1
+			"ignore_pricing_rule": 1,
 		})
 
 		for key, value in to_check.items():
@@ -254,7 +259,7 @@ class TestItem(unittest.TestCase):
 		variant = create_variant("_Test Variant Item", {"Test Size": "Large"})
 		variant.save()
 
-		attribute = frappe.get_doc('Item Attribute', 'Test Size')
+		attribute = frappe.get_doc("Item Attribute", "Test Size")
 		attribute.item_attribute_values = []
 
 		# reset flags
@@ -277,20 +282,20 @@ class TestItem(unittest.TestCase):
 	def test_copy_fields_from_template_to_variants(self):
 		frappe.delete_doc_if_exists("Item", "_Test Variant Item-XL", force=1)
 
-		fields = [{'field_name': 'item_group'}, {'field_name': 'is_stock_item'}]
-		allow_fields = [d.get('field_name') for d in fields]
+		fields = [{"field_name": "item_group"}, {"field_name": "is_stock_item"}]
+		allow_fields = [d.get("field_name") for d in fields]
 		set_item_variant_settings(fields)
 
-		if not frappe.db.get_value('Item Attribute Value',
-			{'parent': 'Test Size', 'attribute_value': 'Extra Large'}, 'name'):
-			item_attribute = frappe.get_doc('Item Attribute', 'Test Size')
-			item_attribute.append('item_attribute_values', {
-				'attribute_value' : 'Extra Large',
-				'abbr': 'XL'
+		if not frappe.db.get_value("Item Attribute Value",
+			{"parent": "Test Size", "attribute_value": "Extra Large"}, "name"):
+			item_attribute = frappe.get_doc("Item Attribute", "Test Size")
+			item_attribute.append("item_attribute_values", {
+				"attribute_value": "Extra Large",
+				"abbr": "XL",
 			})
 			item_attribute.save()
 
-		template = frappe.get_doc('Item', '_Test Variant Item')
+		template = frappe.get_doc("Item", "_Test Variant Item")
 		template.item_group = "_Test Item Group D"
 		template.save()
 
@@ -299,18 +304,18 @@ class TestItem(unittest.TestCase):
 		variant.item_name = "_Test Variant Item-XL"
 		variant.save()
 
-		variant = frappe.get_doc('Item', '_Test Variant Item-XL')
+		variant = frappe.get_doc("Item", "_Test Variant Item-XL")
 		for fieldname in allow_fields:
 			self.assertEqual(template.get(fieldname), variant.get(fieldname))
 
-		template = frappe.get_doc('Item', '_Test Variant Item')
+		template = frappe.get_doc("Item", "_Test Variant Item")
 		template.item_group = "_Test Item Group Desktops"
 		template.save()
 
 	def test_make_item_variant_with_numeric_values(self):
 		# cleanup
-		for d in frappe.db.get_all('Item', filters={'variant_of':
-				'_Test Numeric Template Item'}):
+		for d in frappe.db.get_all("Item", filters={"variant_of":
+				"_Test Numeric Template Item"}):
 			frappe.delete_doc_if_exists("Item", d.name)
 
 		frappe.delete_doc_if_exists("Item", "_Test Numeric Template Item")
@@ -328,30 +333,30 @@ class TestItem(unittest.TestCase):
 			"numeric_values": 1,
 			"from_range": 0.0,
 			"to_range": 100.0,
-			"increment": 0.5
+			"increment": 0.5,
 		}).insert()
 
 		# make template item
 		make_item("_Test Numeric Template Item", {
 			"attributes": [
 				{
-					"attribute": "Test Size"
+					"attribute": "Test Size",
 				},
 				{
 					"attribute": "Test Item Length",
 					"numeric_values": 1,
 					"from_range": 0.0,
 					"to_range": 100.0,
-					"increment": 0.5
-				}
+					"increment": 0.5,
+				},
 			],
 			"item_defaults": [
 				{
 					"default_warehouse": "_Test Warehouse - _TC",
-					"company": "_Test Company"
-				}
+					"company": "_Test Company",
+				},
 			],
-			"has_variants": 1
+			"has_variants": 1,
 		})
 
 		variant = create_variant("_Test Numeric Template Item",
@@ -388,15 +393,15 @@ class TestItem(unittest.TestCase):
 			{"item_code": "Test Item for Merging 2", "warehouse": "_Test Warehouse 1 - _TC"}))
 
 	def test_uom_conversion_factor(self):
-		if frappe.db.exists('Item', 'Test Item UOM'):
-			frappe.delete_doc('Item', 'Test Item UOM')
+		if frappe.db.exists("Item", "Test Item UOM"):
+			frappe.delete_doc("Item", "Test Item UOM")
 
 		item_doc = make_item("Test Item UOM", {
 			"stock_uom": "Gram",
 			"uom_conversion_graph": [
-				dict(from_qty=1, from_uom='Carat', to_uom='Gram', to_qty=get_uom_conv_factor('Carat', 'Gram')),
-				dict(from_qty=1, from_uom='Kg', to_uom='Gram', to_qty=get_uom_conv_factor('Kg', 'Gram'))
-			]
+				dict(from_qty=1, from_uom="Carat", to_uom="Gram", to_qty=get_uom_conv_factor("Carat", "Gram")),
+				dict(from_qty=1, from_uom="Kg", to_uom="Gram", to_qty=get_uom_conv_factor("Kg", "Gram")),
+			],
 		})
 
 		carat = filter(lambda d: d.uom == "Carat", item_doc.uoms)
@@ -423,10 +428,10 @@ class TestItem(unittest.TestCase):
 		item_doc = make_item("Test Item UOM 2.1", {
 			"stock_uom": "_Test UOM",
 			"uom_conversion_graph": [
-				dict(from_qty=1, from_uom='_Test UOM', to_uom='Litre', to_qty=5),
-				dict(from_qty=1, from_uom='Litre', to_uom='Gram', to_qty=1000),
-				dict(from_qty=1, from_uom='Box', to_uom='_Test UOM', to_qty=10)
-			]
+				dict(from_qty=1, from_uom="_Test UOM", to_uom="Litre", to_qty=5),
+				dict(from_qty=1, from_uom="Litre", to_uom="Gram", to_qty=1000),
+				dict(from_qty=1, from_uom="Box", to_uom="_Test UOM", to_qty=10),
+			],
 		})
 		litre = filter(lambda d: d.uom == "Litre", item_doc.uoms)
 		self.assertEqual(len(litre), 1)
@@ -454,10 +459,10 @@ class TestItem(unittest.TestCase):
 		item_doc = make_item("Test Item UOM 2.2", {
 			"stock_uom": "_Test UOM",
 			"uom_conversion_graph": [
-				dict(from_qty=2, from_uom='_Test UOM', to_uom='Litre', to_qty=5),
-				dict(from_qty=2, from_uom='Litre', to_uom='Gram', to_qty=1000),
-				dict(from_qty=4, from_uom='Box', to_uom='_Test UOM', to_qty=10)
-			]
+				dict(from_qty=2, from_uom="_Test UOM", to_uom="Litre", to_qty=5),
+				dict(from_qty=2, from_uom="Litre", to_uom="Gram", to_qty=1000),
+				dict(from_qty=4, from_uom="Box", to_uom="_Test UOM", to_qty=10),
+			],
 		})
 		litre = filter(lambda d: d.uom == "Litre", item_doc.uoms)
 		self.assertEqual(len(litre), 1)
@@ -476,31 +481,31 @@ class TestItem(unittest.TestCase):
 		self.assertRaises(frappe.ValidationError, make_item, item_code="Test Item UOM 3", properties={
 			"stock_uom": "_Test UOM",
 			"uom_conversion_graph": [
-				dict(from_qty=1, from_uom='_Test UOM', to_uom='_Test UOM', to_qty=5)
-			]
+				dict(from_qty=1, from_uom="_Test UOM", to_uom="_Test UOM", to_qty=5),
+			],
 		})
 
 		# From Qty and To Qty must not be 0
 		self.assertRaises(frappe.ValidationError, make_item, item_code="Test Item UOM 4", properties={
 			"stock_uom": "_Test UOM",
 			"uom_conversion_graph": [
-				dict(from_qty=1, from_uom='_Test UOM', to_uom='_Test UOM', to_qty=0)
-			]
+				dict(from_qty=1, from_uom="_Test UOM", to_uom="_Test UOM", to_qty=0),
+			],
 		})
 		self.assertRaises(frappe.ValidationError, make_item, item_code="Test Item UOM 5", properties={
 			"stock_uom": "_Test UOM",
 			"uom_conversion_graph": [
-				dict(from_qty=0, from_uom='_Test UOM', to_uom='_Test UOM', to_qty=1)
-			]
+				dict(from_qty=0, from_uom="_Test UOM", to_uom="_Test UOM", to_qty=1),
+			],
 		})
 
 		# Override conversion factor it is already defined in UOM Conversion Factor DocType
 		item_doc = make_item("Test Item UOM 6", {
 			"stock_uom": "_Test UOM",
 			"uom_conversion_graph": [
-				dict(from_qty=1, from_uom='_Test UOM', to_uom='Gram', to_qty=1000),
-				dict(from_qty=1, from_uom='Gram', to_uom='Kg', to_qty=333),  # this should be overriden
-			]
+				dict(from_qty=1, from_uom="_Test UOM", to_uom="Gram", to_qty=1000),
+				dict(from_qty=1, from_uom="Gram", to_uom="Kg", to_qty=333),  # this should be overriden
+			],
 		})
 		gram = filter(lambda d: d.uom == "Gram", item_doc.uoms)
 		self.assertEqual(len(gram), 1)
@@ -513,17 +518,17 @@ class TestItem(unittest.TestCase):
 		self.assertRaises(ConflictingConversionFactors, make_item, item_code="Test Item UOM 7", properties={
 			"stock_uom": "_Test UOM",
 			"uom_conversion_graph": [
-				dict(from_qty=1, from_uom='_Test UOM', to_uom='Litre', to_qty=5),
-				dict(from_qty=1, from_uom='_Test UOM', to_uom='Litre', to_qty=4)
-			]
+				dict(from_qty=1, from_uom="_Test UOM", to_uom="Litre", to_qty=5),
+				dict(from_qty=1, from_uom="_Test UOM", to_uom="Litre", to_qty=4),
+			],
 		})
 		self.assertRaises(ConflictingConversionFactors, make_item, item_code="Test Item UOM 8", properties={
 			"stock_uom": "_Test UOM",
 			"uom_conversion_graph": [
-				dict(from_qty=1, from_uom='_Test UOM', to_uom='Litre', to_qty=5),
-				dict(from_qty=1, from_uom='Litre', to_uom='Millilitre', to_qty=1000),
-				dict(from_qty=1, from_uom='_Test UOM', to_uom='Millilitre', to_qty=4000)
-			]
+				dict(from_qty=1, from_uom="_Test UOM", to_uom="Litre", to_qty=5),
+				dict(from_qty=1, from_uom="Litre", to_uom="Millilitre", to_qty=1000),
+				dict(from_qty=1, from_uom="_Test UOM", to_uom="Millilitre", to_qty=4000),
+			],
 		})
 
 	def test_item_with_alt_uom(self):
@@ -550,48 +555,48 @@ class TestItem(unittest.TestCase):
 		self.assertEqual(item2.alt_uom_size, 2)
 
 	def test_item_variant_by_manufacturer(self):
-		fields = [{'field_name': 'description'}, {'field_name': 'variant_based_on'}]
+		fields = [{"field_name": "description"}, {"field_name": "variant_based_on"}]
 		set_item_variant_settings(fields)
 
-		if frappe.db.exists('Item', '_Test Variant Mfg'):
-			frappe.delete_doc('Item', '_Test Variant Mfg')
-		if frappe.db.exists('Item', '_Test Variant Mfg-1'):
-			frappe.delete_doc('Item', '_Test Variant Mfg-1')
-		if frappe.db.exists('Manufacturer', 'MSG1'):
-			frappe.delete_doc('Manufacturer', 'MSG1')
+		if frappe.db.exists("Item", "_Test Variant Mfg"):
+			frappe.delete_doc("Item", "_Test Variant Mfg")
+		if frappe.db.exists("Item", "_Test Variant Mfg-1"):
+			frappe.delete_doc("Item", "_Test Variant Mfg-1")
+		if frappe.db.exists("Manufacturer", "MSG1"):
+			frappe.delete_doc("Manufacturer", "MSG1")
 
 		template = frappe.get_doc(dict(
-			doctype='Item',
-			item_code='_Test Variant Mfg',
+			doctype="Item",
+			item_code="_Test Variant Mfg",
 			has_variant=1,
-			item_group='Products',
-			variant_based_on='Manufacturer'
+			item_group="Products",
+			variant_based_on="Manufacturer",
 		)).insert()
 
 		manufacturer = frappe.get_doc(dict(
-			doctype='Manufacturer',
-			short_name='MSG1'
+			doctype="Manufacturer",
+			short_name="MSG1",
 		)).insert()
 
 		variant = get_variant(template.name, manufacturer=manufacturer.name)
-		self.assertEqual(variant.item_code, '_Test Variant Mfg-1')
-		self.assertEqual(variant.description, '_Test Variant Mfg')
-		self.assertEqual(variant.manufacturer, 'MSG1')
+		self.assertEqual(variant.item_code, "_Test Variant Mfg-1")
+		self.assertEqual(variant.description, "_Test Variant Mfg")
+		self.assertEqual(variant.manufacturer, "MSG1")
 		variant.insert()
 
 		variant = get_variant(template.name, manufacturer=manufacturer.name,
-			manufacturer_part_no='007')
-		self.assertEqual(variant.item_code, '_Test Variant Mfg-2')
-		self.assertEqual(variant.description, '_Test Variant Mfg')
-		self.assertEqual(variant.manufacturer, 'MSG1')
-		self.assertEqual(variant.manufacturer_part_no, '007')
+			manufacturer_part_no="007")
+		self.assertEqual(variant.item_code, "_Test Variant Mfg-2")
+		self.assertEqual(variant.description, "_Test Variant Mfg")
+		self.assertEqual(variant.manufacturer, "MSG1")
+		self.assertEqual(variant.manufacturer_part_no, "007")
 
 	def test_stock_exists_against_template_item(self):
-		stock_item = frappe.get_all('Stock Ledger Entry', fields = ["item_code"], limit=1)
+		stock_item = frappe.get_all("Stock Ledger Entry", fields=["item_code"], limit=1)
 		if stock_item:
 			item_code = stock_item[0].item_code
 
-			item_doc = frappe.get_doc('Item', item_code)
+			item_doc = frappe.get_doc("Item", item_code)
 			item_doc.has_variants = 1
 			self.assertRaises(StockExistsForTemplate, item_doc.save)
 
@@ -606,34 +611,34 @@ class TestItem(unittest.TestCase):
 		barcode_properties_list = [
 			{
 				"barcode": "0012345678905",
-				"barcode_type": "EAN"
+				"barcode_type": "EAN",
 			},
 			{
 				"barcode": "012345678905",
-				"barcode_type": "UAN"
+				"barcode_type": "UAN",
 			},
 			{
 				"barcode": "ARBITRARY_TEXT",
-			}
+			},
 		]
 		create_item(item_code)
 		for barcode_properties in barcode_properties_list:
-			item_doc = frappe.get_doc('Item', item_code)
-			new_barcode = item_doc.append('barcodes')
+			item_doc = frappe.get_doc("Item", item_code)
+			new_barcode = item_doc.append("barcodes")
 			new_barcode.update(barcode_properties)
 			item_doc.save()
 
 		# Check values saved correctly
 		barcodes = frappe.get_list(
-			'Item Barcode',
-			fields=['barcode', 'barcode_type'],
-			filters={'parent': item_code})
+			"Item Barcode",
+			fields=["barcode", "barcode_type"],
+			filters={"parent": item_code})
 
 		for barcode_properties in barcode_properties_list:
-			barcode_to_find = barcode_properties['barcode']
+			barcode_to_find = barcode_properties["barcode"]
 			matching_barcodes = [
 				x for x in barcodes
-				if x['barcode'] == barcode_to_find
+				if x["barcode"] == barcode_to_find
 			]
 		self.assertEqual(len(matching_barcodes), 1)
 		details = matching_barcodes[0]
@@ -642,22 +647,24 @@ class TestItem(unittest.TestCase):
 			self.assertEqual(value, details.get(key))
 
 		# Add barcode again - should cause DuplicateEntryError
-		item_doc = frappe.get_doc('Item', item_code)
-		new_barcode = item_doc.append('barcodes')
+		item_doc = frappe.get_doc("Item", item_code)
+		new_barcode = item_doc.append("barcodes")
 		new_barcode.update(barcode_properties_list[0])
 		self.assertRaises(frappe.DuplicateEntryError, item_doc.save)
 
 		# Add invalid barcode - should cause InvalidBarcode
-		item_doc = frappe.get_doc('Item', item_code)
-		new_barcode = item_doc.append('barcodes')
-		new_barcode.barcode = '9999999999999'
-		new_barcode.barcode_type = 'EAN'
+		item_doc = frappe.get_doc("Item", item_code)
+		new_barcode = item_doc.append("barcodes")
+		new_barcode.barcode = "9999999999999"
+		new_barcode.barcode_type = "EAN"
 		self.assertRaises(InvalidBarcode, item_doc.save)
 
+
 def set_item_variant_settings(fields):
-	doc = frappe.get_doc('Item Variant Settings')
-	doc.set('fields', fields)
+	doc = frappe.get_doc("Item Variant Settings")
+	doc.set("fields", fields)
 	doc.save()
+
 
 def make_item_variant():
 	if not frappe.db.exists("Item", "_Test Variant Item-S"):
@@ -666,7 +673,9 @@ def make_item_variant():
 		variant.item_name = "_Test Variant Item-S"
 		variant.save()
 
-test_records = frappe.get_test_records('Item')
+
+test_records = frappe.get_test_records("Item")
+
 
 def create_item(item_code, is_stock_item=None, valuation_rate=0, warehouse=None, is_customer_provided_item=None, customer=None, is_purchase_item=None, opening_stock=None):
 	if not frappe.db.exists("Item", item_code):
@@ -680,10 +689,10 @@ def create_item(item_code, is_stock_item=None, valuation_rate=0, warehouse=None,
 		item.valuation_rate = valuation_rate or 0.0
 		item.is_purchase_item = is_purchase_item
 		item.is_customer_provided_item = is_customer_provided_item
-		item.customer = customer or ''
+		item.customer = customer or ""
 		item.append("item_defaults", {
-			"default_warehouse": warehouse or '_Test Warehouse - _TC',
-			"company": "_Test Company"
+			"default_warehouse": warehouse or "_Test Warehouse - _TC",
+			"company": "_Test Company",
 		})
 		item.save()
 	else:

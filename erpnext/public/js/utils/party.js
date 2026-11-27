@@ -26,7 +26,7 @@ erpnext.utils.get_party_details = function(frm, args, callback) {
 	args.posting_date = frm.doc.posting_date || frm.doc.transaction_date;
 	args.company_address = frm.doc.company_address;
 
-	if (frappe.meta.has_field(frm.doc.doctype, 'has_stin')) {
+	if (frappe.meta.has_field(frm.doc.doctype, "has_stin")) {
 		args["has_stin"] = cint(frm.doc.has_stin);
 	}
 
@@ -43,7 +43,7 @@ erpnext.utils.get_party_details = function(frm, args, callback) {
 						frm.updating_party_details = false;
 						if (callback) callback(r);
 						frm.refresh_fields();
-					}
+					},
 				]);
 			}
 		},
@@ -51,9 +51,9 @@ erpnext.utils.get_party_details = function(frm, args, callback) {
 			frm.updating_party_details = false;
 		},
 	});
-}
+};
 
-erpnext.utils.get_party_account_details = function (frm, get_price_list) {
+erpnext.utils.get_party_account_details = function(frm, get_price_list) {
 	if (!frm.doc.company || frm.updating_party_details) {
 		return;
 	}
@@ -139,14 +139,14 @@ erpnext.utils.get_address_display = function(frm, address_field, display_field) 
 		method: "erpnext.accounts.party.get_address_display",
 		args: {
 			address: frm.doc[address_field] || "",
-			lead: lead
+			lead: lead,
 		},
 		callback: function(r) {
 			if (!r.exc) {
-				frm.set_value(display_field, r.message)
+				frm.set_value(display_field, r.message);
 			}
-		}
-	})
+		},
+	});
 };
 
 erpnext.utils.set_taxes_from_address = function(frm, triggered_from_field, billing_address_field, shipping_address_field) {
@@ -173,17 +173,17 @@ erpnext.utils.set_taxes_from_address = function(frm, triggered_from_field, billi
 		args: {
 			"tax_category": frm.doc.tax_category,
 			"billing_address": frm.doc[billing_address_field],
-			"shipping_address": frm.doc[shipping_address_field]
+			"shipping_address": frm.doc[shipping_address_field],
 		},
 		callback: function(r) {
-			if (!r.exc){
+			if (!r.exc) {
 				if (frm.doc.tax_category != r.message) {
 					frm.set_value("tax_category", r.message);
 				} else {
 					erpnext.utils.set_taxes(frm, triggered_from_field);
 				}
 			}
-		}
+		},
 	});
 };
 
@@ -198,13 +198,13 @@ erpnext.utils.set_taxes = function(frm, triggered_from_field) {
 	let party_type;
 	let party;
 	if (frm.doc.bill_to || frm.doc.customer) {
-		party_type = 'Customer';
+		party_type = "Customer";
 		party = frm.doc.bill_to || frm.doc.customer;
 	} else if (frm.doc.lead) {
-		party_type = 'Lead';
+		party_type = "Lead";
 		party = frm.doc.lead;
 	} else if (frm.doc.supplier) {
-		party_type = 'Supplier';
+		party_type = "Supplier";
 		party = frm.doc.supplier;
 	} else if (frm.doc.quotation_to) {
 		party_type = frm.doc.quotation_to;
@@ -238,18 +238,18 @@ erpnext.utils.set_taxes = function(frm, triggered_from_field) {
 		"doctype": frm.doc.doctype,
 	};
 
-	if (frappe.meta.has_field(frm.doc.doctype, 'has_stin')) {
+	if (frappe.meta.has_field(frm.doc.doctype, "has_stin")) {
 		args["has_stin"] = cint(frm.doc.has_stin);
 	}
 
 	return frappe.call({
 		method: "erpnext.accounts.party.set_taxes",
 		args: args,
-		callback: function (r) {
+		callback: function(r) {
 			if (r.message) {
 				return frm.set_value("taxes_and_charges", r.message);
 			}
-		}
+		},
 	});
 };
 
@@ -278,35 +278,35 @@ erpnext.utils.get_contact_details = function(frm, prefix) {
 			if (r.message) {
 				return frm.set_value(r.message);
 			}
-		}
+		},
 	});
-}
+};
 
 erpnext.utils.validate_mandatory = function(frm, label, value, trigger_on) {
 	if (!value) {
 		frm.doc[trigger_on] = "";
 		refresh_field(trigger_on);
-		frappe.throw({message:__("Please enter {0} first", [label]), title:__("Mandatory")});
+		frappe.throw({message: __("Please enter {0} first", [label]), title: __("Mandatory")});
 		return false;
 	}
 	return true;
-}
+};
 
 erpnext.utils.get_company_address = function(args, callback) {
 	return frappe.call({
 		method: "erpnext.get_company_address",
 		args: {
-			args: args
+			args: args,
 		},
 		callback: function(r) {
 			if (callback) {
 				return callback(r);
 			}
-		}
+		},
 	});
-}
+};
 
-erpnext.utils.make_customer_from_lead = function (frm, lead) {
+erpnext.utils.make_customer_from_lead = function(frm, lead) {
 	if (!lead) {
 		return;
 	}
@@ -334,17 +334,17 @@ erpnext.utils.make_customer_from_lead = function (frm, lead) {
 				description: __("Select Existing Customer to link or leave empty to create a new Customer"),
 				get_query: () => erpnext.queries.customer(),
 				onchange: () => {
-					let customer = dialog.get_value('customer');
+					let customer = dialog.get_value("customer");
 					if (customer) {
-						frappe.db.get_value("Customer", customer, ['customer_name'], (r) => {
+						frappe.db.get_value("Customer", customer, ["customer_name"], (r) => {
 							if (r) {
 								dialog.set_values(r);
 							}
 						});
 					} else {
-						dialog.set_value('customer_name', '');
+						dialog.set_value("customer_name", "");
 					}
-				}
+				},
 			},
 			{
 				label: __("Existing Customer Name"),
@@ -353,11 +353,11 @@ erpnext.utils.make_customer_from_lead = function (frm, lead) {
 				read_only: 1,
 				fetch_from: "customer.customer_name",
 			},
-		]
+		],
 	});
 
-	dialog.set_primary_action(__("Convert"), function () {
-		var existing_customer = dialog.get_value('customer');
+	dialog.set_primary_action(__("Convert"), function() {
+		var existing_customer = dialog.get_value("customer");
 		if (existing_customer) {
 			return frappe.call({
 				method: "erpnext.overrides.lead.lead_hooks.set_customer_for_lead",
@@ -365,7 +365,7 @@ erpnext.utils.make_customer_from_lead = function (frm, lead) {
 					lead: lead,
 					customer: existing_customer,
 				},
-				callback: function (r) {
+				callback: function(r) {
 					if (!r.exc) {
 						dialog.hide();
 
@@ -373,14 +373,14 @@ erpnext.utils.make_customer_from_lead = function (frm, lead) {
 							frm.reload_doc();
 						}
 					}
-				}
-			})
+				},
+			});
 		} else {
 			dialog.hide();
 			return frappe.model.open_mapped_doc({
 				method: "erpnext.overrides.lead.lead_hooks.make_customer",
 				frm: frm,
-				source_name: lead
+				source_name: lead,
 			});
 		}
 	});
@@ -388,7 +388,7 @@ erpnext.utils.make_customer_from_lead = function (frm, lead) {
 	dialog.show();
 };
 
-erpnext.utils.get_party_name = function (party_type, party, callback) {
+erpnext.utils.get_party_name = function(party_type, party, callback) {
 	if (party_type && party) {
 		return frappe.call({
 			method: "erpnext.accounts.party.get_party_name",
@@ -396,11 +396,11 @@ erpnext.utils.get_party_name = function (party_type, party, callback) {
 				party_type: party_type,
 				party: party,
 			},
-			callback: function (r) {
+			callback: function(r) {
 				if (!r.exc) {
 					callback && callback(r.message);
 				}
-			}
+			},
 		});
 	} else {
 		callback && callback(null);
@@ -409,15 +409,15 @@ erpnext.utils.get_party_name = function (party_type, party, callback) {
 
 erpnext.utils.get_party_name_field = function(party_type) {
 	let dict = {
-		'Customer': 'customer_name',
-		'Supplier': 'supplier_name',
-		'Employee': 'employee_name',
+		"Customer": "customer_name",
+		"Supplier": "supplier_name",
+		"Employee": "employee_name",
 	};
 	return dict[party_type] || "name";
 };
 
 erpnext.utils.get_lead_from_doc = function(frm) {
 	if (frm.doc.party_name && [frm.doc.quotation_to, frm.doc.appointment_for, frm.doc.opportunity_from].includes("Lead")) {
-		return frm.doc.party_name
+		return frm.doc.party_name;
 	}
-}
+};

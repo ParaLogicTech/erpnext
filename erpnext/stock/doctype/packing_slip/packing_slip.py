@@ -1,40 +1,43 @@
 # Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 # License: GNU General Public License v3. See license.txt
 
+import json
+from typing import ClassVar
+
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, cstr, combine_datetime, round_up
-from frappe.model.mapper import map_child_doc, get_mapped_doc
+from frappe.desk.reportview import get_filters_cond, get_match_cond
+from frappe.model.mapper import get_mapped_doc, map_child_doc
+from frappe.utils import cint, combine_datetime, cstr, flt, round_up
+
+from erpnext.accounts.party import validate_party_frozen_disabled
+from erpnext.controllers.queries import get_fields
 from erpnext.controllers.transaction_controller import (
 	TransactionController,
 	update_item_batch_serial_based_on_purchase_and_production,
 )
+from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
 from erpnext.stock.get_item_details import (
 	get_conversion_factor,
-	get_hide_item_code,
-	get_weight_per_unit,
-	get_default_expense_account,
 	get_default_cost_center,
-	get_item_default_values,
+	get_default_expense_account,
 	get_default_rejected_warehouse,
 	get_force_default_warehouse,
 	get_global_default_warehouse,
+	get_hide_item_code,
+	get_item_default_values,
+	get_weight_per_unit,
 )
 from erpnext.stock.utils import get_incoming_rate
-from erpnext.accounts.party import validate_party_frozen_disabled
-from erpnext.stock.doctype.batch.batch import auto_select_and_split_batches
-from frappe.desk.reportview import get_filters_cond, get_match_cond
-from erpnext.controllers.queries import get_fields
-import json
 
 
 class PackingSlip(TransactionController):
-	item_table_fields = ["items", "packaging_items"]
+	item_table_fields: ClassVar[list[str]] = ["items", "packaging_items"]
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self.force_item_fields = [
-			"stock_uom", "has_batch_no", "has_serial_no", "force_default_warehouse", "item_group", "conversion_factor"
+			"stock_uom", "has_batch_no", "has_serial_no", "force_default_warehouse", "item_group", "conversion_factor",
 		]
 
 		self.original_value_fields = [
@@ -277,7 +280,7 @@ class PackingSlip(TransactionController):
 			self.customer = None
 
 			po = frappe.db.get_value("Purchase Order", self.purchase_order,
-				['name', 'docstatus', 'status', 'company', 'supplier', 'is_subcontracted'], as_dict=1)
+				["name", "docstatus", "status", "company", "supplier", "is_subcontracted"], as_dict=1)
 
 			if not po:
 				frappe.throw(_("Purchase Order {0} does not exist").format(self.purchase_order))
@@ -285,28 +288,28 @@ class PackingSlip(TransactionController):
 				frappe.throw(_("{0} is not submitted").format(frappe.get_desk_link("Purchase Order", po.name)))
 			if po.status in ("Closed", "On Hold"):
 				frappe.throw(_("{0} is {1}").format(
-					frappe.get_desk_link("Purchase Order", po.name), po.status
+					frappe.get_desk_link("Purchase Order", po.name), po.status,
 				))
 
 			if not po.is_subcontracted:
 				frappe.throw(_("{0} is not a subcontracted order").format(
-					frappe.get_desk_link("Purchase Order", po.name)
+					frappe.get_desk_link("Purchase Order", po.name),
 				))
 
 			if self.company != po.company:
 				frappe.throw(_("Company does not match with {0}. Company must be {1}").format(
-					frappe.get_desk_link("Purchase Order", po.name), frappe.bold(po.company)
+					frappe.get_desk_link("Purchase Order", po.name), frappe.bold(po.company),
 				))
 
 			if self.supplier != po.supplier:
 				frappe.throw(_("Supplier does not match with {0}. Supplier must be {1}").format(
-					frappe.get_desk_link("Purchase Order", po.name), frappe.bold(po.supplier)
+					frappe.get_desk_link("Purchase Order", po.name), frappe.bold(po.supplier),
 				))
 
 			for d in self.items:
 				if d.get("sales_order"):
 					frappe.throw(_("Row #{0}: Packing Slip against a subcontracted Purchase Order cannot also include Sales Order").format(
-						d.idx
+						d.idx,
 					))
 		else:
 			self.supplier = None
@@ -350,12 +353,12 @@ class PackingSlip(TransactionController):
 					if self.is_unpack:
 						if d.meta.has_field(weight_field) and flt(d.get(weight_field)) > 0:
 							frappe.throw(_("Row #{0}: {1} must be negative for unpacking").format(
-								d.idx, d.meta.get_label(weight_field)
+								d.idx, d.meta.get_label(weight_field),
 							))
 					else:
 						if d.meta.has_field(weight_field) and flt(d.get(weight_field)) < 0:
 							frappe.throw(_("Row #{0}: {1} cannot be negative").format(
-								d.idx, d.meta.get_label(weight_field)
+								d.idx, d.meta.get_label(weight_field),
 							))
 
 		if self.is_unpack:
@@ -438,7 +441,7 @@ class PackingSlip(TransactionController):
 				packing_slip_map[name] = frappe.db.get_value("Packing Slip", name, [
 					"name", "docstatus", "status",
 					"company", "customer", "supplier", "project", "weight_uom",
-					"posting_date", "posting_time"
+					"posting_date", "posting_time",
 				], as_dict=1)
 
 			return packing_slip_map[name]
@@ -457,41 +460,41 @@ class PackingSlip(TransactionController):
 
 				if packing_slip.docstatus == 0:
 					frappe.throw(_("Row #{0}: Source {1} is in draft").format(
-						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name)
+						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name),
 					))
 				if packing_slip.docstatus == 2:
 					frappe.throw(_("Row #{0}: Source {1} is cancelled").format(
-						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name)
+						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name),
 					))
 
 				if (packing_slip.status != "In Stock" and not self.is_unpack) or (packing_slip.status != "Nested" and self.is_unpack):
 					frappe.throw(_("Row #{0}: Cannot select Source {1} because its status is {2}").format(
-						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.status)
+						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.status),
 					))
 
 				if self.company != packing_slip.company:
 					frappe.throw(_("Row #{0}: Company does not match with Source {1}. Company must be {2}").format(
-						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.company)
+						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.company),
 					))
 
 				if cstr(self.project) != cstr(packing_slip.project):
 					frappe.throw(_("Row #{0}: Project does not match with Source {1}. Project must be {2}").format(
-						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.project)
+						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.project),
 					))
 
 				if packing_slip.customer and self.customer != packing_slip.customer:
 					frappe.throw(_("Row #{0}: Customer does not match with Source {1}. Customer must be {2}").format(
-						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.customer)
+						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.customer),
 					))
 
 				if packing_slip.supplier and self.supplier != packing_slip.supplier:
 					frappe.throw(_("Row #{0}: Supplier does not match with Source {1}. Supplier must be {2}").format(
-						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.supplier)
+						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.supplier),
 					))
 
 				if self.weight_uom != packing_slip.weight_uom:
 					frappe.throw(_("Row #{0}: Weight UOM does not match with Source {1}. Weight UOM must be {2}").format(
-						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.weight_uom)
+						d.idx, frappe.get_desk_link("Packing Slip", packing_slip.name), frappe.bold(packing_slip.weight_uom),
 					))
 
 				source_packing_dt = combine_datetime(packing_slip.posting_date, packing_slip.posting_time)
@@ -500,7 +503,7 @@ class PackingSlip(TransactionController):
 					frappe.throw(_("Row #{0}: Nested Packing Date/Time cannot be before Source {1} Date/Time {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
-						frappe.bold(frappe.format(source_packing_dt))
+						frappe.bold(frappe.format(source_packing_dt)),
 					))
 
 				# Validate Packing Slip Item
@@ -508,7 +511,7 @@ class PackingSlip(TransactionController):
 					frappe.throw(_("Row #{0}: Missing Source Packing Slip Row Reference").format(d.idx))
 
 				packing_slip_item = frappe.db.get_value("Packing Slip Item", d.packing_slip_item,
-					['qty', 'net_weight', 'tare_weight', 'gross_weight'], as_dict=1)
+					["qty", "net_weight", "tare_weight", "gross_weight"], as_dict=1)
 
 				if not packing_slip_item:
 					frappe.throw(_("Row #{0}: Invalid Source Packing Slip Row Reference").format(d.idx))
@@ -523,26 +526,26 @@ class PackingSlip(TransactionController):
 					frappe.throw(_("Row #{0}: Qty does not match with Source {1}. Qty must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
-						frappe.bold(frappe.format(packing_slip_item.qty))
+						frappe.bold(frappe.format(packing_slip_item.qty)),
 					))
 
 				if flt(d.net_weight, d.precision("net_weight")) != flt(packing_slip_item.net_weight, d.precision("net_weight")):
 					frappe.throw(_("Row #{0}: Net Weight does not match with Source {1}. Net Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
-						frappe.bold(frappe.format(packing_slip_item.net_weight))
+						frappe.bold(frappe.format(packing_slip_item.net_weight)),
 					))
 				if flt(d.tare_weight, d.precision("tare_weight")) != flt(packing_slip_item.tare_weight, d.precision("tare_weight")):
 					frappe.throw(_("Row #{0}: Tare Weight does not match with Source {1}. Tare Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
-						frappe.bold(frappe.format(packing_slip_item.tare_weight))
+						frappe.bold(frappe.format(packing_slip_item.tare_weight)),
 					))
 				if flt(d.gross_weight, d.precision("gross_weight")) != flt(packing_slip_item.gross_weight, d.precision("gross_weight")):
 					frappe.throw(_("Row #{0}: Gross Weight does not match with Source {1}. Gross Weight must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Packing Slip", packing_slip.name),
-						frappe.bold(frappe.format(packing_slip_item.gross_weight))
+						frappe.bold(frappe.format(packing_slip_item.gross_weight)),
 					))
 
 	def validate_sales_orders(self):
@@ -571,12 +574,12 @@ class PackingSlip(TransactionController):
 
 			if self.company != order_details.company:
 				frappe.throw(_("Row #{0}: {1} Company {2} does not match with Packing Slip").format(
-					d.idx, frappe.get_desk_link("Sales Order", order_details.name), frappe.bold(order_details.company)
+					d.idx, frappe.get_desk_link("Sales Order", order_details.name), frappe.bold(order_details.company),
 				))
 
 			if cstr(self.project) != cstr(order_details.project):
 				frappe.throw(_("Row #{0}: {1} Project {2} does not match with Packing Slip").format(
-					d.idx, frappe.get_desk_link("Sales Order", order_details.name), frappe.bold(order_details.project)
+					d.idx, frappe.get_desk_link("Sales Order", order_details.name), frappe.bold(order_details.project),
 				))
 
 			if customer_details and customer_details.customer != order_details.customer:
@@ -608,7 +611,7 @@ class PackingSlip(TransactionController):
 		unpack_against = frappe.db.get_value("Packing Slip", self.unpack_against, [
 			"name", "docstatus", "status",
 			"company", "customer", "supplier", "package_type", "warehouse",
-			"posting_date", "posting_time"
+			"posting_date", "posting_time",
 		], as_dict=1)
 
 		if not unpack_against:
@@ -616,37 +619,37 @@ class PackingSlip(TransactionController):
 
 		if unpack_against.docstatus != 1:
 			frappe.throw(_("Unpack Against {0} is not submitted").format(
-				frappe.get_desk_link("Packing Slip", unpack_against.name)
+				frappe.get_desk_link("Packing Slip", unpack_against.name),
 			))
 
 		if unpack_against.status not in ("In Stock", "Rejected"):
 			frappe.throw(_("Cannot Unpack Against {0} because its status is {1}").format(
-				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.status)
+				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.status),
 			))
 
 		if self.company != unpack_against.company:
 			frappe.throw(_("Company does not match with Unpack Against {0}. Company must be {1}").format(
-				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.company)
+				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.company),
 			))
 
 		if unpack_against.customer and self.customer != unpack_against.customer:
 			frappe.throw(_("Customer does not match with Unpack Against {0}. Customer must be {1}").format(
-				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.customer)
+				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.customer),
 			))
 
 		if unpack_against.supplier and self.supplier != unpack_against.supplier:
 			frappe.throw(_("Supplier does not match with Unpack Against {0}. Supplier must be {1}").format(
-				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.supplier)
+				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.supplier),
 			))
 
 		if self.package_type != unpack_against.package_type:
 			frappe.throw(_("Package Type does not match with Unpack Against {0}. Package Type must be {1}").format(
-				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.package_type)
+				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.package_type),
 			))
 
 		if self.target_warehouse != unpack_against.warehouse:
 			frappe.throw(_("Target Warehouse does not match with Unpack Against {0}. Target Warehouse must be {1}").format(
-				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.warehouse)
+				frappe.get_desk_link("Packing Slip", unpack_against.name), frappe.bold(unpack_against.warehouse),
 			))
 
 		unpack_against_dt = combine_datetime(unpack_against.posting_date, unpack_against.posting_time)
@@ -659,7 +662,7 @@ class PackingSlip(TransactionController):
 				frappe.throw(_("Row #{0}: Missing Unpack Against Row Reference").format(d.idx))
 
 			unpacked_against_row = frappe.db.get_value("Packing Slip Item", d.unpack_against_row,
-				['qty', 'net_weight', 'tare_weight', 'gross_weight'], as_dict=1)
+				["qty", "net_weight", "tare_weight", "gross_weight"], as_dict=1)
 
 			if not unpacked_against_row:
 				frappe.throw(_("Row #{0}: Invalid Unpack Against Row Reference").format(d.idx))
@@ -673,7 +676,7 @@ class PackingSlip(TransactionController):
 				frappe.throw(_("Row #{0}: Qty does not match with Unpack Against {1}. Qty must be {2}").format(
 					d.idx,
 					frappe.get_desk_link("Packing Slip", unpack_against.name),
-					frappe.bold(frappe.format(unpacked_against_row.qty))
+					frappe.bold(frappe.format(unpacked_against_row.qty)),
 				))
 
 			# if flt(d.net_weight, d.precision("net_weight")) != flt(unpacked_against_row.net_weight, d.precision("net_weight")):
@@ -701,7 +704,7 @@ class PackingSlip(TransactionController):
 				work_order_details = frappe.db.get_value("Work Order", d.work_order, [
 					"name", "docstatus",
 					"production_item", "project", "customer",
-					"sales_order", "sales_order_item", "company"
+					"sales_order", "sales_order_item", "company",
 				], as_dict=1)
 
 				if not work_order_details:
@@ -709,21 +712,21 @@ class PackingSlip(TransactionController):
 
 				if work_order_details.docstatus != 1:
 					frappe.throw(_("Row #{0}: Work Order {1} is not submitted").format(
-						d.idx, frappe.get_desk_link("Work Order", work_order_details.name))
+						d.idx, frappe.get_desk_link("Work Order", work_order_details.name)),
 					)
 
 				if d.item_code != work_order_details.production_item:
 					frappe.throw(_("Row #{0}: Item Code does not match with Work Order {1}. Item Code must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Work Order", work_order_details.name),
-						frappe.bold(work_order_details.production_item)
+						frappe.bold(work_order_details.production_item),
 					))
 
 				if cstr(d.sales_order) != cstr(work_order_details.sales_order):
 					frappe.throw(_("Row #{0}: Sales Order does not match with Work Order {1}. Sales Order must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Work Order", work_order_details.name),
-						frappe.bold(work_order_details.sales_order)
+						frappe.bold(work_order_details.sales_order),
 					))
 
 				if cstr(d.sales_order_item) != cstr(work_order_details.sales_order_item):
@@ -736,21 +739,21 @@ class PackingSlip(TransactionController):
 					frappe.throw(_("Row #{0}: Company does not match with Work Order {1}. Company must be {2}").format(
 						d.idx,
 						frappe.get_desk_link("Work Order", work_order_details.name),
-						frappe.bold(work_order_details.company)
+						frappe.bold(work_order_details.company),
 					))
 
 				if cstr(self.project) != cstr(work_order_details.project):
 					frappe.throw(_("Row #{0}: {1} Project {2} does not match with Packing Slip").format(
 						d.idx,
 						frappe.get_desk_link("Work Order", work_order_details.name),
-						frappe.bold(work_order_details.project)
+						frappe.bold(work_order_details.project),
 					))
 
 				if self.customer and work_order_details.customer and self.customer != work_order_details.customer:
 					frappe.throw(_("Row #{0}: {1} Customer {2} does not match with Packing Slip").format(
 						d.idx,
 						frappe.get_desk_link("Work Order", work_order_details.name),
-						frappe.bold(work_order_details.customer)
+						frappe.bold(work_order_details.customer),
 					))
 
 	def validate_customer(self):
@@ -778,7 +781,7 @@ class PackingSlip(TransactionController):
 		for field in self.item_table_fields:
 			for item in self.get(field):
 				self.round_floats_in(item,
-					excluding=['net_weight_per_unit', 'tare_weight_per_unit', 'gross_weight_per_unit'])
+					excluding=["net_weight_per_unit", "tare_weight_per_unit", "gross_weight_per_unit"])
 
 				if self.is_unpack or item.get("source_packing_slip"):
 					item.rejected_qty = 0
@@ -817,7 +820,7 @@ class PackingSlip(TransactionController):
 				self.total_tare_weight += d.tare_weight
 
 		self.round_floats_in(self, [
-			'total_qty', 'total_stock_qty', 'total_rejected_qty', 'total_stock_rejected_qty', 'total_net_weight', 'total_tare_weight',
+			"total_qty", "total_stock_qty", "total_rejected_qty", "total_stock_rejected_qty", "total_net_weight", "total_tare_weight",
 		])
 		self.total_gross_weight = flt(self.total_net_weight + self.total_tare_weight, self.precision("total_gross_weight"))
 
@@ -828,7 +831,7 @@ class PackingSlip(TransactionController):
 
 	@frappe.whitelist()
 	def auto_select_batches(self):
-		auto_select_and_split_batches(self, 'source_warehouse', additional_group_fields=[
+		auto_select_and_split_batches(self, "source_warehouse", additional_group_fields=[
 			"sales_order", "sales_order_item",
 			"subcontracted_item", "purchase_order_item",
 		])
@@ -935,8 +938,8 @@ class PackingSlip(TransactionController):
 		# Reverse for cancellation
 		if self.docstatus == 2:
 			sl_entries.reverse()
-		
-		self.make_sl_entries(sl_entries, self.amended_from and 'Yes' or 'No', allow_negative_stock=allow_negative_stock)
+
+		self.make_sl_entries(sl_entries, (self.amended_from and "Yes") or "No", allow_negative_stock=allow_negative_stock)
 
 	def get_packaging_material_sles(self, sl_entries):
 		for d in self.get("packaging_items"):
@@ -997,7 +1000,7 @@ class PackingSlip(TransactionController):
 						"dependent_voucher_no": self.name,
 						"dependent_voucher_detail_no": d.name,
 						"dependency_type": "Rate",
-						"dependency_qty_filter": "Negative"
+						"dependency_qty_filter": "Negative",
 					}]
 
 					# Include Consumed Packaging Material in Valuation
@@ -1008,7 +1011,7 @@ class PackingSlip(TransactionController):
 								"dependent_voucher_no": self.name,
 								"dependent_voucher_detail_no": dep_row.name,
 								"dependency_type": "Amount",
-								"dependency_percentage": d.cost_percentage
+								"dependency_percentage": d.cost_percentage,
 							})
 
 				sl_entries.append(sle_in)
@@ -1082,7 +1085,7 @@ class PackingSlip(TransactionController):
 							"dependent_voucher_no": self.name,
 							"dependent_voucher_detail_no": dep_row.name,
 							"dependency_type": "Amount",
-							"dependency_percentage": d.cost_percentage
+							"dependency_percentage": d.cost_percentage,
 						})
 
 			sl_entries.append(sle_in)
@@ -1310,7 +1313,7 @@ class PackingSlip(TransactionController):
 		frappe.throw(_(
 			"Some items from {0} are not completely {1} by {2}. "
 			"Partial {3} of Package is not allowed. "
-			"Please select all items of Packing Slip."
+			"Please select all items of Packing Slip.",
 		).format(
 			frappe.get_desk_link("Packing Slip", self.name),
 			_(past),
@@ -1321,7 +1324,7 @@ class PackingSlip(TransactionController):
 	def raise_multiple_target_warehouse(self, voucher_type, voucher_no):
 		frappe.throw(_(
 			"{0} has multiple target warehouses against {1}. "
-			"Please select only one target warehouse for the Packing Slip."
+			"Please select only one target warehouse for the Packing Slip.",
 		).format(
 			frappe.get_desk_link(voucher_type, voucher_no),
 			frappe.get_desk_link("Packing Slip", self.name),
@@ -1399,7 +1402,7 @@ class PackingSlip(TransactionController):
 		# Validate Packing Slip can be reassigned
 		if self.docstatus != 1:
 			frappe.throw(_("{0} is not submitted").format(
-				frappe.get_desk_link("Packing Slip", self.name)
+				frappe.get_desk_link("Packing Slip", self.name),
 			))
 
 		if self.status != "In Stock":
@@ -1418,23 +1421,23 @@ class PackingSlip(TransactionController):
 
 		if not sales_order and not has_sales_orders:
 			frappe.throw(_("{0} is not assigned to any Sales Order").format(
-				frappe.get_desk_link("Packing Slip", self.name)
+				frappe.get_desk_link("Packing Slip", self.name),
 			))
 
 		if has_sales_orders and not self.is_reassigned:
 			frappe.throw(_("Cannot reassign {0} because it was packed for another Sales Order").format(
-				frappe.get_desk_link("Packing Slip", self.name)
+				frappe.get_desk_link("Packing Slip", self.name),
 			))
 
 		has_source_packing_slip = any(d.source_packing_slip for d in self.items)
 		if has_source_packing_slip:
 			frappe.throw(_("Cannot reassign nested {0}").format(
-				frappe.get_desk_link("Packing Slip", self.name)
+				frappe.get_desk_link("Packing Slip", self.name),
 			))
 
 		if not self.can_reassign:
 			frappe.throw(_("Reassignment of {0} is not allowed").format(
-				frappe.get_desk_link("Packing Slip", self.name)
+				frappe.get_desk_link("Packing Slip", self.name),
 			))
 
 		# Check if Sales Order can be assigned
@@ -1448,7 +1451,7 @@ class PackingSlip(TransactionController):
 
 			if target_so_doc.docstatus != 1:
 				frappe.throw(_("{0} is not submitted").format(
-					frappe.get_desk_link("Sales Order", target_so_doc.name)
+					frappe.get_desk_link("Sales Order", target_so_doc.name),
 				))
 
 			if target_so_doc.status in ("Closed", "On Hold"):
@@ -1459,7 +1462,7 @@ class PackingSlip(TransactionController):
 
 			if target_so_doc.delivery_status != "To Deliver":
 				frappe.throw(_("{0} is not deliverable").format(
-					frappe.get_desk_link("Sales Order", target_so_doc.name)
+					frappe.get_desk_link("Sales Order", target_so_doc.name),
 				))
 
 			# Check if Items match
@@ -1473,7 +1476,7 @@ class PackingSlip(TransactionController):
 						continue
 
 					so_item.packing_assignable_qty = get_packing_assignable_qty(
-						so_item.qty, so_item.delivered_qty, so_item.packed_qty, so_item.work_order_qty
+						so_item.qty, so_item.delivered_qty, so_item.packed_qty, so_item.work_order_qty,
 					)
 					if so_item.packing_assignable_qty <= 0:
 						continue
@@ -1492,7 +1495,7 @@ class PackingSlip(TransactionController):
 							low_qty_so_item.idx,
 							frappe.bold(frappe.format(
 								low_qty_so_item.packing_assignable_qty,
-								df=low_qty_so_item.meta.get_field("qty")
+								df=low_qty_so_item.meta.get_field("qty"),
 							)),
 							low_qty_so_item.uom,
 						)
@@ -1512,7 +1515,7 @@ class PackingSlip(TransactionController):
 		# Version log
 		if target_so_doc:
 			self.add_comment("Label", _("Reassigned to {0}").format(
-				frappe.get_desk_link("Sales Order", target_so_doc.name)
+				frappe.get_desk_link("Sales Order", target_so_doc.name),
 			))
 		else:
 			self.add_comment("Label", _("Unassigned Sales Order"))
@@ -1541,7 +1544,7 @@ class PackingSlip(TransactionController):
 
 		# Set SO Reference
 		for ps_group in grouped_items.values():
-			for ps_item in ps_group['items']:
+			for ps_item in ps_group["items"]:
 				ps_item.sales_order = target_so_doc.name if target_so_doc else None
 				ps_item.sales_order_item = ps_group.matched_so_item.name if target_so_doc else None
 				ps_item.db_set({
@@ -1622,7 +1625,7 @@ def get_item_details(args):
 	# Qty and UOM
 	out.qty = flt(args.qty) or 1
 	out.stock_uom = item.stock_uom
-	if not args.get('uom'):
+	if not args.get("uom"):
 		args.uom = item.stock_uom
 
 	if args.uom == item.stock_uom:
@@ -1630,7 +1633,7 @@ def get_item_details(args):
 		out.conversion_factor = 1
 	else:
 		conversion = get_conversion_factor(item.name, args.uom)
-		if conversion.get('not_convertible'):
+		if conversion.get("not_convertible"):
 			out.uom = item.stock_uom
 			out.conversion_factor = 1
 		else:
@@ -1659,7 +1662,7 @@ def get_item_details(args):
 
 	# Accounting
 	if args.company:
-		stock_adjustment_account = frappe.get_cached_value('Company', args.company, 'stock_adjustment_account')
+		stock_adjustment_account = frappe.get_cached_value("Company", args.company, "stock_adjustment_account")
 		out.expense_account = stock_adjustment_account or get_default_expense_account(args.item_code, args)
 		out.cost_center = get_default_cost_center(args.item_code, args)
 
@@ -1787,7 +1790,7 @@ def make_target_packing_slip(source_name, target_doc=None):
 				"cost_center",
 				"rejected_qty",
 				"stock_rejected_qty",
-			]
+			],
 		}
 
 		frappe.utils.call_hook_method("update_target_packing_slip_mapper", packing_slip_item_mapper,
@@ -1838,7 +1841,7 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 			},
 			"field_no_map": [
 				"default_source_warehouse",
-			]
+			],
 		},
 		"Packing Slip Item": {
 			"doctype": "Packing Slip Item",
@@ -1870,8 +1873,8 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 				"serial_no": "serial_no",
 				"source_warehouse": "source_warehouse",
 			},
-			"postprocess": update_material
-		}
+			"postprocess": update_material,
+		},
 	}
 
 	frappe.utils.call_hook_method("update_unpack_from_packing_slip_mapper", mapper)
@@ -1884,8 +1887,10 @@ def make_unpack_packing_slip(source_name, target_doc=None):
 @frappe.whitelist()
 def make_delivery_note(source_name, target_doc=None, skip_postprocess=False):
 	from erpnext.selling.doctype.sales_order.sales_order import (
-		make_delivery_note as make_delivery_note_from_sales_order,
 		get_item_mapper_for_delivery,
+	)
+	from erpnext.selling.doctype.sales_order.sales_order import (
+		make_delivery_note as make_delivery_note_from_sales_order,
 	)
 
 	if isinstance(source_name, str):
@@ -1951,8 +1956,10 @@ def make_delivery_note(source_name, target_doc=None, skip_postprocess=False):
 @frappe.whitelist()
 def make_sales_invoice(source_name, target_doc=None, skip_postprocess=False):
 	from erpnext.selling.doctype.sales_order.sales_order import (
-		make_sales_invoice as make_sales_invoice_from_sales_order,
 		get_item_mapper_for_invoice,
+	)
+	from erpnext.selling.doctype.sales_order.sales_order import (
+		make_sales_invoice as make_sales_invoice_from_sales_order,
 	)
 
 	if isinstance(source_name, str):
@@ -1974,7 +1981,7 @@ def make_sales_invoice(source_name, target_doc=None, skip_postprocess=False):
 				frappe.utils.call_hook_method(
 					"update_sales_invoice_from_packing_slip_mapper",
 					sales_order_mappers[d.sales_order],
-					"Sales Order Item"
+					"Sales Order Item",
 				)
 
 		# Map Sales Order fields without items
@@ -1983,7 +1990,7 @@ def make_sales_invoice(source_name, target_doc=None, skip_postprocess=False):
 				sales_order_doc,
 				target_doc,
 				skip_item_mapping=True,
-				skip_postprocess=True
+				skip_postprocess=True,
 			)
 
 	packing_slip_item_mapper = get_packing_slip_item_mapper("Sales Invoice Item")
@@ -2108,7 +2115,7 @@ def get_packing_slip_item_mapper(target_doctype):
 
 			"batch_no": "batch_no",
 			"serial_no": "serial_no",
-		}
+		},
 	}
 
 
@@ -2142,14 +2149,14 @@ def reassign_sales_order(packing_slips, sales_order=None):
 		frappe.msgprint(
 			_("{0} reassigned to {1}").format(
 				packing_slip_message,
-				frappe.get_desk_link("Sales Order", sales_order)
-			), alert=True, indicator="green"
+				frappe.get_desk_link("Sales Order", sales_order),
+			), alert=True, indicator="green",
 		)
 	else:
 		frappe.msgprint(
 			_("{0} unassigned Sales Order").format(
-				packing_slip_message
-			), alert=True, indicator="green"
+				packing_slip_message,
+			), alert=True, indicator="green",
 		)
 
 
@@ -2285,6 +2292,7 @@ def _get_sales_orders_for_reassignment(
 	ignore_permissions=False,
 ):
 	from frappe.desk.reportview import get_filters_cond, get_match_cond
+
 	from erpnext.controllers.queries import get_fields
 
 	if not filters:
@@ -2296,7 +2304,7 @@ def _get_sales_orders_for_reassignment(
 
 	fields = get_fields(doctype, ["name", "customer", "customer_name", "transaction_date"])
 	select_fields = ", ".join(["`tabSales Order`.{0}".format(f) for f in fields])
-	limit = "limit {0}, {1}".format(start, page_len) if page_len else ""
+	"limit {0}, {1}".format(start, page_len) if page_len else ""
 
 	packing_slip = filters.pop("packing_slip")
 	ps_doc = frappe.get_doc("Packing Slip", packing_slip)
@@ -2359,7 +2367,6 @@ def _get_sales_orders_for_reassignment(
 		fcond=get_filters_cond(doctype, filters, [], ignore_permissions=ignore_permissions),
 		mcond="" if ignore_permissions else get_match_cond(doctype),
 		item_conditions_str=item_conditions_str,
-		limit=limit,
 		txt="%(txt)s",
 	), {"txt": ("%%%s%%" % txt)}, as_dict=as_dict)
 
@@ -2404,7 +2411,7 @@ def _get_packing_slips_for_reassignment(
 	for d in selected_items:
 		key = (cstr(d.get("item_code")), cstr(d.get("uom")))
 		item_qtys = items_map.setdefault(key, frappe._dict({
-			"qty": 0, "delivered_qty": 0, "packed_qty": 0, "work_order_qty": 0
+			"qty": 0, "delivered_qty": 0, "packed_qty": 0, "work_order_qty": 0,
 		}))
 		item_qtys.qty += flt(d.get("qty"))
 		item_qtys.delivered_qty += flt(d.get("delivered_qty"))
@@ -2420,7 +2427,7 @@ def _get_packing_slips_for_reassignment(
 
 		if hide_invalid_qty:
 			item_qtys.packing_assignable_qty = get_packing_assignable_qty(
-				item_qtys.qty, item_qtys.delivered_qty, item_qtys.packed_qty, item_qtys.work_order_qty
+				item_qtys.qty, item_qtys.delivered_qty, item_qtys.packed_qty, item_qtys.work_order_qty,
 			)
 			cond += " and `tabPacking Slip Item`.qty <= {0}".format(item_qtys.packing_assignable_qty)
 

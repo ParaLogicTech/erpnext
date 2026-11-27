@@ -1,6 +1,6 @@
 frappe.provide("erpnext");
 
-erpnext.make_checklist = function (
+erpnext.make_checklist = function(
 	frm,
 	parentfield,
 	wrapper,
@@ -8,14 +8,14 @@ erpnext.make_checklist = function (
 	read_only,
 	title,
 	default_checklist_dt,
-	default_checklist_dn=null,
-	force_reload=false,
+	default_checklist_dn = null,
+	force_reload = false,
 ) {
 	$(wrapper).empty();
 	if (title) {
 		$(`<label class="control-label">${title}</label>`).appendTo(wrapper);
 	}
-	var checklist_area = $('<div></div>').appendTo(wrapper);
+	var checklist_area = $("<div></div>").appendTo(wrapper);
 
 	return new erpnext.ChecklistEditor(frm, parentfield, checklist_area, default_items, read_only, default_checklist_dt, default_checklist_dn, force_reload);
 };
@@ -28,17 +28,17 @@ erpnext.ChecklistEditor = Class.extend({
 		default_items,
 		read_only,
 		default_checklist_dt,
-		default_checklist_dn=null,
-		force_reload=false,
+		default_checklist_dn = null,
+		force_reload = false,
 	) {
 		var me = this;
 		me.wrapper = $(wrapper);
 		me.parentfield = parentfield;
-		me.checklist_wrapper = $(`<div class="row"></div>`).appendTo(me.wrapper);
-		me.left_container = $(`<div class="col-sm-6"></div>`).appendTo(me.checklist_wrapper);
-		me.right_container = $(`<div class="col-sm-6"></div>`).appendTo(me.checklist_wrapper);
-		me.buttons_container = $(`<div style="margin-top: 5px; margin-bottom: 5px;"></div>`).appendTo(me.wrapper);
-		me.empty_checklist_container = $(`<div></div>`).appendTo(me.wrapper);
+		me.checklist_wrapper = $("<div class=\"row\"></div>").appendTo(me.wrapper);
+		me.left_container = $("<div class=\"col-sm-6\"></div>").appendTo(me.checklist_wrapper);
+		me.right_container = $("<div class=\"col-sm-6\"></div>").appendTo(me.checklist_wrapper);
+		me.buttons_container = $("<div style=\"margin-top: 5px; margin-bottom: 5px;\"></div>").appendTo(me.wrapper);
+		me.empty_checklist_container = $("<div></div>").appendTo(me.wrapper);
 		me.default_checklist_dt = default_checklist_dt;
 		me.default_checklist_dn = default_checklist_dn;
 
@@ -57,38 +57,38 @@ erpnext.ChecklistEditor = Class.extend({
 		me.bind();
 	},
 
-	clear: function () {
+	clear: function() {
 		this.left_container.empty();
 		this.right_container.empty();
 		this.buttons_container.empty();
 		this.empty_checklist_container.empty();
 	},
 
-	load_items_and_render: function () {
+	load_items_and_render: function() {
 		var me = this;
 		frappe.call({
 			method: "erpnext.controllers.checklist_editor.get_default_checklist_items",
 			args: {
 				parentfield: me.parentfield,
 				default_checklist_dt: me.default_checklist_dt,
-				default_checklist_dn: me.default_checklist_dn
+				default_checklist_dn: me.default_checklist_dn,
 			},
-			callback: function (r) {
+			callback: function(r) {
 				if (r.message && !r.exc) {
 					me.default_checklist_items = r.message;
 					me.set_from_default_checklist_items();
 					me.render_checklist();
 				}
-			}
+			},
 		});
 	},
 
-	set_from_default_checklist_items: function () {
+	set_from_default_checklist_items: function() {
 		var me = this;
 
 		if (me.can_write()) {
 			me.frm.clear_table(me.parentfield);
-			$.each(me.default_checklist_items || [], function (i, d) {
+			$.each(me.default_checklist_items || [], function(i, d) {
 				me.frm.add_child(me.parentfield, {
 					"checklist_item": d.checklist_item,
 					"is_check_mandatory": d.is_check_mandatory,
@@ -106,7 +106,7 @@ erpnext.ChecklistEditor = Class.extend({
 
 		var count = (checklist_items || []).length;
 		if (count) {
-			$.each(checklist_items || [], function (i, item) {
+			$.each(checklist_items || [], function(i, item) {
 				if (i < checklist_items.length / 2) {
 					me.make_checkbox(item, me.left_container);
 				} else {
@@ -114,7 +114,7 @@ erpnext.ChecklistEditor = Class.extend({
 				}
 			});
 		} else {
-			$(`<h6 class="text-muted">No Checklist Items</h6>`).appendTo(me.empty_checklist_container);
+			$("<h6 class=\"text-muted\">No Checklist Items</h6>").appendTo(me.empty_checklist_container);
 		}
 
 		me.refresh();
@@ -148,7 +148,7 @@ erpnext.ChecklistEditor = Class.extend({
 		} else {
 			checklist_html = `
 				<span class="checklist-check" data-checklist-item="${data_checklist_item}">
-					${frappe.format(0, {'fieldtype': 'Check'})}
+					${frappe.format(0, {"fieldtype": "Check"})}
 				</span>
 				<span>${label}</span>
 			`;
@@ -158,19 +158,19 @@ erpnext.ChecklistEditor = Class.extend({
 		$(repl(wrapper, {checklist_html: checklist_html})).appendTo(container);
 	},
 
-	make_buttons: function () {
+	make_buttons: function() {
 		$(`<button type="button" class="btn btn-default btn-sm add-checklist-item" style="margin-right: 5px;">
-			${__('Add Checklist Item')}
+			${__("Add Checklist Item")}
 		</button>`).appendTo(this.buttons_container);
 		$(`<button type="button" class="btn btn-default btn-sm reset-checklist" style="margin-right: 5px;">
-			${__('Reset Checklist')}
+			${__("Reset Checklist")}
 		</button>`).appendTo(this.buttons_container);
 		$(`<button type="button" class="btn btn-default btn-sm checklist-check-all">
-			${__('Check All')}
+			${__("Check All")}
 		</button>`).appendTo(this.buttons_container);
 	},
 
-	refresh: function () {
+	refresh: function() {
 		var me = this;
 		me.wrapper.find(".checklist-check").prop("checked", false);
 		me.wrapper.find(".remove-checklist-item").hide();
@@ -184,7 +184,7 @@ erpnext.ChecklistEditor = Class.extend({
 						remove_el.show();
 					}
 				} else {
-					el.html(frappe.format(d.checklist_item_checked, {'fieldtype': 'Check'}));
+					el.html(frappe.format(d.checklist_item_checked, {"fieldtype": "Check"}));
 				}
 			}
 		});
@@ -196,27 +196,27 @@ erpnext.ChecklistEditor = Class.extend({
 			me.on_check(this);
 		});
 
-		me.buttons_container.on("click", ".add-checklist-item", function () {
+		me.buttons_container.on("click", ".add-checklist-item", function() {
 			me.on_add_checklist_item();
 		});
 
-		me.checklist_wrapper.on("click", ".remove-checklist-item", function () {
+		me.checklist_wrapper.on("click", ".remove-checklist-item", function() {
 			me.on_remove_checklist_item(this);
 		});
 
-		me.buttons_container.on("click", ".reset-checklist", function () {
+		me.buttons_container.on("click", ".reset-checklist", function() {
 			me.on_reset_checklist();
 		});
 
-		me.buttons_container.on("click", ".checklist-check-all", function () {
+		me.buttons_container.on("click", ".checklist-check-all", function() {
 			me.on_check_all();
 		});
 	},
 
-	on_check: function (el) {
+	on_check: function(el) {
 		var me = this;
 
-		var checklist_item = $(el).attr('data-checklist-item');
+		var checklist_item = $(el).attr("data-checklist-item");
 		var checked = cint($(el).prop("checked"));
 
 		var found = false;
@@ -234,7 +234,7 @@ erpnext.ChecklistEditor = Class.extend({
 		me.frm.dirty();
 	},
 
-	on_check_all: function () {
+	on_check_all: function() {
 		var me = this;
 
 		var found = false;
@@ -247,9 +247,9 @@ erpnext.ChecklistEditor = Class.extend({
 		me.frm.dirty();
 	},
 
-	on_add_checklist_item: function () {
+	on_add_checklist_item: function() {
 		var me = this;
-		frappe.prompt('Checklist Item', ({ value }) => {
+		frappe.prompt("Checklist Item", ({value}) => {
 			var exists = (me.frm.doc[me.parentfield] || []).filter(d => d.checklist_item == value);
 			if (exists.length) {
 				frappe.throw(__("<b>{0}</b> Checklist Item already exists", [value]));
@@ -257,7 +257,7 @@ erpnext.ChecklistEditor = Class.extend({
 				me.frm.add_child(me.parentfield, {
 					"checklist_item": value,
 					"checklist_item_checked": 1,
-					"is_custom_checklist_item": 1
+					"is_custom_checklist_item": 1,
 				});
 
 				me.render_checklist();
@@ -266,14 +266,14 @@ erpnext.ChecklistEditor = Class.extend({
 		});
 	},
 
-	on_remove_checklist_item: function (el) {
+	on_remove_checklist_item: function(el) {
 		var me = this;
 
-		var checklist_item = $(el).attr('data-checklist-item');
+		var checklist_item = $(el).attr("data-checklist-item");
 		if (checklist_item) {
 			me.frm.doc[me.parentfield] = (me.frm.doc[me.parentfield] || []).filter(d => d.checklist_item != checklist_item);
 
-			$.each(me.frm.doc[me.parentfield] || [], function (i, d) {
+			$.each(me.frm.doc[me.parentfield] || [], function(i, d) {
 				d.idx = i + 1;
 			});
 
@@ -282,11 +282,11 @@ erpnext.ChecklistEditor = Class.extend({
 		}
 	},
 
-	on_reset_checklist: function () {
+	on_reset_checklist: function() {
 		frappe.confirm(__("Are you sure you want to reset the checklist?"), () => this.load_items_and_render());
 	},
 
-	get_checklist_items: function () {
+	get_checklist_items: function() {
 		if (this.frm.doc[this.parentfield] && this.frm.doc[this.parentfield].length) {
 			return this.frm.doc[this.parentfield].map(d => d.checklist_item);
 		} else if (this.default_checklist_items && this.default_checklist_items.length) {
@@ -297,7 +297,7 @@ erpnext.ChecklistEditor = Class.extend({
 		}
 	},
 
-	can_write: function () {
+	can_write: function() {
 		return !this.read_only && this.frm.doc.docstatus == 0 && frappe.model.can_write(this.frm.doc.doctype);
 	},
 });

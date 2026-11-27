@@ -1,12 +1,13 @@
 import frappe
-from frappe import _
-from frappe.utils import cint
 from crm.crm.doctype.opportunity.opportunity import Opportunity
+from frappe import _
 from frappe.model.mapper import get_mapped_doc
-from erpnext.utilities.transaction_base import validate_uom_is_integer, validate_uom_is_convertible
-from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
+from frappe.utils import cint
+
 from erpnext.overrides.lead.lead_hooks import get_customer_from_lead
 from erpnext.projects.doctype.service_template.service_template import add_service_template_items
+from erpnext.stock.get_item_details import get_applies_to_details, get_force_applies_to_fields
+from erpnext.utilities.transaction_base import validate_uom_is_convertible, validate_uom_is_integer
 
 
 class OpportunityERP(Opportunity):
@@ -18,9 +19,9 @@ class OpportunityERP(Opportunity):
 
 	def onload(self):
 		if self.opportunity_from == "Customer":
-			self.set_onload('customer', self.party_name)
+			self.set_onload("customer", self.party_name)
 		elif self.opportunity_from == "Lead":
-			self.set_onload('customer', get_customer_from_lead(self.party_name))
+			self.set_onload("customer", get_customer_from_lead(self.party_name))
 
 	def validate(self):
 		super().validate()
@@ -42,11 +43,11 @@ class OpportunityERP(Opportunity):
 			return
 
 		filters = {
-			'maintenance_schedule': self.maintenance_schedule,
-			'maintenance_schedule_row': self.maintenance_schedule_row
+			"maintenance_schedule": self.maintenance_schedule,
+			"maintenance_schedule_row": self.maintenance_schedule_row,
 		}
 		if not self.is_new():
-			filters['name'] = ['!=', self.name]
+			filters["name"] = ["!=", self.name]
 
 		dup = frappe.get_value("Opportunity", filters=filters)
 		if dup:
@@ -67,7 +68,7 @@ class OpportunityERP(Opportunity):
 		applies_to_details = get_applies_to_details(args, for_validate=True)
 
 		for k, v in applies_to_details.items():
-			if self.meta.has_field(k) and not self.get(k) or k in self.force_applies_to_fields:
+			if (self.meta.has_field(k) and not self.get(k)) or k in self.force_applies_to_fields:
 				self.set(k, v)
 
 	def is_converted(self):
@@ -112,7 +113,7 @@ class OpportunityERP(Opportunity):
 		lost_quotations = frappe.get_all("Quotation", {
 			"opportunity": self.name,
 			"docstatus": 1,
-			"status": 'Lost'
+			"status": "Lost",
 		})
 
 		return [d.name for d in lost_quotations]
@@ -131,11 +132,11 @@ def get_active_quotations(opportunity):
 	if not opportunity:
 		return []
 
-	quotations = frappe.get_all('Quotation', {
-		'opportunity': opportunity,
-		'status': ("not in", ['Lost', 'Closed']),
-		'docstatus': 1
-	}, 'name')
+	quotations = frappe.get_all("Quotation", {
+		"opportunity": opportunity,
+		"status": ("not in", ["Lost", "Closed"]),
+		"docstatus": 1,
+	}, "name")
 
 	return [d.name for d in quotations]
 
@@ -145,12 +146,12 @@ def get_item_details(item_code):
 	item_details = frappe.get_cached_doc("Item", item_code) if item_code else frappe._dict()
 
 	return {
-		'item_name': item_details.item_name,
-		'description': item_details.description,
-		'uom': item_details.stock_uom,
-		'image': item_details.image,
-		'item_group': item_details.item_group,
-		'brand': item_details.brand,
+		"item_name": item_details.item_name,
+		"description": item_details.description,
+		"uom": item_details.stock_uom,
+		"image": item_details.image,
+		"item_group": item_details.item_group,
+		"brand": item_details.brand,
 	}
 
 
@@ -235,7 +236,7 @@ def make_quotation(
 				"party_name": "party_name",
 				"name": "opportunity",
 				"applies_to_serial_no": "applies_to_serial_no",
-			}
+			},
 		},
 	}
 
@@ -245,7 +246,7 @@ def make_quotation(
 			"field_map": {
 				"uom": "stock_uom",
 			},
-			"add_if_empty": True
+			"add_if_empty": True,
 		}
 
 	doclist = get_mapped_doc("Opportunity", source_name, mapper, target_doc, set_missing_values)
@@ -257,29 +258,29 @@ def make_quotation(
 def make_request_for_quotation(source_name, target_doc=None):
 	doclist = get_mapped_doc("Opportunity", source_name, {
 		"Opportunity": {
-			"doctype": "Request for Quotation"
+			"doctype": "Request for Quotation",
 		},
 		"Opportunity Item": {
 			"doctype": "Request for Quotation Item",
 			"field_map": [
 				["name", "opportunity_item"],
 				["parent", "opportunity"],
-				["uom", "uom"]
-			]
-		}
+				["uom", "uom"],
+			],
+		},
 	}, target_doc)
 
 	return doclist
 
 
 def get_customer_from_opportunity(source):
-	if source and source.get('party_name'):
-		if source.get('opportunity_from') == 'Lead':
-			customer = get_customer_from_lead(source.get('party_name'), throw=True)
-			return frappe.get_cached_doc('Customer', customer)
+	if source and source.get("party_name"):
+		if source.get("opportunity_from") == "Lead":
+			customer = get_customer_from_lead(source.get("party_name"), throw=True)
+			return frappe.get_cached_doc("Customer", customer)
 
-		elif source.get('opportunity_from') == 'Customer':
-			return frappe.get_cached_doc('Customer', source.get('party_name'))
+		elif source.get("opportunity_from") == "Customer":
+			return frappe.get_cached_doc("Customer", source.get("party_name"))
 
 
 @frappe.whitelist()
@@ -288,15 +289,15 @@ def make_supplier_quotation(source_name, target_doc=None):
 		"Opportunity": {
 			"doctype": "Supplier Quotation",
 			"field_map": {
-				"name": "opportunity"
-			}
+				"name": "opportunity",
+			},
 		},
 		"Opportunity Item": {
 			"doctype": "Supplier Quotation Item",
 			"field_map": {
-				"uom": "stock_uom"
-			}
-		}
+				"uom": "stock_uom",
+			},
+		},
 	}, target_doc)
 
 	return doclist
@@ -315,7 +316,7 @@ def update_appointment_mapper(mapper, target_doctype):
 def override_opportunity_dashboard(data):
 	data["transactions"].insert(0, {
 		"label": _("Quotation"),
-		"items": ["Quotation", "Supplier Quotation"]
+		"items": ["Quotation", "Supplier Quotation"],
 	})
 
 	project_items = ["Project"]

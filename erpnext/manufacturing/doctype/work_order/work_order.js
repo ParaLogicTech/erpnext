@@ -54,7 +54,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 				filters: {
 					"is_stock_item": 1,
 					"default_bom": ["is", "set"],
-				}
+				},
 			};
 		});
 
@@ -62,7 +62,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			if (this.frm.doc.production_item) {
 				return {
 					query: "erpnext.controllers.queries.bom",
-					filters: {item: cstr(this.frm.doc.production_item)}
+					filters: {item: cstr(this.frm.doc.production_item)},
 				};
 			} else {
 				frappe.throw(__("Please enter Production Item first"));
@@ -73,16 +73,16 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			return {
 				filters: {
 					"docstatus": 1,
-					"status": ["not in", ["Closed", "On Hold"]]
-				}
+					"status": ["not in", ["Closed", "On Hold"]],
+				},
 			};
 		});
 
 		this.frm.set_query("project", () => {
-			return{
+			return {
 				filters: {
-					"status": ['not in', ['Completed', 'Cancelled']]
-				}
+					"status": ["not in", ["Completed", "Cancelled"]],
+				},
 			};
 		});
 
@@ -91,8 +91,8 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 				query: "erpnext.manufacturing.doctype.work_order.work_order.get_bom_operations",
 				filters: {
 					"parent": this.frm.doc.bom_no,
-					"parenttype": "BOM"
-				}
+					"parenttype": "BOM",
+				},
 			};
 		});
 
@@ -106,7 +106,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			return {
 				filters: {
 					"company": this.frm.doc.company,
-				}
+				},
 			};
 		});
 
@@ -114,7 +114,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			return {
 				filters: {
 					"company": this.frm.doc.company,
-				}
+				},
 			};
 		});
 
@@ -131,14 +131,14 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 							item_code: row.item_code,
 							warehouse: row.source_warehouse,
 							posting_date: frappe.datetime.nowdate(),
-						}
+						},
 					};
 				} else {
 					return {
 						filters: {
 							item: row.item_code,
-						}
-					}
+						},
+					};
 				}
 			}
 		});
@@ -148,7 +148,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 				filters: {
 					"company": this.frm.doc.company,
 					"is_group": 0,
-				}
+				},
 			};
 		});
 
@@ -156,8 +156,8 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			return {
 				filters: {
 					"company": this.frm.doc.company,
-					"is_group": 0
-				}
+					"is_group": 0,
+				},
 			};
 		});
 
@@ -165,8 +165,8 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			return {
 				filters: {
 					"company": this.frm.doc.company,
-					"is_group": 0
-				}
+					"is_group": 0,
+				},
 			};
 		});
 
@@ -183,11 +183,11 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 
 		// Stop / Resume
 		if (doc.docstatus === 1) {
-			if (doc.status != 'Stopped' && doc.status != 'Completed') {
+			if (doc.status != "Stopped" && doc.status != "Completed") {
 				this.frm.add_custom_button(__("Stop"), () => {
 					this.stop_work_order("Stopped");
 				}, __("Status"));
-			} else if (doc.status == 'Stopped') {
+			} else if (doc.status == "Stopped") {
 				this.frm.add_custom_button(__("Re-Open"), () => {
 					this.stop_work_order("Resumed");
 				}, __("Status"));
@@ -203,16 +203,16 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 		) {
 			const not_completed = doc.operations.some(d => d.status != "Completed");
 			if (not_completed) {
-				this.frm.add_custom_button(__('Create Job Card'), () => {
+				this.frm.add_custom_button(__("Create Job Card"), () => {
 					this.create_job_cards();
-				}).addClass('btn-primary');
+				}).addClass("btn-primary");
 			}
 		}
 
 		// Alternate Item
 		const has_alternative_items = (doc.required_items || []).find(d => d.has_alternative_item);
 		if (doc.docstatus == 0 && has_alternative_items) {
-			this.frm.add_custom_button(__('Alternate Item'), () => {
+			this.frm.add_custom_button(__("Alternate Item"), () => {
 				erpnext.utils.select_alternate_items({
 					frm: this.frm,
 					child_docname: "required_items",
@@ -293,11 +293,11 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 
 		let start_btn_default = (
 			(
-				!flt(doc.material_transferred_for_manufacturing) ||
-				flt(doc.material_transferred_for_manufacturing, precision("qty")) < flt(doc.producible_qty, precision("qty"))
-			) &&
-			flt(doc.produced_qty, precision("qty")) < flt(doc.producible_qty, precision("qty"))
-		)
+				!flt(doc.material_transferred_for_manufacturing)
+				|| flt(doc.material_transferred_for_manufacturing, precision("qty")) < flt(doc.producible_qty, precision("qty"))
+			)
+			&& flt(doc.produced_qty, precision("qty")) < flt(doc.producible_qty, precision("qty"))
+		);
 
 		if (show_start_btn) {
 			this.frm.show_pick_list_btn = frappe.model.can_create("Pick List");
@@ -318,12 +318,12 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 				(doc.skip_transfer && flt(doc.produced_qty) < qty_with_allowance)
 				|| (!doc.skip_transfer && flt(doc.produced_qty) + flt(doc.process_loss_qty) < flt(doc.material_transferred_for_manufacturing))
 			)
-		)
+		);
 
 		let finish_button_primary = (
-			(doc.skip_transfer && flt(doc.produced_qty) < flt(doc.producible_qty)) ||
-			(!doc.skip_transfer && flt(doc.material_transferred_for_manufacturing) > flt(doc.produced_qty) + flt(doc.process_loss_qty))
-		)
+			(doc.skip_transfer && flt(doc.produced_qty) < flt(doc.producible_qty))
+			|| (!doc.skip_transfer && flt(doc.material_transferred_for_manufacturing) > flt(doc.produced_qty) + flt(doc.process_loss_qty))
+		);
 
 		if (show_finish_button) {
 			let finish_btn = this.frm.add_custom_button(__("Finish"), () => {
@@ -342,10 +342,10 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			&& doc.allow_material_consumption
 			&& flt(doc.produced_qty) + flt(doc.process_loss_qty) < flt(doc.material_transferred_for_manufacturing)
 			&& (doc.required_items || []).some(d => flt(d.consumed_qty) < flt(d.required_qty))
-		)
+		);
 
 		if (show_consumption_button) {
-			this.frm.add_custom_button(__('Material Consumption Entry'), () => {
+			this.frm.add_custom_button(__("Material Consumption Entry"), () => {
 				return erpnext.manufacturing.make_stock_entry_from_work_order(this.frm.doc, "Material Consumption for Manufacture");
 			}, __("Create"));
 		}
@@ -398,7 +398,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 						this.frm.set_value(r.message);
 						this.frm.in_production_item_onchange = false;
 					}
-				}
+				},
 			});
 		}
 	}
@@ -457,7 +457,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 						() => this.calculate_cost(),
 					]);
 				}
-			}
+			},
 		});
 	}
 
@@ -471,11 +471,11 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 					method: "erpnext.stock.utils.get_latest_stock_qty",
 					args: {
 						item_code: row.item_code,
-						warehouse: row.source_warehouse
+						warehouse: row.source_warehouse,
 					},
 					callback: (r) => {
 						frappe.model.set_value(row.doctype, row.name, "available_qty_at_source_warehouse", flt(r.message));
-					}
+					},
 				});
 			}
 		}
@@ -488,11 +488,11 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 				method: "frappe.client.get",
 				args: {
 					doctype: "Workstation",
-					name: row.workstation
+					name: row.workstation,
 				},
 				callback: (r) => {
 					frappe.model.set_value(row.doctype, row.name, "hour_rate", r.message.hour_rate);
-				}
+				},
 			});
 		}
 	}
@@ -530,8 +530,8 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			doc.additional_operating_cost += amount;
 		}
 
-		this.frm.refresh_field('planned_operating_cost');
-		this.frm.refresh_field('additional_operating_cost');
+		this.frm.refresh_field("planned_operating_cost");
+		this.frm.refresh_field("additional_operating_cost");
 
 		let variable_cost = flt(doc.actual_operating_cost) || flt(doc.planned_operating_cost);
 		this.frm.set_value("total_operating_cost", variable_cost + doc.additional_operating_cost);
@@ -539,11 +539,11 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 
 		doc.carton_qty = doc.qty_per_carton ? Math.ceil(doc.qty / doc.qty_per_carton) : 0;
 		doc.pallet_qty = doc.carton_per_pallet ? doc.carton_qty / doc.carton_per_pallet : 0;
-		this.frm.refresh_field('carton_qty');
-		this.frm.refresh_field('pallet_qty');
+		this.frm.refresh_field("carton_qty");
+		this.frm.refresh_field("pallet_qty");
 
 		doc.total_raw_material_qty = frappe.utils.sum((doc.required_items || []).map(d => d.total_qty));
-		this.frm.refresh_field('total_raw_material_qty');
+		this.frm.refresh_field("total_raw_material_qty");
 	}
 
 	show_packing_slip_dialog() {
@@ -554,7 +554,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 
 		let unpacked_qty = flt(
 			flt(doc.completed_qty) - flt(doc.packed_qty) - flt(doc.rejected_qty) - flt(doc.reconciled_qty),
-			precision("qty")
+			precision("qty"),
 		);
 		if (unpacked_qty <= 0) {
 			return this.make_packing_slip();
@@ -582,13 +582,13 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 					freeze_message: __("Creating Packing Slips..."),
 					callback: (r) => {
 						this.frm.reload_doc();
-					}
+					},
 				});
 			},
 			secondary_action_label: __("Manual Packing"),
 			secondary_action: () => {
 				return this.make_packing_slip();
-			}
+			},
 		});
 	}
 
@@ -601,7 +601,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			callback: (r) => {
 				let doclist = frappe.model.sync(r.message);
 				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-			}
+			},
 		});
 	}
 
@@ -625,9 +625,9 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 					callback: (r) => {
 						let doclist = frappe.model.sync(r.message);
 						frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-					}
+					},
 				});
-			}
+			},
 		});
 	}
 
@@ -640,7 +640,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			callback: (r) => {
 				let doclist = frappe.model.sync(r.message);
 				frappe.set_route("Form", doclist[0].doctype, doclist[0].name);
-			}
+			},
 		});
 	}
 
@@ -648,11 +648,11 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 		return erpnext.manufacturing.show_qty_prompt_for_stock_entry(this.frm.doc, purpose).then((r) => {
 			return frappe.xcall("erpnext.manufacturing.doctype.work_order.work_order.create_pick_list", {
 				"source_name": this.frm.doc.name,
-				"for_qty": r.data.qty
+				"for_qty": r.data.qty,
 			});
 		}).then((pick_list) => {
 			frappe.model.sync(pick_list);
-			frappe.set_route('Form', pick_list.doctype, pick_list.name);
+			frappe.set_route("Form", pick_list.doctype, pick_list.name);
 		});
 	}
 
@@ -660,36 +660,36 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 		let operations_data = [];
 
 		const dialog = frappe.prompt({
-			fieldname: 'operations', fieldtype: 'Table', label: __('Operations'),
+			fieldname: "operations", fieldtype: "Table", label: __("Operations"),
 			fields: [
 				{
-					fieldtype:'Link',
-					fieldname:'operation',
-					label: __('Operation'),
+					fieldtype: "Link",
+					fieldname: "operation",
+					label: __("Operation"),
 					read_only: 1,
-					in_list_view: 1
+					in_list_view: 1,
 				},
 				{
-					fieldtype:'Link',
-					fieldname:'workstation',
-					label: __('Workstation'),
+					fieldtype: "Link",
+					fieldname: "workstation",
+					label: __("Workstation"),
 					read_only: 1,
-					in_list_view: 1
+					in_list_view: 1,
 				},
 				{
-					fieldtype:'Data',
-					fieldname:'name',
-					label: __('Operation Id')
+					fieldtype: "Data",
+					fieldname: "name",
+					label: __("Operation Id"),
 				},
 				{
-					fieldtype:'Float',
-					fieldname:'pending_qty',
-					label: __('Pending Qty'),
+					fieldtype: "Float",
+					fieldname: "pending_qty",
+					label: __("Pending Qty"),
 				},
 				{
-					fieldtype:'Float',
-					fieldname:'qty',
-					label: __('Quantity to Manufacture'),
+					fieldtype: "Float",
+					fieldname: "qty",
+					label: __("Quantity to Manufacture"),
 					read_only: 0,
 					in_list_view: 1,
 				},
@@ -698,30 +698,30 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			in_place_edit: true,
 			get_data: () => {
 				return operations_data;
-			}
+			},
 		}, (data) => {
 			return frappe.call({
 				method: "erpnext.manufacturing.doctype.work_order.work_order.create_job_cards",
 				args: {
 					work_order: this.frm.doc.name,
 					operations: data.operations,
-				}
+				},
 			});
 		}, __("Job Card"), __("Create"));
 
-		dialog.fields_dict["operations"].grid.wrapper.find('.grid-add-row').hide();
+		dialog.fields_dict["operations"].grid.wrapper.find(".grid-add-row").hide();
 
 		let pending_qty = 0;
 		this.frm.doc.operations.forEach(data => {
-			if(data.completed_qty != this.frm.doc.qty) {
+			if (data.completed_qty != this.frm.doc.qty) {
 				pending_qty = this.frm.doc.qty - flt(data.completed_qty);
 
 				dialog.fields_dict.operations.df.data.push({
-					'name': data.name,
-					'operation': data.operation,
-					'workstation': data.workstation,
-					'qty': pending_qty,
-					'pending_qty': pending_qty,
+					"name": data.name,
+					"operation": data.operation,
+					"workstation": data.workstation,
+					"qty": pending_qty,
+					"pending_qty": pending_qty,
 				});
 			}
 		});
@@ -737,7 +737,7 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 					let doc = frappe.model.sync(r.message)[0];
 					frappe.set_route("Form", doc.doctype, doc.name);
 				}
-			}
+			},
 		});
 	}
 
@@ -748,14 +748,14 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 			callback: (r) => {
 				if (!r.message || !r.message.length) {
 					frappe.msgprint({
-						title: __('Work Orders not created'),
-						message: __('No pending Sub-Assembly Items with Bill of Materials to Manufacture'),
-						indicator: 'orange'
+						title: __("Work Orders not created"),
+						message: __("No pending Sub-Assembly Items with Bill of Materials to Manufacture"),
+						indicator: "orange",
 					});
 					return;
 				}
 				return erpnext.manufacturing.make_work_orders_from_order_dialog(r.message, this.frm.doc);
-			}
+			},
 		});
 	}
 
@@ -770,9 +770,9 @@ erpnext.manufacturing.WorkOrderController = class WorkOrderController extends er
 				if (r.message) {
 					this.frm.reload_doc();
 				}
-			}
+			},
 		});
 	}
-}
+};
 
 extend_cscript(cur_frm.cscript, new erpnext.manufacturing.WorkOrderController({frm: cur_frm}));

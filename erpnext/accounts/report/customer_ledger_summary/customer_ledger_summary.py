@@ -3,10 +3,11 @@
 
 import frappe
 from frappe import _, scrub
-from frappe.utils import getdate, nowdate, cstr
-from erpnext.accounts.utils import get_account_currency
-from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+from frappe.utils import cstr, getdate, nowdate
+
 from erpnext import get_default_currency
+from erpnext.accounts.report.financial_statements import get_cost_centers_with_children
+from erpnext.accounts.utils import get_account_currency
 
 
 class PartyLedgerSummaryReport:
@@ -40,7 +41,7 @@ class PartyLedgerSummaryReport:
 			"fieldtype": "Link",
 			"fieldname": "party",
 			"options": self.filters.party_type,
-			"width": 80 if self.party_naming_by == "Naming Series" else 200
+			"width": 80 if self.party_naming_by == "Naming Series" else 200,
 		}]
 
 		if self.party_naming_by == "Naming Series":
@@ -48,7 +49,7 @@ class PartyLedgerSummaryReport:
 				"label": _(self.filters.party_type + " Name"),
 				"fieldtype": "Data",
 				"fieldname": "party_name",
-				"width": 200
+				"width": 200,
 			})
 
 		if self.filters.party_type == "Customer" and self.filters.has_account_manager:
@@ -57,12 +58,12 @@ class PartyLedgerSummaryReport:
 				"fieldtype": "Link",
 				"options": "Sales Person",
 				"fieldname": "account_manager",
-				"width": 150
+				"width": 150,
 			})
 
 		invoiced_label = "Paid Amount" if self.filters.party_type == "Employee" else "Invoiced Amount"
 		paid_label = "Returned Amount" if self.filters.party_type == "Employee" else "Paid Amount"
-		if self.filters.party_type in ['Customer', 'Supplier']:
+		if self.filters.party_type in ["Customer", "Supplier"]:
 			return_label = "Credit Note" if self.filters.party_type == "Customer" else "Debit Note"
 		else:
 			return_label = None
@@ -73,21 +74,21 @@ class PartyLedgerSummaryReport:
 				"fieldname": "opening_balance",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _(invoiced_label),
 				"fieldname": "invoiced_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _(paid_label),
 				"fieldname": "paid_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 		]
 
@@ -97,7 +98,7 @@ class PartyLedgerSummaryReport:
 				"fieldname": "return_amount",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			})
 
 		columns += [
@@ -106,15 +107,15 @@ class PartyLedgerSummaryReport:
 				"fieldname": "total_deductions",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
+				"width": 120,
 			},
 			{
 				"label": _("Closing Balance"),
 				"fieldname": "closing_balance",
 				"fieldtype": "Currency",
 				"options": "currency",
-				"width": 120
-			}
+				"width": 120,
+			},
 		]
 
 		if self.adjustment_details and self.filters.show_deduction_details:
@@ -125,7 +126,7 @@ class PartyLedgerSummaryReport:
 					"fieldtype": "Currency",
 					"options": "currency",
 					"width": 120,
-					"is_adjustment": 1
+					"is_adjustment": 1,
 				})
 
 		columns.append({
@@ -133,24 +134,24 @@ class PartyLedgerSummaryReport:
 			"fieldname": "currency",
 			"fieldtype": "Link",
 			"options": "Currency",
-			"width": 70
+			"width": 70,
 		})
 
 		return columns
 
 	def set_account_currency(self):
-		self.filters["company_currency"] = frappe.get_cached_value('Company', self.filters.company, "default_currency")\
+		self.filters["company_currency"] = frappe.get_cached_value("Company", self.filters.company, "default_currency")\
 			if self.filters.company else get_default_currency()
 		self.filters["account_currency"] = self.filters["company_currency"]
 
-		if self.filters.get("account") or self.filters.get('party'):
+		if self.filters.get("account") or self.filters.get("party"):
 			account_currency = None
 
 			if self.filters.get("account"):
 				account_currency = get_account_currency(self.filters.account)
 			elif self.filters.get("party"):
 				gle_currency = frappe.db.get_value("GL Entry", {
-					"party_type": self.filters.party_type, "party": self.filters.party, "company": self.filters.company
+					"party_type": self.filters.party_type, "party": self.filters.party, "company": self.filters.company,
 				}, "account_currency")
 
 				if gle_currency:
@@ -294,9 +295,9 @@ class PartyLedgerSummaryReport:
 			conditions.append("gle.account=%(account)s")
 		else:
 			account_filters = {
-				"account_type": ('in', ['Receivable', 'Payable'])
+				"account_type": ("in", ["Receivable", "Payable"]),
 			}
-			if self.filters.get('company'):
+			if self.filters.get("company"):
 				account_filters["company"] = self.filters.company
 
 			accounts = [d.name for d in frappe.get_all("Account", filters=account_filters)]
@@ -351,14 +352,14 @@ class PartyLedgerSummaryReport:
 			if self.filters.get("branch"):
 				conditions.append("gle.party in (select name from tabEmployee where branch=%(brand)s)")
 
-		hooks = frappe.get_hooks('set_gl_conditions')
+		hooks = frappe.get_hooks("set_gl_conditions")
 		for method in hooks:
-			frappe.get_attr(method)(self.filters, conditions, alias='gle')
+			frappe.get_attr(method)(self.filters, conditions, alias="gle")
 
 		return " and ".join(conditions)
 
 	def get_return_invoices(self):
-		if self.filters.party_type in ['Customer', 'Supplier']:
+		if self.filters.party_type in ["Customer", "Supplier"]:
 			doctype = "Sales Invoice" if self.filters.party_type == "Customer" else "Purchase Invoice"
 			self.return_invoices = [d.name for d in frappe.get_all(doctype, filters={"is_return": 1, "docstatus": 1,
 				"posting_date": ["between", [self.filters.from_date, self.filters.to_date]]})]
@@ -402,7 +403,7 @@ class PartyLedgerSummaryReport:
 		for gle in gl_entries:
 			if self.filters.vouchers_in_cost_center is None or (gle.voucher_type, gle.voucher_no) in self.filters.vouchers_in_cost_center:
 				adjustment_voucher_entries.setdefault((gle.voucher_type, gle.voucher_no), [])
-				adjustment_voucher_entries[(gle.voucher_type, gle.voucher_no)].append(gle)
+				adjustment_voucher_entries[gle.voucher_type, gle.voucher_no].append(gle)
 
 		self.adjustment_details = get_adjustment_details(
 			adjustment_voucher_entries,
@@ -417,10 +418,10 @@ def get_adjustment_details(adjustment_voucher_entries, base_payment_dr_or_cr, in
 	invoice_dr_or_cr = base_invoice_dr_or_cr + "_in_account_currency"
 
 	adjustment_details = frappe._dict({
-		'accounts': set(),
-		'parties': {},
-		'against_vouchers': {},
-		'detailed': {},
+		"accounts": set(),
+		"parties": {},
+		"against_vouchers": {},
+		"detailed": {},
 	})
 
 	for voucher_tuple, voucher_gl_entries in adjustment_voucher_entries.items():

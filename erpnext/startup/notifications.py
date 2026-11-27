@@ -5,7 +5,7 @@ import frappe
 
 
 def get_notification_config():
-	notifications =  { "for_doctype":
+	notifications = {"for_doctype":
 		{
 			"Issue": {"status": "Open"},
 			"Warranty Claim": {"status": "Open"},
@@ -17,35 +17,35 @@ def get_notification_config():
 			"Quotation": {"docstatus": 0},
 			"Sales Order": {
 				"status": ("not in", ("Completed", "Closed")),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Packing Slip": {
 				"status": ("in", ("In Stock", "Draft")),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Journal Entry": {"docstatus": 0},
 			"Sales Invoice": {
 				"outstanding_amount": (">", 0),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Proforma Invoice": {
 				"status": ("!=", "Billed"),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Purchase Invoice": {
 				"outstanding_amount": (">", 0),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Payment Entry": {"docstatus": 0},
 			"Leave Application": {"docstatus": 0},
 			"Expense Claim": {
 				"status": ("in", ("Unpaid", "Draft")),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Job Applicant": {"status": "Open"},
 			"Delivery Note": {
 				"status": ("not in", ("Completed", "Return", "Closed")),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Stock Entry": {"docstatus": 0},
 			"Material Request": {
@@ -53,27 +53,27 @@ def get_notification_config():
 				"status": ("!=", "Stopped"),
 				"order_status": "To Order",
 			},
-			"Request for Quotation": { "docstatus": 0 },
+			"Request for Quotation": {"docstatus": 0},
 			"Supplier Quotation": {"docstatus": 0},
 			"Purchase Order": {
 				"status": ("not in", ("Completed", "Closed")),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Purchase Receipt": {
 				"status": ("not in", ("Completed", "Return", "Closed")),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 			"Landed Cost Voucher": {
-				"status": ("in", ("Unpaid", "Overdue", "Draft"))
+				"status": ("in", ("Unpaid", "Overdue", "Draft")),
 			},
-			"Work Order": { "status": ("in", ("Draft", "Not Started", "In Process")) },
+			"Work Order": {"status": ("in", ("Draft", "Not Started", "In Process"))},
 			"BOM": {"docstatus": 0},
 
 			"Timesheet": {"status": "Draft"},
 
 			"Employee Advance": {
 				"status": ("not in", ("Claimed", "Deducted from Salary")),
-				"docstatus": ("<", 2)
+				"docstatus": ("<", 2),
 			},
 
 			"Appointment": {"status": ("in", ("Open", "Draft"))},
@@ -81,16 +81,16 @@ def get_notification_config():
 
 		"targets": {
 			"Company": {
-				"filters" : { "monthly_sales_target": ( ">", 0 ) },
-				"target_field" : "monthly_sales_target",
-				"value_field" : "total_monthly_sales"
-			}
-		}
+				"filters": {"monthly_sales_target": (">", 0)},
+				"target_field": "monthly_sales_target",
+				"value_field": "total_monthly_sales",
+			},
+		},
 	}
 
-	doctype = [d for d in notifications.get('for_doctype')]
-	for doc in frappe.get_all('DocType',
-		fields= ["name"], filters = {"name": ("not in", doctype), 'is_submittable': 1}):
+	doctype = [d for d in notifications.get("for_doctype")]
+	for doc in frappe.get_all("DocType",
+		fields=["name"], filters={"name": ("not in", doctype), "is_submittable": 1}):
 		notifications["for_doctype"][doc.name] = {"docstatus": 0}
 
 	return notifications

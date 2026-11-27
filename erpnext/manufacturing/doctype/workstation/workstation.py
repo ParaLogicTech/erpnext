@@ -3,13 +3,20 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, cint, getdate, formatdate, comma_and, time_diff_in_seconds, to_timedelta
 from frappe.model.document import Document
+from frappe.utils import cint, comma_and, flt, formatdate, getdate, time_diff_in_seconds, to_timedelta
 
 
-class WorkstationHolidayError(frappe.ValidationError): pass
-class NotInWorkingHoursError(frappe.ValidationError): pass
-class OverlapError(frappe.ValidationError): pass
+class WorkstationHolidayError(frappe.ValidationError):
+	pass
+
+
+class NotInWorkingHoursError(frappe.ValidationError):
+	pass
+
+
+class OverlapError(frappe.ValidationError):
+	pass
 
 
 class Workstation(Document):
@@ -72,7 +79,7 @@ def check_if_within_operating_hours(workstation, operation, from_datetime, to_da
 def is_within_operating_hours(workstation, operation, from_datetime, to_datetime):
 	operation_length = time_diff_in_seconds(to_datetime, from_datetime)
 	workstation = frappe.get_doc("Workstation", workstation)
-	
+
 	if not workstation.working_hours:
 		return
 

@@ -1,4 +1,5 @@
 import os
+
 import frappe
 
 
@@ -13,19 +14,19 @@ def update_address_template():
 	new one.
 	"""
 	dir_name = os.path.dirname(__file__)
-	template_path = os.path.join(dir_name, 'address_template.html')
+	template_path = os.path.join(dir_name, "address_template.html")
 
-	with open(template_path, 'r') as template_file:
+	with open(template_path) as template_file:
 		template_html = template_file.read()
 
-	address_template = frappe.db.get_value('Address Template', 'Germany')
+	address_template = frappe.db.get_value("Address Template", "Germany")
 
 	if address_template:
-		frappe.db.set_value('Address Template', 'Germany', 'template', template_html)
+		frappe.db.set_value("Address Template", "Germany", "template", template_html)
 	else:
 		# make new html template for Germany
 		frappe.get_doc(dict(
-			doctype='Address Template',
-			country='Germany',
-			template=template_html
+			doctype="Address Template",
+			country="Germany",
+			template=template_html,
 		)).insert()

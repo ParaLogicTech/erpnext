@@ -3,6 +3,7 @@
 
 import frappe
 
+
 def execute():
 	frappe.db.sql("""
 		DELETE FROM `tabProperty Setter`

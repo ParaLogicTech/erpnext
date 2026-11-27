@@ -1,10 +1,10 @@
 
 data = {
-	'properties': [
-		{'doctype': 'Item', 'fieldname': 'manufacturing', 'property': 'collapsible_depends_on', 'value': 'is_stock_item'},
+	"properties": [
+		{"doctype": "Item", "fieldname": "manufacturing", "property": "collapsible_depends_on", "value": "is_stock_item"},
 	],
-	'set_value': [
+	"set_value": [
 
 	],
-	'default_portal_role': 'Customer'
+	"default_portal_role": "Customer",
 }
