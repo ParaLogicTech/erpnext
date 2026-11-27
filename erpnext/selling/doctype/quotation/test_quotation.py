@@ -130,7 +130,10 @@ class TestQuotation(unittest.TestCase):
 	def test_create_quotation_with_margin(self):
 		from erpnext.selling.doctype.quotation.quotation import make_sales_order
 		from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note, make_sales_invoice
+		from erpnext.selling.doctype.sales_order.test_sales_order import set_test_item_price
 
+		# The price list rate is taken from the item's price on save
+		set_test_item_price(self, "_Test Item Home Desktop 100", "_Test Price List", 1500)
 		rate_with_margin = flt((1500 * 18.75) / 100 + 1500)
 
 		test_records[0]["items"][0]["price_list_rate"] = 1500

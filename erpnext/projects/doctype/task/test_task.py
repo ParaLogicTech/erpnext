@@ -65,7 +65,7 @@ class TestTask(unittest.TestCase):
 		def assign():
 			from frappe.desk.form import assign_to
 			assign_to.add({
-				"assign_to": "test@example.com",
+				"assign_to": ["test@example.com"],
 				"doctype": task.doctype,
 				"name": task.name,
 				"description": "Close this task",
@@ -75,11 +75,11 @@ class TestTask(unittest.TestCase):
 			return frappe.db.get_value("ToDo",
 				filters={"reference_type": task.doctype, "reference_name": task.name,
 					"description": "Close this task"},
-				fieldname=("owner", "status"), as_dict=True)
+				fieldname=("allocated_to", "status"), as_dict=True)
 
 		assign()
 		todo = get_owner_and_status()
-		self.assertEqual(todo.owner, "test@example.com")
+		self.assertEqual(todo.allocated_to, "test@example.com")
 		self.assertEqual(todo.status, "Open")
 
 		# assignment should be
@@ -87,7 +87,7 @@ class TestTask(unittest.TestCase):
 		task.status = "Completed"
 		task.save()
 		todo = get_owner_and_status()
-		self.assertEqual(todo.owner, "test@example.com")
+		self.assertEqual(todo.allocated_to, "test@example.com")
 		self.assertEqual(todo.status, "Closed")
 
 	def test_overdue(self):
@@ -96,7 +96,7 @@ class TestTask(unittest.TestCase):
 		from erpnext.projects.doctype.task.task import set_tasks_as_overdue
 		set_tasks_as_overdue()
 
-		self.assertEqual(frappe.db.get_value("Task", task.name, "status"), "Overdue")
+		self.assertEqual(frappe.db.get_value("Task", task.name, "is_overdue"), 1)
 
 
 def create_task(subject, start=None, end=None, depends_on=None, project=None, save=True):

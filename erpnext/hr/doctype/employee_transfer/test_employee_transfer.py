@@ -30,11 +30,12 @@ class TestEmployeeTransfer(unittest.TestCase):
 		})
 		transfer_obj.transfer_date = add_days(getdate(), 1)
 		transfer_obj.save()
-		self.assertRaises(frappe.DocstatusTransitionError, transfer_obj.submit)
-		transfer = frappe.get_doc("Employee Transfer", transfer_obj.name)
-		transfer.transfer_date = getdate()
-		transfer.submit()
-		self.assertEqual(transfer.docstatus, 1)
+
+		# A transfer dated in the future can be submitted, but is only applied on its date
+		designation = frappe.db.get_value("Employee", transfer_obj.employee, "designation")
+		transfer_obj.submit()
+		self.assertEqual(transfer_obj.docstatus, 1)
+		self.assertEqual(frappe.db.get_value("Employee", transfer_obj.employee, "designation"), designation)
 
 	def test_new_employee_creation(self):
 		transfer = frappe.get_doc({

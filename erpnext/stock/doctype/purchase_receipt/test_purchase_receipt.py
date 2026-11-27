@@ -222,6 +222,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		pr = frappe.copy_doc(test_records[0])
 		pr.get("items")[0].item_code = "_Test Serialized Item With Series"
 		pr.get("items")[0].qty = 3
+		pr.get("items")[0].received_qty = pr.get("items")[0].qty
 		pr.get("items")[0].rejected_qty = 2
 		pr.get("items")[0].received_qty = 5
 		pr.get("items")[0].rejected_warehouse = "_Test Rejected Warehouse - _TC"
@@ -352,6 +353,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		pr1.posting_time = "10:00"
 		pr1.get("items")[0].received_qty = 2
 		pr1.get("items")[0].qty = 2
+		pr1.get("items")[0].received_qty = pr1.get("items")[0].qty
 		pr1.submit()
 
 		pi1 = make_purchase_invoice(pr1.name)
@@ -369,6 +371,7 @@ class TestPurchaseReceipt(unittest.TestCase):
 		pr2.posting_time = "08:00"
 		pr2.get("items")[0].received_qty = 5
 		pr2.get("items")[0].qty = 5
+		pr2.get("items")[0].received_qty = pr2.get("items")[0].qty
 		pr2.submit()
 
 		pr1.load_from_db()
@@ -747,6 +750,8 @@ def make_purchase_receipt(**args):
 	pr.posting_date = args.posting_date or today()
 	if args.posting_time:
 		pr.posting_time = args.posting_time
+	if args.posting_date or args.posting_time:
+		pr.set_posting_time = 1
 	pr.company = args.company or "_Test Company"
 	pr.supplier = args.supplier or "_Test Supplier"
 	pr.is_subcontracted = args.is_subcontracted or 0

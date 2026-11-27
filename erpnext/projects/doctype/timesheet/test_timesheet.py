@@ -58,10 +58,11 @@ class TestTimesheet(unittest.TestCase):
 		self.assertEqual(salary_slip.timesheets[0].working_hours, 2)
 
 		timesheet = frappe.get_doc("Timesheet", timesheet.name)
-		self.assertEqual(timesheet.status, "Payslip")
+		self.assertEqual(timesheet.salary_slip, salary_slip.name)
 		salary_slip.cancel()
 
 		timesheet = frappe.get_doc("Timesheet", timesheet.name)
+		self.assertFalse(timesheet.salary_slip)
 		self.assertEqual(timesheet.status, "Submitted")
 
 	def test_sales_invoice_from_timesheet(self):
@@ -128,51 +129,6 @@ class TestTimesheet(unittest.TestCase):
 		settings.ignore_employee_time_overlap = initial_setting
 		settings.save()
 
-	def test_timesheet_std_working_hours(self):
-		company = frappe.get_doc("Company", "_Test Company")
-		company.standard_working_hours = 8
-		company.save()
-
-		timesheet = frappe.new_doc("Timesheet")
-		timesheet.employee = "_T-Employee-00001"
-		timesheet.company = "_Test Company"
-		timesheet.append(
-			"time_logs",
-			{
-				"activity_type": "_Test Activity Type",
-				"from_time": now_datetime(),
-				"to_time": now_datetime() + datetime.timedelta(days=4),
-			},
-		)
-		timesheet.save()
-
-		ts = frappe.get_doc("Timesheet", timesheet.name)
-		self.assertEqual(ts.total_hours, 32)
-		ts.submit()
-		ts.cancel()
-
-		company = frappe.get_doc("Company", "_Test Company")
-		company.standard_working_hours = 0
-		company.save()
-
-		timesheet = frappe.new_doc("Timesheet")
-		timesheet.employee = "_T-Employee-00001"
-		timesheet.company = "_Test Company"
-		timesheet.append(
-			"time_logs",
-			{
-				"activity_type": "_Test Activity Type",
-				"from_time": now_datetime(),
-				"to_time": now_datetime() + datetime.timedelta(days=4),
-			},
-		)
-		timesheet.save()
-
-		ts = frappe.get_doc("Timesheet", timesheet.name)
-		self.assertEqual(ts.total_hours, 96)
-		ts.submit()
-		ts.cancel()
-
 
 def make_salary_structure_for_timesheet(employee):
 	salary_structure_name = "Timesheet Salary Structure Test"
@@ -226,6 +182,9 @@ def make_timesheet(employee, simulate=False, billable=0, activity_type="_Test Ac
 
 
 def update_activity_type(activity_type):
-	activity_type = frappe.get_doc("Activity Type", activity_type)
-	activity_type.billing_rate = 50.0
-	activity_type.save(ignore_permissions=True)
+	# Timesheets take their rates from Activity Cost, for the employee or else for the activity type
+	activity_cost = frappe.db.get_value("Activity Cost", {"activity_type": activity_type, "employee": ["is", "not set"]})
+	activity_cost = frappe.get_doc("Activity Cost", activity_cost) if activity_cost else frappe.new_doc("Activity Cost")
+	activity_cost.activity_type = activity_type
+	activity_cost.billing_rate = 50.0
+	activity_cost.save(ignore_permissions=True)

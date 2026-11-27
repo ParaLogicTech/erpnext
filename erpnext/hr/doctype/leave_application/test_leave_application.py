@@ -426,6 +426,9 @@ class TestLeaveApplication(unittest.TestCase):
 				rounding=0.5,
 				max_leaves_allowed=6,
 			)).insert()
+		else:
+			# The end of this test removes the maximum
+			frappe.db.set_value("Leave Type", leave_type, "max_leaves_allowed", 6)
 		leave_policy = frappe.get_doc({
 			"doctype": "Leave Policy",
 			"leave_policy_details": [{"leave_type": leave_type, "annual_allocation": 6}],
@@ -609,7 +612,7 @@ def get_leave_period():
 		"company": "_Test Company",
 	})
 	if leave_period_name:
-		return frappe.get_doc("Leave Period", leave_period_name[0][0])
+		return frappe.get_doc("Leave Period", leave_period_name)
 	else:
 		return frappe.get_doc(dict(
 				name="Test Leave Period",

@@ -43,7 +43,7 @@
    "parentfield": "scrap_items",
    "stock_qty": 1.0,
    "rate": 2000.0,
-   "stock_uom": "_Test UOM"
+   "stock_uom": "_Test UOM 1"
   }
   ],
   "items": [
@@ -66,8 +66,8 @@
     "parentfield": "items",
     "qty": 2.0,
     "rate": 1000.0,
-    "uom": "_Test UOM",
-    "stock_uom": "_Test UOM",
+    "uom": "_Test UOM 1",
+    "stock_uom": "_Test UOM 1",
     "source_warehouse": "_Test Warehouse - _TC",
     "skip_transfer_for_manufacture": 0
    }

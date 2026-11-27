@@ -26,6 +26,9 @@ def make_item(item_code, properties=None):
 	if frappe.db.exists("Item", item_code):
 		return frappe.get_doc("Item", item_code)
 
+	properties = dict(properties or {})
+	item_defaults = properties.pop("item_defaults", None) or []
+
 	item = frappe.get_doc({
 		"doctype": "Item",
 		"item_code": item_code,
@@ -33,17 +36,35 @@ def make_item(item_code, properties=None):
 		"description": item_code,
 		"item_group": "Products",
 	})
-
-	if properties:
-		item.update(properties)
-
-	if item.is_stock_item:
-		for item_default in [doc for doc in item.get("item_defaults") if not doc.default_warehouse]:
-			item_default.default_warehouse = "_Test Warehouse - _TC"
-			item_default.company = "_Test Company"
+	item.update(properties)
 	item.insert()
 
+	if item.is_stock_item:
+		item_defaults = item_defaults or [{"company": "_Test Company"}]
+		for item_default in item_defaults:
+			if not item_default.get("default_warehouse"):
+				item_default.update({"company": "_Test Company", "default_warehouse": "_Test Warehouse - _TC"})
+
+	create_item_default_rules(item.name, item_defaults)
+
 	return item
+
+
+def _make_test_records(verbose=None):
+	records = frappe.get_test_records("Item")
+	test_objects = make_test_objects("Item", records, verbose)
+
+	for record in records:
+		create_item_default_rules(record["item_code"], record.get("item_defaults"))
+
+	return test_objects
+
+
+def create_item_default_rules(item_code, item_defaults):
+	"""Items keep their defaults in Item Default Rules in this fork, not in an item_defaults table"""
+	for item_default in item_defaults or []:
+		defaults = {key: value for key, value in item_default.items() if key not in ("company", "doctype", "parentfield")}
+		create_item_default_rule(item_code, item_default["company"], **defaults)
 
 
 class TestItem(unittest.TestCase):
@@ -690,11 +711,23 @@ def create_item(item_code, is_stock_item=None, valuation_rate=0, warehouse=None,
 		item.is_purchase_item = is_purchase_item
 		item.is_customer_provided_item = is_customer_provided_item
 		item.customer = customer or ""
-		item.append("item_defaults", {
-			"default_warehouse": warehouse or "_Test Warehouse - _TC",
-			"company": "_Test Company",
-		})
 		item.save()
+
+		create_item_default_rule(item.name, "_Test Company", default_warehouse=warehouse or "_Test Warehouse - _TC")
 	else:
 		item = frappe.get_doc("Item", item_code)
 	return item
+
+
+def create_item_default_rule(item_code, company, **defaults):
+	rule_name = f"{item_code} - {company}"
+	if frappe.db.exists("Item Default Rule", rule_name):
+		return frappe.get_doc("Item Default Rule", rule_name)
+
+	rule = frappe.new_doc("Item Default Rule")
+	rule.item_default_rule_name = rule_name
+	rule.item_code = item_code
+	rule.company = company
+	rule.update(defaults)
+	rule.insert()
+	return rule

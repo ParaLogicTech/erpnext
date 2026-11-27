@@ -5,10 +5,10 @@
 import unittest
 
 import frappe
+from frappe.utils import now_datetime
 
 from erpnext.accounts.doctype.fiscal_year.fiscal_year import FiscalYearIncorrectDate
 
-test_records = frappe.get_test_records("Fiscal Year")
 test_ignore = ["Company"]
 
 
@@ -25,3 +25,22 @@ class TestFiscalYear(unittest.TestCase):
 		})
 
 		self.assertRaises(FiscalYearIncorrectDate, fy.insert)
+
+
+def test_record_generator():
+	test_records = []
+
+	start = 2012
+	end = now_datetime().year + 25
+	for year in range(start, end):
+		test_records.append({
+			"doctype": "Fiscal Year",
+			"year": f"_Test Fiscal Year {year}",
+			"year_start_date": f"{year}-01-01",
+			"year_end_date": f"{year}-12-31",
+		})
+
+	return test_records
+
+
+test_records = test_record_generator()

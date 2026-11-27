@@ -6,7 +6,7 @@ import unittest
 
 import frappe
 from frappe.test_runner import make_test_records
-from frappe.utils import flt
+from frappe.utils import cstr, flt, getdate
 
 from erpnext.accounts.party import get_due_date
 from erpnext.exceptions import PartyDisabled, PartyFrozen
@@ -29,30 +29,32 @@ class TestCustomer(unittest.TestCase):
 	def test_party_details(self):
 		from erpnext.accounts.party import get_party_details
 
+		create_test_contact_and_address()
+
+		# Addresses and contacts are named by naming series in this fork
+		contact = frappe.db.get_value("Contact", {"first_name": "_Test Contact for _Test Customer"})
+		frappe.db.set_value("Contact", contact, "is_primary_contact", 1)
+
 		to_check = {
-			"selling_price_list": None,
+			"selling_price_list": frappe.db.get_single_value("Selling Settings", "selling_price_list"),
 			"customer_group": "_Test Customer Group",
 			"contact_designation": None,
-			"customer_address": "_Test Address for Customer-Office",
+			"customer_address": frappe.db.get_value("Address", {"address_title": "_Test Address for Customer"}),
 			"contact_department": None,
 			"contact_email": "test_contact_customer@example.com",
 			"contact_mobile": None,
 			"contact_display": "_Test Contact for _Test Customer",
-			"contact_person": "_Test Contact for _Test Customer-_Test Customer",
+			"contact_person": contact,
 			"territory": "_Test Territory",
 			"contact_phone": "+91 0000000000",
 			"customer_name": "_Test Customer",
 		}
 
-		create_test_contact_and_address()
-
-		frappe.db.set_value("Contact", "_Test Contact for _Test Customer-_Test Customer",
-			"is_primary_contact", 1)
-
-		details = get_party_details("_Test Customer")
+		details = get_party_details(party_type="Customer", party="_Test Customer", company="_Test Company")
 
 		for key, value in to_check.items():
-			self.assertEqual(value, details.get(key))
+			# Empty values are returned as ""
+			self.assertEqual(cstr(value), cstr(details.get(key)), key)
 
 	def test_party_details_tax_category(self):
 		from erpnext.accounts.party import get_party_details
@@ -61,8 +63,8 @@ class TestCustomer(unittest.TestCase):
 		frappe.delete_doc_if_exists("Address", "_Test Address With Tax Category-Shipping")
 
 		# Tax Category without Address
-		details = get_party_details("_Test Customer With Tax Category")
-		self.assertEqual(details.tax_category, "_Test Tax Category 1")
+		details = get_party_details(party_type="Customer", party="_Test Customer With Tax Category", company="_Test Company")
+		self.assertEqual(details.get("tax_category"), "_Test Tax Category 1")
 
 		billing_address = frappe.get_doc(dict(
 			doctype="Address",
@@ -82,6 +84,7 @@ class TestCustomer(unittest.TestCase):
 			address_title="_Test Address With Tax Category",
 			tax_category="_Test Tax Category 3",
 			address_type="Shipping",
+			is_shipping_address=1,
 			address_line1="Station Road",
 			city="_Test City",
 			country="India",
@@ -97,20 +100,21 @@ class TestCustomer(unittest.TestCase):
 		# Tax Category from Billing Address
 		settings.determine_address_tax_category_from = "Billing Address"
 		settings.save()
-		details = get_party_details("_Test Customer With Tax Category")
-		self.assertEqual(details.tax_category, "_Test Tax Category 2")
+		details = get_party_details(party_type="Customer", party="_Test Customer With Tax Category", company="_Test Company")
+		self.assertEqual(details.get("tax_category"), "_Test Tax Category 2")
 
 		# Tax Category from Shipping Address
 		settings.determine_address_tax_category_from = "Shipping Address"
 		settings.save()
-		details = get_party_details("_Test Customer With Tax Category")
-		self.assertEqual(details.tax_category, "_Test Tax Category 3")
+		details = get_party_details(party_type="Customer", party="_Test Customer With Tax Category", company="_Test Company")
+		self.assertEqual(details.get("tax_category"), "_Test Tax Category 3")
 
 		# Rollback
 		settings.determine_address_tax_category_from = rollback_setting
 		settings.save()
-		billing_address.delete()
-		shipping_address.delete()
+		# The customer links to its primary addresses, so the test's addresses are force deleted
+		frappe.delete_doc("Address", billing_address.name, force=1)
+		frappe.delete_doc("Address", shipping_address.name, force=1)
 
 	def test_rename(self):
 		# delete communication linked to these 2 customers
@@ -260,29 +264,29 @@ class TestCustomer(unittest.TestCase):
 		frappe.db.set_value(
 			"Customer", "_Test Customer With Template", "payment_terms", "_Test Payment Term Template 3")
 
-		due_date = get_due_date("2016-01-22", "Customer", "_Test Customer With Template")
-		self.assertEqual(due_date, "2016-02-21")
+		due_date = get_due_date("2016-01-22", party_type="Customer", party="_Test Customer With Template")
+		self.assertEqual(due_date, getdate("2016-02-21"))
 
-		due_date = get_due_date("2017-01-22", "Customer", "_Test Customer With Template")
-		self.assertEqual(due_date, "2017-02-21")
+		due_date = get_due_date("2017-01-22", party_type="Customer", party="_Test Customer With Template")
+		self.assertEqual(due_date, getdate("2017-02-21"))
 
 		frappe.db.set_value(
 			"Customer", "_Test Customer With Template", "payment_terms", "_Test Payment Term Template 1")
 
-		due_date = get_due_date("2016-01-22", "Customer", "_Test Customer With Template")
-		self.assertEqual(due_date, "2016-02-29")
+		due_date = get_due_date("2016-01-22", party_type="Customer", party="_Test Customer With Template")
+		self.assertEqual(due_date, getdate("2016-02-29"))
 
-		due_date = get_due_date("2017-01-22", "Customer", "_Test Customer With Template")
-		self.assertEqual(due_date, "2017-02-28")
+		due_date = get_due_date("2017-01-22", party_type="Customer", party="_Test Customer With Template")
+		self.assertEqual(due_date, getdate("2017-02-28"))
 
 		frappe.db.set_value("Customer", "_Test Customer With Template", "payment_terms", "")
 
 		# No default payment term template attached
-		due_date = get_due_date("2016-01-22", "Customer", "_Test Customer")
-		self.assertEqual(due_date, "2016-01-22")
+		due_date = get_due_date("2016-01-22", party_type="Customer", party="_Test Customer")
+		self.assertEqual(due_date, getdate("2016-01-22"))
 
-		due_date = get_due_date("2017-01-22", "Customer", "_Test Customer")
-		self.assertEqual(due_date, "2017-01-22")
+		due_date = get_due_date("2017-01-22", party_type="Customer", party="_Test Customer")
+		self.assertEqual(due_date, getdate("2017-01-22"))
 
 
 def get_customer_dict(customer_name):

@@ -5,7 +5,7 @@ import unittest
 
 import frappe
 import frappe.permissions
-from frappe.utils import add_days, flt, nowdate
+from frappe.utils import add_days, flt, getdate, nowdate
 
 from erpnext.controllers.stock_controller import WarehouseRequired
 from erpnext.controllers.transaction_controller import update_child_items
@@ -96,7 +96,7 @@ class TestSalesOrder(unittest.TestCase):
 		si.insert()
 
 		self.assertEqual(si.payment_schedule[0].payment_amount, 500.0)
-		self.assertEqual(si.payment_schedule[0].due_date, so.transaction_date)
+		self.assertEqual(getdate(si.payment_schedule[0].due_date), getdate(so.transaction_date))
 		self.assertEqual(si.payment_schedule[1].payment_amount, 500.0)
 		self.assertEqual(si.payment_schedule[1].due_date, add_days(so.transaction_date, 30))
 
@@ -391,7 +391,7 @@ class TestSalesOrder(unittest.TestCase):
 		existing_reserved_qty = get_reserved_qty()
 
 		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 200, "qty": 7, "docname": so.items[0].name}])
-		update_child_items("Sales Order", so.name, trans_item, so.name)
+		update_child_items("Sales Order", so.name, trans_item)
 
 		so.reload()
 		self.assertEqual(so.get("items")[0].rate, 200)
@@ -585,7 +585,8 @@ class TestSalesOrder(unittest.TestCase):
 		so = make_sales_order(item_list=so_items, do_not_submit=True)
 		so.submit()
 
-		po = make_purchase_order(so.name, "_Test Supplier", selected_items=[so_items[0]["item_code"]])
+		po = make_purchase_order(so.name)
+		po.supplier = "_Test Supplier"
 		po.submit()
 
 		dn = create_dn_against_so(so.name, delivered_qty=1)
@@ -658,7 +659,10 @@ class TestSalesOrder(unittest.TestCase):
 
 	def test_create_so_with_margin(self):
 		so = make_sales_order(item_code="_Test Item", qty=1, do_not_submit=True)
-		so.items[0].price_list_rate = price_list_rate = 100
+
+		# The price list rate comes from the item's price, converted to the order's currency
+		if not frappe.db.exists("Item Price", {"item_code": "_Test Item", "price_list": so.selling_price_list}):
+			set_test_item_price(self, "_Test Item", so.selling_price_list, 100)
 		so.items[0].margin_type = "Percentage"
 		so.items[0].margin_rate_or_amount = 25
 		so.save()
@@ -666,6 +670,8 @@ class TestSalesOrder(unittest.TestCase):
 		new_so = frappe.copy_doc(so)
 		new_so.save(ignore_permissions=True)
 
+		price_list_rate = new_so.get("items")[0].price_list_rate
+		self.assertTrue(price_list_rate)
 		self.assertEqual(new_so.get("items")[0].rate, flt((price_list_rate * 25) / 100 + price_list_rate))
 		new_so.items[0].margin_rate_or_amount = 25
 		new_so.payment_schedule = []
@@ -737,7 +743,7 @@ class TestSalesOrder(unittest.TestCase):
 			self.assertEqual(wo_qty[0][0], so_item_name.get(item))
 
 	def test_serial_no_based_delivery(self):
-		frappe.set_value("Stock Settings", None, "automatically_set_serial_nos_based_on_fifo", 1)
+		frappe.db.set_single_value("Stock Settings", "automatically_set_serial_nos_based_on_fifo", 1)
 		item = make_item("_Reserved_Serialized_Item", {"is_stock_item": 1,
 					"maintain_stock": 1,
 					"has_serial_no": 1,
@@ -1026,3 +1032,15 @@ def make_sales_order_workflow():
 	workflow.insert(ignore_permissions=True)
 
 	return workflow
+
+
+def set_test_item_price(test_case, item_code, price_list, rate):
+	"""Creates an Item Price for the test and deletes it afterwards (before_tests deletes all Item Prices)"""
+	item_price = frappe.get_doc({
+		"doctype": "Item Price",
+		"item_code": item_code,
+		"price_list": price_list,
+		"price_list_rate": rate,
+	}).insert()
+	test_case.addCleanup(frappe.delete_doc, "Item Price", item_price.name)
+	return item_price

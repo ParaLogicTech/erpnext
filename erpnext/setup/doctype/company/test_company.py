@@ -10,7 +10,7 @@ from frappe.utils import random_string
 
 from erpnext.accounts.doctype.account.chart_of_accounts.chart_of_accounts import get_charts_for_country
 
-test_ignore = ["Account", "Cost Center", "Payment Terms Template", "Salary Component", "Warehouse"]
+test_ignore = ["Account", "Cost Center", "Leave Policy", "Payment Terms Template", "Salary Component", "Warehouse"]
 test_dependencies = ["Fiscal Year"]
 test_records = frappe.get_test_records("Company")
 
@@ -93,11 +93,11 @@ class TestCompany(unittest.TestCase):
 	def test_delete_communication(self):
 		from erpnext.setup.doctype.company.delete_company_transactions import delete_communications
 		company = create_child_company()
-		lead = create_test_lead_in_company(company)
-		communication = create_company_communication("Lead", lead)
-		delete_communications("Lead", "Test Company", "company")
-		self.assertFalse(frappe.db.exists("Communcation", communication))
-		self.assertFalse(frappe.db.exists({"doctype": "Comunication Link", "link_name": communication}))
+		task = create_test_task_in_company(company)
+		communication = create_company_communication("Task", task)
+		delete_communications("Task", "Test Company", "company")
+		self.assertFalse(frappe.db.exists("Communication", communication))
+		self.assertFalse(frappe.db.exists("Communication Link", {"parent": communication}))
 
 	def delete_mode_of_payment(self, company):
 		frappe.db.sql(""" delete from `tabMode of Payment Account`
@@ -114,6 +114,7 @@ def create_company_communication(doctype, docname):
 			"reference_name": docname,
 		})
 	comm.insert()
+	return comm.name
 
 
 def create_child_company():
@@ -132,17 +133,17 @@ def create_child_company():
 	return child_company.name
 
 
-def create_test_lead_in_company(company):
-	lead = frappe.db.exists("Lead", "Test Lead in new company")
-	if not lead:
-		lead = frappe.get_doc({
-			"doctype": "Lead",
-			"lead_name": "Test Lead in new company",
-			"scompany": company,
+def create_test_task_in_company(company):
+	task = frappe.db.exists("Task", {"subject": "Test Task in new company"})
+	if not task:
+		task = frappe.get_doc({
+			"doctype": "Task",
+			"subject": "Test Task in new company",
+			"company": company,
 		})
-		lead.insert()
+		task.insert()
 	else:
-		lead = frappe.get_doc("Lead", lead)
-		lead.company = company
-		lead.save()
-	return lead.name
+		task = frappe.get_doc("Task", task)
+		task.company = company
+		task.save()
+	return task.name

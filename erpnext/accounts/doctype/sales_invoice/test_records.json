@@ -166,10 +166,10 @@
     "parentfield": "items",
     "price_list_rate": 150,
     "qty": 5,
-	"uom": "_Test UOM",
+	"uom": "_Test UOM 1",
 	"conversion_factor": 1,
     "rate": 150,
-    "stock_uom": "_Test UOM"
+    "stock_uom": "_Test UOM 1"
    }
   ],
   "grand_total": 0,
@@ -293,9 +293,9 @@
     "parentfield": "items",
     "price_list_rate": 190.66,
     "qty": 5,
-	"uom": "_Test UOM",
+	"uom": "_Test UOM 1",
 	"conversion_factor": 1,
-    "stock_uom": "_Test UOM"
+    "stock_uom": "_Test UOM 1"
    }
   ],
   "grand_total": 0,

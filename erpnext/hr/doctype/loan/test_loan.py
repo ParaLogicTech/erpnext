@@ -65,7 +65,8 @@ def create_loan(applicant, loan_type, loan_amount, repayment_method, repayment_p
 				"status": "Disbursed",
 				"mode_of_payment": frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name"),
 				"payment_account": frappe.db.get_value("Account", {"account_type": "Cash", "company": erpnext.get_default_company(), "is_group": 0}, "name"),
-				"loan_account": frappe.db.get_value("Account", {"account_type": "Cash", "company": erpnext.get_default_company(), "is_group": 0}, "name"),
+				# Loans have the employee as party, so the loan account must be a receivable
+				"loan_account": frappe.db.get_value("Account", {"account_type": "Receivable", "company": erpnext.get_default_company(), "is_group": 0}, "name"),
 				"interest_income_account": frappe.db.get_value("Account", {"account_type": "Cash", "company": erpnext.get_default_company(), "is_group": 0}, "name"),
 			})
 		loan.insert()

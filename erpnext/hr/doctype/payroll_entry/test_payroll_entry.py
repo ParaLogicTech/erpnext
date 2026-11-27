@@ -96,7 +96,7 @@ class TestPayrollEntry(unittest.TestCase):
 				principal_amount = loan.monthly_repayment_amount - interest_amount
 				self.assertEqual(row.interest_amount, interest_amount)
 				self.assertEqual(row.principal_amount, principal_amount)
-				self.assertEqual(row.total_payment,
+				self.assertEqual(row.repayment_amount,
 					interest_amount + principal_amount)
 
 		if salary_slip.docstatus == 0:

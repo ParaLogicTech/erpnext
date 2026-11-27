@@ -15,9 +15,11 @@ test_dependencies = ["Employee"]
 class TestExpenseClaim(unittest.TestCase):
 	def test_total_expense_claim_for_project(self):
 		frappe.db.sql("""delete from `tabTask` where project = "_Test Project 1" """)
-		frappe.db.sql("""delete from `tabProject Task` where parent = "_Test Project 1" """)
 		frappe.db.sql("""delete from `tabProject` where name = "_Test Project 1" """)
-		frappe.db.sql("delete from `tabExpense Claim` where project='_Test Project 1'")
+		claims = frappe.db.sql_list("select parent from `tabExpense Claim Detail` where project = '_Test Project 1'")
+		if claims:
+			frappe.db.delete("Expense Claim Detail", {"parent": ["in", claims]})
+			frappe.db.delete("Expense Claim", {"name": ["in", claims]})
 
 		frappe.get_doc({
 			"project_name": "_Test Project 1",
@@ -95,7 +97,7 @@ class TestExpenseClaim(unittest.TestCase):
 			 "payable_account": payable_account,
 			 "approval_status": "Rejected",
 			 "expenses":
-			 	[{"expense_type": "Travel", "default_account": "Travel Expenses - WP", "claim_amount": 300, "sanctioned_amount": 200}],
+			 	[{"expense_type": "Travel", "expense_account": "Travel Expenses - WP", "claim_amount": 300, "sanctioned_amount": 200}],
 		})
 		expense_claim.submit()
 
@@ -119,12 +121,11 @@ def make_expense_claim(payable_account, claim_amount, sanctioned_amount, company
 		 "approval_status": "Approved",
 		 "company": company,
 		 "expenses":
-			[{"expense_type": "Travel", "default_account": account, "claim_amount": claim_amount, "sanctioned_amount": sanctioned_amount}],
+			[{
+				"expense_type": "Travel", "expense_account": account, "claim_amount": claim_amount,
+				"sanctioned_amount": sanctioned_amount, "project": project, "task": task_name,
+			}],
 		})
-	if project:
-		expense_claim.project = project
-	if task_name:
-		expense_claim.task = task_name
 
 	expense_claim.submit()
 	return expense_claim

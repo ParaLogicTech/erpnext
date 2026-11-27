@@ -73,6 +73,7 @@ class TestAsset(unittest.TestCase):
 	def test_is_fixed_asset_set(self):
 		asset = create_asset(is_existing_asset=1)
 		doc = frappe.new_doc("Purchase Invoice")
+		doc.company = asset.company
 		doc.supplier = "_Test Supplier"
 		doc.append("items", {
 			"item_code": "Macbook Pro",
@@ -235,7 +236,7 @@ class TestAsset(unittest.TestCase):
 		self.assertEqual(schedules, expected_schedules)
 
 	def test_depreciation(self):
-		pr = make_purchase_receipt(item_code="Macbook Pro",
+		pr = make_purchase_receipt(item_code="Macbook Pro", posting_date="2020-01-30",
 			qty=1, rate=100000.0, location="Test Location")
 
 		asset_name = frappe.db.get_value("Asset", {"purchase_receipt": pr.name}, "name")
@@ -338,7 +339,7 @@ class TestAsset(unittest.TestCase):
 		self.assertEqual(schedules, expected_schedules)
 
 	def test_depreciation_entry_cancellation(self):
-		pr = make_purchase_receipt(item_code="Macbook Pro",
+		pr = make_purchase_receipt(item_code="Macbook Pro", posting_date="2020-06-06",
 			qty=1, rate=100000.0, location="Test Location")
 
 		asset_name = frappe.db.get_value("Asset", {"purchase_receipt": pr.name}, "name")
@@ -413,7 +414,7 @@ class TestAsset(unittest.TestCase):
 		self.assertEqual(asset.status, "Partially Depreciated")
 
 	def test_asset_sale(self):
-		pr = make_purchase_receipt(item_code="Macbook Pro",
+		pr = make_purchase_receipt(item_code="Macbook Pro", posting_date="2020-06-06",
 			qty=1, rate=100000.0, location="Test Location")
 
 		asset_name = frappe.db.get_value("Asset", {"purchase_receipt": pr.name}, "name")
@@ -458,7 +459,7 @@ class TestAsset(unittest.TestCase):
 		self.assertEqual(frappe.db.get_value("Asset", asset.name, "status"), "Partially Depreciated")
 
 	def test_asset_expected_value_after_useful_life(self):
-		pr = make_purchase_receipt(item_code="Macbook Pro",
+		pr = make_purchase_receipt(item_code="Macbook Pro", posting_date="2020-06-06",
 			qty=1, rate=100000.0, location="Test Location")
 
 		asset_name = frappe.db.get_value("Asset", {"purchase_receipt": pr.name}, "name")
@@ -706,6 +707,7 @@ def create_asset_category():
 		"fixed_asset_account": "_Test Fixed Asset - _TC",
 		"accumulated_depreciation_account": "_Test Accumulated Depreciations - _TC",
 		"depreciation_expense_account": "_Test Depreciations - _TC",
+		"capital_work_in_progress_account": "CWIP Account - _TC",
 	})
 	asset_category.insert()
 

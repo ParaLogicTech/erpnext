@@ -6,7 +6,7 @@ import unittest
 
 import frappe
 from frappe.test_runner import make_test_records
-from frappe.utils import cstr
+from frappe.utils import cstr, flt
 
 from erpnext.manufacturing.doctype.bom_update_tool.bom_update_tool import update_cost
 from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
@@ -104,39 +104,42 @@ class TestBOM(unittest.TestCase):
 		bom.set_rate_of_sub_assembly_item_based_on_bom = 0
 		bom.rm_cost_as_per = "Price List"
 		bom.buying_price_list = "_Test Price List"
+		# The conversion factor comes from the item: 1 _Test UOM 1 = 10 _Test UOM
 		bom.items[0].uom = "_Test UOM 1"
-		bom.items[0].conversion_factor = 5
 		bom.insert()
 
 		bom.update_cost()
 
 		# test amounts in selected currency
-		self.assertEqual(bom.items[0].rate, 300)
+		self.assertEqual(bom.items[0].conversion_factor, 10)
+		self.assertEqual(bom.items[0].rate, 600)
 		self.assertEqual(bom.items[1].rate, 50)
 		self.assertEqual(bom.operating_cost, 100)
-		self.assertEqual(bom.raw_material_cost, 450)
-		self.assertEqual(bom.total_cost, 550)
+		self.assertEqual(bom.raw_material_cost, 750)
+		self.assertEqual(bom.total_cost, 850)
 
 		# test amounts in selected currency
-		self.assertEqual(bom.items[0].base_rate, 18000)
+		self.assertEqual(bom.items[0].base_rate, 36000)
 		self.assertEqual(bom.items[1].base_rate, 3000)
 		self.assertEqual(bom.base_operating_cost, 6000)
-		self.assertEqual(bom.base_raw_material_cost, 27000)
-		self.assertEqual(bom.base_total_cost, 33000)
+		self.assertEqual(bom.base_raw_material_cost, 45000)
+		self.assertEqual(bom.base_total_cost, 51000)
 
 	def test_bom_cost_multi_uom_based_on_valuation_rate(self):
 		bom = frappe.copy_doc(test_records[2])
 		bom.set_rate_of_sub_assembly_item_based_on_bom = 0
 		bom.rm_cost_as_per = "Valuation Rate"
+		# The conversion factor comes from the item: 1 _Test UOM 1 = 10 _Test UOM
 		bom.items[0].uom = "_Test UOM 1"
-		bom.items[0].conversion_factor = 6
 		bom.insert()
 
 		reset_item_valuation_rate(item_code="_Test Item", qty=200, rate=200)
 
 		bom.update_cost()
 
-		self.assertEqual(bom.items[0].rate, 20)
+		# Valuation rate 200 per stock UOM, in the BOM's currency (1 USD = 60)
+		self.assertEqual(bom.items[0].conversion_factor, 10)
+		self.assertEqual(bom.items[0].rate, flt(200 * 10 / 60, bom.items[0].precision("rate")))
 
 
 def get_default_bom(item_code="_Test FG Item 2"):

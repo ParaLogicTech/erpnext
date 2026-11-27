@@ -190,6 +190,8 @@ class TestPurchaseOrder(unittest.TestCase):
 		test_user = frappe.get_doc("User", user)
 		test_user.add_roles("Accounts User")
 		frappe.set_user(user)
+		# Switch back even if an assertion fails, or the following tests run as this user
+		self.addCleanup(frappe.set_user, "Administrator")
 
 		# update qty
 		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 200, "qty": 7, "docname": po.items[0].name}])
@@ -640,6 +642,7 @@ class TestPurchaseOrder(unittest.TestCase):
 		received_qty = 2
 		# partial receipt
 		pr.get("items")[0].qty = received_qty
+		pr.get("items")[0].received_qty = pr.get("items")[0].qty
 		pr.save()
 		pr.submit()
 
@@ -692,6 +695,7 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		# partial receipt
 		pr.get("items")[0].qty = 30
+		pr.get("items")[0].received_qty = pr.get("items")[0].qty
 		pr.get("items")[0].batch_no = "ABCD1"
 
 		purchase_order = po.name
@@ -717,6 +721,7 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		pr1 = make_purchase_receipt(po.name)
 		pr1.get("items")[0].qty = 300
+		pr1.get("items")[0].received_qty = pr1.get("items")[0].qty
 		pr1.get("items")[0].batch_no = "ABCD1"
 		pr1.save()
 
@@ -765,16 +770,17 @@ class TestPurchaseOrder(unittest.TestCase):
 			"schedule_date": add_days(nowdate(), 5),
 		})
 		po.save()
-		self.assertEqual(po.schedule_date, add_days(nowdate(), 1))
+		self.assertEqual(getdate(po.schedule_date), getdate(add_days(nowdate(), 1)))
 
 		po.items[0].schedule_date = add_days(nowdate(), 2)
 		po.save()
-		self.assertEqual(po.schedule_date, add_days(nowdate(), 2))
+		self.assertEqual(getdate(po.schedule_date), getdate(add_days(nowdate(), 2)))
 
 
 def make_pr_against_po(po, received_qty=0):
 	pr = make_purchase_receipt(po)
 	pr.get("items")[0].qty = received_qty or 5
+	pr.get("items")[0].received_qty = pr.get("items")[0].qty
 	pr.insert()
 	pr.submit()
 	return pr
@@ -846,7 +852,8 @@ def create_purchase_order(**args):
 	po.is_subcontracted = args.is_subcontracted or 0
 	po.currency = args.currency or frappe.get_cached_value("Company", po.company, "default_currency")
 	po.conversion_factor = args.conversion_factor or 1
-	po.supplier_warehouse = args.supplier_warehouse or None
+	# Subcontracted orders need a supplier warehouse before submit
+	po.supplier_warehouse = args.supplier_warehouse or ("_Test Warehouse 1 - _TC" if po.is_subcontracted else None)
 
 	po.append("items", {
 		"item_code": args.item or args.item_code or "_Test Item",
@@ -870,7 +877,9 @@ def create_purchase_order(**args):
 
 def create_pr_against_po(po, received_qty=4):
 	pr = make_purchase_receipt(po)
+	# Received qty that isn't accepted counts as rejected
 	pr.get("items")[0].qty = received_qty
+	pr.get("items")[0].received_qty = received_qty
 	pr.insert()
 	pr.submit()
 	return pr

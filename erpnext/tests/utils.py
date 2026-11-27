@@ -9,6 +9,8 @@ def create_test_contact_and_address():
 	frappe.db.sql("delete from tabContact")
 	frappe.db.sql("delete from tabAddress")
 	frappe.db.sql("delete from `tabDynamic Link`")
+	# Customers keep their primary contact and address in fields of their own, which would now point to deleted records
+	frappe.db.sql("update tabCustomer set customer_primary_contact = null, customer_primary_address = null")
 
 	frappe.get_doc({
 		"doctype": "Address",

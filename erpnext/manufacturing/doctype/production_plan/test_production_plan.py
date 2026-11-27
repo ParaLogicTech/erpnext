@@ -150,6 +150,8 @@ class TestProductionPlan(unittest.TestCase):
 	def test_pp_to_mr_customer_provided(self):
 		# Material Request from Production Plan for Customer Provided
 		create_item("CUST-0987", is_customer_provided_item=1, customer="_Test Customer", is_purchase_item=0)
+		# Customer provided items don't get this material request type automatically
+		frappe.db.set_value("Item", "CUST-0987", "default_material_request_type", "Customer Provided")
 		create_item("Production Item CUST")
 		for item, raw_materials in {"Production Item CUST": ["Raw Material Item 1", "CUST-0987"]}.items():
 			if not frappe.db.get_value("BOM", {"item": item}):
@@ -185,6 +187,7 @@ class TestProductionPlan(unittest.TestCase):
 		pln.company = "_Test Company"
 		pln.append("po_items", {
 			"item_code": item_code,
+			"stock_uom": frappe.db.get_value("Item", item_code, "stock_uom"),
 			"bom_no": frappe.db.get_value("BOM", {"item": "Test BOM 1"}),
 			"planned_qty": 3,
 			"make_work_order_for_sub_assembly_items": 1,
@@ -216,6 +219,7 @@ def create_production_plan(**args):
 		"po_items": [{
 			"use_multi_level_bom": args.use_multi_level_bom or 1,
 			"item_code": args.item_code,
+			"stock_uom": frappe.db.get_value("Item", args.item_code, "stock_uom"),
 			"bom_no": frappe.db.get_value("Item", args.item_code, "default_bom"),
 			"planned_qty": args.planned_qty or 1,
 			"planned_start_date": args.planned_start_date or now_datetime(),

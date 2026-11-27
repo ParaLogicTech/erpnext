@@ -7,7 +7,7 @@ import frappe
 from frappe.utils import random_string
 
 from erpnext.manufacturing.doctype.job_card.job_card import OperationMismatchError
-from erpnext.manufacturing.doctype.work_order.test_work_order import make_wo_order_test_record
+from erpnext.manufacturing.doctype.work_order.test_work_order import make_job_cards, make_wo_order_test_record
 from erpnext.manufacturing.doctype.workstation.test_workstation import make_workstation
 
 
@@ -20,6 +20,7 @@ class TestJobCard(unittest.TestCase):
 			bom, bom_item = data
 
 			work_order = make_wo_order_test_record(item=bom_item, qty=1, bom_no=bom)
+			make_job_cards(work_order)
 
 			job_cards = frappe.get_all("Job Card",
 				filters={"work_order": work_order.name}, fields=["operation_id", "name"])
@@ -39,7 +40,9 @@ class TestJobCard(unittest.TestCase):
 		if data:
 			bom, bom_item = data
 
-			work_order = make_wo_order_test_record(item=bom_item, qty=1, bom_no=bom)
+			# Without transferring materials first, so it's not stopped by the transferred qty check
+			work_order = make_wo_order_test_record(item=bom_item, qty=1, bom_no=bom, skip_transfer=1)
+			make_job_cards(work_order)
 
 			job_card = frappe.get_all("Job Card",
 				filters={"work_order": work_order.name},

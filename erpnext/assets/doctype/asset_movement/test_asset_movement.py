@@ -20,7 +20,7 @@ class TestAssetMovement(unittest.TestCase):
 		make_location()
 
 	def test_movement(self):
-		pr = make_purchase_receipt(item_code="Macbook Pro",
+		pr = make_purchase_receipt(item_code="Macbook Pro", posting_date="2020-06-06",
 			qty=1, rate=100000.0, location="Test Location")
 
 		asset_name = frappe.db.get_value("Asset", {"purchase_receipt": pr.name}, "name")
@@ -70,7 +70,7 @@ class TestAssetMovement(unittest.TestCase):
 		self.assertEqual(frappe.db.get_value("Asset", asset.name, "custodian"), employee)
 
 	def test_last_movement_cancellation(self):
-		pr = make_purchase_receipt(item_code="Macbook Pro",
+		pr = make_purchase_receipt(item_code="Macbook Pro", posting_date="2020-06-06",
 			qty=1, rate=100000.0, location="Test Location")
 
 		asset_name = frappe.db.get_value("Asset", {"purchase_receipt": pr.name}, "name")

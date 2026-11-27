@@ -24,17 +24,18 @@ class TestLoanApplication(unittest.TestCase):
 			}).insert()
 
 	def create_loan_application(self):
-		if not frappe.db.get_value("Loan Application", {"applicant": self.applicant}, "name"):
-			loan_application = frappe.new_doc("Loan Application")
-			loan_application.update({
-				"applicant": self.applicant,
-				"loan_type": "Home Loan",
-				"rate_of_interest": 9.2,
-				"loan_amount": 250000,
-				"repayment_method": "Repay Over Number of Periods",
-				"repayment_periods": 18,
-			})
-			loan_application.insert()
+		# test_loan_totals changes the repayment periods, so an existing application is reset
+		existing = frappe.db.get_value("Loan Application", {"applicant": self.applicant}, "name")
+		loan_application = frappe.get_doc("Loan Application", existing) if existing else frappe.new_doc("Loan Application")
+		loan_application.update({
+			"applicant": self.applicant,
+			"loan_type": "Home Loan",
+			"rate_of_interest": 9.2,
+			"loan_amount": 250000,
+			"repayment_method": "Repay Over Number of Periods",
+			"repayment_periods": 18,
+		})
+		loan_application.save()
 
 	def test_loan_totals(self):
 		loan_application = frappe.get_doc("Loan Application", {"applicant": self.applicant})

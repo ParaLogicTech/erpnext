@@ -33,6 +33,7 @@ class TestSubcontractedItemToBeReceived(unittest.TestCase):
 def make_purchase_receipt_against_po(po, quantity=5):
 	pr = make_purchase_receipt(po)
 	pr.items[0].qty = quantity
+	pr.items[0].received_qty = pr.items[0].qty
 	pr.supplier_warehouse = "_Test Warehouse 1 - _TC"
 	pr.insert()
 	pr.submit()

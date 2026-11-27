@@ -54,4 +54,6 @@ def create_customer():
 		frappe.get_doc({
 				"doctype": "Customer",
 				"customer_name": "Quality Feedback Customer",
+				"customer_group": "_Test Customer Group",
+				"territory": "_Test Territory",
 			}).insert(ignore_permissions=True)

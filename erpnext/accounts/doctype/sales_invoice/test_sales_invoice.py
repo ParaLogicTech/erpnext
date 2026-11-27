@@ -1468,7 +1468,7 @@ class TestSalesInvoice(unittest.TestCase):
 		frappe.flags.country = "India"
 
 		si = self.create_si_to_test_tax_breakup()
-		itemised_tax, itemised_taxable_amount = get_itemised_tax_breakup_data(si)
+		itemised_tax, itemised_taxable_amount, _itemised_net_amount, _itemised_qty = get_itemised_tax_breakup_data(si)
 
 		expected_itemised_tax = {
 			"999800": {
@@ -1492,7 +1492,7 @@ class TestSalesInvoice(unittest.TestCase):
 
 		si = self.create_si_to_test_tax_breakup()
 
-		itemised_tax, itemised_taxable_amount = get_itemised_tax_breakup_data(si)
+		itemised_tax, itemised_taxable_amount, _itemised_net_amount, _itemised_qty = get_itemised_tax_breakup_data(si)
 
 		expected_itemised_tax = {
 			"_Test Item": {
