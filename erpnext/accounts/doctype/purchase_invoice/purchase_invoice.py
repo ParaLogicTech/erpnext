@@ -281,7 +281,7 @@ class PurchaseInvoice(BuyingController):
 
 		# update values in rows
 		for d in self.items:
-			d.returned_qty = flt(data.returned_qty_map.get(d.name))
+			d.returned_qty = flt(data.returned_qty_map.get(d.name), d.precision("returned_qty"))
 
 			if update:
 				d.db_set({
@@ -294,10 +294,12 @@ class PurchaseInvoice(BuyingController):
 
 		row_names = [d.name for d in self.items]
 		if self.docstatus == 1 and row_names:
+			# returns can be in another UOM, so convert their stock qty to the UOM of the returned row
 			returned_with_purchase_invoice = frappe.db.sql("""
-				select i.purchase_invoice_item, -1 * sum(i.qty) as qty
+				select i.purchase_invoice_item, -1 * sum(i.stock_qty / o.conversion_factor) as qty
 				from `tabPurchase Invoice Item` i
 				inner join `tabPurchase Invoice` p on p.name = i.parent
+				inner join `tabPurchase Invoice Item` o on o.name = i.purchase_invoice_item
 				where p.docstatus = 1 and p.is_return = 1 and (p.update_stock = 1 or p.reopen_order = 1)
 					and i.purchase_invoice_item in %s
 				group by i.purchase_invoice_item

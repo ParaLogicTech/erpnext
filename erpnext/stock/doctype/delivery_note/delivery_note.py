@@ -313,7 +313,7 @@ class DeliveryNote(SellingController):
 				d.billed_qty = 0
 				d.billed_amt = 0
 
-			d.returned_qty = flt(delivery_return_qty_map.get(d.name))
+			d.returned_qty = flt(delivery_return_qty_map.get(d.name), d.precision("returned_qty"))
 			if update:
 				d.db_set({
 					"returned_qty": d.returned_qty,
@@ -384,10 +384,12 @@ class DeliveryNote(SellingController):
 		if self.docstatus == 1:
 			row_names = [d.name for d in self.items]
 			if row_names:
+				# returns can be in another UOM, so convert their stock qty to the UOM of the returned row
 				delivery_return_qty_map = dict(frappe.db.sql("""
-					select i.delivery_note_item, -1 * sum(i.qty)
+					select i.delivery_note_item, -1 * sum(i.stock_qty / o.conversion_factor)
 					from `tabDelivery Note Item` i
 					inner join `tabDelivery Note` p on p.name = i.parent
+					inner join `tabDelivery Note Item` o on o.name = i.delivery_note_item
 					where p.docstatus = 1 and p.is_return = 1 and i.delivery_note_item in %s
 					group by i.delivery_note_item
 				""", [row_names]))

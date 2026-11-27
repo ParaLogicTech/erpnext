@@ -441,7 +441,7 @@ class SalesInvoice(SellingController):
 
 		# update values in rows
 		for d in self.items:
-			d.returned_qty = flt(data.returned_qty_map.get(d.name))
+			d.returned_qty = flt(data.returned_qty_map.get(d.name), d.precision("returned_qty"))
 			d.base_returned_amount = flt(data.returned_amount_map.get(d.name))
 
 			if update:
@@ -505,12 +505,14 @@ class SalesInvoice(SellingController):
 
 		row_names = [d.name for d in self.items]
 		if self.docstatus == 1 and row_names:
+			# returns can be in another UOM, so convert their stock qty to the UOM of the returned row
 			returned_with_sales_invoice = frappe.db.sql("""
 				select i.sales_invoice_item,
-					-1 * sum(i.qty) as qty,
+					-1 * sum(i.stock_qty / o.conversion_factor) as qty,
 					-1 * sum(i.base_net_amount) as base_net_amount
 				from `tabSales Invoice Item` i
 				inner join `tabSales Invoice` p on p.name = i.parent
+				inner join `tabSales Invoice Item` o on o.name = i.sales_invoice_item
 				where p.docstatus = 1 and p.is_return = 1 and (p.update_stock = 1 or p.reopen_order = 1)
 					and i.sales_invoice_item in %s
 				group by i.sales_invoice_item
