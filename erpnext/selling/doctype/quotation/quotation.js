@@ -10,9 +10,9 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		super.setup();
 
 		this.frm.custom_make_buttons = {
-			'Sales Order': 'Sales Order',
-			'Sales Invoice': 'Sales Invoice',
-			'Auto Repeat': 'Subscription',
+			"Sales Order": "Sales Order",
+			"Sales Invoice": "Sales Invoice",
+			"Auto Repeat": "Subscription",
 		};
 
 		this.setup_queries();
@@ -36,11 +36,11 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			return {
 				filters: {
 					"name": ["in", ["Customer", "Lead"]],
-				}
-			}
+				},
+			};
 		});
 
-		me.frm.set_query('party_name', function () {
+		me.frm.set_query("party_name", function() {
 			if (me.frm.doc.quotation_to == "Lead") {
 				return crm.queries.lead({"status": ["!=", "Converted"]});
 			} else {
@@ -48,10 +48,10 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			}
 		});
 
-		me.frm.set_query('previous_sales_order', 'previous_orders', () => {
+		me.frm.set_query("previous_sales_order", "previous_orders", () => {
 			let filters = {
 				docstatus: 1,
-				status: ['!=', 'Closed'],
+				status: ["!=", "Closed"],
 				currency: this.frm.doc.currency,
 			};
 			if (this.frm.doc.project) {
@@ -59,7 +59,7 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			}
 			return {
 				filters: filters,
-			}
+			};
 		});
 	}
 
@@ -80,44 +80,44 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			customer = me.frm.doc.__onload && me.frm.doc.__onload.customer;
 		}
 
-		if (me.frm.doc.docstatus == 1 && me.frm.doc.status !== 'Lost') {
+		if (me.frm.doc.docstatus == 1 && me.frm.doc.status !== "Lost") {
 			if (me.frm.doc.status !== "Ordered" && me.frm.has_perm("write")) {
-				me.frm.add_custom_button(__('Mark As Lost'), () => {
+				me.frm.add_custom_button(__("Mark As Lost"), () => {
 					crm.utils.set_as_lost_dialog(me.frm);
 				}, __("Status"));
 
 				if (me.frm.doc.status != "Approved") {
-					me.frm.add_custom_button(__('Mark As Approved'), () => {
+					me.frm.add_custom_button(__("Mark As Approved"), () => {
 						me.set_as_approved();
 					}, __("Status"));
 				}
 			}
 
 			if (!customer && frappe.model.can_create("Customer")) {
-				me.frm.add_custom_button(__('Customer'), () => {
+				me.frm.add_custom_button(__("Customer"), () => {
 					erpnext.utils.make_customer_from_lead(me.frm, me.frm.doc.party_name);
-				}, __('Create'));
+				}, __("Create"));
 			}
 
 			if (!me.frm.doc.valid_till || frappe.datetime.get_diff(me.frm.doc.valid_till, frappe.datetime.get_today()) >= 0) {
 				if (frappe.model.can_create("Sales Order")) {
-					me.frm.add_custom_button(__('Sales Order'), () => me.make_sales_order(),
-						__('Create'));
+					me.frm.add_custom_button(__("Sales Order"), () => me.make_sales_order(),
+						__("Create"));
 				}
 
 				if (frappe.model.can_create("Sales Invoice")) {
-					me.frm.add_custom_button(__('Sales Invoice'), () => me.make_sales_invoice(),
-						__('Create'));
+					me.frm.add_custom_button(__("Sales Invoice"), () => me.make_sales_invoice(),
+						__("Create"));
 				}
 			}
 
 			if (!me.frm.doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
-				me.frm.add_custom_button(__('Subscription'), function() {
-					erpnext.utils.make_subscription(me.frm.doc.doctype, me.frm.doc.name)
-				}, __('Create'))
+				me.frm.add_custom_button(__("Subscription"), function() {
+					erpnext.utils.make_subscription(me.frm.doc.doctype, me.frm.doc.name);
+				}, __("Create"));
 			}
 
-			me.frm.page.set_inner_btn_group_as_primary(__('Create'));
+			me.frm.page.set_inner_btn_group_as_primary(__("Create"));
 		}
 
 		if (
@@ -131,7 +131,7 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		}
 
 		if (me.frm.doc.docstatus === 0 && frappe.model.can_read("Opportunity")) {
-			me.frm.add_custom_button(__('Opportunity'),
+			me.frm.add_custom_button(__("Opportunity"),
 				function() {
 					erpnext.utils.map_current_doc({
 						method: "erpnext.overrides.opportunity.opportunity_hooks.make_quotation",
@@ -143,21 +143,21 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 								fieldname: "party_name",
 								fieldtype: "Link",
 								options: me.frm.doc.quotation_to,
-								default: me.frm.doc.party_name || undefined
+								default: me.frm.doc.party_name || undefined,
 							},
 							{
 								label: "Opportunity Type",
 								fieldname: "opportunity_type",
 								fieldtype: "Link",
 								options: "Opportunity Type",
-							}
+							},
 						],
-						columns: ['customer_name', 'transaction_date', 'opportunity_type'],
+						columns: ["customer_name", "transaction_date", "opportunity_type"],
 						get_query_filters: {
 							status: ["not in", ["Lost", "Closed"]],
-							company: me.frm.doc.company
-						}
-					})
+							company: me.frm.doc.company,
+						},
+					});
 				}, __("Get Items From"), "btn-default");
 		}
 
@@ -173,13 +173,13 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 		}
 
 		// Notification Status
-		let delivery_count = frappe.get_notification_count(this.frm, 'Quotation Delivery');
+		let delivery_count = frappe.get_notification_count(this.frm, "Quotation Delivery");
 		let delivery_color = delivery_count ? "green"
-			: this.can_notify('Quotation Delivery') ? "yellow" : "light-gray";
-		let delivery_status = frappe.get_notification_count_str(this.frm, 'Quotation Delivery');
+			: this.can_notify("Quotation Delivery") ? "yellow" : "light-gray";
+		let delivery_status = frappe.get_notification_count_str(this.frm, "Quotation Delivery");
 
-		let reminder_count = frappe.get_notification_count(this.frm, 'Quotation Reminder');
-		let reminder_status = frappe.get_notification_count_str(this.frm, 'Quotation Reminder');
+		let reminder_count = frappe.get_notification_count(this.frm, "Quotation Reminder");
+		let reminder_status = frappe.get_notification_count_str(this.frm, "Quotation Reminder");
 		let reminder_color = "light-gray";
 
 		if (reminder_count) {
@@ -190,16 +190,16 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			reminder_status = __("Scheduled ({0})", [scheduled_reminder_str]);
 		}
 
-		this.frm.dashboard.add_indicator(__('Quotation Delivery: {0}', [delivery_status]), delivery_color);
-		this.frm.dashboard.add_indicator(__('Quotation Reminder: {0}', [reminder_status]), reminder_color);
+		this.frm.dashboard.add_indicator(__("Quotation Delivery: {0}", [delivery_status]), delivery_color);
+		this.frm.dashboard.add_indicator(__("Quotation Reminder: {0}", [reminder_status]), reminder_color);
 	}
 
 	set_dynamic_link() {
 		if (this.frm.doc.bill_to) {
-			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'bill_to', doctype: 'Customer'};
+			frappe.dynamic_link = {doc: this.frm.doc, fieldname: "bill_to", doctype: "Customer"};
 		} else {
-			let doctype = this.frm.doc.quotation_to == 'Lead' ? 'Lead' : 'Customer';
-			frappe.dynamic_link = {doc: this.frm.doc, fieldname: 'party_name', doctype: doctype};
+			let doctype = this.frm.doc.quotation_to == "Lead" ? "Lead" : "Customer";
+			frappe.dynamic_link = {doc: this.frm.doc, fieldname: "party_name", doctype: doctype};
 		}
 	}
 
@@ -240,13 +240,13 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			},
 			() => {
 				this.apply_pricing_rule();
-			}
+			},
 		);
 	}
 
 	transaction_date() {
 		if (this.frm.doc.transaction_date && cint(this.frm.doc.lead_time_days) > 0) {
-			this.frm.trigger('lead_time_days');
+			this.frm.trigger("lead_time_days");
 		}
 		return super.transaction_date();
 	}
@@ -260,7 +260,7 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 	lead_time_days() {
 		if (cint(this.frm.doc.lead_time_days) > 0) {
 			let delivery_date = frappe.datetime.add_days(this.frm.doc.transaction_date, cint(this.frm.doc.lead_time_days));
-			this.frm.set_value('delivery_date', delivery_date);
+			this.frm.set_value("delivery_date", delivery_date);
 		}
 	}
 
@@ -269,7 +269,7 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 			let days = frappe.datetime.get_diff(this.frm.doc.delivery_date, this.frm.doc.transaction_date);
 			if (days > 0) {
 				this.frm.doc.lead_time_days = days;
-				this.frm.refresh_field('lead_time_days');
+				this.frm.refresh_field("lead_time_days");
 			}
 		}
 	}
@@ -277,15 +277,15 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 	make_sales_order() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.quotation.quotation.make_sales_order",
-			frm: cur_frm
-		})
+			frm: cur_frm,
+		});
 	}
 
 	make_sales_invoice() {
 		frappe.model.open_mapped_doc({
 			method: "erpnext.selling.doctype.quotation.quotation.make_sales_invoice",
-			frm: cur_frm
-		})
+			frm: cur_frm,
+		});
 	}
 
 	previous_sales_order(doc, cdt, cdn) {
@@ -302,7 +302,7 @@ erpnext.selling.QuotationController = class QuotationController extends erpnext.
 							this.calculate_taxes_and_totals();
 						});
 					}
-				}
+				},
 			});
 		}
 	}
