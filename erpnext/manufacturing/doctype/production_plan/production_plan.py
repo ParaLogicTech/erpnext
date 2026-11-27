@@ -167,7 +167,7 @@ class ProductionPlan(Document):
 	def add_items(self, items):
 		self.set("po_items", [])
 		for data in items:
-			item_details = get_item_details(data.item_code)
+			item_details = get_item_details({"item_code": data.item_code})
 			pi = self.append("po_items", {
 				"include_exploded_items": 1,
 				"warehouse": data.warehouse,
@@ -730,7 +730,7 @@ def get_items_for_material_requests(doc, ignore_existing_ordered_qty=None):
 
 @frappe.whitelist()
 def get_item_data(item_code):
-	item_details = get_item_details(item_code)
+	item_details = get_item_details({"item_code": item_code})
 
 	return {
 		"bom_no": item_details.get("bom_no"),
@@ -743,7 +743,7 @@ def get_sub_assembly_items(bom_no, bom_data, to_produce_qty):
 	data = get_children("BOM", parent=bom_no)
 	for d in data:
 		if d.expandable:
-			key = (d.name, d.value)
+			key = (d.item_code, d.value)
 			if key not in bom_data:
 				bom_data.setdefault(key, {
 					"stock_qty": 0,

@@ -978,10 +978,11 @@ def get_children(doctype, parent=None, is_root=False, **filters):
 	if is_root:
 		bom_items = [frappe._dict({
 			"item_code": bom_doc.item, "value": bom_doc.name, "qty": bom_doc.quantity, "uom": bom_doc.uom,
+			"stock_qty": bom_doc.quantity,
 		})]
 	else:
 		bom_items = [
-			frappe._dict({"item_code": d.item_code, "value": d.bom_no, "qty": d.qty, "uom": d.uom})
+			frappe._dict({"item_code": d.item_code, "value": d.bom_no, "qty": d.qty, "uom": d.uom, "stock_qty": d.stock_qty})
 			for d in bom_doc.items
 		]
 
