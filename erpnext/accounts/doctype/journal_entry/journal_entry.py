@@ -86,7 +86,7 @@ class JournalEntry(AccountsController):
 	def on_cancel(self):
 		from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import unlink_voucher_from_payments
 		from erpnext.hr.doctype.salary_slip.salary_slip import unlink_voucher_from_salary_slips
-		unlink_voucher_from_payments(self.doctype, self.name, validate_permission=True)
+		unlink_voucher_from_payments(self.doctype, self.name, validate_permission="Invoice")
 		unlink_voucher_from_salary_slips(self.name)
 
 		self.make_gl_entries(1)

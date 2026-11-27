@@ -1412,9 +1412,14 @@ def create_payment_reconciliation_journal_entry(args, payment_doc, allocate_paym
 	return jv.name
 
 
-def unlink_voucher_from_payments(voucher_type, voucher_no, validate_permission=False):
+def unlink_voucher_from_payments(voucher_type, voucher_no, validate_permission=None):
+	"""validate_permission: "Invoice" or "Order", to check that Accounts Settings allows unlinking for it"""
 	if validate_permission:
-		allow_unlink_setting = cint(frappe.db.get_single_value("Accounts Settings", "unlink_payment_on_cancellation_of_invoice"))
+		if validate_permission == "Order":
+			setting_fieldname = "unlink_advance_payment_on_cancelation_of_order"
+		else:
+			setting_fieldname = "unlink_payment_on_cancellation_of_invoice"
+		allow_unlink_setting = cint(frappe.db.get_single_value("Accounts Settings", setting_fieldname))
 		allow_unlink_role = frappe.db.get_single_value("Accounts Settings", "restrict_unlink_payments_to_role")
 		has_unlink_role_permission = not allow_unlink_role or allow_unlink_role in frappe.get_roles()
 		if not allow_unlink_setting or not has_unlink_role_permission:
