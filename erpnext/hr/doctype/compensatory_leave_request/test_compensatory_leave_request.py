@@ -79,7 +79,8 @@ class TestCompensatoryLeaveRequest(unittest.TestCase):
 		self.assertEquals(leave_ledger_entry[0].leave_type, compensatory_leave_request.leave_type)
 		self.assertEquals(leave_ledger_entry[0].leaves, -1)
 
-def get_compensatory_leave_request(employee, leave_date=today()):
+def get_compensatory_leave_request(employee, leave_date=None):
+	leave_date = leave_date or today()
 	prev_comp_leave_req = frappe.db.get_value('Compensatory Leave Request',
 		dict(leave_type='Compensatory Off',
 			work_from_date=leave_date,
@@ -97,7 +98,8 @@ def get_compensatory_leave_request(employee, leave_date=today()):
 			reason='test'
 		)).insert()
 
-def mark_attendance(employee, date=today(), status='Present'):
+def mark_attendance(employee, date=None, status='Present'):
+	date = date or today()
 	if not frappe.db.exists(dict(doctype='Attendance', employee=employee.name, attendance_date=date, status='Present')):
 		attendance = frappe.get_doc({
 				"doctype": "Attendance",

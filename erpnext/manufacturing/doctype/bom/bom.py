@@ -517,7 +517,7 @@ class BOM(Document):
 				frappe.throw(_("Quantity required for Item {0} in row {1}").format(m.item_code, m.idx))
 			check_list.append(m)
 
-	def check_recursion(self, bom_list=[]):
+	def check_recursion(self):
 		""" Check whether recursion occurs in any bom"""
 		bom_list = self.traverse_tree()
 		bom_nos = frappe.get_all('BOM Item', fields=["bom_no"],
@@ -537,11 +537,11 @@ class BOM(Document):
 		if raise_exception:
 			frappe.throw(_("BOM recursion: {0} cannot be parent or child of {1}").format(self.name, self.name))
 
-	def update_cost_and_exploded_items(self, bom_list=[]):
+	def update_cost_and_exploded_items(self, bom_list=None):
 		bom_list = self.traverse_tree(bom_list)
 		for bom in bom_list:
 			bom_obj = frappe.get_doc("BOM", bom)
-			bom_obj.check_recursion(bom_list=bom_list)
+			bom_obj.check_recursion()
 			bom_obj.update_exploded_items()
 
 		return bom_list

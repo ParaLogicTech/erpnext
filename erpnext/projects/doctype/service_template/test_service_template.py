@@ -27,7 +27,7 @@ def get_service_template():
 
 	return frappe.get_doc('Service Template', 'Test Service Template')
 
-def make_service_template(service_template_name, project_tasks=[]):
+def make_service_template(service_template_name, project_tasks=None):
 	if not frappe.db.exists('Service Template', service_template_name):
 		frappe.get_doc(dict(
 			doctype = 'Service Template',

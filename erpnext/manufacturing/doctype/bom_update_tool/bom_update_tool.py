@@ -65,7 +65,9 @@ class BOMUpdateTool(Document):
 			"current_bom": self.current_bom,
 		})
 
-	def get_parent_boms(self, bom, bom_list=[]):
+	def get_parent_boms(self, bom, bom_list=None):
+		bom_list = bom_list or []
+
 		data = frappe.db.sql("""
 			SELECT DISTINCT parent
 			FROM `tabBOM Item`

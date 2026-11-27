@@ -204,7 +204,9 @@ def get_item_groups(pos_profile):
 	return item_group_dict
 
 
-def get_customers_list(pos_profile={}):
+def get_customers_list(pos_profile=None):
+	pos_profile = pos_profile or {}
+
 	cond = "1=1"
 	customer_groups = []
 	if pos_profile.get('customer_groups'):
@@ -390,8 +392,17 @@ def get_pricing_rule_data(doc):
 
 
 @frappe.whitelist()
-def make_invoice(pos_profile, doc_list={}, email_queue_list={}, customers_list={}):
+def make_invoice(
+	pos_profile: str | dict,
+	doc_list: str | list | None = None,
+	email_queue_list: str | dict | None = None,
+	customers_list: str | dict | None = None,
+):
 	import json
+
+	doc_list = doc_list or []
+	email_queue_list = email_queue_list or {}
+	customers_list = customers_list or {}
 
 	if isinstance(doc_list, str):
 		doc_list = json.loads(doc_list)

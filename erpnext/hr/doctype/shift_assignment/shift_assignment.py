@@ -259,7 +259,7 @@ def get_employee_shift_assignment(employee, for_date, consider_global_shift=Fals
 	return assigned_shift
 
 
-def get_employee_shift_timings(employee, for_timestamp=now_datetime(), consider_default_shift=False, ignore_holidays=False):
+def get_employee_shift_timings(employee, for_timestamp=None, consider_default_shift=False, ignore_holidays=False):
 	"""Returns previous shift, current/upcoming shift, next_shift for the given timestamp and employee
 	"""
 	for_timestamp = get_datetime(for_timestamp)
