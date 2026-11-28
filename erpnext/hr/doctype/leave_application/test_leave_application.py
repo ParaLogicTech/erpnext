@@ -235,16 +235,17 @@ class TestLeaveApplication(unittest.TestCase):
 		leave_period = get_leave_period()
 		today = nowdate()
 		holiday_list = "Test Holiday List for Optional Holiday"
-		if not frappe.db.exists("Holiday List", holiday_list):
-			frappe.get_doc(dict(
-				doctype="Holiday List",
-				holiday_list_name=holiday_list,
-				from_date=add_months(today, -6),
-				to_date=add_months(today, 6),
-				holidays=[
-					dict(holiday_date=today, description="Test"),
-				],
-			)).insert()
+		# today is the optional holiday, so a list made on an earlier day is brought up to date
+		if frappe.db.exists("Holiday List", holiday_list):
+			holiday_list_doc = frappe.get_doc("Holiday List", holiday_list)
+		else:
+			holiday_list_doc = frappe.new_doc("Holiday List")
+			holiday_list_doc.holiday_list_name = holiday_list
+
+		holiday_list_doc.from_date = add_months(today, -6)
+		holiday_list_doc.to_date = add_months(today, 6)
+		holiday_list_doc.set("holidays", [dict(holiday_date=today, description="Test")])
+		holiday_list_doc.save()
 		employee = get_employee()
 
 		frappe.db.set_value("Leave Period", leave_period.name, "optional_holiday_list", holiday_list)

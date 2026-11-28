@@ -5,15 +5,15 @@ import unittest
 
 import frappe
 
+from erpnext.hr.doctype.leave_type.test_leave_type import create_leave_type
+
 
 class TestLeavePolicy(unittest.TestCase):
 	def test_max_leave_allowed(self):
-		random_leave_type = frappe.get_all("Leave Type", fields=["name", "max_leaves_allowed"])
-		if random_leave_type:
-			random_leave_type = random_leave_type[0]
-			leave_type = frappe.get_doc("Leave Type", random_leave_type.name)
-			leave_type.max_leaves_allowed = 2
-			leave_type.save()
+		# a leave type of its own, as other tests allocate more than 2 leaves of theirs
+		leave_type = create_leave_type(leave_type_name="_Test Leave Type Max Allowed")
+		leave_type.max_leaves_allowed = 2
+		leave_type.save()
 
 		leave_policy = create_leave_policy(leave_type=leave_type.name, annual_allocation=leave_type.max_leaves_allowed + 1)
 

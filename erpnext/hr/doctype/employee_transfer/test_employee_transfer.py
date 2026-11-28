@@ -56,3 +56,34 @@ class TestEmployeeTransfer(unittest.TestCase):
 		self.assertTrue(transfer.new_employee_id)
 		self.assertEqual(frappe.get_value("Employee", transfer.new_employee_id, "status"), "Active")
 		self.assertEqual(frappe.get_value("Employee", transfer.employee, "status"), "Left")
+
+	def test_user_permissions_move_to_new_employee(self):
+		# the user would already be on the new employee next time
+		frappe.db.savepoint("employee_transfer_test")
+		self.addCleanup(frappe.db.rollback, save_point="employee_transfer_test")
+
+		user = "employee4@transfers.com"
+		employee = make_employee(user, company="_Test Company")
+
+		transfer = frappe.get_doc({
+			"doctype": "Employee Transfer",
+			"employee": employee,
+			"create_new_employee_id": 1,
+			"transfer_date": getdate(),
+			"new_company": "_Test Company 1",
+			"transfer_details": [
+				{
+				"property": "Designation",
+				"current": "Software Developer",
+				"new": "Project Manager",
+				"fieldname": "designation",
+				},
+			],
+		}).insert()
+		transfer.submit()
+
+		user_permissions = frappe.get_all("User Permission", filters={"user": user}, fields=["allow", "for_value"])
+		self.assertEqual(sorted((d.allow, d.for_value) for d in user_permissions), [
+			("Company", "_Test Company 1"),
+			("Employee", transfer.new_employee_id),
+		])

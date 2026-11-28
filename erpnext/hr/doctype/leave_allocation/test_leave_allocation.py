@@ -74,6 +74,8 @@ class TestLeaveAllocation(unittest.TestCase):
 	def test_carry_forward_calculation(self):
 		frappe.db.sql("delete from `tabLeave Allocation`")
 		frappe.db.sql("delete from `tabLeave Ledger Entry`")
+		# another test's leave period covering both allocations would add them up against max_leaves_allowed
+		frappe.db.sql("delete from `tabLeave Period`")
 		leave_type = create_leave_type(leave_type_name="_Test_CF_leave", is_carry_forward=1)
 		leave_type.maximum_carry_forwarded_leaves = 10
 		leave_type.max_leaves_allowed = 30
