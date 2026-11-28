@@ -397,7 +397,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": ":Company",
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "label": "Cost Center",
@@ -458,7 +457,7 @@
  "icon": "icon-usd",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-09-12 17:31:01.096548",
+ "modified": "2026-11-28 02:53:31.953692",
  "modified_by": "Administrator",
  "module": "Stock",
  "name": "Landed Cost Voucher",
