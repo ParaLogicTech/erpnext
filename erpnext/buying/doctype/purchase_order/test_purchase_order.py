@@ -6,6 +6,7 @@ import unittest
 
 import frappe
 import frappe.defaults
+from frappe.tests.utils import change_settings
 from frappe.utils import add_days, flt, getdate, nowdate
 
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
@@ -89,6 +90,8 @@ class TestPurchaseOrder(unittest.TestCase):
 		frappe.db.set_value("Item", "_Test Item", "over_billing_allowance", 0)
 		frappe.db.set_single_value("Accounts Settings", "over_billing_allowance", 0)
 
+	@change_settings("Buying Settings", {"maintain_same_rate": 0})
+	@change_settings("Stock Settings", {"no_partial_indent": 0})
 	def test_update_child_qty_rate(self):
 		mr = make_material_request(qty=10)
 		po = make_purchase_order(mr.name)
@@ -188,18 +191,20 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		user = "test@example.com"
 		test_user = frappe.get_doc("User", user)
-		test_user.add_roles("Accounts User")
+		# a role that can read but not edit Purchase Orders
+		test_user.remove_roles("Purchase User", "Purchase Manager", "Accounts User")
+		test_user.add_roles("Stock User")
 		frappe.set_user(user)
 		# Switch back even if an assertion fails, or the following tests run as this user
 		self.addCleanup(frappe.set_user, "Administrator")
 
 		# update qty
 		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 200, "qty": 7, "docname": po.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_items, "Purchase Order", po.name, trans_item)
+		self.assertRaises(frappe.PermissionError, update_child_items, "Purchase Order", po.name, trans_item)
 
 		# add new item
 		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 100, "qty": 2}])
-		self.assertRaises(frappe.ValidationError, update_child_items, "Purchase Order", po.name, trans_item)
+		self.assertRaises(frappe.PermissionError, update_child_items, "Purchase Order", po.name, trans_item)
 		frappe.set_user("Administrator")
 
 	def test_update_qty(self):
@@ -260,12 +265,15 @@ class TestPurchaseOrder(unittest.TestCase):
 			make_purchase_receipt as make_purchase_receipt_return,
 		)
 
+		# only returns that reopen the order take the received qty back
 		pr1 = make_purchase_receipt_return(is_return=1, return_against=pr.name, qty=-3, do_not_submit=True)
+		pr1.reopen_order = 1
 		pr1.items[0].purchase_order = po.name
 		pr1.items[0].purchase_order_item = po.items[0].name
 		pr1.submit()
 
 		pi1 = make_purchase_invoice_return(is_return=1, return_against=pi2.name, qty=-1, update_stock=1, do_not_submit=True)
+		pi1.reopen_order = 1
 		pi1.items[0].purchase_order = po.name
 		pi1.items[0].purchase_order_item = po.items[0].name
 		pi1.submit()
