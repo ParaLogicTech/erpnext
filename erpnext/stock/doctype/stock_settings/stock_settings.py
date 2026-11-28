@@ -7,7 +7,6 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
-from frappe.utils.html_utils import clean_html
 
 
 class StockSettings(Document):
@@ -17,7 +16,6 @@ class StockSettings(Document):
 		self.make_property_setters()
 		self.validate_warehouses()
 		self.cant_change_valuation_method()
-		self.validate_clean_description_html()
 
 		if cint(self.enable_dynamic_bundling):
 			make_bundling_fields()
@@ -72,20 +70,6 @@ class StockSettings(Document):
 
 			if sle:
 				frappe.throw(_("Can't change valuation method, as there are transactions against some items which does not have it's own valuation method"))
-
-	def validate_clean_description_html(self):
-		if int(self.clean_description_html or 0) \
-			and not int(self.db_get("clean_description_html") or 0):
-			# changed to text
-			frappe.enqueue("erpnext.stock.doctype.stock_settings.stock_settings.clean_all_descriptions", now=frappe.flags.in_test)
-
-
-def clean_all_descriptions():
-	for item in frappe.get_all("Item", ["name", "description"]):
-		if item.description:
-			clean_description = clean_html(item.description)
-		if item.description != clean_description:
-			frappe.db.set_value("Item", item.name, "description", clean_description)
 
 
 def make_bundling_fields():
