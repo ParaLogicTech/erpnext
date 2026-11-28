@@ -133,32 +133,30 @@ jobs:
             cat "$f"
           done
 
-  # One fresh site per module: tests leave data behind, and a module's tests mustn't depend on another's
+  # Modules are grouped into a few jobs, so a push doesn't take most of the organisation's concurrent jobs. Each
+  # module still starts from a fresh site: tests leave data behind, and a module's tests mustn't depend on another's
   test:
-    name: Test (${{ matrix.module }})
+    name: Test (${{ matrix.name }})
     runs-on: ubuntu-24.04
     timeout-minutes: 60
 
     strategy:
       fail-fast: false
       matrix:
-        # Module Defs in modules.txt that have tests (ERPNext Integrations has none)
-        module:
-          - Accounts
-          - Assets
-          - Buying
-          - HR
-          - Maintenance
-          - Manufacturing
-          - Projects
-          - Quality Management
-          - Regional
-          - Selling
-          - Setup
-          - Stock
-          - Support
-          - Utilities
-          - Vehicles
+        # Every Module Def in modules.txt with tests (ERPNext Integrations has none), grouped by how long they run
+        include:
+          - name: Stock
+            modules: Stock
+          - name: Accounts
+            modules: Accounts
+          - name: Setup
+            modules: Setup
+          - name: Selling, Buying, HR
+            modules: Selling,Buying,HR
+          - name: Manufacturing, Projects, Assets
+            modules: Manufacturing,Projects,Assets
+          - name: Maintenance and smaller modules
+            modules: Maintenance,Vehicles,Support,Regional,Quality Management,Utilities
 
     services:
       mariadb:
@@ -182,10 +180,14 @@ jobs:
           crm_branch: ${{ inputs.crm_branch }}
           github_token: ${{ github.token }}
 
-      # Printing (e.g. emailed salary slips) needs frappe's built assets
+      # Printing (e.g. emailed salary slips) needs frappe's built assets and wkhtmltopdf, installed as in frappe's CI
       - name: Build
         working-directory: /home/runner/frappe-bench
-        run: bench build --app frappe
+        run: |
+          bench build --app frappe
+          wget -q --tries=3 --waitretry=5 --retry-connrefused https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb
+          sudo apt-get -qq install -y --no-install-recommends ./wkhtmltox_0.12.6.1-2.jammy_amd64.deb
+          wkhtmltopdf --version
 
       # The mail settings only give sendmail a default outgoing account: nothing is sent, as the scheduler doesn't run
       - name: Run Tests
@@ -197,9 +199,35 @@ jobs:
           bench --site test_site set-config mail_login test@example.com
           bench --site test_site set-config mail_password test
           bench --site test_site set-config auto_email_id test@example.com
-          bench --site test_site run-tests --app erpnext --module-def "${MODULE}"
+
+          # the site as set up for tests, restored before each module after the first
+          bench --site test_site backup --backup-path /home/runner/fresh-site
+          fresh_site=$(ls /home/runner/fresh-site/*-database.sql.gz)
+
+          IFS="," read -ra modules <<< "${MODULES}"
+          failed=()
+          for i in "${!modules[@]}"; do
+            module="${modules[$i]}"
+
+            if [ "$i" -gt 0 ]; then
+              # jobs queued by the previous module, its data, the record log and cached values
+              bench --site test_site purge-jobs
+              bench --site test_site restore "${fresh_site}" --db-root-username root --db-root-password root
+              rm -f sites/test_site/.test_log
+              bench --site test_site clear-cache
+            fi
+
+            echo "::group::${module}"
+            bench --site test_site run-tests --app erpnext --module-def "${module}" || failed+=("${module}")
+            echo "::endgroup::"
+          done
+
+          if [ "${#failed[@]}" -gt 0 ]; then
+            echo "::error::Failed modules: ${failed[*]}"
+            exit 1
+          fi
         env:
-          MODULE: ${{ matrix.module }}
+          MODULES: ${{ matrix.modules }}
 
       - name: Show bench output
         if: ${{ always() }}
