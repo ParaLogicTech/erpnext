@@ -371,8 +371,8 @@ class TestWorkOrder(unittest.TestCase):
 		test_stock_entry.make_stock_entry(item_code="_Test FG Item 1",
 			target="_Test Warehouse - _TC", qty=1, basic_rate=100)
 
-		if not frappe.db.get_value("BOM", {"item": fg_item}):
-			make_bom(item=fg_item, raw_materials=["_Test FG Item", "_Test FG Item 1"])
+		# a new default BOM, so its rows follow the items' settings above
+		make_bom(item=fg_item, raw_materials=["_Test FG Item", "_Test FG Item 1"])
 
 		# Items that skip the transfer are taken from their source warehouse, where the stock entries above put them
 		wo = make_wo_order_test_record(production_item=fg_item, source_warehouse="_Test Warehouse - _TC")

@@ -258,6 +258,7 @@ def make_bom(**args):
 			"uom": item_doc.stock_uom,
 			"stock_uom": item_doc.stock_uom,
 			"rate": item_doc.valuation_rate or args.rate,
+			"skip_transfer_for_manufacture": item_doc.skip_transfer_for_manufacture,
 		})
 
 	bom.insert(ignore_permissions=True)

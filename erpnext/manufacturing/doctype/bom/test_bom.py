@@ -82,15 +82,19 @@ class TestBOM(unittest.TestCase):
 		bom = frappe.copy_doc(test_records[2])
 		bom.insert()
 
-		# test amounts in selected currency
-		self.assertEqual(bom.operating_cost, 100)
-		self.assertEqual(bom.raw_material_cost, 351.68)
-		self.assertEqual(bom.total_cost, 451.68)
+		# raw material rates come from valuation rates that other tests change, so the totals are checked against the rows
+		raw_material_cost = sum(row.amount for row in bom.items)
+		base_raw_material_cost = raw_material_cost * bom.conversion_rate
 
 		# test amounts in selected currency
+		self.assertEqual(bom.operating_cost, 100)
+		self.assertAlmostEqual(bom.raw_material_cost, raw_material_cost)
+		self.assertAlmostEqual(bom.total_cost, raw_material_cost + 100)
+
+		# test amounts in company currency
 		self.assertEqual(bom.base_operating_cost, 6000)
-		self.assertEqual(bom.base_raw_material_cost, 21100.80)
-		self.assertEqual(bom.base_total_cost, 27100.80)
+		self.assertAlmostEqual(bom.base_raw_material_cost, base_raw_material_cost)
+		self.assertAlmostEqual(bom.base_total_cost, base_raw_material_cost + 6000)
 
 	def test_bom_cost_multi_uom_multi_currency_based_on_price_list(self):
 		for item_code, rate in (("_Test Item", 3600), ("_Test Item Home Desktop Manufactured", 3000)):
@@ -141,7 +145,7 @@ class TestBOM(unittest.TestCase):
 
 		# Valuation rate 200 per stock UOM, in the BOM's currency (1 USD = 60)
 		self.assertEqual(bom.items[0].conversion_factor, 10)
-		self.assertEqual(bom.items[0].rate, flt(200 * 10 / 60, bom.items[0].precision("rate")))
+		self.assertEqual(flt(bom.items[0].rate, 9), flt(200 * 10 / 60, 9))
 
 
 def get_default_bom(item_code="_Test FG Item 2"):
