@@ -1,0 +1,160 @@
+name: Setup Bench
+description: Creates a bench with ParaLogic's frappe, payments, crm and this erpnext checkout, and a test site ready for tests
+
+inputs:
+  frappe_repo:
+    description: "Frappe repository, unless the PR's description names a frappe PR"
+    default: "ParaLogicTech/frappe"
+  frappe_branch:
+    description: "Frappe branch"
+    default: "version-15"
+  crm_repo:
+    description: "CRM repository, unless the PR's description names a crm PR"
+    default: "ParaLogicTech/crm"
+  crm_branch:
+    description: "CRM branch"
+    default: "version-15"
+  github_token:
+    description: "Token to read this PR's description and the PRs it depends on"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        check-latest: true
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+
+    - name: Get yarn cache directory path
+      id: yarn-cache-dir-path
+      shell: bash
+      run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+    - uses: actions/cache@v4
+      with:
+        path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-yarn-
+
+    # Redis comes from Ubuntu and is started by `bench start`, as in frappe's CI
+    - name: Install System Dependencies
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y redis-server mariadb-client
+
+    # A PR that needs an unmerged frappe or crm change names it in its description:
+    # "Depends on ParaLogicTech/frappe#123", "Depends on ParaLogicTech/crm#45".
+    # The description is read when the job runs (not from the event), so a re-run picks up an edited description.
+    # Once that PR is merged, its branch may be deleted, so version-15 is used again.
+    - name: Find Frappe and CRM Branches
+      id: branches
+      shell: bash
+      run: |
+        body=""
+        if [ -n "${PR_NUMBER}" ]; then
+          body=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq ".body // \"\"")
+        fi
+
+        find_branch() {
+          local app="$1" repo="$2" branch="$3"
+          local app_pr merged head_repo head_ref
+
+          app_pr=$(grep -ioE "depends on ParaLogicTech/${app}#[0-9]+" <<< "${body}" | head -n 1 | grep -oE "[0-9]+$" || true)
+
+          if [ -n "${app_pr}" ]; then
+            if ! pr_info=$(gh api "repos/ParaLogicTech/${app}/pulls/${app_pr}" \
+              --jq "[(.merged | tostring), .head.repo.full_name // \"\", .head.ref] | join(\"\u001f\")"); then
+              echo "::error::Can't read ParaLogicTech/${app}#${app_pr}, named in this PR's description"
+              exit 1
+            fi
+
+            # Split on the unit separator: tabs or spaces would merge an empty head repo into the next field
+            IFS=$'\x1f' read -r merged head_repo head_ref <<< "${pr_info}"
+
+            if [ "${merged}" = "true" ]; then
+              echo "ParaLogicTech/${app}#${app_pr} is merged, using ${repo}@${branch}"
+            elif [ -z "${head_repo}" ]; then
+              echo "::error::The head repository of ParaLogicTech/${app}#${app_pr} no longer exists"
+              exit 1
+            else
+              repo="${head_repo}"
+              branch="${head_ref}"
+            fi
+          fi
+
+          echo "Testing against ${app} from ${repo}@${branch}"
+          echo "${app}_repo=${repo}" >> "${GITHUB_OUTPUT}"
+          echo "${app}_branch=${branch}" >> "${GITHUB_OUTPUT}"
+        }
+
+        find_branch frappe "${INPUT_FRAPPE_REPO:-ParaLogicTech/frappe}" "${INPUT_FRAPPE_BRANCH:-version-15}"
+        find_branch crm "${INPUT_CRM_REPO:-ParaLogicTech/crm}" "${INPUT_CRM_BRANCH:-version-15}"
+      env:
+        GH_TOKEN: ${{ inputs.github_token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        INPUT_FRAPPE_REPO: ${{ inputs.frappe_repo }}
+        INPUT_FRAPPE_BRANCH: ${{ inputs.frappe_branch }}
+        INPUT_CRM_REPO: ${{ inputs.crm_repo }}
+        INPUT_CRM_BRANCH: ${{ inputs.crm_branch }}
+
+    # erpnext depends on ParaLogic's frappe fork, not stock frappe
+    - name: Setup Bench
+      shell: bash
+      run: |
+        pip install frappe-bench
+        bench init --skip-assets --python "$(which python)" \
+          --frappe-path "https://github.com/${FRAPPE_REPO}" --frappe-branch "${FRAPPE_BRANCH}" ~/frappe-bench
+        mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
+        mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
+      env:
+        FRAPPE_REPO: ${{ steps.branches.outputs.frappe_repo }}
+        FRAPPE_BRANCH: ${{ steps.branches.outputs.frappe_branch }}
+
+    # Installing erpnext installs its required_apps (payments, crm) first, so they're fetched before it
+    - name: Install
+      shell: bash
+      working-directory: /home/runner/frappe-bench
+      run: |
+        bench get-app --skip-assets --branch version-15 https://github.com/frappe/payments
+        bench get-app --skip-assets --branch "${CRM_BRANCH}" "https://github.com/${CRM_REPO}"
+        bench get-app --skip-assets erpnext "${GITHUB_WORKSPACE}"
+        bench setup requirements --dev
+
+        sed -i 's/^watch:/# watch:/g' Procfile
+        sed -i 's/^schedule:/# schedule:/g' Procfile
+        sed -i 's/^socketio:/# socketio:/g' Procfile
+        sed -i 's/^redis_socketio:/# redis_socketio:/g' Procfile
+        bench start &> bench_start.log &
+
+        for port in 13000 11000; do
+          timeout 60 bash -c "until redis-cli -p $port ping; do sleep 1; done"
+        done
+
+        bench new-site --db-host 127.0.0.1 --db-root-password root --admin-password admin test_site
+        bench --site test_site install-app erpnext
+      env:
+        CI: "Yes"
+        CRM_REPO: ${{ steps.branches.outputs.crm_repo }}
+        CRM_BRANCH: ${{ steps.branches.outputs.crm_branch }}
+
+    # The setup every test run needs: setup wizard (company, chart of accounts, fiscal year), roles and domains
+    - name: Setup for Tests
+      shell: bash
+      working-directory: /home/runner/frappe-bench
+      run: bench --site test_site execute erpnext.setup.utils.before_tests
