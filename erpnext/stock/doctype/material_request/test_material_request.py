@@ -7,6 +7,7 @@
 import unittest
 
 import frappe
+from frappe.tests.utils import change_settings
 from frappe.utils import flt, today
 
 import erpnext
@@ -17,6 +18,8 @@ from erpnext.stock.doctype.material_request.material_request import (
 	make_supplier_quotation,
 	raise_work_orders,
 )
+from erpnext.stock.stock_balance import get_indented_qty, update_bin_qty
+from erpnext.tests.utils import assert_raises_and_rollback
 
 
 class TestMaterialRequest(unittest.TestCase):
@@ -60,6 +63,15 @@ class TestMaterialRequest(unittest.TestCase):
 
 		self.assertEqual(se.doctype, "Stock Entry")
 		self.assertEqual(len(se.get("items")), len(mr.get("items")))
+
+	def update_requested_qty(self, item_codes, warehouse):
+		"""Recalculates requested qty in Bins, e.g. after changing how it's calculated"""
+		for item_code in item_codes:
+			update_bin_qty(item_code, warehouse, {"indented_qty": get_indented_qty(item_code, warehouse)})
+
+	def update_mr_status(self, mr, status):
+		mr.load_from_db()
+		mr.update_status(status)
 
 	def _insert_stock_entry(self, qty1, qty2, warehouse=None):
 		se = frappe.get_doc({
@@ -190,7 +202,9 @@ class TestMaterialRequest(unittest.TestCase):
 		mr.insert()
 		self.assertRaises(frappe.InvalidStatusError, mr.update_status, "Stopped")
 
+	@change_settings("Stock Settings", {"no_partial_indent": 0})
 	def test_completed_qty_for_purchase(self):
+		self.update_requested_qty(["_Test Item Home Desktop 100", "_Test Item Home Desktop 200"], "_Test Warehouse - _TC")
 		existing_requested_qty_item1 = self._get_requested_qty("_Test Item Home Desktop 100", "_Test Warehouse - _TC")
 		existing_requested_qty_item2 = self._get_requested_qty("_Test Item Home Desktop 200", "_Test Warehouse - _TC")
 
@@ -210,17 +224,23 @@ class TestMaterialRequest(unittest.TestCase):
 		po_doc.get("items")[1].schedule_date = "2013-07-09"
 
 		# check for stopped status of Material Request
+		# documents are reloaded after each step because ordering updates the Material Request, and a failed
+		# submit or cancel is rolled back
 		po = frappe.copy_doc(po_doc)
 		po.insert()
-		po.load_from_db()
-		mr.update_status("Stopped")
-		self.assertRaises(frappe.InvalidStatusError, po.submit)
-		po.db_set("docstatus", 1)
-		self.assertRaises(frappe.InvalidStatusError, po.cancel)
+		self.update_mr_status(mr, "Stopped")
+		assert_raises_and_rollback(self, frappe.InvalidStatusError, po.submit)
+
+		self.update_mr_status(mr, "Submitted")
+		po.reload()
+		po.submit()
+		self.update_mr_status(mr, "Stopped")
+		assert_raises_and_rollback(self, frappe.InvalidStatusError, po.cancel)
 
 		# resubmit and check for per complete
-		mr.load_from_db()
-		mr.update_status("Submitted")
+		self.update_mr_status(mr, "Submitted")
+		po.reload()
+		po.cancel()
 		po = frappe.copy_doc(po_doc)
 		po.insert()
 		po.submit()
@@ -250,7 +270,9 @@ class TestMaterialRequest(unittest.TestCase):
 		self.assertEqual(current_requested_qty_item1, existing_requested_qty_item1 + 54.0)
 		self.assertEqual(current_requested_qty_item2, existing_requested_qty_item2 + 3.0)
 
+	@change_settings("Stock Settings", {"no_partial_indent": 0})
 	def test_completed_qty_for_transfer(self):
+		self.update_requested_qty(["_Test Item Home Desktop 100", "_Test Item Home Desktop 200"], "_Test Warehouse - _TC")
 		existing_requested_qty_item1 = self._get_requested_qty("_Test Item Home Desktop 100", "_Test Warehouse - _TC")
 		existing_requested_qty_item2 = self._get_requested_qty("_Test Item Home Desktop 200", "_Test Warehouse - _TC")
 
@@ -296,19 +318,21 @@ class TestMaterialRequest(unittest.TestCase):
 		self._insert_stock_entry(27.0, 1.5)
 
 		# check for stopped status of Material Request
+		# documents are reloaded after each step because a failed submit or cancel is rolled back
 		se = frappe.copy_doc(se_doc)
 		se.insert()
-		mr.update_status("Stopped")
-		self.assertRaises(frappe.InvalidStatusError, se.submit)
+		self.update_mr_status(mr, "Stopped")
+		assert_raises_and_rollback(self, frappe.InvalidStatusError, se.submit)
 
-		mr.update_status("Submitted")
-
-		se.flags.ignore_validate_update_after_submit = True
+		self.update_mr_status(mr, "Submitted")
+		se.reload()
 		se.submit()
-		mr.update_status("Stopped")
-		self.assertRaises(frappe.InvalidStatusError, se.cancel)
+		self.update_mr_status(mr, "Stopped")
+		assert_raises_and_rollback(self, frappe.InvalidStatusError, se.cancel)
 
-		mr.update_status("Submitted")
+		self.update_mr_status(mr, "Submitted")
+		se.reload()
+		se.cancel()
 		se = frappe.copy_doc(se_doc)
 		se.insert()
 		se.submit()
@@ -376,11 +400,10 @@ class TestMaterialRequest(unittest.TestCase):
 		se = frappe.copy_doc(se_doc)
 		se.set_stock_entry_type()
 		se.insert()
-		mr.update_status("Stopped")
-		self.assertRaises(frappe.InvalidStatusError, se.submit)
-		self.assertRaises(frappe.InvalidStatusError, se.cancel)
+		self.update_mr_status(mr, "Stopped")
+		assert_raises_and_rollback(self, frappe.InvalidStatusError, se.submit)
 
-		mr.update_status("Submitted")
+		self.update_mr_status(mr, "Submitted")
 		se = frappe.copy_doc(se_doc)
 		se.set_stock_entry_type()
 		se.insert()
@@ -538,7 +561,19 @@ class TestMaterialRequest(unittest.TestCase):
 			item_code= %s and warehouse= %s """, (mr.items[0].item_code, mr.items[0].warehouse))[0][0]
 		self.assertEqual(requested_qty, new_requested_qty)
 
+	@change_settings("Stock Settings", {"no_partial_indent": 0})
 	def test_requested_qty_multi_uom(self):
+		self.update_requested_qty(["_Test FG Item"], "_Test Warehouse - _TC")
+		if not frappe.db.get_value("UOM Conversion Detail", {"parent": "_Test FG Item", "uom": "_Test UOM 1"}):
+			item_doc = frappe.get_doc("Item", "_Test FG Item")
+			item_doc.append("uom_conversion_graph", {
+				"from_qty": 1,
+				"from_uom": "_Test UOM 1",
+				"to_qty": 12,  # conversion factor
+				"to_uom": item_doc.stock_uom,
+			})
+			item_doc.save(ignore_permissions=True)
+
 		existing_requested_qty = self._get_requested_qty("_Test FG Item", "_Test Warehouse - _TC")
 
 		mr = make_material_request(item_code="_Test FG Item", material_request_type="Manufacture",
@@ -581,7 +616,7 @@ class TestMaterialRequest(unittest.TestCase):
 				"to_qty": 5,  # conversion factor
 				"to_uom": item_doc.stock_uom,
 			})
-		item_doc.save(ignore_permissions=True)
+			item_doc.save(ignore_permissions=True)
 
 		item.uom = "Kg"
 		for item in mr.items:
@@ -633,10 +668,11 @@ def make_material_request(**args):
 	mr.material_request_type = args.material_request_type or "Purchase"
 	mr.company = args.company or "_Test Company"
 	mr.customer = args.customer or "_Test Customer"
+	item_code = args.item_code or "_Test Item"
 	mr.append("items", {
-		"item_code": args.item_code or "_Test Item",
+		"item_code": item_code,
 		"qty": args.qty or 10,
-		"uom": args.uom or "_Test UOM",
+		"uom": args.uom or frappe.get_cached_value("Item", item_code, "stock_uom"),
 		"conversion_factor": args.conversion_factor or 1,
 		"schedule_date": args.schedule_date or today(),
 		"warehouse": args.warehouse or "_Test Warehouse - _TC",

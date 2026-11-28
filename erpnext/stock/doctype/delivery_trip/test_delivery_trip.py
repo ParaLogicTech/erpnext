@@ -25,7 +25,7 @@ class TestDeliveryTrip(unittest.TestCase):
 	def tearDown(self):
 		frappe.db.sql("delete from `tabDriver`")
 		frappe.db.sql("delete from `tabVehicle`")
-		frappe.db.sql("delete from `tabEmail Template`")
+		frappe.db.delete("Email Template", {"name": "Delivery Notification"})
 		frappe.db.sql("delete from `tabDelivery Trip`")
 
 	def test_delivery_trip_notify_customers(self):

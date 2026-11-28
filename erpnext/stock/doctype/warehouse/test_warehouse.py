@@ -30,9 +30,11 @@ class TestWarehouse(unittest.TestCase):
 		child_warehouses = frappe.db.sql("""select name, is_group, parent_warehouse from `tabWarehouse` wh
 			where wh.lft > %s and wh.rgt < %s""", (p_warehouse.lft, p_warehouse.rgt), as_dict=1)
 
+		# other tests add warehouses and groups under it, so check the tree is consistent, not its contents
+		self.assertTrue(child_warehouses)
+		groups = [p_warehouse.name] + [d.name for d in child_warehouses if d.is_group]
 		for child_warehouse in child_warehouses:
-			self.assertEqual(p_warehouse.name, child_warehouse.parent_warehouse)
-			self.assertEqual(child_warehouse.is_group, 0)
+			self.assertIn(child_warehouse.parent_warehouse, groups)
 
 	def test_warehouse_renaming(self):
 		set_perpetual_inventory(1)

@@ -66,4 +66,12 @@ def assert_raises_and_rollback(test_case, exception, method, *args, **kwargs):
 	try:
 		test_case.assertRaises(exception, method, *args, **kwargs)
 	finally:
-		frappe.db.rollback(save_point="assert_raises")
+		rollback_to_savepoint("assert_raises")
+
+
+def rollback_to_savepoint(save_point):
+	"""Rolls back to a savepoint, and forgets the vouchers reposted since then. The stock ledger keeps them in
+	frappe.flags until GL Entries are updated, and would otherwise look for the rolled back vouchers later."""
+	frappe.db.rollback(save_point=save_point)
+	frappe.flags.stock_ledger_vouchers_reposted = None
+	frappe.flags.stock_ledger_vouchers_value_changed = None

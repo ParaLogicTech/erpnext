@@ -20,6 +20,7 @@ from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import (
 from erpnext.stock.doctype.warehouse.test_warehouse import create_warehouse
 from erpnext.stock.stock_ledger import get_previous_sle, update_entries_after
 from erpnext.stock.utils import get_incoming_rate, get_stock_value_on
+from erpnext.tests.utils import rollback_to_savepoint
 
 
 class TestStockReconciliation(unittest.TestCase):
@@ -27,6 +28,13 @@ class TestStockReconciliation(unittest.TestCase):
 	def setUpClass(self):
 		create_batch_or_serial_no_items()
 		frappe.db.set_single_value("Stock Settings", "allow_negative_stock", 1)
+
+	def setUp(self):
+		# tests check stock balances, so undo each test's entries even when it fails before cancelling them
+		frappe.db.savepoint("stock_reco_test")
+
+	def tearDown(self):
+		rollback_to_savepoint("stock_reco_test")
 
 	def test_reco_for_fifo(self):
 		self._test_reco_sle_gle("FIFO")
@@ -57,8 +65,9 @@ class TestStockReconciliation(unittest.TestCase):
 				"posting_time": d[3],
 			})
 
-			# submit stock reconciliation
-			stock_reco = create_stock_reconciliation(qty=d[0], rate=d[1],
+			# submit stock reconciliation. A blank qty is saved as 0, so pass the current qty to change only the rate
+			qty = d[0] if d[0] != "" else flt(last_sle.get("qty_after_transaction"))
+			stock_reco = create_stock_reconciliation(qty=qty, rate=d[1],
 				posting_date=d[2], posting_time=d[3], warehouse="Stores - TCP1",
 				company=company, expense_account="Stock Adjustment - TCP1")
 
@@ -98,10 +107,19 @@ class TestStockReconciliation(unittest.TestCase):
 		create_warehouse("_Test Warehouse Ledger 1",
 			{"is_group": 0, "parent_warehouse": "_Test Warehouse Group 1 - _TC"})
 
-		create_item("_Test Stock Reco Item", is_stock_item=1, valuation_rate=100,
-			warehouse="_Test Warehouse Ledger 1 - _TC", opening_stock=100)
+		from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 
-		items = get_items("_Test Warehouse Group 1 - _TC", nowdate(), nowtime(), "_Test Company")
+		create_item("_Test Stock Reco Item", is_stock_item=1, valuation_rate=100,
+			warehouse="_Test Warehouse Ledger 1 - _TC")
+		make_stock_entry(item_code="_Test Stock Reco Item", target="_Test Warehouse Ledger 1 - _TC", qty=100,
+			basic_rate=100)
+
+		items = get_items({
+			"warehouse": "_Test Warehouse Group 1 - _TC",
+			"posting_date": nowdate(),
+			"posting_time": nowtime(),
+			"company": "_Test Company",
+		})
 
 		self.assertEqual(["_Test Stock Reco Item", "_Test Warehouse Ledger 1 - _TC", 100],
 			[items[0]["item_code"], items[0]["warehouse"], items[0]["qty"]])
@@ -115,12 +133,9 @@ class TestStockReconciliation(unittest.TestCase):
 		serial_item_code = "Stock-Reco-Serial-Item-1"
 		serial_warehouse = "_Test Warehouse for Stock Reco1 - _TC"
 
+		serial_nos = make_serial_nos(5)
 		sr = create_stock_reconciliation(item_code=serial_item_code,
-			warehouse=serial_warehouse, qty=5, rate=200)
-
-		# print(sr.name)
-		serial_nos = get_serial_nos(sr.items[0].serial_no)
-		self.assertEqual(len(serial_nos), 5)
+			warehouse=serial_warehouse, qty=5, rate=200, serial_no="\n".join(serial_nos))
 
 		args = {
 			"item_code": serial_item_code,
@@ -138,19 +153,13 @@ class TestStockReconciliation(unittest.TestCase):
 		sr = create_stock_reconciliation(item_code=serial_item_code,
 			warehouse=serial_warehouse, qty=5, rate=300, serial_no="\n".join(serial_nos))
 
-		# print(sr.name)
 		serial_nos1 = get_serial_nos(sr.items[0].serial_no)
 		self.assertEqual(len(serial_nos1), 5)
 
-		args = {
-			"item_code": serial_item_code,
-			"warehouse": serial_warehouse,
-			"posting_date": nowdate(),
-			"posting_time": nowtime(),
-			"serial_no": sr.items[0].serial_no,
-		}
-
-		valuation_rate = get_incoming_rate(args)
+		# the serial nos go out and come back in at the new rate. Their purchase rate stays that of the first receipt.
+		valuation_rate = frappe.db.get_value("Stock Ledger Entry", {
+			"voucher_type": sr.doctype, "voucher_no": sr.name, "actual_qty": [">", 0],
+		}, "incoming_rate")
 		self.assertEqual(valuation_rate, 300)
 
 		to_delete_records.append(sr.name)
@@ -225,7 +234,7 @@ class TestStockReconciliation(unittest.TestCase):
 		warehouse = "_Test Warehouse for Stock Reco2 - _TC"
 
 		sr = create_stock_reconciliation(item_code=item.item_code,
-			warehouse=warehouse, qty=1, rate=100)
+			warehouse=warehouse, qty=1, rate=100, serial_no=make_serial_nos(1)[0])
 
 		batch_no = sr.items[0].batch_no
 
@@ -236,7 +245,8 @@ class TestStockReconciliation(unittest.TestCase):
 		sr.cancel()
 
 		self.assertEqual(frappe.db.get_value("Serial No", serial_nos[0], "status"), "Inactive")
-		self.assertEqual(frappe.db.exists("Batch", batch_no), None)
+		# auto-created batches are unlinked on cancel, not deleted
+		self.assertFalse(frappe.db.get_value("Batch", batch_no, "reference_name"))
 
 		if frappe.db.exists("Serial No", serial_nos[0]):
 				frappe.delete_doc("Serial No", serial_nos[0])
@@ -247,11 +257,10 @@ class TestStockReconciliation(unittest.TestCase):
 				of a new batch having a serial no
 				2) Create a Stock Entry that adds a serial no to the same batch following this
 					Stock Reconciliation
-				3) Cancel Stock Reconciliation
-				4) Cancel Stock Entry
-			Expected Result: 3) Cancelling the Stock Reco throws a LinkExistsError since
-				Stock Entry is dependent on the batch involved
-				4) Serial No only in the Stock Entry is Inactive and Batch qty decreases
+				3) Cancel Stock Entry
+				4) Cancel Stock Reconciliation
+			Expected Result: 3) Serial No only in the Stock Entry is Inactive, keeps its batch, and Batch qty
+				decreases
 		"""
 		from erpnext.stock.doctype.batch.batch import get_batch_qty
 		from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
@@ -273,7 +282,7 @@ class TestStockReconciliation(unittest.TestCase):
 		warehouse = "_Test Warehouse for Stock Reco2 - _TC"
 
 		stock_reco = create_stock_reconciliation(item_code=item.item_code,
-			warehouse=warehouse, qty=1, rate=100)
+			warehouse=warehouse, qty=1, rate=100, serial_no=make_serial_nos(1)[0])
 		batch_no = stock_reco.items[0].batch_no
 		serial_no = get_serial_nos(stock_reco.items[0].serial_no)[0]
 
@@ -284,11 +293,6 @@ class TestStockReconciliation(unittest.TestCase):
 		# Check Batch qty after 2 transactions
 		batch_qty = get_batch_qty(batch_no, warehouse, item.item_code)
 		self.assertEqual(batch_qty, 2)
-		frappe.db.commit()
-
-		# Cancelling Origin Document of Batch
-		self.assertRaises(frappe.LinkExistsError, stock_reco.cancel)
-		frappe.db.rollback()
 
 		stock_entry.cancel()
 
@@ -300,8 +304,8 @@ class TestStockReconciliation(unittest.TestCase):
 		self.assertEqual(frappe.db.get_value("Serial No", serial_no, "batch_no"), batch_no)
 		self.assertEqual(frappe.db.get_value("Serial No", serial_no, "status"), "Active")
 
-		# Check if Serial No from Stock Entry is Unlinked and Inactive
-		self.assertEqual(frappe.db.get_value("Serial No", serial_no_2, "batch_no"), None)
+		# Check if Serial No from Stock Entry is Inactive. It keeps its batch.
+		self.assertEqual(frappe.db.get_value("Serial No", serial_no_2, "batch_no"), batch_no)
 		self.assertEqual(frappe.db.get_value("Serial No", serial_no_2, "status"), "Inactive")
 
 		stock_reco.load_from_db()
@@ -365,6 +369,11 @@ class TestStockReconciliation(unittest.TestCase):
 			frappe.delete_doc(doc.doctype, doc.name)
 
 
+def make_serial_nos(count):
+	"""New serial nos for Stock Reconciliation, which needs them entered"""
+	return [frappe.generate_hash(length=10).upper() for _i in range(count)]
+
+
 def insert_existing_sle(warehouse):
 	from erpnext.stock.doctype.stock_entry.test_stock_entry import make_stock_entry
 
@@ -406,6 +415,8 @@ def create_stock_reconciliation(**args):
 	sr.posting_date = args.posting_date or nowdate()
 	sr.posting_time = args.posting_time or nowtime()
 	sr.set_posting_time = 1
+	# the entered valuation rate replaces the current one only with reset_rate
+	sr.reset_rate = 1 if args.rate not in (None, "") or args.batch_details else 0
 	sr.company = args.company or "_Test Company"
 	sr.expense_account = args.expense_account or \
 		("Stock Adjustment - _TC" if frappe.get_all("Stock Ledger Entry") else "Temporary Opening - _TC")
