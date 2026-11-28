@@ -609,44 +609,45 @@ class TestSalesInvoice(unittest.TestCase):
 
 		si.insert()
 
+		# the rate is computed from the price list rate: 55.56 less 10% is 50.004
 		expected_values = [
 			{
 				"item_code": "_Test Item Home Desktop 100",
 				"price_list_rate": 55.56,
-				"tax_exclusive_price_list_rate": 44.44586659840328,
+				"tax_exclusive_price_list_rate": 44.4458666,
 				"discount_percentage": 10,
-				"rate": 50,
-				"tax_exclusive_rate": 39.998080092155575,
-				"amount": 500,
-				"tax_exclusive_amount": 399.9808009215558,
+				"rate": 50.004,
+				"tax_exclusive_rate": 40.0012799,
+				"amount": 500.04,
+				"tax_exclusive_amount": 400.0127994,
 				"base_price_list_rate": 2778,
 				"base_tax_exclusive_price_list_rate": 2222.5,
 				"base_rate": 2500,
 				"base_tax_exclusive_rate": 2000,
-				"base_amount": 25000,
-				"base_tax_exclusive_amount": 19999,
+				"base_amount": 25002,
+				"base_tax_exclusive_amount": 20000.5,
 				"net_rate": 40,
-				"net_amount": 399.9808009215558,
+				"net_amount": 400.0127994,
 				"base_net_rate": 2000,
-				"base_net_amount": 19999,
+				"base_net_amount": 20000.5,
 				"amount_before_discount": 555.6,
-				"tax_exclusive_amount_before_discount": 444.46,
-				"total_discount": 55.6,
-				"tax_exclusive_total_discount": 44.48,
+				"tax_exclusive_amount_before_discount": 444.4586660,
+				"total_discount": 55.56,
+				"tax_exclusive_total_discount": 44.45,
 				"base_amount_before_discount": 27780,
 				"base_tax_exclusive_amount_before_discount": 22223,
-				"base_total_discount": 2780,
-				"base_tax_exclusive_total_discount": 2224,
+				"base_total_discount": 2778,
+				"base_tax_exclusive_total_discount": 2222.5,
 			},
 			{
 				"item_code": "_Test Item Home Desktop 200",
 				"price_list_rate": 187.5,
-				"tax_exclusive_price_list_rate": 147.51328012889908,
+				"tax_exclusive_price_list_rate": 147.5132801,
 				"discount_percentage": 20,
 				"rate": 150,
-				"tax_exclusive_rate": 118.01062410311927,
+				"tax_exclusive_rate": 118.0106241,
 				"amount": 750,
-				"tax_exclusive_amount": 590.0531205155963,
+				"tax_exclusive_amount": 590.0531205,
 				"base_price_list_rate": 9375,
 				"base_tax_exclusive_price_list_rate": 7375.5,
 				"base_rate": 7500,
@@ -654,17 +655,17 @@ class TestSalesInvoice(unittest.TestCase):
 				"base_amount": 37500,
 				"base_tax_exclusive_amount": 29502.5,
 				"net_rate": 118.01,
-				"net_amount": 590.0531205155963,
+				"net_amount": 590.0531205,
 				"base_net_rate": 5900.5,
 				"base_net_amount": 29502.5,
 				"amount_before_discount": 937.5,
-				"tax_exclusive_amount_before_discount": 737.57,
+				"tax_exclusive_amount_before_discount": 737.5664006,
 				"total_discount": 187.5,
-				"tax_exclusive_total_discount": 147.52,
+				"tax_exclusive_total_discount": 147.51,
 				"base_amount_before_discount": 46875,
 				"base_tax_exclusive_amount_before_discount": 36878.5,
 				"base_total_discount": 9375,
-				"base_tax_exclusive_total_discount": 7376,
+				"base_tax_exclusive_total_discount": 7375.5,
 			},
 		]
 
@@ -674,47 +675,50 @@ class TestSalesInvoice(unittest.TestCase):
 		# check if item values are calculated
 		for i, d in enumerate(si.get("items")):
 			for key, val in expected_values[i].items():
-				self.assertEqual(d.get(key), val)
+				if isinstance(val, str):
+					self.assertEqual(d.get(key), val)
+				else:
+					self.assertAlmostEqual(d.get(key), val, msg=key)
 
 		# check amounts before discount
 		self.assertEqual(si.total_before_discount, 1493.1)
 		self.assertEqual(si.tax_exclusive_total_before_discount, 1182.03)
-		self.assertEqual(si.total_discount, 243.1)
-		self.assertEqual(si.tax_exclusive_total_discount, 192)
+		self.assertEqual(si.total_discount, 243.06)
+		self.assertEqual(si.tax_exclusive_total_discount, 191.96)
 		self.assertEqual(si.base_total_before_discount, 74655)
 		self.assertEqual(si.base_tax_exclusive_total_before_discount, 59101.5)
-		self.assertEqual(si.base_total_discount, 12155)
-		self.assertEqual(si.base_tax_exclusive_total_discount, 9600)
+		self.assertEqual(si.base_total_discount, 12153)
+		self.assertEqual(si.base_tax_exclusive_total_discount, 9598)
 
 		# check net total
-		self.assertEqual(si.base_net_total, 49501.5)
-		self.assertEqual(si.net_total, 990.03)
-		self.assertEqual(si.base_tax_exclusive_total, 49501.5)
-		self.assertEqual(si.tax_exclusive_total, 990.03)
-		self.assertEqual(si.base_total, 62500)
-		self.assertEqual(si.total, 1250)
+		self.assertEqual(si.base_net_total, 49503)
+		self.assertEqual(si.net_total, 990.07)
+		self.assertEqual(si.base_tax_exclusive_total, 49503)
+		self.assertEqual(si.tax_exclusive_total, 990.07)
+		self.assertEqual(si.base_total, 62502)
+		self.assertEqual(si.total, 1250.04)
 
 		# check tax calculation
 		expected_values = {
 			"keys": ["base_tax_amount", "base_total", "tax_amount", "total"],
-			"_Test Account Excise Duty - _TC": [5540.0, 55041.5, 110.80, 1100.83],
-			"_Test Account Education Cess - _TC": [111, 55152.5, 2.22, 1103.05],
-			"_Test Account S&H Education Cess - _TC": [55.5, 55208.0, 1.11, 1104.16],
-			"_Test Account CST - _TC": [1104, 56312.0, 22.08, 1126.24],
-			"_Test Account VAT - _TC": [6187.5, 62499.5, 123.75, 1249.99],
-			"_Test Account Customs Duty - _TC": [4950.0, 67449.5, 99.0, 1348.99],
-			"_Test Account Shipping Charges - _TC": [100, 67549.5, 2, 1350.99],
-			"_Test Account Discount - _TC": [-6755, 60794.5, -135.10, 1215.89],
+			"_Test Account Excise Duty - _TC": [5540.5, 55044.0, 110.81, 1100.88],
+			"_Test Account Education Cess - _TC": [111, 55155.0, 2.22, 1103.1],
+			"_Test Account S&H Education Cess - _TC": [55.5, 55210.5, 1.11, 1104.21],
+			"_Test Account CST - _TC": [1104, 56314.5, 22.08, 1126.29],
+			"_Test Account VAT - _TC": [6188, 62502.5, 123.76, 1250.05],
+			"_Test Account Customs Duty - _TC": [4950.5, 67453.0, 99.01, 1349.06],
+			"_Test Account Shipping Charges - _TC": [100, 67553.0, 2, 1351.06],
+			"_Test Account Discount - _TC": [-6755, 60798.0, -135.10, 1215.96],
 		}
 
 		for d in si.get("taxes"):
 			for i, k in enumerate(expected_values["keys"]):
 				self.assertEqual(d.get(k), expected_values[d.account_head][i])
 
-		self.assertEqual(si.base_grand_total, 60795)
-		self.assertEqual(si.grand_total, 1215.90)
-		self.assertEqual(si.rounding_adjustment, 0.01)
-		self.assertEqual(si.base_rounding_adjustment, 0.50)
+		self.assertEqual(si.base_grand_total, 60797.5)
+		self.assertEqual(si.grand_total, 1215.95)
+		self.assertEqual(si.rounding_adjustment, -0.01)
+		self.assertEqual(si.base_rounding_adjustment, -0.5)
 
 	def test_outstanding(self):
 		w = self.make()
@@ -1916,13 +1920,18 @@ class TestSalesInvoice(unittest.TestCase):
 
 		gst_settings.save()
 
+		# the invoice's GST category is fetched from the customer on every save
+		old_gst_category = frappe.db.get_value("Customer", "_Test Customer", "gst_category")
+		frappe.db.set_value("Customer", "_Test Customer", "gst_category", "Registered Regular")
+		self.addCleanup(frappe.db.set_value, "Customer", "_Test Customer", "gst_category", old_gst_category)
+
 		si = create_sales_invoice(do_not_save=1, rate="60000")
 
 		si.distance = 2000
 		si.company_address = company_address
 		si.customer_address = customer_address
+		si.shipping_address_name = customer_address
 		si.vehicle_no = "KA12KA1234"
-		si.gst_category = "Registered Regular"
 
 		si.append("taxes", {
 			"charge_type": "On Net Total",
