@@ -61,6 +61,7 @@ class StockReconciliation(StockController):
 	def on_cancel(self):
 		self.update_stock_ledger()
 		self.make_gl_entries_on_cancel()
+		self.unlink_auto_created_batches()
 
 	@frappe.whitelist()
 	def update_item_details(self):
@@ -196,7 +197,7 @@ class StockReconciliation(StockController):
 				raise frappe.ValidationError(_("Serial No(s) is not required for item {0}").format(item_code))
 
 			if self._action == "submit":
-				if item.has_serial_no and not row.serial_no and not item.serial_no_series and flt(row.qty) > 0:
+				if item.has_serial_no and not row.serial_no and flt(row.total_qty) > 0:
 					raise frappe.ValidationError(_("Serial No(s) required for serialized item {0}").format(item_code))
 
 			# batch item
