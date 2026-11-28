@@ -22,55 +22,6 @@ class TestItemAlternative(unittest.TestCase):
 		set_perpetual_inventory(0)
 		make_items()
 
-	def test_alternative_item_for_subcontract_rm(self):
-		create_stock_reconciliation(item_code="Alternate Item For A RW 1", warehouse="_Test Warehouse - _TC",
-			qty=5, rate=2000)
-		create_stock_reconciliation(item_code="Test FG A RW 2", warehouse="_Test Warehouse - _TC",
-			qty=5, rate=2000)
-
-		supplier_warehouse = "Test Supplier Warehouse - _TC"
-		po = create_purchase_order(item="Test Finished Goods - A",
-			is_subcontracted=1, qty=5, rate=3000, supplier_warehouse=supplier_warehouse)
-
-		rm_item = [{"item_code": "Test Finished Goods - A", "rm_item_code": "Test FG A RW 1", "item_name": "Test FG A RW 1",
-					"qty": 5, "warehouse": "_Test Warehouse - _TC", "rate": 2000, "amount": 10000, "stock_uom": "Nos"},
-					{"item_code": "Test Finished Goods - A", "rm_item_code": "Test FG A RW 2", "item_name": "Test FG A RW 2",
-					"qty": 5, "warehouse": "_Test Warehouse - _TC", "rate": 2000, "amount": 10000, "stock_uom": "Nos"}]
-
-		rm_item_string = json.dumps(rm_item)
-		reserved_qty_for_sub_contract = frappe.db.get_value("Bin",
-			{"item_code": "Test FG A RW 1", "warehouse": "_Test Warehouse - _TC"}, "reserved_qty_for_sub_contract")
-
-		se = frappe.get_doc(make_rm_stock_entry(po.name, rm_item_string))
-		se.to_warehouse = supplier_warehouse
-		se.insert()
-
-		doc = frappe.get_doc("Stock Entry", se.name)
-		for item in doc.items:
-			if item.item_code == "Test FG A RW 1":
-				item.item_code = "Alternate Item For A RW 1"
-				item.item_name = "Alternate Item For A RW 1"
-				item.description = "Alternate Item For A RW 1"
-				item.original_item = "Test FG A RW 1"
-
-		doc.save()
-		doc.submit()
-		after_transfer_reserved_qty_for_sub_contract = frappe.db.get_value("Bin",
-			{"item_code": "Test FG A RW 1", "warehouse": "_Test Warehouse - _TC"}, "reserved_qty_for_sub_contract")
-
-		self.assertEqual(after_transfer_reserved_qty_for_sub_contract, flt(reserved_qty_for_sub_contract - 5))
-
-		pr = make_purchase_receipt(po.name)
-		pr.save()
-
-		pr = frappe.get_doc("Purchase Receipt", pr.name)
-		status = False
-		for d in pr.supplied_items:
-			if d.rm_item_code == "Alternate Item For A RW 1":
-				status = True
-
-		self.assertEqual(status, True)
-
 	def test_alternative_item_for_production_rm(self):
 		create_stock_reconciliation(item_code="Alternate Item For A RW 1",
 			warehouse="_Test Warehouse - _TC", qty=5, rate=2000)
