@@ -132,13 +132,13 @@ class TestPaymentRequest(unittest.TestCase):
 
 		# Payment Request amount = 200
 		pr1 = make_payment_request(dt="Sales Order", dn=so.name,
-			recipient_id="nabin@erpnext.com", return_doc=1)
+			contact_email="test_payment_request@example.com", return_doc=1)
 		pr1.grand_total = 200
 		pr1.submit()
 
 		# Make a 2nd Payment Request
 		pr2 = make_payment_request(dt="Sales Order", dn=so.name,
-			recipient_id="nabin@erpnext.com", return_doc=1)
+			contact_email="test_payment_request@example.com", return_doc=1)
 
 		self.assertEqual(pr2.grand_total, 800)
 

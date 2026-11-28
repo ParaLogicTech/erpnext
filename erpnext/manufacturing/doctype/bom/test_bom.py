@@ -12,6 +12,8 @@ from erpnext.manufacturing.doctype.bom_update_tool.bom_update_tool import update
 from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
 
 test_records = frappe.get_test_records("BOM")
+# BOM links to Project, whose own links lead back to Work Order, whose test records need these BOMs
+test_ignore = ["Project"]
 
 
 class TestBOM(unittest.TestCase):

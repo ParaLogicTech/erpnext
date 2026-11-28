@@ -174,6 +174,9 @@ def _make_test_records(verbose):
 				"account_currency": currency,
 			} for account_name, parent_account, is_group, account_type, currency in accounts])
 
+	# the test runner commits the records it makes, but not those made here
+	frappe.db.commit()
+
 	return test_objects
 
 

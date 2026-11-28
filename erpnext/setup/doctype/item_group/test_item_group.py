@@ -24,6 +24,9 @@ def _make_test_records(verbose=None):
 	for record in test_records:
 		create_item_group_default_rules(record)
 
+	# the test runner commits the records it makes, but not those made here
+	frappe.db.commit()
+
 	return test_objects
 
 

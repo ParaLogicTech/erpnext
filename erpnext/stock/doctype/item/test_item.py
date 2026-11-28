@@ -57,6 +57,9 @@ def _make_test_records(verbose=None):
 	for record in records:
 		create_item_default_rules(record["item_code"], record.get("item_defaults"), record.get("taxes"))
 
+	# the test runner commits the records it makes, but not those made here
+	frappe.db.commit()
+
 	return test_objects
 
 

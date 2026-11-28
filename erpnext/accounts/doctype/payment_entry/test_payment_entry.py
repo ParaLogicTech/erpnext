@@ -268,7 +268,7 @@ class TestPaymentEntry(unittest.TestCase):
 
 		self.assertEqual(pe.difference_amount, 100)
 
-		pe.set_exchange_gain_loss()
+		pe.set_exchange_gain_loss(exchange_gain_loss_account="_Test Exchange Gain/Loss - _TC")
 		pe.save()
 		pe.submit()
 
