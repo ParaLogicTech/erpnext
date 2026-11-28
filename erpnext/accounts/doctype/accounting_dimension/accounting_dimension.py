@@ -35,9 +35,11 @@ class AccountingDimension(Document):
 
 	def on_update(self):
 		frappe.cache.delete_key("bootinfo")
+		clear_dimension_local_cache()
 
 	def on_trash(self):
 		frappe.cache.delete_key("bootinfo")
+		clear_dimension_local_cache()
 
 		if frappe.flags.in_test:
 			delete_accounting_dimension(doc=self)
@@ -50,6 +52,12 @@ class AccountingDimension(Document):
 
 		if not self.fieldname:
 			self.fieldname = scrub(self.label)
+
+
+def clear_dimension_local_cache():
+	"""Dimensions and their mandatory checks are cached for the request, which may still use them after a change"""
+	for namespace in ("accounting_dimensions", "get_checks_for_pl_and_bs_accounts"):
+		frappe.local.cache.pop(namespace, None)
 
 
 def make_dimension_in_accounting_doctypes(dimension_doc):
