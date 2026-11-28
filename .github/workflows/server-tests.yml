@@ -182,10 +182,21 @@ jobs:
           crm_branch: ${{ inputs.crm_branch }}
           github_token: ${{ github.token }}
 
+      # Printing (e.g. emailed salary slips) needs frappe's built assets
+      - name: Build
+        working-directory: /home/runner/frappe-bench
+        run: bench build --app frappe
+
+      # The mail settings only give sendmail a default outgoing account: nothing is sent, as the scheduler doesn't run
       - name: Run Tests
         working-directory: /home/runner/frappe-bench
         run: |
           bench --site test_site set-config allow_tests true
+          bench --site test_site set-config mail_server localhost
+          bench --site test_site set-config mail_port 2525
+          bench --site test_site set-config mail_login test@example.com
+          bench --site test_site set-config mail_password test
+          bench --site test_site set-config auto_email_id test@example.com
           bench --site test_site run-tests --app erpnext --module-def "${MODULE}"
         env:
           MODULE: ${{ matrix.module }}
