@@ -20,6 +20,7 @@ payment_gateway = {
 payment_method = [
 	{
 		"doctype": "Payment Gateway Account",
+		"company": "_Test Company",
 		"is_default": 1,
 		"payment_gateway": "_Test Gateway",
 		"payment_account": "_Test Bank - _TC",
@@ -27,11 +28,20 @@ payment_method = [
 	},
 	{
 		"doctype": "Payment Gateway Account",
+		"company": "_Test Company",
 		"payment_gateway": "_Test Gateway",
 		"payment_account": "_Test Bank USD - _TC",
 		"currency": "USD",
 	},
 ]
+
+
+def submit_payment_request(reference_doctype, reference_name, **kwargs):
+	kwargs.setdefault("contact_email", "test_payment_request@example.com")
+	pr = make_payment_request(dt=reference_doctype, dn=reference_name, mute_notification=1, **kwargs)
+	pr.insert()
+	pr.submit()
+	return pr
 
 
 class TestPaymentRequest(unittest.TestCase):
@@ -68,9 +78,8 @@ class TestPaymentRequest(unittest.TestCase):
 		frappe.db.set_value("Company", "_Test Company", "cost_center", "_Test Cost Center - _TC")
 
 		so_inr = make_sales_order(currency="INR")
-		pr = make_payment_request(dt="Sales Order", dn=so_inr.name, recipient_id="saurabh@erpnext.com",
-			mute_email=1, submit_doc=1, return_doc=1)
-		pe = pr.set_as_paid()
+		pr = submit_payment_request("Sales Order", so_inr.name)
+		pe = pr.create_payment_entry(submit=True)
 
 		so_inr = frappe.get_doc("Sales Order", so_inr.name)
 
@@ -79,10 +88,9 @@ class TestPaymentRequest(unittest.TestCase):
 		si_usd = create_sales_invoice(customer="_Test Customer USD", debit_to="_Test Receivable USD - _TC",
 			currency="USD", conversion_rate=50)
 
-		pr = make_payment_request(dt="Sales Invoice", dn=si_usd.name, recipient_id="saurabh@erpnext.com",
-			mute_email=1, payment_gateway="_Test Gateway - USD", submit_doc=1, return_doc=1)
+		pr = submit_payment_request("Sales Invoice", si_usd.name, payment_gateway="_Test Gateway")
 
-		pe = pr.set_as_paid()
+		pe = pr.create_payment_entry(submit=True)
 
 		expected_gle = dict((d[0], d) for d in [
 			["_Test Receivable USD - _TC", 0, 5000, si_usd.name],
@@ -106,10 +114,9 @@ class TestPaymentRequest(unittest.TestCase):
 		si_usd = create_sales_invoice(customer="_Test Customer USD", debit_to="_Test Receivable USD - _TC",
 			currency="USD", conversion_rate=50)
 
-		pr = make_payment_request(dt="Sales Invoice", dn=si_usd.name, recipient_id="saurabh@erpnext.com",
-			mute_email=1, payment_gateway="_Test Gateway - USD", submit_doc=1, return_doc=1)
+		pr = submit_payment_request("Sales Invoice", si_usd.name, payment_gateway="_Test Gateway")
 
-		pe = pr.create_payment_entry()
+		pe = pr.create_payment_entry(submit=True)
 		pr.load_from_db()
 
 		self.assertEqual(pr.status, "Paid")

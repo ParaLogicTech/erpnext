@@ -14,9 +14,12 @@ from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import get_gl_
 
 class TestInvoiceDiscounting(unittest.TestCase):
 	def setUp(self):
-		self.ar_credit = create_account(account_name="_Test Accounts Receivable Credit", parent_account="Accounts Receivable - _TC", company="_Test Company")
-		self.ar_discounted = create_account(account_name="_Test Accounts Receivable Discounted", parent_account="Accounts Receivable - _TC", company="_Test Company")
-		self.ar_unpaid = create_account(account_name="_Test Accounts Receivable Unpaid", parent_account="Accounts Receivable - _TC", company="_Test Company")
+		self.ar_credit = create_account(account_name="_Test Accounts Receivable Credit", parent_account="Accounts Receivable - _TC", company="_Test Company",
+			account_type="Receivable")
+		self.ar_discounted = create_account(account_name="_Test Accounts Receivable Discounted", parent_account="Accounts Receivable - _TC", company="_Test Company",
+			account_type="Receivable")
+		self.ar_unpaid = create_account(account_name="_Test Accounts Receivable Unpaid", parent_account="Accounts Receivable - _TC", company="_Test Company",
+			account_type="Receivable")
 		self.short_term_loan = create_account(account_name="_Test Short Term Loan", parent_account="Source of Funds (Liabilities) - _TC", company="_Test Company")
 		self.bank_account = create_account(account_name="_Test Bank 2", parent_account="Bank Accounts - _TC", company="_Test Company")
 		self.bank_charges_account = create_account(account_name="_Test Bank Charges Account", parent_account="Expenses - _TC", company="_Test Company")

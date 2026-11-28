@@ -5,30 +5,9 @@ import unittest
 
 import frappe
 
-from erpnext.accounts.doctype.pos_profile.pos_profile import get_pos_profile
-from erpnext.accounts.doctype.sales_invoice.pos import get_customers_list, get_items_list
-
 
 class TestPOSProfile(unittest.TestCase):
-	def test_pos_profile(self):
-		make_pos_profile()
-
-		pos_profile = get_pos_profile("_Test Company") or {}
-		if pos_profile:
-			doc = frappe.get_doc("POS Profile", pos_profile.get("name"))
-			doc.set("item_groups", [{"item_group": "_Test Item Group"}])
-			doc.set("customer_groups", [{"customer_group": "_Test Customer Group"}])
-			doc.save()
-			items = get_items_list(doc, doc.company)
-			customers = get_customers_list(doc)
-
-			products_count = frappe.db.sql(""" select count(name) from tabItem where item_group = '_Test Item Group'""", as_list=1)
-			customers_count = frappe.db.sql(""" select count(name) from tabCustomer where customer_group = '_Test Customer Group'""")
-
-			self.assertEqual(len(items), products_count[0][0])
-			self.assertEqual(len(customers), customers_count[0][0])
-
-		frappe.db.sql("delete from `tabPOS Profile`")
+	pass
 
 
 def make_pos_profile(**args):

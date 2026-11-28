@@ -100,7 +100,7 @@ class TestAccount(unittest.TestCase):
 			"Softwares - _TC", doc.is_group, doc.root_type, doc.company)
 
 	def test_account_sync(self):
-		del frappe.local.flags["ignore_root_company_validation"]
+		frappe.local.flags.pop("ignore_root_company_validation", None)
 		acc = frappe.new_doc("Account")
 		acc.account_name = "Test Sync Account"
 		acc.parent_account = "Temporary Accounts - _TC3"
