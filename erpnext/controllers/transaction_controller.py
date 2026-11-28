@@ -1707,6 +1707,8 @@ def update_child_items(parent_doctype, parent_name, data):
 		parent_doc.validate_max_discount()
 		parent_doc.validate_discount_rule()
 		parent_doc.validate_selling_price()
+		# bundled rows link to their parent row by name, which new rows only get on save
+		parent_doc.set_name_in_children()
 		make_bundled_item_list(parent_doc)
 		validate_bundled_item_list(parent_doc)
 
