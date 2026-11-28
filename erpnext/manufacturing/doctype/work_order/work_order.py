@@ -1089,7 +1089,7 @@ class WorkOrder(StatusUpdaterERP):
 
 		production_plan.run_method("update_produced_qty", completed_qty, self.production_plan_item)
 
-	def update_material_request(self, for_completed_qty=True):
+	def update_material_request(self, for_completed_qty=False):
 		if self.material_request:
 			doc = frappe.get_doc("Material Request", self.material_request)
 
