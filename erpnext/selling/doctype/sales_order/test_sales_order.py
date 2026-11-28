@@ -33,7 +33,8 @@ class TestSalesOrder(unittest.TestCase):
 		so.submit()
 		mr = make_material_request(so.name)
 
-		self.assertEqual(mr.material_request_type, "Purchase")
+		# Material Request has no default type, the user picks one
+		self.assertFalse(mr.material_request_type)
 		self.assertEqual(len(mr.get("items")), len(so.get("items")))
 
 	def test_make_delivery_note(self):
@@ -74,7 +75,8 @@ class TestSalesOrder(unittest.TestCase):
 		si.submit()
 
 		si1 = make_sales_return(si.name)
-		si1.update_billed_amount_in_sales_order = 1
+		# only a return that reopens the order takes the billed qty back
+		si1.reopen_order = 1
 		si1.submit()
 		so.load_from_db()
 		self.assertEqual(so.per_billed, 0)
@@ -98,7 +100,7 @@ class TestSalesOrder(unittest.TestCase):
 		self.assertEqual(si.payment_schedule[0].payment_amount, 500.0)
 		self.assertEqual(getdate(si.payment_schedule[0].due_date), getdate(so.transaction_date))
 		self.assertEqual(si.payment_schedule[1].payment_amount, 500.0)
-		self.assertEqual(si.payment_schedule[1].due_date, add_days(so.transaction_date, 30))
+		self.assertEqual(getdate(si.payment_schedule[1].due_date), getdate(add_days(so.transaction_date, 30)))
 
 		si.submit()
 
@@ -155,12 +157,15 @@ class TestSalesOrder(unittest.TestCase):
 		from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
 		from erpnext.stock.doctype.delivery_note.test_delivery_note import create_delivery_note
 
+		# only returns that reopen the order take the delivered qty back
 		dn1 = create_delivery_note(is_return=1, return_against=dn.name, qty=-3, do_not_submit=True)
+		dn1.reopen_order = 1
 		dn1.items[0].sales_order = so.name
 		dn1.items[0].sales_order_item = so.items[0].name
 		dn1.submit()
 
 		si1 = create_sales_invoice(is_return=1, return_against=si2.name, qty=-1, update_stock=1, do_not_submit=True)
+		si1.reopen_order = 1
 		si1.items[0].sales_order = so.name
 		si1.items[0].sales_order_item = so.items[0].name
 		si1.submit()
@@ -256,7 +261,13 @@ class TestSalesOrder(unittest.TestCase):
 		self.assertEqual(get_reserved_qty("_Test Item Home Desktop 100"),
 			existing_reserved_qty_item2 + 20)
 
-		dn = create_dn_against_so(so.name)
+		# bundled qty against a sales order is entered by the user, it doesn't follow the bundle's qty
+		dn = make_delivery_note(so.name)
+		dn.items[0].qty = 5
+		for d in dn.bundled_items:
+			d.qty /= 2
+		dn.insert()
+		dn.submit()
 
 		self.assertEqual(get_reserved_qty("_Test Item"), existing_reserved_qty_item1 + 25)
 		self.assertEqual(get_reserved_qty("_Test Item Home Desktop 100"),
@@ -409,17 +420,18 @@ class TestSalesOrder(unittest.TestCase):
 
 		user = "test@example.com"
 		test_user = frappe.get_doc("User", user)
-		test_user.add_roles("Accounts User")
+		# a role that can read but not edit Sales Orders
+		test_user.remove_roles("Sales User", "Sales Manager", "Accounts User", "Cashier")
+		test_user.add_roles("Stock User")
 		frappe.set_user(user)
 
 		# update qty
 		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 200, "qty": 7, "docname": so.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_items, "Sales Order", so.name, trans_item)
+		self.assertRaises(frappe.PermissionError, update_child_items, "Sales Order", so.name, trans_item)
 
 		# add new item
 		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 100, "qty": 2}])
-		self.assertRaises(frappe.ValidationError, update_child_items, "Sales Order", so.name, trans_item)
-		test_user.remove_roles("Accounts User")
+		self.assertRaises(frappe.PermissionError, update_child_items, "Sales Order", so.name, trans_item)
 		frappe.set_user("Administrator")
 
 	def test_update_child_qty_rate_with_workflow(self):
@@ -459,12 +471,10 @@ class TestSalesOrder(unittest.TestCase):
 
 	def test_update_child_qty_rate_product_bundle(self):
 		# test Update Items with product bundle
-		if not frappe.db.exists("Item", "_Product Bundle Item"):
-			bundle_item = make_item("_Product Bundle Item", {"is_stock_item": 0})
-			bundle_item.append("item_defaults", {
-					"company": "_Test Company",
-					"default_warehouse": "_Test Warehouse - _TC"})
-			bundle_item.save(ignore_permissions=True)
+		make_item("_Product Bundle Item", {"is_stock_item": 0, "item_defaults": [{
+			"company": "_Test Company",
+			"default_warehouse": "_Test Warehouse - _TC",
+		}]})
 
 		make_item("_Packed Item", {"is_stock_item": 1})
 		make_product_bundle("_Product Bundle Item", ["_Packed Item"], 2)
@@ -531,7 +541,15 @@ class TestSalesOrder(unittest.TestCase):
 
 	def test_mix_type_product_bundle(self):
 		make_item("_Test Mix Product Bundle", {"is_stock_item": 0})
-		make_item("_Test Mix Product Bundle Item 1", {"is_stock_item": 1})
+		# without make_item, which would give the stock item a default warehouse
+		if not frappe.db.exists("Item", "_Test Mix Product Bundle Item 1"):
+			frappe.get_doc({
+				"doctype": "Item",
+				"item_code": "_Test Mix Product Bundle Item 1",
+				"item_name": "_Test Mix Product Bundle Item 1",
+				"item_group": "Products",
+				"is_stock_item": 1,
+			}).insert()
 		make_item("_Test Mix Product Bundle Item 2", {"is_stock_item": 0})
 
 		make_product_bundle("_Test Mix Product Bundle",
@@ -585,8 +603,10 @@ class TestSalesOrder(unittest.TestCase):
 		so = make_sales_order(item_list=so_items, do_not_submit=True)
 		so.submit()
 
+		# the purchase order takes every row to order, the user keeps the ones delivered by the supplier
 		po = make_purchase_order(so.name)
 		po.supplier = "_Test Supplier"
+		po.items = [d for d in po.items if d.item_code == po_item.item_code]
 		po.submit()
 
 		dn = create_dn_against_so(so.name, delivered_qty=1)
@@ -693,8 +713,11 @@ class TestSalesOrder(unittest.TestCase):
 		so = make_sales_order()
 		self.assertTrue(so.get("payment_schedule"))
 
+		# without a template, the invoice gets a single due row of its own instead of the order's terms
 		si = make_sales_invoice(so.name)
-		self.assertFalse(si.get("payment_schedule"))
+		self.assertFalse(si.payment_terms_template)
+		self.assertEqual(len(si.payment_schedule), 1)
+		self.assertFalse(si.payment_schedule[0].payment_term)
 
 	def test_terms_copied(self):
 		so = make_sales_order(do_not_copy=1, do_not_save=1)
@@ -723,19 +746,9 @@ class TestSalesOrder(unittest.TestCase):
 		})
 
 		# Raise Work Orders
-		po_items = []
-		so_item_name = {}
-		for item in so.get_work_order_items():
-			po_items.append({
-				"warehouse": item.get("warehouse"),
-				"item_code": item.get("item_code"),
-				"pending_qty": item.get("pending_qty"),
-				"sales_order_item": item.get("sales_order_item"),
-				"bom": item.get("bom"),
-				"description": item.get("description"),
-			})
-			so_item_name[item.get("sales_order_item")] = item.get("pending_qty")
-		create_work_orders(json.dumps({"items": po_items}), so.name, so.company)
+		work_order_items = so.get_work_order_items()
+		so_item_name = {item.get("sales_order_item"): item.get("pending_qty") for item in work_order_items}
+		create_work_orders(json.dumps(work_order_items, default=str), so.company)
 
 		# Check if Work Orders were raised
 		for item in so_item_name:
@@ -787,7 +800,7 @@ class TestSalesOrder(unittest.TestCase):
 		so.submit()
 		from erpnext.manufacturing.doctype.work_order.test_work_order import make_wo_order_test_record
 		work_order = make_wo_order_test_record(item=item.item_code,
-			qty=1, do_not_save=True)
+			qty=1, skip_transfer=1, do_not_save=True)
 		work_order.fg_warehouse = "_Test Warehouse - _TC"
 		work_order.sales_order = so.name
 		work_order.submit()
@@ -906,9 +919,9 @@ class TestSalesOrder(unittest.TestCase):
 		mr_dict["items"] = items
 		mr_dict["include_exploded_items"] = 0
 		mr_dict["ignore_existing_ordered_qty"] = 1
-		make_raw_material_request(mr_dict, so.company, so.name)
-		mr = frappe.db.sql("""select name from `tabMaterial Request` ORDER BY creation DESC LIMIT 1""", as_dict=1)[0]
-		mr_doc = frappe.get_doc("Material Request", mr.get("name"))
+		mr_doc = make_raw_material_request(mr_dict, so.company, so.name)
+		mr_doc.material_request_type = "Purchase"
+		mr_doc.insert()
 		self.assertEqual(mr_doc.items[0].sales_order, so.name)
 
 	def test_alt_uom_qty(self):
