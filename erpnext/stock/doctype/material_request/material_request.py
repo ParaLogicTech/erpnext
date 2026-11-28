@@ -123,6 +123,8 @@ class MaterialRequest(BuyingController):
 		else:
 			self.from_warehouse = None
 
+		super().validate_warehouse()
+
 	def set_completion_status(self, update=False, update_modified=True):
 		data = self.get_completion_data()
 
