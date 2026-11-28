@@ -836,18 +836,20 @@ def get_account_list(doctype, txt, searchfield, start, page_len, filters):
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs
 def get_blanket_orders(doctype, txt, searchfield, start, page_len, filters):
-	return frappe.db.sql("""select distinct bo.name, bo.blanket_order_type, bo.to_date
+	return frappe.db.sql("""
+		select distinct bo.name, bo.blanket_order_type, bo.to_date
 		from `tabBlanket Order` bo, `tabBlanket Order Item` boi
 		where
 			boi.parent = bo.name
-			and boi.item_code = {item_code}
-			and bo.blanket_order_type = '{blanket_order_type}'
-			and bo.company = {company}
-			and bo.docstatus = 1"""
-		.format(item_code=frappe.db.escape(filters.get("item")),
-			blanket_order_type=filters.get("blanket_order_type"),
-			company=frappe.db.escape(filters.get("company")),
-		))
+			and boi.item_code = %(item_code)s
+			and bo.blanket_order_type = %(blanket_order_type)s
+			and bo.company = %(company)s
+			and bo.docstatus = 1
+	""", {
+		"item_code": filters.get("item"),
+		"blanket_order_type": filters.get("blanket_order_type"),
+		"company": filters.get("company"),
+	})
 
 
 @frappe.whitelist()

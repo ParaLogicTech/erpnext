@@ -102,10 +102,11 @@ def get_data(filters):
 def get_work_orders(doctype, txt, searchfield, start, page_len, filters):
 	cond = "1=1"
 	if filters.get("bom_no"):
-		cond += " and bom_no = '%s'" % filters.get("bom_no")
+		cond += " and bom_no = %(bom_no)s"
 
 	return frappe.db.sql("""select name from `tabWork Order`
 		where name like %(name)s and {0} and completed_qty > qty and docstatus = 1
 		order by name limit {1}, {2}""".format(cond, start, page_len), {
 			"name": "%%%s%%" % txt,
+			"bom_no": filters.get("bom_no"),
 		}, as_list=1)
