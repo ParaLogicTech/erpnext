@@ -1737,6 +1737,8 @@ def update_child_items(parent_doctype, parent_name, data):
 	elif parent_doctype == "Purchase Order":
 		parent_doc.set_receipt_status(update=True)
 		parent_doc.set_billing_status(update=True)
+		# requested qty is computed from the ordered qty in Material Requests, so update them first
+		parent_doc.update_previous_doc_status()
 		parent_doc.update_requested_qty()
 		parent_doc.update_ordered_qty()
 		parent_doc.update_last_purchase_rate()
@@ -1747,7 +1749,8 @@ def update_child_items(parent_doctype, parent_name, data):
 
 	parent_doc.update_blanket_order()
 	parent_doc.set_status(update=True)
-	parent_doc.update_previous_doc_status()
+	if parent_doctype == "Sales Order":
+		parent_doc.update_previous_doc_status()
 
 
 @frappe.whitelist()
