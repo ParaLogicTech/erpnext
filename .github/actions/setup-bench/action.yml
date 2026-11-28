@@ -58,6 +58,11 @@ runs:
       shell: bash
       run: sudo apt-get update && sudo apt-get install -y redis-server mariadb-client
 
+    # wkhtmltopdf loads the print styles from the site's host name, as in frappe's CI
+    - name: Add to Hosts
+      shell: bash
+      run: echo "127.0.0.1 test_site" | sudo tee -a /etc/hosts
+
     # A PR that needs an unmerged frappe or crm change names it in its description:
     # "Depends on ParaLogicTech/frappe#123", "Depends on ParaLogicTech/crm#45".
     # The description is read when the job runs (not from the event), so a re-run picks up an edited description.
