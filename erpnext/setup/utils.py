@@ -54,6 +54,14 @@ def before_tests():
 
 	enable_all_roles_and_domains()
 
+	# The test records include invoices for stock items without a receipt, as in vanilla ERPNext
+	frappe.db.set_single_value("Accounts Settings", "allow_invoicing_without_updating_stock", 1)
+
+	# The test records refer to Projects by name (e.g. "_Test Project")
+	projects_settings = frappe.get_single("Projects Settings")
+	projects_settings.project_naming_by = "Project Name"
+	projects_settings.save()
+
 	frappe.db.commit()
 
 

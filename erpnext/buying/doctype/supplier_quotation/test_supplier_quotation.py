@@ -6,6 +6,7 @@ import unittest
 
 import frappe
 import frappe.defaults
+from frappe.utils import add_days
 
 
 class TestPurchaseOrder(unittest.TestCase):
@@ -28,7 +29,7 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		for doc in po.get("items"):
 			if doc.get("item_code"):
-				doc.set("schedule_date", "2013-04-12")
+				doc.set("schedule_date", add_days(po.transaction_date, 1))
 
 		po.insert()
 

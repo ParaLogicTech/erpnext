@@ -34,7 +34,7 @@ def create_action():
 		"goal": "GOAL-_Test Quality Goal",
 		"procedure": "PRC-_Test Quality Procedure",
 	})
-	action_exist = frappe.db.exists("Quality Action", {"review": review})
+	action_exist = frappe.db.exists("Quality Action", {"document_name": review})
 
 	if not action_exist:
 		action.insert()

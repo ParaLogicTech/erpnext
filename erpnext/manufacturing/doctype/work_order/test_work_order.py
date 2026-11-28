@@ -9,7 +9,6 @@ from frappe.utils import add_days, cint, flt, now, time_diff_in_hours
 
 from erpnext.manufacturing.doctype.production_plan.test_production_plan import make_bom
 from erpnext.manufacturing.doctype.work_order.work_order import (
-	ItemHasVariantError,
 	OverProductionError,
 	StockOverProductionError,
 	make_stock_entry,
@@ -76,10 +75,13 @@ class TestWorkOrder(unittest.TestCase):
 		test_stock_entry.make_stock_entry(item_code="_Test Item Home Desktop 100",
 			target="_Test Warehouse - _TC", qty=100, basic_rate=100)
 
-		s = frappe.get_doc(make_stock_entry(wo_doc.name, "Manufacture", 7))
-		s.insert()
+		def manufacture_more_than_transferred():
+			s = frappe.get_doc(make_stock_entry(wo_doc.name, "Manufacture", 7))
+			s.insert()
+			s.submit()
 
-		self.assertRaises(StockOverProductionError, s.submit)
+		# All transferred materials are used up, so this is stopped while the entry's items are added
+		self.assertRaises(frappe.ValidationError, manufacture_more_than_transferred)
 
 	def test_planned_operating_cost(self):
 		wo_order = make_wo_order_test_record(item="_Test FG Item 2",
@@ -135,7 +137,8 @@ class TestWorkOrder(unittest.TestCase):
 		frappe.db.set_value("Item", "_Test FG Item", "disabled", 0)
 
 		wo_order = make_wo_order_test_record(item="_Test Variant Item", qty=1, do_not_save=True)
-		self.assertRaises(ItemHasVariantError, wo_order.save)
+		# Template items are rejected by validate_is_not_template_item
+		self.assertRaises(frappe.ValidationError, wo_order.save)
 
 	def test_reserved_qty_for_production_submit(self):
 		self.bin1_at_start = get_bin(self.item, self.warehouse)
@@ -350,6 +353,7 @@ class TestWorkOrder(unittest.TestCase):
 
 			bom_doc = frappe.get_doc("BOM", bom)
 			work_order = make_wo_order_test_record(item=bom_item, qty=1, bom_no=bom)
+			make_job_cards(work_order)
 
 			job_cards = frappe.get_all("Job Card", filters={"work_order": work_order.name})
 			self.assertEqual(len(job_cards), len(bom_doc.operations))
@@ -357,9 +361,9 @@ class TestWorkOrder(unittest.TestCase):
 	def test_work_order_with_non_transfer_item(self):
 		items = {"Finished Good Transfer Item": 1, "_Test FG Item": 1, "_Test FG Item 1": 0}
 		for item, allow_transfer in items.items():
-			make_item(item, {
-				"skip_transfer_for_manufacture": cint(not allow_transfer),
-			})
+			make_item(item)
+			# make_item doesn't change items that already exist, e.g. from the test records
+			frappe.db.set_value("Item", item, "skip_transfer_for_manufacture", cint(not allow_transfer))
 
 		fg_item = "Finished Good Transfer Item"
 		test_stock_entry.make_stock_entry(item_code="_Test FG Item",
@@ -367,10 +371,11 @@ class TestWorkOrder(unittest.TestCase):
 		test_stock_entry.make_stock_entry(item_code="_Test FG Item 1",
 			target="_Test Warehouse - _TC", qty=1, basic_rate=100)
 
-		if not frappe.db.get_value("BOM", {"item": fg_item}):
-			make_bom(item=fg_item, raw_materials=["_Test FG Item", "_Test FG Item 1"])
+		# a new default BOM, so its rows follow the items' settings above
+		make_bom(item=fg_item, raw_materials=["_Test FG Item", "_Test FG Item 1"])
 
-		wo = make_wo_order_test_record(production_item=fg_item)
+		# Items that skip the transfer are taken from their source warehouse, where the stock entries above put them
+		wo = make_wo_order_test_record(production_item=fg_item, source_warehouse="_Test Warehouse - _TC")
 		ste = frappe.get_doc(make_stock_entry(wo.name, "Material Transfer for Manufacture", 1))
 		ste.insert()
 		ste.submit()
@@ -430,3 +435,22 @@ def make_wo_order_test_record(**args):
 
 
 test_records = frappe.get_test_records("Work Order")
+
+
+def make_job_cards(work_order):
+	"""Job Cards are created from the Work Order's Create Job Card button, for the pending qty of each operation"""
+	from erpnext.manufacturing.doctype.work_order.work_order import create_job_cards
+
+	operations = []
+	for row in work_order.operations:
+		pending_qty = flt(work_order.qty) - flt(row.completed_qty)
+		if pending_qty > 0:
+			operations.append({
+				"name": row.name,
+				"operation": row.operation,
+				"workstation": row.workstation,
+				"qty": pending_qty,
+				"pending_qty": pending_qty,
+			})
+
+	create_job_cards(work_order.name, operations)

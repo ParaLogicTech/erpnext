@@ -4,6 +4,7 @@
 import unittest
 
 import frappe
+from frappe.tests.utils import change_settings
 from frappe.utils import flt, nowdate
 
 from erpnext.accounts.doctype.payment_entry.payment_entry import InvalidPaymentEntry, get_payment_entry
@@ -115,6 +116,8 @@ class TestPaymentEntry(unittest.TestCase):
 		pe = get_payment_entry("Sales Invoice", si.name, bank_account="_Test Bank USD - _TC")
 		pe.reference_no = "1"
 		pe.reference_date = "2016-01-01"
+		# the receivable and the bank are both in USD, so they take the same rate
+		pe.source_exchange_rate = 50
 		pe.target_exchange_rate = 50
 		pe.insert()
 		pe.submit()
@@ -141,7 +144,9 @@ class TestPaymentEntry(unittest.TestCase):
 		pe = get_payment_entry("Purchase Invoice", pi.name, bank_account="_Test Bank USD - _TC")
 		pe.reference_no = "1"
 		pe.reference_date = "2016-01-01"
+		# the payable and the bank are both in USD, so they take the same rate
 		pe.source_exchange_rate = 50
+		pe.target_exchange_rate = 50
 		pe.insert()
 		pe.submit()
 
@@ -187,6 +192,8 @@ class TestPaymentEntry(unittest.TestCase):
 		pe = get_payment_entry("Sales Invoice", si.name, bank_account="_Test Bank USD - _TC")
 		pe.reference_no = "1"
 		pe.reference_date = "2016-01-01"
+		# the receivable and the bank are both in USD, so they take the same rate
+		pe.source_exchange_rate = 50
 		pe.target_exchange_rate = 50
 		pe.insert()
 		pe.submit()
@@ -208,7 +215,9 @@ class TestPaymentEntry(unittest.TestCase):
 		pe = get_payment_entry("Purchase Invoice", pi.name, bank_account="_Test Bank USD - _TC")
 		pe.reference_no = "1"
 		pe.reference_date = "2016-01-01"
+		# the payable and the bank are both in USD, so they take the same rate
 		pe.source_exchange_rate = 50
+		pe.target_exchange_rate = 50
 		pe.insert()
 		pe.submit()
 
@@ -248,19 +257,19 @@ class TestPaymentEntry(unittest.TestCase):
 	def test_payment_entry_against_si_usd_to_inr(self):
 		si = create_sales_invoice(customer="_Test Customer USD", debit_to="_Test Receivable USD - _TC",
 			currency="USD", conversion_rate=50)
-		pe = get_payment_entry("Sales Invoice", si.name, party_amount=20,
-			bank_account="_Test Bank - _TC", bank_amount=900)
+		# 20 USD of the invoice paid with 900 INR, a rate of 45 against the invoice's 50
+		pe = get_payment_entry("Sales Invoice", si.name, bank_account="_Test Bank - _TC", bank_amount=900)
 		pe.reference_no = "1"
 		pe.reference_date = "2016-01-01"
+		pe.paid_amount = 20
+		pe.source_exchange_rate = 45
+		pe.references[0].allocated_amount = 20
+		pe.insert()
 
 		self.assertEqual(pe.difference_amount, 100)
 
-		pe.append("deductions", {
-			"account": "_Test Exchange Gain/Loss - _TC",
-			"cost_center": "_Test Cost Center - _TC",
-			"amount": 100,
-		})
-		pe.insert()
+		pe.set_exchange_gain_loss(exchange_gain_loss_account="_Test Exchange Gain/Loss - _TC")
+		pe.save()
 		pe.submit()
 
 		expected_gle = dict((d[0], d) for d in [
@@ -468,6 +477,7 @@ class TestPaymentEntry(unittest.TestCase):
 		outstanding_amount = flt(frappe.db.get_value("Sales Invoice", si.name, "outstanding_amount"))
 		self.assertEqual(outstanding_amount, 0)
 
+	@change_settings("Accounts Settings", {"allow_cost_center_in_entry_of_bs_account": 1})
 	def test_payment_entry_against_sales_invoice_with_cost_centre(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
 		cost_center = "_Test Cost Center for BS Account - _TC"
@@ -504,6 +514,7 @@ class TestPaymentEntry(unittest.TestCase):
 		for gle in gl_entries:
 			self.assertEqual(expected_values[gle.account]["cost_center"], gle.cost_center)
 
+	@change_settings("Accounts Settings", {"allow_cost_center_in_entry_of_bs_account": 1})
 	def test_payment_entry_against_purchase_invoice_with_cost_center(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
 		cost_center = "_Test Cost Center for BS Account - _TC"
@@ -576,8 +587,10 @@ class TestPaymentEntry(unittest.TestCase):
 
 def create_payment_terms_template():
 
-	create_payment_term("Basic Amount Receivable")
-	create_payment_term("Tax Receivable")
+	# with a Payment Term, the portion, amount type and due date come from the Payment Term. The percentages don't
+	# add up to the total once rounded, so the last term takes the remaining amount
+	create_payment_term("Basic Amount Receivable", credit_days=1, invoice_portion=84.746)
+	create_payment_term("Tax Receivable", credit_days=2, payment_amount_type="Remaining Amount")
 
 	if not frappe.db.exists("Payment Terms Template", "Test Receivable Template"):
 		frappe.get_doc({
@@ -588,22 +601,32 @@ def create_payment_terms_template():
 				"doctype": "Payment Terms Template Detail",
 				"payment_term": "Basic Amount Receivable",
 				"invoice_portion": 84.746,
-				"credit_days_based_on": "Day(s) after invoice date",
+				"due_date_based_on": "Day(s) after invoice date",
 				"credit_days": 1,
 			},
 			{
 				"doctype": "Payment Terms Template Detail",
 				"payment_term": "Tax Receivable",
 				"invoice_portion": 15.254,
-				"credit_days_based_on": "Day(s) after invoice date",
+				"payment_amount_type": "Remaining Amount",
+				"due_date_based_on": "Day(s) after invoice date",
 				"credit_days": 2,
 			}],
 		}).insert()
 
 
-def create_payment_term(name):
-	if not frappe.db.exists("Payment Term", name):
+def create_payment_term(name, credit_days=0, invoice_portion=0, payment_amount_type="Percentage"):
+	values = {
+		"due_date_based_on": "Day(s) after invoice date",
+		"credit_days": credit_days,
+		"invoice_portion": invoice_portion,
+		"payment_amount_type": payment_amount_type,
+	}
+	if frappe.db.exists("Payment Term", name):
+		frappe.db.set_value("Payment Term", name, values)
+	else:
 		frappe.get_doc({
 			"doctype": "Payment Term",
 			"payment_term_name": name,
+			**values,
 		}).insert()

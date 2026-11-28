@@ -184,7 +184,7 @@ class PurchaseReceipt(BuyingController):
 		for d in self.items:
 			d.billed_qty = flt(data.billed_qty_map.get(d.name))
 			d.billed_amt = flt(data.billed_amount_map.get(d.name))
-			d.returned_qty = flt(data.receipt_return_qty_map.get(d.name))
+			d.returned_qty = flt(data.receipt_return_qty_map.get(d.name), d.precision("returned_qty"))
 			if update:
 				d.db_set({
 					"billed_qty": d.billed_qty,
@@ -240,10 +240,12 @@ class PurchaseReceipt(BuyingController):
 					out.billed_qty_map[d.purchase_receipt_item] += d.qty
 
 				# Returned By Purchase Receipt
+				# returns can be in another UOM, so convert their stock qty to the UOM of the returned row
 				out.receipt_return_qty_map = dict(frappe.db.sql("""
-					select i.purchase_receipt_item, -1 * sum(i.qty)
+					select i.purchase_receipt_item, -1 * sum(i.stock_qty / o.conversion_factor)
 					from `tabPurchase Receipt Item` i
 					inner join `tabPurchase Receipt` p on p.name = i.parent
+					inner join `tabPurchase Receipt Item` o on o.name = i.purchase_receipt_item
 					where p.docstatus = 1 and p.is_return = 1 and i.purchase_receipt_item in %s
 					group by i.purchase_receipt_item
 				""", [row_names]))
@@ -367,7 +369,7 @@ class PurchaseReceipt(BuyingController):
 
 		self.make_supplied_items_gl_entry(gl_entries, sle_map, warehouse_account)
 		self.make_item_gl_entries(gl_entries, sle_map, warehouse_account)
-		self.make_asset_gl_entry(gl_entries)
+		self.get_asset_gl_entry(gl_entries)
 
 		return process_gl_map(gl_entries)
 
@@ -445,7 +447,7 @@ class PurchaseReceipt(BuyingController):
 
 		self.validate_warehouse_with_no_account(warehouse_with_no_account)
 
-	def make_asset_gl_entry(self, gl_entries):
+	def get_asset_gl_entry(self, gl_entries):
 		for item in self.get("items"):
 			if item.is_fixed_asset:
 				if is_cwip_accounting_enabled(item.asset_category):

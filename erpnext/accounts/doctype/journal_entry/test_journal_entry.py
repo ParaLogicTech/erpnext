@@ -5,6 +5,7 @@ import datetime
 import unittest
 
 import frappe
+from frappe.tests.utils import change_settings
 from frappe.utils import flt, nowdate
 
 from erpnext.accounts.doctype.account.test_account import get_inventory_account
@@ -13,11 +14,13 @@ from erpnext.exceptions import InvalidAccountCurrency
 
 
 class TestJournalEntry(unittest.TestCase):
+	@change_settings("Accounts Settings", {"unlink_payment_on_cancellation_of_invoice": 1})
 	def test_journal_entry_with_against_jv(self):
 		jv_invoice = frappe.copy_doc(test_records[2])
 		base_jv = frappe.copy_doc(test_records[0])
 		self.jv_against_voucher_testcase(base_jv, jv_invoice)
 
+	@change_settings("Accounts Settings", {"unlink_advance_payment_on_cancelation_of_order": 0})
 	def test_jv_against_sales_order(self):
 		from erpnext.selling.doctype.sales_order.test_sales_order import make_sales_order
 
@@ -25,6 +28,7 @@ class TestJournalEntry(unittest.TestCase):
 		base_jv = frappe.copy_doc(test_records[0])
 		self.jv_against_voucher_testcase(base_jv, sales_order)
 
+	@change_settings("Accounts Settings", {"unlink_advance_payment_on_cancelation_of_order": 0})
 	def test_jv_against_purchase_order(self):
 		from erpnext.buying.doctype.purchase_order.test_purchase_order import create_purchase_order
 
@@ -83,11 +87,16 @@ class TestJournalEntry(unittest.TestCase):
 
 	def test_jv_against_stock_account(self):
 		from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import set_perpetual_inventory
+		from erpnext.stock.doctype.warehouse.test_warehouse import create_warehouse
 		set_perpetual_inventory()
+
+		# a warehouse with its own stock account, so that the account balance matches the stock value. Only then
+		# can the check tell that the Journal Entry would put them out of sync
+		warehouse = create_warehouse("_Test Warehouse for JE Stock Account")
 
 		jv = frappe.copy_doc(test_records[0])
 		jv.get("accounts")[0].update({
-			"account": get_inventory_account("_Test Company"),
+			"account": get_inventory_account("_Test Company", warehouse),
 			"company": "_Test Company",
 			"party_type": None,
 			"party": None,
@@ -223,8 +232,8 @@ class TestJournalEntry(unittest.TestCase):
 		frappe.db.set_value("Account", "Buildings - _TC", "inter_company_account", 1)
 		frappe.db.set_value("Account", "Sales Expenses - _TC1", "inter_company_account", 1)
 		frappe.db.set_value("Account", "Buildings - _TC1", "inter_company_account", 1)
+		# inter company entries are linked by inter_company_reference, with any voucher type
 		jv = make_journal_entry("Sales Expenses - _TC", "Buildings - _TC", 100, posting_date=nowdate(), cost_center="Main - _TC", save=False)
-		jv.voucher_type = "Inter Company Journal Entry"
 		jv.multi_currency = 0
 		jv.insert()
 		jv.submit()
@@ -232,7 +241,6 @@ class TestJournalEntry(unittest.TestCase):
 		jv1 = make_journal_entry("Sales Expenses - _TC1", "Buildings - _TC1", 100, posting_date=nowdate(), cost_center="Main - _TC1", save=False)
 		jv1.inter_company_reference = jv.name
 		jv1.company = "_Test Company 1"
-		jv1.voucher_type = "Inter Company Journal Entry"
 		jv1.multi_currency = 0
 		jv1.insert()
 		jv1.submit()
@@ -273,6 +281,7 @@ class TestJournalEntry(unittest.TestCase):
 			for field, value in expected_values.items():
 				self.assertEqual(gle.get(field), value)
 
+	@change_settings("Accounts Settings", {"allow_cost_center_in_entry_of_bs_account": 1})
 	def test_jv_with_cost_centre(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
 		cost_center = "_Test Cost Center for BS Account - _TC"
@@ -303,6 +312,7 @@ class TestJournalEntry(unittest.TestCase):
 		for gle in gl_entries:
 			self.assertEqual(expected_values[gle.account]["cost_center"], gle.cost_center)
 
+	@change_settings("Accounts Settings", {"allow_cost_center_in_entry_of_bs_account": 1})
 	def test_jv_for_enable_allow_cost_center_in_entry_of_bs_account(self):
 		from erpnext.accounts.doctype.cost_center.test_cost_center import create_cost_center
 		cost_center = "_Test Cost Center for BS Account - _TC"
@@ -333,6 +343,7 @@ class TestJournalEntry(unittest.TestCase):
 		for gle in gl_entries:
 			self.assertEqual(expected_values[gle.account]["cost_center"], gle.cost_center)
 
+	@change_settings("Accounts Settings", {"allow_project_in_entry_of_bs_account": 1})
 	def test_jv_with_project(self):
 		from erpnext.projects.doctype.project.test_project import make_project
 		project = make_project({

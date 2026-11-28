@@ -8,7 +8,12 @@ from frappe.utils import cstr, date_diff, flt, money_in_words, nowdate, round_ba
 import erpnext
 from erpnext.accounts.general_ledger import make_gl_entries
 from erpnext.accounts.utils import get_account_currency
-from erpnext.controllers.taxes_and_totals import get_itemised_tax, get_itemised_taxable_amount
+from erpnext.controllers.taxes_and_totals import (
+	get_itemised_net_amount,
+	get_itemised_qty,
+	get_itemised_tax,
+	get_itemised_taxable_amount,
+)
 from erpnext.controllers.transaction_controller import get_taxes_and_charges
 from erpnext.hr.doctype.salary_structure.salary_structure import make_salary_slip
 from erpnext.hr.utils import get_salary_assignment
@@ -105,9 +110,11 @@ def get_itemised_tax_breakup_data(doc, account_wise=False):
 	itemised_tax = get_itemised_tax(doc.taxes, with_tax_account=account_wise)
 
 	itemised_taxable_amount = get_itemised_taxable_amount(doc.items)
+	itemised_net_amount = get_itemised_net_amount(doc.items)
+	itemised_qty = get_itemised_qty(doc.items)
 
 	if not frappe.get_meta(doc.doctype + " Item").has_field("gst_hsn_code"):
-		return itemised_tax, itemised_taxable_amount
+		return itemised_tax, itemised_taxable_amount, itemised_net_amount, itemised_qty
 
 	item_hsn_map = frappe._dict()
 	for d in doc.items:
@@ -121,18 +128,26 @@ def get_itemised_tax_breakup_data(doc, account_wise=False):
 			key = tax_desc
 			if account_wise:
 				key = tax_detail.get("tax_account")
-			hsn_tax[hsn_code].setdefault(key, {"tax_rate": 0, "tax_amount": 0})
+			hsn_tax[hsn_code].setdefault(key, frappe._dict({"tax_rate": 0, "tax_amount": 0}))
 			hsn_tax[hsn_code][key]["tax_rate"] = tax_detail.get("tax_rate")
 			hsn_tax[hsn_code][key]["tax_amount"] += tax_detail.get("tax_amount")
 
-	# set taxable amount
-	hsn_taxable_amount = frappe._dict()
-	for item in itemised_taxable_amount:
-		hsn_code = item_hsn_map.get(item)
-		hsn_taxable_amount.setdefault(hsn_code, 0)
-		hsn_taxable_amount[hsn_code] += itemised_taxable_amount.get(item)
+	# set taxable amount, net amount and qty
+	hsn_taxable_amount = group_by_hsn_code(itemised_taxable_amount, item_hsn_map)
+	hsn_net_amount = group_by_hsn_code(itemised_net_amount, item_hsn_map)
+	hsn_qty = group_by_hsn_code(itemised_qty, item_hsn_map)
 
-	return hsn_tax, hsn_taxable_amount
+	return hsn_tax, hsn_taxable_amount, hsn_net_amount, hsn_qty
+
+
+def group_by_hsn_code(itemised_values, item_hsn_map):
+	hsn_values = frappe._dict()
+	for item, value in itemised_values.items():
+		hsn_code = item_hsn_map.get(item)
+		hsn_values.setdefault(hsn_code, 0)
+		hsn_values[hsn_code] += value
+
+	return hsn_values
 
 
 def set_place_of_supply(doc, method=None):
@@ -544,7 +559,7 @@ def get_item_list(data, doc):
 		"cess_account": ["cessRate", "cessValue"],
 	}
 	item_data_attrs = ["sgstRate", "cgstRate", "igstRate", "cessRate", "cessNonAdvol"]
-	hsn_wise_charges, hsn_taxable_amount = get_itemised_tax_breakup_data(doc, account_wise=True)
+	hsn_wise_charges, hsn_taxable_amount, _hsn_net_amount, _hsn_qty = get_itemised_tax_breakup_data(doc, account_wise=True)
 	for hsn_code, taxable_amount in hsn_taxable_amount.items():
 		item_data = frappe._dict()
 		if not hsn_code:

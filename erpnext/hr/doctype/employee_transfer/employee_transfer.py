@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.permissions import remove_user_permission
 from frappe.utils import getdate
 
 from erpnext.hr.utils import update_employee
@@ -103,6 +104,7 @@ class EmployeeTransfer(Document):
 		# move user_id to new employee before insert
 		if old_employee.user_id and not self.validate_user_in_details():
 			new_employee.user_id = old_employee.user_id
+			self.remove_user_permissions_of_old_employee(old_employee)
 			old_employee.db_set("user_id", "")
 
 		new_employee.insert(ignore_permissions=True)
@@ -113,6 +115,22 @@ class EmployeeTransfer(Document):
 		old_employee.db_set("status", "Left")
 
 		self.db_set("is_applied", 1)
+
+	def remove_user_permissions_of_old_employee(self, old_employee):
+		"""Removes the permissions the old employee gave its user, as saving an Employee does when its user changes.
+		db_set skips that, and the old employee's default Employee permission would block the new employee's."""
+		if not old_employee.create_user_permission:
+			return
+
+		for allow, for_value in [
+			("Employee", old_employee.name),
+			("Company", old_employee.company),
+			("Branch", old_employee.branch),
+		]:
+			if for_value and frappe.db.exists("User Permission", {
+				"user": old_employee.user_id, "allow": allow, "for_value": for_value,
+			}):
+				remove_user_permission(allow, for_value, old_employee.user_id, ignore_permissions=True)
 
 	def revert_transfer_to_new_employee(self):
 		employee = frappe.get_doc("Employee", self.employee)

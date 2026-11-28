@@ -2,6 +2,7 @@
 # License: GNU General Public License v3. See license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 
@@ -67,6 +68,10 @@ class QualityInspection(Document):
 def item_query(doctype, txt, searchfield, start, page_len, filters):
 	if filters.get("from"):
 		from frappe.desk.reportview import get_match_cond
+
+		if not frappe.db.exists("DocType", filters["from"]):
+			frappe.throw(_("Invalid DocType {0}").format(filters["from"]))
+
 		mcond = get_match_cond(filters["from"])
 		cond, qi_condition = "", "and (quality_inspection is null or quality_inspection = '')"
 

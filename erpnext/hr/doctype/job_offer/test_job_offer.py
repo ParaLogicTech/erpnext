@@ -15,14 +15,19 @@ from erpnext.hr.doctype.staffing_plan.test_staffing_plan import make_company
 
 class TestJobOffer(unittest.TestCase):
 	def test_job_offer_creation_against_vacancies(self):
-		create_staffing_plan(staffing_details=[{
-			"designation": "Designer",
+		# a designation of its own, as the other tests' staffing plan has vacancies for theirs
+		designation = "_Test Job Offer Designation"
+		if not frappe.db.exists("Designation", designation):
+			create_designation(designation_name=designation)
+
+		create_staffing_plan(name="Test Job Offer Vacancies", company="_Test Company", staffing_details=[{
+			"designation": designation,
 			"vacancies": 0,
 			"estimated_cost_per_position": 5000,
 		}])
 		frappe.db.set_single_value("HR Settings", "check_vacancies", 1)
 		job_applicant = create_job_applicant(email_id="test_job_offer@example.com")
-		job_offer = create_job_offer(job_applicant=job_applicant.name, designation="Researcher")
+		job_offer = create_job_offer(job_applicant=job_applicant.name, designation=designation, company="_Test Company")
 		self.assertRaises(frappe.ValidationError, job_offer.submit)
 
 		# test creation of job offer when vacancies are not present
@@ -58,6 +63,7 @@ def create_job_offer(**args):
 		"job_applicant": args.job_applicant or job_applicant.name,
 		"offer_date": args.offer_date or nowdate(),
 		"designation": args.designation or "Researcher",
+		"company": args.company,
 		"status": args.status or "Accepted",
 	})
 	return job_offer
@@ -72,6 +78,7 @@ def create_staffing_plan(**args):
 	staffing_plan = frappe.get_doc({
 		"doctype": "Staffing Plan",
 		"name": args.name or "Test",
+		"company": args.company,
 		"from_date": args.from_date or nowdate(),
 		"to_date": args.to_date or add_days(nowdate(), 10),
 		"staffing_details": args.staffing_details or [{

@@ -492,10 +492,19 @@ class SalarySlip(TransactionBase):
 
 	def add_structure_components(self, component_type):
 		data = self.get_data_for_eval()
+		components_set = set()
 		for struct_row in self._salary_structure_doc.get(component_type):
 			amount = self.eval_condition_and_formula(struct_row, data)
+
+			# A component can be in the structure more than once with different conditions: a row whose condition
+			# doesn't apply must not clear the amount an earlier row set
+			if amount is None and struct_row.salary_component in components_set:
+				continue
+
 			if struct_row.statistical_component == 0:
 				self.update_component_row(struct_row, amount, component_type)
+				if amount is not None:
+					components_set.add(struct_row.salary_component)
 
 	def get_data_for_eval(self):
 		"""Returns data for evaluating formula"""

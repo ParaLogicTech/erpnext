@@ -13,7 +13,12 @@ from erpnext.accounts.doctype.invoice_discounting.invoice_discounting import (
 )
 from erpnext.accounts.doctype.mode_of_payment.mode_of_payment import get_mode_of_payment_account
 from erpnext.accounts.party import get_party_account, get_party_name
-from erpnext.accounts.utils import get_account_currency, get_balance_on, get_balance_on_voucher
+from erpnext.accounts.utils import (
+	get_account_currency,
+	get_balance_on,
+	get_balance_on_voucher,
+	get_stock_and_account_balance,
+)
 from erpnext.controllers.accounts_controller import AccountsController, has_advance_entry_reference_to_unlink
 
 
@@ -72,6 +77,7 @@ class JournalEntry(AccountsController):
 			self.is_opening = "Yes"
 
 		self.validate_cheque_info()
+		self.validate_stock_accounts()
 		self.create_remarks()
 
 	def on_submit(self):
@@ -86,7 +92,7 @@ class JournalEntry(AccountsController):
 	def on_cancel(self):
 		from erpnext.accounts.doctype.payment_reconciliation.payment_reconciliation import unlink_voucher_from_payments
 		from erpnext.hr.doctype.salary_slip.salary_slip import unlink_voucher_from_salary_slips
-		unlink_voucher_from_payments(self.doctype, self.name, validate_permission=True)
+		unlink_voucher_from_payments(self.doctype, self.name, validate_permission="Invoice")
 		unlink_voucher_from_salary_slips(self.name)
 
 		self.make_gl_entries(1)
@@ -638,6 +644,25 @@ class JournalEntry(AccountsController):
 
 		self.difference = flt(self.total_debit, self.precision("total_debit")) - \
 			flt(self.total_credit, self.precision("total_credit"))
+
+	def validate_stock_accounts(self):
+		"""With perpetual inventory, stock accounts follow the stock ledger. A Journal Entry may only post to one whose
+		balance differs from its warehouses' stock value, to bring the two back in line."""
+		from erpnext.accounts.general_ledger import StockAccountInvalidTransaction
+
+		if not cint(erpnext.is_perpetual_inventory_enabled(self.company)):
+			return
+
+		stock_accounts = {d.account for d in self.get("accounts")
+			if d.account and frappe.get_cached_value("Account", d.account, "account_type") == "Stock"}
+
+		for account in sorted(stock_accounts):
+			account_balance, stock_value, _warehouses = get_stock_and_account_balance(account, self.posting_date,
+				self.company)
+			if account_balance == stock_value:
+				frappe.throw(_("Account {0} can only be updated through stock transactions").format(
+					frappe.bold(account),
+				), StockAccountInvalidTransaction)
 
 	def validate_multi_currency(self):
 		alternate_currency = []

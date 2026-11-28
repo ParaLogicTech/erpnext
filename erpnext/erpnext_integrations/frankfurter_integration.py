@@ -12,6 +12,7 @@ def get_exchange_rate_from_frankfurter(from_currency, to_currency, transaction_d
 			"base": from_currency,
 			"quotes": to_currency,
 		},
+		timeout=10,
 	)
 	response.raise_for_status()
 	data = response.json()

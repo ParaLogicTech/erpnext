@@ -21,6 +21,8 @@ class TestCompensatoryLeaveRequest(unittest.TestCase):
 		create_holiday_list()
 
 		employee = get_employee()
+		# other tests use the same employee, with the company's holiday list
+		self.addCleanup(frappe.db.set_value, "Employee", employee.name, "holiday_list", employee.holiday_list)
 		employee.holiday_list = "_Test Compensatory Leave"
 		employee.save()
 
@@ -116,23 +118,23 @@ def mark_attendance(employee, date=None, status="Present"):
 
 
 def create_holiday_list():
+	# today and yesterday are the holidays, so a list made on an earlier day is brought up to date
 	if frappe.db.exists("Holiday List", "_Test Compensatory Leave"):
-		return
+		holiday_list = frappe.get_doc("Holiday List", "_Test Compensatory Leave")
+	else:
+		holiday_list = frappe.new_doc("Holiday List")
+		holiday_list.holiday_list_name = "_Test Compensatory Leave"
 
-	holiday_list = frappe.get_doc({
-		"doctype": "Holiday List",
-		"from_date": add_months(today(), -3),
-		"to_date": add_months(today(), 3),
-		"holidays": [
-			{
-				"description": "Test Holiday",
-				"holiday_date": today(),
-			},
-			{
-				"description": "Test Holiday 1",
-				"holiday_date": add_days(today(), -1),
-			},
-		],
-		"holiday_list_name": "_Test Compensatory Leave",
-	})
+	holiday_list.from_date = add_months(today(), -3)
+	holiday_list.to_date = add_months(today(), 3)
+	holiday_list.set("holidays", [
+		{
+			"description": "Test Holiday",
+			"holiday_date": today(),
+		},
+		{
+			"description": "Test Holiday 1",
+			"holiday_date": add_days(today(), -1),
+		},
+	])
 	holiday_list.save()

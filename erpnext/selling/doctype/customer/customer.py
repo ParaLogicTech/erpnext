@@ -5,6 +5,7 @@ import json
 
 import frappe
 import frappe.defaults
+from crm.crm.doctype.territory.territory import get_territory_subtree
 from frappe import _, unscrub
 from frappe.contacts.address_and_contact import delete_contact_and_address, load_address_and_contact
 from frappe.contacts.doctype.address.address import get_default_address
@@ -18,6 +19,7 @@ from frappe.model.naming import set_name_by_naming_series
 from frappe.utils import cint, clean_whitespace, combine_datetime, cstr, flt, get_time, getdate, now_datetime, today
 
 from erpnext.accounts.party import get_dashboard_info, render_address, validate_party_accounts
+from erpnext.setup.doctype.customer_group.customer_group import get_customer_group_subtree
 from erpnext.utilities.transaction_base import TransactionBase
 
 primary_address_fields = [
@@ -497,8 +499,6 @@ def make_opportunity(source_name, target_doc=None):
 @frappe.whitelist()
 def get_loyalty_programs(doc):
 	""" returns applicable loyalty programs for a customer """
-	from frappe.desk.treeview import get_children
-
 	lp_details = []
 	loyalty_programs = frappe.get_all("Loyalty Program",
 		fields=["name", "customer_group", "customer_territory"],
@@ -506,11 +506,13 @@ def get_loyalty_programs(doc):
 			"ifnull(to_date, '2500-01-01')": [">=", today()]})
 
 	for loyalty_program in loyalty_programs:
-		customer_groups = [d.value for d in get_children("Customer Group", loyalty_program.customer_group)] + [loyalty_program.customer_group]
-		customer_territories = [d.value for d in get_children("Territory", loyalty_program.customer_territory)] + [loyalty_program.customer_territory]
-
-		if (not loyalty_program.customer_group or doc.customer_group in customer_groups)\
-			and (not loyalty_program.customer_territory or doc.territory in customer_territories):
+		if (
+			not loyalty_program.customer_group
+			or doc.customer_group in get_customer_group_subtree(loyalty_program.customer_group)
+		) and (
+			not loyalty_program.customer_territory
+			or doc.territory in get_territory_subtree(loyalty_program.customer_territory)
+		):
 			lp_details.append(loyalty_program.name)
 
 	return lp_details

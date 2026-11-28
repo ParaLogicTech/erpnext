@@ -1439,6 +1439,9 @@ def validate_inclusive_tax(tax, doc):
 		elif tax.charge_type == "Weighted Distribution":
 			# inclusive tax cannot be of type Actual
 			frappe.throw(_("Charge of type 'Weighted Distribution' in row {0} cannot be included in Item Rate").format(tax.idx))
+		elif tax.charge_type == "On Item Quantity":
+			# the tax would be added on top of the rate: the inclusive calculation doesn't support it yet
+			frappe.throw(_("Charge of type 'On Item Quantity' in row {0} cannot be included in Item Rate").format(tax.idx))
 		elif tax.charge_type == "On Previous Row Amount" and \
 				not cint(doc.get("taxes")[cint(tax.row_id) - 1].included_in_print_rate):
 			# referred row should also be inclusive
@@ -1707,6 +1710,8 @@ def update_child_items(parent_doctype, parent_name, data):
 		parent_doc.validate_max_discount()
 		parent_doc.validate_discount_rule()
 		parent_doc.validate_selling_price()
+		# bundled rows link to their parent row by name, which new rows only get on save
+		parent_doc.set_name_in_children()
 		make_bundled_item_list(parent_doc)
 		validate_bundled_item_list(parent_doc)
 
@@ -1735,6 +1740,8 @@ def update_child_items(parent_doctype, parent_name, data):
 	elif parent_doctype == "Purchase Order":
 		parent_doc.set_receipt_status(update=True)
 		parent_doc.set_billing_status(update=True)
+		# requested qty is computed from the ordered qty in Material Requests, so update them first
+		parent_doc.update_previous_doc_status()
 		parent_doc.update_requested_qty()
 		parent_doc.update_ordered_qty()
 		parent_doc.update_last_purchase_rate()
@@ -1745,7 +1752,8 @@ def update_child_items(parent_doctype, parent_name, data):
 
 	parent_doc.update_blanket_order()
 	parent_doc.set_status(update=True)
-	parent_doc.update_previous_doc_status()
+	if parent_doctype == "Sales Order":
+		parent_doc.update_previous_doc_status()
 
 
 @frappe.whitelist()

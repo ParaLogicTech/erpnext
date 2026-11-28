@@ -110,12 +110,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 				}, __("Create"));
 			}
 
-			// if (doc.docstatus === 1 && frappe.model.can_create("Maintenance Schedule")) {
-			// 	this.frm.add_custom_button(__('Maintenance Schedule'), () => {
-			// 		this.frm.cscript.make_maintenance_schedule();
-			// 	}, __('Create'));
-			// }
-
 			if (!doc.auto_repeat && frappe.model.can_create("Auto Repeat")) {
 				this.frm.add_custom_button(__("Subscription"), () => {
 					erpnext.utils.make_subscription(doc.doctype, doc.name);
@@ -200,13 +194,6 @@ erpnext.accounts.SalesInvoiceController = class SalesInvoiceController extends e
 					}
 				}
 			}
-		});
-	}
-
-	make_maintenance_schedule() {
-		frappe.model.open_mapped_doc({
-			method: "erpnext.accounts.doctype.sales_invoice.sales_invoice.make_maintenance_schedule",
-			frm: cur_frm,
 		});
 	}
 

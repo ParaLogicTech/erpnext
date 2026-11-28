@@ -46,14 +46,16 @@ class TestGSTR3BReport(unittest.TestCase):
 		make_sales_invoice()
 		create_purchase_invoices()
 
-		if frappe.db.exists("GSTR 3B Report", "GSTR3B-March-2019-_Test Address-Billing"):
-			report = frappe.get_doc("GSTR 3B Report", "GSTR3B-March-2019-_Test Address-Billing")
+		company_address = frappe.db.get_value("Address", {"address_title": "_Test Address", "address_type": "Billing"})
+		report_name = f"GSTR3B-March-2019-{company_address}"
+		if frappe.db.exists("GSTR 3B Report", report_name):
+			report = frappe.get_doc("GSTR 3B Report", report_name)
 			report.save()
 		else:
 			report = frappe.get_doc({
 				"doctype": "GSTR 3B Report",
 				"company": "_Test Company GST",
-				"company_address": "_Test Address-Billing",
+				"company_address": company_address,
 				"year": getdate().year,
 				"month": month_number_mapping.get(getdate().month),
 			}).insert()
@@ -73,7 +75,7 @@ def make_sales_invoice():
 	si = create_sales_invoice(company="_Test Company GST",
 			customer="_Test GST Customer",
 			currency="INR",
-			warehouse="Finished Goods - _GST",
+			warehouse="Stores - _GST",
 			debit_to="Debtors - _GST",
 			income_account="Sales - _GST",
 			expense_account="Cost of Goods Sold - _GST",
@@ -94,7 +96,7 @@ def make_sales_invoice():
 	si1 = create_sales_invoice(company="_Test Company GST",
 			customer="_Test GST SEZ Customer",
 			currency="INR",
-			warehouse="Finished Goods - _GST",
+			warehouse="Stores - _GST",
 			debit_to="Debtors - _GST",
 			income_account="Sales - _GST",
 			expense_account="Cost of Goods Sold - _GST",
@@ -115,7 +117,7 @@ def make_sales_invoice():
 	si2 = create_sales_invoice(company="_Test Company GST",
 			customer="_Test Unregistered Customer",
 			currency="INR",
-			warehouse="Finished Goods - _GST",
+			warehouse="Stores - _GST",
 			debit_to="Debtors - _GST",
 			income_account="Sales - _GST",
 			expense_account="Cost of Goods Sold - _GST",
@@ -137,7 +139,7 @@ def make_sales_invoice():
 			customer="_Test GST Customer",
 			currency="INR",
 			item="Milk",
-			warehouse="Finished Goods - _GST",
+			warehouse="Stores - _GST",
 			debit_to="Debtors - _GST",
 			income_account="Sales - _GST",
 			expense_account="Cost of Goods Sold - _GST",
@@ -153,7 +155,7 @@ def create_purchase_invoices():
 			company="_Test Company GST",
 			supplier="_Test Registered Supplier",
 			currency="INR",
-			warehouse="Finished Goods - _GST",
+			warehouse="Stores - _GST",
 			cost_center="Main - _GST",
 			do_not_save=1,
 		)
@@ -182,13 +184,13 @@ def create_purchase_invoices():
 			company="_Test Company GST",
 			supplier="_Test Registered Supplier",
 			currency="INR",
-			warehouse="Finished Goods - _GST",
+			warehouse="Stores - _GST",
 			cost_center="Main - _GST",
 			item="Milk",
 			do_not_save=1,
 		)
 
-	pi1.shipping_address = "_Test Supplier GST-1-Billing"
+	pi1.shipping_address = frappe.db.get_value("Address", {"address_title": "_Test Supplier GST-1", "address_type": "Billing"})
 	pi1.save()
 
 	pi1.submit()
@@ -214,7 +216,7 @@ def make_suppliers():
 			"doctype": "Supplier",
 		}).insert()
 
-	if not frappe.db.exists("Address", "_Test Supplier GST-1-Billing"):
+	if not frappe.db.exists("Address", {"address_title": "_Test Supplier GST-1", "address_type": "Billing"}):
 		address = frappe.get_doc({
 			"address_line1": "_Test Address Line 1",
 			"address_title": "_Test Supplier GST-1",
@@ -237,7 +239,7 @@ def make_suppliers():
 		address.is_shipping_address = 1
 		address.save()
 
-	if not frappe.db.exists("Address", "_Test Supplier GST-2-Billing"):
+	if not frappe.db.exists("Address", {"address_title": "_Test Supplier GST-2", "address_type": "Billing"}):
 		address = frappe.get_doc({
 			"address_line1": "_Test Address Line 1",
 			"address_title": "_Test Supplier GST-2",
@@ -291,7 +293,7 @@ def make_customers():
 			"territory": "_Test Territory",
 		}).insert()
 
-	if not frappe.db.exists("Address", "_Test GST-1-Billing"):
+	if not frappe.db.exists("Address", {"address_title": "_Test GST-1", "address_type": "Billing"}):
 		address = frappe.get_doc({
 			"address_line1": "_Test Address Line 1",
 			"address_title": "_Test GST-1",
@@ -314,7 +316,7 @@ def make_customers():
 
 		address.save()
 
-	if not frappe.db.exists("Address", "_Test GST-2-Billing"):
+	if not frappe.db.exists("Address", {"address_title": "_Test GST-2", "address_type": "Billing"}):
 		address = frappe.get_doc({
 			"address_line1": "_Test Address Line 1",
 			"address_title": "_Test GST-2",
@@ -335,7 +337,7 @@ def make_customers():
 
 		address.save()
 
-	if not frappe.db.exists("Address", "_Test GST-3-Billing"):
+	if not frappe.db.exists("Address", {"address_title": "_Test GST-3", "address_type": "Billing"}):
 		address = frappe.get_doc({
 			"address_line1": "_Test Address Line 1",
 			"address_title": "_Test GST-3",
@@ -358,17 +360,16 @@ def make_customers():
 
 
 def make_company():
+	if not frappe.db.exists("Company", "_Test Company GST"):
+		company = frappe.new_doc("Company")
+		company.company_name = "_Test Company GST"
+		company.abbr = "_GST"
+		company.default_currency = "INR"
+		company.country = "India"
+		company.insert()
 
-	if frappe.db.exists("Company", "_Test Company GST"):
-		return
-	company = frappe.new_doc("Company")
-	company.company_name = "_Test Company GST"
-	company.abbr = "_GST"
-	company.default_currency = "INR"
-	company.country = "India"
-	company.insert()
-
-	if not frappe.db.exists("Address", "_Test Address-Billing"):
+	# Other tests delete all addresses, so the company's address may be gone although the company exists
+	if not frappe.db.exists("Address", {"address_title": "_Test Address", "address_type": "Billing"}):
 		address = frappe.get_doc({
 			"address_line1": "_Test Address Line 1",
 			"address_title": "_Test Address",

@@ -10,7 +10,12 @@ from frappe.utils import flt, fmt_money
 import erpnext
 from erpnext.accounts.doctype.account.account import get_account_currency
 from erpnext.accounts.general_ledger import delete_voucher_gl_entries, make_gl_entries
-from erpnext.accounts.party import get_party_account, get_party_default_currency, get_party_name
+from erpnext.accounts.party import (
+	get_party_account,
+	get_party_cost_center,
+	get_party_default_currency,
+	get_party_name,
+)
 from erpnext.controllers.accounts_controller import AccountsController, validate_conversion_rate
 from erpnext.controllers.stock_controller import update_gl_entries_for_reposted_stock_vouchers
 
@@ -83,6 +88,20 @@ class LandedCostVoucher(AccountsController):
 		super().set_missing_values(for_validate=for_validate)
 		self.party_name = get_party_name(self.party_type, self.party)
 		self.set_party_account()
+		self.set_cost_center()
+
+	def set_cost_center(self):
+		"""Taxes without a cost center of their own are booked to this one"""
+		if self.get("cost_center") or not self.company:
+			return
+
+		billing_party_type, billing_party, _billing_party_name = self.get_billing_party()
+		cost_center = None
+		if billing_party_type and billing_party:
+			cost_center = get_party_cost_center(billing_party_type, billing_party, self.company,
+				transaction_type=self.get("transaction_type"))
+
+		self.cost_center = cost_center or frappe.get_cached_value("Company", self.company, "cost_center")
 
 	def set_party_account(self, force=False):
 		if not self.get("credit_to") or force:
@@ -410,16 +429,20 @@ class LandedCostVoucher(AccountsController):
 
 				item.item_tax_detail[tax.name] += distribution_amount * flt(self.conversion_rate)
 
+		if not self.items:
+			return
+
+		precision = self.items[0].precision("applicable_charges")
 		accumulated_taxes = 0
-		for item in self.get("items"):
-			item_tax_total = sum(item.item_tax_detail.values())
-			item.applicable_charges = item_tax_total
-			accumulated_taxes += item_tax_total
+		for item in self.items:
+			item.applicable_charges = flt(sum(item.item_tax_detail.values()), precision)
+			accumulated_taxes += item.applicable_charges
 			item.item_tax_detail = json.dumps(item.item_tax_detail, indent=None, separators=(",", ":"))
 
-		if accumulated_taxes != self.base_total_taxes_and_charges:
-			diff = self.base_total_taxes_and_charges - accumulated_taxes
-			self.items[-1].applicable_charges += diff
+		# the last item takes the rounding difference
+		diff = flt(self.base_total_taxes_and_charges - accumulated_taxes, precision)
+		if diff:
+			self.items[-1].applicable_charges = flt(self.items[-1].applicable_charges + diff, precision)
 
 	def update_landed_cost(self):
 		docs = []
@@ -598,6 +621,7 @@ def get_landed_cost_voucher(dt, dn):
 
 	lcv.set_purchase_receipt_details()
 	lcv.get_items_from_purchase_receipts()
+	lcv.set_cost_center()
 	return lcv
 
 

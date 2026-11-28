@@ -6,12 +6,14 @@ import unittest
 
 import frappe
 from frappe.test_runner import make_test_records
-from frappe.utils import cstr
+from frappe.utils import cstr, flt
 
 from erpnext.manufacturing.doctype.bom_update_tool.bom_update_tool import update_cost
 from erpnext.stock.doctype.stock_reconciliation.test_stock_reconciliation import create_stock_reconciliation
 
 test_records = frappe.get_test_records("BOM")
+# BOM links to Project, whose own links lead back to Work Order, whose test records need these BOMs
+test_ignore = ["Project"]
 
 
 class TestBOM(unittest.TestCase):
@@ -80,15 +82,19 @@ class TestBOM(unittest.TestCase):
 		bom = frappe.copy_doc(test_records[2])
 		bom.insert()
 
-		# test amounts in selected currency
-		self.assertEqual(bom.operating_cost, 100)
-		self.assertEqual(bom.raw_material_cost, 351.68)
-		self.assertEqual(bom.total_cost, 451.68)
+		# raw material rates come from valuation rates that other tests change, so the totals are checked against the rows
+		raw_material_cost = sum(row.amount for row in bom.items)
+		base_raw_material_cost = raw_material_cost * bom.conversion_rate
 
 		# test amounts in selected currency
+		self.assertEqual(bom.operating_cost, 100)
+		self.assertAlmostEqual(bom.raw_material_cost, raw_material_cost)
+		self.assertAlmostEqual(bom.total_cost, raw_material_cost + 100)
+
+		# test amounts in company currency
 		self.assertEqual(bom.base_operating_cost, 6000)
-		self.assertEqual(bom.base_raw_material_cost, 21100.80)
-		self.assertEqual(bom.base_total_cost, 27100.80)
+		self.assertAlmostEqual(bom.base_raw_material_cost, base_raw_material_cost)
+		self.assertAlmostEqual(bom.base_total_cost, base_raw_material_cost + 6000)
 
 	def test_bom_cost_multi_uom_multi_currency_based_on_price_list(self):
 		for item_code, rate in (("_Test Item", 3600), ("_Test Item Home Desktop Manufactured", 3000)):
@@ -104,39 +110,42 @@ class TestBOM(unittest.TestCase):
 		bom.set_rate_of_sub_assembly_item_based_on_bom = 0
 		bom.rm_cost_as_per = "Price List"
 		bom.buying_price_list = "_Test Price List"
+		# The conversion factor comes from the item: 1 _Test UOM 1 = 10 _Test UOM
 		bom.items[0].uom = "_Test UOM 1"
-		bom.items[0].conversion_factor = 5
 		bom.insert()
 
 		bom.update_cost()
 
 		# test amounts in selected currency
-		self.assertEqual(bom.items[0].rate, 300)
+		self.assertEqual(bom.items[0].conversion_factor, 10)
+		self.assertEqual(bom.items[0].rate, 600)
 		self.assertEqual(bom.items[1].rate, 50)
 		self.assertEqual(bom.operating_cost, 100)
-		self.assertEqual(bom.raw_material_cost, 450)
-		self.assertEqual(bom.total_cost, 550)
+		self.assertEqual(bom.raw_material_cost, 750)
+		self.assertEqual(bom.total_cost, 850)
 
 		# test amounts in selected currency
-		self.assertEqual(bom.items[0].base_rate, 18000)
+		self.assertEqual(bom.items[0].base_rate, 36000)
 		self.assertEqual(bom.items[1].base_rate, 3000)
 		self.assertEqual(bom.base_operating_cost, 6000)
-		self.assertEqual(bom.base_raw_material_cost, 27000)
-		self.assertEqual(bom.base_total_cost, 33000)
+		self.assertEqual(bom.base_raw_material_cost, 45000)
+		self.assertEqual(bom.base_total_cost, 51000)
 
 	def test_bom_cost_multi_uom_based_on_valuation_rate(self):
 		bom = frappe.copy_doc(test_records[2])
 		bom.set_rate_of_sub_assembly_item_based_on_bom = 0
 		bom.rm_cost_as_per = "Valuation Rate"
+		# The conversion factor comes from the item: 1 _Test UOM 1 = 10 _Test UOM
 		bom.items[0].uom = "_Test UOM 1"
-		bom.items[0].conversion_factor = 6
 		bom.insert()
 
 		reset_item_valuation_rate(item_code="_Test Item", qty=200, rate=200)
 
 		bom.update_cost()
 
-		self.assertEqual(bom.items[0].rate, 20)
+		# Valuation rate 200 per stock UOM, in the BOM's currency (1 USD = 60)
+		self.assertEqual(bom.items[0].conversion_factor, 10)
+		self.assertEqual(flt(bom.items[0].rate, 9), flt(200 * 10 / 60, 9))
 
 
 def get_default_bom(item_code="_Test FG Item 2"):

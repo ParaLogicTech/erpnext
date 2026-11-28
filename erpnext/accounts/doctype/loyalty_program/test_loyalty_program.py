@@ -9,6 +9,7 @@ from frappe.utils import cint, flt, getdate, today
 from erpnext.accounts.doctype.loyalty_program.loyalty_program import get_loyalty_program_details_with_points
 from erpnext.accounts.party import get_dashboard_info
 from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import set_perpetual_inventory
+from erpnext.tests.utils import set_return_against_row_references
 
 
 class TestLoyaltyProgram(unittest.TestCase):
@@ -128,6 +129,7 @@ class TestLoyaltyProgram(unittest.TestCase):
 		si_return.conversion_rate = flt(1)
 		si_return.is_return = 1
 		si_return.return_against = si_original.name
+		set_return_against_row_references(si_return)
 		si_return.insert()
 		si_return.submit()
 
@@ -147,11 +149,19 @@ class TestLoyaltyProgram(unittest.TestCase):
 				frappe.get_doc("Sales Invoice", d.name).cancel()
 
 	def test_loyalty_points_for_dashboard(self):
+		frappe.db.set_value("Customer", "Test Loyalty Customer", "loyalty_program", "Test Single Loyalty")
+		si = create_sales_invoice_record()
+		si.insert()
+		si.submit()
+
 		doc = frappe.get_doc("Customer", "Test Loyalty Customer")
 		company_wise_info = get_dashboard_info("Customer", doc.name, doc.loyalty_program)
 
+		self.assertTrue(company_wise_info)
 		for d in company_wise_info:
 			self.assertTrue(d.get("loyalty_points"))
+
+		si.cancel()
 
 
 def get_points_earned(self):

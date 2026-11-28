@@ -16,6 +16,7 @@ def boot_session(bootinfo):
 		bootinfo.sysdefaults.customer_group = frappe.db.get_single_value("Selling Settings", "customer_group")
 		bootinfo.sysdefaults.allow_stale = cint(frappe.db.get_single_value("Accounts Settings", "allow_stale"))
 		bootinfo.sysdefaults.quotation_valid_till = cint(frappe.db.get_single_value("Selling Settings", "default_valid_till"))
+		bootinfo.sysdefaults.default_stock_uom = frappe.db.get_single_value("Stock Settings", "stock_uom")
 
 		# if no company, show a dialog box to create a new company
 		bootinfo.customer_count = frappe.db.sql("""SELECT count(*) FROM `tabCustomer`""")[0][0]

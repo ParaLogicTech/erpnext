@@ -7,10 +7,19 @@ from frappe.utils import nowdate
 
 from erpnext.accounts.doctype.pos_profile.test_pos_profile import make_pos_profile
 from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
+from erpnext.stock.doctype.item.test_item import make_item
 
 
 class TestPOSClosingEntry(unittest.TestCase):
 	def test_pos_closing_entry(self):
+		# a failed run would leave its invoices, which the next run counts
+		frappe.db.savepoint("pos_closing_entry_test")
+		self.addCleanup(frappe.db.rollback, save_point="pos_closing_entry_test")
+		self.addCleanup(frappe.set_user, frappe.session.user)
+
+		# POS invoices take the price list rate over the given one, so the item has no price
+		item_code = make_item("_Test POS Closing Item", {"is_stock_item": 0}).name
+
 		old_user = frappe.session.user
 		user = "test@example.com"
 		test_user = frappe.get_doc("User", user)
@@ -27,16 +36,18 @@ class TestPOSClosingEntry(unittest.TestCase):
 
 		pos_profile.save()
 
-		si1 = create_sales_invoice(is_pos=1, rate=3500, do_not_submit=1)
+		si1 = create_sales_invoice(is_pos=1, item_code=item_code, rate=3500, do_not_save=1)
 		si1.append("payments", {
 			"mode_of_payment": "Cash", "account": "Cash - _TC", "amount": 3500,
 		})
+		si1.insert()
 		si1.submit()
 
-		si2 = create_sales_invoice(is_pos=1, rate=3200, do_not_submit=1)
+		si2 = create_sales_invoice(is_pos=1, item_code=item_code, rate=3200, do_not_save=1)
 		si2.append("payments", {
 			"mode_of_payment": "Cash", "account": "Cash - _TC", "amount": 3200,
 		})
+		si2.insert()
 		si2.submit()
 
 		pcv_doc = create_pos_closing_entry(user=user,
@@ -44,7 +55,7 @@ class TestPOSClosingEntry(unittest.TestCase):
 
 		pcv_doc.set_closing_voucher_details()
 
-		self.assertEqual(pcv_doc.total_quantity, 2)
+		self.assertEqual(pcv_doc.total_invoices, 2)
 		self.assertEqual(pcv_doc.net_total, 6700)
 
 		payment = pcv_doc.payment_reconciliation[0]
@@ -78,7 +89,7 @@ def create_pos_closing_entry(**args):
 
 	doc.set_closing_voucher_details()
 	if doc.get("payment_reconciliation"):
-		doc.payment_reconciliation[0].collected_amount = (args.collected_amount or
+		doc.payment_reconciliation[0].closing_amount = (args.collected_amount or
 			doc.payment_reconciliation[0].expected_amount)
 
 	doc.save()

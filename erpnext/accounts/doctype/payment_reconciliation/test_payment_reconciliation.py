@@ -177,8 +177,9 @@ class TestPaymentReconciliation(unittest.TestCase):
 			4570)
 		self.assertEqual(get_balance_on_voucher(so.doctype, so.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
 			0)
+		# the order's advance paid still counts advances made against it and reallocated
 		self.assertEqual(frappe.db.get_value("Sales Order", so.name, "advance_paid"),
-			0)
+			100)
 		self.assertTrue(frappe.db.sql("""select name from `tabJournal Entry Account`
 			where name=%s and reference_name=%s and credit_in_account_currency=%s and docstatus=1
 		""", [jv_against_so.accounts[2].name, jv_receivable.name, 100]))
@@ -290,8 +291,9 @@ class TestPaymentReconciliation(unittest.TestCase):
 			4800)
 		self.assertEqual(get_balance_on_voucher(so.doctype, so.name, "Customer", self.customer.name, "_Test Receivable - _TC"),
 			0)
+		# the order's advance paid still counts advances made against it and reallocated
 		self.assertEqual(frappe.db.get_value("Sales Order", so.name, "advance_paid"),
-			0)
+			100)
 		self.assertTrue(frappe.db.sql("""select name from `tabPayment Entry Reference`
 			where parent=%s and reference_name=%s and allocated_amount=%s and docstatus=1
 		""", [pe_unallocated.name, jv_receivable.name, 100]))

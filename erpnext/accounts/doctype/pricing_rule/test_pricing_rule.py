@@ -6,6 +6,7 @@ import unittest
 
 import frappe
 from frappe import MandatoryError
+from frappe.tests.utils import change_settings
 
 from erpnext.accounts.doctype.sales_invoice.test_sales_invoice import create_sales_invoice
 from erpnext.selling.doctype.sales_order.test_sales_order import make_sales_order
@@ -143,6 +144,15 @@ class TestPricingRule(unittest.TestCase):
 		self.assertEqual(details.get("margin_rate_or_amount"), 10)
 
 	def test_mixed_conditions_for_item_group(self):
+		# the setup wizard creates these groups, the test site doesn't have them
+		for item_group in ("Products", "Seed"):
+			if not frappe.db.exists("Item Group", item_group):
+				frappe.get_doc({
+					"doctype": "Item Group",
+					"item_group_name": item_group,
+					"parent_item_group": "All Item Groups",
+				}).insert()
+
 		for item in ["Mixed Cond Item 1", "Mixed Cond Item 2"]:
 			make_item(item, {"item_group": "Products"})
 			make_item_price(item, "_Test Price List", 100)
@@ -259,6 +269,7 @@ class TestPricingRule(unittest.TestCase):
 		details = get_item_details(args)
 		self.assertEqual(details.get("discount_percentage"), 17.5)
 
+	@change_settings("Selling Settings", {"restrict_price_list_rate": 0})
 	def test_pricing_rule_for_stock_qty(self):
 		test_record = {
 			"doctype": "Pricing Rule",
@@ -305,6 +316,7 @@ class TestPricingRule(unittest.TestCase):
 		self.assertEqual(so.items[0].discount_percentage, 0)
 		self.assertEqual(so.items[0].rate, 100)
 
+	@change_settings("Selling Settings", {"restrict_price_list_rate": 0})
 	def test_pricing_rule_with_margin_and_discount(self):
 		frappe.delete_doc_if_exists("Pricing Rule", "_Test Pricing Rule")
 		make_pricing_rule(selling=1, margin_type="Percentage", margin_rate_or_amount=10, discount_percentage=10)

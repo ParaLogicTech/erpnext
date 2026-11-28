@@ -105,8 +105,9 @@ def get_balance_on(
 	account_doc = frappe.get_cached_doc("Account", account) if account else None
 	report_type = account_doc.report_type if account_doc else None
 
+	# Without a date, the balance includes all entries, and P&L accounts the current fiscal year's
 	try:
-		year_start_date = get_fiscal_year(date, company=company, verbose=0)[1]
+		year_start_date = get_fiscal_year(date or getdate(), company=company, verbose=0)[1]
 	except FiscalYearError:
 		if getdate(date) > getdate():
 			# if fiscal year not found and the date is greater than today

@@ -237,11 +237,11 @@ class FBRInvoiceWiseTaxes:
 	def process_invoice_map(self):
 		company_currency = get_company_currency(self.filters.company)
 		tax_precision = get_field_precision(frappe.get_meta("Sales Taxes and Charges").get_field("base_tax_amount"),
-			company_currency)
+			currency=company_currency)
 		taxable_precision = get_field_precision(frappe.get_meta("Sales Invoice").get_field("base_taxable_total"),
-			company_currency)
+			currency=company_currency)
 		total_precision = get_field_precision(frappe.get_meta("Sales Invoice").get_field("base_total_after_taxes"),
-			company_currency)
+			currency=company_currency)
 
 		for inv_obj in self.invoices_map.values():
 			for item in inv_obj["items"]:

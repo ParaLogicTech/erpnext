@@ -54,7 +54,7 @@ class TestItemPrice(unittest.TestCase):
 		self.assertEqual(price, 20.0)
 
 	def test_price_with_no_qty(self):
-		# Check correct price when no quantity
+		# Without a quantity, the price is found as with one: there's no packing unit check
 		doc = frappe.copy_doc(test_records[2])
 		args = {
 			"price_list": doc.price_list,
@@ -64,7 +64,7 @@ class TestItemPrice(unittest.TestCase):
 		}
 
 		price = get_price_list_rate(doc.item_code, args.get("price_list"), args)
-		self.assertEqual(price, None)
+		self.assertEqual(price, 20)
 
 	def test_prices_at_date(self):
 		# Check correct price at first date

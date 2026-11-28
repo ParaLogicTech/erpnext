@@ -6,6 +6,7 @@ import random
 import unittest
 
 import frappe
+from frappe.tests.utils import change_settings
 from frappe.utils import add_days, add_months, flt, get_first_day, get_last_day, getdate, nowdate
 from frappe.utils.make_random import get_random
 
@@ -126,10 +127,9 @@ class TestSalarySlip(unittest.TestCase):
 		frappe.set_user("test_employee@salary.com")
 		self.assertTrue(salary_slip_test_employee.has_permission("read"))
 
+	@change_settings("HR Settings", {"email_salary_slip_to_employee": 1})
 	def test_email_salary_slip(self):
 		frappe.db.sql("delete from `tabEmail Queue`")
-
-		frappe.db.set_single_value("HR Settings", "email_salary_slip_to_employee", 1)
 
 		make_employee("test_employee@salary.com")
 		ss = make_employee_salary_slip("test_employee@salary.com", "Monthly")

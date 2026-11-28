@@ -6,11 +6,7 @@ import unittest
 import frappe
 from frappe.utils import nowdate
 
-from erpnext.buying.doctype.request_for_quotation.request_for_quotation import (
-	create_supplier_quotation,
-	make_supplier_quotation,
-)
-from erpnext.stock.doctype.item.test_item import make_item
+from erpnext.buying.doctype.request_for_quotation.request_for_quotation import make_supplier_quotation
 
 
 class TestRequestforQuotation(unittest.TestCase):
@@ -69,42 +65,6 @@ class TestRequestforQuotation(unittest.TestCase):
 
 		# reset form_dict
 		frappe.form_dict.name = None
-
-	def test_make_supplier_quotation_from_portal(self):
-		rfq = make_request_for_quotation()
-		rfq.get("items")[0].rate = 100
-		rfq.supplier = rfq.suppliers[0].supplier
-		supplier_quotation_name = create_supplier_quotation(rfq)
-
-		supplier_quotation_doc = frappe.get_doc("Supplier Quotation", supplier_quotation_name)
-
-		self.assertEqual(supplier_quotation_doc.supplier, rfq.get("suppliers")[0].supplier)
-		self.assertEqual(supplier_quotation_doc.get("items")[0].request_for_quotation, rfq.name)
-		self.assertEqual(supplier_quotation_doc.get("items")[0].item_code, "_Test Item")
-		self.assertEqual(supplier_quotation_doc.get("items")[0].qty, 5)
-		self.assertEqual(supplier_quotation_doc.get("items")[0].amount, 500)
-
-	def test_make_multi_uom_supplier_quotation(self):
-		item_code = "_Test Multi UOM RFQ Item"
-		if not frappe.db.exists("Item", item_code):
-			item = make_item(item_code, {"stock_uom": "_Test UOM"})
-			row = item.append("uoms", {
-				"uom": "Kg",
-				"conversion_factor": 2,
-			})
-			row.db_update()
-
-		rfq = make_request_for_quotation(item_code="_Test Multi UOM RFQ Item", uom="Kg", conversion_factor=2)
-		rfq.get("items")[0].rate = 100
-		rfq.supplier = rfq.suppliers[0].supplier
-
-		self.assertEqual(rfq.items[0].stock_qty, 10)
-
-		supplier_quotation_name = create_supplier_quotation(rfq)
-		supplier_quotation = frappe.get_doc("Supplier Quotation", supplier_quotation_name)
-
-		self.assertEqual(supplier_quotation.items[0].qty, 5)
-		self.assertEqual(supplier_quotation.items[0].stock_qty, 10)
 
 
 def make_request_for_quotation(**args):

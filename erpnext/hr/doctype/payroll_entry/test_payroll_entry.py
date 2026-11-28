@@ -20,6 +20,8 @@ from erpnext.hr.doctype.salary_structure.test_salary_structure import make_salar
 
 class TestPayrollEntry(unittest.TestCase):
 	def setUp(self):
+		# submitting salary slips sets it for the rest of the request, which is the whole test run here
+		self.addCleanup(setattr, frappe.flags, "via_payroll_entry", False)
 		for dt in ["Salary Slip", "Salary Component", "Salary Component Account", "Payroll Entry", "Loan"]:
 			frappe.db.sql("delete from `tab%s`" % dt)
 
@@ -96,7 +98,7 @@ class TestPayrollEntry(unittest.TestCase):
 				principal_amount = loan.monthly_repayment_amount - interest_amount
 				self.assertEqual(row.interest_amount, interest_amount)
 				self.assertEqual(row.principal_amount, principal_amount)
-				self.assertEqual(row.total_payment,
+				self.assertEqual(row.repayment_amount,
 					interest_amount + principal_amount)
 
 		if salary_slip.docstatus == 0:

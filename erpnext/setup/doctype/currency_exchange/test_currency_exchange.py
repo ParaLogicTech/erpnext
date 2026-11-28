@@ -64,11 +64,10 @@ class TestCurrencyExchange(unittest.TestCase):
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-30", "for_selling")
 		self.assertEqual(exchange_rate, 62.9)
 
-		# Exchange rate as on 15th Dec, 2015, should be fetched from fixer.io
+		# No rate before 1st Jan, 2016, and no exchange rate provider is set
 		self.clear_cache()
 		exchange_rate = get_exchange_rate("USD", "INR", "2015-12-15", "for_selling")
-		self.assertFalse(exchange_rate == 60)
-		self.assertEqual(flt(exchange_rate, 3), 66.894)
+		self.assertEqual(exchange_rate, 0)
 
 	def test_exchange_rate_strict(self):
 		# strict currency settings
@@ -78,23 +77,22 @@ class TestCurrencyExchange(unittest.TestCase):
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-01", "for_buying")
 		self.assertEqual(exchange_rate, 60.0)
 
-		# Will fetch from fixer.io
+		# The last rate is older than the stale days, and no exchange rate provider is set
 		self.clear_cache()
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-15", "for_buying")
-		self.assertEqual(flt(exchange_rate, 3), 67.79)
+		self.assertEqual(exchange_rate, 0)
 
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-30", "for_selling")
 		self.assertEqual(exchange_rate, 62.9)
 
-		# Exchange rate as on 15th Dec, 2015, should be fetched from fixer.io
 		self.clear_cache()
 		exchange_rate = get_exchange_rate("USD", "INR", "2015-12-15", "for_buying")
-		self.assertEqual(flt(exchange_rate, 3), 66.894)
+		self.assertEqual(exchange_rate, 0)
 
 		exchange_rate = get_exchange_rate("INR", "NGN", "2016-01-10", "for_selling")
 		self.assertEqual(exchange_rate, 65.1)
 
-		# NGN is not available on fixer.io so these should return 0
+		# No rate within the stale days
 		exchange_rate = get_exchange_rate("INR", "NGN", "2016-01-09", "for_selling")
 		self.assertEqual(exchange_rate, 0)
 
@@ -109,7 +107,7 @@ class TestCurrencyExchange(unittest.TestCase):
 		frappe.db.set_single_value("Accounts Settings", "allow_stale", 0)
 		frappe.db.set_single_value("Accounts Settings", "stale_days", 1)
 
-		# Will fetch from fixer.io
+		# The last rate is now older than the stale days, and no exchange rate provider is set
 		self.clear_cache()
 		exchange_rate = get_exchange_rate("USD", "INR", "2016-01-15", "for_buying")
-		self.assertEqual(flt(exchange_rate, 3), 67.79)
+		self.assertEqual(exchange_rate, 0)

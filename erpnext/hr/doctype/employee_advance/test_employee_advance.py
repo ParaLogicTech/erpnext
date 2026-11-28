@@ -6,7 +6,7 @@ import unittest
 import frappe
 from frappe.utils import nowdate
 
-from erpnext.hr.doctype.employee_advance.employee_advance import EmployeeAdvanceOverPayment, make_bank_entry
+from erpnext.hr.doctype.employee_advance.employee_advance import make_bank_entry
 
 
 class TestEmployeeAdvance(unittest.TestCase):
@@ -19,11 +19,11 @@ class TestEmployeeAdvance(unittest.TestCase):
 		advance.reload()
 
 		self.assertEqual(advance.paid_amount, 1000)
-		self.assertEqual(advance.status, "Paid")
+		# Paid but not claimed yet
+		self.assertEqual(advance.status, "Unclaimed")
 
-		# try making over payment
-		journal_entry1 = make_payment_entry(advance)
-		self.assertRaises(EmployeeAdvanceOverPayment, journal_entry1.submit)
+		# try making over payment: the Journal Entry stops it when it's saved
+		self.assertRaises(frappe.ValidationError, make_payment_entry, advance)
 
 
 def make_payment_entry(advance):

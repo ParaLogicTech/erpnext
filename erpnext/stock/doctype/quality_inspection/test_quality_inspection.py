@@ -23,6 +23,9 @@ class TestQualityInspection(unittest.TestCase):
 		frappe.db.set_value("Item", "_Test Item with QA", "inspection_required_before_delivery", 1)
 
 	def test_qa_for_delivery(self):
+		from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
+
+		make_stock_entry(item_code="_Test Item with QA", target="_Test Warehouse - _TC", qty=1, basic_rate=100)
 		dn = create_delivery_note(item_code="_Test Item with QA", do_not_submit=True, allow_zero_valuation=True)
 		self.assertRaises(QualityInspectionRequiredError, dn.submit)
 

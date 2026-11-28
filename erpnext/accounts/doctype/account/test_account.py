@@ -100,7 +100,7 @@ class TestAccount(unittest.TestCase):
 			"Softwares - _TC", doc.is_group, doc.root_type, doc.company)
 
 	def test_account_sync(self):
-		del frappe.local.flags["ignore_root_company_validation"]
+		frappe.local.flags.pop("ignore_root_company_validation", None)
 		acc = frappe.new_doc("Account")
 		acc.account_name = "Test Sync Account"
 		acc.parent_account = "Temporary Accounts - _TC3"
@@ -128,7 +128,7 @@ def _make_test_records(verbose):
 		["_Test Account Customs Duty", "_Test Account Stock Expenses", 0, "Tax", None],
 		["_Test Account Insurance Charges", "_Test Account Stock Expenses", 0, "Chargeable", None],
 		["_Test Account Stock Adjustment", "_Test Account Stock Expenses", 0, "Stock Adjustment", None],
-		["_Test Employee Advance", "Current Liabilities", 0, None, None],
+		["_Test Employee Advance", "Current Assets", 0, "Receivable", None],
 
 		["_Test Account Tax Assets", "Current Assets", 1, None, None],
 		["_Test Account VAT", "_Test Account Tax Assets", 0, "Tax", None],
@@ -173,6 +173,9 @@ def _make_test_records(verbose):
 				"account_type": account_type,
 				"account_currency": currency,
 			} for account_name, parent_account, is_group, account_type, currency in accounts])
+
+	# the test runner commits the records it makes, but not those made here
+	frappe.db.commit()
 
 	return test_objects
 

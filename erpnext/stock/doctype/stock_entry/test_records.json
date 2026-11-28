@@ -97,10 +97,10 @@
 				"item_code": "_Test Item Home Desktop 100",
 				"parentfield": "items",
 				"qty": 1,
-				"stock_uom": "_Test UOM",
+				"stock_uom": "_Test UOM 1",
 				"t_warehouse": "_Test Warehouse - _TC",
 				"stock_qty": 1,
-				"uom": "_Test UOM"
+				"uom": "_Test UOM 1"
 			}
 		]
 	}

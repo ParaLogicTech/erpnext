@@ -76,8 +76,8 @@
     "rate": 50.0,
     "received_qty": 5.0,
     "rejected_qty": 0.0,
-    "stock_uom": "_Test UOM",
-    "uom": "_Test UOM",
+    "stock_uom": "_Test UOM 1",
+    "uom": "_Test UOM 1",
     "warehouse": "_Test Warehouse 1 - _TC",
 	"cost_center": "Main - _TC"
    }

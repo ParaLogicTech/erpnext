@@ -5,11 +5,16 @@ import unittest
 
 import frappe
 
+from erpnext.quality_management.doctype.quality_goal.test_quality_goal import create_goal, create_unit
+from erpnext.quality_management.doctype.quality_procedure.test_quality_procedure import create_procedure
 from erpnext.quality_management.doctype.quality_review.test_quality_review import create_review
 
 
 class TestQualityMeeting(unittest.TestCase):
 	def test_quality_meeting(self):
+		create_procedure()
+		create_unit()
+		create_goal()
 		create_review()
 		test_create_meeting = create_meeting()
 		test_get_meeting = get_meeting()

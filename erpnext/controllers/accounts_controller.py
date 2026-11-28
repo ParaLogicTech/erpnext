@@ -434,11 +434,10 @@ class AccountsController(TransactionBase):
 
 	def unlink_payments_on_invoice_cancel(self):
 		if not self.get("is_return"):
-			unlink_voucher_from_payments(self.doctype, self.name, True)
+			unlink_voucher_from_payments(self.doctype, self.name, validate_permission="Invoice")
 
 	def unlink_payments_on_order_cancel(self):
-		if frappe.db.get_single_value("Accounts Settings", "unlink_advance_payment_on_cancelation_of_order"):
-			unlink_voucher_from_payments(self.doctype, self.name, True)
+		unlink_voucher_from_payments(self.doctype, self.name, validate_permission="Order")
 
 	@frappe.whitelist()
 	def set_advances(self, include_unallocated=True, against_project=None):

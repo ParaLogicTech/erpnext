@@ -13,6 +13,9 @@ frappe.ui.form.on("Item", {
 	},
 	onload: function(frm) {
 		erpnext.item.setup_queries(frm);
+		if (frm.is_new() && !frm.doc.stock_uom && frappe.boot.sysdefaults.default_stock_uom) {
+			frm.set_value("stock_uom", frappe.boot.sysdefaults.default_stock_uom);
+		}
 		if (frm.doc.variant_of) {
 			frm.fields_dict["attributes"].grid.set_column_disp("attribute_value", true);
 		}

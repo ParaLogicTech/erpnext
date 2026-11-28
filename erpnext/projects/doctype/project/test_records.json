@@ -1,6 +1,7 @@
 [
  {
   "project_name": "_Test Project",
+  "expected_start_date": "2010-01-01",
   "status": "Open"
  }
 ]

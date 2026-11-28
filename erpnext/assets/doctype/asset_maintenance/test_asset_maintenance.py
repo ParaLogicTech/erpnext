@@ -4,7 +4,7 @@
 import unittest
 
 import frappe
-from frappe.utils import add_days, get_last_day, nowdate
+from frappe.utils import add_days, get_last_day, getdate, nowdate
 
 from erpnext.assets.doctype.asset_maintenance.asset_maintenance import calculate_next_due_date
 from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import make_purchase_receipt
@@ -40,30 +40,28 @@ class TestAssetMaintenance(unittest.TestCase):
 
 		asset_doc.save()
 
-		if not frappe.db.exists("Asset Maintenance", "Photocopier"):
-			asset_maintenance = frappe.get_doc({
-					"doctype": "Asset Maintenance",
-					"asset_name": "Photocopier",
-					"maintenance_team": "Team Awesome",
-					"company": "_Test Company",
-					"asset_maintenance_tasks": get_maintenance_tasks(),
-				}).insert()
+		asset_maintenance = frappe.get_doc({
+			"doctype": "Asset Maintenance",
+			"asset_name": asset_name,
+			"maintenance_team": "Team Awesome",
+			"company": "_Test Company",
+			"asset_maintenance_tasks": get_maintenance_tasks(),
+		}).insert()
 
-			next_due_date = calculate_next_due_date(nowdate(), "Monthly")
-			self.assertEqual(asset_maintenance.asset_maintenance_tasks[0].next_due_date, next_due_date)
+		next_due_date = calculate_next_due_date("Monthly", nowdate())
+		self.assertEqual(getdate(asset_maintenance.asset_maintenance_tasks[0].next_due_date), getdate(next_due_date))
 
-	def test_create_asset_maintenance_log(self):
-		if not frappe.db.exists("Asset Maintenance Log", "Photocopier"):
-			asset_maintenance_log = frappe.get_doc({
-					"doctype": "Asset Maintenance Log",
-					"asset_maintenance": "Photocopier",
-					"task": "Change Oil",
-					"completion_date": add_days(nowdate(), 2),
-					"maintenance_status": "Completed",
-				}).insert()
-		asset_maintenance = frappe.get_doc("Asset Maintenance", "Photocopier")
-		next_due_date = calculate_next_due_date(asset_maintenance_log.completion_date, "Monthly")
-		self.assertEqual(asset_maintenance.asset_maintenance_tasks[0].next_due_date, next_due_date)
+		# Saving the maintenance creates a log for each task
+		asset_maintenance_log = frappe.get_doc("Asset Maintenance Log", {
+			"asset_maintenance": asset_maintenance.name,
+			"task_name": "Change Oil",
+		})
+		asset_maintenance_log.update({"completion_date": nowdate(), "maintenance_status": "Completed"})
+		asset_maintenance_log.submit()
+
+		asset_maintenance.reload()
+		next_due_date = calculate_next_due_date("Monthly", nowdate())
+		self.assertEqual(getdate(asset_maintenance.asset_maintenance_tasks[0].next_due_date), getdate(next_due_date))
 
 
 def create_asset_data():

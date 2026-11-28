@@ -6,6 +6,7 @@ import unittest
 
 import frappe
 from frappe.test_runner import make_test_records
+from frappe.utils import getdate
 
 from erpnext.accounts.party import get_due_date
 from erpnext.exceptions import PartyDisabled
@@ -20,49 +21,49 @@ class TestSupplier(unittest.TestCase):
         frappe.db.set_value(
             "Supplier", "_Test Supplier With Template 1", "payment_terms", "_Test Payment Term Template 3")
 
-        due_date = get_due_date("2016-01-22", "Supplier", "_Test Supplier With Template 1")
-        self.assertEqual(due_date, "2016-02-21")
+        due_date = get_due_date("2016-01-22", party_type="Supplier", party="_Test Supplier With Template 1")
+        self.assertEqual(due_date, getdate("2016-02-21"))
 
-        due_date = get_due_date("2017-01-22", "Supplier", "_Test Supplier With Template 1")
-        self.assertEqual(due_date, "2017-02-21")
+        due_date = get_due_date("2017-01-22", party_type="Supplier", party="_Test Supplier With Template 1")
+        self.assertEqual(due_date, getdate("2017-02-21"))
 
         # Payment Term based on last day of month
         frappe.db.set_value(
             "Supplier", "_Test Supplier With Template 1", "payment_terms", "_Test Payment Term Template 1")
 
-        due_date = get_due_date("2016-01-22", "Supplier", "_Test Supplier With Template 1")
-        self.assertEqual(due_date, "2016-02-29")
+        due_date = get_due_date("2016-01-22", party_type="Supplier", party="_Test Supplier With Template 1")
+        self.assertEqual(due_date, getdate("2016-02-29"))
 
-        due_date = get_due_date("2017-01-22", "Supplier", "_Test Supplier With Template 1")
-        self.assertEqual(due_date, "2017-02-28")
+        due_date = get_due_date("2017-01-22", party_type="Supplier", party="_Test Supplier With Template 1")
+        self.assertEqual(due_date, getdate("2017-02-28"))
 
         frappe.db.set_value("Supplier", "_Test Supplier With Template 1", "payment_terms", "")
 
         # Set credit limit for the supplier group instead of supplier and evaluate the due date
         frappe.db.set_value("Supplier Group", "_Test Supplier Group", "payment_terms", "_Test Payment Term Template 3")
 
-        due_date = get_due_date("2016-01-22", "Supplier", "_Test Supplier With Template 1")
-        self.assertEqual(due_date, "2016-02-21")
+        due_date = get_due_date("2016-01-22", party_type="Supplier", party="_Test Supplier With Template 1")
+        self.assertEqual(due_date, getdate("2016-02-21"))
 
         # Payment terms for Supplier Group instead of supplier and evaluate the due date
         frappe.db.set_value("Supplier Group", "_Test Supplier Group", "payment_terms", "_Test Payment Term Template 1")
 
         # Leap year
-        due_date = get_due_date("2016-01-22", "Supplier", "_Test Supplier With Template 1")
-        self.assertEqual(due_date, "2016-02-29")
+        due_date = get_due_date("2016-01-22", party_type="Supplier", party="_Test Supplier With Template 1")
+        self.assertEqual(due_date, getdate("2016-02-29"))
         # # Non Leap year
-        due_date = get_due_date("2017-01-22", "Supplier", "_Test Supplier With Template 1")
-        self.assertEqual(due_date, "2017-02-28")
+        due_date = get_due_date("2017-01-22", party_type="Supplier", party="_Test Supplier With Template 1")
+        self.assertEqual(due_date, getdate("2017-02-28"))
 
         # Supplier with no default Payment Terms Template
         frappe.db.set_value("Supplier Group", "_Test Supplier Group", "payment_terms", "")
         frappe.db.set_value("Supplier", "_Test Supplier", "payment_terms", "")
 
-        due_date = get_due_date("2016-01-22", "Supplier", "_Test Supplier")
-        self.assertEqual(due_date, "2016-01-22")
+        due_date = get_due_date("2016-01-22", party_type="Supplier", party="_Test Supplier")
+        self.assertEqual(due_date, getdate("2016-01-22"))
         # # Non Leap year
-        due_date = get_due_date("2017-01-22", "Supplier", "_Test Supplier")
-        self.assertEqual(due_date, "2017-01-22")
+        due_date = get_due_date("2017-01-22", party_type="Supplier", party="_Test Supplier")
+        self.assertEqual(due_date, getdate("2017-01-22"))
 
     def test_supplier_disabled(self):
         make_test_records("Item")
@@ -99,7 +100,7 @@ class TestSupplier(unittest.TestCase):
         frappe.delete_doc_if_exists("Address", "_Test Address With Tax Category-Billing")
 
         # Tax Category without Address
-        details = get_party_details("_Test Supplier With Tax Category", party_type="Supplier")
+        details = get_party_details(party_type="Supplier", party="_Test Supplier With Tax Category", company="_Test Company")
         self.assertEqual(details.tax_category, "_Test Tax Category 1")
 
         address = frappe.get_doc(dict(
@@ -117,7 +118,7 @@ class TestSupplier(unittest.TestCase):
         )).insert()
 
         # Tax Category with Address
-        details = get_party_details("_Test Supplier With Tax Category", party_type="Supplier")
+        details = get_party_details(party_type="Supplier", party="_Test Supplier With Tax Category", company="_Test Company")
         self.assertEqual(details.tax_category, "_Test Tax Category 2")
 
         # Rollback

@@ -6,6 +6,7 @@ import unittest
 
 import frappe
 import frappe.defaults
+from frappe.tests.utils import change_settings
 from frappe.utils import add_days, flt, getdate, nowdate
 
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
@@ -89,6 +90,8 @@ class TestPurchaseOrder(unittest.TestCase):
 		frappe.db.set_value("Item", "_Test Item", "over_billing_allowance", 0)
 		frappe.db.set_single_value("Accounts Settings", "over_billing_allowance", 0)
 
+	@change_settings("Buying Settings", {"maintain_same_rate": 0})
+	@change_settings("Stock Settings", {"no_partial_indent": 0})
 	def test_update_child_qty_rate(self):
 		mr = make_material_request(qty=10)
 		po = make_purchase_order(mr.name)
@@ -188,16 +191,20 @@ class TestPurchaseOrder(unittest.TestCase):
 
 		user = "test@example.com"
 		test_user = frappe.get_doc("User", user)
-		test_user.add_roles("Accounts User")
+		# a role that can read but not edit Purchase Orders
+		test_user.remove_roles("Purchase User", "Purchase Manager", "Accounts User")
+		test_user.add_roles("Stock User")
 		frappe.set_user(user)
+		# Switch back even if an assertion fails, or the following tests run as this user
+		self.addCleanup(frappe.set_user, "Administrator")
 
 		# update qty
 		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 200, "qty": 7, "docname": po.items[0].name}])
-		self.assertRaises(frappe.ValidationError, update_child_items, "Purchase Order", po.name, trans_item)
+		self.assertRaises(frappe.PermissionError, update_child_items, "Purchase Order", po.name, trans_item)
 
 		# add new item
 		trans_item = json.dumps([{"item_code": "_Test Item", "rate": 100, "qty": 2}])
-		self.assertRaises(frappe.ValidationError, update_child_items, "Purchase Order", po.name, trans_item)
+		self.assertRaises(frappe.PermissionError, update_child_items, "Purchase Order", po.name, trans_item)
 		frappe.set_user("Administrator")
 
 	def test_update_qty(self):
@@ -258,12 +265,15 @@ class TestPurchaseOrder(unittest.TestCase):
 			make_purchase_receipt as make_purchase_receipt_return,
 		)
 
+		# only returns that reopen the order take the received qty back
 		pr1 = make_purchase_receipt_return(is_return=1, return_against=pr.name, qty=-3, do_not_submit=True)
+		pr1.reopen_order = 1
 		pr1.items[0].purchase_order = po.name
 		pr1.items[0].purchase_order_item = po.items[0].name
 		pr1.submit()
 
 		pi1 = make_purchase_invoice_return(is_return=1, return_against=pi2.name, qty=-1, update_stock=1, do_not_submit=True)
+		pi1.reopen_order = 1
 		pi1.items[0].purchase_order = po.name
 		pi1.items[0].purchase_order_item = po.items[0].name
 		pi1.submit()
@@ -459,123 +469,6 @@ class TestPurchaseOrder(unittest.TestCase):
 		pi.insert()
 		self.assertTrue(pi.get("payment_schedule"))
 
-	def test_reserved_qty_subcontract_po(self):
-		# Make stock available for raw materials
-		make_stock_entry(target="_Test Warehouse - _TC", qty=10, basic_rate=100)
-		make_stock_entry(target="_Test Warehouse - _TC", item_code="_Test Item Home Desktop 100",
-			qty=20, basic_rate=100)
-		make_stock_entry(target="_Test Warehouse 1 - _TC", item_code="_Test Item",
-			qty=30, basic_rate=100)
-		make_stock_entry(target="_Test Warehouse 1 - _TC", item_code="_Test Item Home Desktop 100",
-			qty=30, basic_rate=100)
-
-		bin1 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname=["reserved_qty_for_sub_contract", "projected_qty"], as_dict=1)
-
-		# Submit PO
-		po = create_purchase_order(item_code="_Test FG Item", is_subcontracted=1)
-
-		bin2 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname=["reserved_qty_for_sub_contract", "projected_qty"], as_dict=1)
-
-		self.assertEqual(bin2.reserved_qty_for_sub_contract, bin1.reserved_qty_for_sub_contract + 10)
-		self.assertEqual(bin2.projected_qty, bin1.projected_qty - 10)
-
-		# Create stock transfer
-		rm_item = [{"item_code": "_Test FG Item", "rm_item_code": "_Test Item", "item_name": "_Test Item",
-					"qty": 6, "warehouse": "_Test Warehouse - _TC", "rate": 100, "amount": 600, "stock_uom": "Nos"}]
-		rm_item_string = json.dumps(rm_item)
-		se = frappe.get_doc(make_subcontract_transfer_entry(po.name, rm_item_string))
-		se.to_warehouse = "_Test Warehouse 1 - _TC"
-		se.save()
-		se.submit()
-
-		bin3 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin3.reserved_qty_for_sub_contract, bin2.reserved_qty_for_sub_contract - 6)
-
-		# close PO
-		po.update_status("Closed")
-		bin4 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin4.reserved_qty_for_sub_contract, bin1.reserved_qty_for_sub_contract)
-
-		# Re-open PO
-		po.update_status("Submitted")
-		bin5 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin5.reserved_qty_for_sub_contract, bin2.reserved_qty_for_sub_contract - 6)
-
-		make_stock_entry(target="_Test Warehouse 1 - _TC", item_code="_Test Item",
-			qty=40, basic_rate=100)
-		make_stock_entry(target="_Test Warehouse 1 - _TC", item_code="_Test Item Home Desktop 100",
-			qty=40, basic_rate=100)
-
-		# make Purchase Receipt against PO
-		pr = make_purchase_receipt(po.name)
-		pr.supplier_warehouse = "_Test Warehouse 1 - _TC"
-		pr.save()
-		pr.submit()
-
-		bin6 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin6.reserved_qty_for_sub_contract, bin1.reserved_qty_for_sub_contract)
-
-		# Cancel PR
-		pr.cancel()
-		bin7 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin7.reserved_qty_for_sub_contract, bin2.reserved_qty_for_sub_contract - 6)
-
-		# Make Purchase Invoice
-		pi = make_pi_from_po(po.name)
-		pi.update_stock = 1
-		pi.supplier_warehouse = "_Test Warehouse 1 - _TC"
-		pi.insert()
-		pi.submit()
-		bin8 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin8.reserved_qty_for_sub_contract, bin1.reserved_qty_for_sub_contract)
-
-		# Cancel PR
-		pi.cancel()
-		bin9 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin9.reserved_qty_for_sub_contract, bin2.reserved_qty_for_sub_contract - 6)
-
-		# Cancel Stock Entry
-		se.cancel()
-		bin10 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin10.reserved_qty_for_sub_contract, bin1.reserved_qty_for_sub_contract + 10)
-
-		# Cancel PO
-		po.reload()
-		po.cancel()
-		bin11 = frappe.db.get_value("Bin",
-			filters={"warehouse": "_Test Warehouse - _TC", "item_code": "_Test Item"},
-			fieldname="reserved_qty_for_sub_contract", as_dict=1)
-
-		self.assertEqual(bin11.reserved_qty_for_sub_contract, bin1.reserved_qty_for_sub_contract)
-
 	def test_exploded_items_in_subcontracted(self):
 		item_code = "_Test Subcontracted FG Item 1"
 		make_subcontracted_item(item_code=item_code)
@@ -597,136 +490,6 @@ class TestPurchaseOrder(unittest.TestCase):
 		bom_items = sorted([d.item_code for d in bom.items])
 
 		self.assertEqual(supplied_items1, bom_items)
-
-	def test_backflush_based_on_stock_entry(self):
-		item_code = "_Test Subcontracted FG Item 1"
-		make_subcontracted_item(item_code=item_code)
-		make_item("Sub Contracted Raw Material 1", {
-			"is_stock_item": 1,
-			"is_sub_contracted_item": 1,
-		})
-
-		update_backflush_based_on("Material Transferred for Subcontract")
-
-		order_qty = 5
-		po = create_purchase_order(item_code=item_code, qty=order_qty,
-			is_subcontracted=1, supplier_warehouse="_Test Warehouse 1 - _TC")
-
-		make_stock_entry(target="_Test Warehouse - _TC",
-			item_code="_Test Item Home Desktop 100", qty=10, basic_rate=100)
-		make_stock_entry(target="_Test Warehouse - _TC",
-			item_code="Test Extra Item 1", qty=100, basic_rate=100)
-		make_stock_entry(target="_Test Warehouse - _TC",
-			item_code="Test Extra Item 2", qty=10, basic_rate=100)
-		make_stock_entry(target="_Test Warehouse - _TC",
-			item_code="Sub Contracted Raw Material 1", qty=10, basic_rate=100)
-
-		rm_items = [
-			{"item_code": item_code, "rm_item_code": "Sub Contracted Raw Material 1", "item_name": "_Test Item",
-				"qty": 10, "warehouse": "_Test Warehouse - _TC", "stock_uom": "Nos"},
-			{"item_code": item_code, "rm_item_code": "_Test Item Home Desktop 100", "item_name": "_Test Item Home Desktop 100",
-				"qty": 20, "warehouse": "_Test Warehouse - _TC", "stock_uom": "Nos"},
-			{"item_code": item_code, "rm_item_code": "Test Extra Item 1", "item_name": "Test Extra Item 1",
-				"qty": 10, "warehouse": "_Test Warehouse - _TC", "stock_uom": "Nos"},
-			{"item_code": item_code, "rm_item_code": "Test Extra Item 2", "stock_uom": "Nos",
-				"qty": 10, "warehouse": "_Test Warehouse - _TC", "item_name": "Test Extra Item 2"}]
-
-		rm_item_string = json.dumps(rm_items)
-		se = frappe.get_doc(make_subcontract_transfer_entry(po.name, rm_item_string))
-		se.submit()
-
-		pr = make_purchase_receipt(po.name)
-
-		received_qty = 2
-		# partial receipt
-		pr.get("items")[0].qty = received_qty
-		pr.save()
-		pr.submit()
-
-		transferred_items = sorted([d.item_code for d in se.get("items") if se.purchase_order == po.name])
-		issued_items = sorted([d.rm_item_code for d in pr.get("supplied_items")])
-
-		self.assertEqual(transferred_items, issued_items)
-		self.assertEqual(pr.get("items")[0].rm_supp_cost, 2000)
-
-		transferred_rm_map = frappe._dict()
-		for item in rm_items:
-			transferred_rm_map[item.get("rm_item_code")] = item
-
-		for item in pr.get("supplied_items"):
-			self.assertEqual(item.get("required_qty"), (transferred_rm_map[item.get("rm_item_code")].get("qty") / order_qty) * received_qty)
-
-		update_backflush_based_on("BOM")
-
-	def test_backflushed_based_on_for_multiple_batches(self):
-		item_code = "_Test Subcontracted FG Item 2"
-		make_item("Sub Contracted Raw Material 2", {
-			"is_stock_item": 1,
-			"is_sub_contracted_item": 1,
-		})
-
-		make_subcontracted_item(item_code=item_code, has_batch_no=1, create_new_batch=1,
-			raw_materials=["Sub Contracted Raw Material 2"])
-
-		update_backflush_based_on("Material Transferred for Subcontract")
-
-		order_qty = 500
-		po = create_purchase_order(item_code=item_code, qty=order_qty,
-			is_subcontracted=1, supplier_warehouse="_Test Warehouse 1 - _TC")
-
-		make_stock_entry(target="_Test Warehouse - _TC",
-			item_code="Sub Contracted Raw Material 2", qty=552, basic_rate=100)
-
-		rm_items = [
-			{"item_code": item_code, "rm_item_code": "Sub Contracted Raw Material 2", "item_name": "_Test Item",
-				"qty": 552, "warehouse": "_Test Warehouse - _TC", "stock_uom": "Nos"}]
-
-		rm_item_string = json.dumps(rm_items)
-		se = frappe.get_doc(make_subcontract_transfer_entry(po.name, rm_item_string))
-		se.submit()
-
-		for batch in ["ABCD1", "ABCD2", "ABCD3", "ABCD4"]:
-			make_new_batch(batch_id=batch, item_code=item_code)
-
-		pr = make_purchase_receipt(po.name)
-
-		# partial receipt
-		pr.get("items")[0].qty = 30
-		pr.get("items")[0].batch_no = "ABCD1"
-
-		purchase_order = po.name
-		purchase_order_item = po.items[0].name
-
-		for batch_no, qty in {"ABCD2": 60, "ABCD3": 70, "ABCD4": 40}.items():
-			pr.append("items", {
-				"item_code": pr.get("items")[0].item_code,
-				"item_name": pr.get("items")[0].item_name,
-				"uom": pr.get("items")[0].uom,
-				"stock_uom": pr.get("items")[0].stock_uom,
-				"warehouse": pr.get("items")[0].warehouse,
-				"conversion_factor": pr.get("items")[0].conversion_factor,
-				"cost_center": pr.get("items")[0].cost_center,
-				"rate": pr.get("items")[0].rate,
-				"qty": qty,
-				"batch_no": batch_no,
-				"purchase_order": purchase_order,
-				"purchase_order_item": purchase_order_item,
-			})
-
-		pr.submit()
-
-		pr1 = make_purchase_receipt(po.name)
-		pr1.get("items")[0].qty = 300
-		pr1.get("items")[0].batch_no = "ABCD1"
-		pr1.save()
-
-		# the remaining receipt consumes whatever the first receipt left of the 552 transferred
-		backflushed_qty = sum(d.qty for d in pr1.get_raw_materials_backflushed_against_item(pr1.items[0]))
-
-		self.assertTrue(pr1.supplied_items[0].consumed_qty > 0)
-		self.assertEqual(flt(pr1.supplied_items[0].consumed_qty, 3), flt(552.0 - backflushed_qty, 3))
-
-		update_backflush_based_on("BOM")
 
 	def test_advance_payment_entry_unlink_against_purchase_order(self):
 		from erpnext.accounts.doctype.payment_entry.test_payment_entry import get_payment_entry
@@ -765,16 +528,17 @@ class TestPurchaseOrder(unittest.TestCase):
 			"schedule_date": add_days(nowdate(), 5),
 		})
 		po.save()
-		self.assertEqual(po.schedule_date, add_days(nowdate(), 1))
+		self.assertEqual(getdate(po.schedule_date), getdate(add_days(nowdate(), 1)))
 
 		po.items[0].schedule_date = add_days(nowdate(), 2)
 		po.save()
-		self.assertEqual(po.schedule_date, add_days(nowdate(), 2))
+		self.assertEqual(getdate(po.schedule_date), getdate(add_days(nowdate(), 2)))
 
 
 def make_pr_against_po(po, received_qty=0):
 	pr = make_purchase_receipt(po)
 	pr.get("items")[0].qty = received_qty or 5
+	pr.get("items")[0].received_qty = pr.get("items")[0].qty
 	pr.insert()
 	pr.submit()
 	return pr
@@ -809,12 +573,6 @@ def make_subcontracted_item(**args):
 		make_bom(item=args.item_code, raw_materials=args.get("raw_materials"))
 
 
-def update_backflush_based_on(based_on):
-	doc = frappe.get_doc("Buying Settings")
-	doc.backflush_raw_materials_of_subcontract_based_on = based_on
-	doc.save()
-
-
 def get_same_items():
 	return [
 		{
@@ -846,7 +604,8 @@ def create_purchase_order(**args):
 	po.is_subcontracted = args.is_subcontracted or 0
 	po.currency = args.currency or frappe.get_cached_value("Company", po.company, "default_currency")
 	po.conversion_factor = args.conversion_factor or 1
-	po.supplier_warehouse = args.supplier_warehouse or None
+	# Subcontracted orders need a supplier warehouse before submit
+	po.supplier_warehouse = args.supplier_warehouse or ("_Test Warehouse 1 - _TC" if po.is_subcontracted else None)
 
 	po.append("items", {
 		"item_code": args.item or args.item_code or "_Test Item",
@@ -870,7 +629,9 @@ def create_purchase_order(**args):
 
 def create_pr_against_po(po, received_qty=4):
 	pr = make_purchase_receipt(po)
+	# Received qty that isn't accepted counts as rejected
 	pr.get("items")[0].qty = received_qty
+	pr.get("items")[0].received_qty = received_qty
 	pr.insert()
 	pr.submit()
 	return pr

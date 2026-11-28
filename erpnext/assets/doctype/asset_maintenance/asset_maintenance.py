@@ -13,6 +13,10 @@ class AssetMaintenance(Document):
 		for task in self.get("asset_maintenance_tasks"):
 			if task.end_date and (getdate(task.start_date) >= getdate(task.end_date)):
 				throw(_("Start date should be less than end date for task {0}").format(task.maintenance_task))
+			if not task.next_due_date and task.periodicity:
+				task.next_due_date = calculate_next_due_date(
+					task.periodicity, task.start_date, task.end_date, task.last_completion_date,
+				) or None
 			if getdate(task.next_due_date) < getdate(nowdate()):
 				task.maintenance_status = "Overdue"
 			if not task.assign_to and self.docstatus == 0:
@@ -41,14 +45,17 @@ def assign_tasks(asset_maintenance_name, assign_to_member, maintenance_task, nex
 	team_member = frappe.db.get_value("User", assign_to_member, "email")
 	args = {
 		"doctype": "Asset Maintenance",
-		"assign_to": team_member,
+		"assign_to": [team_member],
 		"name": asset_maintenance_name,
 		"description": maintenance_task,
 		"date": next_due_date,
 	}
-	if not frappe.db.sql("""select owner from `tabToDo`
-		where reference_type=%(doctype)s and reference_name=%(name)s and status="Open"
-		and owner=%(assign_to)s""", args):
+	if not frappe.db.exists("ToDo", {
+		"reference_type": args["doctype"],
+		"reference_name": args["name"],
+		"status": "Open",
+		"allocated_to": team_member,
+	}):
 		assign_to.add(args)
 
 

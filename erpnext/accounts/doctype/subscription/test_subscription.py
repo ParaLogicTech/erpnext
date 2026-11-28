@@ -203,7 +203,8 @@ class TestSubscription(unittest.TestCase):
 	def test_subscription_is_past_due_doesnt_change_within_grace_period(self):
 		settings = frappe.get_single("Subscription Settings")
 		grace_period = settings.grace_period
-		settings.grace_period = 1000
+		# long enough for the 2018 invoice to stay within it
+		settings.grace_period = date_diff(nowdate(), "2018-01-01") + 1000
 		settings.save()
 
 		subscription = frappe.new_doc("Subscription")
@@ -216,7 +217,7 @@ class TestSubscription(unittest.TestCase):
 		self.assertEqual(subscription.status, "Past Due Date")
 
 		subscription.process()
-		# Grace period is 1000 days so status should remain as Past Due Date
+		# Within the grace period, so status should remain as Past Due Date
 		self.assertEqual(subscription.status, "Past Due Date")
 
 		subscription.process()

@@ -12,7 +12,14 @@ frappe.ui.form.ItemQuickEntryForm = class ItemQuickEntryForm extends frappe.ui.f
 		super.render_dialog();
 		this.init_post_render_dialog_operations();
 		this.preset_fields_for_template();
+		this.set_default_stock_uom();
 		this.dialog.$wrapper.find(".edit-full").text(__("Edit in full page for more options like assets, serial nos, batches etc."));
+	}
+
+	set_default_stock_uom() {
+		if (!this.dialog.get_value("stock_uom") && frappe.boot.sysdefaults.default_stock_uom) {
+			this.dialog.set_value("stock_uom", frappe.boot.sysdefaults.default_stock_uom);
+		}
 	}
 
 	check_naming_series_based_on() {

@@ -7,6 +7,8 @@ import frappe
 
 from erpnext.quality_management.doctype.quality_feedback_template.test_quality_feedback_template import create_template
 
+test_dependencies = ["Customer Group", "Territory"]
+
 
 class TestQualityFeedback(unittest.TestCase):
 
@@ -54,4 +56,6 @@ def create_customer():
 		frappe.get_doc({
 				"doctype": "Customer",
 				"customer_name": "Quality Feedback Customer",
+				"customer_group": "_Test Customer Group",
+				"territory": "_Test Territory",
 			}).insert(ignore_permissions=True)

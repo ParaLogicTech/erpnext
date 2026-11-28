@@ -90,10 +90,10 @@ class TestQuotation(unittest.TestCase):
 		quotation.save()
 		quotation.submit()
 
-		self.assertEqual(quotation.payment_schedule[0].payment_amount, 8906.00)
-		self.assertEqual(quotation.payment_schedule[0].due_date, quotation.transaction_date)
-		self.assertEqual(quotation.payment_schedule[1].payment_amount, 8906.00)
-		self.assertEqual(quotation.payment_schedule[1].due_date, add_days(quotation.transaction_date, 30))
+		self.assertEqual(quotation.payment_schedule[0].payment_amount, 500.00)
+		self.assertEqual(getdate(quotation.payment_schedule[0].due_date), getdate(quotation.transaction_date))
+		self.assertEqual(quotation.payment_schedule[1].payment_amount, 500.00)
+		self.assertEqual(getdate(quotation.payment_schedule[1].due_date), getdate(add_days(quotation.transaction_date, 30)))
 
 		sales_order = make_sales_order(quotation.name)
 
@@ -108,9 +108,9 @@ class TestQuotation(unittest.TestCase):
 		sales_order.transaction_date = nowdate()
 		sales_order.insert()
 
-		self.assertEqual(sales_order.payment_schedule[0].payment_amount, 8906.00)
+		self.assertEqual(sales_order.payment_schedule[0].payment_amount, 500.00)
 		self.assertEqual(sales_order.payment_schedule[0].due_date, getdate(quotation.transaction_date))
-		self.assertEqual(sales_order.payment_schedule[1].payment_amount, 8906.00)
+		self.assertEqual(sales_order.payment_schedule[1].payment_amount, 500.00)
 		self.assertEqual(
 			sales_order.payment_schedule[1].due_date, getdate(add_days(quotation.transaction_date, 30)),
 		)
@@ -130,7 +130,10 @@ class TestQuotation(unittest.TestCase):
 	def test_create_quotation_with_margin(self):
 		from erpnext.selling.doctype.quotation.quotation import make_sales_order
 		from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note, make_sales_invoice
+		from erpnext.selling.doctype.sales_order.test_sales_order import set_test_item_price
 
+		# The price list rate is taken from the item's price on save
+		set_test_item_price(self, "_Test Item Home Desktop 100", "_Test Price List", 1500)
 		rate_with_margin = flt((1500 * 18.75) / 100 + 1500)
 
 		test_records[0]["items"][0]["price_list_rate"] = 1500
