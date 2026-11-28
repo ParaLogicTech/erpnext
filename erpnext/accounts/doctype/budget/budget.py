@@ -231,7 +231,7 @@ def get_requested_amount(args, budget):
 
 	data = frappe.db.sql(""" select ifnull((sum(child.stock_qty - child.ordered_qty) * rate), 0) as amount
 		from `tabMaterial Request Item` child, `tabMaterial Request` parent where parent.name = child.parent and
-		child.item_code = %s and parent.docstatus = 1 and child.stock_qty > child.ordered_qty and {0} and
+		child.item_code = %s and parent.docstatus = 1 and child.stock_qty > child.ordered_qty {0} and
 		parent.material_request_type = 'Purchase' and parent.status != 'Stopped'""".format(condition), item_code, as_list=1)
 
 	return data[0][0] if data else 0
@@ -244,25 +244,31 @@ def get_ordered_amount(args, budget):
 	data = frappe.db.sql(""" select ifnull(sum(child.amount - child.billed_amt), 0) as amount
 		from `tabPurchase Order Item` child, `tabPurchase Order` parent where
 		parent.name = child.parent and child.item_code = %s and parent.docstatus = 1 and child.amount > child.billed_amt
-		and parent.status != 'Closed' and {0}""".format(condition), item_code, as_list=1)
+		and parent.status != 'Closed' {0}""".format(condition), item_code, as_list=1)
 
 	return data[0][0] if data else 0
 
 
 def get_other_condition(args, budget, for_doc):
-	condition = "expense_account = '%s'" % (args.expense_account)
+	# Material Request and Purchase Order rows have no expense account or cost center: the queries filter by item
+	# instead, whose rows all take the item's defaults, the ones the budget is checked against
+	condition = ""
 	budget_against_field = args.get("budget_against_field")
 
 	if budget_against_field and args.get(budget_against_field):
-		condition += " and child.%s = '%s'" % (budget_against_field, args.get(budget_against_field))
+		for table_alias, doctype in [("child", f"{for_doc} Item"), ("parent", for_doc)]:
+			if frappe.get_meta(doctype).has_field(budget_against_field):
+				condition += " and {0}.{1} = {2}".format(table_alias, budget_against_field,
+					frappe.db.escape(args.get(budget_against_field)))
+				break
 
 	if args.get("fiscal_year"):
 		date_field = "schedule_date" if for_doc == "Material Request" else "transaction_date"
 		start_date, end_date = frappe.db.get_value("Fiscal Year", args.get("fiscal_year"),
 			["year_start_date", "year_end_date"])
 
-		condition += """ and parent.%s
-			between '%s' and '%s' """ % (date_field, start_date, end_date)
+		condition += " and parent.{0} between {1} and {2}".format(date_field, frappe.db.escape(start_date),
+			frappe.db.escape(end_date))
 
 	return condition
 
