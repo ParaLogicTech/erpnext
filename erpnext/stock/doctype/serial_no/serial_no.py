@@ -588,24 +588,6 @@ def get_auto_serial_nos(serial_no_series, qty, item_code):
 	return "\n".join(serial_nos)
 
 
-def allow_serial_nos_with_different_item(sle_serial_no, sle):
-	"""
-		Allows same serial nos for raw materials and finished goods
-		in Manufacture / Repack type Stock Entry
-	"""
-	allow_serial_nos = False
-	if sle.voucher_type == "Stock Entry" and cint(sle.actual_qty) > 0:
-		stock_entry = frappe.get_cached_doc("Stock Entry", sle.voucher_no)
-		if stock_entry.purpose in ("Repack", "Manufacture"):
-			for d in stock_entry.get("items"):
-				if d.serial_no and (d.s_warehouse if sle.is_cancelled == "No" else d.t_warehouse):
-					serial_nos = get_serial_nos(d.serial_no)
-					if sle_serial_no in serial_nos:
-						allow_serial_nos = True
-
-	return allow_serial_nos
-
-
 def create_missing_serial_nos(sle, item_details):
 	if not cint(sle.get("actual_qty")) > 0 or sle.get("is_cancelled") == "Yes":
 		return
