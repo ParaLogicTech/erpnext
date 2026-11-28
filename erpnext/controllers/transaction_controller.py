@@ -1439,6 +1439,9 @@ def validate_inclusive_tax(tax, doc):
 		elif tax.charge_type == "Weighted Distribution":
 			# inclusive tax cannot be of type Actual
 			frappe.throw(_("Charge of type 'Weighted Distribution' in row {0} cannot be included in Item Rate").format(tax.idx))
+		elif tax.charge_type == "On Item Quantity":
+			# the tax would be added on top of the rate: the inclusive calculation doesn't support it yet
+			frappe.throw(_("Charge of type 'On Item Quantity' in row {0} cannot be included in Item Rate").format(tax.idx))
 		elif tax.charge_type == "On Previous Row Amount" and \
 				not cint(doc.get("taxes")[cint(tax.row_id) - 1].included_in_print_rate):
 			# referred row should also be inclusive
